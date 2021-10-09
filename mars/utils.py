@@ -85,6 +85,13 @@ class AttributeDict(dict):
                 f"'AttributeDict' object has no attribute {item}")
 
 
+def get_bool_environ(var_name: str) -> Optional[bool]:
+    var_value = os.environ.get(var_name)
+    if not var_value:
+        return None
+    return bool(int(var_value))
+
+
 def on_serialize_shape(shape: Tuple[int]):
     if shape:
         return tuple(s if not np.isnan(s) else -1 for s in shape)
@@ -115,15 +122,15 @@ def on_serialize_nsplits(value: Tuple[Tuple[int]]):
 _memory_size_indices = {'': 0, 'k': 1, 'm': 2, 'g': 3, 't': 4}
 
 
-def calc_size_by_str(value: Union[str, int],
-                     total: Union[int]) -> Optional[int]:
+def calc_size_by_str(value: Union[str, int, None],
+                     total: Union[int, None]) -> Optional[int]:
     if value is None:
         return None
     if isinstance(value, int):
         return value
     mem_limit, is_percent = parse_readable_size(value)
     if is_percent:
-        return int(total * mem_limit)
+        return int(total * mem_limit) if total is not None else None
     else:
         return int(mem_limit)
 

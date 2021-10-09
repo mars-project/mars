@@ -56,10 +56,13 @@ class TestClusterBackend(AbstractClusterBackend):
             await asyncio.sleep(0.1)
 
     async def request_worker(self,
-                                  worker_cpu: int = None,
-                                  worker_mem: int = None,
-                                  timeout: int = None) -> str:
+                             worker_cpu: int = None,
+                             worker_mem: int = None,
+                             timeout: int = None) -> str:
         raise NotImplementedError
 
     async def release_worker(self, address: str):
+        raise NotImplementedError
+
+    async def reconstruct_worker(self, address: str):
         raise NotImplementedError

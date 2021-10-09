@@ -151,6 +151,8 @@ class _ChunksIndexer:
 
         The length of indices must be the same with `chunk_shape` of tileable.
         """
+        if isinstance(item, int):
+            item = (item,)
         if isinstance(item, tuple):
             if len(item) == 0 and self._tileable.is_scalar():
                 return self._tileable.chunks[0]

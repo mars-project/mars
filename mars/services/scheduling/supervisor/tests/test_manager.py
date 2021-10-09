@@ -61,14 +61,19 @@ class MockSubtaskQueueingActor(mo.Actor):
         self._error = error
 
 
-class MockSubtaskExecutionActor(mo.Actor):
+class MockSubtaskExecutionActor(mo.StatelessActor):
     def __init__(self):
         self._subtask_aiotasks = defaultdict(dict)
+        self._run_subtask_events = {}
+
+    async def set_run_subtask_event(self, subtask_id, event):
+        self._run_subtask_events[subtask_id] = event
 
     async def run_subtask(self, subtask: Subtask, band_name: str, supervisor_address: str):
+        self._run_subtask_events[subtask.subtask_id].set()
         task = self._subtask_aiotasks[subtask.subtask_id][band_name] = \
             asyncio.create_task(asyncio.sleep(20))
-        return task
+        return await task
 
     def cancel_subtask(self, subtask_id: str, kill_timeout: int = 5):
         for task in self._subtask_aiotasks[subtask_id].values():
@@ -119,17 +124,27 @@ async def test_subtask_manager(actor_pool):
     subtask2 = Subtask('subtask2', session_id)
 
     await manager_ref.add_subtasks([subtask1, subtask2], [(1,), (2,)])
-    await manager_ref.submit_subtask_to_band(
-        subtask1.subtask_id, (pool.external_address, 'gpu-0'))
-    await manager_ref.submit_subtask_to_band(
-        subtask1.subtask_id, (pool.external_address, 'gpu-1'))
+    run_subtask1_event, run_subtask2_event = asyncio.Event(), asyncio.Event()
+    await execution_ref.set_run_subtask_event(subtask1.subtask_id, run_subtask1_event)
+    await execution_ref.set_run_subtask_event(subtask2.subtask_id, run_subtask2_event)
+
+    submit1 = asyncio.create_task(manager_ref.submit_subtask_to_band(
+        subtask1.subtask_id, (pool.external_address, 'gpu-0')))
+    submit2 = asyncio.create_task(manager_ref.submit_subtask_to_band(
+        subtask2.subtask_id, (pool.external_address, 'gpu-1')))
+
+    await asyncio.gather(run_subtask1_event.wait(), run_subtask2_event.wait())
 
     await manager_ref.cancel_subtasks([subtask1.subtask_id, subtask2.subtask_id])
     await asyncio.wait_for(
         asyncio.gather(
             execution_ref.wait_subtask(subtask1.subtask_id, 'gpu-0'),
-            execution_ref.wait_subtask(subtask1.subtask_id, 'gpu-1'),
+            execution_ref.wait_subtask(subtask2.subtask_id, 'gpu-1'),
         ), timeout=10)
+    with pytest.raises(asyncio.CancelledError):
+        await submit1
+    with pytest.raises(asyncio.CancelledError):
+        await submit2
     assert (await task_manager_ref.get_result(subtask1.subtask_id)).status \
            == SubtaskStatus.cancelled
     assert (await task_manager_ref.get_result(subtask2.subtask_id)).status \

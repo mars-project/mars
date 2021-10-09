@@ -117,10 +117,12 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         res = await oscar_api.get_tileable_details(task_id)
         self.write(json.dumps(res))
 
-    @web_api('(?P<task_id>[^/]+)/(?P<tileable_id>[^/]+)/subtasks', method='get')
+    @web_api('(?P<task_id>[^/]+)/(?P<tileable_id>[^/]+)/subtask', method='get')
     async def get_tileable_subtasks(self, session_id: str, task_id: str, tileable_id: str):
+        with_input_output = (self.get_argument('with_input_output', 'false') == 'true')
         oscar_api = await self._get_oscar_task_api(session_id)
-        res = await oscar_api.get_tileable_subtasks(task_id, tileable_id)
+        res = await oscar_api.get_tileable_subtasks(
+            task_id, tileable_id, with_input_output)
         self.write(json.dumps(res))
 
     @web_api('(?P<task_id>[^/]+)', method='get', arg_filter={'action': 'progress'})
@@ -216,7 +218,8 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
     async def wait_task(self, task_id: str, timeout: float = None):
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
         params = {'action': 'wait', 'timeout': str(timeout or '')}
-        res = await self._request_url('GET', path, params=params)
+        res = await self._request_url('GET', path, params=params,
+                                      request_timeout=timeout or 0)
         return _json_deserial_task_result(json.loads(res.body.decode()))
 
     async def cancel_task(self, task_id: str):
@@ -234,7 +237,16 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
         res = await self._request_url(path=path, method='GET')
         return json.loads(res.body.decode())
 
-    async def get_tileable_subtasks(self, task_id: str, tileable_id: str):
-        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/{tileable_id}/subtasks'
-        res = await self._request_url(path=path, method='GET')
+    async def get_tileable_subtasks(self,
+                                    task_id: str,
+                                    tileable_id: str,
+                                    with_input_output: bool):
+
+        with_input_output = 'true' if with_input_output else 'false'
+        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/{tileable_id}/subtask'
+        params = {
+            'action': 'fetch_graph',
+            'with_input_output': with_input_output,
+        }
+        res = await self._request_url(path=path, params=params, method='GET')
         return json.loads(res.body.decode())

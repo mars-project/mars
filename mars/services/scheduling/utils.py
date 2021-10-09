@@ -33,6 +33,7 @@ async def redirect_subtask_errors(actor: mo.Actor, subtasks):
         yield
     except:  # noqa: E722  # pylint: disable=bare-except
         _, error, traceback = sys.exc_info()
+        status = SubtaskStatus.cancelled if isinstance(error, asyncio.CancelledError) else SubtaskStatus.errored
         task_api = await _get_task_api(actor)
         coros = []
         for subtask in subtasks:
@@ -43,7 +44,7 @@ async def redirect_subtask_errors(actor: mo.Actor, subtasks):
                 session_id=subtask.session_id,
                 task_id=subtask.task_id,
                 progress=1.0,
-                status=SubtaskStatus.errored,
+                status=status,
                 error=error, traceback=traceback
             )))
         await asyncio.wait(coros)

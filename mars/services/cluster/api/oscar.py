@@ -233,6 +233,10 @@ class ClusterAPI(AbstractClusterAPI):
         node_info_ref = await self._get_node_info_ref()
         await node_info_ref.update_node_info(address, NodeRole.WORKER, status=NodeStatus.STOPPED)
 
+    async def reconstruct_worker(self, address: str):
+        node_allocator_ref = await self._get_node_allocator_ref()
+        await node_allocator_ref.reconstruct_worker(address)
+
     @alru_cache(cache_exceptions=False)
     async def _get_node_allocator_ref(self):
         from ..supervisor.node_allocator import NodeAllocatorActor

@@ -92,10 +92,8 @@ async def storage_context(ray_start_regular, request):
         await PlasmaStorage.teardown(**teardown_params)
     elif request.param == 'vineyard':
         vineyard_size = '256M'
-        vineyard_socket = '/tmp/vineyard.sock'
         params, teardown_params = await VineyardStorage.setup(
-            vineyard_size=vineyard_size,
-            vineyard_socket=vineyard_socket)
+            vineyard_size=vineyard_size)
         storage = VineyardStorage(**params)
         assert storage.level == StorageLevel.MEMORY
 

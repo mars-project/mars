@@ -23,7 +23,7 @@ from sklearn.base import MultiOutputMixin
 from ... import execute
 from ... import tensor as mt
 from ...tensor.datasource import tensor as astensor
-from ..base import BaseEstimator, RegressorMixin
+from ..base import BaseEstimator, RegressorMixin, ClassifierMixin
 from ..preprocessing import normalize as f_normalize
 from ..utils.validation import _check_sample_weight, check_array, FLOAT_DTYPES
 
@@ -318,3 +318,59 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
             self.coef_.execute()
         self._set_intercept(X_offset, y_offset, X_scale)
         return self
+
+
+class LinearClassifierMixin(ClassifierMixin):
+    """Mixin for linear classifiers.
+
+    Handles prediction for sparse and dense X.
+    """
+
+    def decision_function(self, X):
+        """
+        Predict confidence scores for samples.
+
+        The confidence score for a sample is proportional to the signed
+        distance of that sample to the hyperplane.
+
+        Parameters
+        ----------
+        X : array-like or sparse matrix, shape (n_samples, n_features)
+            Samples.
+
+        Returns
+        -------
+        array, shape=(n_samples,) if n_classes == 2 else (n_samples, n_classes)
+            Confidence scores per (sample, class) combination. In the binary
+            case, confidence score for self.classes_[1] where >0 means this
+            class would be predicted.
+        """
+        check_is_fitted(self)
+
+        X = check_array(X, accept_sparse='csr')
+
+        n_features = self.coef_.shape[1]
+        if X.shape[1] != n_features:
+            raise ValueError("X has %d features per sample; expecting %d"
+                             % (X.shape[1], n_features))
+
+        scores = mt.dot(X, self.coef_.T) + self.intercept_
+        return scores
+
+    def predict(self, X):
+        """
+        Predict class labels for samples in X.
+
+        Parameters
+        ----------
+        X : array-like or sparse matrix, shape (n_samples, n_features)
+            Samples.
+
+        Returns
+        -------
+        C : array, shape [n_samples]
+            Predicted class label per sample.
+        """
+        scores = self.decision_function(X)
+        indices = scores.argmax(axis=1)
+        return self.classes_[indices].execute()

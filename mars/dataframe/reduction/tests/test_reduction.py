@@ -117,7 +117,7 @@ def test_dataframe_reduction(func_name, op, func_opts: FunctionOptions):
 
     assert isinstance(reduction_df, Series)
     assert isinstance(reduction_df.index_value._index_value,
-                          (IndexValue.RangeIndex, IndexValue.Int64Index))
+                      (IndexValue.RangeIndex, IndexValue.Int64Index))
     assert reduction_df.shape == (10,)
 
     reduction_df = tile(reduction_df)

@@ -228,6 +228,23 @@ async def test_sub_actor_pool(notify_main_pool):
 
 
 @pytest.mark.asyncio
+async def test_fail_when_create_subpool():
+    config = ActorPoolConfig()
+    my_label = 'computation'
+    main_address = f'127.0.0.1:{get_next_port()}'
+    port = get_next_port()
+    _add_pool_conf(config, 0, 'main', 'unixsocket:///0', main_address)
+
+    # use the same port for sub pools, will raise `OSError` with "address already in use"
+    _add_pool_conf(config, 1, my_label, 'unixsocket:///1', f'127.0.0.1:{port}',
+                   env={'my_env': '1'})
+    _add_pool_conf(config, 2, my_label, 'unixsocket:///2', f'127.0.0.1:{port}')
+
+    with pytest.raises(OSError):
+        await MainActorPool.create({'actor_pool_config': config})
+
+
+@pytest.mark.asyncio
 async def test_main_actor_pool():
     config = ActorPoolConfig()
     my_label = 'computation'
@@ -535,6 +552,39 @@ async def test_auto_recover(auto_recover):
         else:
             with pytest.raises((ServerClosed, ConnectionError)):
                 await ctx.has_actor(actor_ref)
+
+
+@pytest.mark.parametrize('exception_config',
+                         [(Exception('recover exception'), False),
+                          (asyncio.CancelledError('cancel monitor'), True)])
+@pytest.mark.asyncio
+async def test_monitor_sub_pool_exception(exception_config):
+    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
+        if sys.platform != 'win32' else None
+    recovered = asyncio.Event()
+    exception, done = exception_config
+
+    def on_process_recover(*_):
+        recovered.set()
+        raise exception
+
+    pool = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=2,
+                                   subprocess_start_method=start_method,
+                                   on_process_recover=on_process_recover)
+
+    async with pool:
+        ctx = get_context()
+        task = await pool.start_monitor()
+
+        # create actor
+        actor_ref = await ctx.create_actor(
+            TestActor, address=pool.external_address,
+            allocate_strategy=ProcessIndex(1))
+        # kill_actor will cause kill corresponding process
+        await ctx.kill_actor(actor_ref)
+
+        await recovered.wait()
+        assert task.done() is done
 
 
 @pytest.mark.asyncio

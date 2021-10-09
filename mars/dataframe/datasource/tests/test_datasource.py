@@ -32,7 +32,13 @@ from ..from_tensor import dataframe_from_tensor, \
 from ..index import from_pandas as from_pandas_index, from_tileable
 from ..read_csv import read_csv, DataFrameReadCSV
 from ..read_sql import read_sql_table, read_sql_query, DataFrameReadSQL
+from ..read_raydataset import read_raydataset, DataFrameReadRayDataset
 from ..series import from_pandas as from_pandas_series
+from ....tests.core import require_ray
+from ....utils import lazy_import
+
+
+ray = lazy_import('ray')
 
 
 def test_from_pandas_dataframe():
@@ -430,6 +436,27 @@ def test_read_sql():
             read_sql_table(table_name, uri, chunk_size=4, index_col=b'a')
         with pytest.raises(TypeError):
             read_sql_query('select * from ' + table_name, uri, partition_col='b')
+
+
+@require_ray
+def test_read_raydataset():
+    test_df1 = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                             'b': [f's{i}' for i in range(10)]})
+    test_df2 = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                             'b': [f's{i}' for i in range(10)]})
+    df = pd.concat([test_df1, test_df2])
+    ds = ray.data.from_pandas([ray.put(test_df1), ray.put(test_df2)])
+    mdf = read_raydataset(ds)
+
+    assert mdf.shape[1] == 2
+    pd.testing.assert_index_equal(df.columns, mdf.columns_value.to_pandas())
+    pd.testing.assert_series_equal(df.dtypes, mdf.dtypes)
+
+    mdf = tile(mdf)
+    assert len(mdf.chunks) == 2
+    for chunk in mdf.chunks:
+        assert isinstance(chunk.op, DataFrameReadRayDataset)
+    ray.shutdown()
 
 
 def test_date_range():

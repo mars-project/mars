@@ -26,6 +26,8 @@ from ...oscar.backends.ray.utils import (
     node_placement_to_address,
     process_address_to_placement
 )
+from ...oscar.backends.ray.pool import RayPoolState
+from ...oscar.errors import ReconstructWorkerError
 from ...services.cluster.backends.base import register_cluster_backend, AbstractClusterBackend
 from ...services import NodeRole
 from ...utils import merge_dict, flatten_dict_to_nested_dict
@@ -98,6 +100,9 @@ class RayClusterBackend(AbstractClusterBackend):
     async def release_worker(self, address: str):
         return await self._cluster_state_ref.release_worker(address)
 
+    async def reconstruct_worker(self, address: str):
+        return await self._cluster_state_ref.reconstruct_worker(address)
+
     def get_cluster_state_ref(self):
         return self._cluster_state_ref
 
@@ -109,6 +114,8 @@ class ClusterStateActor(mo.StatelessActor):
         self._pg_counter = itertools.count()
         self._worker_count = 0
         self._dynamic_created_workers = {}
+        self._releasing_tasks = {}
+        self._reconstructing_tasks = {}
 
     async def __post_create__(self):
         self._pg_name, _, _ = process_address_to_placement(self.address)
@@ -162,22 +169,72 @@ class ClusterStateActor(mo.StatelessActor):
                     worker_address, time.time() - start_time)
         start_time = time.time()
         await start_worker(worker_address, self.address, band_to_slot, config=self._config)
+        await worker_pool.mark_service_ready.remote()
         logger.info('Start services on worker %s succeeds in %.4f seconds.',
                     worker_address, time.time() - start_time)
         return worker_pool
 
     async def release_worker(self, address: str):
-        await stop_worker(address, self._config)
-        pool, pg = self._dynamic_created_workers.pop(address)
-        await pool.actor_pool.remote('stop')
-        if 'COV_CORE_SOURCE' in os.environ:  # pragma: no cover
-            try:
-                # must clean up first, or coverage info lost
-                await pool.cleanup.remote()
-            except:  # noqa: E722  # nosec  # pylint: disable=bare-except
-                pass
-        ray.kill(pool)
-        ray.util.remove_placement_group(pg)
+        task = self._reconstructing_tasks.get(address)
+        if task is not None:
+            task.cancel()
+
+        task = self._releasing_tasks.get(address)
+        if task is not None:
+            logger.info("Waiting for releasing worker %s", address)
+            return await task
+
+        async def _release_worker():
+            await stop_worker(address, self._config)
+            pool, pg = self._dynamic_created_workers.pop(address)
+            await pool.actor_pool.remote('stop')
+            if 'COV_CORE_SOURCE' in os.environ:  # pragma: no cover
+                try:
+                    # must clean up first, or coverage info lost
+                    await pool.cleanup.remote()
+                except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                    pass
+            ray.kill(pool)
+            ray.util.remove_placement_group(pg)
+
+        task = asyncio.create_task(_release_worker())
+        task.add_done_callback(lambda _: self._releasing_tasks.pop(address, None))
+        self._releasing_tasks[address] = task
+        return await task
+
+    async def reconstruct_worker(self, address: str):
+        task = self._releasing_tasks.get(address)
+        if task is not None:
+            raise ReconstructWorkerError(f"Can't reconstruct releasing worker {address}")
+
+        task = self._reconstructing_tasks.get(address)
+        if task is not None:
+            logger.info("Waiting for reconstruct worker %s", address)
+            return await task
+
+        async def _reconstruct_worker():
+            logger.info("Reconstruct worker %s", address)
+            actor = ray.get_actor(address)
+            state = await actor.state.remote()
+            if state == RayPoolState.SERVICE_READY:
+                logger.info("Worker %s is service ready.")
+                return
+
+            if state == RayPoolState.INIT:
+                await actor.start.remote()
+            else:
+                assert state == RayPoolState.POOL_READY
+
+            start_time = time.time()
+            await start_worker(address, self.address, self._band_to_slot, config=self._config)
+            await actor.mark_service_ready.remote()
+            logger.info('Start services on worker %s succeeds in %.4f seconds.',
+                        address, time.time() - start_time)
+
+        task = asyncio.create_task(_reconstruct_worker())
+        task.add_done_callback(lambda _: self._reconstructing_tasks.pop(address, None))
+        self._reconstructing_tasks[address] = task
+        return await task
 
 
 async def new_cluster(cluster_name: str,
@@ -294,6 +351,7 @@ class RayCluster:
         # start service
         await start_supervisor(self.supervisor_address, config=self._config)
         logger.info('Start services on supervisor %s succeeds.', self.supervisor_address)
+        await self._supervisor_pool.mark_service_ready.remote()
 
         worker_pools = await asyncio.gather(
             *[self._cluster_backend.new_worker(addr) for addr in worker_addresses])

@@ -122,10 +122,10 @@ Arguments for workers:
 +====================+================================================================+
 | worker_num         | Number of workers in the cluster, 1 by default                 |
 +--------------------+----------------------------------------------------------------+
-| worker_cpu         | Number of CPUs for every worker                                |
+| worker_cpu         | Number of CPUs for every worker, required.                     |
 +--------------------+----------------------------------------------------------------+
 | worker_mem         | Memory size for workers in the cluster, in bytes or size units |
-|                    | like ``1g``                                                    |
+|                    | like ``1g``, required.                                         |
 +--------------------+----------------------------------------------------------------+
 | worker_spill_paths | List of spill paths for worker pods on hosts                   |
 +--------------------+----------------------------------------------------------------+

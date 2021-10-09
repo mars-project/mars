@@ -24,6 +24,7 @@ from urllib.parse import urlparse
 from ...lib.aio import new_isolation, stop_isolation
 from ...services.cluster.api import WebClusterAPI
 from ...session import new_session
+from ...utils import calc_size_by_str
 from ..utils import wait_services_ready
 from .config import NamespaceConfig, RoleConfig, RoleBindingConfig, ServiceConfig, \
     MarsSupervisorsConfig, MarsWorkersConfig
@@ -73,7 +74,7 @@ class KubernetesCluster:
     _default_web_port = 7104
 
     def __init__(self, kube_api_client=None, image=None, namespace=None,
-                 supervisor_num=1, supervisor_cpu=None, supervisor_mem=None,
+                 supervisor_num=1, supervisor_cpu=1, supervisor_mem='4G',
                  supervisor_mem_limit_ratio=None,
                  worker_num=1, worker_cpu=None, worker_mem=None,
                  worker_spill_paths=None, worker_cache_mem=None, min_worker_num=None,
@@ -81,6 +82,9 @@ class KubernetesCluster:
                  web_port=None, service_name=None, service_type=None,
                  timeout=None, **kwargs):
         from kubernetes import client as kube_client
+
+        if worker_cpu is None or worker_mem is None:  # pragma: no cover
+            raise TypeError('`worker_cpu` and `worker_mem` must be specified')
 
         self._api_client = kube_api_client
         self._core_api = kube_client.CoreV1Api(kube_api_client)
@@ -119,7 +123,7 @@ class KubernetesCluster:
 
         self._supervisor_num = supervisor_num
         self._supervisor_cpu = supervisor_cpu
-        self._supervisor_mem = supervisor_mem
+        self._supervisor_mem = calc_size_by_str(supervisor_mem, None)
         self._supervisor_mem_limit_ratio = supervisor_mem_limit_ratio
         self._supervisor_extra_modules = _override_modules(kwargs.pop('supervisor_extra_modules', []))
         self._supervisor_extra_env = _override_envs(kwargs.pop('supervisor_extra_env', None))
@@ -130,7 +134,7 @@ class KubernetesCluster:
 
         self._worker_num = worker_num
         self._worker_cpu = worker_cpu
-        self._worker_mem = worker_mem
+        self._worker_mem = calc_size_by_str(worker_mem, None)
         self._worker_mem_limit_ratio = worker_mem_limit_ratio
         self._worker_spill_paths = worker_spill_paths
         self._worker_cache_mem = worker_cache_mem

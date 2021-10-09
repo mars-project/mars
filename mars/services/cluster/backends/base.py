@@ -82,6 +82,12 @@ class AbstractClusterBackend(ABC):
         Return a worker
         """
 
+    @abstractmethod
+    async def reconstruct_worker(self, address: str):
+        """
+        Reconstruct a worker
+        """
+
 
 _cluster_backend_types: Dict[str, Type[AbstractClusterBackend]] = dict()
 

@@ -82,8 +82,9 @@ jobs:
           conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
 
           if [[ "$(mars.test.module)" == "learn" ]]; then
+            # remove version limit when blue-yonder/tsfresh#897 is fixed.
             pip install xgboost lightgbm tensorflow faiss-cpu torch torchvision \
-              statsmodels tsfresh
+              statsmodels\<0.13.0 tsfresh
           fi
         fi
         conda list -n test
@@ -98,6 +99,10 @@ jobs:
       displayName: 'Run tests'
 
     - bash: |
+        GIT_ORIGIN="$(git config --get remote.origin.url)"
+        if [[ "$GIT_ORIGIN" == *"mars-project/mars"* ]]; then
+          export CODECOV_TOKEN="f578555e-b4f4-49a8-8d33-b21a305299ee"
+        fi
         bash <(curl -s https://codecov.io/bash)
       displayName: 'Upload coverage'
 
@@ -115,6 +120,7 @@ jobs:
       displayName: 'Install conda'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         export DEFAULT_VENV=$VIRTUAL_ENV
 
@@ -125,6 +131,7 @@ jobs:
       displayName: 'Install dependencies'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
 
         # stop the build if there are Python syntax errors or undefined names
@@ -139,27 +146,32 @@ jobs:
       displayName: 'Lint with flake8'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         codespell
       displayName: 'Check spellings'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         git fetch origin master
         bash ci/modecheck.sh
       displayName: 'Check file mode changes'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         python ci/importcheck.py
       displayName: 'Check imports'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         python ci/copycheck.py
       displayName: 'Check copyright headers'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         pushd mars/services/web/ui
         npm install
@@ -168,6 +180,7 @@ jobs:
       displayName: 'Check JS with ESLint'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         pushd docs
         pip install -r requirements-doc.txt

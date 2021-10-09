@@ -361,6 +361,16 @@ class SparseArray(SparseNDArray):
             return SparseNDArray(x, shape=self.shape)
         return get_array_module(x).asarray(x)
 
+    def __matmul__(self, other):
+        from . import matmul
+
+        return matmul(self, other)
+
+    def __rmatmul__(self, other):
+        from . import matmul
+
+        return matmul(other, self)
+
     def __div__(self, other):
         return self.__truediv__(other)
 

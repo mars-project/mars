@@ -31,10 +31,6 @@ try:
     import xgboost_ray
 except ImportError:  # pragma: no cover
     xgboost_ray = None
-try:
-    import sklearn
-except ImportError:  # pragma: no cover
-    sklearn = None
 
 
 @pytest.fixture
@@ -90,7 +86,6 @@ async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster, test_
 
 @require_ray
 @pytest.mark.asyncio
-@pytest.mark.skipif(sklearn is None, reason='sklearn not installed')
 @pytest.mark.skipif(xgboost_ray is None, reason='xgboost_ray not installed')
 async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, train

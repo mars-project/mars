@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union
+from typing import Union, Any, Dict
 
 from ... import oscar as mo
+from ...core import OperandType
 from ...lib.aio import alru_cache
 from ...tests.core import patch_cls, patch_super as super
 from ..session import SessionAPI
 from ..scheduling.worker.execution import SubtaskExecutionActor
 from ..subtask import Subtask
+from ..subtask.worker.processor import SubtaskProcessor
 from ..tests.fault_injection_manager import (
     AbstractFaultInjectionManager,
     ExtraConfigKey,
@@ -30,11 +32,6 @@ from ..tests.fault_injection_manager import (
 
 @patch_cls(SubtaskExecutionActor)
 class FaultInjectedSubtaskExecutionActor(SubtaskExecutionActor):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._session_api = None
-        self._fault_injection_manager_ref = None
-
     @alru_cache(cache_exceptions=False)
     async def _get_fault_injection_manager_ref(self, supervisor_address: str, session_id: str, name: str) \
             -> Union[mo.ActorRef, AbstractFaultInjectionManager]:
@@ -59,3 +56,29 @@ class FaultInjectedSubtaskExecutionActor(SubtaskExecutionActor):
                         FaultPosition.ON_RUN_SUBTASK, {'subtask': subtask})
                 handle_fault(fault)
         return super().internal_run_subtask(subtask, band_name)
+
+
+@patch_cls(SubtaskProcessor)
+class FaultInjectionSubtaskProcessor(SubtaskProcessor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._fault_injection_manager_ref: Union[mo.ActorRef, AbstractFaultInjectionManager] = None
+
+    async def run(self):
+        if self.subtask.extra_config:
+            fault_injection_manager_name = self.subtask.extra_config.get(
+                ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME)
+            if fault_injection_manager_name is not None:
+                self._fault_injection_manager_ref = await self._session_api.get_remote_object(
+                        self._session_id,
+                        fault_injection_manager_name)
+        return await super().run()
+
+    async def _async_execute_operand(self,
+                                     ctx: Dict[str, Any],
+                                     op: OperandType):
+        if self._fault_injection_manager_ref is not None:
+            fault = await self._fault_injection_manager_ref.get_fault(
+                FaultPosition.ON_EXECUTE_OPERAND, {'subtask': self.subtask, 'operand': op})
+            handle_fault(fault)
+        return await super()._async_execute_operand(ctx, op)

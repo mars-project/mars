@@ -37,26 +37,31 @@ from ....meta import MockMetaAPI
 from ....session import MockSessionAPI
 from ....storage import MockStorageAPI
 from ....storage.handler import StorageHandlerActor
-from ....subtask import MockSubtaskAPI, Subtask
+from ....subtask import MockSubtaskAPI, Subtask, SubtaskStatus
 from ....task.supervisor.manager import TaskManagerActor
 from ...worker import SubtaskExecutionActor, QuotaActor, \
     BandSlotManagerActor
+from ...supervisor import GlobalSlotManagerActor
 
 
 class CancelDetectActorMixin:
     @asynccontextmanager
     async def _delay_method(self):
-        delay_fetch_time = getattr(self, '_delay_fetch_time', None)
+        delay_fetch_event = getattr(self, '_delay_fetch_event', None)
+        delay_wait_event = getattr(self, '_delay_wait_event', None)
         try:
-            if delay_fetch_time is not None:
-                await asyncio.sleep(delay_fetch_time)
+            if delay_fetch_event is not None:
+                delay_fetch_event.set()
+            if delay_wait_event is not None:
+                await delay_wait_event.wait()
             yield
         except asyncio.CancelledError:
             self._is_cancelled = True
             raise
 
-    def set_delay_fetch_time(self, delay: float):
-        setattr(self, '_delay_fetch_time', delay)
+    def set_delay_fetch_event(self, fetch_event: asyncio.Event, wait_event: asyncio.Event):
+        setattr(self, '_delay_fetch_event', fetch_event)
+        setattr(self, '_delay_wait_event', wait_event)
 
     def get_is_cancelled(self):
         return getattr(self, '_is_cancelled', False)
@@ -83,9 +88,33 @@ class MockQuotaActor(QuotaActor, CancelDetectActorMixin):
 
 
 class MockBandSlotManagerActor(BandSlotManagerActor, CancelDetectActorMixin):
-    async def acquire_free_slot(self, session_stid: Tuple[str, str]):
-        async with self._delay_method():
-            return super().acquire_free_slot(session_stid)
+    async def acquire_free_slot(self, session_stid: Tuple[str, str], block=True):
+        if getattr(self, '_delay_function', None) != 'acquire_free_slot':
+            return super().acquire_free_slot(session_stid, block)
+        else:
+            async with self._delay_method():
+                return super().acquire_free_slot(session_stid, block)
+
+    async def upload_slot_usages(self, periodical: bool = False):
+        if getattr(self, '_delay_function', None) != 'upload_slot_usages' or periodical is True:
+            return super().upload_slot_usages(periodical)
+        else:
+            async with self._delay_method():
+                return super().upload_slot_usages(periodical)
+
+    def set_delay_function(self, name):
+        self._delay_function = name
+
+
+class MockGlobalSlotManagerActor(GlobalSlotManagerActor, CancelDetectActorMixin):
+    async def __post_create__(self):
+        pass
+
+    async def __pre_destroy__(self):
+        pass
+
+    async def update_subtask_slots(self, band, session_id: str, subtask_id: str, slots: int):
+        pass
 
 
 class MockTaskManager(mo.Actor):
@@ -131,6 +160,12 @@ async def actor_pool(request):
                                               (pool.external_address, 'numa-0'), n_slots,
                                               uid=BandSlotManagerActor.gen_uid('numa-0'),
                                               address=pool.external_address)
+
+        # create global slot manager actor
+        global_slot_ref = await mo.create_actor(MockGlobalSlotManagerActor,
+                                                uid=GlobalSlotManagerActor.default_uid(),
+                                                address=pool.external_address)
+
         # create mock task manager actor
         task_manager_ref = await mo.create_actor(MockTaskManager,
                                                  uid=TaskManagerActor.gen_uid(session_id),
@@ -141,6 +176,7 @@ async def actor_pool(request):
         finally:
             await mo.destroy_actor(task_manager_ref)
             await mo.destroy_actor(band_slot_ref)
+            await mo.destroy_actor(global_slot_ref)
             await mo.destroy_actor(quota_ref)
             await mo.destroy_actor(execution_ref)
             await MockStorageAPI.cleanup(pool.external_address)
@@ -200,6 +236,8 @@ _cancel_phases = [
     'quota',
     'slot',
     'execute',
+    'finally',
+    'immediately',
 ]
 
 
@@ -209,6 +247,8 @@ _cancel_phases = [
                          indirect=['actor_pool'])
 async def test_execute_with_cancel(actor_pool, cancel_phase):
     pool, session_id, meta_api, storage_api, execution_ref = actor_pool
+    delay_fetch_event = asyncio.Event()
+    delay_wait_event = asyncio.Event()
 
     # config for different phases
     ref_to_delay = None
@@ -222,12 +262,20 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     elif cancel_phase == 'slot':
         ref_to_delay = await mo.actor_ref(
             BandSlotManagerActor.gen_uid('numa-0'), address=pool.external_address)
+        await ref_to_delay.set_delay_function('acquire_free_slot')
+    elif cancel_phase == 'finally':
+        ref_to_delay = await mo.actor_ref(
+            BandSlotManagerActor.gen_uid('numa-0'), address=pool.external_address)
+        await ref_to_delay.set_delay_function('upload_slot_usages')
     if ref_to_delay:
-        await ref_to_delay.set_delay_fetch_time(100)
+        await ref_to_delay.set_delay_fetch_event(delay_fetch_event, delay_wait_event)
+    else:
+        delay_fetch_event.set()
 
     def delay_fun(delay, _inp1):
-        time.sleep(delay)
-        return delay
+        if not ref_to_delay:
+            time.sleep(delay)
+        return delay,
 
     input1 = TensorFetch(key='input1', source_key='input1', dtype=np.dtype(int)).new_chunk([])
     remote_result = RemoteFunction(function=delay_fun, function_args=[100, input1],
@@ -248,21 +296,25 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
                       chunk_graph=chunk_graph)
     aiotask = asyncio.create_task(execution_ref.run_subtask(
         subtask, 'numa-0', pool.external_address))
-    await asyncio.sleep(1)
+    if ref_to_delay:
+        await delay_fetch_event.wait()
+    else:
+        if cancel_phase != 'immediately':
+            await asyncio.sleep(1)
 
     with Timer() as timer:
         await asyncio.wait_for(
             execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1),
             timeout=30,
         )
-        with pytest.raises(asyncio.CancelledError):
-            await asyncio.wait_for(aiotask, timeout=30)
+        r = await asyncio.wait_for(aiotask, timeout=30)
+        assert r.status == SubtaskStatus.cancelled
     assert timer.duration < 15
 
     # check for different phases
     if ref_to_delay is not None:
         assert await ref_to_delay.get_is_cancelled()
-        await ref_to_delay.set_delay_fetch_time(0)
+        delay_wait_event.set()
 
     # test if slot is restored
     remote_tileable = mr.spawn(delay_fun, args=(0.5, None))
@@ -311,8 +363,8 @@ async def test_cancel_without_kill(actor_pool):
         execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1),
         timeout=30,
     )
-    with pytest.raises(asyncio.CancelledError):
-        await asyncio.wait_for(aiotask, timeout=30)
+    r = await asyncio.wait_for(aiotask, timeout=30)
+    assert r.status == SubtaskStatus.cancelled
 
     remote_result = RemoteFunction(function=check_fun, function_args=[],
                                    function_kwargs={}).new_chunk([])

@@ -912,7 +912,7 @@ class MainActorPoolBase(ActorPoolBase):
                 # await create_pool_task
                 tasks.append(create_pool_task)
 
-        processes = [await t for t in tasks]
+        processes = await cls.wait_sub_pools_ready(tasks)
         # create main actor pool
         pool: MainActorPoolType = await super().create(config)
         addresses = actor_pool_config.get_external_addresses()[1:]
@@ -923,12 +923,10 @@ class MainActorPoolBase(ActorPoolBase):
             pool.attach_sub_process(addr, proc)
         return pool
 
-    @implements(AbstractActorPool.start)
-    async def start(self):
-        await super().start()
+    async def start_monitor(self):
         if self._monitor_task is None:
             self._monitor_task = asyncio.create_task(self.monitor_sub_pools())
-            await asyncio.sleep(0)
+        return self._monitor_task
 
     @implements(AbstractActorPool.stop)
     async def stop(self):
@@ -949,6 +947,12 @@ class MainActorPoolBase(ActorPoolBase):
             process_index: int,
             start_method: str = None):
         """Start a sub actor pool"""
+
+    @classmethod
+    @abstractmethod
+    async def wait_sub_pools_ready(cls,
+                                   create_pool_tasks: List[asyncio.Task]):
+        """Wait all sub pools ready """
 
     def attach_sub_process(self,
                            external_address: str,
@@ -1029,19 +1033,26 @@ class MainActorPoolBase(ActorPoolBase):
         try:
             while not self._stopped.is_set():
                 for address in self.sub_processes:
-                    process = self.sub_processes[address]
-                    recover_events_discovered = (address in self._recover_events)
-                    if not await self.is_sub_pool_alive(process):  # pragma: no cover
-                        if self._on_process_down is not None:
-                            self._on_process_down(self, address)
-                        self.process_sub_pool_lost(address)
-                        if self._auto_recover:
-                            await self.recover_sub_pool(address)
-                            if self._on_process_recover is not None:
-                                self._on_process_recover(self, address)
-                    if recover_events_discovered:
-                        event = self._recover_events.pop(address)
-                        event.set()
+                    try:
+                        process = self.sub_processes[address]
+                        recover_events_discovered = (address in self._recover_events)
+                        if not await self.is_sub_pool_alive(process):  # pragma: no cover
+                            if self._on_process_down is not None:
+                                self._on_process_down(self, address)
+                            self.process_sub_pool_lost(address)
+                            if self._auto_recover:
+                                await self.recover_sub_pool(address)
+                                if self._on_process_recover is not None:
+                                    self._on_process_recover(self, address)
+                        if recover_events_discovered:
+                            event = self._recover_events.pop(address)
+                            event.set()
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception:
+                        # log the exception instead of stop monitoring the
+                        # sub pool silently.
+                        logger.exception("Monitor sub pool %s failed", address)
 
                 # check every half second
                 await asyncio.sleep(.5)

@@ -41,7 +41,7 @@ class K8SClusterBackend(AbstractClusterBackend):
         self._pool_address = pool_address
         self._k8s_config = k8s_config
 
-        verify_ssl = bool(int(os.environ.get('KUBE_VERIFY_SSL', '1').strip('"')))
+        verify_ssl = bool(int(os.environ.get('KUBE_VERIFY_SSL', '1')))
         if not verify_ssl:
             c = client.Configuration()
             c.verify_ssl = False
@@ -169,6 +169,9 @@ class K8SClusterBackend(AbstractClusterBackend):
         raise NotImplementedError
 
     async def release_worker(self, address: str):
+        raise NotImplementedError
+
+    async def reconstruct_worker(self, address: str):
         raise NotImplementedError
 
 

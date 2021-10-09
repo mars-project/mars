@@ -15,10 +15,12 @@
 import os
 import pytest
 import numpy as np
+import pandas as pd
 
+from .... import dataframe as md
 from .... import tensor as mt
-from ....remote import spawn
 from ....oscar.errors import ServerClosed
+from ....remote import spawn
 from ....services.tests.fault_injection_manager import (
     AbstractFaultInjectionManager,
     ExtraConfigKey,
@@ -27,6 +29,7 @@ from ....services.tests.fault_injection_manager import (
     FaultPosition,
     FaultType,
 )
+from ....tensor.base.psrs import PSRSConcatPivot
 from ..local import new_cluster
 from ..session import get_default_async_session
 
@@ -48,7 +51,7 @@ async def fault_cluster(request):
         yield client
 
 
-async def create_fault_injection_manager(session_id, address, fault_count, fault_type):
+async def create_fault_injection_manager(session_id, address, fault_count, fault_type, fault_op_types=None):
     class FaultInjectionManager(AbstractFaultInjectionManager):
         def __init__(self):
             self._fault_count = fault_count
@@ -56,7 +59,13 @@ async def create_fault_injection_manager(session_id, address, fault_count, fault
         def set_fault_count(self, count):
             self._fault_count = count
 
+        def get_fault_count(self):
+            return self._fault_count
+
         def get_fault(self, pos: FaultPosition, ctx=None) -> FaultType:
+            # Check op types if fault_op_types provided.
+            if fault_op_types and type(ctx.get('operand')) not in fault_op_types:
+                return FaultType.NoFault
             if self._fault_count.get(pos, 0) > 0:
                 self._fault_count[pos] -= 1
                 return fault_type
@@ -103,7 +112,9 @@ async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception
                          [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
                           [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
-                           pytest.raises(ServerClosed)]])
+                           pytest.raises(ServerClosed)],
+                          [FaultType.Exception, {FaultPosition.ON_RUN_SUBTASK: 1},
+                           pytest.raises(FaultInjectionError, match='Fault Injection')]])
 @pytest.mark.asyncio
 async def test_rerun_subtask(fault_cluster, fault_config):
     fault_type, fault_count, expect_raises = fault_config
@@ -133,9 +144,50 @@ async def test_rerun_subtask(fault_cluster, fault_config):
 
     # the extra config overwrites the default config.
     extra_config['subtask_max_retries'] = 0
+    extra_config['subtask_max_reschedules'] = 0
     info = await session.execute(b, extra_config=extra_config)
     with expect_raises:
         await info
+
+
+@pytest.mark.parametrize('fault_cluster',
+                         [{'config': RERUN_SUBTASK_CONFIG_FILE}],
+                         indirect=True)
+@pytest.mark.parametrize('fault_config',
+                         [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
+                           [PSRSConcatPivot]],
+                          [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
+                           [PSRSConcatPivot]]])
+@pytest.mark.asyncio
+async def test_rerun_subtask_describe(fault_cluster, fault_config):
+    fault_type, fault_count, fault_op_types = fault_config
+    name = await create_fault_injection_manager(
+        session_id=fault_cluster.session.session_id,
+        address=fault_cluster.session.address,
+        fault_count=fault_count,
+        fault_type=fault_type,
+        fault_op_types=fault_op_types)
+    extra_config = {ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME: name}
+    session = get_default_async_session()
+
+    s = np.random.RandomState(0)
+    raw = pd.DataFrame(s.rand(100, 4), columns=list('abcd'))
+    df = md.DataFrame(raw, chunk_size=30)
+
+    r = df.describe()
+    info = await session.execute(r, extra_config=extra_config)
+    await info
+    assert info.result() is None
+    assert info.exception() is None
+    assert info.progress() == 1
+    res = await session.fetch(r)
+    pd.testing.assert_frame_equal(res, raw.describe())
+
+    fault_injection_manager = await session.get_remote_object(
+            fault_cluster.session.session_id, name)
+    remain_fault_count = await fault_injection_manager.get_fault_count()
+    for key in fault_count:
+        assert remain_fault_count[key] == 0
 
 
 @pytest.mark.parametrize('fault_cluster',

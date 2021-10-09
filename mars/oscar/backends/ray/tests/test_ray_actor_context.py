@@ -43,8 +43,9 @@ def actor_pool_context():
     else:
         pg, bundle_index = None, -1
     actor_handle = ray.remote(RayMainPool).options(
-        name=address, placement_group=pg, placement_group_bundle_index=bundle_index).remote()
-    ray.get(actor_handle.start.remote(address, n_process))
+        name=address, placement_group=pg, placement_group_bundle_index=bundle_index).remote(
+            address, n_process)
+    ray.get(actor_handle.start.remote())
 
     class ProxyPool:
 
