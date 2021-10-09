@@ -18,6 +18,7 @@
 from .contrib import pytorch, tensorflow, xgboost, lightgbm, statsmodels
 from .metrics import pairwise
 from . import cluster
+from . import ensemble
 from . import preprocessing
 from . import proxima
 from . import neighbors

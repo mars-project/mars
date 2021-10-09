@@ -192,7 +192,7 @@ class Operand(Base, metaclass=OperandMetaclass):
         self._set_inputs(vals)
 
     @property
-    def output_limit(self):
+    def output_limit(self) -> int:
         return 1
 
     @property
