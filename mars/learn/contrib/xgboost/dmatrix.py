@@ -89,9 +89,6 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
 
         return self.new_tileable(inputs, **kw)
 
-    def new_tensor(self, *args, **kwargs):
-        return self.new_tileable(*args, **kwargs)
-
     @classmethod
     def _get_collocated(cls,
                         op: "ToDMatrix",
@@ -132,16 +129,18 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
         new_op = op.copy()
         new_op._collocate = True
         outs = [data, label, weight, base_margin]
-        params = [out.params.copy() if out is not None else None
-                  for out in outs]
+        params = [out.params.copy() for out in outs
+                  if out is not None]
         output_types = []
+        j = 0
         for i, out in enumerate(outs):
             if out is None:
                 continue
-            params[i]['nsplits'] = out.nsplits
-            params[i]['chunks'] = out_chunkss[i]
-            params[i]['type'] = types[i]
+            params[j]['nsplits'] = out.nsplits
+            params[j]['chunks'] = out_chunkss[j]
+            params[j]['type'] = types[i]
             output_types.append(get_output_types(out)[0])
+            j += 1
         new_op.output_types = output_types
         return new_op.new_tileables(op.inputs, kws=params)
 

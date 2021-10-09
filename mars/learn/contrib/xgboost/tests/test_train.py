@@ -62,9 +62,10 @@ def test_local_train_dataframe(setup):
 def test_train_evals(setup_cluster):
     rs = mt.random.RandomState(0)
     # keep 1 chunk for X and y
-    X = rs.rand(n_rows, n_columns, chunk_size=n_rows)
+    X = rs.rand(n_rows, n_columns, chunk_size=(n_rows, n_columns // 2))
     y = rs.rand(n_rows, chunk_size=n_rows)
-    dtrain = MarsDMatrix(X, y)
+    base_margin = rs.rand(n_rows, chunk_size=n_rows)
+    dtrain = MarsDMatrix(X, y, base_margin=base_margin)
     eval_x = MarsDMatrix(rs.rand(n_rows, n_columns, chunk_size=n_rows // 5),
                          rs.rand(n_rows, chunk_size=n_rows // 5))
     evals = [(eval_x, 'eval_x')]
@@ -73,3 +74,7 @@ def test_train_evals(setup_cluster):
                     evals_result=eval_result)
     assert isinstance(booster, Booster)
     assert len(eval_result) > 0
+
+    with pytest.raises(TypeError):
+        train({}, dtrain, num_boost_round=2, evals=[('eval_x', eval_x)],
+              evals_result=eval_result)
