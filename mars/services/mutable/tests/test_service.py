@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 import pytest
 import numpy as np
 
@@ -19,35 +21,69 @@ from ....deploy.oscar.local import new_cluster
 from ..supervisor.core import MutableTensor
 
 
-@pytest.mark.asyncio
-async def test_mutable_tensor_actor():
-    import platform
-    if(platform.system() == 'Windows'):
-        return
-    client = await new_cluster(n_worker=2,
-                               n_cpu=2)
-    async with client:
-        client.session.as_default()
-        session = client.session
-        tensor_useless: MutableTensor = await session.create_mutable_tensor(shape=(100, 100, 100), dtype=np.int64,
-        chunk_size=(10, 10, 10), default_value=100)
-        tensor: MutableTensor = await session.create_mutable_tensor(shape=(100, 100, 100), dtype=np.int64,
-        chunk_size=(10, 10, 10), name="mytensor", default_value=100)
-        tensor1: MutableTensor = await session.get_mutable_tensor("mytensor")
-        try:
-            tensor = await session.get_mutable_tensor("notensor")
-        except Exception as e:
-            assert str(e) == 'invalid name!'
+_is_windows = sys.platform.lower().startswith('win')
 
-        await tensor.write(((11, 2, 3, 50), (14, 5, 6, 50), (17, 8, 9, 50)), 1)
-        await tensor1.write(((12, 2, 3), (15, 5, 6), (16, 8, 9)), 10)
-        await tensor_useless.write(((0,), (0,), (0,)), 1, 1)
-        [t] = await tensor1[0, 0, 0]
-        assert t == 100
-        [t] = await tensor1[11, 14, 17]
-        assert t == 1
-        [t] = await tensor1[(3,), (6,), (9,)]
-        assert t == 10
-        [t] = await tensor[50, 50, 50]
-        assert t == 1
-        tensor1 = await tensor1.seal()
+
+@pytest.fixture
+async def create_cluster():
+    client = await new_cluster(n_worker=2, n_cpu=2)
+    async with client:
+        yield client
+
+
+@pytest.mark.skipif(_is_windows, reason="FIXME")
+@pytest.mark.asyncio
+async def test_mutable_tensor_actor(create_cluster):
+    session = create_cluster.session
+
+    tensor_useless: MutableTensor = await session.create_mutable_tensor(
+        shape=(100, 100, 100), dtype=np.int64,
+        chunk_size=(10, 10, 10), default_value=100)
+
+    tensor: MutableTensor = await session.create_mutable_tensor(
+        shape=(100, 100, 100), dtype=np.int64,
+        chunk_size=(10, 10, 10), name="mytensor", default_value=100)
+
+    # non exists
+    with pytest.raises(ValueError):
+        tensor = await session.get_mutable_tensor("notensor")
+
+    # create with duplicate name
+    with pytest.raises(ValueError):
+        tensor = await session.create_mutable_tensor(
+            shape=(100, 100, 100), dtype=np.int64,
+            chunk_size=(10, 10, 10), name="mytensor", default_value=100)
+
+    tensor1: MutableTensor = await session.get_mutable_tensor("mytensor")
+
+    expected = np.full((100, 100, 100), fill_value=100)
+    xs = await tensor1[:]
+    np.testing.assert_array_equal(expected, xs)
+
+    await tensor.write(slice(None, None, None), 1)
+    expected[:] = 1
+    xs = await tensor1[:]
+    np.testing.assert_array_equal(expected, xs)
+
+    await tensor.write((11, 2, 3), 2)
+    expected[11, 2, 3] = 2
+    xs = await tensor1[11, 2, 3]
+    assert expected[11, 2, 3] == xs
+
+    # TODO: real fancy index not supported yet, as `TensorConcatenate` involved
+    #
+    # await tensor.write(([11, 2, 3, 50], [14, 5, 6, 50], [17, 8, 9, 50]), 3)
+    # expected[[11, 2, 3, 50], [14, 5, 6, 50], [17, 8, 9, 50]] = 3
+    # xs = await tensor1[:]
+    # np.testing.assert_array_equal(expected, xs)
+
+    await tensor.write((slice(2, 12, 3), slice(5, 15, None), slice(8, 50, 9)), 4)
+    expected[2:12:3, 5:15, 8:50:9] = 4
+    xs = await tensor1[:]
+    np.testing.assert_array_equal(expected, xs)
+
+    sealed = await tensor.seal()
+    info = await session.execute(sealed)
+    await info
+    value = await session.fetch(sealed)
+    np.testing.assert_array_equal(expected, value)

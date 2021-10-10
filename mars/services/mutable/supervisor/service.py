@@ -12,113 +12,86 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import itertools
 from typing import List, Union, Dict, Tuple
-from collections import OrderedDict
+
+import numpy as np
 
 from .... import oscar as mo
-from .... import tensor as mt
-from ....tensor.utils import decide_chunk_sizes
-from ....utils import build_fetch
 from ....core import tile
+from ....utils import build_fetch
 from ...meta import MetaAPI
 from ..worker.service import MutableTensorChunkActor
 
 
 class MutableTensorActor(mo.Actor):
     def __init__(self,
-                session_id: str,
-                shape: tuple,
-                dtype: str,
-                chunk_size: Union[int, tuple],
-                worker_pools: Dict[Tuple[str, str], int],
-                name: str,
-                default_value : Union[int, float]=0):
+                 session_id: str,
+                 workers: List[str],
+                 shape: Tuple,
+                 dtype: Union[np.dtype, str],
+                 chunk_size: Union[int, Tuple],
+                 name: str = None,
+                 default_value : Union[int, float] = 0):
         self._session_id = session_id
+        self._workers = workers
         self._shape = shape
         self._dtype = dtype
         self._chunk_size = chunk_size
-        self._work_pools = worker_pools
         self._name = name
         self._default_value = default_value
 
-        self._chunks = []
-        self._chunk_to_actors = []
-        self._chunkactors_lastindex = []
-        self._sealed = None
+        self._sealed = False
 
-        self._nsplits = decide_chunk_sizes(self._shape, self._chunk_size, sys.getsizeof(int))
+        self._fetch = None
+        self._chunk_actors = []
+        # chunk to actor: {chunk index -> actor uid}
+        self._chunk_to_actor = dict()
 
     async def __post_create__(self):
         self._meta_api = await MetaAPI.create(self._session_id, self.address)
-        await self.assign_chunks()
 
-    async def assign_chunks(self):
-        worker_address = []
-        for k in self._work_pools.items():
-            worker_address.append(str(k[0][0]))
+        # tiling a random tensor to generate keys, but we doesn't actually execute
+        # the random generator
+        from ....tensor.random import rand
+        self._fetch = build_fetch(tile(rand(*self._shape, dtype=self._dtype,
+                                            chunk_size=self._chunk_size)))
 
-        tensor = build_fetch(tile(mt.random.rand(*self._shape, chunk_size=self._chunk_size, dtype='int')))
-        self._sealed = tensor
+        chunk_groups = np.array_split(self._fetch.chunks, len(self._workers))
+        for idx, (worker, chunks) in enumerate(zip(self._workers, chunk_groups)):
+            if len(chunks) == 0:
+                break
+            uid = MutableTensorChunkActor.gen_uid(self._name, idx)
+            chunk_actor = await mo.create_actor(
+                MutableTensorChunkActor, self._session_id, self.address,
+                list(chunks), dtype=self._dtype, default_value=self._default_value,
+                address=worker, uid=uid)
+            self._chunk_actors.append(chunk_actor)
+            for chunk in chunks:
+                self._chunk_to_actor[chunk.index] = (worker, uid)
 
-        worker_number = len(self._work_pools)
-        left_worker = worker_number
+    async def dtype(self) -> Union[np.dtype, str]:
+        return self._dtype
 
-        chunk_number = 1
-        for nsplit in self._nsplits:
-            chunk_number *= len(nsplit)
-        left_chunk = chunk_number
+    async def default_value(self) -> str:
+        return self._default_value
 
-        chunks_in_list = 0
-        chunk_list = OrderedDict()
+    async def fetch(self):
+        return self._fetch
 
-        for _chunk in tensor.chunks:
-            chunk_list[_chunk.index] = ([self._nsplits[i][_chunk.index[i]] for i in range(len(_chunk.index))], _chunk)
-            chunks_in_list += 1
-            left_chunk -= 1
+    async def chunk_to_actor(self) -> Dict[Tuple, str]:
+        return self._chunk_to_actor
 
-            if (chunks_in_list == chunk_number//worker_number and left_worker != 1 or left_worker == 1 and left_chunk == 0):
-                chunk_ref = await mo.create_actor(MutableTensorChunkActor, self._session_id, self.address, chunk_list, self._name, self._default_value, address=worker_address[left_worker-1])
+    @mo.extensible
+    async def _seal_chunk(self, chunk_actor, timestamp):
+        await chunk_actor.seal(timestamp)
+        await mo.destroy_actor(chunk_actor)
 
-                chunk_list = OrderedDict()
-                chunks_in_list = 0
-
-                left_worker -= 1
-
-                self._chunk_to_actors.append(chunk_ref)
-                self._chunkactors_lastindex.append(self.calc_index(_chunk.index))
-
-    def calc_index(self, idx: tuple) -> int:
-        pos = 0
-        acc = 1
-        for it, nsplit in zip(itertools.count(0), reversed(self._nsplits)):
-            it = len(idx) - it-1
-            pos += acc*(idx[it])
-            acc *= len(nsplit)
-        return pos
-
-    async def chunk_to_actors(self) -> List[MutableTensorChunkActor]:
-        return self._chunk_to_actors
-
-    async def nsplists(self) -> List[tuple]:
-        return self._nsplits
-
-    async def lastindex(self) -> List[tuple]:
-        return self._chunkactors_lastindex
-
-    async def shape(self) -> tuple:
-        return self._shape
-
-    async def name(self) -> str:
-        return self._name
-
-    async def chunk_size(self) -> Union[int, tuple]:
-        return self._chunk_size
-
-    async def seal(self, version_time):
-        for chunk_actor in self._chunk_to_actors:
-            await chunk_actor.seal(version_time)
-        for ref in self._chunk_to_actors:
-            await mo.destroy_actor(ref)
-        return self._sealed
+    async def seal(self, timestamp):
+        if self._sealed:
+            return self._fetch
+        self._sealed = True
+        seal_tasks = []
+        for chunk_actor in self._chunk_actors:
+            seal_tasks.append(self._seal_chunk.delay(chunk_actor, timestamp))
+        await self._seal_chunk.batch(*seal_tasks)
+        return self._fetch

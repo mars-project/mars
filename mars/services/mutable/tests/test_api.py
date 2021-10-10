@@ -22,8 +22,8 @@ from ....utils import get_next_port
 from ...cluster import MockClusterAPI
 from ...meta import MockMetaAPI
 from ...session import MockSessionAPI
-from ...web import WebActor
 from ...storage import MockStorageAPI
+from ...web import WebActor
 from ..api.web import MutableWebAPIHandler
 
 
@@ -64,7 +64,7 @@ async def test_web_mutable_api():
             session_id, f'http://127.0.0.1:{web_config["port"]}')
 
         tensor = await web_mutable_api.create_mutable_tensor(shape=(10, 10), dtype='int', chunk_size=(5, 5), name='mytensor', default_value=2)
-        await tensor.write(((1,), (1,)), 1)
+        await tensor.write((1,), 1)
         [value] = await tensor[1, 1]
         assert value == 1
 

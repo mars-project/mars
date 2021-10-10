@@ -646,8 +646,8 @@ class _IsolatedSession(AbstractAsyncSession):
                  lifecycle_api: AbstractLifecycleAPI,
                  task_api: AbstractTaskAPI,
                  cluster_api: AbstractClusterAPI,
-                 web_api: Optional[OscarWebAPI],
                  mutable_api: MutableAPI,
+                 web_api: Optional[OscarWebAPI],
                  client: ClientType = None,
                  timeout: float = None):
         super().__init__(address, session_id)
@@ -656,8 +656,8 @@ class _IsolatedSession(AbstractAsyncSession):
         self._meta_api = meta_api
         self._lifecycle_api = lifecycle_api
         self._cluster_api = cluster_api
-        self._web_api = web_api
         self._mutable_api = mutable_api
+        self._web_api = web_api
         self.client = client
         self.timeout = timeout
 
@@ -680,8 +680,8 @@ class _IsolatedSession(AbstractAsyncSession):
         lifecycle_api = await LifecycleAPI.create(session_id, session_address)
         meta_api = await MetaAPI.create(session_id, session_address)
         task_api = await TaskAPI.create(session_id, session_address)
-        mutable_api = await MutableAPI.create(session_id, session_address)
         cluster_api = await ClusterAPI.create(session_address)
+        mutable_api = await MutableAPI.create(session_id, session_address)
         try:
             web_api = await OscarWebAPI.create(session_address)
         except mo.ActorNotExist:
@@ -689,7 +689,7 @@ class _IsolatedSession(AbstractAsyncSession):
         return cls(address, session_id,
                    session_api, meta_api,
                    lifecycle_api, task_api,
-                   cluster_api, web_api, mutable_api,
+                   cluster_api, mutable_api, web_api,
                    timeout=timeout)
 
     @classmethod
@@ -1084,8 +1084,8 @@ class _IsolatedWebSession(_IsolatedSession):
         from ...services.lifecycle import WebLifecycleAPI
         from ...services.meta import WebMetaAPI
         from ...services.task import WebTaskAPI
-        from ...services.cluster import WebClusterAPI
         from ...services.mutable import WebMutableAPI
+        from ...services.cluster import WebClusterAPI
 
         session_api = WebSessionAPI(address)
         if new:

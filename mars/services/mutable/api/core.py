@@ -15,22 +15,68 @@
 from abc import ABC, abstractmethod
 from typing import Union
 
+import numpy as np
+
 
 class AbstractMutableAPI(ABC):
-
     @abstractmethod
     async def create_mutable_tensor(self,
                                     shape: tuple,
-                                    dtype: str,
+                                    dtype: Union[np.dtype, str],
                                     chunk_size: Union[int, tuple],
                                     name: str = None,
-                                    default_value=0):
+                                    default_value = 0):
         """
-        create mutable tensor
+        Create a mutable tensor.
+
+        Parameters
+        ----------
+        shape: tuple
+            Shape of the mutable tensor.
+
+        dtype: np.dtype or str
+            Data type of the mutable tensor.
+
+        chunk_size: int or tuple
+            Chunk size of the mutable tensor.
+
+        name: str, optional
+            Name of the mutable tensor, a random name will be used if not specified.
+
+        default_value: optional
+            Default value of the mutable tensor. Default is 0.
+
+        Returns
+        -------
+            object
         """
 
     @abstractmethod
     async def get_mutable_tensor(self, name: str):
         """
-        get mutable tensor
+        Get the mutable tensor by name.
+
+        Parameters
+        ----------
+        name: str
+            Name of the mutable tensor to get.
+
+        Returns
+        -------
+            object
+        """
+
+    @abstractmethod
+    async def seal_mutable_tensor(self, name: str, timestamp=None):
+        """
+        Seal the mutable tensor by name.
+
+        Parameters
+        ----------
+        name: str
+            Name of the mutable tensor to seal.
+
+        Returns
+        -------
+            object
         """

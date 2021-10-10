@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List, TypeVar, Union
 import uuid
-from typing import TypeVar, Union
-from collections import OrderedDict
 
-from ....lib.aio import alru_cache
+import numpy as np
+
 from .... import oscar as mo
+from ....lib.aio import alru_cache
 from ....utils import to_binary
-from ...core import NodeRole
 from ...cluster.api.oscar import ClusterAPI
-from ..supervisor.service import MutableTensorActor
+from ...core import NodeRole
 from ..supervisor.core import MutableTensor
+from ..supervisor.service import MutableTensorActor
 from .core import AbstractMutableAPI
 
 
@@ -37,7 +38,7 @@ class MutableAPI(AbstractMutableAPI):
         self._session_id = session_id
         self._address = address
         self._cluster_api = cluster_api
-        self._tensor_check = OrderedDict()
+        self._mutable_objects = dict()
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -49,23 +50,33 @@ class MutableAPI(AbstractMutableAPI):
 
     async def create_mutable_tensor(self,
                                     shape: tuple,
-                                    dtype: str,
+                                    dtype: Union[np.dtype, int],
                                     chunk_size: Union[int, tuple],
                                     name: str = None,
                                     default_value: Union[int, float] = 0):
-        worker_pools: dict = await self._cluster_api.get_all_bands(role=NodeRole.WORKER)
+        workers: List[str] = list(await self._cluster_api.get_nodes_info(role=NodeRole.WORKER))
         if name is None:
             name = str(uuid.uuid1())
+        if name in self._mutable_objects:
+            raise ValueError("Mutable tensor %s already exists!" % name)
         ref = await mo.create_actor(
-            MutableTensorActor, self._session_id, shape, dtype,
-            chunk_size, worker_pools, name, default_value,
+            MutableTensorActor, self._session_id, workers,
+            shape, dtype, chunk_size, name, default_value,
             address=self._address, uid=to_binary(name))
-        wrapper = await MutableTensor.create(ref)
-        self._tensor_check[name] = wrapper
-        return wrapper
+        tensor = await MutableTensor.create(ref)
+        self._mutable_objects[name] = tensor
+        return tensor
 
     async def get_mutable_tensor(self, name: str):
-        if name in self._tensor_check.keys():
-            return self._tensor_check[name]
+        if name in self._mutable_objects:
+            return self._mutable_objects[name]
         else:
-            raise ValueError('invalid name!')
+            raise ValueError("Mutable tensor %s doesn't exist!" % name)
+
+    async def seal_mutable_tensor(self, name: str, timestamp=None):
+        if name in self._mutable_objects:
+            await self._mutable_objects[name].seal(timestamp=timestamp)
+            await mo.destroy_actor(self._mutable_objects[name])
+            self._mutable_objects.pop(name)
+        else:
+            raise ValueError("Mutable tensor %s doesn't exist!" % name)

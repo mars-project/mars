@@ -12,57 +12,66 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Tuple
-from collections import OrderedDict
+import bisect
+from collections import defaultdict
+import sys
+from typing import Union
 
 import numpy as np
+
+from ....typing import ChunkType
 
 
 class Chunk:
     def __init__(self,
-                idx: int,
-                shape: Tuple,
-                chunk_key,
-                worker_adress,
-                storage_api,
-                value=None) -> None:
-        self._idx = idx
-        self._shape = shape
-        self._chunk_key = chunk_key
-        self._worker_address = worker_adress
-        self._storage_api = storage_api
-        self._value = value
+                 chunk: ChunkType,
+                 manager_address: str,
+                 worker_address: str,
+                 default_value: Union[int, float] = 0) -> None:
+        self._chunk = chunk
+        self._manager_address = manager_address
+        self._worker_address = worker_address
+        self._default_value = default_value
 
-        self._ops = OrderedDict()
+        self._records = defaultdict(list)
 
-    async def write(self, index, value, version_time):
-        try:
-            index_data: OrderedDict = self._ops[index]
-        except Exception:
-            index_data = OrderedDict()
-        index_data[version_time] = value
-        self._ops[index] = index_data
+    @property
+    def chunk(self):
+        return self._chunk
 
-    async def read(self, index, version_time):
-        try:
-            index_data: OrderedDict = self._ops[index]
-        except Exception:
-            index_data = OrderedDict()
-        last_version = 0
-        for k in index_data.keys():
-            if k <= version_time:
-                last_version = k if k > last_version else last_version
-        result = index_data[last_version] if last_version != 0 else self._value
+    async def write(self, records):
+        for flat_index, value, ts in records:
+            self._records[flat_index].append((ts, value))
+
+    async def read(self, records, chunk_value_shape, timestamp):
+        result = np.full(shape=chunk_value_shape, fill_value=self._default_value)
+        for flat_index, value_index in records:
+            if flat_index not in self._records:
+                continue
+            # Find the newest one.
+            #
+            # FIXME Python doesn't have things like SortedDict or SortedList,
+            # we trigger a `sorted` here to ensure the correct semantic and try
+            # to be as efficient as possible.
+            self._records[flat_index].sort()
+            # bitsect will compare on first element in the tuple.
+            index = bisect.bisect_left(self._records[flat_index], (timestamp, sys.float_info.min))
+            if index >= len(self._records[flat_index]):
+                index = -1
+            result[value_index] = self._records[flat_index][index][1]  # take the value
         return result
 
-    async def seal(self, version_time):
-        _tensor = np.full(self._shape, self._value)
-        for k, v in self._ops.items():
-            last_version = 0
-
-            for version_t, _ in v.items():
-                if version_t <= version_time:
-                    last_version = version_t if version_t > last_version else last_version
-            result = self._value if last_version == 0 else v[last_version]
-            _tensor[k] = result
-        return _tensor
+    async def seal(self, timestamp):
+        result = np.full(self._chunk.shape, self._default_value)
+        for flat_index, values in self._records.items():
+            if flat_index not in self._records:
+                continue
+            # compute value
+            values.sort()
+            index = bisect.bisect_left(values, (timestamp, sys.float_info.min))
+            if index >= len(values):
+                index = -1
+            # compute value index
+            value_index = np.unravel_index(flat_index, self._chunk.shape)
+            result[value_index] = values[index][1]  # take the value
+        return result

@@ -12,122 +12,108 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import itertools
-import time
-from typing import List, Union
+from typing import Dict, List, Tuple, Union
+
+import numpy as np
 
 from .... import oscar as mo
-from ....tensor.utils import split_indexes_into_chunks, decide_chunk_sizes
-from ..utils import normailize_index
+from ....tensor.core import Tensor
+from ..utils import getitem_to_records, setitem_to_records, normalize_timestamp
 from .service import MutableTensorActor
 
 
 class MutableTensor:
     def __init__(self,
-                ref: MutableTensorActor,
-                shape: tuple,
-                chunk_size: Union[int, tuple],
-                nsplits: tuple,
-                chunk_to_actors : list,
-                lastindex: list):
+                 ref: MutableTensorActor,
+                 fetch: Tensor,
+                 chunk_to_actor_key: Dict[Tuple, Tuple[str, str]],
+                 chunk_to_actor: Dict[Tuple, mo.ActorRef],
+                 dtype: Union[np.dtype, str],
+                 default_value: Union[int, float] = 0):
         self._ref = ref
-        self._shape = shape
-        self._chunk_size = chunk_size
-        self._nsplits = nsplits
-        self._chunk_to_actors = chunk_to_actors
-        self._chunkactors_lastindex = lastindex
+        self._fetch = fetch
+        self._chunk_to_actor_key = chunk_to_actor_key
+        self._chunk_to_actor = chunk_to_actor
+        self._dtype = dtype
+        self._default_value = default_value
 
     @classmethod
     async def create(self, ref: mo.ActorRef) -> "MutableTensor":
-        _shape = await ref.shape()
-        _chunk_size = await ref.chunk_size()
-        _nsplits = decide_chunk_sizes(_shape, _chunk_size, sys.getsizeof(int))
-        _chunk_to_actors = await ref.chunk_to_actors()
-        _chunkactors_lastindex = await ref.lastindex()
-        return MutableTensor(ref, _shape, _chunk_size, _nsplits, _chunk_to_actors, _chunkactors_lastindex)
-
-    def calc_index(self, idx: tuple) -> int:
-        pos = 0; acc = 1
-        for it, nsplit in zip(itertools.count(0), reversed(self._nsplits)):
-            it = len(idx) - it-1
-            pos += acc*(idx[it])
-            acc *= len(nsplit)
-        return pos
+        fetch = await ref.fetch()
+        dtype = await ref.dtype()
+        default_value = await ref.default_value()
+        chunk_to_actor_key = await ref.chunk_to_actor()
+        chunk_to_actor = dict()
+        for chunk_index, (worker, uid) in chunk_to_actor_key.items():
+            chunk_to_actor[chunk_index] = await mo.actor_ref(uid=uid, address=worker)
+        return MutableTensor(ref, fetch, chunk_to_actor_key, chunk_to_actor,
+                             dtype, default_value)
 
     async def __getitem__(self, index: Union[int, List[int]]):
         '''
-        Function
-        ----------
-        read a single point of the tensor.
-
-        Parameters:
-        ----------
-        index: List[int]
-        If there is need to read n points of the tensor, suppose the dimension of the tensor is m.\n
-        for the i_th point, it would be represented by (a[i][0],a[i][1]....a[i][m-1]),i in range(0,n)\n
-        then we extract a[i][j] with the same j and put them together.\n
-        It's the way to get the index for the parameter, its form is like \n
-        [(a[0][0],a[1][0]...a[n-1][0]),(a[0][1],a[1][1]...a[n-1][1])...(a[0][m-1],a[1][m-1]...a[n-1][m-1])]\n
-        e.g.
-        Assumed the shape of index is (100,200,300) and we want to read the (0,0,0) (10,20,30) (40,50,80)\n
-        the index should be ((0,10,40),(0,20,50),(0,30,80))
-
-        Returns
-        -------
-        the value of the points
+        Read value from the mutable tensor.
         '''
-        index = normailize_index(index)
-        result = split_indexes_into_chunks(self._nsplits, index)
-        ans_list = []
-        for idx, v in result[0].items():
-            if len(v[0] > 0):
-                target_index = 0
-                pos = self.calc_index(idx)
-                for actor_index, lastindex in zip(itertools.count(0), self._chunkactors_lastindex):
-                    if lastindex >= pos:
-                        target_index = actor_index
-                        break
-                chunk_actor = self._chunk_to_actors[target_index]
-                v = v.T
-                for nidx in v:
-                    val = await chunk_actor.read(idx, nidx, time.time())
-                    ans_list.append(val)
-        return ans_list
+        return await self.read(index)
 
-    async def write(self, index, value, version_time=time.time()):
-        '''
-        Function
+    @mo.extensible
+    async def _read_chunk(self, chunk_actor, chunk_index, records, chunk_value_shape, timestamp):
+        return await chunk_actor.read(chunk_index, records, chunk_value_shape, timestamp)
+
+    async def read(self, index, timestamp=None):
+        """
+        Read value from mutable tensor.
+
+        Parameters
         ----------
-        read a single point of the tensor.
+        index:
+            Index to read from the tensor.
 
-        Parameters:
-        ----------
-        index: List[int]
-        If there is need to read n points of the tensor, suppose the dimension of the tensor is m.\n
-        for the i_th point, it would be represented by (a[i][0],a[i][1]....a[i][m-1]),i in range(0,n)\n
-        then we extract a[i][j] with the same j and put them together.\n
-        It's the way to get the index for the parameter, its form is like \n
-        [(a[0][0],a[1][0]...a[n-1][0]),(a[0][1],a[1][1]...a[n-1][1])...(a[0][m-1],a[1][m-1]...a[n-1][m-1])]\n
-        e.g.
-        Assumed the shape of index is (100,200,300) and we want to read the (0,0,0) (10,20,30) (40,50,80)\n
-        the index should be ((0,10,40),(0,20,50),(0,30,80))
-        '''
-        result = split_indexes_into_chunks(self._nsplits, index)
-        for idx, v in result[0].items():
-            if len(v[0] > 0):
-                target_index = 0
-                pos = self.calc_index(idx)
-                for actor_index, lastindex in zip(itertools.count(0), self._chunkactors_lastindex):
-                    if lastindex >= pos:
-                        target_index = actor_index
-                        break
-                chunk_actor = self._chunk_to_actors[target_index]
-                v = v.T
-                for nidx in v:
-                    await chunk_actor.write(idx, nidx, value, version_time)
+        timestamp: optional
+            Timestamp to read value that happened before then.
+        """
+        timestamp = normalize_timestamp(timestamp)
+        records, output_shape = getitem_to_records(self._fetch, index)
 
-    async def seal(self, version_time=time.time()):
-        result = await self._ref.seal(version_time)
-        await mo.destroy_actor(self._ref)
+        read_tasks, chunk_indices = [], []
+        for chunk_index, (records, chunk_value_shape, indices) in records.items():
+            chunk_actor = self._chunk_to_actor[chunk_index]
+            read_tasks.append(self._read_chunk.delay(chunk_actor, chunk_index, records,
+                                                     chunk_value_shape, timestamp))
+            chunk_indices.append(indices)
+        chunks = await self._read_chunk.batch(*read_tasks)
+        result = np.full(output_shape, fill_value=self._default_value)
+        for chunk, indices in zip(chunks, chunk_indices):
+            result[indices] = chunk
         return result
+
+    @mo.extensible
+    async def _write_chunk(self, chunk_actor, chunk_index, records):
+        await chunk_actor.write(chunk_index, records)
+
+    async def write(self, index, value, timestamp=None):
+        """
+        Write value to mutable tensor.
+
+        Parameters
+        ----------
+        index:
+            Index to write to the tensor.
+
+        value:
+            The value that will be filled into the mutable tensor according to `index`.
+
+        timestamp: optional
+            Timestamp to associated with the newly touched value.
+        """
+        timestamp = normalize_timestamp(timestamp)
+        records = setitem_to_records(self._fetch, index, value, timestamp)
+
+        write_tasks = []
+        for chunk_index, records in records.items():
+            chunk_actor = self._chunk_to_actor[chunk_index]
+            write_tasks.append(self._write_chunk.delay(chunk_actor, chunk_index, records))
+        await self._write_chunk.batch(*write_tasks)
+
+    async def seal(self, timestamp=None):
+        timestamp = normalize_timestamp(timestamp)
+        return await self._ref.seal(timestamp)

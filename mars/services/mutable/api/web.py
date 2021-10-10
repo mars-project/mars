@@ -14,6 +14,8 @@
 
 from typing import Union
 
+import numpy as np
+
 from ....utils import deserialize_serializable, serialize_serializable
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from .core import AbstractMutableAPI
@@ -22,12 +24,13 @@ from .core import AbstractMutableAPI
 class MutableWebAPIHandler(MarsServiceWebAPIHandler):
     _root_pattern = '/api/session/(?P<session_id>[^/]+)/mutable'
 
-    @web_api('(?P<name>[^/]+)', method='post')
-    async def create_mutable_tensor(self, session_id: str, name: str=None):
+    @web_api('', method='post')
+    async def create_mutable_tensor(self, session_id: str):
         body_args = deserialize_serializable(self.request.body) if self.request.body else None
         shape = body_args.get('shape')
         dtype = body_args.get('dtype')
         chunk_size = body_args.get('chunk_size')
+        name = body_args.get('name')
         default_value = body_args.get('default_value')
 
         from .oscar import MutableAPI
@@ -38,10 +41,19 @@ class MutableWebAPIHandler(MarsServiceWebAPIHandler):
 
     @web_api('(?P<name>[^/]+)', method='get')
     async def get_mutable_tensor(self, session_id: str, name: str):
-        self._session_id = session_id
         from .oscar import MutableAPI
-        oscar_api = await MutableAPI.create(self._supervisor_addr)
+        oscar_api = await MutableAPI.create(session_id, self._supervisor_addr)
         res = await oscar_api.get_mutable_tensor(name)
+        self.write(serialize_serializable(res))
+
+    @web_api('(?P<name>[^/]+)', method='delete')
+    async def seal_mutable_tensor(self, session_id: str, name: str):
+        body_args = deserialize_serializable(self.request.body) if self.request.body else None
+        timestamp = body_args.get('timestamp')
+
+        from .oscar import MutableAPI
+        oscar_api = await MutableAPI.create(session_id, self._supervisor_addr)
+        res = await oscar_api.seal_mutable_tensor(name, timestamp)
         self.write(serialize_serializable(res))
 
 
@@ -54,12 +66,13 @@ class WebMutableAPI(AbstractMutableAPI, MarsWebAPIClientMixin):
 
     async def create_mutable_tensor(self,
                                     shape: tuple,
-                                    dtype: str,
-                                    chunk_size,
+                                    dtype: Union[np.dtype, str],
+                                    chunk_size: Union[tuple, int],
                                     name: str = None,
                                     default_value: Union[int, float] = 0):
-        path = f'{self._address}/api/session/{self._session_id}/mutable/{name}'
-        params = dict(shape=shape, dtype=dtype, chunk_size=chunk_size, default_value=default_value)
+        path = f'{self._address}/api/session/{self._session_id}/mutable'
+        params = dict(shape=shape, dtype=dtype, chunk_size=chunk_size,
+                      name=name, default_value=default_value)
         body = serialize_serializable(params)
         res = await self._request_url(
             path=path, method='POST', data=body,
@@ -71,6 +84,18 @@ class WebMutableAPI(AbstractMutableAPI, MarsWebAPIClientMixin):
         path = f'{self._address}/api/session/{self._session_id}/mutable/{name}'
         res = await self._request_url(
             path=path, method='GET',
+            headers={'Content-Type': 'application/octet-stream'},
+        )
+        return deserialize_serializable(res.body)
+
+    async def seal_mutable_tensor(self,
+                                  name: str = None,
+                                  timestamp=None):
+        path = f'{self._address}/api/session/{self._session_id}/mutable/{name}'
+        params = dict(timestamp=timestamp)
+        body = serialize_serializable(params)
+        res = await self._request_url(
+            path=path, method='DELETE', data=body,
             headers={'Content-Type': 'application/octet-stream'},
         )
         return deserialize_serializable(res.body)

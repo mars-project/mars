@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
-from typing import Union
-import time
+from typing import List, Union
+
+import numpy as np
 
 from .... import oscar as mo
 from .core import Chunk
@@ -24,41 +24,43 @@ class MutableTensorChunkActor(mo.Actor):
     def __init__(self,
                 session_id: str,
                 manager_address: str,
-                chunklist: OrderedDict,
-                name: str,
-                default_value: Union[int, float]=0) -> None:
-        self.idx_chunk = OrderedDict()
+                chunks: List,
+                dtype: Union[np.dtype, str],
+                default_value: Union[int, float] = 0) -> None:
         self._session_id = session_id
         self._manager_address = manager_address
-        self._chunk_list = chunklist
-        self._name = name
+        self._chunks = chunks
+        self._dtype = dtype
         self._default_value = default_value
+
+        self._index_to_chunk = None
+        self._storage_api = None
+        self._meta_api = None
+
+    @classmethod
+    def gen_uid(cls, name: str, index: int):
+        return f'mutable-tensor-chunk-{name}-{index}'
 
     async def __post_create__(self):
         from ...storage import StorageAPI
         from ...meta import MetaAPI
         self._storage_api = await StorageAPI.create(self._session_id, self.address)
         self._meta_api = await MetaAPI.create(self._session_id, self._manager_address)
-        for k, v in self._chunk_list.items():
-            _chunk = Chunk(k, *v, self.address, self._storage_api, self._default_value)
-            self.idx_chunk[k] = _chunk
 
-    async def __on_receive__(self, message):
-        return await super().__on_receive__(message)
+        self._index_to_chunk = {chunk.index: Chunk(chunk, self._manager_address, self.address,
+                                                   default_value=self._default_value)
+                                for chunk in self._chunks}
 
-    async def write(self, index: tuple, relatepos, value, version_time=time.time()):
-        chunk: Chunk = self.idx_chunk[index]
-        await chunk.write(tuple(relatepos), value, version_time)
+    async def write(self, chunk_index, records):
+        chunk: Chunk = self._index_to_chunk[chunk_index]
+        await chunk.write(records)
 
-    async def read(self, index, relatepos, version_time=None):
-        chunk: Chunk = self.idx_chunk[index]
-        result = await chunk.read(tuple(relatepos), version_time)
-        return result
+    async def read(self, chunk_index, records, chunk_value_shape, timestamp):
+        chunk: Chunk = self._index_to_chunk[chunk_index]
+        return await chunk.read(records, chunk_value_shape, timestamp)
 
-    async def seal(self, version_time):
-        for k, v in self._chunk_list.items():
-            chunk_key = v[1]
-            await self._meta_api.set_chunk_meta(chunk_key, bands=[(self.address, 'numa-0')])
-            chunk: Chunk = self.idx_chunk[k]
-            chunkdata = await chunk.seal(version_time)
-            await self._storage_api.put(chunk_key.key, chunkdata)
+    async def seal(self, timestamp):
+        for _, chunk in self._index_to_chunk.items():
+            chunk_data = await chunk.seal(timestamp)
+            await self._storage_api.put(chunk.chunk.key, chunk_data)
+            await self._meta_api.set_chunk_meta(chunk.chunk, bands=[(self.address, 'numa-0')])
