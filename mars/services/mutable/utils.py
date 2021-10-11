@@ -18,9 +18,9 @@ from numbers import Integral
 
 import numpy as np
 
-from mars.core import tile
-from mars.tensor.indexing.core import process_index, calc_shape
-from mars.tensor.indexing.getitem import TensorIndex
+from ...core import tile
+from ...tensor.indexing.core import process_index, calc_shape
+from ...tensor.indexing.getitem import TensorIndex
 
 
 def indexing_to_chunk_indices(output_chunk):

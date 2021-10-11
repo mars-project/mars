@@ -47,7 +47,7 @@ class MutableWebAPIHandler(MarsServiceWebAPIHandler):
         self.write(serialize_serializable(res))
 
     @web_api('(?P<name>[^/]+)', method='delete')
-    async def seal_mutable_tensor(self, session_id: str, name: str):
+    async def seal_mutable_tensor(self, session_id: str, name: str):  # pragma: no cover
         body_args = deserialize_serializable(self.request.body) if self.request.body else None
         timestamp = body_args.get('timestamp')
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 
@@ -133,12 +133,12 @@ class MutableTensorSerializer(Serializer):
     serializer_name = 'mutable_tensor'
 
     @buffered
-    def serialize(self, tensor: MutableTensor, context: Dict):  # noqa: W0221
+    def serialize(self, obj: Any, context: Dict):
         values = {
-            'fetch': tensor._fetch,
-            'dtype': tensor._dtype,
-            'default_value': tensor._default_value,
-            'chunk_to_actor_key': tensor._chunk_to_actor_key,
+            'fetch': obj._fetch,
+            'dtype': obj._dtype,
+            'default_value': obj._default_value,
+            'chunk_to_actor_key': obj._chunk_to_actor_key,
         }
         raw_header, raw_buffers = serialize(values, context=context)
         header = {

@@ -78,5 +78,5 @@ class MutableAPI(AbstractMutableAPI):
             await self._mutable_objects[name].seal(timestamp=timestamp)
             await mo.destroy_actor(self._mutable_objects[name])
             self._mutable_objects.pop(name)
-        else:
+        else:  # pragma: no cover
             raise ValueError("Mutable tensor %s doesn't exist!" % name)

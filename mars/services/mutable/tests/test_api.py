@@ -63,10 +63,22 @@ async def test_web_mutable_api():
         web_mutable_api = WebMutableAPI(
             session_id, f'http://127.0.0.1:{web_config["port"]}')
 
-        tensor = await web_mutable_api.create_mutable_tensor(shape=(10, 10), dtype='int', chunk_size=(5, 5), name='mytensor', default_value=2)
+        tensor = await web_mutable_api.create_mutable_tensor(
+            shape=(10, 10), dtype='int', chunk_size=(5, 5),
+            name='mytensor', default_value=2)
         await tensor.write((1,), 1)
         value = await tensor[1, 1]
         assert value == 1
+
+        tensor2 = await web_mutable_api.get_mutable_tensor(name='mytensor')
+        await tensor2.write((2, 2), 3)
+        value2 = await tensor[2, 2]
+        assert value2 == 3
+
+        tensor3 = await web_mutable_api.create_mutable_tensor(
+            shape=(10, 10), dtype='int', chunk_size=(5, 5),
+            default_value=2)
+        await tensor3.write((1,), 1)
 
         await MockStorageAPI.cleanup(pool.external_address)
         await MockClusterAPI.cleanup(pool.external_address)
