@@ -36,9 +36,9 @@ async def create_cluster():
 async def test_mutable_tensor_actor(create_cluster):
     session = create_cluster.session
 
-    tensor_useless: MutableTensor = await session.create_mutable_tensor(
-        shape=(100, 100, 100), dtype=np.int64,
-        chunk_size=(10, 10, 10), default_value=100)
+    tensor_useless: MutableTensor = await session.create_mutable_tensor(  # noqa: F841
+            shape=(100, 100, 100), dtype=np.int64,
+            chunk_size=(10, 10, 10), default_value=100)
 
     tensor: MutableTensor = await session.create_mutable_tensor(
         shape=(100, 100, 100), dtype=np.int64,

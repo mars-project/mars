@@ -25,7 +25,7 @@ class AbstractMutableAPI(ABC):
                                     dtype: Union[np.dtype, str],
                                     chunk_size: Union[int, tuple],
                                     name: str = None,
-                                    default_value = 0):
+                                    default_value: Union[int, float] = 0):
         """
         Create a mutable tensor.
 
