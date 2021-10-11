@@ -55,6 +55,7 @@ class MutableTensor:
         Initialize the chunk actors in WebSession.
         """
         if self._chunk_to_actor is None:
+            self._chunk_to_actor = dict()
             for chunk_index, (worker, uid) in self._chunk_to_actor_key.items():
                 self._chunk_to_actor[chunk_index] = await mo.actor_ref(uid=uid, address=worker)
 
@@ -139,10 +140,14 @@ class MutableTensorSerializer(Serializer):
             'default_value': tensor._default_value,
             'chunk_to_actor_key': tensor._chunk_to_actor_key,
         }
-        return serialize(values, context=context)
+        raw_header, raw_buffers = serialize(values, context=context)
+        header = {
+            'raw_header': raw_header,
+        }
+        return header, raw_buffers
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
-        values = deserialize(header, buffers, context)
+        values = deserialize(header['raw_header'], buffers, context)
 
         fetch = values['fetch']
         dtype = values['dtype']

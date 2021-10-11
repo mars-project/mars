@@ -65,7 +65,7 @@ async def test_web_mutable_api():
 
         tensor = await web_mutable_api.create_mutable_tensor(shape=(10, 10), dtype='int', chunk_size=(5, 5), name='mytensor', default_value=2)
         await tensor.write((1,), 1)
-        [value] = await tensor[1, 1]
+        value = await tensor[1, 1]
         assert value == 1
 
         await MockStorageAPI.cleanup(pool.external_address)
