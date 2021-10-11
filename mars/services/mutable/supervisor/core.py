@@ -133,7 +133,7 @@ class MutableTensorSerializer(Serializer):
     serializer_name = 'mutable_tensor'
 
     @buffered
-    def serialize(self, tensor: MutableTensor, context: Dict):
+    def serialize(self, tensor: MutableTensor, context: Dict):  # noqa: W0221
         values = {
             'fetch': tensor._fetch,
             'dtype': tensor._dtype,
