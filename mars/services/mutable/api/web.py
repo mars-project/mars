@@ -78,7 +78,9 @@ class WebMutableAPI(AbstractMutableAPI, MarsWebAPIClientMixin):
             path=path, method='POST', data=body,
             headers={'Content-Type': 'application/octet-stream'},
         )
-        return deserialize_serializable(res.body)
+        tensor = deserialize_serializable(res.body)
+        await tensor.ensure_chunk_actors()
+        return tensor
 
     async def get_mutable_tensor(self, name: str):
         path = f'{self._address}/api/session/{self._session_id}/mutable/{name}'
@@ -86,7 +88,9 @@ class WebMutableAPI(AbstractMutableAPI, MarsWebAPIClientMixin):
             path=path, method='GET',
             headers={'Content-Type': 'application/octet-stream'},
         )
-        return deserialize_serializable(res.body)
+        tensor = deserialize_serializable(res.body)
+        await tensor.ensure_chunk_actors()
+        return tensor
 
     async def seal_mutable_tensor(self,
                                   name: str = None,

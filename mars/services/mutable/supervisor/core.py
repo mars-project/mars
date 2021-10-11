@@ -18,6 +18,7 @@ import numpy as np
 
 from .... import oscar as mo
 from ....tensor.core import Tensor
+from ....serialization.core import Serializer, buffered, serialize, deserialize
 from ..utils import getitem_to_records, setitem_to_records, normalize_timestamp
 from .service import MutableTensorActor
 
@@ -48,6 +49,14 @@ class MutableTensor:
             chunk_to_actor[chunk_index] = await mo.actor_ref(uid=uid, address=worker)
         return MutableTensor(ref, fetch, chunk_to_actor_key, chunk_to_actor,
                              dtype, default_value)
+
+    async def ensure_chunk_actors(self):
+        """
+        Initialize the chunk actors in WebSession.
+        """
+        if self._chunk_to_actor is None:
+            for chunk_index, (worker, uid) in self._chunk_to_actor_key.items():
+                self._chunk_to_actor[chunk_index] = await mo.actor_ref(uid=uid, address=worker)
 
     async def __getitem__(self, index: Union[int, List[int]]):
         '''
@@ -117,3 +126,35 @@ class MutableTensor:
     async def seal(self, timestamp=None):
         timestamp = normalize_timestamp(timestamp)
         return await self._ref.seal(timestamp)
+
+
+class MutableTensorSerializer(Serializer):
+    serializer_name = 'mutable_tensor'
+
+    @buffered
+    def serialize(self, tensor: MutableTensor, context: Dict):
+        values = {
+            'fetch': tensor._fetch,
+            'dtype': tensor._dtype,
+            'default_value': tensor._default_value,
+            'chunk_to_actor_key': tensor._chunk_to_actor_key,
+        }
+        return serialize(values, context=context)
+
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
+        values = deserialize(header, buffers, context)
+
+        fetch = values['fetch']
+        dtype = values['dtype']
+        default_value = values['default_value']
+        chunk_to_actor_key = values['chunk_to_actor_key']
+        chunk_to_actor = None
+        # FIXME: MutableTensor shouldn't relay on the `actor_ref` directly.
+        #
+        # that means seal doesn't work with web session, and it will be fixed
+        # later, as `read/write` doesn't work with web session as well.
+        return MutableTensor(None, fetch, chunk_to_actor_key, chunk_to_actor,
+                             dtype, default_value)
+
+
+MutableTensorSerializer.register(MutableTensor)
