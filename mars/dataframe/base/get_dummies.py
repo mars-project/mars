@@ -46,7 +46,7 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
     def tile(cls, op):
         inp = op.inputs[0]
         out = op.outputs[0]
-        if len(inp.chunks) == 1 or isinstance(inp, SERIES_TYPE):
+        if len(inp.chunks) == 1:
             chunk_op = op.copy().reset_key()
             chunk_param = out.params
             chunk_param['index'] = (0, 0)
@@ -55,6 +55,21 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
             param = out.params
             param['chunks'] = [chunk]
             param['nsplits'] = ((np.nan,), (np.nan,))
+            return new_op.new_dataframe(op.inputs, kws=[param])
+        elif isinstance(inp, SERIES_TYPE):
+            unique_inp = yield from recursive_tile(unique(inp))
+            chunks = []
+            for c in inp.chunks:
+                chunk_op = op.copy().reset_key()
+                chunk_param = out.params
+                chunk_param['index'] = (c.index[0], 0)
+                chunk = chunk_op.new_chunk([c] + unique_inp.chunks, kws=[chunk_param])
+                chunks.append(chunk)
+
+            new_op = op.copy().reset_key()
+            param = out.params
+            param['chunks'] = chunks
+            param['nsplits'] = (tuple([np.nan] * inp.chunk_shape[0]), (np.nan,))
             return new_op.new_dataframe(op.inputs, kws=[param])
         else:
             if op.columns:
@@ -72,6 +87,10 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
             total_columns.extend(encoding_columns)
             inp = yield from recursive_tile(inp[total_columns])
 
+            unique_chunks = dict()
+            for col in encoding_columns:
+                unique_chunks[col] = yield from recursive_tile(unique(inp[col]))
+
             chunks = []
             prefix = op.prefix
             column_to_prefix = dict()
@@ -83,12 +102,11 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
                 chunk_param = c.params
                 chunk_param['shape'] = (np.nan, np.nan)
                 chunk_columns = c.dtypes.index
-                c = [c]
+                inp_chunk = [c]
                 for chunk_column in chunk_columns:
                     if chunk_column in encoding_columns:
                         chunk_op.columns.append(chunk_column)
-                        unique_chunk = yield from recursive_tile(unique(inp[chunk_column]))
-                        c.extend(unique_chunk.chunks)
+                        inp_chunk.extend(unique_chunks[chunk_column].chunks)
                         if isinstance(prefix, list):
                             if chunk_column in column_to_prefix.keys():
                                 chunk_op.prefix.append(column_to_prefix[chunk_column])
@@ -96,7 +114,7 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
                                 column_to_prefix[chunk_column] = prefix[0]
                                 chunk_op.prefix.append(prefix[0])
                                 prefix = prefix[1:]
-                chunk = chunk_op.new_chunk(c, kws=[chunk_param])
+                chunk = chunk_op.new_chunk(inp_chunk, kws=[chunk_param])
                 chunks.append(chunk)
 
             new_op = op.copy()
@@ -111,29 +129,32 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
         result_length = inp.shape[0]
         unique_inputs = []
         for unique_input in op.inputs[1:]:
-            unique_inputs.append(ctx[unique_input.key])
+            unique_inputs.append(ctx[unique_input.key].tolist())
 
         if unique_inputs:
-            # make all unique_input's length the same, then get a dataframe
-            max_length = len(max(unique_inputs, key=len))
-            for unique_input in unique_inputs:
-                while len(unique_input) < max_length:
-                    unique_input.append(unique_input[0])
-            extra_dataframe = pd.DataFrame(dict(zip(op.columns, unique_inputs)))
+            if isinstance(inp, pd.Series):
+                extra_series = pd.Series(unique_inputs[0])
+                inp = pd.concat([inp, extra_series])
+            else:
+                # make all unique_input's length the same, then get a dataframe
+                max_length = len(max(unique_inputs, key=len))
+                unique_inputs = [unique_list + [unique_list[0]] * (max_length - len(unique_list)) for unique_list in
+                                 unique_inputs]
+                extra_dataframe = pd.DataFrame(dict(zip(op.columns, unique_inputs)))
 
-            # add the columns that need not to encode, to concat extra_dataframe and inp
-            total_columns = list(inp.columns.array)
-            for col in op.columns:
-                total_columns.remove(col)
-            remain_columns = total_columns
-            not_encode_columns = []
-            if len(remain_columns) > 0:
-                for col in remain_columns:
-                    not_encode_columns.append([inp[col].iloc[0]] * max_length)
-            not_encode_dataframe = pd.DataFrame(dict(zip(remain_columns, not_encode_columns)))
+                # add the columns that need not to encode, to concat extra_dataframe and inp
+                total_columns = list(inp.columns.array)
+                for col in op.columns:
+                    total_columns.remove(col)
+                remain_columns = total_columns
+                not_encode_columns = []
+                if len(remain_columns) > 0:
+                    for col in remain_columns:
+                        not_encode_columns.append([inp[col].iloc[0]] * max_length)
+                not_encode_dataframe = pd.DataFrame(dict(zip(remain_columns, not_encode_columns)))
 
-            extra_dataframe = pd.concat([not_encode_dataframe, extra_dataframe], axis=1)
-            inp = pd.concat([inp, extra_dataframe], axis=0)
+                extra_dataframe = pd.concat([not_encode_dataframe, extra_dataframe], axis=1)
+                inp = pd.concat([inp, extra_dataframe], axis=0)
 
         result = pd.get_dummies(inp, op.prefix, op.prefix_sep, op.dummy_na,
                                 op.columns, op.sparse, op.drop_first, op.dtype)
