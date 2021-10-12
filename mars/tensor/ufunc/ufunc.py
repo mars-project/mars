@@ -19,92 +19,153 @@ from numbers import Number
 import numpy as np
 
 from ..datasource import tensor as astensor
-from .. import arithmetic as arith
+from .. import arithmetic as arith, reduction
 
 
-UFUNC_TO_TENSOR_FUNC = {
-    # binary
-    np.add: arith.add,
-    np.subtract: arith.subtract,
-    np.multiply: arith.multiply,
-    np.divide: arith.divide,
-    np.logaddexp: arith.logaddexp,
-    np.logaddexp2: arith.logaddexp2,
-    np.true_divide: arith.truediv,
-    np.floor_divide: arith.floordiv,
+class TensorUfuncDef:
+    def __init__(self, method, aggregator=None, accumulator=None,
+                 pre_agg=None, post_agg=None):
+        self._method = method
+        self._aggregator = aggregator
+        self._accumulator = accumulator
+        self._pre_agg = pre_agg
+        self._post_agg = post_agg
+
+    def __call__(self, *args, **kwargs):
+        return self._method(*args, **kwargs)
+
+    def at(self, a, indices, b=None):
+        # todo handle setting duplicated keys, a separate operand may be needed
+        if b is None:
+            a[indices] = self(a[indices])
+        else:
+            a[indices] = self(a[indices], b)
+
+    def accumulate(self, array, axis=0, dtype=None, out=None):
+        if self._accumulator is None:
+            raise NotImplementedError
+        data = array if self._pre_agg is None else self._pre_agg(array)
+        result = self._accumulator(data, axis=axis, dtype=dtype)
+        result = result if self._post_agg is None else self._post_agg(result)
+        if out is not None:
+            out[0]._data = result._data
+        else:
+            return result
+
+    def reduce(self, array, axis=0, dtype=None, out=None, keepdims=False):
+        if self._aggregator is None:
+            raise NotImplementedError
+        data = array if self._pre_agg is None else self._pre_agg(array)
+        result = self._aggregator(data, axis=axis, dtype=dtype, keepdims=keepdims)
+        result = result if self._post_agg is None else self._post_agg(result)
+        if out is not None:
+            out[0]._data = result._data
+        else:
+            return result
+
+
+UFUNC_TO_TENSOR_FUNCS = {
+    np.add: TensorUfuncDef(
+        arith.add,
+        accumulator=reduction.cumsum,
+        aggregator=reduction.sum,
+    ),
+    np.subtract: TensorUfuncDef(arith.subtract),
+    np.multiply: TensorUfuncDef(
+        arith.multiply,
+        accumulator=reduction.cumprod,
+        aggregator=reduction.prod,
+    ),
+    np.divide: TensorUfuncDef(arith.divide),
+    np.logaddexp: TensorUfuncDef(
+        arith.logaddexp,
+        accumulator=reduction.cumsum,
+        aggregator=reduction.sum,
+        pre_agg=arith.exp,
+        post_agg=arith.log,
+    ),
+    np.logaddexp2: TensorUfuncDef(
+        arith.logaddexp2,
+        accumulator=reduction.cumsum,
+        aggregator=reduction.sum,
+        pre_agg=lambda x: arith.power(2, x),
+        post_agg=arith.log2,
+    ),
+    np.true_divide: TensorUfuncDef(arith.truediv),
+    np.floor_divide: TensorUfuncDef(arith.floordiv),
     # unary
-    np.negative: arith.negative,
-    np.power: arith.power,
-    np.float_power: arith.float_power,
-    np.remainder: arith.remainder,
-    np.mod: arith.mod,
-    np.fmod: arith.fmod,
-    np.conj: arith.conj,
-    np.conjugate: arith.conjugate,
-    np.exp: arith.exp,
-    np.exp2: arith.exp2,
-    np.log: arith.log,
-    np.log2: arith.log2,
-    np.log10: arith.log10,
-    np.log1p: arith.log1p,
-    np.expm1: arith.expm1,
-    np.sqrt: arith.sqrt,
-    np.square: arith.square,
-    np.cbrt: arith.cbrt,
-    np.reciprocal: arith.reciprocal,
+    np.negative: TensorUfuncDef(arith.negative),
+    np.power: TensorUfuncDef(arith.power),
+    np.float_power: TensorUfuncDef(arith.float_power),
+    np.remainder: TensorUfuncDef(arith.remainder),
+    np.mod: TensorUfuncDef(arith.mod),
+    np.fmod: TensorUfuncDef(arith.fmod),
+    np.conj: TensorUfuncDef(arith.conj),
+    np.conjugate: TensorUfuncDef(arith.conjugate),
+    np.exp: TensorUfuncDef(arith.exp),
+    np.exp2: TensorUfuncDef(arith.exp2),
+    np.log: TensorUfuncDef(arith.log),
+    np.log2: TensorUfuncDef(arith.log2),
+    np.log10: TensorUfuncDef(arith.log10),
+    np.log1p: TensorUfuncDef(arith.log1p),
+    np.expm1: TensorUfuncDef(arith.expm1),
+    np.sqrt: TensorUfuncDef(arith.sqrt),
+    np.square: TensorUfuncDef(arith.square),
+    np.cbrt: TensorUfuncDef(arith.cbrt),
+    np.reciprocal: TensorUfuncDef(arith.reciprocal),
     # trigonometric functions
-    np.sin: arith.sin,
-    np.cos: arith.cos,
-    np.tan: arith.tan,
-    np.arcsin: arith.arcsin,
-    np.arccos: arith.arccos,
-    np.arctan: arith.arctan,
-    np.arctan2: arith.arctan2,
-    np.hypot: arith.hypot,
-    np.sinh: arith.sinh,
-    np.cosh: arith.cosh,
-    np.tanh: arith.tanh,
-    np.arcsinh: arith.arcsinh,
-    np.arccosh: arith.arccosh,
-    np.arctanh: arith.arctanh,
-    np.deg2rad: arith.deg2rad,
-    np.rad2deg: arith.rad2deg,
+    np.sin: TensorUfuncDef(arith.sin),
+    np.cos: TensorUfuncDef(arith.cos),
+    np.tan: TensorUfuncDef(arith.tan),
+    np.arcsin: TensorUfuncDef(arith.arcsin),
+    np.arccos: TensorUfuncDef(arith.arccos),
+    np.arctan: TensorUfuncDef(arith.arctan),
+    np.arctan2: TensorUfuncDef(arith.arctan2),
+    np.hypot: TensorUfuncDef(arith.hypot),
+    np.sinh: TensorUfuncDef(arith.sinh),
+    np.cosh: TensorUfuncDef(arith.cosh),
+    np.tanh: TensorUfuncDef(arith.tanh),
+    np.arcsinh: TensorUfuncDef(arith.arcsinh),
+    np.arccosh: TensorUfuncDef(arith.arccosh),
+    np.arctanh: TensorUfuncDef(arith.arctanh),
+    np.deg2rad: TensorUfuncDef(arith.deg2rad),
+    np.rad2deg: TensorUfuncDef(arith.rad2deg),
     # comparison functions
-    np.greater: arith.greater,
-    np.greater_equal: arith.greater_equal,
-    np.less: arith.less,
-    np.less_equal: arith.less_equal,
-    np.not_equal: arith.not_equal,
-    np.equal: arith.equal,
-    np.logical_and: arith.logical_and,
-    np.logical_or: arith.logical_or,
-    np.logical_xor: arith.logical_xor,
-    np.logical_not: arith.logical_not,
-    np.maximum: arith.maximum,
-    np.minimum: arith.minimum,
-    np.fmax: arith.fmax,
-    np.fmin: arith.fmin,
+    np.greater: TensorUfuncDef(arith.greater),
+    np.greater_equal: TensorUfuncDef(arith.greater_equal),
+    np.less: TensorUfuncDef(arith.less),
+    np.less_equal: TensorUfuncDef(arith.less_equal),
+    np.not_equal: TensorUfuncDef(arith.not_equal),
+    np.equal: TensorUfuncDef(arith.equal),
+    np.logical_and: TensorUfuncDef(arith.logical_and),
+    np.logical_or: TensorUfuncDef(arith.logical_or),
+    np.logical_xor: TensorUfuncDef(arith.logical_xor),
+    np.logical_not: TensorUfuncDef(arith.logical_not),
+    np.maximum: TensorUfuncDef(arith.maximum),
+    np.minimum: TensorUfuncDef(arith.minimum),
+    np.fmax: TensorUfuncDef(arith.fmax),
+    np.fmin: TensorUfuncDef(arith.fmin),
     # floating functions
-    np.isfinite: arith.isfinite,
-    np.isinf: arith.isinf,
-    np.isnan: arith.isnan,
-    np.signbit: arith.signbit,
-    np.copysign: arith.copysign,
-    np.nextafter: arith.nextafter,
-    np.spacing: arith.spacing,
-    np.modf: arith.modf,
-    np.ldexp: arith.ldexp,
-    np.frexp: arith.frexp,
-    np.floor: arith.floor,
-    np.ceil: arith.ceil,
-    np.trunc: arith.trunc,
+    np.isfinite: TensorUfuncDef(arith.isfinite),
+    np.isinf: TensorUfuncDef(arith.isinf),
+    np.isnan: TensorUfuncDef(arith.isnan),
+    np.signbit: TensorUfuncDef(arith.signbit),
+    np.copysign: TensorUfuncDef(arith.copysign),
+    np.nextafter: TensorUfuncDef(arith.nextafter),
+    np.spacing: TensorUfuncDef(arith.spacing),
+    np.modf: TensorUfuncDef(arith.modf),
+    np.ldexp: TensorUfuncDef(arith.ldexp),
+    np.frexp: TensorUfuncDef(arith.frexp),
+    np.floor: TensorUfuncDef(arith.floor),
+    np.ceil: TensorUfuncDef(arith.ceil),
+    np.trunc: TensorUfuncDef(arith.trunc),
     # more math functions
-    np.degrees: arith.degrees,
-    np.radians: arith.radians,
-    np.rint: arith.rint,
-    np.fabs: arith.fabs,
-    np.sign: arith.sign,
-    np.absolute: arith.absolute,
+    np.degrees: TensorUfuncDef(arith.degrees),
+    np.radians: TensorUfuncDef(arith.radians),
+    np.rint: TensorUfuncDef(arith.rint),
+    np.fabs: TensorUfuncDef(arith.fabs),
+    np.sign: TensorUfuncDef(arith.sign),
+    np.absolute: TensorUfuncDef(arith.absolute),
 }
 
 
@@ -125,13 +186,13 @@ def _array_ufunc(_, ufunc, method, *inputs, **kwargs):
         if not _check_arg(x):
             return NotImplemented
 
-    if method == '__call__':
-        if ufunc.signature is not None:
-            return NotImplemented
-        if ufunc not in UFUNC_TO_TENSOR_FUNC:
-            return NotImplemented
+    if ufunc.signature is not None:
+        return NotImplemented
+    if ufunc not in UFUNC_TO_TENSOR_FUNCS:
+        return NotImplemented
 
-        tensor_func = UFUNC_TO_TENSOR_FUNC[ufunc]
+    try:
+        tensor_func = getattr(UFUNC_TO_TENSOR_FUNCS[ufunc], method)
         return tensor_func(*inputs, **kwargs)
-
-    return NotImplemented
+    except (AttributeError, NotImplementedError):
+        return NotImplemented
