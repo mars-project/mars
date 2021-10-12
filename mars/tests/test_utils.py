@@ -35,9 +35,11 @@ except ImportError:  # pragma: no cover
     pd = None
 import pytest
 
+from .. import dataframe as md
 from .. import tensor as mt
 from .. import utils
-from ..core import tile
+from ..core import tile, TileableGraph
+from .core import require_ray
 
 
 def test_string_conversion():
@@ -434,3 +436,17 @@ def test_readable_size():
     assert utils.readable_size(14354000) == '13.69M'
     assert utils.readable_size(14354000000) == '13.37G'
     assert utils.readable_size(14354000000000) == '13.05T'
+
+
+@require_ray
+def test_web_serialize_lambda():
+    from mars.serialization.ray import register_ray_serializers
+    register_ray_serializers()
+    df = md.DataFrame(
+            mt.random.rand(10_0000, 4, chunk_size=1_0000),
+            columns=list('abcd'))
+    r = df.apply(lambda x: x)
+    graph = TileableGraph([r])
+    s = utils.serialize_serializable(graph)
+    f = utils.deserialize_serializable(s)
+    assert isinstance(f, TileableGraph)
