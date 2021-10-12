@@ -156,3 +156,5 @@ DataFrame can be read from CSV which is saved in OSS.
    >>> file_path = 'oss://buckey/path/to/data.csv'
    >>> auth_path = build_oss_path(file_path, access_key_id, access_key_secret, end_point)
    >>> df = md.read_csv(auth_path).execute()
+
+You can find more information in `OSS Official Website <https://help.aliyun.com/document_detail/32027.html>`_.

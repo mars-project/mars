@@ -103,3 +103,10 @@ msgstr "DataFrame 能被保存到 CSV 文件。"
 msgid "Refer to :ref:`api.dataframe.io` for more information."
 msgstr "参考 :ref:`api.dataframe.io` 获取更多信息。"
 
+#: ../../source/getting_started/dataframe.rst:147
+msgid "DataFrame can be read from CSV which is saved in OSS."
+msgstr "DataFrame 可以从被保存在 OSS 上的 CSV 文件中读取。"
+
+#: ../../source/getting_started/dataframe.rst:160
+msgid "You can find more information in `OSS Official Website <https://help.aliyun.com/document_detail/32027.html>`_."
+msgstr "你可以从 `OSS 官网 <https://help.aliyun.com/document_detail/32027.html>`_ 获取更多信息"
