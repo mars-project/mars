@@ -157,5 +157,5 @@ DataFrame can be read from CSV which is saved in `OSS <https://help.aliyun.com/d
    >>> auth_path = build_oss_path(file_path, access_key_id, access_key_secret, end_point)
    >>> df = md.read_csv(auth_path).execute()
 
-You can find AccessKey by `AcessKey Documentation <https://help.aliyun.com/document_detail/53045.htm?spm=a2c4g.11186623.0.0.401f4b78nWS2uH#task968>`_.
+You can find AccessKey by `AcessKey Documentation <https://help.aliyun.com/document_detail/53045.htm?spm=a2c4g.11186623.0.0.401f4b78nWS2uH#task968>`_,
 and get endpoint by `Comparison table of OSS Region and Endpoint <https://help.aliyun.com/document_detail/31837.htm?spm=a2c4g.11186623.0.0.cd7c7041aR2CL9>`_.
