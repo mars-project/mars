@@ -58,6 +58,7 @@ Samples generator
    datasets.make_blobs
    datasets.make_classification
    datasets.make_low_rank_matrix
+   datasets.make_regression
 
 .. _decomposition_ref:
 
