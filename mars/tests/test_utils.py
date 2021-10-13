@@ -39,6 +39,7 @@ from .. import dataframe as md
 from .. import tensor as mt
 from .. import utils
 from ..core import tile, TileableGraph
+from ..serialization.ray import register_ray_serializers
 from .core import require_ray
 
 
@@ -440,7 +441,6 @@ def test_readable_size():
 
 @require_ray
 def test_web_serialize_lambda():
-    from mars.serialization.ray import register_ray_serializers
     register_ray_serializers()
     df = md.DataFrame(
             mt.random.rand(10_0000, 4, chunk_size=1_0000),
