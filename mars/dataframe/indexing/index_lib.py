@@ -786,8 +786,8 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
             chunk_labels = chunk_index_to_labels[i]
             size = chunk_labels.size
 
-            if size == 0:
-                # not effected
+            if size == 0 and tileable.shape[0] > 0:
+                # not effected when tileable not empty and no index chosen
                 del context.chunk_index_to_info[chunk_index]
                 continue
 
