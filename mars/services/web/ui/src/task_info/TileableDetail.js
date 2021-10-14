@@ -62,12 +62,20 @@ class TileableDetail extends React.Component {
                                     <h2>Tileable Graph Info:</h2>
                                     <div>Tileable ID: <br/>{this.props.tileable.id}</div><br/>
                                     <div>Tileable Name: <br/>{this.props.tileable.name}</div><br/><br />
+
                                     <div>Tileable Properties:</div><br/>
-                                    {/* {
-                                        Object.keys(this.props.tileable.properties).forEach((key) => {
-                                            console.log(key);
-                                        })
-                                    } */}
+                                    <div style={{ maxHeight: '50%', overflow: 'auto' }}>
+                                        {
+                                            Object.keys(this.props.tileable.properties).map((key) => {
+                                                return (
+                                                    <div key={key}>
+                                                        {key}: {this.props.tileable.properties[key]}
+                                                        <br />
+                                                    </div>
+                                                )
+                                            })
+                                        }
+                                    </div>
                                 </React.Fragment>
                                 :
                                 <Suspense fallback={<div>Loading...</div>}>

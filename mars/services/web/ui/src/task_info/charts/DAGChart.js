@@ -97,7 +97,7 @@ export default class DAGChart extends React.Component {
             // Add the nodes to DAG
             this.props.nodes.forEach((node) => {
                 const nodeDetail = this.props.nodesStatus[node.id];
-                const value = { ...node, properties: nodeDetail['properties'] };
+                const value = { node };
 
                 if (this.props.graphName === 'tileableGraph') {
                     const nameEndIndex = node.name.indexOf('key') - 1;
@@ -206,6 +206,9 @@ export default class DAGChart extends React.Component {
                     const selectedNode = this.props.nodes.filter(
                         (node) => node.id === dagNode
                     )[0];
+                    const nodeDetail = this.props.nodesStatus[selectedNode.id];
+                    selectedNode['properties'] = nodeDetail['properties'];
+
                     this.props.onNodeClick(e, selectedNode);
                 }
             };
