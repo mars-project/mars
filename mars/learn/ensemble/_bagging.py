@@ -1159,8 +1159,6 @@ class BaggingClassifier(ClassifierMixin, BaseBagging):
 
     Read more in the :ref:`User Guide <bagging>`.
 
-    .. versionadded:: 0.15
-
     Parameters
     ----------
     base_estimator : object, default=None
@@ -1193,23 +1191,10 @@ class BaggingClassifier(ClassifierMixin, BaseBagging):
     bootstrap_features : bool, default=False
         Whether features are drawn with replacement.
 
-    oob_score : bool, default=False
-        Whether to use out-of-bag samples to estimate
-        the generalization error. Only available if bootstrap=True.
-
     warm_start : bool, default=False
         When set to True, reuse the solution of the previous call to fit
         and add more estimators to the ensemble, otherwise, just fit
         a whole new ensemble. See :term:`the Glossary <warm_start>`.
-
-        .. versionadded:: 0.17
-           *warm_start* constructor parameter.
-
-    n_jobs : int, default=None
-        The number of jobs to run in parallel for both :meth:`fit` and
-        :meth:`predict`. ``None`` means 1 unless in a
-        :obj:`joblib.parallel_backend` context. ``-1`` means using all
-        processors. See :term:`Glossary <n_jobs>` for more details.
 
     random_state : int, RandomState instance or None, default=None
         Controls the random resampling of the original dataset
@@ -1219,38 +1204,13 @@ class BaggingClassifier(ClassifierMixin, BaseBagging):
         Pass an int for reproducible output across multiple function calls.
         See :term:`Glossary <random_state>`.
 
-    verbose : int, default=0
-        Controls the verbosity when fitting and predicting.
-
     Attributes
     ----------
     base_estimator_ : estimator
         The base estimator from which the ensemble is grown.
 
-    n_features_ : int
-        The number of features when :meth:`fit` is performed.
-
-        .. deprecated:: 1.0
-            Attribute `n_features_` was deprecated in version 1.0 and will be
-            removed in 1.2. Use `n_features_in_` instead.
-
-    n_features_in_ : int
-        Number of features seen during :term:`fit`.
-
-        .. versionadded:: 0.24
-
-    feature_names_in_ : ndarray of shape (`n_features_in_`,)
-        Names of features seen during :term:`fit`. Defined only when `X`
-        has feature names that are all strings.
-
-        .. versionadded:: 1.0
-
     estimators_ : list of estimators
         The collection of fitted base estimators.
-
-    estimators_samples_ : list of arrays
-        The subset of drawn samples (i.e., the in-bag samples) for each base
-        estimator. Each subset is defined by an array of the indices selected.
 
     estimators_features_ : list of arrays
         The subset of drawn features for each base estimator.
@@ -1260,17 +1220,6 @@ class BaggingClassifier(ClassifierMixin, BaseBagging):
 
     n_classes_ : int or list
         The number of classes.
-
-    oob_score_ : float
-        Score of the training dataset obtained using an out-of-bag estimate.
-        This attribute exists only when ``oob_score`` is True.
-
-    oob_decision_function_ : ndarray of shape (n_samples, n_classes)
-        Decision function computed with out-of-bag estimate on the training
-        set. If n_estimators is small it might be possible that a data point
-        was never left out during the bootstrap. In this case,
-        `oob_decision_function_` might contain NaN. This attribute exists
-        only when ``oob_score`` is True.
 
     See Also
     --------
@@ -1453,8 +1402,6 @@ class BaggingRegressor(RegressorMixin, BaseBagging):
 
     Read more in the :ref:`User Guide <bagging>`.
 
-    .. versionadded:: 0.15
-
     Parameters
     ----------
     base_estimator : object, default=None
@@ -1487,20 +1434,10 @@ class BaggingRegressor(RegressorMixin, BaseBagging):
     bootstrap_features : bool, default=False
         Whether features are drawn with replacement.
 
-    oob_score : bool, default=False
-        Whether to use out-of-bag samples to estimate
-        the generalization error. Only available if bootstrap=True.
-
     warm_start : bool, default=False
         When set to True, reuse the solution of the previous call to fit
         and add more estimators to the ensemble, otherwise, just fit
         a whole new ensemble. See :term:`the Glossary <warm_start>`.
-
-    n_jobs : int, default=None
-        The number of jobs to run in parallel for both :meth:`fit` and
-        :meth:`predict`. ``None`` means 1 unless in a
-        :obj:`joblib.parallel_backend` context. ``-1`` means using all
-        processors. See :term:`Glossary <n_jobs>` for more details.
 
     random_state : int, RandomState instance or None, default=None
         Controls the random resampling of the original dataset
@@ -1510,52 +1447,16 @@ class BaggingRegressor(RegressorMixin, BaseBagging):
         Pass an int for reproducible output across multiple function calls.
         See :term:`Glossary <random_state>`.
 
-    verbose : int, default=0
-        Controls the verbosity when fitting and predicting.
-
     Attributes
     ----------
     base_estimator_ : estimator
         The base estimator from which the ensemble is grown.
 
-    n_features_ : int
-        The number of features when :meth:`fit` is performed.
-
-        .. deprecated:: 1.0
-            Attribute `n_features_` was deprecated in version 1.0 and will be
-            removed in 1.2. Use `n_features_in_` instead.
-
-    n_features_in_ : int
-        Number of features seen during :term:`fit`.
-
-        .. versionadded:: 0.24
-
-    feature_names_in_ : ndarray of shape (`n_features_in_`,)
-        Names of features seen during :term:`fit`. Defined only when `X`
-        has feature names that are all strings.
-
-        .. versionadded:: 1.0
-
     estimators_ : list of estimators
         The collection of fitted sub-estimators.
 
-    estimators_samples_ : list of arrays
-        The subset of drawn samples (i.e., the in-bag samples) for each base
-        estimator. Each subset is defined by an array of the indices selected.
-
     estimators_features_ : list of arrays
         The subset of drawn features for each base estimator.
-
-    oob_score_ : float
-        Score of the training dataset obtained using an out-of-bag estimate.
-        This attribute exists only when ``oob_score`` is True.
-
-    oob_prediction_ : ndarray of shape (n_samples,)
-        Prediction computed with out-of-bag estimate on the training
-        set. If n_estimators is small it might be possible that a data point
-        was never left out during the bootstrap. In this case,
-        `oob_prediction_` might contain NaN. This attribute exists only
-        when ``oob_score`` is True.
 
     See Also
     --------
