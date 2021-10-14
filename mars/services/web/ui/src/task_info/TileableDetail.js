@@ -43,8 +43,6 @@ class TileableDetail extends React.Component {
             return null;
         }
 
-        console.log(this.props.tileable);
-
         return (
             this.props.tileable
                 ?
