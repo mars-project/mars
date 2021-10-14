@@ -732,10 +732,14 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             else:
                 xp = cp if op.gpu else np
                 in_obj = op.inputs[0]
+                in_data = ctx[in_obj.key]
                 if isinstance(in_obj, INDEX_CHUNK_TYPE):
-                    result = op.func[0](ctx[in_obj.key])
+                    result = op.func[0](in_data)
+                elif op.output_types[0] == OutputType.scalar \
+                        and in_data.shape == (0,) and callable(op.func[0]):
+                    result = op.func[0](in_data)
                 else:
-                    result = ctx[in_obj.key].agg(op.raw_func, axis=op.axis)
+                    result = in_data.agg(op.raw_func, axis=op.axis)
 
                 if op.output_types[0] == OutputType.tensor:
                     result = xp.array(result)
