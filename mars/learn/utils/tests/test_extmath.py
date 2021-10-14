@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# register operands
-# import torch first, or some issue emerges,
-# see https://github.com/pytorch/pytorch/issues/2575
-from .contrib import pytorch, tensorflow, xgboost, lightgbm, statsmodels
-from .metrics import pairwise
-from . import cluster
-from . import ensemble
-from . import preprocessing
-from . import proxima
-from . import neighbors
-from . import utils
+import pytest
+from numpy.testing import assert_array_almost_equal
 
-for _mod in [xgboost, tensorflow, pytorch, lightgbm, proxima, neighbors, statsmodels]:
-    _mod.register_op()
+from ..extmath import softmax
 
-del _mod, pairwise, preprocessing, utils
+
+@pytest.mark.parametrize('copy', [True, False])
+def test_softmax(setup, copy):
+    x = [
+        [1, 2, 3],
+        [2, 3, 4]
+    ]
+    ref = [
+        [0.09003057, 0.24472847, 0.66524096],
+        [0.09003057, 0.24472847, 0.66524096]
+    ]
+    x_ = softmax(x, copy=copy)
+    assert_array_almost_equal(ref, x_)

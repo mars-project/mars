@@ -282,6 +282,11 @@ def test_dataframe_groupby_agg(setup):
 
     # test as_index=False
     for method in ['tree', 'shuffle']:
+        r = mdf.groupby('c2', as_index=False).agg('size', method=method)
+        pd.testing.assert_frame_equal(
+            r.execute().fetch().sort_values('c2', ignore_index=True),
+            raw.groupby('c2', as_index=False).agg('size').sort_values('c2', ignore_index=True))
+
         r = mdf.groupby('c2', as_index=False).agg('mean', method=method)
         pd.testing.assert_frame_equal(
             r.execute().fetch().sort_values('c2', ignore_index=True),

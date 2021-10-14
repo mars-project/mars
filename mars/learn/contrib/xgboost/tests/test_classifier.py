@@ -76,7 +76,7 @@ def test_local_classifier(setup):
     y_df = md.DataFrame(y)
     for weight in weights:
         classifier = XGBClassifier(verbosity=1, n_estimators=2)
-        classifier.fit(X_raw, y_df, sample_weights=weight)
+        classifier.fit(X_raw, y_df, sample_weight=weight)
         prediction = classifier.predict(X_raw)
 
         assert prediction.ndim == 1
@@ -85,7 +85,7 @@ def test_local_classifier(setup):
     # should raise error if weight.ndim > 1
     with pytest.raises(ValueError):
         XGBClassifier(verbosity=1, n_estimators=2).fit(
-            X_raw, y_df, sample_weights=mt.random.rand(1, 1))
+            X_raw, y_df, sample_weight=mt.random.rand(1, 1))
 
     # test binary classifier
     new_y = (y > 0.5).astype(mt.int32)

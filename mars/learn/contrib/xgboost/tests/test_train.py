@@ -56,3 +56,25 @@ def test_local_train_dataframe(setup):
     dtrain = MarsDMatrix(X_df, y_series)
     booster = train({}, dtrain, num_boost_round=2)
     assert isinstance(booster, Booster)
+
+
+@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+def test_train_evals(setup_cluster):
+    rs = mt.random.RandomState(0)
+    # keep 1 chunk for X and y
+    X = rs.rand(n_rows, n_columns, chunk_size=(n_rows, n_columns // 2))
+    y = rs.rand(n_rows, chunk_size=n_rows)
+    base_margin = rs.rand(n_rows, chunk_size=n_rows)
+    dtrain = MarsDMatrix(X, y, base_margin=base_margin)
+    eval_x = MarsDMatrix(rs.rand(n_rows, n_columns, chunk_size=n_rows // 5),
+                         rs.rand(n_rows, chunk_size=n_rows // 5))
+    evals = [(eval_x, 'eval_x')]
+    eval_result = dict()
+    booster = train({}, dtrain, num_boost_round=2, evals=evals,
+                    evals_result=eval_result)
+    assert isinstance(booster, Booster)
+    assert len(eval_result) > 0
+
+    with pytest.raises(TypeError):
+        train({}, dtrain, num_boost_round=2, evals=[('eval_x', eval_x)],
+              evals_result=eval_result)
