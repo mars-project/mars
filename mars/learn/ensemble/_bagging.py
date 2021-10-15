@@ -16,7 +16,7 @@ import enum
 import itertools
 import warnings
 from collections import defaultdict
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Callable, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -35,8 +35,8 @@ from ...dataframe.core import DATAFRAME_TYPE
 from ...dataframe.utils import parse_index
 from ...deploy.oscar.session import execute
 from ...serialization.serializables import AnyField, BoolField, \
-    Int8Field, Int64Field, Float32Field, TupleField, ReferenceField, \
-    FieldTypes
+    DictField, Int8Field, Int64Field, Float32Field, TupleField, \
+    FunctionField, ReferenceField, FieldTypes
 from ...tensor.core import TENSOR_CHUNK_TYPE
 from ...tensor.random import RandomStateField
 from ...tensor.utils import gen_random_seeds
@@ -44,8 +44,6 @@ from ...typing import TileableType
 from ...utils import has_unknown_shape
 from ..operands import LearnOperand, LearnOperandMixin, LearnShuffleProxy
 from ..utils.shuffle import LearnShuffle
-
-MAX_INT = np.iinfo(np.int32).max
 
 
 def _extract_bagging_io(io_list: Iterable, op: LearnOperand,
@@ -650,6 +648,7 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.BAGGING_FIT
 
     base_estimator: BaseEstimator = AnyField('base_estimator')
+    estimator_params: dict = DictField('estimator_params', default=None)
     n_estimators: int = Int64Field('n_estimators')
     max_samples = AnyField('max_samples', default=1.0)
     max_features = AnyField('max_features', default=1.0)
@@ -754,12 +753,13 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
         weight_chunks = itertools.repeat(None) if weights is None else weights.chunks
 
         out_chunks = []
-        seeds = op.random_state.randint(MAX_INT, size=len(sampled.chunks))
+        seeds = gen_random_seeds(len(sampled.chunks), op.random_state)
         for sample_chunk, label_chunk, weight_chunk, n_estimators \
                 in zip(sampled.chunks, label_chunks, weight_chunks,
                        estimator_nsplits[0]):
             chunk_op = BaggingFitOperand(
                 base_estimator=op.base_estimator,
+                estimator_params=op.estimator_params,
                 labels=label_chunk,
                 weights=weight_chunk,
                 n_estimators=n_estimators,
@@ -785,16 +785,7 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
                 nsplits=feature_indices.nsplits,
                 **feature_indices.params
             ))
-        out_tp = out_op.new_tileables(op.inputs, kws=kws)
-        out_estimators = out_tp[0]
-        out_feature_indices = None
-        if op.with_feature_indices:
-            out_feature_indices = out_tp[1]
-
-        if op.with_feature_indices:
-            return [out_estimators, out_feature_indices]
-        else:
-            return [out_estimators]
+        return out_op.new_tileables(op.inputs, kws=kws, output_limit=len(kws))
 
     @classmethod
     def execute(cls, ctx: Union[dict, Context],
@@ -805,8 +796,11 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
         weights_data = ctx[op.weights.key] if op.weights is not None \
             else itertools.repeat(None)
 
+        for k, v in (op.estimator_params or dict()).items():
+            setattr(op.base_estimator, k, v)
+
         new_estimators = []
-        seeds = op.random_state.randint(MAX_INT, size=len(sampled_data))
+        seeds = gen_random_seeds(len(sampled_data), op.random_state)
         for idx, (sampled, label, weights) in \
                 enumerate(zip(sampled_data, labels_data, weights_data)):
             estimator = _make_estimator(op.base_estimator, seeds[idx])
@@ -834,6 +828,8 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
         on_deserialize=PredictionType,
         default=PredictionType.PROBABILITY
     )
+    decision_function: Callable = FunctionField('decision_function', default=None)
+    calc_means: bool = BoolField('calc_means', default=True)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -851,9 +847,12 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
         self.feature_indices = feature_indices
 
         if self.n_classes is not None:
-            shape = (instances.shape[0], self.n_classes)
+            shape = (instances.shape[0], estimators.shape[0], self.n_classes)
         else:
-            shape = (instances.shape[0],)
+            shape = (instances.shape[0], estimators.shape[0])
+        if self.calc_means:
+            shape = (shape[0],) + shape[2:]
+
         params = {
             'dtype': np.dtype(float),
             'shape': shape
@@ -955,7 +954,9 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
         estimator_probas = new_op.new_tileable(
             op.inputs, chunks=chunks, nsplits=nsplits, **params)
 
-        if op.prediction_type != PredictionType.LOG_PROBABILITY:
+        if not op.calc_means:
+            return estimator_probas
+        elif op.prediction_type != PredictionType.LOG_PROBABILITY:
             return [(
                 yield from recursive_tile(mt.sum(estimator_probas, axis=-1) / n_estimators)
             )]
@@ -990,6 +991,9 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
     @classmethod
     def _predict_log_proba(cls, instance, estimator, n_classes):
         """Private function used to compute log probabilities within a job."""
+        if not hasattr(estimator, 'predict_log_proba'):
+            return np.log(cls._predict_proba(instance, estimator, n_classes))
+
         n_samples = instance.shape[0]
         log_proba = np.empty((n_samples, n_classes))
         log_proba.fill(-np.inf)
@@ -1009,6 +1013,13 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
         return log_proba
 
     @classmethod
+    def _decision_function(cls, instance, estimator, func=None):
+        if func is not None:
+            return func(instance, estimator)
+        else:
+            return estimator.decision_function(instance)
+
+    @classmethod
     def execute(cls,
                 ctx: Union[dict, Context],
                 op: "BaggingPredictionOperand"):
@@ -1019,25 +1030,19 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
 
         estimate_results = []
         for instance, estimator in zip(instances, estimators):
-            if op.n_classes is not None:
-                # classifier
-                if op.prediction_type == PredictionType.PROBABILITY:
-                    estimate_results.append(
-                        cls._predict_proba(instance, estimator, op.n_classes)
-                    )
-                elif op.prediction_type == PredictionType.LOG_PROBABILITY:
-                    if hasattr(estimator, 'predict_log_proba'):
-                        estimate_results.append(
-                            cls._predict_log_proba(instance, estimator, op.n_classes)
-                        )
-                    else:
-                        estimate_results.append(
-                            np.log(cls._predict_proba(instance, estimator, op.n_classes))
-                        )
-                else:
-                    estimate_results.append(estimator.decision_function(instance))
+            # classifier
+            if op.prediction_type == PredictionType.PROBABILITY:
+                estimate_results.append(
+                    cls._predict_proba(instance, estimator, op.n_classes)
+                )
+            elif op.prediction_type == PredictionType.LOG_PROBABILITY:
+                estimate_results.append(
+                    cls._predict_log_proba(instance, estimator, op.n_classes)
+                )
+            elif op.prediction_type == PredictionType.DECISION_FUNCTION:
+                estimate_results.append(cls._decision_function(
+                    instance, estimator, op.decision_function))
             else:
-                # regressor
                 estimate_results.append(estimator.predict(instance))
 
         out = op.outputs[0]
@@ -1085,30 +1090,8 @@ class BaseBagging:
         else:
             return y
 
-    def fit(self, X, y=None, sample_weight=None, session=None, run_kwargs=None):
-        """
-        Build a Bagging ensemble of estimators from the training set (X, y).
-
-        Parameters
-        ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            The training input samples. Sparse matrices are accepted only if
-            they are supported by the base estimator.
-
-        y : array-like of shape (n_samples,)
-            The target values (class labels in classification, real numbers in
-            regression).
-
-        sample_weight : array-like of shape (n_samples,), default=None
-            Sample weights. If None, then samples are equally weighted.
-            Note that this is supported only if the base estimator supports
-            sample weighting.
-
-        Returns
-        -------
-        self : object
-            Fitted estimator.
-        """
+    def _fit(self, X, y=None, sample_weight=None, max_samples=None,
+             estimator_params=None, session=None, run_kwargs=None):
         estimator_features, feature_indices = None, None
         n_more_estimators = self.n_estimators
 
@@ -1142,8 +1125,9 @@ class BaseBagging:
 
         fit_op = BaggingFitOperand(
             base_estimator=self.base_estimator,
+            estimator_params=estimator_params,
             n_estimators=n_more_estimators,
-            max_samples=self.max_samples,
+            max_samples=max_samples or self.max_samples,
             max_features=self.max_features,
             bootstrap=self.bootstrap,
             bootstrap_features=self.bootstrap_features,
@@ -1166,6 +1150,33 @@ class BaseBagging:
 
         self.estimators_, self.estimator_features_ = estimators, estimator_features
         return self
+
+    def fit(self, X, y=None, sample_weight=None, session=None, run_kwargs=None):
+        """
+        Build a Bagging ensemble of estimators from the training set (X, y).
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The training input samples. Sparse matrices are accepted only if
+            they are supported by the base estimator.
+
+        y : array-like of shape (n_samples,)
+            The target values (class labels in classification, real numbers in
+            regression).
+
+        sample_weight : array-like of shape (n_samples,), default=None
+            Sample weights. If None, then samples are equally weighted.
+            Note that this is supported only if the base estimator supports
+            sample weighting.
+
+        Returns
+        -------
+        self : object
+            Fitted estimator.
+        """
+        return self._fit(X, y, sample_weight=sample_weight, session=session,
+                         run_kwargs=run_kwargs)
 
 
 class BaggingClassifier(ClassifierMixin, BaseBagging):
