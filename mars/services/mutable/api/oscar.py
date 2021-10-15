@@ -12,18 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, TypeVar, Union
-import uuid
+from typing import Tuple, TypeVar, Union
 
 import numpy as np
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ....utils import to_binary
-from ...cluster.api.oscar import ClusterAPI
-from ...core import NodeRole
-from ..supervisor.core import MutableTensor
-from ..supervisor.service import MutableTensorActor
+from ..core import MutableTensorInfo
+from ..supervisor import MutableObjectManagerActor, MutableTensorActor
 from .core import AbstractMutableAPI
 
 
@@ -32,51 +28,49 @@ APIType = TypeVar('APIType', bound='MutableAPI')
 
 class MutableAPI(AbstractMutableAPI):
     def __init__(self,
-                 session_id: str,
                  address: str,
-                 cluster_api: ClusterAPI):
-        self._session_id = session_id
+                 mutable_mananger: Union[MutableObjectManagerActor, mo.ActorRef]):
         self._address = address
-        self._cluster_api = cluster_api
-        self._mutable_objects = dict()
+        self._mutable_manager_ref = mutable_mananger
 
     @classmethod
     @alru_cache(cache_exceptions=False)
     async def create(cls,
                      session_id: str,
                      address: str) -> "MutableAPI":
-        cluster_api = await ClusterAPI.create(address)
-        return MutableAPI(session_id, address, cluster_api)
+        mutable_manager = await mo.actor_ref(
+            address, MutableObjectManagerActor.gen_uid(session_id))
+        return MutableAPI(address, mutable_manager)
+
+    @alru_cache(cache_exceptions=False)
+    async def _get_mutable_tensor_ref(self, name: str) -> Union[MutableTensorActor, mo.ActorRef]:
+        return await self._mutable_manager_ref.get_mutable_tensor(name)
 
     async def create_mutable_tensor(self,
                                     shape: tuple,
-                                    dtype: Union[np.dtype, int],
-                                    chunk_size: Union[int, tuple],
+                                    dtype: Union[np.dtype, str],
                                     name: str = None,
-                                    default_value: Union[int, float] = 0):
-        workers: List[str] = list(await self._cluster_api.get_nodes_info(role=NodeRole.WORKER))
-        if name is None:
-            name = str(uuid.uuid1())
-        if name in self._mutable_objects:
-            raise ValueError("Mutable tensor %s already exists!" % name)
-        ref = await mo.create_actor(
-            MutableTensorActor, self._session_id, workers,
-            shape, dtype, chunk_size, name, default_value,
-            address=self._address, uid=to_binary(name))
-        tensor = await MutableTensor.create(ref)
-        self._mutable_objects[name] = tensor
-        return tensor
+                                    default_value: Union[int, float] = 0,
+                                    chunk_size: Union[int, Tuple] = None) -> MutableTensorInfo:
+        actor_ref = await self._mutable_manager_ref.create_mutable_tensor(
+            name=name, shape=shape, dtype=dtype,
+            chunk_size=chunk_size, default_value=default_value)
+        return await actor_ref.info()
 
+    @alru_cache(cache_exceptions=False)
     async def get_mutable_tensor(self, name: str):
-        if name in self._mutable_objects:
-            return self._mutable_objects[name]
-        else:
-            raise ValueError("Mutable tensor %s doesn't exist!" % name)
+        actor_ref = await self._mutable_manager_ref.get_mutable_tensor(name)
+        return await actor_ref.info()
 
     async def seal_mutable_tensor(self, name: str, timestamp=None):
-        if name in self._mutable_objects:
-            await self._mutable_objects[name].seal(timestamp=timestamp)
-            await mo.destroy_actor(self._mutable_objects[name])
-            self._mutable_objects.pop(name)
-        else:  # pragma: no cover
-            raise ValueError("Mutable tensor %s doesn't exist!" % name)
+        # invalidate the `get_mutable_tensor` cache first.
+        self.get_mutable_tensor.invalidate()
+        return await self._mutable_manager_ref.seal_mutable_tensor(name, timestamp=timestamp)
+
+    async def read(self, name: str, index, timestamp=None):
+        tensor_ref = await self._get_mutable_tensor_ref(name)
+        return await tensor_ref.read(index, timestamp)
+
+    async def write(self, name: str, index, value, timestamp=None):
+        tensor_ref = await self._get_mutable_tensor_ref(name)
+        return await tensor_ref.write(index, value, timestamp)

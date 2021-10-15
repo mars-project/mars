@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Tuple, Union
 
 import numpy as np
+
+from ..core import MutableTensorInfo
 
 
 class AbstractMutableAPI(ABC):
@@ -23,9 +25,9 @@ class AbstractMutableAPI(ABC):
     async def create_mutable_tensor(self,
                                     shape: tuple,
                                     dtype: Union[np.dtype, str],
-                                    chunk_size: Union[int, tuple],
                                     name: str = None,
-                                    default_value: Union[int, float] = 0):
+                                    default_value: Union[int, float] = 0,
+                                    chunk_size: Union[int, Tuple] = None) -> MutableTensorInfo:
         """
         Create a mutable tensor.
 
@@ -48,11 +50,11 @@ class AbstractMutableAPI(ABC):
 
         Returns
         -------
-            object
+            MutableTensorInfo
         """
 
     @abstractmethod
-    async def get_mutable_tensor(self, name: str):
+    async def get_mutable_tensor(self, name: str) -> MutableTensorInfo:
         """
         Get the mutable tensor by name.
 
@@ -63,7 +65,7 @@ class AbstractMutableAPI(ABC):
 
         Returns
         -------
-            object
+            MutableTensorInfo
         """
 
     @abstractmethod
@@ -79,4 +81,41 @@ class AbstractMutableAPI(ABC):
         Returns
         -------
             object
+        """
+
+    @abstractmethod
+    async def read(self, name: str, index: object, timestamp=None):
+        """
+        Read value from mutable tensor.
+
+        Parameters
+        ----------
+        name: str
+            Name of mutable tensor to read.
+
+        index:
+            Index to read from the tensor.
+
+        timestamp: optional
+            Timestamp to read value that happened before then.
+        """
+
+    @abstractmethod
+    async def write(self, name: str, index: object, value: object, timestamp=None):
+        """
+        Write value to mutable tensor.
+
+        Parameters
+        ----------
+        name: str
+            Name of the mutable tensor to write.
+
+        index:
+            Index to write to the tensor.
+
+        value:
+            The value that will be filled into the mutable tensor according to `index`.
+
+        timestamp: optional
+            Timestamp to associated with the newly touched value.
         """

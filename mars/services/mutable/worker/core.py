@@ -15,14 +15,65 @@
 import bisect
 from collections import defaultdict
 import sys
-from typing import Union
+from typing import List, Union
 
 import numpy as np
 
+from .... import oscar as mo
 from ....typing import ChunkType
 
 
-class Chunk:
+class MutableTensorChunkActor(mo.Actor):
+    def __init__(self,
+                session_id: str,
+                manager_address: str,
+                chunks: List,
+                dtype: Union[np.dtype, str],
+                default_value: Union[int, float] = 0) -> None:
+        self._session_id = session_id
+        self._manager_address = manager_address
+        self._chunks = chunks
+        self._dtype = dtype
+        self._default_value = default_value
+
+        self._storage_api = None
+        self._meta_api = None
+
+        self._index_to_chunk = None
+
+    @classmethod
+    def gen_uid(cls, session_id: str, name: str, index: int):
+        return f'mutable-tensor-chunk-{session_id}-{name}-{index}'
+
+    async def __post_create__(self):
+        from ...storage import StorageAPI
+        from ...meta import MetaAPI
+        self._storage_api = await StorageAPI.create(self._session_id, self.address)
+        self._meta_api = await MetaAPI.create(self._session_id, self._manager_address)
+
+        self._index_to_chunk = {
+            chunk.index: MutableTensorChunk(
+                chunk, self._manager_address, self.address,
+                default_value=self._default_value)
+            for chunk in self._chunks
+        }
+
+    async def write(self, chunk_index, records):
+        chunk: MutableTensorChunk = self._index_to_chunk[chunk_index]
+        await chunk.write(records)
+
+    async def read(self, chunk_index, records, chunk_value_shape, timestamp):
+        chunk: MutableTensorChunk = self._index_to_chunk[chunk_index]
+        return await chunk.read(records, chunk_value_shape, timestamp)
+
+    async def seal(self, timestamp):
+        for _, chunk in self._index_to_chunk.items():
+            chunk_data = await chunk.seal(timestamp)
+            await self._storage_api.put(chunk.chunk.key, chunk_data)
+            await self._meta_api.set_chunk_meta(chunk.chunk, bands=[(self.address, 'numa-0')])
+
+
+class MutableTensorChunk:
     def __init__(self,
                  chunk: ChunkType,
                  manager_address: str,

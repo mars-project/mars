@@ -14,3 +14,4 @@
 
 from .api.oscar import MutableAPI
 from .api.web import WebMutableAPI
+from .core import MutableTensor
