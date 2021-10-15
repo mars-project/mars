@@ -103,3 +103,14 @@ msgstr "DataFrame 能被保存到 CSV 文件。"
 msgid "Refer to :ref:`api.dataframe.io` for more information."
 msgstr "参考 :ref:`api.dataframe.io` 获取更多信息。"
 
+#: ../../source/getting_started/dataframe.rst:147
+msgid "DataFrame can be read from CSV which is saved in `OSS <https://help.aliyun.com/document_detail/32027.html>`_."
+msgstr "DataFrame 可以从被保存在 OSS 上的 CSV 文件中读取。"
+
+#: ../../source/getting_started/dataframe.rst:160
+msgid "You can find AccessKey by `AcessKey Documentation <https://help.aliyun.com/document_detail/53045.htm?spm=a2c4g.11186623.0.0.401f4b78nWS2uH#task968>`_"
+msgstr "你可以通过 `AcessKey 文档 <https://help.aliyun.com/document_detail/32027.html>`_ 描述的方法获取你的 AccessKey"
+
+#: ../../source/getting_started/dataframe.rst:161
+msgid "and get endpoint by `Comparison table of OSS Region and Endpoint <https://help.aliyun.com/document_detail/31837.htm?spm=a2c4g.11186623.0.0.cd7c7041aR2CL9>`_."
+msgstr "并且，你可以通过 `公共云下 OSS Region 和 Endpoint 对照表 <https://help.aliyun.com/document_detail/31837.htm?spm=a2c4g.11186623.0.0.cd7c7041aR2CL9>`_ 获得对应 bucket 的 endpoint 。"
