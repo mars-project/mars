@@ -19,6 +19,7 @@ from collections import defaultdict
 import numpy as np
 import pytest
 
+from ..api.web import WebSchedulingAPI
 from .... import oscar as mo
 from .... import remote as mr
 from .... import tensor as mt
@@ -29,6 +30,7 @@ from ...storage import StorageAPI, MockStorageAPI
 from ...subtask import Subtask, SubtaskResult, SubtaskStatus
 from ...task import new_task_id
 from ...task.supervisor.manager import TaskManagerActor
+from ...web import WebActor
 from .. import SchedulingAPI
 from ..supervisor import GlobalSlotManagerActor
 
@@ -100,7 +102,7 @@ async def actor_pools():
 
     config = {
         "services": ["cluster", "session", "meta", "lifecycle",
-                     "scheduling", "subtask", "task", "mutable"],
+                     "scheduling", "subtask", "task", "mutable", "web"],
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,
@@ -142,6 +144,13 @@ async def actor_pools():
         await asyncio.gather(sv_pool.stop(), worker_pool.stop())
 
 
+async def _get_subtask_summaries_by_web(sv_pool_address, session_id, task_id=None):
+    web_actor = await mo.actor_ref(WebActor.default_uid(), address=sv_pool_address)
+    web_address = await web_actor.get_web_address()
+    web_scheduling_api = WebSchedulingAPI(session_id, web_address)
+    return await web_scheduling_api.get_subtask_schedule_summaries(task_id)
+
+
 @pytest.mark.asyncio
 async def test_schedule_success(actor_pools):
     sv_pool, worker_pool, session_id, task_manager_ref = actor_pools
@@ -158,12 +167,19 @@ async def test_schedule_success(actor_pools):
     subtask.expect_bands = [(worker_pool.external_address, 'numa-0')]
     await scheduling_api.add_subtasks([subtask], [(0,)])
     await task_manager_ref.wait_subtask_result(subtask.subtask_id)
+    await scheduling_api.finish_subtasks([subtask.subtask_id])
 
     result_key = next(subtask.chunk_graph.iter_indep(reverse=True)).key
     result = await storage_api.get(result_key)
     np.testing.assert_array_equal(np.ones((10, 10)) + 1, result)
 
     assert (await global_slot_ref.get_used_slots())['numa-0'] == 0
+
+    [summary] = await _get_subtask_summaries_by_web(
+        sv_pool.external_address, session_id, subtask.task_id
+    )
+    assert summary.is_finished
+    assert subtask.expect_bands[0] in summary.bands
 
 
 @pytest.mark.asyncio
@@ -259,5 +275,13 @@ async def test_schedule_cancel(actor_pools):
     for wait_task in wait_tasks[2:]:
         with pytest.raises(asyncio.CancelledError):
             await wait_task
+
+    summaries = await _get_subtask_summaries_by_web(
+        sv_pool.external_address, session_id
+    )
+    assert all(
+        summary.is_finished and summary.is_cancelled
+        for summary in summaries[2:]
+    )
 
     assert (await global_slot_ref.get_used_slots())['numa-0'] == 0
