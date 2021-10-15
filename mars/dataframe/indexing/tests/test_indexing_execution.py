@@ -301,6 +301,17 @@ def test_loc_getitem(setup):
     expected = raw1.loc['a3', 'b']
     assert result == expected
 
+    # test empty list
+    df = df1.loc[[]]
+    result = df.execute().fetch()
+    expected = raw1.loc[[]]
+    pd.testing.assert_frame_equal(result, expected)
+
+    df = df2.loc[[]]
+    result = df.execute().fetch()
+    expected = raw2.loc[[]]
+    pd.testing.assert_frame_equal(result, expected)
+
     df = df2.loc[1:4, 'b':'d']
     result = df.execute().fetch()
     expected = raw2.loc[1:4, 'b': 'd']
