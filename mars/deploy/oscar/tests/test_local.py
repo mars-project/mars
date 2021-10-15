@@ -214,10 +214,6 @@ async def test_sync_execute_in_async(create_cluster):
     np.testing.assert_array_equal(res, np.ones((10, 10)) + 1)
 
 
-def _my_func():
-    print('output from function')
-
-
 async def _run_web_session_test(web_address):
     session_id = str(uuid.uuid4())
     session = await AsyncSession.init(web_address, session_id)
@@ -235,6 +231,10 @@ async def _run_web_session_test(web_address):
     np.testing.assert_equal(raw + 1, await session.fetch(b))
     del a, b
 
+    # Test spawn a local function by the web session.
+    def _my_func():
+        print('output from function')
+
     r = mr.spawn(_my_func)
     info = await session.execute(r)
     await info
@@ -248,6 +248,16 @@ async def _run_web_session_test(web_address):
     assert 'output from function' in str(r.fetch_log(session=session,
                                                      offsets={r.op.key: '0k'},
                                                      sizes=[1000]))
+
+    df = md.DataFrame([1, 2, 3])
+    # Test apply a lambda by the web session.
+    r = df.apply(lambda x: x)
+    info = await session.execute(r)
+    await info
+    assert info.result() is None
+    assert info.exception() is None
+    assert info.progress() == 1
+    pd.testing.assert_frame_equal(await session.fetch(r), pd.DataFrame([1, 2, 3]))
 
     AsyncSession.reset_default()
     await session.destroy()
