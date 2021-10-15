@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin, \
     clone as clone_estimator
+from sklearn.utils import check_random_state as sklearn_check_random_state
 
 from ..utils import column_or_1d, convert_to_tensor_or_dataframe
 from ..utils.multiclass import check_classification_targets
@@ -43,6 +44,8 @@ from ...typing import TileableType
 from ...utils import has_unknown_shape
 from ..operands import LearnOperand, LearnOperandMixin, LearnShuffleProxy
 from ..utils.shuffle import LearnShuffle
+
+MAX_INT = np.iinfo(np.int32).max
 
 
 def _extract_bagging_io(io_list: Iterable, op: LearnOperand,
@@ -81,6 +84,29 @@ def _concat_by_row(row, out_chunk=None):
     arr = np.empty((1,), dtype=object)
     arr[0] = _concat_on_axis(row.tolist(), axis=0, out_chunk=out_chunk)
     return arr
+
+
+def _set_random_states(estimator, random_state=None):
+    random_state = sklearn_check_random_state(random_state)
+    to_set = {}
+    for key in sorted(estimator.get_params(deep=True)):
+        if key == "random_state" or key.endswith("__random_state"):
+            to_set[key] = random_state.randint(np.iinfo(np.int32).max)
+
+    if to_set:
+        estimator.set_params(**to_set)
+
+
+def _make_estimator(estimator, random_state=None):
+    """Make and configure a copy of the `base_estimator_` attribute.
+
+    Warning: This method should be used to properly instantiate new
+    sub-estimators.
+    """
+    estimator = clone_estimator(estimator)
+    if random_state is not None:
+        _set_random_states(estimator, random_state)
+    return estimator
 
 
 class BaggingSample(LearnShuffle, LearnOperandMixin):
@@ -642,6 +668,8 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        if self.random_state is None:
+            self.random_state = np.random.RandomState()
         if self.with_feature_indices is None:
             full_features = isinstance(self.max_features, float) and self.max_features == 1.0
             self.with_feature_indices = not full_features or self.bootstrap_features
@@ -726,6 +754,7 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
         weight_chunks = itertools.repeat(None) if weights is None else weights.chunks
 
         out_chunks = []
+        seeds = op.random_state.randint(MAX_INT, size=len(sampled.chunks))
         for sample_chunk, label_chunk, weight_chunk, n_estimators \
                 in zip(sampled.chunks, label_chunks, weight_chunks,
                        estimator_nsplits[0]):
@@ -735,6 +764,7 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
                 weights=weight_chunk,
                 n_estimators=n_estimators,
                 with_feature_indices=False,
+                random_state=sklearn_check_random_state(seeds[sample_chunk.index[0]]),
             )
             chunk_op._output_types = op._output_types
             inputs = [c for c in [sample_chunk, label_chunk, weight_chunk]
@@ -776,8 +806,10 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
             else itertools.repeat(None)
 
         new_estimators = []
-        for sampled, label, weights in zip(sampled_data, labels_data, weights_data):
-            estimator = clone_estimator(op.base_estimator)
+        seeds = op.random_state.randint(MAX_INT, size=len(sampled_data))
+        for idx, (sampled, label, weights) in \
+                enumerate(zip(sampled_data, labels_data, weights_data)):
+            estimator = _make_estimator(op.base_estimator, seeds[idx])
             estimator.fit(sampled, y=label, sample_weight=weights)
             new_estimators.append(estimator)
         ctx[op.outputs[0].key] = np.array(new_estimators, dtype=np.dtype(object))
@@ -917,9 +949,9 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
         else:
             params = {
                 'dtype': np.dtype(float),
-                'shape': t_instances.shape,
+                'shape': (t_instances.shape[0], n_estimators),
             }
-            nsplits = t_instances.nsplits
+            nsplits = (t_instances.nsplits[0], op.estimators.nsplits[0])
         estimator_probas = new_op.new_tileable(
             op.inputs, chunks=chunks, nsplits=nsplits, **params)
 
