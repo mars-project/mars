@@ -152,9 +152,9 @@ async def test_mutable_tensor_actor(create_cluster, session_type):
 
     # non exists after sealed
     with pytest.raises(ValueError):
-        sealed1 = await tensor.seal()
+        await tensor.seal()
     with pytest.raises(ValueError):
-        sealed2 = await tensor3.seal()
+        await tensor3.seal()
 
     # TODO: real fancy index not supported yet, as `TensorConcatenate` involved
     #

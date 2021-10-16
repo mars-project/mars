@@ -715,8 +715,8 @@ class _IsolatedSession(AbstractAsyncSession):
         self._task_api = task_api
         self._meta_api = meta_api
         self._lifecycle_api = lifecycle_api
-        self._cluster_api = cluster_api
         self._mutable_api = mutable_api
+        self._cluster_api = cluster_api
         self._web_api = web_api
         self.client = client
         self.timeout = timeout

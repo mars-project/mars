@@ -78,6 +78,9 @@ class AbstractMutableAPI(ABC):
         name: str
             Name of the mutable tensor to seal.
 
+        timestamp: optional
+            Operations that happend before timestamp will be sealed.
+
         Returns
         -------
             object
