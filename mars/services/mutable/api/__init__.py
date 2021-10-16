@@ -13,5 +13,5 @@
 # limitations under the License.
 
 from .core import AbstractMutableAPI
-from .oscar import MutableAPI
+from .oscar import MutableAPI, MockMutableAPI
 from .web import WebMutableAPI

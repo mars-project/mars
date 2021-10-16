@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api.oscar import MutableAPI
-from .api.web import WebMutableAPI
+from .api import AbstractMutableAPI, MutableAPI, MockMutableAPI, WebMutableAPI
 from .core import MutableTensor
+from .supervisor import MutableObjectManagerActor, MutableTensorActor

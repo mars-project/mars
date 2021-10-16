@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import uuid
 import sys
 
@@ -21,6 +22,7 @@ import numpy as np
 from ....deploy.oscar.local import new_cluster
 from ....deploy.oscar.session import AsyncSession, SyncSession
 from ..core import MutableTensor
+from ..utils import normalize_timestamp
 
 
 _is_windows = sys.platform.lower().startswith('win')
@@ -39,7 +41,7 @@ async def create_cluster():
     ["async_session", "async_web_session", "sync_session", "sync_web_session"]
 )
 @pytest.mark.asyncio
-async def test_mutable_tensor_actor(create_cluster, session_type):
+async def test_mutable_tensor(create_cluster, session_type):
     is_web = "web" in session_type
     is_async = "async" in session_type
 
@@ -162,3 +164,77 @@ async def test_mutable_tensor_actor(create_cluster, session_type):
     # expected[[11, 2, 3, 50], [14, 5, 6, 50], [17, 8, 9, 50]] = 3
     # xs = await tensor1[:]
     # np.testing.assert_array_equal(expected, xs)
+
+
+@pytest.mark.skipif(_is_windows, reason="FIXME")
+@pytest.mark.parametrize(
+    "session_type",
+    ["async_session", "async_web_session", "sync_session", "sync_web_session"]
+)
+@pytest.mark.asyncio
+async def test_mutable_tensor_timestamp(create_cluster, session_type):
+    is_web = "web" in session_type
+    is_async = "async" in session_type
+
+    if is_web:
+        session_id = str(uuid.uuid4())
+        session = await AsyncSession.init(create_cluster.web_address, session_id)
+    else:
+        session = create_cluster.session
+    if not is_async:
+        session = SyncSession.from_isolated_session(session)
+
+    tensor: MutableTensor = session.create_mutable_tensor(
+        shape=(2, 4), dtype=np.int64,
+        default_value=0, chunk_size=(1, 3))
+    if is_async:
+        tensor = await tensor
+
+    assert tensor.shape == (2, 4)
+    assert tensor.dtype == np.int64
+    assert tensor.default_value == 0
+
+    t0 = normalize_timestamp()
+    await asyncio.sleep(5)
+    t1 = normalize_timestamp()
+
+    # write with earlier timestamp
+    await tensor.write((slice(0, 2, 1), slice(0, 2, 1)), 1, timestamp=t1)
+
+    # read staled value
+    actual = await tensor.read(slice(None, None, None), t0)
+    expected = np.array([[0, 0, 0, 0], [0, 0, 0, 0]])
+    np.testing.assert_array_equal(expected, actual)
+
+    # read current value
+    actual = await tensor.read(slice(None, None, None), t1)
+    expected = np.array([[1, 1, 0, 0], [1, 1, 0, 0]])
+    np.testing.assert_array_equal(expected, actual)
+
+    # read new value
+    t2 = normalize_timestamp()
+    actual = await tensor.read(slice(None, None, None), t2)
+    expected = np.array([[1, 1, 0, 0], [1, 1, 0, 0]])
+    np.testing.assert_array_equal(expected, actual)
+
+    # read latest value
+    actual = await tensor.read(slice(None, None, None))
+    expected = np.array([[1, 1, 0, 0], [1, 1, 0, 0]])
+    np.testing.assert_array_equal(expected, actual)
+
+    # seal on staled value
+    if is_async:
+        sealed = await tensor.seal(timestamp=t0)
+        info = await session.execute(sealed)
+        await info
+        actual = await session.fetch(sealed)
+    else:
+        sealed = await tensor.seal(timestamp=t0)
+        session.execute(sealed)
+        actual = session.fetch(sealed)
+    expected = np.array([[0, 0, 0, 0], [0, 0, 0, 0]])
+    np.testing.assert_array_equal(expected, actual)
+
+    # non exists after sealed
+    with pytest.raises(ValueError):
+        await tensor.seal()

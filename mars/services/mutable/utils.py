@@ -177,7 +177,7 @@ def getitem_to_records(tensor, tensor_index):
     return records, output_shape
 
 
-def normalize_timestamp(timestamp):
+def normalize_timestamp(timestamp=None):
     if timestamp is None:
         timestamp = np.datetime64(datetime.now())
     if isinstance(timestamp, datetime):

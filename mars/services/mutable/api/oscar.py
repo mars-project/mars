@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Tuple, TypeVar, Union
+from typing import Tuple, Type, TypeVar, Union
 
 import numpy as np
 
@@ -74,3 +74,21 @@ class MutableAPI(AbstractMutableAPI):
     async def write(self, name: str, index, value, timestamp=None):
         tensor_ref = await self._get_mutable_tensor_ref(name)
         return await tensor_ref.write(index, value, timestamp)
+
+
+class MockMutableAPI(MutableAPI):
+    @classmethod
+    async def create(cls: Type[APIType],
+                     session_id: str,
+                     address: str) -> "MutableAPI":
+        mutable_managger = await mo.create_actor(
+            MutableObjectManagerActor, session_id, address=address,
+            uid=MutableObjectManagerActor.gen_uid(session_id))
+        return MockMutableAPI(address, mutable_managger)
+
+    @classmethod
+    async def cleanup(cls: Type[APIType],
+                      session_id: str,
+                      address: str):
+        await mo.destroy_actor(
+            mo.actor_ref(address, MutableObjectManagerActor.gen_uid(session_id)))

@@ -106,10 +106,11 @@ class MutableTensorChunk:
             # to be as efficient as possible.
             self._records[flat_index].sort()
             # bitsect will compare on first element in the tuple.
-            index = bisect.bisect_left(self._records[flat_index], (timestamp, sys.float_info.min))
-            if index >= len(self._records[flat_index]):
-                index = -1
-            result[value_index] = self._records[flat_index][index][1]  # take the value
+            index = bisect.bisect_right(
+                self._records[flat_index], (timestamp, sys.float_info.max))
+            if index == 0:
+                continue
+            result[value_index] = self._records[flat_index][index - 1][1]  # take the value
         return result
 
     async def seal(self, timestamp):
@@ -119,10 +120,10 @@ class MutableTensorChunk:
                 continue
             # compute value
             values.sort()
-            index = bisect.bisect_left(values, (timestamp, sys.float_info.min))
-            if index >= len(values):
-                index = -1
+            index = bisect.bisect_right(values, (timestamp, sys.float_info.max))
+            if index == 0:
+                continue
             # compute value index
             value_index = np.unravel_index(flat_index, self._chunk.shape)
-            result[value_index] = values[index][1]  # take the value
+            result[value_index] = values[index - 1][1]  # take the value
         return result
