@@ -52,18 +52,18 @@ async def test_mutable_tensor_actor(create_cluster, session_type):
         session = SyncSession.from_isolated_session(session)
 
     tensor_useless: MutableTensor = session.create_mutable_tensor(  # noqa: F841
-            shape=(100, 100, 100), dtype=np.int64,
-            default_value=100, chunk_size=(40, 40, 40))
+            shape=(10, 30, 50), dtype=np.int64,
+            default_value=100, chunk_size=(20, 20, 20))
     if is_async:
         tensor_useless = await tensor_useless
 
     tensor: MutableTensor = session.create_mutable_tensor(
-        shape=(100, 100, 100), dtype=np.int64,
-        name="mytensor", default_value=100, chunk_size=(40, 40, 40))
+        shape=(10, 30, 50), dtype=np.int64,
+        name="mytensor", default_value=100, chunk_size=(20, 20, 20))
     if is_async:
         tensor = await tensor
 
-    assert tensor.shape == (100, 100, 100)
+    assert tensor.shape == (10, 30, 50)
     assert tensor.dtype == np.int64
     assert tensor.name == "mytensor"
     assert tensor.default_value == 100
@@ -79,22 +79,22 @@ async def test_mutable_tensor_actor(create_cluster, session_type):
     # create with duplicate name
     with pytest.raises(ValueError):
         tensor2 = session.create_mutable_tensor(
-            shape=(100, 100, 100), dtype=np.int64,
-            name="mytensor", default_value=100, chunk_size=(40, 40, 40))
+            shape=(10, 30, 50), dtype=np.int64,
+            name="mytensor", default_value=100, chunk_size=(20, 20, 20))
         if is_async:
             tensor2 = await tensor2
 
     tensor3: MutableTensor = session.get_mutable_tensor("mytensor")
     if is_async:
         tensor3 = await tensor3
-    assert tensor3.shape == (100, 100, 100)
+    assert tensor3.shape == (10, 30, 50)
     assert tensor3.dtype == np.int64
     assert tensor3.name == "mytensor"
     assert tensor3.default_value == 100
 
     # test using read/write
 
-    expected = np.full((100, 100, 100), fill_value=100)
+    expected = np.full((10, 30, 50), fill_value=100)
     xs = await tensor3.read(slice(None, None, None))
     np.testing.assert_array_equal(expected, xs)
 
@@ -118,7 +118,7 @@ async def test_mutable_tensor_actor(create_cluster, session_type):
     # reset
     tensor[:] = 100
 
-    expected = np.full((100, 100, 100), fill_value=100)
+    expected = np.full((10, 30, 50), fill_value=100)
     xs = tensor3[:]
     np.testing.assert_array_equal(expected, xs)
 
