@@ -179,7 +179,7 @@ class MutableTensor:
         Parameters
         ----------
         timestamp: optional
-            Operations that happend before timestamp will be sealed, and later ones will be discard.
+            Operations that happened before timestamp will be sealed, and later ones will be discard.
 
         Returns
         -------

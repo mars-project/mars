@@ -132,7 +132,7 @@ class WebMutableAPI(AbstractMutableAPI, MarsWebAPIClientMixin):
         res = await self._request_url(
             path=path, method='POST', data=body,
             headers={'Content-Type': 'application/octet-stream'},
-            request_timeout=3600,  # seal on mutable tensor could be slow
+            request_timeout=3600,
         )
         return deserialize_serializable(res.body)
 
@@ -143,7 +143,7 @@ class WebMutableAPI(AbstractMutableAPI, MarsWebAPIClientMixin):
         res = await self._request_url(
             path=path, method='POST', data=body,
             headers={'Content-Type': 'application/octet-stream'},
-            request_timeout=3600,  # read on mutable tensor could be slow
+            request_timeout=3600,
         )
         return deserialize_serializable(res.body)
 
@@ -154,5 +154,6 @@ class WebMutableAPI(AbstractMutableAPI, MarsWebAPIClientMixin):
         res = await self._request_url(
             path=path, method='POST', data=body,
             headers={'Content-Type': 'application/octet-stream'},
+            request_timeout=3600,
         )
         return deserialize_serializable(res.body)
