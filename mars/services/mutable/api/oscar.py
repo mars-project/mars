@@ -91,4 +91,5 @@ class MockMutableAPI(MutableAPI):
                       session_id: str,
                       address: str):
         await mo.destroy_actor(
-            mo.actor_ref(address, MutableObjectManagerActor.gen_uid(session_id)))
+            await mo.actor_ref(
+                address, MutableObjectManagerActor.gen_uid(session_id)))
