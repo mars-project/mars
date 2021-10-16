@@ -186,6 +186,6 @@ def normalize_timestamp(timestamp):
 
 
 def normalize_name(name: Optional[str] = None):
-        if not name:
-            return str(uuid.uuid4())
-        return name
+    if not name:
+        return str(uuid.uuid4())
+    return name
