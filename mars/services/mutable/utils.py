@@ -15,6 +15,8 @@
 from datetime import datetime
 import itertools
 from numbers import Integral
+from typing import Optional
+import uuid
 
 import numpy as np
 
@@ -181,3 +183,9 @@ def normalize_timestamp(timestamp):
     if isinstance(timestamp, datetime):
         timestamp = np.datetime64(timestamp)
     return timestamp
+
+
+def normalize_name(name: Optional[str] = None):
+        if not name:
+            return str(uuid.uuid4())
+        return name

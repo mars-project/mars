@@ -103,13 +103,13 @@ async def test_mutable_tensor_actor(create_cluster, session_type):
     xs = await tensor3.read(slice(None, None, None))
     np.testing.assert_array_equal(expected, xs)
 
-    await tensor.write((11, 2, 3), 2)
-    expected[11, 2, 3] = 2
-    xs = await tensor3.read((11, 2, 3))
-    assert expected[11, 2, 3] == xs
+    await tensor.write((9, 2, 3), 2)
+    expected[9, 2, 3] = 2
+    xs = await tensor3.read((9, 2, 3))
+    assert expected[9, 2, 3] == xs
 
-    await tensor.write((slice(2, 12, 3), slice(5, 15, None), slice(8, 50, 9)), 4)
-    expected[2:12:3, 5:15, 8:50:9] = 4
+    await tensor.write((slice(2, 9, 3), slice(5, 15, None), slice(8, 50, 9)), 4)
+    expected[2:9:3, 5:15, 8:50:9] = 4
     xs = await tensor3.read(slice(None, None, None))
     np.testing.assert_array_equal(expected, xs)
 
@@ -127,13 +127,13 @@ async def test_mutable_tensor_actor(create_cluster, session_type):
     xs = tensor3[:]
     np.testing.assert_array_equal(expected, xs)
 
-    tensor[11, 2, 3] = 2
-    expected[11, 2, 3] = 2
-    xs = tensor3[11, 2, 3]
-    assert expected[11, 2, 3] == xs
+    tensor[9, 2, 3] = 2
+    expected[9, 2, 3] = 2
+    xs = tensor3[9, 2, 3]
+    assert expected[9, 2, 3] == xs
 
-    tensor[2:12:3, 5:15, 8:50:9] = 4
-    expected[2:12:3, 5:15, 8:50:9] = 4
+    tensor[2:19:3, 5:15, 8:50:9] = 4
+    expected[2:19:3, 5:15, 8:50:9] = 4
     xs = tensor3[:]
     np.testing.assert_array_equal(expected, xs)
 

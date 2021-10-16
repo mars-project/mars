@@ -14,7 +14,6 @@
 
 import asyncio
 from typing import Dict, List, Optional, Tuple, Union
-import uuid
 
 import numpy as np
 
@@ -25,7 +24,7 @@ from ...core import NodeRole
 from ...cluster import ClusterAPI
 from ...meta import MetaAPI
 from ..core import MutableTensorInfo
-from ..utils import getitem_to_records, setitem_to_records, normalize_timestamp
+from ..utils import getitem_to_records, setitem_to_records, normalize_name, normalize_timestamp
 from ..worker import MutableTensorChunkActor
 
 
@@ -50,7 +49,7 @@ class MutableObjectManagerActor(mo.Actor):
         return f"mutable-object-manager-{session_id}"
 
     async def create_mutable_tensor(self, *args, name: Optional[str] = None, **kwargs):
-        name = self._ensure_name(name)
+        name = normalize_name(name)
         if name in self._mutable_objects:
             raise ValueError(f"Mutable tensor {name} already exists!")
 
@@ -76,11 +75,6 @@ class MutableObjectManagerActor(mo.Actor):
         await mo.destroy_actor(tensor_ref)
         self._mutable_objects.pop(name)
         return tensor
-
-    def _ensure_name(self, name: Optional[str] = None):
-        if not name:
-            return str(uuid.uuid4())
-        return name
 
 
 class MutableTensorActor(mo.Actor):
