@@ -957,6 +957,29 @@ def test_get_dummies_execution(setup):
     pd.testing.assert_frame_equal(r.execute().fetch(),
                                   pd.get_dummies(raw, dtype=float))
 
+    # test series
+    raw = pd.Series([3, 4, 1, 2])
+    series = from_pandas_series(raw, chunk_size=2)
+    r = get_dummies(series)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  pd.get_dummies(raw))
+
+    # test other variable
+    raw = [3, 4, 1, 2]
+    r = get_dummies(raw)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  pd.get_dummies(raw))
+
+    raw = pd.Series([3, 4, 2, 1])
+    r = get_dummies(raw)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  pd.get_dummies(raw))
+
+    raw = pd.DataFrame({"a": [1.1, 2.1, 3.1], "b": ['5', '-6', '-7'], "c": [1, 2, 3], "d": ['2', '3', '4']})
+    r = get_dummies(raw)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  pd.get_dummies(raw))
+
 
 def test_to_numeric_execution(setup):
     rs = np.random.RandomState(0)
