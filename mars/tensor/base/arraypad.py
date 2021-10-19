@@ -14,8 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 from itertools import product
+
+import numpy as np
 
 from ...serialization.serializables import AnyField, KeyField
 from ..datasource import tensor as astensor
