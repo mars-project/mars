@@ -20,6 +20,7 @@ The following pages describe Numpy-compatible routines. These functions cover a 
    linalg
    logic
    math
+   padding
    random
    set
    sorting
