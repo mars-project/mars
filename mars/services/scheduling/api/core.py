@@ -13,11 +13,9 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, TypeVar
+from typing import List, Optional
 
 from ..core import SubtaskScheduleSummary
-
-APIType = TypeVar('APIType', bound='SchedulingAPI')
 
 
 class AbstractSchedulingAPI(ABC):

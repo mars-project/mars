@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, TypeVar
+from typing import List
 
 from ...serialization.serializables import Serializable, FieldTypes, \
     StringField, ListField, BoolField, Int32Field
 from ...typing import BandType
-
-APIType = TypeVar('APIType', bound='SchedulingAPI')
 
 
 class SubtaskScheduleSummary(Serializable):
