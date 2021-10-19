@@ -23,6 +23,7 @@ from ..datasource.series import from_pandas as from_pandas_series
 from ..initializer import Series as asseries
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..reduction.unique import unique
+from ..utils import gen_unknown_index_value
 
 _encoding_dtype_kind = ['O', 'S', 'U']
 
@@ -36,8 +37,8 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
     drop_first = BoolField('drop_first')
     dtype = AnyField('dtype')
 
-    def __init__(self, prefix=None, prefix_sep="_", dummy_na=False,
-                 columns=None, sparse=False, drop_first=False, dtype=None, **kws):
+    def __init__(self, prefix=None, prefix_sep=None, dummy_na=None,
+                 columns=None, sparse=None, drop_first=None, dtype=None, **kws):
         super().__init__(prefix=prefix, prefix_sep=prefix_sep, dummy_na=dummy_na,
                          columns=columns, sparse=sparse, drop_first=drop_first, dtype=dtype, **kws)
         self.output_types = [OutputType.dataframe]
@@ -62,6 +63,7 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
             for c in inp.chunks:
                 chunk_op = op.copy().reset_key()
                 chunk_param = out.params
+                chunk_param['index_value'] = gen_unknown_index_value(c.index_value)
                 chunk_param['index'] = (c.index[0], 0)
                 chunk = chunk_op.new_chunk([c] + unique_inp.chunks, kws=[chunk_param])
                 chunks.append(chunk)
