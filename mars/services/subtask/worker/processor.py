@@ -106,9 +106,10 @@ class SubtaskProcessor:
                 accept_nones.append(True)
             elif isinstance(chunk.op, FetchShuffle):
                 for key in self._chunk_key_to_data_keys[chunk.key]:
-                    keys.append(key)
-                    gets.append(self._storage_api.get.delay(key, error='ignore'))
-                    accept_nones.append(False)
+                    if key not in keys:
+                        keys.append(key)
+                        gets.append(self._storage_api.get.delay(key, error='ignore'))
+                        accept_nones.append(False)
         if keys:
             logger.debug('Start getting input data, keys: %s, '
                          'subtask id: %s', keys, self.subtask.subtask_id)
@@ -207,19 +208,24 @@ class SubtaskProcessor:
                 if ref_counts[inp.key] == 0:
                     # ref count reaches 0, remove it
                     for key in self._chunk_key_to_data_keys[inp.key]:
-                        del self._datastore[key]
+                        if key in self._datastore:
+                            del self._datastore[key]
 
     async def _unpin_data(self, data_keys):
         # unpin input keys
         unpins = []
+        shuffle_unpins = []
         for key in data_keys:
             if isinstance(key, tuple):
                 # a tuple key means it's a shuffle key,
                 # some shuffle data is None and not stored in storage
-                unpins.append(self._storage_api.unpin.delay(key, error='ignore'))
+                shuffle_unpins.append(self._storage_api.unpin.delay(key, error='ignore'))
             else:
                 unpins.append(self._storage_api.unpin.delay(key))
-        await self._storage_api.unpin.batch(*unpins)
+        if unpins:
+            await self._storage_api.unpin.batch(*unpins)
+        if shuffle_unpins:
+            await self._storage_api.unpin.batch(*shuffle_unpins)
 
     async def _store_data(self, chunk_graph: ChunkGraph):
         # skip virtual operands for result chunks
