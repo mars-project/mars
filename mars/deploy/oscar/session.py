@@ -31,6 +31,8 @@ from weakref import WeakKeyDictionary
 from typing import Any, Callable, Coroutine, Dict, List, \
     Optional, Tuple, Type, Union
 
+import numpy as np
+
 from ... import oscar as mo
 from ...config import options
 from ...core import ChunkType, TileableType, TileableGraph, enter_mode
@@ -41,6 +43,7 @@ from ...services.cluster import AbstractClusterAPI, ClusterAPI
 from ...services.lifecycle import AbstractLifecycleAPI, LifecycleAPI
 from ...services.meta import MetaAPI, AbstractMetaAPI
 from ...services.session import AbstractSessionAPI, SessionAPI
+from ...services.mutable import MutableAPI, MutableTensor
 from ...services.storage import StorageAPI
 from ...services.task import AbstractTaskAPI, TaskAPI, TaskResult
 from ...services.web import OscarWebAPI
@@ -345,6 +348,53 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         name : str
         """
 
+    @abstractmethod
+    async def create_mutable_tensor(self,
+                                    shape: tuple,
+                                    dtype: Union[np.dtype, str],
+                                    name: str = None,
+                                    default_value: Union[int, float] = 0,
+                                    chunk_size: Union[int, Tuple] = None):
+        """
+        Create a mutable tensor.
+
+        Parameters
+        ----------
+        shape: tuple
+            Shape of the mutable tensor.
+
+        dtype: np.dtype or str
+            Data type of the mutable tensor.
+
+        name: str, optional
+            Name of the mutable tensor, a random name will be used if not specified.
+
+        default_value: optional
+            Default value of the mutable tensor. Default is 0.
+
+        chunk_size: int or tuple, optional
+            Chunk size of the mutable tensor.
+
+        Returns
+        -------
+            MutableTensor
+        """
+
+    @abstractmethod
+    async def get_mutable_tensor(self, name: str):
+        """
+        Get a mutable tensor by name.
+
+        Parameters
+        ----------
+        name: str
+            Name of the mutable tensor to get.
+
+        Returns
+        -------
+            MutableTensor
+        """
+
     async def stop_server(self):
         """
         Stop server.
@@ -513,6 +563,53 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
             web endpoint
         """
 
+    @abstractmethod
+    def create_mutable_tensor(self,
+                              shape: tuple,
+                              dtype: Union[np.dtype, str],
+                              name: str = None,
+                              default_value: Union[int, float] = 0,
+                              chunk_size: Union[int, Tuple] = None):
+        """
+        Create a mutable tensor.
+
+        Parameters
+        ----------
+        shape: tuple
+            Shape of the mutable tensor.
+
+        dtype: np.dtype or str
+            Data type of the mutable tensor.
+
+        name: str, optional
+            Name of the mutable tensor, a random name will be used if not specified.
+
+        default_value: optional
+            Default value of the mutable tensor. Default is 0.
+
+        chunk_size: int or tuple, optional
+            Chunk size of the mutable tensor.
+
+        Returns
+        -------
+            MutableTensor
+        """
+
+    @abstractmethod
+    def get_mutable_tensor(self, name: str):
+        """
+        Get a mutable tensor by name.
+
+        Parameters
+        ----------
+        name: str
+            Name of the mutable tensor to get.
+
+        Returns
+        -------
+            MutableTensor
+        """
+
     def fetch_log(self,
                   tileables: List[TileableType],
                   offsets: List[int] = None,
@@ -608,6 +705,7 @@ class _IsolatedSession(AbstractAsyncSession):
                  meta_api: AbstractMetaAPI,
                  lifecycle_api: AbstractLifecycleAPI,
                  task_api: AbstractTaskAPI,
+                 mutable_api: MutableAPI,
                  cluster_api: AbstractClusterAPI,
                  web_api: Optional[OscarWebAPI],
                  client: ClientType = None,
@@ -617,6 +715,7 @@ class _IsolatedSession(AbstractAsyncSession):
         self._task_api = task_api
         self._meta_api = meta_api
         self._lifecycle_api = lifecycle_api
+        self._mutable_api = mutable_api
         self._cluster_api = cluster_api
         self._web_api = web_api
         self.client = client
@@ -641,6 +740,7 @@ class _IsolatedSession(AbstractAsyncSession):
         lifecycle_api = await LifecycleAPI.create(session_id, session_address)
         meta_api = await MetaAPI.create(session_id, session_address)
         task_api = await TaskAPI.create(session_id, session_address)
+        mutable_api = await MutableAPI.create(session_id, session_address)
         cluster_api = await ClusterAPI.create(session_address)
         try:
             web_api = await OscarWebAPI.create(session_address)
@@ -648,7 +748,7 @@ class _IsolatedSession(AbstractAsyncSession):
             web_api = None
         return cls(address, session_id,
                    session_api, meta_api,
-                   lifecycle_api, task_api,
+                   lifecycle_api, task_api, mutable_api,
                    cluster_api, web_api,
                    timeout=timeout)
 
@@ -1016,6 +1116,20 @@ class _IsolatedSession(AbstractAsyncSession):
                                     name: str):
         return await self._session_api.destroy_remote_object(session_id, name)
 
+    async def create_mutable_tensor(self,
+                                    shape: tuple,
+                                    dtype: Union[np.dtype, str],
+                                    name: str = None,
+                                    default_value: Union[int, float] = 0,
+                                    chunk_size: Union[int, Tuple] = None):
+        tensor_info = await self._mutable_api.create_mutable_tensor(
+            shape, dtype, name, default_value, chunk_size)
+        return tensor_info, self._mutable_api
+
+    async def get_mutable_tensor(self, name: str):
+        tensor_info = await self._mutable_api.get_mutable_tensor(name)
+        return tensor_info, self._mutable_api
+
     async def stop_server(self):
         if self.client:
             await self.client.stop()
@@ -1032,6 +1146,7 @@ class _IsolatedWebSession(_IsolatedSession):
         from ...services.lifecycle import WebLifecycleAPI
         from ...services.meta import WebMetaAPI
         from ...services.task import WebTaskAPI
+        from ...services.mutable import WebMutableAPI
         from ...services.cluster import WebClusterAPI
 
         session_api = WebSessionAPI(address)
@@ -1043,12 +1158,13 @@ class _IsolatedWebSession(_IsolatedSession):
         lifecycle_api = WebLifecycleAPI(session_id, address)
         meta_api = WebMetaAPI(session_id, address)
         task_api = WebTaskAPI(session_id, address)
+        mutable_api = WebMutableAPI(session_id, address)
         cluster_api = WebClusterAPI(address)
 
         return cls(address, session_id,
                    session_api, meta_api,
                    lifecycle_api, task_api,
-                   cluster_api, None, timeout=timeout)
+                   mutable_api, cluster_api, None, timeout=timeout)
 
     async def get_web_endpoint(self) -> Optional[str]:
         return self.address
@@ -1183,6 +1299,25 @@ class AsyncSession(AbstractAsyncSession):
                                     session_id: str,
                                     name: str):
         pass  # pragma: no cover
+
+    @implements(AbstractAsyncSession.create_mutable_tensor)
+    async def create_mutable_tensor(self,
+                                    shape: tuple,
+                                    dtype: Union[np.dtype, str],
+                                    name: str = None,
+                                    default_value: Union[int, float] = 0,
+                                    chunk_size: Union[int, Tuple] = None):
+        tensor_info, mutable_api = \
+            await self._isolated_session.create_mutable_tensor(
+                shape, dtype, name, default_value, chunk_size)
+        return MutableTensor.create(tensor_info, mutable_api, self._loop)
+
+    @implements(AbstractAsyncSession.get_mutable_tensor)
+    async def get_mutable_tensor(self,
+                                name: str):
+        tensor_info, mutable_api = \
+            await self._isolated_session.get_mutable_tensor(name)
+        return MutableTensor.create(tensor_info, mutable_api, self._loop)
 
     @implements(AbstractAsyncSession.get_web_endpoint)
     @_delegate_to_isolated_session
@@ -1376,6 +1511,26 @@ class SyncSession(AbstractSyncSession):
     @_delegate_to_isolated_session
     def get_cluster_versions(self) -> List[str]:
         pass  # pragma: no cover
+
+    @implements(AbstractSyncSession.create_mutable_tensor)
+    def create_mutable_tensor(self,
+                              shape: tuple,
+                              dtype: Union[np.dtype, str],
+                              name: str = None,
+                              default_value: Union[int, float] = 0,
+                              chunk_size: Union[int, Tuple] = None):
+        coro = self._isolated_session.create_mutable_tensor(
+            shape, dtype, name, default_value, chunk_size)
+        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        tensor_info, mutable_api = fut.result()
+        return MutableTensor.create(tensor_info, mutable_api, self._loop)
+
+    @implements(AbstractSyncSession.get_mutable_tensor)
+    def get_mutable_tensor(self, name: str):
+        coro = self._isolated_session.get_mutable_tensor(name)
+        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        tensor_info, mutable_api = fut.result()
+        return MutableTensor.create(tensor_info, mutable_api, self._loop)
 
     def destroy(self):
         coro = self._isolated_session.destroy()
