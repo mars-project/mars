@@ -196,7 +196,7 @@ class TileableOperandMixin:
 
     def _new_tileables(self,
                        inputs: List[TileableType],
-                       kws: dict = None,
+                       kws: List[dict] = None,
                        **kw) -> List[TileableType]:
         output_limit = kw.pop('output_limit', None)
         if output_limit is None:
@@ -227,7 +227,7 @@ class TileableOperandMixin:
 
     def new_tileables(self,
                       inputs: List[TileableType],
-                      kws=None,
+                      kws: List[dict] = None,
                       **kw) -> List[TileableType]:
         """
         Create tileable objects(Tensors or DataFrames).
@@ -240,7 +240,7 @@ class TileableOperandMixin:
         ----------
         inputs : list
             Input tileables
-        kws : dict
+        kws : List[dict]
             Kwargs for each output.
         kw : dict
             Common kwargs for all outputs.
