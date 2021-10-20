@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC
 from typing import List, Optional, Tuple, Type, TypeVar, Union
 
-from ... import oscar as mo
-from ...lib.aio import alru_cache
-from ..subtask import Subtask
+from .... import oscar as mo
+from ....lib.aio import alru_cache
+from ...subtask import Subtask
+from ..core import SubtaskScheduleSummary
+from .core import AbstractSchedulingAPI
 
 APIType = TypeVar('APIType', bound='SchedulingAPI')
 
 
-class SchedulingAPI(ABC):
+class SchedulingAPI(AbstractSchedulingAPI):
     def __init__(self, session_id: str, address: str,
                  manager_ref=None, queueing_ref=None):
         self._session_id = session_id
@@ -36,11 +37,11 @@ class SchedulingAPI(ABC):
     async def create(cls: Type[APIType],
                      session_id: str,
                      address: str) -> APIType:
-        from .supervisor.manager import SubtaskManagerActor
+        from ..supervisor.manager import SubtaskManagerActor
         manager_ref = await mo.actor_ref(
             SubtaskManagerActor.gen_uid(session_id), address=address
         )
-        from .supervisor.queueing import SubtaskQueueingActor
+        from ..supervisor.queueing import SubtaskQueueingActor
         queueing_ref = await mo.actor_ref(
             SubtaskQueueingActor.gen_uid(session_id), address=address
         )
@@ -48,6 +49,12 @@ class SchedulingAPI(ABC):
         scheduling_api = SchedulingAPI(
             session_id, address, manager_ref, queueing_ref)
         return scheduling_api
+
+    async def get_subtask_schedule_summaries(
+            self,
+            task_id: Optional[str] = None
+    ) -> List[SubtaskScheduleSummary]:
+        return await self._manager_ref.get_schedule_summaries(task_id)
 
     async def add_subtasks(self,
                            subtasks: List[Subtask],
@@ -126,7 +133,7 @@ class MockSchedulingAPI(SchedulingAPI):
     async def create(cls: Type[APIType],
                      session_id: str,
                      address: str) -> APIType:
-        from .supervisor import GlobalSlotManagerActor, AutoscalerActor
+        from ..supervisor import GlobalSlotManagerActor, AutoscalerActor
         await mo.create_actor(GlobalSlotManagerActor,
                               uid=GlobalSlotManagerActor.default_uid(),
                               address=address)
@@ -134,8 +141,8 @@ class MockSchedulingAPI(SchedulingAPI):
                               uid=AutoscalerActor.default_uid(),
                               address=address)
 
-        from ... import resource as mars_resource
-        from .worker import SubtaskExecutionActor, \
+        from .... import resource as mars_resource
+        from ..worker import SubtaskExecutionActor, \
             WorkerSlotManagerActor, WorkerQuotaManagerActor
         await mo.create_actor(SubtaskExecutionActor,
                               subtask_max_retries=0,
@@ -149,7 +156,7 @@ class MockSchedulingAPI(SchedulingAPI):
                               uid=WorkerQuotaManagerActor.default_uid(),
                               address=address)
 
-        from .supervisor import SchedulingSupervisorService
+        from ..supervisor import SchedulingSupervisorService
         service = SchedulingSupervisorService({}, address)
         await service.create_session(session_id)
         return await super().create(session_id, address)
