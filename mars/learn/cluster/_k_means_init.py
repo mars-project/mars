@@ -27,16 +27,14 @@ from ..metrics import euclidean_distances
 from ..operands import LearnOperand, LearnOperandMixin
 
 
-def _kmeans_plus_plus_init(X,
-                           x_squared_norms,
-                           random_state,
-                           n_clusters: int,
-                           n_local_trials: int = None):
+def _kmeans_plus_plus_init(
+    X, x_squared_norms, random_state, n_clusters: int, n_local_trials: int = None
+):
     n_samples, n_features = X.shape
 
     centers = mt.empty((n_clusters, n_features), dtype=X.dtype)
 
-    assert x_squared_norms is not None, 'x_squared_norms None in _k_init'
+    assert x_squared_norms is not None, "x_squared_norms None in _k_init"
 
     # Set the number of local seeding trials if none is given
     if n_local_trials is None:
@@ -54,8 +52,8 @@ def _kmeans_plus_plus_init(X,
 
     # Initialize list of closest distances and calculate current potential
     closest_dist_sq = euclidean_distances(
-        centers[0, mt.newaxis], X, Y_norm_squared=x_squared_norms,
-        squared=True)
+        centers[0, mt.newaxis], X, Y_norm_squared=x_squared_norms, squared=True
+    )
     current_pot = closest_dist_sq.sum()
 
     # Pick the remaining n_clusters-1 points
@@ -63,14 +61,14 @@ def _kmeans_plus_plus_init(X,
         # Choose center candidates by sampling with probability proportional
         # to the squared distance to the closest existing center
         rand_vals = random_state.random_sample(n_local_trials) * current_pot
-        candidate_ids = mt.searchsorted(closest_dist_sq.cumsum(),
-                                        rand_vals)
+        candidate_ids = mt.searchsorted(closest_dist_sq.cumsum(), rand_vals)
         # XXX: numerical imprecision can result in a candidate_id out of range
         candidate_ids = mt.clip(candidate_ids, None, closest_dist_sq.size - 1)
 
         # Compute distances to center candidates
         distance_to_candidates = euclidean_distances(
-            X[candidate_ids], X, Y_norm_squared=x_squared_norms, squared=True)
+            X[candidate_ids], X, Y_norm_squared=x_squared_norms, squared=True
+        )
 
         # update closest distances squared and potential for each candidate
         distance_to_candidates = mt.minimum(closest_dist_sq, distance_to_candidates)
@@ -97,17 +95,31 @@ def _kmeans_plus_plus_init(X,
 class KMeansPlusPlusInit(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.KMEANS_PLUS_PLUS_INIT
 
-    _x = KeyField('x')
-    _n_clusters = Int32Field('n_clusters')
-    _x_squared_norms = KeyField('x_squared_norms')
-    _state = RandomStateField('state')
-    _n_local_trials = Int32Field('n_local_trials')
+    _x = KeyField("x")
+    _n_clusters = Int32Field("n_clusters")
+    _x_squared_norms = KeyField("x_squared_norms")
+    _state = RandomStateField("state")
+    _n_local_trials = Int32Field("n_local_trials")
 
-    def __init__(self, x=None, n_clusters=None, x_squared_norms=None,
-                 state=None, n_local_trials=None, output_types=None, **kw):
-        super().__init__(_x=x, _n_clusters=n_clusters, _x_squared_norms=x_squared_norms,
-                         _state=state, _n_local_trials=n_local_trials,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self,
+        x=None,
+        n_clusters=None,
+        x_squared_norms=None,
+        state=None,
+        n_local_trials=None,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _x=x,
+            _n_clusters=n_clusters,
+            _x_squared_norms=x_squared_norms,
+            _state=state,
+            _n_local_trials=n_local_trials,
+            _output_types=output_types,
+            **kw
+        )
         if self._output_types is None:
             self._output_types = [OutputType.tensor]
 
@@ -139,9 +151,9 @@ class KMeansPlusPlusInit(LearnOperand, LearnOperandMixin):
     def __call__(self):
         inputs = [self._x, self._x_squared_norms]
         kw = {
-            'shape': (self._n_clusters, self._x.shape[1]),
-            'dtype': self._x.dtype,
-            'order': TensorOrder.C_ORDER
+            "shape": (self._n_clusters, self._x.shape[1]),
+            "dtype": self._x.dtype,
+            "order": TensorOrder.C_ORDER,
         }
         return self.new_tileable(inputs, kws=[kw])
 
@@ -151,13 +163,13 @@ class KMeansPlusPlusInit(LearnOperand, LearnOperandMixin):
 
         chunk_op = op.copy().reset_key()
         chunk_kw = out.params.copy()
-        chunk_kw['index'] = (0, 0)
+        chunk_kw["index"] = (0, 0)
         chunk_inputs = [op.x.chunks[0], op.x_squared_norms.chunks[0]]
         chunk = chunk_op.new_chunk(chunk_inputs, kws=[chunk_kw])
 
         kw = out.params
-        kw['chunks'] = [chunk]
-        kw['nsplits'] = tuple((s,) for s in out.shape)
+        kw["chunks"] = [chunk]
+        kw["nsplits"] = tuple((s,) for s in out.shape)
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=[kw])
 
@@ -177,8 +189,9 @@ class KMeansPlusPlusInit(LearnOperand, LearnOperandMixin):
         random_state = op.state
         n_local_trials = op.n_local_trials
 
-        centers = _kmeans_plus_plus_init(X, x_squared_norms, random_state,
-                                         n_clusters, n_local_trials)
+        centers = _kmeans_plus_plus_init(
+            X, x_squared_norms, random_state, n_clusters, n_local_trials
+        )
         return (yield from recursive_tile(centers))
 
     @classmethod
@@ -195,12 +208,17 @@ class KMeansPlusPlusInit(LearnOperand, LearnOperandMixin):
                 return _k_init(*args, **kwargs), None
 
         (x, x_squared_norms), device_id, _ = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             ctx[op.outputs[0].key] = _kmeans_plusplus(
-                x, op.n_clusters, x_squared_norms=x_squared_norms, random_state=op.state,
-                n_local_trials=op.n_local_trials)[0]
+                x,
+                op.n_clusters,
+                x_squared_norms=x_squared_norms,
+                random_state=op.state,
+                n_local_trials=op.n_local_trials,
+            )[0]
 
 
 ###############################################################################
@@ -243,28 +261,47 @@ def _k_init(X, n_clusters, x_squared_norms, random_state, n_local_trials=None):
     Version ported from http://www.stanford.edu/~darthur/kMeansppTest.zip,
     which is the implementation used in the aforementioned paper.
     """
-    op = KMeansPlusPlusInit(x=X, n_clusters=n_clusters, x_squared_norms=x_squared_norms,
-                            state=random_state, n_local_trials=n_local_trials)
+    op = KMeansPlusPlusInit(
+        x=X,
+        n_clusters=n_clusters,
+        x_squared_norms=x_squared_norms,
+        state=random_state,
+        n_local_trials=n_local_trials,
+    )
     return op()
 
 
 class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.KMEANS_SCALABLE_PLUS_PLUS_INIT
 
-    _x = KeyField('x')
-    _n_clusters = Int32Field('n_clusters')
-    _x_squared_norms = KeyField('x_squared_norms')
-    _state = RandomStateField('state')
-    _init_iter = Int32Field('init_iter')
-    _oversampling_factor = Int32Field('oversampling_factor')
+    _x = KeyField("x")
+    _n_clusters = Int32Field("n_clusters")
+    _x_squared_norms = KeyField("x_squared_norms")
+    _state = RandomStateField("state")
+    _init_iter = Int32Field("init_iter")
+    _oversampling_factor = Int32Field("oversampling_factor")
 
-    def __init__(self, x=None, n_clusters=None, x_squared_norms=None,
-                 state=None, init_iter=None, oversampling_factor=None,
-                 output_types=None, **kw):
-        super().__init__(_x=x, _n_clusters=n_clusters, _x_squared_norms=x_squared_norms,
-                         _state=state, _init_iter=init_iter,
-                         _oversampling_factor=oversampling_factor,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self,
+        x=None,
+        n_clusters=None,
+        x_squared_norms=None,
+        state=None,
+        init_iter=None,
+        oversampling_factor=None,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _x=x,
+            _n_clusters=n_clusters,
+            _x_squared_norms=x_squared_norms,
+            _state=state,
+            _init_iter=init_iter,
+            _oversampling_factor=oversampling_factor,
+            _output_types=output_types,
+            **kw
+        )
         if self._output_types is None:
             self._output_types = [OutputType.tensor]
 
@@ -302,9 +339,9 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
     def __call__(self):
         inputs = [self._x, self._x_squared_norms]
         kw = {
-            'shape': (self._n_clusters, self._x.shape[1]),
-            'dtype': self._x.dtype,
-            'order': TensorOrder.C_ORDER
+            "shape": (self._n_clusters, self._x.shape[1]),
+            "dtype": self._x.dtype,
+            "order": TensorOrder.C_ORDER,
         }
         return self.new_tileable(inputs, kws=[kw])
 
@@ -328,15 +365,17 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
 
         for _ in range(op.init_iter):
             distances = euclidean_distances(
-                x, centers, X_norm_squared=x_squared_norms, squared=True)
+                x, centers, X_norm_squared=x_squared_norms, squared=True
+            )
 
             # calculate the cost of data with respect to current centers
             cost = mt.sum(mt.min(distances, axis=1))
 
             # calculate the distribution to sample new centers
             distribution = mt.full(len(distances), 1 / len(distances))
-            mt.true_divide(mt.min(distances, axis=1), cost,
-                           where=cost != 0, out=distribution)
+            mt.true_divide(
+                mt.min(distances, axis=1), cost, where=cost != 0, out=distribution
+            )
 
             # pick new centers
             new_centers_size = op.oversampling_factor * n_clusters
@@ -347,49 +386,55 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
         # rechunk centers into one chunk
         centers = (yield from recursive_tile(centers)).rechunk(centers.shape)
 
-        distances = yield from recursive_tile(euclidean_distances(
-            x, centers, X_norm_squared=x_squared_norms, squared=True))
+        distances = yield from recursive_tile(
+            euclidean_distances(
+                x, centers, X_norm_squared=x_squared_norms, squared=True
+            )
+        )
 
         map_index_to_chunks = {}
         # calculate weight for each chunk
         for c in distances.chunks:
             map_chunk_op = KMeansScalablePlusPlusInit(stage=OperandStage.map)
             map_chunk_kw = {
-                'shape': (len(centers),),
-                'dtype': np.dtype(np.int64),
-                'order': TensorOrder.C_ORDER,
-                'index': c.index
+                "shape": (len(centers),),
+                "dtype": np.dtype(np.int64),
+                "order": TensorOrder.C_ORDER,
+                "index": c.index,
             }
             map_chunk = map_chunk_op.new_chunk([c], kws=[map_chunk_kw])
             map_index_to_chunks[c.index] = map_chunk
 
         combine_chunks = []
         for i in range(distances.chunk_shape[0]):
-            map_chunks = [map_index_to_chunks[i, j]
-                          for j in range(distances.chunk_shape[1])]
+            map_chunks = [
+                map_index_to_chunks[i, j] for j in range(distances.chunk_shape[1])
+            ]
             combine_chunk_op = KMeansScalablePlusPlusInit(stage=OperandStage.combine)
             combine_chunk_kw = {
-                'shape': (len(centers),),
-                'dtype': np.dtype(np.int64),
-                'order': TensorOrder.C_ORDER,
-                'index': (i,)
+                "shape": (len(centers),),
+                "dtype": np.dtype(np.int64),
+                "order": TensorOrder.C_ORDER,
+                "index": (i,),
             }
             combine_chunk = combine_chunk_op.new_chunk(
-                map_chunks, kws=[combine_chunk_kw])
+                map_chunks, kws=[combine_chunk_kw]
+            )
             combine_chunks.append(combine_chunk)
 
-        reduce_chunk_op = KMeansScalablePlusPlusInit(n_clusters=op.n_clusters,
-                                                     state=random_state,
-                                                     stage=OperandStage.reduce)
+        reduce_chunk_op = KMeansScalablePlusPlusInit(
+            n_clusters=op.n_clusters, state=random_state, stage=OperandStage.reduce
+        )
         reduce_chunk_kw = out.params
-        reduce_chunk_kw['index'] = (0, 0)
-        reduce_chunk = reduce_chunk_op.new_chunk([centers.chunks[0]] + combine_chunks,
-                                                 kws=[reduce_chunk_kw])
+        reduce_chunk_kw["index"] = (0, 0)
+        reduce_chunk = reduce_chunk_op.new_chunk(
+            [centers.chunks[0]] + combine_chunks, kws=[reduce_chunk_kw]
+        )
 
         new_op = op.copy()
         kw = out.params
-        kw['chunks'] = [reduce_chunk]
-        kw['nsplits'] = tuple((s,) for s in out.shape)
+        kw["chunks"] = [reduce_chunk]
+        kw["nsplits"] = tuple((s,) for s in out.shape)
         return new_op.new_tileables(op.inputs, kws=[kw])
 
     @classmethod
@@ -402,15 +447,19 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
     @classmethod
     def _execute_combine(cls, ctx, op: "KMeansScalablePlusPlusInit"):
         out = op.outputs[0]
-        all_distances, all_min_distance_ids = tuple(zip(*(ctx[inp.key] for inp in op.inputs)))
+        all_distances, all_min_distance_ids = tuple(
+            zip(*(ctx[inp.key] for inp in op.inputs))
+        )
         distances = np.stack(all_distances).T
         min_distance_ids = np.stack(all_min_distance_ids).T
 
         combined_min_distance_id = np.argmin(distances, axis=1)
-        min_distance_ids = min_distance_ids[range(len(distances)), combined_min_distance_id]
+        min_distance_ids = min_distance_ids[
+            range(len(distances)), combined_min_distance_id
+        ]
         count = np.bincount(min_distance_ids)
         result = np.zeros(out.shape[0], dtype=np.int64)
-        result[:len(count)] = count
+        result[: len(count)] = count
         ctx[out.key] = result
 
     @classmethod
@@ -426,8 +475,7 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
 
         centers = inputs[0]
 
-        kmeans = KMeans(n_clusters=op.n_clusters, n_init=1,
-                        random_state=op.state)
+        kmeans = KMeans(n_clusters=op.n_clusters, n_init=1, random_state=op.state)
         kmeans.fit(centers, sample_weight=weight)
         ctx[op.outputs[0].key] = kmeans.cluster_centers_
 
@@ -441,10 +489,15 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
             return cls._execute_reduce(ctx, op)
 
 
-def _scalable_k_init(X, n_clusters, x_squared_norms, random_state,
-                     oversampling_factor=2, init_iter=5):
-    op = KMeansScalablePlusPlusInit(x=X, n_clusters=n_clusters,
-                                    x_squared_norms=x_squared_norms,
-                                    state=random_state, init_iter=init_iter,
-                                    oversampling_factor=oversampling_factor)
+def _scalable_k_init(
+    X, n_clusters, x_squared_norms, random_state, oversampling_factor=2, init_iter=5
+):
+    op = KMeansScalablePlusPlusInit(
+        x=X,
+        n_clusters=n_clusters,
+        x_squared_norms=x_squared_norms,
+        state=random_state,
+        init_iter=init_iter,
+        oversampling_factor=oversampling_factor,
+    )
     return op()

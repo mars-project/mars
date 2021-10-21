@@ -22,10 +22,10 @@ from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='binary_or')
+@arithmetic_operand(sparse_mode="binary_or")
 class TensorRshift(TensorBinOp):
     _op_type_ = OperandDef.RSHIFT
-    _func_name = 'right_shift'
+    _func_name = "right_shift"
 
 
 @infer_dtype(np.right_shift)

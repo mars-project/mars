@@ -28,21 +28,29 @@ class TensorNanMean(TensorReduction, TensorReductionMixin):
 
     def __init__(self, axis=None, keepdims=None, combine_size=None, stage=None, **kw):
         stage = self._rewrite_stage(stage)
-        super().__init__(_axis=axis, _keepdims=keepdims,
-                         _combine_size=combine_size, stage=stage, **kw)
+        super().__init__(
+            _axis=axis,
+            _keepdims=keepdims,
+            _combine_size=combine_size,
+            stage=stage,
+            **kw
+        )
 
     @classmethod
     def execute_map(cls, ctx, op):
         (in_chunk,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         axis = cls.get_axis(op.axis)
 
         with device(device_id):
-            chunk_count = nannumel(in_chunk, axis=axis, dtype=np.int64,
-                                   keepdims=bool(op.keepdims))
-            chunk_sum = xp.nansum(in_chunk, axis=axis, dtype=op.dtype,
-                                  keepdims=bool(op.keepdims))
+            chunk_count = nannumel(
+                in_chunk, axis=axis, dtype=np.int64, keepdims=bool(op.keepdims)
+            )
+            chunk_sum = xp.nansum(
+                in_chunk, axis=axis, dtype=op.dtype, keepdims=bool(op.keepdims)
+            )
             ctx[op.outputs[0].key] = (chunk_sum, chunk_count)
 
     @classmethod
@@ -52,22 +60,28 @@ class TensorNanMean(TensorReduction, TensorReductionMixin):
         a = ctx[op.inputs[0].key]
         if not isinstance(a, (list, tuple)):
             (inp,), device_id, xp = as_same_device(
-                [a], device=op.device, ret_extra=True)
+                [a], device=op.device, ret_extra=True
+            )
 
             with device(device_id):
-                ctx[op.outputs[0].key] = xp.nanmean(inp, axis=axis, dtype=op.dtype,
-                                                    keepdims=bool(op.keepdims))
+                ctx[op.outputs[0].key] = xp.nanmean(
+                    inp, axis=axis, dtype=op.dtype, keepdims=bool(op.keepdims)
+                )
         else:
             (_data, _count), device_id, xp = as_same_device(
-                a, device=op.device, ret_extra=True)
+                a, device=op.device, ret_extra=True
+            )
 
             with device(device_id):
-                chunk_count = xp.sum(_count, axis=axis, dtype=op.dtype,
-                                     keepdims=bool(op.keepdims))
-                chunk_sum = xp.sum(_data, axis=axis, dtype=op.dtype,
-                                   keepdims=bool(op.keepdims))
-                ctx[op.outputs[0].key] = xp.true_divide(chunk_sum, chunk_count,
-                                                        dtype=op.dtype)
+                chunk_count = xp.sum(
+                    _count, axis=axis, dtype=op.dtype, keepdims=bool(op.keepdims)
+                )
+                chunk_sum = xp.sum(
+                    _data, axis=axis, dtype=op.dtype, keepdims=bool(op.keepdims)
+                )
+                ctx[op.outputs[0].key] = xp.true_divide(
+                    chunk_sum, chunk_count, dtype=op.dtype
+                )
 
     @classmethod
     def execute_combine(cls, ctx, op):
@@ -153,5 +167,7 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=None, combine_size=None
     a = astensor(a)
     if dtype is None:
         dtype = np.nanmean(np.empty((1,), dtype=a.dtype)).dtype
-    op = TensorNanMean(axis=axis, dtype=dtype, keepdims=keepdims, combine_size=combine_size)
+    op = TensorNanMean(
+        axis=axis, dtype=dtype, keepdims=keepdims, combine_size=combine_size
+    )
     return op(a, out=out)

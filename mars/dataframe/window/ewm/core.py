@@ -18,24 +18,37 @@ from collections import OrderedDict
 import pandas as pd
 
 from ....lib.version import parse as parse_version
-from ....serialization.serializables import Int64Field, BoolField, Int32Field, Float64Field
+from ....serialization.serializables import (
+    Int64Field,
+    BoolField,
+    Int32Field,
+    Float64Field,
+)
 from ...utils import validate_axis
 from ..core import Window
 
-_default_min_period_1 = parse_version(pd.__version__) >= parse_version('1.1.0')
-_pd_1_3_repr = parse_version(pd.__version__) >= parse_version('1.3.0')
+_default_min_period_1 = parse_version(pd.__version__) >= parse_version("1.1.0")
+_pd_1_3_repr = parse_version(pd.__version__) >= parse_version("1.3.0")
 
 
 class EWM(Window):
-    _alpha = Float64Field('alpha')
-    _min_periods = Int64Field('min_periods')
-    _adjust = BoolField('adjust')
-    _ignore_na = BoolField('ignore_na')
-    _axis = Int32Field('axis')
+    _alpha = Float64Field("alpha")
+    _min_periods = Int64Field("min_periods")
+    _adjust = BoolField("adjust")
+    _ignore_na = BoolField("ignore_na")
+    _axis = Int32Field("axis")
 
-    def __init__(self, alpha=None, min_periods=None, adjust=None, ignore_na=None, axis=None, **kw):
-        super().__init__(_alpha=alpha, _min_periods=min_periods, _adjust=adjust, _ignore_na=ignore_na,
-                         _axis=axis, **kw)
+    def __init__(
+        self, alpha=None, min_periods=None, adjust=None, ignore_na=None, axis=None, **kw
+    ):
+        super().__init__(
+            _alpha=alpha,
+            _min_periods=min_periods,
+            _adjust=adjust,
+            _ignore_na=ignore_na,
+            _axis=axis,
+            **kw
+        )
 
     @property
     def alpha(self):
@@ -60,7 +73,7 @@ class EWM(Window):
     @property
     def params(self):
         p = OrderedDict()
-        for k in ['alpha', 'min_periods', "adjust", "ignore_na", "axis"]:
+        for k in ["alpha", "min_periods", "adjust", "ignore_na", "axis"]:
             p[k] = getattr(self, k)
         return p
 
@@ -68,10 +81,10 @@ class EWM(Window):
         return df.ewm(**self.params)
 
     def _repr(self, params):
-        com = 1.0 / params.pop('alpha') - 1
-        params['com'] = int(com) if _pd_1_3_repr and com == math.floor(com) else com
+        com = 1.0 / params.pop("alpha") - 1
+        params["com"] = int(com) if _pd_1_3_repr and com == math.floor(com) else com
         try:
-            params.move_to_end('com', last=False)
+            params.move_to_end("com", last=False)
         except AttributeError:  # pragma: no cover
             pass
         return super()._repr(params)
@@ -79,33 +92,43 @@ class EWM(Window):
     def _repr_name(self):
         try:
             from pandas.core.window import ExponentialMovingWindow  # noqa: F401
-            return 'ExponentialMovingWindow'
+
+            return "ExponentialMovingWindow"
         except ImportError:  # pragma: no cover
-            return 'EWM'
+            return "EWM"
 
     def aggregate(self, func):
         from .aggregation import DataFrameEwmAgg
 
         params = self.params
-        params['alpha_ignore_na'] = params.pop('ignore_na', False)
-        params['validate_columns'] = False
+        params["alpha_ignore_na"] = params.pop("ignore_na", False)
+        params["validate_columns"] = False
         op = DataFrameEwmAgg(func=func, **params)
         return op(self)
 
     agg = aggregate
 
     def mean(self):
-        return self.aggregate('mean')
+        return self.aggregate("mean")
 
     def var(self):
-        return self.aggregate('var')
+        return self.aggregate("var")
 
     def std(self):
-        return self.aggregate('std')
+        return self.aggregate("std")
 
 
-def ewm(obj, com=None, span=None, halflife=None, alpha=None, min_periods=0, adjust=True,
-        ignore_na=False, axis=0):
+def ewm(
+    obj,
+    com=None,
+    span=None,
+    halflife=None,
+    alpha=None,
+    min_periods=0,
+    adjust=True,
+    ignore_na=False,
+    axis=0,
+):
     r"""
     Provide exponential weighted functions.
 
@@ -204,29 +227,31 @@ def ewm(obj, com=None, span=None, halflife=None, alpha=None, min_periods=0, adju
             decay_count += 1
 
     if decay_count == 0:
-        raise ValueError('Must pass one of comass, span, halflife, or alpha')
+        raise ValueError("Must pass one of comass, span, halflife, or alpha")
     if decay_count > 1:
-        raise ValueError('comass, span, halflife, and alpha are mutually exclusive')
+        raise ValueError("comass, span, halflife, and alpha are mutually exclusive")
 
     if com is not None:
         if com < 0:
-            raise ValueError('comass must satisfy: comass >= 0')
+            raise ValueError("comass must satisfy: comass >= 0")
         alpha = 1.0 / (1 + com)
     elif span is not None:
         if span < 1:
-            raise ValueError('span must satisfy: span >= 1')
+            raise ValueError("span must satisfy: span >= 1")
         alpha = 2.0 / (1 + span)
     elif halflife is not None:
         if halflife <= 0:
-            raise ValueError('halflife must satisfy: halflife > 0')
+            raise ValueError("halflife must satisfy: halflife > 0")
         alpha = 1.0 - math.exp(math.log(0.5) / halflife)
     if alpha <= 0 or alpha > 1:
-        raise ValueError('alpha must satisfy: 0 < alpha <= 1')
+        raise ValueError("alpha must satisfy: 0 < alpha <= 1")
 
     if not adjust and not ignore_na:
-        raise NotImplementedError('adjust == False when ignore_na == False not implemented')
+        raise NotImplementedError(
+            "adjust == False when ignore_na == False not implemented"
+        )
     if axis == 1:
-        raise NotImplementedError('axis other than 0 is not supported')
+        raise NotImplementedError("axis other than 0 is not supported")
 
     if alpha == 1:
         return obj.expanding(min_periods=min_periods, axis=axis)
@@ -234,5 +259,11 @@ def ewm(obj, com=None, span=None, halflife=None, alpha=None, min_periods=0, adju
     if _default_min_period_1:
         min_periods = min_periods or 1
 
-    return EWM(input=obj, alpha=alpha, min_periods=min_periods, adjust=adjust,
-               ignore_na=ignore_na, axis=axis)
+    return EWM(
+        input=obj,
+        alpha=alpha,
+        min_periods=min_periods,
+        adjust=adjust,
+        ignore_na=ignore_na,
+        axis=axis,
+    )

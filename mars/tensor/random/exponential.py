@@ -23,12 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorExponential(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_scale']
+    _input_fields_ = ["_scale"]
     _op_type_ = OperandDef.RAND_EXPONENTIAL
 
-    _fields_ = '_scale', '_size'
-    _scale = AnyField('scale')
-    _func_name = 'exponential'
+    _fields_ = "_scale", "_size"
+    _scale = AnyField("scale")
+    _func_name = "exponential"
 
     @property
     def scale(self):
@@ -42,7 +42,9 @@ class TensorExponential(TensorDistribution, TensorRandomOperandMixin):
         return self.new_tensor([scale], self._size, raw_chunk_size=chunk_size)
 
 
-def exponential(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, dtype=None):
+def exponential(
+    random_state, scale=1.0, size=None, chunk_size=None, gpu=None, dtype=None
+):
     r"""
     Draw samples from an exponential distribution.
 
@@ -91,8 +93,9 @@ def exponential(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, d
            http://en.wikipedia.org/wiki/Exponential_distribution
     """
     if dtype is None:
-        dtype = np.random.RandomState().exponential(
-            handle_array(scale), size=(0,)).dtype
+        dtype = (
+            np.random.RandomState().exponential(handle_array(scale), size=(0,)).dtype
+        )
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorExponential(seed=seed, size=size, gpu=gpu, dtype=dtype)

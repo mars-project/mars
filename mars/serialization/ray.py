@@ -18,22 +18,23 @@ from ..utils import lazy_import
 from .core import Serializer, buffered, PickleSerializer
 from .exception import ExceptionSerializer
 
-ray = lazy_import('ray')
+ray = lazy_import("ray")
 
 
 class RaySerializer(Serializer):
     """Return raw object to let ray do serialization."""
-    serializer_name = 'ray'
+
+    serializer_name = "ray"
 
     @buffered
     def serialize(self, obj: Any, context: Dict):
-        header = {'o': obj}
+        header = {"o": obj}
         buffers = []
         return header, buffers
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         assert not buffers
-        return header['o']
+        return header["o"]
 
 
 def register_ray_serializers():

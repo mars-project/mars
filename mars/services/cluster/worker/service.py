@@ -37,33 +37,41 @@ class ClusterWorkerService(AbstractService):
         }
     }
     """
+
     async def start(self):
-        svc_config = self._config['cluster']
+        svc_config = self._config["cluster"]
         address = self._address
 
-        backend = svc_config.get('backend', 'fixed')
-        lookup_address = svc_config.get('lookup_address',
-                                        address if backend == 'fixed' else None)
+        backend = svc_config.get("backend", "fixed")
+        lookup_address = svc_config.get(
+            "lookup_address", address if backend == "fixed" else None
+        )
         await mo.create_actor(
             WorkerSupervisorLocatorActor,
             backend_name=backend,
             lookup_address=lookup_address,
             uid=WorkerSupervisorLocatorActor.default_uid(),
-            address=address)
+            address=address,
+        )
         await mo.create_actor(
             NodeInfoUploaderActor,
             role=NodeRole.WORKER,
-            interval=svc_config.get('node_check_interval'),
-            band_to_slots=svc_config.get('resource'),
+            interval=svc_config.get("node_check_interval"),
+            band_to_slots=svc_config.get("resource"),
             uid=NodeInfoUploaderActor.default_uid(),
-            address=address)
+            address=address,
+        )
 
     async def stop(self):
         address = self._address
 
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=NodeInfoUploaderActor.default_uid(), address=address
-        ))
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=WorkerSupervisorLocatorActor.default_uid(), address=address
-        ))
+        await mo.destroy_actor(
+            mo.create_actor_ref(
+                uid=NodeInfoUploaderActor.default_uid(), address=address
+            )
+        )
+        await mo.destroy_actor(
+            mo.create_actor_ref(
+                uid=WorkerSupervisorLocatorActor.default_uid(), address=address
+            )
+        )

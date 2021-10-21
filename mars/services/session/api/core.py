@@ -58,7 +58,9 @@ class AbstractSessionAPI(ABC):
         """
 
     @abstractmethod
-    async def get_last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
+    async def get_last_idle_time(
+        self, session_id: Union[str, None] = None
+    ) -> Union[float, None]:
         """
         Get session last idle time.
 
@@ -74,11 +76,13 @@ class AbstractSessionAPI(ABC):
         """
 
     @abstractmethod
-    async def fetch_tileable_op_logs(self,
-                                     session_id: str,
-                                     tileable_op_key: str,
-                                     chunk_op_key_to_offsets: Dict[str, List[int]],
-                                     chunk_op_key_to_sizes: Dict[str, List[int]]) -> Dict:
+    async def fetch_tileable_op_logs(
+        self,
+        session_id: str,
+        tileable_op_key: str,
+        chunk_op_key_to_offsets: Dict[str, List[int]],
+        chunk_op_key_to_sizes: Dict[str, List[int]],
+    ) -> Dict:
         """
         Fetch tileable op's logs
 

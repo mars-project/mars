@@ -20,11 +20,11 @@ import tempfile
 
 @pytest.fixture
 def cleanup_third_party_modules_output():
-    output_dir = os.path.join(tempfile.gettempdir(), 'test_inject_module_output')
+    output_dir = os.path.join(tempfile.gettempdir(), "test_inject_module_output")
     shutil.rmtree(output_dir, ignore_errors=True)
     yield
     shutil.rmtree(output_dir, ignore_errors=True)
 
 
 def get_output_filenames():
-    return os.listdir(os.path.join(tempfile.gettempdir(), 'test_inject_module_output'))
+    return os.listdir(os.path.join(tempfile.gettempdir(), "test_inject_module_output"))

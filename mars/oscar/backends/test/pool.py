@@ -25,47 +25,51 @@ from ..pool import ActorPoolType
 class TestMainActorPool(MainActorPool):
     @classmethod
     def get_external_addresses(
-            cls, address: str, n_process: int = None, ports: List[int] = None):
-        if '://' in address:
-            address = address.split('://', 1)[1]
-        return super().get_external_addresses(address, n_process=n_process,
-                                              ports=ports)
+        cls, address: str, n_process: int = None, ports: List[int] = None
+    ):
+        if "://" in address:
+            address = address.split("://", 1)[1]
+        return super().get_external_addresses(address, n_process=n_process, ports=ports)
 
     @classmethod
-    def gen_internal_address(cls, process_index: int, external_address: str = None) -> str:
-        return f'dummy://{process_index}'
+    def gen_internal_address(
+        cls, process_index: int, external_address: str = None
+    ) -> str:
+        return f"dummy://{process_index}"
 
     @classmethod
     async def start_sub_pool(
-            cls,
-            actor_pool_config: ActorPoolConfig,
-            process_index: int,
-            start_method: str = None):
+        cls,
+        actor_pool_config: ActorPoolConfig,
+        process_index: int,
+        start_method: str = None,
+    ):
         status_queue = multiprocessing.Queue()
         return asyncio.create_task(
-            cls._create_sub_pool(actor_pool_config, process_index, status_queue))
+            cls._create_sub_pool(actor_pool_config, process_index, status_queue)
+        )
 
     @classmethod
-    async def wait_sub_pools_ready(cls,
-                                   create_pool_tasks: List[asyncio.Task]):
+    async def wait_sub_pools_ready(cls, create_pool_tasks: List[asyncio.Task]):
         return [await t for t in create_pool_tasks]
 
     @classmethod
     async def _create_sub_pool(
-            cls,
-            actor_config: ActorPoolConfig,
-            process_index: int,
-            status_queue: multiprocessing.Queue):
-        pool = await TestSubActorPool.create({
-            'actor_pool_config': actor_config,
-            'process_index': process_index
-        })
+        cls,
+        actor_config: ActorPoolConfig,
+        process_index: int,
+        status_queue: multiprocessing.Queue,
+    ):
+        pool = await TestSubActorPool.create(
+            {"actor_pool_config": actor_config, "process_index": process_index}
+        )
         await pool.start()
         status_queue.put(SubpoolStatus(0))
         await pool.join()
 
-    async def kill_sub_pool(self, process: multiprocessing.Process,
-                            force: bool = False):
+    async def kill_sub_pool(
+        self, process: multiprocessing.Process, force: bool = False
+    ):
         process.cancel()
 
     async def is_sub_pool_alive(self, process: multiprocessing.Process):
@@ -77,10 +81,11 @@ class TestSubActorPool(SubActorPool):
     async def create(cls, config: Dict) -> ActorPoolType:
         kw = dict()
         cls._parse_config(config, kw)
-        process_index: int = kw['process_index']
-        actor_pool_config = kw['config']
-        external_addresses = \
-            actor_pool_config.get_pool_config(process_index)['external_address']
+        process_index: int = kw["process_index"]
+        actor_pool_config = kw["config"]
+        external_addresses = actor_pool_config.get_pool_config(process_index)[
+            "external_address"
+        ]
 
         def handle_channel(channel):
             return pool.on_new_channel(channel)
@@ -90,11 +95,11 @@ class TestSubActorPool(SubActorPool):
         for addr in set(external_addresses + [gen_local_address(process_index)]):
             server_type = get_server_type(addr)
             task = asyncio.create_task(
-                server_type.create(dict(address=addr,
-                                        handle_channel=handle_channel)))
+                server_type.create(dict(address=addr, handle_channel=handle_channel))
+            )
             create_server_tasks.append(task)
         await asyncio.gather(*create_server_tasks)
-        kw['servers'] = [f.result() for f in create_server_tasks]
+        kw["servers"] = [f.result() for f in create_server_tasks]
 
         # create pool
         pool = cls(**kw)
@@ -102,6 +107,7 @@ class TestSubActorPool(SubActorPool):
 
     async def stop(self):
         # do not close dummy server
-        self._servers = [s for s in self._servers[:-1]
-                         if not isinstance(s, DummyServer)]
+        self._servers = [
+            s for s in self._servers[:-1] if not isinstance(s, DummyServer)
+        ]
         await super().stop()

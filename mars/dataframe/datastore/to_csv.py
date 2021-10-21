@@ -21,8 +21,16 @@ from ... import opcodes as OperandDef
 from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage
 from ...lib.filesystem import open_file
-from ...serialization.serializables import KeyField, AnyField, StringField, ListField, \
-    BoolField, Int32Field, Int64Field, DictField
+from ...serialization.serializables import (
+    KeyField,
+    AnyField,
+    StringField,
+    ListField,
+    BoolField,
+    Int32Field,
+    Int64Field,
+    DictField,
+)
 from ...tensor.core import TensorOrder
 from ...tensor.operands import TensorOperand, TensorOperandMixin
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -32,43 +40,81 @@ from ..utils import parse_index
 class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.TO_CSV
 
-    _input = KeyField('input')
-    _path = AnyField('path')
-    _sep = StringField('sep')
-    _na_rep = StringField('na_rep')
-    _float_format = StringField('float_format')
-    _columns = ListField('columns')
-    _header = AnyField('header')
-    _index = BoolField('index')
-    _index_label = AnyField('index_label')
-    _mode = StringField('mode')
-    _encoding = StringField('encoding')
-    _compression = AnyField('compression')
-    _quoting = Int32Field('quoting')
-    _quotechar = StringField('quotechar')
-    _line_terminator = StringField('line_terminator')
-    _chunksize = Int64Field('chunksize')
-    _date_format = StringField('date_format')
-    _doublequote = BoolField('doublequote')
-    _escapechar = StringField('escapechar')
-    _decimal = StringField('decimal')
-    _storage_options = DictField('storage_options')
+    _input = KeyField("input")
+    _path = AnyField("path")
+    _sep = StringField("sep")
+    _na_rep = StringField("na_rep")
+    _float_format = StringField("float_format")
+    _columns = ListField("columns")
+    _header = AnyField("header")
+    _index = BoolField("index")
+    _index_label = AnyField("index_label")
+    _mode = StringField("mode")
+    _encoding = StringField("encoding")
+    _compression = AnyField("compression")
+    _quoting = Int32Field("quoting")
+    _quotechar = StringField("quotechar")
+    _line_terminator = StringField("line_terminator")
+    _chunksize = Int64Field("chunksize")
+    _date_format = StringField("date_format")
+    _doublequote = BoolField("doublequote")
+    _escapechar = StringField("escapechar")
+    _decimal = StringField("decimal")
+    _storage_options = DictField("storage_options")
     # for chunk
-    _output_stat = BoolField('output_stat')
+    _output_stat = BoolField("output_stat")
 
-    def __init__(self, path=None, sep=None, na_rep=None, float_format=None,
-                 columns=None, header=None, index=None, index_label=None,
-                 mode=None, encoding=None, compression=None, quoting=None,
-                 quotechar=None, line_terminator=None, chunksize=None, date_format=None,
-                 doublequote=None, escapechar=None, decimal=None, output_stat=None,
-                 storage_options=None, output_types=None, **kw):
-        super().__init__(_path=path, _sep=sep, _na_rep=na_rep, _float_format=float_format,
-                         _columns=columns, _header=header, _index=index, _index_label=index_label,
-                         _mode=mode, _encoding=encoding, _compression=compression, _quoting=quoting,
-                         _quotechar=quotechar, _line_terminator=line_terminator, _chunksize=chunksize,
-                         _date_format=date_format, _doublequote=doublequote,
-                         _escapechar=escapechar, _decimal=decimal, _output_stat=output_stat,
-                         _storage_options=storage_options, _output_types=output_types, **kw)
+    def __init__(
+        self,
+        path=None,
+        sep=None,
+        na_rep=None,
+        float_format=None,
+        columns=None,
+        header=None,
+        index=None,
+        index_label=None,
+        mode=None,
+        encoding=None,
+        compression=None,
+        quoting=None,
+        quotechar=None,
+        line_terminator=None,
+        chunksize=None,
+        date_format=None,
+        doublequote=None,
+        escapechar=None,
+        decimal=None,
+        output_stat=None,
+        storage_options=None,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _path=path,
+            _sep=sep,
+            _na_rep=na_rep,
+            _float_format=float_format,
+            _columns=columns,
+            _header=header,
+            _index=index,
+            _index_label=index_label,
+            _mode=mode,
+            _encoding=encoding,
+            _compression=compression,
+            _quoting=quoting,
+            _quotechar=quotechar,
+            _line_terminator=line_terminator,
+            _chunksize=chunksize,
+            _date_format=date_format,
+            _doublequote=doublequote,
+            _escapechar=escapechar,
+            _decimal=decimal,
+            _output_stat=output_stat,
+            _storage_options=storage_options,
+            _output_types=output_types,
+            **kw
+        )
 
     @property
     def input(self):
@@ -157,7 +203,7 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
     @property
     def one_file(self):
         # if wildcard in path, write csv into multiple files
-        return '*' not in self._path
+        return "*" not in self._path
 
     @property
     def output_stat(self):
@@ -172,7 +218,7 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
         self._input = self._inputs[0]
 
     @classmethod
-    def tile(cls, op: 'DataFrameToCSV'):
+    def tile(cls, op: "DataFrameToCSV"):
         in_df = op.input
         out_df = op.outputs[0]
 
@@ -188,37 +234,46 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
             if not one_file:
                 index_value = parse_index(chunk.index_value.to_pandas()[:0], chunk)
                 if chunk.ndim == 2:
-                    out_chunk = chunk_op.new_chunk([chunk], shape=(0, 0),
-                                                   index_value=index_value,
-                                                   columns_value=out_df.columns_value,
-                                                   dtypes=out_df.dtypes,
-                                                   index=chunk.index)
+                    out_chunk = chunk_op.new_chunk(
+                        [chunk],
+                        shape=(0, 0),
+                        index_value=index_value,
+                        columns_value=out_df.columns_value,
+                        dtypes=out_df.dtypes,
+                        index=chunk.index,
+                    )
                 else:
-                    out_chunk = chunk_op.new_chunk([chunk], shape=(0,),
-                                                   index_value=index_value,
-                                                   dtype=out_df.dtype,
-                                                   index=chunk.index)
+                    out_chunk = chunk_op.new_chunk(
+                        [chunk],
+                        shape=(0,),
+                        index_value=index_value,
+                        dtype=out_df.dtype,
+                        index=chunk.index,
+                    )
                 out_chunks[0].append(out_chunk)
             else:
                 chunk_op._output_stat = True
                 chunk_op.stage = OperandStage.map
                 chunk_op.output_types = [OutputType.scalar] * 2
                 # bytes of csv
-                kws = [{
-                    'shape': (),
-                    'dtype': np.dtype(np.str_),
-                    'index': chunk.index,
-                    'order': TensorOrder.C_ORDER,
-                    'output_type': OutputType.scalar,
-                    'type': 'csv',
-                }, {
-                    'shape': (),
-                    'dtype': np.dtype(np.intp),
-                    'index': chunk.index,
-                    'order': TensorOrder.C_ORDER,
-                    'output_type': OutputType.scalar,
-                    'type': 'stat',
-                }]
+                kws = [
+                    {
+                        "shape": (),
+                        "dtype": np.dtype(np.str_),
+                        "index": chunk.index,
+                        "order": TensorOrder.C_ORDER,
+                        "output_type": OutputType.scalar,
+                        "type": "csv",
+                    },
+                    {
+                        "shape": (),
+                        "dtype": np.dtype(np.intp),
+                        "index": chunk.index,
+                        "order": TensorOrder.C_ORDER,
+                        "output_type": OutputType.scalar,
+                        "type": "stat",
+                    },
+                ]
                 chunks = chunk_op.new_chunks([chunk], kws=kws, output_limit=len(kws))
                 out_chunks[0].append(chunks[0])
                 out_chunks[1].append(chunks[1])
@@ -226,54 +281,96 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
         if not one_file:
             out_chunks = out_chunks[0]
         else:
-            stat_chunk = DataFrameToCSVStat(path=op.path, dtype=np.dtype(np.int64),
-                                            storage_options=op.storage_options).new_chunk(
-                out_chunks[1], shape=(len(out_chunks[0]),), order=TensorOrder.C_ORDER)
+            stat_chunk = DataFrameToCSVStat(
+                path=op.path,
+                dtype=np.dtype(np.int64),
+                storage_options=op.storage_options,
+            ).new_chunk(
+                out_chunks[1], shape=(len(out_chunks[0]),), order=TensorOrder.C_ORDER
+            )
             new_out_chunks = []
             for c in out_chunks[0]:
-                op = DataFrameToCSV(stage=OperandStage.agg, path=op.path,
-                                    storage_options=op.storage_options,
-                                    output_types=op.output_types)
+                op = DataFrameToCSV(
+                    stage=OperandStage.agg,
+                    path=op.path,
+                    storage_options=op.storage_options,
+                    output_types=op.output_types,
+                )
                 if out_df.ndim == 2:
                     out_chunk = op.new_chunk(
-                        [c, stat_chunk], shape=(0, 0), dtypes=out_df.dtypes,
+                        [c, stat_chunk],
+                        shape=(0, 0),
+                        dtypes=out_df.dtypes,
                         index_value=out_df.index_value,
                         columns_value=out_df.columns_value,
-                        index=c.index)
+                        index=c.index,
+                    )
                 else:
                     out_chunk = op.new_chunk(
-                        [c, stat_chunk], shape=(0,), dtype=out_df.dtype,
-                        index_value=out_df.index_value, index=c.index)
+                        [c, stat_chunk],
+                        shape=(0,),
+                        dtype=out_df.dtype,
+                        index_value=out_df.index_value,
+                        index=c.index,
+                    )
                 new_out_chunks.append(out_chunk)
             out_chunks = new_out_chunks
 
         new_op = op.copy()
         params = out_df.params.copy()
         if out_df.ndim == 2:
-            params.update(dict(chunks=out_chunks, nsplits=((0,) * in_df.chunk_shape[0], (0,))))
+            params.update(
+                dict(chunks=out_chunks, nsplits=((0,) * in_df.chunk_shape[0], (0,)))
+            )
         else:
-            params.update(dict(chunks=out_chunks, nsplits=((0,) * in_df.chunk_shape[0],)))
+            params.update(
+                dict(chunks=out_chunks, nsplits=((0,) * in_df.chunk_shape[0],))
+            )
         return new_op.new_tileables([in_df], **params)
 
     def __call__(self, df):
         index_value = parse_index(df.index_value.to_pandas()[:0], df)
         if df.ndim == 2:
-            columns_value = parse_index(df.columns_value.to_pandas()[:0], store_data=True)
-            return self.new_dataframe([df], shape=(0, 0), dtypes=df.dtypes[:0],
-                                      index_value=index_value, columns_value=columns_value)
+            columns_value = parse_index(
+                df.columns_value.to_pandas()[:0], store_data=True
+            )
+            return self.new_dataframe(
+                [df],
+                shape=(0, 0),
+                dtypes=df.dtypes[:0],
+                index_value=index_value,
+                columns_value=columns_value,
+            )
         else:
-            return self.new_series([df], shape=(0,), dtype=df.dtype, index_value=index_value)
+            return self.new_series(
+                [df], shape=(0,), dtype=df.dtype, index_value=index_value
+            )
 
     @classmethod
     def _to_csv(cls, op, df, path, header=None):
         if header is None:
             header = op.header
-        df.to_csv(path, sep=op.sep, na_rep=op.na_rep, float_format=op.float_format,
-                  columns=op.columns, header=header, index=op.index, index_label=op.index_label,
-                  mode=op.mode, encoding=op.encoding, compression=op.compression, quoting=op.quoting,
-                  quotechar=op.quotechar, line_terminator=op.line_terminator, chunksize=op.chunksize,
-                  date_format=op.date_format, doublequote=op.doublequote, escapechar=op.escapechar,
-                  decimal=op.decimal)
+        df.to_csv(
+            path,
+            sep=op.sep,
+            na_rep=op.na_rep,
+            float_format=op.float_format,
+            columns=op.columns,
+            header=header,
+            index=op.index,
+            index_label=op.index_label,
+            mode=op.mode,
+            encoding=op.encoding,
+            compression=op.compression,
+            quoting=op.quoting,
+            quotechar=op.quotechar,
+            line_terminator=op.line_terminator,
+            chunksize=op.chunksize,
+            date_format=op.date_format,
+            doublequote=op.doublequote,
+            escapechar=op.escapechar,
+            decimal=op.decimal,
+        )
 
     @classmethod
     def _execute_map(cls, ctx, op):
@@ -285,7 +382,7 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
         # do not output header if index of chunk > 0
         cls._to_csv(op, df, sio, header=header)
 
-        ret = sio.getvalue().encode(op.encoding or 'utf-8')
+        ret = sio.getvalue().encode(op.encoding or "utf-8")
         ctx[op.outputs[0].key] = ret
         ctx[op.outputs[1].key] = len(ret)
 
@@ -299,17 +396,19 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
         offset_start = offsets[i]
 
         # write csv bytes into file
-        with open_file(path, mode='r+b', storage_options=op.storage_options) as f:
+        with open_file(path, mode="r+b", storage_options=op.storage_options) as f:
             f.seek(offset_start)
             f.write(csv_bytes)
 
-        ctx[out.key] = pd.DataFrame() if out.ndim == 2 else pd.Series([], dtype=out.dtype)
+        ctx[out.key] = (
+            pd.DataFrame() if out.ndim == 2 else pd.Series([], dtype=out.dtype)
+        )
 
     @classmethod
     def _get_path(cls, path, i):
-        if '*' not in path:
+        if "*" not in path:
             return path
-        return path.replace('*', str(i))
+        return path.replace("*", str(i))
 
     @classmethod
     def execute(cls, ctx, op):
@@ -322,20 +421,23 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
             df = ctx[op.input.key]
             out = op.outputs[0]
             path = cls._get_path(op.path, op.outputs[0].index[0])
-            with open_file(path, mode='w', storage_options=op.storage_options) as f:
+            with open_file(path, mode="w", storage_options=op.storage_options) as f:
                 cls._to_csv(op, df, f)
-            ctx[out.key] = pd.DataFrame() if out.ndim == 2 else pd.Series([], dtype=out.dtype)
+            ctx[out.key] = (
+                pd.DataFrame() if out.ndim == 2 else pd.Series([], dtype=out.dtype)
+            )
 
 
 class DataFrameToCSVStat(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.TO_CSV_STAT
 
-    _path = AnyField('path')
-    _storage_options = DictField('storage_options')
+    _path = AnyField("path")
+    _storage_options = DictField("storage_options")
 
     def __init__(self, path=None, storage_options=None, dtype=None, **kw):
-        super().__init__(_path=path, _storage_options=storage_options,
-                         _dtype=dtype, **kw)
+        super().__init__(
+            _path=path, _storage_options=storage_options, _dtype=dtype, **kw
+        )
 
     @property
     def path(self):
@@ -352,21 +454,40 @@ class DataFrameToCSVStat(TensorOperand, TensorOperandMixin):
         offsets = np.cumsum([0] + sizes)[:-1]
 
         # write NULL bytes into file
-        with open_file(op.path, mode='wb', storage_options=op.storage_options) as f:
+        with open_file(op.path, mode="wb", storage_options=op.storage_options) as f:
             rest = total_bytes
             while rest > 0:
                 # at most 4M
                 write_bytes = min(4 * 1024 ** 2, rest)
-                f.write(b'\00' * write_bytes)
+                f.write(b"\00" * write_bytes)
                 rest -= write_bytes
 
         ctx[op.outputs[0].key] = offsets
 
 
-def to_csv(df, path, sep=',', na_rep='', float_format=None, columns=None, header=True,
-           index=True, index_label=None, mode='w', encoding=None, compression='infer',
-           quoting=None, quotechar='"', line_terminator=None, chunksize=None, date_format=None,
-           doublequote=True, escapechar=None, decimal='.', storage_options=None):
+def to_csv(
+    df,
+    path,
+    sep=",",
+    na_rep="",
+    float_format=None,
+    columns=None,
+    header=True,
+    index=True,
+    index_label=None,
+    mode="w",
+    encoding=None,
+    compression="infer",
+    quoting=None,
+    quotechar='"',
+    line_terminator=None,
+    chunksize=None,
+    date_format=None,
+    doublequote=True,
+    escapechar=None,
+    decimal=".",
+    storage_options=None,
+):
     r"""
     Write object to a comma-separated values (csv) file.
 
@@ -453,12 +574,28 @@ def to_csv(df, path, sep=',', na_rep='', float_format=None, columns=None, header
     >>> df.to_csv('out.csv', index=False).execute()
     """
 
-    if mode != 'w':  # pragma: no cover
+    if mode != "w":  # pragma: no cover
         raise NotImplementedError("only support to_csv with mode 'w' for now")
-    op = DataFrameToCSV(path=path, sep=sep, na_rep=na_rep, float_format=float_format,
-                        columns=columns, header=header, index=index, index_label=index_label,
-                        mode=mode, encoding=encoding, compression=compression, quoting=quoting,
-                        quotechar=quotechar, line_terminator=line_terminator, chunksize=chunksize,
-                        date_format=date_format, doublequote=doublequote, escapechar=escapechar,
-                        decimal=decimal, storage_options=storage_options)
+    op = DataFrameToCSV(
+        path=path,
+        sep=sep,
+        na_rep=na_rep,
+        float_format=float_format,
+        columns=columns,
+        header=header,
+        index=index,
+        index_label=index_label,
+        mode=mode,
+        encoding=encoding,
+        compression=compression,
+        quoting=quoting,
+        quotechar=quotechar,
+        line_terminator=line_terminator,
+        chunksize=chunksize,
+        date_format=date_format,
+        doublequote=doublequote,
+        escapechar=escapechar,
+        decimal=decimal,
+        storage_options=storage_options,
+    )
     return op(df)

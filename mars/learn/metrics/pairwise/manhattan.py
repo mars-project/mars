@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import numpy as np
+
 try:
-    from sklearn.metrics.pairwise import manhattan_distances as sklearn_manhattan_distances
+    from sklearn.metrics.pairwise import (
+        manhattan_distances as sklearn_manhattan_distances,
+    )
 except ImportError:  # pragma: no cover
     sklearn_manhattan_distances = None
 
@@ -32,14 +35,18 @@ from .core import PairwiseDistances
 class ManhattanDistances(PairwiseDistances):
     _op_type_ = OperandDef.PAIRWISE_MANHATTAN_DISTANCES
 
-    _x = KeyField('x')
-    _y = KeyField('y')
-    _sum_over_features = BoolField('sum_over_features')
+    _x = KeyField("x")
+    _y = KeyField("y")
+    _sum_over_features = BoolField("sum_over_features")
 
-    def __init__(self, x=None, y=None, sum_over_features=None,
-                 use_sklearn=None, **kw):
-        super().__init__(_x=x, _y=y, _sum_over_features=sum_over_features,
-                         _use_sklearn=use_sklearn, **kw)
+    def __init__(self, x=None, y=None, sum_over_features=None, use_sklearn=None, **kw):
+        super().__init__(
+            _x=x,
+            _y=y,
+            _sum_over_features=sum_over_features,
+            _use_sklearn=use_sklearn,
+            **kw,
+        )
 
     @property
     def x(self):
@@ -64,16 +71,17 @@ class ManhattanDistances(PairwiseDistances):
             self._y = Y
 
         if (X.issparse() or Y.issparse()) and not self._sum_over_features:
-            raise TypeError(f"sum_over_features={self._sum_over_features} not supported"
-                            " for sparse matrices")
+            raise TypeError(
+                f"sum_over_features={self._sum_over_features} not supported"
+                " for sparse matrices"
+            )
 
         if not self._sum_over_features:
             shape = (X.shape[0] * Y.shape[0], X.shape[1])
         else:
             shape = (X.shape[0], Y.shape[0])
 
-        return self.new_tensor([X, Y], shape=shape,
-                               order=TensorOrder.C_ORDER)
+        return self.new_tensor([X, Y], shape=shape, order=TensorOrder.C_ORDER)
 
     @classmethod
     def tile(cls, op):
@@ -88,7 +96,7 @@ class ManhattanDistances(PairwiseDistances):
         elif op.sum_over_features:
             # if x, y are not sparse and `sum_over_features` is True
             # just use cdist
-            return [(yield from recursive_tile(cdist(x, y, 'cityblock')))]
+            return [(yield from recursive_tile(cdist(x, y, "cityblock")))]
         else:
             d = x[:, np.newaxis, :] - y[np.newaxis, :, :]
             d = mt_abs(d)
@@ -98,18 +106,22 @@ class ManhattanDistances(PairwiseDistances):
     @classmethod
     def execute(cls, ctx, op):
         (x, y), device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+        )
         out = op.outputs[0]
 
         with device(device_id):
             if sklearn_manhattan_distances is not None:
                 ctx[out.key] = sklearn_manhattan_distances(
-                    ensure_own_data(x), ensure_own_data(y),
-                    sum_over_features=op.sum_over_features)
+                    ensure_own_data(x),
+                    ensure_own_data(y),
+                    sum_over_features=op.sum_over_features,
+                )
             else:  # pragma: no cover
                 # we cannot support sparse
-                raise NotImplementedError('cannot support calculate manhattan '
-                                          'distances on GPU')
+                raise NotImplementedError(
+                    "cannot support calculate manhattan " "distances on GPU"
+                )
 
 
 def manhattan_distances(X, Y=None, sum_over_features=True):
@@ -162,6 +174,7 @@ def manhattan_distances(X, Y=None, sum_over_features=True):
     array([[1., 1.],
            [1., 1.]])
     """
-    op = ManhattanDistances(x=X, y=Y, sum_over_features=sum_over_features,
-                            dtype=np.dtype(np.float64))
+    op = ManhattanDistances(
+        x=X, y=Y, sum_over_features=sum_over_features, dtype=np.dtype(np.float64)
+    )
     return op(X, Y=Y)

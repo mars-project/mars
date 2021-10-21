@@ -17,7 +17,7 @@ from ..operands import TensorOperand, TensorOperandMixin
 
 
 class TensorDeviceConversionBase(TensorOperand, TensorOperandMixin):
-    _input = KeyField('input')
+    _input = KeyField("input")
 
     @property
     def input(self):
@@ -28,8 +28,9 @@ class TensorDeviceConversionBase(TensorOperand, TensorOperandMixin):
         self._input = inputs[0]
 
     def __call__(self, tensor):
-        return self.new_tensor([tensor], shape=tensor.shape, dtype=tensor.dtype,
-                               order=tensor.order)
+        return self.new_tensor(
+            [tensor], shape=tensor.shape, dtype=tensor.dtype, order=tensor.order
+        )
 
     @classmethod
     def tile(cls, op):
@@ -41,5 +42,6 @@ class TensorDeviceConversionBase(TensorOperand, TensorOperandMixin):
 
         new_op = op.copy().reset_key()
         out = op.outputs[0]
-        return new_op.new_tensors(op.inputs, nsplits=op.input.nsplits,
-                                  chunks=out_chunks, **out.params)
+        return new_op.new_tensors(
+            op.inputs, nsplits=op.input.nsplits, chunks=out_chunks, **out.params
+        )

@@ -24,7 +24,7 @@ from .tileables import TileableData
 class ObjectChunkData(ChunkData):
     # chunk whose data could be any serializable
     __slots__ = ()
-    type_name = 'Object'
+    type_name = "Object"
 
     def __init__(self, op=None, index=None, **kw):
         super().__init__(_op=op, _index=index, **kw)
@@ -33,15 +33,15 @@ class ObjectChunkData(ChunkData):
     def params(self) -> Dict[str, Any]:
         # params return the properties which useful to rebuild a new chunk
         return {
-            'index': self.index,
+            "index": self.index,
         }
 
     @params.setter
     def params(self, new_params: Dict[str, Any]):
         params = new_params.copy()
-        params.pop('index', None)  # index not needed to update
+        params.pop("index", None)  # index not needed to update
         if params:  # pragma: no cover
-            raise TypeError(f'Unknown params: {list(params)}')
+            raise TypeError(f"Unknown params: {list(params)}")
 
     @classmethod
     def get_params_from_data(cls, data: Any) -> Dict[str, Any]:
@@ -51,23 +51,26 @@ class ObjectChunkData(ChunkData):
 class ObjectChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (ObjectChunkData,)
-    type_name = 'Object'
+    type_name = "Object"
 
 
 class ObjectData(TileableData, _ToObjectMixin):
     __slots__ = ()
-    type_name = 'Object'
+    type_name = "Object"
 
     # optional fields
-    _chunks = ListField('chunks', FieldTypes.reference(ObjectChunkData),
-                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
-                        on_deserialize=lambda x: [ObjectChunk(it) for it in x] if x is not None else x)
+    _chunks = ListField(
+        "chunks",
+        FieldTypes.reference(ObjectChunkData),
+        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+        on_deserialize=lambda x: [ObjectChunk(it) for it in x] if x is not None else x,
+    )
 
     def __init__(self, op=None, nsplits=None, chunks=None, **kw):
         super().__init__(_op=op, _nsplits=nsplits, _chunks=chunks, **kw)
 
     def __repr__(self):
-        return f'Object <op={type(self.op).__name__}, key={self.key}>'
+        return f"Object <op={type(self.op).__name__}, key={self.key}>"
 
     @property
     def params(self):
@@ -78,7 +81,7 @@ class ObjectData(TileableData, _ToObjectMixin):
     def params(self, new_params: Dict[str, Any]):
         params = new_params.copy()
         if params:  # pragma: no cover
-            raise TypeError(f'Unknown params: {list(params)}')
+            raise TypeError(f"Unknown params: {list(params)}")
 
     def refresh_params(self):
         # refresh params when chunks updated
@@ -89,7 +92,7 @@ class ObjectData(TileableData, _ToObjectMixin):
 class Object(Entity, _ToObjectMixin):
     __slots__ = ()
     _allow_data_type_ = (ObjectData,)
-    type_name = 'Object'
+    type_name = "Object"
 
 
 OBJECT_TYPE = (Object, ObjectData)

@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameTan(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.TAN
-    _func_name = 'tan'
+    _func_name = "tan"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorTan
+
         return TensorTan

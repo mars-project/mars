@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorSin(TensorUnaryOp):
     _op_type_ = OperandDef.SIN
-    _func_name = 'sin'
+    _func_name = "sin"
 
 
 @infer_dtype(np.sin)

@@ -16,8 +16,17 @@
 
 import numpy as np
 
-from .. import ones, add, swapaxes, moveaxis, atleast_1d, atleast_2d, \
-    atleast_3d, squeeze, tensor
+from .. import (
+    ones,
+    add,
+    swapaxes,
+    moveaxis,
+    atleast_1d,
+    atleast_2d,
+    atleast_3d,
+    squeeze,
+    tensor,
+)
 
 
 def test_array_function(setup):
@@ -178,11 +187,11 @@ def test_view_data_on_reshape(setup):
 
     data = np.random.RandomState(0).random((4, 5))
     a2 = tensor(data.copy(), chunk_size=2)
-    b2 = a2.reshape((5, 4), order='F')
+    b2 = a2.reshape((5, 4), order="F")
     b2[:3] = 10
 
     npa = data.copy()
-    npb = npa.reshape((5, 4), order='F')
+    npb = npa.reshape((5, 4), order="F")
     npb[:3] = 10
 
     b2_result = b2.execute()
@@ -261,15 +270,15 @@ def test_flat(setup):
     data = np.random.rand(10, 20)
     a = tensor(data, chunk_size=4)
     fl = a.flat
-    fl[1: 10] = 10
-    b = fl[10: 20]
-    b[0: 4] = 20
+    fl[1:10] = 10
+    b = fl[10:20]
+    b[0:4] = 20
 
     npa = data.copy()
     npfl = npa.flat
-    npfl[1: 10] = 10
-    npb = npfl[10: 20]
-    npb[0: 4] = 20
+    npfl[1:10] = 10
+    npb = npfl[10:20]
+    npb[0:4] = 20
 
     np.testing.assert_array_equal(b.execute(), npb)
     np.testing.assert_array_equal(a.execute(), npa)

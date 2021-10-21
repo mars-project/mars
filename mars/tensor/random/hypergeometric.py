@@ -23,14 +23,14 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorHypergeometric(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_ngood', '_nbad', '_nsample']
+    _input_fields_ = ["_ngood", "_nbad", "_nsample"]
     _op_type_ = OperandDef.RAND_HYPERGEOMETRIC
 
-    _fields_ = '_ngood', '_nbad', '_nsample', '_size'
-    _ngood = AnyField('ngood')
-    _nbad = AnyField('nbad')
-    _nsample = AnyField('nsample')
-    _func_name = 'hypergeometric'
+    _fields_ = "_ngood", "_nbad", "_nsample", "_size"
+    _ngood = AnyField("ngood")
+    _nbad = AnyField("nbad")
+    _nsample = AnyField("nsample")
+    _func_name = "hypergeometric"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -52,7 +52,9 @@ class TensorHypergeometric(TensorDistribution, TensorRandomOperandMixin):
         return self.new_tensor([ngood, nbad, nsample], None, raw_chunk_size=chunk_size)
 
 
-def hypergeometric(random_state, ngood, nbad, nsample, size=None, chunk_size=None, gpu=None, dtype=None):
+def hypergeometric(
+    random_state, ngood, nbad, nsample, size=None, chunk_size=None, gpu=None, dtype=None
+):
     r"""
     Draw samples from a Hypergeometric distribution.
 
@@ -146,8 +148,16 @@ def hypergeometric(random_state, ngood, nbad, nsample, size=None, chunk_size=Non
     #   answer = 0.003 ... pretty unlikely!
     """
     if dtype is None:
-        dtype = np.random.RandomState().hypergeometric(
-            handle_array(ngood), handle_array(nbad), handle_array(nsample), size=(0,)).dtype
+        dtype = (
+            np.random.RandomState()
+            .hypergeometric(
+                handle_array(ngood),
+                handle_array(nbad),
+                handle_array(nsample),
+                size=(0,),
+            )
+            .dtype
+        )
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorHypergeometric(seed=seed, size=size, gpu=gpu, dtype=dtype)

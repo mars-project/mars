@@ -25,63 +25,116 @@ import cloudpickle
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core.context import Context
-from ...serialization.serializables import StringField, AnyField, BoolField, ListField, \
-    Int64Field, Float64Field, BytesField
+from ...serialization.serializables import (
+    StringField,
+    AnyField,
+    BoolField,
+    ListField,
+    Int64Field,
+    Float64Field,
+    BytesField,
+)
 from ...tensor.utils import normalize_chunk_sizes
 from ...typing import OperandType, TileableType
 from ..arrays import ArrowStringDtype
 from ..operands import OutputType
 from ..utils import parse_index, create_sa_connection, to_arrow_dtypes
-from .core import IncrementalIndexDatasource, ColumnPruneSupportedDataSourceMixin, \
-    IncrementalIndexDataSourceMixin
+from .core import (
+    IncrementalIndexDatasource,
+    ColumnPruneSupportedDataSourceMixin,
+    IncrementalIndexDataSourceMixin,
+)
 
 
-class DataFrameReadSQL(IncrementalIndexDatasource,
-                       ColumnPruneSupportedDataSourceMixin,
-                       IncrementalIndexDataSourceMixin):
+class DataFrameReadSQL(
+    IncrementalIndexDatasource,
+    ColumnPruneSupportedDataSourceMixin,
+    IncrementalIndexDataSourceMixin,
+):
     _op_type_ = OperandDef.READ_SQL
 
-    _table_or_sql = AnyField('table_or_sql')
-    _selectable = BytesField('selectable', on_serialize=pickle.dumps,
-                             on_deserialize=pickle.loads)
-    _con = AnyField('con')
-    _schema = StringField('schema')
-    _index_col = AnyField('index_col')
-    _coerce_float = BoolField('coerce_float')
-    _parse_dates = AnyField('parse_dates')
-    _columns = ListField('columns')
-    _engine_kwargs = BytesField('engine_kwargs', on_serialize=cloudpickle.dumps,
-                                on_deserialize=cloudpickle.loads)
-    _row_memory_usage = Float64Field('row_memory_usage')
-    _method = StringField('method')
-    _incremental_index = BoolField('incremental_index')
-    _use_arrow_dtype = BoolField('use_arrow_dtype')
+    _table_or_sql = AnyField("table_or_sql")
+    _selectable = BytesField(
+        "selectable", on_serialize=pickle.dumps, on_deserialize=pickle.loads
+    )
+    _con = AnyField("con")
+    _schema = StringField("schema")
+    _index_col = AnyField("index_col")
+    _coerce_float = BoolField("coerce_float")
+    _parse_dates = AnyField("parse_dates")
+    _columns = ListField("columns")
+    _engine_kwargs = BytesField(
+        "engine_kwargs",
+        on_serialize=cloudpickle.dumps,
+        on_deserialize=cloudpickle.loads,
+    )
+    _row_memory_usage = Float64Field("row_memory_usage")
+    _method = StringField("method")
+    _incremental_index = BoolField("incremental_index")
+    _use_arrow_dtype = BoolField("use_arrow_dtype")
     # for chunks
-    _offset = Int64Field('offset')
-    _partition_col = StringField('partition_col')
-    _num_partitions = Int64Field('num_partitions')
-    _low_limit = AnyField('low_limit')
-    _high_limit = AnyField('high_limit')
-    _left_end = BoolField('left_end')
-    _right_end = BoolField('right_end')
-    _nrows = Int64Field('nrows')
+    _offset = Int64Field("offset")
+    _partition_col = StringField("partition_col")
+    _num_partitions = Int64Field("num_partitions")
+    _low_limit = AnyField("low_limit")
+    _high_limit = AnyField("high_limit")
+    _left_end = BoolField("left_end")
+    _right_end = BoolField("right_end")
+    _nrows = Int64Field("nrows")
 
-    def __init__(self, table_or_sql=None, selectable=None, con=None, schema=None,
-                 index_col=None, coerce_float=None, parse_dates=None, columns=None,
-                 engine_kwargs=None, row_memory_usage=None, method=None,
-                 incremental_index=None, use_arrow_dtype=None, offset=None, partition_col=None,
-                 num_partitions=None, low_limit=None, high_limit=None, left_end=None,
-                 right_end=None, nrows=None, output_types=None, gpu=None, **kw):
-        super().__init__(_table_or_sql=table_or_sql, _selectable=selectable, _con=con,
-                         _schema=schema, _index_col=index_col, _coerce_float=coerce_float,
-                         _parse_dates=parse_dates, _columns=columns,
-                         _engine_kwargs=engine_kwargs, _row_memory_usage=row_memory_usage,
-                         _method=method, _incremental_index=incremental_index,
-                         _use_arrow_dtype=use_arrow_dtype, _offset=offset,
-                         _partition_col=partition_col, _num_partitions=num_partitions,
-                         _low_limit=low_limit, _left_end=left_end, _right_end=right_end,
-                         _high_limit=high_limit, _nrows=nrows, _output_types=output_types,
-                         _gpu=gpu, **kw)
+    def __init__(
+        self,
+        table_or_sql=None,
+        selectable=None,
+        con=None,
+        schema=None,
+        index_col=None,
+        coerce_float=None,
+        parse_dates=None,
+        columns=None,
+        engine_kwargs=None,
+        row_memory_usage=None,
+        method=None,
+        incremental_index=None,
+        use_arrow_dtype=None,
+        offset=None,
+        partition_col=None,
+        num_partitions=None,
+        low_limit=None,
+        high_limit=None,
+        left_end=None,
+        right_end=None,
+        nrows=None,
+        output_types=None,
+        gpu=None,
+        **kw,
+    ):
+        super().__init__(
+            _table_or_sql=table_or_sql,
+            _selectable=selectable,
+            _con=con,
+            _schema=schema,
+            _index_col=index_col,
+            _coerce_float=coerce_float,
+            _parse_dates=parse_dates,
+            _columns=columns,
+            _engine_kwargs=engine_kwargs,
+            _row_memory_usage=row_memory_usage,
+            _method=method,
+            _incremental_index=incremental_index,
+            _use_arrow_dtype=use_arrow_dtype,
+            _offset=offset,
+            _partition_col=partition_col,
+            _num_partitions=num_partitions,
+            _low_limit=low_limit,
+            _left_end=left_end,
+            _right_end=right_end,
+            _high_limit=high_limit,
+            _nrows=nrows,
+            _output_types=output_types,
+            _gpu=gpu,
+            **kw,
+        )
         if not self.output_types:
             self._output_types = [OutputType.dataframe]
 
@@ -190,18 +243,29 @@ class DataFrameReadSQL(IncrementalIndexDatasource,
             else:
                 m = sa.MetaData()
                 try:
-                    selectable = sa.Table(self._table_or_sql, m, autoload=True,
-                                          autoload_with=engine_or_conn, schema=self._schema)
+                    selectable = sa.Table(
+                        self._table_or_sql,
+                        m,
+                        autoload=True,
+                        autoload_with=engine_or_conn,
+                        schema=self._schema,
+                    )
                 except SQLAlchemyError:
-                    temp_name_1 = 't1_' + binascii.b2a_hex(uuid.uuid4().bytes).decode()
-                    temp_name_2 = 't2_' + binascii.b2a_hex(uuid.uuid4().bytes).decode()
+                    temp_name_1 = "t1_" + binascii.b2a_hex(uuid.uuid4().bytes).decode()
+                    temp_name_2 = "t2_" + binascii.b2a_hex(uuid.uuid4().bytes).decode()
                     if columns:
-                        selectable = sql.text(self._table_or_sql).columns(*[sql.column(c) for c in columns]) \
+                        selectable = (
+                            sql.text(self._table_or_sql)
+                            .columns(*[sql.column(c) for c in columns])
                             .alias(temp_name_2)
+                        )
                     else:
                         selectable = sql.select(
-                            '*', from_obj=sql.text(f'({self._table_or_sql}) AS {temp_name_1}')) \
-                            .alias(temp_name_2)
+                            "*",
+                            from_obj=sql.text(
+                                f"({self._table_or_sql}) AS {temp_name_1}"
+                            ),
+                        ).alias(temp_name_2)
                     self._selectable = selectable
         return selectable
 
@@ -210,22 +274,32 @@ class DataFrameReadSQL(IncrementalIndexDatasource,
 
         # fetch test DataFrame
         if columns:
-            query = sql.select([sql.column(c) for c in columns], from_obj=selectable).limit(test_rows)
+            query = sql.select(
+                [sql.column(c) for c in columns], from_obj=selectable
+            ).limit(test_rows)
         else:
             query = sql.select(selectable.columns, from_obj=selectable).limit(test_rows)
-        test_df = pd.read_sql(query, engine_or_conn, index_col=self._index_col,
-                              coerce_float=self._coerce_float,
-                              parse_dates=self._parse_dates)
+        test_df = pd.read_sql(
+            query,
+            engine_or_conn,
+            index_col=self._index_col,
+            coerce_float=self._coerce_float,
+            parse_dates=self._parse_dates,
+        )
         if len(test_df) == 0:
             self._row_memory_usage = None
         else:
-            self._row_memory_usage = \
-                test_df.memory_usage(deep=True, index=True).sum() / len(test_df)
+            self._row_memory_usage = test_df.memory_usage(
+                deep=True, index=True
+            ).sum() / len(test_df)
 
-        if self._method == 'offset':
+        if self._method == "offset":
             # fetch size
-            size = list(engine_or_conn.execute(
-                sql.select([sql.func.count()]).select_from(selectable)))[0][0]
+            size = list(
+                engine_or_conn.execute(
+                    sql.select([sql.func.count()]).select_from(selectable)
+                )
+            )[0][0]
             shape = (size, test_df.shape[1])
         else:
             shape = (np.nan, test_df.shape[1])
@@ -252,7 +326,7 @@ class DataFrameReadSQL(IncrementalIndexDatasource,
                     elif isinstance(col, str):
                         new_index_col.append(col)
                     elif col is not None:
-                        raise TypeError(f'unknown index_col type: {type(col)}')
+                        raise TypeError(f"unknown index_col type: {type(col)}")
                 self._index_col = new_index_col
 
             # process columns
@@ -269,28 +343,40 @@ class DataFrameReadSQL(IncrementalIndexDatasource,
                 collect_cols = self._columns + (self._index_col or [])
             else:
                 collect_cols = []
-            test_df, shape = self._collect_info(con, selectable, collect_cols, test_rows)
+            test_df, shape = self._collect_info(
+                con, selectable, collect_cols, test_rows
+            )
 
             # reconstruct selectable using known column names
             if not collect_cols:
                 self._columns = list(test_df.columns)
                 if self._selectable is not None:
                     self._selectable = None
-                    self._get_selectable(con, columns=self._columns + (self._index_col or []))
+                    self._get_selectable(
+                        con, columns=self._columns + (self._index_col or [])
+                    )
 
-            if self.method == 'partition':
+            if self.method == "partition":
                 if not self.index_col or self.partition_col not in self.index_col:
                     part_frame = test_df
                 else:
                     part_frame = test_df.index.to_frame()
 
-                if not issubclass(part_frame[self.partition_col].dtype.type, (np.number, np.datetime64)):
-                    raise TypeError('Type of partition column should be numeric or datetime, '
-                                    f'now it is {test_df[self.partition_col].dtype}')
+                if not issubclass(
+                    part_frame[self.partition_col].dtype.type,
+                    (np.number, np.datetime64),
+                ):
+                    raise TypeError(
+                        "Type of partition column should be numeric or datetime, "
+                        f"now it is {test_df[self.partition_col].dtype}"
+                    )
 
             if isinstance(test_df.index, pd.RangeIndex):
-                index_value = parse_index(pd.RangeIndex(shape[0] if not np.isnan(shape[0]) else -1),
-                                          str(selectable), self._con)
+                index_value = parse_index(
+                    pd.RangeIndex(shape[0] if not np.isnan(shape[0]) else -1),
+                    str(selectable),
+                    self._con,
+                )
             else:
                 index_value = parse_index(test_df.index)
 
@@ -303,20 +389,27 @@ class DataFrameReadSQL(IncrementalIndexDatasource,
             if use_arrow_dtype:
                 dtypes = to_arrow_dtypes(dtypes, test_df=test_df)
 
-            return self.new_dataframe(None, shape=shape, dtypes=dtypes,
-                                      index_value=index_value,
-                                      columns_value=columns_value,
-                                      raw_chunk_size=chunk_size)
+            return self.new_dataframe(
+                None,
+                shape=shape,
+                dtypes=dtypes,
+                index_value=index_value,
+                columns_value=columns_value,
+                raw_chunk_size=chunk_size,
+            )
 
     @classmethod
-    def _tile_offset(cls, op: 'DataFrameReadSQL'):
+    def _tile_offset(cls, op: "DataFrameReadSQL"):
         df = op.outputs[0]
 
         if op.row_memory_usage is not None:
             # Data selected
             chunk_size = df.extra_params.raw_chunk_size or options.chunk_size
             if chunk_size is None:
-                chunk_size = (int(options.chunk_store_limit / op.row_memory_usage), df.shape[1])
+                chunk_size = (
+                    int(options.chunk_store_limit / op.row_memory_usage),
+                    df.shape[1],
+                )
             row_chunk_sizes = normalize_chunk_sizes(df.shape, chunk_size)[0]
         else:
             # No data selected
@@ -331,30 +424,41 @@ class DataFrameReadSQL(IncrementalIndexDatasource,
             if df.index_value.has_value():
                 # range index
                 index_value = parse_index(
-                    df.index_value.to_pandas()[offset: offsets[i + 1]])
+                    df.index_value.to_pandas()[offset : offsets[i + 1]]
+                )
             else:
-                index_value = parse_index(df.index_value.to_pandas(),
-                                          op.table_or_sql or str(op.selectable), op.con, i, row_size)
-            out_chunk = chunk_op.new_chunk(None, shape=(row_size, df.shape[1]),
-                                           columns_value=df.columns_value,
-                                           index_value=index_value, dtypes=df.dtypes,
-                                           index=(i, 0))
+                index_value = parse_index(
+                    df.index_value.to_pandas(),
+                    op.table_or_sql or str(op.selectable),
+                    op.con,
+                    i,
+                    row_size,
+                )
+            out_chunk = chunk_op.new_chunk(
+                None,
+                shape=(row_size, df.shape[1]),
+                columns_value=df.columns_value,
+                index_value=index_value,
+                dtypes=df.dtypes,
+                index=(i, 0),
+            )
             out_chunks.append(out_chunk)
 
         nsplits = (row_chunk_sizes, (df.shape[1],))
         new_op = op.copy()
-        return new_op.new_dataframes(None, chunks=out_chunks, nsplits=nsplits,
-                                     **df.params)
+        return new_op.new_dataframes(
+            None, chunks=out_chunks, nsplits=nsplits, **df.params
+        )
 
     def _parse_datetime(self, val):
         if isinstance(self.parse_dates, list):
             return pd.to_datetime(val)
         args = self.parse_dates[self.partition_col]
-        args = {'format': args} if isinstance(args, str) else args
+        args = {"format": args} if isinstance(args, str) else args
         return pd.to_datetime(val, **args)
 
     @classmethod
-    def _tile_partition(cls, op: 'DataFrameReadSQL'):
+    def _tile_partition(cls, op: "DataFrameReadSQL"):
         df = op.outputs[0]
 
         selectable = op._get_selectable(None)
@@ -366,7 +470,9 @@ class DataFrameReadSQL(IncrementalIndexDatasource,
             engine = sa.create_engine(op.con, **(op.engine_kwargs or dict()))
             try:
                 part_col = selectable.columns[op.partition_col]
-                range_results = engine.execute(sql.select([sql.func.min(part_col), sql.func.max(part_col)]))
+                range_results = engine.execute(
+                    sql.select([sql.func.min(part_col), sql.func.max(part_col)])
+                )
 
                 op._low_limit, op._high_limit = next(range_results)
                 if op.parse_dates and op.partition_col in op.parse_dates:
@@ -378,7 +484,9 @@ class DataFrameReadSQL(IncrementalIndexDatasource,
         if isinstance(op._low_limit, (datetime.datetime, np.datetime64, pd.Timestamp)):
             seps = pd.date_range(op._low_limit, op._high_limit, op.num_partitions + 1)
         else:
-            seps = np.linspace(op._low_limit, op._high_limit, op.num_partitions + 1, endpoint=True)
+            seps = np.linspace(
+                op._low_limit, op._high_limit, op.num_partitions + 1, endpoint=True
+            )
 
         out_chunks = []
         for i, (start, end) in enumerate(zip(seps, seps[1:])):
@@ -394,40 +502,46 @@ class DataFrameReadSQL(IncrementalIndexDatasource,
                 # range index
                 index_value = parse_index(-1, chunk_op.key, chunk_op.index_value.key)
             else:
-                index_value = parse_index(df.index_value.to_pandas(),
-                                          str(selectable), op.con, i)
-            out_chunk = chunk_op.new_chunk(None, shape=(np.nan, df.shape[1]),
-                                           columns_value=df.columns_value,
-                                           index_value=index_value, dtypes=df.dtypes,
-                                           index=(i, 0))
+                index_value = parse_index(
+                    df.index_value.to_pandas(), str(selectable), op.con, i
+                )
+            out_chunk = chunk_op.new_chunk(
+                None,
+                shape=(np.nan, df.shape[1]),
+                columns_value=df.columns_value,
+                index_value=index_value,
+                dtypes=df.dtypes,
+                index=(i, 0),
+            )
             out_chunks.append(out_chunk)
 
         nsplits = ((np.nan,) * len(out_chunks), (df.shape[1],))
         new_op = op.copy()
-        return new_op.new_dataframes(None, chunks=out_chunks, nsplits=nsplits,
-                                     **df.params)
+        return new_op.new_dataframes(
+            None, chunks=out_chunks, nsplits=nsplits, **df.params
+        )
 
     @classmethod
-    def tile(cls, op: 'DataFrameReadSQL'):
-        if op.method == 'offset':
+    def tile(cls, op: "DataFrameReadSQL"):
+        if op.method == "offset":
             return cls._tile_offset(op)
         else:
             return cls._tile_partition(op)
 
     @classmethod
     def post_tile(cls, op: OperandType, results: List[TileableType]):
-        if op.method != 'offset':
+        if op.method != "offset":
             # method `offset` knows shape of each chunk
             # just skip incremental process
             return super().post_tile(op, results)
 
     @classmethod
-    def execute(cls, ctx, op: 'DataFrameReadSQL'):
+    def execute(cls, ctx, op: "DataFrameReadSQL"):
         import sqlalchemy as sa
 
         def _adapt_datetime(dt):
             if isinstance(dt, np.datetime64):
-                return dt.astype('<M8[ms]').astype(datetime.datetime)
+                return dt.astype("<M8[ms]").astype(datetime.datetime)
             elif isinstance(dt, pd.Timestamp):
                 return dt.to_pydatetime()
             return dt
@@ -450,27 +564,30 @@ class DataFrameReadSQL(IncrementalIndexDatasource,
             op._high_limit = _adapt_datetime(op._high_limit)
 
             query = sa.sql.select(columns)
-            if op.method == 'partition':
+            if op.method == "partition":
                 part_col = selectable.columns[op.partition_col]
                 if op.left_end:
                     query = query.where(part_col < op.high_limit)
                 elif op.right_end:
                     query = query.where(part_col >= op.low_limit)
                 else:
-                    query = query.where((part_col >= op.low_limit) & (part_col < op.high_limit))
+                    query = query.where(
+                        (part_col >= op.low_limit) & (part_col < op.high_limit)
+                    )
 
-            if hasattr(selectable, 'primary_key') and len(selectable.primary_key) > 0:
+            if hasattr(selectable, "primary_key") and len(selectable.primary_key) > 0:
                 # if table has primary key, sort as the order
                 query = query.order_by(*list(selectable.primary_key))
             elif op.index_col:
                 # if no primary key, sort as the index_col
                 query = query.order_by(
-                    *[selectable.columns[col] for col in op.index_col])
+                    *[selectable.columns[col] for col in op.index_col]
+                )
             else:
                 # at last, we sort by all the columns
                 query = query.order_by(*columns)
 
-            if op.method == 'offset':
+            if op.method == "offset":
                 query = query.limit(out.shape[0])
                 if op.offset > 0:
                     query = query.offset(op.offset)
@@ -478,13 +595,17 @@ class DataFrameReadSQL(IncrementalIndexDatasource,
             if op.nrows is not None:
                 query = query.limit(op.nrows)
 
-            df = pd.read_sql(query, engine, index_col=op.index_col,
-                             coerce_float=op.coerce_float,
-                             parse_dates=op.parse_dates)
-            if op.method == 'offset' and op.index_col is None and op.offset > 0:
+            df = pd.read_sql(
+                query,
+                engine,
+                index_col=op.index_col,
+                coerce_float=op.coerce_float,
+                parse_dates=op.parse_dates,
+            )
+            if op.method == "offset" and op.index_col is None and op.offset > 0:
                 index = pd.RangeIndex(op.offset, op.offset + out.shape[0])
                 if op.nrows is not None:
-                    index = index[:op.nrows]
+                    index = index[: op.nrows]
                 df.index = index
 
             use_arrow_dtype = op.use_arrow_dtype
@@ -507,36 +628,76 @@ class DataFrameReadSQL(IncrementalIndexDatasource,
 
     @classmethod
     def post_execute(cls, ctx: Union[dict, Context], op: OperandType):
-        if op.method != 'offset':
+        if op.method != "offset":
             # method `offset` knows shape of each chunk
             # just skip incremental process
             return super().post_execute(ctx, op)
 
 
-def _read_sql(table_or_sql, con, schema=None, index_col=None, coerce_float=True,
-              params=None, parse_dates=None, columns=None, chunksize=None,
-              incremental_index=False, use_arrow_dtype=None,
-              test_rows=None, chunk_size=None,
-              engine_kwargs=None, partition_col=None, num_partitions=None,
-              low_limit=None, high_limit=None):
+def _read_sql(
+    table_or_sql,
+    con,
+    schema=None,
+    index_col=None,
+    coerce_float=True,
+    params=None,
+    parse_dates=None,
+    columns=None,
+    chunksize=None,
+    incremental_index=False,
+    use_arrow_dtype=None,
+    test_rows=None,
+    chunk_size=None,
+    engine_kwargs=None,
+    partition_col=None,
+    num_partitions=None,
+    low_limit=None,
+    high_limit=None,
+):
     if chunksize is not None:
-        raise NotImplementedError('read_sql_query with chunksize not supported')
-    method = 'offset' if partition_col is None else 'partition'
+        raise NotImplementedError("read_sql_query with chunksize not supported")
+    method = "offset" if partition_col is None else "partition"
 
-    op = DataFrameReadSQL(table_or_sql=table_or_sql, selectable=None, con=con, schema=schema,
-                          index_col=index_col, coerce_float=coerce_float,
-                          params=params, parse_dates=parse_dates, columns=columns,
-                          engine_kwargs=engine_kwargs, incremental_index=incremental_index,
-                          use_arrow_dtype=use_arrow_dtype, method=method, partition_col=partition_col,
-                          num_partitions=num_partitions, low_limit=low_limit,
-                          high_limit=high_limit)
+    op = DataFrameReadSQL(
+        table_or_sql=table_or_sql,
+        selectable=None,
+        con=con,
+        schema=schema,
+        index_col=index_col,
+        coerce_float=coerce_float,
+        params=params,
+        parse_dates=parse_dates,
+        columns=columns,
+        engine_kwargs=engine_kwargs,
+        incremental_index=incremental_index,
+        use_arrow_dtype=use_arrow_dtype,
+        method=method,
+        partition_col=partition_col,
+        num_partitions=num_partitions,
+        low_limit=low_limit,
+        high_limit=high_limit,
+    )
     return op(test_rows, chunk_size)
 
 
-def read_sql(sql, con, index_col=None, coerce_float=True, params=None, parse_dates=None,
-             columns=None, chunksize=None, test_rows=5, chunk_size=None, engine_kwargs=None,
-             incremental_index=True, partition_col=None, num_partitions=None, low_limit=None,
-             high_limit=None):
+def read_sql(
+    sql,
+    con,
+    index_col=None,
+    coerce_float=True,
+    params=None,
+    parse_dates=None,
+    columns=None,
+    chunksize=None,
+    test_rows=5,
+    chunk_size=None,
+    engine_kwargs=None,
+    incremental_index=True,
+    partition_col=None,
+    num_partitions=None,
+    low_limit=None,
+    high_limit=None,
+):
     """
     Read SQL query or database table into a DataFrame.
 
@@ -622,19 +783,45 @@ def read_sql(sql, con, index_col=None, coerce_float=True, params=None, parse_dat
     read_sql_table : Read SQL database table into a DataFrame.
     read_sql_query : Read SQL query into a DataFrame.
     """
-    return _read_sql(table_or_sql=sql, con=con, index_col=index_col, coerce_float=coerce_float,
-                     params=params, parse_dates=parse_dates, columns=columns,
-                     engine_kwargs=engine_kwargs, incremental_index=incremental_index,
-                     chunksize=chunksize, test_rows=test_rows, chunk_size=chunk_size,
-                     partition_col=partition_col, num_partitions=num_partitions,
-                     low_limit=low_limit, high_limit=high_limit)
+    return _read_sql(
+        table_or_sql=sql,
+        con=con,
+        index_col=index_col,
+        coerce_float=coerce_float,
+        params=params,
+        parse_dates=parse_dates,
+        columns=columns,
+        engine_kwargs=engine_kwargs,
+        incremental_index=incremental_index,
+        chunksize=chunksize,
+        test_rows=test_rows,
+        chunk_size=chunk_size,
+        partition_col=partition_col,
+        num_partitions=num_partitions,
+        low_limit=low_limit,
+        high_limit=high_limit,
+    )
 
 
-def read_sql_table(table_name, con, schema=None, index_col=None, coerce_float=True,
-                   parse_dates=None, columns=None, chunksize=None, test_rows=5,
-                   chunk_size=None, engine_kwargs=None, incremental_index=True,
-                   use_arrow_dtype=None, partition_col=None, num_partitions=None,
-                   low_limit=None, high_limit=None):
+def read_sql_table(
+    table_name,
+    con,
+    schema=None,
+    index_col=None,
+    coerce_float=True,
+    parse_dates=None,
+    columns=None,
+    chunksize=None,
+    test_rows=5,
+    chunk_size=None,
+    engine_kwargs=None,
+    incremental_index=True,
+    use_arrow_dtype=None,
+    partition_col=None,
+    num_partitions=None,
+    low_limit=None,
+    high_limit=None,
+):
     """
     Read SQL database table into a DataFrame.
 
@@ -722,20 +909,45 @@ def read_sql_table(table_name, con, schema=None, index_col=None, coerce_float=Tr
     >>> import mars.dataframe as md
     >>> md.read_sql_table('table_name', 'postgres:///db_name')  # doctest:+SKIP
     """
-    return _read_sql(table_or_sql=table_name, con=con, schema=schema, index_col=index_col,
-                     coerce_float=coerce_float, parse_dates=parse_dates, columns=columns,
-                     engine_kwargs=engine_kwargs, incremental_index=incremental_index,
-                     use_arrow_dtype=use_arrow_dtype, chunksize=chunksize,
-                     test_rows=test_rows, chunk_size=chunk_size,
-                     partition_col=partition_col, num_partitions=num_partitions,
-                     low_limit=low_limit, high_limit=high_limit)
+    return _read_sql(
+        table_or_sql=table_name,
+        con=con,
+        schema=schema,
+        index_col=index_col,
+        coerce_float=coerce_float,
+        parse_dates=parse_dates,
+        columns=columns,
+        engine_kwargs=engine_kwargs,
+        incremental_index=incremental_index,
+        use_arrow_dtype=use_arrow_dtype,
+        chunksize=chunksize,
+        test_rows=test_rows,
+        chunk_size=chunk_size,
+        partition_col=partition_col,
+        num_partitions=num_partitions,
+        low_limit=low_limit,
+        high_limit=high_limit,
+    )
 
 
-def read_sql_query(sql, con, index_col=None, coerce_float=True, params=None, parse_dates=None,
-                   chunksize=None, test_rows=5, chunk_size=None, engine_kwargs=None,
-                   incremental_index=True, use_arrow_dtype=None,
-                   partition_col=None, num_partitions=None,
-                   low_limit=None, high_limit=None):
+def read_sql_query(
+    sql,
+    con,
+    index_col=None,
+    coerce_float=True,
+    params=None,
+    parse_dates=None,
+    chunksize=None,
+    test_rows=5,
+    chunk_size=None,
+    engine_kwargs=None,
+    incremental_index=True,
+    use_arrow_dtype=None,
+    partition_col=None,
+    num_partitions=None,
+    low_limit=None,
+    high_limit=None,
+):
     """
     Read SQL query into a DataFrame.
 
@@ -821,9 +1033,21 @@ def read_sql_query(sql, con, index_col=None, coerce_float=True, params=None, par
     Any datetime values with time zone information parsed via the `parse_dates`
     parameter will be converted to UTC.
     """
-    return _read_sql(table_or_sql=sql, con=con, index_col=index_col, coerce_float=coerce_float,
-                     params=params, parse_dates=parse_dates, engine_kwargs=engine_kwargs,
-                     incremental_index=incremental_index, use_arrow_dtype=use_arrow_dtype,
-                     chunksize=chunksize, test_rows=test_rows,
-                     chunk_size=chunk_size, partition_col=partition_col, num_partitions=num_partitions,
-                     low_limit=low_limit, high_limit=high_limit)
+    return _read_sql(
+        table_or_sql=sql,
+        con=con,
+        index_col=index_col,
+        coerce_float=coerce_float,
+        params=params,
+        parse_dates=parse_dates,
+        engine_kwargs=engine_kwargs,
+        incremental_index=incremental_index,
+        use_arrow_dtype=use_arrow_dtype,
+        chunksize=chunksize,
+        test_rows=test_rows,
+        chunk_size=chunk_size,
+        partition_col=partition_col,
+        num_partitions=num_partitions,
+        low_limit=low_limit,
+        high_limit=high_limit,
+    )

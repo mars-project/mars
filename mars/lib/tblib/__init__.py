@@ -15,11 +15,13 @@ except ImportError:
 if not tb_set_next and not tproxy:
     raise ImportError("Cannot use tblib. Runtime not supported.")
 
-__version__ = '1.6.0'
-__all__ = 'Traceback',
+__version__ = "1.6.0"
+__all__ = ("Traceback",)
 
 PY3 = sys.version_info[0] == 3
-FRAME_RE = re.compile(r'^\s*File "(?P<co_filename>.+)", line (?P<tb_lineno>\d+)(, in (?P<co_name>.+))?$')
+FRAME_RE = re.compile(
+    r'^\s*File "(?P<co_filename>.+)", line (?P<tb_lineno>\d+)(, in (?P<co_name>.+))?$'
+)
 
 
 class _AttrDict(dict):
@@ -48,9 +50,7 @@ class Code(object):
 class Frame(object):
     def __init__(self, frame):
         self.f_globals = {
-            k: v
-            for k, v in frame.f_globals.items()
-            if k in ("__file__", "__name__")
+            k: v for k, v in frame.f_globals.items() if k in ("__file__", "__name__")
         }
         self.f_code = Code(frame.f_code)
 
@@ -94,27 +94,54 @@ class Traceback(object):
         tb = None
         while current:
             f_code = current.tb_frame.f_code
-            code = compile('\n' * (current.tb_lineno - 1) + 'raise __traceback_maker', current.tb_frame.f_code.co_filename, 'exec')
+            code = compile(
+                "\n" * (current.tb_lineno - 1) + "raise __traceback_maker",
+                current.tb_frame.f_code.co_filename,
+                "exec",
+            )
             if hasattr(code, "replace"):
                 # Python 3.8 and newer
-                code = code.replace(co_argcount=0,
-                                    co_filename=f_code.co_filename, co_name=f_code.co_name,
-                                    co_freevars=(), co_cellvars=())
+                code = code.replace(
+                    co_argcount=0,
+                    co_filename=f_code.co_filename,
+                    co_name=f_code.co_name,
+                    co_freevars=(),
+                    co_cellvars=(),
+                )
             elif PY3:
                 code = CodeType(
-                    0, code.co_kwonlyargcount,
-                    code.co_nlocals, code.co_stacksize, code.co_flags,
-                    code.co_code, code.co_consts, code.co_names, code.co_varnames,
-                    f_code.co_filename, f_code.co_name,
-                    code.co_firstlineno, code.co_lnotab, (), ()
+                    0,
+                    code.co_kwonlyargcount,
+                    code.co_nlocals,
+                    code.co_stacksize,
+                    code.co_flags,
+                    code.co_code,
+                    code.co_consts,
+                    code.co_names,
+                    code.co_varnames,
+                    f_code.co_filename,
+                    f_code.co_name,
+                    code.co_firstlineno,
+                    code.co_lnotab,
+                    (),
+                    (),
                 )
             else:
                 code = CodeType(
                     0,
-                    code.co_nlocals, code.co_stacksize, code.co_flags,
-                    code.co_code, code.co_consts, code.co_names, code.co_varnames,
-                    f_code.co_filename.encode(), f_code.co_name.encode(),
-                    code.co_firstlineno, code.co_lnotab, (), ()
+                    code.co_nlocals,
+                    code.co_stacksize,
+                    code.co_flags,
+                    code.co_code,
+                    code.co_consts,
+                    code.co_names,
+                    code.co_varnames,
+                    f_code.co_filename.encode(),
+                    f_code.co_name.encode(),
+                    code.co_firstlineno,
+                    code.co_lnotab,
+                    (),
+                    (),
                 )
 
             # noinspection PyBroadException
@@ -138,8 +165,8 @@ class Traceback(object):
 
     # noinspection SpellCheckingInspection
     def __tproxy_handler(self, operation, *args, **kwargs):
-        if operation in ('__getattribute__', '__getattr__'):
-            if args[0] == 'tb_next':
+        if operation in ("__getattribute__", "__getattr__"):
+            if args[0] == "tb_next":
                 return self.tb_next and self.tb_next.as_traceback()
             else:
                 return getattr(self, args[0])
@@ -154,37 +181,37 @@ class Traceback(object):
             tb_next = self.tb_next.to_dict()
 
         code = {
-            'co_filename': self.tb_frame.f_code.co_filename,
-            'co_name': self.tb_frame.f_code.co_name,
+            "co_filename": self.tb_frame.f_code.co_filename,
+            "co_name": self.tb_frame.f_code.co_name,
         }
         frame = {
-            'f_globals': self.tb_frame.f_globals,
-            'f_code': code,
+            "f_globals": self.tb_frame.f_globals,
+            "f_code": code,
         }
         return {
-            'tb_frame': frame,
-            'tb_lineno': self.tb_lineno,
-            'tb_next': tb_next,
+            "tb_frame": frame,
+            "tb_lineno": self.tb_lineno,
+            "tb_next": tb_next,
         }
 
     @classmethod
     def from_dict(cls, dct):
-        if dct['tb_next']:
-            tb_next = cls.from_dict(dct['tb_next'])
+        if dct["tb_next"]:
+            tb_next = cls.from_dict(dct["tb_next"])
         else:
             tb_next = None
 
         code = _AttrDict(
-            co_filename=dct['tb_frame']['f_code']['co_filename'],
-            co_name=dct['tb_frame']['f_code']['co_name'],
+            co_filename=dct["tb_frame"]["f_code"]["co_filename"],
+            co_name=dct["tb_frame"]["f_code"]["co_name"],
         )
         frame = _AttrDict(
-            f_globals=dct['tb_frame']['f_globals'],
+            f_globals=dct["tb_frame"]["f_globals"],
             f_code=code,
         )
         tb = _AttrDict(
             tb_frame=frame,
-            tb_lineno=dct['tb_lineno'],
+            tb_lineno=dct["tb_lineno"],
             tb_next=tb_next,
         )
         return cls(tb)
@@ -197,13 +224,13 @@ class Traceback(object):
         for line in string.splitlines():
             line = line.rstrip()
             if header:
-                if line == 'Traceback (most recent call last):':
+                if line == "Traceback (most recent call last):":
                     header = False
                 continue
             frame_match = FRAME_RE.match(line)
             if frame_match:
                 frames.append(frame_match.groupdict())
-            elif line.startswith('  '):
+            elif line.startswith("  "):
                 pass
             elif strict:
                 break  # traceback ended
@@ -216,8 +243,8 @@ class Traceback(object):
                     tb_frame=_AttrDict(
                         frame,
                         f_globals=_AttrDict(
-                            __file__=frame['co_filename'],
-                            __name__='?',
+                            __file__=frame["co_filename"],
+                            __name__="?",
                         ),
                         f_code=_AttrDict(frame),
                     ),

@@ -53,9 +53,7 @@ class FileSystem(ABC):
         """
 
     @abstractmethod
-    def delete(self,
-               path: path_type,
-               recursive: bool = False):
+    def delete(self, path: path_type, recursive: bool = False):
         """
         Delete the indicated file or directory
 
@@ -81,14 +79,14 @@ class FileSystem(ABC):
         """
         path = stringify_path(path)
         path_info = self.stat(path)
-        if path_info['type'] == 'file':
-            return path_info['size']
+        if path_info["type"] == "file":
+            return path_info["size"]
 
         total = 0
         for root, directories, files in self.walk(path):
             for child_path in files:
                 abspath = self.path_join(root, child_path)
-                total += self.stat(abspath)['size']
+                total += self.stat(abspath)["size"]
 
         return total
 
@@ -108,9 +106,7 @@ class FileSystem(ABC):
         stat : dict
         """
 
-    def rm(self,
-           path: path_type,
-           recursive: bool = False):
+    def rm(self, path: path_type, recursive: bool = False):
         """
         Alias for FileSystem.delete
         """
@@ -123,9 +119,7 @@ class FileSystem(ABC):
         return self.rename(path, new_path)
 
     @abstractmethod
-    def rename(self,
-               path: path_type,
-               new_path: path_type):
+    def rename(self, path: path_type, new_path: path_type):
         """
         Rename file, like UNIX mv command
 
@@ -138,9 +132,7 @@ class FileSystem(ABC):
         """
 
     @abstractmethod
-    def mkdir(self,
-              path: path_type,
-              create_parents: bool = True):
+    def mkdir(self, path: path_type, create_parents: bool = True):
         """
         Create a directory.
 
@@ -193,9 +185,7 @@ class FileSystem(ABC):
         """
 
     @abstractmethod
-    def open(self,
-             path: path_type,
-             mode: str = 'rb') -> Union[BinaryIO, TextIO]:
+    def open(self, path: path_type, mode: str = "rb") -> Union[BinaryIO, TextIO]:
         """
         Open file for reading or writing.
         """
@@ -215,9 +205,7 @@ class FileSystem(ABC):
         """
 
     @abstractmethod
-    def glob(self,
-             path: path_type,
-             recursive: bool = False) -> List[path_type]:
+    def glob(self, path: path_type, recursive: bool = False) -> List[path_type]:
         """
         Return a list of paths matching a pathname pattern.
 
@@ -236,13 +224,13 @@ class FileSystem(ABC):
 
     @property
     def pathsep(self) -> str:
-        return '/'
+        return "/"
 
     @staticmethod
     def parse_from_path(uri: str):
         parsed_uri = urlparse(uri)
         options = dict()
-        options['host'] = parsed_uri.netloc.rsplit("@", 1)[-1].rsplit(":", 1)[0]
+        options["host"] = parsed_uri.netloc.rsplit("@", 1)[-1].rsplit(":", 1)[0]
         if parsed_uri.port:
             options["port"] = parsed_uri.port
         if parsed_uri.username:

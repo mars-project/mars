@@ -17,29 +17,53 @@ from collections import OrderedDict
 import pandas as pd
 
 from ....lib.version import parse as parse_version
-from ....serialization.serializables import AnyField, Int64Field, BoolField, StringField, Int32Field
+from ....serialization.serializables import (
+    AnyField,
+    Int64Field,
+    BoolField,
+    StringField,
+    Int32Field,
+)
 from ...core import DATAFRAME_TYPE
 from ...utils import build_empty_df, build_empty_series, validate_axis
 from ..core import Window
 
-_window_has_method = parse_version(pd.__version__) >= parse_version('1.3.0')
+_window_has_method = parse_version(pd.__version__) >= parse_version("1.3.0")
 
 
 class Rolling(Window):
-    _window = AnyField('window')
-    _min_periods = Int64Field('min_periods')
-    _center = BoolField('center')
-    _win_type = StringField('win_type')
-    _on = StringField('on')
-    _axis = Int32Field('axis')
-    _closed = StringField('closed')
-    _method = StringField('method')
+    _window = AnyField("window")
+    _min_periods = Int64Field("min_periods")
+    _center = BoolField("center")
+    _win_type = StringField("win_type")
+    _on = StringField("on")
+    _axis = Int32Field("axis")
+    _closed = StringField("closed")
+    _method = StringField("method")
 
-    def __init__(self, window=None, min_periods=None, center=None, win_type=None, on=None,
-                 axis=None, closed=None, method=None, **kw):
-        super().__init__(_window=window, _min_periods=min_periods, _center=center,
-                         _win_type=win_type, _on=on, _axis=axis, _closed=closed,
-                         _method=method, **kw)
+    def __init__(
+        self,
+        window=None,
+        min_periods=None,
+        center=None,
+        win_type=None,
+        on=None,
+        axis=None,
+        closed=None,
+        method=None,
+        **kw
+    ):
+        super().__init__(
+            _window=window,
+            _min_periods=min_periods,
+            _center=center,
+            _win_type=win_type,
+            _on=on,
+            _axis=axis,
+            _closed=closed,
+            _method=method,
+            **kw
+        )
 
     @property
     def window(self):
@@ -71,25 +95,40 @@ class Rolling(Window):
 
     @property
     def method(self):
-        return self._method or 'single'
+        return self._method or "single"
 
     @property
     def params(self):
         p = OrderedDict()
 
         if not _window_has_method:  # pragma: no cover
-            args = ['window', 'min_periods', 'center', 'win_type',
-                    'axis', 'on', 'closed']
+            args = [
+                "window",
+                "min_periods",
+                "center",
+                "win_type",
+                "axis",
+                "on",
+                "closed",
+            ]
         else:
-            args = ['window', 'min_periods', 'center', 'win_type',
-                    'axis', 'on', 'closed', 'method']
+            args = [
+                "window",
+                "min_periods",
+                "center",
+                "win_type",
+                "axis",
+                "on",
+                "closed",
+                "method",
+            ]
 
         for attr in args:
             p[attr] = getattr(self, attr)
         return p
 
     def _repr_name(self):
-        return 'Rolling' if self.win_type is None else 'Window'
+        return "Rolling" if self.win_type is None else "Window"
 
     def validate(self):
         # leverage pandas itself to do validation
@@ -97,56 +136,66 @@ class Rolling(Window):
         if isinstance(self._input, DATAFRAME_TYPE):
             empty_obj = build_empty_df(self._input.dtypes, index=pd_index[:0])
         else:
-            empty_obj = build_empty_series(self._input.dtype, index=pd_index[:0],
-                                           name=self._input.name)
+            empty_obj = build_empty_series(
+                self._input.dtype, index=pd_index[:0], name=self._input.name
+            )
         pd_rolling = empty_obj.rolling(**self.params)
         for k in self.params:
             # update value according to pandas rolling
-            setattr(self, '_' + k, getattr(pd_rolling, k))
+            setattr(self, "_" + k, getattr(pd_rolling, k))
 
     def aggregate(self, func, *args, **kwargs):
         from .aggregation import DataFrameRollingAgg
 
-        op = DataFrameRollingAgg(func=func, func_args=args,
-                                 func_kwargs=kwargs, **self.params)
+        op = DataFrameRollingAgg(
+            func=func, func_args=args, func_kwargs=kwargs, **self.params
+        )
         return op(self)
 
     def agg(self, func, *args, **kwargs):
         return self.aggregate(func, *args, **kwargs)
 
     def count(self):
-        return self.aggregate('count')
+        return self.aggregate("count")
 
     def sum(self, *args, **kwargs):
-        return self.aggregate('sum', *args, **kwargs)
+        return self.aggregate("sum", *args, **kwargs)
 
     def mean(self, *args, **kwargs):
-        return self.aggregate('mean', *args, **kwargs)
+        return self.aggregate("mean", *args, **kwargs)
 
     def median(self, **kwargs):
-        return self.aggregate('median', **kwargs)
+        return self.aggregate("median", **kwargs)
 
     def var(self, ddof=1, *args, **kwargs):
-        return self.aggregate('var', ddof=ddof, *args, **kwargs)
+        return self.aggregate("var", ddof=ddof, *args, **kwargs)
 
     def std(self, ddof=1, *args, **kwargs):
-        return self.aggregate('std', ddof=ddof, *args, **kwargs)
+        return self.aggregate("std", ddof=ddof, *args, **kwargs)
 
     def min(self, *args, **kwargs):
-        return self.aggregate('min', *args, **kwargs)
+        return self.aggregate("min", *args, **kwargs)
 
     def max(self, *args, **kwargs):
-        return self.aggregate('max', *args, **kwargs)
+        return self.aggregate("max", *args, **kwargs)
 
     def skew(self, **kwargs):
-        return self.aggregate('skew', **kwargs)
+        return self.aggregate("skew", **kwargs)
 
     def kurt(self, **kwargs):
-        return self.aggregate('kurt', **kwargs)
+        return self.aggregate("kurt", **kwargs)
 
 
-def rolling(obj, window, min_periods=None, center=False, win_type=None, on=None,
-            axis=0, closed=None):
+def rolling(
+    obj,
+    window,
+    min_periods=None,
+    center=False,
+    win_type=None,
+    on=None,
+    axis=0,
+    closed=None,
+):
     """
     Provide rolling window calculations.
 
@@ -293,7 +342,15 @@ def rolling(obj, window, min_periods=None, center=False, win_type=None, on=None,
     2013-01-01 09:00:06  4.0
     """
     axis = validate_axis(axis, obj)
-    r = Rolling(input=obj, window=window, min_periods=min_periods, center=center,
-                win_type=win_type, on=on, axis=axis, closed=closed)
+    r = Rolling(
+        input=obj,
+        window=window,
+        min_periods=min_periods,
+        center=center,
+        win_type=win_type,
+        on=on,
+        axis=axis,
+        closed=closed,
+    )
     r.validate()
     return r

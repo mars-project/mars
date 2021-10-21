@@ -64,30 +64,30 @@ def _install():
     from .reduction_size import size_dataframe, size_series
 
     funcs = [
-        ('sum', sum_series, sum_dataframe),
-        ('prod', prod_series, prod_dataframe),
-        ('product', prod_series, prod_dataframe),
-        ('max', max_series, max_dataframe),
-        ('min', min_series, min_dataframe),
-        ('count', count_series, count_dataframe),
-        ('mean', mean_series, mean_dataframe),
-        ('var', var_series, var_dataframe),
-        ('std', std_series, std_dataframe),
-        ('all', all_series, all_dataframe),
-        ('any', any_series, any_dataframe),
-        ('cummax', cummax, cummax),
-        ('cummin', cummin, cummin),
-        ('cumprod', cumprod, cumprod),
-        ('cumsum', cumsum, cumsum),
-        ('agg', aggregate, aggregate),
-        ('aggregate', aggregate, aggregate),
-        ('nunique', nunique_series, nunique_dataframe),
-        ('sem', sem_series, sem_dataframe),
-        ('skew', skew_series, skew_dataframe),
-        ('kurt', kurt_series, kurt_dataframe),
-        ('kurtosis', kurt_series, kurt_dataframe),
-        ('unique', unique, None),
-        ('_reduction_size', size_dataframe, size_series),
+        ("sum", sum_series, sum_dataframe),
+        ("prod", prod_series, prod_dataframe),
+        ("product", prod_series, prod_dataframe),
+        ("max", max_series, max_dataframe),
+        ("min", min_series, min_dataframe),
+        ("count", count_series, count_dataframe),
+        ("mean", mean_series, mean_dataframe),
+        ("var", var_series, var_dataframe),
+        ("std", std_series, std_dataframe),
+        ("all", all_series, all_dataframe),
+        ("any", any_series, any_dataframe),
+        ("cummax", cummax, cummax),
+        ("cummin", cummin, cummin),
+        ("cumprod", cumprod, cumprod),
+        ("cumsum", cumsum, cumsum),
+        ("agg", aggregate, aggregate),
+        ("aggregate", aggregate, aggregate),
+        ("nunique", nunique_series, nunique_dataframe),
+        ("sem", sem_series, sem_dataframe),
+        ("skew", skew_series, skew_dataframe),
+        ("kurt", kurt_series, kurt_dataframe),
+        ("kurtosis", kurt_series, kurt_dataframe),
+        ("unique", unique, None),
+        ("_reduction_size", size_dataframe, size_series),
     ]
     for func_name, series_func, df_func in funcs:
         if df_func is not None:  # pragma: no branch
@@ -98,12 +98,12 @@ def _install():
                 setattr(t, func_name, series_func)
 
     for t in INDEX_TYPE:
-        setattr(t, 'agg', aggregate)
-        setattr(t, 'aggregate', aggregate)
-        setattr(t, 'all', all_index)
-        setattr(t, 'any', any_index)
-        setattr(t, 'min', min_index)
-        setattr(t, 'max', max_index)
+        setattr(t, "agg", aggregate)
+        setattr(t, "aggregate", aggregate)
+        setattr(t, "all", all_index)
+        setattr(t, "any", any_index)
+        setattr(t, "min", min_index)
+        setattr(t, "max", max_index)
 
 
 _install()

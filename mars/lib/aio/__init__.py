@@ -38,4 +38,5 @@ if sys.version_info[:2] < (3, 7):
 
     # patch async generator
     from async_generator import asynccontextmanager
+
     contextlib.asynccontextmanager = asynccontextmanager

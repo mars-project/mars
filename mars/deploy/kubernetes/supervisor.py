@@ -29,5 +29,5 @@ class K8SSupervisorCommandRunner(K8SServiceMixin, SupervisorCommandRunner):
 
 main = K8SSupervisorCommandRunner()
 
-if __name__ == '__main__':   # pragma: no branch
+if __name__ == "__main__":  # pragma: no branch
     main()

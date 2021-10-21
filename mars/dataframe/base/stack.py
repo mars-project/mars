@@ -28,13 +28,12 @@ from ..utils import build_df, parse_index
 class DataFrameStack(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.STACK
 
-    _input_df = KeyField('input_df')
-    _level = AnyField('level')
-    _dropna = BoolField('dropna')
+    _input_df = KeyField("input_df")
+    _level = AnyField("level")
+    _dropna = BoolField("dropna")
 
     def __init__(self, input_df=None, level=None, dropna=None, **kw):
-        super().__init__(_input_df=input_df, _level=level,
-                         _dropna=dropna, **kw)
+        super().__init__(_input_df=input_df, _level=level, _dropna=dropna, **kw)
 
     @property
     def input_df(self):
@@ -53,10 +52,7 @@ class DataFrameStack(DataFrameOperand, DataFrameOperandMixin):
         self._input_df = self._inputs[0]
 
     @classmethod
-    def _calc_size(cls,
-                   size: int,
-                   level: Union[List, int],
-                   dtypes: pd.Series):
+    def _calc_size(cls, size: int, level: Union[List, int], dtypes: pd.Series):
         index = dtypes.index
 
         if not isinstance(index, pd.MultiIndex):
@@ -64,8 +60,7 @@ class DataFrameStack(DataFrameOperand, DataFrameOperandMixin):
 
         if isinstance(level, int):
             level = [level]
-        return size * np.prod([index.levshape[lev]
-                               for lev in level]).item()
+        return size * np.prod([index.levshape[lev] for lev in level]).item()
 
     def __call__(self, input_df):
         test_df = build_df(input_df)
@@ -76,14 +71,22 @@ class DataFrameStack(DataFrameOperand, DataFrameOperandMixin):
             size = self._calc_size(input_df.shape[0], self._level, input_df.dtypes)
         if test_df.ndim == 1:
             shape = (size,)
-            return self.new_series([input_df], shape=shape, dtype=test_df.dtype,
-                                   index_value=parse_index(test_df.index, input_df),
-                                   name=test_df.name)
+            return self.new_series(
+                [input_df],
+                shape=shape,
+                dtype=test_df.dtype,
+                index_value=parse_index(test_df.index, input_df),
+                name=test_df.name,
+            )
         else:
             shape = (size, test_df.shape[1])
-            return self.new_dataframe([input_df], shape=shape, dtypes=test_df.dtypes,
-                                      index_value=parse_index(test_df.index, input_df),
-                                      columns_value=parse_index(test_df.columns, store_data=True))
+            return self.new_dataframe(
+                [input_df],
+                shape=shape,
+                dtypes=test_df.dtypes,
+                index_value=parse_index(test_df.index, input_df),
+                columns_value=parse_index(test_df.columns, store_data=True),
+            )
 
     @classmethod
     def tile(cls, op: "DataFrameStack"):
@@ -96,7 +99,8 @@ class DataFrameStack(DataFrameOperand, DataFrameOperandMixin):
             if has_unknown_shape(input_df):
                 yield
             input_df = yield from recursive_tile(
-                input_df.rechunk({1: input_df.shape[1]}))
+                input_df.rechunk({1: input_df.shape[1]})
+            )
 
         out_chunks = []
         for c in input_df.chunks:
@@ -107,30 +111,32 @@ class DataFrameStack(DataFrameOperand, DataFrameOperandMixin):
                 size = cls._calc_size(c.shape[0], op.level, c.dtypes)
             if out.ndim == 1:
                 kw = {
-                    'shape': (size,),
-                    'index': (c.index[0],),
-                    'dtype': out.dtype,
-                    'index_value': parse_index(out_index, c),
-                    'name': out.name
+                    "shape": (size,),
+                    "index": (c.index[0],),
+                    "dtype": out.dtype,
+                    "index_value": parse_index(out_index, c),
+                    "name": out.name,
                 }
             else:
                 kw = {
-                    'shape': (size, out.shape[1]),
-                    'index': (c.index[0], 0),
-                    'dtypes': out.dtypes,
-                    'index_value': parse_index(out_index, c),
-                    'columns_value': out.columns_value
+                    "shape": (size, out.shape[1]),
+                    "index": (c.index[0], 0),
+                    "dtypes": out.dtypes,
+                    "index_value": parse_index(out_index, c),
+                    "columns_value": out.columns_value,
                 }
             out_chunk = chunk_op.new_chunk([c], **kw)
             out_chunks.append(out_chunk)
 
         params = out.params
         if out.ndim == 1:
-            params['nsplits'] = (tuple(out_c.shape[0] for out_c in out_chunks),)
+            params["nsplits"] = (tuple(out_c.shape[0] for out_c in out_chunks),)
         else:
-            params['nsplits'] = (tuple(out_c.shape[0] for out_c in out_chunks),
-                                 (out.shape[1],))
-        params['chunks'] = out_chunks
+            params["nsplits"] = (
+                tuple(out_c.shape[0] for out_c in out_chunks),
+                (out.shape[1],),
+            )
+        params["chunks"] = out_chunks
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=[params])
 

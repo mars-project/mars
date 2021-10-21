@@ -29,16 +29,29 @@ from .core import PairwiseDistances
 class EuclideanDistances(PairwiseDistances):
     _op_type_ = OperandDef.PAIRWISE_EUCLIDEAN_DISTANCES
 
-    _x = KeyField('X')
-    _y = KeyField('Y')
-    _x_norm_squared = KeyField('X_norm_squared')
-    _y_norm_squared = KeyField('Y_norm_squared')
-    _squared = BoolField('squared')
+    _x = KeyField("X")
+    _y = KeyField("Y")
+    _x_norm_squared = KeyField("X_norm_squared")
+    _y_norm_squared = KeyField("Y_norm_squared")
+    _squared = BoolField("squared")
 
-    def __init__(self, x=None, y=None, x_norm_squared=None, y_norm_squared=None,
-                 squared=None, **kw):
-        super().__init__(_x=x, _y=y, _x_norm_squared=x_norm_squared,
-                         _y_norm_squared=y_norm_squared, _squared=squared, **kw)
+    def __init__(
+        self,
+        x=None,
+        y=None,
+        x_norm_squared=None,
+        y_norm_squared=None,
+        squared=None,
+        **kw
+    ):
+        super().__init__(
+            _x=x,
+            _y=y,
+            _x_norm_squared=x_norm_squared,
+            _y_norm_squared=y_norm_squared,
+            _squared=squared,
+            **kw
+        )
 
     @property
     def x(self):
@@ -80,8 +93,7 @@ class EuclideanDistances(PairwiseDistances):
             if XX.shape == (1, X.shape[0]):
                 XX = XX.T
             elif XX.shape != (X.shape[0], 1):
-                raise ValueError(
-                    "Incompatible dimensions for X and X_norm_squared")
+                raise ValueError("Incompatible dimensions for X and X_norm_squared")
             if XX.dtype == np.float32:
                 XX = self._x_norm_squared = None
         else:
@@ -94,8 +106,7 @@ class EuclideanDistances(PairwiseDistances):
             YY = mt.atleast_2d(Y_norm_squared)
 
             if YY.shape != (1, Y.shape[0]):
-                raise ValueError(
-                    "Incompatible dimensions for Y and Y_norm_squared")
+                raise ValueError("Incompatible dimensions for Y and Y_norm_squared")
             if YY.dtype == np.float32:
                 YY = self._y_norm_squared = None
         else:
@@ -106,8 +117,9 @@ class EuclideanDistances(PairwiseDistances):
             inputs.append(XX)
         if YY is not None:
             inputs.append(YY)
-        return self.new_tensor(inputs, shape=(X.shape[0], Y.shape[0]),
-                               order=TensorOrder.C_ORDER)
+        return self.new_tensor(
+            inputs, shape=(X.shape[0], Y.shape[0]), order=TensorOrder.C_ORDER
+        )
 
     @classmethod
     def tile(cls, op):
@@ -119,12 +131,12 @@ class EuclideanDistances(PairwiseDistances):
                 yield
             # rechunk
             new_nsplit = max(max(X.nsplits[0]) // 2, 1)
-            X = yield from recursive_tile(
-                X.rechunk({0: new_nsplit}).astype(np.float64))
+            X = yield from recursive_tile(X.rechunk({0: new_nsplit}).astype(np.float64))
             if Y is not X:
                 new_nsplit = max(max(Y.nsplits[0]) // 2, 1)
                 Y = yield from recursive_tile(
-                    Y.rechunk({0: new_nsplit}).astype(np.float64))
+                    Y.rechunk({0: new_nsplit}).astype(np.float64)
+                )
 
         XX = op.x_norm_squared
         if XX is None:
@@ -150,8 +162,9 @@ class EuclideanDistances(PairwiseDistances):
         return [(yield from recursive_tile(distances))]
 
 
-def euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False,
-                        X_norm_squared=None):
+def euclidean_distances(
+    X, Y=None, Y_norm_squared=None, squared=False, X_norm_squared=None
+):
     """
     Considering the rows of X (and Y=X) as vectors, compute the
     distance matrix between each pair of vectors.
@@ -228,9 +241,13 @@ def euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False,
         dtype = np.float64
 
     X, Y = EuclideanDistances.check_pairwise_arrays(X, Y)
-    op = EuclideanDistances(x=X, y=Y, x_norm_squared=X_norm_squared,
-                            y_norm_squared=Y_norm_squared, squared=squared,
-                            dtype=np.dtype(dtype),
-                            chunk_store_limit=options.chunk_store_limit)
-    return op(X, Y=Y, Y_norm_squared=Y_norm_squared,
-              X_norm_squared=X_norm_squared)
+    op = EuclideanDistances(
+        x=X,
+        y=Y,
+        x_norm_squared=X_norm_squared,
+        y_norm_squared=Y_norm_squared,
+        squared=squared,
+        dtype=np.dtype(dtype),
+        chunk_store_limit=options.chunk_store_limit,
+    )
+    return op(X, Y=Y, Y_norm_squared=Y_norm_squared, X_norm_squared=X_norm_squared)

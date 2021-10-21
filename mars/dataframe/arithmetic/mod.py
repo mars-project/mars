@@ -23,8 +23,8 @@ from .docstring import bin_arithmetic_doc
 class DataFrameMod(DataFrameBinopUfunc):
     _op_type_ = OperandDef.MOD
 
-    _func_name = 'mod'
-    _rfunc_name = 'rmod'
+    _func_name = "mod"
+    _rfunc_name = "rmod"
 
     @classproperty
     def _operator(self):
@@ -33,6 +33,7 @@ class DataFrameMod(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorMod
+
         return TensorMod
 
 
@@ -47,13 +48,13 @@ dtype: float64
 """
 
 
-@bin_arithmetic_doc('Modulo', equiv='%', series_example=_mod_example)
-def mod(df, other, axis='columns', level=None, fill_value=None):
+@bin_arithmetic_doc("Modulo", equiv="%", series_example=_mod_example)
+def mod(df, other, axis="columns", level=None, fill_value=None):
     op = DataFrameMod(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
-@bin_arithmetic_doc('Modulo', equiv='%', series_example=_mod_example)
-def rmod(df, other, axis='columns', level=None, fill_value=None):
+@bin_arithmetic_doc("Modulo", equiv="%", series_example=_mod_example)
+def rmod(df, other, axis="columns", level=None, fill_value=None):
     op = DataFrameMod(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)

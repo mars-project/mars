@@ -22,8 +22,15 @@ from .quantile import _quantile_unchecked, _quantile_is_valid
 q_error_msg = "Percentiles must be in the range [0, 100]"
 
 
-def percentile(a, q, axis=None, out=None, overwrite_input=False,
-               interpolation='linear', keepdims=False):
+def percentile(
+    a,
+    q,
+    axis=None,
+    out=None,
+    overwrite_input=False,
+    interpolation="linear",
+    keepdims=False,
+):
     """
     Compute the q-th percentile of the data along the specified axis.
 
@@ -157,6 +164,13 @@ def percentile(a, q, axis=None, out=None, overwrite_input=False,
     else:
         q = truediv(q, 100)
 
-    return _quantile_unchecked(a, q, axis=axis, out=out, overwrite_input=overwrite_input,
-                               interpolation=interpolation, keepdims=keepdims,
-                               q_error_msg=q_error_msg)
+    return _quantile_unchecked(
+        a,
+        q,
+        axis=axis,
+        out=out,
+        overwrite_input=overwrite_input,
+        interpolation=interpolation,
+        keepdims=keepdims,
+        q_error_msg=q_error_msg,
+    )

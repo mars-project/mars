@@ -31,7 +31,7 @@ from ..core import Tensor, TensorOrder
 class TensorStack(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.STACK
 
-    _axis = Int32Field('axis')
+    _axis = Int32Field("axis")
 
     def __init__(self, axis=None, **kw):
         super().__init__(_axis=axis, **kw)
@@ -42,9 +42,13 @@ class TensorStack(TensorOperand, TensorOperandMixin):
 
     def __call__(self, tensors, out=None):
         if out is not None and not isinstance(out, Tensor):
-            raise TypeError(f'`out` must be a Tensor, got {type(out)} instead')
+            raise TypeError(f"`out` must be a Tensor, got {type(out)} instead")
 
-        shape = tensors[0].shape[:self._axis] + (len(tensors),) + tensors[0].shape[self._axis:]
+        shape = (
+            tensors[0].shape[: self._axis]
+            + (len(tensors),)
+            + tensors[0].shape[self._axis :]
+        )
         tensor_order = TensorOrder.C_ORDER if out is None else out.order
         t = self.new_tensor(tensors, shape, order=tensor_order)
 
@@ -52,8 +56,8 @@ class TensorStack(TensorOperand, TensorOperandMixin):
             return t
 
         if out.shape != t.shape:
-            raise ValueError('Output tensor has wrong dimensionality')
-        check_out_param(out, t, 'same_kind')
+            raise ValueError("Output tensor has wrong dimensionality")
+        check_out_param(out, t, "same_kind")
         out.data = t.data
         return out
 
@@ -66,30 +70,40 @@ class TensorStack(TensorOperand, TensorOperandMixin):
 
         if len(set([inp.shape for inp in op.inputs])) != 1:
             # check shape again when input has unknown shape
-            raise ValueError('all input tensors must have the same shape')
+            raise ValueError("all input tensors must have the same shape")
 
         inputs = yield from unify_chunks(*op.inputs)
         output = op.outputs[0]
         axis = op.axis
 
-        output_nsplits = inputs[0].nsplits[:axis] + ((1,) * len(inputs),) + \
-            inputs[0].nsplits[axis:]
-        output_idxes = itertools.product(*[range(len(nsplit)) for nsplit in output_nsplits])
+        output_nsplits = (
+            inputs[0].nsplits[:axis] + ((1,) * len(inputs),) + inputs[0].nsplits[axis:]
+        )
+        output_idxes = itertools.product(
+            *[range(len(nsplit)) for nsplit in output_nsplits]
+        )
 
         out_chunks = []
         for idx in output_idxes:
-            input_idx = idx[:axis] + idx[axis + 1:]
+            input_idx = idx[:axis] + idx[axis + 1 :]
             i = idx[axis]
             input_chunk = inputs[i].cix[input_idx]
-            slices = [slice(None)] * axis + [np.newaxis] + [slice(None)] * (len(input_idx) - axis)
+            slices = (
+                [slice(None)] * axis
+                + [np.newaxis]
+                + [slice(None)] * (len(input_idx) - axis)
+            )
             shape = input_chunk.shape[:axis] + (1,) + input_chunk.shape[axis:]
             chunk_op = TensorSlice(slices=slices, dtype=op.dtype, sparse=op.sparse)
-            out_chunk = chunk_op.new_chunk([input_chunk], shape=shape, index=idx, order=output.order)
+            out_chunk = chunk_op.new_chunk(
+                [input_chunk], shape=shape, index=idx, order=output.order
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, output.shape,
-                                  chunks=out_chunks, nsplits=output_nsplits)
+        return new_op.new_tensors(
+            op.inputs, output.shape, chunks=out_chunks, nsplits=output_nsplits
+        )
 
     @classmethod
     def execute(cls, ctx, op):
@@ -103,11 +117,12 @@ class TensorStack(TensorOperand, TensorOperandMixin):
         else:
             inputs = raw_inputs
         # move all the data to the same device
-        inputs, device_id, xp = as_same_device(
-            inputs, device=op.device, ret_extra=True)
+        inputs, device_id, xp = as_same_device(inputs, device=op.device, ret_extra=True)
         if is_input_tuple:
-            inputs = [inputs[i * input_tuple_len: (i + 1) * input_tuple_len]
-                      for i in range(len(raw_inputs))]
+            inputs = [
+                inputs[i * input_tuple_len : (i + 1) * input_tuple_len]
+                for i in range(len(raw_inputs))
+            ]
         else:
             inputs = [[inp] for inp in inputs]
 
@@ -186,15 +201,16 @@ def stack(tensors, axis=0, out=None):
         if not any(np.isnan(s) for s in t.shape):
             to_check_shapes.append(t.shape)
     if to_check_shapes and len(set(to_check_shapes)) != 1:
-        raise ValueError('all input tensors must have the same shape')
+        raise ValueError("all input tensors must have the same shape")
 
     ndim = len(tensors[0].shape)
     raw_axis = axis
     if axis < 0:
         axis = ndim + axis + 1
     if axis > ndim or axis < 0:
-        raise np.AxisError(f'axis {raw_axis} is out of bounds for tensor '
-                           f'of dimension {ndim}')
+        raise np.AxisError(
+            f"axis {raw_axis} is out of bounds for tensor " f"of dimension {ndim}"
+        )
 
     dtype = np.result_type(*[t.dtype for t in tensors])
     sparse = all(t.issparse() for t in tensors)

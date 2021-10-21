@@ -25,12 +25,13 @@ from ..utils import parse_index, standardize_range_index
 class DataFrameExplode(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.EXPLODE
 
-    _column = AnyField('column')
-    _ignore_index = BoolField('ignore_field')
+    _column = AnyField("column")
+    _ignore_index = BoolField("ignore_field")
 
     def __init__(self, column=None, ignore_index=None, output_types=None, **kw):
-        super().__init__(_column=column, _ignore_index=ignore_index,
-                         _output_types=output_types, **kw)
+        super().__init__(
+            _column=column, _ignore_index=ignore_index, _output_types=output_types, **kw
+        )
 
     @property
     def column(self):
@@ -44,14 +45,16 @@ class DataFrameExplode(DataFrameOperand, DataFrameOperandMixin):
         params = in_obj.params.copy()
         new_shape = list(in_obj.shape)
         new_shape[0] = np.nan
-        params['shape'] = tuple(new_shape)
+        params["shape"] = tuple(new_shape)
 
         if self.ignore_index:
-            params['index_value'] = parse_index(
-                pd.RangeIndex(-1), (in_obj.key, in_obj.index_value.key))
+            params["index_value"] = parse_index(
+                pd.RangeIndex(-1), (in_obj.key, in_obj.index_value.key)
+            )
         else:
-            params['index_value'] = parse_index(
-                None, (in_obj.key, in_obj.index_value.key))
+            params["index_value"] = parse_index(
+                None, (in_obj.key, in_obj.index_value.key)
+            )
         return params
 
     def __call__(self, df_or_series):
@@ -63,8 +66,7 @@ class DataFrameExplode(DataFrameOperand, DataFrameOperandMixin):
 
         if in_obj.ndim == 2 and in_obj.chunk_shape[1] > 1:
             # make sure data's second dimension has only 1 chunk
-            in_obj = yield from recursive_tile(
-                in_obj.rechunk({1: in_obj.shape[1]}))
+            in_obj = yield from recursive_tile(in_obj.rechunk({1: in_obj.shape[1]}))
 
         chunks = []
         for chunk in in_obj.chunks:
@@ -80,7 +82,9 @@ class DataFrameExplode(DataFrameOperand, DataFrameOperandMixin):
             new_nsplits = ((np.nan,) * in_obj.chunk_shape[0], in_obj.nsplits[1])
         else:
             new_nsplits = ((np.nan,) * in_obj.chunk_shape[0],)
-        return new_op.new_tileable([in_obj], chunks=chunks, nsplits=new_nsplits, **out_params)
+        return new_op.new_tileable(
+            [in_obj], chunks=chunks, nsplits=new_nsplits, **out_params
+        )
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameExplode"):
@@ -149,8 +153,9 @@ def df_explode(df, column, ignore_index=False):
     3    3  1
     3    4  1
     """
-    op = DataFrameExplode(column=column, ignore_index=ignore_index,
-                          output_types=[OutputType.dataframe])
+    op = DataFrameExplode(
+        column=column, ignore_index=ignore_index, output_types=[OutputType.dataframe]
+    )
     return op(df)
 
 

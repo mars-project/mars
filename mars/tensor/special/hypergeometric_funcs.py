@@ -22,7 +22,7 @@ from .core import TensorSpecialBinOp, _register_special_op, TensorSpecialMultiOp
 @_register_special_op
 class TensorHYP2F1(TensorSpecialMultiOp):
     _ARG_COUNT = 4
-    _func_name = 'hyp2f1'
+    _func_name = "hyp2f1"
 
 
 @implement_scipy(spspecial.hyp2f1)
@@ -35,7 +35,7 @@ def hyp2f1(a, b, c, z, **kwargs):
 @_register_special_op
 class TensorHYP1F1(TensorSpecialMultiOp):
     _ARG_COUNT = 3
-    _func_name = 'hyp1f1'
+    _func_name = "hyp1f1"
 
 
 @implement_scipy(spspecial.hyp1f1)
@@ -48,7 +48,7 @@ def hyp1f1(a, b, x, out=None, **kwargs):
 @_register_special_op
 class TensorHYPERU(TensorSpecialMultiOp):
     _ARG_COUNT = 3
-    _func_name = 'hyperu'
+    _func_name = "hyperu"
 
 
 @implement_scipy(spspecial.hyperu)
@@ -59,9 +59,9 @@ def hyperu(a, b, x, out=None, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorHYP0F1(TensorSpecialBinOp):
-    _func_name = 'hyp0f1'
+    _func_name = "hyp0f1"
 
 
 @implement_scipy(spspecial.hyp0f1)

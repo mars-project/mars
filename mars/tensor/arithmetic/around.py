@@ -24,30 +24,45 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(init=False, sparse_mode='unary')
+@arithmetic_operand(init=False, sparse_mode="unary")
 class TensorAround(TensorUnaryOp):
     _op_type_ = OperandDef.AROUND
 
-    _decimals = Int32Field('decimals')
-    _func_name = 'around'
+    _decimals = Int32Field("decimals")
+    _func_name = "around"
 
     @property
     def decimals(self):
         return self._decimals
 
-    def __init__(self, decimals=None, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
+    def __init__(
+        self,
+        decimals=None,
+        casting="same_kind",
+        err=None,
+        dtype=None,
+        sparse=False,
+        **kw
+    ):
         err = err if err is not None else np.geterr()
-        super().__init__(_decimals=decimals, _casting=casting, _err=err, _dtype=dtype,
-                         _sparse=sparse, **kw)
+        super().__init__(
+            _decimals=decimals,
+            _casting=casting,
+            _err=err,
+            _dtype=dtype,
+            _sparse=sparse,
+            **kw
+        )
 
     @property
     def ufunc_extra_params(self):
-        return {'decimals': self._decimals}
+        return {"decimals": self._decimals}
 
     @classmethod
     def execute(cls, ctx, op):
         (a,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             ctx[op.outputs[0].key] = xp.around(a, decimals=op.decimals)

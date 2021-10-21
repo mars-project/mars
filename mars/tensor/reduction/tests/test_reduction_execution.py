@@ -20,23 +20,41 @@ import pytest
 
 from ....utils import ignore_warning
 from ...datasource import ones, tensor
-from .. import mean, nansum, nanmax, nanmin, nanmean, nanprod, nanargmax, \
-    nanargmin, nanvar, nanstd, count_nonzero, allclose, array_equal, var, \
-    std, nancumsum, nancumprod
+from .. import (
+    mean,
+    nansum,
+    nanmax,
+    nanmin,
+    nanmean,
+    nanprod,
+    nanargmax,
+    nanargmin,
+    nanvar,
+    nanstd,
+    count_nonzero,
+    allclose,
+    array_equal,
+    var,
+    std,
+    nancumsum,
+    nancumprod,
+)
 
 
 def test_sum_prod_execution(setup):
     arr = ones((10, 8), chunk_size=6)
     assert 80 == arr.sum().execute().fetch()
-    np.testing.assert_array_equal(arr.sum(axis=0).execute().fetch(),
-                                  np.full((8,), fill_value=10))
+    np.testing.assert_array_equal(
+        arr.sum(axis=0).execute().fetch(), np.full((8,), fill_value=10)
+    )
 
     arr = ones((3, 3), chunk_size=2)
     assert 512 == (arr * 2).prod().execute().fetch()
-    np.testing.assert_array_equal((arr * 2).prod(axis=0).execute().fetch(),
-                                  np.full((3,), fill_value=8))
+    np.testing.assert_array_equal(
+        (arr * 2).prod(axis=0).execute().fetch(), np.full((3,), fill_value=8)
+    )
 
-    raw = sps.random(10, 20, density=.1)
+    raw = sps.random(10, 20, density=0.1)
     arr = tensor(raw, chunk_size=3)
     res = arr.sum().execute().fetch()
 
@@ -50,14 +68,14 @@ def test_sum_prod_execution(setup):
     res = arr2.execute().fetch()
     expected = raw.sum(axis=-1)
     np.testing.assert_allclose(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
     # test string dtype
-    a = tensor(list('abcdefghi'), dtype=object)
-    assert a.sum().execute().fetch() == 'abcdefghi'
-    a = tensor(list('abcdefghi'), dtype=object, chunk_size=2)
-    assert a.sum().execute().fetch() == 'abcdefghi'
+    a = tensor(list("abcdefghi"), dtype=object)
+    assert a.sum().execute().fetch() == "abcdefghi"
+    a = tensor(list("abcdefghi"), dtype=object, chunk_size=2)
+    assert a.sum().execute().fetch() == "abcdefghi"
 
 
 def test_max_min_execution(setup):
@@ -68,19 +86,19 @@ def test_max_min_execution(setup):
     assert raw.max() == arr.max().execute().fetch()
     assert raw.min() == arr.min().execute().fetch()
 
-    np.testing.assert_array_equal(
-        raw.max(axis=0), arr.max(axis=0).execute().fetch())
+    np.testing.assert_array_equal(raw.max(axis=0), arr.max(axis=0).execute().fetch())
     assert arr.max(axis=0).issparse() is False
-    np.testing.assert_array_equal(
-        raw.min(axis=0), arr.min(axis=0).execute().fetch())
+    np.testing.assert_array_equal(raw.min(axis=0), arr.min(axis=0).execute().fetch())
     assert arr.min(axis=0).issparse() is False
 
     np.testing.assert_array_equal(
-        raw.max(axis=(1, 2)), arr.max(axis=(1, 2)).execute().fetch())
+        raw.max(axis=(1, 2)), arr.max(axis=(1, 2)).execute().fetch()
+    )
     np.testing.assert_array_equal(
-        raw.min(axis=(1, 2)), arr.min(axis=(1, 2)).execute().fetch())
+        raw.min(axis=(1, 2)), arr.min(axis=(1, 2)).execute().fetch()
+    )
 
-    raw = sps.random(10, 10, density=.5)
+    raw = sps.random(10, 10, density=0.5)
 
     arr = tensor(raw, chunk_size=3)
 
@@ -88,19 +106,19 @@ def test_max_min_execution(setup):
     assert raw.min() == arr.min().execute().fetch()
 
     np.testing.assert_almost_equal(
-        raw.max(axis=1).A.ravel(),
-        arr.max(axis=1).execute().fetch().toarray())
+        raw.max(axis=1).A.ravel(), arr.max(axis=1).execute().fetch().toarray()
+    )
     assert arr.max(axis=1).issparse() is True
     np.testing.assert_almost_equal(
-        raw.min(axis=1).A.ravel(),
-        arr.min(axis=1).execute().fetch().toarray())
+        raw.min(axis=1).A.ravel(), arr.min(axis=1).execute().fetch().toarray()
+    )
     assert arr.min(axis=1).issparse() is True
 
     # test string dtype
-    a = tensor(list('abcdefghi'), dtype=object)
-    assert a.max().execute().fetch() == 'i'
-    a = tensor(list('abcdefghi'), dtype=object, chunk_size=2)
-    assert a.max().execute().fetch() == 'i'
+    a = tensor(list("abcdefghi"), dtype=object)
+    assert a.max().execute().fetch() == "i"
+    a = tensor(list("abcdefghi"), dtype=object, chunk_size=2)
+    assert a.max().execute().fetch() == "i"
 
     # test empty chunks
     raw = np.arange(3, 10)
@@ -113,8 +131,14 @@ def test_max_min_execution(setup):
 def test_all_any_execution(setup):
     raw1 = np.zeros((10, 15))
     raw2 = np.ones((10, 15))
-    raw3 = np.array([[True, False, True, False], [True, True, True, True],
-                     [False, False, False, False], [False, True, False, True]])
+    raw3 = np.array(
+        [
+            [True, False, True, False],
+            [True, True, True, True],
+            [False, False, False, False],
+            [False, True, False, True],
+        ]
+    )
 
     arr1 = tensor(raw1, chunk_size=3)
     arr2 = tensor(raw2, chunk_size=3)
@@ -123,12 +147,10 @@ def test_all_any_execution(setup):
     assert not arr1.all().execute().fetch()
     assert arr2.all().execute().fetch()
     assert not arr1.any().execute().fetch()
-    np.testing.assert_array_equal(raw3.all(axis=1),
-                                  arr3.all(axis=1).execute().fetch())
-    np.testing.assert_array_equal(raw3.any(axis=0),
-                                  arr3.any(axis=0).execute().fetch())
+    np.testing.assert_array_equal(raw3.all(axis=1), arr3.all(axis=1).execute().fetch())
+    np.testing.assert_array_equal(raw3.any(axis=0), arr3.any(axis=0).execute().fetch())
 
-    raw = sps.random(10, 10, density=.5) > .5
+    raw = sps.random(10, 10, density=0.5) > 0.5
 
     arr = tensor(raw, chunk_size=3)
 
@@ -136,10 +158,10 @@ def test_all_any_execution(setup):
     assert raw.A.any() == arr.any().execute().fetch()
 
     # test string dtype
-    a = tensor(list('abcdefghi'), dtype=object)
-    assert a.all().execute().fetch() == 'i'
-    a = tensor(list('abcdefghi'), dtype=object, chunk_size=2)
-    assert a.any().execute().fetch() == 'a'
+    a = tensor(list("abcdefghi"), dtype=object)
+    assert a.all().execute().fetch() == "i"
+    a = tensor(list("abcdefghi"), dtype=object, chunk_size=2)
+    assert a.any().execute().fetch() == "a"
 
 
 def test_mean_execution(setup):
@@ -174,7 +196,7 @@ def test_mean_execution(setup):
     expected3 = raw2.mean(axis=1, keepdims=True)
     np.testing.assert_allclose(res3, expected3)
 
-    raw1 = sps.random(20, 25, density=.1)
+    raw1 = sps.random(20, 25, density=0.1)
 
     arr1 = tensor(raw1, chunk_size=6)
 
@@ -192,7 +214,7 @@ def test_mean_execution(setup):
     assert arr.execute().fetch() == 1
 
     with pytest.raises(TypeError):
-        tensor(list('abcdefghi'), dtype=object).mean().execute()
+        tensor(list("abcdefghi"), dtype=object).mean().execute()
 
 
 def test_var_execution(setup):
@@ -237,7 +259,7 @@ def test_var_execution(setup):
     expected4 = raw2.var(ddof=1)
     assert pytest.approx(res4) == expected4
 
-    raw1 = sps.random(20, 25, density=.1)
+    raw1 = sps.random(20, 25, density=0.1)
 
     arr1 = tensor(raw1, chunk_size=6)
 
@@ -291,7 +313,7 @@ def test_std_execution(setup):
     expected4 = raw2.std(ddof=1)
     assert pytest.approx(res4) == expected4
 
-    raw1 = sps.random(20, 25, density=.1)
+    raw1 = sps.random(20, 25, density=0.1)
 
     arr1 = tensor(raw1, chunk_size=6)
 
@@ -318,11 +340,13 @@ def test_arg_reduction(setup):
     assert raw.argmin() == arr.argmin().execute().fetch()
 
     np.testing.assert_array_equal(
-        raw.argmax(axis=0), arr.argmax(axis=0).execute().fetch())
+        raw.argmax(axis=0), arr.argmax(axis=0).execute().fetch()
+    )
     np.testing.assert_array_equal(
-        raw.argmin(axis=0), arr.argmin(axis=0).execute().fetch())
+        raw.argmin(axis=0), arr.argmin(axis=0).execute().fetch()
+    )
 
-    raw_format = sps.random(20, 20, density=.1, format='lil')
+    raw_format = sps.random(20, 20, density=0.1, format="lil")
 
     random_min = np.random.randint(0, 200)
     random_max = np.random.randint(200, 400)
@@ -343,11 +367,11 @@ def test_arg_reduction(setup):
     res = arr2.execute().fetch()
     expected = raw.argmax(axis=-1)
     np.testing.assert_allclose(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
     with pytest.raises(TypeError):
-        tensor(list('abcdefghi'), dtype=object).argmax().execute()
+        tensor(list("abcdefghi"), dtype=object).argmax().execute()
 
 
 @ignore_warning
@@ -362,9 +386,13 @@ def test_nan_reduction(setup):
     assert np.nanmin(raw) == nanmin(arr).execute().fetch()
     assert np.nanmean(raw) == nanmean(arr).execute().fetch()
     assert pytest.approx(np.nanvar(raw)) == nanvar(arr).execute().fetch()
-    assert pytest.approx(np.nanvar(raw, ddof=1)) == nanvar(arr, ddof=1).execute().fetch()
+    assert (
+        pytest.approx(np.nanvar(raw, ddof=1)) == nanvar(arr, ddof=1).execute().fetch()
+    )
     assert pytest.approx(np.nanstd(raw)) == nanstd(arr).execute().fetch()
-    assert pytest.approx(np.nanstd(raw, ddof=1)) == nanstd(arr, ddof=1).execute().fetch()
+    assert (
+        pytest.approx(np.nanstd(raw, ddof=1)) == nanstd(arr, ddof=1).execute().fetch()
+    )
 
     arr = tensor(raw, chunk_size=10)
 
@@ -374,9 +402,13 @@ def test_nan_reduction(setup):
     assert np.nanmin(raw) == nanmin(arr).execute().fetch()
     assert np.nanmean(raw) == nanmean(arr).execute().fetch()
     assert pytest.approx(np.nanvar(raw)) == nanvar(arr).execute().fetch()
-    assert pytest.approx(np.nanvar(raw, ddof=1)) == nanvar(arr, ddof=1).execute().fetch()
+    assert (
+        pytest.approx(np.nanvar(raw, ddof=1)) == nanvar(arr, ddof=1).execute().fetch()
+    )
     assert pytest.approx(np.nanstd(raw)) == nanstd(arr).execute().fetch()
-    assert pytest.approx(np.nanstd(raw, ddof=1)) == nanstd(arr, ddof=1).execute().fetch()
+    assert (
+        pytest.approx(np.nanstd(raw, ddof=1)) == nanstd(arr, ddof=1).execute().fetch()
+    )
 
     raw = np.random.random((10, 10))
     raw[:3, :3] = np.nan
@@ -397,7 +429,7 @@ def test_nan_reduction(setup):
     with pytest.raises(ValueError):
         _ = nanargmax(arr).execute()  # noqa: F841
 
-    raw = sps.random(10, 10, density=.1, format='csr')
+    raw = sps.random(10, 10, density=0.1, format="csr")
     raw[:3, :3] = np.nan
     arr = tensor(raw, chunk_size=6)
 
@@ -407,9 +439,13 @@ def test_nan_reduction(setup):
     assert pytest.approx(np.nanmin(raw.A)) == nanmin(arr).execute().fetch()
     assert pytest.approx(np.nanmean(raw.A)) == nanmean(arr).execute().fetch()
     assert pytest.approx(np.nanvar(raw.A)) == nanvar(arr).execute().fetch()
-    assert pytest.approx(np.nanvar(raw.A, ddof=1)) == nanvar(arr, ddof=1).execute().fetch()
+    assert (
+        pytest.approx(np.nanvar(raw.A, ddof=1)) == nanvar(arr, ddof=1).execute().fetch()
+    )
     assert pytest.approx(np.nanstd(raw.A)) == nanstd(arr).execute().fetch()
-    assert pytest.approx(np.nanstd(raw.A, ddof=1)) == nanstd(arr, ddof=1).execute().fetch()
+    assert (
+        pytest.approx(np.nanstd(raw.A, ddof=1)) == nanstd(arr, ddof=1).execute().fetch()
+    )
 
     arr = nansum(1)
     assert arr.execute().fetch() == 1
@@ -427,7 +463,7 @@ def test_cum_reduction(setup):
     np.testing.assert_array_equal(res1, expected1)
     np.testing.assert_array_equal(res2, expected2)
 
-    raw = sps.random(8, 8, density=.1)
+    raw = sps.random(8, 8, density=0.1)
 
     arr = tensor(raw, chunk_size=6)
 
@@ -446,16 +482,20 @@ def test_cum_reduction(setup):
     res = arr2.execute().fetch()
     expected = raw.cumsum(axis=-1)
     np.testing.assert_allclose(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
     # test string dtype
-    a = tensor(list('abcdefghi'), dtype=object)
-    np.testing.assert_array_equal(a.cumsum().execute().fetch(),
-                                  np.cumsum(np.array(list('abcdefghi'), dtype=object)))
-    a = tensor(list('abcdefghi'), dtype=object, chunk_size=2)
-    np.testing.assert_array_equal(a.cumsum().execute().fetch(),
-                                  np.cumsum(np.array(list('abcdefghi'), dtype=object)))
+    a = tensor(list("abcdefghi"), dtype=object)
+    np.testing.assert_array_equal(
+        a.cumsum().execute().fetch(),
+        np.cumsum(np.array(list("abcdefghi"), dtype=object)),
+    )
+    a = tensor(list("abcdefghi"), dtype=object, chunk_size=2)
+    np.testing.assert_array_equal(
+        a.cumsum().execute().fetch(),
+        np.cumsum(np.array(list("abcdefghi"), dtype=object)),
+    )
 
 
 def test_nan_cum_reduction(setup):
@@ -471,7 +511,7 @@ def test_nan_cum_reduction(setup):
     np.testing.assert_array_equal(res1, expected1)
     np.testing.assert_array_equal(res2, expected2)
 
-    raw = sps.random(8, 8, density=.1, format='lil')
+    raw = sps.random(8, 8, density=0.1, format="lil")
     raw[:2, 2:4] = np.nan
 
     arr = tensor(raw, chunk_size=6)
@@ -488,7 +528,7 @@ def test_out_reduction_execution(setup):
     raw = np.random.randint(5, size=(8, 8, 8))
 
     arr = tensor(raw, chunk_size=6)
-    arr2 = ones((8, 8), dtype='i8', chunk_size=6)
+    arr2 = ones((8, 8), dtype="i8", chunk_size=6)
     arr.sum(axis=1, out=arr2)
 
     res = arr2.execute().fetch()
@@ -560,9 +600,9 @@ def test_count_nonzero_execution(setup):
     np.testing.assert_equal(res, expected)
 
     # test string dtype
-    a = tensor(list('abcdefghi'), dtype=object)
+    a = tensor(list("abcdefghi"), dtype=object)
     assert count_nonzero(a).execute().fetch() == 9
-    a = tensor(list('abcdefghi'), dtype=object, chunk_size=2)
+    a = tensor(list("abcdefghi"), dtype=object, chunk_size=2)
     assert count_nonzero(a).execute().fetch() == 9
 
 
@@ -601,7 +641,7 @@ def test_allclose_execution(setup):
 
     # test string dtype
     with pytest.raises(TypeError):
-        a = tensor(list('abcdefghi'), dtype=object)
+        a = tensor(list("abcdefghi"), dtype=object)
         allclose(a, a).execute()
 
 

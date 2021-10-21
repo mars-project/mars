@@ -23,8 +23,8 @@ from .core import TensorRandomOperandMixin, TensorDistribution
 
 class TensorStandardCauchy(TensorDistribution, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_STANDARD_CAUCHY
-    _func_name = 'standard_cauchy'
-    _fields_ = '_size',
+    _func_name = "standard_cauchy"
+    _fields_ = ("_size",)
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype

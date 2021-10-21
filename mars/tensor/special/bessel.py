@@ -20,9 +20,9 @@ from .core import TensorSpecialBinOp, _register_special_op
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorJV(TensorSpecialBinOp):
-    _func_name = 'jv'
+    _func_name = "jv"
 
 
 @implement_scipy(spspecial.jv)
@@ -33,9 +33,9 @@ def jv(v, z, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorJVE(TensorSpecialBinOp):
-    _func_name = 'jve'
+    _func_name = "jve"
 
 
 @implement_scipy(spspecial.jve)
@@ -46,9 +46,9 @@ def jve(v, z, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorYN(TensorSpecialBinOp):
-    _func_name = 'yn'
+    _func_name = "yn"
 
 
 @implement_scipy(spspecial.yn)
@@ -59,9 +59,9 @@ def yn(n, x, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorYV(TensorSpecialBinOp):
-    _func_name = 'yv'
+    _func_name = "yv"
 
 
 @implement_scipy(spspecial.yv)
@@ -72,9 +72,9 @@ def yv(v, z, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorYVE(TensorSpecialBinOp):
-    _func_name = 'yve'
+    _func_name = "yve"
 
 
 @implement_scipy(spspecial.yve)
@@ -85,9 +85,9 @@ def yve(v, z, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorKN(TensorSpecialBinOp):
-    _func_name = 'kn'
+    _func_name = "kn"
 
 
 @implement_scipy(spspecial.kn)
@@ -98,9 +98,9 @@ def kn(n, x, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorKV(TensorSpecialBinOp):
-    _func_name = 'kv'
+    _func_name = "kv"
 
 
 @implement_scipy(spspecial.kv)
@@ -111,9 +111,9 @@ def kv(v, z, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorKVE(TensorSpecialBinOp):
-    _func_name = 'kve'
+    _func_name = "kve"
 
 
 @implement_scipy(spspecial.kve)
@@ -124,9 +124,9 @@ def kve(v, z, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorIV(TensorSpecialBinOp):
-    _func_name = 'iv'
+    _func_name = "iv"
 
 
 @implement_scipy(spspecial.iv)
@@ -137,9 +137,9 @@ def iv(v, z, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorIVE(TensorSpecialBinOp):
-    _func_name = 'ive'
+    _func_name = "ive"
 
 
 @implement_scipy(spspecial.ive)
@@ -150,9 +150,9 @@ def ive(v, z, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorHankel1(TensorSpecialBinOp):
-    _func_name = 'hankel1'
+    _func_name = "hankel1"
 
 
 @implement_scipy(spspecial.hankel1)
@@ -163,9 +163,9 @@ def hankel1(v, z, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorHankel1e(TensorSpecialBinOp):
-    _func_name = 'hankel1e'
+    _func_name = "hankel1e"
 
 
 @implement_scipy(spspecial.hankel1e)
@@ -176,9 +176,9 @@ def hankel1e(v, z, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorHankel2(TensorSpecialBinOp):
-    _func_name = 'hankel2'
+    _func_name = "hankel2"
 
 
 @implement_scipy(spspecial.hankel2)
@@ -189,9 +189,9 @@ def hankel2(v, z, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorHankel2e(TensorSpecialBinOp):
-    _func_name = 'hankel2e'
+    _func_name = "hankel2e"
 
 
 @implement_scipy(spspecial.hankel2e)

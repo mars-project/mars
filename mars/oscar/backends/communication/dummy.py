@@ -24,27 +24,32 @@ from .base import Channel, ChannelType, Server, Client
 from .core import register_client, register_server
 from .errors import ChannelClosed
 
-DEFAULT_DUMMY_ADDRESS = 'dummy://0'
+DEFAULT_DUMMY_ADDRESS = "dummy://0"
 
 
 class DummyChannel(Channel):
     """
     Channel for communications in same process.
     """
-    __slots__ = '_in_queue', '_out_queue', '_closed'
 
-    name = 'dummy'
+    __slots__ = "_in_queue", "_out_queue", "_closed"
 
-    def __init__(self,
-                 in_queue: asyncio.Queue,
-                 out_queue: asyncio.Queue,
-                 closed: asyncio.Event,
-                 local_address: str = None,
-                 dest_address: str = None,
-                 compression=None):
-        super().__init__(local_address=local_address,
-                         dest_address=dest_address,
-                         compression=compression)
+    name = "dummy"
+
+    def __init__(
+        self,
+        in_queue: asyncio.Queue,
+        out_queue: asyncio.Queue,
+        closed: asyncio.Event,
+        local_address: str = None,
+        dest_address: str = None,
+        compression=None,
+    ):
+        super().__init__(
+            local_address=local_address,
+            dest_address=dest_address,
+            compression=compression,
+        )
         self._in_queue = in_queue
         self._out_queue = out_queue
         self._closed = closed
@@ -57,14 +62,14 @@ class DummyChannel(Channel):
     @implements(Channel.send)
     async def send(self, message: Any):
         if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed('Channel already closed, cannot send message')
+            raise ChannelClosed("Channel already closed, cannot send message")
         # put message directly into queue
         await self._out_queue.put(message)
 
     @implements(Channel.recv)
     async def recv(self):
         if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed('Channel already closed, cannot write message')
+            raise ChannelClosed("Channel already closed, cannot write message")
         try:
             return await self._in_queue.get()
         except RuntimeError:
@@ -83,15 +88,18 @@ class DummyChannel(Channel):
 
 @register_server
 class DummyServer(Server):
-    __slots__ = ('_closed', '_channels', '_tasks') + ('__weakref__',) \
-        if abc_type_require_weakref_slot else tuple()
+    __slots__ = (
+        ("_closed", "_channels", "_tasks") + ("__weakref__",)
+        if abc_type_require_weakref_slot
+        else tuple()
+    )
 
     _address_to_instances: Dict[str, "DummyServer"] = weakref.WeakValueDictionary()
-    scheme = 'dummy'
+    scheme = "dummy"
 
-    def __init__(self,
-                 address: str,
-                 channel_handler: Callable[[Channel], Coroutine] = None):
+    def __init__(
+        self, address: str, channel_handler: Callable[[Channel], Coroutine] = None
+    ):
         super().__init__(address, channel_handler)
         self._closed = asyncio.Event()
         self._channels = []
@@ -115,19 +123,22 @@ class DummyServer(Server):
     @implements(Server.create)
     async def create(config: Dict) -> "DummyServer":
         config = config.copy()
-        address = config.pop('address', DEFAULT_DUMMY_ADDRESS)
-        handle_channel = config.pop('handle_channel')
+        address = config.pop("address", DEFAULT_DUMMY_ADDRESS)
+        handle_channel = config.pop("handle_channel")
         if urlparse(address).scheme != DummyServer.scheme:  # pragma: no cover
-            raise ValueError(f'Address for DummyServer '
-                             f'should be starts with "dummy://", '
-                             f'got {address}')
+            raise ValueError(
+                f"Address for DummyServer "
+                f'should be starts with "dummy://", '
+                f"got {address}"
+            )
         if config:  # pragma: no cover
-            raise TypeError(f'Creating DummyServer got unexpected '
-                            f'arguments: {",".join(config)}')
+            raise TypeError(
+                f"Creating DummyServer got unexpected " f'arguments: {",".join(config)}'
+            )
         try:
             server = DummyServer.get_instance(address)
             if server.stopped:
-                raise KeyError('server closed')
+                raise KeyError("server closed")
         except KeyError:
             server = DummyServer(address, handle_channel)
             DummyServer._address_to_instances[address] = server
@@ -149,13 +160,15 @@ class DummyServer(Server):
     @implements(Server.on_connected)
     async def on_connected(self, *args, **kwargs):
         if self._closed.is_set():  # pragma: no cover
-            raise ServerClosed('Dummy server already closed')
+            raise ServerClosed("Dummy server already closed")
 
         channel = args[0]
         assert isinstance(channel, DummyChannel)
         if kwargs:  # pragma: no cover
-            raise TypeError(f'{type(self).__name__} got unexpected '
-                            f'arguments: {",".join(kwargs)}')
+            raise TypeError(
+                f"{type(self).__name__} got unexpected "
+                f'arguments: {",".join(kwargs)}'
+            )
         self._channels.append(channel)
         await self.channel_handler(channel)
 
@@ -163,8 +176,7 @@ class DummyServer(Server):
     async def stop(self):
         self._closed.set()
         _ = [t.cancel() for t in self._tasks]
-        await asyncio.gather(
-            *(channel.close() for channel in self._channels))
+        await asyncio.gather(*(channel.close() for channel in self._channels))
 
     @property
     @implements(Server.stopped)
@@ -174,39 +186,35 @@ class DummyServer(Server):
 
 @register_client
 class DummyClient(Client):
-    __slots__ = '_task',
+    __slots__ = ("_task",)
 
     scheme = DummyServer.scheme
 
-    def __init__(self,
-                 local_address: str,
-                 dest_address: str,
-                 channel: Channel):
-        super().__init__(local_address,
-                         dest_address,
-                         channel)
+    def __init__(self, local_address: str, dest_address: str, channel: Channel):
+        super().__init__(local_address, dest_address, channel)
 
     @staticmethod
     @implements(Client.connect)
-    async def connect(dest_address: str,
-                      local_address: str = None,
-                      **kwargs) -> "Client":
+    async def connect(
+        dest_address: str, local_address: str = None, **kwargs
+    ) -> "Client":
         if urlparse(dest_address).scheme != DummyServer.scheme:  # pragma: no cover
-            raise ValueError(f'Destination address should start with "dummy://" '
-                             f'for DummyClient, got {dest_address}')
+            raise ValueError(
+                f'Destination address should start with "dummy://" '
+                f"for DummyClient, got {dest_address}"
+            )
         server = DummyServer.get_instance(dest_address)
         if server is None:  # pragma: no cover
-            raise RuntimeError('DummyServer needs to be created '
-                               'first before DummyClient')
+            raise RuntimeError(
+                "DummyServer needs to be created " "first before DummyClient"
+            )
         if server.stopped:  # pragma: no cover
-            raise ConnectionError('Dummy server closed')
+            raise ConnectionError("Dummy server closed")
 
         q1, q2 = asyncio.Queue(), asyncio.Queue()
         closed = asyncio.Event()
-        client_channel = DummyChannel(q1, q2, closed,
-                                      local_address=local_address)
-        server_channel = DummyChannel(q2, q1, closed,
-                                      dest_address=local_address)
+        client_channel = DummyChannel(q1, q2, closed, local_address=local_address)
+        server_channel = DummyChannel(q2, q1, closed, dest_address=local_address)
 
         conn_coro = server.on_connected(server_channel)
         task = asyncio.create_task(conn_coro)

@@ -22,10 +22,10 @@ from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorHypot(TensorBinOp):
     _op_type_ = OperandDef.HYPOT
-    _func_name = 'hypot'
+    _func_name = "hypot"
 
 
 @infer_dtype(np.hypot)

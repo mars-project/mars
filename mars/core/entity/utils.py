@@ -21,8 +21,7 @@ from ...utils import has_unknown_shape, calc_nsplits
 def refresh_tileable_shape(tileable):
     if has_unknown_shape(tileable):
         # update shape
-        nsplits = calc_nsplits(
-            {c.index: c.shape for c in tileable.chunks})
+        nsplits = calc_nsplits({c.index: c.shape for c in tileable.chunks})
         shape = tuple(sum(ns) for ns in nsplits)
         tileable._nsplits = nsplits
         tileable._shape = shape
@@ -32,8 +31,7 @@ def tile(tileable, *tileables: TileableType):
     from ..graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 
     raw_tileables = target_tileables = [tileable] + list(tileables)
-    target_tileables = [t.data if hasattr(t, 'data') else t
-                        for t in target_tileables]
+    target_tileables = [t.data if hasattr(t, "data") else t for t in target_tileables]
 
     tileable_graph = TileableGraph(target_tileables)
     tileable_graph_builder = TileableGraphBuilder(tileable_graph)
@@ -42,19 +40,24 @@ def tile(tileable, *tileables: TileableType):
     # tile
     tile_context = dict()
     chunk_graph_builder = ChunkGraphBuilder(
-        tileable_graph, fuse_enabled=False, tile_context=tile_context)
+        tileable_graph, fuse_enabled=False, tile_context=tile_context
+    )
     next(chunk_graph_builder.build())
 
     if len(tileables) == 0:
         return type(tileable)(tile_context[target_tileables[0]])
     else:
-        return [type(raw_t)(tile_context[t]) for raw_t, t
-                in zip(raw_tileables, target_tileables)]
+        return [
+            type(raw_t)(tile_context[t])
+            for raw_t, t in zip(raw_tileables, target_tileables)
+        ]
 
 
-def recursive_tile(tileable: TileableType, *tileables: TileableType) -> \
-        Generator[List[ChunkType], List[ChunkType],
-                  Union[TileableType, List[TileableType]]]:
+def recursive_tile(
+    tileable: TileableType, *tileables: TileableType
+) -> Generator[
+    List[ChunkType], List[ChunkType], Union[TileableType, List[TileableType]]
+]:
     from .tileables import handler
 
     return_list = len(tileables) > 0

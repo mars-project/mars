@@ -16,7 +16,7 @@ from ...serialization.serializables import Serializable, KeyField
 
 
 class Window(Serializable):
-    _input = KeyField('input')
+    _input = KeyField("input")
 
     def __init__(self, input=None, **kw):  # pylint: disable=redefined-builtin
         super().__init__(_input=input, **kw)
@@ -30,8 +30,8 @@ class Window(Serializable):
         raise NotImplementedError
 
     def _repr(self, params):
-        kvs = [f'{k}={v}' for k, v in params.items() if v is not None]
-        return '{} [{}]'.format(self._repr_name(), ','.join(kvs))
+        kvs = [f"{k}={v}" for k, v in params.items() if v is not None]
+        return "{} [{}]".format(self._repr_name(), ",".join(kvs))
 
     def _repr_name(self):
         return type(self).__name__
@@ -45,10 +45,10 @@ class Window(Serializable):
             item = list(item)
             for col in item:
                 if col not in columns:
-                    raise KeyError(f'Column not found: {col}')
+                    raise KeyError(f"Column not found: {col}")
         else:
             if item not in columns:
-                raise KeyError(f'Column not found: {item}')
+                raise KeyError(f"Column not found: {item}")
 
         return type(self)(input=self.input[item], **self.params)
 
@@ -66,5 +66,11 @@ class Window(Serializable):
         if self.input.ndim == 1:
             return result
         else:
-            return sorted(result + [k for k in self.input.dtypes.index
-                                    if isinstance(k, str) and k.isidentifier()])
+            return sorted(
+                result
+                + [
+                    k
+                    for k in self.input.dtypes.index
+                    if isinstance(k, str) and k.isidentifier()
+                ]
+            )

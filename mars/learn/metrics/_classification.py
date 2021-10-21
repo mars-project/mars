@@ -29,17 +29,29 @@ from ._check_targets import _check_targets
 class AccuracyScore(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.ACCURACY_SCORE
 
-    _y_true = AnyField('y_true')
-    _y_pred = AnyField('y_pred')
-    _normalize = BoolField('normalize')
-    _sample_weight = AnyField('sample_weight')
-    _type_true = KeyField('type_true')
+    _y_true = AnyField("y_true")
+    _y_pred = AnyField("y_pred")
+    _normalize = BoolField("normalize")
+    _sample_weight = AnyField("sample_weight")
+    _type_true = KeyField("type_true")
 
-    def __init__(self, y_true=None, y_pred=None, normalize=None,
-                 sample_weight=None, type_true=None, **kw):
-        super().__init__(_y_true=y_true, _y_pred=y_pred,
-                         _normalize=normalize, _sample_weight=sample_weight,
-                         _type_true=type_true, **kw)
+    def __init__(
+        self,
+        y_true=None,
+        y_pred=None,
+        normalize=None,
+        sample_weight=None,
+        type_true=None,
+        **kw
+    ):
+        super().__init__(
+            _y_true=y_true,
+            _y_pred=y_pred,
+            _normalize=normalize,
+            _sample_weight=sample_weight,
+            _type_true=type_true,
+            **kw
+        )
         self.output_types = [OutputType.tensor]
 
     @property
@@ -82,8 +94,9 @@ class AccuracyScore(LearnOperand, LearnOperandMixin):
             inputs.append(self._sample_weight)
 
         dtype = np.dtype(float) if self._normalize else np.result_type(y_true, y_pred)
-        return self.new_tileable(inputs, dtype=dtype,
-                                 shape=(), order=TensorOrder.C_ORDER)
+        return self.new_tileable(
+            inputs, dtype=dtype, shape=(), order=TensorOrder.C_ORDER
+        )
 
     @classmethod
     def tile(cls, op):
@@ -95,7 +108,7 @@ class AccuracyScore(LearnOperand, LearnOperandMixin):
         type_true = ctx.get_chunks_result([chunks[0].key])[0]
 
         y_true, y_pred = op.y_true, op.y_pred
-        if type_true.item().startswith('multilabel'):
+        if type_true.item().startswith("multilabel"):
             differing_labels = mt.count_nonzero(y_true - y_pred, axis=1)
             score = mt.equal(differing_labels, 0)
         else:
@@ -114,8 +127,9 @@ def _weighted_sum(sample_score, sample_weight, normalize=False):
         return sample_score.sum()
 
 
-def accuracy_score(y_true, y_pred, normalize=True, sample_weight=None,
-                   session=None, run_kwargs=None):
+def accuracy_score(
+    y_true, y_pred, normalize=True, sample_weight=None, session=None, run_kwargs=None
+):
     """Accuracy classification score.
 
     In multilabel classification, this function computes subset accuracy:
@@ -176,14 +190,16 @@ def accuracy_score(y_true, y_pred, normalize=True, sample_weight=None,
     """
 
     # Compute accuracy for each possible representation
-    op = AccuracyScore(y_true=y_true, y_pred=y_pred, normalize=normalize,
-                       sample_weight=sample_weight)
+    op = AccuracyScore(
+        y_true=y_true, y_pred=y_pred, normalize=normalize, sample_weight=sample_weight
+    )
     score = op(y_true, y_pred)
     return score.execute(session=session, **(run_kwargs or dict()))
 
 
-def log_loss(y_true, y_pred, *, eps=1e-15, normalize=True, sample_weight=None,
-             labels=None):
+def log_loss(
+    y_true, y_pred, *, eps=1e-15, normalize=True, sample_weight=None, labels=None
+):
     r"""Log loss, aka logistic loss or cross-entropy loss.
 
     This is the loss function used in (multinomial) logistic regression
@@ -261,19 +277,24 @@ def log_loss(y_true, y_pred, *, eps=1e-15, normalize=True, sample_weight=None,
 
     if len(lb.classes_) == 1:
         if labels is None:
-            raise ValueError('y_true contains only one label ({0}). Please '
-                             'provide the true labels explicitly through the '
-                             'labels argument.'.format(lb.classes_[0].fetch()))
+            raise ValueError(
+                "y_true contains only one label ({0}). Please "
+                "provide the true labels explicitly through the "
+                "labels argument.".format(lb.classes_[0].fetch())
+            )
         else:
-            raise ValueError('The labels array needs to contain at least two '
-                             'labels for log_loss, '
-                             'got {0}.'.format(lb.classes_.fetch()))
+            raise ValueError(
+                "The labels array needs to contain at least two "
+                "labels for log_loss, "
+                "got {0}.".format(lb.classes_.fetch())
+            )
 
     transformed_labels = lb.transform(y_true)
 
     if transformed_labels.shape[1] == 1:
-        transformed_labels = mt.append(1 - transformed_labels,
-                                       transformed_labels, axis=1)
+        transformed_labels = mt.append(
+            1 - transformed_labels, transformed_labels, axis=1
+        )
 
     # Clipping
     y_pred = mt.clip(y_pred, eps, 1 - eps)
@@ -289,17 +310,21 @@ def log_loss(y_true, y_pred, *, eps=1e-15, normalize=True, sample_weight=None,
     transformed_labels = check_array(transformed_labels)
     if len(lb.classes_) != y_pred.shape[1]:
         if labels is None:
-            raise ValueError("y_true and y_pred contain different number of "
-                             "classes {0}, {1}. Please provide the true "
-                             "labels explicitly through the labels argument. "
-                             "Classes found in "
-                             "y_true: {2}".format(transformed_labels.shape[1],
-                                                  y_pred.shape[1],
-                                                  lb.classes_.fetch()))
+            raise ValueError(
+                "y_true and y_pred contain different number of "
+                "classes {0}, {1}. Please provide the true "
+                "labels explicitly through the labels argument. "
+                "Classes found in "
+                "y_true: {2}".format(
+                    transformed_labels.shape[1], y_pred.shape[1], lb.classes_.fetch()
+                )
+            )
         else:
-            raise ValueError('The number of classes in labels is different '
-                             'from that in y_pred. Classes found in '
-                             'labels: {0}'.format(lb.classes_.fetch()))
+            raise ValueError(
+                "The number of classes in labels is different "
+                "from that in y_pred. Classes found in "
+                "labels: {0}".format(lb.classes_.fetch())
+            )
 
     # Renormalize
     y_pred /= y_pred.sum(axis=1)[:, mt.newaxis]

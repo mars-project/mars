@@ -37,28 +37,28 @@ x_sparse[np.arange(n_rows), np.random.randint(n_columns, size=n_rows)] = np.nan
 X_sparse = mt.tensor(x_sparse, chunk_size=chunk_size).tosparse(missing=np.nan)
 
 
-@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+@pytest.mark.skipif(xgboost is None, reason="XGBoost not installed")
 def test_local_train_tensor(setup):
     dtrain = MarsDMatrix(X, y)
     booster = train({}, dtrain, num_boost_round=2)
     assert isinstance(booster, Booster)
 
 
-@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+@pytest.mark.skipif(xgboost is None, reason="XGBoost not installed")
 def test_local_train_sparse_tensor(setup):
     dtrain = MarsDMatrix(X_sparse, y)
     booster = train({}, dtrain, num_boost_round=2)
     assert isinstance(booster, Booster)
 
 
-@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+@pytest.mark.skipif(xgboost is None, reason="XGBoost not installed")
 def test_local_train_dataframe(setup):
     dtrain = MarsDMatrix(X_df, y_series)
     booster = train({}, dtrain, num_boost_round=2)
     assert isinstance(booster, Booster)
 
 
-@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+@pytest.mark.skipif(xgboost is None, reason="XGBoost not installed")
 def test_train_evals(setup_cluster):
     rs = mt.random.RandomState(0)
     # keep 1 chunk for X and y
@@ -66,15 +66,23 @@ def test_train_evals(setup_cluster):
     y = rs.rand(n_rows, chunk_size=n_rows)
     base_margin = rs.rand(n_rows, chunk_size=n_rows)
     dtrain = MarsDMatrix(X, y, base_margin=base_margin)
-    eval_x = MarsDMatrix(rs.rand(n_rows, n_columns, chunk_size=n_rows // 5),
-                         rs.rand(n_rows, chunk_size=n_rows // 5))
-    evals = [(eval_x, 'eval_x')]
+    eval_x = MarsDMatrix(
+        rs.rand(n_rows, n_columns, chunk_size=n_rows // 5),
+        rs.rand(n_rows, chunk_size=n_rows // 5),
+    )
+    evals = [(eval_x, "eval_x")]
     eval_result = dict()
-    booster = train({}, dtrain, num_boost_round=2, evals=evals,
-                    evals_result=eval_result)
+    booster = train(
+        {}, dtrain, num_boost_round=2, evals=evals, evals_result=eval_result
+    )
     assert isinstance(booster, Booster)
     assert len(eval_result) > 0
 
     with pytest.raises(TypeError):
-        train({}, dtrain, num_boost_round=2, evals=[('eval_x', eval_x)],
-              evals_result=eval_result)
+        train(
+            {},
+            dtrain,
+            num_boost_round=2,
+            evals=[("eval_x", eval_x)],
+            evals_result=eval_result,
+        )

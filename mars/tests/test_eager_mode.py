@@ -25,7 +25,7 @@ from ..dataframe.datasource.dataframe import from_pandas
 
 
 def test_base_execute(setup):
-    with option_context({'eager_mode': True}):
+    with option_context({"eager_mode": True}):
         a_data = np.random.rand(10, 10)
         a = mt.tensor(a_data, chunk_size=6)
         np.testing.assert_array_equal(a.fetch(), a_data)
@@ -53,7 +53,7 @@ def test_base_execute(setup):
 
 
 def test_multiple_output_execute(setup):
-    with option_context({'eager_mode': True}):
+    with option_context({"eager_mode": True}):
         data = np.random.random((5, 9))
 
         arr1 = mt.tensor(data.copy(), chunk_size=3)
@@ -77,7 +77,7 @@ def test_mixed_config(setup):
     with pytest.raises(ValueError):
         a.fetch()
 
-    with option_context({'eager_mode': True}):
+    with option_context({"eager_mode": True}):
         b = mt.ones((10, 10), chunk_size=(6, 8))
         np.testing.assert_array_equal(b.fetch(), np.ones((10, 10)))
 
@@ -99,7 +99,7 @@ def test_mixed_config(setup):
 
 
 def test_index(setup):
-    with option_context({'eager_mode': True}):
+    with option_context({"eager_mode": True}):
         a = mt.random.rand(10, 5, chunk_size=5)
         idx = slice(0, 5), slice(0, 5)
         a[idx] = 1
@@ -128,7 +128,7 @@ def test_repr_tensor(setup):
     assert repr(np.ones((10, 10))) not in repr(a)
     assert str(np.ones((10, 10))) not in str(a)
 
-    with option_context({'eager_mode': True}):
+    with option_context({"eager_mode": True}):
         a = mt.ones((10, 10))
         assert repr(np.ones((10, 10))) == repr(a)
         assert str(np.ones((10, 10))) == str(a)
@@ -137,7 +137,7 @@ def test_repr_tensor(setup):
 def test_repr_dataframe(setup):
     x = pd.DataFrame(np.ones((10, 10)))
 
-    with option_context({'eager_mode': True}):
+    with option_context({"eager_mode": True}):
         a = md.DataFrame(np.ones((10, 10)), chunk_size=3)
         assert repr(x) in repr(a)
         assert str(x) in str(a)
@@ -148,7 +148,7 @@ def test_repr_dataframe(setup):
 
 
 def test_view(setup):
-    with option_context({'eager_mode': True}):
+    with option_context({"eager_mode": True}):
         data = np.random.rand(10, 20)
         a = mt.tensor(data, chunk_size=5)
         b = a[0][1:4]
@@ -163,7 +163,7 @@ def test_view(setup):
 
 
 def test_dataframe(setup):
-    with option_context({'eager_mode': True}):
+    with option_context({"eager_mode": True}):
         from ..dataframe.arithmetic import add
 
         data1 = pd.DataFrame(np.random.rand(10, 10))

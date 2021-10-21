@@ -41,13 +41,13 @@ class ExSocket(object):
             chunk = self.sock.recv(min(nbytes - nread, 1024))
             nread += len(chunk)
             res.append(chunk)
-        return b''.join(res)
+        return b"".join(res)
 
     def recvint(self):
-        return struct.unpack('@i', self.recvall(4))[0]
+        return struct.unpack("@i", self.recvall(4))[0]
 
     def sendint(self, n):
-        self.sock.sendall(struct.pack('@i', n))
+        self.sock.sendall(struct.pack("@i", n))
 
     def sendstr(self, s):
         self.sendint(len(s))
@@ -59,7 +59,7 @@ class ExSocket(object):
 
 
 # magic number used to verify existence of data
-kMagic = 0xff99
+kMagic = 0xFF99
 
 
 def get_some_ip(host):
@@ -76,7 +76,7 @@ class SlaveEntry(object):
         self.sock = slave
         self.host = get_some_ip(s_addr[0])
         magic = slave.recvint()
-        assert magic == kMagic, f'invalid magic number={magic} from {self.host}'
+        assert magic == kMagic, f"invalid magic number={magic} from {self.host}"
         slave.sendint(kMagic)
         self.rank = slave.recvint()
         self.world_size = slave.recvint()
@@ -88,7 +88,7 @@ class SlaveEntry(object):
     def decide_rank(self, job_map):
         if self.rank >= 0:
             return self.rank
-        if self.jobid != 'NULL' and self.jobid in job_map:
+        if self.jobid != "NULL" and self.jobid in job_map:
             return job_map[self.jobid]
         return -1
 
@@ -174,7 +174,7 @@ class RabitTracker(object):
         self.start_time = None
         self.end_time = None
         self.nslave = nslave
-        logging.info('start listen on %s:%d', hostIP, self.port)
+        logging.info("start listen on %s:%d", hostIP, self.port)
 
     def __del__(self):
         self.sock.close()
@@ -196,8 +196,7 @@ class RabitTracker(object):
         get environment variables for slaves
         can be passed in as args or envs
         """
-        return {'DMLC_TRACKER_URI': self.hostIP,
-                'DMLC_TRACKER_PORT': self.port}
+        return {"DMLC_TRACKER_URI": self.hostIP, "DMLC_TRACKER_PORT": self.port}
 
     def get_tree(self, nslave):
         tree_map = {}
@@ -283,20 +282,20 @@ class RabitTracker(object):
         while len(shutdown) != nslave:
             fd, s_addr = self.sock.accept()
             s = SlaveEntry(fd, s_addr)
-            if s.cmd == 'print':
+            if s.cmd == "print":
                 msg = s.sock.recvstr()
                 logging.info(msg.strip())
                 continue
-            if s.cmd == 'shutdown':
+            if s.cmd == "shutdown":
                 assert s.rank >= 0 and s.rank not in shutdown
                 assert s.rank not in wait_conn
                 shutdown[s.rank] = s
-                logging.debug('Recieve %s signal from %d', s.cmd, s.rank)
+                logging.debug("Receive %s signal from %d", s.cmd, s.rank)
                 continue
-            assert s.cmd == 'start' or s.cmd == 'recover'
+            assert s.cmd == "start" or s.cmd == "recover"
             # lazily initialize the slaves
             if tree_map is None:
-                assert s.cmd == 'start'
+                assert s.cmd == "start"
                 if s.world_size > 0:
                     nslave = s.world_size
                 tree_map, parent_map, ring_map = self.get_link_map(nslave)
@@ -304,7 +303,7 @@ class RabitTracker(object):
                 todo_nodes = list(range(nslave))
             else:
                 assert s.world_size == -1 or s.world_size == nslave
-            if s.cmd == 'recover':
+            if s.cmd == "recover":
                 assert s.rank >= 0
 
             rank = s.decide_rank(job_map)
@@ -316,25 +315,31 @@ class RabitTracker(object):
                     pending.sort(key=lambda x: x.host)
                     for s in pending:
                         rank = todo_nodes.pop(0)
-                        if s.jobid != 'NULL':
+                        if s.jobid != "NULL":
                             job_map[s.jobid] = rank
                         s.assign_rank(rank, wait_conn, tree_map, parent_map, ring_map)
                         if s.wait_accept > 0:
                             wait_conn[rank] = s
-                        logging.debug('Recieve %s signal from %s; assign rank %d',
-                                      s.cmd, s.host, s.rank)
+                        logging.debug(
+                            "Receive %s signal from %s; assign rank %d",
+                            s.cmd,
+                            s.host,
+                            s.rank,
+                        )
                 if not todo_nodes:
-                    logging.info('@tracker All of %d nodes getting started', nslave)
+                    logging.info("@tracker All of %d nodes getting started", nslave)
                     self.start_time = time.time()
             else:
                 s.assign_rank(rank, wait_conn, tree_map, parent_map, ring_map)
-                logging.debug('Recieve %s signal from %d', s.cmd, s.rank)
+                logging.debug("Receive %s signal from %d", s.cmd, s.rank)
                 if s.wait_accept > 0:
                     wait_conn[rank] = s
-        logging.info('@tracker All nodes finishes job')
+        logging.info("@tracker All nodes finishes job")
         self.end_time = time.time()
-        logging.info('@tracker %s secs between node start and job finish',
-                     str(self.end_time - self.start_time))
+        logging.info(
+            "@tracker %s secs between node start and job finish",
+            str(self.end_time - self.start_time),
+        )
 
     def start(self, nslave):
         def run():

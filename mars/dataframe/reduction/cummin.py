@@ -19,11 +19,15 @@ from .core import DataFrameCumReductionOperand, DataFrameCumReductionMixin
 
 class DataFrameCummin(DataFrameCumReductionOperand, DataFrameCumReductionMixin):
     _op_type_ = OperandDef.CUMMIN
-    _func_name = 'cummin'
+    _func_name = "cummin"
 
 
 def cummin(df, axis=None, skipna=True):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameCummin(axis=axis, skipna=skipna, output_types=df.op.output_types,
-                         use_inf_as_na=use_inf_as_na)
+    op = DataFrameCummin(
+        axis=axis,
+        skipna=skipna,
+        output_types=df.op.output_types,
+        use_inf_as_na=use_inf_as_na,
+    )
     return op(df)

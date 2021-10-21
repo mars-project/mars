@@ -31,9 +31,13 @@ class K8SWorkerCommandRunner(K8SServiceMixin, WorkerCommandRunner):
 
         self.write_pid_file()
         await start_worker(
-            self.pool.external_address, self.args.supervisors,
-            self.band_to_slot, list(self.args.load_modules), self.config,
-            mark_ready=False)
+            self.pool.external_address,
+            self.args.supervisors,
+            self.band_to_slot,
+            list(self.args.load_modules),
+            self.config,
+            mark_ready=False,
+        )
         await self.wait_all_supervisors_ready()
 
         cluster_api = await ClusterAPI.create(self.args.endpoint)
@@ -48,5 +52,5 @@ class K8SWorkerCommandRunner(K8SServiceMixin, WorkerCommandRunner):
 
 main = K8SWorkerCommandRunner()
 
-if __name__ == '__main__':   # pragma: no branch
+if __name__ == "__main__":  # pragma: no branch
     main()

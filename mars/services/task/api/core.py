@@ -37,11 +37,13 @@ class AbstractTaskAPI(ABC):
         """
 
     @abstractmethod
-    async def submit_tileable_graph(self,
-                                    graph: TileableGraph,
-                                    task_name: str = None,
-                                    fuse_enabled: bool = True,
-                                    extra_config: dict = None) -> str:
+    async def submit_tileable_graph(
+        self,
+        graph: TileableGraph,
+        task_name: str = None,
+        fuse_enabled: bool = True,
+        extra_config: dict = None,
+    ) -> str:
         """
         Submit a tileable graph
 
@@ -103,8 +105,7 @@ class AbstractTaskAPI(ABC):
         """
 
     @abstractmethod
-    async def get_task_progress(self,
-                                task_id: str) -> float:
+    async def get_task_progress(self, task_id: str) -> float:
         """
         Get task progress.
 

@@ -70,11 +70,13 @@ def moveaxis(a, source, destination):
     """
     a = astensor(a)
 
-    source = normalize_axis_tuple(source, a.ndim, 'source')
-    destination = normalize_axis_tuple(destination, a.ndim, 'destination')
+    source = normalize_axis_tuple(source, a.ndim, "source")
+    destination = normalize_axis_tuple(destination, a.ndim, "destination")
     if len(source) != len(destination):
-        raise ValueError('`source` and `destination` arguments must have '
-                         'the same number of elements')
+        raise ValueError(
+            "`source` and `destination` arguments must have "
+            "the same number of elements"
+        )
 
     order = [n for n in range(a.ndim) if n not in source]
 

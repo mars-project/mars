@@ -16,32 +16,31 @@ import os
 import time
 
 from .. import DiskInfo
-from ..gather import gather_node_env, gather_node_resource, \
-    gather_node_details
+from ..gather import gather_node_env, gather_node_resource, gather_node_details
 
 
 def test_gather_node_env():
     node_env = gather_node_env()
-    band_data = node_env['bands']['numa-0']
-    assert band_data['resources']['cpu'] > 0
-    assert band_data['resources']['memory'] > 0
+    band_data = node_env["bands"]["numa-0"]
+    assert band_data["resources"]["cpu"] > 0
+    assert band_data["resources"]["memory"] > 0
 
 
 def test_gather_node_resource():
     node_res = gather_node_resource()
-    band_res = node_res['numa-0']
-    assert band_res['cpu_total'] >= band_res['cpu_avail']
-    assert band_res['memory_total'] >= band_res['memory_avail']
+    band_res = node_res["numa-0"]
+    assert band_res["cpu_total"] >= band_res["cpu_avail"]
+    assert band_res["memory_total"] >= band_res["memory_avail"]
 
 
 def test_gather_node_details():
     gather_node_details()
     time.sleep(0.1)
     node_details = gather_node_details()
-    assert not node_details['disk'].get('partitions')
+    assert not node_details["disk"].get("partitions")
 
     curdir = os.path.dirname(os.path.abspath(__file__))
     gather_node_details(disk_infos=[DiskInfo(path=curdir)])
     time.sleep(0.1)
     node_details = gather_node_details(disk_infos=[DiskInfo(path=curdir)])
-    assert node_details['disk'].get('partitions')
+    assert node_details["disk"].get("partitions")

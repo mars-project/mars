@@ -19,7 +19,7 @@ from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 class DataFrameSize(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.REDUCTION_SIZE
-    _func_name = 'size'
+    _func_name = "size"
 
     @property
     def is_atomic(self):

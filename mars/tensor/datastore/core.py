@@ -29,8 +29,9 @@ class TensorDataStore(TensorHasInput, TensorOperandMixin):
     def _get_out_chunk(cls, op, in_chunk):
         chunk_op = op.copy().reset_key()
         out_chunk_shape = (0,) * in_chunk.ndim
-        return chunk_op.new_chunk([in_chunk], out_chunk_shape,
-                                  index=in_chunk.index, order=op.outputs[0].order)
+        return chunk_op.new_chunk(
+            [in_chunk], out_chunk_shape, index=in_chunk.index, order=op.outputs[0].order
+        )
 
     @classmethod
     def _process_out_chunks(cls, op, out_chunks):
@@ -47,6 +48,9 @@ class TensorDataStore(TensorHasInput, TensorOperandMixin):
         out_chunks = cls._process_out_chunks(op, out_chunks)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
-                                  chunks=out_chunks,
-                                  nsplits=((0,) for _ in range(in_tensor.ndim)))
+        return new_op.new_tensors(
+            op.inputs,
+            op.outputs[0].shape,
+            chunks=out_chunks,
+            nsplits=((0,) for _ in range(in_tensor.ndim)),
+        )

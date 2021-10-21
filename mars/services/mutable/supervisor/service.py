@@ -26,11 +26,15 @@ class MutableObjectManagerSupervisorService(AbstractService):
 
     async def create_session(self, session_id: str):
         await mo.create_actor(
-            MutableObjectManagerActor, session_id, address=self._address,
-            uid=MutableObjectManagerActor.gen_uid(session_id))
+            MutableObjectManagerActor,
+            session_id,
+            address=self._address,
+            uid=MutableObjectManagerActor.gen_uid(session_id),
+        )
 
     async def destroy_session(self, session_id: str):
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=MutableObjectManagerActor.gen_uid(session_id),
-            address=self._address)
+        await mo.destroy_actor(
+            mo.create_actor_ref(
+                uid=MutableObjectManagerActor.gen_uid(session_id), address=self._address
+            )
         )

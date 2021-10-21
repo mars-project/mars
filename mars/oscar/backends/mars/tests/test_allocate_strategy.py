@@ -16,26 +16,32 @@ import pytest
 
 from .... import create_actor_ref
 from ....errors import NoIdleSlot
-from ...allocate_strategy import \
-    AddressSpecified, MainPool, RandomSubPool, Random, RandomLabel, IdleLabel
+from ...allocate_strategy import (
+    AddressSpecified,
+    MainPool,
+    RandomSubPool,
+    Random,
+    RandomLabel,
+    IdleLabel,
+)
 from ...config import ActorPoolConfig
 
 config = ActorPoolConfig()
-config.add_pool_conf(0, 'main', 'unixsocket:///0', '127.0.0.1:1111')
-config.add_pool_conf(1, 'test', 'unixsocket:///1', '127.0.0.1:1112')
-config.add_pool_conf(2, 'test2', 'unixsocket:///2', '127.0.0.1:1113')
-config.add_pool_conf(3, 'test', 'unixsocket:///3', '127.0.0.1:1114')
+config.add_pool_conf(0, "main", "unixsocket:///0", "127.0.0.1:1111")
+config.add_pool_conf(1, "test", "unixsocket:///1", "127.0.0.1:1112")
+config.add_pool_conf(2, "test2", "unixsocket:///2", "127.0.0.1:1113")
+config.add_pool_conf(3, "test", "unixsocket:///3", "127.0.0.1:1114")
 
 
 def test_address_specified():
-    addr = '127.0.0.1:1112'
+    addr = "127.0.0.1:1112"
     strategy = AddressSpecified(addr)
     assert strategy.get_allocated_address(config, dict()) == addr
 
 
 def test_main_pool():
     strategy = MainPool()
-    assert strategy.get_allocated_address(config, dict()) == '127.0.0.1:1111'
+    assert strategy.get_allocated_address(config, dict()) == "127.0.0.1:1111"
 
 
 def test_random():
@@ -51,28 +57,28 @@ def test_random_sub_pool():
 
 
 def test_random_label():
-    strategy = RandomLabel('test')
-    addresses = config.get_external_addresses(label='test')
+    strategy = RandomLabel("test")
+    addresses = config.get_external_addresses(label="test")
     assert len(addresses) == 2
     assert strategy.get_allocated_address(config, dict()) in addresses
 
 
 def test_idle_label():
-    strategy = IdleLabel('test', 'my_mark')
-    addresses = config.get_external_addresses(label='test')
+    strategy = IdleLabel("test", "my_mark")
+    addresses = config.get_external_addresses(label="test")
     assert len(addresses) == 2
-    allocated = {addresses[0]: {
-        create_actor_ref(addresses[0], b'id1'): (strategy, None)
-    }}
+    allocated = {
+        addresses[0]: {create_actor_ref(addresses[0], b"id1"): (strategy, None)}
+    }
     assert strategy.get_allocated_address(config, allocated) == addresses[1]
 
-    strategy2 = IdleLabel('test', 'my_mark')
+    strategy2 = IdleLabel("test", "my_mark")
     allocated = {
         addresses[0]: {
-            create_actor_ref(addresses[0], b'id1'): (strategy, None),
-            create_actor_ref(addresses[0], b'id2'): (RandomLabel('test'), None)},
-        addresses[1]: {
-            create_actor_ref(addresses[1], b'id3'): (strategy2, None)}
+            create_actor_ref(addresses[0], b"id1"): (strategy, None),
+            create_actor_ref(addresses[0], b"id2"): (RandomLabel("test"), None),
+        },
+        addresses[1]: {create_actor_ref(addresses[1], b"id3"): (strategy2, None)},
     }
     with pytest.raises(NoIdleSlot):
         strategy2.get_allocated_address(config, allocated)

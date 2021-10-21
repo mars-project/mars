@@ -19,8 +19,13 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE
 from ...core.operand import OperandStage
-from ...serialization.serializables import FieldTypes, KeyField, ListField, \
-    TupleField, Int32Field
+from ...serialization.serializables import (
+    FieldTypes,
+    KeyField,
+    ListField,
+    TupleField,
+    Int32Field,
+)
 from ..core import TENSOR_TYPE, TensorOrder
 from ..utils import split_indexes_into_chunks, calc_pos, filter_inputs
 from ..operands import TensorHasInput, TensorOperandMixin, TensorMapReduceOperand
@@ -34,8 +39,8 @@ FANCY_INDEX_TYPES = TENSOR_TYPE + (np.ndarray,)
 class TensorIndex(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.INDEX
 
-    _input = KeyField('input')
-    _indexes = ListField('indexes')
+    _input = KeyField("input")
+    _indexes = ListField("indexes")
 
     def __init__(self, indexes=None, **kw):
         super().__init__(_indexes=indexes, **kw)
@@ -47,8 +52,10 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
-        new_indexes = [next(inputs_iter) if isinstance(index, ENTITY_TYPE) else index
-                       for index in self._indexes]
+        new_indexes = [
+            next(inputs_iter) if isinstance(index, ENTITY_TYPE) else index
+            for index in self._indexes
+        ]
         self._indexes = new_indexes
 
     def on_output_modify(self, new_output):
@@ -56,9 +63,12 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
 
         if self.create_view:
             a = self.input
-            op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(),
-                                     indexes=tuple(self._indexes),
-                                     value=new_output)
+            op = TensorIndexSetValue(
+                dtype=a.dtype,
+                sparse=a.issparse(),
+                indexes=tuple(self._indexes),
+                value=new_output,
+            )
             return op(a, self._indexes, new_output)
 
     def on_input_modify(self, new_input):
@@ -78,14 +88,14 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        indexes = tuple(ctx[index.key] if hasattr(index, 'key') else index
-                        for index in op.indexes)
+        indexes = tuple(
+            ctx[index.key] if hasattr(index, "key") else index for index in op.indexes
+        )
         input_ = ctx[op.inputs[0].key]
         xp = get_array_module(input_)
         ret = xp.asarray(input_)[indexes]
-        if hasattr(ret, 'astype'):
-            ret = ret.astype(
-                ret.dtype, order=op.outputs[0].order.value, copy=False)
+        if hasattr(ret, "astype"):
+            ret = ret.astype(ret.dtype, order=op.outputs[0].order.value, copy=False)
         ctx[op.outputs[0].key] = ret
 
     @classmethod
@@ -120,9 +130,9 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
 class FancyIndexingDistribute(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.FANCY_INDEX_DISTRIBUTE
 
-    _input = KeyField('input')
-    _dest_nsplits = TupleField('dest_nsplits', FieldTypes.tuple(FieldTypes.uint64))
-    _axes = TupleField('axes', FieldTypes.int32)
+    _input = KeyField("input")
+    _dest_nsplits = TupleField("dest_nsplits", FieldTypes.tuple(FieldTypes.uint64))
+    _axes = TupleField("axes", FieldTypes.int32)
 
     def __init__(self, dest_nsplits=None, axes=None, **kw):
         super().__init__(_dest_nsplits=dest_nsplits, _axes=axes, **kw)
@@ -153,8 +163,9 @@ class FancyIndexingDistribute(TensorMapReduceOperand, TensorOperandMixin):
         fancy_index_nsplits = [nsplits[ax] for ax in axes]
         indexes = ctx[op.inputs[0].key]
         flatten_indexes = indexes.reshape(indexes.shape[0], -1)
-        idx_to_fancy_indexes, idx_to_poses = \
-            split_indexes_into_chunks(fancy_index_nsplits, flatten_indexes, False)
+        idx_to_fancy_indexes, idx_to_poses = split_indexes_into_chunks(
+            fancy_index_nsplits, flatten_indexes, False
+        )
         for idx in idx_to_fancy_indexes:
             ctx[op.outputs[0].key, idx] = (idx_to_fancy_indexes[idx], idx_to_poses[idx])
 
@@ -191,7 +202,9 @@ class FancyIndexingDistribute(TensorMapReduceOperand, TensorOperandMixin):
         if op.stage == OperandStage.map:
             fancy_index_size = len(op.axes)
             inp_size = ctx[op.inputs[0].key][0]
-            factor = 1 / float(fancy_index_size) + fancy_index_size  # 1/#fancy_index is the poses
+            factor = (
+                1 / float(fancy_index_size) + fancy_index_size
+            )  # 1/#fancy_index is the poses
             ctx[op.outputs[0].key] = (inp_size * factor,) * 2
         else:
             sum_size = 0
@@ -204,12 +217,15 @@ class FancyIndexingDistribute(TensorMapReduceOperand, TensorOperandMixin):
 class FancyIndexingConcat(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.FANCY_INDEX_CONCAT
 
-    _fancy_index_axis = Int32Field('fancy_index_axis')
-    _fancy_index_shape = TupleField('fancy_index_shape', FieldTypes.int64)
+    _fancy_index_axis = Int32Field("fancy_index_axis")
+    _fancy_index_shape = TupleField("fancy_index_shape", FieldTypes.int64)
 
     def __init__(self, fancy_index_axis=None, fancy_index_shape=None, **kw):
-        super().__init__(_fancy_index_axis=fancy_index_axis,
-                         _fancy_index_shape=fancy_index_shape, **kw)
+        super().__init__(
+            _fancy_index_axis=fancy_index_axis,
+            _fancy_index_shape=fancy_index_shape,
+            **kw
+        )
 
     @property
     def input(self):
@@ -234,7 +250,7 @@ class FancyIndexingConcat(TensorMapReduceOperand, TensorOperandMixin):
             start = 0 if i == 0 else acc_sizes[i - 1]
             end = acc_sizes[i]
             select = (slice(None),) * fancy_index_axis + (slice(start, end),)
-            ctx[op.outputs[0].key, (i,)] = (indexed_array[select], pos[start: end])
+            ctx[op.outputs[0].key, (i,)] = (indexed_array[select], pos[start:end])
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "FancyIndexingConcat"):
@@ -248,10 +264,12 @@ class FancyIndexingConcat(TensorMapReduceOperand, TensorOperandMixin):
             poses.append(pos)
 
         concat_array = get_array_module(indexed_arrays[0]).concatenate(
-            indexed_arrays, axis=fancy_index_axis)
+            indexed_arrays, axis=fancy_index_axis
+        )
         concat_pos = get_array_module(poses[0]).hstack(poses)
-        select_pos = calc_pos(fancy_index_shape, concat_pos,
-                              xp=get_array_module(poses[0]))
+        select_pos = calc_pos(
+            fancy_index_shape, concat_pos, xp=get_array_module(poses[0])
+        )
         select = (slice(None),) * fancy_index_axis + (select_pos,)
         ctx[op.outputs[0].key] = concat_array[select]
 
@@ -317,8 +335,7 @@ def _calc_order(a, index):
 
 
 def _getitem_nocheck(a, item, convert_bool_to_fancy=None):
-    index = process_index(a.ndim, item,
-                          convert_bool_to_fancy=convert_bool_to_fancy)
+    index = process_index(a.ndim, item, convert_bool_to_fancy=convert_bool_to_fancy)
     if convert_bool_to_fancy is False:
         # come from __setitem__, the bool index is not converted to fancy index
         # if multiple bool indexes or bool + fancy indexes exist,
@@ -329,14 +346,19 @@ def _getitem_nocheck(a, item, convert_bool_to_fancy=None):
     else:
         shape = calc_shape(a.shape, index)
     tensor_order = _calc_order(a, index)
-    op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=list(index),
-                     create_view=_is_create_view(index))
+    op = TensorIndex(
+        dtype=a.dtype,
+        sparse=a.issparse(),
+        indexes=list(index),
+        create_view=_is_create_view(index),
+    )
     return op(a, index, tuple(shape), order=tensor_order)
 
 
 def _getitem(a, item):
-    if isinstance(item, (list, tuple)) and \
-            all(isinstance(it, slice) and it == slice(None) for it in item):
+    if isinstance(item, (list, tuple)) and all(
+        isinstance(it, slice) and it == slice(None) for it in item
+    ):
         # nothing to do
         return a
 

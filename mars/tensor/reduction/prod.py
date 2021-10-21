@@ -23,12 +23,17 @@ from .core import TensorReduction, TensorReductionMixin
 
 class TensorProd(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.PROD
-    _func_name = 'prod'
+    _func_name = "prod"
 
     def __init__(self, axis=None, keepdims=None, combine_size=None, stage=None, **kw):
         stage = self._rewrite_stage(stage)
-        super().__init__(_axis=axis, _keepdims=keepdims,
-                         _combine_size=combine_size, stage=stage, **kw)
+        super().__init__(
+            _axis=axis,
+            _keepdims=keepdims,
+            _combine_size=combine_size,
+            stage=stage,
+            **kw
+        )
 
 
 def prod(a, axis=None, dtype=None, out=None, keepdims=None, combine_size=None):
@@ -133,5 +138,7 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=None, combine_size=None):
     a = astensor(a)
     if dtype is None:
         dtype = np.empty((1,), dtype=a.dtype).prod().dtype
-    op = TensorProd(axis=axis, dtype=dtype, keepdims=keepdims, combine_size=combine_size)
+    op = TensorProd(
+        axis=axis, dtype=dtype, keepdims=keepdims, combine_size=combine_size
+    )
     return op(a, out=out)

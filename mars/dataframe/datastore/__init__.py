@@ -21,14 +21,14 @@ def _install():
     from ..operands import DATAFRAME_TYPE, SERIES_TYPE
 
     for cls in DATAFRAME_TYPE:
-        setattr(cls, 'to_csv', to_csv)
-        setattr(cls, 'to_sql', to_sql)
-        setattr(cls, 'to_parquet', to_parquet)
-        setattr(cls, 'to_vineyard', to_vineyard)
+        setattr(cls, "to_csv", to_csv)
+        setattr(cls, "to_sql", to_sql)
+        setattr(cls, "to_parquet", to_parquet)
+        setattr(cls, "to_vineyard", to_vineyard)
 
     for cls in SERIES_TYPE:
-        setattr(cls, 'to_csv', to_csv)
-        setattr(cls, 'to_sql', to_sql)
+        setattr(cls, "to_csv", to_csv)
+        setattr(cls, "to_sql", to_sql)
 
 
 _install()

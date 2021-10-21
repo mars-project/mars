@@ -31,10 +31,10 @@ from .core import TensorOperand, TensorElementWise, filter_inputs
 class TensorClip(TensorOperand, TensorElementWise):
     _op_type_ = OperandDef.CLIP
 
-    _a = KeyField('a')
-    _a_min = AnyField('a_min')
-    _a_max = AnyField('a_max')
-    _out = KeyField('out')
+    _a = KeyField("a")
+    _a_min = AnyField("a_min")
+    _a_max = AnyField("a_max")
+    _out = KeyField("out")
 
     def __init__(self, a=None, a_min=None, a_max=None, out=None, **kw):
         super().__init__(_a=a, _a_min=a_min, _a_max=a_max, _out=out, **kw)
@@ -53,7 +53,7 @@ class TensorClip(TensorOperand, TensorElementWise):
 
     @property
     def out(self):
-        return getattr(self, '_out', None)
+        return getattr(self, "_out", None)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -63,7 +63,7 @@ class TensorClip(TensorOperand, TensorElementWise):
             self._a_min = next(inputs_iter)
         if isinstance(self._a_max, ENTITY_TYPE):
             self._a_max = next(inputs_iter)
-        if getattr(self, '_out', None) is not None:
+        if getattr(self, "_out", None) is not None:
             self._out = next(inputs_iter)
 
     def __call__(self, a, a_min, a_max, out=None):
@@ -103,19 +103,19 @@ class TensorClip(TensorOperand, TensorElementWise):
             if isinstance(out, Tensor):
                 self._out = out
             else:
-                raise TypeError(f'out should be Tensor object, got {type(out)} instead')
+                raise TypeError(f"out should be Tensor object, got {type(out)} instead")
 
         dtypes = [dt for dt in [a.dtype, a_min_dtype, a_max_dtype] if dt is not None]
         dtype = np.result_type(*dtypes)
         # check broadcast
         shape = broadcast_shape(*[t.shape for t in tensors])
 
-        setattr(self, 'sparse', sparse)
+        setattr(self, "sparse", sparse)
         inputs = filter_inputs([a, a_min, a_max, out])
         t = self.new_tensor(inputs, shape)
 
         if out is None:
-            setattr(self, 'dtype', dtype)
+            setattr(self, "dtype", dtype)
             return t
 
         # if `out` is specified, use out's dtype and shape
@@ -123,7 +123,7 @@ class TensorClip(TensorOperand, TensorElementWise):
 
         if t.shape != out_shape:
             t = self.new_tensor(inputs, out_shape)
-        setattr(self, 'dtype', out_dtype)
+        setattr(self, "dtype", out_dtype)
 
         out.data = t.data
         return out
@@ -131,18 +131,23 @@ class TensorClip(TensorOperand, TensorElementWise):
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         inputs_iter = iter(inputs)
         a = next(inputs_iter)
-        a_min = next(inputs_iter) if isinstance(op.a_min, type(op.outputs[0])) else op.a_min
-        a_max = next(inputs_iter) if isinstance(op.a_max, type(op.outputs[0])) else op.a_max
+        a_min = (
+            next(inputs_iter) if isinstance(op.a_min, type(op.outputs[0])) else op.a_min
+        )
+        a_max = (
+            next(inputs_iter) if isinstance(op.a_max, type(op.outputs[0])) else op.a_max
+        )
         out = next(inputs_iter).copy() if op.out is not None else None
 
         with device(device_id):
             kw = {}
             if out is not None:
-                kw['out'] = out
+                kw["out"] = out
             ctx[op.outputs[0].key] = xp.clip(a, a_min, a_max, **kw)
 
 

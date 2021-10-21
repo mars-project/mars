@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorRadians(TensorUnaryOp):
     _op_type_ = OperandDef.RADIANS
-    _func_name = 'radians'
+    _func_name = "radians"
 
 
 @infer_dtype(np.radians)

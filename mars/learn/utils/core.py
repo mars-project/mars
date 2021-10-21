@@ -17,6 +17,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
+
 try:
     from sklearn import get_config as sklearn_get_config
 except ImportError:  # pragma: no cover
@@ -44,15 +45,13 @@ def concat_chunks(chunks):
     return tileable.op.concat_tileable_chunks(tileable).chunks[0]
 
 
-def copy_learned_attributes(from_estimator: BaseEstimator,
-                            to_estimator: BaseEstimator):
-    attrs = {k: v for k, v in vars(from_estimator).items() if k.endswith('_')}
+def copy_learned_attributes(from_estimator: BaseEstimator, to_estimator: BaseEstimator):
+    attrs = {k: v for k, v in vars(from_estimator).items() if k.endswith("_")}
     for k, v in attrs.items():
         setattr(to_estimator, k, v)
 
 
-def get_chunk_n_rows(row_bytes, max_n_rows=None,
-                     working_memory=None):
+def get_chunk_n_rows(row_bytes, max_n_rows=None, working_memory=None):
     """Calculates how many rows can be processed within working_memory
 
     Parameters
@@ -79,7 +78,7 @@ def get_chunk_n_rows(row_bytes, max_n_rows=None,
     if working_memory is None:  # pragma: no cover
         working_memory = options.learn.working_memory
         if working_memory is None and sklearn_get_config is not None:
-            working_memory = sklearn_get_config()['working_memory']
+            working_memory = sklearn_get_config()["working_memory"]
         elif working_memory is None:
             working_memory = 1024
 
@@ -92,8 +91,10 @@ def get_chunk_n_rows(row_bytes, max_n_rows=None,
     if max_n_rows is not None:
         chunk_n_rows = min(chunk_n_rows, max_n_rows)
     if chunk_n_rows < 1:  # pragma: no cover
-        warnings.warn('Could not adhere to working_memory config. '
-                      'Currently %.0fMiB, %.0fMiB required.' %
-                      (working_memory, np.ceil(row_bytes * 2 ** -20)))
+        warnings.warn(
+            "Could not adhere to working_memory config. "
+            "Currently %.0fMiB, %.0fMiB required."
+            % (working_memory, np.ceil(row_bytes * 2 ** -20))
+        )
         chunk_n_rows = 1
     return chunk_n_rows

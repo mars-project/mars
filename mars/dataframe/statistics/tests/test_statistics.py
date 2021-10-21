@@ -35,15 +35,18 @@ def test_series_quantile():
     r = s.quantile([0.3, 0.7])
     assert isinstance(r, Series)
     assert r.shape == (2,)
-    pd.testing.assert_index_equal(r.index_value.to_pandas(),
-                                  pd.Index([0.3, 0.7]))
+    pd.testing.assert_index_equal(r.index_value.to_pandas(), pd.Index([0.3, 0.7]))
     tile(r)
 
 
 def test_dataframe_quantile():
-    raw = pd.DataFrame({'a': np.random.rand(10),
-                        'b': np.random.randint(1000, size=10),
-                        'c': [np.random.bytes(5) for _ in range(10)]})
+    raw = pd.DataFrame(
+        {
+            "a": np.random.rand(10),
+            "b": np.random.randint(1000, size=10),
+            "c": [np.random.bytes(5) for _ in range(10)],
+        }
+    )
     s = df_from_pandas(raw, chunk_size=7)
 
     # q = 0.3, axis = 0

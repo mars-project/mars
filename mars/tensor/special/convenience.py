@@ -20,11 +20,11 @@ from .core import TensorSpecialBinOp, _register_special_op
 
 @_register_special_op
 class TensorXLogY(TensorSpecialBinOp):
-    _func_name = 'xlogy'
+    _func_name = "xlogy"
 
     @classmethod
     def _is_sparse(cls, x1, x2):
-        if hasattr(x1, 'issparse') and x1.issparse():
+        if hasattr(x1, "issparse") and x1.issparse():
             return True
         return False
 

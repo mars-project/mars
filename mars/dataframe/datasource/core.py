@@ -31,7 +31,7 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
     # First, it will try to trigger first_chunk.head() and raise TilesError,
     # When iterative tiling is triggered,
     # check if the first_chunk.head() meets requirements.
-    _nrows = Int64Field('nrows')
+    _nrows = Int64Field("nrows")
 
     @property
     def nrows(self):
@@ -39,7 +39,7 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
 
     @property
     def first_chunk(self):
-        return getattr(self, '_first_chunk', None)
+        return getattr(self, "_first_chunk", None)
 
     @classmethod
     def _tile(cls, op):  # pragma: no cover
@@ -54,7 +54,7 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
         yield chunks[:1]
 
         ctx = get_context()
-        chunk_shape = ctx.get_chunks_meta([chunks[0].key])[0]['shape']
+        chunk_shape = ctx.get_chunks_meta([chunks[0].key])[0]["shape"]
 
         if chunk_shape[0] == op.nrows:
             # the first chunk has enough data
@@ -66,7 +66,7 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
             for chunk in tileds[0].chunks:
                 chunk.op._nrows = None
             # otherwise
-            tiled = yield from recursive_tile(tileds[0].iloc[:op.nrows])
+            tiled = yield from recursive_tile(tileds[0].iloc[: op.nrows])
             tileds = [tiled]
         return tileds
 
@@ -123,7 +123,7 @@ class _IncrementalIndexRecorder:
 class IncrementalIndexDatasource(HeadOptimizedDataSource):
     __slots__ = ()
 
-    incremental_index_recorder_name = StringField('incremental_index_recorder_name')
+    incremental_index_recorder_name = StringField("incremental_index_recorder_name")
 
 
 class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
@@ -131,8 +131,11 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
 
     @classmethod
     def post_tile(cls, op: OperandType, results: List[TileableType]):
-        if op.incremental_index and results is not None and \
-                isinstance(results[0].index_value.value, IndexValue.RangeIndex):
+        if (
+            op.incremental_index
+            and results is not None
+            and isinstance(results[0].index_value.value, IndexValue.RangeIndex)
+        ):
             result = results[0]
             for chunk in result.chunks:
                 chunk.op.priority = -chunk.index[0]
@@ -140,17 +143,18 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
             ctx = get_context()
             if ctx:
                 name = str(uuid.uuid4())
-                ctx.create_remote_object(
-                    name, _IncrementalIndexRecorder, n_chunk)
+                ctx.create_remote_object(name, _IncrementalIndexRecorder, n_chunk)
                 for chunk in result.chunks:
                     chunk.op.incremental_index_recorder_name = name
 
     @classmethod
     def pre_execute(cls, ctx: Union[dict, Context], op: OperandType):
         out = op.outputs[0]
-        if op.incremental_index and \
-                isinstance(out.index_value.value, IndexValue.RangeIndex) and \
-                getattr(op, 'incremental_index_recorder_name', None):
+        if (
+            op.incremental_index
+            and isinstance(out.index_value.value, IndexValue.RangeIndex)
+            and getattr(op, "incremental_index_recorder_name", None)
+        ):
             index = out.index[0]
             recorder_name = op.incremental_index_recorder_name
             recorder = ctx.get_remote_object(recorder_name)
@@ -160,9 +164,11 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
     def post_execute(cls, ctx: Union[dict, Context], op: OperandType):
         out = op.outputs[0]
         result = ctx[out.key]
-        if op.incremental_index and \
-                isinstance(out.index_value.value, IndexValue.RangeIndex) and \
-                getattr(op, 'incremental_index_recorder_name', None):
+        if (
+            op.incremental_index
+            and isinstance(out.index_value.value, IndexValue.RangeIndex)
+            and getattr(op, "incremental_index_recorder_name", None)
+        ):
             recorder_name = op.incremental_index_recorder_name
             recorder = ctx.get_remote_object(recorder_name)
             index = out.index[0]

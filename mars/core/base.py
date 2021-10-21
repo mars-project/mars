@@ -21,24 +21,24 @@ from ..utils import tokenize
 
 
 class Base(Serializable):
-    _no_copy_attrs_ = {'_id'}
+    _no_copy_attrs_ = {"_id"}
     _init_update_key_ = True
 
-    _key = StringField('key')
-    _id = StringField('id')
+    _key = StringField("key")
+    _id = StringField("id")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if self._init_update_key_ and (not hasattr(self, '_key') or not self._key):
+        if self._init_update_key_ and (not hasattr(self, "_key") or not self._key):
             self._update_key()
-        if not hasattr(self, '_id') or not self._id:
+        if not hasattr(self, "_id") or not self._id:
             self._id = str(id(self))
 
     @property
     def _keys_(self):
         cls = type(self)
-        member = '__keys_' + cls.__name__
+        member = "__keys_" + cls.__name__
         try:
             return getattr(cls, member)
         except AttributeError:
@@ -48,11 +48,12 @@ class Base(Serializable):
 
     @property
     def _values_(self):
-        return [getattr(self, k, None) for k in self._keys_
-                if k not in self._no_copy_attrs_]
+        return [
+            getattr(self, k, None) for k in self._keys_ if k not in self._no_copy_attrs_
+        ]
 
     def __mars_tokenize__(self):
-        if hasattr(self, '_key'):
+        if hasattr(self, "_key"):
             return self._key
         else:
             return (type(self), *self._values_)
@@ -61,11 +62,11 @@ class Base(Serializable):
         object.__setattr__(self, k, v)
 
     def _update_key(self):
-        self._obj_set('_key', tokenize(type(self).__name__, *self._values_))
+        self._obj_set("_key", tokenize(type(self).__name__, *self._values_))
         return self
 
     def reset_key(self):
-        self._obj_set('_key', None)
+        self._obj_set("_key", None)
         return self
 
     def __copy__(self):
@@ -76,7 +77,9 @@ class Base(Serializable):
 
     def copy_to(self, target):
         for attr in self._FIELDS:
-            if (attr.startswith('__') and attr.endswith('__')) or attr in self._no_copy_attrs_:
+            if (
+                attr.startswith("__") and attr.endswith("__")
+            ) or attr in self._no_copy_attrs_:
                 # we don't copy id to identify that the copied one is new
                 continue
             try:
@@ -105,13 +108,14 @@ def buffered(func):
         obj_id = (obj.key, obj.id)
         if obj_id in context:
             return {
-                       'id': id(context[obj_id]),
-                       'serializer': 'ref',
-                       'buf_num': 0,
-                   }, []
+                "id": id(context[obj_id]),
+                "serializer": "ref",
+                "buf_num": 0,
+            }, []
         else:
             context[obj_id] = obj
             return func(self, obj, context)
+
     return wrapped
 
 

@@ -29,8 +29,16 @@ from ....core import ENTITY_TYPE, OutputType, recursive_tile
 from ....core.context import get_context
 from ....core.operand import OperandStage
 from ....lib.filesystem import get_fs, FileSystem
-from ....serialization.serializables import KeyField, StringField, Int32Field, Int64Field, \
-    DictField, AnyField, BytesField, BoolField
+from ....serialization.serializables import (
+    KeyField,
+    StringField,
+    Int32Field,
+    Int64Field,
+    DictField,
+    AnyField,
+    BytesField,
+    BoolField,
+)
 from ....tensor.core import TensorOrder
 from ....utils import has_unknown_shape, Timer, ceildiv
 from ...operands import LearnOperand, LearnOperandMixin
@@ -41,34 +49,58 @@ logger = logging.getLogger(__name__)
 
 class ProximaSearcher(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.PROXIMA_SIMPLE_SEARCHER
-    _tensor = KeyField('tensor')
-    _distance_metric = StringField('distance_metric')
-    _dimension = Int32Field('dimension')
-    _row_number = Int64Field('row_number')
-    _topk = Int32Field('topk')
-    _threads = Int32Field('threads')
-    _index = AnyField('index')
-    _index_searcher = StringField('index_searcher')
-    _index_searcher_params = DictField('index_searcher_params')
-    _index_reformer = StringField('index_reformer')
-    _index_reformer_params = DictField('index_reformer_params')
-    _download_index = BoolField('download_index')
-    _storage_options = BytesField('storage_options',
-                                  on_serialize=pickle.dumps,
-                                  on_deserialize=pickle.loads)
+    _tensor = KeyField("tensor")
+    _distance_metric = StringField("distance_metric")
+    _dimension = Int32Field("dimension")
+    _row_number = Int64Field("row_number")
+    _topk = Int32Field("topk")
+    _threads = Int32Field("threads")
+    _index = AnyField("index")
+    _index_searcher = StringField("index_searcher")
+    _index_searcher_params = DictField("index_searcher_params")
+    _index_reformer = StringField("index_reformer")
+    _index_reformer_params = DictField("index_reformer_params")
+    _download_index = BoolField("download_index")
+    _storage_options = BytesField(
+        "storage_options", on_serialize=pickle.dumps, on_deserialize=pickle.loads
+    )
 
-    def __init__(self, tensor=None, distance_metric=None, dimension=None,
-                 row_number=None, topk=None, index=None, threads=None,
-                 index_searcher=None, index_searcher_params=None,
-                 index_reformer=None, index_reformer_params=None,
-                 download_index=None, storage_options=None, output_types=None,
-                 stage=None, **kw):
-        super().__init__(_tensor=tensor, _distance_metric=distance_metric,
-                         _row_number=row_number, _dimension=dimension, _index=index, _threads=threads,
-                         _index_searcher=index_searcher, _index_searcher_params=index_searcher_params,
-                         _index_reformer=index_reformer, _index_reformer_params=index_reformer_params,
-                         _download_index=download_index, _output_types=output_types, _topk=topk,
-                         _storage_options=storage_options, **kw)
+    def __init__(
+        self,
+        tensor=None,
+        distance_metric=None,
+        dimension=None,
+        row_number=None,
+        topk=None,
+        index=None,
+        threads=None,
+        index_searcher=None,
+        index_searcher_params=None,
+        index_reformer=None,
+        index_reformer_params=None,
+        download_index=None,
+        storage_options=None,
+        output_types=None,
+        stage=None,
+        **kw,
+    ):
+        super().__init__(
+            _tensor=tensor,
+            _distance_metric=distance_metric,
+            _row_number=row_number,
+            _dimension=dimension,
+            _index=index,
+            _threads=threads,
+            _index_searcher=index_searcher,
+            _index_searcher_params=index_searcher_params,
+            _index_reformer=index_reformer,
+            _index_reformer_params=index_reformer_params,
+            _download_index=download_index,
+            _output_types=output_types,
+            _topk=topk,
+            _storage_options=storage_options,
+            **kw,
+        )
         if self._output_types is None:
             self._output_types = [OutputType.tensor, OutputType.tensor]
 
@@ -137,15 +169,19 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
 
     def __call__(self, tensor, index):
         kws = [
-            {'dtype': np.dtype(np.uint64),
-             'shape': (tensor.shape[0], self._topk),
-             'order': TensorOrder.C_ORDER},
-            {'dtype': np.dtype(np.float32),
-             'shape': (tensor.shape[0], self._topk),
-             'order': TensorOrder.C_ORDER}
+            {
+                "dtype": np.dtype(np.uint64),
+                "shape": (tensor.shape[0], self._topk),
+                "order": TensorOrder.C_ORDER,
+            },
+            {
+                "dtype": np.dtype(np.float32),
+                "shape": (tensor.shape[0], self._topk),
+                "order": TensorOrder.C_ORDER,
+            },
         ]
         inputs = [tensor]
-        if hasattr(index, 'op'):
+        if hasattr(index, "op"):
             inputs.append(index)
         return mt.ExecutableTuple(self.new_tileables(inputs, kws=kws))
 
@@ -166,8 +202,10 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             download_op._tensor = None
             download_op._index = next(indexes_iter)
             download_chunks[i % len(indexes)].append(
-                download_op.new_chunk(None, index=(i,), shape=(),
-                                      dtype=op.inputs[0].dtype))
+                download_op.new_chunk(
+                    None, index=(i,), shape=(), dtype=op.inputs[0].dtype
+                )
+            )
         return download_chunks
 
     @classmethod
@@ -194,52 +232,62 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
 
         logger.warning(f"query chunks count: {len(tensor.chunks)} ")
 
-        if hasattr(index, 'op'):
+        if hasattr(index, "op"):
             built_indexes = [index.chunks] * len(tensor.chunks)
         else:
             # index path
             fs: FileSystem = get_fs(index, op.storage_options)
-            index_paths = [f for f in fs.ls(index)
-                           if f.rsplit('/', 1)[-1].startswith('proxima_')]
+            index_paths = [
+                f for f in fs.ls(index) if f.rsplit("/", 1)[-1].startswith("proxima_")
+            ]
             download_chunks = cls._build_download_chunks(op, index_paths)
             iters = [iter(itertools.cycle(i)) for i in download_chunks.values()]
             built_indexes = []
             for _ in range(len(tensor.chunks)):
                 built_indexes.append([next(it) for it in iters])
 
-        if hasattr(index, 'op'):
-            index_chunks_workers = [m['bands'][0][0] for m in
-                                    ctx.get_chunks_meta(
-                                        [c.key for c in index.chunks], fields=['bands'])]
+        if hasattr(index, "op"):
+            index_chunks_workers = [
+                m["bands"][0][0]
+                for m in ctx.get_chunks_meta(
+                    [c.key for c in index.chunks], fields=["bands"]
+                )
+            ]
         else:
             index_chunks_workers = [None] * len(built_indexes[0])
 
         out_chunks = [], []
         for i, tensor_chunk in enumerate(tensor.chunks):
             pk_chunks, distance_chunks = [], []
-            for j, chunk_index, worker in \
-                    zip(itertools.count(), built_indexes[i], index_chunks_workers):
+            for j, chunk_index, worker in zip(
+                itertools.count(), built_indexes[i], index_chunks_workers
+            ):
                 chunk_op = op.copy().reset_key()
                 chunk_op.stage = OperandStage.map
-                if hasattr(index, 'op'):
+                if hasattr(index, "op"):
                     chunk_op.expect_worker = worker
                 else:
                     chunk_op.expect_worker = chunk_index.op.expect_worker
                 chunk_op._index = chunk_index
                 chunk_op._tensor = None
                 chunk_kws = [
-                    {'index': (tensor_chunk.index[0], j),
-                     'dtype': outs[0].dtype,
-                     'shape': (tensor_chunk.shape[0], topk),
-                     'order': TensorOrder.C_ORDER},
-                    {'index': (tensor_chunk.index[0], j),
-                     'dtype': outs[1].dtype,
-                     'shape': (tensor_chunk.shape[0], topk),
-                     'order': TensorOrder.C_ORDER}
+                    {
+                        "index": (tensor_chunk.index[0], j),
+                        "dtype": outs[0].dtype,
+                        "shape": (tensor_chunk.shape[0], topk),
+                        "order": TensorOrder.C_ORDER,
+                    },
+                    {
+                        "index": (tensor_chunk.index[0], j),
+                        "dtype": outs[1].dtype,
+                        "shape": (tensor_chunk.shape[0], topk),
+                        "order": TensorOrder.C_ORDER,
+                    },
                 ]
                 chunk_inputs = [tensor_chunk, chunk_index]
                 pk_chunk, distance_chunk = chunk_op.new_chunks(
-                    chunk_inputs, kws=chunk_kws)
+                    chunk_inputs, kws=chunk_kws
+                )
                 pk_chunks.append(pk_chunk)
                 distance_chunks.append(distance_chunk)
 
@@ -256,26 +304,34 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                 chunk_size = ceildiv(len(tensor_out_chunks[0]), combine_size)
                 cur_out_chunks = [[], []]
                 for k in range(chunk_size):
-                    to_combine_pks = tensor_out_chunks[0][k * combine_size: (k + 1) * combine_size]
-                    to_combine_distances = tensor_out_chunks[1][k * combine_size: (k + 1) * combine_size]
+                    to_combine_pks = tensor_out_chunks[0][
+                        k * combine_size : (k + 1) * combine_size
+                    ]
+                    to_combine_distances = tensor_out_chunks[1][
+                        k * combine_size : (k + 1) * combine_size
+                    ]
 
                     chunk_op = op.copy().reset_key()
                     chunk_op.stage = OperandStage.agg
                     chunk_op._tensor = None
                     chunk_op._index = None
                     agg_chunk_kws = [
-                        {'index': (i, 0),
-                         'dtype': outs[0].dtype,
-                         'shape': (tensor_chunk.shape[0], topk),
-                         'order': outs[0].order},
-                        {'index': (i, 0),
-                         'dtype': outs[1].dtype,
-                         'shape': (tensor_chunk.shape[0], topk),
-                         'order': outs[1].order}
+                        {
+                            "index": (i, 0),
+                            "dtype": outs[0].dtype,
+                            "shape": (tensor_chunk.shape[0], topk),
+                            "order": outs[0].order,
+                        },
+                        {
+                            "index": (i, 0),
+                            "dtype": outs[1].dtype,
+                            "shape": (tensor_chunk.shape[0], topk),
+                            "order": outs[1].order,
+                        },
                     ]
                     pk_result_chunk, distance_result_chunk = chunk_op.new_chunks(
-                        to_combine_pks + to_combine_distances,
-                        kws=agg_chunk_kws)
+                        to_combine_pks + to_combine_distances, kws=agg_chunk_kws
+                    )
                     cur_out_chunks[0].append(pk_result_chunk)
                     cur_out_chunks[1].append(distance_result_chunk)
                 tensor_out_chunks = cur_out_chunks
@@ -286,12 +342,12 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
 
         kws = []
         pk_params = outs[0].params
-        pk_params['chunks'] = out_chunks[0]
-        pk_params['nsplits'] = (tensor.nsplits[0], (topk,))
+        pk_params["chunks"] = out_chunks[0]
+        pk_params["nsplits"] = (tensor.nsplits[0], (topk,))
         kws.append(pk_params)
         distance_params = outs[1].params
-        distance_params['chunks'] = out_chunks[1]
-        distance_params['nsplits'] = (tensor.nsplits[0], (topk,))
+        distance_params["chunks"] = out_chunks[1]
+        distance_params["nsplits"] = (tensor.nsplits[0], (topk,))
         kws.append(distance_params)
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=kws)
@@ -303,20 +359,22 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             fs = get_fs(index_path, op.storage_options)
 
             # TODO
-            dirs = os.environ.get('MARS_SPILL_DIRS')
+            dirs = os.environ.get("MARS_SPILL_DIRS")
             if dirs:
-                temp_dir = random.choice(dirs.split(':'))
+                temp_dir = random.choice(dirs.split(":"))
             else:
                 temp_dir = "/tmp/proxima-index/"
 
-            local_path = os.path.join(temp_dir, md5(str(index_path).encode('utf-8')).hexdigest())  # noqa: B303  # nosec
+            local_path = os.path.join(
+                temp_dir, md5(str(index_path).encode("utf-8")).hexdigest()
+            )  # noqa: B303  # nosec
             exist_state = True
             if not os.path.exists(local_path):
                 exist_state = False
                 if not os.path.exists(local_path.rsplit("/", 1)[0]):
                     os.mkdir(local_path.rsplit("/", 1)[0])
-                with open(local_path, 'wb') as out_f:
-                    with fs.open(index_path, 'rb') as in_f:
+                with open(local_path, "wb") as out_f:
+                    with fs.open(index_path, "rb") as in_f:
                         # 32M
                         chunk_bytes = 32 * 1024 ** 2
                         while True:
@@ -326,12 +384,14 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                             else:
                                 break
 
-        logger.warning(f'ReadingFromVolume({op.key}), index path: {index_path}, '
-                       f'local_path {local_path}'
-                       f'size {os.path.getsize(local_path)}, '
-                       f'already exist {exist_state}, '
-                       f'costs {timer.duration} seconds '
-                       f'speed {round(os.path.getsize(local_path) / (1024 ** 2) / timer.duration, 2)} MB/s')
+        logger.warning(
+            f"ReadingFromVolume({op.key}), index path: {index_path}, "
+            f"local_path {local_path}"
+            f"size {os.path.getsize(local_path)}, "
+            f"already exist {exist_state}, "
+            f"costs {timer.duration} seconds "
+            f"speed {round(os.path.getsize(local_path) / (1024 ** 2) / timer.duration, 2)} MB/s"
+        )
         ctx[op.outputs[0].key] = local_path
 
     @classmethod
@@ -344,16 +404,23 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         index_path = ctx[op.inputs[-1].key]
 
         with Timer() as timer:
-            flow = proxima.IndexFlow(container_name='MMapFileContainer', container_params={},
-                                     searcher_name=op.index_searcher, searcher_params=op.index_searcher_params,
-                                     measure_name="", measure_params={},
-                                     reformer_name=op.index_reformer, reformer_params=op.index_reformer_params
-                                     )
+            flow = proxima.IndexFlow(
+                container_name="MMapFileContainer",
+                container_params={},
+                searcher_name=op.index_searcher,
+                searcher_params=op.index_searcher_params,
+                measure_name="",
+                measure_params={},
+                reformer_name=op.index_reformer,
+                reformer_params=op.index_reformer_params,
+            )
 
             flow.load(index_path)
             vecs = np.ascontiguousarray(inp)
 
-        logger.warning(f'LoadIndex({op.key})  index path: {index_path}  costs {timer.duration} seconds')
+        logger.warning(
+            f"LoadIndex({op.key})  index path: {index_path}  costs {timer.duration} seconds"
+        )
         logger.warning(f"threads count:{op.threads}  vecs count:{len(vecs)}")
 
         with Timer() as timer:
@@ -364,24 +431,31 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             while s_idx < len(vecs):
                 with Timer() as timer_s:
                     tp = get_proxima_type(vecs.dtype)
-                    result_pks_b, result_distances_b = proxima.IndexUtility.ann_search(searcher=flow,
-                                                                                       type=tp,
-                                                                                       query=vecs[s_idx:e_idx],
-                                                                                       topk=op.topk,
-                                                                                       threads=op.threads)
+                    result_pks_b, result_distances_b = proxima.IndexUtility.ann_search(
+                        searcher=flow,
+                        type=tp,
+                        query=vecs[s_idx:e_idx],
+                        topk=op.topk,
+                        threads=op.threads,
+                    )
                     if result_pks is None:
                         result_pks = np.asarray(result_pks_b)
                         result_distances = np.asarray(result_distances_b)
                     else:
-                        result_pks = np.concatenate((result_pks, np.asarray(result_pks_b)))
-                        result_distances = np.concatenate((result_distances, np.asarray(result_distances_b)))
+                        result_pks = np.concatenate(
+                            (result_pks, np.asarray(result_pks_b))
+                        )
+                        result_distances = np.concatenate(
+                            (result_distances, np.asarray(result_distances_b))
+                        )
 
                     s_idx = e_idx
                     e_idx = min(s_idx + batch, len(vecs))
                 logger.warning(
-                    f'Search({op.key}) count {s_idx}/{len(vecs)}:{round(s_idx * 100 / len(vecs), 2)}%'
-                    f' costs {round(timer_s.duration, 2)} seconds')
-        logger.warning(f'Search({op.key}) costs {timer.duration} seconds')
+                    f"Search({op.key}) count {s_idx}/{len(vecs)}:{round(s_idx * 100 / len(vecs), 2)}%"
+                    f" costs {round(timer_s.duration, 2)} seconds"
+                )
+        logger.warning(f"Search({op.key}) costs {timer.duration} seconds")
 
         ctx[op.outputs[0].key] = np.asarray(result_pks)
         ctx[op.outputs[1].key] = np.asarray(result_distances)
@@ -399,7 +473,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
 
         # calculate topk on rows
         if op.distance_metric == "InnerProduct":
-            inds = np.argsort(distances, axis=1)[:, -1:-topk - 1:-1]
+            inds = np.argsort(distances, axis=1)[:, -1 : -topk - 1 : -1]
         else:
             inds = np.argsort(distances, axis=1)[:, :topk]
 
@@ -423,10 +497,23 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             return cls._execute_agg(ctx, op)
 
 
-def search_index(tensor, topk, index, threads=4, row_number=None, dimension=None,
-                 distance_metric=None, index_searcher=None, index_searcher_params=None,
-                 index_reformer=None, index_reformer_params=None,
-                 storage_options=None, run=True, session=None, run_kwargs=None):
+def search_index(
+    tensor,
+    topk,
+    index,
+    threads=4,
+    row_number=None,
+    dimension=None,
+    distance_metric=None,
+    index_searcher=None,
+    index_searcher_params=None,
+    index_reformer=None,
+    index_reformer_params=None,
+    storage_options=None,
+    run=True,
+    session=None,
+    run_kwargs=None,
+):
     tensor = validate_tensor(tensor)
 
     if dimension is None:
@@ -441,15 +528,24 @@ def search_index(tensor, topk, index, threads=4, row_number=None, dimension=None
         index_reformer_params = {}
     if distance_metric is None:
         distance_metric = ""
-    if hasattr(index, 'op') and index.op.index_path is not None:
+    if hasattr(index, "op") and index.op.index_path is not None:
         storage_options = storage_options or index.op.storage_options
         index = index.op.index_path
 
-    op = ProximaSearcher(tensor=tensor, distance_metric=distance_metric, dimension=dimension,
-                         row_number=row_number, topk=topk, index=index, threads=threads,
-                         index_searcher=index_searcher, index_searcher_params=index_searcher_params,
-                         index_reformer=index_reformer, index_reformer_params=index_reformer_params,
-                         storage_options=storage_options)
+    op = ProximaSearcher(
+        tensor=tensor,
+        distance_metric=distance_metric,
+        dimension=dimension,
+        row_number=row_number,
+        topk=topk,
+        index=index,
+        threads=threads,
+        index_searcher=index_searcher,
+        index_searcher_params=index_searcher_params,
+        index_reformer=index_reformer,
+        index_reformer_params=index_reformer_params,
+        storage_options=storage_options,
+    )
     result = op(tensor, index)
     if run:
         return result.execute(session=session, **(run_kwargs or dict()))

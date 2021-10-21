@@ -26,13 +26,13 @@ register_mars_backend()
 def test_sk_learn_svc_train(setup):
     digits = load_digits()
     param_space = {
-        'C': np.logspace(-6, 6, 30),
-        'gamma': np.logspace(-8, 8, 30),
-        'tol': np.logspace(-4, -1, 30),
-        'class_weight': [None, 'balanced'],
+        "C": np.logspace(-6, 6, 30),
+        "gamma": np.logspace(-8, 8, 30),
+        "tol": np.logspace(-4, -1, 30),
+        "class_weight": [None, "balanced"],
     }
-    model = SVC(kernel='rbf')
+    model = SVC(kernel="rbf")
     search = RandomizedSearchCV(model, param_space, cv=5, n_iter=5, verbose=10)
 
-    with joblib.parallel_backend('mars', n_parallel=16):
+    with joblib.parallel_backend("mars", n_parallel=16):
         search.fit(digits.data, digits.target)

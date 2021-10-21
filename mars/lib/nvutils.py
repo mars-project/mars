@@ -18,8 +18,18 @@ import os
 import sys
 import uuid
 from collections import namedtuple
-from ctypes import c_char, c_char_p, c_int, c_uint, c_ulonglong, byref,\
-    create_string_buffer, Structure, POINTER, CDLL
+from ctypes import (
+    c_char,
+    c_char_p,
+    c_int,
+    c_uint,
+    c_ulonglong,
+    byref,
+    create_string_buffer,
+    Structure,
+    POINTER,
+    CDLL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,27 +52,32 @@ NVML_DRIVER_NOT_LOADED = 9
 
 
 class _CUuuid_t(Structure):
-    _fields_ = [
-        ('bytes', c_char * 16)
-    ]
+    _fields_ = [("bytes", c_char * 16)]
+
+
 class _nvmlUtilization_t(Structure):
     _fields_ = [
-        ('gpu', c_uint),
-        ('memory', c_uint),
+        ("gpu", c_uint),
+        ("memory", c_uint),
     ]
+
 
 class _struct_nvmlDevice_t(Structure):
     pass  # opaque handle
+
+
 _nvmlDevice_t = POINTER(_struct_nvmlDevice_t)
+
 
 class _nvmlBAR1Memory_t(Structure):
     _fields_ = [
-        ('total', c_ulonglong),
-        ('free', c_ulonglong),
-        ('used', c_ulonglong),
+        ("total", c_ulonglong),
+        ("free", c_ulonglong),
+        ("used", c_ulonglong),
     ]
 
-_is_windows: bool = sys.platform.startswith('win')
+
+_is_windows: bool = sys.platform.startswith("win")
 
 
 def _load_nv_library(*libnames):
@@ -75,10 +90,14 @@ def _load_nv_library(*libnames):
 
 _cuda_lib = _nvml_lib = None
 
-_cu_device_info = namedtuple('_cu_device_info', 'index uuid name multiprocessors cuda_cores threads')
-_nvml_driver_info = namedtuple('_nvml_driver_info', 'driver_version cuda_version')
+_cu_device_info = namedtuple(
+    "_cu_device_info", "index uuid name multiprocessors cuda_cores threads"
+)
+_nvml_driver_info = namedtuple("_nvml_driver_info", "driver_version cuda_version")
 _nvml_device_status = namedtuple(
-    '_nvml_device_status', 'gpu_util mem_util temperature fb_total_mem fb_used_mem fb_free_mem')
+    "_nvml_device_status",
+    "gpu_util mem_util temperature fb_total_mem fb_used_mem fb_free_mem",
+)
 
 _init_pid = None
 _gpu_count = None
@@ -91,10 +110,10 @@ _no_device_warned = False
 class NVError(Exception):
     def __init__(self, msg, *args, errno=None):
         self._errno = errno
-        super().__init__(msg or 'Unknown error', *args)
+        super().__init__(msg or "Unknown error", *args)
 
     def __str__(self):
-        return f'({self._errno}) {super().__str__()}'
+        return f"({self._errno}) {super().__str__()}"
 
     @property
     def errno(self):
@@ -153,7 +172,9 @@ def _init_cp():
     if _init_pid == os.getpid():
         return
 
-    _cuda_lib = _load_nv_library('libcuda.so', 'libcuda.dylib', 'cuda.dll', 'nvcuda.dll')
+    _cuda_lib = _load_nv_library(
+        "libcuda.so", "libcuda.dylib", "cuda.dll", "nvcuda.dll"
+    )
 
     if _cuda_lib is None:
         return
@@ -163,10 +184,10 @@ def _init_cp():
         if ex.errno == CU_NO_CUDA_CAPABLE_DEVICE_DETECTED:
             _cuda_lib = None
             if not _no_device_warned:
-                logger.warning('No CUDA device detected')
+                logger.warning("No CUDA device detected")
                 _no_device_warned = True
         else:
-            logger.exception('Failed to initialize libcuda.')
+            logger.exception("Failed to initialize libcuda.")
         return
 
 
@@ -175,10 +196,19 @@ def _init_nvml():
     if _init_pid == os.getpid():
         return
 
-    nvml_paths = ['libnvidia-ml.so', 'libnvidia-ml.so.1', 'libnvidia-ml.dylib', 'nvml.dll']
+    nvml_paths = [
+        "libnvidia-ml.so",
+        "libnvidia-ml.so.1",
+        "libnvidia-ml.dylib",
+        "nvml.dll",
+    ]
     if _is_windows:
-        nvml_paths.append(os.path.join(os.getenv("ProgramFiles", "C:/Program Files"),
-                                       "NVIDIA Corporation/NVSMI/nvml.dll"))
+        nvml_paths.append(
+            os.path.join(
+                os.getenv("ProgramFiles", "C:/Program Files"),
+                "NVIDIA Corporation/NVSMI/nvml.dll",
+            )
+        )
     _nvml_lib = _load_nv_library(*nvml_paths)
 
     if _nvml_lib is None:
@@ -189,10 +219,13 @@ def _init_nvml():
         if ex.errno == NVML_DRIVER_NOT_LOADED:
             _nvml_lib = None
             if not _no_device_warned:
-                logger.warning('Failed to load libnvidia-ml: %s, no CUDA device will be enabled', ex.message)
+                logger.warning(
+                    "Failed to load libnvidia-ml: %s, no CUDA device will be enabled",
+                    ex.message,
+                )
                 _no_device_warned = True
         else:
-            logger.exception('Failed to initialize libnvidia-ml.')
+            logger.exception("Failed to initialize libnvidia-ml.")
         return
 
 
@@ -216,12 +249,12 @@ def get_device_count():
     if _nvml_lib is None:
         return None
 
-    if 'CUDA_VISIBLE_DEVICES' in os.environ:
-        devices = os.environ['CUDA_VISIBLE_DEVICES'].strip()
+    if "CUDA_VISIBLE_DEVICES" in os.environ:
+        devices = os.environ["CUDA_VISIBLE_DEVICES"].strip()
         if not devices:
             _gpu_count = 0
         else:
-            _gpu_count = len(devices.split(','))
+            _gpu_count = len(devices.split(","))
     else:
         n_gpus = c_uint()
         _cu_check_error(_nvml_lib.nvmlDeviceGetCount(byref(n_gpus)))
@@ -241,12 +274,14 @@ def get_driver_info():
     version_buf = create_string_buffer(100)
     cuda_version = c_uint()
 
-    _nvml_check_error(_nvml_lib.nvmlSystemGetDriverVersion(version_buf, len(version_buf)))
+    _nvml_check_error(
+        _nvml_lib.nvmlSystemGetDriverVersion(version_buf, len(version_buf))
+    )
     _nvml_check_error(_nvml_lib.nvmlSystemGetCudaDriverVersion(byref(cuda_version)))
 
     _driver_info = _nvml_driver_info(
         driver_version=version_buf.value.decode(),
-        cuda_version='.'.join(str(v) for v in divmod(cuda_version.value, 1000))
+        cuda_version=".".join(str(v) for v in divmod(cuda_version.value, 1000)),
     )
     return _driver_info
 
@@ -272,15 +307,26 @@ def get_device_info(dev_index):
     _cu_check_error(_cuda_lib.cuDeviceGet(byref(device), c_int(dev_index)))
     _cu_check_error(_cuda_lib.cuDeviceGetName(name_buf, len(name_buf), device))
     _cu_check_error(_cuda_lib.cuDeviceGetUuid(byref(uuid_t), device))
-    _cu_check_error(_cuda_lib.cuDeviceComputeCapability(
-        byref(cc_major), byref(cc_minor), device))
-    _cu_check_error(_cuda_lib.cuDeviceGetAttribute(
-        byref(cores), CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, device))
-    _cu_check_error(_cuda_lib.cuDeviceGetAttribute(
-        byref(threads_per_core), CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR, device))
+    _cu_check_error(
+        _cuda_lib.cuDeviceComputeCapability(byref(cc_major), byref(cc_minor), device)
+    )
+    _cu_check_error(
+        _cuda_lib.cuDeviceGetAttribute(
+            byref(cores), CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, device
+        )
+    )
+    _cu_check_error(
+        _cuda_lib.cuDeviceGetAttribute(
+            byref(threads_per_core),
+            CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR,
+            device,
+        )
+    )
 
-    if 'CUDA_VISIBLE_DEVICES' in os.environ:
-        real_dev_index = [int(s) for s in os.environ['CUDA_VISIBLE_DEVICES'].split(',')][dev_index]
+    if "CUDA_VISIBLE_DEVICES" in os.environ:
+        real_dev_index = [
+            int(s) for s in os.environ["CUDA_VISIBLE_DEVICES"].split(",")
+        ][dev_index]
     else:
         real_dev_index = dev_index
 
@@ -289,7 +335,8 @@ def get_device_info(dev_index):
         uuid=uuid.UUID(bytes=uuid_t.bytes),
         name=name_buf.value.decode(),
         multiprocessors=cores.value,
-        cuda_cores=cores.value * _cu_get_processor_cores(cc_major.value, cc_minor.value),
+        cuda_cores=cores.value
+        * _cu_get_processor_cores(cc_major.value, cc_minor.value),
         threads=cores.value * threads_per_core.value,
     )
     return info
@@ -307,12 +354,15 @@ def get_device_status(dev_index):
 
     dev_uuid = get_device_info(dev_index).uuid
 
-    uuid_str = ('GPU-' + str(dev_uuid)).encode()
+    uuid_str = ("GPU-" + str(dev_uuid)).encode()
 
     _nvml_check_error(_nvml_lib.nvmlDeviceGetHandleByUUID(uuid_str, byref(device)))
     _nvml_check_error(_nvml_lib.nvmlDeviceGetUtilizationRates(device, byref(utils)))
-    _nvml_check_error(_nvml_lib.nvmlDeviceGetTemperature(
-        device, NVML_TEMPERATURE_GPU, byref(temperature)))
+    _nvml_check_error(
+        _nvml_lib.nvmlDeviceGetTemperature(
+            device, NVML_TEMPERATURE_GPU, byref(temperature)
+        )
+    )
     _nvml_check_error(_nvml_lib.nvmlDeviceGetBAR1MemoryInfo(device, byref(memory_info)))
 
     return _nvml_device_status(

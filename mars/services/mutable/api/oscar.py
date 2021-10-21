@@ -23,38 +23,47 @@ from ..supervisor import MutableObjectManagerActor, MutableTensorActor
 from .core import AbstractMutableAPI
 
 
-APIType = TypeVar('APIType', bound='MutableAPI')
+APIType = TypeVar("APIType", bound="MutableAPI")
 
 
 class MutableAPI(AbstractMutableAPI):
-    def __init__(self,
-                 address: str,
-                 mutable_mananger: Union[MutableObjectManagerActor, mo.ActorRef]):
+    def __init__(
+        self,
+        address: str,
+        mutable_mananger: Union[MutableObjectManagerActor, mo.ActorRef],
+    ):
         self._address = address
         self._mutable_manager_ref = mutable_mananger
 
     @classmethod
     @alru_cache(cache_exceptions=False)
-    async def create(cls,
-                     session_id: str,
-                     address: str) -> "MutableAPI":
+    async def create(cls, session_id: str, address: str) -> "MutableAPI":
         mutable_manager = await mo.actor_ref(
-            address, MutableObjectManagerActor.gen_uid(session_id))
+            address, MutableObjectManagerActor.gen_uid(session_id)
+        )
         return MutableAPI(address, mutable_manager)
 
     @alru_cache(cache_exceptions=False)
-    async def _get_mutable_tensor_ref(self, name: str) -> Union[MutableTensorActor, mo.ActorRef]:
+    async def _get_mutable_tensor_ref(
+        self, name: str
+    ) -> Union[MutableTensorActor, mo.ActorRef]:
         return await self._mutable_manager_ref.get_mutable_tensor(name)
 
-    async def create_mutable_tensor(self,
-                                    shape: tuple,
-                                    dtype: Union[np.dtype, str],
-                                    name: str = None,
-                                    default_value: Union[int, float] = 0,
-                                    chunk_size: Union[int, Tuple] = None) -> MutableTensorInfo:
+    async def create_mutable_tensor(
+        self,
+        shape: tuple,
+        dtype: Union[np.dtype, str],
+        name: str = None,
+        default_value: Union[int, float] = 0,
+        chunk_size: Union[int, Tuple] = None,
+    ) -> MutableTensorInfo:
         actor_ref = await self._mutable_manager_ref.create_mutable_tensor(
-            name=name, shape=shape, dtype=dtype,
-            chunk_size=chunk_size, default_value=default_value)
+            name=name,
+            shape=shape,
+            dtype=dtype,
+            chunk_size=chunk_size,
+            default_value=default_value,
+        )
         return await actor_ref.info()
 
     @alru_cache(cache_exceptions=False)
@@ -65,7 +74,9 @@ class MutableAPI(AbstractMutableAPI):
     async def seal_mutable_tensor(self, name: str, timestamp=None):
         # invalidate the `get_mutable_tensor` cache first.
         self.get_mutable_tensor.invalidate()
-        return await self._mutable_manager_ref.seal_mutable_tensor(name, timestamp=timestamp)
+        return await self._mutable_manager_ref.seal_mutable_tensor(
+            name, timestamp=timestamp
+        )
 
     async def read(self, name: str, index, timestamp=None):
         tensor_ref = await self._get_mutable_tensor_ref(name)
@@ -78,18 +89,17 @@ class MutableAPI(AbstractMutableAPI):
 
 class MockMutableAPI(MutableAPI):
     @classmethod
-    async def create(cls: Type[APIType],
-                     session_id: str,
-                     address: str) -> "MutableAPI":
+    async def create(cls: Type[APIType], session_id: str, address: str) -> "MutableAPI":
         mutable_managger = await mo.create_actor(
-            MutableObjectManagerActor, session_id, address=address,
-            uid=MutableObjectManagerActor.gen_uid(session_id))
+            MutableObjectManagerActor,
+            session_id,
+            address=address,
+            uid=MutableObjectManagerActor.gen_uid(session_id),
+        )
         return MockMutableAPI(address, mutable_managger)
 
     @classmethod
-    async def cleanup(cls: Type[APIType],
-                      session_id: str,
-                      address: str):
+    async def cleanup(cls: Type[APIType], session_id: str, address: str):
         await mo.destroy_actor(
-            await mo.actor_ref(
-                address, MutableObjectManagerActor.gen_uid(session_id)))
+            await mo.actor_ref(address, MutableObjectManagerActor.gen_uid(session_id))
+        )

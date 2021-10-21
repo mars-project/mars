@@ -30,31 +30,63 @@ def sample_data(query, sample_count=10000):
     return sample_query, idx
 
 
-def linear_build_and_search(doc, query, topk, column_number=None, row_number=None, dimension=None, measure_name=None,
-                            threads=4):
+def linear_build_and_search(
+    doc,
+    query,
+    topk,
+    column_number=None,
+    row_number=None,
+    dimension=None,
+    measure_name=None,
+    threads=4,
+):
     if measure_name is None:
         measure_name = "SquaredEuclidean"
     if dimension is None:
         dimension = doc.shape[1]
 
-    index = build_index(tensor=doc, dimension=dimension, column_number=column_number,
-                        distance_metric=measure_name,
-                        index_builder="LinearBuilder")
+    index = build_index(
+        tensor=doc,
+        dimension=dimension,
+        column_number=column_number,
+        distance_metric=measure_name,
+        index_builder="LinearBuilder",
+    )
 
-    pk_l, distance_l = search_index(tensor=query, threads=threads, row_number=row_number,
-                                    distance_metric=measure_name, dimension=dimension,
-                                    topk=topk, index=index)
+    pk_l, distance_l = search_index(
+        tensor=query,
+        threads=threads,
+        row_number=row_number,
+        distance_metric=measure_name,
+        dimension=dimension,
+        topk=topk,
+        index=index,
+    )
 
     return pk_l, distance_l
 
 
-def build_and_search(doc, query, topk, doc_chunk, query_chunk,
-                     index_path=None, threads=4, dimension=None, measure_name=None,
-                     need_shuffle=False, storage_options=None,
-                     index_builder=None, builder_params=None,
-                     index_converter=None, index_converter_params=None,
-                     index_searcher=None, searcher_params=None,
-                     index_reformer=None, index_reformer_params=None):
+def build_and_search(
+    doc,
+    query,
+    topk,
+    doc_chunk,
+    query_chunk,
+    index_path=None,
+    threads=4,
+    dimension=None,
+    measure_name=None,
+    need_shuffle=False,
+    storage_options=None,
+    index_builder=None,
+    builder_params=None,
+    index_converter=None,
+    index_converter_params=None,
+    index_searcher=None,
+    searcher_params=None,
+    index_reformer=None,
+    index_reformer_params=None,
+):
     if measure_name is None:
         measure_name = "SquaredEuclidean"
     if dimension is None:
@@ -77,15 +109,32 @@ def build_and_search(doc, query, topk, doc_chunk, query_chunk,
     doc = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
     query = mt.tensor(query, chunk_size=(query_chunk, dimension))
 
-    index = build_index(doc, dimension, index_path,
-                        need_shuffle, measure_name,
-                        index_builder, builder_params,
-                        index_converter, index_converter_params,
-                        topk, storage_options)
+    index = build_index(
+        doc,
+        dimension,
+        index_path,
+        need_shuffle,
+        measure_name,
+        index_builder,
+        builder_params,
+        index_converter,
+        index_converter_params,
+        topk,
+        storage_options,
+    )
 
-    pk2, distance = search_index(query, topk, index, threads, dimension,
-                                 measure_name, index_searcher, searcher_params,
-                                 index_reformer, index_reformer_params,
-                                 storage_options)
+    pk2, distance = search_index(
+        query,
+        topk,
+        index,
+        threads,
+        dimension,
+        measure_name,
+        index_searcher,
+        searcher_params,
+        index_reformer,
+        index_reformer_params,
+        storage_options,
+    )
 
     return pk2, distance

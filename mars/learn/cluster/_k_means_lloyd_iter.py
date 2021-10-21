@@ -31,22 +31,37 @@ from ._k_means_lloyd import update_chunk_dense, update_chunk_sparse
 class KMeansLloydUpdate(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.KMEANS_LLOYD_UPDATE
 
-    _x = KeyField('x')
-    _sample_weight = KeyField('sample_weight')
-    _x_squared_norms = KeyField('x_squared_norms')
-    _centers_old = KeyField('centers_old')
-    _labels = KeyField('labels')
-    _update_centers = BoolField('update_centers')
-    _n_clusters = Int32Field('n_clusters')
+    _x = KeyField("x")
+    _sample_weight = KeyField("sample_weight")
+    _x_squared_norms = KeyField("x_squared_norms")
+    _centers_old = KeyField("centers_old")
+    _labels = KeyField("labels")
+    _update_centers = BoolField("update_centers")
+    _n_clusters = Int32Field("n_clusters")
 
-    def __init__(self, x=None, sample_weight=None, x_squared_norms=None,
-                 centers_old=None, labels=None, update_centers=None,
-                 n_clusters=None, output_types=None, **kw):
-        super().__init__(_x=x, _sample_weight=sample_weight,
-                         _x_squared_norms=x_squared_norms,
-                         _centers_old=centers_old, _labels=labels,
-                         _update_centers=update_centers, _n_clusters=n_clusters,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self,
+        x=None,
+        sample_weight=None,
+        x_squared_norms=None,
+        centers_old=None,
+        labels=None,
+        update_centers=None,
+        n_clusters=None,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _x=x,
+            _sample_weight=sample_weight,
+            _x_squared_norms=x_squared_norms,
+            _centers_old=centers_old,
+            _labels=labels,
+            _update_centers=update_centers,
+            _n_clusters=n_clusters,
+            _output_types=output_types,
+            **kw
+        )
         if self._output_types is None:
             self._output_types = [OutputType.tensor] * self.output_limit
 
@@ -84,8 +99,7 @@ class KMeansLloydUpdate(LearnOperand, LearnOperandMixin):
 
     @property
     def _input_fields(self):
-        return '_x', '_sample_weight', '_x_squared_norms', \
-               '_centers_old', '_labels'
+        return "_x", "_sample_weight", "_x_squared_norms", "_centers_old", "_labels"
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -100,19 +114,20 @@ class KMeansLloydUpdate(LearnOperand, LearnOperandMixin):
             self._labels.params,
             # centers_new
             {
-                'shape': (self._n_clusters, self._x.shape[1]),
-                'dtype': self._centers_old.dtype,
-                'order': TensorOrder.C_ORDER
+                "shape": (self._n_clusters, self._x.shape[1]),
+                "dtype": self._centers_old.dtype,
+                "order": TensorOrder.C_ORDER,
             },
             # weight_in_clusters
             {
-                'shape': (self._n_clusters,),
-                'dtype': self._centers_old.dtype,
-                'order': TensorOrder.C_ORDER
-            }
+                "shape": (self._n_clusters,),
+                "dtype": self._centers_old.dtype,
+                "order": TensorOrder.C_ORDER,
+            },
         ]
         return self.new_tileables(
-            [getattr(self, field) for field in self._input_fields], kws=kws)
+            [getattr(self, field) for field in self._input_fields], kws=kws
+        )
 
     @classmethod
     def tile(cls, op: "KMeansLloydUpdate"):
@@ -122,48 +137,73 @@ class KMeansLloydUpdate(LearnOperand, LearnOperandMixin):
         if x.chunk_shape[1] != 1:  # pragma: no cover
             x = yield from recursive_tile(x.rechunk({1: x.shape[1]}))
         sample_weight = yield from recursive_tile(
-            op.sample_weight.rechunk({0: x.nsplits[0]}))
+            op.sample_weight.rechunk({0: x.nsplits[0]})
+        )
         x_squared_norms = yield from recursive_tile(
-            op.x_squared_norms.rechunk({0: x.nsplits[0]}))
+            op.x_squared_norms.rechunk({0: x.nsplits[0]})
+        )
         labels = yield from recursive_tile(op.labels.rechunk({0: x.nsplits[0]}))
         assert len(op.centers_old.chunks) == 1
 
         labels_chunks, centers_new_chunks, weight_in_clusters_chunks = [], [], []
         for i in range(x.chunk_shape[0]):
             x_chunk = x.cix[i, 0]
-            sample_weight_chunk = sample_weight.cix[i, ]
-            x_squared_norms_chunk = x_squared_norms.cix[i, ]
-            labels_chunk = labels.cix[i, ]
+            sample_weight_chunk = sample_weight.cix[
+                i,
+            ]
+            x_squared_norms_chunk = x_squared_norms.cix[
+                i,
+            ]
+            labels_chunk = labels.cix[
+                i,
+            ]
             chunk_op = op.copy().reset_key()
             chunk_op.stage = OperandStage.map
             chunk_kws = [
                 labels_chunk.params,
-                {'index': (0, 0),
-                 'shape': (op.n_clusters, x_chunk.shape[1]),
-                 'dtype': op.centers_old.dtype,
-                 'order': TensorOrder.C_ORDER},
-                {'index': (0,),
-                 'shape': (op.n_clusters,),
-                 'dtype': op.centers_old.dtype,
-                 'order': TensorOrder.C_ORDER}
+                {
+                    "index": (0, 0),
+                    "shape": (op.n_clusters, x_chunk.shape[1]),
+                    "dtype": op.centers_old.dtype,
+                    "order": TensorOrder.C_ORDER,
+                },
+                {
+                    "index": (0,),
+                    "shape": (op.n_clusters,),
+                    "dtype": op.centers_old.dtype,
+                    "order": TensorOrder.C_ORDER,
+                },
             ]
-            labels_chunk, centers_new_chunk, weight_in_clusters_chunk = chunk_op.new_chunks(
-                [x_chunk, sample_weight_chunk, x_squared_norms_chunk,
-                 op.centers_old.chunks[0], labels_chunk], kws=chunk_kws)
+            (
+                labels_chunk,
+                centers_new_chunk,
+                weight_in_clusters_chunk,
+            ) = chunk_op.new_chunks(
+                [
+                    x_chunk,
+                    sample_weight_chunk,
+                    x_squared_norms_chunk,
+                    op.centers_old.chunks[0],
+                    labels_chunk,
+                ],
+                kws=chunk_kws,
+            )
             labels_chunks.append(labels_chunk)
             centers_new_chunks.append(centers_new_chunk)
             weight_in_clusters_chunks.append(weight_in_clusters_chunk)
 
         if op.update_centers:
             # merge centers_new and weight_in_clusters
-            merge_op = KMeansLloydUpdate(stage=OperandStage.reduce,
-                                         n_clusters=op.n_clusters)
+            merge_op = KMeansLloydUpdate(
+                stage=OperandStage.reduce, n_clusters=op.n_clusters
+            )
             merge_chunk_kw = [
                 centers_new_chunks[0].params,
-                weight_in_clusters_chunks[0].params
+                weight_in_clusters_chunks[0].params,
             ]
             centers_new_chunk, weight_in_cluster_chunk = merge_op.new_chunks(
-                centers_new_chunks + weight_in_clusters_chunks, kws=merge_chunk_kw)
+                centers_new_chunks + weight_in_clusters_chunks, kws=merge_chunk_kw
+            )
         else:
             # the data is meaningless, just pick one
             centers_new_chunk = centers_new_chunks[0]
@@ -171,14 +211,14 @@ class KMeansLloydUpdate(LearnOperand, LearnOperandMixin):
 
         out_params = [out.params for out in op.outputs]
         # labels
-        out_params[0]['nsplits'] = labels.nsplits
-        out_params[0]['chunks'] = labels_chunks
+        out_params[0]["nsplits"] = labels.nsplits
+        out_params[0]["chunks"] = labels_chunks
         # centers_new
-        out_params[1]['nsplits'] = tuple((s,) for s in op.outputs[1].shape)
-        out_params[1]['chunks'] = [centers_new_chunk]
+        out_params[1]["nsplits"] = tuple((s,) for s in op.outputs[1].shape)
+        out_params[1]["chunks"] = [centers_new_chunk]
         # weight_in_clusters
-        out_params[2]['nsplits'] = tuple((s,) for s in op.outputs[2].shape)
-        out_params[2]['chunks'] = [weight_in_cluster_chunk]
+        out_params[2]["nsplits"] = tuple((s,) for s in op.outputs[2].shape)
+        out_params[2]["chunks"] = [weight_in_cluster_chunk]
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=out_params)
 
@@ -191,9 +231,16 @@ class KMeansLloydUpdate(LearnOperand, LearnOperandMixin):
         if op.stage == OperandStage.reduce:
             return cls._execute_reduce(ctx, op)
         else:
-            (x, sample_weight, x_squared_norms, centers_old, labels), device_id, xp = as_same_device(
-                [ctx[inp.key] for inp in op.inputs], device=op.device,
-                ret_extra=True, copy_if_not_writeable=True)
+            (
+                (x, sample_weight, x_squared_norms, centers_old, labels),
+                device_id,
+                xp,
+            ) = as_same_device(
+                [ctx[inp.key] for inp in op.inputs],
+                device=op.device,
+                ret_extra=True,
+                copy_if_not_writeable=True,
+            )
 
             with device(device_id):
                 if not op.update_centers:
@@ -208,11 +255,19 @@ class KMeansLloydUpdate(LearnOperand, LearnOperandMixin):
                 elif xp is sparse:
                     method = update_chunk_sparse
                 else:  # pragma: no cover
-                    raise NotImplementedError('Does not support run on GPU')
+                    raise NotImplementedError("Does not support run on GPU")
                 out_labels = labels.copy()
-                method(x, sample_weight, x_squared_norms, centers_old,
-                       centers_squared_norms, out_labels, centers_new,
-                       weight_in_clusters, op.update_centers)
+                method(
+                    x,
+                    sample_weight,
+                    x_squared_norms,
+                    centers_old,
+                    centers_squared_norms,
+                    out_labels,
+                    centers_new,
+                    weight_in_clusters,
+                    op.update_centers,
+                )
 
                 # labels
                 ctx[op.outputs[0].key] = out_labels
@@ -225,18 +280,28 @@ class KMeansLloydUpdate(LearnOperand, LearnOperandMixin):
 class KMeansLloydPostprocess(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.KMEANS_LLOYD_POSTPROCESS
 
-    _centers_old = KeyField('centers_old')
-    _centers_new = KeyField('centers_new')
-    _center_shift = KeyField('center_shift')
-    _weight_in_clusters = KeyField('weight_in_clusters')
+    _centers_old = KeyField("centers_old")
+    _centers_new = KeyField("centers_new")
+    _center_shift = KeyField("center_shift")
+    _weight_in_clusters = KeyField("weight_in_clusters")
 
-    def __init__(self, centers_old=None, centers_new=None,
-                 center_shift=None, weight_in_clusters=None,
-                 output_types=None, **kw):
-        super().__init__(_centers_old=centers_old, _centers_new=centers_new,
-                         _center_shift=center_shift,
-                         _weight_in_clusters=weight_in_clusters,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self,
+        centers_old=None,
+        centers_new=None,
+        center_shift=None,
+        weight_in_clusters=None,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _centers_old=centers_old,
+            _centers_new=centers_new,
+            _center_shift=center_shift,
+            _weight_in_clusters=weight_in_clusters,
+            _output_types=output_types,
+            **kw
+        )
         if self._output_types is None:
             self._output_types = [OutputType.tensor] * self.output_limit
 
@@ -262,8 +327,7 @@ class KMeansLloydPostprocess(LearnOperand, LearnOperandMixin):
 
     @property
     def _input_fields(self):
-        return '_centers_old', '_centers_new', '_center_shift', \
-               '_weight_in_clusters'
+        return "_centers_old", "_centers_new", "_center_shift", "_weight_in_clusters"
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -278,10 +342,11 @@ class KMeansLloydPostprocess(LearnOperand, LearnOperandMixin):
             # centers_new
             self._centers_new.params,
             # center_shift
-            self._center_shift.params
+            self._center_shift.params,
         ]
         return self.new_tileables(
-            [getattr(self, f) for f in self._input_fields], kws=kws)
+            [getattr(self, f) for f in self._input_fields], kws=kws
+        )
 
     @classmethod
     def tile(cls, op: "KMeansLloydPostprocess"):
@@ -298,57 +363,93 @@ class KMeansLloydPostprocess(LearnOperand, LearnOperandMixin):
             centers_old=centers_old_chunk,
             centers_new=centers_new_chunk,
             center_shift=center_shift_chunk,
-            weight_in_clusters=weight_in_clusters_chunk
-        ).new_chunks([centers_old_chunk, centers_new_chunk,
-                      center_shift_chunk, weight_in_clusters_chunk],
-                     kws=[centers_new_chunk.params, center_shift_chunk.params])
+            weight_in_clusters=weight_in_clusters_chunk,
+        ).new_chunks(
+            [
+                centers_old_chunk,
+                centers_new_chunk,
+                center_shift_chunk,
+                weight_in_clusters_chunk,
+            ],
+            kws=[centers_new_chunk.params, center_shift_chunk.params],
+        )
 
         centers_new_kw = op.centers_new.params
-        centers_new_kw['chunks'] = [centers_new_chunk]
-        centers_new_kw['nsplits'] = op.centers_new.nsplits
+        centers_new_kw["chunks"] = [centers_new_chunk]
+        centers_new_kw["nsplits"] = op.centers_new.nsplits
         center_shift_kw = op.center_shift.params
-        center_shift_kw['chunks'] = [center_shift_chunk]
-        center_shift_kw['nsplits'] = op.center_shift.nsplits
+        center_shift_kw["chunks"] = [center_shift_chunk]
+        center_shift_kw["nsplits"] = op.center_shift.nsplits
         new_op = op.copy()
-        return new_op.new_tileables(
-            op.inputs, kws=[centers_new_kw, center_shift_kw])
+        return new_op.new_tileables(op.inputs, kws=[centers_new_kw, center_shift_kw])
 
     @classmethod
     def execute(cls, ctx, op: "KMeansLloydPostprocess"):
-        (centers_old, centers_new, center_shift, weight_in_clusters), device_id, xp = \
-            as_same_device([ctx[inp.key] for inp in op.inputs], op.device,
-                           ret_extra=True, copy_if_not_writeable=True)
+        (
+            (centers_old, centers_new, center_shift, weight_in_clusters),
+            device_id,
+            xp,
+        ) = as_same_device(
+            [ctx[inp.key] for inp in op.inputs],
+            op.device,
+            ret_extra=True,
+            copy_if_not_writeable=True,
+        )
 
         with device(device_id):
             out_center_shift = center_shift.copy()
             out_centers_new = centers_new.copy()
-            update_center(centers_old, out_centers_new,
-                          out_center_shift, weight_in_clusters)
+            update_center(
+                centers_old, out_centers_new, out_center_shift, weight_in_clusters
+            )
 
             ctx[op.outputs[0].key] = out_centers_new
             ctx[op.outputs[1].key] = out_center_shift
 
 
-def lloyd_iter(X, sample_weight, x_squared_norms, centers_old, labels,
-               center_shift, update_centers=True, session=None, run_kwargs=None):
-    update_op = KMeansLloydUpdate(x=X, sample_weight=sample_weight,
-                                  x_squared_norms=x_squared_norms,
-                                  centers_old=centers_old, labels=labels,
-                                  update_centers=update_centers,
-                                  n_clusters=centers_old.shape[0])
+def lloyd_iter(
+    X,
+    sample_weight,
+    x_squared_norms,
+    centers_old,
+    labels,
+    center_shift,
+    update_centers=True,
+    session=None,
+    run_kwargs=None,
+):
+    update_op = KMeansLloydUpdate(
+        x=X,
+        sample_weight=sample_weight,
+        x_squared_norms=x_squared_norms,
+        centers_old=centers_old,
+        labels=labels,
+        update_centers=update_centers,
+        n_clusters=centers_old.shape[0],
+    )
     to_run = []
     ret = update_op()
     to_run.extend(ret)
     labels, centers_new, weight_in_clusters = ret
 
     if update_centers:
-        centers_new, weight_in_clusters = \
-            _relocate_empty_clusters(X, sample_weight, centers_old, centers_new,
-                                     weight_in_clusters, labels, to_run=to_run,
-                                     session=session, run_kwargs=run_kwargs)
+        centers_new, weight_in_clusters = _relocate_empty_clusters(
+            X,
+            sample_weight,
+            centers_old,
+            centers_new,
+            weight_in_clusters,
+            labels,
+            to_run=to_run,
+            session=session,
+            run_kwargs=run_kwargs,
+        )
         postprocess = KMeansLloydPostprocess(
-            centers_old=centers_old, centers_new=centers_new,
-            center_shift=center_shift, weight_in_clusters=weight_in_clusters)
+            centers_old=centers_old,
+            centers_new=centers_new,
+            center_shift=center_shift,
+            weight_in_clusters=weight_in_clusters,
+        )
         centers_new, center_shift = postprocess()
 
     return centers_new, weight_in_clusters, labels, center_shift

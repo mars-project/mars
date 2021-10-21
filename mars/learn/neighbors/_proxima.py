@@ -16,13 +16,13 @@ from ..proxima.simple_index import build_index, search_index
 
 
 METRIC_TO_PROXIMA_METRIC_TYPE = {
-    'l2': 'Euclidean',
-    'euclidean': 'Euclidean',
-    'canberra': 'Canberra',
-    'chebyshev': 'Chebyshev',
-    'sqeuclidean': 'SquaredEuclidean',
-    'innerproduct': 'InnerProduct',
-    'manhattan': 'Manhattan'
+    "l2": "Euclidean",
+    "euclidean": "Euclidean",
+    "canberra": "Canberra",
+    "chebyshev": "Chebyshev",
+    "sqeuclidean": "SquaredEuclidean",
+    "innerproduct": "InnerProduct",
+    "manhattan": "Manhattan",
 }
 
 build_proxima_index = build_index

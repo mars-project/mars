@@ -65,5 +65,5 @@ def dsplit(a, indices_or_sections):
     a = astensor(a)
 
     if a.ndim < 3:
-        raise ValueError('dsplit only works on tensors of 3 or more dimensions')
+        raise ValueError("dsplit only works on tensors of 3 or more dimensions")
     return split(ary, indices_or_sections, 2)

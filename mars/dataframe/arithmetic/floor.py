@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameFloor(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.FLOOR
-    _func_name = 'floor'
+    _func_name = "floor"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorFloor
+
         return TensorFloor

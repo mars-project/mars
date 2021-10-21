@@ -156,10 +156,16 @@ def test_arg_reduction():
     assert isinstance(res2.chunks[0].inputs[0].inputs[0].op, TensorArgmin)
     assert res2.chunks[0].inputs[0].inputs[0].op.stage == OperandStage.map
 
-    pytest.raises(TypeError, lambda: argmax(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
-    pytest.raises(TypeError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
+    pytest.raises(
+        TypeError, lambda: argmax(ones((10, 8, 10), chunk_size=3), axis=(0, 1))
+    )
+    pytest.raises(
+        TypeError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=(0, 1))
+    )
     pytest.raises(np.AxisError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=3))
-    pytest.raises(np.AxisError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=-4))
+    pytest.raises(
+        np.AxisError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=-4)
+    )
 
 
 def test_cum_reduction():

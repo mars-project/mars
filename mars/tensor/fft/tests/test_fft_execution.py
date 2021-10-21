@@ -18,8 +18,26 @@ import numpy as np
 
 from ....lib.mkl_interface import mkl_free_buffers
 from ...datasource import tensor
-from .. import fft, ifft, fft2, ifft2, fftn, ifftn, rfft, irfft, rfft2, irfft2, \
-    rfftn, hfft, ihfft, fftfreq, rfftfreq, fftshift, ifftshift, irfftn
+from .. import (
+    fft,
+    ifft,
+    fft2,
+    ifft2,
+    fftn,
+    ifftn,
+    rfft,
+    irfft,
+    rfft2,
+    irfft2,
+    rfftn,
+    hfft,
+    ihfft,
+    fftfreq,
+    rfftfreq,
+    fftshift,
+    ifftshift,
+    irfftn,
+)
 
 
 def test_fft_execution(setup):
@@ -31,9 +49,9 @@ def test_fft_execution(setup):
     expected = np.fft.fft(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = fft(t, norm='ortho')
+    r = fft(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.fft(raw, norm='ortho')
+    expected = np.fft.fft(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = fft(t, n=11)
@@ -49,9 +67,9 @@ def test_fft_execution(setup):
     expected = np.fft.fft(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = fft(t, norm='ortho')
+    r = fft(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.fft(raw, norm='ortho')
+    expected = np.fft.fft(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = fft(t, n=11)
@@ -69,9 +87,9 @@ def test_ifft_execution(setup):
     expected = np.fft.ifft(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = ifft(t, norm='ortho')
+    r = ifft(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.ifft(raw, norm='ortho')
+    expected = np.fft.ifft(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = ifft(t, n=11)
@@ -87,9 +105,9 @@ def test_ifft_execution(setup):
     expected = np.fft.ifft(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = ifft(t, norm='ortho')
+    r = ifft(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.ifft(raw, norm='ortho')
+    expected = np.fft.ifft(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = ifft(t, n=11)
@@ -107,9 +125,9 @@ def test_fft2_execution(setup):
     expected = np.fft.fft2(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = fft2(t, norm='ortho')
+    r = fft2(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.fft2(raw, norm='ortho')
+    expected = np.fft.fft2(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = fft2(t, s=(11, 12))
@@ -130,9 +148,9 @@ def test_fft2_execution(setup):
     expected = np.fft.fft2(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = fft2(t, norm='ortho')
+    r = fft2(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.fft2(raw, norm='ortho')
+    expected = np.fft.fft2(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = fft2(t, s=(11, 12))
@@ -155,9 +173,9 @@ def test_ifft2_execution(setup):
     expected = np.fft.ifft2(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = ifft2(t, norm='ortho')
+    r = ifft2(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.ifft2(raw, norm='ortho')
+    expected = np.fft.ifft2(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = ifft2(t, s=(11, 12))
@@ -178,9 +196,9 @@ def test_ifft2_execution(setup):
     expected = np.fft.ifft2(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = ifft2(t, norm='ortho')
+    r = ifft2(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.ifft2(raw, norm='ortho')
+    expected = np.fft.ifft2(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = ifft2(t, s=(11, 12))
@@ -203,9 +221,9 @@ def test_fftn_execution(setup):
     expected = np.fft.fftn(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = fftn(t, norm='ortho')
+    r = fftn(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.fftn(raw, norm='ortho')
+    expected = np.fft.fftn(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = fftn(t, s=(11, 12, 5))
@@ -226,9 +244,9 @@ def test_fftn_execution(setup):
     expected = np.fft.fftn(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = fftn(t, norm='ortho')
+    r = fftn(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.fftn(raw, norm='ortho')
+    expected = np.fft.fftn(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = fftn(t, s=(11, 12, 5))
@@ -251,9 +269,9 @@ def test_ifftn_execution(setup):
     expected = np.fft.ifftn(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = ifftn(t, norm='ortho')
+    r = ifftn(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.ifftn(raw, norm='ortho')
+    expected = np.fft.ifftn(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = ifftn(t, s=(11, 12, 5))
@@ -274,9 +292,9 @@ def test_ifftn_execution(setup):
     expected = np.fft.ifftn(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = ifftn(t, norm='ortho')
+    r = ifftn(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.ifftn(raw, norm='ortho')
+    expected = np.fft.ifftn(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = ifftn(t, s=(11, 12, 5))
@@ -299,9 +317,9 @@ def test_rfft_execution(setup):
     expected = np.fft.rfft(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = rfft(t, norm='ortho')
+    r = rfft(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.rfft(raw, norm='ortho')
+    expected = np.fft.rfft(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = rfft(t, n=11)
@@ -319,9 +337,9 @@ def test_irfft_execution(setup):
     expected = np.fft.irfft(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = irfft(t, norm='ortho')
+    r = irfft(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.irfft(raw, norm='ortho')
+    expected = np.fft.irfft(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = irfft(t, n=11)
@@ -339,9 +357,9 @@ def test_rfft2_execution(setup):
     expected = np.fft.rfft2(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = rfft2(t, norm='ortho')
+    r = rfft2(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.rfft2(raw, norm='ortho')
+    expected = np.fft.rfft2(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = rfft2(t, s=(11, 12))
@@ -364,9 +382,9 @@ def test_irfft2_execution(setup):
     expected = np.fft.irfft2(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = irfft2(t, norm='ortho')
+    r = irfft2(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.irfft2(raw, norm='ortho')
+    expected = np.fft.irfft2(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = irfft2(t, s=(11, 12))
@@ -389,9 +407,9 @@ def test_rfftn_execution(setup):
     expected = np.fft.rfftn(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = rfftn(t, norm='ortho')
+    r = rfftn(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.rfftn(raw, norm='ortho')
+    expected = np.fft.rfftn(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = rfftn(t, s=(11, 12, 5))
@@ -414,9 +432,9 @@ def test_irfftn_execution(setup):
     expected = np.fft.irfftn(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = irfftn(t, norm='ortho')
+    r = irfftn(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.irfftn(raw, norm='ortho')
+    expected = np.fft.irfftn(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = irfftn(t, s=(11, 21, 5))
@@ -441,9 +459,9 @@ def test_hfft_execution(setup):
     expected = np.fft.hfft(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = hfft(t, norm='ortho')
+    r = hfft(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.hfft(raw, norm='ortho')
+    expected = np.fft.hfft(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = hfft(t, n=11)
@@ -461,9 +479,9 @@ def test_ihfft_execution(setup):
     expected = np.fft.ihfft(raw)
     np.testing.assert_allclose(res, expected)
 
-    r = ihfft(t, norm='ortho')
+    r = ihfft(t, norm="ortho")
     res = r.execute().fetch()
-    expected = np.fft.ihfft(raw, norm='ortho')
+    expected = np.fft.ihfft(raw, norm="ortho")
     np.testing.assert_allclose(res, expected)
 
     r = ihfft(t, n=11)
@@ -478,48 +496,48 @@ def test_ihfft_execution(setup):
 
 
 def test_fft_freq_execution(setup):
-    t = fftfreq(10, .1, chunk_size=6)
+    t = fftfreq(10, 0.1, chunk_size=6)
 
     res = t.execute().fetch()
-    np.testing.assert_allclose(res, np.fft.fftfreq(10, .1))
+    np.testing.assert_allclose(res, np.fft.fftfreq(10, 0.1))
 
-    t = fftfreq(11, .01, chunk_size=6)
+    t = fftfreq(11, 0.01, chunk_size=6)
 
     res = t.execute().fetch()
-    np.testing.assert_allclose(res, np.fft.fftfreq(11, .01))
+    np.testing.assert_allclose(res, np.fft.fftfreq(11, 0.01))
 
 
 def test_rfft_freq_execution(setup):
-    t = rfftfreq(20, .1, chunk_size=6)
+    t = rfftfreq(20, 0.1, chunk_size=6)
 
     res = t.execute().fetch()
-    np.testing.assert_allclose(res, np.fft.rfftfreq(20, .1))
+    np.testing.assert_allclose(res, np.fft.rfftfreq(20, 0.1))
 
-    t = rfftfreq(21, .01, chunk_size=6)
+    t = rfftfreq(21, 0.01, chunk_size=6)
 
     res = t.execute().fetch()
-    np.testing.assert_allclose(res, np.fft.rfftfreq(21, .01))
+    np.testing.assert_allclose(res, np.fft.rfftfreq(21, 0.01))
 
 
 def test_fft_shift_execution(setup):
-    t = fftfreq(10, .1, chunk_size=6)
+    t = fftfreq(10, 0.1, chunk_size=6)
     r = fftshift(t)
 
     res = r.execute().fetch()
-    np.testing.assert_allclose(res, np.fft.fftshift(np.fft.fftfreq(10, .1)))
+    np.testing.assert_allclose(res, np.fft.fftshift(np.fft.fftfreq(10, 0.1)))
 
-    freqs = fftfreq(9, d=1./9, chunk_size=4).reshape(3, 3)
+    freqs = fftfreq(9, d=1.0 / 9, chunk_size=4).reshape(3, 3)
     r = fftshift(freqs, axes=(1,))
 
     res = r.execute().fetch()
-    expected = np.fft.fftshift(np.fft.fftfreq(9, d=1./9).reshape(3, 3), axes=(1,))
+    expected = np.fft.fftshift(np.fft.fftfreq(9, d=1.0 / 9).reshape(3, 3), axes=(1,))
     np.testing.assert_allclose(res, expected)
 
 
 def test_ifft_shift_execution(setup):
-    t = fftfreq(9, d=1./9, chunk_size=4).reshape(3, 3)
+    t = fftfreq(9, d=1.0 / 9, chunk_size=4).reshape(3, 3)
     r = ifftshift(t)
 
     res = r.execute().fetch()
-    expected = np.fft.ifftshift(np.fft.fftfreq(9, d=1./9).reshape(3, 3))
+    expected = np.fft.ifftshift(np.fft.fftfreq(9, d=1.0 / 9).reshape(3, 3))
     np.testing.assert_allclose(res, expected)

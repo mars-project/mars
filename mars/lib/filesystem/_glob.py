@@ -19,8 +19,8 @@ import re
 from .core import FileSystem
 
 
-magic_check = re.compile('([*?[])')
-magic_check_bytes = re.compile(b'([*?[])')
+magic_check = re.compile("([*?[])")
+magic_check_bytes = re.compile(b"([*?[])")
 
 
 def has_magic(s):
@@ -32,14 +32,14 @@ def has_magic(s):
 
 
 def _ishidden(path):
-    return path[0] in ('.', b'.'[0])
+    return path[0] in (".", b"."[0])
 
 
 def _isrecursive(pattern):
     if isinstance(pattern, bytes):  # pragma: no cover
-        return pattern == b'**'
+        return pattern == b"**"
     else:
-        return pattern == '**'
+        return pattern == "**"
 
 
 class FileSystemGlob:
@@ -77,8 +77,7 @@ class FileSystemGlob:
         return it
 
     def _iglob(self, pathname, recursive, dironly):
-        dirname, basename = self._fs.path_split(
-            pathname.replace(os.path.sep, '/'))
+        dirname, basename = self._fs.path_split(pathname.replace(os.path.sep, "/"))
         if not has_magic(pathname):
             assert not dironly
             if basename:
@@ -155,7 +154,7 @@ class FileSystemGlob:
     def _iterdir(self, dirname, dironly):
         if not dirname:  # pragma: no cover
             if isinstance(dirname, bytes):
-                dirname = bytes(os.curdir, 'ASCII')
+                dirname = bytes(os.curdir, "ASCII")
             else:
                 dirname = os.curdir
         for entry in self._fs.ls(dirname):

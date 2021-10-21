@@ -22,8 +22,8 @@ class Router:
     """
     Router provides mapping from external address to internal address.
     """
-    __slots__ = '_curr_external_addresses', '_local_mapping', \
-                '_mapping', '_cache_local'
+
+    __slots__ = "_curr_external_addresses", "_local_mapping", "_mapping", "_cache_local"
 
     _instance: "Router" = None
 
@@ -40,10 +40,12 @@ class Router:
     def get_instance_or_empty() -> "Router":
         return Router._instance or Router(list(), None)
 
-    def __init__(self,
-                 external_addresses: List[str],
-                 local_address: Optional[str],
-                 mapping: Dict[str, str] = None):
+    def __init__(
+        self,
+        external_addresses: List[str],
+        local_address: Optional[str],
+        mapping: Dict[str, str] = None,
+    ):
         self._curr_external_addresses = external_addresses
         self._local_mapping = dict()
         for addr in self._curr_external_addresses:
@@ -92,11 +94,9 @@ class Router:
         # try to lookup inner address from address mapping
         return self._mapping.get(external_address)
 
-    async def get_client(self,
-                         external_address: str,
-                         from_who: Any = None,
-                         cached: bool = True,
-                         **kw) -> Client:
+    async def get_client(
+        self, external_address: str, from_who: Any = None, cached: bool = True, **kw
+    ) -> Client:
         if cached and (external_address, from_who) in self._cache:
             cached_client = self._cache[external_address, from_who]
             if cached_client.closed:
@@ -110,10 +110,10 @@ class Router:
             # no inner address, just use external address
             address = external_address
         client_type: Type[Client] = get_client_type(address)
-        local_address = self._curr_external_addresses[0] \
-            if self._curr_external_addresses else None
-        client = await client_type.connect(
-            address, local_address=local_address, **kw)
+        local_address = (
+            self._curr_external_addresses[0] if self._curr_external_addresses else None
+        )
+        client = await client_type.connect(address, local_address=local_address, **kw)
         if cached:
             self._cache[external_address, from_who] = client
         return client

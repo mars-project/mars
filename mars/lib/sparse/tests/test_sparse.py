@@ -218,8 +218,19 @@ def test_sparse_bin():
     s2 = SparseNDArray(s2_data)
     v = SparseNDArray(v1, shape=(3,))
 
-    for method in ('fmod', 'logaddexp', 'logaddexp2', 'equal', 'not_equal',
-                   'less', 'less_equal', 'greater', 'greater_equal', 'hypot', 'arctan2'):
+    for method in (
+        "fmod",
+        "logaddexp",
+        "logaddexp2",
+        "equal",
+        "not_equal",
+        "less",
+        "less_equal",
+        "greater",
+        "greater_equal",
+        "hypot",
+        "arctan2",
+    ):
         lm, rm = getattr(mls, method), getattr(np, method)
         assertArrayEqual(lm(s1, s2), rm(s1.toarray(), s2.toarray()))
         assertArrayEqual(lm(s1, d1), rm(s1.toarray(), d1))
@@ -241,12 +252,45 @@ def test_sparse_unary():
     s1 = SparseNDArray(s1_data)
     v = SparseNDArray(v1, shape=(3,))
 
-    for method in ('negative', 'positive', 'absolute', 'abs', 'fabs', 'rint',
-                   'sign', 'conj', 'exp', 'exp2', 'log', 'log2', 'log10',
-                   'expm1', 'log1p', 'sqrt', 'square', 'cbrt', 'reciprocal',
-                   'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan',
-                   'arcsinh', 'arccosh', 'arctanh', 'deg2rad', 'rad2deg',
-                   'angle', 'isnan', 'isinf', 'signbit', 'sinc', 'isreal', 'isfinite'):
+    for method in (
+        "negative",
+        "positive",
+        "absolute",
+        "abs",
+        "fabs",
+        "rint",
+        "sign",
+        "conj",
+        "exp",
+        "exp2",
+        "log",
+        "log2",
+        "log10",
+        "expm1",
+        "log1p",
+        "sqrt",
+        "square",
+        "cbrt",
+        "reciprocal",
+        "sin",
+        "cos",
+        "tan",
+        "arcsin",
+        "arccos",
+        "arctan",
+        "arcsinh",
+        "arccosh",
+        "arctanh",
+        "deg2rad",
+        "rad2deg",
+        "angle",
+        "isnan",
+        "isinf",
+        "signbit",
+        "sinc",
+        "isreal",
+        "isfinite",
+    ):
         lm, rm = getattr(mls, method), getattr(np, method)
         r = sps.csr_matrix((rm(s1.data), s1.indices, s1.indptr), s1.shape)
         assertArrayEqual(lm(s1), r)
@@ -324,7 +368,7 @@ def test_sparse_minimum():
 
 
 def test_sparse_fill_diagonal():
-    s1 = sps.random(100, 11, density=0.3, format='csr', random_state=0)
+    s1 = sps.random(100, 11, density=0.3, format="csr", random_state=0)
 
     # fill scalar
     arr = SparseNDArray(s1)

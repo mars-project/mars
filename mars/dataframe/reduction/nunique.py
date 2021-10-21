@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pandas as pd
+
 try:
     import pyarrow as pa
 except ImportError:  # pragma: no cover
@@ -24,17 +25,17 @@ from ...config import options
 from ...serialization.serializables import BoolField
 from ...utils import lazy_import
 from ..arrays import ArrowListArray, ArrowListDtype
-from .core import DataFrameReductionOperand, DataFrameReductionMixin, \
-    CustomReduction
+from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
 
-cudf = lazy_import('cudf', globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
 
 class NuniqueReduction(CustomReduction):
     pre_with_agg = True
 
-    def __init__(self, name='unique', axis=0, dropna=True, use_arrow_dtype=False,
-                 is_gpu=False):
+    def __init__(
+        self, name="unique", axis=0, dropna=True, use_arrow_dtype=False, is_gpu=False
+    ):
         super().__init__(name, is_gpu=is_gpu)
         self._axis = axis
         self._dropna = dropna
@@ -102,7 +103,9 @@ class NuniqueReduction(CustomReduction):
         if isinstance(in_data, xdf.Series):
             return in_data.explode().nunique(dropna=self._dropna)
         else:
-            in_data_iter = in_data.iteritems() if self._axis == 0 else in_data.iterrows()
+            in_data_iter = (
+                in_data.iteritems() if self._axis == 0 else in_data.iterrows()
+            )
             data = dict()
             for d, v in in_data_iter:
                 if isinstance(v.dtype, ArrowListDtype):
@@ -113,10 +116,10 @@ class NuniqueReduction(CustomReduction):
 
 class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.NUNIQUE
-    _func_name = 'nunique'
+    _func_name = "nunique"
 
-    _dropna = BoolField('dropna')
-    _use_arrow_dtype = BoolField('use_arrow_dtype')
+    _dropna = BoolField("dropna")
+    _use_arrow_dtype = BoolField("use_arrow_dtype")
 
     def __init__(self, dropna=None, use_arrow_dtype=None, **kw):
         super().__init__(_dropna=dropna, _use_arrow_dtype=use_arrow_dtype, **kw)
@@ -131,8 +134,13 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
 
     @classmethod
     def get_reduction_callable(cls, op):
-        return NuniqueReduction(name=cls._func_name, axis=op.axis, dropna=op.dropna,
-                                use_arrow_dtype=op.use_arrow_dtype, is_gpu=op.is_gpu())
+        return NuniqueReduction(
+            name=cls._func_name,
+            axis=op.axis,
+            dropna=op.dropna,
+            use_arrow_dtype=op.use_arrow_dtype,
+            is_gpu=op.is_gpu(),
+        )
 
 
 def nunique_dataframe(df, axis=0, dropna=True, combine_size=None):
@@ -176,9 +184,13 @@ def nunique_dataframe(df, axis=0, dropna=True, combine_size=None):
     2    2
     dtype: int64
     """
-    op = DataFrameNunique(axis=axis, dropna=dropna, combine_size=combine_size,
-                          output_types=[OutputType.series],
-                          use_arrow_dtype=options.dataframe.use_arrow_dtype)
+    op = DataFrameNunique(
+        axis=axis,
+        dropna=dropna,
+        combine_size=combine_size,
+        output_types=[OutputType.series],
+        use_arrow_dtype=options.dataframe.use_arrow_dtype,
+    )
     return op(df)
 
 
@@ -219,7 +231,10 @@ def nunique_series(series, dropna=True, combine_size=None):
     >>> s.nunique().execute()
     4
     """
-    op = DataFrameNunique(dropna=dropna, combine_size=combine_size,
-                          output_types=[OutputType.scalar],
-                          use_arrow_dtype=options.dataframe.use_arrow_dtype)
+    op = DataFrameNunique(
+        dropna=dropna,
+        combine_size=combine_size,
+        output_types=[OutputType.scalar],
+        use_arrow_dtype=options.dataframe.use_arrow_dtype,
+    )
     return op(series)

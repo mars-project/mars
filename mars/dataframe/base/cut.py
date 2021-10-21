@@ -19,11 +19,15 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, ExecutableTuple, OutputType, \
-    recursive_tile
+from ...core import ENTITY_TYPE, ExecutableTuple, OutputType, recursive_tile
 from ...core.context import get_context
-from ...serialization.serializables import KeyField, AnyField, \
-    BoolField, Int32Field, StringField
+from ...serialization.serializables import (
+    KeyField,
+    AnyField,
+    BoolField,
+    Int32Field,
+    StringField,
+)
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE, TensorOrder
 from ...utils import has_unknown_shape
@@ -37,20 +41,36 @@ from ..utils import parse_index
 class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.CUT
 
-    _input = KeyField('input')
-    _bins = AnyField('bins')
-    _right = BoolField('right')
-    _labels = AnyField('labels')
-    _retbins = BoolField('retbins')
-    _precision = Int32Field('precision')
-    _include_lowest = BoolField('include_lowest')
-    _duplicates = StringField('duplicates')
+    _input = KeyField("input")
+    _bins = AnyField("bins")
+    _right = BoolField("right")
+    _labels = AnyField("labels")
+    _retbins = BoolField("retbins")
+    _precision = Int32Field("precision")
+    _include_lowest = BoolField("include_lowest")
+    _duplicates = StringField("duplicates")
 
-    def __init__(self, bins=None, right=None, labels=None, retbins=None,
-                 precision=None, include_lowest=None, duplicates=None, **kw):
-        super().__init__(_bins=bins, _right=right, _labels=labels,
-                         _retbins=retbins, _precision=precision,
-                         _include_lowest=include_lowest, _duplicates=duplicates, **kw)
+    def __init__(
+        self,
+        bins=None,
+        right=None,
+        labels=None,
+        retbins=None,
+        precision=None,
+        include_lowest=None,
+        duplicates=None,
+        **kw
+    ):
+        super().__init__(
+            _bins=bins,
+            _right=right,
+            _labels=labels,
+            _retbins=retbins,
+            _precision=precision,
+            _include_lowest=include_lowest,
+            _duplicates=duplicates,
+            **kw
+        )
 
     @property
     def input(self):
@@ -103,18 +123,22 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
         elif not isinstance(x, ENTITY_TYPE):
             x = astensor(x)
         if x.ndim != 1:
-            raise ValueError('Input array must be 1 dimensional')
+            raise ValueError("Input array must be 1 dimensional")
         if x.size == 0:
-            raise ValueError('Cannot cut empty array')
+            raise ValueError("Cannot cut empty array")
 
         inputs = [x]
-        if self._labels is not None and \
-                not isinstance(self._labels, (bool, ENTITY_TYPE)):
+        if self._labels is not None and not isinstance(
+            self._labels, (bool, ENTITY_TYPE)
+        ):
             self._labels = np.asarray(self._labels)
 
         # infer dtype
-        x_empty = pd.Series([1], dtype=x.dtype) if isinstance(x, SERIES_TYPE) else \
-            np.asarray([1], dtype=x.dtype)
+        x_empty = (
+            pd.Series([1], dtype=x.dtype)
+            if isinstance(x, SERIES_TYPE)
+            else np.asarray([1], dtype=x.dtype)
+        )
         if isinstance(self._bins, INDEX_TYPE):
             bins = self._bins.index_value.to_pandas()
             inputs.append(self._bins)
@@ -135,9 +159,15 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
                 labels = self._labels
             else:
                 labels = None
-        ret = pd.cut(x_empty, bins, right=self._right, labels=labels,
-                     retbins=True, include_lowest=self._include_lowest,
-                     duplicates=self._duplicates)
+        ret = pd.cut(
+            x_empty,
+            bins,
+            right=self._right,
+            labels=labels,
+            retbins=True,
+            include_lowest=self._include_lowest,
+            duplicates=self._duplicates,
+        )
 
         kws = []
         output_types = []
@@ -148,47 +178,54 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             out_dtype = ret[0].dtype
         if isinstance(ret[0], pd.Series):
             output_types.append(OutputType.series)
-            kws.append({
-                'dtype': out_dtype,
-                'shape': x.shape,
-                'index_value': x.index_value,
-                'name': x.name
-            })
+            kws.append(
+                {
+                    "dtype": out_dtype,
+                    "shape": x.shape,
+                    "index_value": x.index_value,
+                    "name": x.name,
+                }
+            )
         elif isinstance(ret[0], np.ndarray):
             output_types.append(OutputType.tensor)
-            kws.append({
-                'dtype': out_dtype,
-                'shape': x.shape,
-                'order': TensorOrder.C_ORDER
-            })
+            kws.append(
+                {"dtype": out_dtype, "shape": x.shape, "order": TensorOrder.C_ORDER}
+            )
         else:
             assert isinstance(ret[0], pd.Categorical)
             output_types.append(OutputType.categorical)
-            kws.append({
-                'dtype': out_dtype,
-                'shape': x.shape,
-                'categories_value': parse_index(out_dtype.categories,
-                                                store_data=True)
-            })
+            kws.append(
+                {
+                    "dtype": out_dtype,
+                    "shape": x.shape,
+                    "categories_value": parse_index(
+                        out_dtype.categories, store_data=True
+                    ),
+                }
+            )
 
         if self._retbins:
             if isinstance(self._bins, (pd.IntervalIndex, INDEX_TYPE)):
                 output_types.append(OutputType.index)
-                kws.append({
-                    'dtype': self._bins.dtype,
-                    'shape': self._bins.shape,
-                    'index_value': self._bins.index_value
-                        if isinstance(self._bins, INDEX_TYPE) else
-                        parse_index(self._bins, store_data=False),
-                    'name': self._bins.name
-                })
+                kws.append(
+                    {
+                        "dtype": self._bins.dtype,
+                        "shape": self._bins.shape,
+                        "index_value": self._bins.index_value
+                        if isinstance(self._bins, INDEX_TYPE)
+                        else parse_index(self._bins, store_data=False),
+                        "name": self._bins.name,
+                    }
+                )
             else:
                 output_types.append(OutputType.tensor)
-                kws.append({
-                    'dtype': ret[1].dtype,
-                    'shape': ret[1].shape if ret[1].size > 0 else (np.nan,),
-                    'order': TensorOrder.C_ORDER
-                })
+                kws.append(
+                    {
+                        "dtype": ret[1].dtype,
+                        "shape": ret[1].shape if ret[1].size > 0 else (np.nan,),
+                        "order": TensorOrder.C_ORDER,
+                    }
+                )
 
         self.output_types = output_types
         return ExecutableTuple(self.new_tileables(inputs, kws=kws))
@@ -199,8 +236,7 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             # check op.bins chunk shapes
             if has_unknown_shape(op.bins):
                 yield
-            bins = yield from recursive_tile(
-                op.bins.rechunk(op.bins.shape))
+            bins = yield from recursive_tile(op.bins.rechunk(op.bins.shape))
         else:
             bins = op.bins
 
@@ -208,14 +244,14 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             # check op.labels chunk shapes
             if has_unknown_shape(op.labels):
                 yield
-            labels = yield from recursive_tile(
-                op.labels.rechunk(op.labels.shape))
+            labels = yield from recursive_tile(op.labels.rechunk(op.labels.shape))
         else:
             labels = op.labels
 
         if isinstance(op.bins, Integral):
             input_min, input_max = yield from recursive_tile(
-                op.input.min(), op.input.max())
+                op.input.min(), op.input.max()
+            )
             input_min_chunk = input_min.chunks[0]
             input_max_chunk = input_max.chunks[0]
 
@@ -228,8 +264,9 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             min_val, max_val = ctx.get_chunks_result(keys)
             # calculate bins
             if np.isinf(min_val) or np.isinf(max_val):
-                raise ValueError('cannot specify integer `bins` '
-                                 'when input data contains infinity')
+                raise ValueError(
+                    "cannot specify integer `bins` " "when input data contains infinity"
+                )
             elif min_val == max_val:  # adjust end points before binning
                 min_val -= 0.001 * abs(min_val) if min_val != 0 else 0.001
                 max_val += 0.001 * abs(max_val) if max_val != 0 else 0.001
@@ -259,53 +296,61 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
 
             chunk_kws = []
             if isinstance(outs[0], SERIES_TYPE):
-                chunk_kws.append({
-                    'dtype': outs[0].dtype,
-                    'shape': c.shape,
-                    'index_value': c.index_value,
-                    'name': c.name,
-                    'index': c.index,
-                })
+                chunk_kws.append(
+                    {
+                        "dtype": outs[0].dtype,
+                        "shape": c.shape,
+                        "index_value": c.index_value,
+                        "name": c.name,
+                        "index": c.index,
+                    }
+                )
             elif isinstance(outs[0], TENSOR_TYPE):
-                chunk_kws.append({
-                    'dtype': outs[0].dtype,
-                    'shape': c.shape,
-                    'order': TensorOrder.C_ORDER,
-                    'index': c.index,
-                })
+                chunk_kws.append(
+                    {
+                        "dtype": outs[0].dtype,
+                        "shape": c.shape,
+                        "order": TensorOrder.C_ORDER,
+                        "index": c.index,
+                    }
+                )
             else:
-                chunk_kws.append({
-                    'dtype': outs[0].dtype,
-                    'shape': c.shape,
-                    'categories_value': outs[0].categories_value,
-                    'index': c.index,
-                })
+                chunk_kws.append(
+                    {
+                        "dtype": outs[0].dtype,
+                        "shape": c.shape,
+                        "categories_value": outs[0].categories_value,
+                        "index": c.index,
+                    }
+                )
 
             out_chunks.append(chunk_op.new_chunk(chunk_inputs, kws=chunk_kws))
 
         kws = []
         out_kw = outs[0].params
-        out_kw['chunks'] = out_chunks
-        out_kw['nsplits'] = op.input.nsplits
+        out_kw["chunks"] = out_chunks
+        out_kw["nsplits"] = op.input.nsplits
         kws.append(out_kw)
         if len(outs) == 2:
             bins_kw = outs[1].params
-            bins_kw['chunks'] = bins_chunks = []
+            bins_kw["chunks"] = bins_chunks = []
             if isinstance(bins, ENTITY_TYPE):
                 bins_chunks.append(bins.chunks[0])
             else:
-                if op.duplicates == 'drop':
+                if op.duplicates == "drop":
                     if isinstance(bins, (np.ndarray, list, tuple)):
                         bins = np.unique(bins)
                     else:
                         bins = bins.unique()
                     bins = bins.astype(outs[1].dtype, copy=False)
-                convert = \
+                convert = (
                     astensor if not isinstance(bins, pd.IntervalIndex) else asindex
+                )
                 converted = yield from recursive_tile(
-                    convert(bins, chunk_size=len(bins)))
+                    convert(bins, chunk_size=len(bins))
+                )
                 bins_chunks.append(converted.chunks[0])
-            bins_kw['nsplits'] = ((len(bins),),)
+            bins_kw["nsplits"] = ((len(bins),),)
             kws.append(bins_kw)
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=kws)
@@ -316,8 +361,14 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
         bins = ctx[op.bins.key] if isinstance(op.bins, ENTITY_TYPE) else op.bins
         labels = ctx[op.labels.key] if isinstance(op.labels, ENTITY_TYPE) else op.labels
 
-        cut = partial(pd.cut, right=op.right, retbins=op.retbins, precision=op.precision,
-                      include_lowest=op.include_lowest, duplicates=op.duplicates)
+        cut = partial(
+            pd.cut,
+            right=op.right,
+            retbins=op.retbins,
+            precision=op.precision,
+            include_lowest=op.include_lowest,
+            duplicates=op.duplicates,
+        )
         try:
             ret = cut(x, bins, labels=labels)
         except ValueError:
@@ -330,8 +381,16 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             ctx[op.outputs[0].key] = ret
 
 
-def cut(x, bins, right: bool = True, labels=None, retbins: bool = False,
-        precision: int = 3, include_lowest: bool = False, duplicates: str = 'raise'):
+def cut(
+    x,
+    bins,
+    right: bool = True,
+    labels=None,
+    retbins: bool = False,
+    precision: int = 3,
+    include_lowest: bool = False,
+    duplicates: str = "raise",
+):
     """
     Bin values into discrete intervals.
 
@@ -496,11 +555,17 @@ def cut(x, bins, right: bool = True, labels=None, retbins: bool = False,
     """
 
     if isinstance(bins, Integral) and bins < 1:
-        raise ValueError('`bins` should be a positive integer')
+        raise ValueError("`bins` should be a positive integer")
 
-    op = DataFrameCut(bins=bins, right=right, labels=labels,
-                      retbins=retbins, precision=precision,
-                      include_lowest=include_lowest, duplicates=duplicates)
+    op = DataFrameCut(
+        bins=bins,
+        right=right,
+        labels=labels,
+        retbins=retbins,
+        precision=precision,
+        include_lowest=include_lowest,
+        duplicates=duplicates,
+    )
     ret = op(x)
     if not retbins:
         return ret[0]

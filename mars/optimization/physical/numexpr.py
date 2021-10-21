@@ -20,8 +20,12 @@ from ...tensor.fuse.numexpr import NUMEXPR_INSTALLED
 from .core import RuntimeOptimizer, register_optimizer
 
 
-REDUCTION_OP = {reduction.TensorSum, reduction.TensorProd,
-                reduction.TensorMax, reduction.TensorMin}
+REDUCTION_OP = {
+    reduction.TensorSum,
+    reduction.TensorProd,
+    reduction.TensorMax,
+    reduction.TensorMin,
+}
 SUPPORT_OP = {
     arithmetic.TensorAdd,
     arithmetic.TensorSubtract,
@@ -38,14 +42,12 @@ SUPPORT_OP = {
     arithmetic.TensorExpm1,
     arithmetic.TensorLog1p,
     arithmetic.TensorSqrt,
-
     arithmetic.TensorEqual,
     arithmetic.TensorNotEqual,
     arithmetic.TensorLessThan,
     arithmetic.TensorLessEqual,
     arithmetic.TensorGreaterThan,
     arithmetic.TensorGreaterEqual,
-
     arithmetic.TensorSin,
     arithmetic.TensorCos,
     arithmetic.TensorTan,
@@ -58,17 +60,14 @@ SUPPORT_OP = {
     arithmetic.TensorArcsinh,
     arithmetic.TensorArccosh,
     arithmetic.TensorArctanh,
-
     arithmetic.TensorLshift,
     arithmetic.TensorRshift,
-
     arithmetic.TensorTreeAdd,
     arithmetic.TensorTreeMultiply,
-
     reduction.TensorSum,
     reduction.TensorProd,
     reduction.TensorMax,
-    reduction.TensorMin
+    reduction.TensorMin,
 }
 
 
@@ -92,7 +91,7 @@ def _transfer_op(node: ChunkType):
 
 @register_optimizer
 class NumexprRuntimeOptimizer(RuntimeOptimizer):
-    engine = 'numexpr'
+    engine = "numexpr"
 
     @classmethod
     def is_available(cls) -> bool:
@@ -107,8 +106,7 @@ class NumexprRuntimeOptimizer(RuntimeOptimizer):
             if node.op.gpu or node.op.sparse:
                 # break
                 return [], []
-            if type(node.op) not in SUPPORT_OP or \
-                    node in graph.results:
+            if type(node.op) not in SUPPORT_OP or node in graph.results:
                 continue
             if node in explored or type(node.op) in REDUCTION_OP:
                 # TODO: check logic here
@@ -121,9 +119,11 @@ class NumexprRuntimeOptimizer(RuntimeOptimizer):
             cur_node = graph.successors(node)[0]
             while graph.count_predecessors(cur_node) == 1 and _support(cur_node):
                 selected.append(cur_node)
-                if graph.count_successors(cur_node) != 1 or \
-                        type(cur_node.op) in REDUCTION_OP or \
-                        cur_node in graph.results:
+                if (
+                    graph.count_successors(cur_node) != 1
+                    or type(cur_node.op) in REDUCTION_OP
+                    or cur_node in graph.results
+                ):
                     break
                 else:
                     cur_node = graph.successors(cur_node)[0]

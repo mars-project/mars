@@ -22,8 +22,9 @@ try:
     try:
         # fix for tsfresh 0.17.0, from this version on,
         # we need to inherit from IterableDistributorBaseClass
-        from tsfresh.utilities.distribution import IterableDistributorBaseClass \
-            as DistributorBaseClass
+        from tsfresh.utilities.distribution import (
+            IterableDistributorBaseClass as DistributorBaseClass,
+        )
     except ImportError:  # pragma: no cover
         from tsfresh.utilities.distribution import DistributorBaseClass
 except ImportError:  # pragma: no cover
@@ -41,7 +42,7 @@ class MarsDistributor(DistributorBaseClass):
     def distribute(self, func, partitioned_chunks, kwargs):
         def _wrapped_func(*args, **kw):
             # Series.value_counts() may not be able to handle
-            if not getattr(pd.Series.value_counts, '_wrapped', False):
+            if not getattr(pd.Series.value_counts, "_wrapped", False):
                 old_value_counts = pd.Series.value_counts
 
                 def _wrapped_value_counts(obj, *args, **kw):
@@ -57,7 +58,9 @@ class MarsDistributor(DistributorBaseClass):
 
         tasks = []
         for partitioned_chunk in partitioned_chunks:
-            tasks.append(mr.spawn(_wrapped_func, args=(partitioned_chunk,), kwargs=kwargs))
+            tasks.append(
+                mr.spawn(_wrapped_func, args=(partitioned_chunk,), kwargs=kwargs)
+            )
         executed = mr.ExecutableTuple(tasks).execute(session=self._session)
         fetched = executed.fetch(session=self._session)
         return [item for results in fetched for item in results]

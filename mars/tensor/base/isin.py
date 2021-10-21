@@ -30,13 +30,14 @@ from ..core import TensorOrder
 class TensorIsIn(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.ISIN
 
-    assume_unique = BoolField('assume_unique')
-    invert = BoolField('invert')
+    assume_unique = BoolField("assume_unique")
+    invert = BoolField("invert")
 
     def __call__(self, element, test_elements):
         self.dtype = np.dtype(bool)
-        return self.new_tensor([element, test_elements],
-                               shape=element.shape, order=TensorOrder.C_ORDER)
+        return self.new_tensor(
+            [element, test_elements], shape=element.shape, order=TensorOrder.C_ORDER
+        )
 
     @classmethod
     def tile(cls, op):
@@ -52,9 +53,13 @@ class TensorIsIn(TensorOperand, TensorOperandMixin):
             to_concat_chunks = []
             for ar2_chunk in ar2.chunks:
                 chunk_op = op.copy().reset_key()
-                out_chunk = chunk_op.new_chunk([ar1_chunk, ar2_chunk], dtype=out.dtype,
-                                               shape=ar1_chunk.shape, order=out.order,
-                                               index=ar1_chunk.index)
+                out_chunk = chunk_op.new_chunk(
+                    [ar1_chunk, ar2_chunk],
+                    dtype=out.dtype,
+                    shape=ar1_chunk.shape,
+                    order=out.order,
+                    index=ar1_chunk.index,
+                )
                 to_concat_chunks.append(out_chunk)
             if len(to_concat_chunks) == 1:
                 out_chunks.append(to_concat_chunks[0])
@@ -63,43 +68,52 @@ class TensorIsIn(TensorOperand, TensorOperandMixin):
                 concat_op = TensorStack(axis=0)
                 shape = (len(to_concat_chunks),) + ar1_chunk.shape
                 concat_chunk = concat_op.new_chunk(
-                    to_concat_chunks, shape=shape,
-                    dtype=out.dtype, order=out.order)
+                    to_concat_chunks, shape=shape, dtype=out.dtype, order=out.order
+                )
                 if not invert:
                     chunk_op = TensorAny(axis=(0,), dtype=out.dtype)
                     out_chunk = chunk_op.new_chunk(
-                        [concat_chunk], shape=ar1_chunk.shape,
-                        dtype=out.dtype, order=out.order,
-                        index=ar1_chunk.index)
+                        [concat_chunk],
+                        shape=ar1_chunk.shape,
+                        dtype=out.dtype,
+                        order=out.order,
+                        index=ar1_chunk.index,
+                    )
                 else:
                     chunk_op = TensorAll(axis=(0,), dtype=out.dtype)
                     out_chunk = chunk_op.new_chunk(
-                        [concat_chunk], shape=ar1_chunk.shape,
-                        dtype=out.dtype, order=out.order,
-                        index=ar1_chunk.index)
+                        [concat_chunk],
+                        shape=ar1_chunk.shape,
+                        dtype=out.dtype,
+                        order=out.order,
+                        index=ar1_chunk.index,
+                    )
                 out_chunks.append(out_chunk)
 
         params = out.params.copy()
-        params['nsplits'] = ar1.nsplits
-        params['chunks'] = out_chunks
+        params["nsplits"] = ar1.nsplits
+        params["chunks"] = out_chunks
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, kws=[params])
 
     @classmethod
     def execute(cls, ctx, op):
         (element, test_elements), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
-            ctx[op.outputs[0].key] = xp.isin(element, test_elements,
-                                             assume_unique=op.assume_unique,
-                                             invert=op.invert)
+            ctx[op.outputs[0].key] = xp.isin(
+                element, test_elements, assume_unique=op.assume_unique, invert=op.invert
+            )
 
 
-def isin(element: Union[TileableType, np.ndarray],
-         test_elements: Union[TileableType, np.ndarray, list],
-         assume_unique: bool = False,
-         invert: bool = False):
+def isin(
+    element: Union[TileableType, np.ndarray],
+    test_elements: Union[TileableType, np.ndarray, list],
+    assume_unique: bool = False,
+    invert: bool = False,
+):
     """
     Calculates `element in test_elements`, broadcasting over `element` only.
     Returns a boolean array of the same shape as `element` that is True

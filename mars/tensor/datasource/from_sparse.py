@@ -25,13 +25,12 @@ from .array import tensor
 class SparseToDense(TensorHasInput):
     _op_type_ = OperandDef.SPARSE_TO_DENSE
 
-    _input = KeyField('input')
-    _order = StringField('order')
-    _fill_value = AnyField('fill_value')
+    _input = KeyField("input")
+    _order = StringField("order")
+    _fill_value = AnyField("fill_value")
 
     def __init__(self, fill_value=None, order=None, **kw):
-        super().__init__(_fill_value=fill_value,
-                         _sparse=False, _order=order, **kw)
+        super().__init__(_fill_value=fill_value, _sparse=False, _order=order, **kw)
 
     @property
     def order(self):
@@ -46,29 +45,33 @@ class SparseToDense(TensorHasInput):
         fill_value = op.fill_value
         out = op.outputs[0]
         (inp,), device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             if fill_value is None:
                 ctx[out.key] = inp.toarray().astype(
-                    out.dtype, order=op.order, copy=False)
+                    out.dtype, order=op.order, copy=False
+                )
             else:
                 xp = get_array_module(xp)
                 spmatrix = inp.spmatrix
                 inds = spmatrix.nonzero()
-                ret = xp.full(inp.shape, fill_value, dtype=out.dtype,
-                              order=op.order)
+                ret = xp.full(inp.shape, fill_value, dtype=out.dtype, order=op.order)
                 ret[inds] = spmatrix.data
                 ctx[out.key] = ret
 
 
-def fromsparse(a, order='C', fill_value=None):
+def fromsparse(a, order="C", fill_value=None):
     a = tensor(a)
     if not a.issparse():
         return a.astype(a.dtype, order=order, copy=False)
 
-    tensor_order = get_order(order, None, available_options='CF',
-                             err_msg="only 'C' or 'F' order is permitted")
-    op = SparseToDense(dtype=a.dtype, gpu=a.op.gpu,
-                       order=order, fill_value=fill_value)
+    tensor_order = get_order(
+        order,
+        None,
+        available_options="CF",
+        err_msg="only 'C' or 'F' order is permitted",
+    )
+    op = SparseToDense(dtype=a.dtype, gpu=a.op.gpu, order=order, fill_value=fill_value)
     return op(a, order=tensor_order)

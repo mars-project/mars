@@ -29,7 +29,7 @@ from ..core import TensorOrder
 class TensorInv(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.INV
 
-    _input = KeyField('input')
+    _input = KeyField("input")
 
     def __call__(self, a):
         a = astensor(a)
@@ -40,13 +40,13 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
         out = op.outputs[0]
         chunk_op = op.copy().reset_key()
         chunk_params = out.params
-        chunk_params['index'] = (0,) * out.ndim
+        chunk_params["index"] = (0,) * out.ndim
         out_chunk = chunk_op.new_chunk(op.inputs[0].chunks, kws=[chunk_params])
 
         new_op = op.copy()
         params = out.params
-        params['nsplits'] = tuple((s,) for s in out.shape)
-        params['chunks'] = [out_chunk]
+        params["nsplits"] = tuple((s,) for s in out.shape)
+        params["chunks"] = [out_chunk]
         return new_op.new_tensors(op.inputs, kws=[params])
 
     @classmethod
@@ -65,6 +65,7 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
         from ..base.transpose import TensorTranspose
         from .tensordot import tensordot
         from .solve_triangular import solve_triangular
+
         in_tensor = op.input
         is_sparse = in_tensor.is_sparse()
 
@@ -77,10 +78,12 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
 
         # transposed p equals to inverse of p
         p_transpose = TensorTranspose(
-            dtype=p.dtype, sparse=p.op.sparse,
-            axes=list(range(in_tensor.ndim))[::-1]).new_tensor([p], p.shape)
+            dtype=p.dtype, sparse=p.op.sparse, axes=list(range(in_tensor.ndim))[::-1]
+        ).new_tensor([p], p.shape)
 
-        b = tensordot(p_transpose, b_eye, axes=((p_transpose.ndim - 1,), (b_eye.ndim - 2,)))
+        b = tensordot(
+            p_transpose, b_eye, axes=((p_transpose.ndim - 1,), (b_eye.ndim - 2,))
+        )
 
         # as `l` is a lower matrix, `lower=True` should be specified.
         uy = solve_triangular(l, b, lower=True, sparse=op.sparse)
@@ -92,7 +95,8 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         (inp,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             ctx[op.outputs[0].key] = xp.linalg.inv(inp)
@@ -140,10 +144,11 @@ def inv(a, sparse=None):
     # TODO: using some parallel algorithm for matrix inversion.
     a = astensor(a)
     if a.ndim != 2:
-        raise LinAlgError(f'{a.ndim}-dimensional array given. '
-                          'Tensor must be two-dimensional')
+        raise LinAlgError(
+            f"{a.ndim}-dimensional array given. " "Tensor must be two-dimensional"
+        )
     if a.shape[0] != a.shape[1]:
-        raise LinAlgError('Input must be square')
+        raise LinAlgError("Input must be square")
 
     tiny_inv = np.linalg.inv(np.array([[1, 2], [2, 5]], dtype=a.dtype))
     sparse = sparse if sparse is not None else a.issparse()

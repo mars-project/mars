@@ -19,8 +19,18 @@ import pytest
 
 from ....core import tile
 from ...datasource import tensor as from_ndarray
-from .. import beta, rand, choice, multivariate_normal, \
-    randint, randn, permutation, TensorPermutation, shuffle, RandomState
+from .. import (
+    beta,
+    rand,
+    choice,
+    multivariate_normal,
+    randint,
+    randn,
+    permutation,
+    TensorPermutation,
+    shuffle,
+    RandomState,
+)
 
 
 def test_random():
@@ -33,21 +43,27 @@ def test_random():
     assert arr.shape == ()
     assert len(arr.chunks) == 1
     assert arr.chunks[0].shape == ()
-    assert arr.chunks[0].op.dtype == np.dtype('f8')
+    assert arr.chunks[0].op.dtype == np.dtype("f8")
 
     arr = tile(beta([1, 2], [3, 4], chunk_size=2))
 
     assert arr.shape == (2,)
     assert len(arr.chunks) == 1
     assert arr.chunks[0].shape == (2,)
-    assert arr.chunks[0].op.dtype == np.dtype('f8')
+    assert arr.chunks[0].op.dtype == np.dtype("f8")
 
-    arr = tile(beta([[2, 3]], from_ndarray([[4, 6], [5, 2]], chunk_size=2),
-                    chunk_size=1, size=(3, 2, 2)))
+    arr = tile(
+        beta(
+            [[2, 3]],
+            from_ndarray([[4, 6], [5, 2]], chunk_size=2),
+            chunk_size=1,
+            size=(3, 2, 2),
+        )
+    )
 
     assert arr.shape == (3, 2, 2)
     assert len(arr.chunks) == 12
-    assert arr.chunks[0].op.dtype == np.dtype('f8')
+    assert arr.chunks[0].op.dtype == np.dtype("f8")
 
 
 def test_same_key():
@@ -110,7 +126,7 @@ def test_multivariate_normal():
 
 
 def test_randint():
-    arr = tile(randint(1, 2, size=(10, 9), dtype='f8', density=.01, chunk_size=2))
+    arr = tile(randint(1, 2, size=(10, 9), dtype="f8", density=0.01, chunk_size=2))
 
     assert arr.shape == (10, 9)
     assert len(arr.chunks) == 25
@@ -118,7 +134,7 @@ def test_randint():
     assert arr.chunks[0].op.dtype == np.float64
     assert arr.chunks[0].op.low == 1
     assert arr.chunks[0].op.high == 2
-    assert arr.chunks[0].op.density == .01
+    assert arr.chunks[0].op.density == 0.01
 
 
 def test_unexpected_key():
@@ -166,16 +182,18 @@ def test_permutation():
     assert np.isnan(x.chunks[0].shape[0])
     assert x.chunks[0].shape[1] == 2
     assert x.cix[0, 0].op.seed == x.cix[0, 1].op.seed
-    assert x.cix[0, 0].inputs[0].inputs[0].inputs[0].op.seed == \
-           x.cix[1, 0].inputs[0].inputs[0].inputs[0].op.seed
+    assert (
+        x.cix[0, 0].inputs[0].inputs[0].inputs[0].op.seed
+        == x.cix[1, 0].inputs[0].inputs[0].inputs[0].op.seed
+    )
 
     with pytest.raises(np.AxisError):
-        pytest.raises(permutation('abc'))
+        pytest.raises(permutation("abc"))
 
 
 def test_shuffle():
     with pytest.raises(TypeError):
-        shuffle('abc')
+        shuffle("abc")
 
     x = rand(10, 10, chunk_size=2)
     shuffle(x)

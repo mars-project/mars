@@ -17,7 +17,7 @@ from .....tensor.arithmetic.add import TensorAdd
 
 def _replace_op(ctx, op):
     # change the op from TensorAdd to TensorSubtract.
-    type(op)._func_name = 'subtract'
+    type(op)._func_name = "subtract"
     executor = type(op).execute
     return executor(ctx, op)
 

@@ -24,12 +24,25 @@ from ._duplicate import DuplicateOperand, validate_subset
 class DataFrameDuplicated(DuplicateOperand):
     _op_type_ = opcodes.DUPLICATED
 
-    def __init__(self, subset=None, keep=None, output_types=None,
-                 method=None, subset_chunk=None, shuffle_size=None, **kw):
-        super().__init__(_subset=subset, _keep=keep,
-                         _output_types=output_types, _method=method,
-                         _subset_chunk=subset_chunk,
-                         _shuffle_size=shuffle_size, **kw)
+    def __init__(
+        self,
+        subset=None,
+        keep=None,
+        output_types=None,
+        method=None,
+        subset_chunk=None,
+        shuffle_size=None,
+        **kw
+    ):
+        super().__init__(
+            _subset=subset,
+            _keep=keep,
+            _output_types=output_types,
+            _method=method,
+            _subset_chunk=subset_chunk,
+            _shuffle_size=shuffle_size,
+            **kw
+        )
 
     @classmethod
     def _get_shape(cls, input_shape, op):
@@ -39,10 +52,10 @@ class DataFrameDuplicated(DuplicateOperand):
     def _gen_tileable_params(cls, op: "DataFrameDuplicated", input_params):
         # duplicated() always returns a Series
         return {
-            'shape': cls._get_shape(input_params['shape'], op),
-            'index_value': input_params['index_value'],
-            'dtype': np.dtype(bool),
-            'name': input_params.get('name')
+            "shape": cls._get_shape(input_params["shape"], op),
+            "index_value": input_params["index_value"],
+            "dtype": np.dtype(bool),
+            "name": input_params.get("name"),
         }
 
     def __call__(self, inp, inplace=False):
@@ -53,7 +66,7 @@ class DataFrameDuplicated(DuplicateOperand):
 
     @classmethod
     def _get_map_output_types(cls, input_chunk, method: str):
-        if method in ('tree', 'subset_tree'):
+        if method in ("tree", "subset_tree"):
             return [OutputType.dataframe]
         else:
             return input_chunk.op.output_types
@@ -61,11 +74,11 @@ class DataFrameDuplicated(DuplicateOperand):
     @classmethod
     def _gen_chunk_params_default(cls, op: "DataFrameDuplicated", input_chunk):
         return {
-            'shape': cls._get_shape(input_chunk.shape, op),
-            'index_value': input_chunk.index_value,
-            'dtype': np.dtype(bool),
-            'name': input_chunk.name if input_chunk.ndim == 1 else None,
-            'index': (input_chunk.index[0],)
+            "shape": cls._get_shape(input_chunk.shape, op),
+            "index_value": input_chunk.index_value,
+            "dtype": np.dtype(bool),
+            "name": input_chunk.name if input_chunk.ndim == 1 else None,
+            "index": (input_chunk.index[0],),
         }
 
     @classmethod
@@ -80,13 +93,14 @@ class DataFrameDuplicated(DuplicateOperand):
     def _gen_intermediate_chunk_params(cls, op: "DataFrameDuplicated", input_chunk):
         inp = op.input
         chunk_params = dict()
-        chunk_params['index'] = input_chunk.index[:1] + (0,) * (inp.ndim - 1)
-        chunk_params['shape'] = shape = cls._get_intermediate_shape(input_chunk.shape)
-        chunk_params['index_value'] = gen_unknown_index_value(
-            input_chunk.index_value, input_chunk)
+        chunk_params["index"] = input_chunk.index[:1] + (0,) * (inp.ndim - 1)
+        chunk_params["shape"] = shape = cls._get_intermediate_shape(input_chunk.shape)
+        chunk_params["index_value"] = gen_unknown_index_value(
+            input_chunk.index_value, input_chunk
+        )
         if inp.ndim == 2 and len(shape) == 2:
-            chunk_params['columns_value'] = input_chunk.columns_value
-            chunk_params['dtypes'] = input_chunk.dtypes
+            chunk_params["columns_value"] = input_chunk.columns_value
+            chunk_params["dtypes"] = input_chunk.dtypes
         return chunk_params
 
     @classmethod
@@ -95,11 +109,11 @@ class DataFrameDuplicated(DuplicateOperand):
         if op.method is None:
             # one chunk
             is_terminal_chunk = True
-        elif op.method == 'subset_tree' and op.stage is None:
+        elif op.method == "subset_tree" and op.stage is None:
             is_terminal_chunk = True
-        elif op.method == 'tree' and op.stage == OperandStage.agg:
+        elif op.method == "tree" and op.stage == OperandStage.agg:
             is_terminal_chunk = True
-        elif op.method == 'shuffle' and op.reducer_phase == 'put_back':
+        elif op.method == "shuffle" and op.reducer_phase == "put_back":
             is_terminal_chunk = True
 
         if is_terminal_chunk:
@@ -133,7 +147,7 @@ class DataFrameDuplicated(DuplicateOperand):
             result = inp.copy()
         duplicated = cls._duplicated(inp, op)
         if not duplicated.name:
-            duplicated.name = '_duplicated_'
+            duplicated.name = "_duplicated_"
         result.iloc[duplicated] = None
         result = xdf.concat([result, duplicated], axis=1)
         ctx[op.outputs[0].key] = result
@@ -167,7 +181,7 @@ class DataFrameDuplicated(DuplicateOperand):
         inp = ctx[op.input.key]
         idx = op.outputs[0].index[0]
         subset = ctx[op.subset_chunk.key]
-        selected = subset[subset['_chunk_index_'] == idx]['_i_']
+        selected = subset[subset["_chunk_index_"] == idx]["_i_"]
 
         xdf = cls._get_xdf(inp)
         duplicated = np.ones(len(inp), dtype=bool)
@@ -190,15 +204,15 @@ class DataFrameDuplicated(DuplicateOperand):
             name = result.name
             result = result.to_frame()
             if name is None:
-                result.columns = ['_duplicated_']
+                result.columns = ["_duplicated_"]
             subset = result.columns.tolist()
         else:
             if subset is None:
                 subset = result.columns.tolist()
             if len(subset) == 1:
-                result.columns = subset = ['_duplicated_']
-        result['_chunk_index_'] = out.index[0]
-        result['_i_'] = np.arange(result.shape[0])
+                result.columns = subset = ["_duplicated_"]
+        result["_chunk_index_"] = out.index[0]
+        result["_i_"] = np.arange(result.shape[0])
         hashed = hash_dataframe_on(result, subset, shuffle_size)
         for i, data in enumerate(hashed):
             reducer_idx = (i,) + out.index[1:]
@@ -211,15 +225,14 @@ class DataFrameDuplicated(DuplicateOperand):
 
         xdf = cls._get_xdf(inputs[0])
         inp = xdf.concat(inputs)
-        subset = [c for c in inp.columns
-                  if c not in ('_chunk_index_', '_i_')]
+        subset = [c for c in inp.columns if c not in ("_chunk_index_", "_i_")]
         duplicated = cls._duplicated(inp, op, subset=subset)
-        result = xdf.concat([duplicated, inp[['_chunk_index_', '_i_']]], axis=1)
+        result = xdf.concat([duplicated, inp[["_chunk_index_", "_i_"]]], axis=1)
         for i in range(op.shuffle_size):
-            filtered = result[result['_chunk_index_'] == i]
-            del filtered['_chunk_index_']
-            if len(subset) > 1 or subset[0] == '_duplicated_':
-                filtered.columns = ['_duplicated_'] + filtered.columns[1:].tolist()
+            filtered = result[result["_chunk_index_"] == i]
+            del filtered["_chunk_index_"]
+            if len(subset) > 1 or subset[0] == "_duplicated_":
+                filtered.columns = ["_duplicated_"] + filtered.columns[1:].tolist()
             else:
                 filtered.columns = [subset[0]] + filtered.columns[1:].tolist()
             ctx[out.key, (i,)] = filtered
@@ -230,10 +243,10 @@ class DataFrameDuplicated(DuplicateOperand):
 
         xdf = cls._get_xdf(inputs[0])
         inp = xdf.concat(inputs)
-        inp.sort_values('_i_', inplace=True)
-        del inp['_i_']
+        inp.sort_values("_i_", inplace=True)
+        del inp["_i_"]
         duplicated = inp.iloc[:, 0]
-        if duplicated.name == '_duplicated_':
+        if duplicated.name == "_duplicated_":
             duplicated.name = None
         ctx[op.outputs[0].key] = duplicated
 
@@ -242,7 +255,7 @@ class DataFrameDuplicated(DuplicateOperand):
         if op.method is None:
             # one chunk
             cls._execute_chunk(ctx, op)
-        elif op.method == 'tree':
+        elif op.method == "tree":
             # tree
             if op.stage == OperandStage.map:
                 cls._execute_tree_map(ctx, op)
@@ -251,7 +264,7 @@ class DataFrameDuplicated(DuplicateOperand):
             else:
                 assert op.stage == OperandStage.agg
                 cls._execute_tree_agg(ctx, op)
-        elif op.method == 'subset_tree':
+        elif op.method == "subset_tree":
             # subset tree
             if op.stage == OperandStage.map:
                 cls._execute_subset_tree_map(ctx, op)
@@ -263,17 +276,17 @@ class DataFrameDuplicated(DuplicateOperand):
                 # post
                 cls._execute_subset_tree_post(ctx, op)
         else:
-            assert op.method == 'shuffle'
+            assert op.method == "shuffle"
             if op.stage == OperandStage.map:
                 cls._execute_shuffle_map(ctx, op)
-            elif op.reducer_phase == 'drop_duplicates':
+            elif op.reducer_phase == "drop_duplicates":
                 cls._execute_shuffle_reduce(ctx, op)
             else:
-                assert op.reducer_phase == 'put_back'
+                assert op.reducer_phase == "put_back"
                 cls._execute_shuffle_put_back(ctx, op)
 
 
-def df_duplicated(df, subset=None, keep='first', method='auto'):
+def df_duplicated(df, subset=None, keep="first", method="auto"):
     """
     Return boolean Series denoting duplicate rows.
 
@@ -365,15 +378,17 @@ def df_duplicated(df, subset=None, keep='first', method='auto'):
     dtype: bool
     """
 
-    if method not in ('auto', 'tree', 'subset_tree', 'shuffle', None):
-        raise ValueError("method could only be one of "
-                         "'auto', 'tree', 'subset_tree', 'shuffle' or None")
+    if method not in ("auto", "tree", "subset_tree", "shuffle", None):
+        raise ValueError(
+            "method could only be one of "
+            "'auto', 'tree', 'subset_tree', 'shuffle' or None"
+        )
     subset = validate_subset(df, subset)
     op = DataFrameDuplicated(subset=subset, keep=keep, method=method)
     return op(df)
 
 
-def series_duplicated(series, keep='first', method='auto'):
+def series_duplicated(series, keep="first", method="auto"):
     """
     Indicate duplicate Series values.
 
@@ -451,14 +466,15 @@ def series_duplicated(series, keep='first', method='auto'):
     4     True
     dtype: bool
     """
-    if method not in ('auto', 'tree', 'shuffle', None):
-        raise ValueError("method could only be one of "
-                         "'auto', 'tree', 'shuffle' or None")
+    if method not in ("auto", "tree", "shuffle", None):
+        raise ValueError(
+            "method could only be one of " "'auto', 'tree', 'shuffle' or None"
+        )
     op = DataFrameDuplicated(keep=keep, method=method)
     return op(series)
 
 
-def index_duplicated(index, keep='first'):
+def index_duplicated(index, keep="first"):
     """
     Indicate duplicate index values.
 

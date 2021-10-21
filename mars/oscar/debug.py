@@ -51,16 +51,17 @@ def set_debug_options(options: Optional[DebugOptions]):
 
     # deliver debug config to native codes for optimization
     from .core import set_debug_options as core_set_debug_options
+
     core_set_debug_options(options)
 
 
 def reload_debug_opts_from_env():
-    config_str = os.environ.get('DEBUG_OSCAR', '0')
-    if config_str == '0':
+    config_str = os.environ.get("DEBUG_OSCAR", "0")
+    if config_str == "0":
         set_debug_options(None)
         return
-    config_str = os.environ['DEBUG_OSCAR']
-    config_json = {} if config_str == '1' else json.loads(config_str)
+    config_str = os.environ["DEBUG_OSCAR"]
+    config_json = {} if config_str == "1" else json.loads(config_str)
     set_debug_options(DebugOptions(**config_json))
 
 
@@ -69,7 +70,12 @@ async def _log_timeout(timeout, msg, *args, **kwargs):
     while True:
         await asyncio.sleep(timeout * rnd)
         rnd += 1
-        logger.warning(msg + '(timeout for %.4f seconds).', *args, time.time() - start_time, **kwargs)
+        logger.warning(
+            msg + "(timeout for %.4f seconds).",
+            *args,
+            time.time() - start_time,
+            **kwargs,
+        )
 
 
 @contextmanager
@@ -80,9 +86,9 @@ def debug_async_timeout(option_name: str, msg, *args, **kwargs):
         timeout_val = getattr(_debug_opts, option_name, -1)
         timeout_task = None
         if timeout_val and timeout_val > 0:
-            timeout_task = asyncio.create_task(_log_timeout(
-                timeout_val, msg, *args, **kwargs
-            ))
+            timeout_task = asyncio.create_task(
+                _log_timeout(timeout_val, msg, *args, **kwargs)
+            )
 
         try:
             yield
@@ -91,7 +97,7 @@ def debug_async_timeout(option_name: str, msg, *args, **kwargs):
                 timeout_task.cancel()
 
 
-_message_trace_var = contextvars.ContextVar('_message_trace_var')
+_message_trace_var = contextvars.ContextVar("_message_trace_var")
 
 
 @contextmanager
@@ -100,11 +106,15 @@ def record_message_trace(message):
         yield
     else:
         from .backends.message import MessageTraceItem
+
         msg_trace = list(message.message_trace or [])
-        msg_trace.append(MessageTraceItem(
-            uid=message.actor_ref.uid, address=message.actor_ref.address,
-            method=message.content[0],
-        ))
+        msg_trace.append(
+            MessageTraceItem(
+                uid=message.actor_ref.uid,
+                address=message.actor_ref.address,
+                method=message.content[0],
+            )
+        )
         _message_trace_var.set(msg_trace)
         try:
             yield
@@ -124,17 +134,25 @@ def detect_cycle_send(message, wait_response: bool = True):
     ref_key = (message.actor_ref.uid, message.actor_ref.address)
     traced_ref_keys = set((item.uid, item.address) for item in cur_trace)
     if ref_key in traced_ref_keys:
-        looped_trace = cur_trace + [MessageTraceItem(
-            uid=message.actor_ref.uid, address=message.actor_ref.address,
-            method=message.content[0],
-        )]
+        looped_trace = cur_trace + [
+            MessageTraceItem(
+                uid=message.actor_ref.uid,
+                address=message.actor_ref.address,
+                method=message.content[0],
+            )
+        ]
 
-        formatted_trace = '\n    '.join(
-            f'Calling {t.method!r} in actor {t.uid} at {t.address}'
-            for t in looped_trace)
-        logger.warning('Call cycle detected when sending to actor %s at %s, the trace is\n'
-                       '    %s', message.actor_ref.uid, message.actor_ref.address,
-                       formatted_trace)
+        formatted_trace = "\n    ".join(
+            f"Calling {t.method!r} in actor {t.uid} at {t.address}"
+            for t in looped_trace
+        )
+        logger.warning(
+            "Call cycle detected when sending to actor %s at %s, the trace is\n"
+            "    %s",
+            message.actor_ref.uid,
+            message.actor_ref.address,
+            formatted_trace,
+        )
 
 
 @contextmanager

@@ -74,7 +74,7 @@ def _open(wrapped):
         raise RuntimeError("alru_cache is not closed")
 
     was_closed = (
-            wrapped.hits == wrapped.misses == len(wrapped.tasks) == len(wrapped._cache) == 0
+        wrapped.hits == wrapped.misses == len(wrapped.tasks) == len(wrapped._cache) == 0
     )
 
     if not was_closed:
@@ -141,11 +141,11 @@ def _cache_miss(wrapped, key):
 
 
 def alru_cache(
-        fn=None,
-        maxsize=128,
-        typed=False,
-        *,
-        cache_exceptions=True,
+    fn=None,
+    maxsize=128,
+    typed=False,
+    *,
+    cache_exceptions=True,
 ):
     def wrapper(fn):
         _origin = unpartial(fn)

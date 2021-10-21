@@ -22,8 +22,8 @@ import pandas as pd
 
 from ...utils import lazy_import
 
-cupy = lazy_import('cupy', globals=globals())
-cudf = lazy_import('cudf', globals=globals())
+cupy = lazy_import("cupy", globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
 
 class PrimitiveType(Enum):
@@ -104,8 +104,10 @@ class AbstractFieldType(ABC):
 
     def validate(self, value):
         if value is not None and not isinstance(value, self.valid_types):
-            raise TypeError(f'value needs to be instance '
-                            f'of {self.valid_types}, got {type(value)}')
+            raise TypeError(
+                f"value needs to be instance "
+                f"of {self.valid_types}, got {type(value)}"
+            )
 
     def __call__(self, *args, **kwargs):
         return type(self)(*args, **kwargs)
@@ -124,7 +126,7 @@ class SingletonFieldType(AbstractFieldType, metaclass=ABCMeta):
 
 
 class PrimitiveFieldType(AbstractFieldType):
-    __slots__ = 'type',
+    __slots__ = ("type",)
 
     _type_to_instances = dict()
 
@@ -133,8 +135,7 @@ class PrimitiveFieldType(AbstractFieldType):
         try:
             return cls._type_to_instances[primitive_type]
         except KeyError:
-            inst = cls._type_to_instances[primitive_type] = \
-                super().__new__(cls)
+            inst = cls._type_to_instances[primitive_type] = super().__new__(cls)
             return inst
 
     def __init__(self, primitive_type: PrimitiveType):
@@ -154,11 +155,11 @@ class SliceType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'slice'
+        return "slice"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
-        return slice,
+        return (slice,)
 
 
 class NDArrayType(SingletonFieldType):
@@ -166,12 +167,12 @@ class NDArrayType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'ndarray'
+        return "ndarray"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
         if cupy is None:
-            return np.ndarray,
+            return (np.ndarray,)
         else:
             return np.ndarray, cupy.ndarray
 
@@ -181,7 +182,7 @@ class DtypeType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'dtype'
+        return "dtype"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
@@ -193,11 +194,12 @@ class KeyType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'dtype'
+        return "dtype"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
         from ...core.entity import ENTITY_TYPE
+
         return ENTITY_TYPE
 
 
@@ -206,7 +208,7 @@ class DatetimeType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'datetime'
+        return "datetime"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
@@ -218,7 +220,7 @@ class TimedeltaType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'timedelta'
+        return "timedelta"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
@@ -230,12 +232,12 @@ class IndexType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'index'
+        return "index"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
         if cudf is None:
-            return pd.Index,
+            return (pd.Index,)
         else:
             return pd.Index, cudf.Index
 
@@ -245,12 +247,12 @@ class SeriesType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'series'
+        return "series"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
         if cudf is None:
-            return pd.Series,
+            return (pd.Series,)
         else:
             return pd.Series, cudf.Series
 
@@ -260,12 +262,12 @@ class DataFrameType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'dataframe'
+        return "dataframe"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
         if cudf is None:
-            return pd.DataFrame,
+            return (pd.DataFrame,)
         else:
             return pd.DataFrame, cudf.DataFrame
 
@@ -275,7 +277,7 @@ class FunctionType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'function'
+        return "function"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:  # pragma: no cover
@@ -283,8 +285,7 @@ class FunctionType(SingletonFieldType):
 
     def validate(self, value):
         if value is not None and not callable(value):
-            raise TypeError(f'value should be a function, '
-                            f'got {type(value)}')
+            raise TypeError(f"value should be a function, " f"got {type(value)}")
 
 
 class NamedtupleType(SingletonFieldType):
@@ -292,16 +293,17 @@ class NamedtupleType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'namedtuple'
+        return "namedtuple"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
-        return tuple,
+        return (tuple,)
 
     def validate(self, value):
-        if not (isinstance(value, self.valid_types) and hasattr(value, '_fields')):
-            raise TypeError(f'value should be instance of namedtuple, '
-                            f'got {type(value)}')
+        if not (isinstance(value, self.valid_types) and hasattr(value, "_fields")):
+            raise TypeError(
+                f"value should be instance of namedtuple, " f"got {type(value)}"
+            )
 
 
 class TZInfoType(SingletonFieldType):
@@ -309,11 +311,11 @@ class TZInfoType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'tzinfo'
+        return "tzinfo"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
-        return tzinfo,
+        return (tzinfo,)
 
 
 class IntervalArrayType(SingletonFieldType):
@@ -321,11 +323,11 @@ class IntervalArrayType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'interval_array'
+        return "interval_array"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
-        return pd.arrays.IntervalArray,
+        return (pd.arrays.IntervalArray,)
 
 
 class AnyType(SingletonFieldType):
@@ -333,7 +335,7 @@ class AnyType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'any'
+        return "any"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:  # pragma: no cover
@@ -345,7 +347,7 @@ class AnyType(SingletonFieldType):
 
 
 class _CollectionType(AbstractFieldType, metaclass=ABCMeta):
-    __slots__ = '_field_types',
+    __slots__ = ("_field_types",)
 
     def __init__(self, *field_types):
         self._field_types = field_types
@@ -359,21 +361,23 @@ class _CollectionType(AbstractFieldType, metaclass=ABCMeta):
             if isinstance(self._field_types[0], AnyType):
                 return base_name
             else:
-                return f'{base_name}[{self._field_types[0].name}, ...]'
+                return f"{base_name}[{self._field_types[0].name}, ...]"
         else:
-            field_type_names = ', '.join([ft.name for ft in self._field_types])
-            return f'{base_name}[{field_type_names}]'
+            field_type_names = ", ".join([ft.name for ft in self._field_types])
+            return f"{base_name}[{field_type_names}]"
 
     def is_homogeneous(self):
-        return len(self._field_types) == 1 or \
-               (len(self._field_types) == 2 and self._field_types[1] is Ellipsis)
+        return len(self._field_types) == 1 or (
+            len(self._field_types) == 2 and self._field_types[1] is Ellipsis
+        )
 
     def validate(self, value):
         if value is None:
             return
         if not isinstance(value, self.valid_types):
-            raise TypeError(f'value should be instance of {self.valid_types}, '
-                            f'got {type(value)}')
+            raise TypeError(
+                f"value should be instance of {self.valid_types}, " f"got {type(value)}"
+            )
         if self.is_homogeneous():
             field_type: AbstractFieldType = self._field_types[0]
             if not isinstance(field_type, AnyType):
@@ -381,20 +385,26 @@ class _CollectionType(AbstractFieldType, metaclass=ABCMeta):
                     try:
                         field_type.validate(item)
                     except TypeError:
-                        raise TypeError(f'item should be instance of '
-                                        f'{field_type.valid_types}, '
-                                        f'got {type(item)}')
+                        raise TypeError(
+                            f"item should be instance of "
+                            f"{field_type.valid_types}, "
+                            f"got {type(item)}"
+                        )
         else:
             if len(value) != len(self._field_types):
-                raise ValueError(f'value should own {len(self._field_types)} items, '
-                                 f'got {len(value)} items')
+                raise ValueError(
+                    f"value should own {len(self._field_types)} items, "
+                    f"got {len(value)} items"
+                )
             for expect_field_type, item in zip(self._field_types, value):
                 try:
                     expect_field_type.validate(item)
                 except TypeError:
-                    raise TypeError(f'item should be instance of '
-                                    f'{expect_field_type.valid_types}, '
-                                    f'got {type(item)}')
+                    raise TypeError(
+                        f"item should be instance of "
+                        f"{expect_field_type.valid_types}, "
+                        f"got {type(item)}"
+                    )
 
 
 class ListType(_CollectionType):
@@ -402,11 +412,11 @@ class ListType(_CollectionType):
 
     @property
     def type_name(self) -> str:
-        return 'list'
+        return "list"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
-        return list,
+        return (list,)
 
 
 class TupleType(_CollectionType):
@@ -414,22 +424,22 @@ class TupleType(_CollectionType):
 
     @property
     def type_name(self) -> str:
-        return 'tuple'
+        return "tuple"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
-        return tuple,
+        return (tuple,)
 
 
 class DictType(AbstractFieldType):
-    __slots__ = 'key_type', 'value_type'
+    __slots__ = "key_type", "value_type"
 
     key_type: AbstractFieldType
     value_type: AbstractFieldType
 
-    def __init__(self,
-                 key_type: AbstractFieldType = None,
-                 value_type: AbstractFieldType = None):
+    def __init__(
+        self, key_type: AbstractFieldType = None, value_type: AbstractFieldType = None
+    ):
         if key_type is None:
             key_type = AnyType()
         if value_type is None:
@@ -439,18 +449,18 @@ class DictType(AbstractFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'dict'
+        return "dict"
 
     @property
     def name(self) -> str:
         if isinstance(self.key_type, AnyType) and isinstance(self.value_type, AnyType):
-            return 'Dict'
+            return "Dict"
         else:
-            return f'Dict[{self.key_type.name}, {self.value_type.name}]'
+            return f"Dict[{self.key_type.name}, {self.value_type.name}]"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
-        return dict,
+        return (dict,)
 
     def validate(self, value):
         super().validate(value)
@@ -460,17 +470,21 @@ class DictType(AbstractFieldType):
             try:
                 self.key_type.validate(k)
             except TypeError:
-                raise TypeError(f'key should be instance of '
-                                f'{self.key_type.valid_types}, got {type(k)}')
+                raise TypeError(
+                    f"key should be instance of "
+                    f"{self.key_type.valid_types}, got {type(k)}"
+                )
             try:
                 self.value_type.validate(v)
             except TypeError:
-                raise TypeError(f'value should be instance of '
-                                f'{self.value_type.valid_types}, got {type(v)}')
+                raise TypeError(
+                    f"value should be instance of "
+                    f"{self.value_type.valid_types}, got {type(v)}"
+                )
 
 
 class ReferenceType(AbstractFieldType):
-    __slots__ = 'reference_type',
+    __slots__ = ("reference_type",)
 
     reference_type: Type
 
@@ -481,11 +495,11 @@ class ReferenceType(AbstractFieldType):
 
     @property
     def type_name(self) -> str:
-        return 'reference'
+        return "reference"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
-        return self.reference_type,
+        return (self.reference_type,)
 
 
 class FieldTypes:

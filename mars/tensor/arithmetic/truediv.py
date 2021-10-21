@@ -25,17 +25,17 @@ from .utils import arithmetic_operand
 @arithmetic_operand
 class TensorTrueDiv(TensorBinOp):
     _op_type_ = OperandDef.TRUEDIV
-    _func_name = 'true_divide'
+    _func_name = "true_divide"
 
     @classmethod
     def _is_sparse(cls, x1, x2):
         if not np.isscalar(x1) and not np.isscalar(x2):
             return False
-        if hasattr(x1, 'issparse') and x1.issparse():
+        if hasattr(x1, "issparse") and x1.issparse():
             if x2 != 0:
                 return True
             else:
-                raise ZeroDivisionError('float division by zero')
+                raise ZeroDivisionError("float division by zero")
         return False
 
 

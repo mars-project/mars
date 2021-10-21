@@ -25,8 +25,7 @@ from ... import tensor as mt
 from ...core import ENTITY_TYPE, OutputType, recursive_tile
 from ...core.context import get_context, Context
 from ...lib.sparse import SparseNDArray
-from ...serialization.serializables import AnyField, BoolField, \
-    Int32Field, StringField
+from ...serialization.serializables import AnyField, BoolField, Int32Field, StringField
 from ...tensor.core import TensorOrder
 from ...typing import TileableType
 from ...utils import has_unknown_shape
@@ -129,14 +128,18 @@ class LabelBinarizer(TransformerMixin, BaseEstimator):
 
     def __init__(self, *, neg_label=0, pos_label=1, sparse_output=False):
         if neg_label >= pos_label:
-            raise ValueError("neg_label={0} must be strictly less than "
-                             "pos_label={1}.".format(neg_label, pos_label))
+            raise ValueError(
+                "neg_label={0} must be strictly less than "
+                "pos_label={1}.".format(neg_label, pos_label)
+            )
 
         if sparse_output and (pos_label == 0 or neg_label != 0):
-            raise ValueError("Sparse binarization is only supported with non "
-                             "zero pos_label and zero neg_label, got "
-                             "pos_label={0} and neg_label={1}"
-                             "".format(pos_label, neg_label))
+            raise ValueError(
+                "Sparse binarization is only supported with non "
+                "zero pos_label and zero neg_label, got "
+                "pos_label={0} and neg_label={1}"
+                "".format(pos_label, neg_label)
+            )
 
         self.neg_label = neg_label
         self.pos_label = pos_label
@@ -155,17 +158,20 @@ class LabelBinarizer(TransformerMixin, BaseEstimator):
         -------
         self : returns an instance of self.
         """
-        self.y_type_ = fetch(execute(
-            type_of_target(y), session=session, **(run_kwargs or dict())))
-        if 'multioutput' in self.y_type_:
-            raise ValueError("Multioutput target data is not supported with "
-                             "label binarization")
+        self.y_type_ = fetch(
+            execute(type_of_target(y), session=session, **(run_kwargs or dict()))
+        )
+        if "multioutput" in self.y_type_:
+            raise ValueError(
+                "Multioutput target data is not supported with " "label binarization"
+            )
         if _num_samples(y) == 0:  # pragma: no cover
-            raise ValueError('y has 0 samples: %r' % y)
+            raise ValueError("y has 0 samples: %r" % y)
 
         self.sparse_input_ = mt.tensor(y).issparse()
         self.classes_ = unique_labels(y).execute(
-            session=session, **(run_kwargs or dict()))
+            session=session, **(run_kwargs or dict())
+        )
         return self
 
     def fit_transform(self, y, session=None, run_kwargs=None):
@@ -189,8 +195,9 @@ class LabelBinarizer(TransformerMixin, BaseEstimator):
             Shape will be (n_samples, 1) for binary problems. Sparse matrix
             will be of CSR format.
         """
-        return self.fit(y, session=session, run_kwargs=run_kwargs)\
-            .transform(y, session=session, run_kwargs=run_kwargs)
+        return self.fit(y, session=session, run_kwargs=run_kwargs).transform(
+            y, session=session, run_kwargs=run_kwargs
+        )
 
     def transform(self, y, session=None, run_kwargs=None):
         """Transform multi-class labels to binary labels.
@@ -214,17 +221,20 @@ class LabelBinarizer(TransformerMixin, BaseEstimator):
         """
         check_is_fitted(self)
 
-        target = fetch(execute(type_of_target(y), session=session,
-                               **(run_kwargs or dict())))
-        y_is_multilabel = target.startswith('multilabel')
-        if y_is_multilabel and not self.y_type_.startswith('multilabel'):
-            raise ValueError("The object was not fitted with multilabel"
-                             " input.")
+        target = fetch(
+            execute(type_of_target(y), session=session, **(run_kwargs or dict()))
+        )
+        y_is_multilabel = target.startswith("multilabel")
+        if y_is_multilabel and not self.y_type_.startswith("multilabel"):
+            raise ValueError("The object was not fitted with multilabel" " input.")
 
-        return label_binarize(y, classes=self.classes_,
-                              pos_label=self.pos_label,
-                              neg_label=self.neg_label,
-                              sparse_output=self.sparse_output)
+        return label_binarize(
+            y,
+            classes=self.classes_,
+            pos_label=self.pos_label,
+            neg_label=self.neg_label,
+            sparse_output=self.sparse_output,
+        )
 
     def inverse_transform(self, Y, threshold=None):
         """Transform binary labels back to multi-class labels.
@@ -261,19 +271,24 @@ class LabelBinarizer(TransformerMixin, BaseEstimator):
         check_is_fitted(self)
 
         if threshold is None:
-            threshold = (self.pos_label + self.neg_label) / 2.
+            threshold = (self.pos_label + self.neg_label) / 2.0
 
         Y = mt.asarray(Y)
         if self.y_type_ == "multiclass":
-            y_inv = Y.map_chunk(_inverse_binarize_multiclass,
-                                args=(self.classes_,), dtype=self.classes_.dtype,
-                                shape=(Y.shape[0],))
+            y_inv = Y.map_chunk(
+                _inverse_binarize_multiclass,
+                args=(self.classes_,),
+                dtype=self.classes_.dtype,
+                shape=(Y.shape[0],),
+            )
         else:
-            shape = (Y.shape[0],) if self.y_type_ != 'multilabel-indicator' else Y.shape
-            y_inv = Y.map_chunk(_inverse_binarize_thresholding,
-                                args=(self.y_type_, self.classes_, threshold),
-                                dtype=self.classes_.dtype,
-                                shape=shape)
+            shape = (Y.shape[0],) if self.y_type_ != "multilabel-indicator" else Y.shape
+            y_inv = Y.map_chunk(
+                _inverse_binarize_thresholding,
+                args=(self.y_type_, self.classes_, threshold),
+                dtype=self.classes_.dtype,
+                shape=shape,
+            )
 
         if self.sparse_input_:
             y_inv = y_inv.tosparse()
@@ -282,21 +297,23 @@ class LabelBinarizer(TransformerMixin, BaseEstimator):
 
         return y_inv
 
-    def _more_tags(self):  # pragma: no cover  # noqa: R0201  # pylint: disable=no-self-use
-        return {'X_types': ['1dlabels']}
+    def _more_tags(
+        self,
+    ):  # pragma: no cover  # noqa: R0201  # pylint: disable=no-self-use
+        return {"X_types": ["1dlabels"]}
 
 
 class LabelBinarize(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.LABEL_BINARIZE
 
-    y = AnyField('y')
-    classes = AnyField('classes')
-    neg_label = Int32Field('neg_label')
-    pos_label = Int32Field('pos_label')
-    sparse_output = BoolField('sparse_output')
+    y = AnyField("y")
+    classes = AnyField("classes")
+    neg_label = Int32Field("neg_label")
+    pos_label = Int32Field("pos_label")
+    sparse_output = BoolField("sparse_output")
     # for chunk
-    y_type = StringField('y_type')
-    pos_switch = BoolField('pos_switch')
+    y_type = StringField("y_type")
+    pos_switch = BoolField("pos_switch")
 
     def __call__(self, y: TileableType, classes: TileableType):
         inputs = []
@@ -306,9 +323,9 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
             inputs.append(classes)
         self.sparse = self.sparse_output
         self.output_types = [OutputType.tensor]
-        return self.new_tileable(inputs, shape=(np.nan,),
-                                 dtype=np.dtype(int),
-                                 order=TensorOrder.C_ORDER)
+        return self.new_tileable(
+            inputs, shape=(np.nan,), dtype=np.dtype(int), order=TensorOrder.C_ORDER
+        )
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -328,11 +345,13 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
         ctx = get_context()
 
         if (isinstance(y, ENTITY_TYPE) and has_unknown_shape(y)) or (
-                isinstance(classes, ENTITY_TYPE) and has_unknown_shape(classes)):  # pragma: no cover
+            isinstance(classes, ENTITY_TYPE) and has_unknown_shape(classes)
+        ):  # pragma: no cover
             yield
-        if isinstance(classes, ENTITY_TYPE) and len(classes.chunks) > 1:  # pragma: no cover
-            classes = yield from recursive_tile(
-                classes.rechunk(classes.shape))
+        if (
+            isinstance(classes, ENTITY_TYPE) and len(classes.chunks) > 1
+        ):  # pragma: no cover
+            classes = yield from recursive_tile(classes.rechunk(classes.shape))
 
         if not isinstance(y, list):
             # XXX Workaround that will be removed when list of list format is
@@ -340,19 +359,23 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
             y = check_array(y, accept_sparse=True, ensure_2d=False, dtype=None)
         else:
             if _num_samples(y) == 0:
-                raise ValueError('y has 0 samples: %r' % y)
+                raise ValueError("y has 0 samples: %r" % y)
 
         y = yield from recursive_tile(mt.tensor(y))
 
         if neg_label >= pos_label:
-            raise ValueError("neg_label={0} must be strictly less than "
-                             "pos_label={1}.".format(neg_label, pos_label))
+            raise ValueError(
+                "neg_label={0} must be strictly less than "
+                "pos_label={1}.".format(neg_label, pos_label)
+            )
 
-        if (sparse_output and (pos_label == 0 or neg_label != 0)):
-            raise ValueError("Sparse binarization is only supported with non "
-                             "zero pos_label and zero neg_label, got "
-                             "pos_label={0} and neg_label={1}"
-                             "".format(pos_label, neg_label))
+        if sparse_output and (pos_label == 0 or neg_label != 0):
+            raise ValueError(
+                "Sparse binarization is only supported with non "
+                "zero pos_label and zero neg_label, got "
+                "pos_label={0} and neg_label={1}"
+                "".format(pos_label, neg_label)
+            )
 
         # To account for pos_label == 0 in the dense case
         pos_switch = pos_label == 0
@@ -362,11 +385,12 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
         y_type = yield from recursive_tile(type_of_target(y))
         yield y_type.chunks
         y_type = ctx.get_chunks_result([y_type.chunks[0].key])[0]
-        y_type = y_type.item() if hasattr(y_type, 'item') else y_type
-        if 'multioutput' in y_type:
-            raise ValueError("Multioutput target data is not supported with label "
-                             "binarization")
-        if y_type == 'unknown':
+        y_type = y_type.item() if hasattr(y_type, "item") else y_type
+        if "multioutput" in y_type:
+            raise ValueError(
+                "Multioutput target data is not supported with label " "binarization"
+            )
+        if y_type == "unknown":
             raise ValueError("The type of target data is not known")
 
         n_samples = mt.tensor(y).shape[0]
@@ -375,8 +399,11 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
         if y_type == "binary":
             if n_classes == 1:
                 if sparse_output:
-                    return (yield from recursive_tile(
-                        mt.zeros((n_samples, 1), dtype=int, sparse=True)))
+                    return (
+                        yield from recursive_tile(
+                            mt.zeros((n_samples, 1), dtype=int, sparse=True)
+                        )
+                    )
                 else:
                     Y = mt.zeros((len(y), 1), dtype=int)
                     Y += neg_label
@@ -385,23 +412,25 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
                 y_type = "multiclass"
 
         if y_type == "multilabel-indicator":
-            y_n_classes = y.shape[1] if hasattr(y, 'shape') else len(y[0])
+            y_n_classes = y.shape[1] if hasattr(y, "shape") else len(y[0])
             if mt.tensor(classes).size != y_n_classes:
-                raise ValueError("classes {0} mismatch with the labels {1}"
-                                 " found in the data"
-                                 .format(classes, unique_labels(y)))
+                raise ValueError(
+                    "classes {0} mismatch with the labels {1}"
+                    " found in the data".format(classes, unique_labels(y))
+                )
 
         if y_type in ("binary", "multiclass"):
             y = yield from recursive_tile(column_or_1d(y))
-            if y_type == 'binary':
+            if y_type == "binary":
                 out_shape = (n_samples, 1)
             else:
                 out_shape = (n_samples, n_classes)
-        elif y_type == 'multilabel-indicator':
+        elif y_type == "multilabel-indicator":
             out_shape = y.shape
         else:
-            raise ValueError("%s target data is not supported with label "
-                             "binarization" % y_type)
+            raise ValueError(
+                "%s target data is not supported with label " "binarization" % y_type
+            )
 
         out_chunks = []
         for y_chunk in y.chunks:
@@ -411,37 +440,44 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
                 chunk_inputs.append(classes.chunks[0])
                 classes_chunk = classes.chunks[0]
             chunk_op = LabelBinarize(
-                y=y_chunk, classes=classes_chunk, neg_label=neg_label,
-                pos_label=pos_label, sparse_output=sparse_output,
-                y_type=y_type, pos_switch=pos_switch,
-                _output_types=op.output_types)
+                y=y_chunk,
+                classes=classes_chunk,
+                neg_label=neg_label,
+                pos_label=pos_label,
+                sparse_output=sparse_output,
+                y_type=y_type,
+                pos_switch=pos_switch,
+                _output_types=op.output_types,
+            )
             if len(out_shape) == 2:
                 chunk_shape = (y_chunk.shape[0], out_shape[1])
                 chunk_index = (y_chunk.index[0], 0)
             else:  # pragma: no cover
                 chunk_shape = (y_chunk.shape[0],)
                 chunk_index = (y_chunk.index[0],)
-            out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk_shape,
-                                           dtype=out.dtype, order=out.order,
-                                           index=chunk_index)
+            out_chunk = chunk_op.new_chunk(
+                chunk_inputs,
+                shape=chunk_shape,
+                dtype=out.dtype,
+                order=out.order,
+                index=chunk_index,
+            )
             out_chunks.append(out_chunk)
 
         params = out.params.copy()
-        params['chunks'] = out_chunks
-        params['shape'] = out_shape
+        params["chunks"] = out_chunks
+        params["shape"] = out_shape
         if len(out_shape) == 2:
             nsplits = (y.nsplits[0], (out_shape[1],))
         else:  # pragma: no cover
             nsplits = (y.nsplits[0],)
-        params['nsplits'] = nsplits
+        params["nsplits"] = nsplits
         return op.copy().new_tileables(op.inputs, kws=[params])
 
     @classmethod
-    def execute(cls,
-                ctx: Union[dict, Context],
-                op: "LabelBinarize"):
+    def execute(cls, ctx: Union[dict, Context], op: "LabelBinarize"):
         y = ctx[op.y.key]
-        if hasattr(y, 'raw'):
+        if hasattr(y, "raw"):
             # SparseNDArray
             y = y.raw
         if isinstance(op.classes, ENTITY_TYPE):
@@ -458,7 +494,7 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
         n_classes = len(classes)
         sorted_class = np.sort(classes)
 
-        if y_type in ('binary', 'multiclass'):
+        if y_type in ("binary", "multiclass"):
             # pick out the known labels from y
             y_in_classes = np.in1d(y, classes)
             y_seen = y[y_in_classes]
@@ -467,8 +503,7 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
 
             data = np.empty_like(indices)
             data.fill(pos_label)
-            Y = sp.csr_matrix((data, indices, indptr),
-                              shape=(n_samples, n_classes))
+            Y = sp.csr_matrix((data, indices, indptr), shape=(n_samples, n_classes))
         elif y_type == "multilabel-indicator":
             Y = sp.csr_matrix(y)
             if pos_label != 1:
@@ -476,8 +511,9 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
                 data.fill(pos_label)
                 Y.data = data
         else:  # pragma: no cover
-            raise ValueError("%s target data is not supported with label "
-                             "binarization" % y_type)
+            raise ValueError(
+                "%s target data is not supported with label " "binarization" % y_type
+            )
 
         if not sparse_output:
             Y = Y.toarray()
@@ -507,8 +543,9 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
         ctx[op.outputs[0].key] = Y
 
 
-def label_binarize(y, *, classes, neg_label=0, pos_label=1,
-                   sparse_output=False, execute=True):
+def label_binarize(
+    y, *, classes, neg_label=0, pos_label=1, sparse_output=False, execute=True
+):
     """Binarize labels in a one-vs-all fashion.
 
     Several regression and binary classification algorithms are
@@ -567,8 +604,13 @@ def label_binarize(y, *, classes, neg_label=0, pos_label=1,
     LabelBinarizer : Class used to wrap the functionality of label_binarize and
         allow for fitting to classes independently of the transform operation.
     """
-    op = LabelBinarize(y=y, classes=classes, neg_label=neg_label,
-                       pos_label=pos_label, sparse_output=sparse_output)
+    op = LabelBinarize(
+        y=y,
+        classes=classes,
+        neg_label=neg_label,
+        pos_label=pos_label,
+        sparse_output=sparse_output,
+    )
     result = op(y, classes)
     return result.execute() if execute else result
 
@@ -606,10 +648,9 @@ def _inverse_binarize_multiclass(y, classes):  # pragma: no cover
         y_i_argmax[np.where(row_nnz == 0)[0]] = 0
 
         # Handles rows with max of 0 that contain negative numbers
-        samples = np.arange(n_samples)[(row_nnz > 0) &
-                                       (row_max.ravel() == 0)]
+        samples = np.arange(n_samples)[(row_nnz > 0) & (row_max.ravel() == 0)]
         for i in samples:
-            ind = y.indices[y.indptr[i]:y.indptr[i + 1]]
+            ind = y.indices[y.indptr[i] : y.indptr[i + 1]]
             y_i_argmax[i] = classes[np.setdiff1d(outputs, ind)][0]
 
         return classes[y_i_argmax]
@@ -617,23 +658,25 @@ def _inverse_binarize_multiclass(y, classes):  # pragma: no cover
         return classes.take(y.argmax(axis=1), mode="clip")
 
 
-def _inverse_binarize_thresholding(y, output_type, classes, threshold):  # pragma: no cover
+def _inverse_binarize_thresholding(
+    y, output_type, classes, threshold
+):  # pragma: no cover
     """Inverse label binarization transformation using thresholding."""
 
     if output_type == "binary" and y.ndim == 2 and y.shape[1] > 2:
-        raise ValueError("output_type='binary', but y.shape = {0}".
-                         format(y.shape))
+        raise ValueError("output_type='binary', but y.shape = {0}".format(y.shape))
 
     if output_type != "binary" and y.shape[1] != len(classes):
-        raise ValueError("The number of class is not equal to the number of "
-                         "dimension of y.")
+        raise ValueError(
+            "The number of class is not equal to the number of " "dimension of y."
+        )
 
     classes = np.asarray(classes)
 
     # Perform thresholding
     if sp.issparse(y):
         if threshold > 0:
-            if y.format not in ('csr', 'csc'):
+            if y.format not in ("csr", "csc"):
                 y = y.tocsr()
             y.data = np.array(y.data > threshold, dtype=int)
             y.eliminate_zeros()

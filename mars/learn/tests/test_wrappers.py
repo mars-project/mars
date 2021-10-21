@@ -40,8 +40,9 @@ def test_parallel_post_fit_basic(setup):
 
     clf = ParallelPostFit(LinearRegression())
     clf.fit(X, y)
-    with pytest.raises(AttributeError,
-                       match="The wrapped estimator (.|\n)* 'predict_proba' method."):
+    with pytest.raises(
+        AttributeError, match="The wrapped estimator (.|\n)* 'predict_proba' method."
+    ):
         clf.predict_proba(X)
 
 
@@ -74,7 +75,7 @@ def test_parallel_post_fit_transform(setup):
 
     result = base.transform(X)
     expected = wrap.transform(X)
-    np.testing.assert_allclose(result, expected, atol=.1)
+    np.testing.assert_allclose(result, expected, atol=0.1)
 
 
 def test_parallel_post_fit_multiclass(setup):

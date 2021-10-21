@@ -24,15 +24,18 @@ from ..sort_values import dataframe_sort_values, DataFrameSortValues
 
 
 def test_sort_values():
-    raw = pd.DataFrame({'a': np.random.rand(10),
-                        'b': np.random.randint(1000, size=10),
-                        'c': np.random.rand(10),
-                        'd': [np.random.bytes(10) for _ in range(10)],
-                        'e': [pd.Timestamp(f'201{i}') for i in range(10)],
-                        'f': [pd.Timedelta(f'{i} days') for i in range(10)]
-                        },)
+    raw = pd.DataFrame(
+        {
+            "a": np.random.rand(10),
+            "b": np.random.randint(1000, size=10),
+            "c": np.random.rand(10),
+            "d": [np.random.bytes(10) for _ in range(10)],
+            "e": [pd.Timestamp(f"201{i}") for i in range(10)],
+            "f": [pd.Timedelta(f"{i} days") for i in range(10)],
+        },
+    )
     df = DataFrame(raw)
-    sorted_df = dataframe_sort_values(df, by='c')
+    sorted_df = dataframe_sort_values(df, by="c")
 
     assert sorted_df.shape == raw.shape
     assert isinstance(sorted_df.op, DataFrameSortValues)
@@ -43,7 +46,7 @@ def test_sort_values():
     assert isinstance(tiled.chunks[0].op, DataFrameSortValues)
 
     df = DataFrame(raw, chunk_size=6)
-    sorted_df = dataframe_sort_values(df, by='c')
+    sorted_df = dataframe_sort_values(df, by="c")
 
     assert sorted_df.shape == raw.shape
     assert isinstance(sorted_df.op, DataFrameSortValues)
@@ -54,7 +57,7 @@ def test_sort_values():
     assert tiled.chunks[0].op.stage == OperandStage.reduce
 
     df = DataFrame(raw, chunk_size=3)
-    sorted_df = dataframe_sort_values(df, by=['a', 'c'])
+    sorted_df = dataframe_sort_values(df, by=["a", "c"])
 
     assert sorted_df.shape == raw.shape
     assert isinstance(sorted_df.op, DataFrameSortValues)
@@ -71,7 +74,9 @@ def test_sort_values():
 
 
 def test_sort_index():
-    raw = pd.DataFrame(np.random.rand(10, 10), columns=np.random.rand(10), index=np.random.rand(10))
+    raw = pd.DataFrame(
+        np.random.rand(10, 10), columns=np.random.rand(10), index=np.random.rand(10)
+    )
     df = DataFrame(raw)
     sorted_df = sort_index(df)
 

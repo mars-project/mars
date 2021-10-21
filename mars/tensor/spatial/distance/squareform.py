@@ -33,19 +33,31 @@ from ...array_utils import as_same_device, device, cp
 class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.SQUAREFORM
 
-    _input = KeyField('input')
-    _checks = BoolField('checks')
+    _input = KeyField("input")
+    _checks = BoolField("checks")
 
-    _checks_input = KeyField('checks_input')
-    _x_shape = TupleField('x_shape', FieldTypes.int32)
-    _reduce_sizes = TupleField('reduce_sizes', FieldTypes.tuple)
-    _start_positions = TupleField('start_positions', FieldTypes.int32)
+    _checks_input = KeyField("checks_input")
+    _x_shape = TupleField("x_shape", FieldTypes.int32)
+    _reduce_sizes = TupleField("reduce_sizes", FieldTypes.tuple)
+    _start_positions = TupleField("start_positions", FieldTypes.int32)
 
-    def __init__(self, checks=None, checks_input=None, x_shape=None,
-                 reduce_sizes=None, start_positions=None, **kw):
-        super().__init__(_checks=checks, _checks_input=checks_input,
-                         _x_shape=x_shape, _reduce_sizes=reduce_sizes,
-                         _start_positions=start_positions, **kw)
+    def __init__(
+        self,
+        checks=None,
+        checks_input=None,
+        x_shape=None,
+        reduce_sizes=None,
+        start_positions=None,
+        **kw
+    ):
+        super().__init__(
+            _checks=checks,
+            _checks_input=checks_input,
+            _x_shape=x_shape,
+            _reduce_sizes=reduce_sizes,
+            _start_positions=start_positions,
+            **kw
+        )
 
     @property
     def input(self):
@@ -77,17 +89,19 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
         if self._checks_input is not None:
             self._checks_input = self._inputs[-1]
 
-    def __call__(self, X, force='no', chunk_size=None):
+    def __call__(self, X, force="no", chunk_size=None):
         s = X.shape
 
-        if force.lower() == 'tomatrix':
+        if force.lower() == "tomatrix":
             if len(s) != 1:
-                raise ValueError("Forcing 'tomatrix' but input X is not a "
-                                 "distance vector.")
-        elif force.lower() == 'tovector':
+                raise ValueError(
+                    "Forcing 'tomatrix' but input X is not a " "distance vector."
+                )
+        elif force.lower() == "tovector":
             if len(s) != 2:
-                raise ValueError("Forcing 'tovector' but input X is not a "
-                                 "distance matrix.")
+                raise ValueError(
+                    "Forcing 'tovector' but input X is not a " "distance matrix."
+                )
 
         # X = squareform(v)
         if len(s) == 1:
@@ -101,13 +115,15 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
 
             # Check that v is of valid dimensions.
             if d * (d - 1) != s[0] * 2:
-                raise ValueError('Incompatible vector size. It must be a binomial '
-                                 'coefficient n choose 2 for some integer n >= 2.')
+                raise ValueError(
+                    "Incompatible vector size. It must be a binomial "
+                    "coefficient n choose 2 for some integer n >= 2."
+                )
 
             shape = (d, d)
         elif len(s) == 2:
             if s[0] != s[1]:
-                raise ValueError('The matrix argument must be square.')
+                raise ValueError("The matrix argument must be square.")
 
             # One-side of the dimensions is set here.
             d = s[0]
@@ -117,12 +133,18 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
 
             shape = ((d * (d - 1)) // 2,)
         else:
-            raise ValueError(('The first argument must be one or two dimensional '
-                              'tensor. A %d-dimensional tensor is not '
-                              'permitted') % len(s))
+            raise ValueError(
+                (
+                    "The first argument must be one or two dimensional "
+                    "tensor. A %d-dimensional tensor is not "
+                    "permitted"
+                )
+                % len(s)
+            )
 
-        return self.new_tensor([X], shape=shape, order=TensorOrder.C_ORDER,
-                               raw_chunk_size=chunk_size)
+        return self.new_tensor(
+            [X], shape=shape, order=TensorOrder.C_ORDER, raw_chunk_size=chunk_size
+        )
 
     @classmethod
     def tile(cls, op):
@@ -140,14 +162,18 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
     def _tile_one_chunk(cls, op):
         out = op.outputs[0]
         chunk_op = op.copy().reset_key()
-        chunk = chunk_op.new_chunk(op.input.chunks, shape=out.shape,
-                                   order=out.order,
-                                   index=(0,) * out.ndim)
+        chunk = chunk_op.new_chunk(
+            op.input.chunks, shape=out.shape, order=out.order, index=(0,) * out.ndim
+        )
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape,
-                                  order=out.order, chunks=[chunk],
-                                  nsplits=tuple((s,) for s in out.shape))
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out.shape,
+            order=out.order,
+            chunks=[chunk],
+            nsplits=tuple((s,) for s in out.shape),
+        )
 
     @classmethod
     def _gen_checks_input(cls, op):
@@ -167,8 +193,7 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
         checks_input = yield from cls._gen_checks_input(op)
 
         map_chunks = []
-        cum_sizes = [[0] + np.cumsum(ns).tolist()
-                     for ns in op.input.nsplits]
+        cum_sizes = [[0] + np.cumsum(ns).tolist() for ns in op.input.nsplits]
         to_vec = op.input.ndim == 2
         for in_chunk in op.input.chunks:
             if to_vec and in_chunk.index[0] > in_chunk.index[1]:
@@ -176,36 +201,48 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
                 # we don't need to calculate for lower triangle chunks
                 continue
             map_chunk_op = TensorSquareform(
-                stage=OperandStage.map, checks_input=checks_input, reduce_sizes=chunk_size,
+                stage=OperandStage.map,
+                checks_input=checks_input,
+                reduce_sizes=chunk_size,
                 x_shape=op.input.shape,
-                start_positions=tuple(cum_sizes[ax][j]
-                                      for ax, j in enumerate(in_chunk.index)),
-                dtype=out.dtype, gpu=out.op.gpu)
+                start_positions=tuple(
+                    cum_sizes[ax][j] for ax, j in enumerate(in_chunk.index)
+                ),
+                dtype=out.dtype,
+                gpu=out.op.gpu,
+            )
             chunk_inputs = [in_chunk]
             if checks_input is not None:
                 chunk_inputs.append(checks_input)
-            map_chunk = map_chunk_op.new_chunk(chunk_inputs, shape=(2, np.nan),
-                                               index=in_chunk.index,
-                                               order=out.order)
+            map_chunk = map_chunk_op.new_chunk(
+                chunk_inputs, shape=(2, np.nan), index=in_chunk.index, order=out.order
+            )
             map_chunks.append(map_chunk)
 
         proxy_chunk = TensorShuffleProxy(dtype=out.dtype).new_chunk(
-            map_chunks, shape=())
+            map_chunks, shape=()
+        )
 
         reduce_chunks = []
         out_shape_iter = itertools.product(*chunk_size)
         out_idx_iter = itertools.product(*(range(len(cs)) for cs in chunk_size))
         for out_idx, out_shape in zip(out_idx_iter, out_shape_iter):
             reduce_chunk_op = TensorSquareform(
-                stage=OperandStage.reduce,
-                dtype=out.dtype)
+                stage=OperandStage.reduce, dtype=out.dtype
+            )
             reduce_chunk = reduce_chunk_op.new_chunk(
-                [proxy_chunk], shape=out_shape, index=out_idx, order=out.order)
+                [proxy_chunk], shape=out_shape, index=out_idx, order=out.order
+            )
             reduce_chunks.append(reduce_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape, order=out.order,
-                                  nsplits=chunk_size, chunks=reduce_chunks)
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out.shape,
+            order=out.order,
+            nsplits=chunk_size,
+            chunks=reduce_chunks,
+        )
 
     @classmethod
     def _to_matrix(cls, ctx, xp, x, op):
@@ -223,14 +260,15 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
         row_sizes[0] = 0
         xp.cumsum(row_sizes[1:], out=row_sizes[1:])
         # calculate row for each element
-        rows = xp.searchsorted(row_sizes, index, side='right')
+        rows = xp.searchsorted(row_sizes, index, side="right")
         xp.subtract(rows, 1, out=rows)
         # calculate col for each element
         # offsets
         cols_offsets = xp.arange(1, d + 1)
         cols = xp.empty(x.shape, dtype=np.int32)
-        xp.add(xp.subtract(index, row_sizes[rows], out=cols),
-               cols_offsets[rows], out=cols)
+        xp.add(
+            xp.subtract(index, row_sizes[rows], out=cols), cols_offsets[rows], out=cols
+        )
 
         cum_sizes = [[0] + np.cumsum(cs).tolist() for cs in out_chunk_size]
         for idx in itertools.product(*(range(len(ns)) for ns in out_chunk_size)):
@@ -238,16 +276,28 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
             row_range = cum_sizes[0][i], cum_sizes[0][i + 1]
             col_range = cum_sizes[1][j], cum_sizes[1][j + 1]
             # for upper
-            filtered = (rows >= row_range[0]) & (rows < row_range[1]) & \
-                       (cols >= col_range[0]) & (cols < col_range[1])
+            filtered = (
+                (rows >= row_range[0])
+                & (rows < row_range[1])
+                & (cols >= col_range[0])
+                & (cols < col_range[1])
+            )
             inds_tup = rows[filtered] - row_range[0], cols[filtered] - col_range[0]
-            upper_inds = xp.ravel_multi_index(inds_tup, (out_chunk_size[0][i], out_chunk_size[1][j]))
+            upper_inds = xp.ravel_multi_index(
+                inds_tup, (out_chunk_size[0][i], out_chunk_size[1][j])
+            )
             upper_values = x[filtered]
             # for lower
-            filtered = (rows >= col_range[0]) & (rows < col_range[1]) & \
-                       (cols >= row_range[0]) & (cols < row_range[1])
+            filtered = (
+                (rows >= col_range[0])
+                & (rows < col_range[1])
+                & (cols >= row_range[0])
+                & (cols < row_range[1])
+            )
             inds_tup = cols[filtered] - row_range[0], rows[filtered] - col_range[0]
-            lower_inds = xp.ravel_multi_index(inds_tup, (out_chunk_size[0][i], out_chunk_size[1][j]))
+            lower_inds = xp.ravel_multi_index(
+                inds_tup, (out_chunk_size[0][i], out_chunk_size[1][j])
+            )
             lower_values = x[filtered]
 
             inds = xp.concatenate([upper_inds, lower_inds])
@@ -261,12 +311,11 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
         start_poses = op.start_positions
 
         i_indices, j_indices = xp.mgrid[
-            start_poses[0]: start_poses[0] + x.shape[0],
-            start_poses[1]: start_poses[1] + x.shape[1]
+            start_poses[0] : start_poses[0] + x.shape[0],
+            start_poses[1] : start_poses[1] + x.shape[1],
         ]
         filtered = i_indices < j_indices
-        i_indices, j_indices, x = \
-            i_indices[filtered], j_indices[filtered], x[filtered]
+        i_indices, j_indices, x = i_indices[filtered], j_indices[filtered], x[filtered]
 
         d = op.x_shape[0]
         row_sizes = xp.arange(d - 1, -1, -1)
@@ -285,14 +334,17 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
     @classmethod
     def _execute_map(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+        )
 
         if len(inputs) == 2 and not inputs[1]:
             # check fail
-            raise ValueError('Distance matrix X must be symmetric.')
+            raise ValueError("Distance matrix X must be symmetric.")
 
         if xp is cp:  # pragma: no cover
-            raise NotImplementedError('`squareform` does not support running on GPU yet')
+            raise NotImplementedError(
+                "`squareform` does not support running on GPU yet"
+            )
 
         with device(device_id):
             x = inputs[0]
@@ -307,9 +359,10 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
         raw_indices = [inp[0] for inp in raw_inputs]
         raw_dists = [inp[1] for inp in raw_inputs]
         inputs, device_id, xp = as_same_device(
-            raw_indices + raw_dists, op.device, ret_extra=True)
-        raw_indices = inputs[:len(raw_indices)]
-        raw_dists = inputs[len(raw_indices):]
+            raw_indices + raw_dists, op.device, ret_extra=True
+        )
+        raw_indices = inputs[: len(raw_indices)]
+        raw_dists = inputs[len(raw_indices) :]
         output = op.outputs[0]
 
         with device(device_id):
@@ -329,17 +382,20 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
             from scipy.spatial.distance import squareform
 
             (x,), device_id, xp = as_same_device(
-                [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+                [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+            )
 
             if xp is cp:  # pragma: no cover
-                raise NotImplementedError('`squareform` does not support running on GPU yet')
+                raise NotImplementedError(
+                    "`squareform` does not support running on GPU yet"
+                )
 
             with device(device_id):
                 ctx[op.outputs[0].key] = squareform(x, checks=op.checks)
 
 
-@require_module('scipy.spatial.distance')
-def squareform(X, force='no', checks=True, chunk_size=None):
+@require_module("scipy.spatial.distance")
+def squareform(X, force="no", checks=True, chunk_size=None):
     """
     Convert a vector-form distance vector to a square-form distance
     matrix, and vice-versa.

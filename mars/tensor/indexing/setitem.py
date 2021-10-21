@@ -30,9 +30,9 @@ from .core import process_index
 class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.INDEXSETVALUE
 
-    _input = KeyField('input')
-    _indexes = TupleField('indexes')
-    _value = AnyField('value')
+    _input = KeyField("input")
+    _indexes = TupleField("indexes")
+    _value = AnyField("value")
 
     def __init__(self, indexes=None, value=None, **kw):
         super().__init__(_indexes=indexes, _value=value, **kw)
@@ -48,8 +48,10 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
-        new_indexes = [next(inputs_iter) if isinstance(index, ENTITY_TYPE) else index
-                       for index in self._indexes]
+        new_indexes = [
+            next(inputs_iter) if isinstance(index, ENTITY_TYPE) else index
+            for index in self._indexes
+        ]
         self._indexes = tuple(new_indexes)
         if isinstance(self._value, ENTITY_TYPE):
             self._value = next(inputs_iter)
@@ -76,7 +78,8 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         tensor = op.outputs[0]
         value = op.value
         indexed = yield from recursive_tile(
-            _getitem_nocheck(op.input, op.indexes, convert_bool_to_fancy=False))
+            _getitem_nocheck(op.input, op.indexes, convert_bool_to_fancy=False)
+        )
         is_value_tensor = isinstance(value, TENSOR_TYPE)
 
         if is_value_tensor and value.ndim > 0:
@@ -84,7 +87,8 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
                 yield indexed.chunks + [indexed]
 
             value = yield from recursive_tile(
-                broadcast_to(value, indexed.shape).astype(op.input.dtype, copy=False))
+                broadcast_to(value, indexed.shape).astype(op.input.dtype, copy=False)
+            )
             nsplits = indexed.nsplits
             value = yield from recursive_tile(value.rechunk(nsplits))
 
@@ -104,25 +108,37 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
             else:
                 # non tensor
                 value_chunk = value
-            chunk_op = TensorIndexSetValue(dtype=op.dtype, sparse=op.sparse,
-                                           indexes=tuple(index_chunk.op.indexes),
-                                           value=value_chunk)
-            chunk_inputs = filter_inputs([chunk] + index_chunk.op.indexes + [value_chunk])
-            out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape,
-                                           index=chunk.index, order=tensor.order)
+            chunk_op = TensorIndexSetValue(
+                dtype=op.dtype,
+                sparse=op.sparse,
+                indexes=tuple(index_chunk.op.indexes),
+                value=value_chunk,
+            )
+            chunk_inputs = filter_inputs(
+                [chunk] + index_chunk.op.indexes + [value_chunk]
+            )
+            out_chunk = chunk_op.new_chunk(
+                chunk_inputs, shape=chunk.shape, index=chunk.index, order=tensor.order
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
-                                  chunks=out_chunks, nsplits=op.input.nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            tensor.shape,
+            order=tensor.order,
+            chunks=out_chunks,
+            nsplits=op.input.nsplits,
+        )
 
     @classmethod
     def execute(cls, ctx, op):
-        indexes = [ctx[index.key] if hasattr(index, 'key') else index
-                   for index in op.indexes]
+        indexes = [
+            ctx[index.key] if hasattr(index, "key") else index for index in op.indexes
+        ]
         input_ = ctx[op.inputs[0].key].copy()
-        value = ctx[op.value.key] if hasattr(op.value, 'key') else op.value
-        if hasattr(input_, 'flags') and not input_.flags.writeable:
+        value = ctx[op.value.key] if hasattr(op.value, "key") else op.value
+        if hasattr(input_, "flags") and not input_.flags.writeable:
             input_.setflags(write=True)
         input_[tuple(indexes)] = value
         ctx[op.outputs[0].key] = input_
@@ -134,8 +150,9 @@ def _check_support(index):
     elif isinstance(index, (np.ndarray, TENSOR_TYPE)) and index.dtype == np.bool_:
         pass
     else:  # pragma: no cover
-        raise NotImplementedError('Only slice, int, or bool indexing '
-                                  f'supported by now, got {type(index)}')
+        raise NotImplementedError(
+            "Only slice, int, or bool indexing " f"supported by now, got {type(index)}"
+        )
 
 
 def _setitem(a, item, value):
@@ -148,8 +165,12 @@ def _setitem(a, item, value):
         _check_support(ix)
 
     # __setitem__ on a view should be still a view, see GH #732.
-    op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(),
-                             indexes=tuple(index), value=value,
-                             create_view=a.op.create_view)
+    op = TensorIndexSetValue(
+        dtype=a.dtype,
+        sparse=a.issparse(),
+        indexes=tuple(index),
+        value=value,
+        create_view=a.op.create_view,
+    )
     ret = op(a, index, value)
     a.data = ret.data

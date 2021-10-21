@@ -34,6 +34,7 @@ class _BasePCA(BaseEstimator, TransformerMixin, metaclass=ABCMeta):
     Warning: This class should not be used directly.
     Use derived classes instead.
     """
+
     def get_covariance(self, session=None):
         """Compute data covariance with the generative model.
 
@@ -50,9 +51,9 @@ class _BasePCA(BaseEstimator, TransformerMixin, metaclass=ABCMeta):
         exp_var = self.explained_variance_
         if self.whiten:
             components_ = components_ * mt.sqrt(exp_var[:, mt.newaxis])
-        exp_var_diff = mt.maximum(exp_var - self.noise_variance_, 0.)
+        exp_var_diff = mt.maximum(exp_var - self.noise_variance_, 0.0)
         cov = mt.dot(components_.T * exp_var_diff, components_)
-        cov.flat[::len(cov) + 1] += self.noise_variance_  # modify diag inplace
+        cov.flat[:: len(cov) + 1] += self.noise_variance_  # modify diag inplace
         cov.execute(session=session)
         return cov
 
@@ -84,13 +85,12 @@ class _BasePCA(BaseEstimator, TransformerMixin, metaclass=ABCMeta):
         exp_var = self.explained_variance_
         if self.whiten:
             components_ = components_ * mt.sqrt(exp_var[:, mt.newaxis])
-        exp_var_diff = mt.maximum(exp_var - self.noise_variance_, 0.)
+        exp_var_diff = mt.maximum(exp_var - self.noise_variance_, 0.0)
         precision = mt.dot(components_, components_.T) / self.noise_variance_
-        precision.flat[::len(precision) + 1] += 1. / exp_var_diff
-        precision = mt.dot(components_.T,
-                           mt.dot(linalg.inv(precision), components_))
+        precision.flat[:: len(precision) + 1] += 1.0 / exp_var_diff
+        precision = mt.dot(components_.T, mt.dot(linalg.inv(precision), components_))
         precision /= -(self.noise_variance_ ** 2)
-        precision.flat[::len(precision) + 1] += 1. / self.noise_variance_
+        precision.flat[:: len(precision) + 1] += 1.0 / self.noise_variance_
         precision.execute(session=session)
         return precision
 
@@ -140,7 +140,7 @@ class _BasePCA(BaseEstimator, TransformerMixin, metaclass=ABCMeta):
         IncrementalPCA(batch_size=3, copy=True, n_components=2, whiten=False)
         >>> ipca.transform(X) # doctest: +SKIP
         """
-        check_is_fitted(self, ['mean_', 'components_'], all_or_any=all)
+        check_is_fitted(self, ["mean_", "components_"], all_or_any=all)
 
         X = check_array(X)
         if self.mean_ is not None:
@@ -173,9 +173,14 @@ class _BasePCA(BaseEstimator, TransformerMixin, metaclass=ABCMeta):
         exact inverse operation, which includes reversing whitening.
         """
         if self.whiten:
-            ret = (mt.dot(X, mt.sqrt(self.explained_variance_[:, mt.newaxis]) *
-                          self.components_) + self.mean_)
+            ret = (
+                mt.dot(
+                    X,
+                    mt.sqrt(self.explained_variance_[:, mt.newaxis]) * self.components_,
+                )
+                + self.mean_
+            )
         else:
-            ret = (mt.dot(X, self.components_) + self.mean_)
+            ret = mt.dot(X, self.components_) + self.mean_
         ret.execute(session=session)
         return ret

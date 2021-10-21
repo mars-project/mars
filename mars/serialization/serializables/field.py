@@ -18,30 +18,44 @@ import inspect
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Any, Callable, Optional, Type, Union
 
-from .field_type import AbstractFieldType, FieldTypes, \
-    ListType, TupleType, DictType, ReferenceType
+from .field_type import (
+    AbstractFieldType,
+    FieldTypes,
+    ListType,
+    TupleType,
+    DictType,
+    ReferenceType,
+)
 
 _notset = object()
 
 
 class Field(ABC):
-    __slots__ = '_tag', '_default_value', '_default_factory', \
-                '_attr_name', '_on_serialize', '_on_deserialize'
+    __slots__ = (
+        "_tag",
+        "_default_value",
+        "_default_factory",
+        "_attr_name",
+        "_on_serialize",
+        "_on_deserialize",
+    )
 
     _tag: str
     _default_value: Any
     _default_factory: Optional[Callable]
     _attr_name: str  # attribute name that set to
 
-    def __init__(self,
-                 tag: str,
-                 default: Any = _notset,
-                 default_factory: Optional[Callable] = None,
-                 on_serialize: Callable[[Any], Any] = None,
-                 on_deserialize: Callable[[Any], Any] = None,
-                 attr_name: str = None):
+    def __init__(
+        self,
+        tag: str,
+        default: Any = _notset,
+        default_factory: Optional[Callable] = None,
+        on_serialize: Callable[[Any], Any] = None,
+        on_deserialize: Callable[[Any], Any] = None,
+        attr_name: str = None,
+    ):
         if default is not _notset and default_factory is not None:  # pragma: no cover
-            raise ValueError('default and default_factory can not be specified both')
+            raise ValueError("default and default_factory can not be specified both")
 
         self._tag = tag
         self._default_value = default
@@ -90,7 +104,8 @@ class Field(ABC):
                 return val
             else:
                 raise AttributeError(
-                    f"'{type(instance)}' has no attribute {self._attr_name}")
+                    f"'{type(instance)}' has no attribute {self._attr_name}"
+                )
 
     def __set__(self, instance, value):
         from ...core import is_kernel_mode
@@ -103,7 +118,7 @@ class Field(ABC):
                     to_check_value = self._on_serialize(to_check_value)
                 field_type.validate(to_check_value)
             except (TypeError, ValueError) as e:
-                raise type(e)(f'Failed to set `{self._attr_name}`: {str(e)}')
+                raise type(e)(f"Failed to set `{self._attr_name}`: {str(e)}")
         instance._FIELD_VALUES[self._tag] = value
 
     def __delete__(self, instance):
@@ -359,17 +374,24 @@ class IntervalArrayField(Field):
 
 
 class _CollectionField(Field, metaclass=ABCMeta):
-    __slots__ = '_field_type',
+    __slots__ = ("_field_type",)
 
-    def __init__(self,
-                 tag: str,
-                 field_type: AbstractFieldType = None,
-                 default: Any = _notset,
-                 default_factory: Optional[Callable] = None,
-                 on_serialize: Callable[[Any], Any] = None,
-                 on_deserialize: Callable[[Any], Any] = None):
-        super().__init__(tag, default=default, default_factory=default_factory,
-                         on_serialize=on_serialize, on_deserialize=on_deserialize)
+    def __init__(
+        self,
+        tag: str,
+        field_type: AbstractFieldType = None,
+        default: Any = _notset,
+        default_factory: Optional[Callable] = None,
+        on_serialize: Callable[[Any], Any] = None,
+        on_deserialize: Callable[[Any], Any] = None,
+    ):
+        super().__init__(
+            tag,
+            default=default,
+            default_factory=default_factory,
+            on_serialize=on_serialize,
+            on_deserialize=on_deserialize,
+        )
         if field_type is None:
             field_type = FieldTypes.any
         if not isinstance(field_type, ListType):
@@ -409,18 +431,25 @@ class TupleField(_CollectionField):
 
 
 class DictField(Field):
-    __slots__ = '_field_type',
+    __slots__ = ("_field_type",)
 
-    def __init__(self,
-                 tag: str,
-                 key_type: AbstractFieldType = None,
-                 value_type: AbstractFieldType = None,
-                 default: Any = _notset,
-                 default_factory: Optional[Callable] = None,
-                 on_serialize: Callable[[Any], Any] = None,
-                 on_deserialize: Callable[[Any], Any] = None):
-        super().__init__(tag, default=default, default_factory=default_factory,
-                         on_serialize=on_serialize, on_deserialize=on_deserialize)
+    def __init__(
+        self,
+        tag: str,
+        key_type: AbstractFieldType = None,
+        value_type: AbstractFieldType = None,
+        default: Any = _notset,
+        default_factory: Optional[Callable] = None,
+        on_serialize: Callable[[Any], Any] = None,
+        on_deserialize: Callable[[Any], Any] = None,
+    ):
+        super().__init__(
+            tag,
+            default=default,
+            default_factory=default_factory,
+            on_serialize=on_serialize,
+            on_deserialize=on_deserialize,
+        )
         self._field_type = DictType(key_type, value_type)
 
     @property
@@ -429,16 +458,22 @@ class DictField(Field):
 
 
 class ReferenceField(Field):
-    __slots__ = '_reference_type', '_field_type'
+    __slots__ = "_reference_type", "_field_type"
 
-    def __init__(self,
-                 tag: str,
-                 reference_type: Union[str, Type] = None,
-                 default: Any = _notset,
-                 on_serialize: Callable[[Any], Any] = None,
-                 on_deserialize: Callable[[Any], Any] = None):
-        super().__init__(tag, default=default, on_serialize=on_serialize,
-                         on_deserialize=on_deserialize)
+    def __init__(
+        self,
+        tag: str,
+        reference_type: Union[str, Type] = None,
+        default: Any = _notset,
+        on_serialize: Callable[[Any], Any] = None,
+        on_deserialize: Callable[[Any], Any] = None,
+    ):
+        super().__init__(
+            tag,
+            default=default,
+            on_serialize=on_serialize,
+            on_deserialize=on_deserialize,
+        )
         self._reference_type = reference_type
 
         if not isinstance(reference_type, str):
@@ -454,11 +489,10 @@ class ReferenceField(Field):
     def get_field_type(self, instance):
         if self._field_type is None:
             # bind dynamically
-            if self._reference_type == 'self':
+            if self._reference_type == "self":
                 reference_type = type(instance)
-            elif isinstance(self._reference_type, str) and \
-                    '.' in self._reference_type:
-                module, name = self._reference_type.rsplit('.', 1)
+            elif isinstance(self._reference_type, str) and "." in self._reference_type:
+                module, name = self._reference_type.rsplit(".", 1)
                 reference_type = getattr(importlib.import_module(module), name)
             else:
                 module = inspect.getmodule(instance)
@@ -481,29 +515,35 @@ class ReferenceField(Field):
                     if not self._attr_name:
                         raise
                     else:
-                        raise type(e)(f'Failed to set `{self._attr_name}`: {str(e)}')
+                        raise type(e)(f"Failed to set `{self._attr_name}`: {str(e)}")
             instance._FIELD_VALUES[self._tag] = value
         else:
             super().__set__(instance, value)
 
 
 class OneOfField(Field):
-    __slots__ = '_reference_fields'
+    __slots__ = "_reference_fields"
 
-    def __init__(self,
-                 tag: str,
-                 default: Any = _notset,
-                 on_serialize: Callable[[Any], Any] = None,
-                 on_deserialize: Callable[[Any], Any] = None,
-                 attr_name: str = None,
-                 **tag_to_reference_types):
+    def __init__(
+        self,
+        tag: str,
+        default: Any = _notset,
+        on_serialize: Callable[[Any], Any] = None,
+        on_deserialize: Callable[[Any], Any] = None,
+        attr_name: str = None,
+        **tag_to_reference_types,
+    ):
         super().__init__(
-            tag, default=default, on_serialize=on_serialize,
+            tag,
+            default=default,
+            on_serialize=on_serialize,
             on_deserialize=on_deserialize,
-            attr_name=attr_name)
+            attr_name=attr_name,
+        )
         self._reference_fields = [
-            ReferenceField(t, ref_type) for t, ref_type
-            in tag_to_reference_types.items()]
+            ReferenceField(t, ref_type)
+            for t, ref_type in tag_to_reference_types.items()
+        ]
 
     @property
     def reference_fields(self):
@@ -527,10 +567,18 @@ class OneOfField(Field):
                 return
             except TypeError:
                 continue
-        valid_types = list(itertools.chain(*[r.get_field_type(instance).valid_types
-                                             for r in self._reference_fields]))
-        raise TypeError(f'Failed to set `{self._attr_name}`: type of instance cannot '
-                        f'match any of {valid_types}, got {type(value)}')
+        valid_types = list(
+            itertools.chain(
+                *[
+                    r.get_field_type(instance).valid_types
+                    for r in self._reference_fields
+                ]
+            )
+        )
+        raise TypeError(
+            f"Failed to set `{self._attr_name}`: type of instance cannot "
+            f"match any of {valid_types}, got {type(value)}"
+        )
 
     def __get__(self, instance, owner):
         field_values = instance._FIELD_VALUES
@@ -539,8 +587,7 @@ class OneOfField(Field):
                 return field_values[reference_field.tag]
             except KeyError:
                 continue
-        raise AttributeError('cannot get attribute, '
-                             'maybe value not set before')
+        raise AttributeError("cannot get attribute, " "maybe value not set before")
 
     def __delete__(self, instance):
         field_values = instance._FIELD_VALUES
@@ -550,5 +597,4 @@ class OneOfField(Field):
                 return
             except KeyError:
                 continue
-        raise AttributeError('cannot delete attribute, '
-                             'maybe value not set before')
+        raise AttributeError("cannot delete attribute, " "maybe value not set before")

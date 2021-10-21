@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pytest
+
 try:
     import xgboost
 except ImportError:
@@ -29,10 +30,10 @@ X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
 y = rs.rand(n_rows, chunk_size=chunk_size)
 
 
-@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+@pytest.mark.skipif(xgboost is None, reason="XGBoost not installed")
 def test_local_regressor(setup):
     regressor = XGBRegressor(verbosity=1, n_estimators=2)
-    regressor.set_params(tree_method='hist')
+    regressor.set_params(tree_method="hist")
     regressor.fit(X, y, eval_set=[(X, y)])
     prediction = regressor.predict(X)
 
@@ -44,13 +45,13 @@ def test_local_regressor(setup):
     assert isinstance(prediction, mt.Tensor)
     assert isinstance(history, dict)
 
-    assert list(history['validation_0'])[0] == 'rmse'
-    assert len(history['validation_0']['rmse']) == 2
+    assert list(history["validation_0"])[0] == "rmse"
+    assert len(history["validation_0"]["rmse"]) == 2
 
     # test weight
     weight = mt.random.rand(X.shape[0])
     classifier = XGBRegressor(verbosity=1, n_estimators=2)
-    regressor.set_params(tree_method='hist')
+    regressor.set_params(tree_method="hist")
     classifier.fit(X, y, sample_weight=weight)
     prediction = classifier.predict(X)
 

@@ -63,7 +63,7 @@ def test_qr():
 
     # for Short-and-Fat QR
     a = mt.random.rand(6, 18, chunk_size=(6, 6))
-    q, r = mt.linalg.qr(a, method='sfqr')
+    q, r = mt.linalg.qr(a, method="sfqr")
 
     assert q.shape == (6, 6)
     assert r.shape == (6, 18)
@@ -77,7 +77,7 @@ def test_qr():
 
     # chunk width less than height
     a = mt.random.rand(6, 9, chunk_size=(6, 3))
-    q, r = mt.linalg.qr(a, method='sfqr')
+    q, r = mt.linalg.qr(a, method="sfqr")
 
     assert q.shape == (6, 6)
     assert r.shape == (6, 9)
@@ -90,7 +90,7 @@ def test_qr():
     assert r.nsplits == ((6,), (6, 3))
 
     a = mt.random.rand(9, 6, chunk_size=(9, 3))
-    q, r = mt.linalg.qr(a, method='sfqr')
+    q, r = mt.linalg.qr(a, method="sfqr")
 
     assert q.shape == (9, 6)
     assert r.shape == (6, 6)
@@ -108,12 +108,14 @@ def test_norm():
 
     a = mt.tensor(data, chunk_size=(2, 6))
 
-    for ord in (None, 'nuc', np.inf, -np.inf, 0, 1, -1, 2, -2):
+    for ord in (None, "nuc", np.inf, -np.inf, 0, 1, -1, 2, -2):
         for axis in (0, 1, (0, 1)):
             for keepdims in (True, False):
                 try:
                     res = mt.linalg.norm(a, ord=ord, axis=axis, keepdims=keepdims)
-                    expect_shape = np.linalg.norm(data, ord=ord, axis=axis, keepdims=keepdims).shape
+                    expect_shape = np.linalg.norm(
+                        data, ord=ord, axis=axis, keepdims=keepdims
+                    ).shape
                     assert res.shape == expect_shape
                 except ValueError:
                     continue
@@ -245,12 +247,16 @@ def test_lu():
     assert p.shape == (5, 5)
 
     # test sparse
-    data = sps.csr_matrix([[2, 0, 0, 0, 5, 2],
-                           [0, 6, 1, 0, 0, 6],
-                           [8, 0, 9, 0, 0, 2],
-                           [0, 6, 0, 8, 7, 3],
-                           [7, 0, 6, 1, 7, 0],
-                           [0, 0, 0, 7, 0, 8]])
+    data = sps.csr_matrix(
+        [
+            [2, 0, 0, 0, 5, 2],
+            [0, 6, 1, 0, 0, 6],
+            [8, 0, 9, 0, 0, 2],
+            [0, 6, 0, 8, 7, 3],
+            [7, 0, 6, 1, 7, 0],
+            [0, 0, 0, 7, 0, 8],
+        ]
+    )
     t = mt.tensor(data, chunk_size=3)
     p, l_, u = mt.linalg.lu(t)
 
@@ -270,10 +276,10 @@ def test_lu():
 
 def test_solve():
     a = mt.random.randint(1, 10, (20, 20))
-    b = mt.random.randint(1, 10, (20, ))
+    b = mt.random.randint(1, 10, (20,))
     x = tile(mt.linalg.solve(a, b))
 
-    assert x.shape == (20, )
+    assert x.shape == (20,)
 
     a = mt.random.randint(1, 10, (20, 20), chunk_size=5)
     b = mt.random.randint(1, 10, (20, 3), chunk_size=5)
@@ -286,14 +292,14 @@ def test_solve():
     x = tile(mt.linalg.solve(a, b))
 
     assert x.shape == (20, 3)
-    assert x.nsplits == ((12, 8), (3, ))
+    assert x.nsplits == ((12, 8), (3,))
 
     # test sparse
     a = sps.csr_matrix(np.random.randint(1, 10, (20, 20)))
-    b = mt.random.randint(1, 10, (20, ), chunk_size=3)
+    b = mt.random.randint(1, 10, (20,), chunk_size=3)
     x = tile(mt.linalg.solve(a, b))
 
-    assert x.shape == (20, )
+    assert x.shape == (20,)
     assert x.op.sparse is True
     assert x.chunks[0].op.sparse is True
 
@@ -421,10 +427,10 @@ def test_dot():
         dot(t1, t2, empty((3, 6)))
 
     with pytest.raises(ValueError):
-        dot(t1, t2, empty((3, 3), dtype='i4'))
+        dot(t1, t2, empty((3, 3), dtype="i4"))
 
     with pytest.raises(ValueError):
-        dot(t1, t2, empty((3, 3), order='F'))
+        dot(t1, t2, empty((3, 3), order="F"))
 
     t1.dot(t2, out=empty((2, 2), dtype=t1.dtype))
 
@@ -433,14 +439,14 @@ def test_matmul():
     t1 = tensor([[0, 1, 0], [1, 0, 0]], chunk_size=2).tosparse()
     t2 = t1.T
 
-    t3 = matmul(t1, t2, out=empty((2, 2), dtype=t1.dtype, order='F'))
-    assert t3.order.value == 'F'
+    t3 = matmul(t1, t2, out=empty((2, 2), dtype=t1.dtype, order="F"))
+    assert t3.order.value == "F"
 
     with pytest.raises(TypeError):
         matmul(t1, t2, out=1)
 
     with pytest.raises(TypeError):
-        matmul(t1, t2, out=empty((2, 2), dtype='?'))
+        matmul(t1, t2, out=empty((2, 2), dtype="?"))
 
     with pytest.raises(ValueError):
         matmul(t1, t2, out=empty((3, 2), dtype=t1.dtype))
@@ -449,17 +455,29 @@ def test_matmul():
     raw2 = np.asfortranarray(np.random.rand(3, 3))
     raw3 = np.random.rand(3, 3)
 
-    assert matmul(tensor(raw1), tensor(raw2)).flags['C_CONTIGUOUS'] == \
-           np.matmul(raw1, raw2).flags['C_CONTIGUOUS']
-    assert matmul(tensor(raw1), tensor(raw2)).flags['F_CONTIGUOUS'] == \
-           np.matmul(raw1, raw2).flags['F_CONTIGUOUS']
+    assert (
+        matmul(tensor(raw1), tensor(raw2)).flags["C_CONTIGUOUS"]
+        == np.matmul(raw1, raw2).flags["C_CONTIGUOUS"]
+    )
+    assert (
+        matmul(tensor(raw1), tensor(raw2)).flags["F_CONTIGUOUS"]
+        == np.matmul(raw1, raw2).flags["F_CONTIGUOUS"]
+    )
 
-    assert matmul(tensor(raw1), tensor(raw2), order='A').flags['C_CONTIGUOUS'] == \
-           np.matmul(raw1, raw2, order='A').flags['C_CONTIGUOUS']
-    assert matmul(tensor(raw1), tensor(raw2), order='A').flags['F_CONTIGUOUS'] == \
-           np.matmul(raw1, raw2, order='A').flags['F_CONTIGUOUS']
+    assert (
+        matmul(tensor(raw1), tensor(raw2), order="A").flags["C_CONTIGUOUS"]
+        == np.matmul(raw1, raw2, order="A").flags["C_CONTIGUOUS"]
+    )
+    assert (
+        matmul(tensor(raw1), tensor(raw2), order="A").flags["F_CONTIGUOUS"]
+        == np.matmul(raw1, raw2, order="A").flags["F_CONTIGUOUS"]
+    )
 
-    assert matmul(tensor(raw1), tensor(raw3), order='A').flags['C_CONTIGUOUS'] == \
-           np.matmul(raw1, raw3, order='A').flags['C_CONTIGUOUS']
-    assert matmul(tensor(raw1), tensor(raw3), order='A').flags['F_CONTIGUOUS'] == \
-           np.matmul(raw1, raw3, order='A').flags['F_CONTIGUOUS']
+    assert (
+        matmul(tensor(raw1), tensor(raw3), order="A").flags["C_CONTIGUOUS"]
+        == np.matmul(raw1, raw3, order="A").flags["C_CONTIGUOUS"]
+    )
+    assert (
+        matmul(tensor(raw1), tensor(raw3), order="A").flags["F_CONTIGUOUS"]
+        == np.matmul(raw1, raw3, order="A").flags["F_CONTIGUOUS"]
+    )

@@ -41,7 +41,7 @@ def _ureduce(a, func, **kwargs):
         keepdims=True would produce.
 
     """
-    axis = kwargs.get('axis', None)
+    axis = kwargs.get("axis", None)
     if axis is not None:
         keepdim = list(a.shape)
         nd = a.ndim
@@ -51,7 +51,7 @@ def _ureduce(a, func, **kwargs):
             keepdim[ax] = 1
 
         if len(axis) == 1:
-            kwargs['axis'] = axis[0]
+            kwargs["axis"] = axis[0]
         else:
             keep = set(range(nd)) - set(axis)
             nkeep = len(keep)
@@ -60,7 +60,7 @@ def _ureduce(a, func, **kwargs):
                 a = a.swapaxes(i, s)
             # merge reduced axis
             a = a.reshape(a.shape[:nkeep] + (-1,))
-            kwargs['axis'] = -1
+            kwargs["axis"] = -1
         keepdim = tuple(keepdim)
     else:
         keepdim = (1,) * a.ndim

@@ -25,22 +25,26 @@ class DummyActor(mo.Actor):
         super().__init__()
 
         if value < 0:
-            raise ValueError('value < 0')
+            raise ValueError("value < 0")
         self.value = value
 
     async def add(self, value):
         if not isinstance(value, int):
-            raise TypeError('add number must be int')
+            raise TypeError("add number must be int")
         self.value += value
         return self.value
 
 
 @pytest.fixture
 async def actor_pool_context():
-    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
-        if sys.platform != 'win32' else None
-    pool = await mo.create_actor_pool('test://127.0.0.1', n_process=2,
-                                      subprocess_start_method=start_method)
+    start_method = (
+        os.environ.get("POOL_START_METHOD", "forkserver")
+        if sys.platform != "win32"
+        else None
+    )
+    pool = await mo.create_actor_pool(
+        "test://127.0.0.1", n_process=2, subprocess_start_method=start_method
+    )
     await pool.start()
     yield pool
     await pool.stop()
@@ -49,7 +53,10 @@ async def actor_pool_context():
 @pytest.mark.asyncio
 async def test_simple(actor_pool_context):
     pool = actor_pool_context
-    actor_ref = await mo.create_actor(DummyActor, 100,
-                                      address=pool.external_address,
-                                      allocate_strategy=mo.allocate_strategy.RandomSubPool())
+    actor_ref = await mo.create_actor(
+        DummyActor,
+        100,
+        address=pool.external_address,
+        allocate_strategy=mo.allocate_strategy.RandomSubPool(),
+    )
     assert await actor_ref.add(1) == 101

@@ -28,10 +28,10 @@ from ..utils import validate_axis
 class TensorTrapz(TensorOperand, TensorOperandMixin):
     _op_type_ = opcodes.TRAPZ
 
-    _y = KeyField('y')
-    _x = KeyField('x')
-    _dx = Float64Field('dx')
-    _axis = Int8Field('axis')
+    _y = KeyField("y")
+    _x = KeyField("x")
+    _dx = Float64Field("dx")
+    _axis = Int8Field("axis")
 
     def __init__(self, y=None, x=None, dx=None, axis=None, **kw):
         super().__init__(_y=y, _x=x, _dx=dx, _axis=axis, **kw)
@@ -67,11 +67,9 @@ class TensorTrapz(TensorOperand, TensorOperandMixin):
             if x.order == TensorOrder.C_ORDER:
                 order = TensorOrder.C_ORDER
 
-        shape = tuple(s for ax, s in enumerate(y.shape)
-                      if ax != self._axis)
+        shape = tuple(s for ax, s in enumerate(y.shape) if ax != self._axis)
         dtype = np.trapz(np.empty(1, dtype=y.dtype)).dtype
-        return self.new_tensor(inputs, shape=shape, dtype=dtype,
-                               order=order)
+        return self.new_tensor(inputs, shape=shape, dtype=dtype, order=order)
 
     @classmethod
     def tile(cls, op: "TensorTrapz"):
@@ -97,14 +95,14 @@ class TensorTrapz(TensorOperand, TensorOperandMixin):
             if x.ndim == 1:
                 d = diff(x)
                 # reshape to correct shape
-                shape = [1]*y.ndim
+                shape = [1] * y.ndim
                 shape[axis] = d.shape[0]
                 d = d.reshape(shape)
             else:
                 d = diff(x, axis=axis)
         nd = y.ndim
-        slice1 = [slice(None)]*nd
-        slice2 = [slice(None)]*nd
+        slice1 = [slice(None)] * nd
+        slice2 = [slice(None)] * nd
         slice1[axis] = slice(1, None)
         slice2[axis] = slice(None, -1)
         ret = (d * (y[tuple(slice1)] + y[tuple(slice2)]) / 2.0).sum(axis)
@@ -117,19 +115,24 @@ class TensorTrapz(TensorOperand, TensorOperandMixin):
         inputs = [y.chunks[0]]
         if x is not None:
             inputs.append(x.chunks[0])
-        chunk = chunk_op.new_chunk(inputs, shape=out.shape,
-                                   order=out.order,
-                                   index=(0,) * out.ndim)
+        chunk = chunk_op.new_chunk(
+            inputs, shape=out.shape, order=out.order, index=(0,) * out.ndim
+        )
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape, order=out.order,
-                                  nsplits=tuple((s,) for s in out.shape),
-                                  chunks=[chunk])
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out.shape,
+            order=out.order,
+            nsplits=tuple((s,) for s in out.shape),
+            chunks=[chunk],
+        )
 
     @classmethod
     def execute(cls, ctx, op: "TensorTrapz"):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         y = inputs[0]
         if len(inputs) > 1:
@@ -138,8 +141,7 @@ class TensorTrapz(TensorOperand, TensorOperandMixin):
             x = None
 
         with device(device_id):
-            ctx[op.outputs[0].key] = xp.trapz(y, x=x, dx=op.dx,
-                                              axis=op.axis)
+            ctx[op.outputs[0].key] = xp.trapz(y, x=x, dx=op.dx, axis=op.axis)
 
 
 def trapz(y, x=None, dx=1.0, axis=-1):

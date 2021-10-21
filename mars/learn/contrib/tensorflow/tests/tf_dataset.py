@@ -24,12 +24,14 @@ from tensorflow.python.data.ops.dataset_ops import DatasetV2
 
 def get_model():
     model = tf.keras.Sequential()
-    model.add(layers.Dense(64, activation='relu'))
-    model.add(layers.Dense(64, activation='relu'))
-    model.add(layers.Dense(10, activation='softmax'))
-    model.compile(optimizer=tf.keras.optimizers.Adam(0.01),
-                  loss='categorical_crossentropy',
-                  metrics=['accuracy'])
+    model.add(layers.Dense(64, activation="relu"))
+    model.add(layers.Dense(64, activation="relu"))
+    model.add(layers.Dense(10, activation="softmax"))
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(0.01),
+        loss="categorical_crossentropy",
+        metrics=["accuracy"],
+    )
     return model
 
 
@@ -47,12 +49,12 @@ def train(feature_data, labels):
 
 if __name__ == "__main__":
 
-    assert json.loads(os.environ['TF_CONFIG'])['task']['index'] in {0, 1}
+    assert json.loads(os.environ["TF_CONFIG"])["task"]["index"] in {0, 1}
     assert len(sys.argv) == 2
-    assert sys.argv[1] == 'multiple'
+    assert sys.argv[1] == "multiple"
 
-    feature_data = globals()['feature_data']
-    labels = globals()['labels']
+    feature_data = globals()["feature_data"]
+    labels = globals()["labels"]
     multiworker_strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy()
 
     with multiworker_strategy.scope():

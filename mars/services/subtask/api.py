@@ -28,20 +28,20 @@ class SubtaskAPI:
     @alru_cache(cache_exceptions=False)
     async def _get_runner_ref(self, band_name: str, slot_id: int):
         from .worker.runner import SubtaskRunnerActor
+
         return await mo.actor_ref(
-            SubtaskRunnerActor.gen_uid(band_name, slot_id), address=self._address)
+            SubtaskRunnerActor.gen_uid(band_name, slot_id), address=self._address
+        )
 
     @alru_cache(cache_exceptions=False)
-    async def _get_subtask_processor_ref(self, session_id: str,
-                                         slot_address: str):
+    async def _get_subtask_processor_ref(self, session_id: str, slot_address: str):
         from .worker.processor import SubtaskProcessorActor
-        return await mo.actor_ref(SubtaskProcessorActor.gen_uid(session_id),
-                                  address=slot_address)
 
-    async def run_subtask_in_slot(self,
-                                  band_name: str,
-                                  slot_id: int,
-                                  subtask: Subtask):
+        return await mo.actor_ref(
+            SubtaskProcessorActor.gen_uid(session_id), address=slot_address
+        )
+
+    async def run_subtask_in_slot(self, band_name: str, slot_id: int, subtask: Subtask):
         """
         Run subtask in current worker
 
@@ -72,8 +72,9 @@ class SubtaskAPI:
         ref = await self._get_runner_ref(band_name, slot_id)
         await ref.cancel_subtask()
 
-    async def set_running_operand_progress(self, session_id: str, op_key: str,
-                                           slot_address: str, progress: float):
+    async def set_running_operand_progress(
+        self, session_id: str, op_key: str, slot_address: str, progress: float
+    ):
         ref = await self._get_subtask_processor_ref(session_id, slot_address)
         await ref.set_running_op_progress(op_key, progress)
 
@@ -82,16 +83,22 @@ class MockSubtaskAPI(SubtaskAPI):
     @classmethod
     async def create(cls, address: str) -> "SubtaskAPI":
         from .worker.manager import SubtaskRunnerManagerActor
+
         await mo.create_actor(
-            SubtaskRunnerManagerActor, address, None,
+            SubtaskRunnerManagerActor,
+            address,
+            None,
             uid=SubtaskRunnerManagerActor.default_uid(),
-            address=address)
+            address=address,
+        )
         return await super().create(address)
 
     @classmethod
     async def cleanup(cls, address: str):
         from .worker.manager import SubtaskRunnerManagerActor
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=SubtaskRunnerManagerActor.default_uid(),
-            address=address
-        ))
+
+        await mo.destroy_actor(
+            mo.create_actor_ref(
+                uid=SubtaskRunnerManagerActor.default_uid(), address=address
+            )
+        )

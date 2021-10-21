@@ -19,11 +19,15 @@ from .core import DataFrameCumReductionOperand, DataFrameCumReductionMixin
 
 class DataFrameCumprod(DataFrameCumReductionOperand, DataFrameCumReductionMixin):
     _op_type_ = OperandDef.CUMPROD
-    _func_name = 'cumprod'
+    _func_name = "cumprod"
 
 
 def cumprod(df, axis=None, skipna=True):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameCumprod(axis=axis, skipna=skipna, output_types=df.op.output_types,
-                          use_inf_as_na=use_inf_as_na)
+    op = DataFrameCumprod(
+        axis=axis,
+        skipna=skipna,
+        output_types=df.op.output_types,
+        use_inf_as_na=use_inf_as_na,
+    )
     return op(df)

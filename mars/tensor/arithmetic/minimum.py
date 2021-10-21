@@ -25,13 +25,13 @@ from .utils import arithmetic_operand
 @arithmetic_operand
 class TensorMinimum(TensorBinOp):
     _op_type_ = OperandDef.MINIMUM
-    _func_name = 'minimum'
+    _func_name = "minimum"
 
     @classmethod
     def _is_sparse(cls, x1, x2):
-        if hasattr(x1, 'issparse') and x1.issparse() and np.isscalar(x2) and x2 >= 0:
+        if hasattr(x1, "issparse") and x1.issparse() and np.isscalar(x2) and x2 >= 0:
             return True
-        if hasattr(x2, 'issparse') and x2.issparse() and np.isscalar(x1) and x1 >= 0:
+        if hasattr(x2, "issparse") and x2.issparse() and np.isscalar(x1) and x1 >= 0:
             return True
         return False
 

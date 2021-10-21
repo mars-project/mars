@@ -30,14 +30,17 @@ def _install():
     from .getitem import _getitem
     from .setitem import _setitem
 
-    setattr(Tensor, '__getitem__', _getitem)
-    setattr(TensorData, '__getitem__', _getitem)
-    setattr(Tensor, '__setitem__', _setitem)
-    setattr(Tensor, 'take', take)
-    setattr(Tensor, 'compress',
-            lambda a, condition, axis=None: compress(condition, a, axis=axis))
-    setattr(Tensor, 'choose', choose)
-    setattr(Tensor, 'nonzero', nonzero)
+    setattr(Tensor, "__getitem__", _getitem)
+    setattr(TensorData, "__getitem__", _getitem)
+    setattr(Tensor, "__setitem__", _setitem)
+    setattr(Tensor, "take", take)
+    setattr(
+        Tensor,
+        "compress",
+        lambda a, condition, axis=None: compress(condition, a, axis=axis),
+    )
+    setattr(Tensor, "choose", choose)
+    setattr(Tensor, "nonzero", nonzero)
 
 
 _install()

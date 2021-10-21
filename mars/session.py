@@ -14,4 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .deploy.oscar.session import new_session, execute, fetch, fetch_log, stop_server  # noqa: F401  # pylint: disable=unused-import
+from .deploy.oscar.session import (
+    new_session,
+    execute,
+    fetch,
+    fetch_log,
+    stop_server,
+)
+
+__all__ = [
+    "new_session",
+    "execute",
+    "fetch",
+    "fetch_log",
+    "stop_server",
+]

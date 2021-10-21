@@ -85,7 +85,8 @@ def flip(m, axis):
     try:
         sl[axis] = slice(None, None, -1)
     except IndexError:
-        raise ValueError("axis=%i is invalid for the %i-dimensional input tensor"
-                         % (axis, m.ndim))
+        raise ValueError(
+            "axis=%i is invalid for the %i-dimensional input tensor" % (axis, m.ndim)
+        )
 
     return m[tuple(sl)]

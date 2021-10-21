@@ -26,18 +26,23 @@ fit_raw_X, fit_raw_y = make_classification()
 fit_X, fit_y = mt.tensor(fit_raw_X, chunk_size=25), mt.tensor(fit_raw_y, chunk_size=25)
 fit_df_X = md.DataFrame(fit_X)
 predict_raw_X, predict_raw_y = make_classification()
-predict_X, predict_y = mt.tensor(predict_raw_X, chunk_size=20), mt.tensor(predict_raw_y, chunk_size=20)
+predict_X, predict_y = (
+    mt.tensor(predict_raw_X, chunk_size=20),
+    mt.tensor(predict_raw_y, chunk_size=20),
+)
 predict_df_X = md.DataFrame(predict_X)
 
 
 @pytest.mark.parametrize(
-    'fit_X, fit_y, predict_X, predict_y',
-    [(fit_X, fit_y, predict_X, predict_y),
-     (fit_raw_X, fit_raw_y, predict_raw_X, predict_raw_y),
-     (fit_df_X, fit_raw_y, predict_df_X, predict_raw_y)],
+    "fit_X, fit_y, predict_X, predict_y",
+    [
+        (fit_X, fit_y, predict_X, predict_y),
+        (fit_raw_X, fit_raw_y, predict_raw_X, predict_raw_y),
+        (fit_df_X, fit_raw_y, predict_df_X, predict_raw_y),
+    ],
 )
 def test_blockwise_voting_classifier_hard(setup, fit_X, fit_y, predict_X, predict_y):
-    clf = BlockwiseVotingClassifier(LogisticRegression(solver='lbfgs'))
+    clf = BlockwiseVotingClassifier(LogisticRegression(solver="lbfgs"))
     clf.fit(fit_X, fit_y)
     estimators = clf.estimators_.fetch()
     if not isinstance(fit_X, np.ndarray):
@@ -47,15 +52,17 @@ def test_blockwise_voting_classifier_hard(setup, fit_X, fit_y, predict_X, predic
     score = clf.score(predict_X, predict_y)
     assert isinstance(score.fetch(), float)
 
-    with pytest.raises(AttributeError, match='hard'):
+    with pytest.raises(AttributeError, match="hard"):
         clf.predict_proba(predict_X)
 
 
 @pytest.mark.parametrize(
-    'fit_X, fit_y, predict_X, predict_y',
-    [(fit_X, fit_y, predict_X, predict_y),
-     (fit_raw_X, fit_raw_y, predict_raw_X, predict_raw_y),
-     (fit_df_X, fit_raw_y, predict_df_X, predict_raw_y)]
+    "fit_X, fit_y, predict_X, predict_y",
+    [
+        (fit_X, fit_y, predict_X, predict_y),
+        (fit_raw_X, fit_raw_y, predict_raw_X, predict_raw_y),
+        (fit_df_X, fit_raw_y, predict_df_X, predict_raw_y),
+    ],
 )
 def test_blockwise_voting_classifier_soft(setup, fit_X, fit_y, predict_X, predict_y):
     clf = BlockwiseVotingClassifier(
@@ -69,11 +76,11 @@ def test_blockwise_voting_classifier_soft(setup, fit_X, fit_y, predict_X, predic
         assert len(estimators) == 4
 
     result = clf.predict(predict_X)
-    assert result.dtype == np.dtype('int64')
+    assert result.dtype == np.dtype("int64")
     assert result.shape == (predict_X.shape[0],)
 
     result = clf.predict_proba(predict_X)
-    assert result.dtype == np.dtype('float64')
+    assert result.dtype == np.dtype("float64")
     assert result.shape == (predict_X.shape[0], 2)
 
     score = clf.score(predict_X, predict_y)
@@ -81,10 +88,12 @@ def test_blockwise_voting_classifier_soft(setup, fit_X, fit_y, predict_X, predic
 
 
 @pytest.mark.parametrize(
-    'fit_X, fit_y, predict_X, predict_y',
-    [(fit_X, fit_y, predict_X, predict_y),
-     (fit_raw_X, fit_raw_y, predict_raw_X, predict_raw_y),
-     (fit_df_X, fit_raw_y, predict_df_X, predict_raw_y)]
+    "fit_X, fit_y, predict_X, predict_y",
+    [
+        (fit_X, fit_y, predict_X, predict_y),
+        (fit_raw_X, fit_raw_y, predict_raw_X, predict_raw_y),
+        (fit_df_X, fit_raw_y, predict_df_X, predict_raw_y),
+    ],
 )
 def test_blockwise_voting_regressor(setup, fit_X, fit_y, predict_X, predict_y):
     est = BlockwiseVotingRegressor(LogisticRegression())
@@ -94,7 +103,7 @@ def test_blockwise_voting_regressor(setup, fit_X, fit_y, predict_X, predict_y):
         assert len(estimators) == 4
 
     result = est.predict(predict_X)
-    assert result.dtype == np.dtype('float64')
+    assert result.dtype == np.dtype("float64")
     assert result.shape == (predict_X.shape[0],)
 
     score = est.score(predict_X, predict_y)

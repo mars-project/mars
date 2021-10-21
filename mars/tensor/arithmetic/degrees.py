@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorDegrees(TensorUnaryOp):
     _op_type_ = OperandDef.DEGREES
-    _func_name = 'degrees'
+    _func_name = "degrees"
 
 
 @infer_dtype(np.degrees)

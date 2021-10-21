@@ -33,7 +33,7 @@ class LocalFileSystem(FileSystem):
 
     @implements(FileSystem.cat)
     def cat(self, path: path_type):
-        with self.open(path, 'rb') as f:
+        with self.open(path, "rb") as f:
             return f.read()
 
     @implements(FileSystem.ls)
@@ -42,9 +42,7 @@ class LocalFileSystem(FileSystem):
         return sorted(os.path.join(path, x) for x in os.listdir(path))
 
     @implements(FileSystem.delete)
-    def delete(self,
-               path: path_type,
-               recursive: bool = False):
+    def delete(self, path: path_type, recursive: bool = False):
         if os.path.isfile(path):
             os.remove(path)
         elif not recursive:
@@ -53,28 +51,23 @@ class LocalFileSystem(FileSystem):
             shutil.rmtree(path)
 
     @implements(FileSystem.rename)
-    def rename(self,
-               path: path_type,
-               new_path: path_type):
+    def rename(self, path: path_type, new_path: path_type):
         os.rename(path, new_path)
 
     @implements(FileSystem.stat)
     def stat(self, path: path_type) -> Dict:
         os_stat = os.stat(path)
-        stat = dict(name=path, size=os_stat.st_size,
-                    modified_time=os_stat.st_mtime)
+        stat = dict(name=path, size=os_stat.st_size, modified_time=os_stat.st_mtime)
         if os.path.isfile(path):
-            stat['type'] = 'file'
+            stat["type"] = "file"
         elif os.path.isdir(path):
-            stat['type'] = 'directory'
+            stat["type"] = "directory"
         else:  # pragma: no cover
-            stat['type'] = 'other'
+            stat["type"] = "other"
         return stat
 
     @implements(FileSystem.mkdir)
-    def mkdir(self,
-              path: path_type,
-              create_parents: bool = True):
+    def mkdir(self, path: path_type, create_parents: bool = True):
         path = stringify_path(path)
         if create_parents:
             os.makedirs(path)
@@ -101,9 +94,7 @@ class LocalFileSystem(FileSystem):
         return os.path.exists(path)
 
     @implements(FileSystem.open)
-    def open(self,
-             path: path_type,
-             mode: str = 'rb') -> Union[BinaryIO, TextIO]:
+    def open(self, path: path_type, mode: str = "rb") -> Union[BinaryIO, TextIO]:
         path = stringify_path(path)
         return open(path, mode=mode)
 
@@ -113,9 +104,7 @@ class LocalFileSystem(FileSystem):
         return os.walk(path)
 
     @implements(FileSystem.glob)
-    def glob(self,
-             path: path_type,
-             recursive: bool = False) -> List[path_type]:
+    def glob(self, path: path_type, recursive: bool = False) -> List[path_type]:
         path = stringify_path(path)
         return glob.glob(path, recursive=recursive)
 

@@ -23,8 +23,10 @@ from ....core import tile
 from ... import tensor
 from ..err_fresnel import erf, TensorErf
 from ..gamma_funcs import (
-    gammaln, TensorGammaln,
-    betainc, TensorBetaInc,
+    gammaln,
+    TensorGammaln,
+    betainc,
+    TensorBetaInc,
 )
 
 

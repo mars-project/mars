@@ -27,9 +27,7 @@ _decref_pool = concurrent.futures.ThreadPoolExecutor()
 
 
 class _TileableSession:
-    def __init__(self,
-                 tileable: TileableType,
-                 session: SessionType):
+    def __init__(self, tileable: TileableType, session: SessionType):
         key = tileable.key
 
         def cb(_, sess=ref(session)):
@@ -42,6 +40,7 @@ class _TileableSession:
 
             def decref():
                 from ...deploy.oscar.session import SyncSession
+
                 s = sess()
                 if s:
                     try:
@@ -55,7 +54,7 @@ class _TileableSession:
                 # if decref in isolation, means that this tileable
                 # is not required for main thread, thus we do not need
                 # to wait for decref, otherwise, wait a bit
-                fut.result(.5)
+                fut.result(0.5)
 
         self.tileable = ref(tileable, cb)
 
@@ -65,24 +64,20 @@ class _TileableDataCleaner:
         self._tileable_to_sessions = WeakKeyDictionary()
 
     @enter_mode(build=True)
-    def register(self,
-                 tileable: TileableType,
-                 session: SessionType):
+    def register(self, tileable: TileableType, session: SessionType):
         if tileable in self._tileable_to_sessions:
             self._tileable_to_sessions[tileable].append(
-                _TileableSession(tileable, session))
+                _TileableSession(tileable, session)
+            )
         else:
-            self._tileable_to_sessions[tileable] = \
-                [_TileableSession(tileable, session)]
+            self._tileable_to_sessions[tileable] = [_TileableSession(tileable, session)]
 
 
 # we don't use __del__ to avoid potential Circular reference
 _cleaner = _TileableDataCleaner()
 
 
-def _get_session(
-        executable: "_ExecutableMixin",
-        session: SessionType = None):
+def _get_session(executable: "_ExecutableMixin", session: SessionType = None):
     from ...deploy.oscar.session import get_default_session
 
     if session is None and len(executable._executed_sessions) > 0:
@@ -103,43 +98,43 @@ class _ExecutableMixin:
         session = _get_session(self, session)
         return execute(self, session=session, **kw)
 
-    def _check_session(self,
-                       session: SessionType,
-                       action: str):
+    def _check_session(self, session: SessionType, action: str):
         if session is None:
             if isinstance(self, tuple):
                 key = self[0].key
             else:
                 key = self.key
             raise ValueError(
-                f'Tileable object {key} must be executed first before {action}')
+                f"Tileable object {key} must be executed first before {action}"
+            )
 
     def _fetch(self, session: SessionType = None, **kw):
         from ...deploy.oscar.session import fetch
 
         session = _get_session(self, session)
-        self._check_session(session, 'fetch')
+        self._check_session(session, "fetch")
         return fetch(self, session=session, **kw)
 
     def fetch(self, session: SessionType = None, **kw):
         return self._fetch(session=session, **kw)
 
-    def fetch_log(self,
-                  session: SessionType = None,
-                  offsets: List[int] = None,
-                  sizes: List[int] =None):
+    def fetch_log(
+        self,
+        session: SessionType = None,
+        offsets: List[int] = None,
+        sizes: List[int] = None,
+    ):
         from ...deploy.oscar.session import fetch_log
 
         session = _get_session(self, session)
-        self._check_session(session, 'fetch_log')
-        return fetch_log(self, session=session,
-                         offsets=offsets, sizes=sizes)[0]
+        self._check_session(session, "fetch_log")
+        return fetch_log(self, session=session, offsets=offsets, sizes=sizes)[0]
 
     def _fetch_infos(self, fields=None, session=None, **kw):
         from ...deploy.oscar.session import fetch_infos
 
         session = _get_session(self, session)
-        self._check_session(session, 'fetch_infos')
+        self._check_session(session, "fetch_infos")
         return fetch_infos(self, fields=fields, session=session, **kw)
 
     def _attach_session(self, session: SessionType):
@@ -151,12 +146,11 @@ class _ExecutableMixin:
 class _ExecuteAndFetchMixin:
     __slots__ = ()
 
-    def _execute_and_fetch(self,
-                           session: SessionType = None, **kw):
+    def _execute_and_fetch(self, session: SessionType = None, **kw):
         from ...deploy.oscar.session import ExecutionInfo, SyncSession, fetch
 
         session = _get_session(self, session)
-        fetch_kwargs = kw.pop('fetch_kwargs', dict())
+        fetch_kwargs = kw.pop("fetch_kwargs", dict())
         ret = self.execute(session=session, **kw)
         if isinstance(ret, ExecutionInfo):
             # wait=False
@@ -166,8 +160,7 @@ class _ExecuteAndFetchMixin:
                 await aio_task
 
             def run():
-                asyncio.run_coroutine_threadsafe(
-                    _wait(), loop=ret.loop).result()
+                asyncio.run_coroutine_threadsafe(_wait(), loop=ret.loop).result()
                 return fetch(self, session=session, **fetch_kwargs)
 
             return SyncSession._execution_pool.submit(run)
@@ -192,7 +185,7 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
         self._raw_type = None
 
         if len(args) == 1 and isinstance(args[0], tuple):
-            self._fields = getattr(args[0], '_fields', None)
+            self._fields = getattr(args[0], "_fields", None)
             if self._fields is not None:
                 self._raw_type = type(args[0])
                 self._fields_to_idx = {f: idx for idx, f in enumerate(self._fields)}
@@ -213,8 +206,8 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
             return super().__repr__()
         items = []
         for k, v in zip(self._fields, self):
-            items.append(f'{k}={v!r}')
-        return '%s(%s)' % (self._raw_type.__name__, ', '.join(items))
+            items.append(f"{k}={v!r}")
+        return "%s(%s)" % (self._raw_type.__name__, ", ".join(items))
 
     def execute(self, session: SessionType = None, **kw):
         from ...deploy.oscar.session import execute
@@ -228,7 +221,7 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
         if session not in self._executed_sessions:
             self._executed_sessions.append(session)
 
-        if kw.get('wait', True):
+        if kw.get("wait", True):
             return self
         else:
             return ret
@@ -237,14 +230,14 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
         from ...deploy.oscar.session import fetch
 
         session = _get_session(self, session)
-        self._check_session(session, 'fetch')
+        self._check_session(session, "fetch")
         return fetch(*self, session=session, **kw)
 
     def _fetch_infos(self, fields=None, session=None, **kw):
         from ...deploy.oscar.session import fetch_infos
 
         session = _get_session(self, session)
-        self._check_session(session, 'fetch_infos')
+        self._check_session(session, "fetch_infos")
         return fetch_infos(*self, fields=fields, session=session, **kw)
 
     def fetch(self, session: SessionType = None, **kw):
@@ -256,20 +249,21 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
         if self._raw_type is not None:
             ret = self._raw_type(*ret)
         if len(self) == 1:
-            return ret,
+            return (ret,)
         return ret
 
-    def fetch_log(self,
-                  session: SessionType = None,
-                  offsets: List[int] = None,
-                  sizes: List[int] = None):
+    def fetch_log(
+        self,
+        session: SessionType = None,
+        offsets: List[int] = None,
+        sizes: List[int] = None,
+    ):
         from ...deploy.oscar.session import fetch_log
 
         if len(self) == 0:
             return []
         session = self._get_session(session=session)
-        return fetch_log(*self, session=session,
-                         offsets=offsets, sizes=sizes)
+        return fetch_log(*self, session=session, offsets=offsets, sizes=sizes)
 
     def _get_session(self, session: SessionType = None):
         if session is None:

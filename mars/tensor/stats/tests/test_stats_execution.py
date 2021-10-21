@@ -33,9 +33,15 @@ from scipy.stats import (
 from ....lib.version import parse as parse_version
 from ... import tensor
 from .. import (
-    entropy, power_divergence, chisquare,
-    ttest_ind, ttest_rel, ttest_1samp, ttest_ind_from_stats,
-    ks_1samp, ks_2samp,
+    entropy,
+    power_divergence,
+    chisquare,
+    ttest_ind,
+    ttest_rel,
+    ttest_1samp,
+    ttest_ind_from_stats,
+    ks_1samp,
+    ks_2samp,
 )
 
 
@@ -88,29 +94,28 @@ def test_power_divergence_execution(setup):
     f_exp = tensor(f_exp_raw, chunk_size=4)
 
     with pytest.raises(ValueError):
-        power_divergence(f_obs, f_exp, lambda_='non-exist-lambda')
+        power_divergence(f_obs, f_exp, lambda_="non-exist-lambda")
 
-    r = power_divergence(f_obs, lambda_='pearson')
+    r = power_divergence(f_obs, lambda_="pearson")
     result = r.execute().fetch()
 
-    expected = sp_power_divergence(f_obs_raw, lambda_='pearson')
+    expected = sp_power_divergence(f_obs_raw, lambda_="pearson")
     np.testing.assert_almost_equal(expected[0], result[0])
     np.testing.assert_almost_equal(expected[1], result[1])
 
     modes = [
         None,
-        'pearson',
-        'log-likelihood',
-        'mod-log-likelihood',
-        'neyman',
+        "pearson",
+        "log-likelihood",
+        "mod-log-likelihood",
+        "neyman",
     ]
 
     for mode in modes:
         r = power_divergence(f_obs, f_exp, lambda_=mode)
         result = r.execute().fetch()
 
-        expected = sp_power_divergence(
-            f_obs_raw, f_exp_raw, lambda_=mode)
+        expected = sp_power_divergence(f_obs_raw, f_exp_raw, lambda_=mode)
         np.testing.assert_almost_equal(expected[0], result[0])
         np.testing.assert_almost_equal(expected[1], result[1])
 
@@ -131,24 +136,54 @@ def test_chisquare_execution(setup):
 
 
 def test_t_test_execution(setup):
-    if parse_version(scipy.__version__) >= parse_version('1.6.0'):
-        alternatives = ['less', 'greater', 'two-sided']
+    if parse_version(scipy.__version__) >= parse_version("1.6.0"):
+        alternatives = ["less", "greater", "two-sided"]
 
-        mt_from_stats = lambda a, b, alternative=None, equal_var=True: ttest_ind_from_stats(
-            a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
-            alternative=alternative, equal_var=equal_var)
-        sp_from_stats = lambda a, b, alternative=None, equal_var=True: sp_ttest_ind_from_stats(
-            a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
-            alternative=alternative, equal_var=equal_var)
+        mt_from_stats = (
+            lambda a, b, alternative=None, equal_var=True: ttest_ind_from_stats(
+                a.mean(),
+                a.std(),
+                a.shape[0],
+                b.mean(),
+                b.std(),
+                b.shape[0],
+                alternative=alternative,
+                equal_var=equal_var,
+            )
+        )
+        sp_from_stats = (
+            lambda a, b, alternative=None, equal_var=True: sp_ttest_ind_from_stats(
+                a.mean(),
+                a.std(),
+                a.shape[0],
+                b.mean(),
+                b.std(),
+                b.shape[0],
+                alternative=alternative,
+                equal_var=equal_var,
+            )
+        )
     else:
-        alternatives = ['two-sided']
+        alternatives = ["two-sided"]
 
         mt_from_stats = lambda a, b, equal_var=True: ttest_ind_from_stats(
-            a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
-            equal_var=equal_var)
+            a.mean(),
+            a.std(),
+            a.shape[0],
+            b.mean(),
+            b.std(),
+            b.shape[0],
+            equal_var=equal_var,
+        )
         sp_from_stats = lambda a, b, equal_var=True: sp_ttest_ind_from_stats(
-            a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
-            equal_var=equal_var)
+            a.mean(),
+            a.std(),
+            a.shape[0],
+            b.mean(),
+            b.std(),
+            b.shape[0],
+            equal_var=equal_var,
+        )
 
     funcs = [
         (ttest_rel, sp_ttest_rel),
@@ -178,18 +213,18 @@ def test_t_test_execution(setup):
     fb = tensor(fb_raw, chunk_size=4)
 
     for mt_func, sp_func in funcs:
-        if parse_version(scipy.__version__) >= parse_version('1.6.0'):
+        if parse_version(scipy.__version__) >= parse_version("1.6.0"):
             with pytest.raises(ValueError):
-                mt_func(fa, fb, alternative='illegal-alternative')
+                mt_func(fa, fb, alternative="illegal-alternative")
 
         for alt in alternatives:
-            if parse_version(scipy.__version__) >= parse_version('1.6.0'):
+            if parse_version(scipy.__version__) >= parse_version("1.6.0"):
                 r = mt_func(fa, fb, alternative=alt)
             else:
                 r = mt_func(fa, fb)
             result = r.execute().fetch()
 
-            if parse_version(scipy.__version__) >= parse_version('1.6.0'):
+            if parse_version(scipy.__version__) >= parse_version("1.6.0"):
                 expected = sp_func(fa_raw, fb_raw, alternative=alt)
             else:
                 expected = sp_func(fa_raw, fb_raw)
@@ -197,14 +232,17 @@ def test_t_test_execution(setup):
             np.testing.assert_almost_equal(expected[1], result[1])
 
 
-@pytest.mark.parametrize('chunk_size', [5, 15])
-@pytest.mark.parametrize('mode, alternative', [
-    ('auto', 'greater'),
-    ('auto', 'less'),
-    ('auto', 'two-sided'),
-    ('asymp', 'two-sided'),
-    ('approx', 'two-sided'),
-])
+@pytest.mark.parametrize("chunk_size", [5, 15])
+@pytest.mark.parametrize(
+    "mode, alternative",
+    [
+        ("auto", "greater"),
+        ("auto", "less"),
+        ("auto", "two-sided"),
+        ("asymp", "two-sided"),
+        ("approx", "two-sided"),
+    ],
+)
 def test_ks_1samp(setup, chunk_size, mode, alternative):
     x = tensor(np.linspace(-15, 15, 9), chunk_size=5)
 
@@ -213,15 +251,15 @@ def test_ks_1samp(setup, chunk_size, mode, alternative):
     assert result == expected
 
     with pytest.raises(ValueError):
-        ks_1samp(x, sp_norm.cdf, alternative='unknown')
+        ks_1samp(x, sp_norm.cdf, alternative="unknown")
 
 
-@pytest.mark.parametrize('chunk_size', [5, 15])
+@pytest.mark.parametrize("chunk_size", [5, 15])
 def test_ks_2samp(setup, chunk_size):
     n1 = 10
     n2 = 15
     rs = np.random.RandomState(0)
-    rvs1 = sp_norm.rvs(size=n1, loc=0., scale=1, random_state=rs)
+    rvs1 = sp_norm.rvs(size=n1, loc=0.0, scale=1, random_state=rs)
     rvs2 = sp_norm.rvs(size=n2, loc=0.5, scale=1.5, random_state=rs)
 
     d1 = tensor(rvs1, chunk_size=chunk_size)
@@ -232,10 +270,10 @@ def test_ks_2samp(setup, chunk_size):
     assert result == expected
 
     with pytest.raises(ValueError):
-        ks_2samp(d1, d2, alternative='unknown')
+        ks_2samp(d1, d2, alternative="unknown")
 
     with pytest.raises(ValueError):
-        ks_2samp(d1, d2, mode='unknown')
+        ks_2samp(d1, d2, mode="unknown")
 
     with pytest.raises(ValueError):
         ks_2samp(d1, [])

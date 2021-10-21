@@ -22,66 +22,69 @@ from .core import AbstractSchedulingAPI
 
 
 class SchedulingWebAPIHandler(MarsServiceWebAPIHandler):
-    _root_pattern = '/api/session/(?P<session_id>[^/]+)/scheduling'
+    _root_pattern = "/api/session/(?P<session_id>[^/]+)/scheduling"
 
     @alru_cache(cache_exceptions=False)
     async def _get_cluster_api(self):
         from ...cluster import ClusterAPI
+
         return await ClusterAPI.create(self._supervisor_addr)
 
     @alru_cache(cache_exceptions=False)
     async def _get_oscar_scheduling_api(self, session_id: str):
         from ..api import SchedulingAPI
+
         cluster_api = await self._get_cluster_api()
         [address] = await cluster_api.get_supervisors_by_keys([session_id])
         return await SchedulingAPI.create(session_id, address)
 
-    @web_api('subtasks', method='get')
+    @web_api("subtasks", method="get")
     async def get_subtask_schedule_summaries(self, session_id: str):
         oscar_api = await self._get_oscar_scheduling_api(session_id)
-        task_id = self.get_argument('task_id', None) or None
+        task_id = self.get_argument("task_id", None) or None
 
         result = await oscar_api.get_subtask_schedule_summaries(task_id)
-        self.write(json.dumps({
-            summary.subtask_id: {
-                "task_id": summary.task_id,
-                "subtask_id": summary.subtask_id,
-                "bands": [
-                    {
-                        "endpoint": band[0],
-                        "band_name": band[1],
+        self.write(
+            json.dumps(
+                {
+                    summary.subtask_id: {
+                        "task_id": summary.task_id,
+                        "subtask_id": summary.subtask_id,
+                        "bands": [
+                            {
+                                "endpoint": band[0],
+                                "band_name": band[1],
+                            }
+                            for band in summary.bands
+                        ],
+                        "num_reschedules": summary.num_reschedules,
+                        "is_finished": summary.is_finished,
+                        "is_cancelled": summary.is_cancelled,
                     }
-                    for band in summary.bands
-                ],
-                "num_reschedules": summary.num_reschedules,
-                "is_finished": summary.is_finished,
-                "is_cancelled": summary.is_cancelled,
-            }
-            for summary in result
-        }))
+                    for summary in result
+                }
+            )
+        )
 
 
-web_handlers = {
-    SchedulingWebAPIHandler.get_root_pattern(): SchedulingWebAPIHandler
-}
+web_handlers = {SchedulingWebAPIHandler.get_root_pattern(): SchedulingWebAPIHandler}
 
 
 class WebSchedulingAPI(AbstractSchedulingAPI, MarsWebAPIClientMixin):
-    def __init__(self,
-                 session_id: str,
-                 address: str):
+    def __init__(self, session_id: str, address: str):
         self._session_id = session_id
-        self._address = address.rstrip('/')
+        self._address = address.rstrip("/")
 
     async def get_subtask_schedule_summaries(
-            self,
-            task_id: Optional[str] = None
+        self, task_id: Optional[str] = None
     ) -> List[SubtaskScheduleSummary]:
         task_id = task_id or ""
-        path = f'{self._address}/api/session/{self._session_id}/scheduling/subtasks' \
-               f'?task_id={task_id}'
+        path = (
+            f"{self._address}/api/session/{self._session_id}/scheduling/subtasks"
+            f"?task_id={task_id}"
+        )
 
-        res = await self._request_url('GET', path)
+        res = await self._request_url("GET", path)
         res_json = json.loads(res.body)
 
         return [

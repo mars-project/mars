@@ -19,11 +19,21 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, recursive_tile
-from ...serialization.serializables import KeyField, AnyField, StringField, DataTypeField, \
-    BoolField, Int32Field
+from ...serialization.serializables import (
+    KeyField,
+    AnyField,
+    StringField,
+    DataTypeField,
+    BoolField,
+    Int32Field,
+)
 from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
-from ...tensor.datasource import empty, tensor as astensor, \
-    from_series as tensor_from_series, from_dataframe as tensor_from_dataframe
+from ...tensor.datasource import (
+    empty,
+    tensor as astensor,
+    from_series as tensor_from_series,
+    from_dataframe as tensor_from_dataframe,
+)
 from ...tensor.statistics.quantile import quantile as tensor_quantile
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..core import DATAFRAME_TYPE
@@ -35,19 +45,35 @@ from ..utils import parse_index, build_empty_df, find_common_type, validate_axis
 class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.QUANTILE
 
-    _input = KeyField('input')
-    _q = AnyField('q')
-    _axis = Int32Field('axis')
-    _numeric_only = BoolField('numeric_only')
-    _interpolation = StringField('interpolation')
+    _input = KeyField("input")
+    _q = AnyField("q")
+    _axis = Int32Field("axis")
+    _numeric_only = BoolField("numeric_only")
+    _interpolation = StringField("interpolation")
 
-    _dtype = DataTypeField('dtype')
+    _dtype = DataTypeField("dtype")
 
-    def __init__(self, q=None, interpolation=None, axis=None, numeric_only=None,
-                 dtype=None, gpu=None, output_types=None, **kw):
-        super().__init__(_q=q, _interpolation=interpolation, _axis=axis,
-                         _numeric_only=numeric_only, _dtype=dtype, _gpu=gpu,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self,
+        q=None,
+        interpolation=None,
+        axis=None,
+        numeric_only=None,
+        dtype=None,
+        gpu=None,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _q=q,
+            _interpolation=interpolation,
+            _axis=axis,
+            _numeric_only=numeric_only,
+            _dtype=dtype,
+            _gpu=gpu,
+            _output_types=output_types,
+            **kw
+        )
 
     @property
     def input(self):
@@ -78,9 +104,12 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
     def _calc_dtype_on_axis_1(self, a, dtypes):
         quantile_dtypes = []
         for name in dtypes.index:
-            dt = tensor_quantile(tensor_from_series(a[name]), self._q,
-                                 interpolation=self._interpolation,
-                                 handle_non_numeric=not self._numeric_only).dtype
+            dt = tensor_quantile(
+                tensor_from_series(a[name]),
+                self._q,
+                interpolation=self._interpolation,
+                handle_non_numeric=not self._numeric_only,
+            ).dtype
             quantile_dtypes.append(dt)
         return find_common_type(quantile_dtypes)
 
@@ -107,42 +136,71 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
             shape = (len(dtypes),)
             # calc dtype
             dtype = self._calc_dtype_on_axis_1(a, dtypes)
-            return self.new_series(inputs, shape=shape, dtype=dtype,
-                                   index_value=index_value, name=name or dtypes.index.name)
+            return self.new_series(
+                inputs,
+                shape=shape,
+                dtype=dtype,
+                index_value=index_value,
+                name=name or dtypes.index.name,
+            )
         elif q_val.ndim == 0 and self._axis == 1:
             index_value = a.index_value
             shape = (len(a),)
             # calc dtype
-            dt = tensor_quantile(empty(a.shape[1], dtype=find_common_type(list(dtypes))),
-                                 self._q, interpolation=self._interpolation,
-                                 handle_non_numeric=not self._numeric_only).dtype
-            return self.new_series(inputs, shape=shape, dtype=dt,
-                                   index_value=index_value, name=name or index_value.name)
+            dt = tensor_quantile(
+                empty(a.shape[1], dtype=find_common_type(list(dtypes))),
+                self._q,
+                interpolation=self._interpolation,
+                handle_non_numeric=not self._numeric_only,
+            ).dtype
+            return self.new_series(
+                inputs,
+                shape=shape,
+                dtype=dt,
+                index_value=index_value,
+                name=name or index_value.name,
+            )
         elif q_val.ndim == 1 and self._axis == 0:
             shape = (len(q_val), len(dtypes))
-            index_value = parse_index(pd_index, *tokenize_objects, store_data=store_index_value)
+            index_value = parse_index(
+                pd_index, *tokenize_objects, store_data=store_index_value
+            )
             dtype_list = []
             for name in dtypes.index:
                 dtype_list.append(
-                    tensor_quantile(tensor_from_series(a[name]), self._q,
-                                    interpolation=self._interpolation,
-                                    handle_non_numeric=not self._numeric_only).dtype)
+                    tensor_quantile(
+                        tensor_from_series(a[name]),
+                        self._q,
+                        interpolation=self._interpolation,
+                        handle_non_numeric=not self._numeric_only,
+                    ).dtype
+                )
             dtypes = pd.Series(dtype_list, index=dtypes.index)
-            return self.new_dataframe(inputs, shape=shape, dtypes=dtypes,
-                                      index_value=index_value,
-                                      columns_value=parse_index(dtypes.index, store_data=True))
+            return self.new_dataframe(
+                inputs,
+                shape=shape,
+                dtypes=dtypes,
+                index_value=index_value,
+                columns_value=parse_index(dtypes.index, store_data=True),
+            )
         else:
             assert q_val.ndim == 1 and self._axis == 1
             shape = (len(q_val), a.shape[0])
-            index_value = parse_index(pd_index, *tokenize_objects, store_data=store_index_value)
+            index_value = parse_index(
+                pd_index, *tokenize_objects, store_data=store_index_value
+            )
             pd_columns = a.index_value.to_pandas()
             dtype_list = np.full(len(pd_columns), self._calc_dtype_on_axis_1(a, dtypes))
             dtypes = pd.Series(dtype_list, index=pd_columns)
-            return self.new_dataframe(inputs, shape=shape,
-                                      dtypes=dtypes,
-                                      index_value=index_value,
-                                      columns_value=parse_index(dtypes.index, store_data=True,
-                                                                key=a.index_value.key))
+            return self.new_dataframe(
+                inputs,
+                shape=shape,
+                dtypes=dtypes,
+                index_value=index_value,
+                columns_value=parse_index(
+                    dtypes.index, store_data=True, key=a.index_value.key
+                ),
+            )
 
     def _call_series(self, a, inputs):
         if isinstance(self._q, TENSOR_TYPE):
@@ -157,17 +215,29 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
         # get dtype by tensor
         a_t = astensor(a)
         self._dtype = dtype = tensor_quantile(
-            a_t, self._q, interpolation=self._interpolation,
-            handle_non_numeric=not self._numeric_only).dtype
+            a_t,
+            self._q,
+            interpolation=self._interpolation,
+            handle_non_numeric=not self._numeric_only,
+        ).dtype
 
         if q_val.ndim == 0:
             return self.new_scalar(inputs, dtype=dtype)
         else:
             return self.new_series(
-                inputs, shape=q_val.shape, dtype=dtype,
-                index_value=parse_index(index_val, a, q_val, self._interpolation,
-                                        type(self).__name__, store_data=store_index_value),
-                name=a.name)
+                inputs,
+                shape=q_val.shape,
+                dtype=dtype,
+                index_value=parse_index(
+                    index_val,
+                    a,
+                    q_val,
+                    self._interpolation,
+                    type(self).__name__,
+                    store_data=store_index_value,
+                ),
+                name=a.name,
+            )
 
     def __call__(self, a, q_input=None):
         inputs = [a]
@@ -188,8 +258,12 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                 ts = []
                 for name in df.index_value.to_pandas():
                     a = tensor_from_series(op.input[name])
-                    t = tensor_quantile(a, op.q, interpolation=op.interpolation,
-                                        handle_non_numeric=not op.numeric_only)
+                    t = tensor_quantile(
+                        a,
+                        op.q,
+                        interpolation=op.interpolation,
+                        handle_non_numeric=not op.numeric_only,
+                    )
                     ts.append(t)
                 try:
                     dtype = np.result_type(*[it.dtype for it in ts])
@@ -197,15 +271,21 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                     dtype = np.dtype(object)
                 stack_op = TensorStack(axis=0, dtype=dtype)
                 tr = stack_op(ts)
-                r = series_from_tensor(tr, index=df.index_value.to_pandas(),
-                                       name=np.asscalar(ts[0].op.q))
+                r = series_from_tensor(
+                    tr, index=df.index_value.to_pandas(), name=np.asscalar(ts[0].op.q)
+                )
             else:
                 assert op.axis == 1
                 empty_df = build_empty_df(op.input.dtypes)
                 fields = empty_df._get_numeric_data().columns.tolist()
                 t = tensor_from_dataframe(op.input[fields])
-                tr = tensor_quantile(t, op.q, axis=1, interpolation=op.interpolation,
-                                     handle_non_numeric=not op.numeric_only)
+                tr = tensor_quantile(
+                    t,
+                    op.q,
+                    axis=1,
+                    interpolation=op.interpolation,
+                    handle_non_numeric=not op.numeric_only,
+                )
                 r = series_from_tensor(tr, name=np.asscalar(tr.op.q))
                 r._index_value = op.input.index_value
         else:
@@ -214,8 +294,12 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                 d = OrderedDict()
                 for name in df.dtypes.index:
                     a = tensor_from_series(op.input[name])
-                    t = tensor_quantile(a, op.q, interpolation=op.interpolation,
-                                        handle_non_numeric=not op.numeric_only)
+                    t = tensor_quantile(
+                        a,
+                        op.q,
+                        interpolation=op.interpolation,
+                        handle_non_numeric=not op.numeric_only,
+                    )
                     d[name] = t
                 r = create_df(d, index=op.q)
             else:
@@ -223,21 +307,31 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                 empty_df = build_empty_df(op.input.dtypes)
                 fields = empty_df._get_numeric_data().columns.tolist()
                 t = tensor_from_dataframe(op.input[fields])
-                tr = tensor_quantile(t, op.q, axis=1, interpolation=op.interpolation,
-                                     handle_non_numeric=not op.numeric_only)
+                tr = tensor_quantile(
+                    t,
+                    op.q,
+                    axis=1,
+                    interpolation=op.interpolation,
+                    handle_non_numeric=not op.numeric_only,
+                )
                 if not op.input.index_value.has_value():
                     raise NotImplementedError
                 # TODO(xuye.qin): use index=op.input.index when we support DataFrame.index
-                r = dataframe_from_tensor(tr, index=op.q,
-                                          columns=op.input.index_value.to_pandas())
+                r = dataframe_from_tensor(
+                    tr, index=op.q, columns=op.input.index_value.to_pandas()
+                )
 
         return (yield from recursive_tile(r))
 
     @classmethod
     def _tile_series(cls, op):
         a = tensor_from_series(op.input)
-        t = tensor_quantile(a, op.q, interpolation=op.interpolation,
-                            handle_non_numeric=not op.numeric_only)
+        t = tensor_quantile(
+            a,
+            op.q,
+            interpolation=op.interpolation,
+            handle_non_numeric=not op.numeric_only,
+        )
         if isinstance(op.outputs[0], TENSOR_TYPE):
             r = t
         else:
@@ -254,7 +348,7 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
         return tiled
 
 
-def quantile_series(series, q=0.5, interpolation='linear'):
+def quantile_series(series, q=0.5, interpolation="linear"):
     """
     Return value at the given quantile.
 
@@ -305,13 +399,11 @@ def quantile_series(series, q=0.5, interpolation='linear'):
     else:
         q_input = None
 
-    op = DataFrameQuantile(q=q, interpolation=interpolation,
-                           gpu=series.op.gpu)
+    op = DataFrameQuantile(q=q, interpolation=interpolation, gpu=series.op.gpu)
     return op(series, q_input=q_input)
 
 
-def quantile_dataframe(df, q=0.5, axis=0, numeric_only=True,
-                       interpolation='linear'):
+def quantile_dataframe(df, q=0.5, axis=0, numeric_only=True, interpolation="linear"):
     """
     Return values at the given quantile over requested axis.
 
@@ -384,7 +476,11 @@ def quantile_dataframe(df, q=0.5, axis=0, numeric_only=True,
         q_input = None
     axis = validate_axis(axis, df)
 
-    op = DataFrameQuantile(q=q, interpolation=interpolation,
-                           axis=axis, numeric_only=numeric_only,
-                           gpu=df.op.gpu)
+    op = DataFrameQuantile(
+        q=q,
+        interpolation=interpolation,
+        axis=axis,
+        numeric_only=numeric_only,
+        gpu=df.op.gpu,
+    )
     return op(df, q_input=q_input)

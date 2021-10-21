@@ -34,13 +34,13 @@ class DummyActor(mo.Actor):
         super().__init__()
 
         if value < 0:
-            raise ValueError('value < 0')
+            raise ValueError("value < 0")
         self.value = value
 
     @mo.extensible
     async def add(self, value):
         if not isinstance(value, int):
-            raise TypeError('add number must be int')
+            raise TypeError("add number must be int")
         self.value += value
         return self.value
 
@@ -59,7 +59,7 @@ class DummyActor(mo.Actor):
         return [self.value + sum_val for _ in args_list]
 
     async def create(self, actor_cls, *args, **kw):
-        kw['address'] = self.address
+        kw["address"] = self.address
         return await mo.create_actor(actor_cls, *args, **kw)
 
     async def create_ignore(self, actor_cls, *args, **kw):
@@ -69,8 +69,8 @@ class DummyActor(mo.Actor):
             pass
 
     async def create_send(self, actor_cls, *args, **kw):
-        method = kw.pop('method')
-        method_args = kw.pop('method_args')
+        method = kw.pop("method")
+        method_args = kw.pop("method_args")
         ref = await mo.create_actor(actor_cls, *args, **kw)
         return await getattr(ref, method)(*method_args)
 
@@ -97,7 +97,7 @@ class DummyActor(mo.Actor):
         return await actor_ref.send(lambda x: x)
 
     async def create_unpickled(self):
-        return await mo.create_actor(DummyActor, lambda x: x, uid='admin-5')
+        return await mo.create_actor(DummyActor, lambda x: x, uid="admin-5")
 
     async def destroy(self):
         await self.ref().destroy()
@@ -125,14 +125,15 @@ class CreateDestroyActor(mo.Actor):
         self._record_ref = None
 
     async def __post_create__(self):
-        self._record_ref = await mo.actor_ref(RecordActor.default_uid(),
-                                              address=self.address)
-        await self._record_ref.add_record(f'create {self.uid}')
-        assert 'sth' == await self.ref().echo('sth')
+        self._record_ref = await mo.actor_ref(
+            RecordActor.default_uid(), address=self.address
+        )
+        await self._record_ref.add_record(f"create {self.uid}")
+        assert "sth" == await self.ref().echo("sth")
 
     async def __pre_destroy__(self):
-        await self._record_ref.add_record(f'destroy {self.uid}')
-        assert 'sth2' == await self.ref().echo('sth2')
+        await self._record_ref.add_record(f"destroy {self.uid}")
+        assert "sth2" == await self.ref().echo("sth2")
 
     def echo(self, message):
         return message
@@ -159,13 +160,13 @@ class PromiseTestActor(mo.Actor):
     async def _apply_step(self, idx, delay):
         res = None
         try:
-            self.call_log.append(('A', idx, time.time()))
+            self.call_log.append(("A", idx, time.time()))
             res = yield self.res_lock_ref.apply(idx)
             assert res == idx + 1
 
-            self.call_log.append(('B', idx, time.time()))
+            self.call_log.append(("B", idx, time.time()))
             yield asyncio.sleep(delay)
-            self.call_log.append(('C', idx, time.time()))
+            self.call_log.append(("C", idx, time.time()))
         finally:
             yield self.res_lock_ref.release()
             raise mo.Return(res)
@@ -174,9 +175,10 @@ class PromiseTestActor(mo.Actor):
         return self._apply_step(idx, delay)
 
     async def test_yield_tuple(self, delay=0.1):
-        tp = yield tuple(
-            self._apply_step(idx, delay) for idx in range(4)
-        ) + (asyncio.sleep(delay), 'PlainString')
+        tp = yield tuple(self._apply_step(idx, delay) for idx in range(4)) + (
+            asyncio.sleep(delay),
+            "PlainString",
+        )
         raise mo.Return(tp)
 
     async def async_raiser_func(self):
@@ -210,10 +212,10 @@ class PromiseTestActor(mo.Actor):
             try:
                 yield asyncio.sleep(delay)
             except asyncio.CancelledError:
-                self.call_log.append((time.time(), 'CANCELLED'))
+                self.call_log.append((time.time(), "CANCELLED"))
                 raise
 
-        self.call_log.append((time.time(), 'START'))
+        self.call_log.append((time.time(), "START"))
         return task_fun()
 
     def get_call_log(self):
@@ -225,10 +227,14 @@ class PromiseTestActor(mo.Actor):
 @pytest.mark.parametrize(indirect=True)
 @pytest.fixture(params=[False, True])
 async def actor_pool_context(request):
-    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
-        if sys.platform != 'win32' else None
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=2,
-                                      subprocess_start_method=start_method)
+    start_method = (
+        os.environ.get("POOL_START_METHOD", "forkserver")
+        if sys.platform != "win32"
+        else None
+    )
+    pool = await mo.create_actor_pool(
+        "127.0.0.1", n_process=2, subprocess_start_method=start_method
+    )
 
     try:
         if request:
@@ -262,15 +268,16 @@ async def test_simple_local_actor_pool(actor_pool_context):
 @pytest.mark.asyncio
 async def test_mars_post_create_pre_destroy(actor_pool_context):
     pool = actor_pool_context
-    rec_ref = await mo.create_actor(RecordActor, uid=RecordActor.default_uid(),
-                                    address=pool.external_address)
+    rec_ref = await mo.create_actor(
+        RecordActor, uid=RecordActor.default_uid(), address=pool.external_address
+    )
     actor_ref = await mo.create_actor(CreateDestroyActor, address=pool.external_address)
     await actor_ref.destroy()
 
     records = await rec_ref.get_records()
     assert len(records) == 2
-    assert records[0].startswith('create')
-    assert records[1].startswith('destroy')
+    assert records[0].startswith("create")
+    assert records[1].startswith("destroy")
 
 
 @pytest.mark.asyncio
@@ -283,16 +290,21 @@ async def test_mars_create_actor(actor_pool_context):
     assert await ref.add(10) == 15
     # create actor inside on_receive and send message
     r = await actor_ref.create_send(
-        DummyActor, 5, method='add', method_args=(1,), address=pool.external_address)
+        DummyActor, 5, method="add", method_args=(1,), address=pool.external_address
+    )
     assert r == 6
 
 
 @pytest.mark.asyncio
 async def test_mars_create_actor_error(actor_pool_context):
     pool = actor_pool_context
-    ref1 = await mo.create_actor(DummyActor, 1, uid='dummy1', address=pool.external_address)
+    ref1 = await mo.create_actor(
+        DummyActor, 1, uid="dummy1", address=pool.external_address
+    )
     with pytest.raises(mo.ActorAlreadyExist):
-        await mo.create_actor(DummyActor, 1, uid='dummy1', address=pool.external_address)
+        await mo.create_actor(
+            DummyActor, 1, uid="dummy1", address=pool.external_address
+        )
     await mo.destroy_actor(ref1)
 
     with pytest.raises(ValueError):
@@ -306,13 +318,16 @@ async def test_mars_create_actor_error(actor_pool_context):
 async def test_mars_send(actor_pool_context):
     pool = actor_pool_context
     ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
-    ref2 = await mo.actor_ref(await ref1.create(DummyActor, 2, address=pool.external_address))
-    assert await ref1.send(ref2, 'add', 3) == 5
+    ref2 = await mo.actor_ref(
+        await ref1.create(DummyActor, 2, address=pool.external_address)
+    )
+    assert await ref1.send(ref2, "add", 3) == 5
 
     ref3 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
-    ref4 = await mo.create_actor(DummyActor, 2, address=pool.external_address,
-                                 allocate_strategy=RandomSubPool())
-    assert await ref4.send(ref3, 'add', 3) == 4
+    ref4 = await mo.create_actor(
+        DummyActor, 2, address=pool.external_address, allocate_strategy=RandomSubPool()
+    )
+    assert await ref4.send(ref3, "add", 3) == 4
 
 
 @pytest.mark.asyncio
@@ -323,9 +338,9 @@ async def test_mars_send_error(actor_pool_context):
         await ref1.add(1.0)
     ref2 = await mo.create_actor(DummyActor, 2, address=pool.external_address)
     with pytest.raises(TypeError):
-        await ref1.send(ref2, 'add', 1.0)
+        await ref1.send(ref2, "add", 1.0)
     with pytest.raises(mo.ActorNotExist):
-        await (await mo.actor_ref('fake_uid', address=pool.external_address)).add(1)
+        await (await mo.actor_ref("fake_uid", address=pool.external_address)).add(1)
 
 
 @pytest.mark.asyncio
@@ -333,10 +348,10 @@ async def test_mars_tell(actor_pool_context):
     pool = actor_pool_context
     ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
     ref2 = await mo.actor_ref(await ref1.create(DummyActor, 2))
-    await ref1.tell(ref2, 'add', 3)
+    await ref1.tell(ref2, "add", 3)
     assert await ref2.get_value() == 5
 
-    await ref1.tell_delay(ref2, 'add', 4, delay=.5)  # delay 0.5 secs
+    await ref1.tell_delay(ref2, "add", 4, delay=0.5)  # delay 0.5 secs
     assert await ref2.get_value() == 5
     await asyncio.sleep(0.45)
     assert await ref2.get_value() == 5
@@ -345,7 +360,7 @@ async def test_mars_tell(actor_pool_context):
 
     # error needed when illegal uids are passed
     with pytest.raises(ValueError):
-        await ref1.tell(await mo.actor_ref(set()), 'add', 3)
+        await ref1.tell(await mo.actor_ref(set()), "add", 3)
 
 
 @pytest.mark.asyncio
@@ -359,8 +374,7 @@ async def test_mars_batch_method(actor_pool_context):
     assert all(r == 7 for r in batch_result)
 
     await ref1.add.batch(
-        ref1.add.delay(1), ref1.add.delay(2), ref1.add.delay(3),
-        send=False
+        ref1.add.delay(1), ref1.add.delay(2), ref1.add.delay(3), send=False
     )
     assert await ref1.get_value() == 7
 
@@ -394,13 +408,13 @@ async def test_mars_destroy_has_actor(actor_pool_context):
     assert not await ref1.has(ref2)
 
     with pytest.raises(mo.ActorNotExist):
-        await mo.destroy_actor(await mo.actor_ref(
-            'fake_uid', address=pool.external_address))
+        await mo.destroy_actor(
+            await mo.actor_ref("fake_uid", address=pool.external_address)
+        )
 
     ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
     with pytest.raises(mo.ActorNotExist):
-        await ref1.delete(await mo.actor_ref(
-            'fake_uid', address=pool.external_address))
+        await ref1.delete(await mo.actor_ref("fake_uid", address=pool.external_address))
 
     # test self destroy
     ref1 = await mo.create_actor(DummyActor, 2, address=pool.external_address)
@@ -416,17 +430,17 @@ async def test_mars_resource_lock(actor_pool_context):
 
     async def test_task(idx):
         await ref.apply()
-        event_list.append(('A', idx, time.time()))
+        event_list.append(("A", idx, time.time()))
         await asyncio.sleep(0.1)
-        event_list.append(('B', idx, time.time()))
+        event_list.append(("B", idx, time.time()))
         await ref.release()
 
     tasks = [asyncio.create_task(test_task(idx)) for idx in range(4)]
     await asyncio.wait(tasks)
 
     for idx in range(0, len(event_list), 2):
-        event_pair = event_list[idx:idx + 2]
-        assert (event_pair[0][0], event_pair[1][0]) == ('A', 'B')
+        event_pair = event_list[idx : idx + 2]
+        assert (event_pair[0][0], event_pair[1][0]) == ("A", "B")
         assert event_pair[0][1] == event_pair[1][1]
 
 
@@ -434,39 +448,63 @@ async def test_mars_resource_lock(actor_pool_context):
 async def test_promise_chain(actor_pool_context):
     pool = actor_pool_context
     lock_ref = await mo.create_actor(
-        ResourceLockActor, 2, address=pool.external_address)
+        ResourceLockActor, 2, address=pool.external_address
+    )
     promise_test_ref = await mo.create_actor(
-        PromiseTestActor, lock_ref, address=pool.external_address)
+        PromiseTestActor, lock_ref, address=pool.external_address
+    )
 
     delay_val = 1.0
 
     start_time = time.time()
-    tasks = [asyncio.create_task(promise_test_ref.test_promise_call(idx, delay=delay_val))
-             for idx in range(4)]
+    tasks = [
+        asyncio.create_task(promise_test_ref.test_promise_call(idx, delay=delay_val))
+        for idx in range(4)
+    ]
     await asyncio.gather(*tasks)
 
-    logs = pd.DataFrame(await promise_test_ref.get_call_log(), columns=['group', 'idx', 'time'])
+    logs = pd.DataFrame(
+        await promise_test_ref.get_call_log(), columns=["group", "idx", "time"]
+    )
     logs.time -= start_time
     assert logs.query('group == "A"').time.max() < delay_val / 2
-    max_apply_time = logs.query('group == "A" | group == "B"').groupby('idx') \
-        .apply(lambda s: s.time.max() - s.time.min()).max()
+    max_apply_time = (
+        logs.query('group == "A" | group == "B"')
+        .groupby("idx")
+        .apply(lambda s: s.time.max() - s.time.min())
+        .max()
+    )
     assert max_apply_time > delay_val / 2
-    max_delay_time = logs.query('group == "B" | group == "C"').groupby('idx') \
-        .apply(lambda s: s.time.max() - s.time.min()).max()
+    max_delay_time = (
+        logs.query('group == "B" | group == "C"')
+        .groupby("idx")
+        .apply(lambda s: s.time.max() - s.time.min())
+        .max()
+    )
     assert max_delay_time > delay_val / 2
 
     start_time = time.time()
     ret = await promise_test_ref.test_yield_tuple(delay=delay_val)
-    assert set(ret) == {1, 2, 3, 4, None, 'PlainString'}
+    assert set(ret) == {1, 2, 3, 4, None, "PlainString"}
 
-    logs = pd.DataFrame(await promise_test_ref.get_call_log(), columns=['group', 'idx', 'time'])
+    logs = pd.DataFrame(
+        await promise_test_ref.get_call_log(), columns=["group", "idx", "time"]
+    )
     logs.time -= start_time
     assert logs.query('group == "A"').time.max() < delay_val / 2
-    max_apply_time = logs.query('group == "A" | group == "B"').groupby('idx') \
-        .apply(lambda s: s.time.max() - s.time.min()).max()
+    max_apply_time = (
+        logs.query('group == "A" | group == "B"')
+        .groupby("idx")
+        .apply(lambda s: s.time.max() - s.time.min())
+        .max()
+    )
     assert max_apply_time > delay_val / 2
-    max_delay_time = logs.query('group == "B" | group == "C"').groupby('idx') \
-        .apply(lambda s: s.time.max() - s.time.min()).max()
+    max_delay_time = (
+        logs.query('group == "B" | group == "C"')
+        .groupby("idx")
+        .apply(lambda s: s.time.max() - s.time.min())
+        .max()
+    )
     assert max_delay_time > delay_val / 2
 
     with pytest.raises(ValueError):

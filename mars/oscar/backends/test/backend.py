@@ -21,16 +21,13 @@ from .pool import TestMainActorPool
 class TestActorBackend(MarsActorBackend):
     @staticmethod
     def name():
-        return 'test'
+        return "test"
 
     @staticmethod
-    async def create_actor_pool(
-            address: str,
-            n_process: int = None,
-            **kwargs):
+    async def create_actor_pool(address: str, n_process: int = None, **kwargs):
         from ..pool import create_actor_pool
 
         n_process, kwargs = build_pool_kwargs(n_process, kwargs)
         return await create_actor_pool(
-            address, pool_cls=TestMainActorPool,
-            n_process=n_process, **kwargs)
+            address, pool_cls=TestMainActorPool, n_process=n_process, **kwargs
+        )

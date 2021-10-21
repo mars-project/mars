@@ -31,6 +31,7 @@ class SubtaskRunnerManagerActor(mo.Actor):
 
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
+
         self._cluster_api = await ClusterAPI.create(self.address)
 
         band_to_slots = await self._cluster_api.get_bands()
@@ -38,7 +39,7 @@ class SubtaskRunnerManagerActor(mo.Actor):
             await self._create_band_runner_actors(band[1], n_slot)
 
     async def _create_band_runner_actors(self, band_name: str, n_slots: int):
-        strategy = IdleLabel(band_name, 'subtask_runner')
+        strategy = IdleLabel(band_name, "subtask_runner")
         band = (self.address, band_name)
         for slot_id in range(n_slots):
             self._band_slot_runner_refs[(band_name, slot_id)] = await mo.create_actor(
@@ -48,9 +49,10 @@ class SubtaskRunnerManagerActor(mo.Actor):
                 subtask_processor_cls=self._subtask_processor_cls,
                 uid=SubtaskRunnerActor.gen_uid(band_name, slot_id),
                 address=self.address,
-                allocate_strategy=strategy)
+                allocate_strategy=strategy,
+            )
 
     async def __pre_destroy__(self):
-        await asyncio.gather(*[
-            mo.destroy_actor(ref) for ref in self._band_slot_runner_refs.values()
-        ])
+        await asyncio.gather(
+            *[mo.destroy_actor(ref) for ref in self._band_slot_runner_refs.values()]
+        )

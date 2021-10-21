@@ -30,10 +30,10 @@ from .array import tensor
 class TensorZeros(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_ZEROS
 
-    _order = StringField('order')
+    _order = StringField("order")
 
     def __init__(self, dtype=None, order=None, **kw):
-        dtype = np.dtype(dtype or 'f8')
+        dtype = np.dtype(dtype or "f8")
         super().__init__(dtype=dtype, _order=order, **kw)
 
     @property
@@ -46,11 +46,12 @@ class TensorZeros(TensorNoInput):
         if op.sparse:
             ctx[chunk.key] = sparse.zeros(chunk.shape, dtype=op.dtype, gpu=op.gpu)
         else:
-            ctx[chunk.key] = create_array(op)('zeros', chunk.shape,
-                                              dtype=op.dtype, order=op.order)
+            ctx[chunk.key] = create_array(op)(
+                "zeros", chunk.shape, dtype=op.dtype, order=op.order
+            )
 
 
-def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False, order='C'):
+def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False, order="C"):
     """
     Return a new tensor of given shape and type, filled with zeros.
 
@@ -107,8 +108,12 @@ def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False, order='C'
     array([(0, 0), (0, 0)],
           dtype=[('x', '<i4'), ('y', '<i4')])
     """
-    tensor_order = get_order(order, None, available_options='CF',
-                             err_msg="only 'C' or 'F' order is permitted")
+    tensor_order = get_order(
+        order,
+        None,
+        available_options="CF",
+        err_msg="only 'C' or 'F' order is permitted",
+    )
     op = TensorZeros(dtype=dtype, gpu=gpu, sparse=sparse, order=order)
     return op(shape, chunk_size=chunk_size, order=tensor_order)
 
@@ -116,8 +121,8 @@ def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False, order='C'
 class TensorZerosLike(TensorLike):
     _op_type_ = OperandDef.TENSOR_ZEROS_LIKE
 
-    _input = KeyField('input')
-    _order = StringField('order')
+    _input = KeyField("input")
+    _order = StringField("order")
 
     def __init__(self, dtype=None, gpu=None, sparse=False, order=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else None
@@ -134,16 +139,23 @@ class TensorZerosLike(TensorLike):
             in_data = naked(ctx[op.inputs[0].key])
             xps = get_sparse_module(in_data)
             xp = get_array_module(in_data)
-            ctx[chunk.key] = sparse.SparseNDArray(xps.csr_matrix(
-                (xp.zeros_like(in_data.data, dtype=op.dtype),
-                 in_data.indices, in_data.indptr), shape=in_data.shape
-            ))
+            ctx[chunk.key] = sparse.SparseNDArray(
+                xps.csr_matrix(
+                    (
+                        xp.zeros_like(in_data.data, dtype=op.dtype),
+                        in_data.indices,
+                        in_data.indptr,
+                    ),
+                    shape=in_data.shape,
+                )
+            )
         else:
             ctx[chunk.key] = create_array(op)(
-                'zeros_like', ctx[op.inputs[0].key], dtype=op.dtype, order=op.order)
+                "zeros_like", ctx[op.inputs[0].key], dtype=op.dtype, order=op.order
+            )
 
 
-def zeros_like(a, dtype=None, gpu=None, order='K'):
+def zeros_like(a, dtype=None, gpu=None, order="K"):
     """
     Return a tensor of zeros with the same shape and type as a given tensor.
 

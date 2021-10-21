@@ -16,5 +16,6 @@ from .base import FileSystem
 from .core import file_size, glob, get_fs, open_file
 from .fsmap import FSMap
 from .local import LocalFileSystem
+
 # noinspection PyUnresolvedReferences
 from .hdfs import HadoopFileSystem

@@ -17,23 +17,22 @@ class MetaRing(object):
         self._nodes = {}
         self._ring = {}
 
-        if hash_fn and not hasattr(hash_fn, '__call__'):
-            raise TypeError('hash_fn should be a callable function')
+        if hash_fn and not hasattr(hash_fn, "__call__"):
+            raise TypeError("hash_fn should be a callable function")
         self._hash_fn = hash_fn or (
-            lambda key: int(md5(str(key).encode('utf-8')).hexdigest(), 16))
+            lambda key: int(md5(str(key).encode("utf-8")).hexdigest(), 16)
+        )
 
     def hashi(self, key):
-        """Returns an integer derived from the md5 hash of the given key.
-        """
+        """Returns an integer derived from the md5 hash of the given key."""
         return self._hash_fn(key)
 
     def _create_ring(self, nodes):
-        """Generate a ketama compatible continuum/ring.
-        """
+        """Generate a ketama compatible continuum/ring."""
         for node_name, node_conf in nodes:
-            for w in range(0, node_conf['vnodes'] * node_conf['weight']):
+            for w in range(0, node_conf["vnodes"] * node_conf["weight"]):
                 self._distribution[node_name] += 1
-                self._ring[self.hashi(f'{node_name}-{w}')] = node_name
+                self._ring[self.hashi(f"{node_name}-{w}")] = node_name
         self._keys = sorted(self._ring.keys())
 
     def _remove_node(self, node_name):
@@ -44,10 +43,12 @@ class MetaRing(object):
         try:
             node_conf = self._nodes.pop(node_name)
         except Exception:
-            raise KeyError(f"node '{node_name}' not found, "
-                           f"available nodes: {list(self._nodes.keys())}")
+            raise KeyError(
+                f"node '{node_name}' not found, "
+                f"available nodes: {list(self._nodes.keys())}"
+            )
         else:
             self._distribution.pop(node_name)
-            for w in range(0, node_conf['vnodes'] * node_conf['weight']):
-                del self._ring[self.hashi(f'{node_name}-{w}')]
+            for w in range(0, node_conf["vnodes"] * node_conf["weight"]):
+                del self._ring[self.hashi(f"{node_name}-{w}")]
             self._keys = sorted(self._ring.keys())

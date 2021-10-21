@@ -30,15 +30,21 @@ class RunPyTorch(RunScript):
     _op_type_ = OperandDef.RUN_PYTORCH
 
     # used for chunk op
-    _master_port = Int32Field('master_port')
-    _master_addr = StringField('master_addr')
-    _rank = Int32Field('rank')
-    _init_method = StringField('init_method')
+    _master_port = Int32Field("master_port")
+    _master_addr = StringField("master_addr")
+    _rank = Int32Field("rank")
+    _init_method = StringField("init_method")
 
-    def __init__(self, master_port=None, master_addr=None, init_method=None,
-                 gpu=None, **kw):
-        super().__init__(_master_port=master_port, _master_addr=master_addr,
-                         _init_method=init_method, _gpu=gpu, **kw)
+    def __init__(
+        self, master_port=None, master_addr=None, init_method=None, gpu=None, **kw
+    ):
+        super().__init__(
+            _master_port=master_port,
+            _master_addr=master_addr,
+            _init_method=init_method,
+            _gpu=gpu,
+            **kw
+        )
 
     @property
     def master_port(self):
@@ -66,40 +72,45 @@ class RunPyTorch(RunScript):
             chunk_op.expect_worker = workers[i]
             if op.init_method is None:
                 chunk_op._master_port = op.master_port
-                chunk_op._master_addr = workers[0].split(':', 1)[0]
+                chunk_op._master_addr = workers[0].split(":", 1)[0]
             chunk_op._rank = i
             chunk_op._init_method = op.init_method
             out_chunks.append(chunk_op.new_chunk(input_chunks, index=(i,)))
 
         new_op = op.copy()
-        return new_op.new_tileables(op.inputs, chunks=out_chunks,
-                                    nsplits=(tuple(np.nan for _ in range(len(out_chunks))),))
+        return new_op.new_tileables(
+            op.inputs,
+            chunks=out_chunks,
+            nsplits=(tuple(np.nan for _ in range(len(out_chunks))),),
+        )
 
     @classmethod
     def _build_envs(cls, ctx, op):
         envs = super()._build_envs(ctx, op)
         if op.master_port is not None:
-            envs['MASTER_PORT'] = str(op.master_port)
+            envs["MASTER_PORT"] = str(op.master_port)
         if op.master_addr is not None:
-            envs['MASTER_ADDR'] = str(op.master_addr)
+            envs["MASTER_ADDR"] = str(op.master_addr)
         return envs
 
     @classmethod
     def execute(cls, ctx, op):
-        assert ctx.current_address.split(':')[0] == op.expect_worker.split(':')[0]
+        assert ctx.current_address.split(":")[0] == op.expect_worker.split(":")[0]
 
         super().execute(ctx, op)
 
 
-def run_pytorch_script(script: Union[bytes, str, BinaryIO, TextIO],
-                       n_workers: int,
-                       data: Dict[str, TileableType] = None,
-                       gpu: Optional[bool] = None,
-                       command_argv: List[str] = None,
-                       retry_when_fail: bool = False,
-                       session: SessionType = None,
-                       run_kwargs: Dict[str, Any] = None,
-                       port: int = None):
+def run_pytorch_script(
+    script: Union[bytes, str, BinaryIO, TextIO],
+    n_workers: int,
+    data: Dict[str, TileableType] = None,
+    gpu: Optional[bool] = None,
+    command_argv: List[str] = None,
+    retry_when_fail: bool = False,
+    session: SessionType = None,
+    run_kwargs: Dict[str, Any] = None,
+    port: int = None,
+):
     """
     Run PyTorch script in Mars cluster.
 
@@ -130,16 +141,22 @@ def run_pytorch_script(script: Union[bytes, str, BinaryIO, TextIO],
         return {'status': 'ok'} if succeeded, or error raised
     """
     if int(n_workers) <= 0:
-        raise ValueError('n_workers should be at least 1')
-    if hasattr(script, 'read'):
+        raise ValueError("n_workers should be at least 1")
+    if hasattr(script, "read"):
         code = script.read()
     else:
-        with open(os.path.abspath(script), 'rb') as f:
+        with open(os.path.abspath(script), "rb") as f:
             code = f.read()
 
     inputs = _extract_inputs(data)
     port = 29500 if port is None else port
-    op = RunPyTorch(data=data, code=to_binary(code),
-                    world_size=int(n_workers), retry_when_fail=retry_when_fail,
-                    gpu=gpu, master_port=port, command_args=command_argv)
+    op = RunPyTorch(
+        data=data,
+        code=to_binary(code),
+        world_size=int(n_workers),
+        retry_when_fail=retry_when_fail,
+        gpu=gpu,
+        master_port=port,
+        command_args=command_argv,
+    )
     return op(inputs).execute(session=session, **(run_kwargs or {}))

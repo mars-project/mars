@@ -14,16 +14,51 @@
 
 # noinspection PyUnresolvedReferences
 from ..typing import ChunkType, TileableType, EntityType, OperandType
-from .entity import Entity, EntityData, ENTITY_TYPE, \
-    Chunk, ChunkData, CHUNK_TYPE, \
-    Tileable, TileableData, TILEABLE_TYPE, \
-    Object, ObjectData, ObjectChunk, ObjectChunkData, OBJECT_TYPE, OBJECT_CHUNK_TYPE, \
-    FuseChunk, FuseChunkData, FUSE_CHUNK_TYPE, \
-    OutputType, register_output_types, get_output_types, \
-    register_fetch_class, get_fetch_class, get_tileable_types, get_chunk_types, \
-    HasShapeTileable, HasShapeTileableData, ExecutableTuple, _ExecuteAndFetchMixin, \
-    NotSupportTile, register, unregister, tile, recursive_tile
+from .entity import (
+    Entity,
+    EntityData,
+    ENTITY_TYPE,
+    Chunk,
+    ChunkData,
+    CHUNK_TYPE,
+    Tileable,
+    TileableData,
+    TILEABLE_TYPE,
+    Object,
+    ObjectData,
+    ObjectChunk,
+    ObjectChunkData,
+    OBJECT_TYPE,
+    OBJECT_CHUNK_TYPE,
+    FuseChunk,
+    FuseChunkData,
+    FUSE_CHUNK_TYPE,
+    OutputType,
+    register_output_types,
+    get_output_types,
+    register_fetch_class,
+    get_fetch_class,
+    get_tileable_types,
+    get_chunk_types,
+    HasShapeTileable,
+    HasShapeTileableData,
+    ExecutableTuple,
+    _ExecuteAndFetchMixin,
+    NotSupportTile,
+    register,
+    unregister,
+    tile,
+    recursive_tile,
+)
+
 # noinspection PyUnresolvedReferences
-from .graph import DirectedGraph, DAG, GraphContainsCycleError, \
-    TileableGraph, ChunkGraph, TileableGraphBuilder, ChunkGraphBuilder
+from .graph import (
+    DirectedGraph,
+    DAG,
+    GraphContainsCycleError,
+    TileableGraph,
+    ChunkGraph,
+    TileableGraphBuilder,
+    ChunkGraphBuilder,
+)
 from .mode import enter_mode, is_build_mode, is_eager_mode, is_kernel_mode

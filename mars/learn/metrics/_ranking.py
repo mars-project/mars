@@ -64,15 +64,18 @@ def auc(x, y, session=None, run_kwargs=None):
     y = column_or_1d(y)
 
     if x.shape[0] < 2:
-        raise ValueError('At least 2 points are needed to compute'
-                         f' area under curve, but x.shape = {x.shape}')
+        raise ValueError(
+            "At least 2 points are needed to compute"
+            f" area under curve, but x.shape = {x.shape}"
+        )
 
     direction = 1
     dx = mt.diff(x)
     any_dx_lt_0 = mt.any(dx < 0)
     all_dx_le_0 = mt.all(dx <= 0)
     mt.ExecutableTuple([x, any_dx_lt_0, all_dx_le_0]).execute(
-        session=session, **(run_kwargs or dict()))
+        session=session, **(run_kwargs or dict())
+    )
     if any_dx_lt_0.fetch(session=session):
         if all_dx_le_0.fetch(session=session):
             direction = -1
@@ -84,8 +87,9 @@ def auc(x, y, session=None, run_kwargs=None):
     return area.execute(session=session, **(run_kwargs or dict()))
 
 
-def _binary_clf_curve(y_true, y_score, pos_label=None, sample_weight=None,
-                      session=None, run_kwargs=None):
+def _binary_clf_curve(
+    y_true, y_score, pos_label=None, sample_weight=None, session=None, run_kwargs=None
+):
     """Calculate true and false positives per binary classification threshold.
 
     Parameters
@@ -119,10 +123,8 @@ def _binary_clf_curve(y_true, y_score, pos_label=None, sample_weight=None,
     thresholds : tensor, shape = [n_thresholds]
         Decreasing score values.
     """
-    y_type = type_of_target(y_true).to_numpy(
-        session=session, **(run_kwargs or dict()))
-    if not (y_type == "binary" or
-            (y_type == "multiclass" and pos_label is not None)):
+    y_type = type_of_target(y_true).to_numpy(session=session, **(run_kwargs or dict()))
+    if not (y_type == "binary" or (y_type == "multiclass" and pos_label is not None)):
         raise ValueError(f"{y_type} format is not supported")
 
     check_consistent_length(y_true, y_score, sample_weight)
@@ -139,24 +141,30 @@ def _binary_clf_curve(y_true, y_score, pos_label=None, sample_weight=None,
     # triggering a FutureWarning by calling np.array_equal(a, b)
     # when elements in the two arrays are not comparable.
     classes = mt.unique(y_true, aggregate_size=1).to_numpy(
-        session=session, **(run_kwargs or dict()))
-    if (pos_label is None and (
-            classes.dtype.kind in ('O', 'U', 'S') or
-            not (np.array_equal(classes, [0, 1]) or
-                 np.array_equal(classes, [-1, 1]) or
-                 np.array_equal(classes, [0]) or
-                 np.array_equal(classes, [-1]) or
-                 np.array_equal(classes, [1])))):
+        session=session, **(run_kwargs or dict())
+    )
+    if pos_label is None and (
+        classes.dtype.kind in ("O", "U", "S")
+        or not (
+            np.array_equal(classes, [0, 1])
+            or np.array_equal(classes, [-1, 1])
+            or np.array_equal(classes, [0])
+            or np.array_equal(classes, [-1])
+            or np.array_equal(classes, [1])
+        )
+    ):
         classes_repr = ", ".join(repr(c) for c in classes)
-        raise ValueError(f"y_true takes value in {{{classes_repr}}} and "
-                         "pos_label is not specified: either make y_true "
-                         "take value in {{0, 1}} or {{-1, 1}} or "
-                         "pass pos_label explicitly.")
+        raise ValueError(
+            f"y_true takes value in {{{classes_repr}}} and "
+            "pos_label is not specified: either make y_true "
+            "take value in {{0, 1}} or {{-1, 1}} or "
+            "pass pos_label explicitly."
+        )
     elif pos_label is None:
-        pos_label = 1.
+        pos_label = 1.0
 
     # make y_true a boolean vector
-    y_true = (y_true == pos_label)
+    y_true = y_true == pos_label
 
     # sort scores and corresponding truth values
     desc_score_indices = mt.argsort(y_score, kind="mergesort")[::-1]
@@ -165,7 +173,7 @@ def _binary_clf_curve(y_true, y_score, pos_label=None, sample_weight=None,
     if sample_weight is not None:
         weight = sample_weight[desc_score_indices]
     else:
-        weight = 1.
+        weight = 1.0
 
     # y_score typically has many tied values. Here we extract
     # the indices associated with the distinct values. We also
@@ -185,28 +193,41 @@ def _binary_clf_curve(y_true, y_score, pos_label=None, sample_weight=None,
     return ret.execute(session=session, **(run_kwargs or dict()))
 
 
-def _binary_roc_auc_score(y_true, y_score, sample_weight=None,
-                          max_fpr=None, session=None, run_kwargs=None):
+def _binary_roc_auc_score(
+    y_true, y_score, sample_weight=None, max_fpr=None, session=None, run_kwargs=None
+):
     """Binary roc auc score."""
 
     from numpy import interp
 
     if len(mt.unique(y_true).execute()) != 2:
-        raise ValueError("Only one class present in y_true. ROC AUC score "
-                         "is not defined in that case.")
+        raise ValueError(
+            "Only one class present in y_true. ROC AUC score "
+            "is not defined in that case."
+        )
 
-    fpr, tpr, _ = roc_curve(y_true, y_score, sample_weight=sample_weight,
-                            session=session, run_kwargs=run_kwargs)
+    fpr, tpr, _ = roc_curve(
+        y_true,
+        y_score,
+        sample_weight=sample_weight,
+        session=session,
+        run_kwargs=run_kwargs,
+    )
     fpr, tpr = mt.ExecutableTuple([fpr, tpr]).fetch(session=session)
 
     if max_fpr is None or max_fpr == 1:
-        return auc(fpr, tpr, session=session, run_kwargs=run_kwargs).fetch(session=session)
+        return auc(fpr, tpr, session=session, run_kwargs=run_kwargs).fetch(
+            session=session
+        )
     if max_fpr <= 0 or max_fpr > 1:
         raise ValueError(f"Expected max_fpr in range (0, 1], got: {max_fpr}")
 
     # Add a single point at max_fpr by linear interpolation
-    stop = mt.searchsorted(fpr, max_fpr, 'right').execute(
-        session=session, **(run_kwargs or dict())).fetch(session=session)
+    stop = (
+        mt.searchsorted(fpr, max_fpr, "right")
+        .execute(session=session, **(run_kwargs or dict()))
+        .fetch(session=session)
+    )
     x_interp = [fpr[stop - 1], fpr[stop]]
     y_interp = [tpr[stop - 1], tpr[stop]]
     tpr = list(tpr[:stop])
@@ -217,13 +238,22 @@ def _binary_roc_auc_score(y_true, y_score, sample_weight=None,
 
     # McClish correction: standardize result to be 0.5 if non-discriminant
     # and 1 if maximal
-    min_area = 0.5 * max_fpr**2
+    min_area = 0.5 * max_fpr ** 2
     max_area = max_fpr
-    return 0.5 * (1 + (partial_auc.fetch(session=session) - min_area) / (max_area - min_area))
+    return 0.5 * (
+        1 + (partial_auc.fetch(session=session) - min_area) / (max_area - min_area)
+    )
 
 
-def roc_curve(y_true, y_score, pos_label=None, sample_weight=None,
-              drop_intermediate=True, session=None, run_kwargs=None):
+def roc_curve(
+    y_true,
+    y_score,
+    pos_label=None,
+    sample_weight=None,
+    drop_intermediate=True,
+    session=None,
+    run_kwargs=None,
+):
     """Compute Receiver operating characteristic (ROC)
 
     Note: this implementation is restricted to the binary classification task.
@@ -309,8 +339,13 @@ def roc_curve(y_true, y_score, pos_label=None, sample_weight=None,
     from sklearn.exceptions import UndefinedMetricWarning
 
     fps, tps, thresholds = _binary_clf_curve(
-        y_true, y_score, pos_label=pos_label, sample_weight=sample_weight,
-        session=session, run_kwargs=run_kwargs)
+        y_true,
+        y_score,
+        pos_label=pos_label,
+        sample_weight=sample_weight,
+        session=session,
+        run_kwargs=run_kwargs,
+    )
 
     # Attempt to drop thresholds corresponding to points in between and
     # collinear with other points. These are always suboptimal and do not
@@ -322,10 +357,9 @@ def roc_curve(y_true, y_score, pos_label=None, sample_weight=None,
     # but does not drop more complicated cases like fps = [1, 3, 7],
     # tps = [1, 2, 4]; there is no harm in keeping too many thresholds.
     if drop_intermediate and len(fps) > 2:
-        optimal_idxs = mt.where(mt.r_[True,
-                                      mt.logical_or(mt.diff(fps, 2),
-                                                    mt.diff(tps, 2)),
-                                      True])[0]
+        optimal_idxs = mt.where(
+            mt.r_[True, mt.logical_or(mt.diff(fps, 2), mt.diff(tps, 2)), True]
+        )[0]
         fps = fps[optimal_idxs]
         tps = tps[optimal_idxs]
         thresholds = thresholds[optimal_idxs]
@@ -338,26 +372,32 @@ def roc_curve(y_true, y_score, pos_label=None, sample_weight=None,
 
     last_fps = fps[-1]
     last_tps = tps[-1]
-    mt.ExecutableTuple([tps, fps, last_fps, last_tps]).execute(session=session,
-                                                               **(run_kwargs or dict()))
+    mt.ExecutableTuple([tps, fps, last_fps, last_tps]).execute(
+        session=session, **(run_kwargs or dict())
+    )
     last_fps, last_tps = mt.ExecutableTuple([last_fps, last_tps]).fetch(session=session)
 
     if last_fps <= 0:
-        warnings.warn("No negative samples in y_true, "
-                      "false positive value should be meaningless",
-                      UndefinedMetricWarning)
+        warnings.warn(
+            "No negative samples in y_true, "
+            "false positive value should be meaningless",
+            UndefinedMetricWarning,
+        )
         fpr = mt.repeat(mt.nan, fps.shape)
     else:
         fpr = fps / last_fps
 
     if last_tps <= 0:
-        warnings.warn("No positive samples in y_true, "
-                      "true positive value should be meaningless",
-                      UndefinedMetricWarning)
+        warnings.warn(
+            "No positive samples in y_true, "
+            "true positive value should be meaningless",
+            UndefinedMetricWarning,
+        )
         tpr = mt.repeat(mt.nan, tps.shape)
     else:
         tpr = tps / last_tps
 
     ret = mt.ExecutableTuple([fpr, tpr, thresholds]).execute(
-        session=session, **(run_kwargs or dict()))
+        session=session, **(run_kwargs or dict())
+    )
     return ret

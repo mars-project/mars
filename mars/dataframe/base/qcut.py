@@ -24,7 +24,7 @@ from ..initializer import DataFrame, Series
 from .cut import cut
 
 
-def qcut(x, q, labels=None, retbins=False, precision=3, duplicate='raise'):
+def qcut(x, q, labels=None, retbins=False, precision=3, duplicate="raise"):
     """
     Quantile-based discretization function.
 
@@ -93,6 +93,12 @@ def qcut(x, q, labels=None, retbins=False, precision=3, duplicate='raise'):
             q = [iq * 100 for iq in q]
         bins = percentile(x, q)
 
-    return cut(x, bins, labels=labels, retbins=retbins,
-               precision=precision, include_lowest=True,
-               duplicates=duplicate)
+    return cut(
+        x,
+        bins,
+        labels=labels,
+        retbins=retbins,
+        precision=precision,
+        include_lowest=True,
+        duplicates=duplicate,
+    )

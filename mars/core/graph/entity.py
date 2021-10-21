@@ -81,18 +81,18 @@ class ChunkGraph(EntityGraph, Iterable[Chunk]):
 
 
 class SerializableGraph(Serializable):
-    _is_chunk = BoolField('is_chunk')
+    _is_chunk = BoolField("is_chunk")
     # TODO(qinxuye): remove this logic when we handle fetch elegantly,
     # now, the node in the graph and inputs for operand may be inconsistent,
     # for example, an operand's inputs may be chunks,
     # but in the graph, the predecessors are all fetch chunks,
     # we serialize the fetch chunks first to make sure when operand's inputs
     # are serialized, they will just be marked as serialized and skip serialization.
-    _fetch_nodes = ListField('fetch_nodes')
-    _nodes = DictField('nodes')
-    _predecessors = DictField('predecessors')
-    _successors = DictField('successors')
-    _results = ListField('results')
+    _fetch_nodes = ListField("fetch_nodes")
+    _nodes = DictField("nodes")
+    _predecessors = DictField("predecessors")
+    _successors = DictField("successors")
+    _results = ListField("results")
 
     @classmethod
     def from_graph(cls, graph: Union[TileableGraph, ChunkGraph]) -> "SerializableGraph":
@@ -101,12 +101,11 @@ class SerializableGraph(Serializable):
         is_chunk = isinstance(graph, ChunkGraph)
         return SerializableGraph(
             _is_chunk=is_chunk,
-            _fetch_nodes=[chunk for chunk in graph
-                          if isinstance(chunk.op, Fetch)],
+            _fetch_nodes=[chunk for chunk in graph if isinstance(chunk.op, Fetch)],
             _nodes=graph._nodes,
             _predecessors=graph._predecessors,
             _successors=graph._successors,
-            _results=graph.results
+            _results=graph.results,
         )
 
     def to_graph(self) -> Union[TileableGraph, ChunkGraph]:
@@ -119,17 +118,19 @@ class SerializableGraph(Serializable):
 
 
 class GraphSerializer(SerializableSerializer):
-    serializer_name = 'graph'
+    serializer_name = "graph"
 
     @buffered
     def serialize(self, obj: Union[TileableGraph, ChunkGraph], context: Dict):
         serializable_graph = SerializableGraph.from_graph(obj)
         return (yield from super().serialize(serializable_graph, context))
 
-    def deserialize(self, header: Dict, buffers: List, context: Dict) \
-            -> Union[TileableGraph, ChunkGraph]:
-        serializable_graph: SerializableGraph = \
-            (yield from super().deserialize(header, buffers, context))
+    def deserialize(
+        self, header: Dict, buffers: List, context: Dict
+    ) -> Union[TileableGraph, ChunkGraph]:
+        serializable_graph: SerializableGraph = (
+            yield from super().deserialize(header, buffers, context)
+        )
         return serializable_graph.to_graph()
 
 

@@ -20,7 +20,7 @@ from ...utils import ModulePlaceholder
 try:
     import dask
 except ImportError:
-    convert_dask_collection = mars_scheduler = ModulePlaceholder('dask')
+    convert_dask_collection = mars_scheduler = ModulePlaceholder("dask")
 else:
     from .converter import convert_dask_collection
     from .scheduler import mars_scheduler

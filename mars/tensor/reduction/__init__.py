@@ -47,19 +47,19 @@ def _install():
     from ..core import Tensor, TensorData
 
     for cls in (Tensor, TensorData):
-        setattr(cls, 'sum', sum)
-        setattr(cls, 'prod', prod)
-        setattr(cls, 'max', max)
-        setattr(cls, 'min', min)
-        setattr(cls, 'all', all)
-        setattr(cls, 'any', any)
-        setattr(cls, 'mean', mean)
-        setattr(cls, 'argmax', argmax)
-        setattr(cls, 'argmin', argmin)
-        setattr(cls, 'cumsum', cumsum)
-        setattr(cls, 'cumprod', cumprod)
-        setattr(cls, 'var', var)
-        setattr(cls, 'std', std)
+        setattr(cls, "sum", sum)
+        setattr(cls, "prod", prod)
+        setattr(cls, "max", max)
+        setattr(cls, "min", min)
+        setattr(cls, "all", all)
+        setattr(cls, "any", any)
+        setattr(cls, "mean", mean)
+        setattr(cls, "argmax", argmax)
+        setattr(cls, "argmin", argmin)
+        setattr(cls, "cumsum", cumsum)
+        setattr(cls, "cumprod", cumprod)
+        setattr(cls, "var", var)
+        setattr(cls, "std", std)
 
 
 _install()

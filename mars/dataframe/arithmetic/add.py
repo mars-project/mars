@@ -23,8 +23,8 @@ from .docstring import bin_arithmetic_doc
 class DataFrameAdd(DataFrameBinopUfunc):
     _op_type_ = OperandDef.ADD
 
-    _func_name = 'add'
-    _rfunc_name = 'radd'
+    _func_name = "add"
+    _rfunc_name = "radd"
 
     @classproperty
     def _operator(self):
@@ -33,6 +33,7 @@ class DataFrameAdd(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorAdd
+
         return TensorAdd
 
 
@@ -47,13 +48,13 @@ dtype: float64
 """
 
 
-@bin_arithmetic_doc('Addition', equiv='+', series_example=_add_example)
-def add(df, other, axis='columns', level=None, fill_value=None):
+@bin_arithmetic_doc("Addition", equiv="+", series_example=_add_example)
+def add(df, other, axis="columns", level=None, fill_value=None):
     op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
-@bin_arithmetic_doc('Addition', equiv='+', series_example=_add_example)
-def radd(df, other, axis='columns', level=None, fill_value=None):
+@bin_arithmetic_doc("Addition", equiv="+", series_example=_add_example)
+def radd(df, other, axis="columns", level=None, fill_value=None):
     op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)

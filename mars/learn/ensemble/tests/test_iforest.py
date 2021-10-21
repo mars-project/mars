@@ -20,7 +20,7 @@ from .... import tensor as mt
 from .._iforest import IsolationForest
 
 
-@pytest.mark.parametrize('max_samples', [0.5, 1.0, 10])
+@pytest.mark.parametrize("max_samples", [0.5, 1.0, 10])
 def test_iforest(setup, max_samples):
     rs = np.random.RandomState(0)
     raw_train = rs.poisson(size=(100, 10))
@@ -28,8 +28,7 @@ def test_iforest(setup, max_samples):
     raw_test = rs.poisson(size=(200, 10))
     t_test = mt.tensor(raw_test, chunk_size=20)
 
-    clf = IsolationForest(random_state=rs, n_estimators=10,
-                          max_samples=max_samples)
+    clf = IsolationForest(random_state=rs, n_estimators=10, max_samples=max_samples)
     clf.fit(t_train).predict(t_test)
     clf.score_samples(t_test)
 
@@ -38,7 +37,9 @@ def test_iforest(setup, max_samples):
 def test_iforest_works(setup, contamination):
     rs = np.random.RandomState(0)
     # toy sample (the last two samples are outliers)
-    raw = np.array([[-2, -1], [-1, -1], [-1, -2], [1, 1], [1, 2], [2, 1], [6, 3], [-4, 7]])
+    raw = np.array(
+        [[-2, -1], [-1, -1], [-1, -2], [1, 1], [1, 2], [2, 1], [6, 3], [-4, 7]]
+    )
     t = mt.tensor(raw, chunk_size=4)
 
     # Test IsolationForest

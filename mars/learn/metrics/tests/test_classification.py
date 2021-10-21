@@ -24,12 +24,12 @@ from .. import accuracy_score, log_loss
 from .._classification import _check_targets
 
 
-IND = 'multilabel-indicator'
-MC = 'multiclass'
-BIN = 'binary'
-CNT = 'continuous'
-MMC = 'multiclass-multioutput'
-MCN = 'continuous-multioutput'
+IND = "multilabel-indicator"
+MC = "multiclass"
+BIN = "binary"
+CNT = "continuous"
+MMC = "multiclass-multioutput"
+MCN = "continuous-multioutput"
 # all of length 3
 EXAMPLES = [
     (IND, np.array([[0, 1, 1], [1, 0, 0], [0, 0, 1]])),
@@ -37,12 +37,12 @@ EXAMPLES = [
     (IND, np.array([[0, 1], [1, 0], [1, 1]])),
     (MC, [2, 3, 1]),
     (BIN, [0, 1, 1]),
-    (CNT, [0., 1.5, 1.]),
+    (CNT, [0.0, 1.5, 1.0]),
     (MC, np.array([[2], [3], [1]])),
     (BIN, np.array([[0], [1], [1]])),
-    (CNT, np.array([[0.], [1.5], [1.]])),
+    (CNT, np.array([[0.0], [1.5], [1.0]])),
     (MMC, np.array([[0, 2], [1, 3], [2, 3]])),
-    (MCN, np.array([[0.5, 2.], [1.1, 3.], [2., 3.]])),
+    (MCN, np.array([[0.5, 2.0], [1.1, 3.0], [2.0, 3.0]])),
 ]
 # expected type given input types, or None for error
 # (types will be tried in either order)
@@ -50,11 +50,9 @@ EXPECTED = {
     (IND, IND): IND,
     (MC, MC): MC,
     (BIN, BIN): BIN,
-
     (MC, IND): None,
     (BIN, IND): None,
     (BIN, MC): MC,
-
     # Disallowed types
     (CNT, CNT): None,
     (MMC, MMC): None,
@@ -74,8 +72,8 @@ EXPECTED = {
 }
 
 
-@pytest.mark.parametrize('type1, y1', EXAMPLES)
-@pytest.mark.parametrize('type2, y2', EXAMPLES)
+@pytest.mark.parametrize("type1, y1", EXAMPLES)
+@pytest.mark.parametrize("type2, y2", EXAMPLES)
 def test__check_targets(setup, type1, y1, type2, y2):
     # Check that _check_targets correctly merges target types, squeezes
     # output and fails if input lengths differ.
@@ -97,10 +95,9 @@ def test__check_targets(setup, type1, y1, type2, y2):
                     _check_targets(y1, y2).execute()
 
     else:
-        merged_type, y1out, y2out = \
-            _check_targets(y1, y2).execute().fetch()
+        merged_type, y1out, y2out = _check_targets(y1, y2).execute().fetch()
         assert merged_type == expected
-        if merged_type.startswith('multilabel'):
+        if merged_type.startswith("multilabel"):
             assert isinstance(y1out, SparseNDArray)
             assert isinstance(y2out, SparseNDArray)
         else:
@@ -137,19 +134,25 @@ def test_accuracy_score(setup):
     expected = sklearn_accuracy_score(y_true, y_pred, sample_weight=sample_weight)
     assert pytest.approx(result) == expected
 
-    score = accuracy_score(mt.tensor(y_true), mt.tensor(y_pred),
-                           sample_weight=mt.tensor(sample_weight), normalize=False)
+    score = accuracy_score(
+        mt.tensor(y_true),
+        mt.tensor(y_pred),
+        sample_weight=mt.tensor(sample_weight),
+        normalize=False,
+    )
     result = score.execute().fetch()
-    expected = sklearn_accuracy_score(y_true, y_pred, sample_weight=sample_weight,
-                                      normalize=False)
+    expected = sklearn_accuracy_score(
+        y_true, y_pred, sample_weight=sample_weight, normalize=False
+    )
     assert pytest.approx(result) == expected
 
 
 def test_log_loss(setup):
     # binary case with symbolic labels ("no" < "yes")
     y_true = ["no", "no", "no", "yes", "yes", "yes"]
-    y_pred = mt.array([[0.5, 0.5], [0.1, 0.9], [0.01, 0.99],
-                       [0.9, 0.1], [0.75, 0.25], [0.001, 0.999]])
+    y_pred = mt.array(
+        [[0.5, 0.5], [0.1, 0.9], [0.01, 0.99], [0.9, 0.1], [0.75, 0.25], [0.001, 0.999]]
+    )
     loss = log_loss(y_true, y_pred).fetch()
     assert_almost_equal(loss, 1.8817971)
 
@@ -167,9 +170,9 @@ def test_log_loss(setup):
     assert_almost_equal(loss, 0.6904911 * 6, decimal=6)
 
     # check eps and handling of absolute zero and one probabilities
-    y_pred = np.asarray(y_pred) > .5
-    loss = log_loss(y_true, y_pred, normalize=True, eps=.1).fetch()
-    assert_almost_equal(loss, log_loss(y_true, np.clip(y_pred, .1, .9)).fetch())
+    y_pred = np.asarray(y_pred) > 0.5
+    loss = log_loss(y_true, y_pred, normalize=True, eps=0.1).fetch()
+    assert_almost_equal(loss, log_loss(y_true, np.clip(y_pred, 0.1, 0.9)).fetch())
 
     # raise error if number of classes are not equal.
     y_true = [1, 0, 2]
@@ -190,12 +193,16 @@ def test_log_loss(setup):
     y_true = [2, 2]
     y_pred = [[0.2, 0.7], [0.6, 0.5]]
     y_score = np.array([[0.1, 0.9], [0.1, 0.9]])
-    error_str = (r'y_true contains only one label \(2\). Please provide '
-                 r'the true labels explicitly through the labels argument.')
+    error_str = (
+        r"y_true contains only one label \(2\). Please provide "
+        r"the true labels explicitly through the labels argument."
+    )
     with pytest.raises(ValueError, match=error_str):
         log_loss(y_true, y_pred)
-    error_str = (r'The labels array needs to contain at least two '
-                 r'labels for log_loss, got \[1\].')
+    error_str = (
+        r"The labels array needs to contain at least two "
+        r"labels for log_loss, got \[1\]."
+    )
     with pytest.raises(ValueError, match=error_str):
         log_loss(y_true, y_pred, labels=[1])
 
@@ -219,6 +226,7 @@ def test_log_loss_pandas_input(setup):
     types = [(MockDataFrame, MockDataFrame)]
     try:
         from pandas import Series, DataFrame
+
         types.append((Series, DataFrame))
     except ImportError:
         pass

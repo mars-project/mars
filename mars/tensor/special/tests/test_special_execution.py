@@ -21,17 +21,20 @@ from ... import tensor
 from ... import special as mt_special
 
 
-@pytest.mark.parametrize('func', [
-    'gamma',
-    'gammaln',
-    'loggamma',
-    'gammasgn',
-    'psi',
-    'rgamma',
-    'digamma',
-    'erf',
-    'entr',
-])
+@pytest.mark.parametrize(
+    "func",
+    [
+        "gamma",
+        "gammaln",
+        "loggamma",
+        "gammasgn",
+        "psi",
+        "rgamma",
+        "digamma",
+        "erf",
+        "entr",
+    ],
+)
 def test_unary_execution(setup, func):
     sp_func = getattr(spspecial, func)
     mt_func = getattr(mt_special, func)
@@ -60,34 +63,37 @@ def test_unary_execution(setup, func):
     np.testing.assert_array_equal(result.toarray(), expected.toarray())
 
 
-@pytest.mark.parametrize('func', [
-    'gammainc',
-    'gammaincinv',
-    'gammaincc',
-    'gammainccinv',
-    'beta',
-    'betaln',
-    'polygamma',
-    'poch',
-    'rel_entr',
-    'kl_div',
-    'xlogy',
-    'jv',
-    'jve',
-    'yn',
-    'yv',
-    'yve',
-    'kn',
-    'kv',
-    'kve',
-    'iv',
-    'ive',
-    'hankel1',
-    'hankel1e',
-    'hankel2',
-    'hankel2e',
-    'hyp0f1'
-])
+@pytest.mark.parametrize(
+    "func",
+    [
+        "gammainc",
+        "gammaincinv",
+        "gammaincc",
+        "gammainccinv",
+        "beta",
+        "betaln",
+        "polygamma",
+        "poch",
+        "rel_entr",
+        "kl_div",
+        "xlogy",
+        "jv",
+        "jve",
+        "yn",
+        "yv",
+        "yve",
+        "kn",
+        "kv",
+        "kve",
+        "iv",
+        "ive",
+        "hankel1",
+        "hankel1e",
+        "hankel2",
+        "hankel2e",
+        "hyp0f1",
+    ],
+)
 def test_binary_execution(setup, func):
     sp_func = getattr(spspecial, func)
     mt_func = getattr(mt_special, func)
@@ -118,12 +124,7 @@ def test_binary_execution(setup, func):
     np.testing.assert_array_equal(result.toarray(), expected)
 
 
-@pytest.mark.parametrize('func', [
-    'betainc',
-    'betaincinv',
-    'hyp1f1',
-    'hyperu',
-])
+@pytest.mark.parametrize("func", ["betainc", "betaincinv", "hyp1f1", "hyperu"])
 def test_triple_execution(setup, func):
     sp_func = getattr(spspecial, func)
     mt_func = getattr(mt_special, func)
@@ -158,9 +159,7 @@ def test_triple_execution(setup, func):
     np.testing.assert_array_equal(result.toarray(), expected)
 
 
-@pytest.mark.parametrize('func', [
-    'hyp2f1',
-])
+@pytest.mark.parametrize("func", ["hyp2f1"])
 def test_quadruple_execution(setup, func):
     sp_func = getattr(spspecial, func)
     mt_func = getattr(mt_special, func)

@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorArccosh(TensorUnaryOp):
     _op_type_ = OperandDef.ARCCOSH
-    _func_name = 'arccosh'
+    _func_name = "arccosh"
 
 
 @infer_dtype(np.arccosh)

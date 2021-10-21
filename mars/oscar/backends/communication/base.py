@@ -20,24 +20,24 @@ from ....utils import classproperty, implements
 
 
 class ChannelType(Enum):
-    local = 0   # for local communication
-    ipc = 1     # inproc
+    local = 0  # for local communication
+    ipc = 1  # inproc
     remote = 2  # remote
-    ray = 3     # for ray actors communication
+    ray = 3  # for ray actors communication
 
 
 class Channel(ABC):
     """
     Channel is used to do data exchange between server and client.
     """
-    __slots__ = 'local_address', 'dest_address', 'compression'
+
+    __slots__ = "local_address", "dest_address", "compression"
 
     name = None
 
-    def __init__(self,
-                 local_address: str = None,
-                 dest_address: str = None,
-                 compression=None):
+    def __init__(
+        self, local_address: str = None, dest_address: str = None, compression=None
+    ):
         self.local_address = local_address
         self.dest_address = dest_address
         self.compression = compression
@@ -93,22 +93,22 @@ class Channel(ABC):
     @property
     def info(self) -> Dict:
         return {
-            'name': self.name,
-            'compression': self.compression,
-            'type': self.type,
-            'local_address': self.local_address,
-            'dest_address': self.dest_address
+            "name": self.name,
+            "compression": self.compression,
+            "type": self.type,
+            "local_address": self.local_address,
+            "dest_address": self.dest_address,
         }
 
 
 class Server(ABC):
-    __slots__ = 'address', 'channel_handler'
+    __slots__ = "address", "channel_handler"
 
     scheme = None
 
-    def __init__(self,
-                 address: str,
-                 channel_handler: Callable[[Channel], Coroutine] = None):
+    def __init__(
+        self, address: str, channel_handler: Callable[[Channel], Coroutine] = None
+    ):
         self.address = address
         self.channel_handler = channel_handler
 
@@ -197,9 +197,9 @@ class Server(ABC):
     @property
     def info(self) -> Dict:
         return {
-            'name': self.scheme,
-            'address': self.address,
-            'channel_type': self.channel_type
+            "name": self.scheme,
+            "address": self.address,
+            "channel_type": self.channel_type,
         }
 
     async def __aenter__(self):
@@ -211,14 +211,11 @@ class Server(ABC):
 
 
 class Client(ABC):
-    __slots__ = 'local_address', 'dest_address', 'channel'
+    __slots__ = "local_address", "dest_address", "channel"
 
     scheme = None
 
-    def __init__(self,
-                 local_address: str,
-                 dest_address: str,
-                 channel: Channel):
+    def __init__(self, local_address: str, dest_address: str, channel: Channel):
         self.local_address = local_address
         self.dest_address = dest_address
         self.channel = channel
@@ -237,8 +234,9 @@ class Client(ABC):
 
     @staticmethod
     @abstractmethod
-    async def connect(dest_address: str, local_address: str = None,
-                      **kwargs) -> "Client":
+    async def connect(
+        dest_address: str, local_address: str = None, **kwargs
+    ) -> "Client":
         """
         Create a client that is able to connect to some server.
 
@@ -284,10 +282,10 @@ class Client(ABC):
     @property
     def info(self) -> Dict:
         return {
-            'local_address': self.local_address,
-            'dest_address': self.dest_address,
-            'channel_name': self.channel.name,
-            'channel_type': self.channel_type
+            "local_address": self.local_address,
+            "dest_address": self.dest_address,
+            "channel_name": self.channel.name,
+            "channel_type": self.channel_type,
         }
 
     async def __aenter__(self):

@@ -23,8 +23,8 @@ from .core import TensorRandomOperandMixin, TensorDistribution
 
 class TensorStandardExponential(TensorDistribution, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_STANDARD_EXPONENTIAL
-    _func_name = 'standard_exponential'
-    _fields_ = '_size',
+    _func_name = "standard_exponential"
+    _fields_ = ("_size",)
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -34,7 +34,9 @@ class TensorStandardExponential(TensorDistribution, TensorRandomOperandMixin):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)
 
 
-def standard_exponential(random_state, size=None, chunk_size=None, gpu=None, dtype=None):
+def standard_exponential(
+    random_state, size=None, chunk_size=None, gpu=None, dtype=None
+):
     """
     Draw samples from the standard exponential distribution.
 

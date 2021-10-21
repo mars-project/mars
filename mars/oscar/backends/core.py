@@ -17,8 +17,7 @@ from typing import Dict, Union
 
 from ..errors import ServerClosed
 from .communication import Client
-from .message import _MessageBase, ResultMessage, ErrorMessage, \
-    DeserializeMessageFailed
+from .message import _MessageBase, ResultMessage, ErrorMessage, DeserializeMessageFailed
 from .router import Router
 
 
@@ -26,18 +25,16 @@ result_message_type = Union[ResultMessage, ErrorMessage]
 
 
 class ActorCaller:
-    __slots__ = '_client_to_message_futures', '_clients'
+    __slots__ = "_client_to_message_futures", "_clients"
 
     def __init__(self):
-        self._client_to_message_futures: \
-            Dict[Client, Dict[bytes, asyncio.Future]] = dict()
+        self._client_to_message_futures: Dict[
+            Client, Dict[bytes, asyncio.Future]
+        ] = dict()
         self._clients: Dict[Client, asyncio.Task] = dict()
 
-    async def get_client(self,
-                         router: Router,
-                         dest_address: str) -> Client:
-        client = await router.get_client(dest_address,
-                                         from_who=self)
+    async def get_client(self, router: Router, dest_address: str) -> Client:
+        client = await router.get_client(dest_address, from_who=self)
         if client not in self._clients:
             self._clients[client] = asyncio.create_task(self._listen(client))
             self._client_to_message_futures[client] = dict()
@@ -55,7 +52,9 @@ class ActorCaller:
                     except (ConnectionError, BrokenPipeError):
                         # close failed, ignore it
                         pass
-                    raise ServerClosed(f'Remote server {client.dest_address} closed') from None
+                    raise ServerClosed(
+                        f"Remote server {client.dest_address} closed"
+                    ) from None
                 future = self._client_to_message_futures[client].pop(message.message_id)
                 future.set_result(message)
             except DeserializeMessageFailed as e:  # pragma: no cover
@@ -70,16 +69,17 @@ class ActorCaller:
 
         message_futures = self._client_to_message_futures.get(client)
         self._client_to_message_futures[client] = dict()
-        error = ServerClosed(f'Remote server {client.dest_address} closed')
+        error = ServerClosed(f"Remote server {client.dest_address} closed")
         for future in message_futures.values():
             future.set_exception(error)
 
-    async def call(self,
-                   router: Router,
-                   dest_address: str,
-                   message: _MessageBase,
-                   wait: bool = True) \
-            -> Union[ResultMessage, ErrorMessage, asyncio.Future]:
+    async def call(
+        self,
+        router: Router,
+        dest_address: str,
+        message: _MessageBase,
+        wait: bool = True,
+    ) -> Union[ResultMessage, ErrorMessage, asyncio.Future]:
         client = await self.get_client(router, dest_address)
         loop = asyncio.get_running_loop()
         wait_response = loop.create_future()
@@ -93,7 +93,7 @@ class ActorCaller:
             except ConnectionError:
                 # close failed, ignore it
                 pass
-            raise ServerClosed(f'Remote server {client.dest_address} closed')
+            raise ServerClosed(f"Remote server {client.dest_address} closed")
 
         if not wait:
             return wait_response

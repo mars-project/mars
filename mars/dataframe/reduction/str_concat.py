@@ -20,10 +20,10 @@ from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 class DataFrameStrConcat(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.STR_CONCAT
-    _func_name = 'str_concat'
+    _func_name = "str_concat"
 
-    _sep = StringField('sep')
-    _na_rep = StringField('na_rep')
+    _sep = StringField("sep")
+    _na_rep = StringField("na_rep")
 
     def __init__(self, sep=None, na_rep=None, **kw):
         super().__init__(_sep=sep, _na_rep=na_rep, **kw)

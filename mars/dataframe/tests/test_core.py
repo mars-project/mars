@@ -22,32 +22,32 @@ from ...lib.version import parse as parse_version
 from .. import cut
 from ..initializer import DataFrame, Series, Index
 
-_with_inclusive_bounds = parse_version(pd.__version__) >= parse_version('1.3.0')
+_with_inclusive_bounds = parse_version(pd.__version__) >= parse_version("1.3.0")
 
 
 def test_dataframe_params():
-    raw = pd.DataFrame({'a': [1, 2, 3]})
+    raw = pd.DataFrame({"a": [1, 2, 3]})
     df = DataFrame(raw)
-    df = df[df['a'] < 2]
+    df = df[df["a"] < 2]
     df = tile(df)
     c = df.chunks[0]
 
-    assert any(np.isnan(s) for s in c.params['shape'])
-    assert np.isnan(c.params['index_value'].min_val)
-    c.params = c.get_params_from_data(raw[raw['a'] < 2])
+    assert any(np.isnan(s) for s in c.params["shape"])
+    assert np.isnan(c.params["index_value"].min_val)
+    c.params = c.get_params_from_data(raw[raw["a"] < 2])
     # shape and index_value updated
-    assert not any(np.isnan(s) for s in c.params['shape'])
-    assert not np.isnan(c.params['index_value'].min_val)
+    assert not any(np.isnan(s) for s in c.params["shape"])
+    assert not np.isnan(c.params["index_value"].min_val)
 
     params = c.params.copy()
-    params.pop('index', None)
+    params.pop("index", None)
     df.params = params
     assert np.prod(df.shape) > 0
     df.refresh_params()
 
 
 def test_series_params():
-    raw = pd.Series([1, 2, 3], name='a')
+    raw = pd.Series([1, 2, 3], name="a")
     series = Series(raw)
     series = series[series < 2]
     series = tile(series)
@@ -55,23 +55,23 @@ def test_series_params():
 
     assert series.T is series
 
-    assert any(np.isnan(s) for s in c.params['shape'])
-    assert np.isnan(c.params['index_value'].min_val)
+    assert any(np.isnan(s) for s in c.params["shape"])
+    assert np.isnan(c.params["index_value"].min_val)
     c.params = c.get_params_from_data(raw[raw < 2])
     # shape and index_value updated
-    assert not any(np.isnan(s) for s in c.params['shape'])
-    assert not np.isnan(c.params['index_value'].min_val)
+    assert not any(np.isnan(s) for s in c.params["shape"])
+    assert not np.isnan(c.params["index_value"].min_val)
 
     params = c.params.copy()
-    params.pop('index', None)
+    params.pop("index", None)
     series.params = params
     assert np.prod(series.shape) > 0
     series.refresh_params()
 
 
 def test_index_params():
-    raw = pd.Series([1, 2, 3], name='a')
-    raw.index.name = 'b'
+    raw = pd.Series([1, 2, 3], name="a")
+    raw.index.name = "b"
     series = Series(raw)
     series = series[series < 2]
     index = series.index
@@ -80,15 +80,15 @@ def test_index_params():
 
     assert index.T is index
 
-    assert any(np.isnan(s) for s in c.params['shape'])
-    assert np.isnan(c.params['index_value'].min_val)
+    assert any(np.isnan(s) for s in c.params["shape"])
+    assert np.isnan(c.params["index_value"].min_val)
     c.params = c.get_params_from_data(raw[raw < 2].index)
     # shape and index_value updated
-    assert not any(np.isnan(s) for s in c.params['shape'])
-    assert not np.isnan(c.params['index_value'].min_val)
+    assert not any(np.isnan(s) for s in c.params["shape"])
+    assert not np.isnan(c.params["index_value"].min_val)
 
     params = c.params.copy()
-    params.pop('index', None)
+    params.pop("index", None)
     index.params = params
     assert np.prod(index.shape) > 0
     index.refresh_params()
@@ -101,28 +101,28 @@ def test_categorical_params():
     c = cate.chunks[0]
 
     c.params = c.get_params_from_data(pd.cut(raw, [0.3, 0.5, 0.7]))
-    assert len(c.params['categories_value'].to_pandas()) > 0
+    assert len(c.params["categories_value"].to_pandas()) > 0
 
     params = c.params.copy()
-    params.pop('index', None)
+    params.pop("index", None)
     cate.params = params
-    assert len(cate.params['categories_value'].to_pandas()) > 0
+    assert len(cate.params["categories_value"].to_pandas()) > 0
     cate.refresh_params()
 
 
 def test_groupby_params():
-    raw = pd.DataFrame({'a': [1, 2, 3]})
+    raw = pd.DataFrame({"a": [1, 2, 3]})
     df = DataFrame(raw)
-    grouped = df.groupby('a')
+    grouped = df.groupby("a")
     grouped = tile(grouped)
     c = grouped.chunks[0]
 
-    c.params = c.get_params_from_data(wrapped_groupby(raw, by='a'))
+    c.params = c.get_params_from_data(wrapped_groupby(raw, by="a"))
     params = c.params.copy()
-    params.pop('index', None)
+    params.pop("index", None)
     grouped.params = params
 
-    raw = pd.Series([1, 2, 3], name='a')
+    raw = pd.Series([1, 2, 3], name="a")
     series = Series(raw)
     grouped = series.groupby(level=0)
     grouped = tile(grouped)
@@ -130,36 +130,36 @@ def test_groupby_params():
 
     c.params = c.get_params_from_data(wrapped_groupby(raw, level=0))
     params = c.params.copy()
-    params.pop('index', None)
+    params.pop("index", None)
     grouped.params = params
     grouped.refresh_params()
 
 
 def test_dataframe_dir():
-    df = DataFrame(pd.DataFrame(np.random.rand(4, 3), columns=list('ABC')))
+    df = DataFrame(pd.DataFrame(np.random.rand(4, 3), columns=list("ABC")))
     dir_result = set(dir(df))
     for c in df.dtypes.index:
         assert c in dir_result
 
 
 def test_to_frame_or_series(setup):
-    raw = pd.Series(np.random.rand(10), name='col')
+    raw = pd.Series(np.random.rand(10), name="col")
     series = Series(raw)
 
     r = series.to_frame()
     result = r.execute().fetch()
     pd.testing.assert_frame_equal(raw.to_frame(), result)
 
-    r = series.to_frame(name='new_name')
+    r = series.to_frame(name="new_name")
     result = r.execute().fetch()
-    pd.testing.assert_frame_equal(raw.to_frame(name='new_name'), result)
+    pd.testing.assert_frame_equal(raw.to_frame(name="new_name"), result)
 
     series = series[series > 0.1]
-    r = series.to_frame(name='new_name')
+    r = series.to_frame(name="new_name")
     result = r.execute().fetch()
-    pd.testing.assert_frame_equal(raw[raw > 0.1].to_frame(name='new_name'), result)
+    pd.testing.assert_frame_equal(raw[raw > 0.1].to_frame(name="new_name"), result)
 
-    raw = pd.Index(np.random.rand(10), name='col')
+    raw = pd.Index(np.random.rand(10), name="col")
     index = Index(raw)
 
     r = index.to_frame()
@@ -170,9 +170,9 @@ def test_to_frame_or_series(setup):
     result = r.execute().fetch()
     pd.testing.assert_frame_equal(raw.to_frame(index=False), result)
 
-    r = index.to_frame(name='new_name')
+    r = index.to_frame(name="new_name")
     result = r.execute().fetch()
-    pd.testing.assert_frame_equal(raw.to_frame(name='new_name'), result)
+    pd.testing.assert_frame_equal(raw.to_frame(name="new_name"), result)
 
     r = index.to_series()
     result = r.execute().fetch()
@@ -182,11 +182,11 @@ def test_to_frame_or_series(setup):
     result = r.execute().fetch()
     pd.testing.assert_series_equal(raw.to_series(index=pd.RangeIndex(0, 10)), result)
 
-    r = index.to_series(name='new_name')
+    r = index.to_series(name="new_name")
     result = r.execute().fetch()
-    pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
+    pd.testing.assert_series_equal(raw.to_series(name="new_name"), result)
 
-    raw = pd.MultiIndex.from_tuples([('A', 'E'), ('B', 'F'), ('C', 'G')])
+    raw = pd.MultiIndex.from_tuples([("A", "E"), ("B", "F"), ("C", "G")])
     index = Index(raw, tupleize_cols=True)
 
     r = index.to_frame()
@@ -194,47 +194,55 @@ def test_to_frame_or_series(setup):
     pd.testing.assert_frame_equal(raw.to_frame(), result)
 
     with pytest.raises(TypeError):
-        index.to_frame(name='XY')
+        index.to_frame(name="XY")
 
     with pytest.raises(ValueError):
-        index.to_frame(name=['X', 'Y', 'Z'])
+        index.to_frame(name=["X", "Y", "Z"])
 
-    r = index.to_frame(name=['X', 'Y'])
+    r = index.to_frame(name=["X", "Y"])
     result = r.execute().fetch()
-    pd.testing.assert_frame_equal(raw.to_frame(name=['X', 'Y']), result)
+    pd.testing.assert_frame_equal(raw.to_frame(name=["X", "Y"]), result)
 
-    r = index.to_series(name='new_name')
+    r = index.to_series(name="new_name")
     result = r.execute().fetch()
-    pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
+    pd.testing.assert_series_equal(raw.to_series(name="new_name"), result)
 
 
 def test_to_frame_or_series_apply(setup):
-    df1 = DataFrame(pd.DataFrame([[0, 1], [2, 3]], columns=['col1', 'col2']))
-    df2 = df1.append(DataFrame(pd.DataFrame(columns=['col1', 'col2'])))
-    pd_df2 = df2.apply(lambda row: pd.Series([1, 2], index=['c', 'd']), axis=1).to_pandas()
-    assert pd_df2.columns.tolist() == ['c', 'd']
+    df1 = DataFrame(pd.DataFrame([[0, 1], [2, 3]], columns=["col1", "col2"]))
+    df2 = df1.append(DataFrame(pd.DataFrame(columns=["col1", "col2"])))
+    pd_df2 = df2.apply(
+        lambda row: pd.Series([1, 2], index=["c", "d"]), axis=1
+    ).to_pandas()
+    assert pd_df2.columns.tolist() == ["c", "d"]
 
     def f(df):
-        df['col3'] = df['col2']
+        df["col3"] = df["col2"]
         return df
 
-    pd_df3 = df2.groupby(['col1']).apply(f).to_pandas()
-    assert pd_df3.columns.tolist() == ['col1', 'col2', 'col3']
+    pd_df3 = df2.groupby(["col1"]).apply(f).to_pandas()
+    assert pd_df3.columns.tolist() == ["col1", "col2", "col3"]
 
-    pd_df4 = df2.map_chunk(lambda chunk_df: chunk_df.apply(
-        lambda row: pd.Series([1, 2], index=['c', 'd']), axis=1)).to_pandas()
-    assert pd_df4.columns.tolist() == ['c', 'd']
+    pd_df4 = df2.map_chunk(
+        lambda chunk_df: chunk_df.apply(
+            lambda row: pd.Series([1, 2], index=["c", "d"]), axis=1
+        )
+    ).to_pandas()
+    assert pd_df4.columns.tolist() == ["c", "d"]
 
-    ser1 = Series(pd.Series(data={'a': 1, 'b': 2, 'c': 3}, index=['a', 'b', 'c']))
+    ser1 = Series(pd.Series(data={"a": 1, "b": 2, "c": 3}, index=["a", "b", "c"]))
     ser2 = ser1.append(Series(pd.Series(dtype=np.int64)))
     pd_ser2 = ser2.apply(lambda v: str(v)).execute()
     assert pd_ser2.dtype == object
 
-    ser3 = ser2.map_chunk(lambda chunk_series: chunk_series.apply(lambda x: float(x))).execute()
+    ser3 = ser2.map_chunk(
+        lambda chunk_series: chunk_series.apply(lambda x: float(x))
+    ).execute()
 
     def check_dtype(s):
         assert s.dtypes == np.float64
         return s
+
     ser3.map_chunk(check_dtype).execute()
 
 
@@ -261,14 +269,14 @@ def test_assign(setup):
     # multiple
     row_list = rs.rand(10).tolist()
     result = df.assign(C=row_list, D=df.A, E=lambda x: x.B)
-    result['C'] = result['C'].astype('int64')
+    result["C"] = result["C"].astype("int64")
     expected = raw.assign(C=row_list, D=raw.A, E=lambda x: x.B)
-    expected['C'] = expected['C'].astype('int64')
+    expected["C"] = expected["C"].astype("int64")
     pd.testing.assert_frame_equal(result.execute().fetch(), expected)
 
 
 def test_key_value(setup):
-    raw = pd.DataFrame(np.random.rand(4, 3), columns=list('ABC'))
+    raw = pd.DataFrame(np.random.rand(4, 3), columns=list("ABC"))
     df = DataFrame(raw)
 
     result = df.values.execute().fetch()
@@ -333,8 +341,11 @@ def test_between(setup):
     expected = pd_series[3:18].dropna()
     pd.testing.assert_series_equal(result, expected)
 
-    result = series[series.between(series[3], series[17], inclusive="neither")] \
-        .execute().fetch()
+    result = (
+        series[series.between(series[3], series[17], inclusive="neither")]
+        .execute()
+        .fetch()
+    )
     expected = pd_series[5:16].dropna()
     pd.testing.assert_series_equal(result, expected)
 

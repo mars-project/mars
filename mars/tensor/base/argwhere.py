@@ -30,7 +30,7 @@ from .ravel import ravel
 class TensorArgwhere(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.ARGWHERE
 
-    _input = KeyField('input')
+    _input = KeyField("input")
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -65,13 +65,22 @@ class TensorArgwhere(TensorHasInput, TensorOperandMixin):
             dim_ind_chunk = dim_indices[out_index[1]].chunks[out_index[0]]
             chunk_shape = dim_ind_chunk.shape + (1,)
             chunk_op = TensorReshape(newshape=(-1, 1), dtype=dim_ind_chunk.dtype)
-            out_chunk = chunk_op.new_chunk([dim_ind_chunk], shape=chunk_shape, index=out_index,
-                                           order=out_tensor.order)
+            out_chunk = chunk_op.new_chunk(
+                [dim_ind_chunk],
+                shape=chunk_shape,
+                index=out_index,
+                order=out_tensor.order,
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, out_tensor.shape, order=out_tensor.order,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            out_tensor.shape,
+            order=out_tensor.order,
+            chunks=out_chunks,
+            nsplits=nsplits,
+        )
 
 
 def argwhere(a):
@@ -114,6 +123,6 @@ def argwhere(a):
            [1, 2]])
 
     """
-    a = astensor(a).astype(bool, order='A')
+    a = astensor(a).astype(bool, order="A")
     op = TensorArgwhere(dtype=np.dtype(np.intp))
     return op(a)

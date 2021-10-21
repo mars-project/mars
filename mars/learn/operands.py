@@ -13,13 +13,20 @@
 # limitations under the License.
 
 from ..core import OutputType
-from ..core.operand import Operand, TileableOperandMixin, Fuse, FuseChunkMixin, \
-    ShuffleProxy
+from ..core.operand import (
+    Operand,
+    TileableOperandMixin,
+    Fuse,
+    FuseChunkMixin,
+    ShuffleProxy,
+)
 from ..tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ..tensor.operands import TensorOperandMixin
 from ..tensor.fuse import TensorFuseChunk
-from ..dataframe.core import TILEABLE_TYPE as DATAFRAME_TYPE, \
-    CHUNK_TYPE as DATAFRAME_CHUNK_TYPE
+from ..dataframe.core import (
+    TILEABLE_TYPE as DATAFRAME_TYPE,
+    CHUNK_TYPE as DATAFRAME_CHUNK_TYPE,
+)
 from ..dataframe.operands import DataFrameOperandMixin, DataFrameFuseChunk
 
 
@@ -28,7 +35,7 @@ LearnOperand = Operand
 
 class LearnOperandMixin(TileableOperandMixin):
     __slots__ = ()
-    _op_module_ = 'learn'
+    _op_module_ = "learn"
 
     @classmethod
     def concat_tileable_chunks(cls, tileable):
@@ -44,10 +51,12 @@ class LearnOperandMixin(TileableOperandMixin):
     def create_tileable_from_chunks(cls, chunks, inputs=None, **kw):
         if isinstance(chunks[0], TENSOR_CHUNK_TYPE):
             return TensorOperandMixin.create_tileable_from_chunks(
-                chunks, inputs=inputs, **kw)
+                chunks, inputs=inputs, **kw
+            )
         elif isinstance(chunks[0], DATAFRAME_CHUNK_TYPE):
             return DataFrameOperandMixin.create_tileable_from_chunks(
-                chunks, inputs=inputs, **kw)
+                chunks, inputs=inputs, **kw
+            )
         else:
             # op has to implement its logic of `create_tileable_from_chunks`
             raise NotImplementedError

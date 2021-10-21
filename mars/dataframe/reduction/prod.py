@@ -23,7 +23,7 @@ from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 class DataFrameProd(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = opcodes.PROD
-    _func_name = 'prod'
+    _func_name = "prod"
 
     @property
     def is_atomic(self):
@@ -37,23 +37,50 @@ class DataFrameProd(DataFrameReductionOperand, DataFrameReductionMixin):
             if min_count == 0:
                 return value.prod(skipna=skipna)
             else:
-                return where_function(value.count() >= min_count, value.prod(skipna=skipna), np.nan)
+                return where_function(
+                    value.count() >= min_count, value.prod(skipna=skipna), np.nan
+                )
 
         return prod
 
 
-def prod_series(df, axis=None, skipna=None, level=None, min_count=0,
-                combine_size=None, method=None):
+def prod_series(
+    df, axis=None, skipna=None, level=None, min_count=0, combine_size=None, method=None
+):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameProd(axis=axis, skipna=skipna, level=level, min_count=min_count, combine_size=combine_size,
-                       output_types=[OutputType.scalar], use_inf_as_na=use_inf_as_na, method=method)
+    op = DataFrameProd(
+        axis=axis,
+        skipna=skipna,
+        level=level,
+        min_count=min_count,
+        combine_size=combine_size,
+        output_types=[OutputType.scalar],
+        use_inf_as_na=use_inf_as_na,
+        method=method,
+    )
     return op(df)
 
 
-def prod_dataframe(df, axis=None, skipna=None, level=None, min_count=0, numeric_only=None,
-                   combine_size=None, method=None):
+def prod_dataframe(
+    df,
+    axis=None,
+    skipna=None,
+    level=None,
+    min_count=0,
+    numeric_only=None,
+    combine_size=None,
+    method=None,
+):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameProd(axis=axis, skipna=skipna, level=level, min_count=min_count, numeric_only=numeric_only,
-                       combine_size=combine_size, output_types=[OutputType.series],
-                       use_inf_as_na=use_inf_as_na, method=method)
+    op = DataFrameProd(
+        axis=axis,
+        skipna=skipna,
+        level=level,
+        min_count=min_count,
+        numeric_only=numeric_only,
+        combine_size=combine_size,
+        output_types=[OutputType.series],
+        use_inf_as_na=use_inf_as_na,
+        method=method,
+    )
     return op(df)

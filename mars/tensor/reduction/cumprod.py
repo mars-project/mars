@@ -24,7 +24,7 @@ from .core import TensorCumReduction, TensorCumReductionMixin
 
 class TensorCumprod(TensorCumReduction, TensorCumReductionMixin):
     _op_type_ = OperandDef.CUMPROD
-    _func_name = 'cumprod'
+    _func_name = "cumprod"
 
     def __init__(self, axis=None, **kw):
         super().__init__(_axis=axis, **kw)

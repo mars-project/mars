@@ -20,10 +20,12 @@ from ...typing import TileableType
 from .. import asarray
 
 
-def in1d(ar1: Union[TileableType, np.ndarray],
-         ar2: Union[TileableType, np.ndarray, list],
-         assume_unique: bool = False,
-         invert: bool = False):
+def in1d(
+    ar1: Union[TileableType, np.ndarray],
+    ar2: Union[TileableType, np.ndarray, list],
+    assume_unique: bool = False,
+    invert: bool = False,
+):
     """
     Test whether each element of a 1-D tensor is also present in a second tensor.
 

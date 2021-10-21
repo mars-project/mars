@@ -35,18 +35,31 @@ logger = logging.getLogger(__name__)
 class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.RESHAPE
 
-    _input = KeyField('input')
-    _newshape = TupleField('newshape', FieldTypes.int64)
-    _order = StringField('order')
+    _input = KeyField("input")
+    _newshape = TupleField("newshape", FieldTypes.int64)
+    _order = StringField("order")
 
-    _axis_offsets = TupleField('axis_offsets', FieldTypes.uint64)
-    _oldshape = TupleField('oldshape', FieldTypes.uint64)
-    _new_chunk_size = TupleField('new_chunk_size', FieldTypes.uint64)
+    _axis_offsets = TupleField("axis_offsets", FieldTypes.uint64)
+    _oldshape = TupleField("oldshape", FieldTypes.uint64)
+    _new_chunk_size = TupleField("new_chunk_size", FieldTypes.uint64)
 
-    def __init__(self, newshape=None, order=None, axis_offsets=None, oldshape=None,
-                 new_chunk_size=None, **kw):
-        super().__init__(_newshape=newshape, _order=order, _axis_offsets=axis_offsets,
-                         _oldshape=oldshape, _new_chunk_size=new_chunk_size, **kw)
+    def __init__(
+        self,
+        newshape=None,
+        order=None,
+        axis_offsets=None,
+        oldshape=None,
+        new_chunk_size=None,
+        **kw,
+    ):
+        super().__init__(
+            _newshape=newshape,
+            _order=order,
+            _axis_offsets=axis_offsets,
+            _oldshape=oldshape,
+            _new_chunk_size=new_chunk_size,
+            **kw,
+        )
 
     @property
     def input(self):
@@ -113,49 +126,63 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                 new_idx -= 1
             elif old_dim_size < new_dim_size:
                 left_old_idx = old_idx - 1
-                while left_old_idx >= 0 and \
-                        np.prod(old_shape[left_old_idx: old_idx + 1]) < new_dim_size:
+                while (
+                    left_old_idx >= 0
+                    and np.prod(old_shape[left_old_idx : old_idx + 1]) < new_dim_size
+                ):
                     left_old_idx -= 1
-                if np.prod(old_shape[left_old_idx: old_idx + 1]) != new_dim_size:
-                    raise ValueError('shapes not compatible')
+                if np.prod(old_shape[left_old_idx : old_idx + 1]) != new_dim_size:
+                    raise ValueError("shapes not compatible")
 
                 for i in range(left_old_idx + 1, old_idx + 1):
                     # rechunk the higher dimension into 1 chunk
                     # e.g. ((2, 2, 2), [(3, 3), (4, 4))] -> [6, 8]
                     rechunk_nsplists[i] = (old_shape[i],)
 
-                chunk_reduce = np.prod([len(c) for c in nsplits[left_old_idx + 1: old_idx + 1]]).item()
+                chunk_reduce = np.prod(
+                    [len(c) for c in nsplits[left_old_idx + 1 : old_idx + 1]]
+                ).item()
                 # cause the higher dimension has been concatenated,
                 # the lowest dimension should be expanded to reduce size
-                rechunk_nsplists[left_old_idx] = \
-                    TensorReshape._expand_nsplit_by_reduce(nsplits[left_old_idx], chunk_reduce)
+                rechunk_nsplists[left_old_idx] = TensorReshape._expand_nsplit_by_reduce(
+                    nsplits[left_old_idx], chunk_reduce
+                )
 
-                size_reduce = np.prod(old_shape[left_old_idx + 1: old_idx + 1]).item()
-                reshape_nsplists[new_idx] = tuple(size_reduce * c for c in rechunk_nsplists[left_old_idx])
+                size_reduce = np.prod(old_shape[left_old_idx + 1 : old_idx + 1]).item()
+                reshape_nsplists[new_idx] = tuple(
+                    size_reduce * c for c in rechunk_nsplists[left_old_idx]
+                )
 
                 old_idx = left_old_idx - 1
                 new_idx -= 1
             else:
                 assert old_dim_size > new_dim_size
                 lef_new_idx = new_idx - 1
-                while lef_new_idx >= 0 and \
-                        np.prod(new_shape[lef_new_idx: new_idx + 1]) < old_dim_size:
+                while (
+                    lef_new_idx >= 0
+                    and np.prod(new_shape[lef_new_idx : new_idx + 1]) < old_dim_size
+                ):
                     lef_new_idx -= 1
-                if np.prod(new_shape[lef_new_idx: new_idx + 1]) != old_dim_size:
-                    raise ValueError('shapes not compatible')
+                if np.prod(new_shape[lef_new_idx : new_idx + 1]) != old_dim_size:
+                    raise ValueError("shapes not compatible")
 
-                chunk_expand = np.prod(new_shape[lef_new_idx + 1: new_idx + 1]).item()
-                rechunk_nsplists[old_idx] = TensorReshape._reduce_nsplit_by_expand(nsplits[old_idx], chunk_expand)
+                chunk_expand = np.prod(new_shape[lef_new_idx + 1 : new_idx + 1]).item()
+                rechunk_nsplists[old_idx] = TensorReshape._reduce_nsplit_by_expand(
+                    nsplits[old_idx], chunk_expand
+                )
 
                 for i in range(lef_new_idx + 1, new_idx + 1):
                     reshape_nsplists[i] = (new_shape[i],)
-                reshape_nsplists[lef_new_idx] = tuple(c // chunk_expand for c in rechunk_nsplists[old_idx])
+                reshape_nsplists[lef_new_idx] = tuple(
+                    c // chunk_expand for c in rechunk_nsplists[old_idx]
+                )
 
                 old_idx -= 1
                 new_idx = lef_new_idx - 1
 
-        assert np.prod([len(s) for s in rechunk_nsplists]) == \
-               np.prod([len(s) for s in reshape_nsplists])
+        assert np.prod([len(s) for s in rechunk_nsplists]) == np.prod(
+            [len(s) for s in reshape_nsplists]
+        )
         return rechunk_nsplists, reshape_nsplists
 
     @staticmethod
@@ -199,29 +226,52 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
         axis_offsets = [[0] + np.cumsum(ns)[:-1].tolist() for ns in in_tensor.nsplits]
 
         max_chunk_size = max(max(tp) for tp in in_tensor.nsplits)
-        out_nsplits = decide_chunk_sizes(new_shape, max_chunk_size, tensor.dtype.itemsize)
+        out_nsplits = decide_chunk_sizes(
+            new_shape, max_chunk_size, tensor.dtype.itemsize
+        )
         chunk_size_idxes = (range(len(size)) for size in out_nsplits)
 
         for inp in in_tensor.chunks:
-            offset = tuple(axis_offsets[axis][idx] for axis, idx in enumerate(inp.index))
-            chunk_op = TensorReshape(stage=OperandStage.map, axis_offsets=offset,
-                                     oldshape=in_tensor.shape, newshape=new_shape,
-                                     new_chunk_size=(max_chunk_size,) * len(new_shape),
-                                     dtype=inp.dtype)
-            shuffle_inputs.append(chunk_op.new_chunk([inp], shape=(np.nan,), index=inp.index))
+            offset = tuple(
+                axis_offsets[axis][idx] for axis, idx in enumerate(inp.index)
+            )
+            chunk_op = TensorReshape(
+                stage=OperandStage.map,
+                axis_offsets=offset,
+                oldshape=in_tensor.shape,
+                newshape=new_shape,
+                new_chunk_size=(max_chunk_size,) * len(new_shape),
+                dtype=inp.dtype,
+            )
+            shuffle_inputs.append(
+                chunk_op.new_chunk([inp], shape=(np.nan,), index=inp.index)
+            )
 
-        proxy_chunk = TensorShuffleProxy(dtype=in_tensor.dtype, _tensor_keys=[in_tensor.op.key]) \
-            .new_chunk(shuffle_inputs, shape=())
+        proxy_chunk = TensorShuffleProxy(
+            dtype=in_tensor.dtype, _tensor_keys=[in_tensor.op.key]
+        ).new_chunk(shuffle_inputs, shape=())
 
-        for chunk_shape, chunk_idx in zip(itertools.product(*out_nsplits),
-                                          itertools.product(*chunk_size_idxes)):
+        for chunk_shape, chunk_idx in zip(
+            itertools.product(*out_nsplits), itertools.product(*chunk_size_idxes)
+        ):
             chunk_op = TensorReshape(stage=OperandStage.reduce, dtype=tensor.dtype)
-            shuffle_outputs.append(chunk_op.new_chunk([proxy_chunk], shape=chunk_shape,
-                                                      order=tensor.order, index=chunk_idx))
+            shuffle_outputs.append(
+                chunk_op.new_chunk(
+                    [proxy_chunk],
+                    shape=chunk_shape,
+                    order=tensor.order,
+                    index=chunk_idx,
+                )
+            )
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, new_shape, order=tensor.order,
-                                  chunks=shuffle_outputs, nsplits=out_nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            new_shape,
+            order=tensor.order,
+            chunks=shuffle_outputs,
+            nsplits=out_nsplits,
+        )
 
     @classmethod
     def tile(cls, op):
@@ -239,28 +289,38 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
             op._newshape = newshape = calc_shape(in_tensor.size, shape)
             tensor._shape = newshape
 
-        if op.order == 'F':
+        if op.order == "F":
             # do transpose first, then do regular reshape, then transpose back
             result = in_tensor.transpose().reshape(op.newshape[::-1])
-            if getattr(op, '_reshape_with_shuffle', True):
-                result.op.extra_params['_reshape_with_shuffle'] = True
+            if getattr(op, "_reshape_with_shuffle", True):
+                result.op.extra_params["_reshape_with_shuffle"] = True
             result = result.transpose()
             return [(yield from recursive_tile(result))]
 
         if len(in_tensor.chunks) == 1:
             # 1 chunk
             chunk_op = op.copy().reset_key()
-            chunk = chunk_op.new_chunk(in_tensor.chunks, shape=tensor.shape,
-                                       order=tensor.order, index=(0,) * tensor.ndim)
+            chunk = chunk_op.new_chunk(
+                in_tensor.chunks,
+                shape=tensor.shape,
+                order=tensor.order,
+                index=(0,) * tensor.ndim,
+            )
             new_op = op.copy()
-            return new_op.new_tensors(op.inputs, shape=tensor.shape,
-                                      order=tensor.order, chunks=[chunk],
-                                      nsplits=tuple((s,) for s in tensor.shape))
+            return new_op.new_tensors(
+                op.inputs,
+                shape=tensor.shape,
+                order=tensor.order,
+                chunks=[chunk],
+                nsplits=tuple((s,) for s in tensor.shape),
+            )
         try:
             rechunk_nsplits, reshape_nsplits = cls._gen_reshape_rechunk_nsplits(
-                in_tensor.shape, tensor.shape, in_tensor.nsplits)
+                in_tensor.shape, tensor.shape, in_tensor.nsplits
+            )
             rechunked_tensor = yield from recursive_tile(
-                in_tensor.rechunk(rechunk_nsplits))
+                in_tensor.rechunk(rechunk_nsplits)
+            )
             in_idxes = itertools.product(*[range(len(s)) for s in rechunk_nsplits])
             out_idxes = itertools.product(*[range(len(s)) for s in reshape_nsplits])
             out_shape = itertools.product(*[s for s in reshape_nsplits])
@@ -269,22 +329,34 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                 in_chunk = rechunked_tensor.cix[input_idx]
                 chunk_op = op.copy().reset_key()
                 chunk_op._newshape = out_shape
-                out_chunk = chunk_op.new_chunk([in_chunk], shape=out_shape,
-                                               order=tensor.order, index=out_idx)
+                out_chunk = chunk_op.new_chunk(
+                    [in_chunk], shape=out_shape, order=tensor.order, index=out_idx
+                )
                 out_chunks.append(out_chunk)
 
             new_op = op.copy()
-            return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
-                                      chunks=out_chunks, nsplits=reshape_nsplits)
+            return new_op.new_tensors(
+                op.inputs,
+                tensor.shape,
+                order=tensor.order,
+                chunks=out_chunks,
+                nsplits=reshape_nsplits,
+            )
         except ValueError:
             # TODO: make this as default when shuffle is mature
-            if getattr(op.extra_params, '_reshape_with_shuffle', False):
+            if getattr(op.extra_params, "_reshape_with_shuffle", False):
                 return cls._tile_as_shuffle(op)
 
             # shape incompatible, we will first do flatten, then reshape to the new shape
-            return [(yield from recursive_tile(
-                in_tensor.reshape(-1, order=tensor.op.order)
-                    .reshape(tensor.shape, order=tensor.op.order)))]
+            return [
+                (
+                    yield from recursive_tile(
+                        in_tensor.reshape(-1, order=tensor.op.order).reshape(
+                            tensor.shape, order=tensor.op.order
+                        )
+                    )
+                )
+            ]
 
     @classmethod
     def estimate_size(cls, ctx, op):
@@ -317,7 +389,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
         new_chunk_size = op.new_chunk_size
         axis_offset = op.axis_offsets
 
-        logger.debug('Reshape mapper: Start mapping step for %s', chunk.key)
+        logger.debug("Reshape mapper: Start mapping step for %s", chunk.key)
 
         data = ctx[op.inputs[0].key]
         indices = list(np.nonzero(data))
@@ -342,19 +414,25 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
         new_indices.reverse()
         del rest_indices
 
-        logger.debug('Reshape mapper: remapping to new locations for %s', chunk.key)
+        logger.debug("Reshape mapper: remapping to new locations for %s", chunk.key)
 
-        dim_chunk_counts = [int(np.ceil(dim_size * 1.0 / chunk_size))
-                            for dim_size, chunk_size in zip(new_shape, new_chunk_size)]
+        dim_chunk_counts = [
+            int(np.ceil(dim_size * 1.0 / chunk_size))
+            for dim_size, chunk_size in zip(new_shape, new_chunk_size)
+        ]
         target = new_indices[0] // new_chunk_size[0]
-        for new_index, chunk_size, dim_chunk_count in zip(new_indices[1:], new_chunk_size[1:], dim_chunk_counts[1:]):
+        for new_index, chunk_size, dim_chunk_count in zip(
+            new_indices[1:], new_chunk_size[1:], dim_chunk_counts[1:]
+        ):
             target = np.multiply(target, dim_chunk_count, out=target)
             target = np.add(target, new_index // chunk_size, out=target)
 
         for idx, chunk_size in enumerate(new_chunk_size):
-            new_indices[idx] = np.mod(new_indices[idx], chunk_size, out=new_indices[idx])
+            new_indices[idx] = np.mod(
+                new_indices[idx], chunk_size, out=new_indices[idx]
+            )
 
-        logger.debug('Reshape mapper: sorting for %s', chunk.key)
+        logger.debug("Reshape mapper: sorting for %s", chunk.key)
 
         sort_idx = np.argsort(target)
         target = target[sort_idx]
@@ -363,11 +441,15 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
             new_indices[idx] = new_indices[idx][sort_idx]
         del sort_idx
 
-        logger.debug('Reshape mapper: splitting for %s', chunk.key)
+        logger.debug("Reshape mapper: splitting for %s", chunk.key)
 
         for t in np.unique(target):
-            data_slice = slice(np.searchsorted(target, t), np.searchsorted(target, t, 'right'))
-            group_indices = tuple(new_indices[idx][data_slice] for idx in range(len(new_shape)))
+            data_slice = slice(
+                np.searchsorted(target, t), np.searchsorted(target, t, "right")
+            )
+            group_indices = tuple(
+                new_indices[idx][data_slice] for idx in range(len(new_shape))
+            )
             group_data = nz_data[data_slice]
 
             target_chunk_idx = [None] * len(dim_chunk_counts)
@@ -383,8 +465,9 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
         try:
             result_array = ctx[chunk.key]
         except KeyError:
-            result_array = np.zeros(chunk.shape, dtype=chunk.dtype,
-                                    order=chunk.order.value)
+            result_array = np.zeros(
+                chunk.shape, dtype=chunk.dtype, order=chunk.order.value
+            )
         for data_tuple in op.iter_mapper_data(ctx, skip_none=True):
             result_array[data_tuple[:-1]] = data_tuple[-1]
         ctx[chunk.key] = result_array
@@ -397,7 +480,8 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
             cls._execute_reduce(ctx, op)
         else:
             (x,), device_id, xp = as_same_device(
-                [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+                [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+            )
 
             with device(device_id):
                 ctx[op.outputs[0].key] = x.reshape(op.newshape, order=op.order)
@@ -412,16 +496,17 @@ def calc_shape(size, newshape):
     known_shape = [s for s in newshape if s >= 0]
     missing_dim = len(newshape) - len(known_shape)
     if missing_dim > 1:
-        raise ValueError('can only specify one unknown dimension')
+        raise ValueError("can only specify one unknown dimension")
     if missing_dim == 1:
         known_size = np.prod(known_shape)
-        newshape = tuple(int(size / known_size) if s < 0 and known_size > 0 else s
-                         for s in newshape)
+        newshape = tuple(
+            int(size / known_size) if s < 0 and known_size > 0 else s for s in newshape
+        )
 
     return newshape
 
 
-def reshape(a, newshape, order='C'):
+def reshape(a, newshape, order="C"):
     """
     Gives a new shape to a tensor without changing its data.
 
@@ -506,22 +591,26 @@ def reshape(a, newshape, order='C'):
     else:
         out_shape = newshape = calc_shape(a.size, newshape)
         if a.size != np.prod(newshape):
-            raise ValueError(f'cannot reshape array of size {a.size} into shape {newshape}')
+            raise ValueError(
+                f"cannot reshape array of size {a.size} into shape {newshape}"
+            )
 
-    tensor_order = get_order(order, a.order, available_options='CFA')
+    tensor_order = get_order(order, a.order, available_options="CFA")
 
     if a.shape == newshape and tensor_order == a.order:
         # does not need to reshape
         return a
-    return _reshape(a, newshape, order=order,
-                    tensor_order=tensor_order, out_shape=out_shape)
+    return _reshape(
+        a, newshape, order=order, tensor_order=tensor_order, out_shape=out_shape
+    )
 
 
-def _reshape(a, newshape, order='C', tensor_order=None, out_shape=None):
+def _reshape(a, newshape, order="C", tensor_order=None, out_shape=None):
     if tensor_order is None:
-        tensor_order = get_order(order, a.order, available_options='CFA')
-    op = TensorReshape(newshape, order, dtype=a.dtype,
-                       create_view=tensor_order == a.order)
+        tensor_order = get_order(order, a.order, available_options="CFA")
+    op = TensorReshape(
+        newshape, order, dtype=a.dtype, create_view=tensor_order == a.order
+    )
     if out_shape is None:
         out_shape = newshape
     return op(a, tensor_order, out_shape)

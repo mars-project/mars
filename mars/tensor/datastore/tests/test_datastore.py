@@ -17,19 +17,19 @@ import tempfile
 
 import numpy as np
 import pytest
+
 try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
 from ....core import tile
-from ...import random
+from ... import random
 from .. import totiledb
-from ..utils import get_tiledb_schema_from_tensor, \
-    check_tiledb_array_with_tensor
+from ..utils import get_tiledb_schema_from_tensor, check_tiledb_array_with_tensor
 
 
-@pytest.mark.skipif(tiledb is None, reason='TileDB not installed')
+@pytest.mark.skipif(tiledb is None, reason="TileDB not installed")
 def test_get_tile_db_schema():
     ctx = tiledb.Ctx()
 
@@ -42,7 +42,7 @@ def test_get_tile_db_schema():
     assert schema.attr(0).dtype == a.dtype
 
 
-@pytest.mark.skipif(tiledb is None, reason='TileDB not installed')
+@pytest.mark.skipif(tiledb is None, reason="TileDB not installed")
 def test_check_tile_db():
     ctx = tiledb.Ctx()
 
@@ -61,7 +61,9 @@ def test_check_tile_db():
 
         with pytest.raises(ValueError):
             # dtype not match
-            check_tiledb_array_with_tensor(random.rand(2, 3, dtype=np.float32), tiledb_a)
+            check_tiledb_array_with_tensor(
+                random.rand(2, 3, dtype=np.float32), tiledb_a
+            )
 
         # legal
         check_tiledb_array_with_tensor(random.rand(2, 3), tiledb_a)
@@ -69,7 +71,7 @@ def test_check_tile_db():
         shutil.rmtree(tempdir)
 
 
-@pytest.mark.skipif(tiledb is None, reason='TileDB not installed')
+@pytest.mark.skipif(tiledb is None, reason="TileDB not installed")
 def test_store_tile_db():
     ctx = tiledb.Ctx()
     tempdir = tempfile.mkdtemp()

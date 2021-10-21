@@ -19,13 +19,24 @@ import itertools
 import numpy as np
 
 from ...core import ExecutableTuple
-from ...serialization.serializables import FieldTypes, AnyField, DictField, \
-    KeyField, StringField, ListField
+from ...serialization.serializables import (
+    FieldTypes,
+    AnyField,
+    DictField,
+    KeyField,
+    StringField,
+    ListField,
+)
 from ...utils import has_unknown_shape
 from ..core import Tensor, TensorOrder
 from ..datasource import tensor as astensor
-from ..utils import unify_chunks, broadcast_shape, check_out_param, \
-    filter_inputs, check_order
+from ..utils import (
+    unify_chunks,
+    broadcast_shape,
+    check_out_param,
+    filter_inputs,
+    check_order,
+)
 from ..operands import TensorOperandMixin, TensorOperand
 from ..array_utils import device, as_same_device, convert_order
 
@@ -39,22 +50,35 @@ class TensorElementWise(TensorOperandMixin):
             if has_unknown_shape(*op.inputs):
                 yield
         inputs = yield from unify_chunks(
-            *[(input, list(range(input.ndim))[::-1]) for input in op.inputs])
+            *[(input, list(range(input.ndim))[::-1]) for input in op.inputs]
+        )
 
         chunk_shapes = [t.chunk_shape for t in inputs]
         out_chunk_shape = broadcast_shape(*chunk_shapes)
 
         out_chunks = [list() for _ in op.outputs]
         nsplits = [[np.nan] * shape for shape in out_chunk_shape]
-        get_index = lambda idx, t: tuple(0 if t.nsplits[i] == (1,) else ix for i, ix in enumerate(idx))
+        get_index = lambda idx, t: tuple(
+            0 if t.nsplits[i] == (1,) else ix for i, ix in enumerate(idx)
+        )
         for out_index in itertools.product(*(map(range, out_chunk_shape))):
-            in_chunks = [t.cix[get_index(out_index[-t.ndim:], t)] if t.ndim != 0 else t.chunks[0]
-                         for t in inputs]
+            in_chunks = [
+                t.cix[get_index(out_index[-t.ndim :], t)]
+                if t.ndim != 0
+                else t.chunks[0]
+                for t in inputs
+            ]
             chunk_op = op.copy().reset_key()
             chunk_shape = broadcast_shape(*(c.shape for c in in_chunks))
-            chunks = chunk_op.new_chunks(in_chunks, shape=chunk_shape, index=out_index,
-                                         kws=[{'side': str(i), 'order': o.order, 'dtype': o.dtype}
-                                              for i, o in enumerate(op.outputs)])
+            chunks = chunk_op.new_chunks(
+                in_chunks,
+                shape=chunk_shape,
+                index=out_index,
+                kws=[
+                    {"side": str(i), "order": o.order, "dtype": o.dtype}
+                    for i, o in enumerate(op.outputs)
+                ],
+            )
             for i, out_chunk in enumerate(chunks):
                 out_chunks[i].append(out_chunk)
             for i, idx, s in zip(itertools.count(0), out_index, chunks[0].shape):
@@ -64,8 +88,8 @@ class TensorElementWise(TensorOperandMixin):
         kws = []
         for out_chunk, o in zip(out_chunks, op.outputs):
             params = o.params.copy()
-            params['chunks'] = out_chunk
-            params['nsplits'] = nsplits
+            params["chunks"] = out_chunk
+            params["nsplits"] = nsplits
             kws.append(params)
         return new_op.new_tensors(list(inputs), kws=kws, output_limit=len(op.outputs))
 
@@ -76,13 +100,11 @@ class TensorElementWiseWithInputs(TensorElementWise):
 
     def _new_tileables(self, inputs, kws=None, **kw):
         self._set_sparse(inputs)
-        return super()._new_tileables(
-            inputs, kws=kws, **kw)
+        return super()._new_tileables(inputs, kws=kws, **kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
         self._set_sparse(inputs)
-        return super()._new_chunks(
-            inputs, kws=kws, **kw)
+        return super()._new_chunks(inputs, kws=kws, **kw)
 
 
 def _handle_out_dtype(val, dtype):
@@ -97,42 +119,44 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
     def check_inputs(self, inputs):
         if len(inputs) > 4:
             raise ValueError(
-                f"Binary operand's inputs should less than or equal 4, got {len(inputs)}")
+                f"Binary operand's inputs should less than or equal 4, got {len(inputs)}"
+            )
 
     @classmethod
     def _get_func(cls, xp):
-        func_name = getattr(cls, '_func_name')
+        func_name = getattr(cls, "_func_name")
         return getattr(xp, func_name)
 
     @classmethod
     def _execute_gpu(cls, op, xp, lhs, rhs, **kw):
-        if kw.get('out') is not None:
-            kw['out'] = xp.asarray(kw['out'])
+        if kw.get("out") is not None:
+            kw["out"] = xp.asarray(kw["out"])
         r = cls._get_func(xp)(lhs, rhs, **kw)
         return convert_order(r, op.outputs[0].order.value)
 
     @classmethod
     def _execute_cpu(cls, op, xp, lhs, rhs, **kw):
-        kw['order'] = op.order
-        if kw.get('out') is not None:
-            kw['out'] = np.asarray(kw['out'])
+        kw["order"] = op.order
+        if kw.get("out") is not None:
+            kw["out"] = np.asarray(kw["out"])
         return cls._get_func(xp)(lhs, rhs, **kw)
 
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
-            kw = {'casting': op.casting} if op.out is not None else {}
+            kw = {"casting": op.casting} if op.out is not None else {}
 
             inputs_iter = iter(inputs)
             lhs = op.lhs if np.isscalar(op.lhs) else next(inputs_iter)
             rhs = op.rhs if np.isscalar(op.rhs) else next(inputs_iter)
             if op.out is not None:
-                kw['out'] = next(inputs_iter).copy()
+                kw["out"] = next(inputs_iter).copy()
             if op.where is not None:
-                kw['where'] = next(inputs_iter)
+                kw["where"] = next(inputs_iter)
 
             with np.errstate(**op.err):
                 if op.is_gpu():
@@ -143,18 +167,20 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
 
 
 class TensorBinOp(TensorOperand, TensorBinOpMixin):
-    _lhs = AnyField('lhs')
-    _rhs = AnyField('rhs')
-    _out = KeyField('out')
-    _where = KeyField('where')
-    _casting = StringField('casting')
-    _order = StringField('order')
-    _err = DictField('err', FieldTypes.string, FieldTypes.string)
+    _lhs = AnyField("lhs")
+    _rhs = AnyField("rhs")
+    _out = KeyField("out")
+    _where = KeyField("where")
+    _casting = StringField("casting")
+    _order = StringField("order")
+    _err = DictField("err", FieldTypes.string, FieldTypes.string)
 
     def __init__(self, lhs=None, rhs=None, out=None, where=None, order=None, **kwargs):
-        super().__init__(_lhs=lhs, _rhs=rhs, _out=out, _where=where, _order=order, **kwargs)
+        super().__init__(
+            _lhs=lhs, _rhs=rhs, _out=out, _where=where, _order=order, **kwargs
+        )
         if self._order is None:
-            self._order = 'K'
+            self._order = "K"
         check_order(self._order)
 
     @property
@@ -167,23 +193,23 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
 
     @property
     def out(self):
-        return getattr(self, '_out', None)
+        return getattr(self, "_out", None)
 
     @property
     def where(self):
-        return getattr(self, '_where', None)
+        return getattr(self, "_where", None)
 
     @property
     def order(self):
-        return getattr(self, '_order', None)
+        return getattr(self, "_order", None)
 
     @property
     def casting(self):
-        return getattr(self, '_casting', None)
+        return getattr(self, "_casting", None)
 
     @property
     def err(self):
-        return getattr(self, '_err', dict())
+        return getattr(self, "_err", dict())
 
     @classmethod
     def _is_sparse(cls, x1, x2):
@@ -193,7 +219,7 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
         inputs_iter = iter(inputs)
         x1 = self._lhs if np.isscalar(self._lhs) else next(inputs_iter)
         x2 = self._rhs if np.isscalar(self._rhs) else next(inputs_iter)
-        setattr(self, 'sparse', self._is_sparse(x1, x2))
+        setattr(self, "sparse", self._is_sparse(x1, x2))
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -201,9 +227,9 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
 
         self._lhs = self._lhs if np.isscalar(self._lhs) else next(inputs_iter)
         self._rhs = self._rhs if np.isscalar(self._rhs) else next(inputs_iter)
-        if getattr(self, '_out', None) is not None:
+        if getattr(self, "_out", None) is not None:
             self._out = next(inputs_iter)
-        if getattr(self, '_where', None) is not None:
+        if getattr(self, "_where", None) is not None:
             self._where = next(inputs_iter)
 
     def _process_inputs(self, x1, x2, out, where):
@@ -216,7 +242,7 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
             if isinstance(out, Tensor):
                 self._out = out
             else:
-                raise TypeError(f'out should be Tensor object, got {type(out)} instead')
+                raise TypeError(f"out should be Tensor object, got {type(out)} instead")
         if where is True:
             where = None
         if where is not None:
@@ -229,7 +255,7 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
         if out is not None:
             return out.order
 
-        if self._order in 'KA':
+        if self._order in "KA":
             orders = []
             if not np.isscalar(x1):
                 orders.append(x1.order)
@@ -242,7 +268,7 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
                 return TensorOrder.C_ORDER
             else:
                 return TensorOrder.F_ORDER
-        elif self._order == 'C':
+        elif self._order == "C":
             return TensorOrder.C_ORDER
         else:
             return TensorOrder.F_ORDER
@@ -252,11 +278,13 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
         return dict()
 
     def _call_tensor_ufunc(self, x1, x2, out=None, where=None):
-        if hasattr(x1, '__tensor_ufunc__') or hasattr(x2, '__tensor_ufunc__'):
-            ufunc = x1.__tensor_ufunc__ if hasattr(x1, '__tensor_ufunc__') \
+        if hasattr(x1, "__tensor_ufunc__") or hasattr(x2, "__tensor_ufunc__"):
+            ufunc = (
+                x1.__tensor_ufunc__
+                if hasattr(x1, "__tensor_ufunc__")
                 else x2.__tensor_ufunc__
-            ret = ufunc(type(self), [x1, x2], out, where,
-                        **self.ufunc_extra_params)
+            )
+            ret = ufunc(type(self), [x1, x2], out, where, **self.ufunc_extra_params)
             if ret is NotImplemented:
                 return
             return ret
@@ -282,13 +310,13 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
         if out is None:
             return t
 
-        check_out_param(out, t, getattr(self, '_casting'))
+        check_out_param(out, t, getattr(self, "_casting"))
         out_shape, out_dtype = out.shape, out.dtype
 
         # if `out` is specified, use out's dtype and shape
         if t.shape != out_shape:
             t = self.new_tensor(inputs, out_shape, order=order)
-        setattr(self, 'dtype', out_dtype)
+        setattr(self, "dtype", out_dtype)
 
         out.data = t.data
         return out
@@ -306,11 +334,12 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
     def check_inputs(self, inputs):
         if len(inputs) > 3:
             raise ValueError(
-                f"Binary operand's inputs should less than or equal 3, got {len(inputs)}")
+                f"Binary operand's inputs should less than or equal 3, got {len(inputs)}"
+            )
 
     @classmethod
     def _get_func(cls, xp):
-        func_name = getattr(cls, '_func_name')
+        func_name = getattr(cls, "_func_name")
         return getattr(xp, func_name)
 
     @classmethod
@@ -320,24 +349,29 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
 
     @classmethod
     def _execute_cpu(cls, op, xp, inp, **kw):
-        if op.order != 'K':
-            kw['order'] = op.order
+        if op.order != "K":
+            kw["order"] = op.order
         return cls._get_func(xp)(inp, **kw)
 
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
-            kw = {'casting': op.casting} if op.out else {}
+            kw = {"casting": op.casting} if op.out else {}
 
             if op.out and op.where:
-                inputs, kw['out'], kw['where'] = inputs[:-2], inputs[-2].copy(), inputs[-1]
+                inputs, kw["out"], kw["where"] = (
+                    inputs[:-2],
+                    inputs[-2].copy(),
+                    inputs[-1],
+                )
             elif op.out:
-                inputs, kw['out'] = inputs[:-1], inputs[-1].copy()
+                inputs, kw["out"] = inputs[:-1], inputs[-1].copy()
             elif op.where:
-                inputs, kw['where'] = inputs[:-1], inputs[-1]
+                inputs, kw["where"] = inputs[:-1], inputs[-1]
 
             with np.errstate(**op.err):
                 if op.is_gpu():
@@ -348,17 +382,17 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
 
 
 class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
-    _input = KeyField('input')
-    _out = KeyField('out')
-    _where = KeyField('where')
-    _casting = StringField('casting')
-    _order = StringField('order')
-    _err = DictField('err', FieldTypes.string, FieldTypes.string)
+    _input = KeyField("input")
+    _out = KeyField("out")
+    _where = KeyField("where")
+    _casting = StringField("casting")
+    _order = StringField("order")
+    _err = DictField("err", FieldTypes.string, FieldTypes.string)
 
     def __init__(self, out=None, where=None, order=None, **kwargs):
         super().__init__(_out=out, _where=where, _order=order, **kwargs)
         if self._order is None:
-            self._order = 'K'
+            self._order = "K"
         check_order(self._order)
 
     @property
@@ -367,27 +401,27 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
 
     @property
     def out(self):
-        return getattr(self, '_out', None)
+        return getattr(self, "_out", None)
 
     @property
     def where(self):
-        return getattr(self, '_where', None)
+        return getattr(self, "_where", None)
 
     @property
     def order(self):
-        return getattr(self, '_order', None)
+        return getattr(self, "_order", None)
 
     @property
     def casting(self):
-        return getattr(self, '_casting', None)
+        return getattr(self, "_casting", None)
 
     @property
     def err(self):
-        return getattr(self, '_err', dict())
+        return getattr(self, "_err", dict())
 
     @classmethod
     def _is_sparse(cls, x):
-        if hasattr(x, 'issparse') and x.issparse():
+        if hasattr(x, "issparse") and x.issparse():
             return True
         else:
             return False
@@ -397,9 +431,9 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
         inputs_iter = iter(self._inputs)
 
         self._input = next(inputs_iter)
-        if getattr(self, '_out', None) is not None:
+        if getattr(self, "_out", None) is not None:
             self._out = next(inputs_iter)
-        if getattr(self, '_where', None) is not None:
+        if getattr(self, "_where", None) is not None:
             self._where = next(inputs_iter)
 
     def _process_inputs(self, x, out, where):
@@ -409,7 +443,7 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
             if isinstance(out, Tensor):
                 self._out = out
             else:
-                raise TypeError(f'out should be Tensor object, got {type(out)} instead')
+                raise TypeError(f"out should be Tensor object, got {type(out)} instead")
         if where is True:
             where = None
         if where is not None:
@@ -419,15 +453,15 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
         return x, out, where
 
     def _set_sparse(self, inputs):
-        setattr(self, 'sparse', self._is_sparse(inputs[0]))
+        setattr(self, "sparse", self._is_sparse(inputs[0]))
 
     def _calc_order(self, x, out):
         if out is not None:
             return out.order
 
-        if self._order in 'KA':
+        if self._order in "KA":
             return x.order
-        elif self._order == 'C':
+        elif self._order == "C":
             return TensorOrder.C_ORDER
         else:
             return TensorOrder.F_ORDER
@@ -437,9 +471,10 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
         return dict()
 
     def _call_tensor_ufunc(self, x, out=None, where=None):
-        if hasattr(x, '__tensor_ufunc__'):
-            ret = x.__tensor_ufunc__(type(self), [x], out, where,
-                                     **self.ufunc_extra_params)
+        if hasattr(x, "__tensor_ufunc__"):
+            ret = x.__tensor_ufunc__(
+                type(self), [x], out, where, **self.ufunc_extra_params
+            )
             if ret is NotImplemented:
                 return
             return ret
@@ -462,13 +497,13 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
         if out is None:
             return t
 
-        check_out_param(out, t, getattr(self, '_casting'))
+        check_out_param(out, t, getattr(self, "_casting"))
         out_shape, out_dtype = out.shape, out.dtype
 
         # if `out` is specified, use out's dtype and shape
         if t.shape != out_shape:
             t = self.new_tensor(inputs, out_shape, order=order)
-        setattr(self, 'dtype', out_dtype)
+        setattr(self, "dtype", out_dtype)
 
         out.data = t.data
         return out
@@ -478,17 +513,17 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
 
 
 class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
-    _input = KeyField('input')
-    _out1 = KeyField('out1')
-    _out2 = KeyField('out2')
-    _where = KeyField('where')
-    _order = StringField('order')
-    _casting = StringField('casting')
+    _input = KeyField("input")
+    _out1 = KeyField("out1")
+    _out2 = KeyField("out2")
+    _where = KeyField("where")
+    _order = StringField("order")
+    _casting = StringField("casting")
 
     def __init__(self, out1=None, out2=None, where=None, order=None, **kwargs):
         super().__init__(_out1=out1, _out2=out2, _where=where, _order=order, **kwargs)
         if self._order is None:
-            self._order = 'K'
+            self._order = "K"
         check_order(self._order)
 
     @property
@@ -501,34 +536,34 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
 
     @property
     def out1(self):
-        return getattr(self, '_out1', None)
+        return getattr(self, "_out1", None)
 
     @property
     def out2(self):
-        return getattr(self, '_out2', None)
+        return getattr(self, "_out2", None)
 
     @property
     def where(self):
-        return getattr(self, '_where', None)
+        return getattr(self, "_where", None)
 
     @property
     def order(self):
-        return getattr(self, '_order', None)
+        return getattr(self, "_order", None)
 
     @property
     def casting(self):
-        return getattr(self, '_casting', None)
+        return getattr(self, "_casting", None)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
 
         self._input = next(inputs_iter)
-        if getattr(self, '_out1', None) is not None:
+        if getattr(self, "_out1", None) is not None:
             self._out1 = next(inputs_iter)
-        if getattr(self, '_out2', None) is not None:
+        if getattr(self, "_out2", None) is not None:
             self._out2 = next(inputs_iter)
-        if getattr(self, '_where', None) is not None:
+        if getattr(self, "_where", None) is not None:
             self._where = next(inputs_iter)
 
     def _process_inputs(self, x, out1, out2, where):
@@ -538,12 +573,16 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
             if isinstance(out1, Tensor):
                 self._out1 = out1
             else:
-                raise TypeError(f'out1 should be Tensor object, got {type(out1)} instead')
+                raise TypeError(
+                    f"out1 should be Tensor object, got {type(out1)} instead"
+                )
         if out2 is not None:
             if isinstance(out2, Tensor):
                 self._out2 = out2
             else:
-                raise TypeError(f'out2 should be Tensor object, got {type(out2)} instead')
+                raise TypeError(
+                    f"out2 should be Tensor object, got {type(out2)} instead"
+                )
         if where is True:
             where = None
         if where is not None:
@@ -557,7 +596,7 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
         return False
 
     def _set_sparse(self, inputs):
-        setattr(self, 'sparse', self._is_sparse(inputs[0]))
+        setattr(self, "sparse", self._is_sparse(inputs[0]))
 
     @property
     def _fun(self):
@@ -567,9 +606,9 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
         if out is not None:
             return out.order
 
-        if self._order in 'KA':
+        if self._order in "KA":
             return x.order
-        elif self._order == 'C':
+        elif self._order == "C":
             return TensorOrder.C_ORDER
         else:
             return TensorOrder.F_ORDER
@@ -586,28 +625,38 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
         order2 = self._calc_order(x, out2)
 
         inputs = filter_inputs([x, out1, out2, where])
-        t1, t2 = self.new_tensors(inputs, shape,
-                                  kws=[{'order': order1, 'dtype': dtype[0], 'side': 'left'},
-                                       {'order': order2, 'dtype': dtype[1], 'side': 'right'}])
+        t1, t2 = self.new_tensors(
+            inputs,
+            shape,
+            kws=[
+                {"order": order1, "dtype": dtype[0], "side": "left"},
+                {"order": order2, "dtype": dtype[1], "side": "right"},
+            ],
+        )
 
         if out1 is None and out2 is None:
             return ExecutableTuple([t1, t2])
 
         if out1 is not None:
-            check_out_param(out1, t1, getattr(self, '_casting'))
+            check_out_param(out1, t1, getattr(self, "_casting"))
             out1_shape, out1_dtype = out1.shape, out1.dtype
         else:
             out1_shape, out1_dtype = t1.shape, t1.dtype
         if out2 is not None:
-            check_out_param(out2, t2, getattr(self, '_casting'))
+            check_out_param(out2, t2, getattr(self, "_casting"))
             out2_shape, out2_dtype = out2.shape, out2.dtype
         else:
             out2_shape, out2_dtype = t2.shape, t2.dtype
         # if `out` is specified, use out's dtype and shape
         if t1.shape != out1_shape or t2.shape != out2_shape:
-            t1, t2 = self.new_tensor(inputs, [out1_shape, out2_shape],
-                                     kws=[{'order': order1, 'dtype': out1_dtype},
-                                          {'order': order2, 'dtype': out2_dtype}])
+            t1, t2 = self.new_tensor(
+                inputs,
+                [out1_shape, out2_shape],
+                kws=[
+                    {"order": order1, "dtype": out1_dtype},
+                    {"order": order2, "dtype": out2_dtype},
+                ],
+            )
 
         if out1 is not None:
             out1.data = t1.data
@@ -624,42 +673,57 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
 
 
 class TensorMultiOp(TensorElementWiseWithInputs, TensorOperand):
-    _args = ListField('args')
-    _out = KeyField('out')
-    _where = KeyField('where')
-    _casting = StringField('casting')
-    _order = StringField('order')
-    _err = DictField('err', FieldTypes.string, FieldTypes.string)
+    _args = ListField("args")
+    _out = KeyField("out")
+    _where = KeyField("where")
+    _casting = StringField("casting")
+    _order = StringField("order")
+    _err = DictField("err", FieldTypes.string, FieldTypes.string)
 
-    def __init__(self, args=None, out=None, where=None, casting=None,
-                 order=None, err=None, **kwargs):
-        super().__init__(_args=args, _out=out, _where=where, _order=order,
-                         _casting=casting, _er=err, **kwargs)
+    def __init__(
+        self,
+        args=None,
+        out=None,
+        where=None,
+        casting=None,
+        order=None,
+        err=None,
+        **kwargs,
+    ):
+        super().__init__(
+            _args=args,
+            _out=out,
+            _where=where,
+            _order=order,
+            _casting=casting,
+            _er=err,
+            **kwargs,
+        )
         if self._casting is None:
-            self._casting = 'same_kind'
+            self._casting = "same_kind"
         if self._order is None:
-            self._order = 'K'
+            self._order = "K"
         check_order(self._order)
 
     @property
     def args(self):
-        return getattr(self, '_args', None)
+        return getattr(self, "_args", None)
 
     @property
     def out(self):
-        return getattr(self, '_out', None)
+        return getattr(self, "_out", None)
 
     @property
     def order(self):
-        return getattr(self, '_order', None)
+        return getattr(self, "_order", None)
 
     @property
     def casting(self):
-        return getattr(self, '_casting', None)
+        return getattr(self, "_casting", None)
 
     @property
     def err(self):
-        return getattr(self, '_err', dict())
+        return getattr(self, "_err", dict())
 
     @classmethod
     def _is_sparse(cls, *args):
@@ -671,7 +735,7 @@ class TensorMultiOp(TensorElementWiseWithInputs, TensorOperand):
         for idx in range(len(self._args)):
             if not np.isscalar(self._args[idx]):
                 args[idx] = next(inputs_iter)
-        setattr(self, 'sparse', self._is_sparse(*args))
+        setattr(self, "sparse", self._is_sparse(*args))
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -683,9 +747,9 @@ class TensorMultiOp(TensorElementWiseWithInputs, TensorOperand):
                 args[idx] = next(inputs_iter)
         self._args = args
 
-        if getattr(self, '_out', None) is not None:
+        if getattr(self, "_out", None) is not None:
             self._out = next(inputs_iter)
-        if getattr(self, '_where', None) is not None:
+        if getattr(self, "_where", None) is not None:
             self._where = next(inputs_iter)
 
     def _process_inputs(self, *args, out=None):
@@ -695,14 +759,14 @@ class TensorMultiOp(TensorElementWiseWithInputs, TensorOperand):
             if isinstance(out, Tensor):
                 self._out = out
             else:
-                raise TypeError(f'out should be Tensor object, got {type(out)} instead')
+                raise TypeError(f"out should be Tensor object, got {type(out)} instead")
 
         return args + (out,)
 
     def __call__(self, *args, out=None):
         proc_inputs_results = self._process_inputs(*args, out=out)
         args = proc_inputs_results[:-1]
-        out, = proc_inputs_results[-1:]
+        (out,) = proc_inputs_results[-1:]
         # check broadcast
         shapes = [() if np.isscalar(a) else a.shape for a in self._args]
         shape = broadcast_shape(*shapes)
@@ -714,13 +778,13 @@ class TensorMultiOp(TensorElementWiseWithInputs, TensorOperand):
         if out is None:
             return t
 
-        check_out_param(out, t, getattr(self, '_casting'))
+        check_out_param(out, t, getattr(self, "_casting"))
         out_shape, out_dtype = out.shape, out.dtype
 
         # if `out` is specified, use out's dtype and shape
         if t.shape != out_shape:
             t = self.new_tensor(inputs, out_shape, order=order)
-        setattr(self, 'dtype', out_dtype)
+        setattr(self, "dtype", out_dtype)
 
         out.data = t.data
         return out
