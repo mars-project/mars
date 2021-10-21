@@ -450,7 +450,7 @@ def check_classification_targets(y):
             "multilabel-indicator",
             "multilabel-sequences",
         ]:
-            raise ValueError("Unknown label type: %r" % y_type)
+            raise ValueError("Unknown label type: %r" % t)
         return t
 
     y_type = y_type.map_chunk(check, dtype=y_type.dtype)

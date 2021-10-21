@@ -25,6 +25,7 @@ from ....typing import BandType
 from ....utils import dataslots
 from ...subtask import Subtask, SubtaskResult, SubtaskStatus
 from ...task import TaskAPI
+from ..core import SubtaskScheduleSummary
 from ..utils import redirect_subtask_errors
 
 logger = logging.getLogger(__name__)
@@ -42,9 +43,19 @@ class SubtaskScheduleInfo:
     max_reschedules: int = 0
     num_reschedules: int = 0
 
+    def to_summary(self, **kwargs) -> SubtaskScheduleSummary:
+        return SubtaskScheduleSummary(
+            task_id=self.subtask.task_id,
+            subtask_id=self.subtask.subtask_id,
+            bands=list(self.band_futures.keys()),
+            num_reschedules=self.num_reschedules,
+            **kwargs
+        )
+
 
 class SubtaskManagerActor(mo.Actor):
-    _subtask_infos: Dict[str, SubtaskScheduleInfo]  # key is subtask id
+    _subtask_infos: Dict[str, SubtaskScheduleInfo]  # subtask id -> schedule info
+    _subtask_summaries: Dict[str, SubtaskScheduleSummary]  # subtask id -> summary
 
     @classmethod
     def gen_uid(cls, session_id: str):
@@ -57,6 +68,7 @@ class SubtaskManagerActor(mo.Actor):
     ):
         self._session_id = session_id
         self._subtask_infos = dict()
+        self._subtask_summaries = dict()
         self._subtask_max_reschedules = subtask_max_reschedules
 
         self._queueing_ref = None
@@ -121,9 +133,11 @@ class SubtaskManagerActor(mo.Actor):
         band_tasks = defaultdict(lambda: 0)
         for subtask_id in subtask_ids:
             subtask_info = self._subtask_infos.pop(subtask_id, None)
-            if schedule_next and subtask_info is not None:
-                for band in subtask_info.band_futures.keys():
-                    band_tasks[band] += 1
+            if subtask_info is not None:
+                self._subtask_summaries[subtask_id] = subtask_info.to_summary(is_finished=True)
+                if schedule_next:
+                    for band in subtask_info.band_futures.keys():
+                        band_tasks[band] += 1
 
         if band_tasks:
             coros = []
@@ -272,4 +286,21 @@ class SubtaskManagerActor(mo.Actor):
             yield asyncio.wait(single_cancel_tasks)
 
         for subtask_id in subtask_ids:
-            self._subtask_infos.pop(subtask_id, None)
+            subtask_info = self._subtask_infos.pop(subtask_id, None)
+            if subtask_info is not None:
+                self._subtask_summaries[subtask_id] = subtask_info.to_summary(
+                    is_finished=True, is_cancelled=True
+                )
+
+    def get_schedule_summaries(self, task_id: Optional[str] = None):
+        if task_id is not None:
+            summaries = {
+                subtask_id: summary for subtask_id, summary in self._subtask_summaries.items()
+                if summary.task_id == task_id
+            }
+        else:
+            summaries = dict(self._subtask_summaries)
+        for info in self._subtask_infos.values():
+            if task_id is None or info.subtask.task_id == task_id:
+                summaries[info.subtask.subtask_id] = info.to_summary()
+        return list(summaries.values())

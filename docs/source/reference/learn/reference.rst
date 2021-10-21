@@ -58,6 +58,7 @@ Samples generator
    datasets.make_blobs
    datasets.make_classification
    datasets.make_low_rank_matrix
+   datasets.make_regression
 
 .. _decomposition_ref:
 
@@ -90,8 +91,11 @@ Ensemble Methods
 .. autosummary::
    :toctree: generated/
 
+   ensemble.BaggingClassifier
+   ensemble.BaggingRegressor
    ensemble.BlockwiseVotingClassifier
    ensemble.BlockwiseVotingRegressor
+   ensemble.IsolationForest
 
 .. _linear_model_ref:
 

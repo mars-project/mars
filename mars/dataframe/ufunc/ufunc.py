@@ -15,7 +15,7 @@
 from numbers import Number
 
 from ...tensor import tensor as astensor
-from ...tensor.ufunc.ufunc import UFUNC_TO_TENSOR_FUNC
+from ...tensor.ufunc.ufunc import UFUNC_TO_TENSOR_FUNCS
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
 
 
@@ -39,15 +39,15 @@ def _array_ufunc(_, ufunc, method, *inputs, **kwargs):
         if not _check_arg(x):
             return NotImplemented
 
-    if method == "__call__":
-        if ufunc.signature is not None:
-            return NotImplemented
-        if ufunc not in UFUNC_TO_TENSOR_FUNC:
-            return NotImplemented
+    if ufunc.signature is not None:
+        return NotImplemented
+    if ufunc not in UFUNC_TO_TENSOR_FUNCS:
+        return NotImplemented
 
-        # we delegate numpy ufunc to tensor ufunc,
-        # tensor ufunc will handle Mars DataFrame properly.
-        tensor_func = UFUNC_TO_TENSOR_FUNC[ufunc]
+    # we delegate numpy ufunc to tensor ufunc,
+    # tensor ufunc will handle Mars DataFrame properly.
+    try:
+        tensor_func = getattr(UFUNC_TO_TENSOR_FUNCS[ufunc], method)
         return tensor_func(*inputs, **kwargs)
-
-    return NotImplemented
+    except (AttributeError, NotImplementedError):
+        return NotImplemented

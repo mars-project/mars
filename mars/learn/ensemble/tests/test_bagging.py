@@ -18,10 +18,13 @@ import os
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.datasets import make_classification, make_regression
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.svm import SVC
 
 from .... import tensor as mt, dataframe as md, execute
 from ....core import enter_mode
-from .._bagging import _extract_bagging_io, BaggingSample, BaggingSampleReindex
+from .._bagging import _extract_bagging_io, BaggingSample, BaggingSampleReindex, BaggingClassifier, BaggingRegressor
 
 
 def _get_tileable_chunk_data(sync_session, tileable):
@@ -181,3 +184,107 @@ def test_bagging_sample_reindex(
             assert isinstance(chunk_data, tuple)
             for chunk_data_piece in chunk_data:
                 assert chunk_data_piece.shape[1] == 25
+
+
+@pytest.mark.parametrize(
+    'use_dataframe, max_samples, max_features, with_weights, base_estimator_cls',
+    [
+        (False, 10, 0.5, False, LogisticRegression),
+        (True, 10, 1.0, True, SVC),
+    ]
+)
+def test_bagging_classifier(setup, use_dataframe, max_samples, max_features,
+                            with_weights, base_estimator_cls):
+    rs = np.random.RandomState(0)
+
+    raw_x, raw_y = make_classification(
+        n_samples=100, n_features=4, n_informative=2, n_redundant=0,
+        random_state=rs, shuffle=False)
+
+    if not use_dataframe:
+        t_x = mt.tensor(raw_x, chunk_size=20)
+    else:
+        raw_x = pd.DataFrame(raw_x)
+        t_x = md.DataFrame(raw_x, chunk_size=20)
+
+    raw_weights = rs.random(100)
+    t_y = mt.tensor(raw_y, chunk_size=20)
+    t_weights = mt.tensor(raw_weights, chunk_size=20) if with_weights else None
+
+    clf = BaggingClassifier(
+        base_estimator=base_estimator_cls(), n_estimators=10, max_samples=max_samples,
+        max_features=max_features, random_state=rs, warm_start=True
+    )
+    clf.fit(t_x, t_y, sample_weight=t_weights)
+
+    for _tiled, _chunk, chunk_data in _get_tileable_chunk_data(setup, clf.estimators_):
+        assert len(chunk_data) == 2
+        assert all(isinstance(c, base_estimator_cls) for c in chunk_data)
+
+    if max_features < 1.0:
+        assert clf.estimator_features_ is not None
+
+    with pytest.warns(Warning):
+        clf.fit(t_x, t_y, sample_weight=t_weights)
+    with pytest.raises(ValueError):
+        clf.n_estimators = 5
+        clf.fit(t_x, t_y, sample_weight=t_weights)
+
+    clf.n_estimators = 20
+    clf.fit(t_x, t_y, sample_weight=t_weights)
+    assert clf.estimators_.shape[0] == 20
+
+    proba = clf.predict_proba(t_x)
+    proba_array = proba.fetch()
+    assert np.all((proba_array >= 0) & (proba_array <= 1))
+    assert np.allclose(np.sum(proba_array, axis=1), 1.0)
+
+    log_proba = clf.predict_log_proba(t_x)
+    exp_log_proba_array = np.exp(log_proba.fetch())
+    assert np.all((exp_log_proba_array >= 0) & (exp_log_proba_array <= 1))
+    assert np.allclose(np.sum(exp_log_proba_array, axis=1), 1.0)
+
+    y = clf.predict(t_x)
+    y_array = y.fetch()
+    assert np.all((y_array == 0) | (y_array == 1))
+
+    decision_fun = clf.decision_function(t_x)
+    decision_fun_array = decision_fun.fetch()
+    assert decision_fun_array.shape == (y_array.shape[0],)
+
+
+@pytest.mark.parametrize(
+    'use_dataframe, max_samples, max_features, with_weights',
+    [
+        (False, 10, 0.5, False),
+        (True, 10, 1.0, True),
+    ]
+)
+def test_bagging_regressor(setup, use_dataframe, max_samples, max_features,
+                           with_weights):
+
+    rs = np.random.RandomState(0)
+
+    raw_x, raw_y = make_regression(
+        n_samples=100, n_features=4, n_informative=2,
+        random_state=rs, shuffle=False)
+
+    if not use_dataframe:
+        t_x = mt.tensor(raw_x, chunk_size=20)
+    else:
+        raw_x = pd.DataFrame(raw_x)
+        t_x = md.DataFrame(raw_x, chunk_size=20)
+
+    raw_weights = rs.random(100)
+    t_y = mt.tensor(raw_y, chunk_size=20)
+    t_weights = mt.tensor(raw_weights, chunk_size=20) if with_weights else None
+
+    clf = BaggingRegressor(
+        base_estimator=LinearRegression(), n_estimators=10, max_samples=max_samples,
+        max_features=max_features, random_state=rs, warm_start=True
+    )
+    clf.fit(t_x, t_y, sample_weight=t_weights)
+
+    predict_y = clf.predict(t_x)
+    predict_y_array = predict_y.fetch()
+    assert predict_y_array.shape == raw_y.shape

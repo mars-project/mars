@@ -760,7 +760,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return concat_result
 
     @staticmethod
-    def _do_predefined_agg(input_obj, agg_func, **kwds):
+    def _do_predefined_agg(input_obj, agg_func, single_func=False, **kwds):
         ndim = getattr(input_obj, "ndim", None) or input_obj.obj.ndim
         if agg_func == "str_concat":
             agg_func = lambda x: x.str.cat(**kwds)
@@ -770,8 +770,14 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             agg_func.__name__ = func_name
 
         if ndim == 2:
-            result = input_obj.agg([agg_func])
-            result.columns = result.columns.droplevel(-1)
+            if single_func:
+                result = input_obj.agg(agg_func)
+                if result.ndim == 1:
+                    # when agg_func == size, agg only returns one single series.
+                    result = result.to_frame(agg_func)
+            else:
+                result = input_obj.agg([agg_func])
+                result.columns = result.columns.droplevel(-1)
             return result
         else:
             return input_obj.agg(agg_func)
@@ -853,7 +859,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             if map_func_name == "custom_reduction":
                 agg_dfs.extend(cls._do_custom_agg(op, custom_reduction, input_obj))
             else:
-                agg_dfs.append(cls._do_predefined_agg(input_obj, map_func_name, **kwds))
+                single_func = map_func_name == op.raw_func
+                agg_dfs.append(cls._do_predefined_agg(
+                    input_obj, map_func_name, single_func, **kwds))
 
         if op._size_recorder_name is not None:
             # record_size

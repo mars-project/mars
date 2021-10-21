@@ -72,15 +72,8 @@ async def test_subtask_service(actor_pools):
     sv_pool, worker_pool = actor_pools
 
     config = {
-        "services": [
-            "cluster",
-            "session",
-            "meta",
-            "lifecycle",
-            "scheduling",
-            "subtask",
-            "task",
-        ],
+        "services": ["cluster", "session", "meta", "lifecycle",
+                     "scheduling", "subtask", "task", "mutable"],
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,

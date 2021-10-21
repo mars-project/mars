@@ -143,3 +143,19 @@ DataFrame can be saved to CSV etc.
    Index: []
 
 Refer to :ref:`api.dataframe.io` for more information.
+
+DataFrame can be read from CSV which is saved in `OSS <https://help.aliyun.com/document_detail/32027.html>`_.
+
+.. code-block:: python
+
+   >>> import mars.dataframe as md
+   >>> from mars.lib.filesystem.oss import build_oss_path
+   >>> access_key_id = your_oss_id
+   >>> access_key_secret = your_oss_key
+   >>> end_point = oss_endpoint
+   >>> file_path = 'oss://buckey/path/to/data.csv'
+   >>> auth_path = build_oss_path(file_path, access_key_id, access_key_secret, end_point)
+   >>> df = md.read_csv(auth_path).execute()
+
+You can find AccessKey by `AcessKey Documentation <https://help.aliyun.com/document_detail/53045.htm?spm=a2c4g.11186623.0.0.401f4b78nWS2uH#task968>`_
+and get endpoint by `Comparison table of OSS Region and Endpoint <https://help.aliyun.com/document_detail/31837.htm?spm=a2c4g.11186623.0.0.cd7c7041aR2CL9>`_.

@@ -847,7 +847,10 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
             for chunk_index, pos in chunk_index_to_pos.items():
                 # chunk_index and pos are all list with 1 element
                 abs_pos = pos[0] + cum_nsplit[chunk_index[0]]
-                chunk_labels = to_numpy(pd_index[abs_pos])
+                if isinstance(pd_index, pd.RangeIndex) and len(abs_pos) == 0:
+                    chunk_labels = np.array([], dtype=pd_index.dtype)
+                else:
+                    chunk_labels = to_numpy(pd_index[abs_pos])
                 chunk_index_to_labels[chunk_index[0]] = chunk_labels
 
             index_info.is_label_asc_sorted = is_asc_sorted
@@ -868,6 +871,8 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
         tileable = context.tileable
         input_axis = index_info.input_axis
         chunk_index_to_labels = index_info.chunk_index_to_labels
+        full_label_size = sum(labels.size for labels
+                              in chunk_index_to_labels.values())
 
         other_index_to_iter = dict()
         chunk_index_to_info = context.chunk_index_to_info.copy()
@@ -876,8 +881,11 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
             chunk_labels = chunk_index_to_labels[i]
             size = chunk_labels.size
 
-            if size == 0:
-                # not effected
+            if size == 0 and full_label_size > 0 and tileable.shape[0] > 0:
+                # not effected when
+                # 1) tileable not empty
+                # 2) full index not empty
+                # 3) no index chosen for this chunk
                 del context.chunk_index_to_info[chunk_index]
                 continue
 

@@ -259,12 +259,14 @@ def test_loc_getitem(setup):
     # index that is timestamp
     raw5 = raw1.copy()
     raw5.index = pd.date_range("2020-1-1", periods=5)
+    raw6 = raw1[:0]
 
     df1 = md.DataFrame(raw1, chunk_size=2)
     df2 = md.DataFrame(raw2, chunk_size=2)
     df3 = md.DataFrame(raw3, chunk_size=2)
     df4 = md.DataFrame(raw4, chunk_size=2)
     df5 = md.DataFrame(raw5, chunk_size=2)
+    df6 = md.DataFrame(raw6)
 
     df = df2.loc[3, "b"]
     result = df.execute().fetch()
@@ -275,6 +277,17 @@ def test_loc_getitem(setup):
     result = df.execute(extra_config={"check_shape": False}).fetch()
     expected = raw1.loc["a3", "b"]
     assert result == expected
+
+    # test empty list
+    df = df1.loc[[]]
+    result = df.execute().fetch()
+    expected = raw1.loc[[]]
+    pd.testing.assert_frame_equal(result, expected)
+
+    df = df2.loc[[]]
+    result = df.execute().fetch()
+    expected = raw2.loc[[]]
+    pd.testing.assert_frame_equal(result, expected)
 
     df = df2.loc[1:4, "b":"d"]
     result = df.execute().fetch()
@@ -359,6 +372,12 @@ def test_loc_getitem(setup):
     result = df.execute().fetch()
     expected = raw5.loc["2020-1-1", "c"]
     assert result == expected
+
+    # test empty df
+    df = df6.loc[[]]
+    result = df.execute().fetch()
+    expected = raw6.loc[[]]
+    pd.testing.assert_frame_equal(result, expected)
 
 
 def test_dataframe_getitem(setup):

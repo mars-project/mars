@@ -24,7 +24,7 @@ import logging
 import numbers
 import operator
 import os
-import pickle
+import cloudpickle as pickle
 import pkgutil
 import random
 import shutil

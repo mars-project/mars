@@ -25,7 +25,7 @@ from sklearn.utils._testing import (
 
 from .... import tensor as mt
 from ....tensor.linalg import svd
-from ..samples_generator import make_low_rank_matrix, make_classification, make_blobs
+from ..samples_generator import make_low_rank_matrix, make_classification, make_regression, make_blobs
 
 
 def test_make_classification(setup):
@@ -184,6 +184,53 @@ def test_make_classification_informative_features(setup):
         n_classes=3,
         n_clusters_per_class=2,
     )
+
+
+def test_make_regression(setup):
+    X, y, c = make_regression(
+        n_samples=100,
+        n_features=10,
+        n_informative=3,
+        effective_rank=5,
+        coef=True,
+        bias=0.0,
+        noise=1.0,
+        random_state=0,
+    )
+    X, y, c = mt.ExecutableTuple((X, y, c)).execute().fetch()
+
+    assert X.shape == (100, 10), "X shape mismatch"
+    assert y.shape == (100,), "y shape mismatch"
+    assert c.shape == (10,), "coef shape mismatch"
+    assert sum(c != 0.0) == 3, "Unexpected number of informative features"
+
+    # Test that y ~= np.dot(X, c) + bias + N(0, 1.0).
+    assert_almost_equal(np.std(y - np.dot(X, c)), 1.0, decimal=1)
+
+    # Test with small number of features.
+    X, y = make_regression(n_samples=100, n_features=1)  # n_informative=3
+    assert X.shape == (100, 1)
+
+
+def test_make_regression_multitarget():
+    X, y, c = make_regression(
+        n_samples=100,
+        n_features=10,
+        n_informative=3,
+        n_targets=3,
+        coef=True,
+        noise=1.0,
+        random_state=0,
+    )
+    X, y, c = mt.ExecutableTuple((X, y, c)).execute().fetch()
+
+    assert X.shape == (100, 10), "X shape mismatch"
+    assert y.shape == (100, 3), "y shape mismatch"
+    assert c.shape == (10, 3), "coef shape mismatch"
+    np.testing.assert_array_equal(sum(c != 0.0), 3, "Unexpected number of informative features")
+
+    # Test that y ~= np.dot(X, c) + bias + N(0, 1.0)
+    assert_almost_equal(np.std(y - np.dot(X, c)), 1.0, decimal=1)
 
 
 def test_make_blobs(setup):

@@ -106,6 +106,11 @@ def test_series_reduction(
         reduction_df5 = compute(md.Series(data, chunk_size=3), min_count=21)
         assert np.isnan(reduction_df5.execute().fetch())
 
+    # test reduction on empty series
+    data = pd.Series([], dtype=float, name='a')
+    r = compute(md.Series(data))
+    np.testing.assert_equal(r.execute().fetch(), compute(data))
+
 
 @pytest.mark.parametrize("func_name,func_opts", reduction_functions)
 def test_series_level_reduction(setup, func_name, func_opts: FunctionOptions):
