@@ -263,14 +263,14 @@ class ObjectCheckMixin:
 
         if len(expected_shape) != len(real_shape):
             raise AssertionError(
-                "ndim in metadata %r is not consistent with real ndim %r"
-                % (len(expected_shape), len(real_shape))
+                f"ndim in metadata {len(expected_shape)} is not consistent "
+                f"with real ndim {len(real_shape)}"
             )
         for e, r in zip(expected_shape, real_shape):
             if not np.isnan(e) and e != r:
                 raise AssertionError(
-                    "shape in metadata %r is not consistent with real shape %r"
-                    % (expected_shape, real_shape)
+                    f"shape in metadata {expected_shape!r} is not consistent "
+                    f"with real shape {real_shape!r}"
                 )
 
     @staticmethod
@@ -291,8 +291,8 @@ class ObjectCheckMixin:
                 expected_dtype, real_dtype
             ):
                 raise AssertionError(
-                    "cannot cast between dtype of real dtype %r and dtype %r defined in metadata"
-                    % (real_dtype, expected_dtype)
+                    f"cannot cast between dtype of real dtype {real_dtype} "
+                    f"and dtype {expected_dtype} defined in metadata"
                 )
 
     def assert_tensor_consistent(self, expected, real):
@@ -354,8 +354,8 @@ class ObjectCheckMixin:
                         self.assert_dtype_consistent(expected_dtype, real_dtype)
                 except AssertionError:
                     raise AssertionError(
-                        "dtypes in metadata %r cannot cast to real dtype %r"
-                        % (expected.dtypes, real.dtypes)
+                        f"dtypes in metadata {expected.dtype} cannot cast "
+                        f"to real dtype {real.dtype}"
                     )
 
         if self._check_options["check_columns_value"] and not np.isnan(
@@ -439,8 +439,8 @@ class ObjectCheckMixin:
 
         if self._check_options["check_series_name"] and expected.name != real.name:
             raise AssertionError(
-                "series name in metadata %r is not equal to real name %r"
-                % (expected.name, real.name)
+                f"series name in metadata {expected.name} is not equal to "
+                f"real name {real.name}"
             )
 
         self.assert_dtype_consistent(expected.dtype, real.dtype)
