@@ -44,7 +44,7 @@ class FSMap(MutableMapping):
                 raise ValueError(
                     f"Path {root} does not exist. Create with the ``create=True`` keyword"
                 )
-            with self.fs.open(fs.pathsep.join([root, "a"]), 'w'):
+            with self.fs.open(fs.pathsep.join([root, "a"]), "w"):
                 pass
             self.fs.rm(fs.pathsep.join([root, "a"]))
 
@@ -54,8 +54,8 @@ class FSMap(MutableMapping):
 
     @staticmethod
     def _normalize_path(fs, path, lstrip=False, rstrip=False):
-        if fs.pathsep != '/':  # pragma: no cover
-            path = path.replace('/', fs.pathsep)
+        if fs.pathsep != "/":  # pragma: no cover
+            path = path.replace("/", fs.pathsep)
         if lstrip:
             path = path.lstrip(fs.pathsep)
         if rstrip:
@@ -64,19 +64,19 @@ class FSMap(MutableMapping):
 
     @staticmethod
     def _join_path(fs, paths):
-        if fs.pathsep == '/':
-            return '/'.join(paths)
+        if fs.pathsep == "/":
+            return "/".join(paths)
 
         new_paths = []
         for i, path in enumerate(paths):
-            path = FSMap._normalize_path(fs, path, lstrip=i > 0,
-                                         rstrip=i < len(paths) - 1)
+            path = FSMap._normalize_path(
+                fs, path, lstrip=i > 0, rstrip=i < len(paths) - 1
+            )
             new_paths.append(path)
         return fs.pathsep.join(new_paths)
 
     def clear(self):
-        """Remove all keys below root - empties out mapping
-        """
+        """Remove all keys below root - empties out mapping"""
         try:
             self.fs.rm(self.root, True)
             self.fs.mkdir(self.root)
@@ -93,9 +93,9 @@ class FSMap(MutableMapping):
 
     def _str_to_key(self, s):
         """Strip path of to leave key name"""
-        key = self._normalize_path(self.fs, s[len(self.root):], lstrip=True)
-        if self.fs.pathsep != '/':  # pragma: no cover
-            key = key.replace(self.fs.pathsep, '/')
+        key = self._normalize_path(self.fs, s[len(self.root) :], lstrip=True)
+        if self.fs.pathsep != "/":  # pragma: no cover
+            key = key.replace(self.fs.pathsep, "/")
         return key
 
     def __getitem__(self, key, default=None):
@@ -123,7 +123,7 @@ class FSMap(MutableMapping):
         if fs.pathsep in path:
             return path.rsplit(fs.pathsep, 1)[0]
         else:  # pragma: no cover
-            return ''
+            return ""
 
     def __setitem__(self, key, value):
         """Store value in key"""

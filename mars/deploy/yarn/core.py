@@ -23,21 +23,27 @@ from typing import AsyncGenerator, Dict, List, Optional, TypeVar
 
 from ... import oscar as mo
 from ...services import NodeRole
-from ...services.cluster.backends import register_cluster_backend, \
-    AbstractClusterBackend
+from ...services.cluster.backends import (
+    register_cluster_backend,
+    AbstractClusterBackend,
+)
 from ...utils import to_binary, to_str
 from ..utils import wait_all_supervisors_ready
 from .config import MarsSupervisorConfig, MarsWorkerConfig
 
 try:
-    from skein import ApplicationClient, Client as SkeinClient, \
-        properties as skein_props, ConnectionError as SkeinConnectionError, \
-        SkeinError
+    from skein import (
+        ApplicationClient,
+        Client as SkeinClient,
+        properties as skein_props,
+        ConnectionError as SkeinConnectionError,
+        SkeinError,
+    )
 except ImportError:  # pragma: no cover
     ApplicationClient, SkeinClient, skein_props = None, None, None
     SkeinConnectionError, SkeinError = None, None
 
-RetType = TypeVar('RetType')
+RetType = TypeVar("RetType")
 logger = logging.getLogger(__name__)
 
 _role_to_config = {
@@ -56,7 +62,9 @@ class YarnNodeWatchActor(mo.Actor):
         self._role_to_events = defaultdict(list)
 
     async def __post_create__(self):
-        self._supervisor_watch_task = asyncio.create_task(self._watch_nodes(NodeRole.SUPERVISOR))
+        self._supervisor_watch_task = asyncio.create_task(
+            self._watch_nodes(NodeRole.SUPERVISOR)
+        )
 
     async def __pre_destroy__(self):
         if self._supervisor_watch_task is not None:  # pragma: no branch
@@ -66,13 +74,13 @@ class YarnNodeWatchActor(mo.Actor):
         key_prefix = _role_to_config[role].service_name
 
         container_specs = await asyncio.to_thread(
-            self._app_client.get_containers, [key_prefix])
+            self._app_client.get_containers, [key_prefix]
+        )
         cid_to_endpoint = {c.yarn_container_id: None for c in container_specs}
 
-        prefixes = await asyncio.to_thread(
-            self._app_client.kv.get_prefix, key_prefix)
+        prefixes = await asyncio.to_thread(self._app_client.kv.get_prefix, key_prefix)
         for val in prefixes.values():
-            ep, cid = to_str(val).split('@', 1)
+            ep, cid = to_str(val).split("@", 1)
             cid_to_endpoint[cid] = ep
         return cid_to_endpoint
 
@@ -83,17 +91,17 @@ class YarnNodeWatchActor(mo.Actor):
                 eps = set(v for v in mappings.values() if v is not None)
 
                 if eps != self._nodes[role]:
-                    logger.info('New endpoints retrieved: %r', eps)
+                    logger.info("New endpoints retrieved: %r", eps)
                     events = self._role_to_events.pop(role, [])
                     for ev in events:
                         ev.set()
                     self._nodes[role] = eps
                 await asyncio.sleep(1)
             except SkeinConnectionError:  # pragma: no cover
-                logger.warning('Skein application down, process will terminate')
+                logger.warning("Skein application down, process will terminate")
                 os.kill(os.getpid(), signal.SIGTERM)
             except (SkeinError, asyncio.CancelledError):  # pragma: no cover
-                logger.exception('Error when watching nodes')
+                logger.exception("Error when watching nodes")
                 break
 
     async def get_nodes(self, role: NodeRole) -> List[str]:
@@ -123,15 +131,19 @@ class YarnClusterBackend(AbstractClusterBackend):
         self._watch_ref = watch_ref
 
     @classmethod
-    async def create(cls, node_role: NodeRole, lookup_address: Optional[str],
-                     pool_address: str) -> "AbstractClusterBackend":
+    async def create(
+        cls, node_role: NodeRole, lookup_address: Optional[str], pool_address: str
+    ) -> "AbstractClusterBackend":
         try:
             ref = await mo.create_actor(
-                YarnNodeWatchActor, uid=YarnNodeWatchActor.default_uid(),
-                address=pool_address)
+                YarnNodeWatchActor,
+                uid=YarnNodeWatchActor.default_uid(),
+                address=pool_address,
+            )
         except mo.ActorAlreadyExist:  # pragma: no cover
-            ref = await mo.actor_ref(YarnNodeWatchActor.default_uid(),
-                                     address=pool_address)
+            ref = await mo.actor_ref(
+                YarnNodeWatchActor.default_uid(), address=pool_address
+            )
         return YarnClusterBackend(pool_address, ref)
 
     async def get_supervisors(self, filter_ready: bool = True) -> List[str]:
@@ -146,7 +158,8 @@ class YarnClusterBackend(AbstractClusterBackend):
             yield await self._watch_ref.wait_nodes(NodeRole.SUPERVISOR)
 
     async def request_worker(
-            self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
+        self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None
+    ) -> str:
         raise NotImplementedError
 
     async def release_worker(self, address: str):
@@ -161,23 +174,27 @@ class YarnServiceMixin(object):
 
     @property
     def app_client(self):
-        if not hasattr(self, '_app_client'):
+        if not hasattr(self, "_app_client"):
             self._app_client = ApplicationClient.from_current()
         return self._app_client
 
     def get_container_ip(self):
         svc_containers = self.app_client.get_containers([self.service_name])
-        container = next(c for c in svc_containers
-                         if c.yarn_container_id == skein_props['yarn_container_id'])
-        return container.yarn_node_http_address.split(':')[0]
+        container = next(
+            c
+            for c in svc_containers
+            if c.yarn_container_id == skein_props["yarn_container_id"]
+        )
+        return container.yarn_node_http_address.split(":")[0]
 
     def register_endpoint(self, prefix: str = None, endpoint: str = None):
         prefix = prefix or self.service_name
         endpoint = endpoint or self.args.endpoint
 
-        container_key = prefix + '-' + str(uuid.uuid1())
+        container_key = prefix + "-" + str(uuid.uuid1())
         self.app_client.kv[container_key] = to_binary(
-            f'{endpoint}@{skein_props["yarn_container_id"]}')
+            f'{endpoint}@{skein_props["yarn_container_id"]}'
+        )
 
     async def wait_all_supervisors_ready(self):
         """

@@ -29,7 +29,7 @@ from .core import BufferWrappedFileObject, StorageFileObject
 vineyard = lazy_import("vineyard")
 pyarrow = lazy_import("pyarrow")
 
-if sys.platform.startswith('win'):
+if sys.platform.startswith("win"):
     vineyard = None
 
 logger = logging.getLogger(__name__)
@@ -37,29 +37,35 @@ logger = logging.getLogger(__name__)
 
 # Setup support for mars datatypes on vineyard
 
+
 def mars_sparse_matrix_builder(client, value, builder, **kw):
     meta = vineyard.ObjectMeta()
-    meta['typename'] = 'vineyard::SparseMatrix<%s>' % value.dtype.name
-    meta['shape_'] = vineyard.data.utils.to_json(value.shape)
-    meta.add_member('spmatrix', builder.run(client, value.spmatrix, **kw))
+    meta["typename"] = "vineyard::SparseMatrix<%s>" % value.dtype.name
+    meta["shape_"] = vineyard.data.utils.to_json(value.shape)
+    meta.add_member("spmatrix", builder.run(client, value.spmatrix, **kw))
     return client.create_metadata(meta)
 
 
 def mars_sparse_matrix_resolver(obj, resolver) -> sparse.SparseNDArray:
     meta = obj.meta
-    shape = vineyard.data.utils.from_json(meta['shape_'])
-    spmatrix = resolver.run(obj.member('spmatrix'))
+    shape = vineyard.data.utils.from_json(meta["shape_"])
+    spmatrix = resolver.run(obj.member("spmatrix"))
     return sparse.matrix.SparseMatrix(spmatrix, shape=shape)
 
 
 if vineyard is not None:
-    vineyard.core.default_builder_context.register(sparse.matrix.SparseMatrix, mars_sparse_matrix_builder)
-    vineyard.core.default_resolver_context.register('vineyard::SparseMatrix', mars_sparse_matrix_resolver)
+    vineyard.core.default_builder_context.register(
+        sparse.matrix.SparseMatrix, mars_sparse_matrix_builder
+    )
+    vineyard.core.default_resolver_context.register(
+        "vineyard::SparseMatrix", mars_sparse_matrix_resolver
+    )
 
 
 class VineyardFileObject(BufferWrappedFileObject):
-    def __init__(self, vineyard_client, object_id,
-                 mode: str, size: Optional[int] = None):
+    def __init__(
+        self, vineyard_client, object_id, mode: str, size: Optional[int] = None
+    ):
         self._client = vineyard_client
         self._file = None
 
@@ -72,7 +78,9 @@ class VineyardFileObject(BufferWrappedFileObject):
         super().__init__(object_id, mode, size=size)
 
     def _read_init(self):
-        self._reader = vineyard.data.pickle.PickledReader(self._client.get(self._object_id))
+        self._reader = vineyard.data.pickle.PickledReader(
+            self._client.get(self._object_id)
+        )
         self._size = self._reader.store_size
 
     def _write_init(self):
@@ -80,7 +88,9 @@ class VineyardFileObject(BufferWrappedFileObject):
 
     @property
     def buffer(self):
-        raise UnsupportedOperation("VineyardFileObject doesn't support the direct 'buffer' property")
+        raise UnsupportedOperation(
+            "VineyardFileObject doesn't support the direct 'buffer' property"
+        )
 
     def read(self, size=-1):
         if not self._initialized:
@@ -105,11 +115,9 @@ class VineyardFileObject(BufferWrappedFileObject):
 
 @register_storage_backend
 class VineyardStorage(StorageBackend):
-    name = 'vineyard'
+    name = "vineyard"
 
-    def __init__(self,
-                 vineyard_size: int,
-                 vineyard_socket: str = None):
+    def __init__(self, vineyard_size: int, vineyard_socket: str = None):
         self._size = vineyard_size
         self._vineyard_socket = vineyard_socket
         self._client = vineyard.connect(vineyard_socket)
@@ -118,13 +126,15 @@ class VineyardStorage(StorageBackend):
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         loop = asyncio.get_running_loop()
-        etcd_endpoints = kwargs.pop('etcd_endpoints', '127.0.0.1:2379')
-        vineyard_size = kwargs.pop('vineyard_size', '1Gi')
-        vineyard_socket = kwargs.pop('vineyard_socket', None)
-        vineyardd_path = kwargs.pop('vineyardd_path', None)
+        etcd_endpoints = kwargs.pop("etcd_endpoints", "127.0.0.1:2379")
+        vineyard_size = kwargs.pop("vineyard_size", "1Gi")
+        vineyard_socket = kwargs.pop("vineyard_socket", None)
+        vineyardd_path = kwargs.pop("vineyardd_path", None)
 
         if kwargs:
-            raise TypeError(f'VineyardStorage got unexpected config: {",".join(kwargs)}')
+            raise TypeError(
+                f'VineyardStorage got unexpected config: {",".join(kwargs)}'
+            )
 
         vineyard_size = calc_size_by_str(vineyard_size, virtual_memory().total)
         if vineyard_socket is not None:  # pragma: no cover
@@ -135,18 +145,19 @@ class VineyardStorage(StorageBackend):
                 vineyardd_path,
                 vineyard_size,
                 vineyard_socket,
-                rpc=False)
-            vineyard_socket = (await loop.run_in_executor(
-                None, vineyard_store.__enter__))[1]
-        init_params = dict(vineyard_size=vineyard_size,
-                           vineyard_socket=vineyard_socket)
+                rpc=False,
+            )
+            vineyard_socket = (
+                await loop.run_in_executor(None, vineyard_store.__enter__)
+            )[1]
+        init_params = dict(vineyard_size=vineyard_size, vineyard_socket=vineyard_socket)
         teardown_params = dict(vineyard_store=vineyard_store)
         return init_params, teardown_params
 
     @staticmethod
     @implements(StorageBackend.teardown)
     async def teardown(**kwargs):
-        vineyard_store = kwargs.get('vineyard_store')
+        vineyard_store = kwargs.get("vineyard_store")
         if vineyard_store is not None:
             vineyard_store.__exit__(None, None, None)
 
@@ -164,9 +175,9 @@ class VineyardStorage(StorageBackend):
     @implements(StorageBackend.backend_info)
     def backend_info(self):
         return {
-            'name': self.name,
-            'socket': self._vineyard_socket,
-            'instance_id': self._client.instance_id,
+            "name": self.name,
+            "socket": self._vineyard_socket,
+            "instance_id": self._client.instance_id,
         }
 
     @implements(StorageBackend.get)
@@ -193,12 +204,12 @@ class VineyardStorage(StorageBackend):
 
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:
-        vineyard_writer = VineyardFileObject(self._client, None, size=size, mode='w')
+        vineyard_writer = VineyardFileObject(self._client, None, size=size, mode="w")
         return StorageFileObject(vineyard_writer, object_id=None)
 
     @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
-        vineyard_reader = VineyardFileObject(self._client, object_id, mode='r')
+        vineyard_reader = VineyardFileObject(self._client, object_id, mode="r")
         return StorageFileObject(vineyard_reader, object_id=object_id)
 
     @implements(StorageBackend.list)

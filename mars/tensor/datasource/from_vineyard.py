@@ -33,8 +33,8 @@ except ImportError:
 def resolve_vineyard_socket(ctx, op):
     if op.vineyard_socket is None:  # pragma: no cover
         storage_backend = ctx.get_storage_info(level=StorageLevel.MEMORY)
-        if storage_backend.get('name', None) == 'vineyard':
-            return storage_backend['socket']
+        if storage_backend.get("name", None) == "vineyard":
+            return storage_backend["socket"]
         else:
             return op.vineyard_socket
     else:
@@ -45,10 +45,10 @@ class TensorFromVineyard(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_FROM_VINEYARD_META
 
     # vineyard ipc socket
-    vineyard_socket = StringField('vineyard_socket')
+    vineyard_socket = StringField("vineyard_socket")
 
     # ObjectID in vineyard
-    object_id = StringField('object_id')
+    object_id = StringField("object_id")
 
     def __init__(self, vineyard_socket=None, object_id=None, **kw):
         super().__init__(vineyard_socket=vineyard_socket, object_id=object_id, **kw)
@@ -62,35 +62,43 @@ class TensorFromVineyard(TensorNoInput):
         for index, worker in enumerate(workers):
             chunk_op = op.copy().reset_key()
             chunk_op.expect_worker = worker
-            out_chunk = chunk_op.new_chunk([], dtype=np.dtype(object), shape=(1,),
-                                           index=(index,))
+            out_chunk = chunk_op.new_chunk(
+                [], dtype=np.dtype(object), shape=(1,), index=(index,)
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy().reset_key()
-        return new_op.new_tensors(op.inputs,
-                                  shape=(np.nan,), dtype=np.dtype(object),
-                                  chunks=out_chunks, nsplits=((np.nan,)*len(workers),))
+        return new_op.new_tensors(
+            op.inputs,
+            shape=(np.nan,),
+            dtype=np.dtype(object),
+            chunks=out_chunks,
+            nsplits=((np.nan,) * len(workers),),
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         if vineyard is None:
-            raise RuntimeError('vineyard is not available')
+            raise RuntimeError("vineyard is not available")
 
         socket = resolve_vineyard_socket(ctx, op)
         client = vineyard.connect(socket)
 
         meta = client.get_meta(vineyard.ObjectID(op.object_id))
         chunks = []
-        for idx in range(meta['partitions_-size']):
-            chunk_meta = meta['partitions_-%d' % idx]
+        for idx in range(meta["partitions_-size"]):
+            chunk_meta = meta["partitions_-%d" % idx]
             if not chunk_meta.islocal:
                 continue
-            dtype = normalize_dtype(chunk_meta['value_type_'],
-                                    chunk_meta.get('value_type_meta_', None))
-            shape = tuple(json.loads(chunk_meta['shape_']))
-            chunk_index = tuple(json.loads(chunk_meta['partition_index_']))
+            dtype = normalize_dtype(
+                chunk_meta["value_type_"], chunk_meta.get("value_type_meta_", None)
+            )
+            shape = tuple(json.loads(chunk_meta["shape_"]))
+            chunk_index = tuple(json.loads(chunk_meta["partition_index_"]))
             # chunk: (chunk_id, worker_address, dtype, shape, index)
-            chunks.append((repr(chunk_meta.id), ctx.worker_address, dtype, shape, chunk_index))
+            chunks.append(
+                (repr(chunk_meta.id), ctx.worker_address, dtype, shape, chunk_index)
+            )
 
         holder = np.empty((1,), dtype=object)
         holder[0] = chunks
@@ -101,10 +109,10 @@ class TensorFromVineyardChunk(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.TENSOR_FROM_VINEYARD_CHUNK
 
     # vineyard ipc socket
-    vineyard_socket = StringField('vineyard_socket')
+    vineyard_socket = StringField("vineyard_socket")
 
     # ObjectID of chunk in vineyard
-    object_id = StringField('object_id')
+    object_id = StringField("object_id")
 
     def __init__(self, vineyard_socket=None, object_id=None, **kw):
         super().__init__(vineyard_socket=vineyard_socket, object_id=object_id, **kw)
@@ -123,7 +131,9 @@ class TensorFromVineyardChunk(TensorOperand, TensorOperandMixin):
         out_chunks = []
         chunk_map = dict()
         dtype = None
-        for chunk, infos in zip(op.inputs[0].chunks, ctx.get_chunks_result(in_chunk_keys)):
+        for chunk, infos in zip(
+            op.inputs[0].chunks, ctx.get_chunks_result(in_chunk_keys)
+        ):
             for info in infos[0]:  # n.b. 1-element ndarray
                 chunk_op = op.copy().reset_key()
                 chunk_op.object_id = info[0]
@@ -132,20 +142,22 @@ class TensorFromVineyardChunk(TensorOperand, TensorOperandMixin):
                 shape = info[3]
                 chunk_index = info[4]
                 chunk_map[chunk_index] = info[3]
-                out_chunk = chunk_op.new_chunk([chunk], shape=shape, dtype=dtype,
-                                               index=chunk_index)
+                out_chunk = chunk_op.new_chunk(
+                    [chunk], shape=shape, dtype=dtype, index=chunk_index
+                )
                 out_chunks.append(out_chunk)
 
         nsplits = calc_nsplits(chunk_map)
         shape = [np.sum(nsplit) for nsplit in nsplits]
         new_op = op.copy().reset_key()
-        return new_op.new_tensors(op.inputs, shape=shape, dtype=dtype,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            op.inputs, shape=shape, dtype=dtype, chunks=out_chunks, nsplits=nsplits
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         if vineyard is None:
-            raise RuntimeError('vineyard is not available')
+            raise RuntimeError("vineyard is not available")
 
         socket = resolve_vineyard_socket(ctx, op)
         client = vineyard.connect(socket)
@@ -156,16 +168,23 @@ class TensorFromVineyardChunk(TensorOperand, TensorOperandMixin):
 
 def fromvineyard(tensor, vineyard_socket=None):
     if vineyard is not None and isinstance(tensor, vineyard.Object):  # pragma: no cover
-        if 'vineyard::GlobalTensor' not in tensor.typename:
-            raise TypeError('The input tensor %r is not a vineyard\' GlobalTensor' % tensor)
+        if "vineyard::GlobalTensor" not in tensor.typename:
+            raise TypeError(
+                "The input tensor %r is not a vineyard' GlobalTensor" % tensor
+            )
         object_id = tensor.id
     else:
         object_id = tensor
     if vineyard is not None and isinstance(object_id, vineyard.ObjectID):
         object_id = repr(object_id)
-    metaop = TensorFromVineyard(vineyard_socket=vineyard_socket, object_id=object_id,
-                                dtype=np.dtype('byte'), gpu=False)
+    metaop = TensorFromVineyard(
+        vineyard_socket=vineyard_socket,
+        object_id=object_id,
+        dtype=np.dtype("byte"),
+        gpu=False,
+    )
     meta = metaop(shape=(np.nan,), chunk_size=(1,))
-    op = TensorFromVineyardChunk(vineyard_socket=vineyard_socket,
-                                 object_id=object_id, gpu=False)
+    op = TensorFromVineyardChunk(
+        vineyard_socket=vineyard_socket, object_id=object_id, gpu=False
+    )
     return op(meta)

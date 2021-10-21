@@ -27,8 +27,8 @@ from ..core import TensorOrder
 class TensorRFFTFreq(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.RFFTFREQ
 
-    _n = Int32Field('n')
-    _d = Float64Field('d')
+    _n = Int32Field("n")
+    _d = Float64Field("d")
 
     def __init__(self, n=None, d=None, **kw):
         super().__init__(_n=n, _d=d, **kw)
@@ -43,20 +43,31 @@ class TensorRFFTFreq(TensorOperand, TensorOperandMixin):
 
     def __call__(self, chunk_size=None):
         shape = (self.n // 2 + 1,)
-        return self.new_tensor(None, shape, raw_chunk_size=chunk_size,
-                               order=TensorOrder.C_ORDER)
+        return self.new_tensor(
+            None, shape, raw_chunk_size=chunk_size, order=TensorOrder.C_ORDER
+        )
 
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
-        t = arange(tensor.shape[0], dtype=op.dtype, gpu=op.gpu,
-                   chunk_size=tensor.extra_params.raw_chunk_size)
+        t = arange(
+            tensor.shape[0],
+            dtype=op.dtype,
+            gpu=op.gpu,
+            chunk_size=tensor.extra_params.raw_chunk_size,
+        )
         t = t / (op.n * op.d)
         t = yield from recursive_tile(t)
 
         new_op = op.copy()
-        return new_op.new_tensors(None, tensor.shape, order=tensor.order,
-                                  chunks=t.chunks, nsplits=t.nsplits, **tensor.extra_params)
+        return new_op.new_tensors(
+            None,
+            tensor.shape,
+            order=tensor.order,
+            chunks=t.chunks,
+            nsplits=t.nsplits,
+            **tensor.extra_params
+        )
 
 
 def rfftfreq(n, d=1.0, gpu=False, chunk_size=None):

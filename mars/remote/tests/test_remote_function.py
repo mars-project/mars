@@ -38,7 +38,7 @@ def test_params():
     assert isinstance(c.params, dict)
 
     params = c.params
-    params.pop('index', None)
+    params.pop("index", None)
     r.params = params
     r.refresh_params()
 
@@ -58,7 +58,7 @@ def test_remote_function(setup):
 
     r1 = spawn(f1, raw1)
     r2 = spawn(f1, raw2)
-    r3 = spawn(f2, (r1, r2), {'z': [r1, r2]})
+    r3 = spawn(f2, (r1, r2), {"z": [r1, r2]})
 
     result = r3.execute().fetch()
     expected = (raw1 + 1) * (raw2 + 1) * (raw1 + 1 + raw2 + 1)
@@ -77,15 +77,14 @@ def test_remote_function(setup):
 
 
 def test_multi_output(setup):
-    sentences = ['word1 word2', 'word2 word3', 'word3 word2 word1']
+    sentences = ["word1 word2", "word2 word3", "word3 word2 word1"]
 
     def mapper(s):
         word_to_count = defaultdict(lambda: 0)
         for word in s.split():
             word_to_count[word] += 1
 
-        downsides = [defaultdict(lambda: 0),
-                     defaultdict(lambda: 0)]
+        downsides = [defaultdict(lambda: 0), defaultdict(lambda: 0)]
         for word, count in word_to_count.items():
             downsides[mmh3_hash(word) % 2][word] += count
 
@@ -114,7 +113,7 @@ def test_multi_output(setup):
     for wc in ExecutableTuple(rs).to_object():
         result.update(wc)
 
-    assert result == {'word1': 2, 'word2': 3, 'word3': 2}
+    assert result == {"word1": 2, "word2": 3, "word3": 2}
 
 
 def test_chained_remote(setup):
@@ -165,7 +164,7 @@ def test_input_tileable(setup):
 def test_unknown_shape_inputs(setup):
     def f(t, x):
         assert all(not np.isnan(s) for s in t.shape)
-        return (t * x).sum().to_numpy(extra_config={'check_nsplits': False})
+        return (t * x).sum().to_numpy(extra_config={"check_nsplits": False})
 
     rs = np.random.RandomState(0)
     raw = rs.rand(5, 4)

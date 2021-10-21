@@ -30,8 +30,8 @@ from ..array_utils import as_same_device, device
 class TensorCholesky(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.CHOLESKY
 
-    _input = KeyField('input')
-    _lower = BoolField('lower')
+    _input = KeyField("input")
+    _lower = BoolField("lower")
 
     def __init__(self, lower=None, **kw):
         super().__init__(_lower=lower, **kw)
@@ -62,19 +62,24 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
         if in_tensor.nsplits[0] != in_tensor.nsplits[1]:
             # all chunks on diagonal should be square
             nsplits = in_tensor.nsplits[0]
-            in_tensor = yield from recursive_tile(
-                in_tensor.rechunk([nsplits, nsplits]))
+            in_tensor = yield from recursive_tile(in_tensor.rechunk([nsplits, nsplits]))
 
         lower_chunks, upper_chunks = {}, {}
         for i in range(in_tensor.chunk_shape[0]):
             for j in range(in_tensor.chunk_shape[1]):
                 if i < j:
                     lower_chunk = TensorZeros(dtype=tensor.dtype).new_chunk(
-                        None, shape=(in_tensor.nsplits[0][i], in_tensor.nsplits[1][j]),
-                        index=(i, j), order=tensor.order)
+                        None,
+                        shape=(in_tensor.nsplits[0][i], in_tensor.nsplits[1][j]),
+                        index=(i, j),
+                        order=tensor.order,
+                    )
                     upper_chunk = TensorZeros(dtype=tensor.dtype).new_chunk(
-                        None, shape=(in_tensor.nsplits[1][j], in_tensor.nsplits[0][i]),
-                        index=(j, i), order=tensor.order)
+                        None,
+                        shape=(in_tensor.nsplits[1][j], in_tensor.nsplits[0][i]),
+                        index=(j, i),
+                        order=tensor.order,
+                    )
                     lower_chunks[lower_chunk.index] = lower_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk
                 elif i == j:
@@ -84,20 +89,35 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                         for p in range(i):
                             a, b = lower_chunks[i, p], upper_chunks[p, j]
                             prev_chunk = TensorDot(dtype=tensor.dtype).new_chunk(
-                                [a, b], shape=(a.shape[0], b.shape[1]), order=tensor.order)
+                                [a, b],
+                                shape=(a.shape[0], b.shape[1]),
+                                order=tensor.order,
+                            )
                             prev_chunks.append(prev_chunk)
 
                         cholesky_fuse_op = TensorCholeskyFuse()
-                        lower_chunk = cholesky_fuse_op.new_chunk([target] + prev_chunks,
-                                                                 shape=target.shape, index=(i, j),
-                                                                 order=tensor.order)
+                        lower_chunk = cholesky_fuse_op.new_chunk(
+                            [target] + prev_chunks,
+                            shape=target.shape,
+                            index=(i, j),
+                            order=tensor.order,
+                        )
                     else:
-                        lower_chunk = TensorCholesky(lower=True, dtype=tensor.dtype).new_chunk(
-                            [target], shape=target.shape, index=(i, j), order=tensor.order)
+                        lower_chunk = TensorCholesky(
+                            lower=True, dtype=tensor.dtype
+                        ).new_chunk(
+                            [target],
+                            shape=target.shape,
+                            index=(i, j),
+                            order=tensor.order,
+                        )
 
                     upper_chunk = TensorTranspose(dtype=lower_chunk.dtype).new_chunk(
-                        [lower_chunk], shape=lower_chunk.shape[::-1],
-                        index=lower_chunk.index[::-1], order=reverse_order(lower_chunk.order))
+                        [lower_chunk],
+                        shape=lower_chunk.shape[::-1],
+                        index=lower_chunk.index[::-1],
+                        order=reverse_order(lower_chunk.order),
+                    )
                     lower_chunks[lower_chunk.index] = lower_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk
                 else:
@@ -107,35 +127,60 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                         for p in range(j):
                             a, b = lower_chunks[j, p], upper_chunks[p, i]
                             prev_chunk = TensorDot(dtype=tensor.dtype).new_chunk(
-                                [a, b], shape=(a.shape[0], b.shape[1]), order=tensor.order)
+                                [a, b],
+                                shape=(a.shape[0], b.shape[1]),
+                                order=tensor.order,
+                            )
                             prev_chunks.append(prev_chunk)
                         cholesky_fuse_op = TensorCholeskyFuse(by_solve_triangular=True)
-                        upper_chunk = cholesky_fuse_op.new_chunk([target] + [lower_chunks[j, j]] + prev_chunks,
-                                                                 shape=target.shape, index=(j, i),
-                                                                 order=tensor.order)
+                        upper_chunk = cholesky_fuse_op.new_chunk(
+                            [target] + [lower_chunks[j, j]] + prev_chunks,
+                            shape=target.shape,
+                            index=(j, i),
+                            order=tensor.order,
+                        )
                     else:
-                        upper_chunk = TensorSolveTriangular(lower=True, dtype=tensor.dtype).new_chunk(
-                            [lower_chunks[j, j], target], shape=target.shape,
-                            index=(j, i), order=tensor.order)
+                        upper_chunk = TensorSolveTriangular(
+                            lower=True, dtype=tensor.dtype
+                        ).new_chunk(
+                            [lower_chunks[j, j], target],
+                            shape=target.shape,
+                            index=(j, i),
+                            order=tensor.order,
+                        )
                     lower_chunk = TensorTranspose(dtype=upper_chunk.dtype).new_chunk(
-                        [upper_chunk], shape=upper_chunk.shape[::-1],
-                        index=upper_chunk.index[::-1], order=reverse_order(upper_chunk.order))
+                        [upper_chunk],
+                        shape=upper_chunk.shape[::-1],
+                        index=upper_chunk.index[::-1],
+                        order=reverse_order(upper_chunk.order),
+                    )
                     lower_chunks[lower_chunk.index] = lower_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk
 
         new_op = op.copy()
         if op.lower:
-            return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
-                                      chunks=list(lower_chunks.values()), nsplits=in_tensor.nsplits)
+            return new_op.new_tensors(
+                op.inputs,
+                tensor.shape,
+                order=tensor.order,
+                chunks=list(lower_chunks.values()),
+                nsplits=in_tensor.nsplits,
+            )
         else:
-            return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
-                                      chunks=list(upper_chunks.values()), nsplits=in_tensor.nsplits)
+            return new_op.new_tensors(
+                op.inputs,
+                tensor.shape,
+                order=tensor.order,
+                chunks=list(upper_chunks.values()),
+                nsplits=in_tensor.nsplits,
+            )
 
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         (a,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             if xp is np:
@@ -154,7 +199,7 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
 class TensorCholeskyFuse(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.CHOLESKY_FUSE
 
-    _by_solve_triangular = BoolField('by_solve_triangular')
+    _by_solve_triangular = BoolField("by_solve_triangular")
 
     def __init__(self, by_solve_triangular=None, **kw):
         super().__init__(_by_solve_triangular=by_solve_triangular, **kw)
@@ -176,7 +221,9 @@ class TensorCholeskyFuse(TensorOperand, TensorOperandMixin):
 
         target = inputs[0]
         lower = inputs[1]
-        return scipy.linalg.solve_triangular(lower, (target - sum(inputs[2:])), lower=True)
+        return scipy.linalg.solve_triangular(
+            lower, (target - sum(inputs[2:])), lower=True
+        )
 
     @classmethod
     def execute(cls, ctx, op):
@@ -262,10 +309,11 @@ def cholesky(a, lower=False):
     a = astensor(a)
 
     if a.ndim != 2:  # pragma: no cover
-        raise LinAlgError(f'{a.ndim}-dimensional array given. '
-                          'Tensor must be two-dimensional')
+        raise LinAlgError(
+            f"{a.ndim}-dimensional array given. " "Tensor must be two-dimensional"
+        )
     if a.shape[0] != a.shape[1]:  # pragma: no cover
-        raise LinAlgError('Input must be square')
+        raise LinAlgError("Input must be square")
 
     cho = np.linalg.cholesky(np.array([[1, 2], [2, 5]], dtype=a.dtype))
 

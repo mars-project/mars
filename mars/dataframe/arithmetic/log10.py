@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameLog10(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.LOG10
-    _func_name = 'log10'
+    _func_name = "log10"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorLog10
+
         return TensorLog10

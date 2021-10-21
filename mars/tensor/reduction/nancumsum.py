@@ -24,7 +24,7 @@ from .core import TensorCumReduction, TensorCumReductionMixin
 
 class TensorNanCumsum(TensorCumReduction, TensorCumReductionMixin):
     _op_type_ = OperandDef.NANCUMSUM
-    _func_name = 'nancumsum'
+    _func_name = "nancumsum"
 
     def __init__(self, axis=None, **kw):
         super().__init__(_axis=axis, **kw)

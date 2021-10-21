@@ -18,9 +18,17 @@ from enum import Enum
 from functools import partial
 from typing import Any, List, Tuple, Dict, Type, Union
 
-from ...serialization.serializables import SerializableMeta, FieldTypes, \
-    BoolField, Int32Field, Float32Field, StringField, \
-    ListField, DictField, ReferenceField
+from ...serialization.serializables import (
+    SerializableMeta,
+    FieldTypes,
+    BoolField,
+    Int32Field,
+    Float32Field,
+    StringField,
+    ListField,
+    DictField,
+    ReferenceField,
+)
 from ...serialization.core import Placeholder
 from ...serialization.serializables import Serializable
 from ...serialization.serializables.core import SerializableSerializer
@@ -35,14 +43,11 @@ from ..mode import enter_mode
 
 
 class OperandMetaclass(SerializableMeta):
-    def __new__(mcs,
-                name: str,
-                bases: Tuple[Type],
-                properties: Dict):
-        if '__call__' in properties:
+    def __new__(mcs, name: str, bases: Tuple[Type], properties: Dict):
+        if "__call__" in properties:
             # if __call__ is specified for an operand,
             # make sure that entering user space
-            properties['__call__'] = enter_mode(kernel=False)(properties['__call__'])
+            properties["__call__"] = enter_mode(kernel=False)(properties["__call__"])
 
         return super().__new__(mcs, name, bases, properties)
 
@@ -58,21 +63,21 @@ class SchedulingHint(Serializable):
     # worker to execute, only work for chunk op,
     # if specified, the op should be executed on the specified worker
     # only work for those operand that has no input
-    expect_worker = StringField('expect_worker', default=None)
+    expect_worker = StringField("expect_worker", default=None)
     # will this operand be assigned a worker or not
-    reassign_worker = BoolField('reassign_worker', default=False)
+    reassign_worker = BoolField("reassign_worker", default=False)
     # mark a op as fuseable
-    fuseable = BoolField('fuseable', default=True)
+    fuseable = BoolField("fuseable", default=True)
     # True means control dependency, False means data dependency
-    _pure_depends = ListField('pure_depends', FieldTypes.bool, default=None)
+    _pure_depends = ListField("pure_depends", FieldTypes.bool, default=None)
     # useful when setting chunk index as priority,
     # useful for those op like read_csv, the first chunk
     # need to be executed not later than the later ones,
     # because the range index of later chunk should be accumulated from
     # indexes of previous ones
     # `gpu` indicates that if the operand should be executed on the GPU.
-    gpu = BoolField('gpu', default=None)
-    priority = Int32Field('priority', default=0)
+    gpu = BoolField("gpu", default=None)
+    priority = Int32Field("priority", default=0)
 
     @classproperty
     def all_hint_names(cls):
@@ -83,8 +88,7 @@ class SchedulingHint(Serializable):
             return False
         if self.reassign_worker:
             return False
-        if self._pure_depends and \
-                any(depend for depend in self._pure_depends):
+        if self._pure_depends and any(depend for depend in self._pure_depends):
             # control dependency exists
             return False
         return True
@@ -118,36 +122,39 @@ class Operand(Base, metaclass=OperandMetaclass):
     Operand can have inputs and outputs
     which should be the :class:`mars.tensor.core.TensorData`, :class:`mars.tensor.core.ChunkData` etc.
     """
-    __slots__ = '__weakref__',
-    attr_tag = 'attr'
+
+    __slots__ = ("__weakref__",)
+    attr_tag = "attr"
     _init_update_key_ = False
     _output_type_ = None
 
-    sparse = BoolField('sparse', default=False)
-    device = Int32Field('device', default=None)
+    sparse = BoolField("sparse", default=False)
+    device = Int32Field("device", default=None)
     # will this operand create a view of input data or not
-    create_view = BoolField('create_view', default=False)
-    stage = ReferenceField('stage', OperandStage, default=None)
-    memory_scale = Float32Field('memory_scale', default=None)
-    tileable_op_key = StringField('tileable_op_key', default=None)
-    extra_params = DictField('extra_params', key_type=FieldTypes.string)
+    create_view = BoolField("create_view", default=False)
+    stage = ReferenceField("stage", OperandStage, default=None)
+    memory_scale = Float32Field("memory_scale", default=None)
+    tileable_op_key = StringField("tileable_op_key", default=None)
+    extra_params = DictField("extra_params", key_type=FieldTypes.string)
     # scheduling hint
-    scheduling_hint = ReferenceField('scheduling_hint', default=None)
+    scheduling_hint = ReferenceField("scheduling_hint", default=None)
 
-    _inputs = ListField('inputs', FieldTypes.reference(EntityData))
-    _outputs = ListField('outputs')
-    _output_types = ListField('output_type', FieldTypes.reference(OutputType))
+    _inputs = ListField("inputs", FieldTypes.reference(EntityData))
+    _outputs = ListField("outputs")
+    _output_types = ListField("output_type", FieldTypes.reference(OutputType))
 
     def __init__(self: OperandType, *args, **kwargs):
-        extra_names = set(kwargs) - set(self._FIELDS) - set(SchedulingHint.all_hint_names)
+        extra_names = (
+            set(kwargs) - set(self._FIELDS) - set(SchedulingHint.all_hint_names)
+        )
         extras = AttributeDict((k, kwargs.pop(k)) for k in extra_names)
-        kwargs['extra_params'] = kwargs.pop('extra_params', extras)
+        kwargs["extra_params"] = kwargs.pop("extra_params", extras)
         self._extract_scheduling_hint(kwargs)
         super().__init__(*args, **kwargs)
 
     @classmethod
     def _extract_scheduling_hint(cls, kwargs: Dict[str, Any]):
-        if 'scheduling_hint' in kwargs:
+        if "scheduling_hint" in kwargs:
             return
 
         scheduling_hint_kwargs = dict()
@@ -155,13 +162,13 @@ class Operand(Base, metaclass=OperandMetaclass):
             if hint_name in kwargs:
                 scheduling_hint_kwargs[hint_name] = kwargs.pop(hint_name)
         if scheduling_hint_kwargs:
-            kwargs['scheduling_hint'] = SchedulingHint(**scheduling_hint_kwargs)
+            kwargs["scheduling_hint"] = SchedulingHint(**scheduling_hint_kwargs)
 
     def __repr__(self):
         if self.stage is None:
-            return f'{type(self).__name__} <key={self.key}>'
+            return f"{type(self).__name__} <key={self.key}>"
         else:
-            return f'{type(self).__name__} <key={self.key}, stage={self.stage.name}>'
+            return f"{type(self).__name__} <key={self.key}, stage={self.stage.name}>"
 
     @classmethod
     def _get_entity_data(cls, entity):
@@ -176,13 +183,13 @@ class Operand(Base, metaclass=OperandMetaclass):
     def _set_inputs(self, inputs):
         if inputs is not None:
             inputs = self._get_inputs_data(inputs)
-        if hasattr(self, 'check_inputs'):
+        if hasattr(self, "check_inputs"):
             self.check_inputs(inputs)
-        setattr(self, '_inputs', inputs)
+        setattr(self, "_inputs", inputs)
 
     @property
     def inputs(self) -> List[Union[Chunk, Tileable]]:
-        inputs = getattr(self, '_inputs', None)
+        inputs = getattr(self, "_inputs", None)
         if not inputs:
             return list()
         return inputs
@@ -197,29 +204,31 @@ class Operand(Base, metaclass=OperandMetaclass):
 
     @property
     def pure_depends(self):
-        val = getattr(self, '_pure_depends', None)
+        val = getattr(self, "_pure_depends", None)
         if not val:
             return [False] * len(self.inputs or ())
         return val
 
     @property
     def output_types(self):
-        return getattr(self, '_output_types', None)
+        return getattr(self, "_output_types", None)
 
     @output_types.setter
     def output_types(self, value):
         self._output_types = value
 
     def _attach_outputs(self, *outputs):
-        self._outputs = [weakref.ref(self._get_entity_data(o)) if o is not None else o
-                         for o in outputs]
+        self._outputs = [
+            weakref.ref(self._get_entity_data(o)) if o is not None else o
+            for o in outputs
+        ]
 
         if len(self._outputs) > self.output_limit:
             raise ValueError("Outputs' size exceeds limitation")
 
     @property
     def outputs(self) -> List[Union[Chunk, Tileable]]:
-        outputs = getattr(self, '_outputs', None)
+        outputs = getattr(self, "_outputs", None)
         if outputs:
             return [ref() for ref in outputs]
 
@@ -255,8 +264,12 @@ class Operand(Base, metaclass=OperandMetaclass):
         new_op = super().copy()
         new_op.outputs = []
         # copy scheduling_hint
-        new_op.scheduling_hint = SchedulingHint(**{field: getattr(self.scheduling_hint, field)
-                                                for field in SchedulingHint.all_hint_names})
+        new_op.scheduling_hint = SchedulingHint(
+            **{
+                field: getattr(self.scheduling_hint, field)
+                for field in SchedulingHint.all_hint_names
+            }
+        )
         new_op.extra_params = deepcopy(self.extra_params)
         return new_op
 
@@ -275,34 +288,32 @@ class Operand(Base, metaclass=OperandMetaclass):
 
 
 class OperandSerializer(SerializableSerializer):
-    serializer_name = 'operand'
+    serializer_name = "operand"
 
     @classmethod
     def _get_tag_to_values(cls, obj: Operand):
         tag_to_values = super()._get_tag_to_values(obj)
         # outputs are weak-refs which are not pickle-able
-        tag_to_values['outputs'] = \
-            [out_ref() for out_ref in tag_to_values['outputs']]
+        tag_to_values["outputs"] = [out_ref() for out_ref in tag_to_values["outputs"]]
         return tag_to_values
 
-    def deserialize(self,
-                    header: Dict,
-                    buffers: List,
-                    context: Dict) -> Operand:
+    def deserialize(self, header: Dict, buffers: List, context: Dict) -> Operand:
         # convert outputs back to weak-refs
         operand: Operand = (yield from super().deserialize(header, buffers, context))
         for i, out in enumerate(operand._outputs):
+
             def cb(o, index):
                 outputs = operand._outputs
                 outputs[index] = weakref.ref(o)
 
-                if len(outputs) > 1 and \
-                        all(not isinstance(o, Placeholder) for o in outputs):
+                if len(outputs) > 1 and all(
+                    not isinstance(o, Placeholder) for o in outputs
+                ):
                     # all replaced
                     # add siblings for multiple outputs
                     outputs = operand.outputs
                     for j in range(len(outputs)):
-                        outputs[j]._siblings = outputs[:j] + outputs[j + 1:]
+                        outputs[j]._siblings = outputs[:j] + outputs[j + 1 :]
 
             if isinstance(out, Placeholder):
                 out.callbacks.append(partial(cb, index=i))

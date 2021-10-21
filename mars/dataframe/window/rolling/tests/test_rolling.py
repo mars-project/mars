@@ -21,47 +21,45 @@ from .....core import tile
 
 
 def test_rolling():
-    df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
+    df = pd.DataFrame(np.random.rand(4, 3), columns=list("abc"))
     df2 = md.DataFrame(df)
 
-    r = df2.rolling(3, min_periods=1, center=True,
-                    win_type='triang', closed='both')
-    expected = df.rolling(3, min_periods=1, center=True,
-                          win_type='triang', closed='both')
+    r = df2.rolling(3, min_periods=1, center=True, win_type="triang", closed="both")
+    expected = df.rolling(
+        3, min_periods=1, center=True, win_type="triang", closed="both"
+    )
     assert repr(r) == repr(expected)
 
-    assert 'b' in dir(r)
+    assert "b" in dir(r)
 
     with pytest.raises(AttributeError):
         _ = r.d
 
     with pytest.raises(KeyError):
-        _ = r['d']
+        _ = r["d"]
 
     with pytest.raises(KeyError):
-        _ = r['a', 'd']
+        _ = r["a", "d"]
 
-    assert 'a' not in dir(r.a)
-    assert 'c' not in dir(r['a', 'b'])
+    assert "a" not in dir(r.a)
+    assert "c" not in dir(r["a", "b"])
 
 
 def test_rolling_agg():
-    df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
+    df = pd.DataFrame(np.random.rand(4, 3), columns=list("abc"))
     df2 = md.DataFrame(df, chunk_size=3)
 
-    r = df2.rolling(3).agg('max')
-    expected = df.rolling(3).agg('max')
+    r = df2.rolling(3).agg("max")
+    expected = df.rolling(3).agg("max")
 
     assert r.shape == df.shape
     assert r.index_value is df2.index_value
-    pd.testing.assert_index_equal(r.columns_value.to_pandas(),
-                                  expected.columns)
+    pd.testing.assert_index_equal(r.columns_value.to_pandas(), expected.columns)
     pd.testing.assert_series_equal(r.dtypes, df2.dtypes)
 
     r = tile(r)
     for c in r.chunks:
         assert c.shape == c.inputs[0].shape
         assert c.index_value is c.inputs[0].index_value
-        pd.testing.assert_index_equal(c.columns_value.to_pandas(),
-                                      expected.columns)
+        pd.testing.assert_index_equal(c.columns_value.to_pandas(), expected.columns)
         pd.testing.assert_series_equal(c.dtypes, expected.dtypes)

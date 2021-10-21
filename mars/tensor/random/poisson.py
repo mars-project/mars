@@ -23,12 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorPoisson(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_lam']
+    _input_fields_ = ["_lam"]
     _op_type_ = OperandDef.RAND_POSSION
 
-    _fields_ = '_lam', '_size'
-    _lam = AnyField('lam')
-    _func_name = 'poisson'
+    _fields_ = "_lam", "_size"
+    _lam = AnyField("lam")
+    _func_name = "poisson"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -112,8 +112,7 @@ def poisson(random_state, lam=1.0, size=None, chunk_size=None, gpu=None, dtype=N
     >>> s = mt.random.poisson(lam=(100., 500.), size=(100, 2))
     """
     if dtype is None:
-        dtype = np.random.RandomState().poisson(
-            handle_array(lam), size=(0,)).dtype
+        dtype = np.random.RandomState().poisson(handle_array(lam), size=(0,)).dtype
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorPoisson(size=size, seed=seed, gpu=gpu, dtype=dtype)

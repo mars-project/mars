@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+
 try:
     from sklearn import get_config as get_sklearn_config
 except ImportError:  # pragma: no cover
@@ -23,7 +24,12 @@ from ... import tensor as mt
 from ...core import ENTITY_TYPE, get_output_types, recursive_tile
 from ...core.operand import OperandStage
 from ...config import options
-from ...serialization.serializables import KeyField, StringField, BoolField, DataTypeField
+from ...serialization.serializables import (
+    KeyField,
+    StringField,
+    BoolField,
+    DataTypeField,
+)
 from ...tensor.core import TensorOrder, TENSOR_CHUNK_TYPE
 from ...tensor.array_utils import as_same_device, device, issparse, get_array_module
 from ...utils import ceildiv
@@ -31,13 +37,18 @@ from ..operands import LearnOperand, LearnOperandMixin, OutputType
 
 
 class CheckBase(LearnOperand, LearnOperandMixin):
-    _input = KeyField('input')
-    _value = KeyField('value')
-    _err_msg = StringField('err_msg')
+    _input = KeyField("input")
+    _value = KeyField("value")
+    _err_msg = StringField("err_msg")
 
     def __init__(self, input=None, value=None, err_msg=None, output_types=None, **kw):
-        super().__init__(_input=input, _value=value, _err_msg=err_msg,
-                         _output_types=output_types, **kw)
+        super().__init__(
+            _input=input,
+            _value=value,
+            _err_msg=err_msg,
+            _output_types=output_types,
+            **kw,
+        )
 
     @property
     def input(self):
@@ -63,8 +74,7 @@ class CheckBase(LearnOperand, LearnOperandMixin):
         self._value = value = value if value is not None else x
         self.output_types = get_output_types(value)
         self.stage = OperandStage.agg
-        return self.new_tileable([x, value],
-                                 kws=[value.params])
+        return self.new_tileable([x, value], kws=[value.params])
 
     @classmethod
     def tile(cls, op):
@@ -72,12 +82,18 @@ class CheckBase(LearnOperand, LearnOperandMixin):
         x, value = op.input, op.value
         check_chunks = []
         for i, chunk in enumerate(x.chunks):
-            chunk_op = cls(err_msg=op.err_msg, stage=OperandStage.map,
-                           output_types=[OutputType.tensor])
-            check_chunk = chunk_op.new_chunk([chunk], shape=(),
-                                             index=(i,),
-                                             dtype=np.dtype(bool),
-                                             order=TensorOrder.C_ORDER)
+            chunk_op = cls(
+                err_msg=op.err_msg,
+                stage=OperandStage.map,
+                output_types=[OutputType.tensor],
+            )
+            check_chunk = chunk_op.new_chunk(
+                [chunk],
+                shape=(),
+                index=(i,),
+                dtype=np.dtype(bool),
+                order=TensorOrder.C_ORDER,
+            )
             check_chunks.append(check_chunk)
 
         while len(check_chunks) > 1:
@@ -85,41 +101,68 @@ class CheckBase(LearnOperand, LearnOperandMixin):
             check_chunks = []
             chunk_size = ceildiv(len(prev_check_chunks), combine_size)
             for i in range(chunk_size):
-                chunks = prev_check_chunks[i * combine_size: (i + 1) * combine_size]
-                chunk_op = cls(err_msg=op.err_msg, stage=OperandStage.combine,
-                               output_types=[OutputType.tensor])
-                check_chunk = chunk_op.new_chunk(chunks, shape=(),
-                                                 index=(i,),
-                                                 dtype=np.dtype(bool),
-                                                 order=TensorOrder.C_ORDER)
+                chunks = prev_check_chunks[i * combine_size : (i + 1) * combine_size]
+                chunk_op = cls(
+                    err_msg=op.err_msg,
+                    stage=OperandStage.combine,
+                    output_types=[OutputType.tensor],
+                )
+                check_chunk = chunk_op.new_chunk(
+                    chunks,
+                    shape=(),
+                    index=(i,),
+                    dtype=np.dtype(bool),
+                    order=TensorOrder.C_ORDER,
+                )
                 check_chunks.append(check_chunk)
 
         check_chunk = check_chunks[0]
         out_chunks = []
         for val_chunk in value.chunks:
-            chunk_op = cls(value=val_chunk, err_msg=op.err_msg, stage=OperandStage.agg,
-                           output_types=op.output_types)
-            out_chunk = chunk_op.new_chunk([check_chunk, val_chunk], kws=[val_chunk.params])
+            chunk_op = cls(
+                value=val_chunk,
+                err_msg=op.err_msg,
+                stage=OperandStage.agg,
+                output_types=op.output_types,
+            )
+            out_chunk = chunk_op.new_chunk(
+                [check_chunk, val_chunk], kws=[val_chunk.params]
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         kw = op.outputs[0].params
-        kw['chunks'] = out_chunks
-        kw['nsplits'] = value.nsplits
+        kw["chunks"] = out_chunks
+        kw["nsplits"] = value.nsplits
         return new_op.new_tileables(op.inputs, kws=[kw])
 
 
 class CheckNonNegative(CheckBase):
     _op_type_ = OperandDef.CHECK_NON_NEGATIVE
 
-    _whom = StringField('whom')
+    _whom = StringField("whom")
 
-    def __init__(self, input=None, value=None, whom=None, err_msg=None,
-                 stage=None, gpu=None, output_types=None, **kw):
-        super().__init__(input=input, value=value, _whom=whom,
-                         err_msg=err_msg, stage=stage,
-                         output_types=output_types,
-                         gpu=gpu, **kw)
+    def __init__(
+        self,
+        input=None,
+        value=None,
+        whom=None,
+        err_msg=None,
+        stage=None,
+        gpu=None,
+        output_types=None,
+        **kw,
+    ):
+        super().__init__(
+            input=input,
+            value=value,
+            _whom=whom,
+            err_msg=err_msg,
+            stage=stage,
+            output_types=output_types,
+            gpu=gpu,
+            **kw,
+        )
         if self._err_msg is None and self._whom is not None:
             self._err_msg = f"Negative values in data passed to {self._whom}"
 
@@ -130,7 +173,8 @@ class CheckNonNegative(CheckBase):
     @classmethod
     def _execute_tensor(cls, ctx, op):
         (x,), device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             if issparse(x) and x.nnz == 0:
@@ -187,20 +231,35 @@ def check_non_negative_then_return_value(to_check, value, whom):
 class AssertAllFinite(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.ASSERT_ALL_FINITE
 
-    _x = KeyField('x')
-    _allow_nan = BoolField('allow_nan')
-    _msg_dtype = DataTypeField('msg_dtype')
-    _check_only = BoolField('check_only')
+    _x = KeyField("x")
+    _allow_nan = BoolField("allow_nan")
+    _msg_dtype = DataTypeField("msg_dtype")
+    _check_only = BoolField("check_only")
     # chunks
-    _is_finite = KeyField('is_finite')
-    _check_nan = KeyField('check_nan')
+    _is_finite = KeyField("is_finite")
+    _check_nan = KeyField("check_nan")
 
-    def __init__(self, x=None, allow_nan=None, msg_dtype=None,
-                 check_only=None, is_finite=None, check_nan=None,
-                 output_types=None, **kw):
-        super().__init__(_x=x, _allow_nan=allow_nan, _msg_dtype=msg_dtype,
-                         _check_only=check_only, _is_finite=is_finite,
-                         _check_nan=check_nan, _output_types=output_types, **kw)
+    def __init__(
+        self,
+        x=None,
+        allow_nan=None,
+        msg_dtype=None,
+        check_only=None,
+        is_finite=None,
+        check_nan=None,
+        output_types=None,
+        **kw,
+    ):
+        super().__init__(
+            _x=x,
+            _allow_nan=allow_nan,
+            _msg_dtype=msg_dtype,
+            _check_only=check_only,
+            _is_finite=is_finite,
+            _check_nan=check_nan,
+            _output_types=output_types,
+            **kw,
+        )
 
     @property
     def x(self):
@@ -229,7 +288,7 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
-        for attr in ('_x', '_is_finite', '_check_nan'):
+        for attr in ("_x", "_is_finite", "_check_nan"):
             if getattr(self, attr) is not None:
                 setattr(self, attr, next(inputs_iter))
 
@@ -238,7 +297,7 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
         assume_finite = options.learn.assume_finite
         if assume_finite is None and get_sklearn_config is not None:
             # get config from scikit-learn
-            assume_finite = get_sklearn_config()['assume_finite']
+            assume_finite = get_sklearn_config()["assume_finite"]
         if assume_finite is None:  # pragma: no cover
             assume_finite = False
 
@@ -253,8 +312,9 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
                 return x
 
         if self._check_only:
-            return self.new_tileable([x], dtype=np.dtype(bool),
-                                     shape=(), order=TensorOrder.C_ORDER)
+            return self.new_tileable(
+                [x], dtype=np.dtype(bool), shape=(), order=TensorOrder.C_ORDER
+            )
         else:
             return self.new_tileable([x], kws=[x.params])
 
@@ -264,16 +324,16 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
 
         x = op.x
         out = op.outputs[0]
-        is_float = x.dtype.kind in 'fc'
+        is_float = x.dtype.kind in "fc"
         combine_size = options.combine_size
 
         is_finite_chunk = check_nan_chunk = None
         if is_float:
-            is_finite_chunk = (yield from recursive_tile(
-                mt.isfinite(_safe_accumulator_op(mt.sum, x)))).chunks[0]
+            is_finite_chunk = (
+                yield from recursive_tile(mt.isfinite(_safe_accumulator_op(mt.sum, x)))
+            ).chunks[0]
         elif x.dtype == np.dtype(object) and not op.allow_nan:
-            check_nan_chunk = (yield from recursive_tile(
-                (x != x).any())).chunks[0]
+            check_nan_chunk = (yield from recursive_tile((x != x).any())).chunks[0]
 
         map_chunks = []
         for c in x.chunks:
@@ -288,18 +348,18 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
                 chunk_inputs.append(check_nan_chunk)
             chunk_params = c.params
             if op.check_only:
-                chunk_params['dtype'] = np.dtype(bool)
-                chunk_params['shape'] = ()
+                chunk_params["dtype"] = np.dtype(bool)
+                chunk_params["shape"] = ()
                 if len(x.chunks) == 1:
-                    chunk_params['index'] = ()
+                    chunk_params["index"] = ()
             map_chunk = chunk_op.new_chunk(chunk_inputs, kws=[chunk_params])
             map_chunks.append(map_chunk)
 
         new_op = op.copy()
         if not op.check_only:
             params = out.params
-            params['nsplits'] = x.nsplits
-            params['chunks'] = map_chunks
+            params["nsplits"] = x.nsplits
+            params["chunks"] = map_chunks
             return new_op.new_tileables(op.inputs, kws=[params])
 
         out_chunks = map_chunks
@@ -309,18 +369,24 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
             new_out_chunks = []
             for i in range(size):
                 chunk_op = AssertAllFinite(
-                    check_only=True, output_types=op.output_types,
-                    stage=OperandStage.combine if size > 1 else OperandStage.agg)
+                    check_only=True,
+                    output_types=op.output_types,
+                    stage=OperandStage.combine if size > 1 else OperandStage.agg,
+                )
                 chunk_index = (i,) if size > 1 else ()
                 out_chunk = chunk_op.new_chunk(
-                    out_chunks[combine_size * i: combine_size * (i + 1)],
-                    dtype=out.dtype, shape=(), index=chunk_index, order=out.order)
+                    out_chunks[combine_size * i : combine_size * (i + 1)],
+                    dtype=out.dtype,
+                    shape=(),
+                    index=chunk_index,
+                    order=out.order,
+                )
                 new_out_chunks.append(out_chunk)
             out_chunks = new_out_chunks
 
         params = out.params
-        params['nsplits'] = ()
-        params['chunks'] = out_chunks
+        params["nsplits"] = ()
+        params["chunks"] = out_chunks
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
@@ -336,18 +402,22 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
         # everything is finite; fall back to O(n) space np.isfinite to prevent
         # false positives from overflow in sum method. The sum is also calculated
         # safely to reduce dtype induced overflows.
-        is_float = x.dtype.kind in 'fc'
+        is_float = x.dtype.kind in "fc"
         if is_float and ctx[op.is_finite.key]:
             pass
         elif is_float:
             msg_err = "Input contains {} or a value too large for {!r}."
-            if (allow_nan and xp.isinf(x).any() or
-                    not allow_nan and not xp.isfinite(x).all()):
-                type_err = 'infinity' if allow_nan else 'NaN, infinity'
+            if (
+                allow_nan
+                and xp.isinf(x).any()
+                or not allow_nan
+                and not xp.isfinite(x).all()
+            ):
+                type_err = "infinity" if allow_nan else "NaN, infinity"
                 raise ValueError(
-                    msg_err.format
-                    (type_err,
-                     msg_dtype if msg_dtype is not None else x.dtype)
+                    msg_err.format(
+                        type_err, msg_dtype if msg_dtype is not None else x.dtype
+                    )
                 )
         # for object dtype data, we only check for NaNs
         elif x.dtype == np.dtype(object) and not allow_nan:
@@ -378,8 +448,12 @@ def assert_all_finite(X, allow_nan=False, msg_dtype=None, check_only=True):
     if not isinstance(X, ENTITY_TYPE):
         X = mt.asarray(X)
 
-    if isinstance(X.op, AssertAllFinite) and X.op.allow_nan == allow_nan and \
-            X.op.msg_dtype == msg_dtype and X.op.check_only == check_only:
+    if (
+        isinstance(X.op, AssertAllFinite)
+        and X.op.allow_nan == allow_nan
+        and X.op.msg_dtype == msg_dtype
+        and X.op.check_only == check_only
+    ):
         return X
 
     if check_only:
@@ -389,7 +463,12 @@ def assert_all_finite(X, allow_nan=False, msg_dtype=None, check_only=True):
         output_types = get_output_types(X)
         sparse = X.issparse()
 
-    op = AssertAllFinite(x=X, allow_nan=allow_nan, msg_dtype=msg_dtype,
-                         check_only=check_only, sparse=sparse,
-                         output_types=output_types)
+    op = AssertAllFinite(
+        x=X,
+        allow_nan=allow_nan,
+        msg_dtype=msg_dtype,
+        check_only=check_only,
+        sparse=sparse,
+        output_types=output_types,
+    )
     return op(X)

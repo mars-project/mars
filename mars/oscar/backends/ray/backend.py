@@ -21,7 +21,7 @@ from .utils import process_address_to_placement, get_placement_group
 
 ray = lazy_import("ray")
 
-__all__ = ['RayActorBackend']
+__all__ = ["RayActorBackend"]
 
 
 @register_backend
@@ -39,23 +39,25 @@ class RayActorBackend(BaseActorBackend):
         return RayActorDriver
 
     @staticmethod
-    async def create_actor_pool(
-        address: str,
-        n_process: int = None,
-        **kwargs
-    ):
+    async def create_actor_pool(address: str, n_process: int = None, **kwargs):
         # pop `n_io_process` from kwargs as ray doesn't need this
-        kwargs.pop('n_io_process', 0)
+        kwargs.pop("n_io_process", 0)
         pg_name, bundle_index, _ = process_address_to_placement(address)
         pg = get_placement_group(pg_name) if pg_name else None
         if not pg:
             bundle_index = -1
-        num_cpus = kwargs.get('main_pool_cpus', 0)
-        actor_handle = ray.remote(RayMainPool).options(
-            num_cpus=num_cpus, name=address,
-            max_concurrency=10000,  # By default, 1000 tasks can be running concurrently.
-            max_restarts=-1,  # Auto restarts by ray
-            placement_group=pg, placement_group_bundle_index=bundle_index).remote(
-                address, n_process, **kwargs)
+        num_cpus = kwargs.get("main_pool_cpus", 0)
+        actor_handle = (
+            ray.remote(RayMainPool)
+            .options(
+                num_cpus=num_cpus,
+                name=address,
+                max_concurrency=10000,  # By default, 1000 tasks can be running concurrently.
+                max_restarts=-1,  # Auto restarts by ray
+                placement_group=pg,
+                placement_group_bundle_index=bundle_index,
+            )
+            .remote(address, n_process, **kwargs)
+        )
         await actor_handle.start.remote()
         return actor_handle

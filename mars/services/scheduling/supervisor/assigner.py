@@ -31,7 +31,7 @@ class AssignerActor(mo.Actor):
 
     @classmethod
     def gen_uid(cls, session_id: str):
-        return f'{session_id}_assigner'
+        return f"{session_id}_assigner"
 
     def __init__(self, session_id: str):
         self._session_id = session_id
@@ -48,9 +48,11 @@ class AssignerActor(mo.Actor):
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
         from ...meta.api import MetaAPI
+
         self._cluster_api = await ClusterAPI.create(self.address)
         self._meta_api = await MetaAPI.create(
-            session_id=self._session_id, address=self.address)
+            session_id=self._session_id, address=self.address
+        )
 
         async def watch_bands():
             async for bands in self._cluster_api.watch_all_bands(NodeRole.WORKER):
@@ -69,16 +71,18 @@ class AssignerActor(mo.Actor):
         self._address_to_bands = {k: list(v) for k, v in grouped_bands}
 
         grouped_bands = itertools.groupby(
-            sorted(('numa' if b[1].startswith('numa') else 'gpu', b) for b in bands),
-            key=lambda tp: tp[0]
+            sorted(("numa" if b[1].startswith("numa") else "gpu", b) for b in bands),
+            key=lambda tp: tp[0],
         )
-        self._device_type_to_bands = {k: [v[1] for v in tps] for k, tps in grouped_bands}
+        self._device_type_to_bands = {
+            k: [v[1] for v in tps] for k, tps in grouped_bands
+        }
 
     def _get_device_bands(self, is_gpu: bool):
-        band_prefix = 'numa' if not is_gpu else 'gpu'
+        band_prefix = "numa" if not is_gpu else "gpu"
         filtered_bands = self._device_type_to_bands.get(band_prefix) or []
         if not filtered_bands:
-            raise NoMatchingSlots('gpu' if is_gpu else 'cpu')
+            raise NoMatchingSlots("gpu" if is_gpu else "cpu")
         return filtered_bands
 
     def _get_random_band(self, is_gpu: bool):
@@ -91,15 +95,18 @@ class AssignerActor(mo.Actor):
         for subtask in subtasks:
             is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
             if subtask.expect_bands:
-                if all(expect_band in self._bands
-                       for expect_band in subtask.expect_bands):
+                if all(
+                    expect_band in self._bands for expect_band in subtask.expect_bands
+                ):
                     # pass if all expected bands are available
                     selected_bands[subtask.subtask_id] = subtask.expect_bands
                 else:
                     # exclude expected but unready bands
-                    expect_available_bands = [expect_band
-                                              for expect_band in subtask.expect_bands
-                                              if expect_band in self._bands]
+                    expect_available_bands = [
+                        expect_band
+                        for expect_band in subtask.expect_bands
+                        if expect_band in self._bands
+                    ]
                     # fill in if all expected bands are unready
                     if not expect_available_bands:
                         expect_available_bands = [self._get_random_band(is_gpu)]
@@ -110,12 +117,13 @@ class AssignerActor(mo.Actor):
                     inp_keys.add(indep_chunk.key)
                 elif isinstance(indep_chunk.op, FetchShuffle):
                     if not self._bands:
-                        self._update_bands(list(await self._cluster_api.get_all_bands(
-                            NodeRole.WORKER)))
+                        self._update_bands(
+                            list(await self._cluster_api.get_all_bands(NodeRole.WORKER))
+                        )
                     selected_bands[subtask.subtask_id] = [self._get_random_band(is_gpu)]
                     break
 
-        fields = ['store_size', 'bands']
+        fields = ["store_size", "bands"]
         inp_keys = list(inp_keys)
         metas = await self._meta_api.get_chunk_meta.batch(
             *(self._meta_api.get_chunk_meta.delay(key, fields) for key in inp_keys)
@@ -125,7 +133,7 @@ class AssignerActor(mo.Actor):
         assigns = []
         for subtask in subtasks:
             is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
-            band_prefix = 'numa' if not is_gpu else 'gpu'
+            band_prefix = "numa" if not is_gpu else "gpu"
             filtered_bands = self._get_device_bands(is_gpu)
 
             if subtask.subtask_id in selected_bands:
@@ -136,15 +144,18 @@ class AssignerActor(mo.Actor):
                     if not isinstance(inp.op, Fetch):  # pragma: no cover
                         continue
                     meta = inp_metas[inp.key]
-                    for band in meta['bands']:
+                    for band in meta["bands"]:
                         if not band[1].startswith(band_prefix):
-                            sel_bands = [b for b in self._address_to_bands[band[0]]
-                                         if b[1].startswith(band_prefix)]
+                            sel_bands = [
+                                b
+                                for b in self._address_to_bands[band[0]]
+                                if b[1].startswith(band_prefix)
+                            ]
                             if sel_bands:
                                 band = (band[0], random.choice(sel_bands))
                         if band not in filtered_bands:
                             band = self._get_random_band(is_gpu)
-                        band_sizes[band] += meta['store_size']
+                        band_sizes[band] += meta["store_size"]
                 bands = []
                 max_size = -1
                 for band, size in band_sizes.items():
@@ -156,15 +167,21 @@ class AssignerActor(mo.Actor):
             assigns.append(random.choice(bands))
         return assigns
 
-    async def reassign_subtasks(self, band_to_queued_num: Dict[BandType, int]) \
-            -> Dict[BandType, int]:
+    async def reassign_subtasks(
+        self, band_to_queued_num: Dict[BandType, int]
+    ) -> Dict[BandType, int]:
         move_queued_subtasks = {}
         for is_gpu in (False, True):
-            band_name_prefix = 'numa' if not is_gpu else 'gpu'
+            band_name_prefix = "numa" if not is_gpu else "gpu"
 
-            filtered_bands = [band for band in self._bands if band[1].startswith(band_name_prefix)]
-            filtered_band_to_queued_num = {k: v for k, v in band_to_queued_num.items()
-                                           if k[1].startswith(band_name_prefix)}
+            filtered_bands = [
+                band for band in self._bands if band[1].startswith(band_name_prefix)
+            ]
+            filtered_band_to_queued_num = {
+                k: v
+                for k, v in band_to_queued_num.items()
+                if k[1].startswith(band_name_prefix)
+            }
 
             if not filtered_bands:
                 continue
@@ -180,13 +197,19 @@ class AssignerActor(mo.Actor):
                     move_queued_subtasks.update({band: 0})
                     continue
             # unready bands recorded in band_num_queued_subtasks, some of them may hold 0 subtasks
-            unready_bands = list(set(filtered_band_to_queued_num.keys()) - set(filtered_bands))
+            unready_bands = list(
+                set(filtered_band_to_queued_num.keys()) - set(filtered_bands)
+            )
             # ready bands not recorded in band_num_queued_subtasks, all of them hold 0 subtasks
-            new_ready_bands = list(set(filtered_bands) - set(filtered_band_to_queued_num.keys()))
+            new_ready_bands = list(
+                set(filtered_bands) - set(filtered_band_to_queued_num.keys())
+            )
             # when there are new ready bands, make all bands hold same amount of subtasks
             # when there are no new ready bands now, move out subtasks left on them
             if not new_ready_bands and unready_bands:
-                filtered_band_to_queued_num = {k: filtered_band_to_queued_num[k] for k in unready_bands}
+                filtered_band_to_queued_num = {
+                    k: filtered_band_to_queued_num[k] for k in unready_bands
+                }
             # approximate total of subtasks moving to each ready band
             num_all_subtasks = sum(filtered_band_to_queued_num.values())
             mean = int(num_all_subtasks / len(filtered_bands))
@@ -195,7 +218,9 @@ class AssignerActor(mo.Actor):
             # b. ready bands not recorded in band_num_queued_subtasks
             # c. unready bands recorded in band_num_queued_subtasks
             # a. + b. = self._bands, a. + c. = bands in band_num_queued_subtasks
-            all_bands = list(set(filtered_bands) | set(filtered_band_to_queued_num.keys()))
+            all_bands = list(
+                set(filtered_bands) | set(filtered_band_to_queued_num.keys())
+            )
             # calculate the differential steps of moving subtasks
             # move < 0 means subtasks should move out and vice versa
             # unready bands no longer hold subtasks
@@ -203,7 +228,9 @@ class AssignerActor(mo.Actor):
             band_move_nums = {}
             for band in all_bands:
                 if band in filtered_bands:
-                    band_move_nums[band] = mean - filtered_band_to_queued_num.get(band, 0)
+                    band_move_nums[band] = mean - filtered_band_to_queued_num.get(
+                        band, 0
+                    )
                 else:
                     band_move_nums[band] = -filtered_band_to_queued_num.get(band, 0)
             # ensure the balance of moving in and out

@@ -40,9 +40,11 @@ class TensorSpecialOperandMixin:
     def _get_func(cls, xp):
         if xp is np:
             from scipy import special
+
             return getattr(special, cls._func_name)
         elif cp is not None and xp is cp:
             from cupyx.scipy import special
+
             return getattr(special, cls._func_name)
         else:
             assert xp is sparse
@@ -60,30 +62,31 @@ class TensorSpecialBinOp(TensorSpecialOperandMixin, TensorBinOp):
 class TensorSpecialMultiOp(TensorSpecialOperandMixin, TensorMultiOp):
     @classmethod
     def _execute_gpu(cls, op, xp, *args, **kw):
-        if kw.get('out') is not None:
-            kw['out'] = xp.asarray(kw['out'])
+        if kw.get("out") is not None:
+            kw["out"] = xp.asarray(kw["out"])
         r = cls._get_func(xp)(*args, **kw)
         return convert_order(r, op.outputs[0].order.value)
 
     @classmethod
     def _execute_cpu(cls, op, xp, *args, **kw):
-        kw['order'] = op.order
-        if kw.get('out') is not None:
-            kw['out'] = np.asarray(kw['out'])
+        kw["order"] = op.order
+        if kw.get("out") is not None:
+            kw["out"] = np.asarray(kw["out"])
         return cls._get_func(xp)(*args, **kw)
 
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
-            kw = {'casting': op.casting} if op.out is not None else {}
+            kw = {"casting": op.casting} if op.out is not None else {}
 
             inputs_iter = iter(inputs)
             args = [a if np.isscalar(a) else next(inputs_iter) for a in op.args]
             if op.out is not None:
-                kw['out'] = next(inputs_iter).copy()
+                kw["out"] = next(inputs_iter).copy()
 
             with np.errstate(**op.err):
                 if op.is_gpu():

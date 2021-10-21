@@ -29,29 +29,36 @@ def softmax_loss_and_grad(W, X, y, reg):
     for i in range(N):
         y_obs[i] = mt.eye(K)[y[i]]
 
-    loss = -1 / N * mt.sum(y_obs
-                           * mt.log(mt.exp(X @ W)
-                                    / mt.sum(mt.exp(X @ W),
-                                             axis=1).reshape(-1, 1))) \
-        + 0.5 * reg * mt.sum(mt.square(W))
+    loss = -1 / N * mt.sum(
+        y_obs * mt.log(mt.exp(X @ W) / mt.sum(mt.exp(X @ W), axis=1).reshape(-1, 1))
+    ) + 0.5 * reg * mt.sum(mt.square(W))
 
     dW = mt.zeros(shape=(D, K))
 
     # Matrix approach
-    dW = -1 / N * X.T @ (y_obs
-                         - (mt.exp(X @ W)
-                            / mt.sum(mt.exp(X @ W),
-                                     axis=1).reshape(-1, 1))) \
+    dW = (
+        -1
+        / N
+        * X.T
+        @ (y_obs - (mt.exp(X @ W) / mt.sum(mt.exp(X @ W), axis=1).reshape(-1, 1)))
         + reg * W
+    )
 
     execute(loss, dW)
 
     return loss, dW
 
 
-def gradient_descent(X, y, learning_rate=1e-3,
-                     reg=1e-5, max_epochs=100, batch_size=20,
-                     fit_intercept=True, verbose=0):
+def gradient_descent(
+    X,
+    y,
+    learning_rate=1e-3,
+    reg=1e-5,
+    max_epochs=100,
+    batch_size=20,
+    fit_intercept=True,
+    verbose=0,
+):
     # assume y takes values 0...K-1 where K is number of classes
     num_classes = (mt.max(y) + 1).to_numpy()
 
@@ -71,7 +78,7 @@ def gradient_descent(X, y, learning_rate=1e-3,
         perm_idx = np.random.permutation(num_train)
         for it in range(num_iters_per_epoch):
             # print(it, num_iters_per_epoch)
-            idx = perm_idx[it * batch_size: (it + 1) * batch_size]
+            idx = perm_idx[it * batch_size : (it + 1) * batch_size]
             batch_x = X[idx]
             batch_y = y[idx]
 

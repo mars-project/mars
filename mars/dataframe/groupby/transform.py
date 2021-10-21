@@ -26,18 +26,25 @@ from ..utils import build_empty_df, build_empty_series, parse_index
 
 class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.TRANSFORM
-    _op_module_ = 'dataframe.groupby'
+    _op_module_ = "dataframe.groupby"
 
-    _func = AnyField('func')
-    _args = TupleField('args')
-    _kwds = DictField('kwds')
+    _func = AnyField("func")
+    _args = TupleField("args")
+    _kwds = DictField("kwds")
 
-    _call_agg = BoolField('call_agg')
+    _call_agg = BoolField("call_agg")
 
-    def __init__(self, func=None, args=None, kwds=None, call_agg=None, output_types=None,
-                 **kw):
-        super().__init__(_func=func, _args=args, _kwds=kwds, _call_agg=call_agg,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self, func=None, args=None, kwds=None, call_agg=None, output_types=None, **kw
+    ):
+        super().__init__(
+            _func=func,
+            _args=args,
+            _kwds=kwds,
+            _call_agg=call_agg,
+            _output_types=output_types,
+            **kw,
+        )
 
     @property
     def func(self):
@@ -45,11 +52,11 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
 
     @property
     def args(self):
-        return getattr(self, '_args', None) or ()
+        return getattr(self, "_args", None) or ()
 
     @property
     def kwds(self):
-        return getattr(self, '_kwds', None) or dict()
+        return getattr(self, "_kwds", None) or dict()
 
     @property
     def call_agg(self):
@@ -58,16 +65,21 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
     def _infer_df_func_returns(self, in_groupby, dtypes, index):
         index_value, output_types, new_dtypes = None, None, None
 
-        output_types = [OutputType.dataframe] \
-            if in_groupby.op.output_types[0] == OutputType.dataframe_groupby else [OutputType.series]
+        output_types = (
+            [OutputType.dataframe]
+            if in_groupby.op.output_types[0] == OutputType.dataframe_groupby
+            else [OutputType.series]
+        )
 
         try:
             mock_groupby = in_groupby.op.build_mock_groupby()
-            with np.errstate(all='ignore'), quiet_stdio():
+            with np.errstate(all="ignore"), quiet_stdio():
                 if self.call_agg:
                     infer_df = mock_groupby.agg(self.func, *self.args, **self.kwds)
                 else:
-                    infer_df = mock_groupby.transform(self.func, *self.args, **self.kwds)
+                    infer_df = mock_groupby.transform(
+                        self.func, *self.args, **self.kwds
+                    )
 
             # todo return proper index when sort=True is implemented
             index_value = parse_index(None, in_groupby.key, self.func)
@@ -94,20 +106,32 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         dtypes, index_value = self._infer_df_func_returns(groupby, dtypes, index)
         if index_value is None:
             index_value = parse_index(None, (in_df.key, in_df.index_value.key))
-        for arg, desc in zip((self.output_types, dtypes), ('output_types', 'dtypes')):
+        for arg, desc in zip((self.output_types, dtypes), ("output_types", "dtypes")):
             if arg is None:
-                raise TypeError(f'Cannot determine {desc} by calculating with enumerate data, '
-                                'please specify it as arguments')
+                raise TypeError(
+                    f"Cannot determine {desc} by calculating with enumerate data, "
+                    "please specify it as arguments"
+                )
 
         if self.output_types[0] == OutputType.dataframe:
             new_shape = (np.nan if self.call_agg else in_df.shape[0], len(dtypes))
-            return self.new_dataframe([groupby], shape=new_shape, dtypes=dtypes, index_value=index_value,
-                                      columns_value=parse_index(dtypes.index, store_data=True))
+            return self.new_dataframe(
+                [groupby],
+                shape=new_shape,
+                dtypes=dtypes,
+                index_value=index_value,
+                columns_value=parse_index(dtypes.index, store_data=True),
+            )
         else:
             name, dtype = dtypes
             new_shape = (np.nan,) if self.call_agg else groupby.shape
-            return self.new_series([groupby], name=name, shape=new_shape, dtype=dtype,
-                                   index_value=index_value)
+            return self.new_series(
+                [groupby],
+                name=name,
+                shape=new_shape,
+                dtype=dtype,
+                index_value=index_value,
+            )
 
     @classmethod
     def tile(cls, op):
@@ -122,21 +146,35 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
             new_op.tileable_op_key = op.key
             if op.output_types[0] == OutputType.dataframe:
                 new_index = c.index if c.ndim == 2 else c.index + (0,)
-                chunks.append(new_op.new_chunk(
-                    inp_chunks, index=new_index, shape=(np.nan, len(out_df.dtypes)), dtypes=out_df.dtypes,
-                    columns_value=out_df.columns_value, index_value=out_df.index_value))
+                chunks.append(
+                    new_op.new_chunk(
+                        inp_chunks,
+                        index=new_index,
+                        shape=(np.nan, len(out_df.dtypes)),
+                        dtypes=out_df.dtypes,
+                        columns_value=out_df.columns_value,
+                        index_value=out_df.index_value,
+                    )
+                )
             else:
-                chunks.append(new_op.new_chunk(
-                    inp_chunks, name=out_df.name, index=(c.index[0],), shape=(np.nan,), dtype=out_df.dtype,
-                    index_value=out_df.index_value))
+                chunks.append(
+                    new_op.new_chunk(
+                        inp_chunks,
+                        name=out_df.name,
+                        index=(c.index[0],),
+                        shape=(np.nan,),
+                        dtype=out_df.dtype,
+                        index_value=out_df.index_value,
+                    )
+                )
 
         new_op = op.copy()
         kw = out_df.params.copy()
-        kw['chunks'] = chunks
+        kw["chunks"] = chunks
         if op.output_types[0] == OutputType.dataframe:
-            kw['nsplits'] = ((np.nan,) * len(chunks), (len(out_df.dtypes),))
+            kw["nsplits"] = ((np.nan,) * len(chunks), (len(out_df.dtypes),))
         else:
-            kw['nsplits'] = ((np.nan,) * len(chunks),)
+            kw["nsplits"] = ((np.nan,) * len(chunks),)
         return new_op.new_tileables([in_groupby], **kw)
 
     @classmethod
@@ -151,7 +189,8 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
                 ctx[op.outputs[0].key] = build_empty_df(out_chunk.dtypes)
             else:
                 ctx[op.outputs[0].key] = build_empty_series(
-                    out_chunk.dtype, name=out_chunk.name)
+                    out_chunk.dtype, name=out_chunk.name
+                )
             return
 
         if op.call_agg:
@@ -172,8 +211,17 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = result
 
 
-def groupby_transform(groupby, f, *args, dtypes=None, dtype=None, name=None, index=None,
-                      output_types=None, **kwargs):
+def groupby_transform(
+    groupby,
+    f,
+    *args,
+    dtypes=None,
+    dtype=None,
+    name=None,
+    index=None,
+    output_types=None,
+    **kwargs,
+):
     """
     Call function producing a like-indexed DataFrame on each group and
     return a DataFrame having the same indexes as the original object
@@ -269,10 +317,11 @@ def groupby_transform(groupby, f, *args, dtypes=None, dtype=None, name=None, ind
     4  4  6.0
     5  3  8.0
     """
-    call_agg = kwargs.pop('_call_agg', False)
+    call_agg = kwargs.pop("_call_agg", False)
     if not call_agg and isinstance(f, (dict, list)):
-        raise TypeError(f'Does not support transform with {type(f)}')
+        raise TypeError(f"Does not support transform with {type(f)}")
 
-    op = GroupByTransform(func=f, args=args, kwds=kwargs, output_types=output_types,
-                          call_agg=call_agg)
+    op = GroupByTransform(
+        func=f, args=args, kwds=kwargs, output_types=output_types, call_agg=call_agg
+    )
     return op(groupby, dtypes=dtypes, dtype=dtype, name=name, index=index)

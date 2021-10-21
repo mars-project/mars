@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorCosh(TensorUnaryOp):
     _op_type_ = OperandDef.COSH
-    _func_name = 'cosh'
+    _func_name = "cosh"
 
 
 @infer_dtype(np.cosh)

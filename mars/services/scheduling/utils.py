@@ -24,7 +24,7 @@ from ..task import TaskAPI
 
 @alru_cache
 async def _get_task_api(actor: mo.Actor):
-    return await TaskAPI.create(getattr(actor, '_session_id'), actor.address)
+    return await TaskAPI.create(getattr(actor, "_session_id"), actor.address)
 
 
 @contextlib.asynccontextmanager
@@ -33,19 +33,28 @@ async def redirect_subtask_errors(actor: mo.Actor, subtasks):
         yield
     except:  # noqa: E722  # pylint: disable=bare-except
         _, error, traceback = sys.exc_info()
-        status = SubtaskStatus.cancelled if isinstance(error, asyncio.CancelledError) else SubtaskStatus.errored
+        status = (
+            SubtaskStatus.cancelled
+            if isinstance(error, asyncio.CancelledError)
+            else SubtaskStatus.errored
+        )
         task_api = await _get_task_api(actor)
         coros = []
         for subtask in subtasks:
             if subtask is None:  # pragma: no cover
                 continue
-            coros.append(task_api.set_subtask_result(SubtaskResult(
-                subtask_id=subtask.subtask_id,
-                session_id=subtask.session_id,
-                task_id=subtask.task_id,
-                progress=1.0,
-                status=status,
-                error=error, traceback=traceback
-            )))
+            coros.append(
+                task_api.set_subtask_result(
+                    SubtaskResult(
+                        subtask_id=subtask.subtask_id,
+                        session_id=subtask.session_id,
+                        task_id=subtask.task_id,
+                        progress=1.0,
+                        status=status,
+                        error=error,
+                        traceback=traceback,
+                    )
+                )
+            )
         await asyncio.wait(coros)
         raise

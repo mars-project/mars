@@ -29,16 +29,16 @@ from ..array_utils import create_array
 class TensorEye(TensorNoInput, TensorDiagBase):
     _op_type_ = OperandDef.TENSOR_EYE
 
-    _k = Int32Field('k')
-    _order = StringField('order')
+    _k = Int32Field("k")
+    _order = StringField("order")
 
     def __init__(self, k=None, dtype=None, order=None, **kw):
-        dtype = np.dtype(dtype or 'f8')
+        dtype = np.dtype(dtype or "f8")
         super().__init__(_k=k, dtype=dtype, _order=order, **kw)
 
     @property
     def k(self):
-        return getattr(self, '_k', 0)
+        return getattr(self, "_k", 0)
 
     @property
     def order(self):
@@ -63,15 +63,23 @@ class TensorEye(TensorNoInput, TensorDiagBase):
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         if op.sparse:
-            ctx[chunk.key] = sparse.eye(chunk.shape[0], M=chunk.shape[1], k=op.k,
-                                        dtype=op.dtype, gpu=op.gpu)
+            ctx[chunk.key] = sparse.eye(
+                chunk.shape[0], M=chunk.shape[1], k=op.k, dtype=op.dtype, gpu=op.gpu
+            )
         else:
             ctx[chunk.key] = create_array(op)(
-                'eye', chunk.shape[0], M=chunk.shape[1], k=op.k,
-                dtype=op.dtype, order=op.order)
+                "eye",
+                chunk.shape[0],
+                M=chunk.shape[1],
+                k=op.k,
+                dtype=op.dtype,
+                order=op.order,
+            )
 
 
-def eye(N, M=None, k=0, dtype=None, sparse=False, gpu=False, chunk_size=None, order='C'):
+def eye(
+    N, M=None, k=0, dtype=None, sparse=False, gpu=False, chunk_size=None, order="C"
+):
     """
     Return a 2-D tensor with ones on the diagonal and zeros elsewhere.
 
@@ -125,7 +133,11 @@ def eye(N, M=None, k=0, dtype=None, sparse=False, gpu=False, chunk_size=None, or
         M = N
 
     shape = (N, M)
-    tensor_order = get_order(order, None, available_options='CF',
-                             err_msg="only 'C' or 'F' order is permitted")
+    tensor_order = get_order(
+        order,
+        None,
+        available_options="CF",
+        err_msg="only 'C' or 'F' order is permitted",
+    )
     op = TensorEye(k, dtype=dtype, gpu=gpu, sparse=sparse, order=order)
     return op(shape, chunk_size=chunk_size, order=tensor_order)

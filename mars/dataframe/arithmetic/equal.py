@@ -21,8 +21,8 @@ from .docstring import bin_compare_doc
 class DataFrameEqual(DataFrameBinopUfunc):
     _op_type_ = OperandDef.EQ
 
-    _func_name = 'eq'
-    _rfunc_name = 'eq'
+    _func_name = "eq"
+    _rfunc_name = "eq"
 
     @classproperty
     def _operator(self):
@@ -31,6 +31,7 @@ class DataFrameEqual(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorEqual
+
         return TensorEqual
 
 
@@ -45,7 +46,7 @@ dtype: bool
 """
 
 
-@bin_compare_doc('Equal to', equiv='==', series_example=_eq_example)
-def eq(df, other, axis='columns', level=None):
+@bin_compare_doc("Equal to", equiv="==", series_example=_eq_example)
+def eq(df, other, axis="columns", level=None):
     op = DataFrameEqual(axis=axis, level=level, lhs=df, rhs=other)
     return op(df, other)

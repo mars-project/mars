@@ -14,3 +14,4 @@ numexpr
 scikit-learn
 psutil
 tornado
+black

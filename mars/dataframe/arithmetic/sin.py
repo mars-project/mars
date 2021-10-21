@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameSin(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.SIN
-    _func_name = 'sin'
+    _func_name = "sin"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorSin
+
         return TensorSin

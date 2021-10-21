@@ -21,8 +21,7 @@ from . import accuracy_score, log_loss, r2_score
 
 accuracy_score = make_scorer(accuracy_score)
 r2_score = make_scorer(r2_score)
-neg_log_loss_scorer = make_scorer(log_loss, greater_is_better=False,
-                                  needs_proba=True)
+neg_log_loss_scorer = make_scorer(log_loss, greater_is_better=False, needs_proba=True)
 
 
 SCORERS = dict(

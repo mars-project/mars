@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright 1999-2021 Alibaba Group Holding Ltd.
@@ -76,8 +75,17 @@ def test_unary_execution(setup):
 
 @ignore_warning
 def test_bin_execution(setup):
-    from ...arithmetic import BIN_UFUNC, mod, fmod, \
-        bitand, bitor, bitxor, lshift, rshift, ldexp
+    from ...arithmetic import (
+        BIN_UFUNC,
+        mod,
+        fmod,
+        bitand,
+        bitor,
+        bitxor,
+        lshift,
+        rshift,
+        ldexp,
+    )
 
     _sp_bin_ufunc = [mod, fmod, bitand, bitor, bitxor, lshift, rshift]
     _new_bin_ufunc = list(BIN_UFUNC - set(_sp_bin_ufunc) - {ldexp})
@@ -165,5 +173,5 @@ def test_order_execution(setup):
     expected = raw * 3 + 1
 
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]

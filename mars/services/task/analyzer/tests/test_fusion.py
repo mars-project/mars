@@ -27,8 +27,9 @@ def test_fuse():
 
     @ --> @ --> @   ========>    #
     """
-    chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data
-              for n in range(3)]
+    chunks = [
+        TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data for n in range(3)
+    ]
     graph = ChunkGraph([])
     for c in chunks:
         graph.add_node(c)
@@ -55,8 +56,9 @@ def test_fuse():
       /         \                  /   \
     @             @              @       @
     """
-    chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data
-              for n in range(6)]
+    chunks = [
+        TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data for n in range(6)
+    ]
     graph = ChunkGraph([chunks[4], chunks[5]])
     for c in chunks:
         graph.add_node(c)

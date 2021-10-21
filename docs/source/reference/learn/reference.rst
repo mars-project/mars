@@ -95,6 +95,7 @@ Ensemble Methods
    ensemble.BaggingRegressor
    ensemble.BlockwiseVotingClassifier
    ensemble.BlockwiseVotingRegressor
+   ensemble.IsolationForest
 
 .. _linear_model_ref:
 

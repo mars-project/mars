@@ -14,16 +14,21 @@
 
 from typing import List
 
-from ...serialization.serializables import Serializable, FieldTypes, \
-    StringField, ListField, BoolField, Int32Field
+from ...serialization.serializables import (
+    Serializable,
+    FieldTypes,
+    StringField,
+    ListField,
+    BoolField,
+    Int32Field,
+)
 from ...typing import BandType
 
 
 class SubtaskScheduleSummary(Serializable):
-    task_id: str = StringField('task_id')
-    subtask_id: str = StringField('subtask_id')
-    bands: List[BandType] = ListField(
-        'bands', FieldTypes.tuple(FieldTypes.string))
-    is_finished: bool = BoolField('is_finished', default=False)
-    is_cancelled: bool = BoolField('is_cancelled', default=False)
-    num_reschedules: int = Int32Field('num_reschedules', default=0)
+    task_id: str = StringField("task_id")
+    subtask_id: str = StringField("subtask_id")
+    bands: List[BandType] = ListField("bands", FieldTypes.tuple(FieldTypes.string))
+    is_finished: bool = BoolField("is_finished", default=False)
+    is_cancelled: bool = BoolField("is_cancelled", default=False)
+    num_reschedules: int = Int32Field("num_reschedules", default=0)

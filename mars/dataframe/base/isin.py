@@ -28,8 +28,8 @@ from ..operands import DataFrameOperand, DataFrameOperandMixin
 class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.ISIN
 
-    _input = KeyField('input')
-    _values = AnyField('values')
+    _input = KeyField("input")
+    _values = AnyField("values")
 
     def __init__(self, values=None, output_types=None, **kw):
         super().__init__(_values=values, _output_types=output_types, **kw)
@@ -68,17 +68,24 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
                     inputs.append(v)
 
         if elements.ndim == 1:
-            return self.new_series(inputs, shape=elements.shape,
-                                   dtype=np.dtype('bool'),
-                                   index_value=elements.index_value,
-                                   name=elements.name)
+            return self.new_series(
+                inputs,
+                shape=elements.shape,
+                dtype=np.dtype("bool"),
+                index_value=elements.index_value,
+                name=elements.name,
+            )
         else:
-            dtypes = pd.Series([np.dtype(bool) for _ in elements.dtypes],
-                               index=elements.dtypes.index)
-            return self.new_dataframe(inputs, shape=elements.shape,
-                                      index_value=elements.index_value,
-                                      columns_value=elements.columns_value,
-                                      dtypes=dtypes)
+            dtypes = pd.Series(
+                [np.dtype(bool) for _ in elements.dtypes], index=elements.dtypes.index
+            )
+            return self.new_dataframe(
+                inputs,
+                shape=elements.shape,
+                index_value=elements.index_value,
+                columns_value=elements.columns_value,
+                dtypes=dtypes,
+            )
 
     @classmethod
     def tile(cls, op):
@@ -101,25 +108,32 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
             if len(op.inputs) > 1:
                 chunk_inputs.extend(v.chunks[0] for v in values_inputs)
             if out_elements.ndim == 1:
-                out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape,
-                                               dtype=out_elements.dtype,
-                                               index_value=chunk.index_value,
-                                               name=out_elements.name,
-                                               index=chunk.index)
+                out_chunk = chunk_op.new_chunk(
+                    chunk_inputs,
+                    shape=chunk.shape,
+                    dtype=out_elements.dtype,
+                    index_value=chunk.index_value,
+                    name=out_elements.name,
+                    index=chunk.index,
+                )
             else:
-                chunk_dtypes = pd.Series([np.dtype(bool) for _ in chunk.dtypes],
-                                         index=chunk.dtypes.index)
-                out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape,
-                                               index_value=chunk.index_value,
-                                               columns_value=chunk.columns_value,
-                                               dtypes=chunk_dtypes,
-                                               index=chunk.index)
+                chunk_dtypes = pd.Series(
+                    [np.dtype(bool) for _ in chunk.dtypes], index=chunk.dtypes.index
+                )
+                out_chunk = chunk_op.new_chunk(
+                    chunk_inputs,
+                    shape=chunk.shape,
+                    index_value=chunk.index_value,
+                    columns_value=chunk.columns_value,
+                    dtypes=chunk_dtypes,
+                    index=chunk.index,
+                )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         params = out_elements.params
-        params['nsplits'] = in_elements.nsplits
-        params['chunks'] = out_chunks
+        params["nsplits"] = in_elements.nsplits
+        params["chunks"] = out_chunks
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
@@ -204,8 +218,10 @@ def series_isin(elements, values):
     if is_list_like(values):
         values = list(values)
     elif not isinstance(values, (SERIES_TYPE, TENSOR_TYPE, INDEX_TYPE)):
-        raise TypeError('only list-like objects are allowed to be passed to isin(), '
-                        f'you passed a [{type(values)}]')
+        raise TypeError(
+            "only list-like objects are allowed to be passed to isin(), "
+            f"you passed a [{type(values)}]"
+        )
     op = DataFrameIsin(values)
     return op(elements)
 
@@ -275,8 +291,12 @@ def df_isin(df, values):
     """
     if is_list_like(values) and not isinstance(values, dict):
         values = list(values)
-    elif not isinstance(values, (SERIES_TYPE, DATAFRAME_TYPE, TENSOR_TYPE, INDEX_TYPE, dict)):
-        raise TypeError('only list-like objects or dict are allowed to be passed to isin(), '
-                        f'you passed a [{type(values)}]')
+    elif not isinstance(
+        values, (SERIES_TYPE, DATAFRAME_TYPE, TENSOR_TYPE, INDEX_TYPE, dict)
+    ):
+        raise TypeError(
+            "only list-like objects or dict are allowed to be passed to isin(), "
+            f"you passed a [{type(values)}]"
+        )
     op = DataFrameIsin(values)
     return op(df)

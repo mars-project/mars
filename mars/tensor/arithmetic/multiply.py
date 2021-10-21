@@ -25,10 +25,10 @@ from .core import TensorBinOp, TensorMultiOp
 from .utils import arithmetic_operand, tree_op_estimate_size, TreeReductionBuilder
 
 
-@arithmetic_operand(sparse_mode='binary_or')
+@arithmetic_operand(sparse_mode="binary_or")
 class TensorMultiply(TensorBinOp):
     _op_type_ = OperandDef.MUL
-    _func_name = 'multiply'
+    _func_name = "multiply"
 
 
 @infer_dtype(np.multiply)
@@ -86,7 +86,7 @@ def rmultiply(x1, x2, **kwargs):
 
 class TensorTreeMultiply(TensorMultiOp):
     _op_type_ = OperandDef.TREE_MULTIPLY
-    _func_name = 'multiply'
+    _func_name = "multiply"
 
     def __init__(self, sparse=False, **kw):
         super().__init__(_sparse=sparse, **kw)
@@ -95,14 +95,17 @@ class TensorTreeMultiply(TensorMultiOp):
     def _is_sparse(cls, *args):
         if not args or all(np.isscalar(x) for x in args):
             return False
-        if all(np.isscalar(x) or (hasattr(x, 'issparse') and x.issparse()) for x in args):
+        if all(
+            np.isscalar(x) or (hasattr(x, "issparse") and x.issparse()) for x in args
+        ):
             return True
         return False
 
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             ctx[op.outputs[0].key] = reduce(xp.multiply, inputs)

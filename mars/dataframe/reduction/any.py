@@ -20,28 +20,56 @@ from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 class DataFrameAny(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.ANY
-    _func_name = 'any'
+    _func_name = "any"
 
     @property
     def is_atomic(self):
         return True
 
 
-def any_series(series, axis=None, bool_only=None, skipna=None, level=None,
-               combine_size=None, method=None):
+def any_series(
+    series,
+    axis=None,
+    bool_only=None,
+    skipna=None,
+    level=None,
+    combine_size=None,
+    method=None,
+):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameAny(axis=axis, skipna=skipna, level=level, bool_only=bool_only,
-                      combine_size=combine_size, output_types=[OutputType.scalar],
-                      use_inf_as_na=use_inf_as_na, method=method)
+    op = DataFrameAny(
+        axis=axis,
+        skipna=skipna,
+        level=level,
+        bool_only=bool_only,
+        combine_size=combine_size,
+        output_types=[OutputType.scalar],
+        use_inf_as_na=use_inf_as_na,
+        method=method,
+    )
     return op(series)
 
 
-def any_dataframe(df, axis=None, bool_only=None, skipna=None, level=None,
-                  combine_size=None, method=None):
+def any_dataframe(
+    df,
+    axis=None,
+    bool_only=None,
+    skipna=None,
+    level=None,
+    combine_size=None,
+    method=None,
+):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameAny(axis=axis, skipna=skipna, level=level, bool_only=bool_only,
-                      combine_size=combine_size, output_types=[OutputType.series],
-                      use_inf_as_na=use_inf_as_na, method=method)
+    op = DataFrameAny(
+        axis=axis,
+        skipna=skipna,
+        level=level,
+        bool_only=bool_only,
+        combine_size=combine_size,
+        output_types=[OutputType.series],
+        use_inf_as_na=use_inf_as_na,
+        method=method,
+    )
     return op(df)
 
 

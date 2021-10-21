@@ -19,10 +19,11 @@ from .chunks import ChunkData, Chunk, CHUNK_TYPE
 
 
 class FuseChunkData(ChunkData):
-    __slots__ = '_inited',
+    __slots__ = ("_inited",)
 
-    _chunk = ReferenceField('chunk', CHUNK_TYPE,
-                            on_serialize=lambda x: x.data if hasattr(x, 'data') else x)
+    _chunk = ReferenceField(
+        "chunk", CHUNK_TYPE, on_serialize=lambda x: x.data if hasattr(x, "data") else x
+    )
 
     def __init__(self, *args, **kwargs):
         self._inited = False
@@ -39,7 +40,7 @@ class FuseChunkData(ChunkData):
         # for compatibility, just return the topological ordering,
         # once we apply optimization on the subgraph,
         # `composed` is not needed any more and should be removed then.
-        assert getattr(self._op, 'fuse_graph', None) is not None
+        assert getattr(self._op, "fuse_graph", None) is not None
         fuse_graph = self._op.fuse_graph
         return list(fuse_graph.topological_iter())
 
@@ -54,7 +55,7 @@ class FuseChunkData(ChunkData):
             return object.__getattribute__(self, attr)
 
     def __setattr__(self, attr, value):
-        if attr == 'params':
+        if attr == "params":
             self._chunk.params = value
         else:
             super().__setattr__(attr, value)

@@ -31,14 +31,20 @@ from ..utils import build_series
 class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.MAP
 
-    _input = KeyField('input')
-    _arg = AnyField('arg')
-    _na_action = StringField('na_action')
+    _input = KeyField("input")
+    _arg = AnyField("arg")
+    _na_action = StringField("na_action")
 
-    def __init__(self, arg=None, na_action=None, output_types=None,
-                 memory_scale=None, **kw):
-        super().__init__(_arg=arg, _na_action=na_action, _output_types=output_types,
-                         _memory_scale=memory_scale, **kw)
+    def __init__(
+        self, arg=None, na_action=None, output_types=None, memory_scale=None, **kw
+    ):
+        super().__init__(
+            _arg=arg,
+            _na_action=na_action,
+            _output_types=output_types,
+            _memory_scale=memory_scale,
+            **kw
+        )
         if not self.output_types:
             self.output_types = [OutputType.series]
 
@@ -73,8 +79,11 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
                     try:
                         with quiet_stdio():
                             # try to infer dtype by calling the function
-                            inferred_dtype = build_series(series).map(
-                                self._arg, na_action=self._na_action).dtype
+                            inferred_dtype = (
+                                build_series(series)
+                                .map(self._arg, na_action=self._na_action)
+                                .dtype
+                            )
                     except:  # noqa: E722  # nosec
                         pass
             else:
@@ -93,8 +102,9 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
                 dtype = inferred_dtype
 
         if dtype is None:
-            raise ValueError('cannot infer dtype, '
-                             'it needs to be specified manually for `map`')
+            raise ValueError(
+                "cannot infer dtype, " "it needs to be specified manually for `map`"
+            )
         else:
             dtype = np.int64 if dtype is int else dtype
             dtype = np.dtype(dtype)
@@ -104,11 +114,21 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
             inputs.append(self._arg)
 
         if isinstance(series, SERIES_TYPE):
-            return self.new_series(inputs, shape=series.shape, dtype=dtype,
-                                   index_value=series.index_value, name=series.name)
+            return self.new_series(
+                inputs,
+                shape=series.shape,
+                dtype=dtype,
+                index_value=series.index_value,
+                name=series.name,
+            )
         else:
-            return self.new_index(inputs, shape=series.shape, dtype=dtype,
-                                  index_value=series.index_value, name=series.name)
+            return self.new_index(
+                inputs,
+                shape=series.shape,
+                dtype=dtype,
+                index_value=series.index_value,
+                name=series.name,
+            )
 
     @classmethod
     def tile(cls, op):
@@ -129,17 +149,20 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
             chunk_inputs = [chunk]
             if len(op.inputs) == 2:
                 chunk_inputs.append(arg.chunks[0])
-            out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape,
-                                           dtype=out_series.dtype,
-                                           index_value=chunk.index_value,
-                                           name=out_series.name,
-                                           index=chunk.index)
+            out_chunk = chunk_op.new_chunk(
+                chunk_inputs,
+                shape=chunk.shape,
+                dtype=out_series.dtype,
+                index_value=chunk.index_value,
+                name=out_series.name,
+                index=chunk.index,
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         params = out_series.params
-        params['chunks'] = out_chunks
-        params['nsplits'] = in_series.nsplits
+        params["chunks"] = out_chunks
+        params["nsplits"] = in_series.nsplits
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod

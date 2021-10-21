@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorSinc(TensorUnaryOp):
     _op_type_ = OperandDef.SINC
-    _func_name = 'sinc'
+    _func_name = "sinc"
 
 
 @infer_dtype(np.sinc)

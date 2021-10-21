@@ -34,18 +34,18 @@ class RayActorDriver(BaseActorDriver):
         logger.info("Setup cluster with %s", address_to_resources)
         pg_name, bundles = addresses_to_placement_group_info(address_to_resources)
         logger.info("Creating placement group %s with bundles %s.", pg_name, bundles)
-        pg = ray.util.placement_group(name=pg_name,
-                                      bundles=bundles,
-                                      strategy="SPREAD")
+        pg = ray.util.placement_group(name=pg_name, bundles=bundles, strategy="SPREAD")
         create_pg_timeout = 10
         done, _ = ray.wait([pg.ready()], timeout=create_pg_timeout)
         if not done:  # pragma: no cover
-            raise Exception(f'''Can't create placement group {pg.bundle_specs} in {create_pg_timeout} seconds''')
+            raise Exception(
+                f"""Can't create placement group {pg.bundle_specs} in {create_pg_timeout} seconds"""
+            )
         cluster_info = {
-            'address_to_resources': address_to_resources,
-            'pg_name': pg_name,
-            'pg_group': pg,
-            'main_pool_handles': []  # Hold actor_handle to avoid actor being freed.
+            "address_to_resources": address_to_resources,
+            "pg_name": pg_name,
+            "pg_group": pg,
+            "main_pool_handles": [],  # Hold actor_handle to avoid actor being freed.
         }
         logger.info("Create placement group success.")
         cls._cluster_info = cluster_info
@@ -53,15 +53,17 @@ class RayActorDriver(BaseActorDriver):
 
     @classmethod
     def stop_cluster(cls):
-        logger.info('Stopping cluster %s.', cls._cluster_info)
-        pg_name = cls._cluster_info['pg_name']
-        pg = cls._cluster_info['pg_group']
+        logger.info("Stopping cluster %s.", cls._cluster_info)
+        pg_name = cls._cluster_info["pg_name"]
+        pg = cls._cluster_info["pg_group"]
         for index, bundle_spec in enumerate(pg.bundle_specs):
             n_process = int(bundle_spec["CPU"]) + 1
             for process_index in reversed(range(n_process)):
-                address = process_placement_to_address(pg_name, index, process_index=process_index)
+                address = process_placement_to_address(
+                    pg_name, index, process_index=process_index
+                )
                 try:
-                    if 'COV_CORE_SOURCE' in os.environ:  # pragma: no cover
+                    if "COV_CORE_SOURCE" in os.environ:  # pragma: no cover
                         # must clean up first, or coverage info lost.
                         # must save the local reference until this is fixed:
                         # https://github.com/ray-project/ray/issues/7815
@@ -73,4 +75,4 @@ class RayActorDriver(BaseActorDriver):
         ray.util.remove_placement_group(pg)
         cls._cluster_info = dict()
         unregister_ray_serializers()
-        logger.info('Stopped cluster %s.', pg_name)
+        logger.info("Stopped cluster %s.", pg_name)

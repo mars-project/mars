@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import numpy as np
+
 try:
     import scipy.sparse as sps
     import scipy.sparse.linalg as splinalg
@@ -25,8 +26,8 @@ except ImportError:  # pragma: no cover
 from ...utils import lazy_import
 
 splinalg = splinalg
-cp = lazy_import('cupy', globals=globals(), rename='cp')
-cps = lazy_import('cupy.sparse', globals=globals(), rename='cps')
+cp = lazy_import("cupy", globals=globals(), rename="cp")
+cps = lazy_import("cupy.sparse", globals=globals(), rename="cps")
 
 
 def issparse(x):
@@ -42,6 +43,7 @@ def issparse(x):
         return False
 
     from .array import SparseNDArray
+
     return isinstance(x, SparseNDArray)
 
 
@@ -83,8 +85,8 @@ def is_cupy(x):
 
 
 def naked(x):
-    if hasattr(x, 'spmatrix'):
+    if hasattr(x, "spmatrix"):
         return x.spmatrix
     if not is_sparse_or_dense(x):
-        raise TypeError('only sparse matrix or ndarray accepted')
+        raise TypeError("only sparse matrix or ndarray accepted")
     return x

@@ -23,12 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorChisquareDist(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_df']
+    _input_fields_ = ["_df"]
     _op_type_ = OperandDef.RAND_CHISQUARE
 
-    _fields_ = '_df', '_size'
-    _df = AnyField('df')
-    _func_name = 'chisquare'
+    _fields_ = "_df", "_size"
+    _df = AnyField("df")
+    _func_name = "chisquare"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -111,8 +111,7 @@ def chisquare(random_state, df, size=None, chunk_size=None, gpu=None, dtype=None
     array([ 1.89920014,  9.00867716,  3.13710533,  5.62318272])
     """
     if dtype is None:
-        dtype = np.random.RandomState().chisquare(
-            handle_array(df), size=(0,)).dtype
+        dtype = np.random.RandomState().chisquare(handle_array(df), size=(0,)).dtype
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorChisquareDist(seed=seed, size=size, gpu=gpu, dtype=dtype)

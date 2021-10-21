@@ -25,57 +25,68 @@ except ImportError:
 
 
 async def create_supervisor_actor_pool(
-        address: str,
-        n_process: int,
-        modules: List[str] = None,
-        ports: List[int] = None,
-        subprocess_start_method: str = None,
-        **kwargs):
+    address: str,
+    n_process: int,
+    modules: List[str] = None,
+    ports: List[int] = None,
+    subprocess_start_method: str = None,
+    **kwargs,
+):
     suspend_sigint = get_ipython is not None and get_ipython() is not None
     return await mo.create_actor_pool(
-        address, n_process=n_process, ports=ports, modules=modules,
+        address,
+        n_process=n_process,
+        ports=ports,
+        modules=modules,
         subprocess_start_method=subprocess_start_method,
         suspend_sigint=suspend_sigint,
-        **kwargs)
+        **kwargs,
+    )
 
 
 async def create_worker_actor_pool(
-        address: str,
-        band_to_slots: Dict[str, int],
-        n_io_process: int = 1,
-        modules: List[str] = None,
-        ports: List[int] = None,
-        cuda_devices: List[int] = None,
-        subprocess_start_method: str = None,
-        **kwargs):
+    address: str,
+    band_to_slots: Dict[str, int],
+    n_io_process: int = 1,
+    modules: List[str] = None,
+    ports: List[int] = None,
+    cuda_devices: List[int] = None,
+    subprocess_start_method: str = None,
+    **kwargs,
+):
     # TODO: support NUMA when ready
     n_process = sum(slot for slot in band_to_slots.values())
     envs = []
-    labels = ['main']
+    labels = ["main"]
 
     if cuda_devices is None:  # pragma: no cover
-        env_devices = os.environ.get('CUDA_VISIBLE_DEVICES')
+        env_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
         if not env_devices:
             cuda_devices = list(range(cuda_count()))
         else:
-            cuda_devices = [int(i) for i in env_devices.split(',')]
+            cuda_devices = [int(i) for i in env_devices.split(",")]
 
     i_gpu = iter(sorted(cuda_devices))
     for band, slot in band_to_slots.items():
-        if band.startswith('gpu'):  # pragma: no cover
+        if band.startswith("gpu"):  # pragma: no cover
             idx = str(next(i_gpu))
-            envs.append({'CUDA_VISIBLE_DEVICES': idx})
-            labels.append(f'gpu-{idx}')
+            envs.append({"CUDA_VISIBLE_DEVICES": idx})
+            labels.append(f"gpu-{idx}")
         else:
-            assert band.startswith('numa')
+            assert band.startswith("numa")
             envs.extend([dict() for _ in range(slot)])
             labels.extend([band] * slot)
 
     suspend_sigint = get_ipython is not None and get_ipython() is not None
     return await mo.create_actor_pool(
-        address, n_process=n_process, ports=ports,
+        address,
+        n_process=n_process,
+        ports=ports,
         n_io_process=n_io_process,
-        labels=labels, envs=envs, modules=modules,
+        labels=labels,
+        envs=envs,
+        modules=modules,
         subprocess_start_method=subprocess_start_method,
         suspend_sigint=suspend_sigint,
-        **kwargs)
+        **kwargs,
+    )

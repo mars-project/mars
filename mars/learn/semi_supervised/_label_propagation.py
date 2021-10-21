@@ -55,8 +55,10 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
         Convergence tolerance: threshold to consider the system at steady
         state
     """
-    def __init__(self, kernel='rbf', gamma=20, n_neighbors=7,
-                 alpha=1, max_iter=30, tol=1e-3):
+
+    def __init__(
+        self, kernel="rbf", gamma=20, n_neighbors=7, alpha=1, max_iter=30, tol=1e-3
+    ):
 
         self.max_iter = max_iter
         self.tol = tol
@@ -81,9 +83,9 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
             if self.nn_fit is None:
                 self.nn_fit = NearestNeighbors(self.n_neighbors).fit(X)
             if y is None:
-                return self.nn_fit.kneighbors_graph(self.nn_fit._fit_X,
-                                                    self.n_neighbors,
-                                                    mode='connectivity')
+                return self.nn_fit.kneighbors_graph(
+                    self.nn_fit._fit_X, self.n_neighbors, mode="connectivity"
+                )
             else:
                 return self.nn_fit.kneighbors(y, return_distance=False)
         elif callable(self.kernel):
@@ -92,14 +94,18 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
             else:
                 return self.kernel(X, y)
         else:  # pragma: no cover
-            raise ValueError(f"{self.kernel} is not a valid kernel. Only rbf and knn"
-                             " or an explicit function "
-                             " are supported at this time.")
+            raise ValueError(
+                f"{self.kernel} is not a valid kernel. Only rbf and knn"
+                " or an explicit function "
+                " are supported at this time."
+            )
 
     @abstractmethod
     def _build_graph(self):  # pragma: no cover
-        raise NotImplementedError("Graph construction must be implemented"
-                                  " to fit a label propagation model.")
+        raise NotImplementedError(
+            "Graph construction must be implemented"
+            " to fit a label propagation model."
+        )
 
     def predict(self, X, session=None, run_kwargs=None):
         """Performs inductive inference across the model.
@@ -136,14 +142,17 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
             class labels
         """
 
-        check_is_fitted(self, 'X_')
+        check_is_fitted(self, "X_")
 
         X_2d = check_array(X, accept_sparse=True)
         weight_matrices = self._get_kernel(self.X_, X_2d)
-        if self.kernel == 'knn':
-            probabilities = mt.array([
-                mt.sum(self.label_distributions_[weight_matrix], axis=0)
-                for weight_matrix in weight_matrices])
+        if self.kernel == "knn":
+            probabilities = mt.array(
+                [
+                    mt.sum(self.label_distributions_[weight_matrix], axis=0)
+                    for weight_matrix in weight_matrices
+                ]
+            )
         else:
             weight_matrices = weight_matrices.T
             probabilities = mt.dot(weight_matrices, self.label_distributions_)
@@ -182,8 +191,9 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
         # label construction
         # construct a categorical distribution for classification only
         classes = mt.unique(y, aggregate_size=1).to_numpy(
-            session=session, **(run_kwargs or dict()))
-        classes = (classes[classes != -1])
+            session=session, **(run_kwargs or dict())
+        )
+        classes = classes[classes != -1]
         self.classes_ = classes
 
         n_samples, n_classes = len(y), len(classes)
@@ -203,7 +213,7 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
             self.label_distributions_[y == label, classes == label] = 1
 
         y_static = mt.copy(self.label_distributions_)
-        if self._variant == 'propagation':
+        if self._variant == "propagation":
             # LabelPropagation
             y_static[unlabeled] = 0
         else:  # pragma: no cover
@@ -218,8 +228,7 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
             cond = mt.abs(self.label_distributions_ - l_previous).sum() < self.tol
 
             to_run.append(cond)
-            ExecutableTuple(to_run).execute(
-                session=session, **(run_kwargs or dict()))
+            ExecutableTuple(to_run).execute(session=session, **(run_kwargs or dict()))
             # clear
             to_run = []
 
@@ -229,23 +238,23 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
             l_previous = self.label_distributions_
             self.label_distributions_ = graph_matrix.dot(self.label_distributions_)
 
-            if self._variant == 'propagation':
-                normalizer = mt.sum(
-                    self.label_distributions_, axis=1)[:, mt.newaxis]
+            if self._variant == "propagation":
+                normalizer = mt.sum(self.label_distributions_, axis=1)[:, mt.newaxis]
                 self.label_distributions_ /= normalizer
-                self.label_distributions_ = mt.where(unlabeled,
-                                                     self.label_distributions_,
-                                                     y_static)
+                self.label_distributions_ = mt.where(
+                    unlabeled, self.label_distributions_, y_static
+                )
             else:  # pragma: no cover
                 # clamp
-                self.label_distributions_ = mt.multiply(
-                    alpha, self.label_distributions_) + y_static
+                self.label_distributions_ = (
+                    mt.multiply(alpha, self.label_distributions_) + y_static
+                )
 
             to_run.append(self.label_distributions_)
         else:
             warnings.warn(
-                f'max_iter={self.max_iter} was reached without convergence.',
-                category=ConvergenceWarning
+                f"max_iter={self.max_iter} was reached without convergence.",
+                category=ConvergenceWarning,
             )
             self.n_iter_ += 1
 
@@ -253,11 +262,13 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
         self.label_distributions_ /= normalizer
 
         # set the transduction item
-        transduction = mt.tensor(self.classes_)[mt.argmax(self.label_distributions_,
-                                                          axis=1)]
+        transduction = mt.tensor(self.classes_)[
+            mt.argmax(self.label_distributions_, axis=1)
+        ]
         self.transduction_ = transduction.ravel()
         ExecutableTuple([self.label_distributions_, self.transduction_]).execute(
-            session=session, **(run_kwargs or dict()))
+            session=session, **(run_kwargs or dict())
+        )
         return self
 
 
@@ -329,13 +340,17 @@ class LabelPropagation(BaseLabelPropagation):
     LabelSpreading : Alternate label propagation strategy more robust to noise
     """
 
-    _variant = 'propagation'
+    _variant = "propagation"
 
-    def __init__(self, kernel='rbf', gamma=20, n_neighbors=7,
-                 max_iter=1000, tol=1e-3):
-        super().__init__(kernel=kernel, gamma=gamma,
-                         n_neighbors=n_neighbors, max_iter=max_iter,
-                         tol=tol, alpha=None)
+    def __init__(self, kernel="rbf", gamma=20, n_neighbors=7, max_iter=1000, tol=1e-3):
+        super().__init__(
+            kernel=kernel,
+            gamma=gamma,
+            n_neighbors=n_neighbors,
+            max_iter=max_iter,
+            tol=tol,
+            alpha=None,
+        )
 
     def _build_graph(self):
         """Matrix representing a fully connected graph between each sample
@@ -343,7 +358,7 @@ class LabelPropagation(BaseLabelPropagation):
         This basic implementation creates a non-stochastic affinity matrix, so
         class distributions will exceed 1 (normalization may be desired).
         """
-        if self.kernel == 'knn':
+        if self.kernel == "knn":
             self.nn_fit = None
         affinity_matrix = self._get_kernel(self.X_)
         normalizer = affinity_matrix.sum(axis=0)

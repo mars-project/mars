@@ -22,15 +22,28 @@ from ...operands import LearnOperand, LearnOperandMixin
 class LGBMAlign(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.LGBM_ALIGN
 
-    _data = AnyField('data')
-    _label = AnyField('label')
-    _sample_weight = AnyField('sample_weight')
-    _init_score = AnyField('init_score')
+    _data = AnyField("data")
+    _label = AnyField("label")
+    _sample_weight = AnyField("sample_weight")
+    _init_score = AnyField("init_score")
 
-    def __init__(self, data=None, label=None, sample_weight=None, init_score=None,
-                 output_types=None, **kw):
-        super().__init__(_data=data, _label=label, _sample_weight=sample_weight,
-                         _init_score=init_score, _output_types=output_types, **kw)
+    def __init__(
+        self,
+        data=None,
+        label=None,
+        sample_weight=None,
+        init_score=None,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _data=data,
+            _label=label,
+            _sample_weight=sample_weight,
+            _init_score=init_score,
+            _output_types=output_types,
+            **kw
+        )
 
     @property
     def data(self):
@@ -56,14 +69,14 @@ class LGBMAlign(LearnOperand, LearnOperandMixin):
         super()._set_inputs(inputs)
         it = iter(inputs)
         self._data = next(it)
-        for attr in ('_label', '_sample_weight', '_init_score'):
+        for attr in ("_label", "_sample_weight", "_init_score"):
             if getattr(self, attr) is not None:
                 setattr(self, attr, next(it))
 
     def __call__(self):
         kws, inputs = [], []
         for arg in [self.data, self.label, self.sample_weight, self.init_score]:
-            if hasattr(arg, 'params'):
+            if hasattr(arg, "params"):
                 kws.append(arg.params)
                 inputs.append(arg)
         tileables = self.new_tileables(inputs, kws=kws)
@@ -71,7 +84,11 @@ class LGBMAlign(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op: "LGBMAlign"):
-        inputs = [d for d in [op.data, op.label, op.sample_weight, op.init_score] if d is not None]
+        inputs = [
+            d
+            for d in [op.data, op.label, op.sample_weight, op.init_score]
+            if d is not None
+        ]
         data = op.data
 
         # check inputs to make sure no unknown chunk shape exists
@@ -84,7 +101,8 @@ class LGBMAlign(LearnOperand, LearnOperandMixin):
         for inp in inputs[1:]:
             if inp is not None:
                 outputs.append(
-                    (yield from recursive_tile(inp.rechunk((data.nsplits[0],)))))
+                    (yield from recursive_tile(inp.rechunk((data.nsplits[0],))))
+                )
 
         kws = []
         for o in outputs:
@@ -99,7 +117,14 @@ class LGBMAlign(LearnOperand, LearnOperandMixin):
 
 
 def align_data_set(dataset):
-    out_types = get_output_types(dataset.data, dataset.label, dataset.sample_weight, dataset.init_score)
-    op = LGBMAlign(data=dataset.data, label=dataset.label, sample_weight=dataset.sample_weight,
-                   init_score=dataset.init_score, output_types=out_types)
+    out_types = get_output_types(
+        dataset.data, dataset.label, dataset.sample_weight, dataset.init_score
+    )
+    op = LGBMAlign(
+        data=dataset.data,
+        label=dataset.label,
+        sample_weight=dataset.sample_weight,
+        init_score=dataset.init_score,
+        output_types=out_types,
+    )
     return op()

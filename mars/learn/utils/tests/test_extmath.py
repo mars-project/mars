@@ -18,15 +18,9 @@ from numpy.testing import assert_array_almost_equal
 from ..extmath import softmax
 
 
-@pytest.mark.parametrize('copy', [True, False])
+@pytest.mark.parametrize("copy", [True, False])
 def test_softmax(setup, copy):
-    x = [
-        [1, 2, 3],
-        [2, 3, 4]
-    ]
-    ref = [
-        [0.09003057, 0.24472847, 0.66524096],
-        [0.09003057, 0.24472847, 0.66524096]
-    ]
+    x = [[1, 2, 3], [2, 3, 4]]
+    ref = [[0.09003057, 0.24472847, 0.66524096], [0.09003057, 0.24472847, 0.66524096]]
     x_ = softmax(x, copy=copy)
     assert_array_almost_equal(ref, x_)

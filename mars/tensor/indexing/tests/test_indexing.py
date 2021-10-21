@@ -23,8 +23,7 @@ from ...base.broadcast_to import TensorBroadcastTo
 from ...datasource import ones, tensor, array, empty
 from ...datasource.ones import TensorOnes
 from ...merge.concatenate import TensorConcatenate
-from .. import choose, unravel_index, nonzero, \
-    compress, fill_diagonal
+from .. import choose, unravel_index, nonzero, compress, fill_diagonal
 from ..setitem import TensorIndexSetValue
 
 
@@ -63,20 +62,20 @@ def test_bool_indexing():
     with pytest.raises(IndexError) as cm:
         _ = t[t3 < 2]  # noqa: F841
     e = cm.value.args[0]
-    assert 'along dimension 0' in e
-    assert 'dimension is 100 but corresponding boolean dimension is 101' in e
+    assert "along dimension 0" in e
+    assert "dimension is 100 but corresponding boolean dimension is 101" in e
 
     t4 = ones((100, 201))
     with pytest.raises(IndexError) as cm:
         _ = t[t4 < 2]  # noqa: F841
     e = cm.value.args[0]
-    assert 'along dimension 1' in e
-    assert 'dimension is 200 but corresponding boolean dimension is 201' in e
+    assert "along dimension 1" in e
+    assert "dimension is 200 but corresponding boolean dimension is 201" in e
 
 
 def test_slice():
     t = ones((100, 200, 300))
-    t2 = t[10: 30, 199:, -30: 303]
+    t2 = t[10:30, 199:, -30:303]
     assert t2.shape == (20, 1, 30)
 
     t3 = t[10:90:4, 20:80:5]
@@ -96,11 +95,13 @@ def test_fancy_indexing():
     with pytest.raises(IndexError) as cm:
         _ = t[[1, 2], [3, 4, 5]]  # noqa: F841
     e = cm.value.args[0]
-    assert e == 'shape mismatch: indexing arrays could not be broadcast ' \
-                'together with shapes (2,) (3,)'
+    assert (
+        e == "shape mismatch: indexing arrays could not be broadcast "
+        "together with shapes (2,) (3,)"
+    )
 
     with pytest.raises(IndexError):
-        t[[100, ]]
+        t[[100]]
 
     t = ones((100, 200, 300), chunk_size=10)
 
@@ -144,7 +145,13 @@ def test_fancy_indexing():
     assert t10.shape == (10, 10, 6)
     assert t10.chunk_shape == (1, 1, 2)
 
-    t11 = tile(t[tensor([20, 1, 33, 22, 11], chunk_size=2), :15, tensor([255, 211, 2, 11, 121], chunk_size=3)])
+    t11 = tile(
+        t[
+            tensor([20, 1, 33, 22, 11], chunk_size=2),
+            :15,
+            tensor([255, 211, 2, 11, 121], chunk_size=3),
+        ]
+    )
     assert t11.shape == (5, 15)
     # need a concat, because the fancy indexes are not ascending according to chunk index
     assert t11.chunk_shape == (4, 2)
@@ -177,8 +184,8 @@ def test_mixed_indexing():
 
     t3 = ones((2, 3, 4, 5))
     t4 = t3[1]
-    assert t4.flags['C_CONTIGUOUS'] == np.ones((2, 3, 4, 5))[1].flags['C_CONTIGUOUS']
-    assert t4.flags['F_CONTIGUOUS'] == np.ones((2, 3, 4, 5))[1].flags['F_CONTIGUOUS']
+    assert t4.flags["C_CONTIGUOUS"] == np.ones((2, 3, 4, 5))[1].flags["C_CONTIGUOUS"]
+    assert t4.flags["F_CONTIGUOUS"] == np.ones((2, 3, 4, 5))[1].flags["F_CONTIGUOUS"]
 
 
 def test_bool_indexing_tiles():
@@ -207,7 +214,7 @@ def test_bool_indexing_tiles():
 
 def test_slice_tiles():
     t = ones((100, 200, 300), chunk_size=30)
-    t2 = t[10: 40, 199:, -30: 303]
+    t2 = t[10:40, 199:, -30:303]
     t, t2 = tile(t, t2)
 
     assert t2.chunk_shape == (2, 1, 1)
@@ -247,12 +254,18 @@ def test_mixed_indexing_tiles():
     assert t2.shape[:-1] == (27, 300, 1)
     assert np.isnan(t2.shape[-1])
     assert t2.chunk_shape == (4, 13, 1, 17)
-    assert t2.chunks[0].op.indexes == [slice(10, 24, 3), 5, slice(None), None, cmp.cix[0, ].data]
+    assert t2.chunks[0].op.indexes == [
+        slice(10, 24, 3),
+        5,
+        slice(None),
+        None,
+        cmp.cix[(0,)].data,
+    ]
 
 
 def test_setitem():
     shape = (10, 20, 30, 40)
-    t = ones(shape, chunk_size=5, dtype='i4')
+    t = ones(shape, chunk_size=5, dtype="i4")
     t[5:20:3, 5, ..., :-5] = 2.2
 
     assert isinstance(t.op, TensorIndexSetValue)
@@ -264,9 +277,9 @@ def test_setitem():
     assert isinstance(t.cix[1, 1, 0, 0].op, TensorIndexSetValue)
     assert t.cix[1, 1, 0, 0].op.value == 2.2
 
-    t2 = ones(shape, chunk_size=5, dtype='i4')
+    t2 = ones(shape, chunk_size=5, dtype="i4")
     shape = t2[5:20:3, 5, ..., :-5].shape
-    t2[5:20:3, 5, ..., :-5] = ones(shape, chunk_size=4, dtype='i4') * 2
+    t2[5:20:3, 5, ..., :-5] = ones(shape, chunk_size=4, dtype="i4") * 2
 
     t2 = tile(t2)
     assert isinstance(t2.chunks[0].op, TensorOnes)
@@ -276,14 +289,20 @@ def test_setitem():
 
 def test_setitem_structured():
     # Check to value is properly broadcast for `setitem` on complex record dtype arrays.
-    rec_type = np.dtype([('a', np.int32), ('b', np.double), ('c', np.dtype([('a', np.int16), ('b', np.int64)]))])
+    rec_type = np.dtype(
+        [
+            ("a", np.int32),
+            ("b", np.double),
+            ("c", np.dtype([("a", np.int16), ("b", np.int64)])),
+        ]
+    )
 
     t = ones((4, 5), dtype=rec_type, chunk_size=3)
 
     # assign tuple to record
-    t[1:4, 1] = (3, 4., (5, 6))
+    t[1:4, 1] = (3, 4.0, (5, 6))
     tt = tile(t)
-    assert tt.cix[0, 0].op.value == (3, 4., (5, 6))
+    assert tt.cix[0, 0].op.value == (3, 4.0, (5, 6))
 
     # assign scalar to record
     t[1:4, 2] = 8
@@ -305,15 +324,16 @@ def test_setitem_structured():
     tt = tile(t)
     slices_op = tt.cix[0, 0].op.value.op
     assert slices_op.slices == [slice(None, 1, None), slice(None, 3, None)]
-    np.testing.assert_array_equal(slices_op.inputs[0].op.inputs[0].op.data, np.arange(10).reshape(2, 5))
+    np.testing.assert_array_equal(
+        slices_op.inputs[0].op.inputs[0].op.data, np.arange(10).reshape(2, 5)
+    )
 
 
 def test_choose():
     with option_context() as options:
         options.chunk_size = 2
 
-        choices = [[0, 1, 2, 3], [10, 11, 12, 13],
-                   [20, 21, 22, 23], [30, 31, 32, 33]]
+        choices = [[0, 1, 2, 3], [10, 11, 12, 13], [20, 21, 22, 23], [30, 31, 32, 33]]
         a = choose([2, 3, 1, 0], choices)
 
         a = tile(a)
@@ -340,7 +360,7 @@ def test_unravel_index():
     assert len(t[1].chunks) == 3
 
     with pytest.raises(TypeError):
-        unravel_index([22, 41, 37], (7, 6), order='B')
+        unravel_index([22, 41, 37], (7, 6), order="B")
 
 
 def test_nonzero():
@@ -359,8 +379,12 @@ def test_compress():
         compress([0, 1], a, axis=0, out=1)
 
     with pytest.raises(TypeError):
-        compress([0, 1], array([[1, 2], [3, 4], [5, 6]], dtype='i8'),
-                 axis=0, out=empty((1, 2), dtype='f8'))
+        compress(
+            [0, 1],
+            array([[1, 2], [3, 4], [5, 6]], dtype="i8"),
+            axis=0,
+            out=empty((1, 2), dtype="f8"),
+        )
 
 
 def test_operand_key():

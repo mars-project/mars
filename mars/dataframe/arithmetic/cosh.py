@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameCosh(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.COSH
-    _func_name = 'cosh'
+    _func_name = "cosh"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorCosh
+
         return TensorCosh

@@ -40,7 +40,7 @@ def is_kernel_mode():
 
 
 def is_build_mode():
-    return bool(getattr(_internal_mode, 'build', False))
+    return bool(getattr(_internal_mode, "build", False))
 
 
 class _EnterModeFuncWrapper:
@@ -55,8 +55,7 @@ class _EnterModeFuncWrapper:
         mode_name_to_old_value = dict()
         for mode_name, value in self.mode_name_to_value.items():
             # record mode's old values
-            mode_name_to_old_value[mode_name] = \
-                getattr(_internal_mode, mode_name, None)
+            mode_name_to_old_value[mode_name] = getattr(_internal_mode, mode_name, None)
             if value is None:
                 continue
             # set value
@@ -67,8 +66,7 @@ class _EnterModeFuncWrapper:
         mode_name_to_old_value = self.mode_name_to_value_list.pop()
         for mode_name in self.mode_name_to_value.keys():
             # set back old values
-            setattr(_internal_mode, mode_name,
-                    mode_name_to_old_value[mode_name])
+            setattr(_internal_mode, mode_name, mode_name_to_old_value[mode_name])
 
     def __call__(self, func):
         if not inspect.iscoroutinefunction(func):
@@ -77,6 +75,7 @@ class _EnterModeFuncWrapper:
             def _inner(*args, **kwargs):
                 with self:
                     return func(*args, **kwargs)
+
         else:
             # async
             @functools.wraps(func)
@@ -89,8 +88,8 @@ class _EnterModeFuncWrapper:
 
 def enter_mode(kernel=None, build=None):
     mode_name_to_value = {
-        'kernel': kernel,
-        'build': build,
+        "kernel": kernel,
+        "build": build,
     }
 
     return _EnterModeFuncWrapper(mode_name_to_value)

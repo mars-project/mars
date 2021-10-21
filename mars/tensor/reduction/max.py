@@ -21,14 +21,17 @@ from .core import TensorReduction, TensorReductionMixin
 
 class TensorMax(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.MAX
-    _func_name = 'max'
+    _func_name = "max"
 
-    def __init__(self, axis=None, keepdims=None, combine_size=None,
-                 stage=None, **kw):
+    def __init__(self, axis=None, keepdims=None, combine_size=None, stage=None, **kw):
         stage = self._rewrite_stage(stage)
-        super().__init__(_axis=axis, _keepdims=keepdims,
-                         _combine_size=combine_size,
-                         stage=stage, **kw)
+        super().__init__(
+            _axis=axis,
+            _keepdims=keepdims,
+            _combine_size=combine_size,
+            stage=stage,
+            **kw
+        )
 
     @classmethod
     def _is_sparse(cls, input_sparse, shape):
@@ -125,5 +128,7 @@ def max(a, axis=None, out=None, keepdims=None, combine_size=None):
 
     """
     a = astensor(a)
-    op = TensorMax(axis=axis, dtype=a.dtype, keepdims=keepdims, combine_size=combine_size)
+    op = TensorMax(
+        axis=axis, dtype=a.dtype, keepdims=keepdims, combine_size=combine_size
+    )
     return op(a, out=out)

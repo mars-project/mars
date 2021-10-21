@@ -23,13 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorGumbel(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_loc', '_scale']
+    _input_fields_ = ["_loc", "_scale"]
     _op_type_ = OperandDef.RAND_GUMBEL
 
-    _fields_ = '_loc', '_scale', '_size'
-    _loc = AnyField('loc')
-    _scale = AnyField('scale')
-    _func_name = 'gumbel'
+    _fields_ = "_loc", "_scale", "_size"
+    _loc = AnyField("loc")
+    _scale = AnyField("scale")
+    _func_name = "gumbel"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -47,7 +47,9 @@ class TensorGumbel(TensorDistribution, TensorRandomOperandMixin):
         return self.new_tensor([loc, scale], None, raw_chunk_size=chunk_size)
 
 
-def gumbel(random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=None, dtype=None):
+def gumbel(
+    random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=None, dtype=None
+):
     r"""
     Draw samples from a Gumbel distribution.
 
@@ -166,8 +168,11 @@ def gumbel(random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=Non
     >>> plt.show()
     """
     if dtype is None:
-        dtype = np.random.RandomState().gumbel(
-            handle_array(loc), handle_array(scale), size=(0,)).dtype
+        dtype = (
+            np.random.RandomState()
+            .gumbel(handle_array(loc), handle_array(scale), size=(0,))
+            .dtype
+        )
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorGumbel(seed=seed, size=size, gpu=gpu, dtype=dtype)

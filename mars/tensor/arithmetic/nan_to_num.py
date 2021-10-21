@@ -23,10 +23,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorNanToNum(TensorUnaryOp):
     _op_type_ = OperandDef.NAN_TO_NUM
-    _func_name = 'nan_to_num'
+    _func_name = "nan_to_num"
 
 
 @infer_dtype(np.nan_to_num)
@@ -94,6 +94,6 @@ def nan_to_num(x, copy=True, **kwargs):
 
     # set back, make sure x is a Tensor
     if not isinstance(x, Tensor):
-        raise ValueError(f'`x` must be a Tensor, got {type(x)} instead')
+        raise ValueError(f"`x` must be a Tensor, got {type(x)} instead")
     x.data = ret.data
     return x

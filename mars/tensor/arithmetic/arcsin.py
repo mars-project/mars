@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorArcsin(TensorUnaryOp):
     _op_type_ = OperandDef.ARCSIN
-    _func_name = 'arcsin'
+    _func_name = "arcsin"
 
 
 @infer_dtype(np.arcsin)

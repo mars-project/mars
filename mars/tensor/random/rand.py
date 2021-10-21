@@ -23,7 +23,7 @@ from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 class TensorRand(TensorSimpleRandomData, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_RAND
-    _func_name = 'rand'
+    _func_name = "rand"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -73,14 +73,14 @@ def rand(random_state, *dn, **kw):
     """
     if len(dn) == 1 and isinstance(dn[0], (tuple, list)):
         raise TypeError("'tuple' object cannot be interpreted as an integer")
-    if 'dtype' not in kw:
-        kw['dtype'] = np.dtype('f8')
-    chunk_size = kw.pop('chunk_size', None)
+    if "dtype" not in kw:
+        kw["dtype"] = np.dtype("f8")
+    chunk_size = kw.pop("chunk_size", None)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorRand(seed=seed, size=dn, **kw)
 
     for key in op.extra_params:
-        if not key.startswith('_'):
-            raise ValueError(f'rand got unexpected key arguments {key}')
+        if not key.startswith("_"):
+            raise ValueError(f"rand got unexpected key arguments {key}")
 
     return op(chunk_size=chunk_size)

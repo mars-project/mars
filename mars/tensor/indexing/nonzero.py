@@ -28,15 +28,17 @@ from .unravel_index import unravel_index
 class TensorNonzero(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.NONZERO
 
-    _input = KeyField('input')
+    _input = KeyField("input")
 
     @property
     def output_limit(self):
-        return float('inf')
+        return float("inf")
 
     def __call__(self, a):
-        kws = [{'shape': (np.nan,), 'order': TensorOrder.C_ORDER, '_idx_': i}
-               for i in range(a.ndim)]
+        kws = [
+            {"shape": (np.nan,), "order": TensorOrder.C_ORDER, "_idx_": i}
+            for i in range(a.ndim)
+        ]
         return ExecutableTuple(self.new_tensors([a], kws=kws, output_limit=len(kws)))
 
     @classmethod
@@ -52,8 +54,10 @@ class TensorNonzero(TensorHasInput, TensorOperandMixin):
         dim_indices = unravel_index(indices, in_tensor.shape)
         dim_indices = yield from recursive_tile(dim_indices)
 
-        kws = [{'nsplits': ind.nsplits, 'chunks': ind.chunks, 'shape': o.shape}
-               for ind, o in zip(dim_indices, op.outputs)]
+        kws = [
+            {"nsplits": ind.nsplits, "chunks": ind.chunks, "shape": o.shape}
+            for ind, o in zip(dim_indices, op.outputs)
+        ]
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, kws=kws, output_limit=len(kws))
 

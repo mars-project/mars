@@ -21,7 +21,7 @@ from .....core import tile
 
 
 def test_ewm():
-    df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
+    df = pd.DataFrame(np.random.rand(4, 3), columns=list("abc"))
     df2 = md.DataFrame(df)
 
     with pytest.raises(NotImplementedError):
@@ -53,34 +53,32 @@ def test_ewm():
     assert repr(r) == repr(expected)
 
     r = df2.ewm(alpha=1)
-    assert type(r).__name__ == 'Expanding'
+    assert type(r).__name__ == "Expanding"
 
 
 def test_ewm_agg():
-    df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
+    df = pd.DataFrame(np.random.rand(4, 3), columns=list("abc"))
     df2 = md.DataFrame(df, chunk_size=3)
 
     with pytest.raises(NotImplementedError):
-        _ = df2.ewm(span=3, axis=1).agg('mean')
+        _ = df2.ewm(span=3, axis=1).agg("mean")
 
-    r = df2.ewm(span=3).agg('mean')
-    expected = df.ewm(span=3).agg('mean')
+    r = df2.ewm(span=3).agg("mean")
+    expected = df.ewm(span=3).agg("mean")
 
     assert r.shape == df.shape
     assert r.index_value is df2.index_value
-    pd.testing.assert_index_equal(r.columns_value.to_pandas(),
-                                  expected.columns)
+    pd.testing.assert_index_equal(r.columns_value.to_pandas(), expected.columns)
     pd.testing.assert_series_equal(r.dtypes, df2.dtypes)
 
     r = tile(r)
     for c in r.chunks:
         assert c.shape == c.inputs[0].shape
         assert c.index_value is c.inputs[0].index_value
-        pd.testing.assert_index_equal(c.columns_value.to_pandas(),
-                                      expected.columns)
+        pd.testing.assert_index_equal(c.columns_value.to_pandas(), expected.columns)
         pd.testing.assert_series_equal(c.dtypes, expected.dtypes)
 
-    aggs = ['mean', 'var', 'std']
+    aggs = ["mean", "var", "std"]
     for a in aggs:
         r = getattr(df2.ewm(span=3), a)()
         assert r.op.func == [a]

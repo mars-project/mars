@@ -47,33 +47,30 @@ async def kill_actor(actor_ref):
     return await ctx.kill_actor(actor_ref)
 
 
-async def create_actor_pool(address: str,
-                            n_process: int = None,
-                            **kwargs):
+async def create_actor_pool(address: str, n_process: int = None, **kwargs):
     if address is None:
-        raise ValueError('address has to be provided')
-    if '://' not in address:
+        raise ValueError("address has to be provided")
+    if "://" not in address:
         scheme = None
     else:
         scheme = urlparse(address).scheme or None
 
     return await get_backend(scheme).create_actor_pool(
-        address, n_process=n_process, **kwargs)
+        address, n_process=n_process, **kwargs
+    )
 
 
-async def wait_actor_pool_recovered(address: str,
-                                    main_pool_address: str = None):
+async def wait_actor_pool_recovered(address: str, main_pool_address: str = None):
     ctx = get_context()
-    return await ctx.wait_actor_pool_recovered(
-        address, main_pool_address)
+    return await ctx.wait_actor_pool_recovered(address, main_pool_address)
 
 
 def setup_cluster(address_to_resources: Dict[str, Dict[str, Number]]):
     scheme_to_address_resources = defaultdict(dict)
     for address, resources in address_to_resources.items():
         if address is None:
-            raise ValueError('address has to be provided')
-        if '://' not in address:
+            raise ValueError("address has to be provided")
+        if "://" not in address:
             scheme = None
         else:
             scheme = urlparse(address).scheme or None

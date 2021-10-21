@@ -20,7 +20,7 @@ from .. import get_scorer
 
 def test_get_scorer():
     with pytest.raises(ValueError):
-        get_scorer('unknown')
+        get_scorer("unknown")
 
-    assert get_scorer('r2') is not None
+    assert get_scorer("r2") is not None
     assert get_scorer(r2_score) is not None

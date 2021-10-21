@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 
 import pandas as pd
 import numpy as np
+
 try:
     from pyarrow import NativeFile
 except ImportError:  # pragma: no cover
@@ -28,20 +29,30 @@ from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
 from ...lib.filesystem import get_fs, open_file, file_size, glob
-from ...serialization.serializables import StringField, DictField, ListField, Int32Field, \
-    Int64Field, BoolField, AnyField
+from ...serialization.serializables import (
+    StringField,
+    DictField,
+    ListField,
+    Int32Field,
+    Int64Field,
+    BoolField,
+    AnyField,
+)
 from ...utils import parse_readable_size, lazy_import, FixedSizeFileObject
 from ..arrays import ArrowStringDtype
 from ..utils import parse_index, build_empty_df, to_arrow_dtypes, contain_arrow_dtype
-from .core import IncrementalIndexDatasource, ColumnPruneSupportedDataSourceMixin, \
-    IncrementalIndexDataSourceMixin
+from .core import (
+    IncrementalIndexDatasource,
+    ColumnPruneSupportedDataSourceMixin,
+    IncrementalIndexDataSourceMixin,
+)
 
 
-cudf = lazy_import('cudf', globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
 
 def _find_delimiter(f, block_size=2 ** 16):
-    delimiter = b'\n'
+    delimiter = b"\n"
     if f.tell() == 0:
         return 0
     while True:
@@ -81,38 +92,64 @@ def _find_chunk_start_end(f, offset, size):
     return start, end
 
 
-class DataFrameReadCSV(IncrementalIndexDatasource,
-                       ColumnPruneSupportedDataSourceMixin,
-                       IncrementalIndexDataSourceMixin):
+class DataFrameReadCSV(
+    IncrementalIndexDatasource,
+    ColumnPruneSupportedDataSourceMixin,
+    IncrementalIndexDataSourceMixin,
+):
     _op_type_ = OperandDef.READ_CSV
 
-    _path = AnyField('path')
-    _names = ListField('names')
-    _sep = StringField('sep')
-    _header = AnyField('header')
-    _index_col = Int32Field('index_col')
-    _compression = StringField('compression')
-    _usecols = AnyField('usecols')
-    _offset = Int64Field('offset')
-    _size = Int64Field('size')
-    _nrows = Int64Field('nrows')
-    _incremental_index = BoolField('incremental_index')
-    _use_arrow_dtype = BoolField('use_arrow_dtype')
-    _keep_usecols_order = BoolField('keep_usecols_order')
-    _storage_options = DictField('storage_options')
+    _path = AnyField("path")
+    _names = ListField("names")
+    _sep = StringField("sep")
+    _header = AnyField("header")
+    _index_col = Int32Field("index_col")
+    _compression = StringField("compression")
+    _usecols = AnyField("usecols")
+    _offset = Int64Field("offset")
+    _size = Int64Field("size")
+    _nrows = Int64Field("nrows")
+    _incremental_index = BoolField("incremental_index")
+    _use_arrow_dtype = BoolField("use_arrow_dtype")
+    _keep_usecols_order = BoolField("keep_usecols_order")
+    _storage_options = DictField("storage_options")
 
-    def __init__(self, path=None, names=None, sep=None, header=None, index_col=None,
-                 compression=None, usecols=None, offset=None, size=None, nrows=None,
-                 keep_usecols_order=None, incremental_index=None,
-                 use_arrow_dtype=None, storage_options=None, **kw):
-        super().__init__(_path=path, _names=names, _sep=sep, _header=header,
-                         _index_col=index_col, _compression=compression,
-                         _usecols=usecols, _offset=offset, _size=size, _nrows=nrows,
-                         _incremental_index=incremental_index,
-                         _keep_usecols_order=keep_usecols_order,
-                         _use_arrow_dtype=use_arrow_dtype,
-                         _storage_options=storage_options,
-                         _output_types=[OutputType.dataframe], **kw)
+    def __init__(
+        self,
+        path=None,
+        names=None,
+        sep=None,
+        header=None,
+        index_col=None,
+        compression=None,
+        usecols=None,
+        offset=None,
+        size=None,
+        nrows=None,
+        keep_usecols_order=None,
+        incremental_index=None,
+        use_arrow_dtype=None,
+        storage_options=None,
+        **kw,
+    ):
+        super().__init__(
+            _path=path,
+            _names=names,
+            _sep=sep,
+            _header=header,
+            _index_col=index_col,
+            _compression=compression,
+            _usecols=usecols,
+            _offset=offset,
+            _size=size,
+            _nrows=nrows,
+            _incremental_index=incremental_index,
+            _keep_usecols_order=keep_usecols_order,
+            _use_arrow_dtype=use_arrow_dtype,
+            _storage_options=storage_options,
+            _output_types=[OutputType.dataframe],
+            **kw,
+        )
 
     @property
     def path(self):
@@ -181,14 +218,25 @@ class DataFrameReadCSV(IncrementalIndexDatasource,
         chunk_op._offset = 0
         chunk_op._size = file_size(op.path)
         shape = df.shape
-        new_chunk = chunk_op.new_chunk(None, shape=shape, index=(0, 0), index_value=df.index_value,
-                                       columns_value=df.columns_value, dtypes=df.dtypes)
+        new_chunk = chunk_op.new_chunk(
+            None,
+            shape=shape,
+            index=(0, 0),
+            index_value=df.index_value,
+            columns_value=df.columns_value,
+            dtypes=df.dtypes,
+        )
         new_op = op.copy()
         nsplits = ((np.nan,), (df.shape[1],))
-        return new_op.new_dataframes(None, df.shape, dtypes=df.dtypes,
-                                     index_value=df.index_value,
-                                     columns_value=df.columns_value,
-                                     chunks=[new_chunk], nsplits=nsplits)
+        return new_op.new_dataframes(
+            None,
+            df.shape,
+            dtypes=df.dtypes,
+            index_value=df.index_value,
+            columns_value=df.columns_value,
+            chunks=[new_chunk],
+            nsplits=nsplits,
+        )
 
     @classmethod
     def _tile(cls, op):
@@ -200,21 +248,26 @@ class DataFrameReadCSV(IncrementalIndexDatasource,
         chunk_bytes = int(parse_readable_size(chunk_bytes)[0])
 
         dtypes = df.dtypes
-        if op.use_arrow_dtype is None and not op.gpu and \
-                options.dataframe.use_arrow_dtype:  # pragma: no cover
+        if (
+            op.use_arrow_dtype is None
+            and not op.gpu
+            and options.dataframe.use_arrow_dtype
+        ):  # pragma: no cover
             # check if use_arrow_dtype set on the server side
             dtypes = to_arrow_dtypes(df.dtypes)
 
-        path_prefix = ''
+        path_prefix = ""
         if isinstance(op.path, (tuple, list)):
             paths = op.path
         elif get_fs(op.path, op.storage_options).isdir(op.path):
             parsed_path = urlparse(op.path)
-            if parsed_path.scheme.lower() == 'hdfs':
-                path_prefix = f'{parsed_path.scheme}://{parsed_path.netloc}'
+            if parsed_path.scheme.lower() == "hdfs":
+                path_prefix = f"{parsed_path.scheme}://{parsed_path.netloc}"
                 paths = get_fs(op.path, op.storage_options).ls(op.path)
             else:
-                paths = glob(op.path.rstrip('/') + '/*', storage_options=op.storage_options)
+                paths = glob(
+                    op.path.rstrip("/") + "/*", storage_options=op.storage_options
+                )
         else:
             paths = glob(op.path, storage_options=op.storage_options)
 
@@ -231,18 +284,29 @@ class DataFrameReadCSV(IncrementalIndexDatasource,
                 chunk_op._size = min(chunk_bytes, total_bytes - offset)
                 shape = (np.nan, len(dtypes))
                 index_value = parse_index(df.index_value.to_pandas(), path, index_num)
-                new_chunk = chunk_op.new_chunk(None, shape=shape, index=(index_num, 0), index_value=index_value,
-                                               columns_value=df.columns_value, dtypes=dtypes)
+                new_chunk = chunk_op.new_chunk(
+                    None,
+                    shape=shape,
+                    index=(index_num, 0),
+                    index_value=index_value,
+                    columns_value=df.columns_value,
+                    dtypes=dtypes,
+                )
                 out_chunks.append(new_chunk)
                 index_num += 1
                 offset += chunk_bytes
 
         new_op = op.copy()
         nsplits = ((np.nan,) * len(out_chunks), (df.shape[1],))
-        return new_op.new_dataframes(None, df.shape, dtypes=dtypes,
-                                     index_value=df.index_value,
-                                     columns_value=df.columns_value,
-                                     chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_dataframes(
+            None,
+            df.shape,
+            dtypes=dtypes,
+            index_value=df.index_value,
+            columns_value=df.columns_value,
+            chunks=out_chunks,
+            nsplits=nsplits,
+        )
 
     @classmethod
     def _pandas_read_csv(cls, f, op):
@@ -251,7 +315,7 @@ class DataFrameReadCSV(IncrementalIndexDatasource,
         start, end = _find_chunk_start_end(f, op.offset, op.size)
         f.seek(start)
         b = FixedSizeFileObject(f, end - start)
-        if hasattr(out_df, 'dtypes'):
+        if hasattr(out_df, "dtypes"):
             dtypes = out_df.dtypes
         else:
             # Output will be a Series in some optimize rules.
@@ -266,7 +330,7 @@ class DataFrameReadCSV(IncrementalIndexDatasource,
             if start == 0:
                 # The first chunk contains header
                 # As we specify names and dtype, we need to skip header rows
-                csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
+                csv_kwargs["skiprows"] = 1 if op.header == "infer" else op.header
             if op.usecols:
                 usecols = op.usecols if isinstance(op.usecols, list) else [op.usecols]
             else:
@@ -275,10 +339,17 @@ class DataFrameReadCSV(IncrementalIndexDatasource,
                 # when keep_default_na is True which is default,
                 # will replace null value with np.nan,
                 # which will cause failure when converting to arrow string array
-                csv_kwargs['keep_default_na'] = False
-                csv_kwargs['dtype'] = cls._select_arrow_dtype(dtypes)
-            df = pd.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col,
-                             usecols=usecols, nrows=op.nrows, **csv_kwargs)
+                csv_kwargs["keep_default_na"] = False
+                csv_kwargs["dtype"] = cls._select_arrow_dtype(dtypes)
+            df = pd.read_csv(
+                b,
+                sep=op.sep,
+                names=op.names,
+                index_col=op.index_col,
+                usecols=usecols,
+                nrows=op.nrows,
+                **csv_kwargs,
+            )
             if op.keep_usecols_order:
                 df = df[op.usecols]
         return df
@@ -291,10 +362,23 @@ class DataFrameReadCSV(IncrementalIndexDatasource,
             usecols = op.usecols
         csv_kwargs = op.extra_params
         if op.offset == 0:
-            df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, usecols=usecols, **csv_kwargs)
+            df = cudf.read_csv(
+                op.path,
+                byte_range=(op.offset, op.size),
+                sep=op.sep,
+                usecols=usecols,
+                **csv_kwargs,
+            )
         else:
-            df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, names=op.names,
-                               usecols=usecols, nrows=op.nrows, **csv_kwargs)
+            df = cudf.read_csv(
+                op.path,
+                byte_range=(op.offset, op.size),
+                sep=op.sep,
+                names=op.names,
+                usecols=usecols,
+                nrows=op.nrows,
+                **csv_kwargs,
+            )
 
         if op.keep_usecols_order:
             df = df[op.usecols]
@@ -306,8 +390,11 @@ class DataFrameReadCSV(IncrementalIndexDatasource,
 
     @classmethod
     def _select_arrow_dtype(cls, dtypes):
-        return dict((c, dtype) for c, dtype in dtypes.items() if
-                    isinstance(dtype, ArrowStringDtype))
+        return dict(
+            (c, dtype)
+            for c, dtype in dtypes.items()
+            if isinstance(dtype, ArrowStringDtype)
+        )
 
     @classmethod
     def execute(cls, ctx, op):
@@ -315,19 +402,28 @@ class DataFrameReadCSV(IncrementalIndexDatasource,
         out_df = op.outputs[0]
         csv_kwargs = op.extra_params.copy()
 
-        with open_file(op.path, compression=op.compression, storage_options=op.storage_options) as f:
+        with open_file(
+            op.path, compression=op.compression, storage_options=op.storage_options
+        ) as f:
             if op.compression is not None:
                 # As we specify names and dtype, we need to skip header rows
-                csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
+                csv_kwargs["skiprows"] = 1 if op.header == "infer" else op.header
                 dtypes = op.outputs[0].dtypes
                 if contain_arrow_dtype(dtypes):
                     # when keep_default_na is True which is default,
                     # will replace null value with np.nan,
                     # which will cause failure when converting to arrow string array
-                    csv_kwargs['keep_default_na'] = False
-                    csv_kwargs['dtype'] = cls._select_arrow_dtype(dtypes)
-                df = xdf.read_csv(f, sep=op.sep, names=op.names, index_col=op.index_col,
-                                  usecols=op.usecols, nrows=op.nrows, **csv_kwargs)
+                    csv_kwargs["keep_default_na"] = False
+                    csv_kwargs["dtype"] = cls._select_arrow_dtype(dtypes)
+                df = xdf.read_csv(
+                    f,
+                    sep=op.sep,
+                    names=op.names,
+                    index_col=op.index_col,
+                    usecols=op.usecols,
+                    nrows=op.nrows,
+                    **csv_kwargs,
+                )
                 if op.keep_usecols_order:
                     df = df[op.usecols]
             else:
@@ -338,16 +434,40 @@ class DataFrameReadCSV(IncrementalIndexDatasource,
         phy_size = op.size * (op.memory_scale or 1)
         ctx[op.outputs[0].key] = (phy_size, phy_size * 2)
 
-    def __call__(self, index_value=None, columns_value=None, dtypes=None, chunk_bytes=None):
+    def __call__(
+        self, index_value=None, columns_value=None, dtypes=None, chunk_bytes=None
+    ):
         shape = (np.nan, len(dtypes))
-        return self.new_dataframe(None, shape, dtypes=dtypes, index_value=index_value,
-                                  columns_value=columns_value, chunk_bytes=chunk_bytes)
+        return self.new_dataframe(
+            None,
+            shape,
+            dtypes=dtypes,
+            index_value=index_value,
+            columns_value=columns_value,
+            chunk_bytes=chunk_bytes,
+        )
 
 
-def read_csv(path, names=None, sep=',', index_col=None, compression=None, header='infer',
-             dtype=None, usecols=None, nrows=None, chunk_bytes='64M', gpu=None, head_bytes='100k',
-             head_lines=None, incremental_index=True, use_arrow_dtype=None,
-             storage_options=None, memory_scale=None, **kwargs):
+def read_csv(
+    path,
+    names=None,
+    sep=",",
+    index_col=None,
+    compression=None,
+    header="infer",
+    dtype=None,
+    usecols=None,
+    nrows=None,
+    chunk_bytes="64M",
+    gpu=None,
+    head_bytes="100k",
+    head_lines=None,
+    incremental_index=True,
+    use_arrow_dtype=None,
+    storage_options=None,
+    memory_scale=None,
+    **kwargs,
+):
     r"""
     Read a comma-separated values (csv) file into DataFrame.
     Also supports optionally iterating or breaking of the file
@@ -640,24 +760,32 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
         file_path = path[0]
     elif get_fs(path, storage_options).isdir(path):
         parsed_path = urlparse(path)
-        if parsed_path.scheme.lower() == 'hdfs':
-            path_prefix = f'{parsed_path.scheme}://{parsed_path.netloc}'
+        if parsed_path.scheme.lower() == "hdfs":
+            path_prefix = f"{parsed_path.scheme}://{parsed_path.netloc}"
             file_path = path_prefix + get_fs(path, storage_options).ls(path)[0]
         else:
-            file_path = glob(path.rstrip('/') + '/*', storage_options)[0]
+            file_path = glob(path.rstrip("/") + "/*", storage_options)[0]
     else:
         file_path = glob(path, storage_options)[0]
 
-    with open_file(file_path, compression=compression, storage_options=storage_options) as f:
+    with open_file(
+        file_path, compression=compression, storage_options=storage_options
+    ) as f:
         if head_lines is not None:
-            b = b''.join([f.readline() for _ in range(head_lines)])
+            b = b"".join([f.readline() for _ in range(head_lines)])
         else:
             head_bytes = int(parse_readable_size(head_bytes)[0])
             head_start, head_end = _find_chunk_start_end(f, 0, head_bytes)
             f.seek(head_start)
             b = f.read(head_end - head_start)
-        mini_df = pd.read_csv(BytesIO(b), sep=sep, index_col=index_col, dtype=dtype,
-                              names=names, header=header)
+        mini_df = pd.read_csv(
+            BytesIO(b),
+            sep=sep,
+            index_col=index_col,
+            dtype=dtype,
+            names=names,
+            header=header,
+        )
         if names is None:
             names = list(mini_df.columns)
         else:
@@ -675,19 +803,33 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     columns_value = parse_index(mini_df.columns, store_data=True)
     if index_col and not isinstance(index_col, int):
         index_col = list(mini_df.columns).index(index_col)
-    op = DataFrameReadCSV(path=path, names=names, sep=sep, header=header, index_col=index_col,
-                          usecols=usecols, compression=compression, gpu=gpu,
-                          incremental_index=incremental_index, use_arrow_dtype=use_arrow_dtype,
-                          storage_options=storage_options, memory_scale=memory_scale,
-                          **kwargs)
+    op = DataFrameReadCSV(
+        path=path,
+        names=names,
+        sep=sep,
+        header=header,
+        index_col=index_col,
+        usecols=usecols,
+        compression=compression,
+        gpu=gpu,
+        incremental_index=incremental_index,
+        use_arrow_dtype=use_arrow_dtype,
+        storage_options=storage_options,
+        memory_scale=memory_scale,
+        **kwargs,
+    )
     chunk_bytes = chunk_bytes or options.chunk_store_limit
     dtypes = mini_df.dtypes
     if use_arrow_dtype is None:
         use_arrow_dtype = options.dataframe.use_arrow_dtype
     if not gpu and use_arrow_dtype:
         dtypes = to_arrow_dtypes(dtypes, test_df=mini_df)
-    ret = op(index_value=index_value, columns_value=columns_value,
-             dtypes=dtypes, chunk_bytes=chunk_bytes)
+    ret = op(
+        index_value=index_value,
+        columns_value=columns_value,
+        dtypes=dtypes,
+        chunk_bytes=chunk_bytes,
+    )
     if nrows is not None:
         return ret.head(nrows)
     return ret

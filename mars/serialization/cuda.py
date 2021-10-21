@@ -17,12 +17,12 @@ from typing import Any, List, Dict
 from ..utils import lazy_import
 from .core import Serializer, buffered
 
-cupy = lazy_import('cupy', globals=globals())
-cudf = lazy_import('cudf', globals=globals())
+cupy = lazy_import("cupy", globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
 
 class CupySerializer(Serializer):
-    serializer_name = 'cupy'
+    serializer_name = "cupy"
 
     @buffered
     def serialize(self, obj: Any, context: Dict):
@@ -47,19 +47,20 @@ class CupySerializer(Serializer):
 
 
 class CudfSerializer(Serializer):
-    serializer_name = 'cudf'
+    serializer_name = "cudf"
 
     def serialize(self, obj: Any, context: Dict):
         return obj.device_serialize()
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         from cudf.core.abc import Serializable
+
         return Serializable.device_deserialize(header, buffers)
 
 
 if cupy is not None:
-    CupySerializer.register('cupy.ndarray')
+    CupySerializer.register("cupy.ndarray")
 if cudf is not None:
-    CudfSerializer.register('cudf.DataFrame')
-    CudfSerializer.register('cudf.Series')
-    CudfSerializer.register('cudf.Index')
+    CudfSerializer.register("cudf.DataFrame")
+    CudfSerializer.register("cudf.Series")
+    CudfSerializer.register("cudf.Index")

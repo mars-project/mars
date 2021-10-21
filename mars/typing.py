@@ -14,13 +14,13 @@
 
 from typing import Tuple, TypeVar
 
-OperandType = TypeVar('OperandType')
-TileableType = TypeVar('TileableType')
-ChunkType = TypeVar('ChunkType')
-EntityType = TypeVar('EntityType')
-SessionType = TypeVar('SessionType')
+OperandType = TypeVar("OperandType")
+TileableType = TypeVar("TileableType")
+ChunkType = TypeVar("ChunkType")
+EntityType = TypeVar("EntityType")
+SessionType = TypeVar("SessionType")
 
-ClusterType = TypeVar('ClusterType')
-ClientType = TypeVar('ClientType')
+ClusterType = TypeVar("ClusterType")
+ClientType = TypeVar("ClientType")
 
 BandType = Tuple[str, str]  # (band address, resource_type)

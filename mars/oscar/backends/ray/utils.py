@@ -20,7 +20,7 @@ from urllib.parse import urlparse, unquote
 
 from ....utils import lazy_import
 
-ray = lazy_import('ray')
+ray = lazy_import("ray")
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,10 @@ def get_placement_group(pg_name):  # pragma: no cover
     if hasattr(ray.util, "get_placement_group"):
         return ray.util.get_placement_group(pg_name)
     else:
-        logger.warning("Current installed ray version doesn't support named placement group. "
-                       "Actor will be created on arbitrary node randomly.")
+        logger.warning(
+            "Current installed ray version doesn't support named placement group. "
+            "Actor will be created on arbitrary node randomly."
+        )
         return None
 
 
@@ -49,8 +51,10 @@ def process_address_to_placement(address):
     """
     name, parts = _address_to_placement(address)
     if not parts or len(parts) != 2:
-        raise ValueError(f"Only bundle index and process index path are allowed in ray "
-                         f"address {address} but got {parts}.")
+        raise ValueError(
+            f"Only bundle index and process index path are allowed in ray "
+            f"address {address} but got {parts}."
+        )
     bundle_index, process_index = parts
     return name, int(bundle_index), int(process_index)
 
@@ -69,7 +73,9 @@ def node_address_to_placement(address):
     """
     name, parts = _address_to_placement(address)
     if not parts or len(parts) != 1:
-        raise ValueError(f"Only bundle index path is allowed in ray address {address} but got {parts}")
+        raise ValueError(
+            f"Only bundle index path is allowed in ray address {address} but got {parts}"
+        )
     bundle_index = parts[0]
     return name, int(bundle_index)
 
@@ -107,7 +113,9 @@ def _address_to_placement(address):
     return parsed_url.netloc, parts
 
 
-def process_placement_to_address(pg_name: str, bundle_index: int, process_index: int = 0):
+def process_placement_to_address(
+    pg_name: str, bundle_index: int, process_index: int = 0
+):
     return f"ray://{pg_name}/{bundle_index}/{process_index}"
 
 
@@ -124,7 +132,9 @@ def addresses_to_placement_group_info(address_to_resources):
             pg_name = name
         else:
             if name != pg_name:
-                raise ValueError("All addresses should have consistent placement group names.")
+                raise ValueError(
+                    "All addresses should have consistent placement group names."
+                )
         bundles[bundle_index] = bundle_resources
     sorted_bundle_keys = sorted(bundles.keys())
     if sorted_bundle_keys != list(range(len(address_to_resources))):
@@ -143,8 +153,10 @@ def placement_group_info_to_addresses(pg_name, bundles):
     return addresses
 
 
-async def kill_and_wait(actor_handle: 'ray.actor.ActorHandle', no_restart=False, timeout: float = 30):
-    if 'COV_CORE_SOURCE' in os.environ:  # pragma: no cover
+async def kill_and_wait(
+    actor_handle: "ray.actor.ActorHandle", no_restart=False, timeout: float = 30
+):
+    if "COV_CORE_SOURCE" in os.environ:  # pragma: no cover
         try:
             # must clean up first, or coverage info lost
             await actor_handle.cleanup.remote()
@@ -158,4 +170,6 @@ async def kill_and_wait(actor_handle: 'ray.actor.ActorHandle', no_restart=False,
             await r
         except ray.exceptions.RayActorError:
             return  # We expect a RayActorError, it indicated that the actor is died.
-    raise Exception(f'The actor {actor_handle} is not died after ray.kill {timeout} seconds.')
+    raise Exception(
+        f"The actor {actor_handle} is not died after ray.kill {timeout} seconds."
+    )

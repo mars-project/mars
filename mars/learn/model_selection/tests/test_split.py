@@ -17,6 +17,7 @@ import itertools
 import numpy as np
 import pandas as pd
 import pytest
+
 try:
     import scipy.sparse as sps
 except ImportError:  # pragma: no cover
@@ -35,52 +36,54 @@ def test_train_test_split_errors(setup):
 
     pytest.raises(ValueError, train_test_split, range(3), train_size=1.1)
 
-    pytest.raises(ValueError, train_test_split, range(3), test_size=0.6,
-                  train_size=0.6)
-    pytest.raises(ValueError, train_test_split, range(3),
-                  test_size=np.float32(0.6), train_size=np.float32(0.6))
-    pytest.raises(ValueError, train_test_split, range(3),
-                  test_size="wrong_type")
-    pytest.raises(ValueError, train_test_split, range(3), test_size=2,
-                  train_size=4)
-    pytest.raises(TypeError, train_test_split, range(3),
-                  some_argument=1.1)
+    pytest.raises(ValueError, train_test_split, range(3), test_size=0.6, train_size=0.6)
+    pytest.raises(
+        ValueError,
+        train_test_split,
+        range(3),
+        test_size=np.float32(0.6),
+        train_size=np.float32(0.6),
+    )
+    pytest.raises(ValueError, train_test_split, range(3), test_size="wrong_type")
+    pytest.raises(ValueError, train_test_split, range(3), test_size=2, train_size=4)
+    pytest.raises(TypeError, train_test_split, range(3), some_argument=1.1)
     pytest.raises(ValueError, train_test_split, range(3), range(42))
-    pytest.raises(ValueError, train_test_split, range(10),
-                  shuffle=False, stratify=True)
+    pytest.raises(ValueError, train_test_split, range(10), shuffle=False, stratify=True)
 
-    with pytest.raises(ValueError,
-                       match=r'train_size=11 should be either positive and '
-                             r'smaller than the number of samples 10 or a '
-                             r'float in the \(0, 1\) range'):
+    with pytest.raises(
+        ValueError,
+        match=r"train_size=11 should be either positive and "
+        r"smaller than the number of samples 10 or a "
+        r"float in the \(0, 1\) range",
+    ):
         train_test_split(range(10), train_size=11, test_size=1)
 
 
 def test_train_test_split_invalid_sizes1(setup):
     for train_size, test_size in [
-            (1.2, 0.8),
-            (1., 0.8),
-            (0.0, 0.8),
-            (-.2, 0.8),
-            (0.8, 1.2),
-            (0.8, 1.),
-            (0.8, 0.),
-            (0.8, -.2)]:
-        with pytest.raises(ValueError,
-                           match=r'should be .* in the \(0, 1\) range'):
+        (1.2, 0.8),
+        (1.0, 0.8),
+        (0.0, 0.8),
+        (-0.2, 0.8),
+        (0.8, 1.2),
+        (0.8, 1.0),
+        (0.8, 0.0),
+        (0.8, -0.2),
+    ]:
+        with pytest.raises(ValueError, match=r"should be .* in the \(0, 1\) range"):
             train_test_split(range(10), train_size=train_size, test_size=test_size)
 
 
 def test_train_test_split_invalid_sizes2(setup):
     for train_size, test_size in [
-            (-10, 0.8),
-            (0, 0.8),
-            (11, 0.8),
-            (0.8, -10),
-            (0.8, 0),
-            (0.8, 11)]:
-        with pytest.raises(ValueError,
-                           match=r'should be .* in the \(0, 1\) range'):
+        (-10, 0.8),
+        (0, 0.8),
+        (11, 0.8),
+        (0.8, -10),
+        (0.8, 0),
+        (0.8, 11),
+    ]:
+        with pytest.raises(ValueError, match=r"should be .* in the \(0, 1\) range"):
             train_test_split(range(10), train_size=train_size, test_size=test_size)
 
 
@@ -89,7 +92,7 @@ def test_train_test_split(setup):
     y = np.arange(10)
 
     # simple test
-    split = train_test_split(X, y, test_size=None, train_size=.5)
+    split = train_test_split(X, y, test_size=None, train_size=0.5)
     X_train, X_test, y_train, y_test = split
     assert len(y_test) == len(y_train)
     # test correspondence of X and y
@@ -124,7 +127,7 @@ def test_train_test_split_dataframe(setup):
         assert isinstance(X_test, DATAFRAME_TYPE)
 
 
-@pytest.mark.skipif(sps is None, reason='scipy not installed')
+@pytest.mark.skipif(sps is None, reason="scipy not installed")
 def test_train_test_split_sparse(setup):
     # check that train_test_split converts scipy sparse matrices
     # to csr, as stated in the documentation
@@ -141,17 +144,20 @@ def test_train_test_split_sparse(setup):
 def test_train_testplit_list_input(setup):
     # Check that when y is a list / list of string labels, it works.
     X = np.ones(7)
-    y1 = ['1'] * 4 + ['0'] * 3
+    y1 = ["1"] * 4 + ["0"] * 3
     y2 = np.hstack((np.ones(4), np.zeros(3)))
     y3 = y2.tolist()
 
     for stratify in (False,):
         X_train1, X_test1, y_train1, y_test1 = train_test_split(
-            X, y1, stratify=y1 if stratify else None, random_state=0)
+            X, y1, stratify=y1 if stratify else None, random_state=0
+        )
         X_train2, X_test2, y_train2, y_test2 = train_test_split(
-            X, y2, stratify=y2 if stratify else None, random_state=0)
+            X, y2, stratify=y2 if stratify else None, random_state=0
+        )
         X_train3, X_test3, y_train3, y_test3 = train_test_split(
-            X, y3, stratify=y3 if stratify else None, random_state=0)
+            X, y3, stratify=y3 if stratify else None, random_state=0
+        )
 
         np.testing.assert_equal(X_train1, X_train2)
         np.testing.assert_equal(y_train2, y_train3)
@@ -174,8 +180,8 @@ def test_mixied_input_type_train_test_split(setup):
             yy = mt.tensor(yy)
 
         x_train, x_test, y_train, y_test = train_test_split(
-            x, y, random_state=0,
-            run_kwargs={'extra_config': {'check_nsplits': False}})
+            x, y, random_state=0, run_kwargs={"extra_config": {"check_nsplits": False}}
+        )
         assert isinstance(x_train, type(x))
         assert isinstance(x_test, type(x))
         assert isinstance(y_train, type(yy))
@@ -259,29 +265,21 @@ def test_kfold_no_shuffle(setup):
 
     splits = KFold(2).split(X2[:-1])
     train, test = next(splits)
-    np.testing.assert_array_equal(
-        test.execute().fetch(), [0, 1])
-    np.testing.assert_array_equal(
-        train.execute().fetch(), [2, 3])
+    np.testing.assert_array_equal(test.execute().fetch(), [0, 1])
+    np.testing.assert_array_equal(train.execute().fetch(), [2, 3])
 
     train, test = next(splits)
-    np.testing.assert_array_equal(
-        test.execute().fetch(), [2, 3])
-    np.testing.assert_array_equal(
-        train.execute().fetch(), [0, 1])
+    np.testing.assert_array_equal(test.execute().fetch(), [2, 3])
+    np.testing.assert_array_equal(train.execute().fetch(), [0, 1])
 
     splits = KFold(2).split(X2)
     train, test = next(splits)
-    np.testing.assert_array_equal(
-        test.execute().fetch(), [0, 1, 2])
-    np.testing.assert_array_equal(
-        train.execute().fetch(), [3, 4])
+    np.testing.assert_array_equal(test.execute().fetch(), [0, 1, 2])
+    np.testing.assert_array_equal(train.execute().fetch(), [3, 4])
 
     train, test = next(splits)
-    np.testing.assert_array_equal(
-        test.execute().fetch(), [3, 4])
-    np.testing.assert_array_equal(
-        train.execute().fetch(), [0, 1, 2])
+    np.testing.assert_array_equal(test.execute().fetch(), [3, 4])
+    np.testing.assert_array_equal(train.execute().fetch(), [0, 1, 2])
 
 
 def test_kfold_balance(setup):
@@ -304,7 +302,8 @@ def test_shuffle_kfold(setup):
 
     all_folds = np.zeros(300)
     for (tr1, te1), (tr2, te2), (tr3, te3) in zip(
-            kf.split(X), kf2.split(X), kf3.split(X)):
+        kf.split(X), kf2.split(X), kf3.split(X)
+    ):
         for tr_a, tr_b in itertools.combinations((tr1, tr2, tr3), 2):
             # Assert that there is no complete overlap
             tr_a = tr_a.execute().fetch()

@@ -25,7 +25,6 @@ from ..errors import ServerClosed
 @pytest.mark.asyncio
 @mock.patch.object(Router, "get_client")
 async def test_send_when_close(fake_get_client):
-
     class FakeClient:
         def __init__(self):
             self.closed = False
@@ -62,17 +61,20 @@ async def test_send_when_close(fake_get_client):
     )
     futures = []
     for index in range(2):
-        futures.append(await caller.call(
-            router=router, dest_address="test1", message=FakeMessage(index),
-            wait=False
-        ))
+        futures.append(
+            await caller.call(
+                router=router,
+                dest_address="test1",
+                message=FakeMessage(index),
+                wait=False,
+            )
+        )
 
     with pytest.raises(ServerClosed):
         # Just wait _list run.
         await asyncio.sleep(1)
         await caller.call(
-            router=router, dest_address="test1", message=FakeMessage(2),
-            wait=False
+            router=router, dest_address="test1", message=FakeMessage(2), wait=False
         )
 
     res0 = await futures[0]

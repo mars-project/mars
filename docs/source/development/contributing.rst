@@ -115,24 +115,13 @@ without ``CYTHON_TRACE``, as this option will reduce the performance of Mars.
 Check Code Styles
 -----------------
 Before proposing changes to Mars, you need to make sure your code style meets
-our requirements. Mars uses `flake8 <https://flake8.pycqa.org>`_ to check
-Python code style.  Simply run command below to check your code style:
+our requirements. Mars uses `black
+<https://black.readthedocs.io/en/stable/index.html>`_ to enforce Python code
+style.  Simply run command below to format your code style automatically:
 
 .. code-block:: bash
 
-    flake8 mars
-
-You may fix these issues manually or use automated tools like `autopep8
-<https://github.com/hhatto/autopep8>`_ to fix them for you. To facilitate the
-process, we create a tool. You can simply run
-
-.. code-block:: bash
-
-    pip install autopep8
-    bash ./bin/fix-flake8.sh
-
-in Bash to fix these issues. For Windows users, commands above should be run in
-Git Bash or a WSL terminal.
+    black mars
 
 We also require relative import in code for all Mars modules. Use
 

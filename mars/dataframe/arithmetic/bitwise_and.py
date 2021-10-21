@@ -22,8 +22,8 @@ from .core import DataFrameBinopUfunc
 class DataFrameAnd(DataFrameBinopUfunc):
     _op_type_ = OperandDef.AND
 
-    _bit_func_name = '__and__'
-    _bit_rfunc_name = '__rand__'
+    _bit_func_name = "__and__"
+    _bit_rfunc_name = "__rand__"
 
     @classproperty
     def _operator(self):
@@ -32,14 +32,15 @@ class DataFrameAnd(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorBitand
+
         return TensorBitand
 
 
-def bitand(df, other, axis='columns', level=None, fill_value=None):
+def bitand(df, other, axis="columns", level=None, fill_value=None):
     op = DataFrameAnd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
-def rbitand(df, other, axis='columns', level=None, fill_value=None):
+def rbitand(df, other, axis="columns", level=None, fill_value=None):
     op = DataFrameAnd(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)

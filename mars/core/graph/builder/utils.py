@@ -23,18 +23,19 @@ from .chunk import ChunkGraphBuilder
 
 
 @enter_mode(kernel=True)
-def build_graph(tileables: List[TileableType],
-                tile: bool = False,
-                fuse_enabled: bool = True,
-                **chunk_graph_build_kwargs) -> Union[TileableGraph, ChunkGraph]:
-    tileables = list(itertools.chain(
-        *(tileable.op.outputs for tileable in tileables)))
+def build_graph(
+    tileables: List[TileableType],
+    tile: bool = False,
+    fuse_enabled: bool = True,
+    **chunk_graph_build_kwargs
+) -> Union[TileableGraph, ChunkGraph]:
+    tileables = list(itertools.chain(*(tileable.op.outputs for tileable in tileables)))
     tileable_graph = TileableGraph(tileables)
     tileable_graph_builder = TileableGraphBuilder(tileable_graph)
     tileable_graph = next(tileable_graph_builder.build())
     if not tile:
         return tileable_graph
     chunk_graph_builder = ChunkGraphBuilder(
-        tileable_graph, fuse_enabled=fuse_enabled,
-        **chunk_graph_build_kwargs)
+        tileable_graph, fuse_enabled=fuse_enabled, **chunk_graph_build_kwargs
+    )
     return next(chunk_graph_builder.build())

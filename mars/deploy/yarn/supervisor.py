@@ -25,7 +25,7 @@ class YarnSupervisorCommandRunner(YarnServiceMixin, SupervisorCommandRunner):
     web_service_name = MarsSupervisorConfig.web_service_name
 
     def __call__(self, *args, **kwargs):
-        os.environ['MARS_CONTAINER_IP'] = self.get_container_ip()
+        os.environ["MARS_CONTAINER_IP"] = self.get_container_ip()
         return super().__call__(*args, **kwargs)
 
     async def start_services(self):
@@ -34,6 +34,7 @@ class YarnSupervisorCommandRunner(YarnServiceMixin, SupervisorCommandRunner):
         await super().start_services()
 
         from ...services.web import OscarWebAPI
+
         web_api = await OscarWebAPI.create(self.args.endpoint)
         web_endpoint = await web_api.get_web_address()
         self.register_endpoint(self.web_service_name, web_endpoint)
@@ -41,5 +42,5 @@ class YarnSupervisorCommandRunner(YarnServiceMixin, SupervisorCommandRunner):
 
 main = YarnSupervisorCommandRunner()
 
-if __name__ == '__main__':   # pragma: no branch
+if __name__ == "__main__":  # pragma: no branch
     main()

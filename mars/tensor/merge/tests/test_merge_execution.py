@@ -19,8 +19,18 @@ import scipy.sparse as sps
 import pytest
 
 from ...datasource import tensor, empty, eye, ones, zeros
-from ... import concatenate, stack, hstack, vstack, dstack, column_stack, \
-    union1d, array, block, append
+from ... import (
+    concatenate,
+    stack,
+    hstack,
+    vstack,
+    dstack,
+    column_stack,
+    union1d,
+    array,
+    block,
+    append,
+)
 
 
 def test_concatenate_execution(setup):
@@ -72,15 +82,15 @@ def test_stack_execution(setup):
 
     arr6 = stack(arr5)
     res = arr6.execute().fetch()
-    expected = np.stack(raw2).copy('A')
+    expected = np.stack(raw2).copy("A")
     np.testing.assert_array_equal(res, expected)
 
-    arr7 = stack(arr5, out=empty((10, 3, 4), order='F'))
+    arr7 = stack(arr5, out=empty((10, 3, 4), order="F"))
     res = arr7.execute().fetch()
-    expected = np.stack(raw2, out=np.empty((10, 3, 4), order='F')).copy('A')
+    expected = np.stack(raw2, out=np.empty((10, 3, 4), order="F")).copy("A")
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
     # test stack with unknown shapes
     t = tensor(raw[0], chunk_size=3)
@@ -239,35 +249,37 @@ def test_block_execution(setup):
 
     a = eye(2) * 2
     b = eye(3) * 3
-    c = block([
-        [a, zeros((2, 3))],
-        [ones((3, 2)), b]
-    ])
+    c = block([[a, zeros((2, 3))], [ones((3, 2)), b]])
     r = c.execute().fetch()
-    expected = array([[2., 0., 0., 0., 0.],
-                      [0., 2., 0., 0., 0.],
-                      [1., 1., 3., 0., 0.],
-                      [1., 1., 0., 3., 0.],
-                      [1., 1., 0., 0., 3.]])
+    expected = array(
+        [
+            [2.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 2.0, 0.0, 0.0, 0.0],
+            [1.0, 1.0, 3.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0, 3.0, 0.0],
+            [1.0, 1.0, 0.0, 0.0, 3.0],
+        ]
+    )
     np.testing.assert_array_equal(r, expected)
 
     # eye with different chunk sizes
     a = eye(5, chunk_size=2) * 2
     b = eye(4, chunk_size=3) * 3
-    c = block([
-        [a, zeros((5, 4), chunk_size=4)],
-        [ones((4, 5), chunk_size=5), b]
-    ])
+    c = block([[a, zeros((5, 4), chunk_size=4)], [ones((4, 5), chunk_size=5), b]])
     r = c.execute().fetch()
-    expected = array([[2., 0., 0., 0., 0., 0., 0., 0., 0.],
-                      [0., 2., 0., 0., 0., 0., 0., 0., 0.],
-                      [0., 0., 2., 0., 0., 0., 0., 0., 0.],
-                      [0., 0., 0., 2., 0., 0., 0., 0., 0.],
-                      [0., 0., 0., 0., 2., 0., 0., 0., 0.],
-                      [1., 1., 1., 1., 1., 3., 0., 0., 0.],
-                      [1., 1., 1., 1., 1., 0., 3., 0., 0.],
-                      [1., 1., 1., 1., 1., 0., 0., 3., 0.],
-                      [1., 1., 1., 1., 1., 0., 0., 0., 3.]])
+    expected = array(
+        [
+            [2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0],
+            [1.0, 1.0, 1.0, 1.0, 1.0, 3.0, 0.0, 0.0, 0.0],
+            [1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 3.0, 0.0, 0.0],
+            [1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 3.0, 0.0],
+            [1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 3.0],
+        ]
+    )
     np.testing.assert_array_equal(r, expected)
 
     # hstack([1, 2, 3])
@@ -297,8 +309,7 @@ def test_block_execution(setup):
     B = 2 * A
     c = block([A, B])
     r = c.execute().fetch()
-    expected = array([[1, 1, 2, 2],
-                      [1, 1, 2, 2]])
+    expected = array([[1, 1, 2, 2], [1, 1, 2, 2]])
     np.testing.assert_array_equal(r, expected)
 
     # vstack([a, b])
@@ -306,8 +317,7 @@ def test_block_execution(setup):
     b = array([2, 3, 4])
     c = block([[a], [b]])
     r = c.execute().fetch()
-    expected = array([[1, 2, 3],
-                      [2, 3, 4]])
+    expected = array([[1, 2, 3], [2, 3, 4]])
     np.testing.assert_array_equal(r, expected)
 
     # vstack([a, b]) with different chunk sizes
@@ -315,8 +325,7 @@ def test_block_execution(setup):
     b = array([2, 3, 4, 5, 6, 7, 8], chunk_size=6)
     c = block([[a], [b]])
     r = c.execute().fetch()
-    expected = array([[1, 2, 3, 4, 5, 6, 7],
-                      [2, 3, 4, 5, 6, 7, 8]])
+    expected = array([[1, 2, 3, 4, 5, 6, 7], [2, 3, 4, 5, 6, 7, 8]])
     np.testing.assert_array_equal(r, expected)
 
     # vstack([A, B])
@@ -324,10 +333,7 @@ def test_block_execution(setup):
     B = 2 * A
     c = block([[A], [B]])
     r = c.execute().fetch()
-    expected = array([[1, 1],
-                      [1, 1],
-                      [2, 2],
-                      [2, 2]])
+    expected = array([[1, 1], [1, 1], [2, 2], [2, 2]])
     np.testing.assert_array_equal(r, expected)
 
     a = array(0)
@@ -354,7 +360,7 @@ def test_block_execution(setup):
     np.testing.assert_array_equal(r, expected)
 
 
-@pytest.mark.parametrize('axis', [0, None])
+@pytest.mark.parametrize("axis", [0, None])
 def test_append_execution(setup, axis):
     raw1 = np.random.rand(10, 3)
     raw2 = np.random.rand(6, 3)

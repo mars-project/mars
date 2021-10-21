@@ -31,12 +31,13 @@ from ..utils import (
     process_address_to_placement,
 )
 
-ray = lazy_import('ray')
+ray = lazy_import("ray")
 
-TEST_PLACEMENT_GROUP_NAME = 'test_placement_group'
+TEST_PLACEMENT_GROUP_NAME = "test_placement_group"
 TEST_PLACEMENT_GROUP_BUNDLES = [{"CPU": 3}, {"CPU": 5}, {"CPU": 7}]
 TEST_ADDRESS_TO_RESOURCES = placement_group_info_to_addresses(
-    TEST_PLACEMENT_GROUP_NAME, TEST_PLACEMENT_GROUP_BUNDLES)
+    TEST_PLACEMENT_GROUP_NAME, TEST_PLACEMENT_GROUP_BUNDLES
+)
 
 
 class DummyActor(mo.Actor):
@@ -83,7 +84,9 @@ async def test_create_actor_in_placement_group(ray_large_cluster, mars_cluster):
 
     counter = collections.Counter(results)
     assert len(counter) == len(TEST_PLACEMENT_GROUP_BUNDLES)
-    assert sorted(counter.values()) == sorted(r["CPU"] for r in TEST_PLACEMENT_GROUP_BUNDLES)
+    assert sorted(counter.values()) == sorted(
+        r["CPU"] for r in TEST_PLACEMENT_GROUP_BUNDLES
+    )
 
 
 def test_address_to_pg_bundle():
@@ -115,19 +118,26 @@ def test_address_to_pg_bundle():
 def test_addresses_to_placement_group_info():
     # Missing bundle index 1
     with pytest.raises(ValueError):
-        addresses_to_placement_group_info({"ray://127.0.0.1/0": {"CPU": 1},
-                                           "ray://127.0.0.1/2": {"CPU": 1}})
+        addresses_to_placement_group_info(
+            {"ray://127.0.0.1/0": {"CPU": 1}, "ray://127.0.0.1/2": {"CPU": 1}}
+        )
     # The bundle index is not starts from 0
     with pytest.raises(ValueError):
         addresses_to_placement_group_info({"ray://127.0.0.1/1": {"CPU": 1}})
-    pg_name, bundles = addresses_to_placement_group_info({"ray://127.0.0.1/0": {"CPU": 1}})
+    pg_name, bundles = addresses_to_placement_group_info(
+        {"ray://127.0.0.1/0": {"CPU": 1}}
+    )
     assert pg_name == "127.0.0.1"
     assert bundles == [{"CPU": 1}]
-    pg_name, bundles = addresses_to_placement_group_info({"ray://127.0.0.1/4": {"CPU": 4},
-                                                          "ray://127.0.0.1/2": {"CPU": 2},
-                                                          "ray://127.0.0.1/1": {"CPU": 1},
-                                                          "ray://127.0.0.1/3": {"CPU": 3},
-                                                          "ray://127.0.0.1/0": {"CPU": 0}})
+    pg_name, bundles = addresses_to_placement_group_info(
+        {
+            "ray://127.0.0.1/4": {"CPU": 4},
+            "ray://127.0.0.1/2": {"CPU": 2},
+            "ray://127.0.0.1/1": {"CPU": 1},
+            "ray://127.0.0.1/3": {"CPU": 3},
+            "ray://127.0.0.1/0": {"CPU": 0},
+        }
+    )
     assert pg_name == "127.0.0.1"
     assert bundles == [{"CPU": 0}, {"CPU": 1}, {"CPU": 2}, {"CPU": 3}, {"CPU": 4}]
     pg_name, bundles = addresses_to_placement_group_info(TEST_ADDRESS_TO_RESOURCES)
@@ -138,10 +148,8 @@ def test_addresses_to_placement_group_info():
 @require_ray
 @pytest.mark.asyncio
 async def test_get_placement_group(ray_large_cluster):
-    pg_name = 'test_pg'
-    pg = ray.util.placement_group(name=pg_name,
-                                  bundles=[{'CPU': 1}],
-                                  strategy="SPREAD")
+    pg_name = "test_pg"
+    pg = ray.util.placement_group(name=pg_name, bundles=[{"CPU": 1}], strategy="SPREAD")
     ray.get(pg.ready())
     pg2 = get_placement_group(pg_name)
     if hasattr(ray.util, "get_placement_group"):
@@ -151,15 +159,19 @@ async def test_get_placement_group(ray_large_cluster):
 
 
 def test_address_to_placement():
-    assert process_address_to_placement('ray://test_cluster/0/0') == ('test_cluster', 0, 0)
+    assert process_address_to_placement("ray://test_cluster/0/0") == (
+        "test_cluster",
+        0,
+        0,
+    )
     with pytest.raises(ValueError):
-        process_address_to_placement('ray://')
-    assert node_address_to_placement('ray://test_cluster/0') == ('test_cluster', 0)
+        process_address_to_placement("ray://")
+    assert node_address_to_placement("ray://test_cluster/0") == ("test_cluster", 0)
     with pytest.raises(ValueError):
-        node_address_to_placement('ray://')
+        node_address_to_placement("ray://")
     with pytest.raises(ValueError):
-        node_address_to_placement('ray://test_cluster')
+        node_address_to_placement("ray://test_cluster")
     with pytest.raises(ValueError):
-        node_address_to_placement('ray://test_cluster/')
+        node_address_to_placement("ray://test_cluster/")
     with pytest.raises(ValueError):
-        node_address_to_placement('ray://test_cluster//')
+        node_address_to_placement("ray://test_cluster//")

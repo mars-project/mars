@@ -22,12 +22,14 @@ from ..core import MutableTensorInfo
 
 class AbstractMutableAPI(ABC):
     @abstractmethod
-    async def create_mutable_tensor(self,
-                                    shape: tuple,
-                                    dtype: Union[np.dtype, str],
-                                    name: str = None,
-                                    default_value: Union[int, float] = 0,
-                                    chunk_size: Union[int, Tuple] = None) -> MutableTensorInfo:
+    async def create_mutable_tensor(
+        self,
+        shape: tuple,
+        dtype: Union[np.dtype, str],
+        name: str = None,
+        default_value: Union[int, float] = 0,
+        chunk_size: Union[int, Tuple] = None,
+    ) -> MutableTensorInfo:
         """
         Create a mutable tensor.
 

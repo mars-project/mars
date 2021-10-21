@@ -26,14 +26,21 @@ from ...operands import LearnOperand, LearnOperandMixin
 class StatsModelsPredict(LearnOperand, LearnOperandMixin):
     _op_code_ = opcodes.STATSMODELS_PREDICT
 
-    _model_results = BytesField('model_results', on_serialize=pickle.dumps,
-                                on_deserialize=pickle.loads)
-    _predict_args = TupleField('predict_args')
-    _predict_kwargs = DictField('predict_kwargs')
+    _model_results = BytesField(
+        "model_results", on_serialize=pickle.dumps, on_deserialize=pickle.loads
+    )
+    _predict_args = TupleField("predict_args")
+    _predict_kwargs = DictField("predict_kwargs")
 
-    def __init__(self, model_results=None, predict_args=None, predict_kwargs=None, **kw):
-        super().__init__(_model_results=model_results, _predict_args=predict_args,
-                         _predict_kwargs=predict_kwargs, **kw)
+    def __init__(
+        self, model_results=None, predict_args=None, predict_kwargs=None, **kw
+    ):
+        super().__init__(
+            _model_results=model_results,
+            _predict_args=predict_args,
+            _predict_kwargs=predict_kwargs,
+            **kw
+        )
 
     @property
     def model_results(self):
@@ -53,18 +60,18 @@ class StatsModelsPredict(LearnOperand, LearnOperandMixin):
             kwargs = dict(
                 shape=exog.shape[:1],
                 index_value=exog.index_value,
-                dtype=np.dtype('float'),
+                dtype=np.dtype("float"),
             )
         else:
             self._output_types = [OutputType.tensor]
             kwargs = dict(
                 shape=exog.shape[:1],
-                dtype=np.dtype('float'),
+                dtype=np.dtype("float"),
             )
         return self.new_tileable([exog], **kwargs)
 
     @classmethod
-    def tile(cls, op: 'StatsModelsPredict'):
+    def tile(cls, op: "StatsModelsPredict"):
         exog = op.inputs[0]
         out = op.outputs[0]
 
@@ -91,11 +98,13 @@ class StatsModelsPredict(LearnOperand, LearnOperandMixin):
             chunks.append(new_op.new_chunk([in_chunk], **kwargs))
 
         new_op = op.copy().reset_key()
-        return new_op.new_tileables([exog], chunks=chunks, nsplits=(exog.nsplits[0],),
-                                    **out.params)
+        return new_op.new_tileables(
+            [exog], chunks=chunks, nsplits=(exog.nsplits[0],), **out.params
+        )
 
     @classmethod
-    def execute(cls, ctx, op: 'StatsModelsPredict'):
+    def execute(cls, ctx, op: "StatsModelsPredict"):
         in_data = ctx[op.inputs[0].key]
         ctx[op.outputs[0].key] = op.model_results.model.predict(
-            in_data, *op.predict_args, **op.predict_kwargs)
+            in_data, *op.predict_args, **op.predict_kwargs
+        )

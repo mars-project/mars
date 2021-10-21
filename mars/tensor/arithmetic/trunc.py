@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorTrunc(TensorUnaryOp):
     _op_type_ = OperandDef.TRUNC
-    _func_name = 'trunc'
+    _func_name = "trunc"
 
 
 @infer_dtype(np.trunc)

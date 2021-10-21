@@ -23,9 +23,9 @@ from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 class DataFrameSkew(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = opcodes.SKEW
-    _func_name = 'skew'
+    _func_name = "skew"
 
-    _bias = BoolField('bias')
+    _bias = BoolField("bias")
 
     def __init__(self, bias=None, **kw):
         super().__init__(_bias=bias, **kw)
@@ -37,40 +37,70 @@ class DataFrameSkew(DataFrameReductionOperand, DataFrameReductionMixin):
     @classmethod
     def get_reduction_callable(cls, op):
         from .aggregation import where_function
+
         skipna, bias = op.skipna, op.bias
 
         def skew(x):
             cnt = x.count()
             mean = x.mean(skipna=skipna)
-            divided = (x ** 3).mean(skipna=skipna) \
-                - 3 * (x ** 2).mean(skipna=skipna) * mean \
+            divided = (
+                (x ** 3).mean(skipna=skipna)
+                - 3 * (x ** 2).mean(skipna=skipna) * mean
                 + 2 * mean ** 3
+            )
             var = x.var(skipna=skipna, ddof=0)
             if isinstance(var, ENTITY_TYPE) or var > 0:
                 val = where_function(var > 0, divided / var ** 1.5, np.nan)
             else:
                 val = np.nan
             if not bias:
-                val = where_function((var > 0) & (cnt > 2),
-                                     val * ((cnt * (cnt - 1)) ** 0.5 / (cnt - 2)),
-                                     np.nan)
+                val = where_function(
+                    (var > 0) & (cnt > 2),
+                    val * ((cnt * (cnt - 1)) ** 0.5 / (cnt - 2)),
+                    np.nan,
+                )
             return val
 
         return skew
 
 
-def skew_series(df, axis=None, skipna=None, level=None, combine_size=None, bias=False, method=None):
+def skew_series(
+    df, axis=None, skipna=None, level=None, combine_size=None, bias=False, method=None
+):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameSkew(axis=axis, skipna=skipna, level=level, combine_size=combine_size,
-                       bias=bias, output_types=[OutputType.scalar], use_inf_as_na=use_inf_as_na,
-                       method=method)
+    op = DataFrameSkew(
+        axis=axis,
+        skipna=skipna,
+        level=level,
+        combine_size=combine_size,
+        bias=bias,
+        output_types=[OutputType.scalar],
+        use_inf_as_na=use_inf_as_na,
+        method=method,
+    )
     return op(df)
 
 
-def skew_dataframe(df, axis=None, skipna=None, level=None, numeric_only=None, combine_size=None,
-                   bias=False, method=None):
+def skew_dataframe(
+    df,
+    axis=None,
+    skipna=None,
+    level=None,
+    numeric_only=None,
+    combine_size=None,
+    bias=False,
+    method=None,
+):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameSkew(axis=axis, skipna=skipna, level=level, numeric_only=numeric_only,
-                       bias=bias, combine_size=combine_size, output_types=[OutputType.series],
-                       use_inf_as_na=use_inf_as_na, method=method)
+    op = DataFrameSkew(
+        axis=axis,
+        skipna=skipna,
+        level=level,
+        numeric_only=numeric_only,
+        bias=bias,
+        combine_size=combine_size,
+        output_types=[OutputType.series],
+        use_inf_as_na=use_inf_as_na,
+        method=method,
+    )
     return op(df)

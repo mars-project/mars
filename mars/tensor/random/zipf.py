@@ -23,12 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorZipf(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_a']
+    _input_fields_ = ["_a"]
     _op_type_ = OperandDef.RAND_ZIPF
 
-    _fields_ = '_a', '_size'
-    _a = AnyField('a')
-    _func_name = 'zipf'
+    _fields_ = "_a", "_size"
+    _a = AnyField("a")
+    _func_name = "zipf"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -122,8 +122,7 @@ def zipf(random_state, a, size=None, chunk_size=None, gpu=None, dtype=None):
     >>> plt.show()
     """
     if dtype is None:
-        dtype = np.random.RandomState().zipf(
-            handle_array(a), size=(0,)).dtype
+        dtype = np.random.RandomState().zipf(handle_array(a), size=(0,)).dtype
 
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]

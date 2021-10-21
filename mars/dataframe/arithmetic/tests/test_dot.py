@@ -21,7 +21,7 @@ from ... import DataFrame, Series
 
 def test_dot_execution(setup):
     df1_raw = pd.DataFrame(np.random.rand(4, 7))
-    df2_raw = pd.DataFrame(np.random.rand(7, 5), columns=list('efghi'))
+    df2_raw = pd.DataFrame(np.random.rand(7, 5), columns=list("efghi"))
     s1_raw = pd.Series(np.random.rand(7))
     s2_raw = pd.Series(np.random.rand(7))
 

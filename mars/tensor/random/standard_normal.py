@@ -23,8 +23,8 @@ from .core import TensorRandomOperandMixin, TensorDistribution
 
 class TensorStandardNormal(TensorDistribution, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_STANDARD_NORMAL
-    _func_name = 'standard_normal'
-    _fields_ = '_size',
+    _func_name = "standard_normal"
+    _fields_ = ("_size",)
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype

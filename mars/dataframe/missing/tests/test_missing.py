@@ -24,16 +24,18 @@ from ....core.operand import OperandStage
 
 
 def test_fill_na():
-    df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list('ABCDEFGHIJ'))
+    df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list("ABCDEFGHIJ"))
     for _ in range(20):
         df_raw.iloc[random.randint(0, 19), random.randint(0, 9)] = random.randint(0, 99)
-    value_df_raw = pd.DataFrame(np.random.randint(0, 100, (10, 7)).astype(np.float32),
-                                columns=list('ABCDEFG'))
+    value_df_raw = pd.DataFrame(
+        np.random.randint(0, 100, (10, 7)).astype(np.float32), columns=list("ABCDEFG")
+    )
     series_raw = pd.Series(np.nan, index=range(20))
     for _ in range(3):
         series_raw.iloc[random.randint(0, 19)] = random.randint(0, 99)
-    value_series_raw = pd.Series(np.random.randint(0, 100, (10,)).astype(np.float32),
-                                 index=list('ABCDEFGHIJ'))
+    value_series_raw = pd.Series(
+        np.random.randint(0, 100, (10,)).astype(np.float32), index=list("ABCDEFGHIJ")
+    )
 
     df = md.DataFrame(df_raw)
     series = md.Series(series_raw)
@@ -43,14 +45,14 @@ def test_fill_na():
         df.fillna()
     # when both values and methods supplied, raises
     with pytest.raises(ValueError):
-        df.fillna(value=1, method='ffill')
+        df.fillna(value=1, method="ffill")
     # when call on series, cannot supply DataFrames
     with pytest.raises(ValueError):
         series.fillna(value=df)
     with pytest.raises(ValueError):
         series.fillna(value=df_raw)
     with pytest.raises(NotImplementedError):
-        series.fillna(value=series_raw, downcast='infer')
+        series.fillna(value=series_raw, downcast="infer")
     with pytest.raises(NotImplementedError):
         series.ffill(limit=1)
 
@@ -76,19 +78,19 @@ def test_fill_na():
     assert series2.chunks[0].shape == (5,)
     assert series2.chunks[0].op.stage is None
 
-    df2 = tile(df.ffill(axis='columns'))
+    df2 = tile(df.ffill(axis="columns"))
     assert len(df2.chunks) == 8
     assert df2.chunks[0].shape == (5, 5)
     assert df2.chunks[0].op.axis == 1
     assert df2.chunks[0].op.stage == OperandStage.combine
-    assert df2.chunks[0].op.method == 'ffill'
+    assert df2.chunks[0].op.method == "ffill"
     assert df2.chunks[0].op.limit is None
 
     series2 = tile(series.bfill())
     assert len(series2.chunks) == 4
     assert series2.chunks[0].shape == (5,)
     assert series2.chunks[0].op.stage == OperandStage.combine
-    assert series2.chunks[0].op.method == 'bfill'
+    assert series2.chunks[0].op.method == "bfill"
     assert series2.chunks[0].op.limit is None
 
     value_df = md.DataFrame(value_df_raw, chunk_size=7)
@@ -111,7 +113,7 @@ def test_fill_na():
 
 def test_drop_na():
     # dataframe cases
-    df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list('ABCDEFGHIJ'))
+    df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list("ABCDEFGHIJ"))
     for _ in range(30):
         df_raw.iloc[random.randint(0, 19), random.randint(0, 9)] = random.randint(0, 99)
     for rowid in range(random.randint(1, 5)):
@@ -161,7 +163,7 @@ def test_drop_na():
 
 def test_replace():
     # dataframe cases
-    df_raw = pd.DataFrame(-1, index=range(0, 20), columns=list('ABCDEFGHIJ'))
+    df_raw = pd.DataFrame(-1, index=range(0, 20), columns=list("ABCDEFGHIJ"))
     for _ in range(30):
         df_raw.iloc[random.randint(0, 19), random.randint(0, 9)] = random.randint(0, 99)
     for rowid in range(random.randint(1, 5)):
@@ -172,17 +174,17 @@ def test_replace():
     # not supporting fill with limit
     df = md.DataFrame(df_raw, chunk_size=4)
     with pytest.raises(NotImplementedError):
-        df.replace(-1, method='ffill', limit=5)
+        df.replace(-1, method="ffill", limit=5)
 
-    r = tile(df.replace(-1, method='ffill'))
+    r = tile(df.replace(-1, method="ffill"))
     assert len(r.chunks) == 15
     assert r.chunks[0].shape == (4, 4)
     assert r.chunks[0].op.stage == OperandStage.combine
-    assert r.chunks[0].op.method == 'ffill'
+    assert r.chunks[0].op.method == "ffill"
     assert r.chunks[0].op.limit is None
     assert r.chunks[-1].inputs[-1].shape == (1, 2)
     assert r.chunks[-1].inputs[-1].op.stage == OperandStage.map
-    assert r.chunks[-1].inputs[-1].op.method == 'ffill'
+    assert r.chunks[-1].inputs[-1].op.method == "ffill"
     assert r.chunks[-1].inputs[-1].op.limit is None
 
     r = tile(df.replace(-1, 99))
@@ -197,15 +199,15 @@ def test_replace():
         series_raw.iloc[random.randint(0, 19)] = random.randint(0, 99)
     series = md.Series(series_raw, chunk_size=4)
 
-    r = tile(series.replace(-1, method='ffill'))
+    r = tile(series.replace(-1, method="ffill"))
     assert len(r.chunks) == 5
     assert r.chunks[0].shape == (4,)
     assert r.chunks[0].op.stage == OperandStage.combine
-    assert r.chunks[0].op.method == 'ffill'
+    assert r.chunks[0].op.method == "ffill"
     assert r.chunks[0].op.limit is None
     assert r.chunks[-1].inputs[-1].shape == (1,)
     assert r.chunks[-1].inputs[-1].op.stage == OperandStage.map
-    assert r.chunks[-1].inputs[-1].op.method == 'ffill'
+    assert r.chunks[-1].inputs[-1].op.method == "ffill"
     assert r.chunks[-1].inputs[-1].op.limit is None
 
     r = tile(series.replace(-1, 99))

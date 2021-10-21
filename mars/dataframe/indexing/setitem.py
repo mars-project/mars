@@ -29,13 +29,18 @@ from ..utils import parse_index
 class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.INDEXSETVALUE
 
-    _target = KeyField('target')
-    _indexes = AnyField('indexes')
-    _value = AnyField('value')
+    _target = KeyField("target")
+    _indexes = AnyField("indexes")
+    _value = AnyField("value")
 
     def __init__(self, target=None, indexes=None, value=None, output_types=None, **kw):
-        super().__init__(_target=target, _indexes=indexes,
-                         _value=value, _output_types=output_types, **kw)
+        super().__init__(
+            _target=target,
+            _indexes=indexes,
+            _value=value,
+            _output_types=output_types,
+            **kw
+        )
         if self.output_types is None:
             self.output_types = [OutputType.dataframe]
 
@@ -76,7 +81,7 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                 value_dtype = value.dtype
             elif isinstance(value, (pd.DataFrame, DATAFRAME_TYPE)):
                 if len(self.indexes) != value.shape[1]:  # pragma: no cover
-                    raise ValueError('Columns must be same length as key')
+                    raise ValueError("Columns must be same length as key")
 
                 value = asframe(value)
                 value_dtype = pd.Series(list(value.dtypes), index=self._indexes)
@@ -90,12 +95,14 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                     value_dtype = value.dtype
                 else:
                     if len(self.indexes) != value.shape[1]:  # pragma: no cover
-                        raise ValueError('Columns must be same length as key')
+                        raise ValueError("Columns must be same length as key")
 
                     value = asframe(value, index=target.index)
                     value_dtype = pd.Series(list(value.dtypes), index=self._indexes)
             else:  # pragma: no cover
-                raise TypeError('Wrong value type, could be one of scalar, Series or tensor')
+                raise TypeError(
+                    "Wrong value type, could be one of scalar, Series or tensor"
+                )
 
             if target.shape[0] == 0:
                 # target empty, reindex target first
@@ -121,9 +128,13 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                     dtypes.loc[idx] = value_dtype
 
         columns_value = parse_index(dtypes.index, store_data=True)
-        ret = self.new_dataframe(inputs, shape=(target.shape[0], len(dtypes)),
-                                 dtypes=dtypes, index_value=index_value,
-                                 columns_value=columns_value)
+        ret = self.new_dataframe(
+            inputs,
+            shape=(target.shape[0], len(dtypes)),
+            dtypes=dtypes,
+            index_value=index_value,
+            columns_value=columns_value,
+        )
         raw_target.data = ret.data
 
     @classmethod
@@ -134,7 +145,7 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
         indexes = op.indexes
         columns = target.columns_value.to_pandas()
         is_value_scalar = np.isscalar(value) or cls._is_scalar_tensor(value)
-        has_multiple_cols = getattr(out.dtypes[indexes], 'ndim', 0) > 0
+        has_multiple_cols = getattr(out.dtypes[indexes], "ndim", 0) > 0
         target_index_to_value = dict()
 
         if has_multiple_cols:
@@ -146,15 +157,21 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
             rechunk_arg = {}
 
             # check if all chunk's index_value are identical
-            target_chunk_index_values = [c.index_value for c in target.chunks
-                                         if c.index[1] == 0]
+            target_chunk_index_values = [
+                c.index_value for c in target.chunks if c.index[1] == 0
+            ]
             value_chunk_index_values = [v.index_value for v in value.chunks]
-            is_identical = len(target_chunk_index_values) == len(target_chunk_index_values) and \
-                all(c.key == v.key for c, v in zip(target_chunk_index_values, value_chunk_index_values))
+            is_identical = len(target_chunk_index_values) == len(
+                target_chunk_index_values
+            ) and all(
+                c.key == v.key
+                for c, v in zip(target_chunk_index_values, value_chunk_index_values)
+            )
             if not is_identical:
                 # do rechunk
-                if any(np.isnan(s) for s in target.nsplits[0]) or \
-                        any(np.isnan(s) for s in value.nsplits[0]):  # pragma: no cover
+                if any(np.isnan(s) for s in target.nsplits[0]) or any(
+                    np.isnan(s) for s in value.nsplits[0]
+                ):  # pragma: no cover
                     yield
 
                 rechunk_arg[0] = target.nsplits[0]
@@ -208,9 +225,13 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                 else:
                     # get proper chunk from value chunks
                     if has_multiple_cols:
-                        value_chunk = value.cix[c.index[0], target_index_to_value[c.index[1]]]
+                        value_chunk = value.cix[
+                            c.index[0], target_index_to_value[c.index[1]]
+                        ]
                     else:
-                        value_chunk = value.cix[c.index[0], ]
+                        value_chunk = value.cix[
+                            c.index[0],
+                        ]
 
                     chunk_inputs = [c, value_chunk]
 
@@ -219,20 +240,22 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                 if append_cols and c.index[-1] == column_chunk_shape - 1:
                     # some columns appended at the last column of chunks
                     shape = (shape[0], shape[1] + len(append_cols))
-                    dtypes = pd.concat([dtypes, out.dtypes.iloc[-len(append_cols):]])
+                    dtypes = pd.concat([dtypes, out.dtypes.iloc[-len(append_cols) :]])
                     columns_value = parse_index(dtypes.index, store_data=True)
 
-                result_chunk = chunk_op.new_chunk(chunk_inputs,
-                                                  shape=shape,
-                                                  dtypes=dtypes,
-                                                  index_value=c.index_value,
-                                                  columns_value=columns_value,
-                                                  index=c.index)
+                result_chunk = chunk_op.new_chunk(
+                    chunk_inputs,
+                    shape=shape,
+                    dtypes=dtypes,
+                    index_value=c.index_value,
+                    columns_value=columns_value,
+                    index=c.index,
+                )
             out_chunks.append(result_chunk)
 
         params = out.params
-        params['nsplits'] = tuple(tuple(ns) for ns in nsplits)
-        params['chunks'] = out_chunks
+        params["nsplits"] = tuple(tuple(ns) for ns in nsplits)
+        params["chunks"] = out_chunks
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=[params])
 

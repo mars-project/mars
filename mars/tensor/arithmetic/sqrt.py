@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorSqrt(TensorUnaryOp):
     _op_type_ = OperandDef.SQRT
-    _func_name = 'sqrt'
+    _func_name = "sqrt"
 
 
 @infer_dtype(np.sqrt)

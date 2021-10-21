@@ -29,7 +29,7 @@ class CustomLogMetaActor(mo.Actor):
 
     @classmethod
     def gen_uid(cls, session_id: str):
-        return f'custom_log_{session_id}'
+        return f"custom_log_{session_id}"
 
     async def __post_create__(self):
         from ..worker.custom_log import CustomLogActor
@@ -42,16 +42,21 @@ class CustomLogMetaActor(mo.Actor):
             ref = await mo.actor_ref(address, CustomLogActor.default_uid())
             await ref.clear_custom_log_dirs(list(paths))
 
-    def register_custom_log_path(self,
-                                 tileable_op_key: str,
-                                 chunk_op_key: str,
-                                 worker_address: str,
-                                 log_path: str):
+    def register_custom_log_path(
+        self,
+        tileable_op_key: str,
+        chunk_op_key: str,
+        worker_address: str,
+        log_path: str,
+    ):
         if tileable_op_key not in self._custom_log_path_store:
             self._custom_log_path_store[tileable_op_key] = dict()
-        self._custom_log_path_store[tileable_op_key][chunk_op_key] = \
-            (worker_address, log_path)
+        self._custom_log_path_store[tileable_op_key][chunk_op_key] = (
+            worker_address,
+            log_path,
+        )
 
-    def get_tileable_op_log_paths(self,
-                                  tileable_op_key: str) -> Dict[str, Tuple[str, str]]:
+    def get_tileable_op_log_paths(
+        self, tileable_op_key: str
+    ) -> Dict[str, Tuple[str, str]]:
         return self._custom_log_path_store.get(tileable_op_key)

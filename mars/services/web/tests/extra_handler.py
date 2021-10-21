@@ -17,9 +17,7 @@ from ..core import MarsRequestHandler
 
 class ExtraTestHandler(MarsRequestHandler):
     def get(self):
-        self.write('Test')
+        self.write("Test")
 
 
-web_handlers = {
-    '/api/extra_test': ExtraTestHandler
-}
+web_handlers = {"/api/extra_test": ExtraTestHandler}

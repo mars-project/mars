@@ -20,31 +20,51 @@ from ..core import ENTITY_TYPE, TILEABLE_TYPE, ChunkData
 from ..core.custom_log import redirect_custom_log
 from ..core.operand import ObjectOperand
 from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
-from ..serialization.serializables import FunctionField, ListField, DictField, \
-    BoolField, Int32Field
+from ..serialization.serializables import (
+    FunctionField,
+    ListField,
+    DictField,
+    BoolField,
+    Int32Field,
+)
 from ..tensor.core import TENSOR_TYPE
-from ..utils import build_fetch_tileable, enter_current_session, \
-    find_objects, replace_objects, get_params_fields
+from ..utils import (
+    build_fetch_tileable,
+    enter_current_session,
+    find_objects,
+    replace_objects,
+    get_params_fields,
+)
 from .operands import RemoteOperandMixin
 
 
 class RemoteFunction(RemoteOperandMixin, ObjectOperand):
     _op_type_ = opcodes.REMOTE_FUNCATION
-    _op_module_ = 'remote'
+    _op_module_ = "remote"
 
-    _function = FunctionField('function')
-    _function_args = ListField('function_args')
-    _function_kwargs = DictField('function_kwargs')
-    _retry_when_fail = BoolField('retry_when_fail')
-    _n_output = Int32Field('n_output')
+    _function = FunctionField("function")
+    _function_args = ListField("function_args")
+    _function_kwargs = DictField("function_kwargs")
+    _retry_when_fail = BoolField("retry_when_fail")
+    _n_output = Int32Field("n_output")
 
-    def __init__(self, function=None, function_args=None,
-                 function_kwargs=None, retry_when_fail=None,
-                 n_output=None, **kw):
-        super().__init__(_function=function, _function_args=function_args,
-                         _function_kwargs=function_kwargs,
-                         _retry_when_fail=retry_when_fail,
-                         _n_output=n_output, **kw)
+    def __init__(
+        self,
+        function=None,
+        function_args=None,
+        function_kwargs=None,
+        retry_when_fail=None,
+        n_output=None,
+        **kw,
+    ):
+        super().__init__(
+            _function=function,
+            _function_args=function_args,
+            _function_kwargs=function_kwargs,
+            _retry_when_fail=retry_when_fail,
+            _n_output=n_output,
+            **kw,
+        )
 
     @property
     def function(self):
@@ -76,11 +96,12 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
 
     @classmethod
     def _no_prepare(cls, tileable):
-        return isinstance(tileable, (TENSOR_TYPE, DATAFRAME_TYPE,
-                                     SERIES_TYPE, INDEX_TYPE))
+        return isinstance(
+            tileable, (TENSOR_TYPE, DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE)
+        )
 
     def _set_inputs(self, inputs):
-        raw_inputs = getattr(self, '_inputs', None)
+        raw_inputs = getattr(self, "_inputs", None)
         super()._set_inputs(inputs)
 
         function_inputs = iter(inp for inp in self._inputs)
@@ -106,7 +127,8 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
             return self.new_tileable(inputs)
         else:
             return self.new_tileables(
-                inputs, kws=[dict(i=i) for i in range(self.n_output)])
+                inputs, kws=[dict(i=i) for i in range(self.n_output)]
+            )
 
     @classmethod
     def tile(cls, op):
@@ -138,8 +160,8 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
         chunk_kws = []
         for i, out in enumerate(outs):
             chunk_params = out.params
-            chunk_params['index'] = ()
-            chunk_params['i'] = i
+            chunk_params["index"] = ()
+            chunk_params["i"] = i
             chunk_kws.append(chunk_params)
         chunks = chunk_op.new_chunks(chunk_inputs, kws=chunk_kws)
         for i, c in enumerate(chunks):
@@ -148,8 +170,8 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
         kws = []
         for i, out in enumerate(outs):
             params = out.params
-            params['chunks'] = out_chunks[i]
-            params['nsplits'] = ()
+            params["chunks"] = out_chunks[i]
+            params["nsplits"] = ()
             kws.append(params)
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=kws)
@@ -158,15 +180,19 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
     @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op: "RemoteFunction"):
-        mapping = {inp: ctx[inp.key] for inp, is_pure_dep
-                   in zip(op.inputs, op.pure_depends) if not is_pure_dep}
+        mapping = {
+            inp: ctx[inp.key]
+            for inp, is_pure_dep in zip(op.inputs, op.pure_depends)
+            if not is_pure_dep
+        }
         for to_search in [op.function_args, op.function_kwargs]:
             tileables = find_objects(to_search, TILEABLE_TYPE)
             for tileable in tileables:
                 chunks = tileable.chunks
                 fields = get_params_fields(chunks[0])
-                metas = ctx.get_chunks_meta([chunk.key for chunk in chunks],
-                                            fields=fields)
+                metas = ctx.get_chunks_meta(
+                    [chunk.key for chunk in chunks], fields=fields
+                )
                 for chunk, meta in zip(chunks, metas):
                     chunk.params = {field: meta[field] for field in fields}
                 tileable.refresh_params()
@@ -181,12 +207,16 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
             ctx[op.outputs[0].key] = result
         else:
             if not isinstance(result, Iterable):
-                raise TypeError(f'Specifying n_output={op.n_output}, '
-                                f'but result is not iterable, got {result}')
+                raise TypeError(
+                    f"Specifying n_output={op.n_output}, "
+                    f"but result is not iterable, got {result}"
+                )
             result = list(result)
             if len(result) != op.n_output:
-                raise ValueError(f'Length of return value should be {op.n_output}, '
-                                 f'got {len(result)}')
+                raise ValueError(
+                    f"Length of return value should be {op.n_output}, "
+                    f"got {len(result)}"
+                )
             for out, r in zip(op.outputs, result):
                 ctx[out.key] = r
 
@@ -290,10 +320,13 @@ def spawn(func, args=(), kwargs=None, retry_when_fail=False, n_output=None):
     if kwargs is None:
         kwargs = dict()
     if not isinstance(kwargs, dict):
-        raise TypeError('kwargs has to be a dict')
+        raise TypeError("kwargs has to be a dict")
 
-    op = RemoteFunction(function=func, function_args=args,
-                        function_kwargs=kwargs,
-                        retry_when_fail=retry_when_fail,
-                        n_output=n_output)
+    op = RemoteFunction(
+        function=func,
+        function_args=args,
+        function_kwargs=kwargs,
+        retry_when_fail=retry_when_fail,
+        n_output=n_output,
+    )
     return op()

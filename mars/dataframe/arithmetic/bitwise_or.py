@@ -22,8 +22,8 @@ from .core import DataFrameBinopUfunc
 class DataFrameOr(DataFrameBinopUfunc):
     _op_type_ = OperandDef.OR
 
-    _bit_func_name = '__or__'
-    _bit_rfunc_name = '__ror__'
+    _bit_func_name = "__or__"
+    _bit_rfunc_name = "__ror__"
 
     @classproperty
     def _operator(self):
@@ -32,14 +32,15 @@ class DataFrameOr(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorBitor
+
         return TensorBitor
 
 
-def bitor(df, other, axis='columns', level=None, fill_value=None):
+def bitor(df, other, axis="columns", level=None, fill_value=None):
     op = DataFrameOr(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
-def rbitor(df, other, axis='columns', level=None, fill_value=None):
+def rbitor(df, other, axis="columns", level=None, fill_value=None):
     op = DataFrameOr(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)

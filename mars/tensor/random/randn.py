@@ -23,7 +23,7 @@ from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 class TensorRandn(TensorSimpleRandomData, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_RANDN
-    _func_name = 'randn'
+    _func_name = "randn"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -84,17 +84,17 @@ def randn(random_state, *dn, **kw):
     array([[-4.49401501,  4.00950034, -1.81814867,  7.29718677],  #random
            [ 0.39924804,  4.68456316,  4.99394529,  4.84057254]]) #random
     """
-    if len(dn) == 1 and isinstance(dn[0], (tuple,  list)):
+    if len(dn) == 1 and isinstance(dn[0], (tuple, list)):
         raise TypeError("'tuple' object cannot be interpreted as an integer")
-    if 'dtype' not in kw:
-        kw['dtype'] = np.dtype('f8')
-    chunk_size = kw.pop('chunk_size', None)
+    if "dtype" not in kw:
+        kw["dtype"] = np.dtype("f8")
+    chunk_size = kw.pop("chunk_size", None)
 
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorRandn(seed=seed, size=dn, **kw)
 
     for key in op.extra_params:
-        if not key.startswith('_'):
-            raise ValueError(f'randn got unexpected key arguments {key}')
+        if not key.startswith("_"):
+            raise ValueError(f"randn got unexpected key arguments {key}")
 
     return op(chunk_size=chunk_size)

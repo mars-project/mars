@@ -25,7 +25,7 @@ from ..core import MutableTensor
 from ..utils import normalize_timestamp
 
 
-_is_windows = sys.platform.lower().startswith('win')
+_is_windows = sys.platform.lower().startswith("win")
 
 
 @pytest.fixture
@@ -38,7 +38,7 @@ async def create_cluster():
 @pytest.mark.skipif(_is_windows, reason="FIXME")
 @pytest.mark.parametrize(
     "session_type",
-    ["async_session", "async_web_session", "sync_session", "sync_web_session"]
+    ["async_session", "async_web_session", "sync_session", "sync_web_session"],
 )
 @pytest.mark.asyncio
 async def test_mutable_tensor(create_cluster, session_type):
@@ -54,14 +54,18 @@ async def test_mutable_tensor(create_cluster, session_type):
         session = SyncSession.from_isolated_session(session)
 
     tensor_useless: MutableTensor = session.create_mutable_tensor(  # noqa: F841
-            shape=(10, 30, 50), dtype=np.int64,
-            default_value=100, chunk_size=(20, 20, 20))
+        shape=(10, 30, 50), dtype=np.int64, default_value=100, chunk_size=(20, 20, 20)
+    )
     if is_async:
         tensor_useless = await tensor_useless
 
     tensor: MutableTensor = session.create_mutable_tensor(
-        shape=(10, 30, 50), dtype=np.int64,
-        name="mytensor", default_value=100, chunk_size=(20, 20, 20))
+        shape=(10, 30, 50),
+        dtype=np.int64,
+        name="mytensor",
+        default_value=100,
+        chunk_size=(20, 20, 20),
+    )
     if is_async:
         tensor = await tensor
 
@@ -81,8 +85,12 @@ async def test_mutable_tensor(create_cluster, session_type):
     # create with duplicate name
     with pytest.raises(ValueError):
         tensor2 = session.create_mutable_tensor(
-            shape=(10, 30, 50), dtype=np.int64,
-            name="mytensor", default_value=100, chunk_size=(20, 20, 20))
+            shape=(10, 30, 50),
+            dtype=np.int64,
+            name="mytensor",
+            default_value=100,
+            chunk_size=(20, 20, 20),
+        )
         if is_async:
             tensor2 = await tensor2
 
@@ -169,7 +177,7 @@ async def test_mutable_tensor(create_cluster, session_type):
 @pytest.mark.skipif(_is_windows, reason="FIXME")
 @pytest.mark.parametrize(
     "session_type",
-    ["async_session", "async_web_session", "sync_session", "sync_web_session"]
+    ["async_session", "async_web_session", "sync_session", "sync_web_session"],
 )
 @pytest.mark.asyncio
 async def test_mutable_tensor_timestamp(create_cluster, session_type):
@@ -185,8 +193,8 @@ async def test_mutable_tensor_timestamp(create_cluster, session_type):
         session = SyncSession.from_isolated_session(session)
 
     tensor: MutableTensor = session.create_mutable_tensor(
-        shape=(2, 4), dtype=np.int64,
-        default_value=0, chunk_size=(1, 3))
+        shape=(2, 4), dtype=np.int64, default_value=0, chunk_size=(1, 3)
+    )
     if is_async:
         tensor = await tensor
 

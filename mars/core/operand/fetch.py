@@ -21,7 +21,7 @@ from .core import TileableOperandMixin
 class Fetch(Operand):
     _op_type_ = opcodes.FETCH
 
-    source_key = StringField('source_key', default=None)
+    source_key = StringField("source_key", default=None)
 
 
 class FetchMixin(TileableOperandMixin):
@@ -32,7 +32,7 @@ class FetchMixin(TileableOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        raise NotImplementedError('Fetch tile cannot be handled by operand itself')
+        raise NotImplementedError("Fetch tile cannot be handled by operand itself")
 
     @classmethod
     def execute(cls, ctx, op):
@@ -44,6 +44,6 @@ class FetchMixin(TileableOperandMixin):
 class FetchShuffle(Operand):
     _op_type_ = opcodes.FETCH_SHUFFLE
 
-    source_keys = ListField('source_keys', FieldTypes.string)
-    source_idxes = ListField('source_idxes', FieldTypes.tuple(FieldTypes.uint64))
-    source_mappers = ListField('source_mappers', FieldTypes.uint16)
+    source_keys = ListField("source_keys", FieldTypes.string)
+    source_idxes = ListField("source_idxes", FieldTypes.tuple(FieldTypes.uint64))
+    source_mappers = ListField("source_mappers", FieldTypes.uint16)

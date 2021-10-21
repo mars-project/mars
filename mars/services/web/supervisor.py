@@ -32,29 +32,29 @@ class WebActor(mo.Actor):
         self._web_server = None
         self._web_app = None
 
-        extra_mod_names = self._config.get('extra_discovery_modules') or []
-        web_handlers = self._config.get('web_handlers', {})
+        extra_mod_names = self._config.get("extra_discovery_modules") or []
+        web_handlers = self._config.get("web_handlers", {})
         for mod_name in extra_mod_names:
             try:
                 web_mod = importlib.import_module(mod_name)
-                web_handlers.update(getattr(web_mod, 'web_handlers', {}))
+                web_handlers.update(getattr(web_mod, "web_handlers", {}))
             except ImportError:  # pragma: no cover
                 pass
 
     async def __post_create__(self):
         from .indexhandler import handlers as web_handlers
 
-        static_path = os.path.join(os.path.dirname(__file__), 'static')
+        static_path = os.path.join(os.path.dirname(__file__), "static")
         supervisor_addr = self.address
 
-        host = self._config.get('host') or '0.0.0.0'
-        port = self._config.get('port') or get_next_port()
-        self._web_address = f'http://{host}:{port}'
-        web_handlers.update(self._config.get('web_handlers', {}))
+        host = self._config.get("host") or "0.0.0.0"
+        port = self._config.get("port") or get_next_port()
+        self._web_address = f"http://{host}:{port}"
+        web_handlers.update(self._config.get("web_handlers", {}))
 
-        handler_kwargs = {'supervisor_addr': supervisor_addr}
+        handler_kwargs = {"supervisor_addr": supervisor_addr}
         handlers = [
-            (r'[^\?\&]*/static/(.*)', web.StaticFileHandler, {'path': static_path})
+            (r"[^\?\&]*/static/(.*)", web.StaticFileHandler, {"path": static_path})
         ]
         for p, h in web_handlers.items():
             handlers.append((p, h, handler_kwargs))
@@ -67,7 +67,7 @@ class WebActor(mo.Actor):
 
                 self._web_app = web.Application(handlers)
                 self._web_server = self._web_app.listen(port, host)
-                logger.info('Mars Web started at %s:%d', host, port)
+                logger.info("Mars Web started at %s:%d", host, port)
                 break
             except OSError:  # pragma: no cover
                 if port is not None:
@@ -82,8 +82,8 @@ class WebActor(mo.Actor):
 
     def get_web_address(self):
         web_address = self._web_address
-        if os.name == 'nt':
-            web_address = web_address.replace('0.0.0.0', '127.0.0.1')
+        if os.name == "nt":
+            web_address = web_address.replace("0.0.0.0", "127.0.0.1")
         return web_address
 
 
@@ -106,10 +106,16 @@ class WebSupervisorService(AbstractService):
         }
     }
     """
+
     async def start(self):
-        await mo.create_actor(WebActor, config=self._config.get('web', {}),
-                              uid=WebActor.default_uid(), address=self._address)
+        await mo.create_actor(
+            WebActor,
+            config=self._config.get("web", {}),
+            uid=WebActor.default_uid(),
+            address=self._address,
+        )
 
     async def stop(self):
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=WebActor.default_uid(), address=self._address))
+        await mo.destroy_actor(
+            mo.create_actor_ref(uid=WebActor.default_uid(), address=self._address)
+        )

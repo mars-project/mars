@@ -22,11 +22,27 @@ from typing import Any, Dict
 
 import numpy as np
 
-from ..core import HasShapeTileable, ChunkData, Chunk, HasShapeTileableData, \
-    OutputType, register_output_types, _ExecuteAndFetchMixin, is_build_mode
+from ..core import (
+    HasShapeTileable,
+    ChunkData,
+    Chunk,
+    HasShapeTileableData,
+    OutputType,
+    register_output_types,
+    _ExecuteAndFetchMixin,
+    is_build_mode,
+)
 from ..core.entity.utils import refresh_tileable_shape
-from ..serialization.serializables import Serializable, FieldTypes, \
-    DataTypeField, ListField, TupleField, StringField, AnyField, ReferenceField
+from ..serialization.serializables import (
+    Serializable,
+    FieldTypes,
+    DataTypeField,
+    ListField,
+    TupleField,
+    StringField,
+    AnyField,
+    ReferenceField,
+)
 from ..utils import on_serialize_shape, on_deserialize_shape
 from .utils import get_chunk_slices, fetch_corner_data
 
@@ -35,32 +51,39 @@ logger = logging.getLogger(__name__)
 
 class TensorOrder(Enum):
     # C order
-    C_ORDER = 'C'
+    C_ORDER = "C"
     # Fortran order
-    F_ORDER = 'F'
+    F_ORDER = "F"
 
 
 class TensorChunkData(ChunkData):
     __slots__ = ()
-    type_name = 'Tensor'
+    type_name = "Tensor"
 
     # required fields
-    _shape = TupleField('shape', FieldTypes.int64,
-                        on_serialize=on_serialize_shape,
-                        on_deserialize=on_deserialize_shape)
-    _order = ReferenceField('order', TensorOrder)
+    _shape = TupleField(
+        "shape",
+        FieldTypes.int64,
+        on_serialize=on_serialize_shape,
+        on_deserialize=on_deserialize_shape,
+    )
+    _order = ReferenceField("order", TensorOrder)
     # optional fields
-    _dtype = DataTypeField('dtype')
+    _dtype = DataTypeField("dtype")
 
     def __init__(self, op=None, index=None, shape=None, dtype=None, order=None, **kw):
         if isinstance(order, str):
             order = getattr(TensorOrder, order)
-        super().__init__(_op=op, _index=index, _shape=shape, _dtype=dtype, _order=order, **kw)
+        super().__init__(
+            _op=op, _index=index, _shape=shape, _dtype=dtype, _order=order, **kw
+        )
         if self.order is None and self.op is not None:
             if len(self.inputs) == 0:
                 self._order = TensorOrder.C_ORDER
-            elif all(hasattr(inp, 'order') and inp.order == TensorOrder.F_ORDER
-                     for inp in self.inputs):
+            elif all(
+                hasattr(inp, "order") and inp.order == TensorOrder.F_ORDER
+                for inp in self.inputs
+            ):
                 self._order = TensorOrder.F_ORDER
             else:
                 self._order = TensorOrder.C_ORDER
@@ -69,27 +92,27 @@ class TensorChunkData(ChunkData):
     def params(self) -> Dict[str, Any]:
         # params return the properties which useful to rebuild a new chunk
         return {
-            'shape': self.shape,
-            'dtype': self.dtype,
-            'order': self.order,
-            'index': self.index,
+            "shape": self.shape,
+            "dtype": self.dtype,
+            "order": self.order,
+            "index": self.index,
         }
 
     @params.setter
     def params(self, new_params: Dict[str, Any]):
         params = new_params.copy()
-        params.pop('index', None)  # index not needed to update
-        new_shape = params.pop('shape', None)
+        params.pop("index", None)  # index not needed to update
+        new_shape = params.pop("shape", None)
         if new_shape is not None:
             self._shape = new_shape
-        dtype = params.pop('dtype', None)
+        dtype = params.pop("dtype", None)
         if dtype is not None:
             self._dtype = dtype
-        order = params.pop('order', None)
+        order = params.pop("order", None)
         if order is not None:
             self._order = order
         if params:  # pragma: no cover
-            raise TypeError(f'Unknown params: {list(params)}')
+            raise TypeError(f"Unknown params: {list(params)}")
 
     @classmethod
     def get_params_from_data(cls, data: np.ndarray) -> Dict[str, Any]:
@@ -97,12 +120,10 @@ class TensorChunkData(ChunkData):
 
         if not is_cupy(data):
             data = np.asarray(data)
-        order = TensorOrder.C_ORDER \
-            if data.flags['C_CONTIGUOUS'] else TensorOrder.F_ORDER
-        return {
-            'shape': data.shape,
-            'dtype': data.dtype,
-            'order': order}
+        order = (
+            TensorOrder.C_ORDER if data.flags["C_CONTIGUOUS"] else TensorOrder.F_ORDER
+        )
+        return {"shape": data.shape, "dtype": data.dtype, "order": order}
 
     def __len__(self):
         try:
@@ -110,11 +131,11 @@ class TensorChunkData(ChunkData):
         except IndexError:
             if is_build_mode():
                 return 0
-            raise TypeError('len() of unsized object')
+            raise TypeError("len() of unsized object")
 
     @property
     def shape(self):
-        return getattr(self, '_shape', None)
+        return getattr(self, "_shape", None)
 
     @property
     def ndim(self):
@@ -126,11 +147,11 @@ class TensorChunkData(ChunkData):
 
     @property
     def dtype(self):
-        return getattr(self, '_dtype', None) or self.op.dtype
+        return getattr(self, "_dtype", None) or self.op.dtype
 
     @property
     def order(self):
-        return getattr(self, '_order', None)
+        return getattr(self, "_order", None)
 
     @property
     def nbytes(self):
@@ -140,7 +161,7 @@ class TensorChunkData(ChunkData):
 class TensorChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (TensorChunkData,)
-    type_name = 'Tensor'
+    type_name = "Tensor"
 
     def __len__(self):
         return len(self._data)
@@ -148,26 +169,49 @@ class TensorChunk(Chunk):
 
 class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
     __slots__ = ()
-    type_name = 'Tensor'
+    type_name = "Tensor"
 
     # required fields
-    _order = StringField('order', on_serialize=attrgetter('value'), on_deserialize=TensorOrder)
+    _order = StringField(
+        "order", on_serialize=attrgetter("value"), on_deserialize=TensorOrder
+    )
     # optional fields
-    _dtype = DataTypeField('dtype')
-    _chunks = ListField('chunks', FieldTypes.reference(TensorChunkData),
-                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
-                        on_deserialize=lambda x: [TensorChunk(it) for it in x] if x is not None else x)
+    _dtype = DataTypeField("dtype")
+    _chunks = ListField(
+        "chunks",
+        FieldTypes.reference(TensorChunkData),
+        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+        on_deserialize=lambda x: [TensorChunk(it) for it in x] if x is not None else x,
+    )
 
-    def __init__(self, op=None, shape=None, dtype=None, order=None, nsplits=None, chunks=None, **kw):
+    def __init__(
+        self,
+        op=None,
+        shape=None,
+        dtype=None,
+        order=None,
+        nsplits=None,
+        chunks=None,
+        **kw,
+    ):
         if isinstance(order, str):
             order = getattr(TensorOrder, order)
-        super().__init__(_op=op, _shape=shape, _dtype=dtype, _order=order, _nsplits=nsplits,
-                         _chunks=chunks, **kw)
+        super().__init__(
+            _op=op,
+            _shape=shape,
+            _dtype=dtype,
+            _order=order,
+            _nsplits=nsplits,
+            _chunks=chunks,
+            **kw,
+        )
         if self.order is None and self.op is not None:
             if len(self.inputs) == 0:
                 self._order = TensorOrder.C_ORDER
-            elif all(hasattr(inp, 'order') and inp.order == TensorOrder.F_ORDER
-                     for inp in self.inputs):
+            elif all(
+                hasattr(inp, "order") and inp.order == TensorOrder.F_ORDER
+                for inp in self.inputs
+            ):
                 self._order = TensorOrder.F_ORDER
             else:
                 self._order = TensorOrder.C_ORDER
@@ -176,12 +220,12 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
         if is_build_mode() or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
-                return f'Tensor <op={type(self._op).__name__}, shape={self._shape}, key={self._key}>'
+                return f"Tensor <op={type(self._op).__name__}, shape={self._shape}, key={self._key}>"
             else:
-                return f'Tensor(op={type(self._op).__name__}, shape={self._shape})'
+                return f"Tensor(op={type(self._op).__name__}, shape={self._shape})"
         else:
             print_options = np.get_printoptions()
-            threshold = print_options['threshold']
+            threshold = print_options["threshold"]
 
             corner_data = fetch_corner_data(self, session=self._executed_sessions[-1])
             # if less than default threshold, just set it as default,
@@ -200,26 +244,22 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
     @property
     def params(self):
         # params return the properties which useful to rebuild a new tileable object
-        return {
-            'shape': self.shape,
-            'dtype': self.dtype,
-            'order': self.order
-        }
+        return {"shape": self.shape, "dtype": self.dtype, "order": self.order}
 
     @params.setter
     def params(self, new_params: Dict[str, Any]):
         params = new_params.copy()
-        shape = params.pop('shape', None)
+        shape = params.pop("shape", None)
         if shape is not None:
             self._shape = shape
-        dtype = params.pop('dtype', None)
+        dtype = params.pop("dtype", None)
         if dtype is not None:
             self._dtype = dtype
-        order = params.pop('order', None)
+        order = params.pop("order", None)
         if order is not None:
             self._order = order
         if params:  # pragma: no cover
-            raise TypeError(f'Unknown params: {list(params)}')
+            raise TypeError(f"Unknown params: {list(params)}")
 
     def refresh_params(self):
         refresh_tileable_shape(self)
@@ -230,28 +270,27 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
     def flags(self):
         c_order = True if self.ndim <= 1 else self.order == TensorOrder.C_ORDER
         f_order = True if self.ndim <= 1 else self.order == TensorOrder.F_ORDER
-        return {
-            'C_CONTIGUOUS': c_order,
-            'F_CONTIGUOUS': f_order
-        }
+        return {"C_CONTIGUOUS": c_order, "F_CONTIGUOUS": f_order}
 
     @property
     def real(self):
         from .arithmetic import real
+
         return real(self)
 
     @property
     def imag(self):
         from .arithmetic import imag
+
         return imag(self)
 
     @property
     def dtype(self):
-        return getattr(self, '_dtype', None) or self.op.dtype
+        return getattr(self, "_dtype", None) or self.op.dtype
 
     @property
     def order(self):
-        return getattr(self, '_order', None)
+        return getattr(self, "_order", None)
 
     @property
     def nbytes(self):
@@ -270,6 +309,7 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
             return self
 
         from .datasource import fromdense
+
         return fromdense(self, missing=missing)
 
     def todense(self, fill_value=None):
@@ -277,6 +317,7 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
             return self
 
         from .datasource import fromsparse
+
         return fromsparse(self, fill_value=fill_value)
 
     def transpose(self, *axes):
@@ -294,10 +335,11 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
     def reshape(self, shape, *shapes, **kw):
         from .reshape import reshape
 
-        order = kw.pop('order', 'C')
+        order = kw.pop("order", "C")
         if kw:
             raise TypeError(
-                f"'{next(iter(kw))}' is an invalid keyword argument for this function")
+                f"'{next(iter(kw))}' is an invalid keyword argument for this function"
+            )
 
         if isinstance(shape, Iterable):
             shape = tuple(shape)
@@ -315,10 +357,12 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
     @staticmethod
     def from_dataframe(in_df):
         from .datasource import from_dataframe
+
         return from_dataframe(in_df)
 
     def to_dataframe(self, *args, **kwargs):
         from ..dataframe.datasource.from_tensor import dataframe_from_tensor
+
         return dataframe_from_tensor(self, *args, **kwargs)
 
     @property
@@ -332,7 +376,7 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
 class Tensor(HasShapeTileable):
     __slots__ = ()
     _allow_data_type_ = (TensorData,)
-    type_name = 'Tensor'
+    type_name = "Tensor"
 
     def __len__(self):
         return len(self._data)
@@ -374,7 +418,7 @@ class Tensor(HasShapeTileable):
     def __array_function__(self, func, types, args, kwargs):
         from .. import tensor as module
 
-        for submodule in func.__module__.split('.')[1:]:
+        for submodule in func.__module__.split(".")[1:]:
             try:
                 module = getattr(module, submodule)
             except AttributeError:
@@ -488,7 +532,7 @@ class Tensor(HasShapeTileable):
     def totiledb(self, uri, ctx=None, key=None, timestamp=None):
         return self._data.totiledb(uri, ctx=ctx, key=key, timestamp=timestamp)
 
-    def copy(self, order='C'):
+    def copy(self, order="C"):
         return super().copy().astype(self.dtype, order=order, copy=False)
 
     def sort(self, axis=-1, kind=None, parallel_kind=None, psrs_kinds=None, order=None):
@@ -550,10 +594,16 @@ class Tensor(HasShapeTileable):
         """
         from .base import sort
 
-        self._data = sort(self, axis=axis, kind=kind, parallel_kind=parallel_kind,
-                          psrs_kinds=psrs_kinds, order=order).data
+        self._data = sort(
+            self,
+            axis=axis,
+            kind=kind,
+            parallel_kind=parallel_kind,
+            psrs_kinds=psrs_kinds,
+            order=order,
+        ).data
 
-    def partition(self, kth, axis=-1, kind='introselect', order=None, **kw):
+    def partition(self, kth, axis=-1, kind="introselect", order=None, **kw):
         """
         Rearranges the elements in the tensor in such a way that the value of the
         element in kth position is in the position it would be in a sorted tensor.
@@ -606,8 +656,7 @@ class Tensor(HasShapeTileable):
         """
         from .base import partition
 
-        self._data = partition(self, kth, axis=axis,
-                               kind=kind, order=order, **kw).data
+        self._data = partition(self, kth, axis=axis, kind=kind, order=order, **kw).data
 
     @property
     def flat(self):
@@ -669,7 +718,7 @@ class flatiter(object):
 
 
 class Indexes(Serializable):
-    indexes = AnyField('indexes')
+    indexes = AnyField("indexes")
 
 
 TENSOR_TYPE = (Tensor, TensorData)

@@ -63,12 +63,14 @@ class MessageTraceItem:
 
 
 class _MessageBase(ABC):
-    __slots__ = 'protocol', 'message_id', 'message_trace'
+    __slots__ = "protocol", "message_id", "message_trace"
 
-    def __init__(self,
-                 message_id: bytes,
-                 protocol: int = None,
-                 message_trace: List[MessageTraceItem] = None):
+    def __init__(
+        self,
+        message_id: bytes,
+        protocol: int = None,
+        message_trace: List[MessageTraceItem] = None,
+    ):
         self.message_id = message_id
         if protocol is None:
             protocol = DEFAULT_PROTOCOL
@@ -97,23 +99,25 @@ class _MessageBase(ABC):
 
     def __repr__(self):
         slots = _get_slots(self.__class__)
-        values = ', '.join(['{}={!r}'.format(slot, getattr(self, slot)) for slot in slots])
-        return '{}({})'.format(self.__class__.__name__, values)
+        values = ", ".join(
+            ["{}={!r}".format(slot, getattr(self, slot)) for slot in slots]
+        )
+        return "{}({})".format(self.__class__.__name__, values)
 
 
 class ControlMessage(_MessageBase):
-    __slots__ = 'address', 'control_message_type', 'content'
+    __slots__ = "address", "control_message_type", "content"
 
-    def __init__(self,
-                 message_id: bytes,
-                 address: str,
-                 control_message_type: ControlMessageType,
-                 content: Any,
-                 protocol: int = None,
-                 message_trace: List[MessageTraceItem] = None):
-        super().__init__(message_id,
-                         protocol=protocol,
-                         message_trace=message_trace)
+    def __init__(
+        self,
+        message_id: bytes,
+        address: str,
+        control_message_type: ControlMessageType,
+        content: Any,
+        protocol: int = None,
+        message_trace: List[MessageTraceItem] = None,
+    ):
+        super().__init__(message_id, protocol=protocol, message_trace=message_trace)
         self.address = address
         self.control_message_type = control_message_type
         self.content = content
@@ -125,16 +129,16 @@ class ControlMessage(_MessageBase):
 
 
 class ResultMessage(_MessageBase):
-    __slots__ = 'result',
+    __slots__ = ("result",)
 
-    def __init__(self,
-                 message_id: bytes,
-                 result: Any,
-                 protocol: int = None,
-                 message_trace: List[MessageTraceItem] = None):
-        super().__init__(message_id,
-                         protocol=protocol,
-                         message_trace=message_trace)
+    def __init__(
+        self,
+        message_id: bytes,
+        result: Any,
+        protocol: int = None,
+        message_trace: List[MessageTraceItem] = None,
+    ):
+        super().__init__(message_id, protocol=protocol, message_trace=message_trace)
         self.result = result
 
     @classproperty
@@ -144,18 +148,18 @@ class ResultMessage(_MessageBase):
 
 
 class ErrorMessage(_MessageBase):
-    __slots__ = 'error_type', 'error', 'traceback'
+    __slots__ = "error_type", "error", "traceback"
 
-    def __init__(self,
-                 message_id: bytes,
-                 error_type: Type[BaseException],
-                 error: BaseException,
-                 traceback: TracebackType,
-                 protocol: int = None,
-                 message_trace: List[MessageTraceItem] = None):
-        super().__init__(message_id,
-                         protocol=protocol,
-                         message_trace=message_trace)
+    def __init__(
+        self,
+        message_id: bytes,
+        error_type: Type[BaseException],
+        error: BaseException,
+        traceback: TracebackType,
+        protocol: int = None,
+        message_trace: List[MessageTraceItem] = None,
+    ):
+        super().__init__(message_id, protocol=protocol, message_trace=message_trace)
         self.error_type = error_type
         self.error = error
         self.traceback = traceback
@@ -167,20 +171,20 @@ class ErrorMessage(_MessageBase):
 
 
 class CreateActorMessage(_MessageBase):
-    __slots__ = 'actor_cls', 'actor_id', 'args', 'kwargs', 'allocate_strategy'
+    __slots__ = "actor_cls", "actor_id", "args", "kwargs", "allocate_strategy"
 
-    def __init__(self,
-                 message_id: bytes,
-                 actor_cls: Type,
-                 actor_id: bytes,
-                 args: Tuple,
-                 kwargs: Dict,
-                 allocate_strategy,
-                 protocol: int = None,
-                 message_trace: List[MessageTraceItem] = None):
-        super().__init__(message_id,
-                         protocol=protocol,
-                         message_trace=message_trace)
+    def __init__(
+        self,
+        message_id: bytes,
+        actor_cls: Type,
+        actor_id: bytes,
+        args: Tuple,
+        kwargs: Dict,
+        allocate_strategy,
+        protocol: int = None,
+        message_trace: List[MessageTraceItem] = None,
+    ):
+        super().__init__(message_id, protocol=protocol, message_trace=message_trace)
         self.actor_cls = actor_cls
         self.actor_id = actor_id
         self.args = args
@@ -194,17 +198,17 @@ class CreateActorMessage(_MessageBase):
 
 
 class DestroyActorMessage(_MessageBase):
-    __slots__ = 'actor_ref', 'from_main'
+    __slots__ = "actor_ref", "from_main"
 
-    def __init__(self,
-                 message_id: bytes,
-                 actor_ref: ActorRef,
-                 from_main: bool = False,
-                 protocol: int = None,
-                 message_trace: List[MessageTraceItem] = None):
-        super().__init__(message_id,
-                         protocol=protocol,
-                         message_trace=message_trace)
+    def __init__(
+        self,
+        message_id: bytes,
+        actor_ref: ActorRef,
+        from_main: bool = False,
+        protocol: int = None,
+        message_trace: List[MessageTraceItem] = None,
+    ):
+        super().__init__(message_id, protocol=protocol, message_trace=message_trace)
         self.actor_ref = actor_ref
         self.from_main = from_main
 
@@ -215,16 +219,16 @@ class DestroyActorMessage(_MessageBase):
 
 
 class HasActorMessage(_MessageBase):
-    __slots__ = 'actor_ref',
+    __slots__ = ("actor_ref",)
 
-    def __init__(self,
-                 message_id: bytes,
-                 actor_ref: ActorRef,
-                 protocol: int = None,
-                 message_trace: List[MessageTraceItem] = None):
-        super().__init__(message_id,
-                         protocol=protocol,
-                         message_trace=message_trace)
+    def __init__(
+        self,
+        message_id: bytes,
+        actor_ref: ActorRef,
+        protocol: int = None,
+        message_trace: List[MessageTraceItem] = None,
+    ):
+        super().__init__(message_id, protocol=protocol, message_trace=message_trace)
         self.actor_ref = actor_ref
 
     @classproperty
@@ -234,16 +238,16 @@ class HasActorMessage(_MessageBase):
 
 
 class ActorRefMessage(_MessageBase):
-    __slots__ = 'actor_ref',
+    __slots__ = ("actor_ref",)
 
-    def __init__(self,
-                 message_id: bytes,
-                 actor_ref: ActorRef,
-                 protocol: int = None,
-                 message_trace: List[MessageTraceItem] = None):
-        super().__init__(message_id,
-                         protocol=protocol,
-                         message_trace=message_trace)
+    def __init__(
+        self,
+        message_id: bytes,
+        actor_ref: ActorRef,
+        protocol: int = None,
+        message_trace: List[MessageTraceItem] = None,
+    ):
+        super().__init__(message_id, protocol=protocol, message_trace=message_trace)
         self.actor_ref = actor_ref
 
     @classproperty
@@ -253,17 +257,20 @@ class ActorRefMessage(_MessageBase):
 
 
 class SendMessage(_MessageBase):
-    __slots__ = 'actor_ref', 'content',
+    __slots__ = (
+        "actor_ref",
+        "content",
+    )
 
-    def __init__(self,
-                 message_id: bytes,
-                 actor_ref: ActorRef,
-                 content: Any,
-                 protocol: int = None,
-                 message_trace: List[MessageTraceItem] = None):
-        super().__init__(message_id,
-                         protocol=protocol,
-                         message_trace=message_trace)
+    def __init__(
+        self,
+        message_id: bytes,
+        actor_ref: ActorRef,
+        content: Any,
+        protocol: int = None,
+        message_trace: List[MessageTraceItem] = None,
+    ):
+        super().__init__(message_id, protocol=protocol, message_trace=message_trace)
         self.actor_ref = actor_ref
         self.content = content
 
@@ -283,17 +290,20 @@ class TellMessage(SendMessage):
 
 
 class CancelMessage(_MessageBase):
-    __slots__ = 'address', 'cancel_message_id',
+    __slots__ = (
+        "address",
+        "cancel_message_id",
+    )
 
-    def __init__(self,
-                 message_id: bytes,
-                 address: str,
-                 cancel_message_id: bytes,
-                 protocol: int = None,
-                 message_trace: List[MessageTraceItem] = None):
-        super().__init__(message_id,
-                         protocol=protocol,
-                         message_trace=message_trace)
+    def __init__(
+        self,
+        message_id: bytes,
+        address: str,
+        cancel_message_id: bytes,
+        protocol: int = None,
+        message_trace: List[MessageTraceItem] = None,
+    ):
+        super().__init__(message_id, protocol=protocol, message_trace=message_trace)
         self.address = address
         self.cancel_message_id = cancel_message_id
 
@@ -308,34 +318,34 @@ class DeserializeMessageFailed(Exception):
         self.message_id = message_id
 
     def __str__(self):
-        return f'Deserialize {self.message_id} failed'
+        return f"Deserialize {self.message_id} failed"
 
 
 class MessageSerializer(Serializer):
-    serializer_name = 'actor_message'
+    serializer_name = "actor_message"
 
     @buffered
     def serialize(self, obj: _MessageBase, context: Dict):
-        assert obj.protocol == 0, 'only support protocol 0 for now'
+        assert obj.protocol == 0, "only support protocol 0 for now"
 
         message_class = type(obj)
         to_serialize = [getattr(obj, slot) for slot in _get_slots(message_class)]
         header, buffers = yield to_serialize
         new_header = {
-            'message_class': message_class,
-            'message_id': obj.message_id,
-            'protocol': obj.protocol,
-            'attributes_header': header
+            "message_class": message_class,
+            "message_id": obj.message_id,
+            "protocol": obj.protocol,
+            "attributes_header": header,
         }
         return new_header, buffers
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
-        protocol = header['protocol']
-        assert protocol == 0, 'only support protocol 0 for now'
-        message_id = header['message_id']
-        message_class = header['message_class']
+        protocol = header["protocol"]
+        assert protocol == 0, "only support protocol 0 for now"
+        message_id = header["message_id"]
+        message_class = header["message_class"]
         try:
-            serialized = yield header['attributes_header'], buffers
+            serialized = yield header["attributes_header"], buffers
             message = object.__new__(message_class)
             for slot, val in zip(_get_slots(message_class), serialized):
                 setattr(message, slot, val)

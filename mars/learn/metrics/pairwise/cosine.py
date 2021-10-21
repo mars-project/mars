@@ -26,8 +26,8 @@ from .core import PairwiseDistances
 class CosineDistances(PairwiseDistances):
     _op_type_ = OperandDef.PAIRWISE_COSINE_DISTANCES
 
-    _x = KeyField('x')
-    _y = KeyField('y')
+    _x = KeyField("x")
+    _y = KeyField("y")
 
     def __init__(self, x=None, y=None, **kw):
         super().__init__(_x=x, _y=y, **kw)
@@ -47,8 +47,9 @@ class CosineDistances(PairwiseDistances):
 
     def __call__(self, x, y=None):
         x, y = self.check_pairwise_arrays(x, y)
-        return self.new_tensor([x, y], shape=(x.shape[0], y.shape[0]),
-                               order=TensorOrder.C_ORDER)
+        return self.new_tensor(
+            [x, y], shape=(x.shape[0], y.shape[0]), order=TensorOrder.C_ORDER
+        )
 
     @classmethod
     def tile(cls, op):

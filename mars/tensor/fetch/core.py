@@ -24,35 +24,35 @@ class TensorFetchMixin(TensorOperandMixin, FetchMixin):
 
 
 class TensorFetch(TensorFetchMixin, Fetch):
-    dtype = DataTypeField('dtype')
+    dtype = DataTypeField("dtype")
 
     def __init__(self, **kw):
-        kw.pop('output_types', None)
-        kw.pop('_output_types', None)
+        kw.pop("output_types", None)
+        kw.pop("_output_types", None)
         super().__init__(**kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        if '_key' in kw and self.source_key is None:
-            self.source_key = kw['_key']
+        if "_key" in kw and self.source_key is None:
+            self.source_key = kw["_key"]
         return super()._new_chunks(inputs, kws=kws, **kw)
 
     def _new_tileables(self, inputs, kws=None, **kw):
-        if '_key' in kw and self.source_key is None:
-            self.source_key = kw['_key']
+        if "_key" in kw and self.source_key is None:
+            self.source_key = kw["_key"]
         return super()._new_tileables(inputs, kws=kws, **kw)
 
 
 class TensorFetchShuffle(TensorFetchMixin, FetchShuffle):
-    _dtype = DataTypeField('dtype')
+    _dtype = DataTypeField("dtype")
 
     def __init__(self, **kw):
-        kw.pop('output_types', None)
-        kw.pop('_output_types', None)
+        kw.pop("output_types", None)
+        kw.pop("_output_types", None)
         super().__init__(**kw)
 
     @property
     def dtype(self):
-        return getattr(self, '_dtype', None)
+        return getattr(self, "_dtype", None)
 
 
 register_fetch_class(OutputType.tensor, TensorFetch, TensorFetchShuffle)

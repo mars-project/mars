@@ -19,11 +19,12 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameNot(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.INVERT
-    _func_name = '__invert__'
+    _func_name = "__invert__"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorNot
+
         return TensorNot
 
 

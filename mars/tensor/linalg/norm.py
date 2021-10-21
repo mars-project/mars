@@ -21,8 +21,13 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
-from ...serialization.serializables import FieldTypes, KeyField, \
-    AnyField, TupleField, BoolField
+from ...serialization.serializables import (
+    FieldTypes,
+    KeyField,
+    AnyField,
+    TupleField,
+    BoolField,
+)
 from ..utils import validate_axis
 from ..array_utils import device, as_same_device
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -34,17 +39,17 @@ from .svd import svd
 class TensorNorm(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.NORM
 
-    _input = KeyField('input')
-    _ord = AnyField('ord')
-    _axis = TupleField('axis', FieldTypes.int32)
-    _keepdims = BoolField('keepdims')
+    _input = KeyField("input")
+    _ord = AnyField("ord")
+    _axis = TupleField("axis", FieldTypes.int32)
+    _keepdims = BoolField("keepdims")
 
     def __init__(self, ord=None, axis=None, keepdims=None, **kw):
         super().__init__(_ord=ord, _axis=axis, _keepdims=keepdims, **kw)
 
     @property
     def ord(self):
-        return getattr(self, '_ord', None)
+        return getattr(self, "_ord", None)
 
     @property
     def axis(self):
@@ -75,43 +80,58 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
 
         if can_apply_norm:
             axis_set = set(axis)
-            get_shape = lambda shape: tuple(s if i not in axis_set else 1 for i, s in enumerate(shape)
-                                            if i not in axis_set or keepdims)
+            get_shape = lambda shape: tuple(
+                s if i not in axis_set else 1
+                for i, s in enumerate(shape)
+                if i not in axis_set or keepdims
+            )
 
             out_chunk_shape = get_shape(x.chunk_shape)
             out_chunks = []
             for idx in itertools.product(*[range(s) for s in out_chunk_shape]):
                 idx_iter = iter(idx)
-                in_idx = tuple(0 if i in axis_set and not keepdims else next(idx_iter)
-                               for i in range(x.ndim))
+                in_idx = tuple(
+                    0 if i in axis_set and not keepdims else next(idx_iter)
+                    for i in range(x.ndim)
+                )
 
                 c = x.cix[in_idx]
                 chunk_op = op.copy().reset_key()
                 out_chunk = chunk_op.new_chunk([c], shape=get_shape(c.shape), index=idx)
                 out_chunks.append(out_chunk)
 
-            nsplits = [tuple(c.shape[i] for c in out_chunks
-                             if all(idx == 0 for j, idx in enumerate(c.index) if j != i))
-                       for i in range(len(out_chunks[0].shape))]
+            nsplits = [
+                tuple(
+                    c.shape[i]
+                    for c in out_chunks
+                    if all(idx == 0 for j, idx in enumerate(c.index) if j != i)
+                )
+                for i in range(len(out_chunks[0].shape))
+            ]
             new_op = op.copy()
-            return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=out_chunks, nsplits=nsplits)
+            return new_op.new_tensors(
+                op.inputs, op.outputs[0].shape, chunks=out_chunks, nsplits=nsplits
+            )
 
         r = yield from recursive_tile(
-            cls._norm(x.astype(op.outputs[0].dtype), ord, axis, keepdims))
+            cls._norm(x.astype(op.outputs[0].dtype), ord, axis, keepdims)
+        )
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=r.chunks, nsplits=r.nsplits)
+        return new_op.new_tensors(
+            op.inputs, op.outputs[0].shape, chunks=r.chunks, nsplits=r.nsplits
+        )
 
     @staticmethod
     def _norm(r, ord, axis, keepdims):
         if ord is None:
             return sqrt((abs(r) ** 2).sum(axis=axis, keepdims=keepdims))
-        elif ord == 'nuc':
+        elif ord == "nuc":
             if len(axis) == 1:
-                raise ValueError('Invalid norm order for vectors.')
+                raise ValueError("Invalid norm order for vectors.")
             return svd(r)[1][np.newaxis].sum(keepdims=keepdims)
         elif ord == np.inf:
             if r.ndim > 2:
-                raise ValueError('Improper number of dimensions to norm.')
+                raise ValueError("Improper number of dimensions to norm.")
             r = abs(r)
             if len(axis) == 1:
                 return r.max(axis=axis, keepdims=keepdims)
@@ -119,7 +139,7 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
                 return r.sum(axis=axis[1], keepdims=keepdims).max(keepdims=keepdims)
         elif ord == -np.inf:
             if r.ndim > 2:
-                raise ValueError('Improper number of dimensions to norm.')
+                raise ValueError("Improper number of dimensions to norm.")
             r = abs(r)
             if len(axis) == 1:
                 return r.min(axis=axis, keepdims=keepdims)
@@ -127,13 +147,13 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
                 return r.sum(axis=axis[1], keepdims=keepdims).min(keepdims=keepdims)
         elif ord == 0:
             if r.ndim > 2:
-                raise ValueError('Improper number of dimensions to norm.')
+                raise ValueError("Improper number of dimensions to norm.")
             if len(axis) == 2:
-                raise ValueError('Invalid norm order for matrices.')
+                raise ValueError("Invalid norm order for matrices.")
             return (r != 0).astype(r.dtype).sum(axis=axis, keepdims=keepdims)
         elif ord == 1:
             if r.ndim > 2:
-                raise ValueError('Improper number of dimensions to norm.')
+                raise ValueError("Improper number of dimensions to norm.")
             r = abs(r)
             if len(axis) == 1:
                 return r.sum(axis=axis, keepdims=keepdims)
@@ -141,7 +161,7 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
                 return r.sum(axis=axis[0], keepdims=keepdims).max(keepdims=keepdims)
         elif ord == -1 and len(axis) == 2:
             if r.ndim > 2:
-                raise ValueError('Improper number of dimensions to norm.')
+                raise ValueError("Improper number of dimensions to norm.")
             return abs(r).sum(axis=axis[0], keepdims=keepdims).min(keepdims=keepdims)
         elif ord == 2 and len(axis) == 2:
             return svd(r)[1][np.newaxis].max(keepdims=keepdims)
@@ -149,18 +169,20 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
             return svd(r)[1][np.newaxis].min(keepdims=keepdims)
         else:
             if len(axis) == 2:
-                raise ValueError('Invalid norm order for matrices.')
+                raise ValueError("Invalid norm order for matrices.")
 
             return (abs(r) ** ord).sum(axis=axis, keepdims=keepdims) ** (1.0 / ord)
 
     @classmethod
     def execute(cls, ctx, op):
         (x,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
-            ctx[op.outputs[0].key] = xp.linalg.norm(x, ord=op.ord, axis=op.axis,
-                                                    keepdims=op.keepdims)
+            ctx[op.outputs[0].key] = xp.linalg.norm(
+                x, ord=op.ord, axis=op.axis, keepdims=op.keepdims
+            )
 
 
 def norm(x, ord=None, axis=None, keepdims=False):
@@ -302,7 +324,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
     x = astensor(x)
     ndim = x.ndim
 
-    if ord == 'fro':
+    if ord == "fro":
         ord = None
     if axis is not None:
         if isinstance(axis, Iterable):
@@ -312,6 +334,11 @@ def norm(x, ord=None, axis=None, keepdims=False):
     else:
         axis = tuple(range(x.ndim))
 
-    op = TensorNorm(ord=ord, axis=axis, keepdims=keepdims,
-                    dtype=np.result_type(x.dtype, np.float_), sparse=x.issparse())
+    op = TensorNorm(
+        ord=ord,
+        axis=axis,
+        keepdims=keepdims,
+        dtype=np.result_type(x.dtype, np.float_),
+        sparse=x.issparse(),
+    )
     return op(x)

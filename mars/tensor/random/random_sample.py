@@ -24,8 +24,8 @@ from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 class TensorRandomSample(TensorSimpleRandomData, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_RANDOM_SAMPLE
 
-    _fields_ = '_size',
-    _func_name = 'random_sample'
+    _fields_ = ("_size",)
+    _func_name = "random_sample"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -83,7 +83,7 @@ def random_sample(random_state, size=None, chunk_size=None, gpu=None, dtype=None
            [-1.23204345, -1.75224494]])
     """
     if dtype is None:
-        dtype = np.dtype('f8')
+        dtype = np.dtype("f8")
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorRandomSample(seed=seed, size=size, gpu=gpu, dtype=dtype)

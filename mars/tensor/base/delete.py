@@ -30,16 +30,17 @@ from ..utils import filter_inputs, validate_axis, slice_split, calc_object_lengt
 class TensorDelete(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.DELETE
 
-    _index_obj = AnyField('index_obj')
-    _axis = Int32Field('axis')
-    _input = KeyField('input')
+    _index_obj = AnyField("index_obj")
+    _axis = Int32Field("axis")
+    _input = KeyField("input")
 
     # for chunk
-    _offset_on_axis = Int64Field('offset_on_axis')
+    _offset_on_axis = Int64Field("offset_on_axis")
 
     def __init__(self, index_obj=None, axis=None, offset_on_axis=None, **kw):
-        super().__init__(_index_obj=index_obj, _axis=axis,
-                         _offset_on_axis=offset_on_axis, **kw)
+        super().__init__(
+            _index_obj=index_obj, _axis=axis, _offset_on_axis=offset_on_axis, **kw
+        )
 
     @property
     def index_obj(self):
@@ -59,7 +60,7 @@ class TensorDelete(TensorHasInput, TensorOperandMixin):
             self._index_obj = self._inputs[1]
 
     @classmethod
-    def tile(cls, op: 'TensorDelete'):
+    def tile(cls, op: "TensorDelete"):
         inp = op.input
         index_obj = op.index_obj
         axis = op.axis
@@ -73,19 +74,19 @@ class TensorDelete(TensorHasInput, TensorOperandMixin):
             index_obj = [index_obj]
 
         if isinstance(index_obj, ENTITY_TYPE):
-            index_obj = yield from recursive_tile(
-                index_obj.rechunk(index_obj.shape))
+            index_obj = yield from recursive_tile(index_obj.rechunk(index_obj.shape))
             offsets = np.cumsum([0] + list(inp.nsplits[axis]))
             out_chunks = []
             for c in inp.chunks:
                 chunk_op = op.copy().reset_key()
                 chunk_op._index_obj = index_obj.chunks[0]
                 chunk_op._offset_on_axis = int(offsets[c.index[axis]])
-                shape = tuple(np.nan if j == axis else s
-                              for j, s in enumerate(c.shape))
-                out_chunks.append(chunk_op.new_chunk([c, index_obj.chunks[0]],
-                                                     shape=shape,
-                                                     index=c.index))
+                shape = tuple(np.nan if j == axis else s for j, s in enumerate(c.shape))
+                out_chunks.append(
+                    chunk_op.new_chunk(
+                        [c, index_obj.chunks[0]], shape=shape, index=c.index
+                    )
+                )
             nsplits_on_axis = (np.nan,) * len(inp.nsplits[axis])
         else:
             nsplits_on_axis = [None for _ in inp.nsplits[axis]]
@@ -97,11 +98,14 @@ class TensorDelete(TensorHasInput, TensorOperandMixin):
                     if c.index[axis] in slc_splits:
                         chunk_op = op.copy().reset_key()
                         chunk_slc = slc_splits[c.index[axis]]
-                        shape = tuple(s - calc_object_length(chunk_slc, s) if j == axis else s
-                                      for j, s in enumerate(c.shape))
+                        shape = tuple(
+                            s - calc_object_length(chunk_slc, s) if j == axis else s
+                            for j, s in enumerate(c.shape)
+                        )
                         chunk_op._index_obj = chunk_slc
                         out_chunks.append(
-                            chunk_op.new_chunk([c], shape=shape, index=c.index))
+                            chunk_op.new_chunk([c], shape=shape, index=c.index)
+                        )
                         nsplits_on_axis[c.index[axis]] = shape[axis]
                     else:
                         out_chunks.append(c)
@@ -111,7 +115,7 @@ class TensorDelete(TensorHasInput, TensorOperandMixin):
                 cum_splits = np.cumsum([0] + list(inp.nsplits[axis]))
                 chunk_indexes = defaultdict(list)
                 for int_idx in index_obj:
-                    in_idx = cum_splits.searchsorted(int_idx, side='right') - 1
+                    in_idx = cum_splits.searchsorted(int_idx, side="right") - 1
                     chunk_indexes[in_idx].append(int_idx - cum_splits[in_idx])
 
                 for c in inp.chunks:
@@ -119,39 +123,55 @@ class TensorDelete(TensorHasInput, TensorOperandMixin):
                     if idx_on_axis in chunk_indexes:
                         chunk_op = op.copy().reset_key()
                         chunk_op._index_obj = chunk_indexes[idx_on_axis]
-                        shape = tuple(s - len(chunk_indexes[idx_on_axis])
-                                      if j == axis else s for j, s in enumerate(c.shape))
+                        shape = tuple(
+                            s - len(chunk_indexes[idx_on_axis]) if j == axis else s
+                            for j, s in enumerate(c.shape)
+                        )
                         out_chunks.append(
-                            chunk_op.new_chunk([c], shape=shape, index=c.index))
+                            chunk_op.new_chunk([c], shape=shape, index=c.index)
+                        )
                         nsplits_on_axis[c.index[axis]] = shape[axis]
                     else:
                         out_chunks.append(c)
                         nsplits_on_axis[c.index[axis]] = c.shape[axis]
 
-        nsplits = tuple(s if i != axis else tuple(nsplits_on_axis)
-                        for i, s in enumerate(inp.nsplits))
+        nsplits = tuple(
+            s if i != axis else tuple(nsplits_on_axis)
+            for i, s in enumerate(inp.nsplits)
+        )
         out = op.outputs[0]
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape, order=out.order,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out.shape,
+            order=out.order,
+            chunks=out_chunks,
+            nsplits=nsplits,
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         inp = ctx[op.input.key]
-        index_obj = ctx[op.index_obj.key] if hasattr(op.index_obj, 'key') else op.index_obj
+        index_obj = (
+            ctx[op.index_obj.key] if hasattr(op.index_obj, "key") else op.index_obj
+        )
         if op.offset_on_axis is None:
             ctx[op.outputs[0].key] = np.delete(inp, index_obj, axis=op.axis)
         else:
             index_obj = np.array(index_obj)
-            part_index = [idx - op.offset_on_axis for idx in index_obj if (
-                    (idx >= op.offset_on_axis) and idx < (op.offset_on_axis + inp.shape[op.axis or 0]))]
+            part_index = [
+                idx - op.offset_on_axis
+                for idx in index_obj
+                if (
+                    (idx >= op.offset_on_axis)
+                    and idx < (op.offset_on_axis + inp.shape[op.axis or 0])
+                )
+            ]
 
-            ctx[op.outputs[0].key] = np.delete(
-                inp, part_index, axis=op.axis)
+            ctx[op.outputs[0].key] = np.delete(inp, part_index, axis=op.axis)
 
     def __call__(self, arr, obj, shape):
-        return self.new_tensor(filter_inputs([arr, obj]),
-                               shape=shape, order=arr.order)
+        return self.new_tensor(filter_inputs([arr, obj]), shape=shape, order=arr.order)
 
 
 def delete(arr, obj, axis=None):
@@ -197,9 +217,10 @@ def delete(arr, obj, axis=None):
     """
     arr = astensor(arr)
     arr = astensor(arr)
-    if getattr(obj, 'ndim', 0) > 1:  # pragma: no cover
-        raise ValueError('index array argument obj to insert must be '
-                         'one dimensional or scalar')
+    if getattr(obj, "ndim", 0) > 1:  # pragma: no cover
+        raise ValueError(
+            "index array argument obj to insert must be " "one dimensional or scalar"
+        )
 
     if axis is None:
         # if axis is None, array will be flatten
@@ -209,8 +230,9 @@ def delete(arr, obj, axis=None):
     else:
         validate_axis(arr.ndim, axis)
         idx_length = calc_object_length(obj, size=arr.shape[axis])
-        shape = tuple(s - idx_length if i == axis else s
-                      for i, s in enumerate(arr.shape))
+        shape = tuple(
+            s - idx_length if i == axis else s for i, s in enumerate(arr.shape)
+        )
 
     op = TensorDelete(index_obj=obj, axis=axis, dtype=arr.dtype)
     return op(arr, obj, shape)

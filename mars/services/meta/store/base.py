@@ -46,9 +46,7 @@ class AbstractMetaStore(ABC):
         """
 
     @abstractmethod
-    async def set_meta(self,
-                       object_id: str,
-                       meta: _CommonMeta):
+    async def set_meta(self, object_id: str, meta: _CommonMeta):
         """
         Set meta.
 
@@ -61,10 +59,9 @@ class AbstractMetaStore(ABC):
         """
 
     @abstractmethod
-    async def get_meta(self,
-                       object_id: str,
-                       fields: List[str] = None,
-                       error='raise') -> Dict:
+    async def get_meta(
+        self, object_id: str, fields: List[str] = None, error="raise"
+    ) -> Dict:
         """
         Get meta.
 
@@ -84,8 +81,7 @@ class AbstractMetaStore(ABC):
         """
 
     @abstractmethod
-    async def del_meta(self,
-                       object_id: str):
+    async def del_meta(self, object_id: str):
         """
         Delete meta.
 
@@ -96,9 +92,7 @@ class AbstractMetaStore(ABC):
         """
 
     @abstractmethod
-    async def add_chunk_bands(self,
-                              object_id: str,
-                              bands: List[BandType]):
+    async def add_chunk_bands(self, object_id: str, bands: List[BandType]):
         """
         Add band to chunk.
 
@@ -111,9 +105,7 @@ class AbstractMetaStore(ABC):
         """
 
     @abstractmethod
-    async def remove_chunk_bands(self,
-                                 object_id: str,
-                                 bands: List[BandType]):
+    async def remove_chunk_bands(self, object_id: str, bands: List[BandType]):
         """
         Remove bands from chunk.
 

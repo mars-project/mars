@@ -18,8 +18,12 @@ from typing import Tuple, List
 from ..... import oscar as mo
 from ....cluster import MockClusterAPI
 from ....subtask import Subtask
-from ...supervisor import AssignerActor, \
-    SubtaskManagerActor, SubtaskQueueingActor, GlobalSlotManagerActor
+from ...supervisor import (
+    AssignerActor,
+    SubtaskManagerActor,
+    SubtaskQueueingActor,
+    GlobalSlotManagerActor,
+)
 
 
 class MockSlotsActor(mo.Actor):
@@ -29,16 +33,24 @@ class MockSlotsActor(mo.Actor):
     def set_capacity(self, capacity: int):
         self._capacity = capacity
 
-    def apply_subtask_slots(self, band: Tuple, session_id: str,
-                            subtask_ids: List[str], subtask_slots: List[int]):
-        idx = min(self._capacity, len(subtask_ids)) \
-            if self._capacity >= 0 else len(subtask_ids)
+    def apply_subtask_slots(
+        self,
+        band: Tuple,
+        session_id: str,
+        subtask_ids: List[str],
+        subtask_slots: List[int],
+    ):
+        idx = (
+            min(self._capacity, len(subtask_ids))
+            if self._capacity >= 0
+            else len(subtask_ids)
+        )
         return subtask_ids[:idx]
 
 
 class MockAssignerActor(mo.Actor):
     def assign_subtasks(self, subtasks: List[Subtask]):
-        return [(self.address, 'numa-0')] * len(subtasks)
+        return [(self.address, "numa-0")] * len(subtasks)
 
 
 class MockSubtaskManagerActor(mo.Actor):
@@ -56,29 +68,37 @@ class MockSubtaskManagerActor(mo.Actor):
 
 @pytest.fixture
 async def actor_pool():
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+    pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 
     async with pool:
-        session_id = 'test_session'
+        session_id = "test_session"
         await MockClusterAPI.create(pool.external_address)
 
         # create assigner actor
-        await mo.create_actor(MockAssignerActor,
-                              uid=AssignerActor.gen_uid(session_id),
-                              address=pool.external_address)
+        await mo.create_actor(
+            MockAssignerActor,
+            uid=AssignerActor.gen_uid(session_id),
+            address=pool.external_address,
+        )
         # create queueing actor
-        manager_ref = await mo.create_actor(MockSubtaskManagerActor,
-                                            uid=SubtaskManagerActor.gen_uid(session_id),
-                                            address=pool.external_address)
+        manager_ref = await mo.create_actor(
+            MockSubtaskManagerActor,
+            uid=SubtaskManagerActor.gen_uid(session_id),
+            address=pool.external_address,
+        )
         # create slots actor
-        slots_ref = await mo.create_actor(MockSlotsActor,
-                                          uid=GlobalSlotManagerActor.default_uid(),
-                                          address=pool.external_address)
+        slots_ref = await mo.create_actor(
+            MockSlotsActor,
+            uid=GlobalSlotManagerActor.default_uid(),
+            address=pool.external_address,
+        )
         # create queueing actor
-        queueing_ref = await mo.create_actor(SubtaskQueueingActor,
-                                             session_id,
-                                             uid=SubtaskQueueingActor.gen_uid(session_id),
-                                             address=pool.external_address)
+        queueing_ref = await mo.create_actor(
+            SubtaskQueueingActor,
+            session_id,
+            uid=SubtaskQueueingActor.gen_uid(session_id),
+            address=pool.external_address,
+        )
         try:
             yield pool, session_id, queueing_ref, slots_ref, manager_ref
         finally:
@@ -100,17 +120,17 @@ async def test_subtask_queueing(actor_pool):
     await queueing_ref.submit_subtasks()
     # queue: [2 1 0]
     commited_subtask_ids, _commited_bands = await manager_ref.dump_data()
-    assert commited_subtask_ids == ['4', '3']
+    assert commited_subtask_ids == ["4", "3"]
 
-    await queueing_ref.remove_queued_subtasks(['1'])
+    await queueing_ref.remove_queued_subtasks(["1"])
     # queue: [2 0]
     await queueing_ref.update_subtask_priority.batch(
-        queueing_ref.update_subtask_priority.delay('0', (3,)),
-        queueing_ref.update_subtask_priority.delay('4', (5,)),
+        queueing_ref.update_subtask_priority.delay("0", (3,)),
+        queueing_ref.update_subtask_priority.delay("4", (5,)),
     )
     # queue: [0(3) 2]
     await queueing_ref.submit_subtasks()
     # queue: []
     commited_subtasks, _commited_bands = await manager_ref.dump_data()
-    assert commited_subtasks == ['4', '3', '0', '2']
+    assert commited_subtasks == ["4", "3", "0", "2"]
     assert not await queueing_ref.all_bands_busy()

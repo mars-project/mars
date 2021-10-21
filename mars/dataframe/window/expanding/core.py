@@ -17,23 +17,28 @@ from collections import OrderedDict
 import pandas as pd
 
 from ....lib.version import parse as parse_version
-from ....serialization.serializables import BoolField, Int32Field, \
-    Int64Field, StringField
+from ....serialization.serializables import (
+    BoolField,
+    Int32Field,
+    Int64Field,
+    StringField,
+)
 from ...utils import validate_axis
 from ..core import Window
 
-_window_has_method = parse_version(pd.__version__) >= parse_version('1.3.0')
+_window_has_method = parse_version(pd.__version__) >= parse_version("1.3.0")
 
 
 class Expanding(Window):
-    _min_periods = Int64Field('min_periods')
-    _axis = Int32Field('axis')
-    _center = BoolField('center')
-    _method = StringField('method')
+    _min_periods = Int64Field("min_periods")
+    _axis = Int32Field("axis")
+    _center = BoolField("center")
+    _method = StringField("method")
 
     def __init__(self, min_periods=None, axis=None, center=None, method=None, **kw):
-        super().__init__(_min_periods=min_periods, _axis=axis, _center=center,
-                         _method=method, **kw)
+        super().__init__(
+            _min_periods=min_periods, _axis=axis, _center=center, _method=method, **kw
+        )
 
     @property
     def min_periods(self):
@@ -49,7 +54,7 @@ class Expanding(Window):
 
     @property
     def method(self):
-        return self._method or 'single'
+        return self._method or "single"
 
     def __call__(self, df):
         return df.expanding(**self.params)
@@ -59,9 +64,9 @@ class Expanding(Window):
         p = OrderedDict()
 
         if not _window_has_method:  # pragma: no cover
-            args = ['min_periods', 'center', 'axis']
+            args = ["min_periods", "center", "axis"]
         else:
-            args = ['min_periods', 'center', 'axis', 'method']
+            args = ["min_periods", "center", "axis", "method"]
 
         for k in args:
             p[k] = getattr(self, k)
@@ -70,33 +75,35 @@ class Expanding(Window):
     def aggregate(self, func, **kwargs):
         from .aggregation import DataFrameExpandingAgg
 
-        count_always_valid = kwargs.pop('_count_always_valid', False)
+        count_always_valid = kwargs.pop("_count_always_valid", False)
 
-        op = DataFrameExpandingAgg(func=func, count_always_valid=count_always_valid, **self.params)
+        op = DataFrameExpandingAgg(
+            func=func, count_always_valid=count_always_valid, **self.params
+        )
         return op(self)
 
     agg = aggregate
 
     def sum(self):
-        return self.aggregate('sum')
+        return self.aggregate("sum")
 
     def count(self):
-        return self.aggregate('count')
+        return self.aggregate("count")
 
     def min(self):
-        return self.aggregate('min')
+        return self.aggregate("min")
 
     def max(self):
-        return self.aggregate('max')
+        return self.aggregate("max")
 
     def mean(self):
-        return self.aggregate('mean')
+        return self.aggregate("mean")
 
     def var(self):
-        return self.aggregate('var')
+        return self.aggregate("var")
 
     def std(self):
-        return self.aggregate('std')
+        return self.aggregate("std")
 
 
 def expanding(obj, min_periods=1, center=False, axis=0):
@@ -149,8 +156,8 @@ def expanding(obj, min_periods=1, center=False, axis=0):
     axis = validate_axis(axis, obj)
 
     if center:
-        raise NotImplementedError('center == True is not supported')
+        raise NotImplementedError("center == True is not supported")
     if axis == 1:
-        raise NotImplementedError('axis other than 0 is not supported')
+        raise NotImplementedError("axis other than 0 is not supported")
 
     return Expanding(input=obj, min_periods=min_periods, center=center, axis=axis)

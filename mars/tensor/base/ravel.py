@@ -19,7 +19,7 @@ import numpy as np
 from ..datasource import tensor as astensor
 
 
-def ravel(a, order='C'):
+def ravel(a, order="C"):
     """Return a contiguous flattened tensor.
 
     A 1-D tensor, containing the elements of the input, is returned.  A copy is

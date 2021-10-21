@@ -18,10 +18,9 @@ from typing import Dict, List, Optional
 
 class AbstractMetaAPI(ABC):
     @abstractmethod
-    async def get_chunk_meta(self,
-                             object_id: str,
-                             fields: List[str] = None,
-                             error: str = 'raise') -> Optional[Dict]:
+    async def get_chunk_meta(
+        self, object_id: str, fields: List[str] = None, error: str = "raise"
+    ) -> Optional[Dict]:
         """
         Get chunk meta
 

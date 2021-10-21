@@ -23,13 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorVonmises(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_mu', '_kappa']
+    _input_fields_ = ["_mu", "_kappa"]
     _op_type_ = OperandDef.RAND_VONMISES
 
-    _fields_ = '_mu', '_kappa', '_size'
-    _mu = AnyField('mu')
-    _kappa = AnyField('kappa')
-    _func_name = 'vonmises'
+    _fields_ = "_mu", "_kappa", "_size"
+    _mu = AnyField("mu")
+    _kappa = AnyField("kappa")
+    _func_name = "vonmises"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -131,8 +131,11 @@ def vonmises(random_state, mu, kappa, size=None, chunk_size=None, gpu=None, dtyp
     >>> plt.show()
     """
     if dtype is None:
-        dtype = np.random.RandomState().vonmises(
-            handle_array(mu), handle_array(kappa), size=(0,)).dtype
+        dtype = (
+            np.random.RandomState()
+            .vonmises(handle_array(mu), handle_array(kappa), size=(0,))
+            .dtype
+        )
 
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]

@@ -26,12 +26,13 @@ from ..operands import TensorOperand, TensorOperandMixin
 class TensorGetShape(TensorOperand, TensorOperandMixin):
     _op_type_ = opcodes.GET_SHAPE
 
-    _a = KeyField('a')
-    _ndim = Int32Field('ndim')
+    _a = KeyField("a")
+    _ndim = Int32Field("ndim")
 
     def __init__(self, pure_depends=None, a=None, ndim=None, dtype=None, **kw):
-        super().__init__(_dtype=dtype, _a=a, _ndim=ndim,
-                         _pure_depends=pure_depends, **kw)
+        super().__init__(
+            _dtype=dtype, _a=a, _ndim=ndim, _pure_depends=pure_depends, **kw
+        )
 
     @property
     def a(self):
@@ -57,12 +58,14 @@ class TensorGetShape(TensorOperand, TensorOperandMixin):
         self._a = a
         kws = []
         for i in range(self.output_limit):
-            kws.append({
-                'shape': (),
-                'dtype': np.dtype(np.intc),
-                'order': TensorOrder.C_ORDER,
-                'i': i
-            })
+            kws.append(
+                {
+                    "shape": (),
+                    "dtype": np.dtype(np.intc),
+                    "order": TensorOrder.C_ORDER,
+                    "i": i,
+                }
+            )
         return ExecutableTuple(self.new_tensors([a], kws=kws))
 
     @classmethod
@@ -70,31 +73,32 @@ class TensorGetShape(TensorOperand, TensorOperandMixin):
         a = op.a
         outs = op.outputs
 
-        chunk_op = TensorGetShape(pure_depends=[True] * len(a.chunks),
-                                  ndim=op.ndim)
+        chunk_op = TensorGetShape(pure_depends=[True] * len(a.chunks), ndim=op.ndim)
         chunk_kws = []
         for out in outs:
             params = out.params
-            params['index'] = ()
+            params["index"] = ()
             chunk_kws.append(params)
         chunks = chunk_op.new_chunks(a.chunks, kws=chunk_kws)
 
         kws = []
         for c, out in zip(chunks, outs):
             params = out.params
-            params['chunks'] = [c]
-            params['nsplits'] = ()
+            params["chunks"] = [c]
+            params["nsplits"] = ()
             kws.append(params)
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, kws=kws,
-                                  output_limit=op.output_limit)
+        return new_op.new_tensors(op.inputs, kws=kws, output_limit=op.output_limit)
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk_idx_to_chunk_shapes = \
-            {c.index: cm['shape'] for c, cm
-             in zip(op.inputs, ctx.get_chunks_meta([c.key for c in op.inputs],
-                                                   fields=['shape']))}
+        chunk_idx_to_chunk_shapes = {
+            c.index: cm["shape"]
+            for c, cm in zip(
+                op.inputs,
+                ctx.get_chunks_meta([c.key for c in op.inputs], fields=["shape"]),
+            )
+        }
         nsplits = calc_nsplits(chunk_idx_to_chunk_shapes)
         shape = tuple(sum(ns) for ns in nsplits)
         for o, s in zip(op.outputs, shape):

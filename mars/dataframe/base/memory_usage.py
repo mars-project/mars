@@ -27,22 +27,24 @@ from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..core import IndexValue
 from ..utils import parse_index
 
-cudf = lazy_import('cudf', globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
 
 class DataFrameMemoryUsage(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.MEMORY_USAGE
 
     # raw arguments of memory_usage method
-    _index = BoolField('index')
-    _deep = BoolField('deep')
+    _index = BoolField("index")
+    _deep = BoolField("deep")
 
     # size of range index, when set, the value will be prepended to the result series
     # if the input is a dataframe, or added to the result when the input is a series
-    _range_index_size = Int64Field('range_index_size')
+    _range_index_size = Int64Field("range_index_size")
 
     def __init__(self, index=None, deep=None, range_index_size=None, **kw):
-        super().__init__(_index=index, _deep=deep, _range_index_size=range_index_size, **kw)
+        super().__init__(
+            _index=index, _deep=deep, _range_index_size=range_index_size, **kw
+        )
 
     @property
     def index(self) -> bool:
@@ -71,7 +73,7 @@ class DataFrameMemoryUsage(DataFrameOperand, DataFrameOperandMixin):
         """
         if not self.index or index != 0:
             return input_index
-        idx_data = input_index.to_pandas().insert(0, 'Index')
+        idx_data = input_index.to_pandas().insert(0, "Index")
         return parse_index(idx_data, store_data=True)
 
     def _adapt_nsplits(self, input_nsplit):
@@ -95,10 +97,17 @@ class DataFrameMemoryUsage(DataFrameOperand, DataFrameOperandMixin):
         else:
             # the input data is a DataFrame, a Scalar will be returned
             # calculate shape of returning series given ``op.index``
-            new_shape = (df_or_series.shape[-1] + 1,) if self.index else (df_or_series.shape[-1],)
+            new_shape = (
+                (df_or_series.shape[-1] + 1,)
+                if self.index
+                else (df_or_series.shape[-1],)
+            )
             return self.new_series(
-                [df_or_series], index_value=self._adapt_index(df_or_series.columns_value),
-                shape=new_shape, dtype=np.dtype(np.int_))
+                [df_or_series],
+                index_value=self._adapt_index(df_or_series.columns_value),
+                shape=new_shape,
+                dtype=np.dtype(np.int_),
+            )
 
     @classmethod
     def _tile_single(cls, op: "DataFrameMemoryUsage"):
@@ -113,26 +122,43 @@ class DataFrameMemoryUsage(DataFrameOperand, DataFrameOperandMixin):
             new_op = op.copy().reset_key()
             if c.ndim == 1:
                 # Tile for series
-                chunks.append(new_op.new_chunk([c], index=c.index, dtype=output.dtype, shape=()))
+                chunks.append(
+                    new_op.new_chunk([c], index=c.index, dtype=output.dtype, shape=())
+                )
             else:
                 # tile for dataframes
                 # only calculate with index=True on the initial chunk
                 new_op.index = op.index and c.index[-1] == 0
 
                 # calculate shape of returning chunk given ``op.index``
-                new_shape = (c.shape[-1] + 1,) if c.index[-1] == 0 and op.index else (c.shape[-1],)
-                chunks.append(new_op.new_chunk(
-                    [c], shape=new_shape, dtype=output.dtype, index=(c.index[-1],),
-                    index_value=op._adapt_index(c.columns_value, c.index[-1])))
+                new_shape = (
+                    (c.shape[-1] + 1,)
+                    if c.index[-1] == 0 and op.index
+                    else (c.shape[-1],)
+                )
+                chunks.append(
+                    new_op.new_chunk(
+                        [c],
+                        shape=new_shape,
+                        dtype=output.dtype,
+                        index=(c.index[-1],),
+                        index_value=op._adapt_index(c.columns_value, c.index[-1]),
+                    )
+                )
 
         new_op = op.copy().reset_key()
         # return objects with chunks and nsplits (if needed)
         if df_or_series.ndim == 1:
             return new_op.new_scalar([df_or_series], dtype=output.dtype, chunks=chunks)
         else:
-            return new_op.new_series([df_or_series], shape=output.shape, dtype=output.dtype,
-                                     index_value=output.index_value, chunks=chunks,
-                                     nsplits=op._adapt_nsplits(df_or_series.nsplits))
+            return new_op.new_series(
+                [df_or_series],
+                shape=output.shape,
+                dtype=output.dtype,
+                index_value=output.index_value,
+                chunks=chunks,
+                nsplits=op._adapt_nsplits(df_or_series.nsplits),
+            )
 
     @classmethod
     def _tile_dataframe(cls, op: "DataFrameMemoryUsage"):
@@ -158,40 +184,61 @@ class DataFrameMemoryUsage(DataFrameOperand, DataFrameOperandMixin):
                 # when the chunk is not the first chunk in the row, index size is not needed
                 new_op.index = op.index and c.index[-1] == 0
 
-            new_shape = (c.shape[-1] + 1,) if c.index[-1] == 0 and op.index else (c.shape[-1],)
+            new_shape = (
+                (c.shape[-1] + 1,) if c.index[-1] == 0 and op.index else (c.shape[-1],)
+            )
 
             chunks_to_reduce[c.index] = new_op.new_chunk(
-                [c], index=(c.index[-1],), dtype=output.dtype, shape=new_shape,
-                index_value=op._adapt_index(c.columns_value, c.index[-1]))
+                [c],
+                index=(c.index[-1],),
+                dtype=output.dtype,
+                shape=new_shape,
+                index_value=op._adapt_index(c.columns_value, c.index[-1]),
+            )
 
         # reduce chunks using tree reduction
         combine_size = options.combine_size
         while chunks_to_reduce.shape[0] > 1:
             # allocate matrix of chunks
-            new_chunks_to_reduce = np.empty((ceildiv(chunks_to_reduce.shape[0], combine_size),
-                                             chunks_to_reduce.shape[1]), dtype=np.object)
+            new_chunks_to_reduce = np.empty(
+                (
+                    ceildiv(chunks_to_reduce.shape[0], combine_size),
+                    chunks_to_reduce.shape[1],
+                ),
+                dtype=np.object,
+            )
             for idx in range(0, chunks_to_reduce.shape[0], combine_size):
                 for idx2 in range(chunks_to_reduce.shape[1]):
                     new_op = op.copy().reset_key()
                     new_op.stage = OperandStage.reduce
-                    chunks = list(chunks_to_reduce[idx:idx + combine_size, idx2])
+                    chunks = list(chunks_to_reduce[idx : idx + combine_size, idx2])
 
                     new_chunks_to_reduce[idx // combine_size, idx2] = new_op.new_chunk(
-                        chunks, index=(idx2,), dtype=output.dtype, shape=chunks[0].shape,
-                        index_value=chunks[0].index_value)
+                        chunks,
+                        index=(idx2,),
+                        dtype=output.dtype,
+                        shape=chunks[0].shape,
+                        index_value=chunks[0].index_value,
+                    )
 
             chunks_to_reduce = new_chunks_to_reduce
 
         # handle RangeIndex at final outputs
         if op.index and is_range_index:
-            chunks_to_reduce[0, 0].op.range_index_size = df.index_value.to_pandas().memory_usage()
+            chunks_to_reduce[
+                0, 0
+            ].op.range_index_size = df.index_value.to_pandas().memory_usage()
 
         # return series with chunks and nsplits
         new_op = op.copy().reset_key()
-        return new_op.new_series([df], dtype=output.dtype, shape=output.shape,
-                                 index_value=output.index_value,
-                                 chunks=list(chunks_to_reduce[0, :]),
-                                 nsplits=op._adapt_nsplits(df.nsplits))
+        return new_op.new_series(
+            [df],
+            dtype=output.dtype,
+            shape=output.shape,
+            index_value=output.index_value,
+            chunks=list(chunks_to_reduce[0, :]),
+            nsplits=op._adapt_nsplits(df.nsplits),
+        )
 
     @classmethod
     def _tile_series(cls, op: "DataFrameMemoryUsage"):
@@ -212,7 +259,8 @@ class DataFrameMemoryUsage(DataFrameOperand, DataFrameOperandMixin):
             new_op.index = op.index and not is_range_index
 
             chunks_to_reduce.append(
-                new_op.new_chunk([c], index=c.index, dtype=output.dtype, shape=()))
+                new_op.new_chunk([c], index=c.index, dtype=output.dtype, shape=())
+            )
 
         # reduce chunks using tree reduction
         combine_size = options.combine_size
@@ -222,15 +270,22 @@ class DataFrameMemoryUsage(DataFrameOperand, DataFrameOperandMixin):
                 new_op = op.copy().reset_key()
                 new_op.stage = OperandStage.reduce
 
-                new_chunks_to_reduce.append(new_op.new_chunk(
-                    chunks_to_reduce[idx:idx + combine_size], shape=(), index=(0,),
-                    dtype=output.dtype))
+                new_chunks_to_reduce.append(
+                    new_op.new_chunk(
+                        chunks_to_reduce[idx : idx + combine_size],
+                        shape=(),
+                        index=(0,),
+                        dtype=output.dtype,
+                    )
+                )
 
             chunks_to_reduce = new_chunks_to_reduce
 
         # handle RangeIndex at final outputs
         if op.index and is_range_index:
-            chunks_to_reduce[0].op.range_index_size = series.index_value.to_pandas().memory_usage()
+            chunks_to_reduce[
+                0
+            ].op.range_index_size = series.index_value.to_pandas().memory_usage()
 
         # return series with chunks
         new_op = op.copy().reset_key()
@@ -239,9 +294,11 @@ class DataFrameMemoryUsage(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op: "DataFrameMemoryUsage"):
         df_or_series = op.inputs[0]
-        if df_or_series.chunk_shape[0] == 1:  # only one chunk in row, no aggregation needed
+        if (
+            df_or_series.chunk_shape[0] == 1
+        ):  # only one chunk in row, no aggregation needed
             return cls._tile_single(op)
-        elif df_or_series.ndim == 1:   # series
+        elif df_or_series.ndim == 1:  # series
             return cls._tile_series(op)
         else:  # dataframe
             return cls._tile_dataframe(op)
@@ -255,9 +312,11 @@ class DataFrameMemoryUsage(DataFrameOperand, DataFrameOperandMixin):
         if op.stage == OperandStage.reduce:
             result = reduce(operator.add, (ctx[c.key] for c in op.inputs))
             if op.range_index_size is not None:
-                if hasattr(in_data, 'ndim'):
+                if hasattr(in_data, "ndim"):
                     # dataframe input: prepend index size column
-                    prepend_series = xdf.Series([op.range_index_size], index=['Index'], dtype=result.dtype)
+                    prepend_series = xdf.Series(
+                        [op.range_index_size], index=["Index"], dtype=result.dtype
+                    )
                     result = xdf.concat([prepend_series, result])
                 else:
                     # series input: add index size to the output

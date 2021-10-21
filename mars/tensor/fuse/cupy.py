@@ -37,39 +37,45 @@ class TensorCpFuseChunk(TensorFuse, TensorFuseChunkMixin):
 
 # execution part
 CP_BINOP_TO_STRING = {
-    arithmetic.TensorSubtract: '-',
-    arithmetic.TensorMultiply: '*',
-    arithmetic.TensorTrueDiv: '/',
+    arithmetic.TensorSubtract: "-",
+    arithmetic.TensorMultiply: "*",
+    arithmetic.TensorTrueDiv: "/",
 }
 
 CP_UNARYOP_TO_STRING = {
-    arithmetic.TensorSqrt: 'sqrt',
+    arithmetic.TensorSqrt: "sqrt",
 }
 
 
 def _evaluate(chunk):
-    letters = iter(letter for letter in ascii_letters if letter not in 'ni')
+    letters = iter(letter for letter in ascii_letters if letter not in "ni")
 
     input_types = [i.dtype.name for i in chunk.op.inputs]
     input_names = {i: next(letters) for i in chunk.op.inputs}
-    input_arguments = ', '.join([f'{tp} {input_names[i]}'
-                                 for i, tp in zip(chunk.op.inputs, input_types)])
+    input_arguments = ", ".join(
+        [f"{tp} {input_names[i]}" for i, tp in zip(chunk.op.inputs, input_types)]
+    )
     output_type = chunk.op.dtype.name
     output_name = next(letters)
-    output_argument = f'{output_type} {output_name}'
+    output_argument = f"{output_type} {output_name}"
     body = dict(input_names)
 
     for node in chunk.composed:
         op_cls = type(node.op)
         if op_cls in CP_BINOP_TO_STRING:
             input_bodies = [body.get(i, repr(i)) for i in (node.op.lhs, node.op.rhs)]
-            body[node] = f' {CP_BINOP_TO_STRING[op_cls]} '.join(input_bodies)
+            body[node] = f" {CP_BINOP_TO_STRING[op_cls]} ".join(input_bodies)
         elif op_cls in CP_UNARYOP_TO_STRING:
             input_data = body[node.op.inputs[0]]
-            body[node] = f'{CP_UNARYOP_TO_STRING[op_cls]}({input_data})'
+            body[node] = f"{CP_UNARYOP_TO_STRING[op_cls]}({input_data})"
         else:
             raise NotImplementedError
 
-    body = f'{output_name} = {body[chunk.composed[-1]]}'
+    body = f"{output_name} = {body[chunk.composed[-1]]}"
     key = tokenize(input_arguments, output_argument, body)
-    return input_arguments, output_argument, body, f'{type(chunk.op).__name__.lower()}_{key}'
+    return (
+        input_arguments,
+        output_argument,
+        body,
+        f"{type(chunk.op).__name__.lower()}_{key}",
+    )

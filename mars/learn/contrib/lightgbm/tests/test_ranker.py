@@ -15,6 +15,7 @@
 import pytest
 
 from ..... import tensor as mt
+
 try:
     import lightgbm
     from .. import LGBMRanker
@@ -30,7 +31,7 @@ X_raw = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
 y_raw = rs.rand(n_rows, chunk_size=chunk_size)
 
 
-@pytest.mark.skipif(lightgbm is None, reason='LightGBM not installed')
+@pytest.mark.skipif(lightgbm is None, reason="LightGBM not installed")
 def test_local_ranker(setup):
     y = (y_raw * 10).astype(mt.int32)
     ranker = LGBMRanker(n_estimators=2)

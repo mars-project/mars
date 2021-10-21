@@ -21,6 +21,7 @@ import pytest
 
 from ..... import tensor as mt
 from ..... import dataframe as md
+
 try:
     import lightgbm
     from .. import LGBMClassifier
@@ -44,7 +45,7 @@ x_sparse[np.arange(n_rows), np.random.randint(n_columns, size=n_rows)] = np.nan
 X_sparse = mt.tensor(x_sparse, chunk_size=chunk_size).tosparse(missing=np.nan)[filter]
 
 
-@pytest.mark.skipif(lightgbm is None, reason='LightGBM not installed')
+@pytest.mark.skipif(lightgbm is None, reason="LightGBM not installed")
 def test_local_classifier(setup):
     y_data = (y * 10).astype(mt.int32)
     classifier = LGBMClassifier(n_estimators=2)
@@ -59,8 +60,9 @@ def test_local_classifier(setup):
     # test sparse tensor
     X_sparse_data = X_sparse
     classifier = LGBMClassifier(n_estimators=2)
-    classifier.fit(X_sparse_data, y_data,
-                   eval_set=[(X_sparse_data, y_data)], verbose=True)
+    classifier.fit(
+        X_sparse_data, y_data, eval_set=[(X_sparse_data, y_data)], verbose=True
+    )
     prediction = classifier.predict(X_sparse_data)
 
     assert prediction.ndim == 1
@@ -102,7 +104,8 @@ def test_local_classifier(setup):
     # should raise error if weight.ndim > 1
     with pytest.raises(ValueError):
         LGBMClassifier(n_estimators=2).fit(
-            X, y_df, sample_weight=mt.random.rand(1, 1), verbose=True)
+            X, y_df, sample_weight=mt.random.rand(1, 1), verbose=True
+        )
 
     # test binary classifier
     new_y = (y_data > 0.5).astype(mt.int32)
@@ -133,27 +136,27 @@ def test_local_classifier(setup):
     assert proba_result.shape[0] == len(X)
 
 
-@pytest.mark.skipif(lightgbm is None, reason='LightGBM not installed')
+@pytest.mark.skipif(lightgbm is None, reason="LightGBM not installed")
 def test_local_classifier_from_to_parquet(setup):
     n_rows = 1000
     n_columns = 10
     rs = np.random.RandomState(0)
     X = rs.rand(n_rows, n_columns)
     y = (rs.rand(n_rows) > 0.5).astype(np.int32)
-    df = pd.DataFrame(X, columns=[f'c{i}' for i in range(n_columns)])
+    df = pd.DataFrame(X, columns=[f"c{i}" for i in range(n_columns)])
 
     # test with existing model
     classifier = lightgbm.LGBMClassifier(n_estimators=2)
     classifier.fit(X, y, verbose=True)
 
     with tempfile.TemporaryDirectory() as d:
-        result_dir = os.path.join(d, 'result')
+        result_dir = os.path.join(d, "result")
         os.mkdir(result_dir)
-        data_dir = os.path.join(d, 'data')
+        data_dir = os.path.join(d, "data")
         os.mkdir(data_dir)
 
-        df.iloc[:500].to_parquet(os.path.join(d, 'data', 'data1.parquet'))
-        df.iloc[500:].to_parquet(os.path.join(d, 'data', 'data2.parquet'))
+        df.iloc[:500].to_parquet(os.path.join(d, "data", "data1.parquet"))
+        df.iloc[500:].to_parquet(os.path.join(d, "data", "data2.parquet"))
 
         df = md.read_parquet(data_dir)
         model = LGBMClassifier()

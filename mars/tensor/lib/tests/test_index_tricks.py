@@ -40,10 +40,10 @@ def test_r_(setup):
 
     np.testing.assert_array_equal(result, expected)
 
-    r = mt.r_[-1:1:6j, [0]*3, 5, 6]
+    r = mt.r_[-1:1:6j, [0] * 3, 5, 6]
 
     result = r.execute().fetch()
-    expected = np.r_[-1:1:6j, [0]*3, 5, 6]
+    expected = np.r_[-1:1:6j, [0] * 3, 5, 6]
 
     np.testing.assert_array_equal(result, expected)
 
@@ -56,36 +56,36 @@ def test_r_(setup):
 
     raw = [[0, 1, 2], [3, 4, 5]]
     a = mt.array(raw, chunk_size=2)
-    r = mt.r_['-1', a, a]
+    r = mt.r_["-1", a, a]
 
     result = r.execute().fetch()
-    expected = np.r_['-1', raw, raw]
+    expected = np.r_["-1", raw, raw]
 
     np.testing.assert_array_equal(result, expected)
 
-    r = mt.r_['0,2', [1, 2, 3], [4, 5, 6]]
+    r = mt.r_["0,2", [1, 2, 3], [4, 5, 6]]
 
     result = r.execute().fetch()
-    expected = np.r_['0,2', [1, 2, 3], [4, 5, 6]]
+    expected = np.r_["0,2", [1, 2, 3], [4, 5, 6]]
 
     np.testing.assert_array_equal(result, expected)
 
-    r = mt.r_['0,2,0', [1, 2, 3], [4, 5, 6]]
+    r = mt.r_["0,2,0", [1, 2, 3], [4, 5, 6]]
 
     result = r.execute().fetch()
-    expected = np.r_['0,2,0', [1, 2, 3], [4, 5, 6]]
+    expected = np.r_["0,2,0", [1, 2, 3], [4, 5, 6]]
     np.testing.assert_array_equal(result, expected)
 
-    r = mt.r_['1,2,0', [1, 2, 3], [4, 5, 6]]
+    r = mt.r_["1,2,0", [1, 2, 3], [4, 5, 6]]
 
     result = r.execute().fetch()
-    expected = np.r_['1,2,0', [1, 2, 3], [4, 5, 6]]
+    expected = np.r_["1,2,0", [1, 2, 3], [4, 5, 6]]
     np.testing.assert_array_equal(result, expected)
 
     assert len(mt.r_) == 0
 
     with pytest.raises(ValueError):
-        _ = mt.r_[:3, 'wrong']
+        _ = mt.r_[:3, "wrong"]
 
 
 def test_c_(setup):

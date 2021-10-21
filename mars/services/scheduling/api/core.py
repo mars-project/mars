@@ -21,8 +21,7 @@ from ..core import SubtaskScheduleSummary
 class AbstractSchedulingAPI(ABC):
     @abstractmethod
     def get_subtask_schedule_summaries(
-            self,
-            task_id: Optional[str] = None
+        self, task_id: Optional[str] = None
     ) -> List[SubtaskScheduleSummary]:
         """
         Get details of scheduling for tasks

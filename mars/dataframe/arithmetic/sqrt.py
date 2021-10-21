@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameSqrt(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.SQRT
-    _func_name = 'sqrt'
+    _func_name = "sqrt"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorSqrt
+
         return TensorSqrt

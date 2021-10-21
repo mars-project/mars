@@ -31,35 +31,61 @@ from ._proxima import build_proxima_index, proxima_query, METRIC_TO_PROXIMA_METR
 from ._kneighbors_graph import KNeighborsGraph
 
 
-VALID_METRICS = dict(ball_tree=SklearnBallTree.valid_metrics,
-                     kd_tree=SklearnKDTree.valid_metrics,
-                     # The following list comes from the
-                     # sklearn.metrics.pairwise doc string
-                     brute=(list(PAIRWISE_DISTANCE_FUNCTIONS.keys()) +
-                            ['braycurtis', 'canberra', 'chebyshev',
-                             'correlation', 'cosine', 'dice', 'hamming',
-                             'jaccard', 'kulsinski', 'mahalanobis',
-                             'matching', 'minkowski', 'rogerstanimoto',
-                             'russellrao', 'seuclidean', 'sokalmichener',
-                             'sokalsneath', 'sqeuclidean',
-                             'yule', 'wminkowski']),
-                     faiss=list(METRIC_TO_FAISS_METRIC_TYPE),
-                     proxima=list(METRIC_TO_PROXIMA_METRIC_TYPE))
+VALID_METRICS = dict(
+    ball_tree=SklearnBallTree.valid_metrics,
+    kd_tree=SklearnKDTree.valid_metrics,
+    # The following list comes from the
+    # sklearn.metrics.pairwise doc string
+    brute=(
+        list(PAIRWISE_DISTANCE_FUNCTIONS.keys())
+        + [
+            "braycurtis",
+            "canberra",
+            "chebyshev",
+            "correlation",
+            "cosine",
+            "dice",
+            "hamming",
+            "jaccard",
+            "kulsinski",
+            "mahalanobis",
+            "matching",
+            "minkowski",
+            "rogerstanimoto",
+            "russellrao",
+            "seuclidean",
+            "sokalmichener",
+            "sokalsneath",
+            "sqeuclidean",
+            "yule",
+            "wminkowski",
+        ]
+    ),
+    faiss=list(METRIC_TO_FAISS_METRIC_TYPE),
+    proxima=list(METRIC_TO_PROXIMA_METRIC_TYPE),
+)
 
 
-VALID_METRICS_SPARSE = dict(ball_tree=[],
-                            kd_tree=[],
-                            brute=(PAIRWISE_DISTANCE_FUNCTIONS.keys() -
-                                   {'haversine'}))
+VALID_METRICS_SPARSE = dict(
+    ball_tree=[], kd_tree=[], brute=(PAIRWISE_DISTANCE_FUNCTIONS.keys() - {"haversine"})
+)
 
 
 class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
     """Base class for nearest neighbors estimators."""
 
     @abstractmethod
-    def __init__(self, n_neighbors=None, radius=None,
-                 algorithm='auto', leaf_size=30, metric='minkowski',
-                 p=2, metric_params=None, n_jobs=None):
+    def __init__(
+        self,
+        n_neighbors=None,
+        radius=None,
+        algorithm="auto",
+        leaf_size=30,
+        metric="minkowski",
+        p=2,
+        metric_params=None,
+        n_jobs=None,
+    ):
 
         self.n_neighbors = n_neighbors
         self.radius = radius
@@ -72,42 +98,54 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
         self._check_algorithm_metric()
 
     def _check_algorithm_metric(self):
-        if self.algorithm not in ['auto', 'brute', 'kd_tree', 'ball_tree', 'faiss', 'proxima']:
+        if self.algorithm not in [
+            "auto",
+            "brute",
+            "kd_tree",
+            "ball_tree",
+            "faiss",
+            "proxima",
+        ]:
             raise ValueError(f"unrecognized algorithm: '{self.algorithm}'")
 
-        if self.algorithm == 'auto':
-            if self.metric == 'precomputed':
-                alg_check = 'brute'
-            elif (callable(self.metric) or
-                  self.metric in VALID_METRICS['ball_tree']):
-                alg_check = 'ball_tree'
+        if self.algorithm == "auto":
+            if self.metric == "precomputed":
+                alg_check = "brute"
+            elif callable(self.metric) or self.metric in VALID_METRICS["ball_tree"]:
+                alg_check = "ball_tree"
             else:
-                alg_check = 'brute'
+                alg_check = "brute"
         else:
             alg_check = self.algorithm
 
         if callable(self.metric):
-            if self.algorithm == 'kd_tree':
+            if self.algorithm == "kd_tree":
                 # callable metric is only valid for brute force and ball_tree
                 raise ValueError(
                     "kd_tree algorithm does not support callable metric '%s'"
-                    % self.metric)
+                    % self.metric
+                )
         elif self.metric not in VALID_METRICS[alg_check]:
-            raise ValueError("Metric '%s' not valid. Use "
-                             "sorted(sklearn.neighbors.VALID_METRICS['%s']) "
-                             "to get valid options. "
-                             "Metric can also be a callable function."
-                             % (self.metric, alg_check))
+            raise ValueError(
+                "Metric '%s' not valid. Use "
+                "sorted(sklearn.neighbors.VALID_METRICS['%s']) "
+                "to get valid options. "
+                "Metric can also be a callable function." % (self.metric, alg_check)
+            )
 
-        if self.metric_params is not None and 'p' in self.metric_params:
-            warnings.warn("Parameter p is found in metric_params. "
-                          "The corresponding parameter from __init__ "
-                          "is ignored.", SyntaxWarning, stacklevel=3)
-            effective_p = self.metric_params['p']
+        if self.metric_params is not None and "p" in self.metric_params:
+            warnings.warn(
+                "Parameter p is found in metric_params. "
+                "The corresponding parameter from __init__ "
+                "is ignored.",
+                SyntaxWarning,
+                stacklevel=3,
+            )
+            effective_p = self.metric_params["p"]
         else:
             effective_p = self.p
 
-        if self.metric in ['wminkowski', 'minkowski'] and effective_p < 1:
+        if self.metric in ["wminkowski", "minkowski"] and effective_p < 1:
             raise ValueError("p must be greater than one for minkowski metric")
 
     def _fit(self, X, session=None, run_kwargs=None):
@@ -117,25 +155,24 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
         else:
             self.effective_metric_params_ = self.metric_params.copy()
 
-        effective_p = self.effective_metric_params_.get('p', self.p)
-        if self.metric in ['wminkowski', 'minkowski']:
-            self.effective_metric_params_['p'] = effective_p
+        effective_p = self.effective_metric_params_.get("p", self.p)
+        if self.metric in ["wminkowski", "minkowski"]:
+            self.effective_metric_params_["p"] = effective_p
 
         self.effective_metric_ = self.metric
         # For minkowski distance, use more efficient methods where available
-        if self.metric == 'minkowski':
-            p = self.effective_metric_params_.pop('p', 2)
+        if self.metric == "minkowski":
+            p = self.effective_metric_params_.pop("p", 2)
             if p < 1:  # pragma: no cover
-                raise ValueError("p must be greater than one "
-                                 "for minkowski metric")
+                raise ValueError("p must be greater than one " "for minkowski metric")
             elif p == 1:
-                self.effective_metric_ = 'manhattan'
+                self.effective_metric_ = "manhattan"
             elif p == 2:
-                self.effective_metric_ = 'euclidean'
+                self.effective_metric_ = "euclidean"
             elif p == np.inf:
-                self.effective_metric_ = 'chebyshev'
+                self.effective_metric_ = "chebyshev"
             else:
-                self.effective_metric_params_['p'] = p
+                self.effective_metric_params_["p"] = p
 
         if isinstance(X, NeighborsBase):
             self._fit_X = X._fit_X
@@ -146,13 +183,13 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
         elif isinstance(X, SklearnBallTree):
             self._fit_X = mt.tensor(X.data)
             self._tree = X
-            self._fit_method = 'ball_tree'
+            self._fit_method = "ball_tree"
             return self
 
         elif isinstance(X, SklearnKDTree):
             self._fit_X = mt.tensor(X.data)
             self._tree = X
-            self._fit_method = 'kd_tree'
+            self._fit_method = "kd_tree"
             return self
 
         X = check_array(X, accept_sparse=True)
@@ -162,74 +199,85 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
             X.execute(session=session, **(run_kwargs or dict()))
 
         if X.issparse():
-            if self.algorithm not in ('auto', 'brute'):
-                warnings.warn("cannot use tree with sparse input: "
-                              "using brute force")
-            if self.effective_metric_ not in VALID_METRICS_SPARSE['brute'] \
-                    and not callable(self.effective_metric_):
-                raise ValueError("Metric '%s' not valid for sparse input. "
-                                 "Use sorted(sklearn.neighbors."
-                                 "VALID_METRICS_SPARSE['brute']) "
-                                 "to get valid options. "
-                                 "Metric can also be a callable function."
-                                 % (self.effective_metric_))
+            if self.algorithm not in ("auto", "brute"):
+                warnings.warn("cannot use tree with sparse input: " "using brute force")
+            if self.effective_metric_ not in VALID_METRICS_SPARSE[
+                "brute"
+            ] and not callable(self.effective_metric_):
+                raise ValueError(
+                    "Metric '%s' not valid for sparse input. "
+                    "Use sorted(sklearn.neighbors."
+                    "VALID_METRICS_SPARSE['brute']) "
+                    "to get valid options. "
+                    "Metric can also be a callable function." % (self.effective_metric_)
+                )
             self._fit_X = X.copy()
             self._tree = None
-            self._fit_method = 'brute'
+            self._fit_method = "brute"
             return self
 
         self._fit_method = self.algorithm
         self._fit_X = X
 
-        if self._fit_method == 'auto':
+        if self._fit_method == "auto":
             # A tree approach is better for small number of neighbors,
             # and KDTree is generally faster when available
-            if ((self.n_neighbors is None or
-                 self.n_neighbors < self._fit_X.shape[0] // 2) and
-                    self.metric != 'precomputed'):
-                if self.effective_metric_ in VALID_METRICS['kd_tree']:
-                    self._fit_method = 'kd_tree'
-                elif (callable(self.effective_metric_) or
-                      self.effective_metric_ in VALID_METRICS['ball_tree']):
-                    self._fit_method = 'ball_tree'
+            if (
+                self.n_neighbors is None or self.n_neighbors < self._fit_X.shape[0] // 2
+            ) and self.metric != "precomputed":
+                if self.effective_metric_ in VALID_METRICS["kd_tree"]:
+                    self._fit_method = "kd_tree"
+                elif (
+                    callable(self.effective_metric_)
+                    or self.effective_metric_ in VALID_METRICS["ball_tree"]
+                ):
+                    self._fit_method = "ball_tree"
                 else:
-                    self._fit_method = 'brute'
+                    self._fit_method = "brute"
             else:
-                self._fit_method = 'brute'
+                self._fit_method = "brute"
 
-        if self._fit_method == 'ball_tree':
-            self._tree = tree = create_ball_tree(X, self.leaf_size,
-                                                 metric=self.effective_metric_,
-                                                 **self.effective_metric_params_)
+        if self._fit_method == "ball_tree":
+            self._tree = tree = create_ball_tree(
+                X,
+                self.leaf_size,
+                metric=self.effective_metric_,
+                **self.effective_metric_params_,
+            )
             tree.execute(session=session, **(run_kwargs or dict()))
-        elif self._fit_method == 'kd_tree':
-            self._tree = tree = create_kd_tree(X, self.leaf_size,
-                                               metric=self.effective_metric_,
-                                               **self.effective_metric_params_)
+        elif self._fit_method == "kd_tree":
+            self._tree = tree = create_kd_tree(
+                X,
+                self.leaf_size,
+                metric=self.effective_metric_,
+                **self.effective_metric_params_,
+            )
             tree.execute(session=session, **(run_kwargs or dict()))
-        elif self._fit_method == 'brute':
+        elif self._fit_method == "brute":
             self._tree = None
-        elif self._fit_method == 'faiss':
-            faiss_index = build_faiss_index(X, metric=self.effective_metric_,
-                                            **self.effective_metric_params_)
+        elif self._fit_method == "faiss":
+            faiss_index = build_faiss_index(
+                X, metric=self.effective_metric_, **self.effective_metric_params_
+            )
             faiss_index.execute(session=session, **(run_kwargs or dict()))
             self._faiss_index = faiss_index
-        elif self._fit_method == 'proxima':  # pragma: no cover
+        elif self._fit_method == "proxima":  # pragma: no cover
             proxima_metric = METRIC_TO_PROXIMA_METRIC_TYPE[self.effective_metric_]
-            proxima_index = build_proxima_index(X, distance_metric=proxima_metric,
-                                                topk=self.n_neighbors,
-                                                session=session, run_kwargs=run_kwargs,
-                                                **self.effective_metric_params_)
+            proxima_index = build_proxima_index(
+                X,
+                distance_metric=proxima_metric,
+                topk=self.n_neighbors,
+                session=session,
+                run_kwargs=run_kwargs,
+                **self.effective_metric_params_,
+            )
             self._proxima_index = proxima_index
         else:  # pragma: no cover
-            raise ValueError("algorithm = '%s' not recognized"
-                             % self.algorithm)
+            raise ValueError("algorithm = '%s' not recognized" % self.algorithm)
 
         if self.n_neighbors is not None:
             if self.n_neighbors <= 0:
-                raise ValueError(
-                    f"Expected n_neighbors > 0. Got {self.n_neighbors}"
-                )
+                raise ValueError(f"Expected n_neighbors > 0. Got {self.n_neighbors}")
             else:
                 if not np.issubdtype(type(self.n_neighbors), np.integer):
                     raise TypeError(
@@ -243,8 +291,15 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
 class KNeighborsMixin:
     """Mixin for k-neighbors searches"""
 
-    def kneighbors(self, X=None, n_neighbors=None, return_distance=True,
-                   session=None, run_kwargs=None, **kw):
+    def kneighbors(
+        self,
+        X=None,
+        n_neighbors=None,
+        return_distance=True,
+        session=None,
+        run_kwargs=None,
+        **kw,
+    ):
         """Finds the K-neighbors of a point.
         Returns indices of and distances to the neighbors of each point.
 
@@ -301,9 +356,7 @@ class KNeighborsMixin:
         if n_neighbors is None:
             n_neighbors = self.n_neighbors
         elif n_neighbors <= 0:
-            raise ValueError(
-                f"Expected n_neighbors > 0. Got {n_neighbors}"
-            )
+            raise ValueError(f"Expected n_neighbors > 0. Got {n_neighbors}")
         else:
             if not np.issubdtype(type(n_neighbors), np.integer):
                 raise TypeError(
@@ -336,41 +389,53 @@ class KNeighborsMixin:
         n_samples, _ = X.shape
         sample_range = mt.arange(n_samples)[:, None]
 
-        if self._fit_method == 'brute':
+        if self._fit_method == "brute":
             # for efficiency, use squared euclidean distances
-            kwds = ({'squared': True} if self.effective_metric_ == 'euclidean'
-                    else self.effective_metric_params_)
+            kwds = (
+                {"squared": True}
+                if self.effective_metric_ == "euclidean"
+                else self.effective_metric_params_
+            )
 
-            neigh_dist, neigh_ind = pairwise_distances_topk(X, self._fit_X, k=n_neighbors,
-                                                            metric=self.effective_metric_,
-                                                            **kwds)
+            neigh_dist, neigh_ind = pairwise_distances_topk(
+                X, self._fit_X, k=n_neighbors, metric=self.effective_metric_, **kwds
+            )
             if return_distance:
-                if self.effective_metric_ == 'euclidean':
+                if self.effective_metric_ == "euclidean":
                     result = mt.sqrt(neigh_dist), neigh_ind
                 else:
                     result = neigh_dist, neigh_ind
             else:
                 result = neigh_ind
-        elif self._fit_method in ['ball_tree', 'kd_tree']:
+        elif self._fit_method in ["ball_tree", "kd_tree"]:
             if X.issparse():
                 raise ValueError(
                     f"{self._fit_method} does not work with sparse matrices. "
-                    "Densify the data, or set algorithm='brute'")
+                    "Densify the data, or set algorithm='brute'"
+                )
 
-            query = ball_tree_query if self._fit_method == 'ball_tree' else kd_tree_query
+            query = (
+                ball_tree_query if self._fit_method == "ball_tree" else kd_tree_query
+            )
             result = query(self._tree, X, n_neighbors, return_distance)
-        elif self._fit_method == 'faiss':
+        elif self._fit_method == "faiss":
             if X.issparse():
                 raise ValueError(
                     f"{self._fit_method} does not work with sparse matrices. "
-                    "Densify the data, or set algorithm='brute'")
-            result = faiss_query(self._faiss_index, X, n_neighbors, return_distance, **kw)
-        elif self._fit_method == 'proxima':  # pragma: no cover
+                    "Densify the data, or set algorithm='brute'"
+                )
+            result = faiss_query(
+                self._faiss_index, X, n_neighbors, return_distance, **kw
+            )
+        elif self._fit_method == "proxima":  # pragma: no cover
             if X.issparse():
                 raise ValueError(
                     f"{self._fit_method} does not work with sparse matrices. "
-                    "Densify the data, or set algorithm='brute'")
-            ind, dis = proxima_query(X, n_neighbors, index=self._proxima_index, run=False, **kw)
+                    "Densify the data, or set algorithm='brute'"
+                )
+            ind, dis = proxima_query(
+                X, n_neighbors, index=self._proxima_index, run=False, **kw
+            )
             if not return_distance:
                 result = ind
             else:
@@ -402,19 +467,27 @@ class KNeighborsMixin:
             sample_mask[:, 0] = mt.where(dup_gr_nbrs, False, sample_mask[:, 0])
 
             neigh_ind = reshape_unchecked(
-                neigh_ind[sample_mask], (n_samples, n_neighbors - 1))
+                neigh_ind[sample_mask], (n_samples, n_neighbors - 1)
+            )
 
             if return_distance:
                 dist = reshape_unchecked(
-                    dist[sample_mask], (n_samples, n_neighbors - 1))
+                    dist[sample_mask], (n_samples, n_neighbors - 1)
+                )
                 ret = mt.ExecutableTuple([dist, neigh_ind])
                 ret.execute(session=session, **(run_kwargs or dict()))
                 return ret
             neigh_ind.execute(session=session, **(run_kwargs or dict()))
             return neigh_ind
 
-    def kneighbors_graph(self, X=None, n_neighbors=None,
-                         mode='connectivity', session=None, run_kwargs=None):
+    def kneighbors_graph(
+        self,
+        X=None,
+        n_neighbors=None,
+        mode="connectivity",
+        session=None,
+        run_kwargs=None,
+    ):
         """Computes the (weighted) graph of k-Neighbors for points in X
 
         Parameters
@@ -457,7 +530,7 @@ class KNeighborsMixin:
         --------
         NearestNeighbors.radius_neighbors_graph
         """
-        check_is_fitted(self, ['_fit_method', '_fit_X'], all_or_any=any)
+        check_is_fitted(self, ["_fit_method", "_fit_X"], all_or_any=any)
         if n_neighbors is None:
             n_neighbors = self.n_neighbors
 
@@ -470,20 +543,22 @@ class KNeighborsMixin:
 
         n_samples2 = self._fit_X.shape[0]
 
-        if mode == 'connectivity':
+        if mode == "connectivity":
             A_data = None
             A_ind = self.kneighbors(X, n_neighbors, return_distance=False)
 
-        elif mode == 'distance':
-            A_data, A_ind = self.kneighbors(
-                X, n_neighbors, return_distance=True)
+        elif mode == "distance":
+            A_data, A_ind = self.kneighbors(X, n_neighbors, return_distance=True)
 
         else:
-            raise ValueError('Unsupported mode, must be one of "connectivity" '
-                             f'or "distance" but got {mode} instead')
+            raise ValueError(
+                'Unsupported mode, must be one of "connectivity" '
+                f'or "distance" but got {mode} instead'
+            )
 
-        op = KNeighborsGraph(a_data=A_data, a_ind=A_ind, n_neighbors=n_neighbors,
-                             sparse=True)
+        op = KNeighborsGraph(
+            a_data=A_data, a_ind=A_ind, n_neighbors=n_neighbors, sparse=True
+        )
         graph = op(A_data, A_ind, shape=(n_samples1, n_samples2))
         graph.execute(session=session, **(run_kwargs or dict()))
         return graph

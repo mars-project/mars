@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameArccos(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.ARCCOS
-    _func_name = 'arccos'
+    _func_name = "arccos"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorArccos
+
         return TensorArccos

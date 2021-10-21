@@ -30,8 +30,8 @@ from .core import SFQR, TSQR
 class TensorQR(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.QR
 
-    _input = KeyField('input')
-    _method = StringField('method')
+    _input = KeyField("input")
+    _method = StringField("method")
 
     def __init__(self, method=None, **kw):
         super().__init__(_method=method, **kw)
@@ -52,18 +52,31 @@ class TensorQR(TensorHasInput, TensorOperandMixin):
         a = astensor(a)
 
         if a.ndim != 2:
-            raise LinAlgError(f'{a.ndim}-dimensional tensor given. '
-                              'Tensor must be two-dimensional')
+            raise LinAlgError(
+                f"{a.ndim}-dimensional tensor given. " "Tensor must be two-dimensional"
+            )
 
         tiny_q, tiny_r = np.linalg.qr(np.ones((1, 1), dtype=a.dtype))
 
         x, y = a.shape
         q_shape, r_shape = (a.shape, (y, y)) if x > y else ((x, x), a.shape)
-        q, r = self.new_tensors([a],
-                                kws=[{'side': 'q', 'dtype': tiny_q.dtype,
-                                      'shape': q_shape, 'order': TensorOrder.C_ORDER},
-                                     {'side': 'r', 'dtype': tiny_r.dtype,
-                                      'shape': r_shape, 'order': TensorOrder.C_ORDER}])
+        q, r = self.new_tensors(
+            [a],
+            kws=[
+                {
+                    "side": "q",
+                    "dtype": tiny_q.dtype,
+                    "shape": q_shape,
+                    "order": TensorOrder.C_ORDER,
+                },
+                {
+                    "side": "r",
+                    "dtype": tiny_r.dtype,
+                    "shape": r_shape,
+                    "order": TensorOrder.C_ORDER,
+                },
+            ],
+        )
         return ExecutableTuple([q, r])
 
     @classmethod
@@ -75,31 +88,45 @@ class TensorQR(TensorHasInput, TensorOperandMixin):
         if in_tensor.chunk_shape == (1, 1):
             in_chunk = in_tensor.chunks[0]
             chunk_op = op.copy().reset_key()
-            qr_chunks = chunk_op.new_chunks([in_chunk], kws=[
-                {'side': 'q', 'shape': q_shape, 'index': in_chunk.index},
-                {'side': 'r', 'shape': r_shape, 'index': in_chunk.index}
-            ])
+            qr_chunks = chunk_op.new_chunks(
+                [in_chunk],
+                kws=[
+                    {"side": "q", "shape": q_shape, "index": in_chunk.index},
+                    {"side": "r", "shape": r_shape, "index": in_chunk.index},
+                ],
+            )
             q_chunk, r_chunk = qr_chunks
 
             new_op = op.copy()
             kws = [
-                {'chunks': [q_chunk], 'nsplits': ((q_shape[0],), (q_shape[1],)),
-                 'dtype': q_dtype, 'shape': q_shape, 'order': q.order},
-                {'chunks': [r_chunk], 'nsplits': ((r_shape[0],), (r_shape[1],)),
-                 'dtype': r_dtype, 'shape': r_shape, 'order': r.order}
+                {
+                    "chunks": [q_chunk],
+                    "nsplits": ((q_shape[0],), (q_shape[1],)),
+                    "dtype": q_dtype,
+                    "shape": q_shape,
+                    "order": q.order,
+                },
+                {
+                    "chunks": [r_chunk],
+                    "nsplits": ((r_shape[0],), (r_shape[1],)),
+                    "dtype": r_dtype,
+                    "shape": r_shape,
+                    "order": r.order,
+                },
             ]
             return new_op.new_tensors(op.inputs, kws=kws)
-        elif op.method == 'tsqr':
+        elif op.method == "tsqr":
             return (yield from TSQR.tile(op))
-        elif op.method == 'sfqr':
+        elif op.method == "sfqr":
             return (yield from SFQR.tile(op))
         else:
-            raise NotImplementedError('Only tsqr method supported for now')
+            raise NotImplementedError("Only tsqr method supported for now")
 
     @classmethod
     def execute(cls, ctx, op):
         (a,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             q, r = xp.linalg.qr(a)
@@ -108,7 +135,7 @@ class TensorQR(TensorHasInput, TensorOperandMixin):
             ctx[rc.key] = r
 
 
-def qr(a, method='tsqr'):
+def qr(a, method="tsqr"):
     """
     Compute the qr factorization of a matrix.
 

@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameArcsin(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.ARCSIN
-    _func_name = 'arcsin'
+    _func_name = "arcsin"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorArcsin
+
         return TensorArcsin

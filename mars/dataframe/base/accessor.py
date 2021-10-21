@@ -42,6 +42,7 @@ class StringAccessor:
     0    AStrSeries
     dtype: object
     """
+
     def __init__(self, series):
         self._series = series
 
@@ -49,15 +50,16 @@ class StringAccessor:
     def _gen_func(cls, method):
         @wraps(getattr(pd.Series.str, method))
         def _inner(self, *args, **kwargs):
-            op = SeriesStringMethod(method=method, method_args=args,
-                                    method_kwargs=kwargs)
+            op = SeriesStringMethod(
+                method=method, method_args=args, method_kwargs=kwargs
+            )
             return op(self._series)
 
         _inner.__doc__ = adapt_mars_docstring(getattr(pd.Series.str, method).__doc__)
         return _inner
 
     def __getitem__(self, item):
-        return self._gen_func('__getitem__')(self, item)
+        return self._gen_func("__getitem__")(self, item)
 
     def __dir__(self) -> Iterable[str]:
         s = set(super().__dir__())
@@ -200,14 +202,15 @@ class StringAccessor:
              0    1    2
         0    1    1    2
         """
-        return self._gen_func('split')(self, pat=pat, n=n, expand=expand)
+        return self._gen_func("split")(self, pat=pat, n=n, expand=expand)
 
     def rsplit(self, pat=None, n=-1, expand=False):
-        return self._gen_func('rsplit')(self, pat=pat, n=n, expand=expand)
+        return self._gen_func("rsplit")(self, pat=pat, n=n, expand=expand)
 
-    def cat(self, others=None, sep=None, na_rep=None, join='left'):
-        return self._gen_func('cat')(self, others=others, sep=sep,
-                                     na_rep=na_rep, join=join)
+    def cat(self, others=None, sep=None, na_rep=None, join="left"):
+        return self._gen_func("cat")(
+            self, others=others, sep=sep, na_rep=na_rep, join=join
+        )
 
     rsplit.__doc__ = adapt_mars_docstring(pd.Series.str.rsplit.__doc__)
     cat.__doc__ = adapt_mars_docstring(pd.Series.str.cat.__doc__)
@@ -221,10 +224,12 @@ class DatetimeAccessor:
     def _gen_func(cls, method, is_property):
         @wraps(getattr(pd.Series.dt, method))
         def _inner(self, *args, **kwargs):
-            op = SeriesDatetimeMethod(method=method,
-                                      is_property=is_property,
-                                      method_args=args,
-                                      method_kwargs=kwargs)
+            op = SeriesDatetimeMethod(
+                method=method,
+                is_property=is_property,
+                method_args=args,
+                method_kwargs=kwargs,
+            )
             return op(self._series)
 
         _inner.__doc__ = adapt_mars_docstring(getattr(pd.Series.dt, method).__doc__)

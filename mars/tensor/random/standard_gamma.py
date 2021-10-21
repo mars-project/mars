@@ -23,12 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorStandardGamma(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_shape']
+    _input_fields_ = ["_shape"]
     _op_type_ = OperandDef.RAND_STANDARD_GAMMMA
 
-    _fields_ = '_shape', '_size'
-    _shape = AnyField('shape')
-    _func_name = 'standard_gamma'
+    _fields_ = "_shape", "_size"
+    _shape = AnyField("shape")
+    _func_name = "standard_gamma"
 
     @property
     def shape(self):
@@ -42,7 +42,9 @@ class TensorStandardGamma(TensorDistribution, TensorRandomOperandMixin):
         return self.new_tensor([shape], None, raw_chunk_size=chunk_size)
 
 
-def standard_gamma(random_state, shape, size=None, chunk_size=None, gpu=None, dtype=None):
+def standard_gamma(
+    random_state, shape, size=None, chunk_size=None, gpu=None, dtype=None
+):
     r"""
     Draw samples from a standard Gamma distribution.
 
@@ -117,8 +119,9 @@ def standard_gamma(random_state, shape, size=None, chunk_size=None, gpu=None, dt
     >>> plt.show()
     """
     if dtype is None:
-        dtype = np.random.RandomState().standard_gamma(
-            handle_array(shape), size=(0,)).dtype
+        dtype = (
+            np.random.RandomState().standard_gamma(handle_array(shape), size=(0,)).dtype
+        )
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorStandardGamma(size=size, seed=seed, gpu=gpu, dtype=dtype)

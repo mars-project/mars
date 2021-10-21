@@ -16,13 +16,38 @@ from ...core.operand import OperandStage
 from .topk import _validate_topk_arguments, TensorTopk
 
 
-def argtopk(a, k, axis=-1, largest=True, sorted=True, order=None,
-            parallel_kind='auto', psrs_kinds=None):
-    a, k, axis, largest, sorted, order, parallel_kind, psrs_kinds = \
-        _validate_topk_arguments(a, k, axis, largest, sorted, order,
-                                 parallel_kind, psrs_kinds)
-    op = TensorTopk(k=k, axis=axis, largest=largest, sorted=sorted,
-                    parallel_kind=parallel_kind, psrs_kinds=psrs_kinds,
-                    dtype=a.dtype, return_value=False, return_indices=True,
-                    stage=OperandStage.agg)
+def argtopk(
+    a,
+    k,
+    axis=-1,
+    largest=True,
+    sorted=True,
+    order=None,
+    parallel_kind="auto",
+    psrs_kinds=None,
+):
+    (
+        a,
+        k,
+        axis,
+        largest,
+        sorted,
+        order,
+        parallel_kind,
+        psrs_kinds,
+    ) = _validate_topk_arguments(
+        a, k, axis, largest, sorted, order, parallel_kind, psrs_kinds
+    )
+    op = TensorTopk(
+        k=k,
+        axis=axis,
+        largest=largest,
+        sorted=sorted,
+        parallel_kind=parallel_kind,
+        psrs_kinds=psrs_kinds,
+        dtype=a.dtype,
+        return_value=False,
+        return_indices=True,
+        stage=OperandStage.agg,
+    )
     return op(a)

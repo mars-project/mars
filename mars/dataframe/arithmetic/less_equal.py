@@ -21,8 +21,8 @@ from .docstring import bin_compare_doc
 class DataFrameLessEqual(DataFrameBinopUfunc):
     _op_type_ = OperandDef.LE
 
-    _func_name = 'le'
-    _rfunc_name = 'ge'
+    _func_name = "le"
+    _rfunc_name = "ge"
 
     @classproperty
     def _operator(self):
@@ -31,6 +31,7 @@ class DataFrameLessEqual(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorLessEqual
+
         return TensorLessEqual
 
 
@@ -46,7 +47,7 @@ dtype: bool
 """
 
 
-@bin_compare_doc('Less than or equal to', equiv='<=', series_example=_le_example)
-def le(df, other, axis='columns', level=None):
+@bin_compare_doc("Less than or equal to", equiv="<=", series_example=_le_example)
+def le(df, other, axis="columns", level=None):
     op = DataFrameLessEqual(axis=axis, level=level, lhs=df, rhs=other)
     return op(df, other)

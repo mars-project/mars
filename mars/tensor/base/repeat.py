@@ -34,9 +34,9 @@ from .ravel import ravel
 class TensorRepeat(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.REPEAT
 
-    _input = KeyField('input')
-    _repeats = AnyField('repeats')
-    _axis = Int32Field('axis')
+    _input = KeyField("input")
+    _repeats = AnyField("repeats")
+    _axis = Int32Field("axis")
 
     def __init__(self, axis=None, dtype=None, sparse=False, **kw):
         super().__init__(_axis=axis, _dtype=dtype, _sparse=sparse, **kw)
@@ -77,12 +77,12 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
                 size = np.nan
             if not isinstance(repeats, Integral):
                 if repeats.ndim != 1:
-                    raise ValueError('repeats should be 1-d tensor')
-                broadcast_shape(repeats.shape, a.shape[ax: ax + 1])
+                    raise ValueError("repeats should be 1-d tensor")
+                broadcast_shape(repeats.shape, a.shape[ax : ax + 1])
         else:
             size = a.shape[axis or 0] * repeats
 
-        shape = a.shape[:ax] + (size,) + a.shape[ax + 1:]
+        shape = a.shape[:ax] + (size,) + a.shape[ax + 1 :]
         self.dtype = a.dtype
         self.sparse = a.issparse()
 
@@ -119,8 +119,7 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
                 if split % s != 0:
                     new_nsplit.append(split % s)
 
-            a = yield from recursive_tile(
-                a.rechunk({ax: new_nsplit}))
+            a = yield from recursive_tile(a.rechunk({ax: new_nsplit}))
 
         out_chunks = []
         ax_cum_count = np.cumsum((0,) + a.nsplits[ax])
@@ -131,10 +130,12 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
             if is_repeats_ndarray:
                 start = ax_cum_count[ax_idx]
                 stop = ax_cum_count[ax_idx + 1]
-                rp = repeats[start: stop]
+                rp = repeats[start:stop]
                 size = int(rp.sum())
             elif not isinstance(repeats, Integral):
-                rp = repeats.cix[ax_idx, ]
+                rp = repeats.cix[
+                    ax_idx,
+                ]
                 size = np.nan
             else:
                 rp = repeats
@@ -144,26 +145,34 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
             if isinstance(rp, TENSOR_CHUNK_TYPE):
                 chunk_inputs.append(rp)
 
-            chunk_shape = in_chunk.shape[:ax] + (size,) + in_chunk.shape[ax + 1:]
+            chunk_shape = in_chunk.shape[:ax] + (size,) + in_chunk.shape[ax + 1 :]
             chunk_op = op.copy().reset_key()
             if len(chunk_inputs) < 2:
                 # repeats is not chunk
                 chunk_op._repeats = rp
-            out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk_shape,
-                                           index=out_idx, order=out.order)
+            out_chunk = chunk_op.new_chunk(
+                chunk_inputs, shape=chunk_shape, index=out_idx, order=out.order
+            )
             out_chunks.append(out_chunk)
 
-        nsplits = [tuple(c.shape[i] for c in out_chunks
-                         if all(idx == 0 for j, idx in enumerate(c.index) if j != i))
-                   for i in range(len(out_chunks[0].shape))]
+        nsplits = [
+            tuple(
+                c.shape[i]
+                for c in out_chunks
+                if all(idx == 0 for j, idx in enumerate(c.index) if j != i)
+            )
+            for i in range(len(out_chunks[0].shape))
+        ]
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, out.shape, order=out.order,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            op.inputs, out.shape, order=out.order, chunks=out_chunks, nsplits=nsplits
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         a = inputs[0]
         if len(inputs) > 1:

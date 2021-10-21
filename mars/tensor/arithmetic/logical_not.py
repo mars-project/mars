@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorNot(TensorUnaryOp):
     _op_type_ = OperandDef.NOT
-    _func_name = 'logical_not'
+    _func_name = "logical_not"
 
 
 @infer_dtype(np.logical_not)

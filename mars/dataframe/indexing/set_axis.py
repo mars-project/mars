@@ -26,9 +26,9 @@ from ..utils import parse_index, validate_axis
 class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
     _op_code_ = opcodes.DATAFRAME_SET_AXIS
 
-    _input = KeyField('input')
-    _axis = Int8Field('axis')
-    _value = AnyField('value')
+    _input = KeyField("input")
+    _axis = Int8Field("axis")
+    _value = AnyField("value")
 
     def __init__(self, value=None, axis=None, **kw):
         super().__init__(_value=value, _axis=axis, **kw)
@@ -54,23 +54,35 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
     def __call__(self, df_or_series):
         new_size = self.value.shape[0]
         expect_size = df_or_series.axes[self.axis].shape[0]
-        if not np.isnan(new_size) and not np.isnan(expect_size) \
-                and new_size != expect_size:
+        if (
+            not np.isnan(new_size)
+            and not np.isnan(expect_size)
+            and new_size != expect_size
+        ):
             raise ValueError(
-                f'Length mismatch: Expected axis has {expect_size} elements, '
-                f'new values have {new_size} elements'
+                f"Length mismatch: Expected axis has {expect_size} elements, "
+                f"new values have {new_size} elements"
             )
 
         params = df_or_series.params
         if self.axis == 0:
-            params['index_value'] = parse_index(self.value) \
-                if isinstance(self.value, pd.Index) else self.value.index_value
+            params["index_value"] = (
+                parse_index(self.value)
+                if isinstance(self.value, pd.Index)
+                else self.value.index_value
+            )
         else:
-            params['columns_value'] = parse_index(self.value, store_data=True) \
-                if isinstance(self.value, pd.Index) else self.value.index_value
-            pd_columns = self.value.index_value.to_pandas() \
-                if isinstance(self.value, ENTITY_TYPE) else self.value
-            params['dtypes'] = params['dtypes'].set_axis(pd_columns)
+            params["columns_value"] = (
+                parse_index(self.value, store_data=True)
+                if isinstance(self.value, pd.Index)
+                else self.value.index_value
+            )
+            pd_columns = (
+                self.value.index_value.to_pandas()
+                if isinstance(self.value, ENTITY_TYPE)
+                else self.value
+            )
+            params["dtypes"] = params["dtypes"].set_axis(pd_columns)
 
         self._output_types = get_output_types(df_or_series)
         inputs = [df_or_series]
@@ -79,7 +91,7 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
         return self.new_tileable(inputs, **params)
 
     @classmethod
-    def tile(cls, op: 'DataFrameSetAxis'):
+    def tile(cls, op: "DataFrameSetAxis"):
         output = op.outputs[0]
         input_tileables = [op.input]
 
@@ -94,13 +106,14 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
 
         if op.input.shape[op.axis] != value.shape[0]:
             raise ValueError(
-                f'Length mismatch: Expected axis has {value.shape[0]} elements, '
-                f'new values have {op.input.shape[op.axis]} elements'
+                f"Length mismatch: Expected axis has {value.shape[0]} elements, "
+                f"new values have {op.input.shape[op.axis]} elements"
             )
 
         if isinstance(value, ENTITY_TYPE):
             value = yield from recursive_tile(
-                value.rechunk({0: op.input.nsplits[op.axis]}))
+                value.rechunk({0: op.input.nsplits[op.axis]})
+            )
             input_tileables[-1] = value
 
         slices = np.array((0,) + op.input.nsplits[op.axis]).cumsum()
@@ -118,24 +131,26 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
                 value_data = value.chunks[value_index]
                 input_chunks.append(value_data)
             else:
-                value_data = value[slice_left[value_index]:slice_right[value_index]]
+                value_data = value[slice_left[value_index] : slice_right[value_index]]
 
             if param_cache[value_index] is None:
                 cached_params = param_cache[value_index] = dict()
                 if isinstance(value, ENTITY_TYPE):
                     if op.axis == 0:
-                        cached_params['index_value'] = value_data.index_value
+                        cached_params["index_value"] = value_data.index_value
                     else:
-                        cached_params['columns_value'] = value_data.index_value
-                        cached_params['dtypes'] = output.dtypes.iloc[
-                            slice_left[value_index]:slice_right[value_index]
+                        cached_params["columns_value"] = value_data.index_value
+                        cached_params["dtypes"] = output.dtypes.iloc[
+                            slice_left[value_index] : slice_right[value_index]
                         ]
                 else:
                     if op.axis == 0:
-                        cached_params['index_value'] = parse_index(value_data)
+                        cached_params["index_value"] = parse_index(value_data)
                     else:
-                        cached_params['columns_value'] = parse_index(value_data, store_data=True)
-                        cached_params['dtypes'] = params['dtypes'].set_axis(value_data)
+                        cached_params["columns_value"] = parse_index(
+                            value_data, store_data=True
+                        )
+                        cached_params["dtypes"] = params["dtypes"].set_axis(value_data)
 
             params.update(param_cache[value_index])
 
@@ -144,13 +159,13 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
             chunks.append(new_op.new_chunk(input_chunks, **params))
 
         params = op.outputs[0].params
-        params['chunks'] = chunks
-        params['nsplits'] = op.input.nsplits
+        params["chunks"] = chunks
+        params["nsplits"] = op.input.nsplits
         new_op = op.copy().reset_key()
         return new_op.new_tileables(input_tileables, **params)
 
     @classmethod
-    def execute(cls, ctx, op: 'DataFrameSetAxis'):
+    def execute(cls, ctx, op: "DataFrameSetAxis"):
         in_data = ctx[op.input.key]
         value = op.value
         if isinstance(value, ENTITY_TYPE):

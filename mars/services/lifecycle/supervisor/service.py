@@ -26,11 +26,15 @@ class LifecycleSupervisorService(AbstractService):
 
     async def create_session(self, session_id: str):
         await mo.create_actor(
-            LifecycleTrackerActor, session_id, address=self._address,
-            uid=LifecycleTrackerActor.gen_uid(session_id))
+            LifecycleTrackerActor,
+            session_id,
+            address=self._address,
+            uid=LifecycleTrackerActor.gen_uid(session_id),
+        )
 
     async def destroy_session(self, session_id: str):
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=LifecycleTrackerActor.gen_uid(session_id),
-            address=self._address)
+        await mo.destroy_actor(
+            mo.create_actor_ref(
+                uid=LifecycleTrackerActor.gen_uid(session_id), address=self._address
+            )
         )

@@ -31,24 +31,28 @@ from .base import Channel, ChannelType, Server, Client
 from .core import register_client, register_server
 from .utils import read_buffers, write_buffers
 
-_is_windows: bool = sys.platform.startswith('win')
+_is_windows: bool = sys.platform.startswith("win")
 
 
 class SocketChannel(Channel):
-    __slots__ = 'reader', 'writer', '_channel_type', '_send_lock', '_recv_lock'
+    __slots__ = "reader", "writer", "_channel_type", "_send_lock", "_recv_lock"
 
-    name = 'socket'
+    name = "socket"
 
-    def __init__(self,
-                 reader: StreamReader,
-                 writer: StreamWriter,
-                 local_address: str = None,
-                 dest_address: str = None,
-                 compression: int = None,
-                 channel_type: ChannelType = None):
-        super().__init__(local_address=local_address,
-                         dest_address=dest_address,
-                         compression=compression)
+    def __init__(
+        self,
+        reader: StreamReader,
+        writer: StreamWriter,
+        local_address: str = None,
+        dest_address: str = None,
+        compression: int = None,
+        channel_type: ChannelType = None,
+    ):
+        super().__init__(
+            local_address=local_address,
+            dest_address=dest_address,
+            compression=compression,
+        )
         self.reader = reader
         self.writer = writer
         self._channel_type = channel_type
@@ -98,12 +102,14 @@ class SocketChannel(Channel):
 
 
 class _BaseSocketServer(Server, metaclass=ABCMeta):
-    __slots__ = '_aio_server', '_channels'
+    __slots__ = "_aio_server", "_channels"
 
-    def __init__(self,
-                 address: str,
-                 aio_server: AbstractServer,
-                 channel_handler: Callable[[Channel], Coroutine] = None):
+    def __init__(
+        self,
+        address: str,
+        aio_server: AbstractServer,
+        channel_handler: Callable[[Channel], Coroutine] = None,
+    ):
         super().__init__(address, channel_handler)
         # asyncio.Server
         self._aio_server = aio_server
@@ -127,15 +133,20 @@ class _BaseSocketServer(Server, metaclass=ABCMeta):
     @implements(Server.on_connected)
     async def on_connected(self, *args, **kwargs):
         reader, writer = args
-        local_address = kwargs.pop('local_address', None)
-        dest_address = kwargs.pop('dest_address', None)
+        local_address = kwargs.pop("local_address", None)
+        dest_address = kwargs.pop("dest_address", None)
         if kwargs:  # pragma: no cover
-            raise TypeError(f'{type(self).__name__} got unexpected '
-                            f'arguments: {",".join(kwargs)}')
-        channel = SocketChannel(reader, writer,
-                                local_address=local_address,
-                                dest_address=dest_address,
-                                channel_type=self.channel_type)
+            raise TypeError(
+                f"{type(self).__name__} got unexpected "
+                f'arguments: {",".join(kwargs)}'
+            )
+        channel = SocketChannel(
+            reader,
+            writer,
+            local_address=local_address,
+            dest_address=dest_address,
+            channel_type=self.channel_type,
+        )
         self._channels.append(channel)
         # handle over channel to some handlers
         await self.channel_handler(channel)
@@ -146,8 +157,8 @@ class _BaseSocketServer(Server, metaclass=ABCMeta):
         await self._aio_server.wait_closed()
         # close all channels
         await asyncio.gather(
-            *(channel.close() for channel in self._channels
-              if not channel.closed))
+            *(channel.close() for channel in self._channels if not channel.closed)
+        )
 
     @property
     @implements(Server.stopped)
@@ -157,18 +168,19 @@ class _BaseSocketServer(Server, metaclass=ABCMeta):
 
 @register_server
 class SocketServer(_BaseSocketServer):
-    __slots__ = 'host', 'port'
+    __slots__ = "host", "port"
 
     scheme = None
 
-    def __init__(self,
-                 host: str,
-                 port: int,
-                 aio_server: AbstractServer,
-                 channel_handler: Callable[[Channel], Coroutine] = None):
-        address = f'{host}:{port}'
-        super().__init__(address, aio_server,
-                         channel_handler=channel_handler)
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        aio_server: AbstractServer,
+        channel_handler: Callable[[Channel], Coroutine] = None,
+    ):
+        address = f"{host}:{port}"
+        super().__init__(address, aio_server, channel_handler=channel_handler)
         self.host = host
         self.port = port
 
@@ -186,31 +198,32 @@ class SocketServer(_BaseSocketServer):
     @implements(Server.create)
     async def create(config: Dict) -> "Server":
         config = config.copy()
-        if 'address' in config:
-            address = config.pop('address')
-            host, port = address.split(':', 1)
+        if "address" in config:
+            address = config.pop("address")
+            host, port = address.split(":", 1)
             port = int(port)
         else:
-            host = config.pop('host')
-            port = int(config.pop('port'))
-        handle_channel = config.pop('handle_channel')
-        if 'start_serving' not in config:
-            config['start_serving'] = False
+            host = config.pop("host")
+            port = int(config.pop("port"))
+        handle_channel = config.pop("handle_channel")
+        if "start_serving" not in config:
+            config["start_serving"] = False
 
         async def handle_connection(reader, writer):
             # create a channel when client connected
-            return await server.on_connected(reader, writer,
-                                             local_address=server.address)
+            return await server.on_connected(
+                reader, writer, local_address=server.address
+            )
 
         aio_server = await asyncio.start_server(
-            handle_connection, host=host, port=port, **config)
+            handle_connection, host=host, port=port, **config
+        )
 
         if _is_windows:
             for sock in aio_server.sockets:
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
 
-        server = SocketServer(host, port, aio_server,
-                              channel_handler=handle_channel)
+        server = SocketServer(host, port, aio_server, channel_handler=handle_channel)
         return server
 
 
@@ -222,16 +235,15 @@ class SocketClient(Client):
 
     @staticmethod
     @implements(Client.connect)
-    async def connect(dest_address: str,
-                      local_address: str = None,
-                      **kwargs) -> "Client":
-        host, port = dest_address.split(':', 1)
+    async def connect(
+        dest_address: str, local_address: str = None, **kwargs
+    ) -> "Client":
+        host, port = dest_address.split(":", 1)
         port = int(port)
-        (reader, writer) = await asyncio.open_connection(
-            host=host, port=port, **kwargs)
-        channel = SocketChannel(reader, writer,
-                                local_address=local_address,
-                                dest_address=dest_address)
+        (reader, writer) = await asyncio.open_connection(host=host, port=port, **kwargs)
+        channel = SocketChannel(
+            reader, writer, local_address=local_address, dest_address=dest_address
+        )
         return SocketClient(local_address, dest_address, channel)
 
 
@@ -240,24 +252,26 @@ TEMPDIR = tempfile.gettempdir()
 
 @lru_cache(100)
 def _gen_unix_socket_default_path(process_index):
-    return f'{TEMPDIR}/mars/' \
-           f'{md5(to_binary(str(process_index))).hexdigest()}'  # nosec
+    return (
+        f"{TEMPDIR}/mars/" f"{md5(to_binary(str(process_index))).hexdigest()}"
+    )  # nosec
 
 
 @register_server
 class UnixSocketServer(_BaseSocketServer):
-    __slots__ = 'process_index', 'path'
+    __slots__ = "process_index", "path"
 
-    scheme = 'unixsocket'
+    scheme = "unixsocket"
 
-    def __init__(self,
-                 process_index: int,
-                 aio_server: AbstractServer,
-                 path: str,
-                 channel_handler: Callable[[Channel], Coroutine] = None):
-        address = f'{self.scheme}:///{process_index}'
-        super().__init__(address, aio_server,
-                         channel_handler=channel_handler)
+    def __init__(
+        self,
+        process_index: int,
+        aio_server: AbstractServer,
+        path: str,
+        channel_handler: Callable[[Channel], Coroutine] = None,
+    ):
+        address = f"{self.scheme}:///{process_index}"
+        super().__init__(address, aio_server, channel_handler=channel_handler)
         self.process_index = process_index
         self.path = path
 
@@ -275,33 +289,36 @@ class UnixSocketServer(_BaseSocketServer):
     @implements(Server.create)
     async def create(config: Dict) -> "Server":
         config = config.copy()
-        if 'address' in config:
-            process_index = int(urlparse(config.pop('address')).path.lstrip('/'))
+        if "address" in config:
+            process_index = int(urlparse(config.pop("address")).path.lstrip("/"))
         else:
-            process_index = config.pop('process_index')
-        handle_channel = config.pop('handle_channel')
-        path = config.pop('path', _gen_unix_socket_default_path(process_index))
+            process_index = config.pop("process_index")
+        handle_channel = config.pop("handle_channel")
+        path = config.pop("path", _gen_unix_socket_default_path(process_index))
 
         dirname = os.path.dirname(path)
         if not os.path.exists(dirname):
             os.makedirs(dirname, exist_ok=True)
 
-        if 'start_serving' not in config:
-            config['start_serving'] = False
+        if "start_serving" not in config:
+            config["start_serving"] = False
 
         async def handle_connection(reader, writer):
             # create a channel when client connected
-            return await server.on_connected(reader, writer,
-                                             local_address=server.address)
+            return await server.on_connected(
+                reader, writer, local_address=server.address
+            )
 
         aio_server = await asyncio.start_unix_server(
-            handle_connection, path=path, **config)
+            handle_connection, path=path, **config
+        )
 
         for sock in aio_server.sockets:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
 
-        server = UnixSocketServer(process_index, aio_server, path,
-                                  channel_handler=handle_channel)
+        server = UnixSocketServer(
+            process_index, aio_server, path, channel_handler=handle_channel
+        )
         return server
 
     @implements(Server.stop)
@@ -322,22 +339,22 @@ class UnixSocketClient(Client):
     @staticmethod
     @lru_cache(100)
     def _get_process_index(addr):
-        return int(urlparse(addr).path.lstrip('/'))
+        return int(urlparse(addr).path.lstrip("/"))
 
     @staticmethod
     @implements(Client.connect)
-    async def connect(dest_address: str,
-                      local_address: str = None,
-                      **kwargs) -> "Client":
+    async def connect(
+        dest_address: str, local_address: str = None, **kwargs
+    ) -> "Client":
         process_index = UnixSocketClient._get_process_index(dest_address)
-        path = kwargs.pop('path',
-                          _gen_unix_socket_default_path(process_index))
+        path = kwargs.pop("path", _gen_unix_socket_default_path(process_index))
         try:
             (reader, writer) = await asyncio.open_unix_connection(path, **kwargs)
         except FileNotFoundError:
-            raise ConnectionRefusedError('Cannot connect unix socket '
-                                         'due to file not exists')
-        channel = SocketChannel(reader, writer,
-                                local_address=local_address,
-                                dest_address=dest_address)
+            raise ConnectionRefusedError(
+                "Cannot connect unix socket " "due to file not exists"
+            )
+        channel = SocketChannel(
+            reader, writer, local_address=local_address, dest_address=dest_address
+        )
         return UnixSocketClient(local_address, dest_address, channel)

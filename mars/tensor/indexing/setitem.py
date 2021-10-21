@@ -26,8 +26,12 @@ from ...serialization.serializables import KeyField, TupleField, AnyField, BoolF
 from ...tensor import tensor as astensor
 from ...utils import has_unknown_shape
 from ..core import TENSOR_TYPE, TensorOrder
-from ..operands import TensorHasInput, TensorMapReduceOperand, \
-    TensorOperandMixin, TensorShuffleProxy
+from ..operands import (
+    TensorHasInput,
+    TensorMapReduceOperand,
+    TensorOperandMixin,
+    TensorShuffleProxy,
+)
 from ..utils import filter_inputs
 from .core import process_index
 
@@ -35,21 +39,23 @@ from .core import process_index
 class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.INDEXSETVALUE
 
-    _input = KeyField('input')
-    indexes = TupleField('indexes')
-    value = AnyField('value')
-    is_fancy_index = BoolField('is_fancy_index')
+    _input = KeyField("input")
+    indexes = TupleField("indexes")
+    value = AnyField("value")
+    is_fancy_index = BoolField("is_fancy_index")
 
     def __init__(self, indexes=None, value=None, is_fancy_index=None, **kw):
-        super().__init__(indexes=indexes, value=value,
-                         is_fancy_index=is_fancy_index,
-                         **kw)
+        super().__init__(
+            indexes=indexes, value=value, is_fancy_index=is_fancy_index, **kw
+        )
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
-        new_indexes = [next(inputs_iter) if isinstance(index, ENTITY_TYPE) else index
-                       for index in self.indexes]
+        new_indexes = [
+            next(inputs_iter) if isinstance(index, ENTITY_TYPE) else index
+            for index in self.indexes
+        ]
         self.indexes = tuple(new_indexes)
         if isinstance(self.value, ENTITY_TYPE):
             self.value = next(inputs_iter)
@@ -88,42 +94,64 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
             fancy_indexes = yield from unify_chunks(*fancy_indexes)
             value = [value] * len(fancy_indexes[0].chunks)
         input_nsplits = inp.nsplits
-        shuffle_axes = tuple(axis for axis, ind in enumerate(indexes)
-                             if isinstance(ind, ENTITY_TYPE))
+        shuffle_axes = tuple(
+            axis for axis, ind in enumerate(indexes) if isinstance(ind, ENTITY_TYPE)
+        )
 
         map_chunks = []
         for value_chunk, *index_chunks in zip(
-                value, *[index.chunks for index in fancy_indexes]):
+            value, *[index.chunks for index in fancy_indexes]
+        ):
             map_op = TensorIndexSetValueShuffle(
-                stage=OperandStage.map, input_nsplits=input_nsplits,
-                value=value_chunk, indexes=tuple(index_chunks),
-                shuffle_axes=shuffle_axes, dtype=tensor.dtype)
+                stage=OperandStage.map,
+                input_nsplits=input_nsplits,
+                value=value_chunk,
+                indexes=tuple(index_chunks),
+                shuffle_axes=shuffle_axes,
+                dtype=tensor.dtype,
+            )
             inputs = filter_inputs([value_chunk] + list(index_chunks))
-            map_chunk = map_op.new_chunk(inputs, shape=(np.nan,),
-                                         index=index_chunks[0].index,
-                                         order=TensorOrder.C_ORDER)
+            map_chunk = map_op.new_chunk(
+                inputs,
+                shape=(np.nan,),
+                index=index_chunks[0].index,
+                order=TensorOrder.C_ORDER,
+            )
             map_chunks.append(map_chunk)
 
         proxy_chunk = TensorShuffleProxy(dtype=tensor.dtype).new_chunk(
-            map_chunks, shape=(), order=TensorOrder.C_ORDER)
+            map_chunks, shape=(), order=TensorOrder.C_ORDER
+        )
 
         reducer_chunks = []
         offsets_on_axis = [np.cumsum([0] + list(split)) for split in input_nsplits]
         for input_chunk in inp.chunks:
-            chunk_offsets = tuple(offsets_on_axis[axis][input_chunk.index[axis]]
-                                  for axis in range(len(inp.shape)))
+            chunk_offsets = tuple(
+                offsets_on_axis[axis][input_chunk.index[axis]]
+                for axis in range(len(inp.shape))
+            )
             reducer_op = TensorIndexSetValueShuffle(
-                stage=OperandStage.reduce, dtype=input_chunk.dtype,
-                shuffle_axes=shuffle_axes, chunk_offsets=chunk_offsets)
-            reducer_chunk = reducer_op.new_chunk([input_chunk, proxy_chunk],
-                                                 index=input_chunk.index,
-                                                 shape=input_chunk.shape,
-                                                 order=input_chunk.order)
+                stage=OperandStage.reduce,
+                dtype=input_chunk.dtype,
+                shuffle_axes=shuffle_axes,
+                chunk_offsets=chunk_offsets,
+            )
+            reducer_chunk = reducer_op.new_chunk(
+                [input_chunk, proxy_chunk],
+                index=input_chunk.index,
+                shape=input_chunk.shape,
+                order=input_chunk.order,
+            )
             reducer_chunks.append(reducer_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
-                                  chunks=reducer_chunks, nsplits=op.input.nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            tensor.shape,
+            order=tensor.order,
+            chunks=reducer_chunks,
+            nsplits=op.input.nsplits,
+        )
 
     @classmethod
     def _tile(cls, op: "TensorIndexSetValue"):
@@ -133,7 +161,8 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         tensor = op.outputs[0]
         value = op.value
         indexed = yield from recursive_tile(
-            _getitem_nocheck(op.input, op.indexes, convert_bool_to_fancy=False))
+            _getitem_nocheck(op.input, op.indexes, convert_bool_to_fancy=False)
+        )
         is_value_tensor = isinstance(value, TENSOR_TYPE)
 
         if is_value_tensor and value.ndim > 0:
@@ -141,7 +170,8 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
                 yield indexed.chunks + [indexed]
 
             value = yield from recursive_tile(
-                broadcast_to(value, indexed.shape).astype(op.input.dtype, copy=False))
+                broadcast_to(value, indexed.shape).astype(op.input.dtype, copy=False)
+            )
             nsplits = indexed.nsplits
             value = yield from recursive_tile(value.rechunk(nsplits))
 
@@ -161,17 +191,28 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
             else:
                 # non tensor
                 value_chunk = value
-            chunk_op = TensorIndexSetValue(dtype=op.dtype, sparse=op.sparse,
-                                           indexes=tuple(index_chunk.op.indexes),
-                                           value=value_chunk)
-            chunk_inputs = filter_inputs([chunk] + index_chunk.op.indexes + [value_chunk])
-            out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape,
-                                           index=chunk.index, order=tensor.order)
+            chunk_op = TensorIndexSetValue(
+                dtype=op.dtype,
+                sparse=op.sparse,
+                indexes=tuple(index_chunk.op.indexes),
+                value=value_chunk,
+            )
+            chunk_inputs = filter_inputs(
+                [chunk] + index_chunk.op.indexes + [value_chunk]
+            )
+            out_chunk = chunk_op.new_chunk(
+                chunk_inputs, shape=chunk.shape, index=chunk.index, order=tensor.order
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
-                                  chunks=out_chunks, nsplits=op.input.nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            tensor.shape,
+            order=tensor.order,
+            chunks=out_chunks,
+            nsplits=op.input.nsplits,
+        )
 
     @classmethod
     def tile(cls, op: "TensorIndexSetValue"):
@@ -182,11 +223,12 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        indexes = [ctx[index.key] if hasattr(index, 'key') else index
-                   for index in op.indexes]
+        indexes = [
+            ctx[index.key] if hasattr(index, "key") else index for index in op.indexes
+        ]
         input_ = ctx[op.inputs[0].key].copy()
-        value = ctx[op.value.key] if hasattr(op.value, 'key') else op.value
-        if hasattr(input_, 'flags') and not input_.flags.writeable:
+        value = ctx[op.value.key] if hasattr(op.value, "key") else op.value
+        if hasattr(input_, "flags") and not input_.flags.writeable:
             input_.setflags(write=True)
         input_[tuple(indexes)] = value
         ctx[op.outputs[0].key] = input_
@@ -195,18 +237,29 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
 class TensorIndexSetValueShuffle(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.INDEXSETVALUESHUFFLE
 
-    indexes = TupleField('indexes')
-    value = AnyField('value')
-    input_nsplits = TupleField('input_nsplits')
-    chunk_offsets = TupleField('chunk_offsets')
-    shuffle_axes = TupleField('shuffle_axes')
+    indexes = TupleField("indexes")
+    value = AnyField("value")
+    input_nsplits = TupleField("input_nsplits")
+    chunk_offsets = TupleField("chunk_offsets")
+    shuffle_axes = TupleField("shuffle_axes")
 
-    def __init__(self, indexes=None, value=None, input_nsplits=None,
-                 chunk_offsets=None, shuffle_axes=None, **kw):
-        super().__init__(indexes=indexes, value=value,
-                         input_nsplits=input_nsplits,
-                         chunk_offsets=chunk_offsets,
-                         shuffle_axes=shuffle_axes, **kw)
+    def __init__(
+        self,
+        indexes=None,
+        value=None,
+        input_nsplits=None,
+        chunk_offsets=None,
+        shuffle_axes=None,
+        **kw,
+    ):
+        super().__init__(
+            indexes=indexes,
+            value=value,
+            input_nsplits=input_nsplits,
+            chunk_offsets=chunk_offsets,
+            shuffle_axes=shuffle_axes,
+            **kw,
+        )
 
     @classmethod
     def execute(cls, ctx, op):
@@ -220,7 +273,7 @@ class TensorIndexSetValueShuffle(TensorMapReduceOperand, TensorOperandMixin):
         nsplits = op.input_nsplits
         shuffle_axes = op.shuffle_axes
         all_inputs = [ctx[inp.key] for inp in op.inputs]
-        if hasattr(op.value, 'key'):
+        if hasattr(op.value, "key"):
             value = ctx[op.value.key]
             indexes = all_inputs[1:]
         else:
@@ -229,7 +282,8 @@ class TensorIndexSetValueShuffle(TensorMapReduceOperand, TensorOperandMixin):
 
         offsets_on_axis = [np.cumsum([0] + list(split)) for split in nsplits]
         for reducer_index in itertools.product(
-                *(map(range, [len(s) for s in nsplits]))):
+            *(map(range, [len(s) for s in nsplits]))
+        ):
             chunk_filters = []
             indexes_iter = iter(indexes)
             for axis, _ in enumerate(reducer_index):
@@ -240,12 +294,14 @@ class TensorIndexSetValueShuffle(TensorMapReduceOperand, TensorOperandMixin):
                     filtered = (index_on_axis >= start) & (index_on_axis < end)
                     chunk_filters.append(filtered)
             combined_filter = functools.reduce(operator.and_, chunk_filters)
-            if hasattr(op.value, 'key'):
-                ctx[op.outputs[0].key, reducer_index] = tuple(inp[combined_filter]
-                                                              for inp in all_inputs)
+            if hasattr(op.value, "key"):
+                ctx[op.outputs[0].key, reducer_index] = tuple(
+                    inp[combined_filter] for inp in all_inputs
+                )
             else:
-                ctx[op.outputs[0].key, reducer_index] = tuple([value] + [inp[combined_filter]
-                                                              for inp in all_inputs])
+                ctx[op.outputs[0].key, reducer_index] = tuple(
+                    [value] + [inp[combined_filter] for inp in all_inputs]
+                )
 
     @classmethod
     def _execute_reduce(cls, ctx, op):
@@ -264,8 +320,15 @@ class TensorIndexSetValueShuffle(TensorMapReduceOperand, TensorOperandMixin):
 
 
 def _check_support(indexes):
-    if all((isinstance(ix, (TENSOR_TYPE, np.ndarray)) and ix.dtype != np.bool_
-           or isinstance(ix, slice) and ix == slice(None)) for ix in indexes):
+    if all(
+        (
+            isinstance(ix, (TENSOR_TYPE, np.ndarray))
+            and ix.dtype != np.bool_
+            or isinstance(ix, slice)
+            and ix == slice(None)
+        )
+        for ix in indexes
+    ):
         if any(isinstance(ix, (TENSOR_TYPE, np.ndarray)) for ix in indexes):
             return True
     for index in indexes:
@@ -274,8 +337,10 @@ def _check_support(indexes):
         elif isinstance(index, (np.ndarray, TENSOR_TYPE)) and index.dtype == np.bool_:
             pass
         else:  # pragma: no cover
-            raise NotImplementedError('Only slice, int, or bool indexing '
-                                      f'supported by now, got {type(index)}')
+            raise NotImplementedError(
+                "Only slice, int, or bool indexing "
+                f"supported by now, got {type(index)}"
+            )
     return False
 
 
@@ -287,13 +352,16 @@ def _setitem(a, item, value):
 
     is_fancy_index = _check_support(index)
     if is_fancy_index:
-        index = [astensor(ind) if isinstance(ind, np.ndarray) else ind
-                 for ind in index]
+        index = [astensor(ind) if isinstance(ind, np.ndarray) else ind for ind in index]
 
     # __setitem__ on a view should be still a view, see GH #732.
-    op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(),
-                             is_fancy_index=is_fancy_index,
-                             indexes=tuple(index), value=value,
-                             create_view=a.op.create_view)
+    op = TensorIndexSetValue(
+        dtype=a.dtype,
+        sparse=a.issparse(),
+        is_fancy_index=is_fancy_index,
+        indexes=tuple(index),
+        value=value,
+        create_view=a.op.create_view,
+    )
     ret = op(a, index, value)
     a.data = ret.data

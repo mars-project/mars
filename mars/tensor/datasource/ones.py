@@ -29,10 +29,10 @@ from .array import tensor
 class TensorOnes(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_ONES
 
-    _order = StringField('order')
+    _order = StringField("order")
 
     def __init__(self, dtype=None, order=None, **kw):
-        dtype = np.dtype(dtype or 'f8')
+        dtype = np.dtype(dtype or "f8")
         super().__init__(dtype=dtype, _order=order, **kw)
 
     @property
@@ -43,14 +43,15 @@ class TensorOnes(TensorNoInput):
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         try:
-            ctx[chunk.key] = create_array(op)('ones', chunk.shape,
-                                              dtype=op.dtype, order=op.order)
+            ctx[chunk.key] = create_array(op)(
+                "ones", chunk.shape, dtype=op.dtype, order=op.order
+            )
         except TypeError:  # in case that cp.ones does not have arg ``order``
-            x = create_array(op)('ones', chunk.shape, dtype=op.dtype)
+            x = create_array(op)("ones", chunk.shape, dtype=op.dtype)
             ctx[chunk.key] = convert_order(x, op.order)
 
 
-def ones(shape, dtype=None, chunk_size=None, gpu=False, order='C'):
+def ones(shape, dtype=None, chunk_size=None, gpu=False, order="C"):
     """
     Return a new tensor of given shape and type, filled with ones.
 
@@ -99,8 +100,12 @@ def ones(shape, dtype=None, chunk_size=None, gpu=False, order='C'):
            [ 1.,  1.]])
 
     """
-    tensor_order = get_order(order, None, available_options='CF',
-                             err_msg="only 'C' or 'F' order is permitted")
+    tensor_order = get_order(
+        order,
+        None,
+        available_options="CF",
+        err_msg="only 'C' or 'F' order is permitted",
+    )
     op = TensorOnes(dtype=dtype, gpu=gpu, order=order)
     return op(shape, chunk_size=chunk_size, order=tensor_order)
 
@@ -108,7 +113,7 @@ def ones(shape, dtype=None, chunk_size=None, gpu=False, order='C'):
 class TensorOnesLike(TensorLike):
     _op_type_ = OperandDef.TENSOR_ONES_LIKE
 
-    _input = KeyField('input')
+    _input = KeyField("input")
 
     def __init__(self, dtype=None, sparse=False, **kw):
         dtype = np.dtype(dtype) if dtype is not None else None
@@ -120,10 +125,16 @@ class TensorOnesLike(TensorLike):
         in_data = naked(ctx[op.input.key])
         xps = get_sparse_module(in_data)
         xp = get_array_module(in_data)
-        ctx[chunk.key] = SparseNDArray(xps.csr_matrix(
-            (xp.ones_like(in_data.data, dtype=chunk.op.dtype),
-             in_data.indices, in_data.indptr), shape=in_data.shape
-        ))
+        ctx[chunk.key] = SparseNDArray(
+            xps.csr_matrix(
+                (
+                    xp.ones_like(in_data.data, dtype=chunk.op.dtype),
+                    in_data.indices,
+                    in_data.indptr,
+                ),
+                shape=in_data.shape,
+            )
+        )
 
     @classmethod
     def execute(cls, ctx, op):
@@ -131,10 +142,11 @@ class TensorOnesLike(TensorLike):
             cls.execute_sparse(ctx, op)
         else:
             ctx[op.outputs[0].key] = create_array(op)(
-                'ones_like', ctx[op.inputs[0].key], dtype=op.dtype)
+                "ones_like", ctx[op.inputs[0].key], dtype=op.dtype
+            )
 
 
-def ones_like(a, dtype=None, gpu=None, order='K'):
+def ones_like(a, dtype=None, gpu=None, order="K"):
     """
     Return a tensor of ones with the same shape and type as a given tensor.
 

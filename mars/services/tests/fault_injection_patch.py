@@ -33,8 +33,9 @@ from ..tests.fault_injection_manager import (
 @patch_cls(SubtaskExecutionActor)
 class FaultInjectedSubtaskExecutionActor(SubtaskExecutionActor):
     @alru_cache(cache_exceptions=False)
-    async def _get_fault_injection_manager_ref(self, supervisor_address: str, session_id: str, name: str) \
-            -> Union[mo.ActorRef, AbstractFaultInjectionManager]:
+    async def _get_fault_injection_manager_ref(
+        self, supervisor_address: str, session_id: str, name: str
+    ) -> Union[mo.ActorRef, AbstractFaultInjectionManager]:
         session_api = await self._get_session_api(supervisor_address)
         return await session_api.get_remote_object(session_id, name)
 
@@ -47,13 +48,18 @@ class FaultInjectedSubtaskExecutionActor(SubtaskExecutionActor):
         # fault injection
         if subtask.extra_config:
             fault_injection_manager_name = subtask.extra_config.get(
-                    ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME)
+                ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME
+            )
             if fault_injection_manager_name is not None:
                 subtask_info = self._subtask_info[subtask.subtask_id]
                 fault_injection_manager = await self._get_fault_injection_manager_ref(
-                        subtask_info.supervisor_address, subtask.session_id, fault_injection_manager_name)
+                    subtask_info.supervisor_address,
+                    subtask.session_id,
+                    fault_injection_manager_name,
+                )
                 fault = await fault_injection_manager.get_fault(
-                        FaultPosition.ON_RUN_SUBTASK, {'subtask': subtask})
+                    FaultPosition.ON_RUN_SUBTASK, {"subtask": subtask}
+                )
                 handle_fault(fault)
         return super().internal_run_subtask(subtask, band_name)
 
@@ -62,23 +68,28 @@ class FaultInjectedSubtaskExecutionActor(SubtaskExecutionActor):
 class FaultInjectionSubtaskProcessor(SubtaskProcessor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._fault_injection_manager_ref: Union[mo.ActorRef, AbstractFaultInjectionManager] = None
+        self._fault_injection_manager_ref: Union[
+            mo.ActorRef, AbstractFaultInjectionManager
+        ] = None
 
     async def run(self):
         if self.subtask.extra_config:
             fault_injection_manager_name = self.subtask.extra_config.get(
-                ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME)
+                ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME
+            )
             if fault_injection_manager_name is not None:
-                self._fault_injection_manager_ref = await self._session_api.get_remote_object(
-                        self._session_id,
-                        fault_injection_manager_name)
+                self._fault_injection_manager_ref = (
+                    await self._session_api.get_remote_object(
+                        self._session_id, fault_injection_manager_name
+                    )
+                )
         return await super().run()
 
-    async def _async_execute_operand(self,
-                                     ctx: Dict[str, Any],
-                                     op: OperandType):
+    async def _async_execute_operand(self, ctx: Dict[str, Any], op: OperandType):
         if self._fault_injection_manager_ref is not None:
             fault = await self._fault_injection_manager_ref.get_fault(
-                FaultPosition.ON_EXECUTE_OPERAND, {'subtask': self.subtask, 'operand': op})
+                FaultPosition.ON_EXECUTE_OPERAND,
+                {"subtask": self.subtask, "operand": op},
+            )
             handle_fault(fault)
         return await super()._async_execute_operand(ctx, op)

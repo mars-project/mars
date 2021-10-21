@@ -28,15 +28,18 @@ from ..array_utils import create_array
 class TensorLinspace(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_LINSPACE
 
-    _start = AnyField('start')
-    _stop = AnyField('stop')
-    _num = Int64Field('num')
-    _endpoint = BoolField('endpoint')
+    _start = AnyField("start")
+    _stop = AnyField("stop")
+    _num = Int64Field("num")
+    _endpoint = BoolField("endpoint")
 
-    def __init__(self, start=None, stop=None, num=None, endpoint=None, dtype=None, **kw):
+    def __init__(
+        self, start=None, stop=None, num=None, endpoint=None, dtype=None, **kw
+    ):
         dtype = np.dtype(np.linspace(0, 1, 1).dtype if dtype is None else dtype)
-        super().__init__(_start=start, _stop=stop, _num=num, _endpoint=endpoint,
-                         dtype=dtype, **kw)
+        super().__init__(
+            _start=start, _stop=stop, _num=num, _endpoint=endpoint, dtype=dtype, **kw
+        )
 
     def to_chunk_op(self, *args):
         start, stop, num, endpoint = args
@@ -52,10 +55,16 @@ class TensorLinspace(TensorNoInput):
         tensor = op.outputs[0]
 
         chunk_length = tensor.extra_params.raw_chunk_size or options.chunk_size
-        chunk_length = decide_chunk_sizes(tensor.shape, chunk_length, tensor.dtype.itemsize)
+        chunk_length = decide_chunk_sizes(
+            tensor.shape, chunk_length, tensor.dtype.itemsize
+        )
 
-        start, stop, num, endpoint = \
-            tensor.op.start, tensor.op.stop, tensor.op.num, tensor.op.endpoint
+        start, stop, num, endpoint = (
+            tensor.op.start,
+            tensor.op.stop,
+            tensor.op.num,
+            tensor.op.endpoint,
+        )
         if num > 1:
             step = float(stop - start) / (num if not endpoint else num - 1)
         else:
@@ -75,8 +84,9 @@ class TensorLinspace(TensorNoInput):
             chunk_start = chunk_start + cs * step
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=chunks,
-                                  nsplits=(tuple(nsplit),))
+        return new_op.new_tensors(
+            op.inputs, op.outputs[0].shape, chunks=chunks, nsplits=(tuple(nsplit),)
+        )
 
     @property
     def start(self):
@@ -97,12 +107,25 @@ class TensorLinspace(TensorNoInput):
     @classmethod
     def execute(cls, ctx, op):
         ctx[op.outputs[0].key] = create_array(op)(
-            'linspace', op.start, op.stop, num=op.num,
-            endpoint=op.endpoint, dtype=op.dtype)
+            "linspace",
+            op.start,
+            op.stop,
+            num=op.num,
+            endpoint=op.endpoint,
+            dtype=op.dtype,
+        )
 
 
-def linspace(start, stop, num=50, endpoint=True, retstep=False,
-             dtype=None, gpu=False, chunk_size=None):
+def linspace(
+    start,
+    stop,
+    num=50,
+    endpoint=True,
+    retstep=False,
+    dtype=None,
+    gpu=False,
+    chunk_size=None,
+):
     """
     Return evenly spaced numbers over a specified interval.
 

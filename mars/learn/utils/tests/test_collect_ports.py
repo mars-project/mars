@@ -17,7 +17,8 @@ from ..collect_ports import collect_ports
 
 def test_collect_ports(setup_cluster):
     session = setup_cluster
-    workers = [pool.external_address for pool
-               in session._session.client._cluster._worker_pools]
+    workers = [
+        pool.external_address for pool in session._session.client._cluster._worker_pools
+    ]
     # make sure assert works inside execution of collect ports
     collect_ports(workers * 2).execute(session=session)

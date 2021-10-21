@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorArctanh(TensorUnaryOp):
     _op_type_ = OperandDef.ARCTANH
-    _func_name = 'arctanh'
+    _func_name = "arctanh"
 
 
 @infer_dtype(np.arctanh)

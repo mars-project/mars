@@ -23,28 +23,42 @@ from .core import TensorReduction, TensorArgReductionMixin
 
 class TensorArgmax(TensorReduction, TensorArgReductionMixin):
     _op_type_ = OperandDef.ARGMAX
-    _func_name = 'argmax'
-    _agg_func_name = 'max'
+    _func_name = "argmax"
+    _agg_func_name = "max"
 
-    _offset = AnyField('offset')
-    _total_shape = TupleField('total_shape')
+    _offset = AnyField("offset")
+    _total_shape = TupleField("total_shape")
 
-    def __init__(self, axis=None, dtype=None, combine_size=None,
-                 offset=None, total_shape=None, stage=None, **kw):
+    def __init__(
+        self,
+        axis=None,
+        dtype=None,
+        combine_size=None,
+        offset=None,
+        total_shape=None,
+        stage=None,
+        **kw
+    ):
         if dtype is None:
             dtype = np.dtype(int)
         stage = self._rewrite_stage(stage)
-        super().__init__(_axis=axis, _combine_size=combine_size,
-                         _offset=offset, _total_shape=total_shape,
-                         dtype=dtype, stage=stage, **kw)
+        super().__init__(
+            _axis=axis,
+            _combine_size=combine_size,
+            _offset=offset,
+            _total_shape=total_shape,
+            dtype=dtype,
+            stage=stage,
+            **kw
+        )
 
     @property
     def offset(self):
-        return getattr(self, '_offset', None)
+        return getattr(self, "_offset", None)
 
     @property
     def total_shape(self):
-        return getattr(self, '_total_shape', None)
+        return getattr(self, "_total_shape", None)
 
 
 def argmax(a, axis=None, out=None, combine_size=None):

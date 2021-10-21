@@ -16,14 +16,13 @@ import scipy.special as spspecial
 
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
-from .core import TensorSpecialUnaryOp, TensorSpecialBinOp, \
-    _register_special_op
+from .core import TensorSpecialUnaryOp, TensorSpecialBinOp, _register_special_op
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorEntr(TensorSpecialUnaryOp):
-    _func_name = 'entr'
+    _func_name = "entr"
 
 
 @implement_scipy(spspecial.entr)
@@ -58,11 +57,11 @@ def entr(x, out=None, where=None, **kwargs):
 
 @_register_special_op
 class TensorRelEntr(TensorSpecialBinOp):
-    _func_name = 'rel_entr'
+    _func_name = "rel_entr"
 
     @classmethod
     def _is_sparse(cls, x1, x2):
-        if hasattr(x1, 'issparse') and x1.issparse():
+        if hasattr(x1, "issparse") and x1.issparse():
             return True
         return False
 
@@ -126,11 +125,11 @@ def rel_entr(x, y, out=None, where=None, **kwargs):
 
 @_register_special_op
 class TensorKlDiv(TensorSpecialBinOp):
-    _func_name = 'kl_div'
+    _func_name = "kl_div"
 
     @classmethod
     def _is_sparse(cls, x1, x2):
-        if hasattr(x1, 'issparse') and x1.issparse():
+        if hasattr(x1, "issparse") and x1.issparse():
             return True
         return False
 

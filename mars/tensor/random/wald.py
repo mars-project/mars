@@ -23,13 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorWald(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_mean', '_scale']
+    _input_fields_ = ["_mean", "_scale"]
     _op_type_ = OperandDef.RAND_WALD
 
-    _fields_ = '_mean', '_scale', '_size'
-    _mean = AnyField('mean')
-    _scale = AnyField('scale')
-    _func_name = 'wald'
+    _fields_ = "_mean", "_scale", "_size"
+    _mean = AnyField("mean")
+    _scale = AnyField("scale")
+    _func_name = "wald"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -115,8 +115,11 @@ def wald(random_state, mean, scale, size=None, chunk_size=None, gpu=None, dtype=
     >>> plt.show()
     """
     if dtype is None:
-        dtype = np.random.RandomState().wald(
-            handle_array(mean), handle_array(scale), size=(0,)).dtype
+        dtype = (
+            np.random.RandomState()
+            .wald(handle_array(mean), handle_array(scale), size=(0,))
+            .dtype
+        )
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorWald(size=size, seed=seed, gpu=gpu, dtype=dtype)

@@ -25,27 +25,30 @@ class Context(ABC):
     Context that providing API that can be
     used inside `tile` and `execute`.
     """
+
     prev = None
     current = None
 
-    def __init__(self,
-                 session_id: str = None,
-                 supervisor_address: str = None,
-                 worker_address: str = None,
-                 current_address: str = None,
-                 band: BandType = None):
+    def __init__(
+        self,
+        session_id: str = None,
+        supervisor_address: str = None,
+        worker_address: str = None,
+        current_address: str = None,
+        band: BandType = None,
+    ):
         if session_id is None:
             # try to get session id from environment
-            session_id = os.environ.get('MARS_SESSION_ID')
+            session_id = os.environ.get("MARS_SESSION_ID")
             if session_id is None:
-                raise ValueError('session_id should be provided '
-                                 'to create a context')
+                raise ValueError("session_id should be provided " "to create a context")
         if supervisor_address is None:
             # try to get supervisor address from environment
-            supervisor_address = os.environ.get('MARS_SUPERVISOR_ADDRESS')
+            supervisor_address = os.environ.get("MARS_SUPERVISOR_ADDRESS")
             if supervisor_address is None:
-                raise ValueError('supervisor_address should be provided '
-                                 'to create a context')
+                raise ValueError(
+                    "supervisor_address should be provided " "to create a context"
+                )
 
         self.session_id = session_id
         self.supervisor_address = supervisor_address
@@ -94,8 +97,7 @@ class Context(ABC):
         """
 
     @abstractmethod
-    def get_chunks_result(self,
-                          data_keys: List[str]) -> List:
+    def get_chunks_result(self, data_keys: List[str]) -> List:
         """
         Get result of chunks.
 
@@ -111,10 +113,9 @@ class Context(ABC):
         """
 
     @abstractmethod
-    def get_chunks_meta(self,
-                        data_keys: List[str],
-                        fields: List[str] = None,
-                        error='raise') -> List[Dict]:
+    def get_chunks_meta(
+        self, data_keys: List[str], fields: List[str] = None, error="raise"
+    ) -> List[Dict]:
         """
         Get meta of chunks.
 
@@ -153,9 +154,7 @@ class Context(ABC):
         """
 
     @abstractmethod
-    def create_remote_object(self,
-                             name: str,
-                             object_cls, *args, **kwargs):
+    def create_remote_object(self, name: str, object_cls, *args, **kwargs):
         """
         Create remote object.
 
@@ -189,8 +188,7 @@ class Context(ABC):
         """
 
     @abstractmethod
-    def destroy_remote_object(self,
-                              name: str):
+    def destroy_remote_object(self, name: str):
         """
         Destroy remote object.
 
@@ -201,12 +199,14 @@ class Context(ABC):
         """
 
     @abstractmethod
-    def register_custom_log_path(self,
-                                 session_id: str,
-                                 tileable_op_key: str,
-                                 chunk_op_key: str,
-                                 worker_address: str,
-                                 log_path: str):
+    def register_custom_log_path(
+        self,
+        session_id: str,
+        tileable_op_key: str,
+        chunk_op_key: str,
+        worker_address: str,
+        log_path: str,
+    ):
         """
         Register custom log path.
 

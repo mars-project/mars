@@ -26,8 +26,18 @@ from ....session import execute, fetch
 from ....tests.core import require_cupy
 from ....utils import ignore_warning
 from ...datasource import ones, tensor, zeros
-from .. import add, cos, truediv, frexp, modf, clip, isclose, \
-    arctan2, tree_add, tree_multiply
+from .. import (
+    add,
+    cos,
+    truediv,
+    frexp,
+    modf,
+    clip,
+    isclose,
+    arctan2,
+    tree_add,
+    tree_multiply,
+)
 
 
 def _nan_equal(a, b):
@@ -64,7 +74,7 @@ def _get_sparse_func(op):
 
 
 def toarray(x):
-    if hasattr(x, 'toarray'):
+    if hasattr(x, "toarray"):
         return x.toarray()
     return x
 
@@ -91,18 +101,30 @@ def test_base_order_execution(setup):
 
     res = (arr + 1).execute().fetch()
     np.testing.assert_array_equal(res, raw + 1)
-    assert res.flags['C_CONTIGUOUS'] is False
-    assert res.flags['F_CONTIGUOUS'] is True
+    assert res.flags["C_CONTIGUOUS"] is False
+    assert res.flags["F_CONTIGUOUS"] is True
 
-    res2 = add(arr, 1, order='C').execute().fetch()
-    np.testing.assert_array_equal(res2, np.add(raw, 1, order='C'))
-    assert res2.flags['C_CONTIGUOUS'] is True
-    assert res2.flags['F_CONTIGUOUS'] is False
+    res2 = add(arr, 1, order="C").execute().fetch()
+    np.testing.assert_array_equal(res2, np.add(raw, 1, order="C"))
+    assert res2.flags["C_CONTIGUOUS"] is True
+    assert res2.flags["F_CONTIGUOUS"] is False
 
 
 def test_ufunc_execution(setup):
-    from .. import UNARY_UFUNC, BIN_UFUNC, arccosh, \
-        invert, mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp
+    from .. import (
+        UNARY_UFUNC,
+        BIN_UFUNC,
+        arccosh,
+        invert,
+        mod,
+        fmod,
+        bitand,
+        bitor,
+        bitxor,
+        lshift,
+        rshift,
+        ldexp,
+    )
 
     _sp_unary_ufunc = {arccosh, invert}
     _sp_bin_ufunc = {mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp}
@@ -176,8 +198,8 @@ def test_sparse_ufunc_execution(setup):
     _sp_unary_ufunc = [arccosh]
     _sp_bin_ufunc = [mod]
 
-    data1 = sps.random(5, 9, density=.1)
-    data2 = sps.random(5, 9, density=.2)
+    data1 = sps.random(5, 9, density=0.1)
+    data2 = sps.random(5, 9, density=0.2)
     rand = np.random.random()
     arr1 = tensor(data1, chunk_size=3)
     arr2 = tensor(data2, chunk_size=3)
@@ -248,33 +270,33 @@ def test_add_with_out_execution(setup):
     arr1 = tensor(data1.copy(), chunk_size=3)
     arr2 = tensor(data2.copy(), chunk_size=3)
 
-    arr3 = add(arr1, arr2, out=arr1.astype('i4'), casting='unsafe')
+    arr3 = add(arr1, arr2, out=arr1.astype("i4"), casting="unsafe")
     res = arr3.execute().fetch()
-    np.testing.assert_array_equal(res, (data1 + data2).astype('i4'))
+    np.testing.assert_array_equal(res, (data1 + data2).astype("i4"))
 
     arr1 = tensor(data1.copy(), chunk_size=3)
     arr2 = tensor(data2.copy(), chunk_size=3)
 
-    arr3 = truediv(arr1, arr2, out=arr1, where=arr2 > .5)
+    arr3 = truediv(arr1, arr2, out=arr1, where=arr2 > 0.5)
     res = arr3.execute().fetch()
     np.testing.assert_array_equal(
-        res, np.true_divide(data1, data2, out=data1.copy(), where=data2 > .5))
+        res, np.true_divide(data1, data2, out=data1.copy(), where=data2 > 0.5)
+    )
 
     arr1 = tensor(data1.copy(), chunk_size=4)
     arr2 = tensor(data2.copy(), chunk_size=4)
 
-    arr3 = add(arr1, arr2, where=arr1 > .5)
+    arr3 = add(arr1, arr2, where=arr1 > 0.5)
     res = arr3.execute().fetch()
-    expected = np.add(data1, data2, where=data1 > .5)
-    np.testing.assert_array_equal(
-        res[data1 > .5], expected[data1 > .5])
+    expected = np.add(data1, data2, where=data1 > 0.5)
+    np.testing.assert_array_equal(res[data1 > 0.5], expected[data1 > 0.5])
 
     arr1 = tensor(data1.copy(), chunk_size=4)
 
-    arr3 = add(arr1, 1, where=arr1 > .5)
+    arr3 = add(arr1, 1, where=arr1 > 0.5)
     res = arr3.execute().fetch()
-    expected = np.add(data1, 1, where=data1 > .5)
-    np.testing.assert_array_equal(res[data1 > .5], expected[data1 > .5])
+    expected = np.add(data1, 1, where=data1 > 0.5)
+    np.testing.assert_array_equal(res[data1 > 0.5], expected[data1 > 0.5])
 
     arr1 = tensor(data2.copy(), chunk_size=3)
 
@@ -333,14 +355,14 @@ def test_frexp_execution(setup):
 
     arr1 = tensor(data1.copy(), chunk_size=4)
     o1 = zeros(data1.shape, chunk_size=4)
-    o2 = zeros(data1.shape, dtype='i8', chunk_size=4)
+    o2 = zeros(data1.shape, dtype="i8", chunk_size=4)
     frexp(arr1, o1, o2)
     res1, res2 = fetch(*execute(o1, o2))
 
     res = res1 * 2 ** res2
     np.testing.assert_array_almost_equal(res, data1, decimal=3)
 
-    data1 = sps.random(5, 9, density=.1)
+    data1 = sps.random(5, 9, density=0.1)
 
     arr1 = tensor(data1.copy(), chunk_size=4)
 
@@ -356,15 +378,15 @@ def test_frexp_order_execution(setup):
     data1 = np.random.RandomState(0).random((5, 9))
     t = tensor(data1, chunk_size=3)
 
-    o1, o2 = frexp(t, order='F')
+    o1, o2 = frexp(t, order="F")
     res1, res2 = execute(o1, o2)
-    expected1, expected2 = np.frexp(data1, order='F')
+    expected1, expected2 = np.frexp(data1, order="F")
     np.testing.assert_allclose(res1, expected1)
-    assert res1.flags['F_CONTIGUOUS'] is True
-    assert res1.flags['C_CONTIGUOUS'] is False
+    assert res1.flags["F_CONTIGUOUS"] is True
+    assert res1.flags["C_CONTIGUOUS"] is False
     np.testing.assert_allclose(res2, expected2)
-    assert res2.flags['F_CONTIGUOUS'] is True
-    assert res2.flags['C_CONTIGUOUS'] is False
+    assert res2.flags["F_CONTIGUOUS"] is True
+    assert res2.flags["C_CONTIGUOUS"] is False
 
 
 def test_modf_execution(setup):
@@ -396,7 +418,7 @@ def test_modf_execution(setup):
     expected = sum(np.modf(data1))
     np.testing.assert_array_almost_equal(res, expected)
 
-    data1 = sps.random(5, 9, density=.1)
+    data1 = sps.random(5, 9, density=0.1)
 
     arr1 = tensor(data1.copy(), chunk_size=3)
 
@@ -412,15 +434,15 @@ def test_modf_order_execution(setup):
     data1 = np.random.random((5, 9))
     t = tensor(data1, chunk_size=3)
 
-    o1, o2 = modf(t, order='F')
+    o1, o2 = modf(t, order="F")
     res1, res2 = execute(o1, o2)
-    expected1, expected2 = np.modf(data1, order='F')
+    expected1, expected2 = np.modf(data1, order="F")
     np.testing.assert_allclose(res1, expected1)
-    assert res1.flags['F_CONTIGUOUS'] is True
-    assert res1.flags['C_CONTIGUOUS'] is False
+    assert res1.flags["F_CONTIGUOUS"] is True
+    assert res1.flags["C_CONTIGUOUS"] is False
     np.testing.assert_allclose(res2, expected2)
-    assert res2.flags['F_CONTIGUOUS'] is True
-    assert res2.flags['C_CONTIGUOUS'] is False
+    assert res2.flags["F_CONTIGUOUS"] is True
+    assert res2.flags["C_CONTIGUOUS"] is False
 
 
 def test_clip_execution(setup):
@@ -485,8 +507,8 @@ def test_clip_order_execution(setup):
     expected = np.clip(a_data, 0.2, 0.8)
 
     np.testing.assert_allclose(res, expected)
-    assert res.flags['F_CONTIGUOUS'] is True
-    assert res.flags['C_CONTIGUOUS'] is False
+    assert res.flags["F_CONTIGUOUS"] is True
+    assert res.flags["C_CONTIGUOUS"] is False
 
 
 def test_around_execution(setup):
@@ -500,7 +522,7 @@ def test_around_execution(setup):
 
     np.testing.assert_allclose(res, expected)
 
-    data = sps.random(10, 20, density=.2)
+    data = sps.random(10, 20, density=0.2)
     x = tensor(data, chunk_size=3)
 
     t = x.round(2)
@@ -521,8 +543,8 @@ def test_around_order_execution(setup):
     expected = np.around(data, decimals=2)
 
     np.testing.assert_allclose(res, expected)
-    assert res.flags['F_CONTIGUOUS'] is True
-    assert res.flags['C_CONTIGUOUS'] is False
+    assert res.flags["F_CONTIGUOUS"] is True
+    assert res.flags["C_CONTIGUOUS"] is False
 
 
 def test_cos_order_execution(setup):
@@ -533,15 +555,15 @@ def test_cos_order_execution(setup):
 
     res = t.execute().fetch()
     np.testing.assert_allclose(res, np.cos(data))
-    assert res.flags['C_CONTIGUOUS'] is False
-    assert res.flags['F_CONTIGUOUS'] is True
+    assert res.flags["C_CONTIGUOUS"] is False
+    assert res.flags["F_CONTIGUOUS"] is True
 
-    t2 = cos(x, order='C')
+    t2 = cos(x, order="C")
 
     res2 = t2.execute().fetch()
-    np.testing.assert_allclose(res2, np.cos(data, order='C'))
-    assert res2.flags['C_CONTIGUOUS'] is True
-    assert res2.flags['F_CONTIGUOUS'] is False
+    np.testing.assert_allclose(res2, np.cos(data, order="C"))
+    assert res2.flags["C_CONTIGUOUS"] is True
+    assert res2.flags["F_CONTIGUOUS"] is False
 
 
 def test_is_close_execution(setup):
@@ -551,30 +573,30 @@ def test_is_close_execution(setup):
     x = tensor(data, chunk_size=2)
     y = tensor(data2, chunk_size=3)
 
-    z = isclose(x, y, atol=.01)
+    z = isclose(x, y, atol=0.01)
 
     res = z.execute().fetch()
-    expected = np.isclose(data, data2, atol=.01)
+    expected = np.isclose(data, data2, atol=0.01)
     np.testing.assert_equal(res, expected)
 
-    z = isclose(x, y, atol=.01, equal_nan=True)
+    z = isclose(x, y, atol=0.01, equal_nan=True)
 
     res = z.execute().fetch()
-    expected = np.isclose(data, data2, atol=.01, equal_nan=True)
+    expected = np.isclose(data, data2, atol=0.01, equal_nan=True)
     np.testing.assert_equal(res, expected)
 
     # test tensor with scalar
-    z = isclose(x, 1.0, atol=.01)
+    z = isclose(x, 1.0, atol=0.01)
     res = z.execute().fetch()
-    expected = np.isclose(data, 1.0, atol=.01)
+    expected = np.isclose(data, 1.0, atol=0.01)
     np.testing.assert_equal(res, expected)
-    z = isclose(1.0, y, atol=.01)
+    z = isclose(1.0, y, atol=0.01)
     res = z.execute().fetch()
-    expected = np.isclose(1.0, data2, atol=.01)
+    expected = np.isclose(1.0, data2, atol=0.01)
     np.testing.assert_equal(res, expected)
-    z = isclose(1.0, 2.0, atol=.01)
+    z = isclose(1.0, 2.0, atol=0.01)
     res = z.execute().fetch()
-    expected = np.isclose(1.0, 2.0, atol=.01)
+    expected = np.isclose(1.0, 2.0, atol=0.01)
     np.testing.assert_equal(res, expected)
 
     # test sparse
@@ -584,40 +606,40 @@ def test_is_close_execution(setup):
     x = tensor(data, chunk_size=2)
     y = tensor(data2, chunk_size=3)
 
-    z = isclose(x, y, atol=.01)
+    z = isclose(x, y, atol=0.01)
 
     res = z.execute().fetch()
-    expected = np.isclose(data.toarray(), data2.toarray(), atol=.01)
+    expected = np.isclose(data.toarray(), data2.toarray(), atol=0.01)
     np.testing.assert_equal(res, expected)
 
-    z = isclose(x, y, atol=.01, equal_nan=True)
+    z = isclose(x, y, atol=0.01, equal_nan=True)
 
     res = z.execute().fetch()
-    expected = np.isclose(data.toarray(), data2.toarray(), atol=.01, equal_nan=True)
+    expected = np.isclose(data.toarray(), data2.toarray(), atol=0.01, equal_nan=True)
     np.testing.assert_equal(res, expected)
 
 
 @ignore_warning
 def test_dtype_execution(setup):
-    a = ones((10, 20), dtype='f4', chunk_size=5)
+    a = ones((10, 20), dtype="f4", chunk_size=5)
 
-    c = truediv(a, 2, dtype='f8')
+    c = truediv(a, 2, dtype="f8")
 
     res = c.execute().fetch()
     assert res.dtype == np.float64
 
-    c = truediv(a, 0, dtype='f8')
+    c = truediv(a, 0, dtype="f8")
     res = c.execute().fetch()
     assert np.isinf(res[0, 0])
 
     with pytest.raises(FloatingPointError):
-        with np.errstate(divide='raise'):
-            c = truediv(a, 0, dtype='f8')
+        with np.errstate(divide="raise"):
+            c = truediv(a, 0, dtype="f8")
             _ = c.execute().fetch()  # noqa: F841
 
 
 def test_set_get_real_execution(setup):
-    a_data = np.array([1+2j, 3+4j, 5+6j])
+    a_data = np.array([1 + 2j, 3 + 4j, 5 + 6j])
     a = tensor(a_data, chunk_size=2)
 
     res = a.real.execute().fetch()
@@ -642,7 +664,7 @@ def test_set_get_real_execution(setup):
     np.testing.assert_equal(res, expected)
 
     # test sparse
-    a_data = np.array([[1+2j, 3+4j, 0], [0, 0, 0]])
+    a_data = np.array([[1 + 2j, 3 + 4j, 0], [0, 0, 0]])
     a = tensor(sps.csr_matrix(a_data))
 
     res = a.real.execute().fetch().toarray()
@@ -668,7 +690,7 @@ def test_set_get_real_execution(setup):
 
 
 def test_set_get_imag_execution(setup):
-    a_data = np.array([1+2j, 3+4j, 5+6j])
+    a_data = np.array([1 + 2j, 3 + 4j, 5 + 6j])
     a = tensor(a_data, chunk_size=2)
 
     res = a.imag.execute().fetch()
@@ -693,7 +715,7 @@ def test_set_get_imag_execution(setup):
     np.testing.assert_equal(res, expected)
 
     # test sparse
-    a_data = np.array([[1+2j, 3+4j, 0], [0, 0, 0]])
+    a_data = np.array([[1 + 2j, 3 + 4j, 0], [0, 0, 0]])
     a = tensor(sps.csr_matrix(a_data))
 
     res = a.imag.execute().fetch().toarray()
@@ -732,7 +754,7 @@ def test_tree_arithmetic_execution(setup):
         res, 2.0 * functools.reduce(operator.mul, raws)
     )
 
-    raws = [sps.random(5, 9, density=.1) for _ in range(10)]
+    raws = [sps.random(5, 9, density=0.1) for _ in range(10)]
     tensors = [tensor(a, chunk_size=3) for a in raws]
 
     res = tree_add(*tensors).execute().fetch()

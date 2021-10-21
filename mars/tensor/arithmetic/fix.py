@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorFix(TensorUnaryOp):
     _op_type_ = OperandDef.FIX
-    _func_name = 'fix'
+    _func_name = "fix"
 
 
 @infer_dtype(np.fix)

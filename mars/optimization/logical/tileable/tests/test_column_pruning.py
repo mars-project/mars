@@ -26,24 +26,28 @@ from .....core import TileableGraph, TileableGraphBuilder, enter_mode
 from .. import optimize
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def gen_data1():
     with tempfile.TemporaryDirectory() as tempdir:
-        df = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
-                           'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
-                           'c': list('aabaaddce'),
-                           'd': list('abaaaddce')})
+        df = pd.DataFrame(
+            {
+                "a": [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                "b": [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                "c": list("aabaaddce"),
+                "d": list("abaaaddce"),
+            }
+        )
         yield df, tempdir
 
 
 @enter_mode(build=True)
 def test_groupby_read_csv(gen_data1):
     pdf, tempdir = gen_data1
-    file_path = os.path.join(tempdir, 'test.csv')
+    file_path = os.path.join(tempdir, "test.csv")
     pdf.to_csv(file_path)
 
     df1 = md.read_csv(file_path)
-    df2 = df1.groupby('c').agg({'a': 'sum'})
+    df2 = df1.groupby("c").agg({"a": "sum"})
     df3 = df2 + 1
     graph = TileableGraph([df3.data])
     next(TileableGraphBuilder(graph).build())
@@ -56,12 +60,12 @@ def test_groupby_read_csv(gen_data1):
     assert opt_df3 is None
     assert opt_df1 in graph.predecessors(opt_df2)
     assert opt_df1 in opt_df2.inputs
-    assert opt_df1.op.usecols == ['a', 'c']
+    assert opt_df1.op.usecols == ["a", "c"]
     assert opt_df2 in graph.predecessors(df3.data)
     assert opt_df2 in df3.inputs
 
-    df4 = md.read_csv(file_path, usecols=['a', 'b', 'c'])
-    df5 = df4.groupby('c').agg({'b': 'sum'})
+    df4 = md.read_csv(file_path, usecols=["a", "b", "c"])
+    df5 = df4.groupby("c").agg({"b": "sum"})
     graph = TileableGraph([df5.data])
     next(TileableGraphBuilder(graph).build())
     records = optimize(graph)
@@ -69,11 +73,11 @@ def test_groupby_read_csv(gen_data1):
     assert opt_df4 is not None
     opt_df5 = records.get_optimization_result(df5.data)
     assert opt_df5 is not None
-    assert opt_df4.op.usecols == ['b', 'c']
+    assert opt_df4.op.usecols == ["b", "c"]
 
     df6 = md.read_csv(file_path)
-    df7 = df6.groupby('c').agg({'b': 'sum'})
-    df8 = df6.groupby('b').agg({'a': 'sum'})
+    df7 = df6.groupby("c").agg({"b": "sum"})
+    df8 = df6.groupby("b").agg({"a": "sum"})
     graph = TileableGraph([df7.data, df8.data])
     next(TileableGraphBuilder(graph).build())
     records = optimize(graph)
@@ -83,7 +87,7 @@ def test_groupby_read_csv(gen_data1):
     assert opt_df7 is not None
     opt_df8 = records.get_optimization_result(df8.data)
     assert opt_df8 is not None
-    assert opt_df6.op.usecols == ['a', 'b', 'c']
+    assert opt_df6.op.usecols == ["a", "b", "c"]
     # original tileable should not be modified
     assert df7.inputs[0] is df6.data
     assert df8.inputs[0] is df6.data
@@ -103,11 +107,11 @@ def test_groupby_read_csv(gen_data1):
 @enter_mode(build=True)
 def test_groupby_prune_read_parquet(gen_data1):
     pdf, tempdir = gen_data1
-    file_path = os.path.join(tempdir, 'test.parquet')
+    file_path = os.path.join(tempdir, "test.parquet")
     pdf.to_parquet(file_path)
 
     df1 = md.read_parquet(file_path)
-    df2 = df1.groupby('c').agg({'a': 'sum'})
+    df2 = df1.groupby("c").agg({"a": "sum"})
     graph = TileableGraph([df2.data])
     next(TileableGraphBuilder(graph).build())
     records = optimize(graph)
@@ -115,11 +119,11 @@ def test_groupby_prune_read_parquet(gen_data1):
     assert opt_df1 is not None
     opt_df2 = records.get_optimization_result(df2.data)
     assert opt_df2 is not None
-    assert opt_df1.op.columns == ['a', 'c']
+    assert opt_df1.op.columns == ["a", "c"]
     # original tileable should not be modified
     assert df2.inputs[0] is df1.data
 
-    df3 = df1.groupby('c', as_index=False).c.agg({'cnt': 'count'})
+    df3 = df1.groupby("c", as_index=False).c.agg({"cnt": "count"})
     graph = TileableGraph([df3.data])
     next(TileableGraphBuilder(graph).build())
     records = optimize(graph)
@@ -127,18 +131,18 @@ def test_groupby_prune_read_parquet(gen_data1):
     assert opt_df1 is not None
     opt_df3 = records.get_optimization_result(df3.data)
     assert opt_df3 is not None
-    assert opt_df1.op.columns == ['c']
+    assert opt_df1.op.columns == ["c"]
 
 
 @enter_mode(build=True)
 def test_getitem_prune_read_parquet(gen_data1):
     pdf, tempdir = gen_data1
-    file_path = os.path.join(tempdir, 'test.parquet')
+    file_path = os.path.join(tempdir, "test.parquet")
     pdf.to_parquet(file_path)
 
     df1 = md.read_parquet(file_path)
     df2 = df1.c
-    df3 = df1[['a']]
+    df3 = df1[["a"]]
     graph = TileableGraph([df2.data, df3.data])
     next(TileableGraphBuilder(graph).build())
     records = optimize(graph)
@@ -153,7 +157,7 @@ def test_getitem_prune_read_parquet(gen_data1):
     assert opt_df1 in opt_df2.inputs
     assert opt_df1 in graph.predecessors(opt_df3)
     assert opt_df1 in opt_df3.inputs
-    assert opt_df1.op.columns == ['a', 'c']
+    assert opt_df1.op.columns == ["a", "c"]
     assert opt_df1 in graph.predecessors(opt_df3)
     assert opt_df1 in opt_df3.inputs
     # original tileable should not be modified
@@ -161,27 +165,33 @@ def test_getitem_prune_read_parquet(gen_data1):
     assert df3.inputs[0] is df1.data
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def gen_data2():
     with tempfile.TemporaryDirectory() as tempdir:
-        df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
-                           'b': [f's{i}' for i in range(10)],
-                           'c': np.random.rand(10),
-                           'd': [datetime.fromtimestamp(time.time() + 3600 * (i - 5))
-                                 for i in range(10)]})
+        df = pd.DataFrame(
+            {
+                "a": np.arange(10).astype(np.int64, copy=False),
+                "b": [f"s{i}" for i in range(10)],
+                "c": np.random.rand(10),
+                "d": [
+                    datetime.fromtimestamp(time.time() + 3600 * (i - 5))
+                    for i in range(10)
+                ],
+            }
+        )
         yield df, tempdir
 
 
 @enter_mode(build=True)
 def test_groupby_prune_read_sql(gen_data2):
     pdf, tempdir = gen_data2
-    uri = 'sqlite:///' + os.path.join(tempdir, 'test.db')
-    table_name = 'test'
+    uri = "sqlite:///" + os.path.join(tempdir, "test.db")
+    table_name = "test"
     pdf.to_sql(table_name, uri, index=False)
 
     # test read df with columns
-    df1 = md.read_sql_table('test', uri, chunk_size=4)
-    df2 = df1.groupby('a', as_index=False).a.agg({'cnt': 'count'})
+    df1 = md.read_sql_table("test", uri, chunk_size=4)
+    df2 = df1.groupby("a", as_index=False).a.agg({"cnt": "count"})
     graph = TileableGraph([df2.data])
     next(TileableGraphBuilder(graph).build())
     records = optimize(graph)
@@ -189,7 +199,7 @@ def test_groupby_prune_read_sql(gen_data2):
     assert opt_df1 is not None
     opt_df2 = records.get_optimization_result(df2.data)
     assert opt_df2 is not None
-    assert opt_df1.op.columns == ['a']
+    assert opt_df1.op.columns == ["a"]
     # original tileable should not be modified
     assert df2.inputs[0] is df1.data
 
@@ -197,12 +207,12 @@ def test_groupby_prune_read_sql(gen_data2):
 @enter_mode(build=True)
 def test_groupby_and_getitem(gen_data1):
     pdf, tempdir = gen_data1
-    file_path = os.path.join(tempdir, 'test.csv')
+    file_path = os.path.join(tempdir, "test.csv")
     pdf.to_csv(file_path)
 
     df1 = md.read_csv(file_path)
-    df2 = df1.groupby('c').agg({'a': 'sum'})
-    df3 = df1[['b', 'a']]
+    df2 = df1.groupby("c").agg({"a": "sum"})
+    df3 = df1[["b", "a"]]
     graph = TileableGraph([df2.data, df3.data])
     next(TileableGraphBuilder(graph).build())
     records = optimize(graph)
@@ -214,7 +224,7 @@ def test_groupby_and_getitem(gen_data1):
     opt_df3 = records.get_optimization_result(df3.data)
     assert opt_df3 is not None
     assert opt_df1 in graph.predecessors(opt_df3)
-    assert opt_df1.op.usecols == ['a', 'b', 'c']
+    assert opt_df1.op.usecols == ["a", "b", "c"]
     # original tileable should not be modified
     assert df2.inputs[0] is df1.data
     assert df3.inputs[0] is df1.data
@@ -223,11 +233,11 @@ def test_groupby_and_getitem(gen_data1):
 @enter_mode(build=True)
 def test_cannot_prune(gen_data1):
     pdf, tempdir = gen_data1
-    file_path = os.path.join(tempdir, 'test.csv')
+    file_path = os.path.join(tempdir, "test.csv")
     pdf.to_csv(file_path)
 
     df1 = md.read_csv(file_path)
-    df2 = df1.groupby('c').agg({'a': 'sum'})
+    df2 = df1.groupby("c").agg({"a": "sum"})
     # does not support prune
     df3 = df1 + 1
     graph = TileableGraph([df2.data, df3.data])
@@ -241,7 +251,7 @@ def test_cannot_prune(gen_data1):
     assert opt_df3 is None
 
     df1 = md.read_csv(file_path)
-    df2 = df1.groupby('c').agg({'a': 'sum'})
+    df2 = df1.groupby("c").agg({"a": "sum"})
     # does not support prune, another rule
     df3 = df1.head(3)
     graph = TileableGraph([df2.data, df3.data])

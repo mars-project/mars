@@ -60,17 +60,17 @@ def test_pdist():
 
     # out shape wrong
     with pytest.raises(ValueError):
-        distance.pdist(np.random.rand(3, 3),
-                       out=tensor(np.random.rand(2)))
+        distance.pdist(np.random.rand(3, 3), out=tensor(np.random.rand(2)))
 
     # out dtype wrong
     with pytest.raises(ValueError):
-        distance.pdist(np.random.rand(3, 3),
-                       out=tensor(np.random.randint(2, size=(3,))))
+        distance.pdist(
+            np.random.rand(3, 3), out=tensor(np.random.randint(2, size=(3,)))
+        )
 
     # test extra param
     with pytest.raises(TypeError):
-        distance.pdist(np.random.rand(3, 3), unknown_kw='unknown_kw')
+        distance.pdist(np.random.rand(3, 3), unknown_kw="unknown_kw")
 
 
 def test_cdist():
@@ -98,8 +98,10 @@ def test_cdist():
     assert len(dist.chunks) == (100 // 15 + 1) * (90 // 16 + 1)
     assert dist.nsplits == (ta.nsplits[0], tb.nsplits[0])
     for c in dist.chunks:
-        assert c.shape == (ta.cix[c.index[0], 0].shape[0],
-                           tb.cix[c.index[1], 0].shape[0])
+        assert c.shape == (
+            ta.cix[c.index[0], 0].shape[0],
+            tb.cix[c.index[1], 0].shape[0],
+        )
 
     # XA can only be 2-d
     with pytest.raises(ValueError):
@@ -131,12 +133,11 @@ def test_cdist():
 
     # out dtype wrong
     with pytest.raises(ValueError):
-        distance.cdist(raw_a, raw_b,
-                       out=tensor(np.random.randint(2, size=(100, 90))))
+        distance.cdist(raw_a, raw_b, out=tensor(np.random.randint(2, size=(100, 90))))
 
     # test extra param
     with pytest.raises(TypeError):
-        distance.cdist(raw_a, raw_b, unknown_kw='unknown_kw')
+        distance.cdist(raw_a, raw_b, unknown_kw="unknown_kw")
 
 
 def test_squareform():
@@ -144,10 +145,10 @@ def test_squareform():
     assert distance.squareform(np.atleast_2d(np.random.rand())).shape == (0,)
 
     with pytest.raises(ValueError):
-        distance.squareform(np.random.rand(3, 3), force='tomatrix')
+        distance.squareform(np.random.rand(3, 3), force="tomatrix")
 
     with pytest.raises(ValueError):
-        distance.squareform(np.random.rand(3), force='tovector')
+        distance.squareform(np.random.rand(3), force="tovector")
 
     with pytest.raises(ValueError):
         distance.squareform(np.random.rand(3, 3, 3))
