@@ -56,7 +56,7 @@ def test_string_conversion():
     assert isinstance(utils.to_str(s), str)
     assert utils.to_str(s) == "abcdefg"
     assert isinstance(utils.to_text(s), str)
-    assert utils.to_text(s) == u"abcdefg"
+    assert utils.to_text(s) == "abcdefg"
 
     ustr = type("ustr", (str,), {})
     assert isinstance(utils.to_str(ustr(s)), str)
@@ -68,23 +68,23 @@ def test_string_conversion():
     assert isinstance(utils.to_str(s), str)
     assert utils.to_str(s) == "abcdefg"
     assert isinstance(utils.to_text(s), str)
-    assert utils.to_text(s) == u"abcdefg"
+    assert utils.to_text(s) == "abcdefg"
 
     ubytes = type("ubytes", (bytes,), {})
     assert isinstance(utils.to_binary(ubytes(s)), bytes)
     assert utils.to_binary(ubytes(s)) == b"abcdefg"
 
-    s = u"abcdefg"
+    s = "abcdefg"
     assert isinstance(utils.to_binary(s), bytes)
     assert utils.to_binary(s) == b"abcdefg"
     assert isinstance(utils.to_str(s), str)
     assert utils.to_str(s) == "abcdefg"
     assert isinstance(utils.to_text(s), str)
-    assert utils.to_text(s) == u"abcdefg"
+    assert utils.to_text(s) == "abcdefg"
 
     uunicode = type("uunicode", (str,), {})
     assert isinstance(utils.to_text(uunicode(s)), str)
-    assert utils.to_text(uunicode(s)) == u"abcdefg"
+    assert utils.to_text(uunicode(s)) == "abcdefg"
 
     with pytest.raises(TypeError):
         utils.to_binary(utils)
@@ -117,7 +117,7 @@ def test_tokenize():
                 1,
                 2.3,
                 "456",
-                u"789",
+                "789",
                 b"101112",
                 2147483649,
                 None,
@@ -486,8 +486,8 @@ def test_readable_size():
 def test_web_serialize_lambda():
     register_ray_serializers()
     df = md.DataFrame(
-            mt.random.rand(10_0000, 4, chunk_size=1_0000),
-            columns=list('abcd'))
+        mt.random.rand(10_0000, 4, chunk_size=1_0000), columns=list("abcd")
+    )
     r = df.apply(lambda x: x)
     graph = TileableGraph([r])
     s = utils.serialize_serializable(graph)

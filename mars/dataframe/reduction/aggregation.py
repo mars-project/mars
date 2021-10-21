@@ -956,8 +956,11 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 in_data = ctx[in_obj.key]
                 if isinstance(in_obj, INDEX_CHUNK_TYPE):
                     result = op.func[0](in_data)
-                elif op.output_types[0] == OutputType.scalar \
-                        and in_data.shape == (0,) and callable(op.func[0]):
+                elif (
+                    op.output_types[0] == OutputType.scalar
+                    and in_data.shape == (0,)
+                    and callable(op.func[0])
+                ):
                     result = op.func[0](in_data)
                 else:
                     result = in_data.agg(op.raw_func, axis=op.axis)

@@ -860,8 +860,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 agg_dfs.extend(cls._do_custom_agg(op, custom_reduction, input_obj))
             else:
                 single_func = map_func_name == op.raw_func
-                agg_dfs.append(cls._do_predefined_agg(
-                    input_obj, map_func_name, single_func, **kwds))
+                agg_dfs.append(
+                    cls._do_predefined_agg(
+                        input_obj, map_func_name, single_func, **kwds
+                    )
+                )
 
         if op._size_recorder_name is not None:
             # record_size

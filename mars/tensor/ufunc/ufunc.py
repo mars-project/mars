@@ -23,8 +23,9 @@ from .. import arithmetic as arith, reduction
 
 
 class TensorUfuncDef:
-    def __init__(self, method, aggregator=None, accumulator=None,
-                 pre_agg=None, post_agg=None):
+    def __init__(
+        self, method, aggregator=None, accumulator=None, pre_agg=None, post_agg=None
+    ):
         self._method = method
         self._aggregator = aggregator
         self._accumulator = accumulator

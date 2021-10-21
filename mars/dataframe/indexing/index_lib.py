@@ -871,8 +871,7 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
         tileable = context.tileable
         input_axis = index_info.input_axis
         chunk_index_to_labels = index_info.chunk_index_to_labels
-        full_label_size = sum(labels.size for labels
-                              in chunk_index_to_labels.values())
+        full_label_size = sum(labels.size for labels in chunk_index_to_labels.values())
 
         other_index_to_iter = dict()
         chunk_index_to_info = context.chunk_index_to_info.copy()

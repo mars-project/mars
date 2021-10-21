@@ -32,6 +32,7 @@ class MutableTensorInfo:
         - a `loop`, which will be used to execute `__setitem__` (and `__getitem__`)
           synchronously to make the API more user-friendly.
     """
+
     def __init__(self, shape, dtype, name, default_value):
         self._shape = shape
         self._dtype = dtype
@@ -62,10 +63,12 @@ class MutableTensor:
         self._loop = loop
 
     @classmethod
-    def create(cls,
-               info: "MutableTensorInfo",
-               mutable_api,  # no type signature, to avoid cycle imports
-               loop: asyncio.AbstractEventLoop) -> "MutableTensor":
+    def create(
+        cls,
+        info: "MutableTensorInfo",
+        mutable_api,  # no type signature, to avoid cycle imports
+        loop: asyncio.AbstractEventLoop,
+    ) -> "MutableTensor":
         return MutableTensor(info, mutable_api, loop)
 
     @property

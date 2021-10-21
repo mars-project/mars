@@ -919,81 +919,104 @@ def test_transpose_execution(setup):
 
 
 def test_get_dummies_execution(setup):
-    raw = pd.DataFrame({"a": [1.1, 2.1, 3.1], "b": ['5', '-6', '-7'], "c": [1, 2, 3], "d": ['2', '3', '4']})
+    raw = pd.DataFrame(
+        {
+            "a": [1.1, 2.1, 3.1],
+            "b": ["5", "-6", "-7"],
+            "c": [1, 2, 3],
+            "d": ["2", "3", "4"],
+        }
+    )
     # test 1 chunk
     df = from_pandas_df(raw)
     r = get_dummies(df)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.get_dummies(raw))
+    pd.testing.assert_frame_equal(r.execute().fetch(), pd.get_dummies(raw))
 
     # test multi chunks
     df = from_pandas_df(raw, chunk_size=2)
     r = get_dummies(df)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.get_dummies(raw))
+    pd.testing.assert_frame_equal(r.execute().fetch(), pd.get_dummies(raw))
 
     # test prefix and prefix_sep
     df = from_pandas_df(raw, chunk_size=2)
     r = get_dummies(df, prefix=["col1", "col2"], prefix_sep="_")
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.get_dummies(raw, prefix=["col1", "col2"], prefix_sep="_"))
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(),
+        pd.get_dummies(raw, prefix=["col1", "col2"], prefix_sep="_"),
+    )
 
-    r = get_dummies(df, prefix={'b': 'col1', 'd': 'col2'}, prefix_sep="_")
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.get_dummies(raw, prefix={'b': 'col1', 'd': 'col2'}, prefix_sep="_"))
+    r = get_dummies(df, prefix={"b": "col1", "d": "col2"}, prefix_sep="_")
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(),
+        pd.get_dummies(raw, prefix={"b": "col1", "d": "col2"}, prefix_sep="_"),
+    )
 
     # test dummy_na
-    raw = pd.Series(['a', 'b', 'c', np.nan])
+    raw = pd.Series(["a", "b", "c", np.nan])
     df = from_pandas_series(raw)
     r = get_dummies(df, dummy_na=False)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.get_dummies(raw, dummy_na=False))
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(), pd.get_dummies(raw, dummy_na=False)
+    )
 
     # test columns
-    raw = pd.DataFrame({"a": [1.1, 2.1, 3.1], "b": ['5', '-6', '-7'], "c": [1, 2, 3], "d": ['2', '3', '4']})
+    raw = pd.DataFrame(
+        {
+            "a": [1.1, 2.1, 3.1],
+            "b": ["5", "-6", "-7"],
+            "c": [1, 2, 3],
+            "d": ["2", "3", "4"],
+        }
+    )
     df = from_pandas_df(raw, chunk_size=2)
-    r = get_dummies(df, columns=['c'])
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.get_dummies(raw, columns=['c']))
+    r = get_dummies(df, columns=["c"])
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(), pd.get_dummies(raw, columns=["c"])
+    )
 
-    r = get_dummies(df, columns=['c', 'd'], prefix=['col1', 'col2'])
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.get_dummies(raw, columns=['c', 'd'], prefix=['col1', 'col2']))
+    r = get_dummies(df, columns=["c", "d"], prefix=["col1", "col2"])
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(),
+        pd.get_dummies(raw, columns=["c", "d"], prefix=["col1", "col2"]),
+    )
 
     # test drop_first
     df = from_pandas_df(raw, chunk_size=2)
     r = get_dummies(df, drop_first=True)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.get_dummies(raw, drop_first=True))
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(), pd.get_dummies(raw, drop_first=True)
+    )
 
     # test dtype
     df = from_pandas_df(raw, chunk_size=2)
     r = get_dummies(df, dtype=float)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.get_dummies(raw, dtype=float))
+    pd.testing.assert_frame_equal(r.execute().fetch(), pd.get_dummies(raw, dtype=float))
 
     # test series
     raw = pd.Series([3, 4, 1, 2])
     series = from_pandas_series(raw, chunk_size=2)
     r = get_dummies(series)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.get_dummies(raw))
+    pd.testing.assert_frame_equal(r.execute().fetch(), pd.get_dummies(raw))
 
     # test other variable
     raw = [3, 4, 1, 2]
     r = get_dummies(raw)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.get_dummies(raw))
+    pd.testing.assert_frame_equal(r.execute().fetch(), pd.get_dummies(raw))
 
     raw = pd.Series([3, 4, 2, 1])
     r = get_dummies(raw)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.get_dummies(raw))
+    pd.testing.assert_frame_equal(r.execute().fetch(), pd.get_dummies(raw))
 
-    raw = pd.DataFrame({"a": [1.1, 2.1, 3.1], "b": ['5', '-6', '-7'], "c": [1, 2, 3], "d": ['2', '3', '4']})
+    raw = pd.DataFrame(
+        {
+            "a": [1.1, 2.1, 3.1],
+            "b": ["5", "-6", "-7"],
+            "c": [1, 2, 3],
+            "d": ["2", "3", "4"],
+        }
+    )
     r = get_dummies(raw)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.get_dummies(raw))
+    pd.testing.assert_frame_equal(r.execute().fetch(), pd.get_dummies(raw))
 
 
 def test_to_numeric_execution(setup):

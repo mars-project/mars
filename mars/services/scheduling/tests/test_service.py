@@ -97,8 +97,17 @@ async def actor_pools():
     sv_pool, worker_pool = await asyncio.gather(start_pool(False), start_pool(True))
 
     config = {
-        "services": ["cluster", "session", "meta", "lifecycle",
-                     "scheduling", "subtask", "task", "mutable", "web"],
+        "services": [
+            "cluster",
+            "session",
+            "meta",
+            "lifecycle",
+            "scheduling",
+            "subtask",
+            "task",
+            "mutable",
+            "web",
+        ],
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,
@@ -282,8 +291,7 @@ async def test_schedule_cancel(actor_pools):
         sv_pool.external_address, session_id
     )
     assert all(
-        summary.is_finished and summary.is_cancelled
-        for summary in summaries[2:]
+        summary.is_finished and summary.is_cancelled for summary in summaries[2:]
     )
 
     assert (await global_slot_ref.get_used_slots())["numa-0"] == 0

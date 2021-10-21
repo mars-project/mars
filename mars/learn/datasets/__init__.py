@@ -12,5 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .samples_generator import make_classification, make_regression, \
-    make_blobs, make_low_rank_matrix
+from .samples_generator import (
+    make_classification,
+    make_regression,
+    make_blobs,
+    make_low_rank_matrix,
+)

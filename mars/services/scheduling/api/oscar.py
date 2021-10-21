@@ -37,10 +37,12 @@ class SchedulingAPI(AbstractSchedulingAPI):
     @alru_cache
     async def create(cls: Type[APIType], session_id: str, address: str) -> APIType:
         from ..supervisor.manager import SubtaskManagerActor
+
         manager_ref = await mo.actor_ref(
             SubtaskManagerActor.gen_uid(session_id), address=address
         )
         from ..supervisor.queueing import SubtaskQueueingActor
+
         queueing_ref = await mo.actor_ref(
             SubtaskQueueingActor.gen_uid(session_id), address=address
         )
@@ -49,8 +51,7 @@ class SchedulingAPI(AbstractSchedulingAPI):
         return scheduling_api
 
     async def get_subtask_schedule_summaries(
-            self,
-            task_id: Optional[str] = None
+        self, task_id: Optional[str] = None
     ) -> List[SubtaskScheduleSummary]:
         return await self._manager_ref.get_schedule_summaries(task_id)
 
@@ -164,6 +165,7 @@ class MockSchedulingAPI(SchedulingAPI):
         )
 
         from ..supervisor import SchedulingSupervisorService
+
         service = SchedulingSupervisorService({}, address)
         await service.create_session(session_id)
         return await super().create(session_id, address)

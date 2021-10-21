@@ -25,7 +25,12 @@ from sklearn.utils._testing import (
 
 from .... import tensor as mt
 from ....tensor.linalg import svd
-from ..samples_generator import make_low_rank_matrix, make_classification, make_regression, make_blobs
+from ..samples_generator import (
+    make_low_rank_matrix,
+    make_classification,
+    make_regression,
+    make_blobs,
+)
 
 
 def test_make_classification(setup):
@@ -227,7 +232,9 @@ def test_make_regression_multitarget():
     assert X.shape == (100, 10), "X shape mismatch"
     assert y.shape == (100, 3), "y shape mismatch"
     assert c.shape == (10, 3), "coef shape mismatch"
-    np.testing.assert_array_equal(sum(c != 0.0), 3, "Unexpected number of informative features")
+    np.testing.assert_array_equal(
+        sum(c != 0.0), 3, "Unexpected number of informative features"
+    )
 
     # Test that y ~= np.dot(X, c) + bias + N(0, 1.0)
     assert_almost_equal(np.std(y - np.dot(X, c)), 1.0, decimal=1)

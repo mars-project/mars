@@ -806,20 +806,27 @@ def test_astype():
 
 
 def test_get_dummies():
-    raw = pd.DataFrame({"a": [1.1, 2.1, 3.1], "b": ['5', '-6', '-7'], "c": [1, 2, 3], "d": ['2', '3', '4']})
+    raw = pd.DataFrame(
+        {
+            "a": [1.1, 2.1, 3.1],
+            "b": ["5", "-6", "-7"],
+            "c": [1, 2, 3],
+            "d": ["2", "3", "4"],
+        }
+    )
     df = from_pandas_df(raw, chunk_size=2)
 
     with pytest.raises(TypeError):
-        _ = get_dummies(df, columns='a')
+        _ = get_dummies(df, columns="a")
 
     with pytest.raises(ValueError):
-        _ = get_dummies(df, prefix=['col1'])
+        _ = get_dummies(df, prefix=["col1"])
 
     with pytest.raises(ValueError):
-        _ = get_dummies(df, columns=['a'], prefix={'a': 'col1', 'c': 'col2'})
+        _ = get_dummies(df, columns=["a"], prefix={"a": "col1", "c": "col2"})
 
     with pytest.raises(KeyError):
-        _ = get_dummies(df, columns=['a', 'b'], prefix={'a': 'col1', 'c': 'col2'})
+        _ = get_dummies(df, columns=["a", "b"], prefix={"a": "col1", "c": "col2"})
 
     r = get_dummies(df)
     assert isinstance(r, DATAFRAME_TYPE)

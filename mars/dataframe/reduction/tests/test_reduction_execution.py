@@ -107,7 +107,7 @@ def test_series_reduction(
         assert np.isnan(reduction_df5.execute().fetch())
 
     # test reduction on empty series
-    data = pd.Series([], dtype=float, name='a')
+    data = pd.Series([], dtype=float, name="a")
     r = compute(md.Series(data))
     np.testing.assert_equal(r.execute().fetch(), compute(data))
 

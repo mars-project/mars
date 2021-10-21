@@ -19,8 +19,10 @@ from typing import Union
 import numpy as np
 from sklearn.base import OutlierMixin
 from sklearn.tree import ExtraTreeRegressor
-from sklearn.utils import check_array as sklearn_check_array, \
-    gen_batches as sklearn_gen_batches
+from sklearn.utils import (
+    check_array as sklearn_check_array,
+    gen_batches as sklearn_gen_batches,
+)
 
 from ... import tensor as mt
 from ...deploy.oscar.session import execute
@@ -263,8 +265,9 @@ class IsolationForest(OutlierMixin, BaseBagging):
         )
         self.contamination = contamination
 
-    def fit(self, X, y=None, sample_weight=None,
-            session=None, run_kwargs=None) -> "IsolationForest":
+    def fit(
+        self, X, y=None, sample_weight=None, session=None, run_kwargs=None
+    ) -> "IsolationForest":
         """
         Fit estimator.
 
@@ -313,8 +316,7 @@ class IsolationForest(OutlierMixin, BaseBagging):
                 raise ValueError(
                     "max_samples (%s) is not supported."
                     'Valid choices are: "auto", int or'
-                    "float"
-                    % self.max_samples
+                    "float" % self.max_samples
                 )
 
         elif isinstance(self.max_samples, numbers.Integral):
@@ -338,7 +340,9 @@ class IsolationForest(OutlierMixin, BaseBagging):
         self.max_samples_ = max_samples
         max_depth = int(np.ceil(np.log2(max(max_samples, 2))))
         super()._fit(
-            X, y, sample_weight=sample_weight,
+            X,
+            y,
+            sample_weight=sample_weight,
             max_samples=max_samples,
             estimator_params=dict(max_samples=max_samples, max_depth=max_depth),
         )
@@ -352,7 +356,8 @@ class IsolationForest(OutlierMixin, BaseBagging):
         # else, define offset_ wrt contamination parameter
         self.offset_ = execute(
             mt.percentile(self._score_samples(X), 100.0 * self.contamination),
-            session=session, **(run_kwargs or dict())
+            session=session,
+            **(run_kwargs or dict()),
         ).fetch(session=session, **(run_kwargs or dict()))
 
         return self
@@ -424,12 +429,20 @@ class IsolationForest(OutlierMixin, BaseBagging):
             calc_means=False,
         )
         depths = predict_op(X, self.estimators_, self.estimator_features_).sum(axis=1)
-        denominator = self.estimators_.shape[0] * _average_path_length([self.max_samples_])
-        return -2 ** (
-            # For a single training sample, denominator and depth are 0.
-            # Therefore, we set the score manually to 1.
-            -mt.divide(
-                depths, denominator, out=mt.ones_like(depths), where=denominator != 0
+        denominator = self.estimators_.shape[0] * _average_path_length(
+            [self.max_samples_]
+        )
+        return -(
+            2
+            ** (
+                # For a single training sample, denominator and depth are 0.
+                # Therefore, we set the score manually to 1.
+                -mt.divide(
+                    depths,
+                    denominator,
+                    out=mt.ones_like(depths),
+                    where=denominator != 0,
+                )
             )
         )
 

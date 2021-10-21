@@ -265,7 +265,7 @@ async def _run_web_session_test(web_address):
 
     # Test spawn a local function by the web session.
     def _my_func():
-        print('output from function')
+        print("output from function")
 
     r = mr.spawn(_my_func)
     info = await session.execute(r)

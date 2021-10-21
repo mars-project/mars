@@ -49,7 +49,7 @@ class SubtaskScheduleInfo:
             subtask_id=self.subtask.subtask_id,
             bands=list(self.band_futures.keys()),
             num_reschedules=self.num_reschedules,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -134,7 +134,9 @@ class SubtaskManagerActor(mo.Actor):
         for subtask_id in subtask_ids:
             subtask_info = self._subtask_infos.pop(subtask_id, None)
             if subtask_info is not None:
-                self._subtask_summaries[subtask_id] = subtask_info.to_summary(is_finished=True)
+                self._subtask_summaries[subtask_id] = subtask_info.to_summary(
+                    is_finished=True
+                )
                 if schedule_next:
                     for band in subtask_info.band_futures.keys():
                         band_tasks[band] += 1
@@ -295,7 +297,8 @@ class SubtaskManagerActor(mo.Actor):
     def get_schedule_summaries(self, task_id: Optional[str] = None):
         if task_id is not None:
             summaries = {
-                subtask_id: summary for subtask_id, summary in self._subtask_summaries.items()
+                subtask_id: summary
+                for subtask_id, summary in self._subtask_summaries.items()
                 if summary.task_id == task_id
             }
         else:

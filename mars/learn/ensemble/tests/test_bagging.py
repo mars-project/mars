@@ -24,7 +24,13 @@ from sklearn.svm import SVC
 
 from .... import tensor as mt, dataframe as md, execute
 from ....core import enter_mode
-from .._bagging import _extract_bagging_io, BaggingSample, BaggingSampleReindex, BaggingClassifier, BaggingRegressor
+from .._bagging import (
+    _extract_bagging_io,
+    BaggingSample,
+    BaggingSampleReindex,
+    BaggingClassifier,
+    BaggingRegressor,
+)
 
 
 def _get_tileable_chunk_data(sync_session, tileable):
@@ -187,19 +193,25 @@ def test_bagging_sample_reindex(
 
 
 @pytest.mark.parametrize(
-    'use_dataframe, max_samples, max_features, with_weights, base_estimator_cls',
+    "use_dataframe, max_samples, max_features, with_weights, base_estimator_cls",
     [
         (False, 10, 0.5, False, LogisticRegression),
         (True, 10, 1.0, True, SVC),
-    ]
+    ],
 )
-def test_bagging_classifier(setup, use_dataframe, max_samples, max_features,
-                            with_weights, base_estimator_cls):
+def test_bagging_classifier(
+    setup, use_dataframe, max_samples, max_features, with_weights, base_estimator_cls
+):
     rs = np.random.RandomState(0)
 
     raw_x, raw_y = make_classification(
-        n_samples=100, n_features=4, n_informative=2, n_redundant=0,
-        random_state=rs, shuffle=False)
+        n_samples=100,
+        n_features=4,
+        n_informative=2,
+        n_redundant=0,
+        random_state=rs,
+        shuffle=False,
+    )
 
     if not use_dataframe:
         t_x = mt.tensor(raw_x, chunk_size=20)
@@ -212,8 +224,12 @@ def test_bagging_classifier(setup, use_dataframe, max_samples, max_features,
     t_weights = mt.tensor(raw_weights, chunk_size=20) if with_weights else None
 
     clf = BaggingClassifier(
-        base_estimator=base_estimator_cls(), n_estimators=10, max_samples=max_samples,
-        max_features=max_features, random_state=rs, warm_start=True
+        base_estimator=base_estimator_cls(),
+        n_estimators=10,
+        max_samples=max_samples,
+        max_features=max_features,
+        random_state=rs,
+        warm_start=True,
     )
     clf.fit(t_x, t_y, sample_weight=t_weights)
 
@@ -254,20 +270,21 @@ def test_bagging_classifier(setup, use_dataframe, max_samples, max_features,
 
 
 @pytest.mark.parametrize(
-    'use_dataframe, max_samples, max_features, with_weights',
+    "use_dataframe, max_samples, max_features, with_weights",
     [
         (False, 10, 0.5, False),
         (True, 10, 1.0, True),
-    ]
+    ],
 )
-def test_bagging_regressor(setup, use_dataframe, max_samples, max_features,
-                           with_weights):
+def test_bagging_regressor(
+    setup, use_dataframe, max_samples, max_features, with_weights
+):
 
     rs = np.random.RandomState(0)
 
     raw_x, raw_y = make_regression(
-        n_samples=100, n_features=4, n_informative=2,
-        random_state=rs, shuffle=False)
+        n_samples=100, n_features=4, n_informative=2, random_state=rs, shuffle=False
+    )
 
     if not use_dataframe:
         t_x = mt.tensor(raw_x, chunk_size=20)
@@ -280,8 +297,12 @@ def test_bagging_regressor(setup, use_dataframe, max_samples, max_features,
     t_weights = mt.tensor(raw_weights, chunk_size=20) if with_weights else None
 
     clf = BaggingRegressor(
-        base_estimator=LinearRegression(), n_estimators=10, max_samples=max_samples,
-        max_features=max_features, random_state=rs, warm_start=True
+        base_estimator=LinearRegression(),
+        n_estimators=10,
+        max_samples=max_samples,
+        max_features=max_features,
+        random_state=rs,
+        warm_start=True,
     )
     clf.fit(t_x, t_y, sample_weight=t_weights)
 
