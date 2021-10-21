@@ -17,9 +17,11 @@
 import React, { lazy, Suspense } from 'react';
 import PropTypes from 'prop-types';
 import Table from '@material-ui/core/Table';
+import TableBody from '@material-ui/core/TableBody';
 import TableRow from '@material-ui/core/TableRow';
 import TableCell from '@material-ui/core/TableCell';
-import { Tabs, Tab } from '@material-ui/core';
+import Tabs from '@material-ui/core/Tabs';
+import Tab from '@material-ui/core/Tab';
 const SubtaskGraph = lazy(() => {
     return import('./SubtaskGraph');
 });
@@ -60,36 +62,38 @@ class TileableDetail extends React.Component {
                                 ?
                                 <React.Fragment>
                                     <Table size="small" style={{ height: '100%' }}>
-                                        <TableRow>
-                                            <TableCell variant='head'>
-                                                <b>Tileable ID</b>
-                                            </TableCell>
-                                            <TableCell>
-                                                {this.props.tileable.id}
-                                            </TableCell>
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell variant='head'>
-                                                <b>Tileable Name</b>
-                                            </TableCell>
-                                            <TableCell>
-                                                {this.props.tileable.name}
-                                            </TableCell>
-                                        </TableRow>
-                                        {
-                                            Object.keys(this.props.tileable.properties).map((key) => {
-                                                return (
-                                                    <TableRow key={key}>
-                                                        <TableCell variant='head'>
-                                                            <b>{key}</b>
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {this.props.tileable.properties[key]}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                );
-                                            })
-                                        }
+                                        <TableBody>
+                                            <TableRow>
+                                                <TableCell variant='head'>
+                                                    <b>Tileable ID</b>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {this.props.tileable.id}
+                                                </TableCell>
+                                            </TableRow>
+                                            <TableRow>
+                                                <TableCell variant='head'>
+                                                    <b>Tileable Name</b>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {this.props.tileable.name}
+                                                </TableCell>
+                                            </TableRow>
+                                            {
+                                                Object.keys(this.props.tileable.properties).map((key) => {
+                                                    return (
+                                                        <TableRow key={key}>
+                                                            <TableCell variant='head'>
+                                                                <b>{key}</b>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {this.props.tileable.properties[key]}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })
+                                            }
+                                        </TableBody>
                                     </Table>
                                 </React.Fragment>
                                 :
