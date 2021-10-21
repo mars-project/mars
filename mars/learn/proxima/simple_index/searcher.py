@@ -315,16 +315,30 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                 exist_state = False
                 if not os.path.exists(local_path.rsplit("/", 1)[0]):
                     os.mkdir(local_path.rsplit("/", 1)[0])
-                with open(local_path, 'wb') as out_f:
-                    with fs.open(index_path, 'rb') as in_f:
-                        # 32M
-                        chunk_bytes = 32 * 1024 ** 2
-                        while True:
-                            data = in_f.read(chunk_bytes)
-                            if data:
-                                out_f.write(data)
-                            else:
-                                break
+
+                def read_index():
+                    with open(local_path, 'wb') as out_f:
+                        with fs.open(index_path, 'rb') as in_f:
+                            # 32M
+                            chunk_bytes = 32 * 1024 ** 2
+                            while True:
+                                data = in_f.read(chunk_bytes)
+                                if data:
+                                    out_f.write(data)
+                                else:
+                                    break
+
+                # retry 3 times
+                for _ in range(3):
+                    try:
+                        read_index()
+                        logger.warning(f"read success")
+                        break
+                    except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                        logger.warning(f"read index file faild for times {_}")
+                        os.remove(local_path)
+                        logger.warning(f"remove {local_path} success")
+                        continue
 
         logger.warning(f'ReadingFromVolume({op.key}), index path: {index_path}, '
                        f'local_path {local_path}'
@@ -398,7 +412,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         topk = op.topk
 
         # calculate topk on rows
-        if op.distance_metric == "InnerProduct":
+        if op.distance_metric == "InnerProduct" or op.distance_metric == "MipsSquaredEuclidean":
             inds = np.argsort(distances, axis=1)[:, -1:-topk - 1:-1]
         else:
             inds = np.argsort(distances, axis=1)[:, :topk]
