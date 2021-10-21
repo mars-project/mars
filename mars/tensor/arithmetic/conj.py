@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorConj(TensorUnaryOp):
     _op_type_ = OperandDef.CONJ
-    _func_name = 'conj'
+    _func_name = "conj"
 
 
 @infer_dtype(np.conj)

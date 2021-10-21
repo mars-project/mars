@@ -24,19 +24,19 @@ from ...utils import ceildiv, has_unknown_shape, lazy_import
 from ..initializer import DataFrame as asdataframe
 from ..operands import DataFrameOperandMixin, DataFrameShuffleProxy
 
-cudf = lazy_import('cudf', globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
 
 class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
-    _input = KeyField('input')
-    _subset = AnyField('subset')
-    _keep = AnyField('keep')
-    _method = StringField('method')
+    _input = KeyField("input")
+    _subset = AnyField("subset")
+    _keep = AnyField("keep")
+    _method = StringField("method")
 
     # subset chunk, used for method 'subset_tree'
-    _subset_chunk = KeyField('subset_chunk')
+    _subset_chunk = KeyField("subset_chunk")
     # shuffle phase, used in shuffle method
-    _shuffle_size = Int32Field('shuffle_size')
+    _shuffle_size = Int32Field("shuffle_size")
 
     @property
     def input(self):
@@ -67,7 +67,9 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
         raise NotImplementedError
 
     @classmethod
-    def _gen_tileable_params(cls, op: "DuplicateOperand", input_params):  # pragma: no cover
+    def _gen_tileable_params(
+        cls, op: "DuplicateOperand", input_params
+    ):  # pragma: no cover
         raise NotImplementedError
 
     @classmethod
@@ -92,8 +94,8 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
         chunk = chunk_op.new_chunk([in_chunk], kws=[chunk_params])
 
         params = out.params
-        params['chunks'] = [chunk]
-        params['nsplits'] = tuple((s,) for s in chunk.shape)
+        params["chunks"] = [chunk]
+        params["nsplits"] = tuple((s,) for s in chunk.shape)
         new_op = op.copy()
         return new_op.new_tileables([inp], kws=[params])
 
@@ -127,38 +129,45 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             out_chunk_size = ceildiv(len(new_chunks), combine_size)
             out_chunks = []
             for i in range(out_chunk_size):
-                in_chunks = new_chunks[i * combine_size: (i + 1) * combine_size]
+                in_chunks = new_chunks[i * combine_size : (i + 1) * combine_size]
                 s = sum(c.shape[0] for c in in_chunks)
                 if in_chunks[0].ndim == 2:
-                    kw = dict(dtypes=in_chunks[0].dtypes,
-                              index_value=in_chunks[0].index_value,
-                              columns_value=in_chunks[0].columns_value,
-                              shape=(s, in_chunks[0].shape[1]),
-                              index=(i, 0))
+                    kw = dict(
+                        dtypes=in_chunks[0].dtypes,
+                        index_value=in_chunks[0].index_value,
+                        columns_value=in_chunks[0].columns_value,
+                        shape=(s, in_chunks[0].shape[1]),
+                        index=(i, 0),
+                    )
                 else:
-                    kw = dict(dtype=in_chunks[0].dtype,
-                              index_value=in_chunks[0].index_value,
-                              name=in_chunks[0].name,
-                              shape=(s,),
-                              index=(i,))
+                    kw = dict(
+                        dtype=in_chunks[0].dtype,
+                        index_value=in_chunks[0].index_value,
+                        name=in_chunks[0].name,
+                        shape=(s,),
+                        index=(i,),
+                    )
                 concat_chunk = DataFrameConcat(
-                    output_types=in_chunks[0].op.output_types).new_chunk(
-                    in_chunks, **kw)
+                    output_types=in_chunks[0].op.output_types
+                ).new_chunk(in_chunks, **kw)
                 chunk_op = op.copy().reset_key()
                 chunk_op._method = method
-                chunk_op.stage = \
+                chunk_op.stage = (
                     OperandStage.combine if out_chunk_size > 1 else OperandStage.agg
-                if out_chunk_size > 1 and method == 'tree':
+                )
+                if out_chunk_size > 1 and method == "tree":
                     # for tree, chunks except last one should be dataframes,
-                    chunk_op._output_types = \
-                        [OutputType.dataframe] if out_chunk_size > 1 else \
-                            out.op.output_types
-                elif method == 'subset_tree':
+                    chunk_op._output_types = (
+                        [OutputType.dataframe]
+                        if out_chunk_size > 1
+                        else out.op.output_types
+                    )
+                elif method == "subset_tree":
                     # `subset_tree` will tile chunks that are always dataframes
                     chunk_op._output_types = [OutputType.dataframe]
                 params = cls._gen_chunk_params(chunk_op, concat_chunk)
                 if out.ndim == 1 and out_chunk_size == 1:
-                    params['name'] = out.name
+                    params["name"] = out.name
                 out_chunks.append(chunk_op.new_chunk([concat_chunk], kws=[params]))
             new_chunks = out_chunks
 
@@ -169,8 +178,8 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
         out = op.outputs[0]
 
         params = out.params
-        params['chunks'] = chunks = cls._gen_tree_chunks(op, inp, 'tree')
-        params['nsplits'] = tuple((s,) for s in chunks[0].shape)
+        params["chunks"] = chunks = cls._gen_tree_chunks(op, inp, "tree")
+        params["nsplits"] = tuple((s,) for s in chunks[0].shape)
         new_op = op.copy()
         return new_op.new_tileables([inp], kws=[params])
 
@@ -185,81 +194,90 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
         # select subset first
         subset_df = yield from recursive_tile(inp[subset])
         # tree aggregate subset
-        subset_chunk = cls._gen_tree_chunks(op, subset_df, 'subset_tree')[0]
+        subset_chunk = cls._gen_tree_chunks(op, subset_df, "subset_tree")[0]
 
         out_chunks = []
         for c in inp.chunks:
             chunk_op = op.copy().reset_key()
-            chunk_op._method = 'subset_tree'
+            chunk_op._method = "subset_tree"
             chunk_op._subset_chunk = subset_chunk
             chunk_params = cls._gen_chunk_params(chunk_op, c)
-            out_chunks.append(chunk_op.new_chunk([c, subset_chunk],
-                                                 kws=[chunk_params]))
+            out_chunks.append(chunk_op.new_chunk([c, subset_chunk], kws=[chunk_params]))
 
         new_op = op.copy()
         params = out.params
-        params['chunks'] = out_chunks
+        params["chunks"] = out_chunks
         splits = tuple(c.shape[0] for c in out_chunks)
         if out.ndim == 2:
-            params['nsplits'] = (splits, inp.nsplits[1])
+            params["nsplits"] = (splits, inp.nsplits[1])
         else:
-            params['nsplits'] = (splits,)
+            params["nsplits"] = (splits,)
         return new_op.new_tileables([inp], kws=[params])
 
     @classmethod
     def _tile_shuffle(cls, op: "DuplicateOperand", inp):
         out = op.outputs[0]
 
-        map_chunks = cls._gen_map_chunks(op, inp, 'shuffle',
-                                         _shuffle_size=inp.chunk_shape[0])
+        map_chunks = cls._gen_map_chunks(
+            op, inp, "shuffle", _shuffle_size=inp.chunk_shape[0]
+        )
         proxy_chunk = DataFrameShuffleProxy(
-            output_types=map_chunks[0].op.output_types).new_chunk(map_chunks, shape=())
+            output_types=map_chunks[0].op.output_types
+        ).new_chunk(map_chunks, shape=())
         reduce_chunks = []
         for i in range(len(map_chunks)):
             reduce_op = op.copy().reset_key()
-            reduce_op._method = 'shuffle'
+            reduce_op._method = "shuffle"
             reduce_op.stage = OperandStage.reduce
-            reduce_op.reducer_phase = 'drop_duplicates'
+            reduce_op.reducer_phase = "drop_duplicates"
             reduce_op._shuffle_size = inp.chunk_shape[0]
             reduce_op._output_types = [OutputType.dataframe]
             reduce_chunk_params = map_chunks[0].params
-            reduce_chunk_params['index'] = (i,) + reduce_chunk_params['index'][1:]
+            reduce_chunk_params["index"] = (i,) + reduce_chunk_params["index"][1:]
             reduce_chunks.append(
-                reduce_op.new_chunk([proxy_chunk], kws=[reduce_chunk_params]))
+                reduce_op.new_chunk([proxy_chunk], kws=[reduce_chunk_params])
+            )
 
         put_back_proxy_chunk = DataFrameShuffleProxy(
-            output_types=map_chunks[0].op.output_types).new_chunk(reduce_chunks, shape=())
+            output_types=map_chunks[0].op.output_types
+        ).new_chunk(reduce_chunks, shape=())
         put_back_chunks = []
         for i in range(len(map_chunks)):
             put_back_op = op.copy().reset_key()
-            put_back_op._method = 'shuffle'
+            put_back_op._method = "shuffle"
             put_back_op.stage = OperandStage.reduce
-            put_back_op.reducer_phase = 'put_back'
+            put_back_op.reducer_phase = "put_back"
             put_back_op.reducer_index = (i,)
             if out.ndim == 2:
                 put_back_chunk_params = map_chunks[i].params
             else:
                 put_back_chunk_params = out.params.copy()
                 map_chunk_params = map_chunks[i].params
-                put_back_chunk_params['index_value'] = map_chunk_params['index_value']
-                put_back_chunk_params['index'] = map_chunk_params['index'][:1]
+                put_back_chunk_params["index_value"] = map_chunk_params["index_value"]
+                put_back_chunk_params["index"] = map_chunk_params["index"][:1]
             if out.ndim == 1:
-                put_back_chunk_params['index'] = (i,)
+                put_back_chunk_params["index"] = (i,)
             else:
-                put_back_chunk_params['index'] = (i,) + put_back_chunk_params['index'][1:]
-            put_back_chunk_params['shape'] = cls._get_shape(
-                map_chunks[i].op.input.shape, op)
+                put_back_chunk_params["index"] = (i,) + put_back_chunk_params["index"][
+                    1:
+                ]
+            put_back_chunk_params["shape"] = cls._get_shape(
+                map_chunks[i].op.input.shape, op
+            )
             put_back_chunks.append(
-                put_back_op.new_chunk([put_back_proxy_chunk], kws=[put_back_chunk_params]))
+                put_back_op.new_chunk(
+                    [put_back_proxy_chunk], kws=[put_back_chunk_params]
+                )
+            )
 
         new_op = op.copy()
         params = out.params
-        params['chunks'] = put_back_chunks
+        params["chunks"] = put_back_chunks
         split = tuple(c.shape[0] for c in put_back_chunks)
         if out.ndim == 2:
-            params['nsplits'] = (split, inp.nsplits[1])
+            params["nsplits"] = (split, inp.nsplits[1])
         else:
-            params['nsplits'] = (split,)
+            params["nsplits"] = (split,)
         return new_op.new_tileables([inp], kws=[params])
 
     @classmethod
@@ -273,12 +291,11 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
         if inp.ndim == 2 and inp.chunk_shape[1] > 1:
             if has_unknown_shape(inp):
                 yield
-            inp = yield from recursive_tile(
-                inp.rechunk({1: inp.shape[1]}))
+            inp = yield from recursive_tile(inp.rechunk({1: inp.shape[1]}))
 
         default_tile = cls._tile_tree
 
-        if op.method == 'auto':
+        if op.method == "auto":
             # if method == 'auto', pick appropriate method
             if np.isnan(inp.shape[0]) or op.subset is None:
                 # if any unknown shape exist,
@@ -287,9 +304,9 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
 
             # check subset data to see if it's small enough
             subset_dtypes = inp.dtypes[op.subset]
-            memory_usage = 0.
+            memory_usage = 0.0
             for s_dtype in subset_dtypes:
-                if s_dtype.kind == 'O' or not hasattr(s_dtype, 'itemsize'):
+                if s_dtype.kind == "O" or not hasattr(s_dtype, "itemsize"):
                     # object, just use default tile
                     return default_tile(op, inp)
                 else:
@@ -300,13 +317,13 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
                 return r
             else:
                 return default_tile(op, inp)
-        elif op.method == 'subset_tree':
+        elif op.method == "subset_tree":
             r = yield from cls._tile_subset_tree(op, inp)
             return r
-        elif op.method == 'tree':
+        elif op.method == "tree":
             return cls._tile_tree(op, inp)
         else:
-            assert op.method == 'shuffle'
+            assert op.method == "shuffle"
             return cls._tile_shuffle(op, inp)
 
     @classmethod
@@ -319,13 +336,12 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             keep = op.keep
         if inp.ndim == 2:
             try:
-                return inp.drop_duplicates(subset=subset,
-                                           keep=keep,
-                                           ignore_index=ignore_index)
+                return inp.drop_duplicates(
+                    subset=subset, keep=keep, ignore_index=ignore_index
+                )
             except TypeError:
                 # no ignore_index for pandas < 1.0
-                ret = inp.drop_duplicates(subset=subset,
-                                          keep=keep)
+                ret = inp.drop_duplicates(subset=subset, keep=keep)
                 if ignore_index:
                     ret.reset_index(drop=True, inplace=True)
                 return ret
@@ -351,15 +367,15 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
         # index would be (chunk_index, i)
         index = xdf.MultiIndex.from_arrays(
             [np.full(inp.shape[0], idx), np.arange(inp.shape[0])],
-            names=['_chunk_index_', '_i_'])
+            names=["_chunk_index_", "_i_"],
+        )
         inp = inp.set_index(index)
         ctx[out.key] = cls._drop_duplicates(inp, op, ignore_index=False)
 
     @classmethod
     def _execute_subset_tree_combine(cls, ctx, op):
         inp = ctx[op.input.key]
-        ctx[op.outputs[0].key] = cls._drop_duplicates(inp, op,
-                                                      ignore_index=False)
+        ctx[op.outputs[0].key] = cls._drop_duplicates(inp, op, ignore_index=False)
 
     @classmethod
     def _execute_subset_tree_agg(cls, ctx, op):

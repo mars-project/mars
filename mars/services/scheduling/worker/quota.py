@@ -27,7 +27,7 @@ from ...cluster import QuotaInfo
 
 logger = logging.getLogger(__name__)
 
-QuotaDumpType = namedtuple('QuotaDumpType', 'allocations requests hold_sizes')
+QuotaDumpType = namedtuple("QuotaDumpType", "allocations requests hold_sizes")
 
 
 @dataclass
@@ -41,7 +41,7 @@ class QuotaRequest:
 class QuotaActor(mo.Actor):
     @classmethod
     def gen_uid(cls, band_name: str):
-        return f'{band_name}_quota'
+        return f"{band_name}_quota"
 
     def __init__(self, band: BandType, quota_size: int, **kw):
         super().__init__()
@@ -60,10 +60,11 @@ class QuotaActor(mo.Actor):
         self._total_hold = 0
 
         if kw:  # pragma: no cover
-            logger.warning('Keywords for QuotaActor %r not used', list(kw.keys()))
+            logger.warning("Keywords for QuotaActor %r not used", list(kw.keys()))
 
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
+
         try:
             self._cluster_api = await ClusterAPI.create(self.address)
             self._report_quota_info()
@@ -75,17 +76,18 @@ class QuotaActor(mo.Actor):
 
     def _log_allocate(self, msg: str, *args, **kwargs):
         args += (self._total_allocated, self._quota_size)
-        logger.debug(msg + ' Allocated: %s, Total size: %s', *args, **kwargs)
+        logger.debug(msg + " Allocated: %s, Total size: %s", *args, **kwargs)
 
     def _report_quota_info(self):
         if self._cluster_api is not None:
             quota_info = QuotaInfo(
                 quota_size=self._quota_size,
                 allocated_size=self._total_allocated,
-                hold_size=self._total_hold
+                hold_size=self._total_hold,
             )
-            asyncio.create_task(self._cluster_api.set_band_quota_info(
-                self._band_name, quota_info))
+            asyncio.create_task(
+                self._cluster_api.set_band_quota_info(self._band_name, quota_info)
+            )
 
     async def request_batch_quota(self, batch: Dict):
         """
@@ -100,7 +102,7 @@ class QuotaActor(mo.Actor):
                 all_allocated = False
                 break
 
-        self._log_allocate('Receive batch quota request %r on %s.', batch, self.uid)
+        self._log_allocate("Receive batch quota request %r on %s.", batch, self.uid)
         sorted_req = sorted(batch.items(), key=lambda tp: tp[0])
         keys = tuple(tp[0] for tp in sorted_req)
         quota_sizes = tuple(tp[1] for tp in sorted_req)
@@ -108,12 +110,14 @@ class QuotaActor(mo.Actor):
 
         # if all requested and allocation can still be applied, apply directly
         if all_allocated and await self._has_space(delta):
-            self._log_allocate('Quota request %r already allocated.', batch)
+            self._log_allocate("Quota request %r already allocated.", batch)
             return
 
         if delta > self._quota_size:
-            raise ValueError(f'Cannot allocate quota size {delta} '
-                             f'larger than total capacity {self._quota_size}.')
+            raise ValueError(
+                f"Cannot allocate quota size {delta} "
+                f"larger than total capacity {self._quota_size}."
+            )
 
         if keys in self._requests:
             event = self._requests[keys].event
@@ -121,15 +125,21 @@ class QuotaActor(mo.Actor):
             has_space = await self._has_space(delta)
             if has_space and not self._requests:
                 # if no previous requests, we can apply directly
-                self._log_allocate('Quota request met for key %r on %s.', keys, self.uid)
+                self._log_allocate(
+                    "Quota request met for key %r on %s.", keys, self.uid
+                )
                 await self.alter_allocations(keys, quota_sizes, allocate=True)
                 return
             else:
                 # current free space cannot satisfy the request, the request is queued
                 if not has_space:
-                    self._log_allocate('Quota request unmet for key %r on %s.', keys, self.uid)
+                    self._log_allocate(
+                        "Quota request unmet for key %r on %s.", keys, self.uid
+                    )
                 else:
-                    self._log_allocate('Quota request queued for key %r on %s.', keys, self.uid)
+                    self._log_allocate(
+                        "Quota request queued for key %r on %s.", keys, self.uid
+                    )
                 event = asyncio.Event()
                 quota_request = QuotaRequest(quota_sizes, delta, time.time(), event)
                 if keys not in self._requests:
@@ -141,6 +151,7 @@ class QuotaActor(mo.Actor):
             except asyncio.CancelledError as ex:
                 await self.ref().remove_requests.tell(keys)
                 raise ex
+
         return waiter()
 
     async def remove_requests(self, keys: Tuple):
@@ -188,7 +199,7 @@ class QuotaActor(mo.Actor):
             await self._process_requests()
 
             self._report_quota_info()
-            self._log_allocate('Quota keys %s released on %s.', keys, self.uid)
+            self._log_allocate("Quota keys %s released on %s.", keys, self.uid)
 
     def dump_data(self):
         return QuotaDumpType(self._allocations, self._requests, self._hold_sizes)
@@ -197,8 +208,13 @@ class QuotaActor(mo.Actor):
         # get total allocated size, for debug purpose
         return self._total_allocated
 
-    async def alter_allocations(self, keys: Tuple, quota_sizes: Tuple,
-                                handle_shrink: bool = True, allocate: bool = False):
+    async def alter_allocations(
+        self,
+        keys: Tuple,
+        quota_sizes: Tuple,
+        handle_shrink: bool = True,
+        allocate: bool = False,
+    ):
         """
         Alter multiple requests
 
@@ -240,8 +256,13 @@ class QuotaActor(mo.Actor):
             await self._process_requests()
 
         self._report_quota_info()
-        self._log_allocate('Quota keys %r applied on %s. Total old Size: %s, Total diff: %s,',
-                           keys, self.uid, total_old_size, total_diff)
+        self._log_allocate(
+            "Quota keys %r applied on %s. Total old Size: %s, Total diff: %s,",
+            keys,
+            self.uid,
+            total_old_size,
+            total_diff,
+        )
 
     async def _process_requests(self):
         """
@@ -250,7 +271,9 @@ class QuotaActor(mo.Actor):
         removed = []
         for k, req in self._requests.items():
             if await self._has_space(req.delta):
-                await self.alter_allocations(k, req.req_size, handle_shrink=False, allocate=True)
+                await self.alter_allocations(
+                    k, req.req_size, handle_shrink=False, allocate=True
+                )
                 req.event.set()
                 removed.append(k)
             else:
@@ -264,9 +287,15 @@ class MemQuotaActor(QuotaActor):
     """
     Actor handling worker memory quota
     """
-    def __init__(self, band: BandType, quota_size: int, hard_limit: int = None,
-                 refresh_time: Union[int, float] = None,
-                 enable_kill_slot: bool = True):
+
+    def __init__(
+        self,
+        band: BandType,
+        quota_size: int,
+        hard_limit: int = None,
+        refresh_time: Union[int, float] = None,
+        enable_kill_slot: bool = True,
+    ):
         super().__init__(band, quota_size)
         self._hard_limit = hard_limit
         self._last_memory_available = 0
@@ -279,12 +308,16 @@ class MemQuotaActor(QuotaActor):
 
     async def __post_create__(self):
         await super().__post_create__()
-        self._stat_refresh_task = self.ref().update_mem_stats.tell_delay(delay=self._refresh_time)
+        self._stat_refresh_task = self.ref().update_mem_stats.tell_delay(
+            delay=self._refresh_time
+        )
 
         from .workerslot import BandSlotManagerActor
+
         try:
             self._slot_manager_ref = await mo.actor_ref(
-                uid=BandSlotManagerActor.gen_uid(self._band[1]), address=self.address)
+                uid=BandSlotManagerActor.gen_uid(self._band[1]), address=self.address
+            )
         except mo.ActorNotExist:  # pragma: no cover
             pass
 
@@ -309,14 +342,22 @@ class MemQuotaActor(QuotaActor):
 
         mem_stats = mars_resource.virtual_memory()
         # calc available physical memory
-        available_size = mem_stats.available - max(0, mem_stats.total - self._hard_limit) \
+        available_size = (
+            mem_stats.available
+            - max(0, mem_stats.total - self._hard_limit)
             - (self._total_allocated - self._total_hold)
+        )
         if max(delta, 0) >= available_size:
-            logger.warning('%s met hard memory limitation: request %d, available %d, hard limit %d',
-                           self.uid, delta, available_size, self._hard_limit)
+            logger.warning(
+                "%s met hard memory limitation: request %d, available %d, hard limit %d",
+                self.uid,
+                delta,
+                available_size,
+                self._hard_limit,
+            )
 
             if self._enable_kill_slot and self._slot_manager_ref is not None:
-                logger.info('Restarting free slots to obtain more memory')
+                logger.info("Restarting free slots to obtain more memory")
                 await self._slot_manager_ref.restart_free_slots()
             return False
         return await super()._has_space(delta)
@@ -330,15 +371,26 @@ class MemQuotaActor(QuotaActor):
 
         mem_stats = mars_resource.virtual_memory()
         # calc available physical memory
-        available_size = mem_stats.available - max(0, mem_stats.total - self._hard_limit) \
+        available_size = (
+            mem_stats.available
+            - max(0, mem_stats.total - self._hard_limit)
             - (self._total_allocated - self._total_hold)
-        args += (self._total_allocated, self._quota_size, mem_stats.available, available_size,
-                 self._hard_limit, self._total_hold)
+        )
+        args += (
+            self._total_allocated,
+            self._quota_size,
+            mem_stats.available,
+            available_size,
+            self._hard_limit,
+            self._total_hold,
+        )
 
         logger.debug(
-            msg + ' Allocated: %s, Quota size: %s, Phy available: %s, Hard available: %s,'
-                  ' Hard limit: %s, Holding: %s',
-            *args, **kwargs
+            msg
+            + " Allocated: %s, Quota size: %s, Phy available: %s, Hard available: %s,"
+            " Hard limit: %s, Holding: %s",
+            *args,
+            **kwargs,
         )
 
 
@@ -352,17 +404,21 @@ class WorkerQuotaManagerActor(mo.Actor):
 
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
+
         self._cluster_api = await ClusterAPI.create(self.address)
 
         band_to_slots = await self._cluster_api.get_bands()
         for band in band_to_slots.keys():
             band_config = self._band_configs.get(band[1], self._default_config)
             self._band_quota_refs[band] = await mo.create_actor(
-                MemQuotaActor, band, **band_config,
+                MemQuotaActor,
+                band,
+                **band_config,
                 uid=MemQuotaActor.gen_uid(band[1]),
-                address=self.address)
+                address=self.address,
+            )
 
     async def __pre_destroy__(self):
-        await asyncio.gather(*[
-            mo.destroy_actor(ref) for ref in self._band_quota_refs.values()
-        ])
+        await asyncio.gather(
+            *[mo.destroy_actor(ref) for ref in self._band_quota_refs.values()]
+        )

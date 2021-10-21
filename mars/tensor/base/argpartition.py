@@ -15,7 +15,7 @@
 from .partition import _validate_partition_arguments, TensorPartition
 
 
-def argpartition(a, kth, axis=-1, kind='introselect', order=None, **kw):
+def argpartition(a, kth, axis=-1, kind="introselect", order=None, **kw):
     """
     Perform an indirect partition along the given axis using the
     algorithm specified by the `kind` keyword. It returns an array of
@@ -82,8 +82,17 @@ def argpartition(a, kth, axis=-1, kind='introselect', order=None, **kw):
 
     """
     a, kth, axis, kind, order, need_align = _validate_partition_arguments(
-        a, kth, axis, kind, order, kw)
-    op = TensorPartition(kth=kth, axis=axis, kind=kind, order=order,
-                         need_align=need_align, return_value=False,
-                         return_indices=True, dtype=a.dtype, gpu=a.op.gpu)
+        a, kth, axis, kind, order, kw
+    )
+    op = TensorPartition(
+        kth=kth,
+        axis=axis,
+        kind=kind,
+        order=order,
+        need_align=need_align,
+        return_value=False,
+        return_indices=True,
+        dtype=a.dtype,
+        gpu=a.op.gpu,
+    )
     return op(a, kth)

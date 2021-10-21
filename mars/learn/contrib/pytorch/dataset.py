@@ -17,10 +17,11 @@ from typing import List
 
 import numpy as np
 import pandas as pd
+
 try:
     import torch
     from torch.utils.data import Dataset
-except ImportError: # pragma: no cover
+except ImportError:  # pragma: no cover
     torch = None
     Dataset = object
 
@@ -31,8 +32,15 @@ from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from ....utils import require_not_none
 
 
-ACCEPT_TYPE = (TENSOR_TYPE, DATAFRAME_TYPE, SERIES_TYPE,
-               np.ndarray, pd.DataFrame, pd.Series, List)
+ACCEPT_TYPE = (
+    TENSOR_TYPE,
+    DATAFRAME_TYPE,
+    SERIES_TYPE,
+    np.ndarray,
+    pd.DataFrame,
+    pd.Series,
+    List,
+)
 
 
 @require_not_none(torch)
@@ -42,6 +50,7 @@ class MarsDataset(Dataset):
     DataFrame, Series. Additionally, it's constructor can receive
     np.ndarray, pd.DataFrame, pd.Series type.
     """
+
     def __init__(self, *tileables, fetch_kwargs=None):
 
         self._context = get_context()
@@ -56,8 +65,7 @@ class MarsDataset(Dataset):
                 raise TypeError(f"Unexpected dataset type: {type(t)}")
 
     def _execute(self):
-        execute_data = [t for t in self._tileables
-                        if isinstance(t, ACCEPT_TYPE[:3])]
+        execute_data = [t for t in self._tileables if isinstance(t, ACCEPT_TYPE[:3])]
         if len(execute_data):
             execute(execute_data)
 

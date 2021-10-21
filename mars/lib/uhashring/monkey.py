@@ -2,7 +2,7 @@
 
 from . import HashRing
 
-__all__ = ['patch_memcache']
+__all__ = ["patch_memcache"]
 
 
 def patch_memcache():
@@ -16,10 +16,10 @@ def patch_memcache():
         nodes = {}
         for server in self.servers:
             conf = {
-                'hostname': server.ip,
-                'instance': server,
-                'port': server.port,
-                'weight': server.weight
+                "hostname": server.ip,
+                "instance": server,
+                "port": server.port,
+                "weight": server.weight,
             }
             nodes[server.ip] = conf
         self.uhashring = HashRing(nodes)
@@ -30,12 +30,12 @@ def patch_memcache():
 
         for i in range(self._SERVER_RETRIES):
             for node in self.uhashring.range(key):
-                if node['instance'].connect():
-                    return node['instance'], key
+                if node["instance"].connect():
+                    return node["instance"], key
 
         return None, None
 
-    memcache = __import__('memcache')
+    memcache = __import__("memcache")
     memcache.Client._old_get_server = memcache.Client._get_server
     memcache.Client._old_init = memcache.Client.__init__
     memcache.Client.__init__ = _init

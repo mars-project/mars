@@ -25,9 +25,9 @@ from .utils import svd_flip
 # ---------------------------------------------------------------------
 
 
-def randomized_range_finder(A, size, n_iter,
-                            power_iteration_normalizer='auto',
-                            random_state=None):
+def randomized_range_finder(
+    A, size, n_iter, power_iteration_normalizer="auto", random_state=None
+):
     r"""Computes an orthonormal matrix whose range approximates the range of A.
 
     .. versionadded:: 0.1.3
@@ -80,30 +80,30 @@ def randomized_range_finder(A, size, n_iter,
 
     # Generating normal random vectors with shape: (A.shape[1], size)
     Q = random_state.normal(size=(A.shape[1], size))
-    if A.dtype.kind == 'f':
+    if A.dtype.kind == "f":
         # Ensure f32 is preserved as f32
         Q = Q.astype(A.dtype, copy=False)
 
     # Deal with "auto" mode
-    if power_iteration_normalizer == 'auto':
+    if power_iteration_normalizer == "auto":
         if n_iter <= 2:
-            power_iteration_normalizer = 'none'
+            power_iteration_normalizer = "none"
         else:
-            power_iteration_normalizer = 'LU'
+            power_iteration_normalizer = "LU"
 
     # Perform power iterations with Q to further 'imprint' the top
     # singular vectors of A in Q
     for _ in range(n_iter):
-        if power_iteration_normalizer == 'none':
+        if power_iteration_normalizer == "none":
             Q = A.dot(Q)
             Q = A.T.dot(Q)
-        elif power_iteration_normalizer == 'LU':
+        elif power_iteration_normalizer == "LU":
             # TODO: directly get Q when lu supports `permute_l`
             p, l, _ = lu(A.dot(Q))
             Q = p.dot(l)
             p, l, _ = lu(A.T.dot(Q))
             Q = p.dot(l)
-        elif power_iteration_normalizer == 'QR':
+        elif power_iteration_normalizer == "QR":
             Q, _ = qr(A.dot(Q))
             Q, _ = qr(A.T.dot(Q))
 
@@ -113,9 +113,16 @@ def randomized_range_finder(A, size, n_iter,
     return Q
 
 
-def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
-                   power_iteration_normalizer='auto', transpose='auto',
-                   flip_sign=True, random_state=0):
+def randomized_svd(
+    M,
+    n_components,
+    n_oversamples=10,
+    n_iter="auto",
+    power_iteration_normalizer="auto",
+    transpose="auto",
+    flip_sign=True,
+    random_state=0,
+):
     r"""
     Computes a truncated randomized SVD
 
@@ -186,20 +193,21 @@ def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
     n_random = n_components + n_oversamples
     n_samples, n_features = M.shape
 
-    if n_iter == 'auto':
+    if n_iter == "auto":
         # Check if the number of iterations is explicitly specified
         # Adjust n_iter. 7 was found a good compromise for PCA.
         # https://github.com/scikit-learn/scikit-learn/pull/5299
-        n_iter = 7 if n_components < .1 * min(M.shape) else 4
+        n_iter = 7 if n_components < 0.1 * min(M.shape) else 4
 
-    if transpose == 'auto':
+    if transpose == "auto":
         transpose = n_samples < n_features
     if transpose:
         # this implementation is a bit faster with smaller shape[1]
         M = M.T
 
-    Q = randomized_range_finder(M, n_random, n_iter,
-                                power_iteration_normalizer, random_state)
+    Q = randomized_range_finder(
+        M, n_random, n_iter, power_iteration_normalizer, random_state
+    )
     # project M to the (k + p) dimensional space using the basis vectors
     B = Q.T.dot(M)
 

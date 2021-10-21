@@ -26,7 +26,12 @@ from ...core.operand import OperandStage, MapReduceOperand
 from ...dataframe.utils import parse_index
 from ...lib import sparse
 from ...serialization.serializables import FieldTypes, TupleField, KeyField
-from ...tensor.utils import validate_axis, check_random_state, gen_random_seeds, decide_unify_split
+from ...tensor.utils import (
+    validate_axis,
+    check_random_state,
+    gen_random_seeds,
+    decide_unify_split,
+)
 from ...tensor.array_utils import get_array_module
 from ...utils import tokenize, lazy_import, has_unknown_shape
 from ...core import ExecutableTuple
@@ -34,7 +39,7 @@ from ..operands import LearnOperandMixin, OutputType, LearnShuffleProxy
 from ..utils import convert_to_tensor_or_dataframe
 
 
-cudf = lazy_import('cudf')
+cudf = lazy_import("cudf")
 
 
 def _shuffle_index_value(op, index_value, chunk_index=None):
@@ -52,15 +57,22 @@ def _safe_slice(obj, slc, output_type):
 class LearnShuffle(MapReduceOperand, LearnOperandMixin):
     _op_type_ = OperandDef.PERMUTATION
 
-    _axes = TupleField('axes', FieldTypes.int32)
-    _seeds = TupleField('seeds', FieldTypes.uint32)
+    _axes = TupleField("axes", FieldTypes.int32)
+    _seeds = TupleField("seeds", FieldTypes.uint32)
 
-    _input = KeyField('input')
-    _reduce_sizes = TupleField('reduce_sizes', FieldTypes.uint32)
+    _input = KeyField("input")
+    _reduce_sizes = TupleField("reduce_sizes", FieldTypes.uint32)
 
-    def __init__(self, axes=None, seeds=None, output_types=None, reduce_sizes=None, **kw):
-        super().__init__(_axes=axes, _seeds=seeds, _output_types=output_types,
-                         _reduce_sizes=reduce_sizes, **kw)
+    def __init__(
+        self, axes=None, seeds=None, output_types=None, reduce_sizes=None, **kw
+    ):
+        super().__init__(
+            _axes=axes,
+            _seeds=seeds,
+            _output_types=output_types,
+            _reduce_sizes=reduce_sizes,
+            **kw,
+        )
 
     @property
     def axes(self):
@@ -106,14 +118,18 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
         for i, output_type, param in zip(itertools.count(0), self.output_types, params):
             if output_type == OutputType.dataframe:
                 if 0 in axes:
-                    param['index_value'] = self._shuffle_index_value(param['index_value'])
+                    param["index_value"] = self._shuffle_index_value(
+                        param["index_value"]
+                    )
                 if 1 in axes:
-                    dtypes = param['dtypes'] = self._shuffle_dtypes(param['dtypes'])
-                    param['columns_value'] = parse_index(dtypes.index, store_data=True)
+                    dtypes = param["dtypes"] = self._shuffle_dtypes(param["dtypes"])
+                    param["columns_value"] = parse_index(dtypes.index, store_data=True)
             elif output_type == OutputType.series:
                 if 0 in axes:
-                    param['index_value'] = self._shuffle_index_value(param['index_value'])
-            param['_position_'] = i
+                    param["index_value"] = self._shuffle_index_value(
+                        param["index_value"]
+                    )
+            param["_position_"] = i
         return params
 
     @staticmethod
@@ -130,39 +146,51 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
             return tileable
 
     @classmethod
-    def _calc_chunk_params(cls, in_chunk, axes, chunk_shape, output, output_type,
-                           chunk_op, no_shuffle: bool):
-        params = {'index': in_chunk.index}
+    def _calc_chunk_params(
+        cls,
+        in_chunk,
+        axes,
+        chunk_shape,
+        output,
+        output_type,
+        chunk_op,
+        no_shuffle: bool,
+    ):
+        params = {"index": in_chunk.index}
         if output_type == OutputType.tensor:
             shape_c = list(in_chunk.shape)
             for ax in axes:
                 if not no_shuffle and chunk_shape[ax] > 1:
                     shape_c[ax] = np.nan
-            params['shape'] = tuple(shape_c)
-            params['dtype'] = in_chunk.dtype
-            params['order'] = output.order
+            params["shape"] = tuple(shape_c)
+            params["dtype"] = in_chunk.dtype
+            params["order"] = output.order
         elif output_type == OutputType.dataframe:
             shape_c = list(in_chunk.shape)
             if 0 in axes:
                 if not no_shuffle and chunk_shape[0] > 1:
                     shape_c[0] = np.nan
-            params['shape'] = tuple(shape_c)
+            params["shape"] = tuple(shape_c)
             if 1 not in axes:
-                params['dtypes'] = in_chunk.dtypes
-                params['columns_value'] = in_chunk.columns_value
+                params["dtypes"] = in_chunk.dtypes
+                params["columns_value"] = in_chunk.columns_value
             else:
-                params['dtypes'] = output.dtypes
-                params['columns_value'] = output.columns_value
-            params['index_value'] = _shuffle_index_value(chunk_op, in_chunk.index_value, in_chunk.index)
+                params["dtypes"] = output.dtypes
+                params["columns_value"] = output.columns_value
+            params["index_value"] = _shuffle_index_value(
+                chunk_op, in_chunk.index_value, in_chunk.index
+            )
         else:
             assert output_type == OutputType.series
             if no_shuffle:
-                params['shape'] = in_chunk.shape
+                params["shape"] = in_chunk.shape
             else:
-                params['shape'] = (np.nan,)
-            params['name'] = in_chunk.name
-            params['index_value'] = _shuffle_index_value(chunk_op, in_chunk.index_value, in_chunk.index)
-            params['dtype'] = in_chunk.dtype
+                params["shape"] = (np.nan,)
+            params["name"] = in_chunk.name
+            params["index_value"] = _shuffle_index_value(
+                chunk_op, in_chunk.index_value, in_chunk.index
+            )
+            params["dtype"] = in_chunk.dtype
         return params
 
     @classmethod
@@ -171,8 +199,9 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
         if has_unknown_shape(inputs):
             yield
         axis_to_nsplits = defaultdict(list)
-        has_dataframe = any(output_type == OutputType.dataframe
-                            for output_type in op.output_types)
+        has_dataframe = any(
+            output_type == OutputType.dataframe for output_type in op.output_types
+        )
         for ax in op.axes:
             if has_dataframe and ax == 1:
                 # if DataFrame exists, for the columns axis,
@@ -220,17 +249,23 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
                 # no need to do shuffle
                 chunks = []
                 for c in inp.chunks:
-                    chunk_op = LearnShuffle(axes=inp_axes, seeds=op.seeds[:len(inp_axes)],
-                                            output_types=output_types)
-                    params = cls._calc_chunk_params(c, inp_axes, inp.chunk_shape,
-                                                    oup, output_type, chunk_op, True)
+                    chunk_op = LearnShuffle(
+                        axes=inp_axes,
+                        seeds=op.seeds[: len(inp_axes)],
+                        output_types=output_types,
+                    )
+                    params = cls._calc_chunk_params(
+                        c, inp_axes, inp.chunk_shape, oup, output_type, chunk_op, True
+                    )
                     out_chunk = chunk_op.new_chunk([c], kws=[params])
                     chunks.append(out_chunk)
                 out_chunks.append(chunks)
                 continue
 
             if inp.ndim > 1:
-                left_chunk_shape = [s for ax, s in enumerate(inp.chunk_shape) if ax not in inp_axes]
+                left_chunk_shape = [
+                    s for ax, s in enumerate(inp.chunk_shape) if ax not in inp_axes
+                ]
                 idx_iter = itertools.product(*[range(s) for s in left_chunk_shape])
             else:
                 idx_iter = [()]
@@ -238,7 +273,9 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
             out_chunks.append(reduce_chunks)
             for idx in idx_iter:
                 map_chunks = []
-                for reducer_inds in itertools.product(*[range(s) for s in reduce_sizes]):
+                for reducer_inds in itertools.product(
+                    *[range(s) for s in reduce_sizes]
+                ):
                     inp_index = list(idx)
                     for ax, reducer_ind in zip(inp_axes, reducer_inds):
                         inp_index.insert(ax, reducer_ind)
@@ -247,31 +284,43 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
                     params = in_chunk.params
                     map_chunk_op = LearnShuffle(
                         stage=OperandStage.map,
-                        output_types=output_types, axes=inp_axes,
-                        seeds=tuple(mapper_seeds[j][in_chunk.index[ax]]
-                                    for j, ax in enumerate(inp_axes)),
-                        reduce_sizes=reduce_sizes
+                        output_types=output_types,
+                        axes=inp_axes,
+                        seeds=tuple(
+                            mapper_seeds[j][in_chunk.index[ax]]
+                            for j, ax in enumerate(inp_axes)
+                        ),
+                        reduce_sizes=reduce_sizes,
                     )
                     map_chunk = map_chunk_op.new_chunk([in_chunk], **params)
                     map_chunks.append(map_chunk)
 
                 map_chunk_kw = {}
                 if output_type == OutputType.tensor:
-                    map_chunk_kw = {'dtype': inp.dtype, 'shape': ()}
-                proxy_chunk = LearnShuffleProxy(_tileable_keys=[inp.key], output_types=[output_type]) \
-                    .new_chunk(map_chunks, **map_chunk_kw)
+                    map_chunk_kw = {"dtype": inp.dtype, "shape": ()}
+                proxy_chunk = LearnShuffleProxy(
+                    _tileable_keys=[inp.key], output_types=[output_type]
+                ).new_chunk(map_chunks, **map_chunk_kw)
 
-                reduce_axes = tuple(ax for j, ax in enumerate(inp_axes) if reduce_sizes[j] > 1)
+                reduce_axes = tuple(
+                    ax for j, ax in enumerate(inp_axes) if reduce_sizes[j] > 1
+                )
                 reduce_sizes_ = tuple(rs for rs in reduce_sizes if rs > 1)
                 for c in map_chunks:
                     chunk_op = LearnShuffle(
                         stage=OperandStage.reduce,
-                        output_types=output_types, axes=reduce_axes,
-                        seeds=tuple(reducer_seeds[j][c.index[ax]] for j, ax in enumerate(inp_axes)
-                                    if reduce_sizes[j] > 1),
-                        reduce_sizes=reduce_sizes_)
-                    params = cls._calc_chunk_params(c, inp_axes, inp.chunk_shape, oup,
-                                                    output_type, chunk_op, False)
+                        output_types=output_types,
+                        axes=reduce_axes,
+                        seeds=tuple(
+                            reducer_seeds[j][c.index[ax]]
+                            for j, ax in enumerate(inp_axes)
+                            if reduce_sizes[j] > 1
+                        ),
+                        reduce_sizes=reduce_sizes_,
+                    )
+                    params = cls._calc_chunk_params(
+                        c, inp_axes, inp.chunk_shape, oup, output_type, chunk_op, False
+                    )
                     reduce_chunk = chunk_op.new_chunk([proxy_chunk], kws=[params])
                     reduce_chunks.append(reduce_chunk)
 
@@ -284,10 +333,12 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
                     out_chunks.insert(i, inp.chunks)
                     out_nsplits.insert(i, inp.nsplits)
             assert len(out_chunks) == len(op.outputs)
-        for i, param, chunks, ns in zip(itertools.count(), params, out_chunks, out_nsplits):
-            param['chunks'] = chunks
-            param['nsplits'] = ns
-            param['_position_'] = i
+        for i, param, chunks, ns in zip(
+            itertools.count(), params, out_chunks, out_nsplits
+        ):
+            param["chunks"] = chunks
+            param["nsplits"] = ns
+            param["_position_"] = i
         return new_op.new_tileables(op.inputs, kws=params)
 
     @classmethod
@@ -299,8 +350,11 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
             if xp is sparse:
                 conv = lambda x: x
             else:
-                conv = xp.ascontiguousarray \
-                    if op.outputs[0].order.value == 'C' else xp.asfortranarray
+                conv = (
+                    xp.ascontiguousarray
+                    if op.outputs[0].order.value == "C"
+                    else xp.asfortranarray
+                )
 
         for axis, seed in zip(op.axes, op.seeds):
             size = x.shape[axis]
@@ -407,16 +461,16 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
 
 def shuffle(*arrays, **options):
     arrays = [convert_to_tensor_or_dataframe(ar) for ar in arrays]
-    axes = options.pop('axes', (0,))
+    axes = options.pop("axes", (0,))
     if not isinstance(axes, Iterable):
         axes = (axes,)
     elif not isinstance(axes, tuple):
         axes = tuple(axes)
-    random_state = check_random_state(
-        options.pop('random_state', None)).to_numpy()
+    random_state = check_random_state(options.pop("random_state", None)).to_numpy()
     if options:
-        raise TypeError('shuffle() got an unexpected '
-                        f'keyword argument {next(iter(options))}')
+        raise TypeError(
+            "shuffle() got an unexpected " f"keyword argument {next(iter(options))}"
+        )
 
     max_ndim = max(ar.ndim for ar in arrays)
     axes = tuple(np.unique([validate_axis(max_ndim, ax) for ax in axes]).tolist())
@@ -426,10 +480,9 @@ def shuffle(*arrays, **options):
     for ax in axes:
         shapes = {ar.shape[ax] for ar in arrays if ax < ar.ndim}
         if len(shapes) > 1:
-            raise ValueError(f'arrays do not have same shape on axis {ax}')
+            raise ValueError(f"arrays do not have same shape on axis {ax}")
 
-    op = LearnShuffle(axes=axes, seeds=seeds,
-                      output_types=get_output_types(*arrays))
+    op = LearnShuffle(axes=axes, seeds=seeds, output_types=get_output_types(*arrays))
     shuffled_arrays = op(arrays)
     if len(arrays) == 1:
         return shuffled_arrays[0]

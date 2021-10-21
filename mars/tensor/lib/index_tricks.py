@@ -108,15 +108,17 @@ class nd_grid(object):
                     size.append(int(abs(step)))
                     typ = float
                 else:
-                    size.append(
-                        int(math.ceil((k.stop - start)/(step*1.0))))
-                if (isinstance(step, float) or
-                        isinstance(start, float) or
-                        isinstance(k.stop, float)):
+                    size.append(int(math.ceil((k.stop - start) / (step * 1.0))))
+                if (
+                    isinstance(step, float)
+                    or isinstance(start, float)
+                    or isinstance(k.stop, float)
+                ):
                     typ = float
             if self.sparse:
-                nn = [_nx.arange(_x, dtype=_t)
-                      for _x, _t in zip(size, (typ,)*len(size))]
+                nn = [
+                    _nx.arange(_x, dtype=_t) for _x, _t in zip(size, (typ,) * len(size))
+                ]
             else:
                 nn = _nx.indices(size, typ)
             for k in range(len(size)):
@@ -129,10 +131,10 @@ class nd_grid(object):
                 if isinstance(step, complex):
                     step = int(abs(step))
                     if step != 1:
-                        step = (key[k].stop - start)/float(step-1)
-                nn[k] = (nn[k]*step+start)
+                        step = (key[k].stop - start) / float(step - 1)
+                nn[k] = nn[k] * step + start
             if self.sparse:
-                slobj = [np.newaxis]*len(size)
+                slobj = [np.newaxis] * len(size)
                 for k in range(len(size)):
                     slobj[k] = slice(None, None)
                     nn[k] = nn[k][slobj]
@@ -148,9 +150,9 @@ class nd_grid(object):
                 step = abs(step)
                 length = int(step)
                 if step != 1:
-                    step = (key.stop-start)/float(step-1)
+                    step = (key.stop - start) / float(step - 1)
                 stop = key.stop + step
-                return _nx.arange(0, length, 1, float)*step + start
+                return _nx.arange(0, length, 1, float) * step + start
             else:
                 return _nx.arange(start, stop, step)
 
@@ -172,7 +174,7 @@ class AxisConcatenator:
     def __getitem__(self, key):
         # handle matrix builder syntax
         if isinstance(key, str):  # pragma: no cover
-            raise NotImplementedError('Does not support operation on matrix')
+            raise NotImplementedError("Does not support operation on matrix")
 
         if not isinstance(key, tuple):
             key = (key,)
@@ -209,12 +211,11 @@ class AxisConcatenator:
                         newobj = newobj.swapaxes(-1, trans1d)
             elif isinstance(item, str):
                 if k != 0:
-                    raise ValueError("special directives must be the "
-                                     "first entry.")
-                if item in ('r', 'c'):  # pragma: no cover
-                    raise NotImplementedError('Does not support operation on matrix')
-                if ',' in item:
-                    vec = item.split(',')
+                    raise ValueError("special directives must be the " "first entry.")
+                if item in ("r", "c"):  # pragma: no cover
+                    raise NotImplementedError("Does not support operation on matrix")
+                if "," in item:
+                    vec = item.split(",")
                     try:
                         axis, ndmin = [int(x) for x in vec[:2]]
                         if len(vec) == 3:
@@ -256,7 +257,7 @@ class AxisConcatenator:
         res = concatenate(tuple(objs), axis=axis)
 
         if matrix:  # pragma: no cover
-            raise NotImplementedError('Does not support operation on matrix')
+            raise NotImplementedError("Does not support operation on matrix")
         return res
 
     def __len__(self):
@@ -266,6 +267,7 @@ class AxisConcatenator:
 # separate classes are used here instead of just making r_ = concatentor(0),
 # etc. because otherwise we couldn't get the doc string to come out right
 # in help(r_)
+
 
 class RClass(AxisConcatenator):
     """
@@ -398,4 +400,4 @@ class CClass(AxisConcatenator):
 c_ = CClass()
 
 
-__all__ = ['ndindex', 'mgrid', 'ogrid', 'r_', 'c_']
+__all__ = ["ndindex", "mgrid", "ogrid", "r_", "c_"]

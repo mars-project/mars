@@ -21,17 +21,15 @@ import numpy as np
 from ..utils import lazy_import
 from .core import pickle, serialize, deserialize
 
-cupy = lazy_import('cupy', globals=globals())
-cudf = lazy_import('cudf', globals=globals())
+cupy = lazy_import("cupy", globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
 DEFAULT_SERIALIZATION_VERSION = 0
-BUFFER_SIZES_NAME = 'buf_sizes'
+BUFFER_SIZES_NAME = "buf_sizes"
 
 
 class AioSerializer:
-    def __init__(self,
-                 obj: Any,
-                 compress=0):
+    def __init__(self, obj: Any, compress=0):
         self._obj = obj
         self._compress = compress
 
@@ -53,21 +51,22 @@ class AioSerializer:
                 return False
 
         is_cuda_buffers = [_is_cuda_buffer(buf) for buf in buffers]
-        headers['is_cuda_buffers'] = np.array(is_cuda_buffers)
+        headers["is_cuda_buffers"] = np.array(is_cuda_buffers)
 
         # add buffer lengths into headers
-        headers[BUFFER_SIZES_NAME] = [getattr(buf, 'nbytes', len(buf))
-                                      for buf in buffers]
+        headers[BUFFER_SIZES_NAME] = [
+            getattr(buf, "nbytes", len(buf)) for buf in buffers
+        ]
         header = pickle.dumps(headers)
 
         # gen header buffer
         header_bio = BytesIO()
         # write version first
-        header_bio.write(struct.pack('B', DEFAULT_SERIALIZATION_VERSION))
+        header_bio.write(struct.pack("B", DEFAULT_SERIALIZATION_VERSION))
         # write header length
-        header_bio.write(struct.pack('<Q', len(header)))
+        header_bio.write(struct.pack("<Q", len(header)))
         # write compression
-        header_bio.write(struct.pack('<H', self._compress))
+        header_bio.write(struct.pack("<H", self._compress))
         # write header
         header_bio.write(header)
 
@@ -88,24 +87,27 @@ class AioDeserializer:
     def _readexactly(self, n: int):
         # asyncio StreamReader may not guarantee to read n bytes
         # for it we need to call `readexactly` instead
-        read = self._file.readexactly \
-            if hasattr(self._file, 'readexactly') else self._file.read
+        read = (
+            self._file.readexactly
+            if hasattr(self._file, "readexactly")
+            else self._file.read
+        )
         return read(n)
 
     async def _get_obj_header_bytes(self):
         try:
             header_bytes = bytes(await self._file.read(11))
         except ConnectionResetError:
-            raise EOFError('Server may be closed')
+            raise EOFError("Server may be closed")
         if len(header_bytes) == 0:
-            raise EOFError('Received empty bytes')
-        version = struct.unpack('B', header_bytes[:1])[0]
+            raise EOFError("Received empty bytes")
+        version = struct.unpack("B", header_bytes[:1])[0]
         # now we only have default version
         assert version == DEFAULT_SERIALIZATION_VERSION
         # header length
-        header_length = struct.unpack('<Q', header_bytes[1:9])[0]
+        header_length = struct.unpack("<Q", header_bytes[1:9])[0]
         # compress
-        _ = struct.unpack('<H', header_bytes[9:])[0]
+        _ = struct.unpack("<H", header_bytes[9:])[0]
         return await self._readexactly(header_length)
 
     async def _get_obj(self):

@@ -32,9 +32,9 @@ from .broadcast_to import broadcast_to
 class TensorWhere(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.WHERE
 
-    _condition = KeyField('condition')
-    _x = KeyField('x')
-    _y = KeyField('y')
+    _condition = KeyField("condition")
+    _x = KeyField("x")
+    _y = KeyField("y")
 
     @property
     def condition(self):
@@ -63,33 +63,48 @@ class TensorWhere(TensorOperand, TensorOperandMixin):
         if has_unknown_shape(*op.inputs):
             yield
         inputs = yield from unify_chunks(
-            *[(input, list(range(input.ndim))[::-1]) for input in op.inputs])
-        chunk_shapes = [t.chunk_shape if isinstance(t, TENSOR_TYPE) else t
-                        for t in inputs]
+            *[(input, list(range(input.ndim))[::-1]) for input in op.inputs]
+        )
+        chunk_shapes = [
+            t.chunk_shape if isinstance(t, TENSOR_TYPE) else t for t in inputs
+        ]
         out_chunk_shape = broadcast_shape(*chunk_shapes)
         output = op.outputs[0]
 
         out_chunks = []
         nsplits = [[np.nan] * shape for shape in out_chunk_shape]
-        get_index = lambda idx, t: tuple(0 if t.nsplits[i] == (1,) else ix for i, ix in enumerate(idx))
+        get_index = lambda idx, t: tuple(
+            0 if t.nsplits[i] == (1,) else ix for i, ix in enumerate(idx)
+        )
         for out_index in itertools.product(*(map(range, out_chunk_shape))):
-            in_chunks = [t.cix[get_index(out_index[-t.ndim:], t)] if t.ndim != 0 else t.chunks[0]
-                         for t in inputs]
+            in_chunks = [
+                t.cix[get_index(out_index[-t.ndim :], t)]
+                if t.ndim != 0
+                else t.chunks[0]
+                for t in inputs
+            ]
             chunk_shape = broadcast_shape(*(c.shape for c in in_chunks))
-            out_chunk = op.copy().reset_key().new_chunk(in_chunks, shape=chunk_shape,
-                                                        index=out_index, order=output.order)
+            out_chunk = (
+                op.copy()
+                .reset_key()
+                .new_chunk(
+                    in_chunks, shape=chunk_shape, index=out_index, order=output.order
+                )
+            )
             out_chunks.append(out_chunk)
             for i, idx, s in zip(itertools.count(0), out_index, out_chunk.shape):
                 nsplits[i][idx] = s
 
         new_op = op.copy()
-        return new_op.new_tensors(inputs, output.shape, order=output.order,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            inputs, output.shape, order=output.order, chunks=out_chunks, nsplits=nsplits
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         (cond, x, y), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             ctx[op.outputs[0].key] = xp.where(cond, x, y)
@@ -163,7 +178,7 @@ def where(condition, x=None, y=None):
     (array([1, 1, 2]), array([0, 1, 1]))
     """
     if (x is None) != (y is None):
-        raise ValueError('either both or neither of x and y should be given')
+        raise ValueError("either both or neither of x and y should be given")
 
     if x is None and y is None:
         return astensor(condition).nonzero()

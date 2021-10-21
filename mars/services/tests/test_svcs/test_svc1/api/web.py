@@ -18,10 +18,10 @@ from .....web import MarsRequestHandler
 
 class TestWebHandler(MarsRequestHandler):
     async def get(self):
-        ref = await mo.actor_ref('TestActor1', address=self._supervisor_addr)
+        ref = await mo.actor_ref("TestActor1", address=self._supervisor_addr)
         self.write(str(await ref.get_arg()))
 
 
 web_handlers = {
-    '/test_actor1/test_api': TestWebHandler,
+    "/test_actor1/test_api": TestWebHandler,
 }

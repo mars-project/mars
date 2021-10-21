@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorAbs(TensorUnaryOp):
     _op_type_ = OperandDef.ABS
-    _func_name = 'abs'
+    _func_name = "abs"
 
 
 @infer_dtype(np.abs)

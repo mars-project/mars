@@ -22,9 +22,7 @@ class Isolation:
     _stopped: Optional[asyncio.Event]
     _thread: Optional[threading.Thread]
 
-    def __init__(self,
-                 loop: asyncio.AbstractEventLoop,
-                 threaded: bool = True):
+    def __init__(self, loop: asyncio.AbstractEventLoop, threaded: bool = True):
         self.loop = loop
         self._threaded = threaded
 
@@ -60,12 +58,14 @@ class Isolation:
 _name_to_isolation: Dict[str, Isolation] = dict()
 
 
-DEFAULT_ISOLATION = 'oscar'
+DEFAULT_ISOLATION = "oscar"
 
 
-def new_isolation(name: str = DEFAULT_ISOLATION,
-                  loop: asyncio.AbstractEventLoop = None,
-                  threaded: bool = True) -> Isolation:
+def new_isolation(
+    name: str = DEFAULT_ISOLATION,
+    loop: asyncio.AbstractEventLoop = None,
+    threaded: bool = True,
+) -> Isolation:
     if name in _name_to_isolation:
         return _name_to_isolation[name]
 

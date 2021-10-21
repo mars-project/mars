@@ -16,8 +16,13 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...serialization.serializables import KeyField, StringField, \
-    TupleField, DictField, BoolField
+from ...serialization.serializables import (
+    KeyField,
+    StringField,
+    TupleField,
+    DictField,
+    BoolField,
+)
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_series
 
@@ -25,17 +30,29 @@ from ..utils import build_empty_series
 class SeriesDatetimeMethod(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATETIME_METHOD
 
-    _input = KeyField('input')
-    _method = StringField('method')
-    _method_args = TupleField('method_args')
-    _method_kwargs = DictField('method_kwargs')
-    _is_property = BoolField('is_property')
+    _input = KeyField("input")
+    _method = StringField("method")
+    _method_args = TupleField("method_args")
+    _method_kwargs = DictField("method_kwargs")
+    _is_property = BoolField("is_property")
 
-    def __init__(self, method=None, method_args=None, method_kwargs=None,
-                 is_property=None, output_types=None, **kw):
-        super().__init__(_method=method, _method_args=method_args,
-                         _method_kwargs=method_kwargs, _is_property=is_property,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self,
+        method=None,
+        method_args=None,
+        method_kwargs=None,
+        is_property=None,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _method=method,
+            _method_args=method_args,
+            _method_kwargs=method_kwargs,
+            _is_property=is_property,
+            _output_types=output_types,
+            **kw
+        )
         if not self.output_types:
             self.output_types = [OutputType.series]
 
@@ -83,11 +100,16 @@ class SeriesDatetimeMethodBaseHandler:
             test_obj = getattr(empty_series.dt, op.method)
         else:
             test_obj = getattr(empty_series.dt, op.method)(
-                *op.method_args, **op.method_kwargs)
+                *op.method_args, **op.method_kwargs
+            )
         dtype = test_obj.dtype
-        return op.new_series([inp], shape=inp.shape,
-                             dtype=dtype, index_value=inp.index_value,
-                             name=inp.name)
+        return op.new_series(
+            [inp],
+            shape=inp.shape,
+            dtype=dtype,
+            index_value=inp.index_value,
+            name=inp.name,
+        )
 
     @classmethod
     def tile(cls, op):
@@ -96,15 +118,20 @@ class SeriesDatetimeMethodBaseHandler:
         out_chunks = []
         for series_chunk in op.input.chunks:
             chunk_op = op.copy().reset_key()
-            out_chunks.append(chunk_op.new_chunk(
-                [series_chunk], shape=series_chunk.shape,
-                dtype=out.dtype, index=series_chunk.index,
-                index_value=series_chunk.index_value,
-                name=series_chunk.name))
+            out_chunks.append(
+                chunk_op.new_chunk(
+                    [series_chunk],
+                    shape=series_chunk.shape,
+                    dtype=out.dtype,
+                    index=series_chunk.index,
+                    index_value=series_chunk.index_value,
+                    name=series_chunk.name,
+                )
+            )
 
         params = out.params
-        params['chunks'] = out_chunks
-        params['nsplits'] = op.input.nsplits
+        params["chunks"] = out_chunks
+        params["nsplits"] = op.input.nsplits
         new_op = op.copy()
         return new_op.new_tileables([op.input], kws=[params])
 
@@ -123,5 +150,5 @@ class SeriesDatetimeMethodBaseHandler:
 
 _datetime_method_to_handlers = {}
 for method in dir(pd.Series.dt):
-    if not method.startswith('_'):
+    if not method.startswith("_"):
         _datetime_method_to_handlers[method] = SeriesDatetimeMethodBaseHandler

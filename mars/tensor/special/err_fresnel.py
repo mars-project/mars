@@ -20,9 +20,9 @@ from .core import TensorSpecialUnaryOp, _register_special_op
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorErf(TensorSpecialUnaryOp):
-    _func_name = 'erf'
+    _func_name = "erf"
 
 
 @implement_scipy(spspecial.erf)

@@ -44,10 +44,13 @@ def convert_dask_collection(dc):
     if isinstance(first_key, str):
         key = [first_key]
     elif isinstance(first_key, tuple):
-        key = sorted([i for i in dsk.keys() if i[0] == first_key[0]], key=lambda x: x[1])
+        key = sorted(
+            [i for i in dsk.keys() if i[0] == first_key[0]], key=lambda x: x[1]
+        )
     else:
         raise ValueError(
-            f"Dask collection object seems be broken, with unexpected key type:'{type(first_key).__name__}'")
+            f"Dask collection object seems be broken, with unexpected key type:'{type(first_key).__name__}'"
+        )
     res = reduce(mars_dask_get(dsk, [key]))
     if isinstance(dc, Bag):
         return spawn(lambda x: list(x[0][0]), args=(res,))

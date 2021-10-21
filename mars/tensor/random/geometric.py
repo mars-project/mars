@@ -23,12 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorGeometric(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_p']
+    _input_fields_ = ["_p"]
     _op_type_ = OperandDef.RAND_GEOMETRIC
 
-    _fields_ = '_p', '_size'
-    _p = AnyField('p')
-    _func_name = 'geometric'
+    _fields_ = "_p", "_size"
+    _p = AnyField("p")
+    _func_name = "geometric"
 
     @property
     def p(self):
@@ -94,8 +94,7 @@ def geometric(random_state, p, size=None, chunk_size=None, gpu=None, dtype=None)
     0.34889999999999999 #random
     """
     if dtype is None:
-        dtype = np.random.RandomState().geometric(
-            handle_array(p), size=(0,)).dtype
+        dtype = np.random.RandomState().geometric(handle_array(p), size=(0,)).dtype
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorGeometric(seed=seed, size=size, gpu=gpu, dtype=dtype)

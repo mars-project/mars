@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorLog2(TensorUnaryOp):
     _op_type_ = OperandDef.LOG2
-    _func_name = 'log2'
+    _func_name = "log2"
 
 
 @infer_dtype(np.log2)

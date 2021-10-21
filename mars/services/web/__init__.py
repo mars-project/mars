@@ -13,8 +13,13 @@
 # limitations under the License.
 
 from .api import OscarWebAPI
-from .core import MarsRequestHandler, web_api, \
-    MarsServiceWebAPIHandler, MarsWebAPIClientMixin
+from .core import (
+    MarsRequestHandler,
+    web_api,
+    MarsServiceWebAPIHandler,
+    MarsWebAPIClientMixin,
+)
+
 try:
     from .supervisor import WebActor
 except ImportError:  # pragma: no cover

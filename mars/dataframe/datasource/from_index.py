@@ -22,8 +22,8 @@ from ..operands import DataFrameOperand, DataFrameOperandMixin
 class SeriesFromIndex(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.SERIES_FROM_INDEX
 
-    _input = KeyField('input')
-    _index = KeyField('index')
+    _input = KeyField("input")
+    _index = KeyField("index")
 
     def __init__(self, input_=None, index=None, **kw):
         super().__init__(_input=input_, _index=index, **kw)
@@ -48,8 +48,13 @@ class SeriesFromIndex(DataFrameOperand, DataFrameOperandMixin):
         if new_index is not None:
             inputs.append(new_index)
             index_value = new_index.index_value
-        return self.new_series(inputs, shape=index.shape, dtype=index.dtype,
-                               index_value=index_value, name=name)
+        return self.new_series(
+            inputs,
+            shape=index.shape,
+            dtype=index.dtype,
+            index_value=index_value,
+            name=name,
+        )
 
     @classmethod
     def tile(cls, op: "SeriesFromIndex"):
@@ -58,8 +63,7 @@ class SeriesFromIndex(DataFrameOperand, DataFrameOperandMixin):
         index = op.index
 
         if index is not None:
-            index = yield from recursive_tile(
-                op.index.rechunk({0: inp.nsplits[0]}))
+            index = yield from recursive_tile(op.index.rechunk({0: inp.nsplits[0]}))
 
         chunks = []
         for i, c in enumerate(inp.chunks):
@@ -70,15 +74,20 @@ class SeriesFromIndex(DataFrameOperand, DataFrameOperandMixin):
                 index_chunk = index.chunks[i]
                 chunk_index_value = index_chunk.index_value
                 chunk_inputs.append(index_chunk)
-            chunk = chunk_op.new_chunk(chunk_inputs, shape=c.shape, dtype=c.dtype,
-                                       index_value=chunk_index_value,
-                                       name=out.name, index=c.index)
+            chunk = chunk_op.new_chunk(
+                chunk_inputs,
+                shape=c.shape,
+                dtype=c.dtype,
+                index_value=chunk_index_value,
+                name=out.name,
+                index=c.index,
+            )
             chunks.append(chunk)
 
         new_op = op.copy()
         params = out.params
-        params['chunks'] = chunks
-        params['nsplits'] = inp.nsplits
+        params["chunks"] = chunks
+        params["nsplits"] = inp.nsplits
         return new_op.new_tileables([inp], kws=[params])
 
     @classmethod

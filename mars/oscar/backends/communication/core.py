@@ -32,18 +32,20 @@ def register_server(server_type: Type[Server]):
 
 
 def _check_scheme(scheme: str, types: Dict):
-    if scheme == '':
+    if scheme == "":
         scheme = None
     if scheme not in types:  # pragma: no cover
-        raise ValueError(f'address illegal, address scheme '
-                         f'should be one of '
-                         f'{", ".join(types)}, '
-                         f'got {scheme}')
+        raise ValueError(
+            f"address illegal, address scheme "
+            f"should be one of "
+            f'{", ".join(types)}, '
+            f"got {scheme}"
+        )
     return scheme
 
 
 def get_scheme(address: str) -> str:
-    if '://' not in address:
+    if "://" not in address:
         scheme = None
     else:
         scheme = urlparse(address).scheme
@@ -61,4 +63,4 @@ def get_server_type(address: str) -> Type[Server]:
 
 
 def gen_local_address(process_index: int) -> str:
-    return f'dummy://{process_index}'
+    return f"dummy://{process_index}"

@@ -30,20 +30,27 @@ class StorageWorkerService(AbstractService):
         }
     }
     """
-    async def start(self):
-        storage_configs = self._config['storage']
-        backends = storage_configs.get('backends')
-        options = storage_configs.get('default_config', dict())
-        transfer_block_size = options.get('transfer_block_size', None)
-        backend_config = {backend: storage_configs.get(backend, dict())
-                          for backend in backends}
 
-        await mo.create_actor(StorageManagerActor,
-                              backend_config,
-                              transfer_block_size,
-                              uid=StorageManagerActor.default_uid(),
-                              address=self._address)
+    async def start(self):
+        storage_configs = self._config["storage"]
+        backends = storage_configs.get("backends")
+        options = storage_configs.get("default_config", dict())
+        transfer_block_size = options.get("transfer_block_size", None)
+        backend_config = {
+            backend: storage_configs.get(backend, dict()) for backend in backends
+        }
+
+        await mo.create_actor(
+            StorageManagerActor,
+            backend_config,
+            transfer_block_size,
+            uid=StorageManagerActor.default_uid(),
+            address=self._address,
+        )
 
     async def stop(self):
-        await mo.destroy_actor(mo.create_actor_ref(
-            address=self._address, uid=StorageManagerActor.default_uid()))
+        await mo.destroy_actor(
+            mo.create_actor_ref(
+                address=self._address, uid=StorageManagerActor.default_uid()
+            )
+        )

@@ -23,8 +23,16 @@ from ... import execute
 from ... import tensor as mt
 from ...core import OutputType, ENTITY_TYPE, recursive_tile
 from ...core.context import Context
-from ...serialization.serializables import FieldTypes, AnyField, \
-    BoolField, DictField, Int64Field, ListField, StringField, KeyField
+from ...serialization.serializables import (
+    FieldTypes,
+    AnyField,
+    BoolField,
+    DictField,
+    Int64Field,
+    ListField,
+    StringField,
+    KeyField,
+)
 from ...typing import SessionType
 from ...tensor.core import Tensor, TensorOrder
 from ...tensor.utils import decide_unify_split
@@ -36,10 +44,10 @@ from ..utils import check_array
 class BlockwiseEnsembleFit(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.BLOCKWISE_ENSEMBLE_FIT
 
-    x = KeyField('x')
-    y = KeyField('y')
-    estimator = AnyField('estimator')
-    kwargs = DictField('kwargs', default_factory=dict)
+    x = KeyField("x")
+    y = KeyField("y")
+    estimator = AnyField("estimator")
+    kwargs = DictField("kwargs", default_factory=dict)
 
     def __call__(self):
         self._output_types = [OutputType.object]
@@ -57,7 +65,9 @@ class BlockwiseEnsembleFit(LearnOperand, LearnOperandMixin):
         y_split = y.nsplits[0]
         out = op.outputs[0]
 
-        if any(np.isnan(s) for s in x_split + y_split) or np.isnan(X.shape[1]):  # pragma: no ccover
+        if any(np.isnan(s) for s in x_split + y_split) or np.isnan(
+            X.shape[1]
+        ):  # pragma: no ccover
             yield
 
         if x_split != y_split or X.chunk_shape[1] > 1:
@@ -69,18 +79,19 @@ class BlockwiseEnsembleFit(LearnOperand, LearnOperandMixin):
         out_chunks = []
         for i, _ in enumerate(x_split):
             chunk_op = op.copy().reset_key()
-            out_chunk = chunk_op.new_chunk([X.cix[i, 0], y.cix[i, ]], index=(i,))
+            out_chunk = chunk_op.new_chunk(
+                [X.cix[i, 0], y.cix[(i,)]],
+                index=(i,),
+            )
             out_chunks.append(out_chunk)
 
         params = out.params.copy()
-        params['chunks'] = out_chunks
-        params['nsplits'] = ((np.nan,) * len(x_split),)
+        params["chunks"] = out_chunks
+        params["nsplits"] = ((np.nan,) * len(x_split),)
         return op.copy().new_tileables(op.inputs, kws=[params])
 
     @classmethod
-    def execute(cls,
-                ctx: Union[dict, Context],
-                op: "BlockwiseEnsembleFit"):
+    def execute(cls, ctx: Union[dict, Context], op: "BlockwiseEnsembleFit"):
         x, y = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
         estimator = clone(op.estimator)
         ctx[op.outputs[0].key] = estimator.fit(x, y, **op.kwargs)
@@ -89,12 +100,12 @@ class BlockwiseEnsembleFit(LearnOperand, LearnOperandMixin):
 class BlockwiseEnsemblePredict(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.BLOCKWISE_ENSEMBLE_PREDICT
 
-    x = KeyField('x')
-    estimators = ListField('estimators', FieldTypes.key)
-    voting = StringField('voting', default='hard')
-    proba = BoolField('proba', default=None)
-    is_classifier = BoolField('is_classifier')
-    n_classes = Int64Field('n_classes')
+    x = KeyField("x")
+    estimators = ListField("estimators", FieldTypes.key)
+    voting = StringField("voting", default="hard")
+    proba = BoolField("proba", default=None)
+    is_classifier = BoolField("is_classifier")
+    n_classes = Int64Field("n_classes")
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -110,8 +121,12 @@ class BlockwiseEnsemblePredict(LearnOperand, LearnOperandMixin):
         else:
             shape = (x_len,)
             dtype = np.dtype(np.float64)
-        return self.new_tileable([self.x] + self.estimators, shape=shape,
-                                 dtype=dtype, order=TensorOrder.C_ORDER)
+        return self.new_tileable(
+            [self.x] + self.estimators,
+            shape=shape,
+            dtype=dtype,
+            order=TensorOrder.C_ORDER,
+        )
 
     @classmethod
     def tile(cls, op: "BlockwiseEnsemblePredict"):
@@ -129,11 +144,13 @@ class BlockwiseEnsemblePredict(LearnOperand, LearnOperandMixin):
             else:
                 chunk_shape = (chunk.shape[0],)
                 chunk_index = (chunk.index[0],)
-            out_chunk = chunk_op.new_chunk([chunk] + estimators_chunks,
-                                           shape=chunk_shape,
-                                           dtype=out.dtype,
-                                           order=out.order,
-                                           index=chunk_index)
+            out_chunk = chunk_op.new_chunk(
+                [chunk] + estimators_chunks,
+                shape=chunk_shape,
+                dtype=out.dtype,
+                order=out.order,
+                index=chunk_index,
+            )
             out_chunks.append(out_chunk)
 
         if out.ndim == 2:
@@ -141,17 +158,15 @@ class BlockwiseEnsemblePredict(LearnOperand, LearnOperandMixin):
         else:
             nsplits = (x.nsplits[0],)
         params = out.params.copy()
-        params['nsplits'] = nsplits
-        params['chunks'] = out_chunks
+        params["nsplits"] = nsplits
+        params["chunks"] = out_chunks
         return op.copy().new_tileables(op.inputs, kws=[params])
 
     @classmethod
-    def execute(cls,
-                ctx: Union[dict, Context],
-                op: "BlockwiseEnsemblePredict"):
+    def execute(cls, ctx: Union[dict, Context], op: "BlockwiseEnsemblePredict"):
         x = ctx[op.inputs[0].key]
         estimators = [ctx[inp.key] for inp in op.inputs[1:]]
-        if op.proba or op.voting == 'soft':
+        if op.proba or op.voting == "soft":
             predictions = [estimator.predict_proba(x) for estimator in estimators]
         else:
             predictions = [estimator.predict(x) for estimator in estimators]
@@ -166,13 +181,14 @@ class BlockwiseEnsemblePredict(LearnOperand, LearnOperandMixin):
         ctx[op.outputs[0].key] = result
 
     @classmethod
-    def _execute_classifier_predict(cls,
-                                    predictions: List[np.ndarray],
-                                    op: "BlockwiseEnsemblePredict"):
-        if op.voting == 'soft':
+    def _execute_classifier_predict(
+        cls, predictions: List[np.ndarray], op: "BlockwiseEnsemblePredict"
+    ):
+        if op.voting == "soft":
             prob = np.average(np.stack(predictions), axis=0)
             return np.argmax(prob, axis=1)
         else:
+
             def vote(x: np.ndarray):
                 return np.argmax(np.bincount(x))
 
@@ -181,15 +197,14 @@ class BlockwiseEnsemblePredict(LearnOperand, LearnOperandMixin):
             return np.apply_along_axis(vote, 1, prediction)
 
     @classmethod
-    def _execute_classifier_predict_proba(cls,
-                                          predictions: List[np.ndarray],
-                                          op: "BlockwiseEnsemblePredict"):
-        assert op.voting == 'soft'
+    def _execute_classifier_predict_proba(
+        cls, predictions: List[np.ndarray], op: "BlockwiseEnsemblePredict"
+    ):
+        assert op.voting == "soft"
         return np.average(np.stack(predictions), axis=0)
 
     @classmethod
-    def _execute_regressor_predict(cls,
-                                   predictions: List[np.ndarray]):
+    def _execute_regressor_predict(cls, predictions: List[np.ndarray]):
         return np.average(np.vstack(predictions), axis=0)
 
 
@@ -199,8 +214,7 @@ class BlockwiseBaseEstimator(BaseEstimator):
 
     def _fit(self, X, y, **kwargs):
         X = check_array(X)
-        op = BlockwiseEnsembleFit(
-            x=X, y=y, estimator=self.estimator, kwargs=kwargs)
+        op = BlockwiseEnsembleFit(x=X, y=y, estimator=self.estimator, kwargs=kwargs)
         self.estimators_ = op()
 
 
@@ -256,22 +270,29 @@ class BlockwiseVotingClassifier(ClassifierMixin, BlockwiseBaseEstimator):
     >>> clf.fit(X, y)
     """
 
-    def __init__(self,
-                 estimator: SklearnBaseEstimator,
-                 voting: str = 'hard',
-                 classes: Union[np.ndarray, list, Tensor] = None):
+    def __init__(
+        self,
+        estimator: SklearnBaseEstimator,
+        voting: str = "hard",
+        classes: Union[np.ndarray, list, Tensor] = None,
+    ):
         super().__init__(estimator=estimator)
-        if voting not in ('hard', 'soft'):  # pragma: no cover
-            raise ValueError('`voting` could be hard or soft')
+        if voting not in ("hard", "soft"):  # pragma: no cover
+            raise ValueError("`voting` could be hard or soft")
         self.voting = voting
         self.classes = None
         if classes is not None:
             self.classes = mt.tensor(classes)
 
-    def fit(self, X, y,
-            classes: Union[np.ndarray, list, Tensor] = None,
-            session: SessionType = None,
-            run_kwargs: dict = None, **kwargs):
+    def fit(
+        self,
+        X,
+        y,
+        classes: Union[np.ndarray, list, Tensor] = None,
+        session: SessionType = None,
+        run_kwargs: dict = None,
+        **kwargs,
+    ):
         if not isinstance(y, ENTITY_TYPE):
             y = mt.tensor(y)
         if classes is None:
@@ -285,27 +306,33 @@ class BlockwiseVotingClassifier(ClassifierMixin, BlockwiseBaseEstimator):
         execute(to_execute, session=session, **(run_kwargs or dict()))
         self.n_classes_ = len(classes)
 
-    def predict(self, X,
-                session: SessionType = None,
-                run_kwargs: dict = None):
-        check_is_fitted(self, attributes=['estimators_'])
+    def predict(self, X, session: SessionType = None, run_kwargs: dict = None):
+        check_is_fitted(self, attributes=["estimators_"])
         X = check_array(X)
         op = BlockwiseEnsemblePredict(
-            x=X, estimators=[self.estimators_], voting=self.voting,
-            proba=False, is_classifier=True, n_classes=self.n_classes_)
+            x=X,
+            estimators=[self.estimators_],
+            voting=self.voting,
+            proba=False,
+            is_classifier=True,
+            n_classes=self.n_classes_,
+        )
         return op().execute(session=session, **(run_kwargs or dict()))
 
-    def predict_proba(self, X,
-                      session: SessionType = None,
-                      run_kwargs: dict = None):
-        if self.voting == 'hard':
+    def predict_proba(self, X, session: SessionType = None, run_kwargs: dict = None):
+        if self.voting == "hard":
             raise AttributeError(f'predict_proba is not available when voting="hard"')
 
-        check_is_fitted(self, attributes=['estimators_'])
+        check_is_fitted(self, attributes=["estimators_"])
         X = check_array(X)
         op = BlockwiseEnsemblePredict(
-            x=X, estimators=[self.estimators_], voting=self.voting,
-            proba=True, is_classifier=True, n_classes=self.n_classes_)
+            x=X,
+            estimators=[self.estimators_],
+            voting=self.voting,
+            proba=True,
+            is_classifier=True,
+            n_classes=self.n_classes_,
+        )
         return op().execute(session=session, **(run_kwargs or dict()))
 
 
@@ -347,19 +374,16 @@ class BlockwiseVotingRegressor(RegressorMixin, BlockwiseBaseEstimator):
     >>> clf.fit(X, y)
     """
 
-    def fit(self, X, y,
-            session: SessionType = None,
-            run_kwargs: dict = None, **kwargs):
+    def fit(self, X, y, session: SessionType = None, run_kwargs: dict = None, **kwargs):
         if not isinstance(y, ENTITY_TYPE):
             y = mt.tensor(y)
         super()._fit(X, y, **kwargs)
         self.estimators_.execute(session=session, **(run_kwargs or dict()))
 
-    def predict(self, X,
-                session: SessionType = None,
-                run_kwargs: dict = None):
-        check_is_fitted(self, attributes=['estimators_'])
+    def predict(self, X, session: SessionType = None, run_kwargs: dict = None):
+        check_is_fitted(self, attributes=["estimators_"])
         X = check_array(X)
         op = BlockwiseEnsemblePredict(
-            x=X, estimators=[self.estimators_], is_classifier=False)
+            x=X, estimators=[self.estimators_], is_classifier=False
+        )
         return op().execute(session=session, **(run_kwargs or dict()))

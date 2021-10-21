@@ -19,11 +19,15 @@ from .core import DataFrameCumReductionOperand, DataFrameCumReductionMixin
 
 class DataFrameCumsum(DataFrameCumReductionOperand, DataFrameCumReductionMixin):
     _op_type_ = OperandDef.CUMSUM
-    _func_name = 'cumsum'
+    _func_name = "cumsum"
 
 
 def cumsum(df, axis=None, skipna=True):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameCumsum(axis=axis, skipna=skipna, output_types=df.op.output_types,
-                         use_inf_as_na=use_inf_as_na)
+    op = DataFrameCumsum(
+        axis=axis,
+        skipna=skipna,
+        output_types=df.op.output_types,
+        use_inf_as_na=use_inf_as_na,
+    )
     return op(df)

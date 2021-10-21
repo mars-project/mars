@@ -85,7 +85,7 @@ def _patch_loop(loop):
 
 
 def run(
-        main: Union[Coroutine[Any, None, _T], Awaitable[_T]], *, debug: bool = False
+    main: Union[Coroutine[Any, None, _T], Awaitable[_T]], *, debug: bool = False
 ) -> _T:
     """Run a coroutine.
 

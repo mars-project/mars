@@ -13,14 +13,21 @@
 # limitations under the License.
 
 import numpy as np
+
 try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
     tildb = None
 
 from ... import opcodes as OperandDef
-from ...serialization.serializables import FieldTypes, DictField, \
-    TupleField, StringField, Int64Field, KeyField
+from ...serialization.serializables import (
+    FieldTypes,
+    DictField,
+    TupleField,
+    StringField,
+    Int64Field,
+    KeyField,
+)
 from ...lib.sparse import SparseNDArray
 from ...lib.sparse.core import sps
 from ..datasource import tensor as astensor
@@ -33,21 +40,31 @@ from .utils import check_tiledb_array_with_tensor, get_tiledb_schema_from_tensor
 class TensorTileDBDataStore(TensorDataStore):
     _op_type_ = OperandDef.TENSOR_STORE_TILEDB
 
-    _input = KeyField('input')
-    _tiledb_config = DictField('tiledb_config')
+    _input = KeyField("input")
+    _tiledb_config = DictField("tiledb_config")
     # URI of array to write
-    _tiledb_uri = StringField('tiledb_uri')
+    _tiledb_uri = StringField("tiledb_uri")
     # encryption key to decrypt if provided
-    _tiledb_key = StringField('tiledb_key')
+    _tiledb_key = StringField("tiledb_key")
     # open array at a given timestamp if provided
-    _tiledb_timestamp = Int64Field('tiledb_timestamp')
-    _axis_offsets = TupleField('axis_offsets', FieldTypes.int64)
+    _tiledb_timestamp = Int64Field("tiledb_timestamp")
+    _axis_offsets = TupleField("axis_offsets", FieldTypes.int64)
 
-    def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_key=None,
-                 tiledb_timestamp=None, **kw):
+    def __init__(
+        self,
+        tiledb_config=None,
+        tiledb_uri=None,
+        tiledb_key=None,
+        tiledb_timestamp=None,
+        **kw,
+    ):
         super().__init__(
-            _tiledb_config=tiledb_config, _tiledb_uri=tiledb_uri, _tiledb_key=tiledb_key,
-            _tiledb_timestamp=tiledb_timestamp, **kw)
+            _tiledb_config=tiledb_config,
+            _tiledb_uri=tiledb_uri,
+            _tiledb_key=tiledb_key,
+            _tiledb_timestamp=tiledb_timestamp,
+            **kw,
+        )
 
     @property
     def tiledb_config(self):
@@ -78,8 +95,9 @@ class TensorTileDBDataStore(TensorDataStore):
             axis_offsets.append(sum(nsplits[axis][:idx]))
         chunk_op._axis_offsets = tuple(axis_offsets)
         out_chunk_shape = (0,) * in_chunk.ndim
-        return chunk_op.new_chunk([in_chunk], shape=out_chunk_shape,
-                                  index=in_chunk.index)
+        return chunk_op.new_chunk(
+            [in_chunk], shape=out_chunk_shape, index=in_chunk.index
+        )
 
     @classmethod
     def _process_out_chunks(cls, op, out_chunks):
@@ -87,11 +105,15 @@ class TensorTileDBDataStore(TensorDataStore):
             return out_chunks
 
         consolidate_op = TensorTileDBConsolidate(
-            tiledb_config=op.tiledb_config, tiledb_uri=op.tiledb_uri,
-            tiledb_key=op.tiledb_key, sparse=op.sparse, dtype=op.dtype
+            tiledb_config=op.tiledb_config,
+            tiledb_uri=op.tiledb_uri,
+            tiledb_key=op.tiledb_key,
+            sparse=op.sparse,
+            dtype=op.dtype,
         )
-        return consolidate_op.new_chunks(out_chunks, shape=out_chunks[0].shape,
-                                         index=(0,) * out_chunks[0].ndim)
+        return consolidate_op.new_chunks(
+            out_chunks, shape=out_chunks[0].shape, index=(0,) * out_chunks[0].ndim
+        )
 
     @classmethod
     def tile(cls, op):
@@ -100,14 +122,24 @@ class TensorTileDBDataStore(TensorDataStore):
         tensor = super().tile(op)[0]
 
         ctx = tiledb.Ctx(op.tiledb_config)
-        tiledb_array_type = tiledb.SparseArray if tensor.issparse() else tiledb.DenseArray
+        tiledb_array_type = (
+            tiledb.SparseArray if tensor.issparse() else tiledb.DenseArray
+        )
         try:
-            tiledb_array_type(uri=op.tiledb_uri, key=op.tiledb_key,
-                              timestamp=op.tiledb_timestamp, ctx=ctx)
+            tiledb_array_type(
+                uri=op.tiledb_uri,
+                key=op.tiledb_key,
+                timestamp=op.tiledb_timestamp,
+                ctx=ctx,
+            )
         except tiledb.TileDBError:
             # not exist, try to create TileDB Array by given uri
-            tiledb_array_schema = get_tiledb_schema_from_tensor(op.input, ctx, op.input.nsplits)
-            tiledb_array_type.create(op.tiledb_uri, tiledb_array_schema, key=op.tiledb_key)
+            tiledb_array_schema = get_tiledb_schema_from_tensor(
+                op.input, ctx, op.input.nsplits
+            )
+            tiledb_array_type.create(
+                op.tiledb_uri, tiledb_array_schema, key=op.tiledb_key
+            )
 
         return [tensor]
 
@@ -128,40 +160,49 @@ class TensorTileDBDataStore(TensorDataStore):
                 axis_offset = int(axis_offsets[axis])
                 axis_length = int(op.input.shape[axis])
                 slcs.append(slice(axis_offset, axis_offset + axis_length))
-            with tiledb.DenseArray(uri=uri, ctx=tiledb_ctx, mode='w',
-                                   key=key, timestamp=timestamp) as arr:
+            with tiledb.DenseArray(
+                uri=uri, ctx=tiledb_ctx, mode="w", key=key, timestamp=timestamp
+            ) as arr:
                 arr[tuple(slcs)] = to_store
             ctx[chunk.key] = np.empty((0,) * chunk.ndim, dtype=chunk.dtype)
         else:
             # sparse
             to_store = ctx[op.input.key].spmatrix.tocoo()
             if to_store.nnz > 0:
-                with tiledb.SparseArray(uri=uri, ctx=tiledb_ctx, mode='w',
-                                        key=key, timestamp=timestamp) as arr:
+                with tiledb.SparseArray(
+                    uri=uri, ctx=tiledb_ctx, mode="w", key=key, timestamp=timestamp
+                ) as arr:
                     if chunk.ndim == 1:
                         vec = to_store.col if to_store.shape[0] == 1 else to_store.row
                         vec += axis_offsets[0]
                         arr[vec] = to_store.data
                     else:
-                        i, j = to_store.row + axis_offsets[0], to_store.col + axis_offsets[1]
+                        i, j = (
+                            to_store.row + axis_offsets[0],
+                            to_store.col + axis_offsets[1],
+                        )
                         arr[i, j] = to_store.data
-            ctx[chunk.key] = SparseNDArray(sps.csr_matrix((0, 0), dtype=chunk.dtype),
-                                           shape=chunk.shape)
+            ctx[chunk.key] = SparseNDArray(
+                sps.csr_matrix((0, 0), dtype=chunk.dtype), shape=chunk.shape
+            )
 
 
 class TensorTileDBConsolidate(TensorOperandMixin, TensorOperand):
     _op_type_ = OperandDef.TENSOR_STORE_TILEDB_CONSOLIDATE
 
-    _tiledb_config = DictField('tiledb_config')
+    _tiledb_config = DictField("tiledb_config")
     # URI of array to write
-    _tiledb_uri = StringField('tiledb_uri')
+    _tiledb_uri = StringField("tiledb_uri")
     # encryption key to decrypt if provided
-    _tiledb_key = StringField('tiledb_key')
+    _tiledb_key = StringField("tiledb_key")
 
     def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_key=None, **kw):
         super().__init__(
-            _tiledb_config=tiledb_config, _tiledb_uri=tiledb_uri,
-            _tiledb_key=tiledb_key, **kw)
+            _tiledb_config=tiledb_config,
+            _tiledb_uri=tiledb_uri,
+            _tiledb_key=tiledb_key,
+            **kw,
+        )
 
     def calc_shape(self, *inputs_shape):
         return self.outputs[0].shape
@@ -180,7 +221,7 @@ class TensorTileDBConsolidate(TensorOperandMixin, TensorOperand):
 
     @classmethod
     def tile(cls, op):
-        raise TypeError(f'{cls.__name__} is a chunk op, cannot be tiled')
+        raise TypeError(f"{cls.__name__} is a chunk op, cannot be tiled")
 
     @classmethod
     def execute(cls, ctx, op):
@@ -211,7 +252,12 @@ def totiledb(uri, x, ctx=None, key=None, timestamp=None):
         pass
 
     tiledb_config = None if raw_ctx is None else raw_ctx.config().dict()
-    op = TensorTileDBDataStore(tiledb_config=tiledb_config, tiledb_uri=uri,
-                               tiledb_key=key, tiledb_timestamp=timestamp,
-                               dtype=x.dtype, sparse=x.issparse())
+    op = TensorTileDBDataStore(
+        tiledb_config=tiledb_config,
+        tiledb_uri=uri,
+        tiledb_key=key,
+        tiledb_timestamp=timestamp,
+        dtype=x.dtype,
+        sparse=x.issparse(),
+    )
     return op(x)

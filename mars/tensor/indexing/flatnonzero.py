@@ -56,4 +56,5 @@ def flatnonzero(a):
 
     """
     from ..base import ravel
+
     return nonzero(ravel(a))[0]

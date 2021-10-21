@@ -19,6 +19,7 @@ import threading
 
 try:
     import numexpr as ne
+
     NUMEXPR_INSTALLED = True
 except ImportError:
     ne = None
@@ -34,9 +35,9 @@ from .core import TensorFuseChunkMixin
 
 class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
     _op_type_ = None  # no opcode, cannot be serialized
-    _dtype = DataTypeField('dtype')
+    _dtype = DataTypeField("dtype")
 
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         # since we found thread-safe problem for ne.evaluate
         # thus add a lock for windows
         _lock = threading.Lock()
@@ -49,14 +50,14 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
 
     @property
     def dtype(self):
-        return getattr(self, '_dtype', None)
+        return getattr(self, "_dtype", None)
 
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         inputs = as_same_device([ctx[c.key] for c in op.inputs], device=op.device)
         for c, i in zip(op.inputs, inputs):
-            exec('V_' + c.key + ' = i')
+            exec("V_" + c.key + " = i")
         expr = _evaluate(chunk)
         if cls._lock is not None:
             cls._lock.acquire()
@@ -72,71 +73,69 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
 
 
 # execution part
-_VAR_FLAG = 'V_'
+_VAR_FLAG = "V_"
 
 NE_UNARYOP_TO_STRING = {
-    arithmetic.TensorNegative: '-',
-    arithmetic.TensorAbs: 'abs',
-    arithmetic.TensorConj: 'conj',
-    arithmetic.TensorExp: 'exp',
-    arithmetic.TensorLog: 'log',
-    arithmetic.TensorLog10: 'log10',
-    arithmetic.TensorExpm1: 'expm1',
-    arithmetic.TensorLog1p: 'log1p',
-    arithmetic.TensorSqrt: 'sqrt',
-
-    arithmetic.TensorSin: 'sin',
-    arithmetic.TensorCos: 'cos',
-    arithmetic.TensorTan: 'tan',
-    arithmetic.TensorArcsin: 'arcsin',
-    arithmetic.TensorArccos: 'arccos',
-    arithmetic.TensorArctan: 'arctan',
-    arithmetic.TensorSinh: 'sinh',
-    arithmetic.TensorCosh: 'cosh',
-    arithmetic.TensorTanh: 'tanh',
-    arithmetic.TensorArcsinh: 'arcsinh',
-    arithmetic.TensorArccosh: 'arccosh',
-    arithmetic.TensorArctanh: 'arctanh'
+    arithmetic.TensorNegative: "-",
+    arithmetic.TensorAbs: "abs",
+    arithmetic.TensorConj: "conj",
+    arithmetic.TensorExp: "exp",
+    arithmetic.TensorLog: "log",
+    arithmetic.TensorLog10: "log10",
+    arithmetic.TensorExpm1: "expm1",
+    arithmetic.TensorLog1p: "log1p",
+    arithmetic.TensorSqrt: "sqrt",
+    arithmetic.TensorSin: "sin",
+    arithmetic.TensorCos: "cos",
+    arithmetic.TensorTan: "tan",
+    arithmetic.TensorArcsin: "arcsin",
+    arithmetic.TensorArccos: "arccos",
+    arithmetic.TensorArctan: "arctan",
+    arithmetic.TensorSinh: "sinh",
+    arithmetic.TensorCosh: "cosh",
+    arithmetic.TensorTanh: "tanh",
+    arithmetic.TensorArcsinh: "arcsinh",
+    arithmetic.TensorArccosh: "arccosh",
+    arithmetic.TensorArctanh: "arctanh",
 }
 
 
 NE_BINOP_TO_STRING = {
-    arithmetic.TensorAdd: '+',
-    arithmetic.TensorSubtract: '-',
-    arithmetic.TensorMultiply: '*',
-    arithmetic.TensorDivide: '/',
-    arithmetic.TensorMod: '%',
-    arithmetic.TensorPower: '**',
-    arithmetic.TensorLshift: '<<',
-    arithmetic.TensorRshift: '>>',
-
-    arithmetic.TensorEqual: '==',
-    arithmetic.TensorNotEqual: '!=',
-    arithmetic.TensorLessThan: '<',
-    arithmetic.TensorLessEqual: '<=',
-    arithmetic.TensorGreaterThan: '>',
-    arithmetic.TensorGreaterEqual: '>=',
+    arithmetic.TensorAdd: "+",
+    arithmetic.TensorSubtract: "-",
+    arithmetic.TensorMultiply: "*",
+    arithmetic.TensorDivide: "/",
+    arithmetic.TensorMod: "%",
+    arithmetic.TensorPower: "**",
+    arithmetic.TensorLshift: "<<",
+    arithmetic.TensorRshift: ">>",
+    arithmetic.TensorEqual: "==",
+    arithmetic.TensorNotEqual: "!=",
+    arithmetic.TensorLessThan: "<",
+    arithmetic.TensorLessEqual: "<=",
+    arithmetic.TensorGreaterThan: ">",
+    arithmetic.TensorGreaterEqual: ">=",
 }
 
 NE_TREE_OP_TO_STRING = {
-    arithmetic.TensorTreeAdd: '+',
-    arithmetic.TensorTreeMultiply: '*',
+    arithmetic.TensorTreeAdd: "+",
+    arithmetic.TensorTreeMultiply: "*",
 }
 
 NE_REDUCTION_TO_STRING = {
-    reduction.TensorSum: 'sum',
-    reduction.TensorProd: 'prod',
-    reduction.TensorMax: 'max',
-    reduction.TensorMin: 'min'
+    reduction.TensorSum: "sum",
+    reduction.TensorProd: "prod",
+    reduction.TensorMax: "max",
+    reduction.TensorMin: "min",
 }
 
 
 def _handle_unary(chunk):
     if len(chunk.inputs) != 1:
-        raise ValueError('unary operand inputs should be 1')
+        raise ValueError("unary operand inputs should be 1")
     data = chunk.inputs[0]
     unary_op = NE_UNARYOP_TO_STRING[type(chunk.op)]
-    _expr = f'{unary_op}({_VAR_FLAG + data.key})'
+    _expr = f"{unary_op}({_VAR_FLAG + data.key})"
     return _expr
 
 
@@ -144,14 +143,18 @@ def _decompose(chunk):
     expr = _VAR_FLAG + chunk.key
     for node in reversed(chunk.composed):
         _expr = _evaluate(node)
-        expr = expr.replace(_VAR_FLAG + node.key, f'({_expr})')
+        expr = expr.replace(_VAR_FLAG + node.key, f"({_expr})")
     return expr
 
 
 def _handle_bin(chunk):
-    lhs = str(chunk.op.lhs) if np.isscalar(chunk.op.lhs) else _VAR_FLAG + chunk.op.lhs.key
-    rhs = str(chunk.op.rhs) if np.isscalar(chunk.op.rhs) else _VAR_FLAG + chunk.op.rhs.key
-    reverse = getattr(chunk.op, 'reverse', False)
+    lhs = (
+        str(chunk.op.lhs) if np.isscalar(chunk.op.lhs) else _VAR_FLAG + chunk.op.lhs.key
+    )
+    rhs = (
+        str(chunk.op.rhs) if np.isscalar(chunk.op.rhs) else _VAR_FLAG + chunk.op.rhs.key
+    )
+    reverse = getattr(chunk.op, "reverse", False)
     op = NE_BINOP_TO_STRING[type(chunk.op)]
     if reverse:
         exprs = [rhs, lhs]
@@ -168,7 +171,7 @@ def _handle_tree(chunk):
 
 def _wrap_bool(data):
     if data.dtype == np.bool_:
-        return lambda x: f'where({x}, 1, 0)'
+        return lambda x: f"where({x}, 1, 0)"
 
     return lambda x: x
 
@@ -179,9 +182,9 @@ def _handle_reduction(chunk):
     op_str = NE_REDUCTION_TO_STRING[type(chunk.op)]
     # TODO(hks): delete it if numexpr.sum fixed
     if len(ax) == data.ndim:
-        _expr = f'{op_str}({_wrap_bool(data)(_VAR_FLAG + data.key)})'
+        _expr = f"{op_str}({_wrap_bool(data)(_VAR_FLAG + data.key)})"
     elif len(ax) == 1:
-        _expr = f'{op_str}({_wrap_bool(data)(_VAR_FLAG + data.key)},axis={ax[0]})'
+        _expr = f"{op_str}({_wrap_bool(data)(_VAR_FLAG + data.key)},axis={ax[0]})"
     else:
         raise ValueError("numexpr cannot encode axis")
     return _expr

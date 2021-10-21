@@ -16,8 +16,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, recursive_tile
-from ...serialization.serializables import KeyField, AnyField, \
-    BoolField, Int32Field
+from ...serialization.serializables import KeyField, AnyField, BoolField, Int32Field
 from ...utils import has_unknown_shape, ceildiv
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -29,11 +28,11 @@ from ..utils import decide_unify_split
 class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.FILL_DIAGONAL
 
-    _input = KeyField('input')
-    _val = AnyField('val')
-    _wrap = BoolField('wrap')
+    _input = KeyField("input")
+    _val = AnyField("val")
+    _wrap = BoolField("wrap")
     # used for chunk
-    _k = Int32Field('k')
+    _k = Int32Field("k")
 
     def __init__(self, val=None, wrap=None, k=None, **kw):
         super().__init__(_val=val, _wrap=wrap, _k=k, **kw)
@@ -84,8 +83,10 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
 
         if a.ndim == 2:
             if wrap and TensorFillDiagonal._is_tall(a):
-                size = sum(diag(sub).shape[0] for sub
-                           in TensorFillDiagonal._split_tall_matrix(a))
+                size = sum(
+                    diag(sub).shape[0]
+                    for sub in TensorFillDiagonal._split_tall_matrix(a)
+                )
             else:
                 size = diag(a).shape[0]
         else:
@@ -104,8 +105,7 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
             val = yield from recursive_tile(val)
             val = val.rechunk({0: val.size})
 
-        return (yield from recursive_tile(val)) \
-            if is_val_tensor else val
+        return (yield from recursive_tile(val)) if is_val_tensor else val
 
     @staticmethod
     def _gen_val(val, diag_idx, cum_sizes):
@@ -129,10 +129,14 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
             start, stop = cum_sizes[diag_idx], cum_sizes[diag_idx + 1]
             slc = slice(start, stop)
             slc_op = TensorSlice(slices=[slc], dtype=val.dtype)
-            return slc_op.new_chunk([val.chunks[0]], shape=(stop - start,),
-                                    order=val.order, index=(diag_idx,))
+            return slc_op.new_chunk(
+                [val.chunks[0]],
+                shape=(stop - start,),
+                order=val.order,
+                index=(diag_idx,),
+            )
         else:
-            return val[cum_sizes[diag_idx]: cum_sizes[diag_idx + 1]]
+            return val[cum_sizes[diag_idx] : cum_sizes[diag_idx + 1]]
 
     @classmethod
     def _tile_2d(cls, op, val):
@@ -157,15 +161,23 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
                 chunk_op._wrap = False
                 chunk_op._k = diag_chunk.op.k
                 chunk_op._val = chunk_val
-                out_chunk = chunk_op.new_chunk(input_chunks, shape=chunk.shape,
-                                               order=chunk.order,
-                                               index=chunk.index)
+                out_chunk = chunk_op.new_chunk(
+                    input_chunks,
+                    shape=chunk.shape,
+                    order=chunk.order,
+                    index=chunk.index,
+                )
                 out_chunks.append(out_chunk)
 
         out = op.outputs[0]
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape, order=out.order,
-                                  chunks=out_chunks, nsplits=op.input.nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out.shape,
+            order=out.order,
+            chunks=out_chunks,
+            nsplits=op.input.nsplits,
+        )
 
     @classmethod
     def _tile_nd(cls, op, val):
@@ -173,12 +185,14 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
         # on the diagonal direction
         in_tensor = op.input
         nsplits = np.array(in_tensor.nsplits)
-        if not np.issubdtype(nsplits.dtype, np.integer) or \
-                not np.all(np.diff(nsplits, axis=1) == 0):
+        if not np.issubdtype(nsplits.dtype, np.integer) or not np.all(
+            np.diff(nsplits, axis=1) == 0
+        ):
             # need rechunk
             nsplit = decide_unify_split(*in_tensor.nsplits)
-            in_tensor = yield from recursive_tile(in_tensor.rechunk(
-                tuple(nsplit for _ in range(in_tensor.ndim))))
+            in_tensor = yield from recursive_tile(
+                in_tensor.rechunk(tuple(nsplit for _ in range(in_tensor.ndim)))
+            )
         cum_sizes = [0] + np.cumsum(in_tensor.nsplits[0]).tolist()
 
         out_chunks = []
@@ -192,17 +206,25 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
                 if len(op.inputs) == 2:
                     chunk_inputs.append(chunk_val)
                 chunk_op._val = chunk_val
-                out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape,
-                                               order=chunk.order,
-                                               index=chunk.index)
+                out_chunk = chunk_op.new_chunk(
+                    chunk_inputs,
+                    shape=chunk.shape,
+                    order=chunk.order,
+                    index=chunk.index,
+                )
                 out_chunks.append(out_chunk)
             else:
                 out_chunks.append(chunk)
 
         out = op.outputs[0]
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape, order=out.order,
-                                  chunks=out_chunks, nsplits=in_tensor.nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out.shape,
+            order=out.order,
+            chunks=out_chunks,
+            nsplits=in_tensor.nsplits,
+        )
 
     @classmethod
     def _tile_one_chunk(cls, op, val):
@@ -211,11 +233,17 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
         chunk_inputs = [op.input.chunks[0]]
         if isinstance(val, TENSOR_TYPE):
             chunk_inputs.append(val.chunks[0])
-        chunk = chunk_op.new_chunk(chunk_inputs, shape=out.shape,
-                                   order=out.order, index=(0,) * out.ndim)
+        chunk = chunk_op.new_chunk(
+            chunk_inputs, shape=out.shape, order=out.order, index=(0,) * out.ndim
+        )
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape, order=out.order,
-                                  chunks=[chunk], nsplits=((s,) for s in out.shape))
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out.shape,
+            order=out.order,
+            chunks=[chunk],
+            nsplits=((s,) for s in out.shape),
+        )
 
     @staticmethod
     def _is_tall(x):
@@ -225,8 +253,7 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
     def _split_tall_matrix(a):
         blocksize = a.shape[1] + 1
         n_block = ceildiv(a.shape[0], blocksize)
-        return [a[i * blocksize: (i + 1) * blocksize]
-                for i in range(n_block)]
+        return [a[i * blocksize : (i + 1) * blocksize] for i in range(n_block)]
 
     @classmethod
     def tile(cls, op):
@@ -252,8 +279,9 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
                 sub_tensors = cls._split_tall_matrix(in_tensor)
                 for i, sub_tensor in enumerate(sub_tensors):
                     if val.ndim > 0:
-                        sub_val = val[i * sub_tensor.shape[1]:
-                                      (i + 1) * sub_tensor.shape[1]]
+                        sub_val = val[
+                            i * sub_tensor.shape[1] : (i + 1) * sub_tensor.shape[1]
+                        ]
                     else:
                         sub_val = val
                     fill_diagonal(sub_tensor, sub_val, wrap=False)
@@ -267,7 +295,8 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+        )
         a = inputs[0]
         if len(inputs) == 2:
             val = inputs[1]
@@ -415,7 +444,7 @@ def fill_diagonal(a, val, wrap=False):
     """
 
     if not isinstance(a, Tensor):
-        raise TypeError(f'`a` should be a tensor, got {type(a)}')
+        raise TypeError(f"`a` should be a tensor, got {type(a)}")
     if a.ndim < 2:
         raise ValueError("array must be at least 2-d")
     if a.ndim > 2 and len(set(a.shape)) != 1:

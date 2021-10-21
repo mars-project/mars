@@ -34,11 +34,7 @@ class BaseActorBackend(ABC):
         pass
 
     @staticmethod
-    async def create_actor_pool(
-        address: str,
-        n_process: int = None,
-        **kwargs
-    ):
+    async def create_actor_pool(address: str, n_process: int = None, **kwargs):
         pass
 
     @staticmethod

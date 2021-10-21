@@ -61,8 +61,8 @@ def test_normalize_axis_tuple():
     assert sorted(normalize_axis_tuple({0, -2}, 3)) == [0, 1]
 
     with pytest.raises(ValueError) as cm:
-        normalize_axis_tuple((1, -2), 3, argname='axes')
-    assert 'axes' in str(cm.value)
+        normalize_axis_tuple((1, -2), 3, argname="axes")
+    assert "axes" in str(cm.value)
 
     with pytest.raises(ValueError):
         normalize_axis_tuple((1, -2), 3)
@@ -72,8 +72,8 @@ def test_fetch_tensor_corner_data(setup):
     print_options = np.get_printoptions()
 
     # make sure numpy default option
-    assert print_options['edgeitems'] == 3
-    assert print_options['threshold'] == 1000
+    assert print_options["edgeitems"] == 3
+    assert print_options["threshold"] == 1000
 
     size = 12
     for i in (2, 4, size - 3, size, size + 3):

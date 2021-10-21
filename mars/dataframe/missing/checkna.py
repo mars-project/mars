@@ -19,19 +19,30 @@ from ... import opcodes
 from ...config import options
 from ...core import OutputType
 from ...serialization.serializables import BoolField
-from ..operands import DataFrameOperand, DataFrameOperandMixin, \
-    DATAFRAME_TYPE, SERIES_TYPE
+from ..operands import (
+    DataFrameOperand,
+    DataFrameOperandMixin,
+    DATAFRAME_TYPE,
+    SERIES_TYPE,
+)
 
 
 class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.CHECK_NA
 
-    _positive = BoolField('positive')
-    _use_inf_as_na = BoolField('use_inf_as_na')
+    _positive = BoolField("positive")
+    _use_inf_as_na = BoolField("use_inf_as_na")
 
-    def __init__(self, positive=None, use_inf_as_na=None, sparse=None, output_types=None, **kw):
-        super().__init__(_positive=positive, _use_inf_as_na=use_inf_as_na, _sparse=sparse,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self, positive=None, use_inf_as_na=None, sparse=None, output_types=None, **kw
+    ):
+        super().__init__(
+            _positive=positive,
+            _use_inf_as_na=use_inf_as_na,
+            _sparse=sparse,
+            _output_types=output_types,
+            **kw
+        )
 
     @property
     def positive(self) -> bool:
@@ -51,10 +62,11 @@ class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
 
         params = df.params.copy()
         if self.output_types[0] == OutputType.dataframe:
-            params['dtypes'] = pd.Series([np.dtype('bool')] * len(df.dtypes),
-                                         index=df.columns_value.to_pandas())
+            params["dtypes"] = pd.Series(
+                [np.dtype("bool")] * len(df.dtypes), index=df.columns_value.to_pandas()
+            )
         else:
-            params['dtype'] = np.dtype('bool')
+            params["dtype"] = np.dtype("bool")
         return self.new_tileable([df], **params)
 
     @classmethod
@@ -66,10 +78,12 @@ class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
         for c in in_df.chunks:
             params = c.params.copy()
             if op.output_types[0] == OutputType.dataframe:
-                params['dtypes'] = pd.Series([np.dtype('bool')] * len(c.dtypes),
-                                             index=c.columns_value.to_pandas())
+                params["dtypes"] = pd.Series(
+                    [np.dtype("bool")] * len(c.dtypes),
+                    index=c.columns_value.to_pandas(),
+                )
             else:
-                params['dtype'] = np.dtype('bool')
+                params["dtype"] = np.dtype("bool")
             new_op = op.copy().reset_key()
             chunks.append(new_op.new_chunk([c], **params))
 
@@ -82,13 +96,13 @@ class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op: "DataFrameCheckNA"):
         in_data = ctx[op.inputs[0].key]
         try:
-            pd.set_option('mode.use_inf_as_na', op.use_inf_as_na)
+            pd.set_option("mode.use_inf_as_na", op.use_inf_as_na)
             if op.positive:
                 ctx[op.outputs[0].key] = in_data.isna()
             else:
                 ctx[op.outputs[0].key] = in_data.notna()
         finally:
-            pd.reset_option('mode.use_inf_as_na')
+            pd.reset_option("mode.use_inf_as_na")
 
 
 def isna(df):
@@ -154,7 +168,9 @@ def isna(df):
     2     True
     dtype: bool
     """
-    op = DataFrameCheckNA(positive=True, use_inf_as_na=options.dataframe.mode.use_inf_as_na)
+    op = DataFrameCheckNA(
+        positive=True, use_inf_as_na=options.dataframe.mode.use_inf_as_na
+    )
     return op(df)
 
 
@@ -220,7 +236,9 @@ def notna(df):
     2    False
     dtype: bool
     """
-    op = DataFrameCheckNA(positive=False, use_inf_as_na=options.dataframe.mode.use_inf_as_na)
+    op = DataFrameCheckNA(
+        positive=False, use_inf_as_na=options.dataframe.mode.use_inf_as_na
+    )
     return op(df)
 
 

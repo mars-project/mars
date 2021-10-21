@@ -84,6 +84,7 @@ def result_type(*tensors_and_dtypes):
     """
     from ..core import Tensor
 
-    arrays_and_dtypes = [a.dtype if isinstance(a, Tensor) else a
-                         for a in tensors_and_dtypes]
+    arrays_and_dtypes = [
+        a.dtype if isinstance(a, Tensor) else a for a in tensors_and_dtypes
+    ]
     return np.result_type(*arrays_and_dtypes)

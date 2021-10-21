@@ -101,20 +101,21 @@ def meshgrid(*xi, **kwargs):
     """
     from ..base import broadcast_to
 
-    indexing = kwargs.pop('indexing', 'xy')
-    sparse = kwargs.pop('sparse', False)
+    indexing = kwargs.pop("indexing", "xy")
+    sparse = kwargs.pop("sparse", False)
 
     if kwargs:
         raise TypeError(
-            f"meshgrid() got an unexpected keyword argument '{list(kwargs)[0]}'")
-    if indexing not in ('xy', 'ij'):
+            f"meshgrid() got an unexpected keyword argument '{list(kwargs)[0]}'"
+        )
+    if indexing not in ("xy", "ij"):
         raise ValueError("Valid values for `indexing` are 'xy' and 'ij'.")
 
     xi = [tensor(x) for x in xi]
     xi = [a.ravel() for a in xi]
     shape = [x.size for x in xi]
 
-    if indexing == 'xy' and len(xi) > 1:
+    if indexing == "xy" and len(xi) > 1:
         xi[0], xi[1] = xi[1], xi[0]
         shape[0], shape[1] = shape[1], shape[0]
 
@@ -130,7 +131,7 @@ def meshgrid(*xi, **kwargs):
 
         grid.append(r)
 
-    if indexing == 'xy' and len(xi) > 1:
+    if indexing == "xy" and len(xi) > 1:
         grid[0], grid[1] = grid[1], grid[0]
 
     return grid

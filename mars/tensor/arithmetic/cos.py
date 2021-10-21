@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorCos(TensorUnaryOp):
     _op_type_ = OperandDef.COS
-    _func_name = 'cos'
+    _func_name = "cos"
 
 
 @infer_dtype(np.cos)

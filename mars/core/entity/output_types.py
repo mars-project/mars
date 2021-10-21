@@ -75,7 +75,7 @@ def _get_output_type_by_cls(cls):
                 return tp
         except KeyError:  # pragma: no cover
             continue
-    raise TypeError('Output can only be tensor, dataframe or series')
+    raise TypeError("Output can only be tensor, dataframe or series")
 
 
 def get_output_types(*objs, unknown_as=None):

@@ -23,8 +23,9 @@ class AbstractClusterBackend(ABC):
 
     @classmethod
     @abstractmethod
-    async def create(cls, node_role: NodeRole, lookup_address: Optional[str],
-                     pool_address: str) -> "AbstractClusterBackend":
+    async def create(
+        cls, node_role: NodeRole, lookup_address: Optional[str], pool_address: str
+    ) -> "AbstractClusterBackend":
         """
 
         Parameters
@@ -67,7 +68,8 @@ class AbstractClusterBackend(ABC):
 
     @abstractmethod
     async def request_worker(
-            self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
+        self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None
+    ) -> str:
         """
         Create a new worker
 

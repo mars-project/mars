@@ -20,15 +20,16 @@ from ... import to_datetime, Series, DataFrame, Index
 
 def test_to_datetime_execution(setup):
     # scalar
-    r = to_datetime(1490195805, unit='s')
+    r = to_datetime(1490195805, unit="s")
 
-    result = r.execute().fetch(extra_config={'check_dtypes': False,
-                                             'check_shape': False})
-    expected = pd.to_datetime(1490195805, unit='s')
+    result = r.execute().fetch(
+        extra_config={"check_dtypes": False, "check_shape": False}
+    )
+    expected = pd.to_datetime(1490195805, unit="s")
     assert pd.to_datetime(result) == expected
 
     # test list like
-    raw = ['3/11/2000', '3/12/2000', '3/13/2000']
+    raw = ["3/11/2000", "3/12/2000", "3/13/2000"]
     t = tensor(raw, chunk_size=2)
     r = to_datetime(t, infer_datetime_format=True)
 
@@ -46,9 +47,7 @@ def test_to_datetime_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
     # test DataFrame
-    raw_df = pd.DataFrame({'year': [2015, 2016],
-                           'month': [2, 3],
-                           'day': [4, 5]})
+    raw_df = pd.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
     df = DataFrame(raw_df, chunk_size=(1, 2))
     r = to_datetime(df)
 
@@ -66,20 +65,20 @@ def test_to_datetime_execution(setup):
     pd.testing.assert_index_equal(result, expected)
 
     # test raises == 'ignore'
-    raw = ['13000101']
-    r = to_datetime(raw, format='%Y%m%d', errors='ignore')
+    raw = ["13000101"]
+    r = to_datetime(raw, format="%Y%m%d", errors="ignore")
     result = r.execute().fetch()
-    expected = pd.to_datetime(raw, format='%Y%m%d', errors='ignore')
+    expected = pd.to_datetime(raw, format="%Y%m%d", errors="ignore")
     pd.testing.assert_index_equal(result, expected)
 
     # test unit
-    r = to_datetime([1490195805], unit='s')
+    r = to_datetime([1490195805], unit="s")
     result = r.execute().fetch()
-    expected = pd.to_datetime([1490195805], unit='s')
+    expected = pd.to_datetime([1490195805], unit="s")
     pd.testing.assert_index_equal(result, expected)
 
     # test origin
-    r = to_datetime([1, 2, 3], unit='D', origin=pd.Timestamp('1960-01-01'))
+    r = to_datetime([1, 2, 3], unit="D", origin=pd.Timestamp("1960-01-01"))
     result = r.execute().fetch()
-    expected = pd.to_datetime([1, 2, 3], unit='D', origin=pd.Timestamp('1960-01-01'))
+    expected = pd.to_datetime([1, 2, 3], unit="D", origin=pd.Timestamp("1960-01-01"))
     pd.testing.assert_index_equal(result, expected)

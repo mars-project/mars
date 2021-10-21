@@ -69,7 +69,7 @@ class RandomState:
         try:
             return tuple(int(s) for s in size)
         except TypeError:
-            return size,
+            return (size,)
 
 
 _random_state = RandomState()
@@ -82,7 +82,7 @@ def handle_array(arg):
 
         arg = np.asarray(arg)
         return arg[(0,) * max(1, arg.ndim)]
-    elif hasattr(arg, 'op') and hasattr(arg.op, 'data'):
+    elif hasattr(arg, "op") and hasattr(arg.op, "data"):
         return arg.op.data[(0,) * max(1, arg.ndim)]
 
     return np.empty((0,), dtype=arg.dtype)
@@ -96,8 +96,8 @@ class TensorRandomOperandMixin(TensorOperandMixin):
         tensor = op.outputs[0]
         chunk_size = tensor.extra_params.raw_chunk_size or options.chunk_size
         nsplits = decide_chunk_sizes(tensor.shape, chunk_size, tensor.dtype.itemsize)
-        fields = getattr(op, '_input_fields_', [])
-        to_one_chunk_fields = set(getattr(op, '_into_one_chunk_fields_', list()))
+        fields = getattr(op, "_input_fields_", [])
+        to_one_chunk_fields = set(getattr(op, "_into_one_chunk_fields_", list()))
 
         new_inputs = []
         changed = False
@@ -145,13 +145,20 @@ class TensorRandomOperandMixin(TensorOperandMixin):
             chunk_op = op.copy().reset_key()
             chunk_op._seed = int(seed)
             chunk_op._size = size
-            out_chunk = chunk_op.new_chunk(inputs, shape=shape, index=idx,
-                                           order=tensor.order)
+            out_chunk = chunk_op.new_chunk(
+                inputs, shape=shape, index=idx, order=tensor.order
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
-                                  chunks=out_chunks, nsplits=nsplits, **tensor.extra_params)
+        return new_op.new_tensors(
+            op.inputs,
+            tensor.shape,
+            order=tensor.order,
+            chunks=out_chunks,
+            nsplits=nsplits,
+            **tensor.extra_params
+        )
 
     @classmethod
     def execute(cls, ctx, op):
@@ -165,26 +172,36 @@ class TensorRandomOperandMixin(TensorOperandMixin):
         with device(device_id):
             rs = xp.random.RandomState(op.seed)
 
-            method_name = getattr(cls, '_func_name')
+            method_name = getattr(cls, "_func_name")
             try:
-                if method_name in ('rand', 'randn'):
+                if method_name in ("rand", "randn"):
                     try:
                         res = getattr(rs, method_name)(*op.size, dtype=op.dtype)
                     except TypeError:
                         res = getattr(rs, method_name)(*op.size)
-                elif method_name == 'randint':
+                elif method_name == "randint":
                     try:
-                        res = rs.randint(get_val(op.low), get_val(op.high), size=op.size,
-                                         dtype=op.dtype)
+                        res = rs.randint(
+                            get_val(op.low),
+                            get_val(op.high),
+                            size=op.size,
+                            dtype=op.dtype,
+                        )
                     except TypeError:
-                        res = rs.randint(get_val(op.low), get_val(op.high), size=op.size)
+                        res = rs.randint(
+                            get_val(op.low), get_val(op.high), size=op.size
+                        )
                 else:
                     try:
-                        res = getattr(rs, method_name)(*(get_val(getattr(op, arg)) for arg in op.args),
-                                                       dtype=op.dtype)
+                        res = getattr(rs, method_name)(
+                            *(get_val(getattr(op, arg)) for arg in op.args),
+                            dtype=op.dtype
+                        )
                     except TypeError:
-                        res = getattr(rs, method_name)(*(get_val(getattr(op, arg)) for arg in op.args))
-                if hasattr(res, 'dtype') and res.dtype != op.dtype:
+                        res = getattr(rs, method_name)(
+                            *(get_val(getattr(op, arg)) for arg in op.args)
+                        )
+                if hasattr(res, "dtype") and res.dtype != op.dtype:
                     res = res.astype(op.dtype, copy=False)
                 if xp is not np:
                     ctx[op.outputs[0].key] = xp.asarray(res)
@@ -194,10 +211,12 @@ class TensorRandomOperandMixin(TensorOperandMixin):
                 if xp is not np:
                     # cupy cannot generate data, fallback to numpy
                     rs = np.random.RandomState(op.seed)
-                    if method_name in ('rand', 'randn'):
+                    if method_name in ("rand", "randn"):
                         res = getattr(rs, method_name)(*op.size)
                     else:
-                        res = getattr(rs, method_name)(*(get_val(getattr(op, arg)) for arg in op.args))
+                        res = getattr(rs, method_name)(
+                            *(get_val(getattr(op, arg)) for arg in op.args)
+                        )
                     if res.dtype != op.dtype:
                         res = res.astype(op.dtype, copy=False)
                     ctx[op.outputs[0].key] = xp.asarray(res)
@@ -206,8 +225,8 @@ class TensorRandomOperandMixin(TensorOperandMixin):
 
     def _calc_shape(self, shapes):
         shapes = list(shapes)
-        if getattr(self, '_size', None) is not None:
-            shapes.append(getattr(self, '_size'))
+        if getattr(self, "_size", None) is not None:
+            shapes.append(getattr(self, "_size"))
         return broadcast_shape(*shapes)
 
     @classmethod
@@ -218,9 +237,11 @@ class TensorRandomOperandMixin(TensorOperandMixin):
         return arg
 
     @contextmanager
-    def _get_inputs_shape_by_given_fields(self, inputs, shape, raw_chunk_size=None, tensor=True):
-        fields = getattr(self, '_input_fields_', [])
-        to_one_chunk_fields = set(getattr(self, '_into_one_chunk_fields_', list()))
+    def _get_inputs_shape_by_given_fields(
+        self, inputs, shape, raw_chunk_size=None, tensor=True
+    ):
+        fields = getattr(self, "_input_fields_", [])
+        to_one_chunk_fields = set(getattr(self, "_into_one_chunk_fields_", list()))
 
         field_to_obj = dict()
         to_broadcast_shapes = []
@@ -241,7 +262,9 @@ class TensorRandomOperandMixin(TensorOperandMixin):
             else:
                 inputs_iter = iter(inputs)
                 for field in fields:
-                    if isinstance(getattr(self, field), TENSOR_TYPE + TENSOR_CHUNK_TYPE):
+                    if isinstance(
+                        getattr(self, field), TENSOR_TYPE + TENSOR_CHUNK_TYPE
+                    ):
                         field_to_obj[field] = next(inputs_iter)
 
         if tensor:
@@ -254,29 +277,34 @@ class TensorRandomOperandMixin(TensorOperandMixin):
 
         yield [field_to_obj[f] for f in fields if f in field_to_obj], shape
 
-        inputs_iter = iter(getattr(self, '_inputs'))
+        inputs_iter = iter(getattr(self, "_inputs"))
         for field in fields:
             if field in field_to_obj:
                 setattr(self, field, next(inputs_iter))
 
     @classmethod
     def _get_shape(cls, kws, kw):
-        if kw.get('shape') is not None:
-            return kw.get('shape')
+        if kw.get("shape") is not None:
+            return kw.get("shape")
         elif kws is not None and len(kws) > 0:
-            return kws[0].get('shape')
+            return kws[0].get("shape")
 
     def _new_tileables(self, inputs, kws=None, **kw):
-        raw_chunk_size = kw.get('chunk_size', None)
+        raw_chunk_size = kw.get("chunk_size", None)
         shape = self._get_shape(kws, kw)
-        with self._get_inputs_shape_by_given_fields(inputs, shape, raw_chunk_size, True) as (inputs, shape):
-            kw['shape'] = shape
+        with self._get_inputs_shape_by_given_fields(
+            inputs, shape, raw_chunk_size, True
+        ) as (inputs, shape):
+            kw["shape"] = shape
             return super()._new_tileables(inputs, kws=kws, **kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
         shape = self._get_shape(kws, kw)
-        with self._get_inputs_shape_by_given_fields(inputs, shape, None, False) as (inputs, shape):
-            kw['shape'] = shape
+        with self._get_inputs_shape_by_given_fields(inputs, shape, None, False) as (
+            inputs,
+            shape,
+        ):
+            kw["shape"] = shape
             return super()._new_chunks(inputs, kws=kws, **kw)
 
 
@@ -291,27 +319,34 @@ def _on_deserialize_random_state(tup):
 
 
 def RandomStateField(name, **kwargs):
-    kwargs.update(dict(on_serialize=_on_serialize_random_state,
-                       on_deserialize=_on_deserialize_random_state))
+    kwargs.update(
+        dict(
+            on_serialize=_on_serialize_random_state,
+            on_deserialize=_on_deserialize_random_state,
+        )
+    )
     return TupleField(name, **kwargs)
 
 
 class TensorSeedOperandMixin(object):
     @property
     def seed(self):
-        return getattr(self, '_seed', None)
+        return getattr(self, "_seed", None)
 
     @property
     def args(self):
-        if hasattr(self, '_fields_'):
+        if hasattr(self, "_fields_"):
             return self._fields_
         else:
-            return [field for field in self._FIELDS
-                    if field not in TensorRandomOperand._FIELDS]
+            return [
+                field
+                for field in self._FIELDS
+                if field not in TensorRandomOperand._FIELDS
+            ]
 
 
 class TensorRandomOperand(TensorSeedOperandMixin, TensorOperand):
-    _seed = Int32Field('seed')
+    _seed = Int32Field("seed")
 
     def __init__(self, seed=None, **kwargs):
         super().__init__(_seed=seed, **kwargs)
@@ -322,11 +357,11 @@ class TensorRandomOperand(TensorSeedOperandMixin, TensorOperand):
 
 
 class TensorRandomMapReduceOperand(TensorSeedOperandMixin, TensorMapReduceOperand):
-    _seed = Int32Field('seed')
+    _seed = Int32Field("seed")
 
 
 class TensorDistribution(TensorRandomOperand):
-    _size = TupleField('size', FieldTypes.int64)
+    _size = TupleField("size", FieldTypes.int64)
 
     @property
     def size(self):
@@ -351,7 +386,7 @@ class TensorDistribution(TensorRandomOperand):
                 else:
                     args.append(val)
 
-            method_name = getattr(cls, '_func_name')
+            method_name = getattr(cls, "_func_name")
             try:
                 res = getattr(rs, method_name)(*args)
                 if xp is not np:
@@ -369,7 +404,7 @@ class TensorDistribution(TensorRandomOperand):
 
 
 class TensorSimpleRandomData(TensorRandomOperand):
-    _size = TupleField('size', FieldTypes.int64)
+    _size = TupleField("size", FieldTypes.int64)
 
     @property
     def size(self):

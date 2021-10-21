@@ -28,14 +28,15 @@ from ..utils import parse_index, validate_axis
 class DataFrameDrop(DataFrameOperandMixin, DataFrameOperand):
     _op_type_ = opcodes.DATAFRAME_DROP
 
-    _index = AnyField('index')
-    _columns = AnyField('columns')
-    _level = AnyField('level')
-    _errors = StringField('errors')
+    _index = AnyField("index")
+    _columns = AnyField("columns")
+    _level = AnyField("level")
+    _errors = StringField("errors")
 
     def __init__(self, index=None, columns=None, level=None, errors=None, **kw):
-        super().__init__(_index=index, _columns=columns, _level=level, _errors=errors,
-                         **kw)
+        super().__init__(
+            _index=index, _columns=columns, _level=level, _errors=errors, **kw
+        )
 
     @property
     def index(self):
@@ -55,8 +56,11 @@ class DataFrameDrop(DataFrameOperandMixin, DataFrameOperand):
 
     def _filter_dtypes(self, dtypes, ignore_errors=False):
         if self._columns:
-            return dtypes.drop(index=self._columns, level=self._level,
-                               errors='ignore' if ignore_errors else self._errors)
+            return dtypes.drop(
+                index=self._columns,
+                level=self._level,
+                errors="ignore" if ignore_errors else self._errors,
+            )
         else:
             return dtypes
 
@@ -72,13 +76,15 @@ class DataFrameDrop(DataFrameOperandMixin, DataFrameOperand):
 
         if self._index is not None:
             if isinstance(df_or_series.index_value.value, IndexValue.RangeIndex):
-                params['index_value'] = parse_index(None, (df_or_series.key, df_or_series.index_value.key))
+                params["index_value"] = parse_index(
+                    None, (df_or_series.key, df_or_series.index_value.key)
+                )
             shape_list[0] = np.nan
 
         if isinstance(df_or_series, DATAFRAME_TYPE):
             new_dtypes = self._filter_dtypes(df_or_series.dtypes)
-            params['columns_value'] = parse_index(new_dtypes.index, store_data=True)
-            params['dtypes'] = new_dtypes
+            params["columns_value"] = parse_index(new_dtypes.index, store_data=True)
+            params["dtypes"] = new_dtypes
             shape_list[1] = len(new_dtypes)
             self.output_types = [OutputType.dataframe]
         elif isinstance(df_or_series, SERIES_TYPE):
@@ -86,7 +92,7 @@ class DataFrameDrop(DataFrameOperandMixin, DataFrameOperand):
         else:
             self.output_types = [OutputType.index]
 
-        params['shape'] = tuple(shape_list)
+        params["shape"] = tuple(shape_list)
 
         inputs = [df_or_series]
         if isinstance(self._index, Entity):
@@ -94,12 +100,13 @@ class DataFrameDrop(DataFrameOperandMixin, DataFrameOperand):
         return self.new_tileable(inputs, **params)
 
     @classmethod
-    def tile(cls, op: 'DataFrameDrop'):
+    def tile(cls, op: "DataFrameDrop"):
         inp = op.inputs[0]
         out = op.outputs[0]
         if len(op.inputs) > 1:
             rechunked = yield from recursive_tile(
-                op.index.rechunk({0: (op.index.shape[0],)}))
+                op.index.rechunk({0: (op.index.shape[0],)})
+            )
             index_chunk = rechunked.chunks[0]
         else:
             index_chunk = op.index
@@ -118,16 +125,30 @@ class DataFrameDrop(DataFrameOperandMixin, DataFrameOperand):
                         continue
                     col_to_args[c.index[1]] = (new_dtypes, new_col_id)
 
-                params.update(dict(dtypes=new_dtypes, index=(c.index[0], new_col_id),
-                                   index_value=c.index_value,
-                                   columns_value=parse_index(new_dtypes.index, store_data=True)))
+                params.update(
+                    dict(
+                        dtypes=new_dtypes,
+                        index=(c.index[0], new_col_id),
+                        index_value=c.index_value,
+                        columns_value=parse_index(new_dtypes.index, store_data=True),
+                    )
+                )
                 if op.index is not None:
-                    params.update(dict(shape=(np.nan, len(new_dtypes)),
-                                       index_value=parse_index(None, (c.key, c.index_value.key))))
+                    params.update(
+                        dict(
+                            shape=(np.nan, len(new_dtypes)),
+                            index_value=parse_index(None, (c.key, c.index_value.key)),
+                        )
+                    )
                 else:
-                    params['shape'] = (c.shape[0], len(new_dtypes))
+                    params["shape"] = (c.shape[0], len(new_dtypes))
             elif op.index is not None:
-                params.update(dict(shape=(np.nan,), index_value=parse_index(None, (c.key, c.index_value.key))))
+                params.update(
+                    dict(
+                        shape=(np.nan,),
+                        index_value=parse_index(None, (c.key, c.index_value.key)),
+                    )
+                )
 
             chunk_inputs = [c]
             if isinstance(index_chunk, Chunk):
@@ -149,7 +170,7 @@ class DataFrameDrop(DataFrameOperandMixin, DataFrameOperand):
         return new_op.new_tileables(op.inputs, **params)
 
     @classmethod
-    def execute(cls, ctx, op: 'DataFrameDrop'):
+    def execute(cls, ctx, op: "DataFrameDrop"):
         inp = op.inputs[0]
         if isinstance(op.index, CHUNK_TYPE):
             index_val = ctx[op.index.key]
@@ -157,14 +178,23 @@ class DataFrameDrop(DataFrameOperandMixin, DataFrameOperand):
             index_val = op.index
 
         if isinstance(inp, INDEX_CHUNK_TYPE):
-            ctx[op.outputs[0].key] = ctx[inp.key].drop(index_val, errors='ignore')
+            ctx[op.outputs[0].key] = ctx[inp.key].drop(index_val, errors="ignore")
         else:
             ctx[op.outputs[0].key] = ctx[inp.key].drop(
-                index=index_val, columns=op.columns, level=op.level, errors='ignore')
+                index=index_val, columns=op.columns, level=op.level, errors="ignore"
+            )
 
 
-def _drop(df_or_series, labels=None, axis=0, index=None, columns=None, level=None,
-          inplace=False, errors='raise'):
+def _drop(
+    df_or_series,
+    labels=None,
+    axis=0,
+    index=None,
+    columns=None,
+    level=None,
+    inplace=False,
+    errors="raise",
+):
     axis = validate_axis(axis, df_or_series)
     if labels is not None:
         if axis == 0:
@@ -172,10 +202,10 @@ def _drop(df_or_series, labels=None, axis=0, index=None, columns=None, level=Non
         else:
             columns = labels
 
-    if index is not None and errors == 'raise':
-        warnings.warn('Errors will not raise for non-existing indices')
+    if index is not None and errors == "raise":
+        warnings.warn("Errors will not raise for non-existing indices")
     if isinstance(columns, Entity):
-        raise NotImplementedError('Columns cannot be Mars objects')
+        raise NotImplementedError("Columns cannot be Mars objects")
 
     op = DataFrameDrop(index=index, columns=columns, level=level, errors=errors)
     df = op(df_or_series)
@@ -185,8 +215,16 @@ def _drop(df_or_series, labels=None, axis=0, index=None, columns=None, level=Non
         return df
 
 
-def df_drop(df, labels=None, axis=0, index=None, columns=None, level=None,
-            inplace=False, errors='raise'):
+def df_drop(
+    df,
+    labels=None,
+    axis=0,
+    index=None,
+    columns=None,
+    level=None,
+    inplace=False,
+    errors="raise",
+):
     """
     Drop specified labels from rows or columns.
 
@@ -308,8 +346,16 @@ def df_drop(df, labels=None, axis=0, index=None, columns=None, level=None,
     falcon  speed   320.0   250.0
             weight  1.0     0.8
     """
-    return _drop(df, labels=labels, axis=axis, index=index, columns=columns,
-                 level=level, inplace=inplace, errors=errors)
+    return _drop(
+        df,
+        labels=labels,
+        axis=axis,
+        index=index,
+        columns=columns,
+        level=level,
+        inplace=inplace,
+        errors=errors,
+    )
 
 
 def df_pop(df, item):
@@ -360,8 +406,16 @@ def df_pop(df, item):
     return series
 
 
-def series_drop(series, labels=None, axis=0, index=None, columns=None, level=None,
-                inplace=False, errors='raise'):
+def series_drop(
+    series,
+    labels=None,
+    axis=0,
+    index=None,
+    columns=None,
+    level=None,
+    inplace=False,
+    errors="raise",
+):
     """
     Return Series with specified index labels removed.
 
@@ -456,11 +510,19 @@ def series_drop(series, labels=None, axis=0, index=None, columns=None, level=Non
             length      0.3
     dtype: float64
     """
-    return _drop(series, labels=labels, axis=axis, index=index, columns=columns,
-                 level=level, inplace=inplace, errors=errors)
+    return _drop(
+        series,
+        labels=labels,
+        axis=axis,
+        index=index,
+        columns=columns,
+        level=level,
+        inplace=inplace,
+        errors=errors,
+    )
 
 
-def index_drop(index, labels, errors='raise'):
+def index_drop(index, labels, errors="raise"):
     """
     Make new Index with passed list of labels deleted.
 

@@ -21,7 +21,7 @@ from ... import Series, DataFrame
 
 
 def test_series_quantile_execution(setup):
-    raw = pd.Series(np.random.rand(10), name='a')
+    raw = pd.Series(np.random.rand(10), name="a")
     a = Series(raw, chunk_size=3)
 
     # q = 0.5, scalar
@@ -39,9 +39,9 @@ def test_series_quantile_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
     # test interpolation
-    r = a.quantile([0.3, 0.7], interpolation='midpoint')
+    r = a.quantile([0.3, 0.7], interpolation="midpoint")
     result = r.execute().fetch()
-    expected = raw.quantile([0.3, 0.7], interpolation='midpoint')
+    expected = raw.quantile([0.3, 0.7], interpolation="midpoint")
 
     pd.testing.assert_series_equal(result, expected)
 
@@ -56,14 +56,17 @@ def test_series_quantile_execution(setup):
 
 
 def test_dataframe_quantile_execution(setup):
-    raw = pd.DataFrame({'a': np.random.rand(10),
-                        'b': np.random.randint(1000, size=10),
-                        'c': np.random.rand(10),
-                        'd': [np.random.bytes(10) for _ in range(10)],
-                        'e': [pd.Timestamp(f'201{i}') for i in range(10)],
-                        'f': [pd.Timedelta(f'{i} days') for i in range(10)]
-                        },
-                       index=pd.RangeIndex(1, 11))
+    raw = pd.DataFrame(
+        {
+            "a": np.random.rand(10),
+            "b": np.random.randint(1000, size=10),
+            "c": np.random.rand(10),
+            "d": [np.random.bytes(10) for _ in range(10)],
+            "e": [pd.Timestamp(f"201{i}") for i in range(10)],
+            "f": [pd.Timedelta(f"{i} days") for i in range(10)],
+        },
+        index=pd.RangeIndex(1, 11),
+    )
     df = DataFrame(raw, chunk_size=3)
 
     # q = 0.5, axis = 0, series
@@ -95,9 +98,9 @@ def test_dataframe_quantile_execution(setup):
     pd.testing.assert_frame_equal(result, expected)
 
     # test interpolation
-    r = df.quantile([0.3, 0.7], interpolation='midpoint')
+    r = df.quantile([0.3, 0.7], interpolation="midpoint")
     result = r.execute().fetch()
-    expected = raw.quantile([0.3, 0.7], interpolation='midpoint')
+    expected = raw.quantile([0.3, 0.7], interpolation="midpoint")
 
     pd.testing.assert_frame_equal(result, expected)
 
@@ -111,11 +114,15 @@ def test_dataframe_quantile_execution(setup):
     pd.testing.assert_frame_equal(result, expected)
 
     # test numeric_only
-    raw2 = pd.DataFrame({'a': np.random.rand(10),
-                         'b': np.random.randint(1000, size=10),
-                         'c': np.random.rand(10),
-                         'd': [pd.Timestamp(f'201{i}') for i in range(10)],
-                         }, index=pd.RangeIndex(1, 11))
+    raw2 = pd.DataFrame(
+        {
+            "a": np.random.rand(10),
+            "b": np.random.randint(1000, size=10),
+            "c": np.random.rand(10),
+            "d": [pd.Timestamp(f"201{i}") for i in range(10)],
+        },
+        index=pd.RangeIndex(1, 11),
+    )
     df2 = DataFrame(raw2, chunk_size=3)
 
     r = df2.quantile([0.3, 0.7], numeric_only=False)
@@ -134,39 +141,39 @@ def test_dataframe_quantile_execution(setup):
 def test_dataframe_corr(setup):
     rs = np.random.RandomState(0)
     raw = rs.rand(20, 10)
-    raw = pd.DataFrame(np.where(raw > 0.4, raw, np.nan), columns=list('ABCDEFGHIJ'))
-    raw['k'] = pd.Series(['aaa'] * 20)
+    raw = pd.DataFrame(np.where(raw > 0.4, raw, np.nan), columns=list("ABCDEFGHIJ"))
+    raw["k"] = pd.Series(["aaa"] * 20)
 
     df = DataFrame(raw)
 
     result = df.corr()
-    pd.testing.assert_frame_equal(result.execute().fetch(),
-                                  raw.corr())
+    pd.testing.assert_frame_equal(result.execute().fetch(), raw.corr())
 
-    result = df.corr(method='kendall')
-    pd.testing.assert_frame_equal(result.execute().fetch(),
-                                  raw.corr(method='kendall'))
+    result = df.corr(method="kendall")
+    pd.testing.assert_frame_equal(result.execute().fetch(), raw.corr(method="kendall"))
 
     df = DataFrame(raw, chunk_size=6)
 
     with pytest.raises(Exception):
-        df.corr(method='kendall').execute()
+        df.corr(method="kendall").execute()
 
     result = df.corr()
-    pd.testing.assert_frame_equal(result.execute().fetch(),
-                                  raw.corr())
+    pd.testing.assert_frame_equal(result.execute().fetch(), raw.corr())
 
     result = df.corr(min_periods=7)
-    pd.testing.assert_frame_equal(result.execute().fetch(),
-                                  raw.corr(min_periods=7))
+    pd.testing.assert_frame_equal(result.execute().fetch(), raw.corr(min_periods=7))
 
 
 def test_dataframe_corr_with(setup):
     rs = np.random.RandomState(0)
     raw_df = rs.rand(20, 10)
-    raw_df = pd.DataFrame(np.where(raw_df > 0.4, raw_df, np.nan), columns=list('ABCDEFGHIJ'))
+    raw_df = pd.DataFrame(
+        np.where(raw_df > 0.4, raw_df, np.nan), columns=list("ABCDEFGHIJ")
+    )
     raw_df2 = rs.rand(20, 10)
-    raw_df2 = pd.DataFrame(np.where(raw_df2 > 0.4, raw_df2, np.nan), columns=list('ACDEGHIJKL'))
+    raw_df2 = pd.DataFrame(
+        np.where(raw_df2 > 0.4, raw_df2, np.nan), columns=list("ACDEGHIJKL")
+    )
     raw_s = rs.rand(20)
     raw_s = pd.Series(np.where(raw_s > 0.4, raw_s, np.nan))
     raw_s2 = rs.rand(10)
@@ -176,16 +183,17 @@ def test_dataframe_corr_with(setup):
     df2 = DataFrame(raw_df2)
 
     result = df.corrwith(df2)
-    pd.testing.assert_series_equal(result.execute().fetch(),
-                                   raw_df.corrwith(raw_df2))
+    pd.testing.assert_series_equal(result.execute().fetch(), raw_df.corrwith(raw_df2))
 
     result = df.corrwith(df2, axis=1)
-    pd.testing.assert_series_equal(result.execute().fetch(),
-                                   raw_df.corrwith(raw_df2, axis=1))
+    pd.testing.assert_series_equal(
+        result.execute().fetch(), raw_df.corrwith(raw_df2, axis=1)
+    )
 
-    result = df.corrwith(df2, method='kendall')
-    pd.testing.assert_series_equal(result.execute().fetch(),
-                                   raw_df.corrwith(raw_df2, method='kendall'))
+    result = df.corrwith(df2, method="kendall")
+    pd.testing.assert_series_equal(
+        result.execute().fetch(), raw_df.corrwith(raw_df2, method="kendall")
+    )
 
     df = DataFrame(raw_df, chunk_size=4)
     df2 = DataFrame(raw_df2, chunk_size=6)
@@ -193,23 +201,29 @@ def test_dataframe_corr_with(setup):
     s2 = Series(raw_s2, chunk_size=5)
 
     with pytest.raises(Exception):
-        df.corrwith(df2, method='kendall').execute()
+        df.corrwith(df2, method="kendall").execute()
 
     result = df.corrwith(df2)
-    pd.testing.assert_series_equal(result.execute().fetch().sort_index(),
-                                   raw_df.corrwith(raw_df2).sort_index())
+    pd.testing.assert_series_equal(
+        result.execute().fetch().sort_index(), raw_df.corrwith(raw_df2).sort_index()
+    )
 
     result = df.corrwith(df2, axis=1)
-    pd.testing.assert_series_equal(result.execute().fetch().sort_index(),
-                                   raw_df.corrwith(raw_df2, axis=1).sort_index())
+    pd.testing.assert_series_equal(
+        result.execute().fetch().sort_index(),
+        raw_df.corrwith(raw_df2, axis=1).sort_index(),
+    )
 
     result = df.corrwith(s)
-    pd.testing.assert_series_equal(result.execute().fetch().sort_index(),
-                                   raw_df.corrwith(raw_s).sort_index())
+    pd.testing.assert_series_equal(
+        result.execute().fetch().sort_index(), raw_df.corrwith(raw_s).sort_index()
+    )
 
     result = df.corrwith(s2, axis=1)
-    pd.testing.assert_series_equal(result.execute().fetch().sort_index(),
-                                   raw_df.corrwith(raw_s2, axis=1).sort_index())
+    pd.testing.assert_series_equal(
+        result.execute().fetch().sort_index(),
+        raw_df.corrwith(raw_s2, axis=1).sort_index(),
+    )
 
 
 def test_series_corr(setup):
@@ -225,8 +239,8 @@ def test_series_corr(setup):
     result = s.corr(s2)
     assert result.execute().fetch() == raw.corr(raw2)
 
-    result = s.corr(s2, method='kendall')
-    assert result.execute().fetch() == raw.corr(raw2, method='kendall')
+    result = s.corr(s2, method="kendall")
+    assert result.execute().fetch() == raw.corr(raw2, method="kendall")
 
     result = s.autocorr(2)
     assert result.execute().fetch() == raw.autocorr(2)
@@ -235,7 +249,7 @@ def test_series_corr(setup):
     s2 = Series(raw2, chunk_size=4)
 
     with pytest.raises(Exception):
-        s.corr(s2, method='kendall').execute()
+        s.corr(s2, method="kendall").execute()
 
     result = s.corr(s2)
     assert pytest.approx(result.execute().fetch()) == raw.corr(raw2)

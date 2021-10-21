@@ -105,8 +105,7 @@ def roll(a, shift, axis=None):
         validate_axis(a.ndim, ax)
     broadcasted = np.broadcast(shift, axis)
     if broadcasted.ndim > 1:
-        raise ValueError(
-            "'shift' and 'axis' should be scalars or 1D sequences")
+        raise ValueError("'shift' and 'axis' should be scalars or 1D sequences")
 
     shifts = {ax: 0 for ax in range(a.ndim)}
     for s, ax in broadcasted:

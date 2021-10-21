@@ -27,11 +27,16 @@ class NodeAllocatorActor(mo.StatelessActor):
 
     async def __post_create__(self):
         backend_cls = get_cluster_backend(self._backend_name)
-        self._backend = await backend_cls.create(NodeRole.WORKER, self._lookup_address, self.address)
+        self._backend = await backend_cls.create(
+            NodeRole.WORKER, self._lookup_address, self.address
+        )
 
-    async def request_worker(self, worker_cpu: int, worker_mem: int,
-                             timeout: int = None) -> str:
-        return await self._backend.request_worker(worker_cpu, worker_mem, timeout=timeout)
+    async def request_worker(
+        self, worker_cpu: int, worker_mem: int, timeout: int = None
+    ) -> str:
+        return await self._backend.request_worker(
+            worker_cpu, worker_mem, timeout=timeout
+        )
 
     async def release_worker(self, address: str):
         await self._backend.release_worker(address)

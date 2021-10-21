@@ -14,13 +14,42 @@
 
 
 from .core import Serializable, SerializableMeta
-from .field import AnyField, IdentityField, BoolField, \
-    Int8Field, Int16Field, Int32Field, Int64Field, \
-    UInt8Field, UInt16Field, UInt32Field, UInt64Field, \
-    Float16Field, Float32Field, Float64Field, Complex64Field, Complex128Field, \
-    StringField, BytesField, KeyField, NDArrayField, \
-    Datetime64Field, Timedelta64Field, DataTypeField, \
-    IndexField, SeriesField, DataFrameField, IntervalArrayField, \
-    SliceField, FunctionField, NamedTupleField, TZInfoField, \
-    ListField, TupleField, DictField, ReferenceField, OneOfField
+from .field import (
+    AnyField,
+    IdentityField,
+    BoolField,
+    Int8Field,
+    Int16Field,
+    Int32Field,
+    Int64Field,
+    UInt8Field,
+    UInt16Field,
+    UInt32Field,
+    UInt64Field,
+    Float16Field,
+    Float32Field,
+    Float64Field,
+    Complex64Field,
+    Complex128Field,
+    StringField,
+    BytesField,
+    KeyField,
+    NDArrayField,
+    Datetime64Field,
+    Timedelta64Field,
+    DataTypeField,
+    IndexField,
+    SeriesField,
+    DataFrameField,
+    IntervalArrayField,
+    SliceField,
+    FunctionField,
+    NamedTupleField,
+    TZInfoField,
+    ListField,
+    TupleField,
+    DictField,
+    ReferenceField,
+    OneOfField,
+)
 from .field_type import FieldTypes

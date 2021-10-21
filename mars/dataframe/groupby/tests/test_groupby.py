@@ -29,18 +29,19 @@ from ..getitem import GroupByIndex
 
 
 def test_groupby():
-    df = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
-                       'b': [1, 3, 4, 5, 6, 5, 4, 4, 4]})
+    df = pd.DataFrame(
+        {"a": [3, 4, 5, 3, 5, 4, 1, 2, 3], "b": [1, 3, 4, 5, 6, 5, 4, 4, 4]}
+    )
     mdf = md.DataFrame(df, chunk_size=2)
     with pytest.raises(KeyError):
-        mdf.groupby('c2')
+        mdf.groupby("c2")
     with pytest.raises(KeyError):
-        mdf.groupby(['b', 'c2'])
+        mdf.groupby(["b", "c2"])
 
-    grouped = mdf.groupby('b')
+    grouped = mdf.groupby("b")
     assert isinstance(grouped, DataFrameGroupBy)
     assert isinstance(grouped.op, DataFrameGroupByOperand)
-    assert list(grouped.key_dtypes.index) == ['b']
+    assert list(grouped.key_dtypes.index) == ["b"]
 
     grouped = tile(grouped)
     assert len(grouped.chunks) == 5
@@ -64,48 +65,60 @@ def test_groupby():
 
 
 def test_groupby_get_item():
-    df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
-                        'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
-                        'c': list('aabaaddce')})
+    df1 = pd.DataFrame(
+        {
+            "a": [3, 4, 5, 3, 5, 4, 1, 2, 3],
+            "b": [1, 3, 4, 5, 6, 5, 4, 4, 4],
+            "c": list("aabaaddce"),
+        }
+    )
     mdf = md.DataFrame(df1, chunk_size=3)
 
-    r = tile(mdf.groupby('b')[['a', 'b']])
+    r = tile(mdf.groupby("b")[["a", "b"]])
     assert isinstance(r, DataFrameGroupBy)
     assert isinstance(r.op, GroupByIndex)
-    assert r.selection == ['a', 'b']
-    assert list(r.key_dtypes.index) == ['b']
+    assert r.selection == ["a", "b"]
+    assert list(r.key_dtypes.index) == ["b"]
     assert len(r.chunks) == 3
 
-    r = tile(mdf.groupby('b').a)
+    r = tile(mdf.groupby("b").a)
     assert isinstance(r, SeriesGroupBy)
     assert isinstance(r.op, GroupByIndex)
-    assert r.name == 'a'
-    assert list(r.key_dtypes.index) == ['b']
+    assert r.name == "a"
+    assert list(r.key_dtypes.index) == ["b"]
     assert len(r.chunks) == 3
 
     with pytest.raises(IndexError):
-        getattr(mdf.groupby('b')[['a', 'b']], 'a')
+        getattr(mdf.groupby("b")[["a", "b"]], "a")
 
 
 def test_groupby_agg():
-    df = pd.DataFrame({'a': np.random.choice([2, 3, 4], size=(20,)),
-                       'b': np.random.choice([2, 3, 4], size=(20,))})
+    df = pd.DataFrame(
+        {
+            "a": np.random.choice([2, 3, 4], size=(20,)),
+            "b": np.random.choice([2, 3, 4], size=(20,)),
+        }
+    )
     mdf = md.DataFrame(df, chunk_size=3)
-    r = mdf.groupby('a').agg('sum', method='tree')
+    r = mdf.groupby("a").agg("sum", method="tree")
     assert isinstance(r.op, DataFrameGroupByAgg)
     assert isinstance(r, DataFrame)
-    assert r.op.method == 'tree'
+    assert r.op.method == "tree"
     r = tile(r)
     assert len(r.chunks) == 1
     assert r.chunks[0].op.stage == OperandStage.agg
     assert len(r.chunks[0].inputs) == 1
     assert len(r.chunks[0].inputs[0].inputs) == 2
 
-    df = pd.DataFrame({'c1': range(10),
-                       'c2': np.random.choice(['a', 'b', 'c'], (10,)),
-                       'c3': np.random.rand(10)})
+    df = pd.DataFrame(
+        {
+            "c1": range(10),
+            "c2": np.random.choice(["a", "b", "c"], (10,)),
+            "c3": np.random.rand(10),
+        }
+    )
     mdf = md.DataFrame(df, chunk_size=2)
-    r = mdf.groupby('c2').sum(method='shuffle')
+    r = mdf.groupby("c2").sum(method="shuffle")
 
     assert isinstance(r.op, DataFrameGroupByAgg)
     assert isinstance(r, DataFrame)
@@ -118,7 +131,9 @@ def test_groupby_agg():
         assert isinstance(chunk.inputs[0].op, DataFrameGroupByOperand)
         assert chunk.inputs[0].op.stage == OperandStage.reduce
         assert isinstance(chunk.inputs[0].inputs[0].op, DataFrameShuffleProxy)
-        assert isinstance(chunk.inputs[0].inputs[0].inputs[0].op, DataFrameGroupByOperand)
+        assert isinstance(
+            chunk.inputs[0].inputs[0].inputs[0].op, DataFrameGroupByOperand
+        )
         assert chunk.inputs[0].inputs[0].inputs[0].op.stage == OperandStage.map
 
         agg_chunk = chunk.inputs[0].inputs[0].inputs[0].inputs[0]
@@ -126,13 +141,17 @@ def test_groupby_agg():
 
     # test unknown method
     with pytest.raises(ValueError):
-        mdf.groupby('c2').sum(method='not_exist')
+        mdf.groupby("c2").sum(method="not_exist")
 
 
 def test_groupby_apply():
-    df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
-                        'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
-                        'c': list('aabaaddce')})
+    df1 = pd.DataFrame(
+        {
+            "a": [3, 4, 5, 3, 5, 4, 1, 2, 3],
+            "b": [1, 3, 4, 5, 6, 5, 4, 4, 4],
+            "c": list("aabaaddce"),
+        }
+    )
 
     def apply_df(df):
         return df.sort_index()
@@ -147,11 +166,13 @@ def test_groupby_apply():
     mdf = md.DataFrame(df1, chunk_size=3)
 
     with pytest.raises(TypeError):
-        mdf.groupby('b').apply(apply_df_with_error)
+        mdf.groupby("b").apply(apply_df_with_error)
 
-    applied = tile(mdf.groupby('b').apply(
-        apply_df_with_error, output_type='dataframe',
-        dtypes=df1.dtypes))
+    applied = tile(
+        mdf.groupby("b").apply(
+            apply_df_with_error, output_type="dataframe", dtypes=df1.dtypes
+        )
+    )
     pd.testing.assert_series_equal(applied.dtypes, df1.dtypes)
     assert applied.shape == (np.nan, 3)
     assert applied.op._op_type_ == opcodes.APPLY
@@ -160,7 +181,7 @@ def test_groupby_apply():
     assert applied.chunks[0].shape == (np.nan, 3)
     pd.testing.assert_series_equal(applied.chunks[0].dtypes, df1.dtypes)
 
-    applied = tile(mdf.groupby('b').apply(apply_df))
+    applied = tile(mdf.groupby("b").apply(apply_df))
     pd.testing.assert_series_equal(applied.dtypes, df1.dtypes)
     assert applied.shape == (np.nan, 3)
     assert applied.op._op_type_ == opcodes.APPLY
@@ -169,7 +190,7 @@ def test_groupby_apply():
     assert applied.chunks[0].shape == (np.nan, 3)
     pd.testing.assert_series_equal(applied.chunks[0].dtypes, df1.dtypes)
 
-    applied = tile(mdf.groupby('b').apply(lambda df: df.a))
+    applied = tile(mdf.groupby("b").apply(lambda df: df.a))
     assert applied.dtype == df1.a.dtype
     assert applied.shape == (np.nan,)
     assert applied.op._op_type_ == opcodes.APPLY
@@ -178,7 +199,7 @@ def test_groupby_apply():
     assert applied.chunks[0].shape == (np.nan,)
     assert applied.chunks[0].dtype == df1.a.dtype
 
-    applied = tile(mdf.groupby('b').apply(lambda df: df.a.sum()))
+    applied = tile(mdf.groupby("b").apply(lambda df: df.a.sum()))
     assert applied.dtype == df1.a.dtype
     assert applied.shape == (np.nan,)
     assert applied.op._op_type_ == opcodes.APPLY
@@ -201,14 +222,16 @@ def test_groupby_apply():
 
 
 def test_groupby_transform():
-    df1 = pd.DataFrame({
-        'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
-        'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
-        'c': list('aabaaddce'),
-        'd': [3, 4, 5, 3, 5, 4, 1, 2, 3],
-        'e': [1, 3, 4, 5, 6, 5, 4, 4, 4],
-        'f': list('aabaaddce'),
-    })
+    df1 = pd.DataFrame(
+        {
+            "a": [3, 4, 5, 3, 5, 4, 1, 2, 3],
+            "b": [1, 3, 4, 5, 6, 5, 4, 4, 4],
+            "c": list("aabaaddce"),
+            "d": [3, 4, 5, 3, 5, 4, 1, 2, 3],
+            "e": [1, 3, 4, 5, 6, 5, 4, 4, 4],
+            "f": list("aabaaddce"),
+        }
+    )
 
     def transform_df(df):
         return df.sort_index()
@@ -220,47 +243,48 @@ def test_groupby_transform():
     mdf = md.DataFrame(df1, chunk_size=3)
 
     with pytest.raises(TypeError):
-        mdf.groupby('b').transform(['cummax', 'cumcount'])
+        mdf.groupby("b").transform(["cummax", "cumcount"])
 
     with pytest.raises(TypeError):
-        mdf.groupby('b').transform(transform_df_with_err)
+        mdf.groupby("b").transform(transform_df_with_err)
 
-    r = tile(mdf.groupby('b').transform(transform_df_with_err,
-                                        dtypes=df1.dtypes.drop('b')))
-    assert r.dtypes.index.tolist() == list('acdef')
+    r = tile(
+        mdf.groupby("b").transform(transform_df_with_err, dtypes=df1.dtypes.drop("b"))
+    )
+    assert r.dtypes.index.tolist() == list("acdef")
     assert r.shape == (9, 5)
     assert r.op._op_type_ == opcodes.TRANSFORM
     assert r.op.output_types[0] == OutputType.dataframe
     assert len(r.chunks) == 3
     assert r.chunks[0].shape == (np.nan, 5)
-    assert r.chunks[0].dtypes.index.tolist() == list('acdef')
+    assert r.chunks[0].dtypes.index.tolist() == list("acdef")
 
-    r = tile(mdf.groupby('b').transform(transform_df))
-    assert r.dtypes.index.tolist() == list('acdef')
+    r = tile(mdf.groupby("b").transform(transform_df))
+    assert r.dtypes.index.tolist() == list("acdef")
     assert r.shape == (9, 5)
     assert r.op._op_type_ == opcodes.TRANSFORM
     assert r.op.output_types[0] == OutputType.dataframe
     assert len(r.chunks) == 3
     assert r.chunks[0].shape == (np.nan, 5)
-    assert r.chunks[0].dtypes.index.tolist() == list('acdef')
+    assert r.chunks[0].dtypes.index.tolist() == list("acdef")
 
-    r = tile(mdf.groupby('b').transform(['cummax', 'cumcount'], _call_agg=True))
+    r = tile(mdf.groupby("b").transform(["cummax", "cumcount"], _call_agg=True))
     assert r.shape == (np.nan, 6)
     assert r.op._op_type_ == opcodes.TRANSFORM
     assert r.op.output_types[0] == OutputType.dataframe
     assert len(r.chunks) == 3
     assert r.chunks[0].shape == (np.nan, 6)
 
-    agg_dict = OrderedDict([('d', 'cummax'), ('b', 'cumsum')])
-    r = tile(mdf.groupby('b').transform(agg_dict, _call_agg=True))
+    agg_dict = OrderedDict([("d", "cummax"), ("b", "cumsum")])
+    r = tile(mdf.groupby("b").transform(agg_dict, _call_agg=True))
     assert r.shape == (np.nan, 2)
     assert r.op._op_type_ == opcodes.TRANSFORM
     assert r.op.output_types[0] == OutputType.dataframe
     assert len(r.chunks) == 3
     assert r.chunks[0].shape == (np.nan, 2)
 
-    agg_list = ['sum', lambda s: s.sum()]
-    r = tile(mdf.groupby('b').transform(agg_list, _call_agg=True))
+    agg_list = ["sum", lambda s: s.sum()]
+    r = tile(mdf.groupby("b").transform(agg_list, _call_agg=True))
     assert r.shape == (np.nan, 10)
     assert r.op._op_type_ == opcodes.TRANSFORM
     assert r.op.output_types[0] == OutputType.dataframe
@@ -279,14 +303,14 @@ def test_groupby_transform():
     assert r.chunks[0].shape == (np.nan,)
     assert r.chunks[0].dtype == series1.dtype
 
-    r = tile(ms1.groupby(lambda x: x % 3).transform('cummax', _call_agg=True))
+    r = tile(ms1.groupby(lambda x: x % 3).transform("cummax", _call_agg=True))
     assert r.shape == (np.nan,)
     assert r.op._op_type_ == opcodes.TRANSFORM
     assert r.op.output_types[0] == OutputType.series
     assert len(r.chunks) == 3
     assert r.chunks[0].shape == (np.nan,)
 
-    agg_list = ['cummax', 'cumcount']
+    agg_list = ["cummax", "cumcount"]
     r = tile(ms1.groupby(lambda x: x % 3).transform(agg_list, _call_agg=True))
     assert r.shape == (np.nan, 2)
     assert r.op._op_type_ == opcodes.TRANSFORM
@@ -296,27 +320,35 @@ def test_groupby_transform():
 
 
 def test_groupby_cum():
-    df1 = pd.DataFrame({'a': [3, 5, 2, 7, 1, 2, 4, 6, 2, 4],
-                        'b': [8, 3, 4, 1, 8, 2, 2, 2, 2, 3],
-                        'c': [1, 8, 8, 5, 3, 5, 0, 0, 5, 4]})
+    df1 = pd.DataFrame(
+        {
+            "a": [3, 5, 2, 7, 1, 2, 4, 6, 2, 4],
+            "b": [8, 3, 4, 1, 8, 2, 2, 2, 2, 3],
+            "c": [1, 8, 8, 5, 3, 5, 0, 0, 5, 4],
+        }
+    )
     mdf = md.DataFrame(df1, chunk_size=3)
 
-    for fun in ['cummin', 'cummax', 'cumprod', 'cumsum']:
-        r = tile(getattr(mdf.groupby('b'), fun)())
+    for fun in ["cummin", "cummax", "cumprod", "cumsum"]:
+        r = tile(getattr(mdf.groupby("b"), fun)())
         assert r.op.output_types[0] == OutputType.dataframe
         assert len(r.chunks) == 4
         assert r.shape == (len(df1), 2)
         assert r.chunks[0].shape == (np.nan, 2)
-        pd.testing.assert_index_equal(r.chunks[0].columns_value.to_pandas(), pd.Index(['a', 'c']))
+        pd.testing.assert_index_equal(
+            r.chunks[0].columns_value.to_pandas(), pd.Index(["a", "c"])
+        )
 
-        r = tile(getattr(mdf.groupby('b'), fun)(axis=1))
+        r = tile(getattr(mdf.groupby("b"), fun)(axis=1))
         assert r.op.output_types[0] == OutputType.dataframe
         assert len(r.chunks) == 4
         assert r.shape == (len(df1), 3)
         assert r.chunks[0].shape == (np.nan, 3)
-        pd.testing.assert_index_equal(r.chunks[0].columns_value.to_pandas(), df1.columns)
+        pd.testing.assert_index_equal(
+            r.chunks[0].columns_value.to_pandas(), df1.columns
+        )
 
-    r = tile(mdf.groupby('b').cumcount())
+    r = tile(mdf.groupby("b").cumcount())
     assert r.op.output_types[0] == OutputType.series
     assert len(r.chunks) == 4
     assert r.shape == (len(df1),)
@@ -325,7 +357,7 @@ def test_groupby_cum():
     series1 = pd.Series([2, 2, 5, 7, 3, 7, 8, 8, 5, 6])
     ms1 = md.Series(series1, chunk_size=3)
 
-    for fun in ['cummin', 'cummax', 'cumprod', 'cumsum', 'cumcount']:
+    for fun in ["cummin", "cummax", "cumprod", "cumsum", "cumcount"]:
         r = tile(getattr(ms1.groupby(lambda x: x % 2), fun)())
         assert r.op.output_types[0] == OutputType.series
         assert len(r.chunks) == 4

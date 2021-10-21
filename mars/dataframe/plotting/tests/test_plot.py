@@ -18,6 +18,7 @@ import tempfile
 import numpy as np
 import pandas as pd
 import pytest
+
 try:
     import matplotlib
 except ImportError:  # pragma: no cover
@@ -90,12 +91,16 @@ def _check_plot_works(f, filterwarnings="always", **kwargs):  # pragma: no cover
         return ret
 
 
-@pytest.mark.skipif(matplotlib is None, reason='matplotlib is not installed')
+@pytest.mark.skipif(matplotlib is None, reason="matplotlib is not installed")
 def test_plot(setup):
-    raw = pd.DataFrame({'a': ['s' + str(i) for i in range(10)],
-                        'b': np.random.RandomState(0).randint(10, size=10)})
+    raw = pd.DataFrame(
+        {
+            "a": ["s" + str(i) for i in range(10)],
+            "b": np.random.RandomState(0).randint(10, size=10),
+        }
+    )
     df = md.DataFrame(raw, chunk_size=3)
 
-    _check_plot_works(df.plot, x='a', y='b')
-    _check_plot_works(df.plot, x='a', y=mt.tensor('b'))
+    _check_plot_works(df.plot, x="a", y="b")
+    _check_plot_works(df.plot, x="a", y=mt.tensor("b"))
     _check_plot_works(df.plot.line)

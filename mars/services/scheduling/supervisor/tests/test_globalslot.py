@@ -24,16 +24,18 @@ from ...supervisor import GlobalSlotManagerActor
 
 @pytest.fixture
 async def actor_pool():
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+    pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 
     async with pool:
-        session_id = 'test_session'
+        session_id = "test_session"
         await MockClusterAPI.create(pool.external_address)
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
 
         global_slot_ref = await mo.create_actor(
-            GlobalSlotManagerActor, uid=GlobalSlotManagerActor.default_uid(),
-            address=pool.external_address)
+            GlobalSlotManagerActor,
+            uid=GlobalSlotManagerActor.default_uid(),
+            address=pool.external_address,
+        )
 
         try:
             yield pool, session_id, global_slot_ref
@@ -48,26 +50,27 @@ async def test_global_slot(actor_pool):
 
     cluster_api = await ClusterAPI.create(pool.external_address)
     bands = await cluster_api.get_all_bands()
-    band = (pool.external_address, 'numa-0')
+    band = (pool.external_address, "numa-0")
     band_slots = bands[band]
 
     assert band in await global_slot_ref.get_idle_bands(0)
-    assert ['subtask0'] == await global_slot_ref.apply_subtask_slots(
-        band, session_id, ['subtask0'], [1])
+    assert ["subtask0"] == await global_slot_ref.apply_subtask_slots(
+        band, session_id, ["subtask0"], [1]
+    )
     assert band not in await global_slot_ref.get_idle_bands(0)
 
-    await global_slot_ref.update_subtask_slots(
-        band, session_id, 'subtask0', band_slots)
+    await global_slot_ref.update_subtask_slots(band, session_id, "subtask0", band_slots)
     assert [] == await global_slot_ref.apply_subtask_slots(
-        band, session_id, ['subtask1'], [1])
+        band, session_id, ["subtask1"], [1]
+    )
 
     wait_coro = global_slot_ref.wait_band_idle(band)
     (done, pending) = await asyncio.wait([wait_coro], timeout=0.5)
     assert not done
-    await global_slot_ref.release_subtask_slots(
-        band, session_id, 'subtask0')
+    await global_slot_ref.release_subtask_slots(band, session_id, "subtask0")
     (done, pending) = await asyncio.wait([wait_coro], timeout=0.5)
     assert done
     assert band in await global_slot_ref.get_idle_bands(0)
-    assert ['subtask1'] == await global_slot_ref.apply_subtask_slots(
-        band, session_id, ['subtask1'], [1])
+    assert ["subtask1"] == await global_slot_ref.apply_subtask_slots(
+        band, session_id, ["subtask1"], [1]
+    )

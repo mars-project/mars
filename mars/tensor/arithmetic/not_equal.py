@@ -22,10 +22,10 @@ from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorNotEqual(TensorBinOp):
     _op_type_ = OperandDef.NE
-    _func_name = 'not_equal'
+    _func_name = "not_equal"
 
 
 @inject_dtype(np.bool_)

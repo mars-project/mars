@@ -18,8 +18,26 @@ import numpy as np
 
 from ....core import tile
 from ...datasource import ones
-from .. import fft, ifft, fft2, ifft2, fftn, ifftn, rfft, irfft, rfft2, irfft2, \
-    rfftn, irfftn, hfft, ihfft, fftfreq, rfftfreq, fftshift, ifftshift
+from .. import (
+    fft,
+    ifft,
+    fft2,
+    ifft2,
+    fftn,
+    ifftn,
+    rfft,
+    irfft,
+    rfft2,
+    irfft2,
+    rfftn,
+    irfftn,
+    hfft,
+    ihfft,
+    fftfreq,
+    rfftfreq,
+    fftshift,
+    ifftshift,
+)
 
 
 def test_standard_fft():
@@ -146,23 +164,25 @@ def test_hermitian_fft():
 
 
 def test_fft_shift():
-    freqs = fftfreq(9, d=1. / 9).reshape(3, 3)
+    freqs = fftfreq(9, d=1.0 / 9).reshape(3, 3)
     t = ifftshift(fftshift(freqs))
 
     assert t.dtype is not None
-    expect_dtype = np.fft.ifftshift(np.fft.fftshift(np.fft.fftfreq(9, d=1. / 9).reshape(3, 3))).dtype
+    expect_dtype = np.fft.ifftshift(
+        np.fft.fftshift(np.fft.fftfreq(9, d=1.0 / 9).reshape(3, 3))
+    ).dtype
     assert t.dtype == expect_dtype
 
 
 def test_fft_freq():
-    t = fftfreq(10, .1, chunk_size=3)
+    t = fftfreq(10, 0.1, chunk_size=3)
 
-    assert t.shape == np.fft.fftfreq(10, .1).shape
+    assert t.shape == np.fft.fftfreq(10, 0.1).shape
     t = tile(t)
     assert t.shape == tuple(sum(ns) for ns in t.nsplits)
 
-    t = rfftfreq(10, .1, chunk_size=3)
+    t = rfftfreq(10, 0.1, chunk_size=3)
 
-    assert t.shape == np.fft.rfftfreq(10, .1).shape
+    assert t.shape == np.fft.rfftfreq(10, 0.1).shape
     t = tile(t)
     assert t.shape == tuple(sum(ns) for ns in t.nsplits)

@@ -25,16 +25,29 @@ from ..utils import build_empty_df, parse_index, standardize_range_index
 class DataFrameMelt(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.MELT
 
-    _id_vars = AnyField('id_vars')
-    _value_vars = AnyField('value_vars')
-    _var_name = StringField('var_name')
-    _value_name = StringField('value_name')
-    _col_level = AnyField('col_level')
+    _id_vars = AnyField("id_vars")
+    _value_vars = AnyField("value_vars")
+    _var_name = StringField("var_name")
+    _value_name = StringField("value_name")
+    _col_level = AnyField("col_level")
 
-    def __init__(self, id_vars=None, value_vars=None, var_name=None, value_name=None,
-                 col_level=None, **kw):
-        super().__init__(_id_vars=id_vars, _value_vars=value_vars, _var_name=var_name,
-                         _value_name=value_name, _col_level=col_level, **kw)
+    def __init__(
+        self,
+        id_vars=None,
+        value_vars=None,
+        var_name=None,
+        value_name=None,
+        col_level=None,
+        **kw
+    ):
+        super().__init__(
+            _id_vars=id_vars,
+            _value_vars=value_vars,
+            _var_name=var_name,
+            _value_name=value_name,
+            _col_level=col_level,
+            **kw
+        )
 
     @property
     def id_vars(self):
@@ -57,16 +70,24 @@ class DataFrameMelt(DataFrameOperand, DataFrameOperandMixin):
         return self._col_level
 
     def __call__(self, df):
-        empty_result = build_empty_df(df.dtypes).melt(id_vars=self.id_vars, value_vars=self.value_vars,
-                                                      var_name=self.var_name, value_name=self.value_name,
-                                                      col_level=self.col_level)
+        empty_result = build_empty_df(df.dtypes).melt(
+            id_vars=self.id_vars,
+            value_vars=self.value_vars,
+            var_name=self.var_name,
+            value_name=self.value_name,
+            col_level=self.col_level,
+        )
         self._output_types = [OutputType.dataframe]
-        return self.new_tileable([df], shape=(np.nan, len(empty_result.columns)), dtypes=empty_result.dtypes,
-                                 index_value=parse_index(pd.RangeIndex(-1), df.key, df.index_value.key),
-                                 columns_value=parse_index(empty_result.columns, store_data=True))
+        return self.new_tileable(
+            [df],
+            shape=(np.nan, len(empty_result.columns)),
+            dtypes=empty_result.dtypes,
+            index_value=parse_index(pd.RangeIndex(-1), df.key, df.index_value.key),
+            columns_value=parse_index(empty_result.columns, store_data=True),
+        )
 
     @classmethod
-    def tile(cls, op: 'DataFrameMelt'):
+    def tile(cls, op: "DataFrameMelt"):
         inp = op.inputs[0]
         out = op.outputs[0]
 
@@ -75,26 +96,48 @@ class DataFrameMelt(DataFrameOperand, DataFrameOperandMixin):
         chunks = []
         for c in inp.chunks:
             new_op = op.copy().reset_key()
-            chunks.append(new_op.new_chunk(
-                [c], index=c.index,  shape=(np.nan, out.shape[1]), dtypes=out.dtypes,
-                index_value=parse_index(pd.RangeIndex(-1), c.key, c.index_value.key),
-                columns_value=out.columns_value))
+            chunks.append(
+                new_op.new_chunk(
+                    [c],
+                    index=c.index,
+                    shape=(np.nan, out.shape[1]),
+                    dtypes=out.dtypes,
+                    index_value=parse_index(
+                        pd.RangeIndex(-1), c.key, c.index_value.key
+                    ),
+                    columns_value=out.columns_value,
+                )
+            )
 
         chunks = standardize_range_index(chunks)
         new_op = op.copy().reset_key()
         return new_op.new_tileables(
-            [inp], chunks=chunks, nsplits=((np.nan,) * inp.chunk_shape[0], (out.shape[1],)), **out.params)
+            [inp],
+            chunks=chunks,
+            nsplits=((np.nan,) * inp.chunk_shape[0], (out.shape[1],)),
+            **out.params
+        )
 
     @classmethod
-    def execute(cls, ctx, op: 'DataFrameMelt'):
+    def execute(cls, ctx, op: "DataFrameMelt"):
         in_data = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = in_data.melt(id_vars=op.id_vars, value_vars=op.value_vars,
-                                              var_name=op.var_name, value_name=op.value_name,
-                                              col_level=op.col_level)
+        ctx[op.outputs[0].key] = in_data.melt(
+            id_vars=op.id_vars,
+            value_vars=op.value_vars,
+            var_name=op.var_name,
+            value_name=op.value_name,
+            col_level=op.col_level,
+        )
 
 
-def melt(frame, id_vars=None, value_vars=None, var_name=None, value_name='value',
-         col_level=None):
+def melt(
+    frame,
+    id_vars=None,
+    value_vars=None,
+    var_name=None,
+    value_name="value",
+    col_level=None,
+):
     """
     Unpivot a DataFrame from wide to long format, optionally leaving identifiers set.
 
@@ -192,6 +235,11 @@ def melt(frame, id_vars=None, value_vars=None, var_name=None, value_name='value'
     1      b          B          E      3
     2      c          B          E      5
     """
-    op = DataFrameMelt(id_vars=id_vars, value_vars=value_vars, var_name=var_name,
-                       value_name=value_name, col_level=col_level)
+    op = DataFrameMelt(
+        id_vars=id_vars,
+        value_vars=value_vars,
+        var_name=var_name,
+        value_name=value_name,
+        col_level=col_level,
+    )
     return op(frame)

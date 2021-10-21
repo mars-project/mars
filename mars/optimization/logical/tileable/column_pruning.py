@@ -26,8 +26,9 @@ from .core import register_tileable_optimization_rule
 class GroupByPruneDataSource(PruneDataSource):
     def _need_prune(self, op: OperandType) -> bool:
         data_source_node = self._graph.predecessors(op.outputs[0])[0]
-        input_can_be_pruned = \
-            isinstance(data_source_node.op, ColumnPruneSupportedDataSourceMixin)
+        input_can_be_pruned = isinstance(
+            data_source_node.op, ColumnPruneSupportedDataSourceMixin
+        )
         if input_can_be_pruned and data_source_node not in self._graph.results:
             selected_columns = self._get_selected_columns(op)
             if not selected_columns:
@@ -37,7 +38,7 @@ class GroupByPruneDataSource(PruneDataSource):
         return False
 
     def _get_selected_columns(self, op: OperandType) -> List[str]:
-        by = op.groupby_params.get('by')
+        by = op.groupby_params.get("by")
         by_cols = by if isinstance(by, (list, tuple)) else [by]
 
         # check all by columns
@@ -48,9 +49,10 @@ class GroupByPruneDataSource(PruneDataSource):
         selected_columns = list(by_cols)
 
         # DataFrameGroupby
-        selection = op.groupby_params.get('selection', list())
-        selection = list(selection) \
-            if isinstance(selection, (list, tuple)) else [selection]
+        selection = op.groupby_params.get("selection", list())
+        selection = (
+            list(selection) if isinstance(selection, (list, tuple)) else [selection]
+        )
         if isinstance(op.func, (str, list)):
             if not selection:
                 # if func is str or list and no selection

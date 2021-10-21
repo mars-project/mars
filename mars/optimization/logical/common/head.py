@@ -31,8 +31,7 @@ class HeadPushDown(OptimizationRule):
         successors = self._graph.successors(input_node)
         return self._all_successor_head_pushdown(successors)
 
-    def _all_successor_head_pushdown(self,
-                                     successors: List[TileableType]):
+    def _all_successor_head_pushdown(self, successors: List[TileableType]):
         for succ in successors:
             rule_types = self._optimizer_cls.get_rule_types(type(succ.op))
             if rule_types is None:
@@ -40,21 +39,24 @@ class HeadPushDown(OptimizationRule):
             for rule_type in rule_types:
                 if not issubclass(rule_type, HeadPushDown):
                     return False
-                rule = rule_type(self._graph, self._records,
-                                 self._optimizer_cls)
+                rule = rule_type(self._graph, self._records, self._optimizer_cls)
                 if not rule._can_push_down(succ.op):
                     return False
         return True
 
     def _can_push_down(self, op: OperandType) -> bool:
         input_nodes = self._graph.predecessors(op.outputs[0])
-        accept_types = (HeadOptimizedDataSource,
-                        DataFrameSortOperand,
-                        DataFrameValueCounts)
-        if len(input_nodes) == 1 and \
-                op.can_be_optimized() and \
-                isinstance(input_nodes[0].op, accept_types) and \
-                input_nodes[0] not in self._graph.results:
+        accept_types = (
+            HeadOptimizedDataSource,
+            DataFrameSortOperand,
+            DataFrameValueCounts,
+        )
+        if (
+            len(input_nodes) == 1
+            and op.can_be_optimized()
+            and isinstance(input_nodes[0].op, accept_types)
+            and input_nodes[0] not in self._graph.results
+        ):
             return True
         return False
 
@@ -68,17 +70,21 @@ class HeadPushDown(OptimizationRule):
         new_input_op._key = input_node.op.key
         new_input_op._nrows = nrows = max(nrows, head)
         new_input_params = input_node.params.copy()
-        new_input_params['shape'] = (nrows,) + input_node.shape[1:]
+        new_input_params["shape"] = (nrows,) + input_node.shape[1:]
         pandas_index = node.index_value.to_pandas()[:nrows]
-        new_input_params['index_value'] = parse_index(pandas_index, node)
+        new_input_params["index_value"] = parse_index(pandas_index, node)
         new_input_params.update(input_node.extra_params)
-        new_entity = new_input_op.new_tileable \
-            if not isinstance(node, CHUNK_TYPE) else new_input_op.new_chunk
-        new_input_node = new_entity(
-            input_node.inputs, kws=[new_input_params]).data
+        new_entity = (
+            new_input_op.new_tileable
+            if not isinstance(node, CHUNK_TYPE)
+            else new_input_op.new_chunk
+        )
+        new_input_node = new_entity(input_node.inputs, kws=[new_input_params]).data
 
-        if new_input_node.op.nrows == head and \
-                self._graph.count_successors(input_node) == 1:
+        if (
+            new_input_node.op.nrows == head
+            and self._graph.count_successors(input_node) == 1
+        ):
             new_input_node._key = node.key
             new_input_node._id = node.id
             # just remove the input data
@@ -93,11 +99,11 @@ class HeadPushDown(OptimizationRule):
             # mark optimization record
             # the input node is removed
             self._records.append_record(
-                OptimizationRecord(input_node, None,
-                                   OptimizationRecordType.delete))
+                OptimizationRecord(input_node, None, OptimizationRecordType.delete)
+            )
             self._records.append_record(
-                OptimizationRecord(node, new_input_node,
-                                   OptimizationRecordType.replace))
+                OptimizationRecord(node, new_input_node, OptimizationRecordType.replace)
+            )
             new_node = new_input_node
         else:
             self._replace_node(input_node, new_input_node)
@@ -105,19 +111,23 @@ class HeadPushDown(OptimizationRule):
             new_op._key = op.key
             params = node.params.copy()
             params.update(node.extra_params)
-            new_entity = new_op.new_tileable \
-                if not isinstance(node, CHUNK_TYPE) else new_op.new_chunk
-            new_node = new_entity(
-                [new_input_node], kws=[params]).data
+            new_entity = (
+                new_op.new_tileable
+                if not isinstance(node, CHUNK_TYPE)
+                else new_op.new_chunk
+            )
+            new_node = new_entity([new_input_node], kws=[params]).data
             self._replace_node(node, new_node)
 
             # mark optimization record
             self._records.append_record(
-                OptimizationRecord(input_node, new_input_node,
-                                   OptimizationRecordType.replace))
+                OptimizationRecord(
+                    input_node, new_input_node, OptimizationRecordType.replace
+                )
+            )
             self._records.append_record(
-                OptimizationRecord(node, new_node,
-                                   OptimizationRecordType.replace))
+                OptimizationRecord(node, new_node, OptimizationRecordType.replace)
+            )
 
         # check node if it's in result
         try:

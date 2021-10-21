@@ -46,11 +46,15 @@ class OptimizationRecords:
 
     def append_record(self, record: OptimizationRecord):
         self._records.append(record)
-        if record.record_type in (OptimizationRecordType.replace,
-                                  OptimizationRecordType.delete):
+        if record.record_type in (
+            OptimizationRecordType.replace,
+            OptimizationRecordType.delete,
+        ):
             self._original_chunk_to_records[record.original_chunk] = record
-        if record.record_type in (OptimizationRecordType.new,
-                                  OptimizationRecordType.replace):
+        if record.record_type in (
+            OptimizationRecordType.new,
+            OptimizationRecordType.replace,
+        ):
             self._optimized_chunk_to_records[record.new_chunk] = record
 
     def get_optimization_result(self, original_chunk: ChunkType) -> ChunkType:
@@ -81,22 +85,27 @@ class OptimizationRecords:
 
 
 class OptimizationRule(ABC):
-    _instances: \
-        Dict[Tuple[Type["OptimizationRule"], EntityGraph,
-                   OptimizationRecords], "OptimizationRule"] = dict()
+    _instances: Dict[
+        Tuple[Type["OptimizationRule"], EntityGraph, OptimizationRecords],
+        "OptimizationRule",
+    ] = dict()
 
-    def __init__(self,
-                 graph: EntityGraph,
-                 records: OptimizationRecords,
-                 optimizer_cls: Type["Optimizer"]):
+    def __init__(
+        self,
+        graph: EntityGraph,
+        records: OptimizationRecords,
+        optimizer_cls: Type["Optimizer"],
+    ):
         self._graph = graph
         self._records = records
         self._optimizer_cls = optimizer_cls
 
-    def __new__(cls,
-                graph: EntityGraph,
-                records: OptimizationRecords,
-                optimizer_cls: Type["Optimizer"]):
+    def __new__(
+        cls,
+        graph: EntityGraph,
+        records: OptimizationRecords,
+        optimizer_cls: Type["Optimizer"],
+    ):
         if (cls, graph, records) in cls._instances:
             return cls._instances[cls, graph, records]
         inst = cls._instances[cls, graph, records] = object.__new__(cls)
@@ -129,9 +138,7 @@ class OptimizationRule(ABC):
             Operand
         """
 
-    def _replace_node(self,
-                      original_node: EntityType,
-                      new_node: EntityType):
+    def _replace_node(self, original_node: EntityType, new_node: EntityType):
         predecessors = self._graph.predecessors(original_node)
         successors = self._graph.successors(original_node)
         self._graph.remove_node(original_node)
@@ -146,24 +153,22 @@ class Optimizer(ABC):
     _rules: Dict[Type[OperandType], List[Type[OptimizationRule]]]
 
     @classmethod
-    def register_rule(cls,
-                      operand_types: List[Type[OperandType]],
-                      rule: Type[OptimizationRule]):
-        if not hasattr(cls, '_rules'):
+    def register_rule(
+        cls, operand_types: List[Type[OperandType]], rule: Type[OptimizationRule]
+    ):
+        if not hasattr(cls, "_rules"):
             cls._rules = defaultdict(list)
         for operand_type in operand_types:
             cls._rules[operand_type].append(rule)
 
     @classmethod
-    def get_rule_types(cls,
-                       operand_type: Type[OperandType]) \
-            -> List[Type[OptimizationRule]]:
+    def get_rule_types(
+        cls, operand_type: Type[OperandType]
+    ) -> List[Type[OptimizationRule]]:
         return cls._rules.get(operand_type)
 
     @classmethod
-    def _replace_inputs(cls,
-                        graph: EntityGraph,
-                        records: OptimizationRecords):
+    def _replace_inputs(cls, graph: EntityGraph, records: OptimizationRecords):
         for node in graph:
             for succ in graph.successors(node):
                 new_inputs = []
@@ -214,8 +219,7 @@ class Optimizer(ABC):
             if not rule_types:
                 continue
 
-            rules = [rule_type(graph, records, cls)
-                     for rule_type in rule_types]
+            rules = [rule_type(graph, records, cls) for rule_type in rule_types]
             for rule in rules:
                 if entity not in graph:  # pragma: no cover
                     # maybe removed during optimization

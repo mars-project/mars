@@ -29,25 +29,25 @@ async def test_aio_filesystem():
     assert aio_fs.pathsep == local_fs.pathsep
 
     with tempfile.TemporaryDirectory() as tempdir:
-        file_path = os.path.join(tempdir, 'test')
+        file_path = os.path.join(tempdir, "test")
 
-        with open(file_path, 'wb') as f:
-            f.write(b'text for test')
+        with open(file_path, "wb") as f:
+            f.write(b"text for test")
 
         stat = await aio_fs.stat(tempdir)
-        assert stat['type'] == 'directory'
+        assert stat["type"] == "directory"
 
 
 @pytest.mark.asyncio
 async def test_aio_file_object():
     with tempfile.TemporaryDirectory() as tempdir:
-        file_path = os.path.join(tempdir, 'test')
+        file_path = os.path.join(tempdir, "test")
 
-        f = AioFileObject(open(file_path, 'w'))
+        f = AioFileObject(open(file_path, "w"))
         async with f:
             assert f.readable() is False
-            assert f.mode == 'w'
-            await f.write('text for test')
+            assert f.mode == "w"
+            await f.write("text for test")
 
         f2 = AioFileObject(open(file_path))
         async with f2:

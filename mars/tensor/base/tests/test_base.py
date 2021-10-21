@@ -20,10 +20,32 @@ import pytest
 from ....core import tile
 from ....core.operand import OperandStage
 from ...datasource import ones, tensor, arange
-from .. import transpose, broadcast_to, where, argwhere, array_split, \
-    split, squeeze, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
-    atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, \
-    partition, topk, to_gpu, to_cpu
+from .. import (
+    transpose,
+    broadcast_to,
+    where,
+    argwhere,
+    array_split,
+    split,
+    squeeze,
+    result_type,
+    repeat,
+    copyto,
+    isin,
+    moveaxis,
+    TensorCopyTo,
+    atleast_1d,
+    atleast_2d,
+    atleast_3d,
+    ravel,
+    searchsorted,
+    unique,
+    sort,
+    partition,
+    topk,
+    to_gpu,
+    to_cpu,
+)
 
 
 def test_dir():
@@ -53,13 +75,13 @@ def test_copyto():
     assert isinstance(a.chunks[0].op, TensorCopyTo)
     assert len(a.chunks[0].inputs) == 2
 
-    a = ones((10, 20), chunk_size=3, dtype='i4')
-    b = ones(20, chunk_size=4, dtype='f8')
+    a = ones((10, 20), chunk_size=3, dtype="i4")
+    b = ones(20, chunk_size=4, dtype="f8")
 
     with pytest.raises(TypeError):
         copyto(a, b)
 
-    b = ones(20, chunk_size=4, dtype='i4')
+    b = ones(20, chunk_size=4, dtype="i4")
     copyto(a, b, where=b > 0)
 
     assert a.op.where is not None
@@ -70,7 +92,7 @@ def test_copyto():
     assert len(a.chunks[0].inputs) == 3
 
     with pytest.raises(ValueError):
-        copyto(a, a, where=np.ones(30, dtype='?'))
+        copyto(a, a, where=np.ones(30, dtype="?"))
 
 
 def test_astype():
@@ -81,18 +103,18 @@ def test_astype():
 
     assert arr2.shape == (10, 20, 30)
     assert np.issubdtype(arr2.dtype, np.int32) is True
-    assert arr2.op.casting == 'unsafe'
+    assert arr2.op.casting == "unsafe"
 
     with pytest.raises(TypeError):
-        arr.astype(np.int32, casting='safe')
+        arr.astype(np.int32, casting="safe")
 
-    arr3 = arr.astype(arr.dtype, order='F')
-    assert arr3.flags['F_CONTIGUOUS'] is True
-    assert arr3.flags['C_CONTIGUOUS'] is False
+    arr3 = arr.astype(arr.dtype, order="F")
+    assert arr3.flags["F_CONTIGUOUS"] is True
+    assert arr3.flags["C_CONTIGUOUS"] is False
 
     arr3 = tile(arr3)
 
-    assert arr3.chunks[0].order.value == 'F'
+    assert arr3.chunks[0].order.value == "F"
 
 
 def test_transpose():
@@ -205,7 +227,7 @@ def test_where():
     with pytest.raises(ValueError):
         where(cond, x)
 
-    x = arange(9.).reshape(3, 3)
+    x = arange(9.0).reshape(3, 3)
     y = where(x < 5, x, -1)
 
     assert y.dtype == np.float64
@@ -228,12 +250,12 @@ def test_argwhere_order():
     cond = tensor(data, chunk_size=1)
     indices = argwhere(cond)
 
-    assert indices.flags['F_CONTIGUOUS'] is True
-    assert indices.flags['C_CONTIGUOUS'] is False
+    assert indices.flags["F_CONTIGUOUS"] is True
+    assert indices.flags["C_CONTIGUOUS"] is False
 
     indices = tile(indices)
 
-    assert indices.chunks[0].order.value == 'F'
+    assert indices.chunks[0].order.value == "F"
 
 
 def test_array_split():
@@ -291,12 +313,12 @@ def test_split():
 
     a = tensor(np.asfortranarray(np.random.rand(9, 10)), chunk_size=4)
     splits = split(a, 3)
-    assert splits[0].flags['F_CONTIGUOUS'] is True
-    assert splits[0].flags['C_CONTIGUOUS'] is False
-    assert splits[1].flags['F_CONTIGUOUS'] is True
-    assert splits[0].flags['C_CONTIGUOUS'] is False
-    assert splits[2].flags['F_CONTIGUOUS'] is True
-    assert splits[0].flags['C_CONTIGUOUS'] is False
+    assert splits[0].flags["F_CONTIGUOUS"] is True
+    assert splits[0].flags["C_CONTIGUOUS"] is False
+    assert splits[1].flags["F_CONTIGUOUS"] is True
+    assert splits[0].flags["C_CONTIGUOUS"] is False
+    assert splits[2].flags["F_CONTIGUOUS"] is True
+    assert splits[0].flags["C_CONTIGUOUS"] is False
 
     for a in ((1, 1, 1, 2, 2, 3), [1, 1, 1, 2, 2, 3]):
         splits = split(a, (3, 5))
@@ -322,9 +344,9 @@ def test_squeeze():
 
 
 def test_result_type():
-    x = tensor([2, 3], dtype='i4')
+    x = tensor([2, 3], dtype="i4")
     y = 3
-    z = np.array([3, 4], dtype='f4')
+    z = np.array([3, 4], dtype="f4")
 
     r = result_type(x, y, z)
     e = np.result_type(x.dtype, y, z)
@@ -454,8 +476,14 @@ def test_searchsorted():
     t1 = searchsorted(arr, 10)
 
     assert t1.shape == ()
-    assert t1.flags['C_CONTIGUOUS'] == np.searchsorted(raw.cumsum(), 10).flags['C_CONTIGUOUS']
-    assert t1.flags['F_CONTIGUOUS'] == np.searchsorted(raw.cumsum(), 10).flags['F_CONTIGUOUS']
+    assert (
+        t1.flags["C_CONTIGUOUS"]
+        == np.searchsorted(raw.cumsum(), 10).flags["C_CONTIGUOUS"]
+    )
+    assert (
+        t1.flags["F_CONTIGUOUS"]
+        == np.searchsorted(raw.cumsum(), 10).flags["F_CONTIGUOUS"]
+    )
 
     t1 = tile(t1)
 
@@ -467,7 +495,7 @@ def test_searchsorted():
         searchsorted(np.random.randint(10, size=(14, 14)), 1)
 
     with pytest.raises(ValueError):
-        searchsorted(arr, 10, side='both')
+        searchsorted(arr, 10, side="both")
 
     with pytest.raises(ValueError):
         searchsorted(arr.tosparse(), 10)
@@ -480,8 +508,8 @@ def test_searchsorted():
     expected = np.searchsorted(raw2, to_search)
 
     assert t1.shape == to_search.shape
-    assert t1.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert t1.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert t1.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert t1.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
 
 def test_to_gpu():
@@ -573,9 +601,14 @@ def test_unique():
     raw = np.random.randint(10, size=(10, 20), dtype=np.int64)
     a = tensor(raw, chunk_size=(4, 6))
 
-    x, indices, inverse, counts = \
-        unique(a, axis=1, aggregate_size=2, return_index=True,
-               return_inverse=True, return_counts=True)
+    x, indices, inverse, counts = unique(
+        a,
+        axis=1,
+        aggregate_size=2,
+        return_index=True,
+        return_inverse=True,
+        return_counts=True,
+    )
 
     assert x.shape == (10, np.nan)
     assert x.dtype == np.dtype(np.int64)
@@ -621,97 +654,101 @@ def test_sort():
     a = tensor(np.random.rand(10, 10), chunk_size=(5, 10))
 
     sa = sort(a)
-    assert type(sa.op).__name__ == 'TensorSort'
+    assert type(sa.op).__name__ == "TensorSort"
 
     sa = tile(sa)
 
     assert len(sa.chunks) == 2
     for c in sa.chunks:
-        assert type(c.op).__name__ == 'TensorSort'
-        assert type(c.inputs[0].op).__name__ == 'ArrayDataSource'
+        assert type(c.op).__name__ == "TensorSort"
+        assert type(c.inputs[0].op).__name__ == "ArrayDataSource"
 
     a = tensor(np.random.rand(100), chunk_size=(10))
 
     sa = sort(a)
-    assert type(sa.op).__name__ == 'TensorSort'
+    assert type(sa.op).__name__ == "TensorSort"
 
     sa = tile(sa)
 
     for c in sa.chunks:
-        assert type(c.op).__name__ == 'PSRSShuffle'
+        assert type(c.op).__name__ == "PSRSShuffle"
         assert c.op.stage == OperandStage.reduce
         assert c.shape == (np.nan,)
 
-    a = tensor(np.empty((10, 10), dtype=[('id', np.int32), ('size', np.int64)]),
-               chunk_size=(10, 5))
+    a = tensor(
+        np.empty((10, 10), dtype=[("id", np.int32), ("size", np.int64)]),
+        chunk_size=(10, 5),
+    )
     sa = sort(a)
-    assert sa.op.order == ['id', 'size']
+    assert sa.op.order == ["id", "size"]
 
     with pytest.raises(ValueError):
-        sort(a, order=['unknown_field'])
+        sort(a, order=["unknown_field"])
 
     with pytest.raises(np.AxisError):
         sort(np.random.rand(100), axis=1)
 
     with pytest.raises(ValueError):
-        sort(np.random.rand(100), kind='non_valid_kind')
+        sort(np.random.rand(100), kind="non_valid_kind")
 
     with pytest.raises(ValueError):
-        sort(np.random.rand(100), parallel_kind='non_valid_parallel_kind')
+        sort(np.random.rand(100), parallel_kind="non_valid_parallel_kind")
 
     with pytest.raises(TypeError):
-        sort(np.random.rand(100), psrs_kinds='non_valid_psrs_kinds')
+        sort(np.random.rand(100), psrs_kinds="non_valid_psrs_kinds")
 
     with pytest.raises(ValueError):
-        sort(np.random.rand(100), psrs_kinds=['quicksort'] * 2)
+        sort(np.random.rand(100), psrs_kinds=["quicksort"] * 2)
 
     with pytest.raises(ValueError):
-        sort(np.random.rand(100), psrs_kinds=['non_valid_kind'] * 3)
+        sort(np.random.rand(100), psrs_kinds=["non_valid_kind"] * 3)
 
     with pytest.raises(ValueError):
         sort(np.random.rand(100), psrs_kinds=[None, None, None])
 
     with pytest.raises(ValueError):
-        sort(np.random.rand(100), psrs_kinds=['quicksort', 'mergesort', None])
+        sort(np.random.rand(100), psrs_kinds=["quicksort", "mergesort", None])
 
 
 def test_partition():
     a = tensor(np.random.rand(10, 10), chunk_size=(5, 10))
 
     pa = partition(a, [4, 9])
-    assert type(pa.op).__name__ == 'TensorPartition'
+    assert type(pa.op).__name__ == "TensorPartition"
 
     pa = tile(pa)
 
     assert len(pa.chunks) == 2
     for c in pa.chunks:
-        assert type(c.op).__name__ == 'TensorPartition'
-        assert type(c.inputs[0].op).__name__ == 'ArrayDataSource'
+        assert type(c.op).__name__ == "TensorPartition"
+        assert type(c.inputs[0].op).__name__ == "ArrayDataSource"
 
     a = tensor(np.random.rand(100), chunk_size=(10))
 
     pa = partition(a, 4)
-    assert type(pa.op).__name__ == 'TensorPartition'
+    assert type(pa.op).__name__ == "TensorPartition"
 
     pa = tile(pa)
 
     for c in pa.chunks:
-        assert type(c.op).__name__ == 'PartitionMerged'
+        assert type(c.op).__name__ == "PartitionMerged"
         assert c.shape == (np.nan,)
 
-    a = tensor(np.empty((10, 10), dtype=[('id', np.int32), ('size', np.int64)]),
-               chunk_size=(10, 5))
+    a = tensor(
+        np.empty((10, 10), dtype=[("id", np.int32), ("size", np.int64)]),
+        chunk_size=(10, 5),
+    )
     pa = partition(a, 3)
-    assert pa.op.order == ['id', 'size']
+    assert pa.op.order == ["id", "size"]
 
     with pytest.raises(ValueError):
-        partition(a, 4, order=['unknown_field'])
+        partition(a, 4, order=["unknown_field"])
 
     with pytest.raises(np.AxisError):
         partition(np.random.rand(100), 4, axis=1)
 
     with pytest.raises(ValueError):
-        partition(np.random.rand(100), 4, kind='non_valid_kind')
+        partition(np.random.rand(100), 4, kind="non_valid_kind")
 
     with pytest.raises(ValueError):
         partition(np.random.rand(10), 10)
@@ -732,19 +769,19 @@ def test_topk():
 
     t = topk(a, 2)
     t = tile(t)
-    assert t.op.parallel_kind == 'tree'
+    assert t.op.parallel_kind == "tree"
 
     t = topk(a, 3)
     t = tile(t)
-    assert t.op.parallel_kind == 'psrs'
+    assert t.op.parallel_kind == "psrs"
 
     t = topk(sort(a), 3)
     t = tile(t)
     # k is less than 100
-    assert t.op.parallel_kind == 'tree'
+    assert t.op.parallel_kind == "tree"
 
     with pytest.raises(ValueError):
-        topk(a, 3, parallel_kind='unknown')
+        topk(a, 3, parallel_kind="unknown")
 
 
 def test_map_chunk():

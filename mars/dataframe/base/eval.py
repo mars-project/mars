@@ -33,8 +33,8 @@ from ...serialization.serializables import BoolField, DictField, StringField
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
-LOCAL_TAG = '_local_var_'
-BACKTICK_TAG = '_backtick_var_'
+LOCAL_TAG = "_local_var_"
+BACKTICK_TAG = "_backtick_var_"
 
 
 def _tokenize_str(reader):
@@ -42,23 +42,27 @@ def _tokenize_str(reader):
 
     def _iter_backtick_string(gen, line, back_start):
         for _, tokval, start, _, _ in gen:
-            if tokval == '`':
-                return BACKTICK_TAG + binascii.b2a_hex(
-                    line[back_start[1] + 1:start[1]].encode()).decode()
+            if tokval == "`":
+                return (
+                    BACKTICK_TAG
+                    + binascii.b2a_hex(
+                        line[back_start[1] + 1 : start[1]].encode()
+                    ).decode()
+                )
         else:
-            raise SyntaxError(f'backtick quote at {back_start} does not match')
+            raise SyntaxError(f"backtick quote at {back_start} does not match")
 
     for toknum, tokval, start, _, line in token_generator:
         if toknum == tokenize.OP:
-            if tokval == '@':
+            if tokval == "@":
                 tokval = LOCAL_TAG
-            if tokval == '&':
+            if tokval == "&":
                 toknum = tokenize.NAME
-                tokval = 'and'
-            elif tokval == '|':
+                tokval = "and"
+            elif tokval == "|":
                 toknum = tokenize.NAME
-                tokval = 'or'
-        elif tokval == '`':
+                tokval = "or"
+        elif tokval == "`":
             yield tokenize.NAME, _iter_backtick_string(token_generator, line, start)
             continue
         yield toknum, tokval
@@ -73,7 +77,6 @@ class CollectionVisitor(ast.NodeVisitor):
         ast.FloorDiv: operator.floordiv,
         ast.mod: operator.mod,
         ast.Pow: operator.pow,
-
         ast.Eq: operator.eq,
         ast.NotEq: operator.ne,
         ast.Lt: operator.lt,
@@ -82,13 +85,11 @@ class CollectionVisitor(ast.NodeVisitor):
         ast.GtE: operator.ge,
         ast.In: lambda x, y: y.isin(x),
         ast.NotIn: lambda x, y: ~y.isin(x),
-
         ast.UAdd: operator.pos,
         ast.USub: operator.neg,
         ast.Invert: operator.invert,
-
         ast.And: operator.and_,
-        ast.Or: operator.or_
+        ast.Or: operator.or_,
     }
 
     def __init__(self, resolvers, target, env):
@@ -119,22 +120,24 @@ class CollectionVisitor(ast.NodeVisitor):
         if obj_name in self.env:
             self.referenced_vars.add(obj_name)
             return self.env[obj_name]
-        raise KeyError(f'name {obj_name} is not defined')
+        raise KeyError(f"name {obj_name} is not defined")
 
     def visit(self, node):
         if isinstance(node, ENTITY_TYPE):
             return node
         node_name = node.__class__.__name__
-        method = 'visit_' + node_name
+        method = "visit_" + node_name
         try:
             visitor = getattr(self, method)
         except AttributeError:
-            raise SyntaxError('Query string contains unsupported syntax: {}'.format(node_name))
+            raise SyntaxError(
+                "Query string contains unsupported syntax: {}".format(node_name)
+            )
         return visitor(node)
 
     def visit_Module(self, node):
         if self.target is None and len(node.body) != 1:
-            raise SyntaxError('Only a single expression is allowed')
+            raise SyntaxError("Only a single expression is allowed")
         result = None
         for expr in node.body:
             result = self.visit(expr)
@@ -174,6 +177,7 @@ class CollectionVisitor(ast.NodeVisitor):
         def func(lhs, rhs):
             binop = ast.BinOp(op=node.op, left=lhs, right=rhs)
             return self.visit(binop)
+
         return reduce(func, node.values)
 
     def visit_UnaryOp(self, node):
@@ -182,11 +186,13 @@ class CollectionVisitor(ast.NodeVisitor):
 
     def visit_Name(self, node):
         if node.id.startswith(LOCAL_TAG):
-            local_name = node.id.replace(LOCAL_TAG, '')
+            local_name = node.id.replace(LOCAL_TAG, "")
             self.referenced_vars.add(local_name)
             return self.env[local_name]
         if node.id.startswith(BACKTICK_TAG):
-            local_name = binascii.a2b_hex(node.id.replace(BACKTICK_TAG, '').encode()).decode()
+            local_name = binascii.a2b_hex(
+                node.id.replace(BACKTICK_TAG, "").encode()
+            ).decode()
             return self.get_named_object(local_name)
         return self.get_named_object(node.id)
 
@@ -207,9 +213,9 @@ class CollectionVisitor(ast.NodeVisitor):
 
     def visit_Assign(self, node):
         if self.target is None:
-            raise ValueError('Target not specified for assignment')
+            raise ValueError("Target not specified for assignment")
         if isinstance(node.targets[0], ast.Tuple):
-            raise ValueError('Does not support assigning to multiple objects')
+            raise ValueError("Does not support assigning to multiple objects")
 
         target = node.targets[0].id
         value = self.visit(node.value)
@@ -256,17 +262,32 @@ class CollectionVisitor(ast.NodeVisitor):
 class DataFrameEval(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.DATAFRAME_EVAL
 
-    _expr = StringField('expr')
-    _parser = StringField('parser')
-    _engine = StringField('engine')
-    _variables = DictField('variables')
-    _self_target = BoolField('self_target')
-    _is_query = BoolField('is_query')
+    _expr = StringField("expr")
+    _parser = StringField("parser")
+    _engine = StringField("engine")
+    _variables = DictField("variables")
+    _self_target = BoolField("self_target")
+    _is_query = BoolField("is_query")
 
-    def __init__(self, expr=None, parser=None, engine=None, variables=None,
-                 self_target=None, is_query=None, **kw):
-        super().__init__(_expr=expr, _parser=parser, _engine=engine, _variables=variables,
-                         _self_target=self_target, _is_query=is_query, **kw)
+    def __init__(
+        self,
+        expr=None,
+        parser=None,
+        engine=None,
+        variables=None,
+        self_target=None,
+        is_query=None,
+        **kw,
+    ):
+        super().__init__(
+            _expr=expr,
+            _parser=parser,
+            _engine=engine,
+            _variables=variables,
+            _self_target=self_target,
+            _is_query=is_query,
+            **kw,
+        )
 
     @property
     def expr(self):
@@ -295,17 +316,24 @@ class DataFrameEval(DataFrameOperand, DataFrameOperandMixin):
     def __call__(self, df, output_type, shape, dtypes):
         self._output_types = [output_type]
         params = df.params
-        new_index_value = df.index_value if not np.isnan(shape[0]) else parse_index(pd.RangeIndex(-1))
+        new_index_value = (
+            df.index_value if not np.isnan(shape[0]) else parse_index(pd.RangeIndex(-1))
+        )
         if output_type == OutputType.dataframe:
-            params.update(dict(
-                dtypes=dtypes, shape=shape,
-                columns_value=parse_index(dtypes.index, store_data=True),
-                index_value=new_index_value,
-            ))
+            params.update(
+                dict(
+                    dtypes=dtypes,
+                    shape=shape,
+                    columns_value=parse_index(dtypes.index, store_data=True),
+                    index_value=new_index_value,
+                )
+            )
         else:
             name, dtype = dtypes
             params = dict(
-                name=name, dtype=dtype, shape=shape,
+                name=name,
+                dtype=dtype,
+                shape=shape,
                 index_value=new_index_value,
             )
         return self.new_tileable([df], **params)
@@ -317,21 +345,24 @@ class DataFrameEval(DataFrameOperand, DataFrameOperandMixin):
         return new_op(df, output_type, shape, dtypes)
 
     @classmethod
-    def tile(cls, op: 'DataFrameEval'):
+    def tile(cls, op: "DataFrameEval"):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
 
         if in_df.ndim == 2:
             if in_df.chunk_shape[1] > 1:
-                in_df = yield from recursive_tile(
-                    in_df.rechunk({1: in_df.shape[1]}))
+                in_df = yield from recursive_tile(in_df.rechunk({1: in_df.shape[1]}))
 
         chunks = []
         for c in in_df.chunks:
             if out_df.ndim == 2:
-                new_shape = (np.nan if np.isnan(out_df.shape[0]) else c.shape[0], out_df.shape[1])
+                new_shape = (
+                    np.nan if np.isnan(out_df.shape[0]) else c.shape[0],
+                    out_df.shape[1],
+                )
                 params = dict(
-                    dtypes=out_df.dtypes, shape=new_shape,
+                    dtypes=out_df.dtypes,
+                    shape=new_shape,
                     columns_value=parse_index(out_df.dtypes.index, store_data=True),
                     index_value=c.index_value,
                     index=c.index,
@@ -339,9 +370,11 @@ class DataFrameEval(DataFrameOperand, DataFrameOperandMixin):
             else:
                 new_shape = (np.nan if np.isnan(out_df.shape[0]) else c.shape[0],)
                 params = dict(
-                    name=out_df.name, dtype=out_df.dtype, shape=new_shape,
+                    name=out_df.name,
+                    dtype=out_df.dtype,
+                    shape=new_shape,
                     index_value=c.index_value,
-                    index=(c.index[0],)
+                    index=(c.index[0],),
                 )
             new_op = op.copy().reset_key()
             chunks.append(new_op.new_chunk([c], **params))
@@ -355,28 +388,43 @@ class DataFrameEval(DataFrameOperand, DataFrameOperandMixin):
         if out_df.ndim == 1:
             new_nsplits = new_nsplits[:1]
 
-        params.update(dict(
-            chunks=chunks,
-            nsplits=tuple(new_nsplits),
-        ))
+        params.update(
+            dict(
+                chunks=chunks,
+                nsplits=tuple(new_nsplits),
+            )
+        )
         return new_op.new_tileables([in_df], **params)
 
     @classmethod
-    def execute(cls, ctx, op: 'DataFrameEval'):
+    def execute(cls, ctx, op: "DataFrameEval"):
         in_data = ctx[op.inputs[0].key]
 
         if op.self_target:
             in_data = in_data.copy()
 
         if op.is_query:
-            val = in_data.query(op.expr, parser=op.parser, engine=op.engine, local_dict=op.variables)
+            val = in_data.query(
+                op.expr, parser=op.parser, engine=op.engine, local_dict=op.variables
+            )
         else:
-            val = in_data.eval(op.expr, parser=op.parser, engine=op.engine, local_dict=op.variables)
+            val = in_data.eval(
+                op.expr, parser=op.parser, engine=op.engine, local_dict=op.variables
+            )
         ctx[op.outputs[0].key] = val
 
 
-def mars_eval(expr, parser='mars', engine=None, local_dict=None, global_dict=None,
-              resolvers=(), level=0, target=None, inplace=False):
+def mars_eval(
+    expr,
+    parser="mars",
+    engine=None,
+    local_dict=None,
+    global_dict=None,
+    resolvers=(),
+    level=0,
+    target=None,
+    inplace=False,
+):
     """
 
     Evaluate a Python expression as a string using various backends.
@@ -479,7 +527,7 @@ def mars_eval(expr, parser='mars', engine=None, local_dict=None, global_dict=Non
     1    pig   20          40
     """
     if not isinstance(expr, str):
-        raise TypeError('expr must be a string')
+        raise TypeError("expr must be a string")
 
     expr = textwrap.dedent(expr)
 
@@ -505,18 +553,26 @@ def mars_eval(expr, parser='mars', engine=None, local_dict=None, global_dict=Non
     visitor = CollectionVisitor(resolvers, target, env)
     result = visitor.eval(expr)
     result = result if result is not None else target
-    has_var_frame = any(isinstance(env[k], ENTITY_TYPE) for k in visitor.referenced_vars)
+    has_var_frame = any(
+        isinstance(env[k], ENTITY_TYPE) for k in visitor.referenced_vars
+    )
     if len(ref_frames) != 1 or visitor.entity_subscribe or has_var_frame:
-        if parser != 'mars':
-            raise NotImplementedError('Does not support parser names other than mars')
+        if parser != "mars":
+            raise NotImplementedError("Does not support parser names other than mars")
         if engine is not None:
-            raise NotImplementedError('Does not support specifying engine names')
+            raise NotImplementedError("Does not support specifying engine names")
         return result
     else:
-        parser = 'pandas' if parser == 'mars' else parser
+        parser = "pandas" if parser == "mars" else parser
         referenced_env = {k: env[k] for k in visitor.referenced_vars}
-        op = DataFrameEval(expr, parser=parser, engine=engine, variables=referenced_env,
-                           self_target=visitor.assigned and self_target, is_query=False)
+        op = DataFrameEval(
+            expr,
+            parser=parser,
+            engine=engine,
+            variables=referenced_env,
+            self_target=visitor.assigned and self_target,
+            is_query=False,
+        )
         output_type = get_output_types(result)[0]
         dtypes = result.dtypes if result.ndim == 2 else (result.name, result.dtype)
         return op(resolvers[0], output_type, result.shape, dtypes)
@@ -624,8 +680,8 @@ def df_eval(df, expr, inplace=False, **kwargs):
     3  4   4   8  0
     4  5   2   7  3
     """
-    level = kwargs.pop('level', None) or 0
-    kwargs['inplace'] = inplace
+    level = kwargs.pop("level", None) or 0
+    kwargs["inplace"] = inplace
     val = mars_eval(expr, resolvers=(df,), target=df, level=level + 1, **kwargs)
     if not inplace:
         return val
@@ -768,7 +824,7 @@ def df_query(df, expr, inplace=False, **kwargs):
        A   B  C C
     0  1  10   10
     """
-    level = kwargs.pop('level', None) or 0
+    level = kwargs.pop("level", None) or 0
     predicate = mars_eval(expr, resolvers=(df,), level=level + 1, **kwargs)
     result = df[predicate]
 

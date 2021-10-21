@@ -44,8 +44,9 @@ class BallTreeQuery(TreeQueryBase):
 
 @require_not_none(SklearnBallTree)
 def ball_tree_query(tree, data, n_neighbors, return_distance):
-    op = BallTreeQuery(tree=tree, n_neighbors=n_neighbors,
-                       return_distance=return_distance)
+    op = BallTreeQuery(
+        tree=tree, n_neighbors=n_neighbors, return_distance=return_distance
+    )
     ret = op(data)
     if not return_distance:
         return ret[0]
@@ -54,6 +55,5 @@ def ball_tree_query(tree, data, n_neighbors, return_distance):
 
 @require_not_none(SklearnBallTree)
 def create_ball_tree(X, leaf_size, metric=None, **metric_params):
-    op = _BallTree(leaf_size=leaf_size, metric=metric,
-                   **metric_params)
+    op = _BallTree(leaf_size=leaf_size, metric=metric, **metric_params)
     return op(X)

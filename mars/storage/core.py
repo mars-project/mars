@@ -24,11 +24,13 @@ from ..lib.aio import AioFileObject
 
 
 class StorageFileObject(AioFileObject):
-    def __init__(self,
-                 file: Any,
-                 object_id: Any,
-                 loop: asyncio.BaseEventLoop = None,
-                 executor: Executor = None):
+    def __init__(
+        self,
+        file: Any,
+        object_id: Any,
+        loop: asyncio.BaseEventLoop = None,
+        executor: Executor = None,
+    ):
         self._object_id = object_id
         if executor is None:
             executor = ThreadPoolExecutor()
@@ -45,14 +47,11 @@ class StorageFileObject(AioFileObject):
 
 
 class BufferWrappedFileObject(ABC):
-    def __init__(self,
-                 object_id: Any,
-                 mode: str,
-                 size: Optional[int] = None):
+    def __init__(self, object_id: Any, mode: str, size: Optional[int] = None):
         # check arguments
-        assert mode in ('w', 'r'), 'mode must be "w" or "r"'
-        if mode == 'w' and size is None:  # pragma: no cover
-            raise ValueError('size must be provided to write')
+        assert mode in ("w", "r"), 'mode must be "w" or "r"'
+        if mode == "w" and size is None:  # pragma: no cover
+            raise ValueError("size must be provided to write")
 
         self._object_id = object_id
         self._size = size
@@ -97,7 +96,7 @@ class BufferWrappedFileObject(ABC):
         offset = self._offset
         size = self._size if size < 0 else size
         end = min(self._size, offset + size)
-        result = self._mv[offset: end]
+        result = self._mv[offset:end]
         self._offset = end
         return result
 
@@ -107,9 +106,9 @@ class BufferWrappedFileObject(ABC):
             self._initialized = True
 
         offset = self._offset
-        content_length = getattr(content, 'nbytes', len(content))
+        content_length = getattr(content, "nbytes", len(content))
         new_offset = offset + content_length
-        self._mv[offset: new_offset] = content
+        self._mv[offset:new_offset] = content
         self._offset = new_offset
 
     def seek(self, offset: int, whence: int = os.SEEK_SET):
@@ -125,7 +124,7 @@ class BufferWrappedFileObject(ABC):
             assert whence == os.SEEK_SET
             new_offset = offset
         if new_offset < 0 or new_offset >= self._size:
-            raise ValueError(f'File offset should be limited to (0, {self._size})')
+            raise ValueError(f"File offset should be limited to (0, {self._size})")
         self._offset = new_offset
         return self._offset
 
@@ -149,7 +148,7 @@ class BufferWrappedFileObject(ABC):
             return
 
         self._closed = True
-        if self._mode == 'w':
+        if self._mode == "w":
             self._write_close()
         else:
             self._read_close()

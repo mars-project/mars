@@ -15,6 +15,7 @@
 import pytest
 
 from ..... import tensor as mt
+
 try:
     import statsmodels
     from .. import MarsDistributedModel, MarsResults
@@ -33,7 +34,7 @@ X = X[filter]
 y = y[filter]
 
 
-@pytest.mark.skipif(statsmodels is None, reason='statsmodels not installed')
+@pytest.mark.skipif(statsmodels is None, reason="statsmodels not installed")
 def test_distributed_stats_models(setup):
     y_data = (y * 10).astype(mt.int32)
     model = MarsDistributedModel(factor=1.2)

@@ -67,7 +67,7 @@ def rollaxis(tensor, axis, start=0):
         start += n
     msg = "'%s' arg requires %d <= %s < %d, but %d was passed in"
     if not (0 <= start < n + 1):
-        raise np.AxisError(msg % ('start', -n, 'start', n + 1, start))
+        raise np.AxisError(msg % ("start", -n, "start", n + 1, start))
     if axis < start:
         # it's been removed
         start -= 1

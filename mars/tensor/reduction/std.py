@@ -121,8 +121,17 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=None, combine_size=
     0.44999999925494177
 
     """
-    ret = sqrt(var(a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims,
-                   combine_size=combine_size))
+    ret = sqrt(
+        var(
+            a,
+            axis=axis,
+            dtype=dtype,
+            out=out,
+            ddof=ddof,
+            keepdims=keepdims,
+            combine_size=combine_size,
+        )
+    )
     if dtype is not None and ret.dtype != dtype:
         ret = ret.astype(dtype)
     return ret

@@ -44,8 +44,9 @@ class KDTreeQuery(TreeQueryBase):
 
 @require_not_none(SklearnKDTree)
 def kd_tree_query(tree, data, n_neighbors, return_distance):
-    op = KDTreeQuery(tree=tree, n_neighbors=n_neighbors,
-                     return_distance=return_distance)
+    op = KDTreeQuery(
+        tree=tree, n_neighbors=n_neighbors, return_distance=return_distance
+    )
     ret = op(data)
     if not return_distance:
         return ret[0]
@@ -56,6 +57,5 @@ def kd_tree_query(tree, data, n_neighbors, return_distance):
 def create_kd_tree(X, leaf_size, metric=None, **metric_params):
     # kd_tree cannot accept callable metric
     assert not callable(metric)
-    op = _KDTree(leaf_size=leaf_size, metric=metric,
-                 **metric_params)
+    op = _KDTree(leaf_size=leaf_size, metric=metric, **metric_params)
     return op(X)

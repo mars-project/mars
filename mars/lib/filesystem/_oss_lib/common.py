@@ -22,14 +22,16 @@ from ....utils import ModulePlaceholder
 try:
     import oss2
 except ImportError:
-    oss2 = ModulePlaceholder('oss2')
+    oss2 = ModulePlaceholder("oss2")
 
 # OSS api time out
 _oss_time_out = 10
 
 
 class OSSFileEntry:
-    def __init__(self, path, *, is_dir=None, is_file=None, stat=None, storage_options=None):
+    def __init__(
+        self, path, *, is_dir=None, is_file=None, stat=None, storage_options=None
+    ):
         self._path = path
         self._name = os.path.basename(path)
         self._is_file = is_file
@@ -69,15 +71,17 @@ def parse_osspath(path: path_type):
     str_path = stringify_path(path)
     parse_result = oss2.urlparse(str_path)
     if parse_result.scheme != "oss":
-        raise ValueError(f"Except scheme oss, but got scheme: {parse_result.scheme}"
-                         f" in path: {str_path}")
+        raise ValueError(
+            f"Except scheme oss, but got scheme: {parse_result.scheme}"
+            f" in path: {str_path}"
+        )
     bucket = parse_result.hostname
     if not (parse_result.username and parse_result.password):
         raise RuntimeError(r"Please use build_oss_path to add OSS info")
     param_dict = url_to_dict(parse_result.username)
-    access_key_id = param_dict['access_key_id']
+    access_key_id = param_dict["access_key_id"]
     access_key_secret = parse_result.password
-    end_point = param_dict['end_point']
+    end_point = param_dict["end_point"]
     key = parse_result.path
     key = key[1:] if key.startswith("/") else key
     return bucket, key, access_key_id, access_key_secret, end_point
@@ -85,10 +89,13 @@ def parse_osspath(path: path_type):
 
 def _get_oss_bucket(bucket, access_key_id, access_key_secret, end_point):
     oss_bucket = oss2.Bucket(
-        auth=oss2.Auth(access_key_id=access_key_id, access_key_secret=access_key_secret),
+        auth=oss2.Auth(
+            access_key_id=access_key_id, access_key_secret=access_key_secret
+        ),
         endpoint=end_point,
         bucket_name=bucket,
-        connect_timeout=_oss_time_out)
+        connect_timeout=_oss_time_out,
+    )
     return oss_bucket
 
 
@@ -128,8 +135,11 @@ def oss_stat(path: path_type):
         stat["type"] = "directory"
     else:
         meta = oss_bucket.get_object_meta(key)
-        stat = dict(name=path, size=int(meta.headers["Content-Length"]),
-                    modified_time=meta.headers["Last-Modified"])
+        stat = dict(
+            name=path,
+            size=int(meta.headers["Content-Length"]),
+            modified_time=meta.headers["Last-Modified"],
+        )
         stat["type"] = "file"
     return stat
 
@@ -142,7 +152,7 @@ def oss_scandir(dirname: path_type):
     oss_bucket = _get_oss_bucket(bucket, access_key_id, access_key_secret, end_point)
     dirname_set = set()
     for obj in oss2.ObjectIteratorV2(oss_bucket, prefix=key):
-        rel_path = obj.key[len(key):]
+        rel_path = obj.key[len(key) :]
         try:
             inside_dirname, inside_filename = rel_path.split("/", 1)
         except ValueError:
@@ -161,7 +171,7 @@ def oss_scandir(dirname: path_type):
                     "type": "directory",
                     "size": 0,
                     "modified_time": -1,
-                }
+                },
             )
         else:
             yield OSSFileEntry(
@@ -173,19 +183,19 @@ def oss_scandir(dirname: path_type):
                     "type": "file",
                     "size": obj.size,
                     "modified_time": obj.last_modified,
-                }
+                },
             )
 
 
 def dict_to_url(param: dict):
     # Encode the dictionary with url-safe-base64.
     str_param = json.dumps(param)
-    url_param = base64.urlsafe_b64encode(bytes(str_param, encoding='utf8'))
-    return bytes.decode(url_param, encoding='utf8')
+    url_param = base64.urlsafe_b64encode(bytes(str_param, encoding="utf8"))
+    return bytes.decode(url_param, encoding="utf8")
 
 
 def url_to_dict(url_param: str):
     # Decode url-safe-base64 encoded string.
-    bytes_param = bytes(url_param, encoding='utf8')
-    str_param = bytes.decode(base64.urlsafe_b64decode(bytes_param), encoding='utf8')
+    bytes_param = bytes(url_param, encoding="utf8")
+    str_param = bytes.decode(base64.urlsafe_b64decode(bytes_param), encoding="utf8")
     return json.loads(str_param)

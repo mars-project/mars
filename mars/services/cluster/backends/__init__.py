@@ -12,6 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .base import AbstractClusterBackend, register_cluster_backend, \
-    get_cluster_backend
+from .base import AbstractClusterBackend, register_cluster_backend, get_cluster_backend
 from .fixed import FixedClusterBackend

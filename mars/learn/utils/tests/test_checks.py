@@ -27,7 +27,7 @@ def test_check_non_negative_then_return_value_execution(setup):
     raw = np.random.randint(10, size=(10, 5))
     c = mt.tensor(raw, chunk_size=(3, 2))
 
-    r = check_non_negative_then_return_value(c, c, 'sth')
+    r = check_non_negative_then_return_value(c, c, "sth")
     result = r.execute().fetch()
     np.testing.assert_array_equal(result, raw)
 
@@ -35,14 +35,14 @@ def test_check_non_negative_then_return_value_execution(setup):
     raw[1, 3] = -1
     c = mt.tensor(raw, chunk_size=(3, 2))
 
-    r = check_non_negative_then_return_value(c, c, 'sth')
+    r = check_non_negative_then_return_value(c, c, "sth")
     with pytest.raises(ValueError):
         _ = r.execute().fetch()
 
-    raw = sps.random(10, 5, density=.3, format='csr')
+    raw = sps.random(10, 5, density=0.3, format="csr")
     c = mt.tensor(raw, chunk_size=(3, 2))
 
-    r = check_non_negative_then_return_value(c, c, 'sth')
+    r = check_non_negative_then_return_value(c, c, "sth")
     result = r.execute().fetch()
     np.testing.assert_array_equal(result.toarray(), raw.A)
 
@@ -50,14 +50,14 @@ def test_check_non_negative_then_return_value_execution(setup):
     raw[1, 3] = -1
     c = mt.tensor(raw, chunk_size=(3, 2))
 
-    r = check_non_negative_then_return_value(c, c, 'sth')
+    r = check_non_negative_then_return_value(c, c, "sth")
     with pytest.raises(ValueError):
         _ = r.execute().fetch()
 
     raw = pd.DataFrame(np.random.rand(10, 4))
     c = md.DataFrame(raw, chunk_size=(3, 2))
 
-    r = check_non_negative_then_return_value(c, c, 'sth')
+    r = check_non_negative_then_return_value(c, c, "sth")
     result = r.execute().fetch()
 
     pd.testing.assert_frame_equal(result, raw)
@@ -66,7 +66,7 @@ def test_check_non_negative_then_return_value_execution(setup):
     raw.iloc[1, 3] = -1
     c = md.DataFrame(raw, chunk_size=(3, 2))
 
-    r = check_non_negative_then_return_value(c, c, 'sth')
+    r = check_non_negative_then_return_value(c, c, "sth")
     with pytest.raises(ValueError):
         _ = r.execute().fetch()
 
@@ -95,7 +95,7 @@ def test_assert_all_finite(setup):
     result = r.execute().fetch()
     assert result is True
 
-    raw = np.array([np.nan, 'a'], dtype=object)
+    raw = np.array([np.nan, "a"], dtype=object)
     x = mt.tensor(raw)
 
     with pytest.raises(ValueError):
@@ -120,8 +120,9 @@ def test_assert_all_finite(setup):
         assert assert_all_finite(x, check_only=False) is x
 
     # test sparse
-    s = sps.random(10, 3, density=0.1, format='csr',
-                   random_state=np.random.RandomState(0))
+    s = sps.random(
+        10, 3, density=0.1, format="csr", random_state=np.random.RandomState(0)
+    )
     s[0, 2] = np.nan
 
     with pytest.raises(ValueError):

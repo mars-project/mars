@@ -31,8 +31,10 @@ def _get_squeeze_shape(shape, axis):
 
         for ax in axis:
             if shape[ax] != 1:
-                raise ValueError('cannot select an axis to squeeze out '
-                                 'which has size not equal to one')
+                raise ValueError(
+                    "cannot select an axis to squeeze out "
+                    "which has size not equal to one"
+                )
         shape = tuple(s for i, s in enumerate(shape) if i not in axis)
     else:
         axis = tuple(i for i, s in enumerate(shape) if s == 1)
@@ -44,8 +46,8 @@ def _get_squeeze_shape(shape, axis):
 class TensorSqueeze(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.SQUEEZE
 
-    _input = KeyField('input')
-    _axis = TupleField('axis', FieldTypes.int32)
+    _input = KeyField("input")
+    _axis = TupleField("axis", FieldTypes.int32)
 
     def __init__(self, axis=None, **kw):
         super().__init__(_axis=axis, create_view=True, **kw)
@@ -78,19 +80,28 @@ class TensorSqueeze(TensorHasInput, TensorOperandMixin):
             chunk_op = op.copy().reset_key()
             chunk_shape = _get_squeeze_shape(c.shape, op.axis)[0]
             chunk_idx = tuple(idx for i, idx in enumerate(c.index) if i not in axis_set)
-            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=chunk_idx,
-                                           order=out_tensor.order)
+            out_chunk = chunk_op.new_chunk(
+                [c], shape=chunk_shape, index=chunk_idx, order=out_tensor.order
+            )
             out_chunks.append(out_chunk)
-        nsplits = [nsplit for i, nsplit in enumerate(in_tensor.nsplits) if i not in axis_set]
+        nsplits = [
+            nsplit for i, nsplit in enumerate(in_tensor.nsplits) if i not in axis_set
+        ]
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape, order=out_tensor.order,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            op.outputs[0].shape,
+            order=out_tensor.order,
+            chunks=out_chunks,
+            nsplits=nsplits,
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         (a,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             ctx[op.outputs[0].key] = xp.squeeze(a, axis=op.axis)

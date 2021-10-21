@@ -17,37 +17,68 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, OutputType, recursive_tile
-from ...serialization.serializables import FieldTypes, ListField, StringField, \
-    BoolField, AnyField
+from ...serialization.serializables import (
+    FieldTypes,
+    ListField,
+    StringField,
+    BoolField,
+    AnyField,
+)
 from ...utils import lazy_import, has_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE
-from ..utils import parse_index, build_empty_df, build_empty_series, \
-    standardize_range_index, validate_axis
+from ..utils import (
+    parse_index,
+    build_empty_df,
+    build_empty_series,
+    standardize_range_index,
+    validate_axis,
+)
 
-cudf = lazy_import('cudf', globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
 
 class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.CONCATENATE
 
-    _axis = AnyField('axis')
-    _join = StringField('join')
-    _ignore_index = BoolField('ignore_index')
-    _keys = ListField('keys')
-    _levels = ListField('levels')
-    _names = ListField('names')
-    _verify_integrity = BoolField('verify_integrity')
-    _sort = BoolField('sort')
-    _copy = BoolField('copy')
+    _axis = AnyField("axis")
+    _join = StringField("join")
+    _ignore_index = BoolField("ignore_index")
+    _keys = ListField("keys")
+    _levels = ListField("levels")
+    _names = ListField("names")
+    _verify_integrity = BoolField("verify_integrity")
+    _sort = BoolField("sort")
+    _copy = BoolField("copy")
 
-    def __init__(self, axis=None, join=None, ignore_index=None,
-                 keys=None, levels=None, names=None, verify_integrity=None,
-                 sort=None, copy=None, sparse=None, output_types=None, **kw):
+    def __init__(
+        self,
+        axis=None,
+        join=None,
+        ignore_index=None,
+        keys=None,
+        levels=None,
+        names=None,
+        verify_integrity=None,
+        sort=None,
+        copy=None,
+        sparse=None,
+        output_types=None,
+        **kw
+    ):
         super().__init__(
-            _axis=axis, _join=join, _ignore_index=ignore_index,
-            _keys=keys, _levels=levels, _names=names,
-            _verify_integrity=verify_integrity, _sort=sort, _copy=copy,
-            _sparse=sparse, _output_types=output_types, **kw)
+            _axis=axis,
+            _join=join,
+            _ignore_index=ignore_index,
+            _keys=keys,
+            _levels=levels,
+            _names=names,
+            _verify_integrity=verify_integrity,
+            _sort=sort,
+            _copy=copy,
+            _sparse=sparse,
+            _output_types=output_types,
+            **kw
+        )
 
     @property
     def axis(self):
@@ -93,8 +124,10 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
         inputs = op.inputs
         axis = op.axis
 
-        if not all(inputs[i].nsplits[1 - axis] == inputs[i + 1].nsplits[1 - axis]
-                   for i in range(len(inputs) - 1)):
+        if not all(
+            inputs[i].nsplits[1 - axis] == inputs[i + 1].nsplits[1 - axis]
+            for i in range(len(inputs) - 1)
+        ):
             # need rechunk
             if has_unknown_shape(*inputs):
                 yield
@@ -102,7 +135,8 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             new_inputs = []
             for inp in inputs:
                 new_inputs.append(
-                    (yield from recursive_tile(inp.rechunk(normalized_nsplits))))
+                    (yield from recursive_tile(inp.rechunk(normalized_nsplits)))
+                )
             inputs = new_inputs
 
         out_chunks = []
@@ -116,24 +150,37 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                     index = (c.index[0], c.index[1] + cum_index)
 
                 iloc_op = DataFrameIlocGetItem(indexes=[slice(None)] * 2)
-                out_chunks.append(iloc_op.new_chunk([c], shape=c.shape, index=index,
-                                                    dtypes=c.dtypes,
-                                                    index_value=c.index_value,
-                                                    columns_value=c.columns_value))
+                out_chunks.append(
+                    iloc_op.new_chunk(
+                        [c],
+                        shape=c.shape,
+                        index=index,
+                        dtypes=c.dtypes,
+                        index_value=c.index_value,
+                        columns_value=c.columns_value,
+                    )
+                )
             nsplits.extend(df.nsplits[op.axis])
             cum_index += len(df.nsplits[op.axis])
-        out_nsplits = (tuple(nsplits), inputs[0].nsplits[1]) \
-            if op.axis == 0 else (inputs[0].nsplits[0], tuple(nsplits))
+        out_nsplits = (
+            (tuple(nsplits), inputs[0].nsplits[1])
+            if op.axis == 0
+            else (inputs[0].nsplits[0], tuple(nsplits))
+        )
 
         if op.ignore_index:
             out_chunks = standardize_range_index(out_chunks)
 
         new_op = op.copy()
-        return new_op.new_dataframes(op.inputs, out_df.shape,
-                                     nsplits=out_nsplits, chunks=out_chunks,
-                                     dtypes=out_df.dtypes,
-                                     index_value=out_df.index_value,
-                                     columns_value=out_df.columns_value)
+        return new_op.new_dataframes(
+            op.inputs,
+            out_df.shape,
+            nsplits=out_nsplits,
+            chunks=out_chunks,
+            dtypes=out_df.dtypes,
+            index_value=out_df.index_value,
+            columns_value=out_df.columns_value,
+        )
 
     @classmethod
     def _tile_series(cls, op):
@@ -150,7 +197,8 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             new_inputs = []
             for inp in inputs:
                 new_inputs.append(
-                    (yield from recursive_tile(inp.rechunk(op.inputs[0].nsplits))))
+                    (yield from recursive_tile(inp.rechunk(op.inputs[0].nsplits)))
+                )
             inputs = new_inputs
 
         cum_index = 0
@@ -162,10 +210,16 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                     index = (c.index[0] + cum_index,)
                     shape = c.shape
                     iloc_op = SeriesIlocGetItem(indexes=(slice(None),))
-                    out_chunks.append(iloc_op.new_chunk([c], shape=shape, index=index,
-                                                        index_value=c.index_value,
-                                                        dtype=c.dtype,
-                                                        name=c.name))
+                    out_chunks.append(
+                        iloc_op.new_chunk(
+                            [c],
+                            shape=shape,
+                            index=index,
+                            index_value=c.index_value,
+                            dtype=c.dtype,
+                            name=c.name,
+                        )
+                    )
                 else:
                     index = (c.index[0], cum_index)
                     shape = (c.shape[0], 1)
@@ -173,17 +227,28 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                     if c.name:
                         dtypes = pd.Series([c.dtype], index=[c.name])
                     else:
-                        dtypes = pd.Series([c.dtype], index=pd.RangeIndex(offset, offset + 1))
+                        dtypes = pd.Series(
+                            [c.dtype], index=pd.RangeIndex(offset, offset + 1)
+                        )
                     df_chunk = to_frame_op.new_chunk(
-                        [c], shape=shape, index=index, index_value=c.index_value,
+                        [c],
+                        shape=shape,
+                        index=index,
+                        index_value=c.index_value,
                         columns_value=parse_index(dtypes.index, store_data=True),
-                        dtypes=dtypes)
+                        dtypes=dtypes,
+                    )
                     iloc_op = DataFrameIlocGetItem(indexes=[slice(None)] * 2)
-                    out_chunks.append(iloc_op.new_chunk([df_chunk], shape=df_chunk.shape,
-                                                        index=index,
-                                                        dtypes=df_chunk.dtypes,
-                                                        index_value=df_chunk.index_value,
-                                                        columns_value=df_chunk.columns_value))
+                    out_chunks.append(
+                        iloc_op.new_chunk(
+                            [df_chunk],
+                            shape=df_chunk.shape,
+                            index=index,
+                            dtypes=df_chunk.dtypes,
+                            index_value=df_chunk.index_value,
+                            columns_value=df_chunk.columns_value,
+                        )
+                    )
 
             if op.axis == 0:
                 nsplits.extend(series.nsplits[0])
@@ -199,18 +264,26 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
         new_op = op.copy()
         if op.axis == 0:
             nsplits = (tuple(nsplits),)
-            return new_op.new_seriess(op.inputs, out.shape,
-                                      nsplits=nsplits, chunks=out_chunks,
-                                      dtype=out.dtype,
-                                      index_value=out.index_value,
-                                      name=out.name)
+            return new_op.new_seriess(
+                op.inputs,
+                out.shape,
+                nsplits=nsplits,
+                chunks=out_chunks,
+                dtype=out.dtype,
+                index_value=out.index_value,
+                name=out.name,
+            )
         else:
             nsplits = (inputs[0].nsplits[0], tuple(nsplits))
-            return new_op.new_dataframes(op.inputs, out.shape,
-                                         nsplits=nsplits, chunks=out_chunks,
-                                         dtypes=out.dtypes,
-                                         index_value=out.index_value,
-                                         columns_value=out.columns_value)
+            return new_op.new_dataframes(
+                op.inputs,
+                out.shape,
+                nsplits=nsplits,
+                chunks=out_chunks,
+                dtypes=out.dtypes,
+                index_value=out.index_value,
+                columns_value=out.columns_value,
+            )
 
     @classmethod
     def tile(cls, op):
@@ -232,11 +305,17 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             elif chunk.op.output_types[0] == OutputType.categorical:
                 return _auto_concat_categorical_chunks(chunk, inputs)
             else:  # pragma: no cover
-                raise TypeError('Only DataFrameChunk, SeriesChunk, IndexChunk, '
-                                'and CategoricalChunk can be automatically concatenated')
+                raise TypeError(
+                    "Only DataFrameChunk, SeriesChunk, IndexChunk, "
+                    "and CategoricalChunk can be automatically concatenated"
+                )
 
         def _auto_concat_dataframe_chunks(chunk, inputs):
-            xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series)) or cudf is None else cudf
+            xdf = (
+                pd
+                if isinstance(inputs[0], (pd.DataFrame, pd.Series)) or cudf is None
+                else cudf
+            )
 
             if chunk.op.axis is not None:
                 return xdf.concat(inputs, axis=op.axis)
@@ -254,7 +333,9 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                     if n_cols == 1:
                         concats.append(inputs[i])
                     else:
-                        concat = xdf.concat([inputs[i * n_cols + j] for j in range(n_cols)], axis=1)
+                        concat = xdf.concat(
+                            [inputs[i * n_cols + j] for j in range(n_cols)], axis=1
+                        )
                         concats.append(concat)
 
                 if xdf is pd:
@@ -269,9 +350,9 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                     # cuDF will lost index name when concat two seriess.
                     ret.index.name = concats[0].index.name
 
-            if getattr(chunk.index_value, 'should_be_monotonic', False):
+            if getattr(chunk.index_value, "should_be_monotonic", False):
                 ret.sort_index(inplace=True)
-            if getattr(chunk.columns_value, 'should_be_monotonic', False):
+            if getattr(chunk.columns_value, "should_be_monotonic", False):
                 ret.sort_index(axis=1, inplace=True)
             return ret
 
@@ -285,7 +366,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                     concat = xdf.concat(inputs, axis=chunk.op.axis)
                 else:
                     concat = xdf.concat(inputs)
-            if getattr(chunk.index_value, 'should_be_monotonic', False):
+            if getattr(chunk.index_value, "should_be_monotonic", False):
                 concat.sort_index(inplace=True)
             return concat
 
@@ -297,7 +378,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 xdf = pd if isinstance(inputs[0], pd.Index) or cudf is None else cudf
                 empty_dfs = [xdf.DataFrame(index=inp) for inp in inputs]
                 concat_df = xdf.concat(empty_dfs, axis=0)
-            if getattr(chunk.index_value, 'should_be_monotonic', False):
+            if getattr(chunk.index_value, "should_be_monotonic", False):
                 concat_df.sort_index(inplace=True)
             return concat_df.index
 
@@ -308,22 +389,26 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 # convert categorical into array
                 arrays = [np.asarray(inp) for inp in inputs]
                 array = np.concatenate(arrays)
-                return pd.Categorical(array, categories=inputs[0].categories,
-                                      ordered=inputs[0].ordered)
+                return pd.Categorical(
+                    array, categories=inputs[0].categories, ordered=inputs[0].ordered
+                )
 
         chunk = op.outputs[0]
         inputs = [ctx[input.key] for input in op.inputs]
 
         if isinstance(inputs[0], tuple):
-            ctx[chunk.key] = tuple(_base_concat(chunk, [input[i] for input in inputs])
-                                   for i in range(len(inputs[0])))
+            ctx[chunk.key] = tuple(
+                _base_concat(chunk, [input[i] for input in inputs])
+                for i in range(len(inputs[0]))
+            )
         else:
             ctx[chunk.key] = _base_concat(chunk, inputs)
 
     @classmethod
     def _concat_index(cls, prev_index: pd.Index, cur_index: pd.Index):
-        if isinstance(prev_index, pd.RangeIndex) and \
-                isinstance(cur_index, pd.RangeIndex):
+        if isinstance(prev_index, pd.RangeIndex) and isinstance(
+            cur_index, pd.RangeIndex
+        ):
             # handle RangeIndex that append may generate huge amount of data
             # e.g. pd.RangeIndex(10_000) and pd.RangeIndex(10_000)
             # will generate a Int64Index full of data
@@ -356,8 +441,13 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 index_value = parse_index(pd.RangeIndex(row_length))
             else:
                 index_value = parse_index(index, objs)
-            return self.new_series(objs, shape=(row_length,), dtype=objs[0].dtype,
-                                   index_value=index_value, name=objs[0].name)
+            return self.new_series(
+                objs,
+                shape=(row_length,),
+                dtype=objs[0].dtype,
+                index_value=index_value,
+                name=objs[0].name,
+            )
         else:
             col_length = 0
             columns = []
@@ -378,9 +468,13 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 columns_value = parse_index(pd.Index(columns), store_data=True)
 
             shape = (objs[0].shape[0], col_length)
-            return self.new_dataframe(objs, shape=shape, dtypes=pd.Series(dtypes),
-                                      index_value=objs[0].index_value,
-                                      columns_value=columns_value)
+            return self.new_dataframe(
+                objs,
+                shape=shape,
+                dtypes=pd.Series(dtypes),
+                index_value=objs[0].index_value,
+                columns_value=columns_value,
+            )
 
     def _call_dataframes(self, objs):
         if self.axis == 0:
@@ -402,7 +496,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             shape = (row_length, emtpy_result.shape[1])
             columns_value = parse_index(emtpy_result.columns, store_data=True)
 
-            if self.join == 'inner':
+            if self.join == "inner":
                 objs = [o[list(emtpy_result.columns)] for o in objs]
 
             if self.ignore_index:  # pragma: no cover
@@ -423,8 +517,13 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                         new_obj = obj
                 new_objs.append(new_obj)
 
-            return self.new_dataframe(new_objs, shape=shape, dtypes=emtpy_result.dtypes,
-                                      index_value=index_value, columns_value=columns_value)
+            return self.new_dataframe(
+                new_objs,
+                shape=shape,
+                dtypes=emtpy_result.dtypes,
+                index_value=index_value,
+                columns_value=columns_value,
+            )
         else:
             col_length = 0
             empty_dfs = []
@@ -442,19 +541,25 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             if self.ignore_index:
                 columns_value = parse_index(pd.RangeIndex(col_length))
             else:
-                columns_value = parse_index(pd.Index(emtpy_result.columns), store_data=True)
+                columns_value = parse_index(
+                    pd.Index(emtpy_result.columns), store_data=True
+                )
 
             if self.ignore_index or len({o.index_value.key for o in objs}) == 1:
-                new_objs = [obj if obj.ndim == 2 else obj.to_frame()
-                            for obj in objs]
+                new_objs = [obj if obj.ndim == 2 else obj.to_frame() for obj in objs]
             else:  # pragma: no cover
-                raise NotImplementedError('Does not support concat dataframes '
-                                          'which has different index')
+                raise NotImplementedError(
+                    "Does not support concat dataframes " "which has different index"
+                )
 
             shape = (objs[0].shape[0], col_length)
-            return self.new_dataframe(new_objs, shape=shape, dtypes=emtpy_result.dtypes,
-                                      index_value=objs[0].index_value,
-                                      columns_value=columns_value)
+            return self.new_dataframe(
+                new_objs,
+                shape=shape,
+                dtypes=emtpy_result.dtypes,
+                index_value=objs[0].index_value,
+                columns_value=columns_value,
+            )
 
     def __call__(self, objs):
         if all(isinstance(obj, SERIES_TYPE) for obj in objs):
@@ -468,12 +573,16 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_CONCAT
 
-    _groups = ListField('groups', FieldTypes.key)
-    _groupby_params = AnyField('groupby_params')
+    _groups = ListField("groups", FieldTypes.key)
+    _groupby_params = AnyField("groupby_params")
 
     def __init__(self, groups=None, groupby_params=None, output_types=None, **kw):
-        super().__init__(_groups=groups, _groupby_params=groupby_params,
-                         _output_types=output_types, **kw)
+        super().__init__(
+            _groups=groups,
+            _groupby_params=groupby_params,
+            _output_types=output_types,
+            **kw
+        )
 
     @property
     def groups(self):
@@ -492,14 +601,14 @@ class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
             new_groups.append(next(inputs_iter))
         self._groups = new_groups
 
-        if isinstance(self._groupby_params['by'], list):
+        if isinstance(self._groupby_params["by"], list):
             by = []
-            for v in self._groupby_params['by']:
+            for v in self._groupby_params["by"]:
                 if isinstance(v, ENTITY_TYPE):
                     by.append(next(inputs_iter))
                 else:
                     by.append(v)
-            self._groupby_params['by'] = by
+            self._groupby_params["by"] = by
 
     @classmethod
     def execute(cls, ctx, op):
@@ -507,15 +616,15 @@ class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
         obj = pd.concat([d.obj for d in input_data])
 
         params = op.groupby_params.copy()
-        if isinstance(params['by'], list):
+        if isinstance(params["by"], list):
             by = []
-            for v in params['by']:
+            for v in params["by"]:
                 if isinstance(v, ENTITY_TYPE):
                     by.append(ctx[v.key])
                 else:
                     by.append(v)
-            params['by'] = by
-        selection = params.pop('selection', None)
+            params["by"] = by
+        selection = params.pop("selection", None)
 
         result = obj.groupby(**params)
         if selection:
@@ -524,19 +633,42 @@ class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = result
 
 
-def concat(objs, axis=0, join='outer', ignore_index=False, keys=None, levels=None, names=None,
-           verify_integrity=False, sort=False, copy=True):
+def concat(
+    objs,
+    axis=0,
+    join="outer",
+    ignore_index=False,
+    keys=None,
+    levels=None,
+    names=None,
+    verify_integrity=False,
+    sort=False,
+    copy=True,
+):
     if not isinstance(objs, (list, tuple)):  # pragma: no cover
-        raise TypeError('first argument must be an iterable of dataframe or series objects')
+        raise TypeError(
+            "first argument must be an iterable of dataframe or series objects"
+        )
     axis = validate_axis(axis)
     if isinstance(objs, dict):  # pragma: no cover
         keys = objs.keys()
         objs = objs.values()
-    if axis == 1 and join == 'inner':  # pragma: no cover
-        raise NotImplementedError('inner join is not support when specify `axis=1`')
+    if axis == 1 and join == "inner":  # pragma: no cover
+        raise NotImplementedError("inner join is not support when specify `axis=1`")
     if verify_integrity or sort or keys:  # pragma: no cover
-        raise NotImplementedError('verify_integrity, sort, keys arguments are not supported now')
-    op = DataFrameConcat(axis=axis, join=join, ignore_index=ignore_index, keys=keys, levels=levels,
-                         names=names, verify_integrity=verify_integrity, sort=sort, copy=copy)
+        raise NotImplementedError(
+            "verify_integrity, sort, keys arguments are not supported now"
+        )
+    op = DataFrameConcat(
+        axis=axis,
+        join=join,
+        ignore_index=ignore_index,
+        keys=keys,
+        levels=levels,
+        names=names,
+        verify_integrity=verify_integrity,
+        sort=sort,
+        copy=copy,
+    )
 
     return op(objs)

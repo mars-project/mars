@@ -21,8 +21,13 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import recursive_tile
-from ...serialization.serializables import FieldTypes, AnyField, KeyField, \
-    BoolField, TupleField
+from ...serialization.serializables import (
+    FieldTypes,
+    AnyField,
+    KeyField,
+    BoolField,
+    TupleField,
+)
 from ...utils import has_unknown_shape, ceildiv
 from ..operands import TensorOperandMixin
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
@@ -35,15 +40,13 @@ from .core import TensorRandomOperand, RandomState
 class TensorChoice(TensorRandomOperand, TensorOperandMixin):
     _op_type_ = OperandDef.RAND_CHOICE
 
-    _a = AnyField('a')
-    _size = TupleField('size', FieldTypes.int64)
-    _replace = BoolField('replace')
-    _p = KeyField('p')
+    _a = AnyField("a")
+    _size = TupleField("size", FieldTypes.int64)
+    _replace = BoolField("replace")
+    _p = KeyField("p")
 
-    def __init__(self, a=None, size=None, replace=None, p=None,
-                 seed=None, **kw):
-        super().__init__(_a=a, _size=size, _replace=replace, _p=p,
-                         seed=seed, **kw)
+    def __init__(self, a=None, size=None, replace=None, p=None, seed=None, **kw):
+        super().__init__(_a=a, _size=size, _replace=replace, _p=p, seed=seed, **kw)
 
     @property
     def a(self):
@@ -74,9 +77,12 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
             inputs.append(a)
         if isinstance(p, TENSOR_TYPE):
             inputs.append(p)
-        return self.new_tensor(inputs, shape=self._size,
-                               raw_chunk_size=chunk_size,
-                               order=TensorOrder.C_ORDER)
+        return self.new_tensor(
+            inputs,
+            shape=self._size,
+            raw_chunk_size=chunk_size,
+            order=TensorOrder.C_ORDER,
+        )
 
     @classmethod
     def _tile_one_chunk(cls, op, a, p):
@@ -94,14 +100,18 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
             chunk_inputs.append(chunk_op.p)
         else:
             chunk_op._p = p
-        chunk = chunk_op.new_chunk(chunk_inputs, shape=out.shape,
-                                   index=(0,) * out.ndim,
-                                   order=out.order)
+        chunk = chunk_op.new_chunk(
+            chunk_inputs, shape=out.shape, index=(0,) * out.ndim, order=out.order
+        )
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape,
-                                  order=out.order, chunks=[chunk],
-                                  nsplits=tuple((s,) for s in out.shape))
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out.shape,
+            order=out.order,
+            chunks=[chunk],
+            nsplits=tuple((s,) for s in out.shape),
+        )
 
     @classmethod
     def _tile_sample_with_replacement(cls, op, a, nsplits):
@@ -175,32 +185,41 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
             chunk_op._a = chunk
             chunk_op._size = (m,)
             chunk_op._seed = seed
-            sampled_chunk = chunk_op.new_chunk([chunk], shape=(m,),
-                                               order=out.order,
-                                               index=chunk.index)
+            sampled_chunk = chunk_op.new_chunk(
+                [chunk], shape=(m,), order=out.order, index=chunk.index
+            )
             sampled_chunks.append(sampled_chunk)
 
         if len(sampled_chunks) == 1:
             out_chunk = sampled_chunks[0]
         else:
-            stacked_chunk = TensorStack(axis=0, dtype=sampled_chunks[0].dtype).new_chunk(
-                sampled_chunks, shape=(len(a.chunks), m), order=TensorOrder.C_ORDER)
+            stacked_chunk = TensorStack(
+                axis=0, dtype=sampled_chunks[0].dtype
+            ).new_chunk(
+                sampled_chunks, shape=(len(a.chunks), m), order=TensorOrder.C_ORDER
+            )
 
             # gen indices with length m from 0...a.size
             state = RandomState.from_numpy(np.random.RandomState(op.seed))
             indices = state.randint(a_size, size=(m,))
             cum_offsets = np.cumsum(a.nsplits[0])
-            ind = yield from recursive_tile(searchsorted(cum_offsets, indices, side='right'))
+            ind = yield from recursive_tile(
+                searchsorted(cum_offsets, indices, side="right")
+            )
             ind_chunk = ind.chunks[0]
 
             # do fancy index to find result
             arange_tensor = yield from recursive_tile(arange(m))
             indexes = [ind_chunk, arange_tensor.chunks[0]]
-            out_chunk = TensorIndex(dtype=stacked_chunk.dtype, indexes=indexes).new_chunk(
-                [stacked_chunk] + list(indexes), shape=(m,), order=TensorOrder.C_ORDER)
+            out_chunk = TensorIndex(
+                dtype=stacked_chunk.dtype, indexes=indexes
+            ).new_chunk(
+                [stacked_chunk] + list(indexes), shape=(m,), order=TensorOrder.C_ORDER
+            )
 
-        ret = op.copy().new_tensor(op.inputs, shape=(m,), order=out.order,
-                                   nsplits=((m,),), chunks=[out_chunk])
+        ret = op.copy().new_tensor(
+            op.inputs, shape=(m,), order=out.order, nsplits=((m,),), chunks=[out_chunk]
+        )
         if len(out_shape) > 0:
             ret = yield from recursive_tile(ret.reshape(out_shape))
         ret = yield from recursive_tile(ret.rechunk(nsplits))
@@ -230,21 +249,21 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
             nsplits = ((s,) for s in out.shape)
 
         # all inputs and outputs has 1 chunk
-        if all(len(inp.chunks) == 1 for inp in inputs) and \
-                all(len(ns) == 1 for ns in nsplits):
+        if all(len(inp.chunks) == 1 for inp in inputs) and all(
+            len(ns) == 1 for ns in nsplits
+        ):
             return cls._tile_one_chunk(op, a, p)
 
         if op.replace:
-            return (yield from cls._tile_sample_with_replacement(
-                op, a, nsplits))
+            return (yield from cls._tile_sample_with_replacement(op, a, nsplits))
         else:
-            return (yield from cls._tile_sample_without_replacement(
-                op, a, nsplits))
+            return (yield from cls._tile_sample_without_replacement(op, a, nsplits))
 
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+        )
         if isinstance(op.a, TENSOR_CHUNK_TYPE):
             a = inputs[0]
         else:
@@ -256,8 +275,7 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
 
         with device(device_id):
             rs = xp.random.RandomState(op.seed)
-            ctx[op.outputs[0].key] = rs.choice(
-                a, size=op.size, replace=op.replace, p=p)
+            ctx[op.outputs[0].key] = rs.choice(a, size=op.size, replace=op.replace, p=p)
 
 
 def choice(random_state, a, size=None, replace=True, p=None, chunk_size=None, gpu=None):
@@ -341,13 +359,15 @@ def choice(random_state, a, size=None, replace=True, p=None, chunk_size=None, gp
 
     if isinstance(a, Integral):
         if a <= 0:
-            raise ValueError('a must be greater than 0')
+            raise ValueError("a must be greater than 0")
         a_size = a
-        dtype = np.random.choice(1, size=(), p=np.array([1]) if p is not None else p).dtype
+        dtype = np.random.choice(
+            1, size=(), p=np.array([1]) if p is not None else p
+        ).dtype
     else:
         a = array(a)
         if a.ndim != 1:
-            raise ValueError('a must be one dimensional')
+            raise ValueError("a must be one dimensional")
         a_size = a.size
         dtype = a.dtype
 
@@ -355,10 +375,10 @@ def choice(random_state, a, size=None, replace=True, p=None, chunk_size=None, gp
         if not isinstance(p, TENSOR_TYPE):
             p = np.asarray(p)
             if not np.isclose(p.sum(), 1, rtol=1e-7, atol=0):
-                raise ValueError('probabilities do not sum to 1')
+                raise ValueError("probabilities do not sum to 1")
             p = array(p, chunk_size=p.size)
         if p.ndim != 1:
-            raise ValueError('p must be one dimensional')
+            raise ValueError("p must be one dimensional")
 
     if size is None:
         size = ()
@@ -370,10 +390,13 @@ def choice(random_state, a, size=None, replace=True, p=None, chunk_size=None, gp
         except TypeError:
             length = size
     if replace is False and length > a_size:
-        raise ValueError("Cannot take a larger sample than population when 'replace=False'")
+        raise ValueError(
+            "Cannot take a larger sample than population when 'replace=False'"
+        )
 
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
-    op = TensorChoice(a=a, p=p, seed=seed,
-                      replace=replace, size=size, dtype=dtype, gpu=gpu)
+    op = TensorChoice(
+        a=a, p=p, seed=seed, replace=replace, size=size, dtype=dtype, gpu=gpu
+    )
     return op(a, p, chunk_size=chunk_size)

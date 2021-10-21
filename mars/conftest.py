@@ -24,13 +24,13 @@ from mars.oscar.backends.ray.communication import RayServer
 from mars.serialization.ray import register_ray_serializers, unregister_ray_serializers
 from mars.utils import lazy_import
 
-ray = lazy_import('ray')
+ray = lazy_import("ray")
 
 
 @pytest.fixture
 def ray_start_regular(request):
     param = getattr(request, "param", {})
-    if not param.get('enable', True):
+    if not param.get("enable", True):
         yield
     else:
         register_ray_serializers()
@@ -41,7 +41,7 @@ def ray_start_regular(request):
             unregister_ray_serializers()
             Router.set_instance(None)
             RayServer.clear()
-            if 'COV_CORE_SOURCE' in os.environ:
+            if "COV_CORE_SOURCE" in os.environ:
                 # Remove this when https://github.com/ray-project/ray/issues/16802 got fixed
                 subprocess.check_call(["ray", "stop", "--force"])
 
@@ -49,8 +49,8 @@ def ray_start_regular(request):
 @pytest.fixture
 def ray_large_cluster(request):  # pragma: no cover
     param = getattr(request, "param", {})
-    num_nodes = param.get('num_nodes', 3)
-    num_cpus = param.get('num_cpus', 10)
+    num_nodes = param.get("num_nodes", 3)
+    num_cpus = param.get("num_cpus", 10)
     try:
         from ray.cluster_utils import Cluster
     except ModuleNotFoundError:
@@ -70,56 +70,62 @@ def ray_large_cluster(request):  # pragma: no cover
         RayServer.clear()
         ray.shutdown()
         cluster.shutdown()
-        if 'COV_CORE_SOURCE' in os.environ:
+        if "COV_CORE_SOURCE" in os.environ:
             # Remove this when https://github.com/ray-project/ray/issues/16802 got fixed
             subprocess.check_call(["ray", "stop", "--force"])
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def _stop_isolation():
     yield
     stop_isolation()
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def _new_test_session(_stop_isolation):
     from .deploy.oscar.tests.session import new_test_session
 
-    sess = new_test_session(address='test://127.0.0.1',
-                            init_local=True,
-                            default=True, timeout=300)
-    with option_context({'show_progress': False}):
+    sess = new_test_session(
+        address="test://127.0.0.1", init_local=True, default=True, timeout=300
+    )
+    with option_context({"show_progress": False}):
         try:
             yield sess
         finally:
             sess.stop_server(isolation=False)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def _new_integrated_test_session(_stop_isolation):
     from .deploy.oscar.tests.session import new_test_session
 
-    sess = new_test_session(address='127.0.0.1',
-                            init_local=True, n_worker=2,
-                            default=True, timeout=300)
-    with option_context({'show_progress': False}):
+    sess = new_test_session(
+        address="127.0.0.1", init_local=True, n_worker=2, default=True, timeout=300
+    )
+    with option_context({"show_progress": False}):
         try:
             yield sess
         finally:
             sess.stop_server(isolation=False)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def _new_gpu_test_session(_stop_isolation):  # pragma: no cover
     from .deploy.oscar.tests.session import new_test_session
     from .resource import cuda_count
 
     cuda_devices = list(range(min(cuda_count(), 2)))
 
-    sess = new_test_session(address='127.0.0.1',
-                            init_local=True, n_worker=1, n_cpu=1, cuda_devices=cuda_devices,
-                            default=True, timeout=300)
-    with option_context({'show_progress': False}):
+    sess = new_test_session(
+        address="127.0.0.1",
+        init_local=True,
+        n_worker=1,
+        n_cpu=1,
+        cuda_devices=cuda_devices,
+        default=True,
+        timeout=300,
+    )
+    with option_context({"show_progress": False}):
         try:
             yield sess
         finally:

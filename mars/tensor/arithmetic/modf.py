@@ -25,7 +25,7 @@ from .core import TensorOutBinOp
 class TensorModf(TensorOutBinOp):
     _op_type_ = OperandDef.MODF
 
-    def __init__(self, casting='same_kind', dtype=None, sparse=False, **kw):
+    def __init__(self, casting="same_kind", dtype=None, sparse=False, **kw):
         super().__init__(_casting=casting, _dtype=dtype, _sparse=sparse, **kw)
 
     @property
@@ -35,10 +35,11 @@ class TensorModf(TensorOutBinOp):
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
-            kw = {'casting': op.casting}
+            kw = {"casting": op.casting}
 
             inputs_iter = iter(inputs)
             input = next(inputs_iter)
@@ -51,10 +52,10 @@ class TensorModf(TensorOutBinOp):
             else:
                 out2 = None
             if op.where is not None:
-                where = kw['where'] = next(inputs_iter)
+                where = kw["where"] = next(inputs_iter)
             else:
                 where = None
-            kw['order'] = op.order
+            kw["order"] = op.order
 
             try:
                 args = [input]

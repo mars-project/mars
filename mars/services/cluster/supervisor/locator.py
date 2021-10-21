@@ -38,8 +38,10 @@ class SupervisorPeerLocatorActor(SupervisorLocatorActor):
     @alru_cache(cache_exceptions=False)
     async def _get_node_info_ref(self):
         from .node_info import NodeInfoCollectorActor
-        return await mo.actor_ref(uid=NodeInfoCollectorActor.default_uid(),
-                                  address=self.address)
+
+        return await mo.actor_ref(
+            uid=NodeInfoCollectorActor.default_uid(), address=self.address
+        )
 
     async def _get_supervisors_from_backend(self, filter_ready: bool = True):
         return await self._backend.get_supervisors(filter_ready=filter_ready)

@@ -23,13 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorNoncentralChisquare(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_df', '_nonc']
+    _input_fields_ = ["_df", "_nonc"]
     _op_type_ = OperandDef.RAND_NONCENTRAL_CHISQURE
 
-    _fields_ = '_df', '_nonc', '_size'
-    _df = AnyField('df')
-    _nonc = AnyField('nonc')
-    _func_name = 'noncentral_chisquare'
+    _fields_ = "_df", "_nonc", "_size"
+    _df = AnyField("df")
+    _nonc = AnyField("nonc")
+    _func_name = "noncentral_chisquare"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -47,7 +47,9 @@ class TensorNoncentralChisquare(TensorDistribution, TensorRandomOperandMixin):
         return self.new_tensor([df, nonc], None, raw_chunk_size=chunk_size)
 
 
-def noncentral_chisquare(random_state, df, nonc, size=None, chunk_size=None, gpu=None, dtype=None):
+def noncentral_chisquare(
+    random_state, df, nonc, size=None, chunk_size=None, gpu=None, dtype=None
+):
     r"""
     Draw samples from a noncentral chi-square distribution.
 
@@ -131,8 +133,11 @@ def noncentral_chisquare(random_state, df, nonc, size=None, chunk_size=None, gpu
     >>> plt.show()
     """
     if dtype is None:
-        dtype = np.random.RandomState().noncentral_chisquare(
-            handle_array(df), handle_array(nonc), size=(0,)).dtype
+        dtype = (
+            np.random.RandomState()
+            .noncentral_chisquare(handle_array(df), handle_array(nonc), size=(0,))
+            .dtype
+        )
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorNoncentralChisquare(size=size, seed=seed, gpu=gpu, dtype=dtype)

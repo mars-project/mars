@@ -18,32 +18,31 @@ import os
 from typing import Optional, List, AsyncGenerator
 
 from ... import NodeRole
-from ...cluster.backends import \
-    AbstractClusterBackend, register_cluster_backend
+from ...cluster.backends import AbstractClusterBackend, register_cluster_backend
 
 logger = logging.getLogger(__name__)
 
 
 @register_cluster_backend
 class TestClusterBackend(AbstractClusterBackend):
-    name = 'test'
+    name = "test"
 
     def __init__(self, file_path: str):
         self._file_path = file_path
         self._modify_date = os.path.getmtime(file_path)
 
     @classmethod
-    async def create(cls, node_role: NodeRole, lookup_address: Optional[str],
-                     pool_address: str) -> "AbstractClusterBackend":
+    async def create(
+        cls, node_role: NodeRole, lookup_address: Optional[str], pool_address: str
+    ) -> "AbstractClusterBackend":
         return TestClusterBackend(lookup_address)
 
     async def get_supervisors(self, filter_ready: bool = True) -> List[str]:
-        with open(self._file_path, 'r') as inp_file:
+        with open(self._file_path, "r") as inp_file:
             result = []
             for line in inp_file.read().strip().splitlines(False):
-                line_parts = line.rsplit(',', 1)
-                if len(line_parts) == 1 \
-                        or (filter_ready and int(line_parts[1])):
+                line_parts = line.rsplit(",", 1)
+                if len(line_parts) == 1 or (filter_ready and int(line_parts[1])):
                     result.append(line_parts[0])
             return result
 
@@ -55,10 +54,9 @@ class TestClusterBackend(AbstractClusterBackend):
                 yield await self.get_supervisors()
             await asyncio.sleep(0.1)
 
-    async def request_worker(self,
-                             worker_cpu: int = None,
-                             worker_mem: int = None,
-                             timeout: int = None) -> str:
+    async def request_worker(
+        self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None
+    ) -> str:
         raise NotImplementedError
 
     async def release_worker(self, address: str):

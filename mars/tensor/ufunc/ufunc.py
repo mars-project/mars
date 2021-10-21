@@ -23,8 +23,9 @@ from .. import arithmetic as arith, reduction
 
 
 class TensorUfuncDef:
-    def __init__(self, method, aggregator=None, accumulator=None,
-                 pre_agg=None, post_agg=None):
+    def __init__(
+        self, method, aggregator=None, accumulator=None, pre_agg=None, post_agg=None
+    ):
         self._method = method
         self._aggregator = aggregator
         self._accumulator = accumulator
@@ -181,7 +182,7 @@ def _check_arg(arg):
 
 
 def _array_ufunc(_, ufunc, method, *inputs, **kwargs):
-    out = kwargs.get('out', tuple())
+    out = kwargs.get("out", tuple())
     for x in inputs + out:
         if not _check_arg(x):
             return NotImplemented

@@ -28,7 +28,7 @@ class SvcActor1(mo.Actor):
 class SvcSessionActor1(mo.Actor):
     @classmethod
     def gen_uid(cls, session_id: str):
-        return f'{session_id}_svc_session_actor1'
+        return f"{session_id}_svc_session_actor1"
 
 
 class TestService1(AbstractService):
@@ -36,21 +36,30 @@ class TestService1(AbstractService):
         super().__init__(*args, **kwargs)
 
     async def start(self):
-        svc_config = self._config['test_svc1']
+        svc_config = self._config["test_svc1"]
         await mo.create_actor(
-            SvcActor1, uid=svc_config['uid'], arg=svc_config['arg1'],
-            address=self._address)
+            SvcActor1,
+            uid=svc_config["uid"],
+            arg=svc_config["arg1"],
+            address=self._address,
+        )
 
     async def stop(self):
-        svc_config = self._config['test_svc1']
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=svc_config['uid'], address=self._address))
+        svc_config = self._config["test_svc1"]
+        await mo.destroy_actor(
+            mo.create_actor_ref(uid=svc_config["uid"], address=self._address)
+        )
 
     async def create_session(self, session_id: str):
         await mo.create_actor(
-            SvcSessionActor1, uid=SvcSessionActor1.gen_uid(session_id),
-            address=self._address)
+            SvcSessionActor1,
+            uid=SvcSessionActor1.gen_uid(session_id),
+            address=self._address,
+        )
 
     async def destroy_session(self, session_id: str):
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=SvcSessionActor1.gen_uid(session_id), address=self._address))
+        await mo.destroy_actor(
+            mo.create_actor_ref(
+                uid=SvcSessionActor1.gen_uid(session_id), address=self._address
+            )
+        )

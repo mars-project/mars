@@ -17,11 +17,11 @@ import pytest
 from ....utils import lazy_import
 from .. import convert_dask_collection, mars_scheduler
 
-dask_installed = lazy_import('dask', globals=globals()) is not None
-mimesis_installed = lazy_import('mimesis', globals=globals()) is not None
+dask_installed = lazy_import("dask", globals=globals()) is not None
+mimesis_installed = lazy_import("mimesis", globals=globals()) is not None
 
 
-@pytest.mark.skipif(not dask_installed, reason='dask not installed')
+@pytest.mark.skipif(not dask_installed, reason="dask not installed")
 def test_delayed(setup_cluster):
     from dask import delayed
     import numpy as np
@@ -46,7 +46,7 @@ def test_delayed(setup_cluster):
     assert dask_res == convert_dask_collection(pi).execute().fetch()
 
 
-@pytest.mark.skipif(not dask_installed, reason='dask not installed')
+@pytest.mark.skipif(not dask_installed, reason="dask not installed")
 def test_partitioned_dataframe(setup_cluster):
     import numpy as np
     import pandas as pd
@@ -62,11 +62,15 @@ def test_partitioned_dataframe(setup_cluster):
     df = df[df["col2"] > col2_mean]
 
     dask_res = df.compute()
-    assert_frame_equal(dask_res, df.compute(scheduler=mars_scheduler), check_index_type=False)
-    assert_frame_equal(dask_res, convert_dask_collection(df).execute().fetch(), check_index_type=False)
+    assert_frame_equal(
+        dask_res, df.compute(scheduler=mars_scheduler), check_index_type=False
+    )
+    assert_frame_equal(
+        dask_res, convert_dask_collection(df).execute().fetch(), check_index_type=False
+    )
 
 
-@pytest.mark.skipif(not dask_installed, reason='dask not installed')
+@pytest.mark.skipif(not dask_installed, reason="dask not installed")
 def test_unpartitioned_dataframe(setup_cluster):
     from dask import dataframe as dd
     from pandas._testing import assert_frame_equal
@@ -74,7 +78,9 @@ def test_unpartitioned_dataframe(setup_cluster):
     from sklearn.datasets import load_boston
 
     boston = load_boston()
-    pd.DataFrame(boston.data, columns=boston['feature_names']).to_csv("./boston_housing_data.csv")
+    pd.DataFrame(boston.data, columns=boston["feature_names"]).to_csv(
+        "./boston_housing_data.csv"
+    )
 
     df = dd.read_csv(r"./boston_housing_data.csv")
     df["CRIM"] = df["CRIM"] / 2
@@ -84,7 +90,7 @@ def test_unpartitioned_dataframe(setup_cluster):
     assert_frame_equal(dask_res, convert_dask_collection(df).execute().fetch())
 
 
-@pytest.mark.skipif(not dask_installed, reason='dask not installed')
+@pytest.mark.skipif(not dask_installed, reason="dask not installed")
 def test_array(setup_cluster):
     import dask.array as da
     from numpy.core.numeric import array_equal
@@ -98,17 +104,17 @@ def test_array(setup_cluster):
     assert array_equal(dask_res, convert_dask_collection(z).execute().fetch())
 
 
-@pytest.mark.skipif(not dask_installed, reason='dask not installed')
-@pytest.mark.skipif(not mimesis_installed, reason='mimesis not installed')
+@pytest.mark.skipif(not dask_installed, reason="dask not installed")
+@pytest.mark.skipif(not mimesis_installed, reason="mimesis not installed")
 def test_bag(setup_cluster):
     import dask
 
     b = dask.datasets.make_people()  # Make records of people
     result = (
         b.filter(lambda record: record["age"] > 30)
-            .map(lambda record: record["occupation"])
-            .frequencies(sort=True)
-            .topk(10, key=1)
+        .map(lambda record: record["occupation"])
+        .frequencies(sort=True)
+        .topk(10, key=1)
     )
 
     dask_res = result.compute()
@@ -116,13 +122,13 @@ def test_bag(setup_cluster):
     assert dask_res == convert_dask_collection(result).execute().fetch()
 
 
-@pytest.mark.skipif(not dask_installed, reason='dask not installed')
+@pytest.mark.skipif(not dask_installed, reason="dask not installed")
 def test_dask_errors():
     with pytest.raises(TypeError):
         convert_dask_collection({"foo": 0, "bar": 1})
 
 
-@pytest.mark.skipif(not dask_installed, reason='dask not installed')
+@pytest.mark.skipif(not dask_installed, reason="dask not installed")
 def test_multiple_objects(setup_cluster):
     import dask
 
@@ -134,4 +140,6 @@ def test_multiple_objects(setup_cluster):
     test_dict = {str(i): dask.delayed(inc)(i) for i in range(10)}
 
     for test_obj in (test_list, test_tuple, test_dict):
-        assert dask.compute(test_obj) == dask.compute(test_obj, scheduler=mars_scheduler)
+        assert dask.compute(test_obj) == dask.compute(
+            test_obj, scheduler=mars_scheduler
+        )

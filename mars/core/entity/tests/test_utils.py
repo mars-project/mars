@@ -19,7 +19,6 @@ from ... import recursive_tile
 
 
 class _TestOperand(TensorOperand, TensorOperandMixin):
-
     @classmethod
     def tile(cls, op: "_TestOperand"):
         data1, data2 = op.inputs
@@ -41,6 +40,5 @@ def test_recursive_tile(setup):
     d1 = mt.random.rand(10, chunk_size=5)
     d2 = mt.random.rand(10, chunk_size=5)
     op = _TestOperand()
-    t = op.new_tensor([d1, d2], dtype=d1.dtype,
-                      shape=(20,), order=d1.order)
+    t = op.new_tensor([d1, d2], dtype=d1.dtype, shape=(20,), order=d1.order)
     t.execute()

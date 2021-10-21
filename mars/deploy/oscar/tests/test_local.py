@@ -22,6 +22,7 @@ import uuid
 import numpy as np
 import pandas as pd
 import pytest
+
 try:
     import vineyard
 except ImportError:
@@ -37,57 +38,63 @@ from ....services.storage import StorageAPI
 from ....tensor.arithmetic.add import TensorAdd
 from ..local import new_cluster
 from ..service import load_config
-from ..session import get_default_async_session, \
-    get_default_session, new_session, execute, fetch, fetch_infos, \
-    stop_server, AsyncSession, _IsolatedWebSession
+from ..session import (
+    get_default_async_session,
+    get_default_session,
+    new_session,
+    execute,
+    fetch,
+    fetch_infos,
+    stop_server,
+    AsyncSession,
+    _IsolatedWebSession,
+)
 from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
     get_output_filenames,
 )
 
 
-CONFIG_TEST_FILE = os.path.join(
-    os.path.dirname(__file__), 'local_test_config.yml')
+CONFIG_TEST_FILE = os.path.join(os.path.dirname(__file__), "local_test_config.yml")
 
 CONFIG_VINEYARD_TEST_FILE = os.path.join(
-    os.path.dirname(__file__), 'local_test_with_vineyard_config.yml')
+    os.path.dirname(__file__), "local_test_with_vineyard_config.yml"
+)
 
 
 CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
-    os.path.dirname(__file__), 'local_test_with_third_parity_modules_config.yml')
+    os.path.dirname(__file__), "local_test_with_third_parity_modules_config.yml"
+)
 
 
-params = ['default']
+params = ["default"]
 if vineyard is not None:
-    params.append('vineyard')
+    params.append("vineyard")
 
 
 @pytest.mark.parametrize(indirect=True)
 @pytest.fixture(params=params)
 async def create_cluster(request):
-    if request.param == 'default':
+    if request.param == "default":
         config = CONFIG_TEST_FILE
-    elif request.param == 'vineyard':
+    elif request.param == "vineyard":
         config = CONFIG_VINEYARD_TEST_FILE
-    start_method = os.environ.get('POOL_START_METHOD', None)
-    client = await new_cluster(subprocess_start_method=start_method,
-                               config=config,
-                               n_worker=2,
-                               n_cpu=2,
-                               use_uvloop=False)
+    start_method = os.environ.get("POOL_START_METHOD", None)
+    client = await new_cluster(
+        subprocess_start_method=start_method,
+        config=config,
+        n_worker=2,
+        n_cpu=2,
+        use_uvloop=False,
+    )
     async with client:
-        if request.param == 'default':
+        if request.param == "default":
             assert client.session.client is not None
         yield client, request.param
 
 
-def _assert_storage_cleaned(session_id: str,
-                            addr: str,
-                            level: StorageLevel):
-
-    async def _assert(session_id: str,
-                      addr: str,
-                      level: StorageLevel):
+def _assert_storage_cleaned(session_id: str, addr: str, level: StorageLevel):
+    async def _assert(session_id: str, addr: str, level: StorageLevel):
         storage_api = await StorageAPI.create(session_id, addr)
         assert len(await storage_api.list(level)) == 0
         info = await storage_api.get_storage_level_info(level)
@@ -95,13 +102,14 @@ def _assert_storage_cleaned(session_id: str,
 
     isolation = new_isolation()
     asyncio.run_coroutine_threadsafe(
-        _assert(session_id, addr, level), isolation.loop).result()
+        _assert(session_id, addr, level), isolation.loop
+    ).result()
 
 
 @pytest.mark.asyncio
 async def test_vineyard_operators(create_cluster):
     param = create_cluster[1]
-    if param != 'vineyard':
+    if param != "vineyard":
         pytest.skip("Vineyard is not enabled")
 
     session = get_default_async_session()
@@ -124,7 +132,7 @@ async def test_vineyard_operators(create_cluster):
     np.testing.assert_allclose(tensor, raw)
 
     # dataframe
-    raw = pd.DataFrame({'a': np.arange(0, 55), 'b': np.arange(55, 110)})
+    raw = pd.DataFrame({"a": np.arange(0, 55), "b": np.arange(55, 110)})
     a = md.DataFrame(raw, chunk_size=15)
     b = a.to_vineyard()  # n.b.: no pre-execute
     info = await session.execute(b)
@@ -172,7 +180,7 @@ async def test_iterative_tiling(create_cluster):
     raw_df = pd.DataFrame(raw, index=np.arange(1, 31))
 
     df = md.DataFrame(raw_df, chunk_size=10)
-    df = df[df[0] < .7]
+    df = df[df[0] < 0.7]
     df2 = df.shift(2)
 
     info = await session.execute(df2)
@@ -180,7 +188,7 @@ async def test_iterative_tiling(create_cluster):
     assert info.result() is None
     result = await session.fetch(df2)
 
-    expected = raw_df[raw_df[0] < .7].shift(2)
+    expected = raw_df[raw_df[0] < 0.7].shift(2)
     pd.testing.assert_frame_equal(result, expected)
 
     # test meta
@@ -191,7 +199,7 @@ async def test_iterative_tiling(create_cluster):
 @pytest.mark.asyncio
 async def test_execute_describe(create_cluster):
     s = np.random.RandomState(0)
-    raw = pd.DataFrame(s.rand(100, 4), columns=list('abcd'))
+    raw = pd.DataFrame(s.rand(100, 4), columns=list("abcd"))
     df = md.DataFrame(raw, chunk_size=30)
 
     session = get_default_async_session()
@@ -222,20 +230,20 @@ async def test_fetch_infos(create_cluster):
     df.execute()
     fetched_infos = df.fetch_infos()
 
-    assert 'object_id' in fetched_infos
-    assert 'level' in fetched_infos
-    assert 'memory_size' in fetched_infos
-    assert 'store_size' in fetched_infos
-    assert 'band' in fetched_infos
+    assert "object_id" in fetched_infos
+    assert "level" in fetched_infos
+    assert "memory_size" in fetched_infos
+    assert "store_size" in fetched_infos
+    assert "band" in fetched_infos
 
     fetch_infos((df, df), fields=None)
     results_infos = mr.ExecutableTuple([df, df]).execute()._fetch_infos()
     assert len(results_infos) == 2
-    assert 'object_id' in results_infos[0]
-    assert 'level' in results_infos[0]
-    assert 'memory_size' in results_infos[0]
-    assert 'store_size' in results_infos[0]
-    assert 'band' in results_infos[0]
+    assert "object_id" in results_infos[0]
+    assert "level" in results_infos[0]
+    assert "memory_size" in results_infos[0]
+    assert "store_size" in results_infos[0]
+    assert "band" in results_infos[0]
 
 
 async def _run_web_session_test(web_address):
@@ -257,7 +265,7 @@ async def _run_web_session_test(web_address):
 
     # Test spawn a local function by the web session.
     def _my_func():
-        print('output from function')
+        print("output from function")
 
     r = mr.spawn(_my_func)
     info = await session.execute(r)
@@ -265,13 +273,13 @@ async def _run_web_session_test(web_address):
     assert info.result() is None
     assert info.exception() is None
     assert info.progress() == 1
-    assert 'output from function' in str(r.fetch_log(session=session))
-    assert 'output from function' in str(r.fetch_log(session=session,
-                                                     offsets='0k',
-                                                     sizes=[1000]))
-    assert 'output from function' in str(r.fetch_log(session=session,
-                                                     offsets={r.op.key: '0k'},
-                                                     sizes=[1000]))
+    assert "output from function" in str(r.fetch_log(session=session))
+    assert "output from function" in str(
+        r.fetch_log(session=session, offsets="0k", sizes=[1000])
+    )
+    assert "output from function" in str(
+        r.fetch_log(session=session, offsets={r.op.key: "0k"}, sizes=[1000])
+    )
 
     df = md.DataFrame([1, 2, 3])
     # Test apply a lambda by the web session.
@@ -329,9 +337,11 @@ def test_sync_execute():
         assert abs(session.fetch(d) - raw.sum()) < 0.001
 
         with tempfile.TemporaryDirectory() as tempdir:
-            file_path = os.path.join(tempdir, 'test.csv')
-            pdf = pd.DataFrame(np.random.RandomState(0).rand(100, 10),
-                              columns=[f'col{i}' for i in range(10)])
+            file_path = os.path.join(tempdir, "test.csv")
+            pdf = pd.DataFrame(
+                np.random.RandomState(0).rand(100, 10),
+                columns=[f"col{i}" for i in range(10)],
+            )
             pdf.to_csv(file_path, index=False)
 
             df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
@@ -345,8 +355,9 @@ def test_sync_execute():
             pd.testing.assert_frame_equal(result, expected)
 
     for worker_pool in session._session.client._cluster._worker_pools:
-        _assert_storage_cleaned(session.session_id, worker_pool.external_address,
-                                StorageLevel.MEMORY)
+        _assert_storage_cleaned(
+            session.session_id, worker_pool.external_address, StorageLevel.MEMORY
+        )
 
     session.stop_server()
     assert get_default_async_session() is None
@@ -373,7 +384,7 @@ def setup_session():
     assert session.get_web_endpoint() is not None
 
     with session:
-        with option_context({'show_progress': False}):
+        with option_context({"show_progress": False}):
             yield session
 
     session.stop_server()
@@ -406,14 +417,11 @@ def test_decref(setup_session):
     assert len(ref_counts) == 0
 
     rs = np.random.RandomState(0)
-    pdf = pd.DataFrame({
-        'a': rs.randint(10, size=10),
-        'b': rs.rand(10)
-    })
+    pdf = pd.DataFrame({"a": rs.randint(10, size=10), "b": rs.rand(10)})
     df = md.DataFrame(pdf, chunk_size=5)
-    df2 = df.groupby('a').agg('mean', method='shuffle')
+    df2 = df.groupby("a").agg("mean", method="shuffle")
     result = df2.execute().fetch()
-    expected = pdf.groupby('a').agg('mean')
+    expected = pdf.groupby("a").agg("mean")
     pd.testing.assert_frame_equal(result, expected)
 
     del df, df2
@@ -461,8 +469,7 @@ def _cancel_when_tile(session, cancelled):
     assert len(ref_counts) == 0
 
 
-@pytest.mark.parametrize(
-    'test_func', [_cancel_when_execute, _cancel_when_tile])
+@pytest.mark.parametrize("test_func", [_cancel_when_execute, _cancel_when_tile])
 def test_cancel(setup_session, test_func):
     session = setup_session
 
@@ -471,10 +478,11 @@ def test_cancel(setup_session, test_func):
 
     isolation = new_isolation()
     cancelled = asyncio.run_coroutine_threadsafe(
-        _new_cancel_event(), isolation.loop).result()
+        _new_cancel_event(), isolation.loop
+    ).result()
 
     def cancel():
-        time.sleep(.5)
+        time.sleep(0.5)
         cancelled.set()
 
     t = threading.Thread(target=cancel)
@@ -494,19 +502,19 @@ def test_cancel(setup_session, test_func):
 def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: F811
     config = load_config()
 
-    config['third_party_modules'] = set()
-    with pytest.raises(TypeError, match='set'):
+    config["third_party_modules"] = set()
+    with pytest.raises(TypeError, match="set"):
         new_session(n_cpu=2, web=False, config=config)
 
-    config['third_party_modules'] = {'supervisor': ['not_exists_for_supervisor']}
-    with pytest.raises(ModuleNotFoundError, match='not_exists_for_supervisor'):
+    config["third_party_modules"] = {"supervisor": ["not_exists_for_supervisor"]}
+    with pytest.raises(ModuleNotFoundError, match="not_exists_for_supervisor"):
         new_session(n_cpu=2, web=False, config=config)
 
-    config['third_party_modules'] = {'worker': ['not_exists_for_worker']}
-    with pytest.raises(ModuleNotFoundError, match='not_exists_for_worker'):
+    config["third_party_modules"] = {"worker": ["not_exists_for_worker"]}
+    with pytest.raises(ModuleNotFoundError, match="not_exists_for_worker"):
         new_session(n_cpu=2, web=False, config=config)
 
-    config['third_party_modules'] = ['mars.deploy.oscar.tests.modules.replace_op']
+    config["third_party_modules"] = ["mars.deploy.oscar.tests.modules.replace_op"]
     session = new_session(n_cpu=2, web=False, config=config)
     # web not started
     assert session._session.client.web_address is None
@@ -523,8 +531,9 @@ def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: 
     session.stop_server()
     assert get_default_session() is None
 
-    session = new_session(n_cpu=2, web=False,
-                          config=CONFIG_THIRD_PARTY_MODULES_TEST_FILE)
+    session = new_session(
+        n_cpu=2, web=False, config=CONFIG_THIRD_PARTY_MODULES_TEST_FILE
+    )
     # web not started
     assert session._session.client.web_address is None
 

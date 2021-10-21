@@ -23,13 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorLognormal(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_mean', '_sigma']
+    _input_fields_ = ["_mean", "_sigma"]
     _op_type_ = OperandDef.RAND_LOGNORMAL
 
-    _fields_ = '_mean', '_sigma', '_size'
-    _mean = AnyField('mean')
-    _sigma = AnyField('sigma')
-    _func_name = 'lognormal'
+    _fields_ = "_mean", "_sigma", "_size"
+    _mean = AnyField("mean")
+    _sigma = AnyField("sigma")
+    _func_name = "lognormal"
 
     @property
     def mean(self):
@@ -47,7 +47,9 @@ class TensorLognormal(TensorDistribution, TensorRandomOperandMixin):
         return self.new_tensor([mean, sigma], None, raw_chunk_size=chunk_size)
 
 
-def lognormal(random_state, mean=0.0, sigma=1.0, size=None, chunk_size=None, gpu=None, dtype=None):
+def lognormal(
+    random_state, mean=0.0, sigma=1.0, size=None, chunk_size=None, gpu=None, dtype=None
+):
     r"""
     Draw samples from a log-normal distribution.
 
@@ -158,8 +160,11 @@ def lognormal(random_state, mean=0.0, sigma=1.0, size=None, chunk_size=None, gpu
     >>> plt.show()
     """
     if dtype is None:
-        dtype = np.random.RandomState().lognormal(
-            handle_array(mean), handle_array(sigma), size=(0,)).dtype
+        dtype = (
+            np.random.RandomState()
+            .lognormal(handle_array(mean), handle_array(sigma), size=(0,))
+            .dtype
+        )
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorLognormal(seed=seed, size=size, gpu=gpu, dtype=dtype)

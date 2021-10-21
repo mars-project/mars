@@ -19,11 +19,15 @@ from .core import DataFrameCumReductionOperand, DataFrameCumReductionMixin
 
 class DataFrameCummax(DataFrameCumReductionOperand, DataFrameCumReductionMixin):
     _op_type_ = OperandDef.CUMMAX
-    _func_name = 'cummax'
+    _func_name = "cummax"
 
 
 def cummax(df, axis=None, skipna=True):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameCummax(axis=axis, skipna=skipna, output_types=df.op.output_types,
-                         use_inf_as_na=use_inf_as_na)
+    op = DataFrameCummax(
+        axis=axis,
+        skipna=skipna,
+        output_types=df.op.output_types,
+        use_inf_as_na=use_inf_as_na,
+    )
     return op(df)

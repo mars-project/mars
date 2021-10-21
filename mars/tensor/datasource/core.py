@@ -35,7 +35,7 @@ class TensorDataSource(TensorOperand, TensorOperandMixin):
     def to_chunk_op(self, *args):
         chunk_shape = args[0]
         chunk_op = self.copy().reset_key()
-        chunk_op.extra_params = {'size': chunk_shape}  # to make op key different
+        chunk_op.extra_params = {"size": chunk_shape}  # to make op key different
         return chunk_op
 
     @classmethod
@@ -47,16 +47,24 @@ class TensorDataSource(TensorOperand, TensorOperandMixin):
         chunk_size_idxes = (range(len(size)) for size in chunk_size)
 
         out_chunks = []
-        for chunk_shape, chunk_idx in zip(itertools.product(*chunk_size),
-                                          itertools.product(*chunk_size_idxes)):
+        for chunk_shape, chunk_idx in zip(
+            itertools.product(*chunk_size), itertools.product(*chunk_size_idxes)
+        ):
             chunk_op = op.to_chunk_op(chunk_shape, chunk_idx, chunk_size)
-            out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx,
-                                           order=tensor.order)
+            out_chunk = chunk_op.new_chunk(
+                None, shape=chunk_shape, index=chunk_idx, order=tensor.order
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape, chunks=out_chunks, nsplits=chunk_size,
-                                  order=tensor.order, **tensor.extra_params)
+        return new_op.new_tensors(
+            op.inputs,
+            tensor.shape,
+            chunks=out_chunks,
+            nsplits=chunk_size,
+            order=tensor.order,
+            **tensor.extra_params
+        )
 
 
 class TensorNoInput(TensorDataSource):
@@ -70,13 +78,17 @@ class TensorNoInput(TensorDataSource):
             raise ValueError("Tensor data source has no inputs")
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        shape = kw.get('shape', None)
-        self.extra_params['shape'] = shape  # set shape to make the operand key different
+        shape = kw.get("shape", None)
+        self.extra_params[
+            "shape"
+        ] = shape  # set shape to make the operand key different
         return super()._new_chunks(inputs, kws=kws, **kw)
 
     def _new_tileables(self, inputs, kws=None, **kw):
-        shape = kw.get('shape', None)
-        self.extra_params['shape'] = shape  # set shape to make the operand key different
+        shape = kw.get("shape", None)
+        self.extra_params[
+            "shape"
+        ] = shape  # set shape to make the operand key different
         return super()._new_tileables(inputs, kws=kws, **kw)
 
     def __call__(self, shape, chunk_size=None, order=None):
@@ -109,13 +121,21 @@ class TensorHasInput(TensorDataSource):
 
         out_chunks = []
         for c in op.input.chunks:
-            out_chunk = op.copy().reset_key().new_chunk([c], shape=c.shape,
-                                                        index=c.index, order=output.order)
+            out_chunk = (
+                op.copy()
+                .reset_key()
+                .new_chunk([c], shape=c.shape, index=c.index, order=output.order)
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, output.shape, order=output.order,
-                                  chunks=out_chunks, nsplits=op.input.nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            output.shape,
+            order=output.order,
+            chunks=out_chunks,
+            nsplits=op.input.nsplits,
+        )
 
     def __call__(self, a, order=None):
         order = a.order if order is None else order
@@ -132,18 +152,19 @@ class TensorLike(TensorHasInput):
 
         # FIXME: remove when cupy supports other dtypes
         if self.gpu and self.dtype not in (np.float32, np.float64):
-            raise NotImplementedError('Sparse tensor on GPU only supports float32 and float64')
+            raise NotImplementedError(
+                "Sparse tensor on GPU only supports float32 and float64"
+            )
 
 
 class TensorFromHDF5Like(TensorNoInput):
-    _filename = StringField('filename')
-    _group = StringField('group')
-    _dataset = StringField('dataset')
-    _axis_offsets = TupleField('axis_offsets', FieldTypes.int64)
+    _filename = StringField("filename")
+    _group = StringField("group")
+    _dataset = StringField("dataset")
+    _axis_offsets = TupleField("axis_offsets", FieldTypes.int64)
 
     def __init__(self, filename=None, group=None, dataset=None, **kw):
-        super().__init__(_filename=filename, _group=group,
-                         _dataset=dataset, **kw)
+        super().__init__(_filename=filename, _group=group, _dataset=dataset, **kw)
 
     @property
     def filename(self):
@@ -181,4 +202,4 @@ class TensorFromHDF5Like(TensorNoInput):
         if group:
             paths.append(group)
         paths.append(dataset)
-        return '/'.join(paths)
+        return "/".join(paths)

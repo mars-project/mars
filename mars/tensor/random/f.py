@@ -23,13 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorF(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_dfnum', '_dfden']
+    _input_fields_ = ["_dfnum", "_dfden"]
     _op_type_ = OperandDef.RAND_F
 
-    _fields_ = '_dfnum', '_dfden', '_size'
-    _dfnum = AnyField('dfnum')
-    _dfden = AnyField('dfden')
-    _func_name = 'f'
+    _fields_ = "_dfnum", "_dfden", "_size"
+    _dfnum = AnyField("dfnum")
+    _dfden = AnyField("dfden")
+    _func_name = "f"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -136,8 +136,11 @@ def f(random_state, dfnum, dfden, size=None, chunk_size=None, gpu=None, dtype=No
     level.
     """
     if dtype is None:
-        dtype = np.random.RandomState().f(
-            handle_array(dfnum), handle_array(dfden), size=(0,)).dtype
+        dtype = (
+            np.random.RandomState()
+            .f(handle_array(dfnum), handle_array(dfden), size=(0,))
+            .dtype
+        )
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorF(seed=seed, size=size, gpu=gpu, dtype=dtype)

@@ -35,7 +35,7 @@ class TensorTri(TensorHasInput):
         return self.new_tensor([m], shape=m.shape, order=order)
 
     def to_chunk_op(self, *args):
-        k, = args
+        (k,) = args
         op = self.copy().reset_key()
         op._k = k
         return op
@@ -64,44 +64,47 @@ class TensorTri(TensorHasInput):
             ru_fx = fx(*ru_pos)
 
             chunk_shape = tuple(nsplits[i][idx] for i, idx in enumerate(out_idx))
-            if (is_triu and ld_fx > 0 and ru_fx > 0) or (not is_triu and ld_fx < 0 and ru_fx < 0):
+            if (is_triu and ld_fx > 0 and ru_fx > 0) or (
+                not is_triu and ld_fx < 0 and ru_fx < 0
+            ):
                 # does not cross, fill with zeros
                 chunk_op = TensorZeros(dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
-                out_chunk = chunk_op.new_chunk(None, shape=chunk_shape,
-                                               index=out_idx, order=tensor.order)
+                out_chunk = chunk_op.new_chunk(
+                    None, shape=chunk_shape, index=out_idx, order=tensor.order
+                )
             else:
                 lu_pos = ru_pos[0], ld_pos[1]
                 chunk_k = fx(*lu_pos)
 
                 input_chunk = m.cix[out_idx]
                 chunk_op = op.to_chunk_op(chunk_k)
-                out_chunk = chunk_op.new_chunk([input_chunk], shape=chunk_shape,
-                                               index=out_idx, order=tensor.order)
+                out_chunk = chunk_op.new_chunk(
+                    [input_chunk], shape=chunk_shape, index=out_idx, order=tensor.order
+                )
 
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         params = tensor.params
-        params['chunks'] = out_chunks
-        params['nsplits'] = m.nsplits
+        params["chunks"] = out_chunks
+        params["nsplits"] = m.nsplits
         return new_op.new_tensors(op.inputs, kws=[params])
 
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        f = 'triu' if isinstance(op, TensorTriu) else 'tril'
+        f = "triu" if isinstance(op, TensorTriu) else "tril"
         if op.sparse:
             ctx[chunk.key] = getattr(sparse, f)(ctx[op.inputs[0].key], k=op.k)
         else:
-            ctx[chunk.key] = create_array(op)(
-                f, ctx[op.inputs[0].key], op.k)
+            ctx[chunk.key] = create_array(op)(f, ctx[op.inputs[0].key], op.k)
 
 
 class TensorTriu(TensorTri):
     _op_type_ = OperandDef.TENSOR_TRIU
 
-    _input = KeyField('input')
-    _k = Int32Field('k')
+    _input = KeyField("input")
+    _k = Int32Field("k")
 
     def __init__(self, k=None, **kw):
         super().__init__(_k=k, **kw)
@@ -144,8 +147,8 @@ def triu(m, k=0, gpu=None):
 class TensorTril(TensorTri):
     _op_type_ = OperandDef.TENSOR_TRIL
 
-    _input = KeyField('input')
-    _k = Int32Field('k')
+    _input = KeyField("input")
+    _k = Int32Field("k")
 
     def __init__(self, k=None, **kw):
         super().__init__(_k=k, **kw)

@@ -14,12 +14,22 @@
 
 # import aio to ensure patch enabled for Python 3.6
 from ..lib import aio
+
 del aio
 
 from . import debug
-from .api import actor_ref, create_actor, has_actor, destroy_actor, \
-    kill_actor, Actor, StatelessActor, create_actor_pool, setup_cluster, \
-    wait_actor_pool_recovered
+from .api import (
+    actor_ref,
+    create_actor,
+    has_actor,
+    destroy_actor,
+    kill_actor,
+    Actor,
+    StatelessActor,
+    create_actor_pool,
+    setup_cluster,
+    wait_actor_pool_recovered,
+)
 from .backends import allocate_strategy
 from .backends.pool import MainActorPoolType
 from .batch import extensible
@@ -30,4 +40,5 @@ from .utils import create_actor_ref
 
 # make sure methods are registered
 from .backends import mars, ray, test
+
 del mars, ray, test

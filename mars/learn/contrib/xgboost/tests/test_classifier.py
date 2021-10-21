@@ -18,6 +18,7 @@ import tempfile
 import numpy as np
 import pandas as pd
 import pytest
+
 try:
     import xgboost
 except ImportError:
@@ -36,7 +37,7 @@ y_raw = rs.rand(n_rows, chunk_size=chunk_size)
 X_df_raw = md.DataFrame(X_raw)
 
 
-@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+@pytest.mark.skipif(xgboost is None, reason="XGBoost not installed")
 def test_local_classifier(setup):
     y = (y_raw * 10).astype(mt.int32)
     classifier = XGBClassifier(verbosity=1, n_estimators=2)
@@ -51,12 +52,12 @@ def test_local_classifier(setup):
     assert isinstance(prediction, mt.Tensor)
     assert isinstance(history, dict)
 
-    assert list(history)[0] == 'validation_0'
+    assert list(history)[0] == "validation_0"
     # default metrics may differ, see https://github.com/dmlc/xgboost/pull/6183
-    eval_metric = list(history['validation_0'])[0]
-    assert eval_metric in ('merror', 'mlogloss')
-    assert len(history['validation_0']) == 1
-    assert len(history['validation_0'][eval_metric]) == 2
+    eval_metric = list(history["validation_0"])[0]
+    assert eval_metric in ("merror", "mlogloss")
+    assert len(history["validation_0"]) == 1
+    assert len(history["validation_0"][eval_metric]) == 2
 
     prob = classifier.predict_proba(X_raw)
     assert prob.shape == X_raw.shape
@@ -71,8 +72,11 @@ def test_local_classifier(setup):
     assert prediction.shape[0] == len(X_raw)
 
     # test weight
-    weights = [mt.random.rand(X_raw.shape[0]), md.Series(mt.random.rand(X_raw.shape[0])),
-               md.DataFrame(mt.random.rand(X_raw.shape[0]))]
+    weights = [
+        mt.random.rand(X_raw.shape[0]),
+        md.Series(mt.random.rand(X_raw.shape[0])),
+        md.DataFrame(mt.random.rand(X_raw.shape[0])),
+    ]
     y_df = md.DataFrame(y)
     for weight in weights:
         classifier = XGBClassifier(verbosity=1, n_estimators=2)
@@ -85,7 +89,8 @@ def test_local_classifier(setup):
     # should raise error if weight.ndim > 1
     with pytest.raises(ValueError):
         XGBClassifier(verbosity=1, n_estimators=2).fit(
-            X_raw, y_df, sample_weight=mt.random.rand(1, 1))
+            X_raw, y_df, sample_weight=mt.random.rand(1, 1)
+        )
 
     # test binary classifier
     new_y = (y > 0.5).astype(mt.int32)
@@ -121,32 +126,31 @@ def test_local_classifier(setup):
         classifier.predict(X_raw, wrong_param=1)
 
 
-@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+@pytest.mark.skipif(xgboost is None, reason="XGBoost not installed")
 def test_local_classifier_from_to_parquet(setup):
     n_rows = 1000
     n_columns = 10
     rs = np.random.RandomState(0)
     X = rs.rand(n_rows, n_columns)
     y = rs.rand(n_rows)
-    df = pd.DataFrame(X, columns=[f'c{i}' for i in range(n_columns)])
-    df['id'] = [f'i{i}' for i in range(n_rows)]
+    df = pd.DataFrame(X, columns=[f"c{i}" for i in range(n_columns)])
+    df["id"] = [f"i{i}" for i in range(n_rows)]
 
-    booster = xgboost.train({}, xgboost.DMatrix(X, y),
-                            num_boost_round=2)
+    booster = xgboost.train({}, xgboost.DMatrix(X, y), num_boost_round=2)
 
     with tempfile.TemporaryDirectory() as d:
-        m_name = os.path.join(d, 'c.model')
-        result_dir = os.path.join(d, 'result')
+        m_name = os.path.join(d, "c.model")
+        result_dir = os.path.join(d, "result")
         os.mkdir(result_dir)
-        data_dir = os.path.join(d, 'data')
+        data_dir = os.path.join(d, "data")
         os.mkdir(data_dir)
 
         booster.save_model(m_name)
 
-        df.iloc[:500].to_parquet(os.path.join(d, 'data', 'data1.parquet'))
-        df.iloc[500:].to_parquet(os.path.join(d, 'data', 'data2.parquet'))
+        df.iloc[:500].to_parquet(os.path.join(d, "data", "data1.parquet"))
+        df.iloc[500:].to_parquet(os.path.join(d, "data", "data2.parquet"))
 
-        df = md.read_parquet(data_dir).set_index('id')
+        df = md.read_parquet(data_dir).set_index("id")
         model = XGBClassifier()
         model.load_model(m_name)
         result = model.predict(df, run=False)

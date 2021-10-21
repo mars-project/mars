@@ -23,15 +23,27 @@ from pandas.core.dtypes.cast import find_common_type
 from ...core import Tileable, Chunk, OutputType, recursive_tile
 from ...core.operand import OperandStage
 from ...tensor.core import TENSOR_TYPE
-from ...tensor.indexing.index_lib import IndexHandlerContext, IndexHandler, \
-    IndexInfo, IndexType, ChunkIndexInfo as ChunkIndexInfoBase, \
-    SliceIndexHandler as SliceIndexHandlerBase, \
-    NDArrayBoolIndexHandler as NDArrayBoolIndexHandlerBase, \
-    TensorBoolIndexHandler as TensorBoolIndexHandlerBase, \
-    IntegralIndexHandler, IndexesHandler
-from ...tensor.utils import split_indexes_into_chunks, calc_pos, \
-    filter_inputs, slice_split, calc_sliced_size, to_numpy, \
-    normalize_chunk_sizes
+from ...tensor.indexing.index_lib import (
+    IndexHandlerContext,
+    IndexHandler,
+    IndexInfo,
+    IndexType,
+    ChunkIndexInfo as ChunkIndexInfoBase,
+    SliceIndexHandler as SliceIndexHandlerBase,
+    NDArrayBoolIndexHandler as NDArrayBoolIndexHandlerBase,
+    TensorBoolIndexHandler as TensorBoolIndexHandlerBase,
+    IntegralIndexHandler,
+    IndexesHandler,
+)
+from ...tensor.utils import (
+    split_indexes_into_chunks,
+    calc_pos,
+    filter_inputs,
+    slice_split,
+    calc_sliced_size,
+    to_numpy,
+    normalize_chunk_sizes,
+)
 from ...utils import classproperty, has_unknown_shape
 from ..core import SERIES_CHUNK_TYPE, SERIES_TYPE, IndexValue
 from ..utils import parse_index
@@ -39,8 +51,9 @@ from .utils import convert_labels_into_positions
 
 
 ChunkIndexAxisInfo = namedtuple(
-    'chunk_index_axis_info',
-    ['output_axis_index', 'processed_index', 'output_shape', 'index_value', 'dtypes'])
+    "chunk_index_axis_info",
+    ["output_axis_index", "processed_index", "output_shape", "index_value", "dtypes"],
+)
 
 
 class ChunkIndexInfo(ChunkIndexInfoBase):
@@ -51,21 +64,22 @@ class ChunkIndexInfo(ChunkIndexInfoBase):
 
     def set(self, info: ChunkIndexAxisInfo):
         super().set(info)
-        if getattr(info, 'index_value', None) is not None:
+        if getattr(info, "index_value", None) is not None:
             self.index_values.append(info.index_value)
-        if getattr(info, 'dtypes', None) is not None:
+        if getattr(info, "dtypes", None) is not None:
             self.dtypes = info.dtypes
 
 
 class FancyIndexInfo(IndexInfo):
-    def __init__(self,
-                 index_type: IndexType,
-                 input_axis: int,
-                 output_axis: int,
-                 raw_index,
-                 handler):
-        super().__init__(index_type, input_axis, output_axis,
-                         raw_index, handler)
+    def __init__(
+        self,
+        index_type: IndexType,
+        input_axis: int,
+        output_axis: int,
+        raw_index,
+        handler,
+    ):
+        super().__init__(index_type, input_axis, output_axis, raw_index, handler)
 
         # extra info for DataFrame fancy index
         # split info
@@ -76,14 +90,15 @@ class FancyIndexInfo(IndexInfo):
 
 
 class LabelFancyIndexInfo(IndexInfo):
-    def __init__(self,
-                 index_type: IndexType,
-                 input_axis: int,
-                 output_axis: int,
-                 raw_index,
-                 handler):
-        super().__init__(index_type, input_axis, output_axis,
-                         raw_index, handler)
+    def __init__(
+        self,
+        index_type: IndexType,
+        input_axis: int,
+        output_axis: int,
+        raw_index,
+        handler,
+    ):
+        super().__init__(index_type, input_axis, output_axis, raw_index, handler)
 
         # store chunk_index -> labels
         self.chunk_index_to_labels = None
@@ -95,17 +110,17 @@ class DataFrameIndexHandlerContext(IndexHandlerContext):
         for chunk in tileable.chunks:
             self.chunk_index_to_info[chunk.index] = ChunkIndexInfo()
 
-    def concat_chunks(self,
-                      chunks: List[Chunk],
-                      axis: Union[Tuple[int], int]) -> Chunk:
+    def concat_chunks(self, chunks: List[Chunk], axis: Union[Tuple[int], int]) -> Chunk:
         dataframe_op_type = type(chunks[0].op)
         # create tileable from chunks
-        concat_tileable = \
-            dataframe_op_type.create_tileable_from_chunks(chunks, inputs=chunks)
+        concat_tileable = dataframe_op_type.create_tileable_from_chunks(
+            chunks, inputs=chunks
+        )
         # concat chunks
         chunk = dataframe_op_type.concat_tileable_chunks(concat_tileable).chunks[0]
-        if chunk.ndim > 1 and \
-                ((isinstance(axis, tuple) and len(axis) == 1) or isinstance(axis, int)):
+        if chunk.ndim > 1 and (
+            (isinstance(axis, tuple) and len(axis) == 1) or isinstance(axis, int)
+        ):
             # adjust index and axis
             axis = axis[0] if isinstance(axis, tuple) else axis
             chunk.op._axis = axis
@@ -114,9 +129,9 @@ class DataFrameIndexHandlerContext(IndexHandlerContext):
             chunk._index = tuple(chunk_index)
         return chunk
 
-    def create_chunk(self,
-                     chunk_index: Tuple[int],
-                     chunk_index_info: ChunkIndexInfo) -> Chunk:
+    def create_chunk(
+        self, chunk_index: Tuple[int], chunk_index_info: ChunkIndexInfo
+    ) -> Chunk:
         chunk_op = self.op.copy().reset_key()
         chunk_op._indexes = indexes = chunk_index_info.indexes
         chunk_op.stage = OperandStage.map
@@ -125,61 +140,67 @@ class DataFrameIndexHandlerContext(IndexHandlerContext):
         chunk_inputs = filter_inputs([chunk_input] + indexes)
 
         kw = {}
-        kw['shape'] = shape = tuple(chunk_index_info.output_chunk_shape)
-        kw['index'] = tuple(chunk_index_info.output_chunk_index)
+        kw["shape"] = shape = tuple(chunk_index_info.output_chunk_shape)
+        kw["index"] = tuple(chunk_index_info.output_chunk_index)
         index_values = chunk_index_info.index_values
         if len(shape) == 0:
             # scalar
             chunk_op.output_types = [OutputType.scalar]
-            kw['dtype'] = self.op.outputs[0].dtype
+            kw["dtype"] = self.op.outputs[0].dtype
         elif len(shape) == 1:
             # Series or Index
-            chunk_op.output_types = [OutputType.index] if chunk_op._op_module_ == 'index' \
+            chunk_op.output_types = (
+                [OutputType.index]
+                if chunk_op._op_module_ == "index"
                 else [OutputType.series]
-            kw['index_value'] = index_values[0]
-            kw['dtype'] = self.op.outputs[0].dtype
-            kw['name'] = getattr(self.op.outputs[0], 'name', None)
+            )
+            kw["index_value"] = index_values[0]
+            kw["dtype"] = self.op.outputs[0].dtype
+            kw["name"] = getattr(self.op.outputs[0], "name", None)
         else:
             # dataframe
             chunk_op.output_types = [OutputType.dataframe]
-            kw['index_value'] = index_values[0]
-            kw['columns_value'] = index_values[1]
-            kw['dtypes'] = chunk_index_info.dtypes
+            kw["index_value"] = index_values[0]
+            kw["columns_value"] = index_values[1]
+            kw["dtypes"] = chunk_index_info.dtypes
 
         return chunk_op.new_chunk(chunk_inputs, kws=[kw])
 
 
 class SliceIndexHandler(SliceIndexHandlerBase):
     @classmethod
-    def set_chunk_index_info(cls,
-                             context: IndexHandlerContext,
-                             index_info: IndexInfo,
-                             chunk_index: Tuple[int],
-                             chunk_index_info: ChunkIndexInfo,
-                             output_axis_index: int,
-                             index,
-                             output_shape: int):
+    def set_chunk_index_info(
+        cls,
+        context: IndexHandlerContext,
+        index_info: IndexInfo,
+        chunk_index: Tuple[int],
+        chunk_index_info: ChunkIndexInfo,
+        output_axis_index: int,
+        index,
+        output_shape: int,
+    ):
         tileable = context.tileable
         chunk_input = tileable.cix[chunk_index]
         slc = index
 
         kw = {
-            'output_axis_index': output_axis_index,
-            'processed_index': slc,
-            'output_shape': output_shape,
-            'dtypes': None
+            "output_axis_index": output_axis_index,
+            "processed_index": slc,
+            "output_shape": output_shape,
+            "dtypes": None,
         }
         if index_info.input_axis == 0:
             index = chunk_input.index_value.to_pandas()
-            kw['index_value'] = parse_index(index[slc], chunk_input, slc,
-                                            store_data=False)
+            kw["index_value"] = parse_index(
+                index[slc], chunk_input, slc, store_data=False
+            )
         else:
             assert index_info.input_axis == 1
             index = chunk_input.columns_value.to_pandas()
             # do not store index value if output axis is 0
             store_data = True if index_info.output_axis == 1 else False
-            kw['index_value'] = parse_index(index[slc], store_data=store_data)
-            kw['dtypes'] = chunk_input.dtypes[slc]
+            kw["index_value"] = parse_index(index[slc], store_data=store_data)
+            kw["dtypes"] = chunk_input.dtypes[slc]
 
         chunk_index_info.set(ChunkIndexAxisInfo(**kw))
 
@@ -188,14 +209,14 @@ class LabelSliceIndexHandler(IndexHandler):
     def accept(cls, raw_index):
         return isinstance(raw_index, slice)
 
-    def parse(self,
-              raw_index,
-              context: IndexHandlerContext) -> IndexInfo:
-        info = IndexInfo(IndexType.label_slice,
-                         context.input_axis,
-                         context.output_axis,
-                         raw_index,
-                         self)
+    def parse(self, raw_index, context: IndexHandlerContext) -> IndexInfo:
+        info = IndexInfo(
+            IndexType.label_slice,
+            context.input_axis,
+            context.output_axis,
+            raw_index,
+            self,
+        )
         context.input_axis += 1
         context.output_axis += 1
         context.append(info)
@@ -203,12 +224,13 @@ class LabelSliceIndexHandler(IndexHandler):
 
     @staticmethod
     def _slice_all(slc):
-        return slc.start is None and slc.stop is None and \
-               (slc.step is None or slc.step == 1)
+        return (
+            slc.start is None
+            and slc.stop is None
+            and (slc.step is None or slc.step == 1)
+        )
 
-    def preprocess(self,
-                   index_info: IndexInfo,
-                   context: IndexHandlerContext) -> None:
+    def preprocess(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         tileable = context.tileable
         input_axis = index_info.input_axis
         if isinstance(tileable, SERIES_TYPE):
@@ -229,70 +251,80 @@ class LabelSliceIndexHandler(IndexHandler):
             if any(np.isnan(ns) for ns in tileable.nsplits[input_axis]):
                 yield []
 
-    def set_chunk_index_info(cls,
-                             context: IndexHandlerContext,
-                             index_info: IndexInfo,
-                             chunk_index: Tuple[int],
-                             chunk_index_info: ChunkIndexInfo,
-                             output_axis_index: int,
-                             index,
-                             output_shape: int):
+    def set_chunk_index_info(
+        cls,
+        context: IndexHandlerContext,
+        index_info: IndexInfo,
+        chunk_index: Tuple[int],
+        chunk_index_info: ChunkIndexInfo,
+        output_axis_index: int,
+        index,
+        output_shape: int,
+    ):
         tileable = context.tileable
         chunk_input = tileable.cix[chunk_index]
         slc = index
 
         kw = {
-            'output_axis_index': output_axis_index,
-            'processed_index': slc,
-            'output_shape': output_shape,
-            'dtypes': None
+            "output_axis_index": output_axis_index,
+            "processed_index": slc,
+            "output_shape": output_shape,
+            "dtypes": None,
         }
         if index_info.input_axis == 0:
             index = chunk_input.index_value.to_pandas()
-            start, stop = index.slice_locs(slc.start, slc.stop, slc.step, kind='loc')
+            start, stop = index.slice_locs(slc.start, slc.stop, slc.step, kind="loc")
             pos_slc = slice(start, stop, slc.step)
-            kw['index_value'] = parse_index(index[pos_slc], chunk_input, slc,
-                                            store_data=False)
+            kw["index_value"] = parse_index(
+                index[pos_slc], chunk_input, slc, store_data=False
+            )
         else:
             assert index_info.input_axis == 1
             dtypes = chunk_input.dtypes
             # do not store index value if output axis is 0
             store_data = True if index_info.output_axis == 1 else False
             columns = dtypes.loc[slc].index
-            kw['index_value'] = parse_index(columns, store_data=store_data)
-            kw['dtypes'] = chunk_input.dtypes[slc]
+            kw["index_value"] = parse_index(columns, store_data=store_data)
+            kw["dtypes"] = chunk_input.dtypes[slc]
 
         chunk_index_info.set(ChunkIndexAxisInfo(**kw))
 
-    def _process_has_value_index(self,
-                                 tileable: Tileable,
-                                 index_info: IndexInfo,
-                                 index_value,
-                                 input_axis: int,
-                                 context: IndexHandlerContext) -> None:
+    def _process_has_value_index(
+        self,
+        tileable: Tileable,
+        index_info: IndexInfo,
+        index_value,
+        input_axis: int,
+        context: IndexHandlerContext,
+    ) -> None:
         pd_index = index_value.to_pandas()
         if self._slice_all(index_info.raw_index):
             slc = slice(None)
         else:
             # turn label-based slice into position-based slice
-            start, end = pd_index.slice_locs(index_info.raw_index.start,
-                                             index_info.raw_index.stop,
-                                             index_info.raw_index.step,
-                                             kind='loc')
+            start, end = pd_index.slice_locs(
+                index_info.raw_index.start,
+                index_info.raw_index.stop,
+                index_info.raw_index.step,
+                kind="loc",
+            )
             slc = slice(start, end, index_info.raw_index.step)
 
         cum_nsplit = [0] + np.cumsum(tileable.nsplits[index_info.input_axis]).tolist()
         # split position-based slice into chunk slices
         effected_i_to_slc = slice_split(slc, tileable.nsplits[index_info.input_axis])
         is_reversed = (slc.step or 0) < 0
-        output_axis_index_range = range(len(effected_i_to_slc)) if not is_reversed else \
-            range(len(effected_i_to_slc) - 1, -1, -1)
+        output_axis_index_range = (
+            range(len(effected_i_to_slc))
+            if not is_reversed
+            else range(len(effected_i_to_slc) - 1, -1, -1)
+        )
         other_index_to_iter = dict()
 
         index_to_info = context.chunk_index_to_info.copy()
         for chunk_index, chunk_index_info in index_to_info.items():
             i = chunk_index[input_axis]
-            other_index = chunk_index[:input_axis] + chunk_index[input_axis + 1:]
+            other_index = chunk_index[:input_axis] + chunk_index[input_axis + 1 :]
             size = tileable.nsplits[input_axis][i]
             if i not in effected_i_to_slc:
                 # delete it, the input chunk could be ignored
@@ -314,17 +346,24 @@ class LabelSliceIndexHandler(IndexHandler):
                 stop = chunk_slc.stop
                 if stop is not None:
                     abs_stop = cum_nsplit[i] + stop - 1  # label slice include the stop
-                    label_stop = pd_index[abs_stop] if abs_stop < len(pd_index) else None
+                    label_stop = (
+                        pd_index[abs_stop] if abs_stop < len(pd_index) else None
+                    )
                 else:
                     label_stop = None
 
                 label_slc = slice(label_start, label_stop, chunk_slc.step)
-                self.set_chunk_index_info(context, index_info, chunk_index, chunk_index_info,
-                                          output_axis_index, label_slc, output_shape)
+                self.set_chunk_index_info(
+                    context,
+                    index_info,
+                    chunk_index,
+                    chunk_index_info,
+                    output_axis_index,
+                    label_slc,
+                    output_shape,
+                )
 
-    def process(self,
-                index_info: IndexInfo,
-                context: IndexHandlerContext) -> None:
+    def process(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         tileable = context.tileable
         input_axis = index_info.input_axis
         if isinstance(tileable, SERIES_TYPE):
@@ -333,8 +372,9 @@ class LabelSliceIndexHandler(IndexHandler):
             index_value = [tileable.index_value, tileable.columns_value][input_axis]
 
         if index_value.has_value() or self._slice_all(index_info.raw_index):
-            self._process_has_value_index(tileable, index_info,
-                                          index_value, input_axis, context)
+            self._process_has_value_index(
+                tileable, index_info, index_value, input_axis, context
+            )
         else:
             other_index_to_iter = dict()
             # slice on all chunks on the specified axis
@@ -343,9 +383,15 @@ class LabelSliceIndexHandler(IndexHandler):
                 if other_index not in other_index_to_iter:
                     other_index_to_iter[other_index] = itertools.count()
                 output_axis_index = next(other_index_to_iter[other_index])
-                self.set_chunk_index_info(context, index_info, chunk_index,
-                                          chunk_index_info, output_axis_index,
-                                          index_info.raw_index, np.nan)
+                self.set_chunk_index_info(
+                    context,
+                    index_info,
+                    chunk_index,
+                    chunk_index_info,
+                    output_axis_index,
+                    index_info.raw_index,
+                    np.nan,
+                )
 
 
 class LabelIndexHandler(IndexHandler):
@@ -353,9 +399,7 @@ class LabelIndexHandler(IndexHandler):
         # accept type other than slice, ndarray and tensor
         return not isinstance(raw_index, (slice, np.ndarray, TENSOR_TYPE))
 
-    def parse(self,
-              raw_index,
-              context: IndexHandlerContext) -> IndexInfo:
+    def parse(self, raw_index, context: IndexHandlerContext) -> IndexInfo:
         tileable = context.tileable
         input_axis = context.input_axis
         if tileable.ndim == 2:
@@ -370,25 +414,25 @@ class LabelIndexHandler(IndexHandler):
                 # if is slice, means index not unique, but monotonic
                 # just call LabelSliceIndexHandler
                 new_raw_index = slice(raw_index, raw_index)
-                return LabelSliceIndexHandler.get_instance().parse(new_raw_index, context)
+                return LabelSliceIndexHandler.get_instance().parse(
+                    new_raw_index, context
+                )
             elif isinstance(loc, np.ndarray):
                 # bool indexing, non unique, and not monotonic
                 return NDArrayBoolIndexHandler.get_instance().parse(loc, context)
         else:
-            return LabelNDArrayFancyIndexHandler.get_instance().parse(raw_index, context)
+            return LabelNDArrayFancyIndexHandler.get_instance().parse(
+                raw_index, context
+            )
 
-        info = IndexInfo(IndexType.label,
-                         context.input_axis,
-                         context.output_axis,
-                         raw_index,
-                         self)
+        info = IndexInfo(
+            IndexType.label, context.input_axis, context.output_axis, raw_index, self
+        )
         context.input_axis += 1
         context.append(info)
         return info
 
-    def preprocess(self,
-                   index_info: IndexInfo,
-                   context: IndexHandlerContext) -> None:
+    def preprocess(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         # if index has value on input axis,
         # label will be converted to position,
         # thus chunks cannot have unknown shape on this axis
@@ -402,9 +446,7 @@ class LabelIndexHandler(IndexHandler):
             if any(np.isnan(ns) for ns in tileable.nsplits[input_axis]):
                 yield []
 
-    def process(self,
-                index_info: IndexInfo,
-                context: IndexHandlerContext) -> None:
+    def process(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         tileable = context.tileable
         input_axis = index_info.input_axis
         if tileable.ndim == 1:
@@ -419,7 +461,9 @@ class LabelIndexHandler(IndexHandler):
             # other situations have been delegated to different handlers
             assert isinstance(loc, int)
 
-            effected_i_to_slc = slice_split(loc, tileable.nsplits[index_info.input_axis])
+            effected_i_to_slc = slice_split(
+                loc, tileable.nsplits[index_info.input_axis]
+            )
 
             index_to_info = context.chunk_index_to_info.copy()
             for chunk_index, chunk_index_info in index_to_info.items():
@@ -428,18 +472,21 @@ class LabelIndexHandler(IndexHandler):
                     # delete it, the input chunk could be ignored
                     del context.chunk_index_to_info[chunk_index]
                 else:
-                    chunk_index_info.set(ChunkIndexAxisInfo(output_axis_index=None,
-                                                            processed_index=index_info.raw_index,
-                                                            output_shape=None,
-                                                            index_value=None,
-                                                            dtypes=None))
+                    chunk_index_info.set(
+                        ChunkIndexAxisInfo(
+                            output_axis_index=None,
+                            processed_index=index_info.raw_index,
+                            output_shape=None,
+                            index_value=None,
+                            dtypes=None,
+                        )
+                    )
 
 
 class DataFrameIndexHandler:
-
     @classmethod
     def _calc_dtypes(cls, dtypes, index, context: IndexHandlerContext):
-        if getattr(context.op, 'can_index_miss', False):
+        if getattr(context.op, "can_index_miss", False):
             # reindex
             return dtypes.reindex(index).fillna(np.dtype(np.float64))
         else:
@@ -447,51 +494,62 @@ class DataFrameIndexHandler:
             return getattr(dtypes, cls.kind)[index]
 
     @classmethod
-    def set_chunk_index_info(cls,
-                             context: IndexHandlerContext,
-                             index_info: IndexInfo,
-                             chunk_index: Tuple[int],
-                             chunk_index_info: ChunkIndexInfo,
-                             output_axis_index: int,
-                             index,
-                             output_shape: int):
+    def set_chunk_index_info(
+        cls,
+        context: IndexHandlerContext,
+        index_info: IndexInfo,
+        chunk_index: Tuple[int],
+        chunk_index_info: ChunkIndexInfo,
+        output_axis_index: int,
+        index,
+        output_shape: int,
+    ):
         tileable = context.tileable
         chunk_input = tileable.cix[chunk_index]
 
         dtypes = None
         if index_info.input_axis == 0:
-            index_value = parse_index(chunk_input.index_value.to_pandas()[:0],
-                                      chunk_input, index, store_data=False)
+            index_value = parse_index(
+                chunk_input.index_value.to_pandas()[:0],
+                chunk_input,
+                index,
+                store_data=False,
+            )
         else:
             dtypes = cls._calc_dtypes(chunk_input.dtypes, index, context)
             columns = dtypes.index
             index_value = parse_index(columns, store_data=True)
 
-        info = ChunkIndexAxisInfo(output_axis_index=output_axis_index,
-                                  processed_index=index,
-                                  output_shape=output_shape,
-                                  index_value=index_value,
-                                  dtypes=dtypes)
+        info = ChunkIndexAxisInfo(
+            output_axis_index=output_axis_index,
+            processed_index=index,
+            output_shape=output_shape,
+            index_value=index_value,
+            dtypes=dtypes,
+        )
         chunk_index_info.set(info)
 
 
 class NDArrayBoolIndexHandler(NDArrayBoolIndexHandlerBase):
     @classmethod
-    def set_chunk_index_info(cls,
-                             context: IndexHandlerContext,
-                             index_info: IndexInfo,
-                             chunk_index: Tuple[int],
-                             chunk_index_info: ChunkIndexInfo,
-                             output_axis_index: int,
-                             index,
-                             output_shape: int):
+    def set_chunk_index_info(
+        cls,
+        context: IndexHandlerContext,
+        index_info: IndexInfo,
+        chunk_index: Tuple[int],
+        chunk_index_info: ChunkIndexInfo,
+        output_axis_index: int,
+        index,
+        output_shape: int,
+    ):
         tileable = context.tileable
         chunk_input = tileable.cix[chunk_index]
 
         if index_info.input_axis == 0:
             dtype = chunk_input.index_value.to_pandas().dtype
-            index_value = parse_index(pd.Index([], dtype=dtype),
-                                      chunk_input, index, store_data=False)
+            index_value = parse_index(
+                pd.Index([], dtype=dtype), chunk_input, index, store_data=False
+            )
             dtypes = None
         else:
             pd_index = chunk_input.columns_value.to_pandas()
@@ -499,54 +557,65 @@ class NDArrayBoolIndexHandler(NDArrayBoolIndexHandlerBase):
             index_value = parse_index(filtered_index, store_data=True)
             dtypes = chunk_input.dtypes[index]
 
-        info = ChunkIndexAxisInfo(output_axis_index=output_axis_index,
-                                  processed_index=index,
-                                  output_shape=output_shape,
-                                  index_value=index_value,
-                                  dtypes=dtypes)
+        info = ChunkIndexAxisInfo(
+            output_axis_index=output_axis_index,
+            processed_index=index,
+            output_shape=output_shape,
+            index_value=index_value,
+            dtypes=dtypes,
+        )
         chunk_index_info.set(info)
 
 
 class TensorBoolIndexHandler(TensorBoolIndexHandlerBase):
     @classmethod
-    def set_chunk_index_info(cls,
-                             context: IndexHandlerContext,
-                             index_info: IndexInfo,
-                             chunk_index: Tuple[int],
-                             chunk_index_info: ChunkIndexInfo,
-                             output_axis_index: int,
-                             index,
-                             output_shape: int):
+    def set_chunk_index_info(
+        cls,
+        context: IndexHandlerContext,
+        index_info: IndexInfo,
+        chunk_index: Tuple[int],
+        chunk_index_info: ChunkIndexInfo,
+        output_axis_index: int,
+        index,
+        output_shape: int,
+    ):
         tileable = context.tileable
         chunk_input = tileable.cix[chunk_index]
 
-        assert index_info.input_axis == 0, \
-            'bool indexing on axis columns cannot be tensor'
+        assert (
+            index_info.input_axis == 0
+        ), "bool indexing on axis columns cannot be tensor"
 
-        index_value = parse_index(pd.Index([], chunk_input.index_value.to_pandas().dtype),
-                                  chunk_input, index, store_data=False)
+        index_value = parse_index(
+            pd.Index([], chunk_input.index_value.to_pandas().dtype),
+            chunk_input,
+            index,
+            store_data=False,
+        )
 
-        info = ChunkIndexAxisInfo(output_axis_index=output_axis_index,
-                                  processed_index=index,
-                                  output_shape=output_shape,
-                                  index_value=index_value,
-                                  dtypes=None)
+        info = ChunkIndexAxisInfo(
+            output_axis_index=output_axis_index,
+            processed_index=index,
+            output_shape=output_shape,
+            index_value=index_value,
+            dtypes=None,
+        )
         chunk_index_info.set(info)
 
 
 class _FancyIndexHandler(DataFrameIndexHandler, IndexHandler):
     @classproperty
     def kind(self):  # pylint: disable=no-self-use
-        return 'iloc'
+        return "iloc"
 
-    def parse(self,
-              raw_index,
-              context: IndexHandlerContext) -> IndexInfo:
-        info = FancyIndexInfo(IndexType.fancy_index,
-                              context.input_axis,
-                              context.output_axis,
-                              raw_index,
-                              self)
+    def parse(self, raw_index, context: IndexHandlerContext) -> IndexInfo:
+        info = FancyIndexInfo(
+            IndexType.fancy_index,
+            context.input_axis,
+            context.output_axis,
+            raw_index,
+            self,
+        )
         context.input_axis += 1
         context.output_axis += 1
         context.append(info)
@@ -557,50 +626,52 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
     def accept(cls, raw_index):
         # raw index like list, and pd.Series
         # would have been converted to ndarray or tensor already
-        return isinstance(raw_index, np.ndarray) and \
-               raw_index.dtype != np.bool_
+        return isinstance(raw_index, np.ndarray) and raw_index.dtype != np.bool_
 
-    def preprocess(self,
-                   index_info: IndexInfo,
-                   context: IndexHandlerContext) -> None:
+    def preprocess(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         tileable = context.tileable
         if has_unknown_shape(tileable):
             yield []
 
         # split raw index into chunks on the given axis
-        split_info = split_indexes_into_chunks([tileable.nsplits[index_info.input_axis]],
-                                               [index_info.raw_index])
+        split_info = split_indexes_into_chunks(
+            [tileable.nsplits[index_info.input_axis]], [index_info.raw_index]
+        )
         index_info.split_info = split_info
 
-    def process(self,
-                index_info: IndexInfo,
-                context: IndexHandlerContext) -> None:
+    def process(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         chunk_index_to_fancy_index_arrays = index_info.split_info[0]
 
         other_index_to_iter = dict()
         chunk_index_to_info = context.chunk_index_to_info.copy()
         for chunk_index, chunk_index_info in chunk_index_to_info.items():
             i = chunk_index[index_info.input_axis]
-            fancy_index_array = chunk_index_to_fancy_index_arrays[i, ][0]
+            fancy_index_array = chunk_index_to_fancy_index_arrays[(i,)][0]
 
             if fancy_index_array.size == 0:
                 # not effected
                 del context.chunk_index_to_info[chunk_index]
                 continue
 
-            other_index = chunk_index[:1] if index_info.input_axis == 1 else chunk_index[1:]
+            other_index = (
+                chunk_index[:1] if index_info.input_axis == 1 else chunk_index[1:]
+            )
             if other_index not in other_index_to_iter:
                 other_index_to_iter[other_index] = itertools.count()
             output_axis_index = next(other_index_to_iter[other_index])
             output_axis_shape = fancy_index_array.shape[0]
-            self.set_chunk_index_info(context, index_info, chunk_index,
-                                      chunk_index_info, output_axis_index,
-                                      fancy_index_array, output_axis_shape)
+            self.set_chunk_index_info(
+                context,
+                index_info,
+                chunk_index,
+                chunk_index_info,
+                output_axis_index,
+                fancy_index_array,
+                output_axis_shape,
+            )
 
     @classmethod
-    def need_postprocess(cls,
-                         index_info: IndexInfo,
-                         context: IndexHandlerContext):
+    def need_postprocess(cls, index_info: IndexInfo, context: IndexHandlerContext):
         tileable = context.tileable
 
         if tileable.chunk_shape[index_info.input_axis] == 1:
@@ -610,21 +681,25 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
         # if ascending sorted, no need to postprocess
         return not index_info.split_info[2]
 
-    def postprocess(self,
-                    index_info: IndexInfo,
-                    context: IndexHandlerContext) -> None:
+    def postprocess(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         # could be 2 fancy indexes at most
         fancy_indexes = context.get_indexes(index_info.index_type)
         i_fancy_index = fancy_indexes.index(index_info)
-        need_postprocesses = [fancy_index.handler.need_postprocess(fancy_index, context)
-                              for fancy_index in fancy_indexes]
+        need_postprocesses = [
+            fancy_index.handler.need_postprocess(fancy_index, context)
+            for fancy_index in fancy_indexes
+        ]
 
         if not need_postprocesses[i_fancy_index]:
             # do not need postprocess
             return
 
-        if i_fancy_index == 0 and len(fancy_indexes) == 2 and need_postprocesses[1] and \
-                isinstance(fancy_indexes[1].raw_index, np.ndarray):
+        if (
+            i_fancy_index == 0
+            and len(fancy_indexes) == 2
+            and need_postprocesses[1]
+            and isinstance(fancy_indexes[1].raw_index, np.ndarray)
+        ):
             # check if need postprocess if 2 fancy indexes and now it's the first,
             # if so, skip postprocess for this one,
             # and do MapReduce just once for the second postprocess
@@ -633,16 +708,24 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
         chunks, nsplits = context.out_chunks, context.out_nsplits
         index_to_chunks = {c.index: c for c in chunks}
 
-        to_concat_axes = tuple(fancy_index.output_axis
-                               for i, fancy_index in enumerate(fancy_indexes)
-                               if need_postprocesses[i])
-        reorder_indexes = [calc_pos(fancy_index.raw_index.shape, fancy_index.split_info[1])
-                           for i, fancy_index in enumerate(fancy_indexes)
-                           if need_postprocesses[i]]
+        to_concat_axes = tuple(
+            fancy_index.output_axis
+            for i, fancy_index in enumerate(fancy_indexes)
+            if need_postprocesses[i]
+        )
+        reorder_indexes = [
+            calc_pos(fancy_index.raw_index.shape, fancy_index.split_info[1])
+            for i, fancy_index in enumerate(fancy_indexes)
+            if need_postprocesses[i]
+        ]
         new_out_chunks = []
         for chunk_index in itertools.product(
-                *(range(len(ns)) for ax, ns in enumerate(nsplits)
-                  if ax not in to_concat_axes)):
+            *(
+                range(len(ns))
+                for ax, ns in enumerate(nsplits)
+                if ax not in to_concat_axes
+            )
+        ):
             if len(to_concat_axes) == 2:
                 to_concat_chunks = chunks
             else:
@@ -652,8 +735,9 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
                     to_concat_index.insert(to_concat_axes[0], i)
                     to_concat_chunks.append(index_to_chunks[tuple(to_concat_index)])
             concat_chunk = context.concat_chunks(to_concat_chunks, to_concat_axes)
-            reorder_chunk = self._create_reorder_chunk(concat_chunk, to_concat_axes,
-                                                       reorder_indexes, context)
+            reorder_chunk = self._create_reorder_chunk(
+                concat_chunk, to_concat_axes, reorder_indexes, context
+            )
             new_out_chunks.append(reorder_chunk)
 
         new_nsplits = list(nsplits)
@@ -663,11 +747,13 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
         context.out_nsplits = new_nsplits
 
     @classmethod
-    def _create_reorder_chunk(cls,
-                              concat_chunk: Chunk,
-                              to_concat_axes: Tuple,
-                              reorder_indexes: List,
-                              context: IndexHandlerContext):
+    def _create_reorder_chunk(
+        cls,
+        concat_chunk: Chunk,
+        to_concat_axes: Tuple,
+        reorder_indexes: List,
+        context: IndexHandlerContext,
+    ):
         reorder_chunk_op = context.op.copy().reset_key()
         indexes = [slice(None)] * concat_chunk.ndim
         for ax, reorder_index in zip(to_concat_axes, reorder_indexes):
@@ -679,24 +765,31 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
             if concat_chunk.index_value.has_value():
                 # if concat chunk's index has value, we could calculate the new index
                 reorder_index = concat_chunk.index_value.to_pandas()[reorder_indexes[0]]
-                params['index_value'] = parse_index(reorder_index, store_data=True)
+                params["index_value"] = parse_index(reorder_index, store_data=True)
             else:
-                params['index_value'] = parse_index(concat_chunk.index_value.to_pandas(), indexes)
+                params["index_value"] = parse_index(
+                    concat_chunk.index_value.to_pandas(), indexes
+                )
             return reorder_chunk_op.new_chunk([concat_chunk], kws=[params])
         else:
             if 0 in to_concat_axes:
                 if concat_chunk.index_value.has_value():
                     # if concat chunk's index has value, and index on axis 0,
                     # we could calculate the new index
-                    reorder_index = concat_chunk.index_value.to_pandas()[reorder_indexes[0]]
-                    params['index_value'] = parse_index(reorder_index, store_data=True)
+                    reorder_index = concat_chunk.index_value.to_pandas()[
+                        reorder_indexes[0]
+                    ]
+                    params["index_value"] = parse_index(reorder_index, store_data=True)
                 else:
-                    params['index_value'] = parse_index(concat_chunk.index_value.to_pandas(),
-                                                        indexes[0])
+                    params["index_value"] = parse_index(
+                        concat_chunk.index_value.to_pandas(), indexes[0]
+                    )
             if 1 in to_concat_axes:
-                reorder_columns = concat_chunk.columns_value.to_pandas()[reorder_indexes[-1]]
-                params['columns_value'] = parse_index(reorder_columns, store_data=True)
-                params['dtypes'] = concat_chunk.dtypes[reorder_indexes[-1]]
+                reorder_columns = concat_chunk.columns_value.to_pandas()[
+                    reorder_indexes[-1]
+                ]
+                params["columns_value"] = parse_index(reorder_columns, store_data=True)
+                params["dtypes"] = concat_chunk.dtypes[reorder_indexes[-1]]
 
         return reorder_chunk_op.new_chunk([concat_chunk], kws=[params])
 
@@ -704,31 +797,28 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
 class _LabelFancyIndexHandler(DataFrameIndexHandler, IndexHandler):
     @classproperty
     def kind(self):  # pylint: disable=no-self-use
-        return 'loc'
+        return "loc"
 
 
 class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
     def accept(cls, raw_index):
-        return isinstance(raw_index, np.ndarray) and \
-               raw_index.dtype != np.bool_
+        return isinstance(raw_index, np.ndarray) and raw_index.dtype != np.bool_
 
-    def parse(self,
-              raw_index,
-              context: IndexHandlerContext) -> IndexInfo:
-        info = LabelFancyIndexInfo(IndexType.label_fancy_index,
-                                   context.input_axis,
-                                   context.output_axis,
-                                   raw_index,
-                                   self)
+    def parse(self, raw_index, context: IndexHandlerContext) -> IndexInfo:
+        info = LabelFancyIndexInfo(
+            IndexType.label_fancy_index,
+            context.input_axis,
+            context.output_axis,
+            raw_index,
+            self,
+        )
         context.input_axis += 1
         if not np.isscalar(raw_index):
             context.output_axis += 1
         context.append(info)
         return info
 
-    def preprocess(self,
-                   index_info: IndexInfo,
-                   context: IndexHandlerContext) -> None:
+    def preprocess(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         tileable = context.tileable
         op = context.op
         if has_unknown_shape(tileable):
@@ -746,8 +836,9 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
             # turn label-based fancy index into position-based
             pd_index = index_value.to_pandas()
             positions = convert_labels_into_positions(pd_index, index_info.raw_index)
-            split_info = split_indexes_into_chunks([tileable.nsplits[input_axis]],
-                                                   [positions])
+            split_info = split_indexes_into_chunks(
+                [tileable.nsplits[input_axis]], [positions]
+            )
             chunk_index_to_pos = split_info[0]
             is_asc_sorted = split_info[-1]
 
@@ -756,7 +847,10 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
             for chunk_index, pos in chunk_index_to_pos.items():
                 # chunk_index and pos are all list with 1 element
                 abs_pos = pos[0] + cum_nsplit[chunk_index[0]]
-                chunk_labels = to_numpy(pd_index[abs_pos])
+                if isinstance(pd_index, pd.RangeIndex) and len(abs_pos) == 0:
+                    chunk_labels = np.array([], dtype=pd_index.dtype)
+                else:
+                    chunk_labels = to_numpy(pd_index[abs_pos])
                 chunk_index_to_labels[chunk_index[0]] = chunk_labels
 
             index_info.is_label_asc_sorted = is_asc_sorted
@@ -769,15 +863,15 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
             # does not know the right positions, need postprocess always
             index_info.is_label_asc_sorted = False
             # do df.loc on each chunk
-            index_info.chunk_index_to_labels = \
-                {i: index for i in range(tileable.chunk_shape[input_axis])}
+            index_info.chunk_index_to_labels = {
+                i: index for i in range(tileable.chunk_shape[input_axis])
+            }
 
-    def process(self,
-                index_info: IndexInfo,
-                context: IndexHandlerContext) -> None:
+    def process(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         tileable = context.tileable
         input_axis = index_info.input_axis
         chunk_index_to_labels = index_info.chunk_index_to_labels
+        full_label_size = sum(labels.size for labels in chunk_index_to_labels.values())
 
         other_index_to_iter = dict()
         chunk_index_to_info = context.chunk_index_to_info.copy()
@@ -786,14 +880,19 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
             chunk_labels = chunk_index_to_labels[i]
             size = chunk_labels.size
 
-            if size == 0:
-                # not effected
+            if size == 0 and full_label_size > 0 and tileable.shape[0] > 0:
+                # not effected when
+                # 1) tileable not empty
+                # 2) full index not empty
+                # 3) no index chosen for this chunk
                 del context.chunk_index_to_info[chunk_index]
                 continue
 
-            if np.isscalar(index_info.raw_index) and \
-                    isinstance(tileable.index_value.value, IndexValue.DatetimeIndex) and \
-                    isinstance(chunk_labels[0], str):
+            if (
+                np.isscalar(index_info.raw_index)
+                and isinstance(tileable.index_value.value, IndexValue.DatetimeIndex)
+                and isinstance(chunk_labels[0], str)
+            ):
                 # special case when index is DatetimeIndex and loc by string
                 # convert back list to scalar because if keep list,
                 # KeyError will always happen
@@ -804,20 +903,22 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
                 other_index_to_iter[other_index] = itertools.count()
             output_axis_index = next(other_index_to_iter[other_index])
             output_axis_shape = size
-            self.set_chunk_index_info(context, index_info, chunk_index,
-                                      chunk_index_info, output_axis_index,
-                                      chunk_labels, output_axis_shape)
+            self.set_chunk_index_info(
+                context,
+                index_info,
+                chunk_index,
+                chunk_index_info,
+                output_axis_index,
+                chunk_labels,
+                output_axis_shape,
+            )
 
     @classmethod
-    def need_postprocess(cls,
-                         index_info: IndexInfo,
-                         context: IndexHandlerContext):
+    def need_postprocess(cls, index_info: IndexInfo, context: IndexHandlerContext):
         # if ascending sorted, no need to postprocess
         return not index_info.is_label_asc_sorted
 
-    def postprocess(self,
-                    index_info: IndexInfo,
-                    context: IndexHandlerContext) -> None:
+    def postprocess(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         if not self.need_postprocess(index_info, context):
             # do not need postprocess
             return
@@ -828,8 +929,9 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
         axis = index_info.output_axis
         new_out_chunks = []
         chunk_axis_shapes = dict()
-        for chunk_index in itertools.product(*(range(len(ns)) for ax, ns in enumerate(nsplits)
-                                               if ax != axis)):
+        for chunk_index in itertools.product(
+            *(range(len(ns)) for ax, ns in enumerate(nsplits) if ax != axis)
+        ):
             to_concat_chunks = []
             for i in range(len(nsplits[axis])):
                 if axis == 0:
@@ -844,37 +946,39 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
             params = concat_chunk.params
             if np.isscalar(index_info.raw_index):
                 assert axis == 0
-                if 'columns_value' in params:
-                    params['index_value'] = params.pop('columns_value')
-                    params['dtype'] = find_common_type(params['dtypes'].tolist())
-                    del params['dtypes']
-                    if getattr(context.op.outputs[0], 'name', None) is not None:
-                        params['name'] = context.op.outputs[0].name
-                if len(params['index']) == chunks[0].ndim:
-                    index = list(params['index'])
+                if "columns_value" in params:
+                    params["index_value"] = params.pop("columns_value")
+                    params["dtype"] = find_common_type(params["dtypes"].tolist())
+                    del params["dtypes"]
+                    if getattr(context.op.outputs[0], "name", None) is not None:
+                        params["name"] = context.op.outputs[0].name
+                if len(params["index"]) == chunks[0].ndim:
+                    index = list(params["index"])
                     index.pop(index_info.output_axis)
-                    params['index'] = tuple(index)
-                    shape = list(params['shape'])
+                    params["index"] = tuple(index)
+                    shape = list(params["shape"])
                     shape.pop(index_info.output_axis)
-                    params['shape'] = tuple(shape)
+                    params["shape"] = tuple(shape)
                 if context.op.outputs[0].ndim == 0:
-                    del params['index_value']
+                    del params["index_value"]
             elif axis == 0:
                 pd_index = pd.Index(index_info.raw_index)
-                params['index_value'] = parse_index(pd_index, store_data=False)
-                shape = list(params['shape'])
+                params["index_value"] = parse_index(pd_index, store_data=False)
+                shape = list(params["shape"])
                 shape[0] = len(pd_index)
-                params['shape'] = shape
+                params["shape"] = shape
             else:
                 if context.op.can_index_miss:
                     # reindex
-                    params['dtypes'] = dtypes = to_concat_chunks[0].dtypes
+                    params["dtypes"] = dtypes = to_concat_chunks[0].dtypes
                 else:
-                    params['dtypes'] = dtypes = concat_chunk.dtypes.loc[index_info.raw_index]
-                params['columns_value'] = parse_index(dtypes.index, store_data=True)
-                shape = list(params['shape'])
+                    params["dtypes"] = dtypes = concat_chunk.dtypes.loc[
+                        index_info.raw_index
+                    ]
+                params["columns_value"] = parse_index(dtypes.index, store_data=True)
+                shape = list(params["shape"])
                 shape[1] = len(dtypes)
-                params['shape'] = tuple(shape)
+                params["shape"] = tuple(shape)
             chunk_op._indexes = indexes
             chunk_op.stage = OperandStage.agg
             out_chunk = chunk_op.new_chunk([concat_chunk], kws=[params])
@@ -884,7 +988,7 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
 
         new_nsplits = list(nsplits)
         if np.isscalar(index_info.raw_index):
-            new_nsplits = new_nsplits[:axis] + new_nsplits[axis + 1:]
+            new_nsplits = new_nsplits[:axis] + new_nsplits[axis + 1 :]
         else:
             new_nsplits[axis] = (sum(chunk_axis_shapes.values()),)
         context.out_chunks = new_out_chunks
@@ -893,38 +997,35 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
 
 class LabelTensorFancyIndexHandler(_LabelFancyIndexHandler):
     def accept(cls, raw_index):
-        return isinstance(raw_index, TENSOR_TYPE) and \
-               raw_index.dtype != np.bool_
+        return isinstance(raw_index, TENSOR_TYPE) and raw_index.dtype != np.bool_
 
-    def parse(self,
-              raw_index,
-              context: IndexHandlerContext) -> IndexInfo:
+    def parse(self, raw_index, context: IndexHandlerContext) -> IndexInfo:
         if context.input_axis == 1:  # pragma: no cover
-            raise NotImplementedError("do not support tensor-based index "
-                                      "on columns axis")
-        info = LabelFancyIndexInfo(IndexType.label_fancy_index,
-                                   context.input_axis,
-                                   context.output_axis,
-                                   raw_index,
-                                   self)
+            raise NotImplementedError(
+                "do not support tensor-based index " "on columns axis"
+            )
+        info = LabelFancyIndexInfo(
+            IndexType.label_fancy_index,
+            context.input_axis,
+            context.output_axis,
+            raw_index,
+            self,
+        )
         context.input_axis += 1
         context.output_axis += 1
         context.append(info)
         return info
 
-    def preprocess(self,
-                   index_info: IndexInfo,
-                   context: IndexHandlerContext) -> None:
+    def preprocess(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         if has_unknown_shape(index_info.raw_index):
             yield
         # rechunk index into one
         index_info.unprocessed_raw_index = index_info.raw_index
         index_info.raw_index = yield from recursive_tile(
-            index_info.raw_index.rechunk(index_info.raw_index.shape))
+            index_info.raw_index.rechunk(index_info.raw_index.shape)
+        )
 
-    def process(self,
-                index_info: IndexInfo,
-                context: IndexHandlerContext) -> None:
+    def process(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         tileable = context.tileable
         input_axis = index_info.input_axis
 
@@ -939,23 +1040,28 @@ class LabelTensorFancyIndexHandler(_LabelFancyIndexHandler):
                 other_index_to_iter[other_index] = itertools.count()
             output_axis_index = next(other_index_to_iter[other_index])
             self.set_chunk_index_info(
-                context, index_info, chunk_index,
+                context,
+                index_info,
+                chunk_index,
                 context.chunk_index_to_info[chunk.index],
-                output_axis_index, chunk_labels, len(chunk_labels))
+                output_axis_index,
+                chunk_labels,
+                len(chunk_labels),
+            )
 
-    def postprocess(self,
-                    index_info: IndexInfo,
-                    context: IndexHandlerContext) -> None:
+    def postprocess(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         from .iloc import DataFrameIlocGetItem
 
         tileable = context.tileable
         out = context.op.outputs[0]
         max_chunk_size = max(tileable.nsplits[index_info.input_axis])
         max_chunk_size = 0 if np.isnan(max_chunk_size) else max_chunk_size
-        max_chunk_size = max(max_chunk_size,
-                             max(index_info.unprocessed_raw_index.nsplits[0]))
-        new_chunk_sizes = normalize_chunk_sizes(index_info.raw_index.shape[0],
-                                                max_chunk_size)[0]
+        max_chunk_size = max(
+            max_chunk_size, max(index_info.unprocessed_raw_index.nsplits[0])
+        )
+        new_chunk_sizes = normalize_chunk_sizes(
+            index_info.raw_index.shape[0], max_chunk_size
+        )[0]
         cum_new_chunk_sizes = [0] + np.cumsum(new_chunk_sizes).tolist()
 
         chunks, nsplits = context.out_chunks, context.out_nsplits
@@ -964,8 +1070,9 @@ class LabelTensorFancyIndexHandler(_LabelFancyIndexHandler):
         axis = index_info.output_axis
         assert axis == 0
         new_out_chunks = []
-        for chunk_index in itertools.product(*(range(len(ns)) for ax, ns in enumerate(nsplits)
-                                               if ax != axis)):
+        for chunk_index in itertools.product(
+            *(range(len(ns)) for ax, ns in enumerate(nsplits) if ax != axis)
+        ):
             select_chunks = []
             for i in range(len(nsplits[axis])):
                 select_index = (i,) + chunk_index
@@ -978,14 +1085,19 @@ class LabelTensorFancyIndexHandler(_LabelFancyIndexHandler):
 
                 slice_chunks = []
                 for select_chunk in select_chunks:
-                    output_types = [OutputType.series] \
-                        if len(nsplits) == 1 else [OutputType.dataframe]
-                    slc_op = DataFrameIlocGetItem(indexes=indexes,
-                                                  output_types=output_types)
+                    output_types = (
+                        [OutputType.series]
+                        if len(nsplits) == 1
+                        else [OutputType.dataframe]
+                    )
+                    slc_op = DataFrameIlocGetItem(
+                        indexes=indexes, output_types=output_types
+                    )
                     slice_chunk_shape = list(select_chunk.shape)
                     slice_chunk_shape[axis] = new_chunk_sizes[j]
-                    slice_chunk = slc_op.new_chunk([select_chunk],
-                                                   shape=tuple(slice_chunk_shape))
+                    slice_chunk = slc_op.new_chunk(
+                        [select_chunk], shape=tuple(slice_chunk_shape)
+                    )
                     slice_chunks.append(slice_chunk)
 
                 chunk_op = context.op.copy().reset_key()
@@ -994,18 +1106,19 @@ class LabelTensorFancyIndexHandler(_LabelFancyIndexHandler):
                 chunk_op._fill_value = None
                 assert axis == 0
                 params = dict()
-                params['index'] = \
+                params["index"] = (
                     (j,) + chunk_index if axis == 0 else chunk_index + (j,)
-                params['index_value'] = \
-                    parse_index(out.index_value.to_pandas()[slc],
-                                slice_chunks, store_data=False)
+                )
+                params["index_value"] = parse_index(
+                    out.index_value.to_pandas()[slc], slice_chunks, store_data=False
+                )
                 if select_chunks[0].ndim == 2:
-                    params['columns_value'] = select_chunks[0].columns_value
-                    params['dtypes'] = select_chunks[0].dtypes
+                    params["columns_value"] = select_chunks[0].columns_value
+                    params["dtypes"] = select_chunks[0].dtypes
                 else:
-                    params['dtype'] = select_chunks[0].dtype
-                    params['name'] = select_chunks[0].name
-                params['shape'] = slice_chunks[0].shape
+                    params["dtype"] = select_chunks[0].dtype
+                    params["name"] = select_chunks[0].name
+                params["shape"] = slice_chunks[0].shape
                 out_chunk = chunk_op.new_chunk(slice_chunks, kws=[params])
                 new_out_chunks.append(out_chunk)
 
@@ -1018,11 +1131,13 @@ class LabelTensorFancyIndexHandler(_LabelFancyIndexHandler):
 class DataFrameIlocIndexesHandler(IndexesHandler):
     def __init__(self):
         super().__init__()
-        self.register(IntegralIndexHandler,
-                      SliceIndexHandler,
-                      NDArrayBoolIndexHandler,
-                      TensorBoolIndexHandler,
-                      NDArrayFancyIndexHandler)
+        self.register(
+            IntegralIndexHandler,
+            SliceIndexHandler,
+            NDArrayBoolIndexHandler,
+            TensorBoolIndexHandler,
+            NDArrayFancyIndexHandler,
+        )
 
     def create_context(self, op):
         return DataFrameIndexHandlerContext(op)
@@ -1031,11 +1146,13 @@ class DataFrameIlocIndexesHandler(IndexesHandler):
 class DataFrameLocIndexesHandler(IndexesHandler):
     def __init__(self):
         super().__init__()
-        self.register(LabelIndexHandler,
-                      LabelSliceIndexHandler,
-                      NDArrayBoolIndexHandler,
-                      TensorBoolIndexHandler,
-                      LabelNDArrayFancyIndexHandler)
+        self.register(
+            LabelIndexHandler,
+            LabelSliceIndexHandler,
+            NDArrayBoolIndexHandler,
+            TensorBoolIndexHandler,
+            LabelNDArrayFancyIndexHandler,
+        )
 
     def create_context(self, op):
         return DataFrameIndexHandlerContext(op)
@@ -1044,9 +1161,11 @@ class DataFrameLocIndexesHandler(IndexesHandler):
 class DataFrameReindexHandler(IndexesHandler):
     def __init__(self):
         super().__init__()
-        self.register(LabelTensorFancyIndexHandler,
-                      LabelNDArrayFancyIndexHandler,
-                      LabelSliceIndexHandler)
+        self.register(
+            LabelTensorFancyIndexHandler,
+            LabelNDArrayFancyIndexHandler,
+            LabelSliceIndexHandler,
+        )
 
     def create_context(self, op):
         return DataFrameIndexHandlerContext(op)

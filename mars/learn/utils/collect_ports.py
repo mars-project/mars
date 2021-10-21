@@ -19,7 +19,12 @@ import numpy as np
 
 from ... import opcodes
 from ...core.operand import OperandStage
-from ...serialization.serializables import FieldTypes, Int32Field, ListField, StringField
+from ...serialization.serializables import (
+    FieldTypes,
+    Int32Field,
+    ListField,
+    StringField,
+)
 from ...tensor.merge import TensorConcatenate
 from ...utils import get_next_port
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
@@ -28,15 +33,22 @@ from ..operands import LearnOperand, LearnOperandMixin, OutputType
 class CollectPorts(LearnOperand, LearnOperandMixin):
     _op_code_ = opcodes.COLLECT_PORTS
 
-    _socket_type = Int32Field('socket_type')
-    _index = Int32Field('index')
-    _workers = ListField('workers', FieldTypes.string)
-    _tileable_key = StringField('tileable_key')
+    _socket_type = Int32Field("socket_type")
+    _index = Int32Field("index")
+    _workers = ListField("workers", FieldTypes.string)
+    _tileable_key = StringField("tileable_key")
 
-    def __init__(self, workers=None, socket_type=None, tileable_key=None, index=None, **kw):
+    def __init__(
+        self, workers=None, socket_type=None, tileable_key=None, index=None, **kw
+    ):
         super().__init__(
-            _socket_type=socket_type, _workers=workers, _tileable_key=tileable_key,
-            _index=index, _pure_depends=[True], **kw)
+            _socket_type=socket_type,
+            _workers=workers,
+            _tileable_key=tileable_key,
+            _index=index,
+            _pure_depends=[True],
+            **kw
+        )
 
     @property
     def socket_type(self):
@@ -56,8 +68,7 @@ class CollectPorts(LearnOperand, LearnOperandMixin):
             deps = [dep]
         else:
             deps = None
-        return self.new_tileable(
-            deps, shape=(len(self.workers,),), dtype=np.dtype(int))
+        return self.new_tileable(deps, shape=(len(self.workers),), dtype=np.dtype(int))
 
     @classmethod
     def tile(cls, op: "CollectPorts"):
@@ -75,12 +86,12 @@ class CollectPorts(LearnOperand, LearnOperandMixin):
             new_op._index = idx
             new_op._pure_depends = [True]
             inps = [inp] if inp else None
-            chunks.append(new_op.new_chunk(
-                inps, index=(idx,), shape=(1,), dtype=np.dtype(int)))
+            chunks.append(
+                new_op.new_chunk(inps, index=(idx,), shape=(1,), dtype=np.dtype(int))
+            )
 
         concat_op = TensorConcatenate(axis=0, dtype=chunks[0].dtype)
-        concat_chunk = concat_op.new_chunk(
-            chunks, shape=(len(op.workers),), index=(0,))
+        concat_chunk = concat_op.new_chunk(chunks, shape=(len(op.workers),), index=(0,))
 
         new_op = op.copy().reset_key()
         params = op.outputs[0].params

@@ -26,34 +26,36 @@ from ._optimizers import gradient_descent
 
 
 def _check_solver(solver):
-    all_solvers = ['SGD']
+    all_solvers = ["SGD"]
     if solver not in all_solvers:
-        raise ValueError("Logistic Regression supports only solvers in %s, got"
-                         " %s." % (all_solvers, solver))
+        raise ValueError(
+            "Logistic Regression supports only solvers in %s, got"
+            " %s." % (all_solvers, solver)
+        )
     return solver
 
 
 def _check_multi_class(multi_class, solver, n_classes):
-    if multi_class == 'auto':
-        return 'multinomial'
-    if multi_class == 'ovr':
+    if multi_class == "auto":
+        return "multinomial"
+    if multi_class == "ovr":
         if n_classes == 2:
-            return 'multinomial'
+            return "multinomial"
         else:
-            raise ValueError("Solver %s does not support "
-                             "an ovr backend with number of classes "
-                             "larger than 2."
-                             % solver)
-    if multi_class == 'multinomial':
-        return 'multinomial'
+            raise ValueError(
+                "Solver %s does not support "
+                "an ovr backend with number of classes "
+                "larger than 2." % solver
+            )
+    if multi_class == "multinomial":
+        return "multinomial"
 
-    raise ValueError("multi_class should be 'multinomial', "
-                     "'ovr' or 'auto'. Got %s."
-                     % multi_class)
+    raise ValueError(
+        "multi_class should be 'multinomial', " "'ovr' or 'auto'. Got %s." % multi_class
+    )
 
 
-class LogisticRegression(LinearClassifierMixin,
-                         BaseEstimator):
+class LogisticRegression(LinearClassifierMixin, BaseEstimator):
     """
     Logistic Regression (aka logit, MaxEnt) classifier.
 
@@ -158,11 +160,21 @@ class LogisticRegression(LinearClassifierMixin,
     >>> clf.predict(X[:2, :])
     array([0, 0])
     """
+
     @_deprecate_positional_args
-    def __init__(self, penalty='l2', fit_intercept=False,
-                 C=100, batch_size=20, learning_rate=0.1,
-                 random_state=None, solver='SGD', max_iter=300,
-                 multi_class='auto', verbose=0):
+    def __init__(
+        self,
+        penalty="l2",
+        fit_intercept=False,
+        C=100,
+        batch_size=20,
+        learning_rate=0.1,
+        random_state=None,
+        solver="SGD",
+        max_iter=300,
+        multi_class="auto",
+        verbose=0,
+    ):
 
         self.penalty = penalty
         self.fit_intercept = fit_intercept
@@ -194,25 +206,23 @@ class LogisticRegression(LinearClassifierMixin,
             Fitted estimator.
         """
         # ========== Pre-check =============
-        if self.penalty not in ['l2']:
+        if self.penalty not in ["l2"]:
             raise NotImplementedError("Only support L2 penalty.")
 
         solver = _check_solver(self.solver)
 
         if not isinstance(self.C, numbers.Number) or self.C < 0:
-            raise ValueError("Penalty term must be positive; got (C=%r)"
-                             % self.C)
+            raise ValueError("Penalty term must be positive; got (C=%r)" % self.C)
 
         if not isinstance(self.max_iter, numbers.Number) or self.max_iter < 0:
-            raise ValueError("Maximum number of iteration must be positive;"
-                             " got (max_iter=%r)" % self.max_iter)
+            raise ValueError(
+                "Maximum number of iteration must be positive;"
+                " got (max_iter=%r)" % self.max_iter
+            )
 
         _dtype = [mt.float64, mt.float32]
 
-        X, y = self._validate_data(X, y,
-                                   accept_sparse='csr',
-                                   dtype=_dtype,
-                                   order="C")
+        X, y = self._validate_data(X, y, accept_sparse="csr", dtype=_dtype, order="C")
 
         check_classification_targets(y)
 
@@ -222,15 +232,18 @@ class LogisticRegression(LinearClassifierMixin,
 
         # ========== Fit solver ============
         # Only support stochastic gradient descent for now
-        if multi_class == 'multinomial':
-            if solver == 'SGD':
-                self.coef_ = gradient_descent(X, y,
-                                              learning_rate=self.learning_rate,
-                                              reg=(1 / self.C),
-                                              max_epochs=self.max_iter,
-                                              batch_size=self.batch_size,
-                                              fit_intercept=self.fit_intercept,
-                                              verbose=self.verbose)
+        if multi_class == "multinomial":
+            if solver == "SGD":
+                self.coef_ = gradient_descent(
+                    X,
+                    y,
+                    learning_rate=self.learning_rate,
+                    reg=(1 / self.C),
+                    max_epochs=self.max_iter,
+                    batch_size=self.batch_size,
+                    fit_intercept=self.fit_intercept,
+                    verbose=self.verbose,
+                )
                 self.coef_ = self.coef_.T
 
         # ========== Post processing =======

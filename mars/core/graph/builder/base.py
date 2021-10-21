@@ -36,13 +36,17 @@ class AbstractGraphBuilder(ABC):
     def _select_inputs(self, inputs: List[EntityType]):
         return inputs
 
-    def _if_add_node(self, node: EntityType, visited: Set):  # pylint: disable=no-self-use
+    def _if_add_node(
+        self, node: EntityType, visited: Set
+    ):  # pylint: disable=no-self-use
         return node not in visited
 
-    def _add_nodes(self,
-                   graph: Union[ChunkGraph, TileableGraph],
-                   nodes: List[EntityType],
-                   visited: Set):
+    def _add_nodes(
+        self,
+        graph: Union[ChunkGraph, TileableGraph],
+        nodes: List[EntityType],
+        visited: Set,
+    ):
         # update visited
         visited.update(nodes)
 

@@ -16,8 +16,12 @@ import scipy.special as spspecial
 
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
-from .core import TensorSpecialUnaryOp, TensorSpecialMultiOp, \
-    TensorSpecialBinOp, _register_special_op
+from .core import (
+    TensorSpecialUnaryOp,
+    TensorSpecialMultiOp,
+    TensorSpecialBinOp,
+    _register_special_op,
+)
 
 
 class NoOrderSpecialMixin:
@@ -26,16 +30,16 @@ class NoOrderSpecialMixin:
         func = super()._get_func(xp)
 
         def _wrapped(*args, **kw):
-            kw.pop('order', None)
+            kw.pop("order", None)
             return func(*args, **kw)
 
         return _wrapped
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorGamma(TensorSpecialUnaryOp):
-    _func_name = 'gamma'
+    _func_name = "gamma"
 
 
 @implement_scipy(spspecial.gamma)
@@ -46,9 +50,9 @@ def gamma(x, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorGammaln(TensorSpecialUnaryOp):
-    _func_name = 'gammaln'
+    _func_name = "gammaln"
 
 
 @implement_scipy(spspecial.gammaln)
@@ -94,9 +98,9 @@ def gammaln(x, out=None, where=None, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorLogGamma(TensorSpecialUnaryOp):
-    _func_name = 'loggamma'
+    _func_name = "loggamma"
 
 
 @implement_scipy(spspecial.loggamma)
@@ -107,9 +111,9 @@ def loggamma(x, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorGammaSgn(TensorSpecialUnaryOp):
-    _func_name = 'gammasgn'
+    _func_name = "gammasgn"
 
 
 @implement_scipy(spspecial.gammasgn)
@@ -120,9 +124,9 @@ def gammasgn(x, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorGammaInc(TensorSpecialBinOp):
-    _func_name = 'gammainc'
+    _func_name = "gammainc"
 
 
 @implement_scipy(spspecial.gammainc)
@@ -133,9 +137,9 @@ def gammainc(a, b, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorGammaIncInv(TensorSpecialBinOp):
-    _func_name = 'gammaincinv'
+    _func_name = "gammaincinv"
 
 
 @implement_scipy(spspecial.gammaincinv)
@@ -146,9 +150,9 @@ def gammaincinv(a, b, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorGammaIncc(TensorSpecialBinOp):
-    _func_name = 'gammaincc'
+    _func_name = "gammaincc"
 
 
 @implement_scipy(spspecial.gammainc)
@@ -159,9 +163,9 @@ def gammaincc(a, b, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorGammaInccInv(TensorSpecialBinOp):
-    _func_name = 'gammainccinv'
+    _func_name = "gammainccinv"
 
 
 @implement_scipy(spspecial.gammainccinv)
@@ -172,9 +176,9 @@ def gammainccinv(a, b, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorBeta(TensorSpecialBinOp):
-    _func_name = 'beta'
+    _func_name = "beta"
 
 
 @implement_scipy(spspecial.beta)
@@ -185,9 +189,9 @@ def beta(a, b, out=None, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorBetaLn(TensorSpecialBinOp):
-    _func_name = 'betaln'
+    _func_name = "betaln"
 
 
 @implement_scipy(spspecial.betaln)
@@ -200,7 +204,7 @@ def betaln(a, b, out=None, **kwargs):
 @_register_special_op
 class TensorBetaInc(TensorSpecialMultiOp):
     _ARG_COUNT = 3
-    _func_name = 'betainc'
+    _func_name = "betainc"
 
 
 @implement_scipy(spspecial.betainc)
@@ -213,7 +217,7 @@ def betainc(a, b, x, out=None, **kwargs):
 @_register_special_op
 class TensorBetaIncInv(TensorSpecialMultiOp):
     _ARG_COUNT = 3
-    _func_name = 'betaincinv'
+    _func_name = "betaincinv"
 
 
 @implement_scipy(spspecial.betaincinv)
@@ -224,9 +228,9 @@ def betaincinv(a, b, y, out=None, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorPsi(TensorSpecialUnaryOp):
-    _func_name = 'psi'
+    _func_name = "psi"
 
 
 @implement_scipy(spspecial.psi)
@@ -237,9 +241,9 @@ def psi(x, out=None, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorRGamma(TensorSpecialUnaryOp):
-    _func_name = 'rgamma'
+    _func_name = "rgamma"
 
 
 @implement_scipy(spspecial.rgamma)
@@ -250,9 +254,9 @@ def rgamma(x, out=None, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorPolyGamma(NoOrderSpecialMixin, TensorSpecialBinOp):
-    _func_name = 'polygamma'
+    _func_name = "polygamma"
 
 
 @implement_scipy(spspecial.polygamma)
@@ -263,9 +267,9 @@ def polygamma(a, b, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorMultiGammaLn(NoOrderSpecialMixin, TensorSpecialBinOp):
-    _func_name = 'multigammaln'
+    _func_name = "multigammaln"
 
 
 @implement_scipy(spspecial.multigammaln)
@@ -276,9 +280,9 @@ def multigammaln(a, b, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorDiGamma(TensorSpecialUnaryOp):
-    _func_name = 'digamma'
+    _func_name = "digamma"
 
 
 @implement_scipy(spspecial.digamma)
@@ -289,9 +293,9 @@ def digamma(x, out=None, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorPoch(TensorSpecialBinOp):
-    _func_name = 'poch'
+    _func_name = "poch"
 
 
 @implement_scipy(spspecial.poch)

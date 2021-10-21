@@ -23,8 +23,8 @@ from ..core import TensorOrder
 class TensorSlice(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.SLICE
 
-    _input = KeyField('input')
-    _slices = ListField('slices')
+    _input = KeyField("input")
+    _slices = ListField("slices")
 
     def __init__(self, slices=None, **kw):
         super().__init__(_slices=slices, **kw)
@@ -38,7 +38,7 @@ class TensorSlice(TensorHasInput, TensorOperandMixin):
         self._input = self._inputs[0]
 
     def _get_order(self, kw, i):
-        order = kw.pop('order', None)
+        order = kw.pop("order", None)
         if order is None:
             inp = self.input
             if inp is None or inp.order == TensorOrder.C_ORDER:
@@ -60,7 +60,7 @@ class TensorSlice(TensorHasInput, TensorOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         inp = ctx[op.inputs[0].key]
-        if op.input.ndim == 0 and not hasattr(inp, 'shape'):
+        if op.input.ndim == 0 and not hasattr(inp, "shape"):
             # scalar, but organize it into an array
             inp = get_array_module(inp).array(inp)
         x = inp[tuple(op.slices)]

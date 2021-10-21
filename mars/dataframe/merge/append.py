@@ -20,19 +20,36 @@ from ...serialization.serializables import BoolField
 from ..datasource.dataframe import from_pandas
 from ..indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 from ..utils import parse_index, standardize_range_index
-from ..operands import DataFrameOperand, DataFrameOperandMixin, DATAFRAME_TYPE, SERIES_TYPE
+from ..operands import (
+    DataFrameOperand,
+    DataFrameOperandMixin,
+    DATAFRAME_TYPE,
+    SERIES_TYPE,
+)
 
 
 class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.APPEND
 
-    _ignore_index = BoolField('ignore_index')
-    _verify_integrity = BoolField('verify_integrity')
-    _sort = BoolField('sort')
+    _ignore_index = BoolField("ignore_index")
+    _verify_integrity = BoolField("verify_integrity")
+    _sort = BoolField("sort")
 
-    def __init__(self, ignore_index=None, verify_integrity=None, sort=None, output_types=None, **kw):
-        super().__init__(_ignore_index=ignore_index, _verify_integrity=verify_integrity,
-                         _sort=sort, _output_types=output_types, **kw)
+    def __init__(
+        self,
+        ignore_index=None,
+        verify_integrity=None,
+        sort=None,
+        output_types=None,
+        **kw,
+    ):
+        super().__init__(
+            _ignore_index=ignore_index,
+            _verify_integrity=verify_integrity,
+            _sort=sort,
+            _output_types=output_types,
+            **kw,
+        )
 
     @property
     def ignore_index(self):
@@ -64,10 +81,16 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
             for c in df.chunks:
                 index = (c.index[0] + row_index, c.index[1])
                 iloc_op = DataFrameIlocGetItem(indexes=[slice(None)] * 2)
-                out_chunks.append(iloc_op.new_chunk([c], shape=c.shape, index=index,
-                                                    dtypes=c.dtypes,
-                                                    index_value=c.index_value,
-                                                    columns_value=c.columns_value))
+                out_chunks.append(
+                    iloc_op.new_chunk(
+                        [c],
+                        shape=c.shape,
+                        index=index,
+                        dtypes=c.dtypes,
+                        index_value=c.index_value,
+                        columns_value=c.columns_value,
+                    )
+                )
             nsplits[0] += df.nsplits[0]
             row_index += len(df.nsplits[0])
         if op.ignore_index:
@@ -75,11 +98,15 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
 
         nsplits = tuple(tuple(n) for n in nsplits)
         new_op = op.copy()
-        return new_op.new_dataframes(op.inputs, out_df.shape,
-                                     nsplits=nsplits, chunks=out_chunks,
-                                     dtypes=out_df.dtypes,
-                                     index_value=out_df.index_value,
-                                     columns_value=out_df.columns_value)
+        return new_op.new_dataframes(
+            op.inputs,
+            out_df.shape,
+            nsplits=nsplits,
+            chunks=out_chunks,
+            dtypes=out_df.dtypes,
+            index_value=out_df.index_value,
+            columns_value=out_df.columns_value,
+        )
 
     @classmethod
     def _tile_series(cls, op):
@@ -93,10 +120,16 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
             for c in series.chunks:
                 index = (c.index[0] + row_index,)
                 iloc_op = SeriesIlocGetItem(indexes=(slice(None),))
-                out_chunks.append(iloc_op.new_chunk([c], shape=c.shape, index=index,
-                                                    index_value=c.index_value,
-                                                    dtype=c.dtype,
-                                                    name=c.name))
+                out_chunks.append(
+                    iloc_op.new_chunk(
+                        [c],
+                        shape=c.shape,
+                        index=index,
+                        index_value=c.index_value,
+                        dtype=c.dtype,
+                        name=c.name,
+                    )
+                )
             nsplits += series.nsplits[0]
             row_index += len(series.nsplits[0])
 
@@ -105,11 +138,15 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
 
         nsplits = (tuple(nsplits),)
         new_op = op.copy()
-        return new_op.new_seriess(op.inputs, out_series.shape,
-                                  nsplits=nsplits, chunks=out_chunks,
-                                  dtype=out_series.dtype,
-                                  index_value=out_series.index_value,
-                                  name=out_series.name)
+        return new_op.new_seriess(
+            op.inputs,
+            out_series.shape,
+            nsplits=nsplits,
+            chunks=out_chunks,
+            dtype=out_series.dtype,
+            index_value=out_series.index_value,
+            name=out_series.name,
+        )
 
     @classmethod
     def tile(cls, op):
@@ -125,14 +162,15 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
             if self.ignore_index:
                 index_value = parse_index(pd.RangeIndex(shape[0]))
             else:
-                index_value = parse_index(df.index_value.to_pandas().append(
-                    other.index_value.to_pandas()))
+                index_value = parse_index(
+                    df.index_value.to_pandas().append(other.index_value.to_pandas())
+                )
         elif isinstance(other, list):
             row_length = df.shape[0]
             index = df.index_value.to_pandas()
             for item in other:
                 if not isinstance(item, DATAFRAME_TYPE):  # pragma: no cover
-                    raise ValueError(f'Invalid type {type(item)} to append')
+                    raise ValueError(f"Invalid type {type(item)} to append")
                 row_length += item.shape[0]
                 index = index.append(item.index_value.to_pandas())
             shape = (row_length, df.shape[1])
@@ -142,10 +180,14 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
                 index_value = parse_index(index)
             inputs = [df] + other
         else:  # pragma: no cover
-            raise ValueError(f'Invalid type {type(other)} to append')
-        return self.new_dataframe(inputs, shape=shape, dtypes=df.dtypes,
-                                  index_value=index_value,
-                                  columns_value=df.columns_value)
+            raise ValueError(f"Invalid type {type(other)} to append")
+        return self.new_dataframe(
+            inputs,
+            shape=shape,
+            dtypes=df.dtypes,
+            index_value=index_value,
+            columns_value=df.columns_value,
+        )
 
     def _call_series(self, df, other):
         if isinstance(other, SERIES_TYPE):
@@ -154,14 +196,15 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
             if self.ignore_index:
                 index_value = parse_index(pd.RangeIndex(shape[0]))
             else:
-                index_value = parse_index(df.index_value.to_pandas().append(
-                    other.index_value.to_pandas()))
+                index_value = parse_index(
+                    df.index_value.to_pandas().append(other.index_value.to_pandas())
+                )
         elif isinstance(other, list):
             row_length = df.shape[0]
             index = df.index_value.to_pandas()
             for item in other:
                 if not isinstance(item, SERIES_TYPE):  # pragma: no cover
-                    raise ValueError(f'Invalid type {type(item)} to append')
+                    raise ValueError(f"Invalid type {type(item)} to append")
                 row_length += item.shape[0]
                 index = index.append(item.index_value.to_pandas())
             shape = (row_length,)
@@ -171,15 +214,15 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
                 index_value = parse_index(index)
             inputs = [df] + other
         else:  # pragma: no cover
-            raise ValueError(f'Invalid type {type(other)} to append')
-        return self.new_series(inputs, shape=shape, dtype=df.dtype,
-                               index_value=index_value, name=df.name)
+            raise ValueError(f"Invalid type {type(other)} to append")
+        return self.new_series(
+            inputs, shape=shape, dtype=df.dtype, index_value=index_value, name=df.name
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         first, others = ctx[op.inputs[0].key], [ctx[inp.key] for inp in op.inputs[1:]]
-        r = first.append(others, verify_integrity=op.verify_integrity,
-                         sort=op.sort)
+        r = first.append(others, verify_integrity=op.verify_integrity, sort=op.sort)
         ctx[op.outputs[0].key] = r
 
     def __call__(self, df, other):
@@ -193,8 +236,10 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
 
 def append(df, other, ignore_index=False, verify_integrity=False, sort=False):
     if verify_integrity or sort:  # pragma: no cover
-        raise NotImplementedError('verify_integrity and sort are not supported now')
+        raise NotImplementedError("verify_integrity and sort are not supported now")
     if isinstance(other, dict):
         other = from_pandas(pd.DataFrame(dict((k, [v]) for k, v in other.items())))
-    op = DataFrameAppend(ignore_index=ignore_index, verify_integrity=verify_integrity, sort=sort)
+    op = DataFrameAppend(
+        ignore_index=ignore_index, verify_integrity=verify_integrity, sort=sort
+    )
     return op(df, other)

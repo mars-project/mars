@@ -23,8 +23,11 @@ from .....typing import BandType
 from ....cluster import MockClusterAPI
 from ....subtask import Subtask, SubtaskResult, SubtaskStatus
 from ....task.supervisor.manager import TaskManagerActor
-from ...supervisor import SubtaskQueueingActor, SubtaskManagerActor, \
-    GlobalSlotManagerActor
+from ...supervisor import (
+    SubtaskQueueingActor,
+    SubtaskManagerActor,
+    GlobalSlotManagerActor,
+)
 from ...worker import SubtaskExecutionActor
 
 
@@ -69,10 +72,13 @@ class MockSubtaskExecutionActor(mo.StatelessActor):
     async def set_run_subtask_event(self, subtask_id, event):
         self._run_subtask_events[subtask_id] = event
 
-    async def run_subtask(self, subtask: Subtask, band_name: str, supervisor_address: str):
+    async def run_subtask(
+        self, subtask: Subtask, band_name: str, supervisor_address: str
+    ):
         self._run_subtask_events[subtask.subtask_id].set()
-        task = self._subtask_aiotasks[subtask.subtask_id][band_name] = \
-            asyncio.create_task(asyncio.sleep(20))
+        task = self._subtask_aiotasks[subtask.subtask_id][
+            band_name
+        ] = asyncio.create_task(asyncio.sleep(20))
         return await task
 
     def cancel_subtask(self, subtask_id: str, kill_timeout: int = 5):
@@ -88,27 +94,37 @@ class MockSubtaskExecutionActor(mo.StatelessActor):
 
 @pytest.fixture
 async def actor_pool():
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+    pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 
     async with pool:
-        session_id = 'test_session'
+        session_id = "test_session"
         await MockClusterAPI.create(pool.external_address)
         queue_ref = await mo.create_actor(
-            MockSubtaskQueueingActor, uid=SubtaskQueueingActor.gen_uid(session_id),
-            address=pool.external_address)
+            MockSubtaskQueueingActor,
+            uid=SubtaskQueueingActor.gen_uid(session_id),
+            address=pool.external_address,
+        )
         slots_ref = await mo.create_actor(
-            GlobalSlotManagerActor, uid=GlobalSlotManagerActor.default_uid(),
-            address=pool.external_address)
+            GlobalSlotManagerActor,
+            uid=GlobalSlotManagerActor.default_uid(),
+            address=pool.external_address,
+        )
         task_manager_ref = await mo.create_actor(
-            MockTaskManagerActor, uid=TaskManagerActor.gen_uid(session_id),
-            address=pool.external_address)
+            MockTaskManagerActor,
+            uid=TaskManagerActor.gen_uid(session_id),
+            address=pool.external_address,
+        )
         execution_ref = await mo.create_actor(
             MockSubtaskExecutionActor,
             uid=SubtaskExecutionActor.default_uid(),
-            address=pool.external_address)
+            address=pool.external_address,
+        )
         submitter_ref = await mo.create_actor(
-            SubtaskManagerActor, session_id, uid=SubtaskManagerActor.gen_uid(session_id),
-            address=pool.external_address)
+            SubtaskManagerActor,
+            session_id,
+            uid=SubtaskManagerActor.gen_uid(session_id),
+            address=pool.external_address,
+        )
 
         yield pool, session_id, execution_ref, submitter_ref, queue_ref, task_manager_ref
 
@@ -118,39 +134,56 @@ async def actor_pool():
 
 @pytest.mark.asyncio
 async def test_subtask_manager(actor_pool):
-    pool, session_id, execution_ref, manager_ref, queue_ref, task_manager_ref = actor_pool
+    (
+        pool,
+        session_id,
+        execution_ref,
+        manager_ref,
+        queue_ref,
+        task_manager_ref,
+    ) = actor_pool
 
-    subtask1 = Subtask('subtask1', session_id)
-    subtask2 = Subtask('subtask2', session_id)
+    subtask1 = Subtask("subtask1", session_id)
+    subtask2 = Subtask("subtask2", session_id)
 
     await manager_ref.add_subtasks([subtask1, subtask2], [(1,), (2,)])
     run_subtask1_event, run_subtask2_event = asyncio.Event(), asyncio.Event()
     await execution_ref.set_run_subtask_event(subtask1.subtask_id, run_subtask1_event)
     await execution_ref.set_run_subtask_event(subtask2.subtask_id, run_subtask2_event)
 
-    submit1 = asyncio.create_task(manager_ref.submit_subtask_to_band(
-        subtask1.subtask_id, (pool.external_address, 'gpu-0')))
-    submit2 = asyncio.create_task(manager_ref.submit_subtask_to_band(
-        subtask2.subtask_id, (pool.external_address, 'gpu-1')))
+    submit1 = asyncio.create_task(
+        manager_ref.submit_subtask_to_band(
+            subtask1.subtask_id, (pool.external_address, "gpu-0")
+        )
+    )
+    submit2 = asyncio.create_task(
+        manager_ref.submit_subtask_to_band(
+            subtask2.subtask_id, (pool.external_address, "gpu-1")
+        )
+    )
 
     await asyncio.gather(run_subtask1_event.wait(), run_subtask2_event.wait())
 
     await manager_ref.cancel_subtasks([subtask1.subtask_id, subtask2.subtask_id])
     await asyncio.wait_for(
         asyncio.gather(
-            execution_ref.wait_subtask(subtask1.subtask_id, 'gpu-0'),
-            execution_ref.wait_subtask(subtask2.subtask_id, 'gpu-1'),
-        ), timeout=10)
+            execution_ref.wait_subtask(subtask1.subtask_id, "gpu-0"),
+            execution_ref.wait_subtask(subtask2.subtask_id, "gpu-1"),
+        ),
+        timeout=10,
+    )
     with pytest.raises(asyncio.CancelledError):
         await submit1
     with pytest.raises(asyncio.CancelledError):
         await submit2
-    assert (await task_manager_ref.get_result(subtask1.subtask_id)).status \
-           == SubtaskStatus.cancelled
-    assert (await task_manager_ref.get_result(subtask2.subtask_id)).status \
-           == SubtaskStatus.cancelled
+    assert (
+        await task_manager_ref.get_result(subtask1.subtask_id)
+    ).status == SubtaskStatus.cancelled
+    assert (
+        await task_manager_ref.get_result(subtask2.subtask_id)
+    ).status == SubtaskStatus.cancelled
 
-    subtask3 = Subtask('subtask3', session_id)
+    subtask3 = Subtask("subtask3", session_id)
 
     await queue_ref.set_error(ValueError())
     await manager_ref.add_subtasks.tell([subtask3], [(3,)])

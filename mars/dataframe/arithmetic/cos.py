@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameCos(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.COS
-    _func_name = 'cos'
+    _func_name = "cos"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorCos
+
         return TensorCos

@@ -22,13 +22,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorRandBeta(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_a', '_b']
+    _input_fields_ = ["_a", "_b"]
     _op_type_ = OperandDef.RAND_BETA
 
-    _fields_ = '_a', '_b', '_size'
-    _a = AnyField('a')
-    _b = AnyField('b')
-    _func_name = 'beta'
+    _fields_ = "_a", "_b", "_size"
+    _a = AnyField("a")
+    _b = AnyField("b")
+    _func_name = "beta"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -88,8 +88,11 @@ def beta(random_state, a, b, size=None, chunk_size=None, gpu=None, dtype=None):
         Drawn samples from the parameterized beta distribution.
     """
     if dtype is None:
-        dtype = np.random.RandomState().beta(
-            handle_array(a), handle_array(b), size=(0,)).dtype
+        dtype = (
+            np.random.RandomState()
+            .beta(handle_array(a), handle_array(b), size=(0,))
+            .dtype
+        )
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorRandBeta(seed=seed, size=size, gpu=gpu, dtype=dtype)

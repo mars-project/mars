@@ -16,15 +16,14 @@ from ....utils import lazy_import
 from .mldataset import _rechunk_if_needed
 from typing import Dict, List
 
-ray = lazy_import('ray')
+ray = lazy_import("ray")
 # Ray Datasets is available in early preview at ray.data with Ray 1.6+
 # (and ray.experimental.data in Ray 1.5)
-ray_dataset = lazy_import('ray.data')
-ray_exp_dataset = lazy_import('ray.experimental.data')
+ray_dataset = lazy_import("ray.data")
+ray_exp_dataset = lazy_import("ray.experimental.data")
 
 
-def to_ray_dataset(df,
-                   num_shards: int = None):
+def to_ray_dataset(df, num_shards: int = None):
     """Create a Ray Dataset from Mars DataFrame
 
     Args:
@@ -45,7 +44,7 @@ def to_ray_dataset(df,
     #       chunk1 for addr1,
     #       chunk2 & chunk3 for addr2,
     #       chunk4 for addr1
-    chunk_refs: List['ray.ObjectRef'] = get_chunk_refs(df)
+    chunk_refs: List["ray.ObjectRef"] = get_chunk_refs(df)
     # Ray Datasets is available in early preview at ray.data with Ray 1.6+
     # (and ray.experimental.data in Ray 1.5)
     real_ray_dataset = ray_dataset or ray_exp_dataset
@@ -53,5 +52,5 @@ def to_ray_dataset(df,
 
 
 def get_chunk_refs(df):
-    fetched_infos: Dict[str, List] = df.fetch_infos(fields=['object_id'])
-    return fetched_infos['object_id']
+    fetched_infos: Dict[str, List] = df.fetch_infos(fields=["object_id"])
+    return fetched_infos["object_id"]

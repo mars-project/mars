@@ -21,33 +21,67 @@ from ... import opcodes
 from ...config import options
 from ...core import OutputType, recursive_tile
 from ...core.custom_log import redirect_custom_log
-from ...serialization.serializables import StringField, AnyField, BoolField, \
-    TupleField, DictField, FunctionField
+from ...serialization.serializables import (
+    StringField,
+    AnyField,
+    BoolField,
+    TupleField,
+    DictField,
+    FunctionField,
+)
 from ...utils import enter_current_session, quiet_stdio
 from ..operands import DataFrameOperandMixin, DataFrameOperand
-from ..utils import build_df, build_series, parse_index, validate_axis, \
-    validate_output_types, make_dtypes, make_dtype, build_empty_df, build_empty_series
+from ..utils import (
+    build_df,
+    build_series,
+    parse_index,
+    validate_axis,
+    validate_output_types,
+    make_dtypes,
+    make_dtype,
+    build_empty_df,
+    build_empty_series,
+)
 
 
 class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.APPLY
 
-    _func = FunctionField('func')
-    _axis = AnyField('axis')
-    _convert_dtype = BoolField('convert_dtype')
-    _raw = BoolField('raw')
-    _result_type = StringField('result_type')
-    _elementwise = BoolField('elementwise')
-    _args = TupleField('args')
-    _kwds = DictField('kwds')
+    _func = FunctionField("func")
+    _axis = AnyField("axis")
+    _convert_dtype = BoolField("convert_dtype")
+    _raw = BoolField("raw")
+    _result_type = StringField("result_type")
+    _elementwise = BoolField("elementwise")
+    _args = TupleField("args")
+    _kwds = DictField("kwds")
 
-    def __init__(self, func=None, axis=None, convert_dtype=None, raw=None, result_type=None,
-                 args=None, kwds=None, output_type=None, elementwise=None, **kw):
+    def __init__(
+        self,
+        func=None,
+        axis=None,
+        convert_dtype=None,
+        raw=None,
+        result_type=None,
+        args=None,
+        kwds=None,
+        output_type=None,
+        elementwise=None,
+        **kw,
+    ):
         if output_type:
-            kw['_output_types'] = [output_type]
-        super().__init__(_func=func, _axis=axis, _convert_dtype=convert_dtype, _raw=raw,
-                         _result_type=result_type, _args=args, _kwds=kwds,
-                         _elementwise=elementwise, **kw)
+            kw["_output_types"] = [output_type]
+        super().__init__(
+            _func=func,
+            _axis=axis,
+            _convert_dtype=convert_dtype,
+            _raw=raw,
+            _result_type=result_type,
+            _args=args,
+            _kwds=kwds,
+            _elementwise=elementwise,
+            **kw,
+        )
 
     @property
     def func(self):
@@ -75,11 +109,11 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
 
     @property
     def args(self):
-        return getattr(self, '_args', None) or ()
+        return getattr(self, "_args", None) or ()
 
     @property
     def kwds(self):
-        return getattr(self, '_kwds', None) or dict()
+        return getattr(self, "_kwds", None) or dict()
 
     @classmethod
     @redirect_custom_log
@@ -91,16 +125,22 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
             if op.output_types[0] == OutputType.dataframe:
                 ctx[out.key] = build_empty_df(out.dtypes)
             else:
-                ctx[out.key] = build_empty_series(
-                    out.dtype, name=out.name)
+                ctx[out.key] = build_empty_series(out.dtype, name=out.name)
             return
 
         if isinstance(input_data, pd.DataFrame):
-            result = input_data.apply(op.func, axis=op.axis, raw=op.raw, result_type=op.result_type,
-                                      args=op.args, **op.kwds)
+            result = input_data.apply(
+                op.func,
+                axis=op.axis,
+                raw=op.raw,
+                result_type=op.result_type,
+                args=op.args,
+                **op.kwds,
+            )
         else:
-            result = input_data.apply(op.func, convert_dtype=op.convert_dtype, args=op.args,
-                                      **op.kwds)
+            result = input_data.apply(
+                op.func, convert_dtype=op.convert_dtype, args=op.args, **op.kwds
+            )
         ctx[out.key] = result
 
     @classmethod
@@ -142,8 +182,16 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
 
                 new_op = op.copy().reset_key()
                 new_op.tileable_op_key = op.key
-                chunks.append(new_op.new_chunk([c], shape=tuple(new_shape), index=c.index, dtypes=new_dtypes,
-                                               index_value=new_index_value, columns_value=new_columns_value))
+                chunks.append(
+                    new_op.new_chunk(
+                        [c],
+                        shape=tuple(new_shape),
+                        index=c.index,
+                        dtypes=new_dtypes,
+                        index_value=new_index_value,
+                        columns_value=new_columns_value,
+                    )
+                )
 
             new_nsplits = list(in_df.nsplits)
             if not elementwise:
@@ -155,8 +203,15 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
                 new_index = (c.index[1 - axis],)
                 new_op = op.copy().reset_key()
                 new_op.tileable_op_key = op.key
-                chunks.append(new_op.new_chunk([c], shape=(shape_len,), index=new_index, dtype=out_df.dtype,
-                                               index_value=new_index_value))
+                chunks.append(
+                    new_op.new_chunk(
+                        [c],
+                        shape=(shape_len,),
+                        index=new_index,
+                        dtype=out_df.dtype,
+                        index_value=new_index_value,
+                    )
+                )
             new_nsplits = (in_df.nsplits[1 - axis],)
 
         new_op = op.copy()
@@ -175,20 +230,20 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
             new_op.tileable_op_key = op.key
             kw = c.params.copy()
             if out_series.ndim == 1:
-                kw['dtype'] = out_series.dtype
+                kw["dtype"] = out_series.dtype
             else:
-                kw['index'] = (c.index[0], 0)
-                kw['shape'] = (c.shape[0], out_series.shape[1])
-                kw['dtypes'] = out_series.dtypes
-                kw['columns_value'] = out_series.columns_value
+                kw["index"] = (c.index[0], 0)
+                kw["shape"] = (c.shape[0], out_series.shape[1])
+                kw["dtypes"] = out_series.dtypes
+                kw["columns_value"] = out_series.columns_value
             chunks.append(new_op.new_chunk([c], **kw))
 
         new_op = op.copy()
         kw = out_series.params.copy()
         kw.update(dict(chunks=chunks, nsplits=in_series.nsplits))
         if out_series.ndim == 2:
-            kw['nsplits'] = (in_series.nsplits[0], (out_series.shape[1],))
-            kw['columns_value'] = out_series.columns_value
+            kw["nsplits"] = (in_series.nsplits[0], (out_series.shape[1],))
+            kw["columns_value"] = out_series.columns_value
         return new_op.new_tileables(op.inputs, **kw)
 
     @classmethod
@@ -200,19 +255,34 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
 
     def _infer_df_func_returns(self, df, dtypes, dtype=None, name=None, index=None):
         if isinstance(self._func, np.ufunc):
-            output_type, new_dtypes, index_value, new_elementwise = \
-                OutputType.dataframe, None, 'inherit', True
+            output_type, new_dtypes, index_value, new_elementwise = (
+                OutputType.dataframe,
+                None,
+                "inherit",
+                True,
+            )
         else:
-            output_type, new_dtypes, index_value, new_elementwise = None, None, None, False
+            output_type, new_dtypes, index_value, new_elementwise = (
+                None,
+                None,
+                None,
+                False,
+            )
 
         try:
             empty_df = build_df(df, size=2)
-            with np.errstate(all='ignore'), quiet_stdio():
-                infer_df = empty_df.apply(self._func, axis=self._axis, raw=self._raw,
-                                          result_type=self._result_type, args=self.args, **self.kwds)
+            with np.errstate(all="ignore"), quiet_stdio():
+                infer_df = empty_df.apply(
+                    self._func,
+                    axis=self._axis,
+                    raw=self._raw,
+                    result_type=self._result_type,
+                    args=self.args,
+                    **self.kwds,
+                )
             if index_value is None:
                 if infer_df.index is empty_df.index:
-                    index_value = 'inherit'
+                    index_value = "inherit"
                 else:
                     index_value = parse_index(pd.RangeIndex(-1))
 
@@ -226,25 +296,32 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         except:  # noqa: E722  # nosec
             pass
 
-        self.output_types = [output_type] if not self.output_types else self.output_types
+        self.output_types = (
+            [output_type] if not self.output_types else self.output_types
+        )
         dtypes = new_dtypes if dtypes is None else dtypes
         index_value = index_value if index is None else parse_index(index)
-        self._elementwise = new_elementwise if self._elementwise is None else self._elementwise
+        self._elementwise = (
+            new_elementwise if self._elementwise is None else self._elementwise
+        )
         return dtypes, index_value
 
     def _call_dataframe(self, df, dtypes=None, dtype=None, name=None, index=None):
         # for backward compatibility
         dtype = dtype if dtype is not None else dtypes
         dtypes, index_value = self._infer_df_func_returns(
-            df, dtypes, dtype=dtype, name=name, index=index)
+            df, dtypes, dtype=dtype, name=name, index=index
+        )
         if index_value is None:
             index_value = parse_index(None, (df.key, df.index_value.key))
-        for arg, desc in zip((self.output_types, dtypes), ('output_types', 'dtypes')):
+        for arg, desc in zip((self.output_types, dtypes), ("output_types", "dtypes")):
             if arg is None:
-                raise TypeError(f'Cannot determine {desc} by calculating with enumerate data, '
-                                'please specify it as arguments')
+                raise TypeError(
+                    f"Cannot determine {desc} by calculating with enumerate data, "
+                    "please specify it as arguments"
+                )
 
-        if index_value == 'inherit':
+        if index_value == "inherit":
             index_value = df.index_value
 
         if self._elementwise:
@@ -258,14 +335,26 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
 
         if self.output_types[0] == OutputType.dataframe:
             if self.axis == 0:
-                return self.new_dataframe([df], shape=shape, dtypes=dtypes, index_value=index_value,
-                                          columns_value=parse_index(dtypes.index, store_data=True))
+                return self.new_dataframe(
+                    [df],
+                    shape=shape,
+                    dtypes=dtypes,
+                    index_value=index_value,
+                    columns_value=parse_index(dtypes.index, store_data=True),
+                )
             else:
-                return self.new_dataframe([df], shape=shape, dtypes=dtypes, index_value=df.index_value,
-                                          columns_value=parse_index(dtypes.index, store_data=True))
+                return self.new_dataframe(
+                    [df],
+                    shape=shape,
+                    dtypes=dtypes,
+                    index_value=df.index_value,
+                    columns_value=parse_index(dtypes.index, store_data=True),
+                )
         else:
             name, dtype = dtypes
-            return self.new_series([df], shape=shape, name=name, dtype=dtype, index_value=index_value)
+            return self.new_series(
+                [df], shape=shape, name=name, dtype=dtype, index_value=index_value
+            )
 
     def _call_series(self, series, dtypes=None, dtype=None, name=None, index=None):
         # for backward compatibility
@@ -273,8 +362,10 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         if self._convert_dtype:
             try:
                 test_series = build_series(series, size=2, name=series.name)
-                with np.errstate(all='ignore'), quiet_stdio():
-                    infer_series = test_series.apply(self._func, args=self.args, **self.kwds)
+                with np.errstate(all="ignore"), quiet_stdio():
+                    infer_series = test_series.apply(
+                        self._func, args=self.args, **self.kwds
+                    )
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                 infer_series = None
 
@@ -292,29 +383,49 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
                     if infer_series is not None and infer_series.ndim == 2:
                         dtypes = infer_series.dtypes
                     else:
-                        raise TypeError('Cannot determine dtypes, '
-                                        'please specify `dtypes` as argument')
+                        raise TypeError(
+                            "Cannot determine dtypes, "
+                            "please specify `dtypes` as argument"
+                        )
                 columns_value = parse_index(dtypes.index, store_data=True)
 
-                return self.new_dataframe([series], shape=(series.shape[0], len(dtypes)),
-                                          index_value=index_value, columns_value=columns_value,
-                                          dtypes=dtypes)
+                return self.new_dataframe(
+                    [series],
+                    shape=(series.shape[0], len(dtypes)),
+                    index_value=index_value,
+                    columns_value=columns_value,
+                    dtypes=dtypes,
+                )
             else:
-                if dtype is None and infer_series is not None and infer_series.ndim == 1:
+                if (
+                    dtype is None
+                    and infer_series is not None
+                    and infer_series.ndim == 1
+                ):
                     dtype = infer_series.dtype
                 else:
                     dtype = dtype if dtype is not None else np.dtype(object)
                 if infer_series is not None and infer_series.ndim == 1:
                     name = name or infer_series.name
-                return self.new_series([series], dtype=dtype, shape=series.shape,
-                                       index_value=index_value, name=name)
+                return self.new_series(
+                    [series],
+                    dtype=dtype,
+                    shape=series.shape,
+                    index_value=index_value,
+                    name=name,
+                )
         else:
-            dtype = dtype if dtype is not None else np.dtype('object')
-            return self.new_series([series], dtype=dtype, shape=series.shape,
-                                   index_value=series.index_value, name=name)
+            dtype = dtype if dtype is not None else np.dtype("object")
+            return self.new_series(
+                [series],
+                dtype=dtype,
+                shape=series.shape,
+                index_value=series.index_value,
+                name=name,
+            )
 
     def __call__(self, df_or_series, dtypes=None, dtype=None, name=None, index=None):
-        axis = getattr(self, 'axis', None) or 0
+        axis = getattr(self, "axis", None) or 0
         dtypes = make_dtypes(dtypes)
         dtype = make_dtype(dtype)
         self._axis = validate_axis(axis, df_or_series)
@@ -322,12 +433,26 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         if df_or_series.op.output_types[0] == OutputType.dataframe:
             return self._call_dataframe(df_or_series, dtypes=dtypes, index=index)
         else:
-            return self._call_series(df_or_series, dtypes=dtypes, dtype=dtype, name=name, index=index)
+            return self._call_series(
+                df_or_series, dtypes=dtypes, dtype=dtype, name=name, index=index
+            )
 
 
-def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None,
-             dtype=None, name=None, output_type=None, index=None, elementwise=None,
-             **kwds):
+def df_apply(
+    df,
+    func,
+    axis=0,
+    raw=False,
+    result_type=None,
+    args=(),
+    dtypes=None,
+    dtype=None,
+    name=None,
+    output_type=None,
+    index=None,
+    elementwise=None,
+    **kwds,
+):
     """
     Apply a function along an axis of the DataFrame.
 
@@ -497,10 +622,11 @@ def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None
     if isinstance(func, (list, dict)):
         return df.aggregate(func)
 
-    output_types = kwds.pop('output_types', None)
-    object_type = kwds.pop('object_type', None)
+    output_types = kwds.pop("output_types", None)
+    object_type = kwds.pop("object_type", None)
     output_types = validate_output_types(
-        output_type=output_type, output_types=output_types, object_type=object_type)
+        output_type=output_type, output_types=output_types, object_type=object_type
+    )
     output_type = output_types[0] if output_types else None
 
     # calling member function
@@ -511,13 +637,31 @@ def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None
             kwds["axis"] = axis
         return func(*args, **kwds)
 
-    op = ApplyOperand(func=func, axis=axis, raw=raw, result_type=result_type, args=args, kwds=kwds,
-                      output_type=output_type, elementwise=elementwise)
+    op = ApplyOperand(
+        func=func,
+        axis=axis,
+        raw=raw,
+        result_type=result_type,
+        args=args,
+        kwds=kwds,
+        output_type=output_type,
+        elementwise=elementwise,
+    )
     return op(df, dtypes=dtypes, dtype=dtype, name=name, index=index)
 
 
-def series_apply(series, func, convert_dtype=True, output_type=None, args=(),
-                 dtypes=None, dtype=None, name=None, index=None, **kwds):
+def series_apply(
+    series,
+    func,
+    convert_dtype=True,
+    output_type=None,
+    args=(),
+    dtypes=None,
+    dtype=None,
+    name=None,
+    index=None,
+    **kwds,
+):
     """
     Invoke function on values of Series.
 
@@ -650,15 +794,23 @@ def series_apply(series, func, convert_dtype=True, output_type=None, args=(),
         func_str = func
         func = getattr(np, func_str, None)
         if func is None:
-            raise AttributeError(f"'{func_str!r}' is not a valid function "
-                                 f"for '{type(series).__name__}' object")
+            raise AttributeError(
+                f"'{func_str!r}' is not a valid function "
+                f"for '{type(series).__name__}' object"
+            )
 
-    output_types = kwds.pop('output_types', None)
-    object_type = kwds.pop('object_type', None)
+    output_types = kwds.pop("output_types", None)
+    object_type = kwds.pop("object_type", None)
     output_types = validate_output_types(
-        output_type=output_type, output_types=output_types, object_type=object_type)
+        output_type=output_type, output_types=output_types, object_type=object_type
+    )
     output_type = output_types[0] if output_types else OutputType.series
 
-    op = ApplyOperand(func=func, convert_dtype=convert_dtype, args=args, kwds=kwds,
-                      output_type=output_type)
+    op = ApplyOperand(
+        func=func,
+        convert_dtype=convert_dtype,
+        args=args,
+        kwds=kwds,
+        output_type=output_type,
+    )
     return op(series, dtypes=dtypes, dtype=dtype, name=name, index=index)

@@ -40,19 +40,16 @@ async def actor_pools():
         if is_worker:
             kw = dict(
                 n_process=3,
-                labels=['main'] + ['numa-0'] * 2 + ['io'],
-                subprocess_start_method='spawn'
+                labels=["main"] + ["numa-0"] * 2 + ["io"],
+                subprocess_start_method="spawn",
             )
         else:
-            kw = dict(n_process=0,
-                      subprocess_start_method='spawn')
-        pool = await mo.create_actor_pool('127.0.0.1', **kw)
+            kw = dict(n_process=0, subprocess_start_method="spawn")
+        pool = await mo.create_actor_pool("127.0.0.1", **kw)
         await pool.start()
         return pool
 
-    sv_pool, worker_pool = await asyncio.gather(
-        start_pool(False), start_pool(True)
-    )
+    sv_pool, worker_pool = await asyncio.gather(start_pool(False), start_pool(True))
     try:
         yield sv_pool, worker_pool
     finally:
@@ -65,47 +62,49 @@ async def start_test_service(actor_pools, request):
     sv_pool, worker_pool = actor_pools
 
     config = {
-        "services": ["cluster", "session", "meta", "lifecycle",
-                     "scheduling", "subtask", "task"],
+        "services": [
+            "cluster",
+            "session",
+            "meta",
+            "lifecycle",
+            "scheduling",
+            "subtask",
+            "task",
+            "mutable",
+        ],
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,
-            "resource": {"numa-0": 2}
+            "resource": {"numa-0": 2},
         },
-        "meta": {
-            "store": "dict"
-        },
+        "meta": {"store": "dict"},
         "scheduling": {},
         "task": {},
     }
     if request:
-        config['services'].append('web')
+        config["services"].append("web")
 
-    await start_services(
-        NodeRole.SUPERVISOR, config, address=sv_pool.external_address)
-    await start_services(
-        NodeRole.WORKER, config, address=worker_pool.external_address)
+    await start_services(NodeRole.SUPERVISOR, config, address=sv_pool.external_address)
+    await start_services(NodeRole.WORKER, config, address=worker_pool.external_address)
 
-    session_id = 'test_session'
+    session_id = "test_session"
     session_api = await SessionAPI.create(sv_pool.external_address)
     await session_api.create_session(session_id)
 
     if not request.param:
-        task_api = await TaskAPI.create(session_id,
-                                        sv_pool.external_address)
+        task_api = await TaskAPI.create(session_id, sv_pool.external_address)
     else:
-        web_actor = await mo.actor_ref(WebActor.default_uid(),
-                                       address=sv_pool.external_address)
+        web_actor = await mo.actor_ref(
+            WebActor.default_uid(), address=sv_pool.external_address
+        )
         web_address = await web_actor.get_web_address()
         task_api = WebTaskAPI(session_id, web_address)
 
     assert await task_api.get_task_results() == []
 
     # create mock meta and storage APIs
-    _ = await MetaAPI.create(session_id,
-                             sv_pool.external_address)
-    storage_api = await MockStorageAPI.create(session_id,
-                                              worker_pool.external_address)
+    _ = await MetaAPI.create(session_id, sv_pool.external_address)
+    storage_api = await MockStorageAPI.create(session_id, worker_pool.external_address)
 
     try:
         yield sv_pool.external_address, task_api, storage_api
@@ -186,13 +185,13 @@ async def test_task_cancel(start_test_service):
     next(TileableGraphBuilder(graph).build())
 
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
-    await asyncio.sleep(.5)
+    await asyncio.sleep(0.5)
     with Timer() as timer:
         await task_api.cancel_task(task_id)
         result = await task_api.get_task_result(task_id)
         assert result.status == TaskStatus.terminated
     assert timer.duration < 20
-    await asyncio.sleep(.1)
+    await asyncio.sleep(0.1)
     assert await task_api.get_last_idle_time() is not None
 
     results = await task_api.get_task_results(progress=True)
@@ -217,10 +216,11 @@ async def test_task_progress(start_test_service):
 
     session_api = await SessionAPI.create(address=sv_pool_address)
     ref = await session_api.create_remote_object(
-        task_api._session_id, 'progress_controller', _ProgressController)
+        task_api._session_id, "progress_controller", _ProgressController
+    )
 
     def f1(count: int):
-        progress_controller = get_context().get_remote_object('progress_controller')
+        progress_controller = get_context().get_remote_object("progress_controller")
         for idx in range(count):
             progress_controller.wait()
             get_context().set_progress((1 + idx) * 1.0 / count)
@@ -270,16 +270,18 @@ async def test_get_tileable_graph(start_test_service):
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
 
     with pytest.raises(TaskNotExist):
-        await task_api.get_tileable_graph_as_json('non_exist')
+        await task_api.get_tileable_graph_as_json("non_exist")
 
     tileable_detail = await task_api.get_tileable_graph_as_json(task_id)
 
-    num_tileable = len(tileable_detail.get('tileables'))
-    num_dependencies = len(tileable_detail.get('dependencies'))
+    num_tileable = len(tileable_detail.get("tileables"))
+    num_dependencies = len(tileable_detail.get("dependencies"))
     assert num_tileable > 0
     assert num_dependencies <= (num_tileable / 2) * (num_tileable / 2)
 
-    assert (num_tileable == 1 and num_dependencies == 0) or (num_tileable > 1 and num_dependencies > 0)
+    assert (num_tileable == 1 and num_dependencies == 0) or (
+        num_tileable > 1 and num_dependencies > 0
+    )
 
     graph_nodes = []
     graph_dependencies = []
@@ -287,19 +289,21 @@ async def test_get_tileable_graph(start_test_service):
         graph_nodes.append(node.key)
 
         for node_successor in graph.iter_successors(node):
-            graph_dependencies.append({
-                'fromTileableId': node.key,
-                'toTileableId': node_successor.key,
-                'linkType': 0,
-            })
+            graph_dependencies.append(
+                {
+                    "fromTileableId": node.key,
+                    "toTileableId": node_successor.key,
+                    "linkType": 0,
+                }
+            )
 
-    for tileable in tileable_detail.get('tileables'):
-        graph_nodes.remove(tileable.get('tileableId'))
+    for tileable in tileable_detail.get("tileables"):
+        graph_nodes.remove(tileable.get("tileableId"))
 
     assert len(graph_nodes) == 0
 
     for i in range(num_dependencies):
-        dependency = tileable_detail.get('dependencies')[i]
+        dependency = tileable_detail.get("dependencies")[i]
         assert graph_dependencies[i] == dependency
 
 
@@ -309,16 +313,17 @@ async def test_get_tileable_details(start_test_service):
 
     session_api = await SessionAPI.create(address=sv_pool_address)
     ref = await session_api.create_remote_object(
-        task_api._session_id, 'progress_controller', _ProgressController)
+        task_api._session_id, "progress_controller", _ProgressController
+    )
 
     with pytest.raises(TaskNotExist):
-        await task_api.get_tileable_details('non_exist')
+        await task_api.get_tileable_details("non_exist")
 
     def f(*_args, raises=False):
         get_context().set_progress(0.5)
         if raises:
             raise ValueError
-        progress_controller = get_context().get_remote_object('progress_controller')
+        progress_controller = get_context().get_remote_object("progress_controller")
         progress_controller.wait()
         get_context().set_progress(1.0)
 
@@ -341,16 +346,20 @@ async def test_get_tileable_details(start_test_service):
 
     await asyncio.sleep(1)
     details = await task_api.get_tileable_details(task_id)
-    assert _get_fields(details, 'progress') == [0.5, 0.0, 0.0]
-    assert _get_fields(details, 'status', SubtaskStatus) \
+    assert _get_fields(details, "progress") == [0.5, 0.0, 0.0]
+    assert (
+        _get_fields(details, "status", SubtaskStatus)
         == [SubtaskStatus.running] + [SubtaskStatus.pending] * 2
+    )
 
     await ref.set()
     await asyncio.sleep(1)
     details = await task_api.get_tileable_details(task_id)
-    assert _get_fields(details, 'progress') == [1.0, 0.5, 0.5]
-    assert _get_fields(details, 'status', SubtaskStatus) \
+    assert _get_fields(details, "progress") == [1.0, 0.5, 0.5]
+    assert (
+        _get_fields(details, "status", SubtaskStatus)
         == [SubtaskStatus.succeeded] + [SubtaskStatus.running] * 2
+    )
 
     await ref.set()
     await task_api.wait_task(task_id)
@@ -366,7 +375,7 @@ async def test_get_tileable_details(start_test_service):
 
     await asyncio.sleep(1)
     details = await task_api.get_tileable_details(task_id)
-    assert details[r5.key]['progress'] == details[r6.key]['progress'] == 0.25
+    assert details[r5.key]["progress"] == details[r6.key]["progress"] == 0.25
 
     await ref.set()
     await asyncio.sleep(0.1)
@@ -374,7 +383,7 @@ async def test_get_tileable_details(start_test_service):
     await task_api.wait_task(task_id)
 
     # test raises
-    r7 = mr.spawn(f, kwargs={'raises': 1})
+    r7 = mr.spawn(f, kwargs={"raises": 1})
 
     graph = TileableGraph([r7.data])
     next(TileableGraphBuilder(graph).build())
@@ -382,22 +391,24 @@ async def test_get_tileable_details(start_test_service):
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
     await task_api.wait_task(task_id)
     details = await task_api.get_tileable_details(task_id)
-    assert details[r7.key]['status'] == SubtaskStatus.errored.value
+    assert details[r7.key]["status"] == SubtaskStatus.errored.value
 
     contain_id_property = False
     for tileable in details.keys():
-        for property_key, property_value in details.get(tileable).get('properties').items():
-            assert property_key != 'key'
+        for property_key, property_value in (
+            details.get(tileable).get("properties").items()
+        ):
+            assert property_key != "key"
             assert isinstance(property_value, (int, float, str))
 
-            if property_key == 'id':
+            if property_key == "id":
                 contain_id_property = True
 
     assert contain_id_property == True
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('with_input_output', [False, True])
+@pytest.mark.parametrize("with_input_output", [False, True])
 async def test_get_tileable_subtasks(start_test_service, with_input_output):
     sv_pool_address, task_api, storage_api = start_test_service
 
@@ -408,7 +419,15 @@ async def test_get_tileable_subtasks(start_test_service, with_input_output):
         return md.DataFrame([[1, 2, 3, 4], [4, 3, 2, 1]])
 
     def c(a, b):
-        return a.sum() * a.product() * b.sum() * a.sum() / a.sum() * b.product() / a.product()
+        return (
+            a.sum()
+            * a.product()
+            * b.sum()
+            * a.sum()
+            / a.sum()
+            * b.product()
+            / a.product()
+        )
 
     ra = mr.spawn(a)
     rb = mr.spawn(b)
@@ -421,14 +440,15 @@ async def test_get_tileable_subtasks(start_test_service, with_input_output):
 
     await asyncio.sleep(1)
     tileable_graph_json = await task_api.get_tileable_graph_as_json(task_id)
-    for tileable_json in tileable_graph_json['tileables']:
-        tileable_id = tileable_json['tileableId']
+    for tileable_json in tileable_graph_json["tileables"]:
+        tileable_id = tileable_json["tileableId"]
         subtask_details = await task_api.get_tileable_subtasks(
-            task_id, tileable_id, True)
+            task_id, tileable_id, True
+        )
 
         subtask_deps = []
         for subtask_id, subtask_detail in subtask_details.items():
-            for from_subtask_id in subtask_detail.get('fromSubtaskIds', ()):
+            for from_subtask_id in subtask_detail.get("fromSubtaskIds", ()):
                 subtask_deps.append((from_subtask_id, subtask_id))
         assert len(subtask_details) > 0
 
@@ -437,11 +457,22 @@ async def test_get_tileable_subtasks(start_test_service, with_input_output):
             assert to_id in subtask_details
 
         if with_input_output:
-            tileable_inputs = [dep['fromTileableId'] for dep in tileable_graph_json['dependencies']
-                               if dep['toTileableId'] == tileable_id]
-            tileable_outputs = [dep['toTileableId'] for dep in tileable_graph_json['dependencies']
-                                if dep['fromTileableId'] == tileable_id]
+            tileable_inputs = [
+                dep["fromTileableId"]
+                for dep in tileable_graph_json["dependencies"]
+                if dep["toTileableId"] == tileable_id
+            ]
+            tileable_outputs = [
+                dep["toTileableId"]
+                for dep in tileable_graph_json["dependencies"]
+                if dep["fromTileableId"] == tileable_id
+            ]
             if tileable_inputs:
-                assert any(detail['nodeType'] == 'Input' for detail in subtask_details.values())
+                assert any(
+                    detail["nodeType"] == "Input" for detail in subtask_details.values()
+                )
             if tileable_outputs:
-                assert any(detail['nodeType'] == 'Output' for detail in subtask_details.values())
+                assert any(
+                    detail["nodeType"] == "Output"
+                    for detail in subtask_details.values()
+                )

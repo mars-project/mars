@@ -21,9 +21,9 @@ from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 class DataFrameCustomReduction(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.CUSTOM_REDUCTION
-    _func_name = 'custom_reduction'
+    _func_name = "custom_reduction"
 
-    _custom_reduction = AnyField('custom_reduction')
+    _custom_reduction = AnyField("custom_reduction")
 
     def __init__(self, custom_reduction=None, **kw):
         super().__init__(_custom_reduction=custom_reduction, **kw)
@@ -43,6 +43,10 @@ class DataFrameCustomReduction(DataFrameReductionOperand, DataFrameReductionMixi
 def build_custom_reduction_result(df, custom_reduction_obj, method=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     output_type = OutputType.series if df.ndim == 2 else OutputType.scalar
-    op = DataFrameCustomReduction(custom_reduction=custom_reduction_obj, output_types=[output_type],
-                                  use_inf_as_na=use_inf_as_na, method=method)
+    op = DataFrameCustomReduction(
+        custom_reduction=custom_reduction_obj,
+        output_types=[output_type],
+        use_inf_as_na=use_inf_as_na,
+        method=method,
+    )
     return op(df)

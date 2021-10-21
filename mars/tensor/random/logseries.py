@@ -23,12 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorLogseries(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_p']
+    _input_fields_ = ["_p"]
     _op_type_ = OperandDef.RAND_LOGSERIES
 
-    _fields_ = '_p', '_size'
-    _p = AnyField('p')
-    _func_name = 'logseries'
+    _fields_ = "_p", "_size"
+    _p = AnyField("p")
+    _func_name = "logseries"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -123,8 +123,7 @@ def logseries(random_state, p, size=None, chunk_size=None, gpu=None, dtype=None)
     >>> plt.show()
     """
     if dtype is None:
-        dtype = np.random.RandomState().logseries(
-            handle_array(p), size=(0,)).dtype
+        dtype = np.random.RandomState().logseries(handle_array(p), size=(0,)).dtype
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorLogseries(seed=seed, size=size, gpu=gpu, dtype=dtype)

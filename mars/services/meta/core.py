@@ -19,12 +19,22 @@ import numpy as np
 import pandas as pd
 
 from ...core import OBJECT_TYPE, OBJECT_CHUNK_TYPE
-from ...dataframe.core import DtypesValue, IndexValue, \
-    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DATAFRAME_GROUPBY_TYPE, \
-    SERIES_GROUPBY_TYPE, \
-    DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
-    DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE, \
-    CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
+from ...dataframe.core import (
+    DtypesValue,
+    IndexValue,
+    DATAFRAME_TYPE,
+    SERIES_TYPE,
+    INDEX_TYPE,
+    DATAFRAME_GROUPBY_TYPE,
+    SERIES_GROUPBY_TYPE,
+    DATAFRAME_CHUNK_TYPE,
+    SERIES_CHUNK_TYPE,
+    INDEX_CHUNK_TYPE,
+    DATAFRAME_GROUPBY_CHUNK_TYPE,
+    SERIES_GROUPBY_CHUNK_TYPE,
+    CATEGORICAL_TYPE,
+    CATEGORICAL_CHUNK_TYPE,
+)
 from ...tensor.core import TensorOrder, TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...typing import BandType
 from ...utils import dataslots
@@ -39,6 +49,7 @@ def _register_type(object_types: Tuple):
         for obj_type in object_types:
             _type_to_meta_class[obj_type] = meta
         return meta
+
     return _call
 
 
@@ -60,9 +71,10 @@ class _CommonMeta:
     """
     Class for common meta, for both tileable and chunk, or DataFrame, tensor etc.
     """
+
     object_id: str
     name: Any = None
-    memory_size: int = None # size in memory
+    memory_size: int = None  # size in memory
     store_size: int = None  # size that stored in storage
     extra: Dict = None
 

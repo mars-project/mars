@@ -19,8 +19,7 @@ from typing import Dict, List, Optional
 from .... import oscar as mo
 from ....utils import to_binary
 from ...cluster import ClusterAPI
-from ...core import NodeRole, create_service_session, \
-    destroy_service_session
+from ...core import NodeRole, create_service_session, destroy_service_session
 from ..core import SessionInfo
 
 
@@ -34,22 +33,23 @@ class SessionManagerActor(mo.Actor):
         self._cluster_api = await ClusterAPI.create(self.address)
 
     async def __pre_destroy__(self):
-        await asyncio.gather(*[
-            mo.destroy_actor(ref) for ref in self._session_refs.values()
-        ])
+        await asyncio.gather(
+            *[mo.destroy_actor(ref) for ref in self._session_refs.values()]
+        )
 
-    async def create_session(self,
-                             session_id: str,
-                             create_services: bool = True):
+    async def create_session(self, session_id: str, create_services: bool = True):
         if session_id in self._session_refs:
             raise mo.Return(self._session_refs[session_id])
 
         [address] = await self._cluster_api.get_supervisors_by_keys([session_id])
         session_actor_ref = await mo.create_actor(
-            SessionActor, session_id, self._service_config,
+            SessionActor,
+            session_id,
+            self._service_config,
             address=address,
             uid=SessionActor.gen_uid(session_id),
-            allocate_strategy=mo.allocate_strategy.Random())
+            allocate_strategy=mo.allocate_strategy.Random(),
+        )
         self._session_refs[session_id] = session_actor_ref
 
         # sync ref to other managers
@@ -57,9 +57,9 @@ class SessionManagerActor(mo.Actor):
             if supervisor_address == self.address:
                 continue
             session_manager_ref = await mo.actor_ref(
-                supervisor_address, SessionManagerActor.default_uid())
-            await session_manager_ref.add_session_ref(
-                session_id, session_actor_ref)
+                supervisor_address, SessionManagerActor.default_uid()
+            )
+            await session_manager_ref.add_session_ref(session_id, session_actor_ref)
 
         # let session actor create session-related services
         if create_services:
@@ -68,15 +68,15 @@ class SessionManagerActor(mo.Actor):
         raise mo.Return(session_actor_ref)
 
     def get_sessions(self) -> List[SessionInfo]:
-        return [SessionInfo(session_id=session_id) for session_id in self._session_refs.keys()]
+        return [
+            SessionInfo(session_id=session_id)
+            for session_id in self._session_refs.keys()
+        ]
 
-    def get_session_ref(self,
-                        session_id: str):
+    def get_session_ref(self, session_id: str):
         return self._session_refs[session_id]
 
-    def add_session_ref(self,
-                        session_id: str,
-                        session_actor_ref: mo.ActorRef):
+    def add_session_ref(self, session_id: str, session_actor_ref: mo.ActorRef):
         self._session_refs[session_id] = session_actor_ref
 
     def remove_session_ref(self, session_id: str):
@@ -94,7 +94,8 @@ class SessionManagerActor(mo.Actor):
             if supervisor_address == self.address:
                 continue
             session_manager_ref = await mo.actor_ref(
-                supervisor_address, SessionManagerActor.default_uid())
+                supervisor_address, SessionManagerActor.default_uid()
+            )
             await session_manager_ref.remove_session_ref(session_id)
 
     async def get_last_idle_time(self, session_id=None):
@@ -103,7 +104,11 @@ class SessionManagerActor(mo.Actor):
             raise mo.Return(await session.get_last_idle_time())
         else:
             all_last_idle_time = yield asyncio.gather(
-                *[session.get_last_idle_time() for session in self._session_refs.values()])
+                *[
+                    session.get_last_idle_time()
+                    for session in self._session_refs.values()
+                ]
+            )
             if any(last_idle_time is None for last_idle_time in all_last_idle_time):
                 raise mo.Return(None)
             else:
@@ -111,8 +116,7 @@ class SessionManagerActor(mo.Actor):
 
 
 class SessionActor(mo.Actor):
-    def __init__(self, session_id: str,
-                 service_config: Dict):
+    def __init__(self, session_id: str, service_config: Dict):
         self._session_id = session_id
 
         self._meta_api = None
@@ -126,39 +130,49 @@ class SessionActor(mo.Actor):
 
     @classmethod
     def gen_uid(cls, session_id):
-        return f'{session_id}_session_actor'
+        return f"{session_id}_session_actor"
 
     async def __post_create__(self):
         from .custom_log import CustomLogMetaActor
 
         self._custom_log_meta_ref = await mo.create_actor(
-            CustomLogMetaActor, self._session_id,
+            CustomLogMetaActor,
+            self._session_id,
             address=self.address,
-            uid=CustomLogMetaActor.gen_uid(self._session_id))
+            uid=CustomLogMetaActor.gen_uid(self._session_id),
+        )
 
     async def __pre_destroy__(self):
         await destroy_service_session(
-            NodeRole.SUPERVISOR, self._service_config, self._session_id, self.address)
+            NodeRole.SUPERVISOR, self._service_config, self._session_id, self.address
+        )
         await mo.destroy_actor(self._custom_log_meta_ref)
 
     async def create_services(self):
         from ...task import TaskAPI
+
         await create_service_session(
-            NodeRole.SUPERVISOR, self._service_config, self._session_id, self.address)
-        if 'task' in self._service_config['services']:
+            NodeRole.SUPERVISOR, self._service_config, self._session_id, self.address
+        )
+        if "task" in self._service_config["services"]:
             self._task_api = await TaskAPI.create(
-                session_id=self._session_id, address=self.address)
+                session_id=self._session_id, address=self.address
+            )
 
     async def get_last_idle_time(self):
         if self._task_api is None:
             return None
         return await self._task_api.get_last_idle_time()
 
-    async def create_remote_object(self, name: str,
-                                   object_cls, *args, **kwargs):
+    async def create_remote_object(self, name: str, object_cls, *args, **kwargs):
         return await mo.create_actor(
-            RemoteObjectActor, object_cls, args, kwargs,
-            address=self.address, uid=to_binary(name))
+            RemoteObjectActor,
+            object_cls,
+            args,
+            kwargs,
+            address=self.address,
+            uid=to_binary(name),
+        )
 
     async def get_remote_object(self, name: str):
         return await mo.actor_ref(mo.ActorRef(self.address, to_binary(name)))

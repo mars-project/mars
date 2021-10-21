@@ -28,27 +28,40 @@ from functools import wraps
 from numbers import Integral
 from urllib.parse import urlparse
 from weakref import WeakKeyDictionary
-from typing import Any, Callable, Coroutine, Dict, List, \
-    Optional, Tuple, Type, Union
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union
+
+import numpy as np
 
 from ... import oscar as mo
 from ...config import options
 from ...core import ChunkType, TileableType, TileableGraph, enter_mode
 from ...core.operand import Fetch
-from ...lib.aio import alru_cache, Isolation, get_isolation, \
-    new_isolation, stop_isolation
+from ...lib.aio import (
+    alru_cache,
+    Isolation,
+    get_isolation,
+    new_isolation,
+    stop_isolation,
+)
 from ...services.cluster import AbstractClusterAPI, ClusterAPI
 from ...services.lifecycle import AbstractLifecycleAPI, LifecycleAPI
 from ...services.meta import MetaAPI, AbstractMetaAPI
 from ...services.session import AbstractSessionAPI, SessionAPI
+from ...services.mutable import MutableAPI, MutableTensor
 from ...services.storage import StorageAPI
 from ...services.task import AbstractTaskAPI, TaskAPI, TaskResult
 from ...services.web import OscarWebAPI
 from ...tensor.utils import slice_split
 from ...typing import ClientType, BandType
-from ...utils import implements, merge_chunks, sort_dataframe_result, \
-    register_asyncio_task_timeout_detector, classproperty, \
-    copy_tileables, build_fetch
+from ...utils import (
+    implements,
+    merge_chunks,
+    sort_dataframe_result,
+    register_asyncio_task_timeout_detector,
+    classproperty,
+    copy_tileables,
+    build_fetch,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,10 +72,12 @@ class Progress:
 
 
 class ExecutionInfo:
-    def __init__(self,
-                 aio_task: asyncio.Task,
-                 progress: Progress,
-                 loop: asyncio.AbstractEventLoop):
+    def __init__(
+        self,
+        aio_task: asyncio.Task,
+        progress: Progress,
+        loop: asyncio.AbstractEventLoop,
+    ):
         self._aio_task = aio_task
         self._progress = progress
         self._loop = loop
@@ -73,11 +88,13 @@ class ExecutionInfo:
         try:
             self._future_local.future
         except AttributeError:
+
             async def wait():
                 return await self._aio_task
 
-            self._future_local.future = fut = \
-                asyncio.run_coroutine_threadsafe(wait(), self._loop)
+            self._future_local.future = fut = asyncio.run_coroutine_threadsafe(
+                wait(), self._loop
+            )
             self._future_local.aio_future = asyncio.wrap_future(fut)
 
     @property
@@ -127,9 +144,7 @@ class AbstractSession(ABC):
     _default = None
     _lock = threading.Lock()
 
-    def __init__(self,
-                 address: str,
-                 session_id: str):
+    def __init__(self, address: str, session_id: str):
         self._address = address
         self._session_id = session_id
 
@@ -142,9 +157,11 @@ class AbstractSession(ABC):
         return self._session_id
 
     def __eq__(self, other):
-        return isinstance(other, AbstractSession) and \
-               self._address == other.address and \
-               self._session_id == other.session_id
+        return (
+            isinstance(other, AbstractSession)
+            and self._address == other.address
+            and self._session_id == other.session_id
+        )
 
     def __hash__(self):
         return hash((AbstractSession, self._address, self._session_id))
@@ -168,11 +185,9 @@ class AbstractSession(ABC):
 class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
     @classmethod
     @abstractmethod
-    async def init(cls,
-                   address: str,
-                   session_id: str,
-                   new: bool = True,
-                   **kwargs) -> "AbstractSession":
+    async def init(
+        cls, address: str, session_id: str, new: bool = True, **kwargs
+    ) -> "AbstractSession":
         """
         Init a new session.
 
@@ -198,9 +213,7 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         self.reset_default()
 
     @abstractmethod
-    async def execute(self,
-                      *tileables,
-                      **kwargs) -> ExecutionInfo:
+    async def execute(self, *tileables, **kwargs) -> ExecutionInfo:
         """
         Execute tileables.
 
@@ -237,10 +250,12 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def fetch_tileable_op_logs(self,
-                                     tileable_op_key: str,
-                                     offsets: Union[Dict[str, List[int]], str, int],
-                                     sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
+    async def fetch_tileable_op_logs(
+        self,
+        tileable_op_key: str,
+        offsets: Union[Dict[str, List[int]], str, int],
+        sizes: Union[Dict[str, List[int]], str, int],
+    ) -> Dict:
         """
         Fetch logs given tileable op key.
 
@@ -291,11 +306,9 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def create_remote_object(self,
-                                   session_id: str,
-                                   name: str,
-                                   object_cls,
-                                   *args, **kwargs):
+    async def create_remote_object(
+        self, session_id: str, name: str, object_cls, *args, **kwargs
+    ):
         """
         Create remote object
 
@@ -314,9 +327,7 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def get_remote_object(self,
-                                session_id: str,
-                                name: str):
+    async def get_remote_object(self, session_id: str, name: str):
         """
         Get remote object.
 
@@ -332,9 +343,7 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def destroy_remote_object(self,
-                                    session_id: str,
-                                    name: str):
+    async def destroy_remote_object(self, session_id: str, name: str):
         """
         Destroy remote object.
 
@@ -343,6 +352,55 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         session_id : str
             Session ID.
         name : str
+        """
+
+    @abstractmethod
+    async def create_mutable_tensor(
+        self,
+        shape: tuple,
+        dtype: Union[np.dtype, str],
+        name: str = None,
+        default_value: Union[int, float] = 0,
+        chunk_size: Union[int, Tuple] = None,
+    ):
+        """
+        Create a mutable tensor.
+
+        Parameters
+        ----------
+        shape: tuple
+            Shape of the mutable tensor.
+
+        dtype: np.dtype or str
+            Data type of the mutable tensor.
+
+        name: str, optional
+            Name of the mutable tensor, a random name will be used if not specified.
+
+        default_value: optional
+            Default value of the mutable tensor. Default is 0.
+
+        chunk_size: int or tuple, optional
+            Chunk size of the mutable tensor.
+
+        Returns
+        -------
+            MutableTensor
+        """
+
+    @abstractmethod
+    async def get_mutable_tensor(self, name: str):
+        """
+        Get a mutable tensor by name.
+
+        Parameters
+        ----------
+        name: str
+            Name of the mutable tensor to get.
+
+        Returns
+        -------
+            MutableTensor
         """
 
     async def stop_server(self):
@@ -354,12 +412,14 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
 class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
     @classmethod
     @abstractmethod
-    def init(cls,
-             address: str,
-             session_id: str,
-             backend: str = 'oscar',
-             new: bool = True,
-             **kwargs) -> "AbstractSession":
+    def init(
+        cls,
+        address: str,
+        session_id: str,
+        backend: str = "oscar",
+        new: bool = True,
+        **kwargs,
+    ) -> "AbstractSession":
         """
         Init a new session.
 
@@ -381,11 +441,9 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def execute(self,
-                tileable,
-                *tileables,
-                show_progress: Union[bool, str] = None,
-                **kwargs) -> Union[List[TileableType], TileableType, ExecutionInfo]:
+    def execute(
+        self, tileable, *tileables, show_progress: Union[bool, str] = None, **kwargs
+    ) -> Union[List[TileableType], TileableType, ExecutionInfo]:
         """
         Execute tileables.
 
@@ -460,10 +518,12 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def fetch_tileable_op_logs(self,
-                               tileable_op_key: str,
-                               offsets: Union[Dict[str, List[int]], str, int],
-                               sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
+    def fetch_tileable_op_logs(
+        self,
+        tileable_op_key: str,
+        offsets: Union[Dict[str, List[int]], str, int],
+        sizes: Union[Dict[str, List[int]], str, int],
+    ) -> Dict:
         """
         Fetch logs given tileable op key.
 
@@ -513,10 +573,61 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
             web endpoint
         """
 
-    def fetch_log(self,
-                  tileables: List[TileableType],
-                  offsets: List[int] = None,
-                  sizes: List[int] = None):
+    @abstractmethod
+    def create_mutable_tensor(
+        self,
+        shape: tuple,
+        dtype: Union[np.dtype, str],
+        name: str = None,
+        default_value: Union[int, float] = 0,
+        chunk_size: Union[int, Tuple] = None,
+    ):
+        """
+        Create a mutable tensor.
+
+        Parameters
+        ----------
+        shape: tuple
+            Shape of the mutable tensor.
+
+        dtype: np.dtype or str
+            Data type of the mutable tensor.
+
+        name: str, optional
+            Name of the mutable tensor, a random name will be used if not specified.
+
+        default_value: optional
+            Default value of the mutable tensor. Default is 0.
+
+        chunk_size: int or tuple, optional
+            Chunk size of the mutable tensor.
+
+        Returns
+        -------
+            MutableTensor
+        """
+
+    @abstractmethod
+    def get_mutable_tensor(self, name: str):
+        """
+        Get a mutable tensor by name.
+
+        Parameters
+        ----------
+        name: str
+            Name of the mutable tensor to get.
+
+        Returns
+        -------
+            MutableTensor
+        """
+
+    def fetch_log(
+        self,
+        tileables: List[TileableType],
+        offsets: List[int] = None,
+        sizes: List[int] = None,
+    ):
         from ...core.custom_log import fetch
 
         return fetch(tileables, self, offsets=offsets, sizes=sizes)
@@ -540,8 +651,8 @@ class ChunkFetchInfo:
 
 @enter_mode(build=True, kernel=True)
 def gen_submit_tileable_graph(
-        session: "AbstractSession",
-        result_tileables: List[TileableType]):
+    session: "AbstractSession", result_tileables: List[TileableType]
+):
     tileable_to_copied = dict()
     result = [None] * len(result_tileables)
     graph = TileableGraph(result)
@@ -551,12 +662,10 @@ def gen_submit_tileable_graph(
         tileable = q.pop()
         if tileable in tileable_to_copied:
             if tileable in result_tileables:
-                result[result_tileables.index(tileable)] = \
-                    tileable_to_copied[tileable]
+                result[result_tileables.index(tileable)] = tileable_to_copied[tileable]
             continue
         outputs = tileable.op.outputs
-        inputs = tileable.inputs \
-            if session not in tileable._executed_sessions else []
+        inputs = tileable.inputs if session not in tileable._executed_sessions else []
         new_inputs = []
         all_inputs_processed = True
         for inp in inputs:
@@ -584,8 +693,9 @@ def gen_submit_tileable_graph(
                     fetch_out = tileable_to_copied.get(out, build_fetch(out).data)
                     new_outputs.append(fetch_out)
             else:
-                new_outputs = [t.data for t
-                               in copy_tileables(outputs, inputs=new_inputs)]
+                new_outputs = [
+                    t.data for t in copy_tileables(outputs, inputs=new_inputs)
+                ]
             for out, new_out in zip(outputs, new_outputs):
                 tileable_to_copied[out] = new_out
                 if out in result_tileables:
@@ -599,39 +709,42 @@ def gen_submit_tileable_graph(
 
 @register_session_cls
 class _IsolatedSession(AbstractAsyncSession):
-    name = 'oscar'
+    name = "oscar"
 
-    def __init__(self,
-                 address: str,
-                 session_id: str,
-                 session_api: AbstractSessionAPI,
-                 meta_api: AbstractMetaAPI,
-                 lifecycle_api: AbstractLifecycleAPI,
-                 task_api: AbstractTaskAPI,
-                 cluster_api: AbstractClusterAPI,
-                 web_api: Optional[OscarWebAPI],
-                 client: ClientType = None,
-                 timeout: float = None):
+    def __init__(
+        self,
+        address: str,
+        session_id: str,
+        session_api: AbstractSessionAPI,
+        meta_api: AbstractMetaAPI,
+        lifecycle_api: AbstractLifecycleAPI,
+        task_api: AbstractTaskAPI,
+        mutable_api: MutableAPI,
+        cluster_api: AbstractClusterAPI,
+        web_api: Optional[OscarWebAPI],
+        client: ClientType = None,
+        timeout: float = None,
+    ):
         super().__init__(address, session_id)
         self._session_api = session_api
         self._task_api = task_api
         self._meta_api = meta_api
         self._lifecycle_api = lifecycle_api
+        self._mutable_api = mutable_api
         self._cluster_api = cluster_api
         self._web_api = web_api
         self.client = client
         self.timeout = timeout
 
         self._tileable_to_fetch = WeakKeyDictionary()
-        self._asyncio_task_timeout_detector_task = \
+        self._asyncio_task_timeout_detector_task = (
             register_asyncio_task_timeout_detector()
+        )
 
     @classmethod
-    async def _init(cls,
-                    address: str,
-                    session_id: str,
-                    new: bool = True,
-                    timeout: float = None):
+    async def _init(
+        cls, address: str, session_id: str, new: bool = True, timeout: float = None
+    ):
         session_api = await SessionAPI.create(address)
         if new:
             # create new session
@@ -641,44 +754,59 @@ class _IsolatedSession(AbstractAsyncSession):
         lifecycle_api = await LifecycleAPI.create(session_id, session_address)
         meta_api = await MetaAPI.create(session_id, session_address)
         task_api = await TaskAPI.create(session_id, session_address)
+        mutable_api = await MutableAPI.create(session_id, session_address)
         cluster_api = await ClusterAPI.create(session_address)
         try:
             web_api = await OscarWebAPI.create(session_address)
         except mo.ActorNotExist:
             web_api = None
-        return cls(address, session_id,
-                   session_api, meta_api,
-                   lifecycle_api, task_api,
-                   cluster_api, web_api,
-                   timeout=timeout)
+        return cls(
+            address,
+            session_id,
+            session_api,
+            meta_api,
+            lifecycle_api,
+            task_api,
+            mutable_api,
+            cluster_api,
+            web_api,
+            timeout=timeout,
+        )
 
     @classmethod
     @implements(AbstractAsyncSession.init)
-    async def init(cls,
-                   address: str,
-                   session_id: str,
-                   new: bool = True,
-                   timeout: float = None,
-                   **kwargs) -> "AbstractAsyncSession":
-        init_local = kwargs.pop('init_local', False)
+    async def init(
+        cls,
+        address: str,
+        session_id: str,
+        new: bool = True,
+        timeout: float = None,
+        **kwargs,
+    ) -> "AbstractAsyncSession":
+        init_local = kwargs.pop("init_local", False)
         if init_local:
             from .local import new_cluster_in_isolation
-            return (await new_cluster_in_isolation(address, timeout=timeout, **kwargs)).session
+
+            return (
+                await new_cluster_in_isolation(address, timeout=timeout, **kwargs)
+            ).session
 
         if kwargs:  # pragma: no cover
-            unexpected_keys = ', '.join(list(kwargs.keys()))
-            raise TypeError(f'Oscar session got unexpected '
-                            f'arguments: {unexpected_keys}')
+            unexpected_keys = ", ".join(list(kwargs.keys()))
+            raise TypeError(
+                f"Oscar session got unexpected " f"arguments: {unexpected_keys}"
+            )
 
-        if urlparse(address).scheme == 'http':
-            return await _IsolatedWebSession._init(address, session_id, new=new, timeout=timeout)
+        if urlparse(address).scheme == "http":
+            return await _IsolatedWebSession._init(
+                address, session_id, new=new, timeout=timeout
+            )
         else:
             return await cls._init(address, session_id, new=new, timeout=timeout)
 
-    async def _run_in_background(self,
-                                 tileables: list,
-                                 task_id: str,
-                                 progress: Progress):
+    async def _run_in_background(
+        self, tileables: list, task_id: str, progress: Progress
+    ):
         with enter_mode(build=True, kernel=True):
             # wait for task to finish
             cancelled = False
@@ -687,16 +815,21 @@ class _IsolatedSession(AbstractAsyncSession):
                 try:
                     if not cancelled:
                         task_result: TaskResult = await self._task_api.wait_task(
-                            task_id, timeout=0.5)
+                            task_id, timeout=0.5
+                        )
                         if task_result is None:
                             # not finished, set progress
-                            progress.value = await self._task_api.get_task_progress(task_id)
+                            progress.value = await self._task_api.get_task_progress(
+                                task_id
+                            )
                         else:
                             progress.value = 1.0
                             break
                     else:
                         # wait for task to finish
-                        task_result: TaskResult = await self._task_api.wait_task(task_id)
+                        task_result: TaskResult = await self._task_api.wait_task(
+                            task_id
+                        )
                         break
                 except asyncio.CancelledError:
                     # cancelled
@@ -706,8 +839,13 @@ class _IsolatedSession(AbstractAsyncSession):
                     # ignore timeout when waiting for subtask progresses
                     pass
                 finally:
-                    if self.timeout is not None and time.time() - start_time > self.timeout:
-                        raise TimeoutError(f'Task({task_id}) running time > {self.timeout}')
+                    if (
+                        self.timeout is not None
+                        and time.time() - start_time > self.timeout
+                    ):
+                        raise TimeoutError(
+                            f"Task({task_id}) running time > {self.timeout}"
+                        )
             if task_result.error:
                 raise task_result.error.with_traceback(task_result.traceback)
             if cancelled:
@@ -720,43 +858,45 @@ class _IsolatedSession(AbstractAsyncSession):
                 # update meta, e.g. unknown shape
                 tileable.params = fetch_tileable.params
 
-    async def execute(self,
-                      *tileables,
-                      **kwargs) -> ExecutionInfo:
-        fuse_enabled: bool = kwargs.pop('fuse_enabled', True)
-        task_name: str = kwargs.pop('task_name', None)
-        extra_config: dict = kwargs.pop('extra_config', None)
+    async def execute(self, *tileables, **kwargs) -> ExecutionInfo:
+        fuse_enabled: bool = kwargs.pop("fuse_enabled", True)
+        task_name: str = kwargs.pop("task_name", None)
+        extra_config: dict = kwargs.pop("extra_config", None)
         if kwargs:  # pragma: no cover
-            raise TypeError(f'run got unexpected key arguments {list(kwargs)!r}')
+            raise TypeError(f"run got unexpected key arguments {list(kwargs)!r}")
 
-        tileables = [tileable.data if hasattr(tileable, 'data') else tileable
-                     for tileable in tileables]
+        tileables = [
+            tileable.data if hasattr(tileable, "data") else tileable
+            for tileable in tileables
+        ]
 
         # build tileable graph
         tileable_graph = gen_submit_tileable_graph(self, tileables)
 
         # submit task
         task_id = await self._task_api.submit_tileable_graph(
-            tileable_graph, task_name=task_name, fuse_enabled=fuse_enabled,
-            extra_config=extra_config)
+            tileable_graph,
+            task_name=task_name,
+            fuse_enabled=fuse_enabled,
+            extra_config=extra_config,
+        )
 
         progress = Progress()
         # create asyncio.Task
         aio_task = asyncio.create_task(
-            self._run_in_background(tileables, task_id, progress))
-        return ExecutionInfo(aio_task, progress,
-                             asyncio.get_running_loop())
+            self._run_in_background(tileables, task_id, progress)
+        )
+        return ExecutionInfo(aio_task, progress, asyncio.get_running_loop())
 
-    def _get_to_fetch_tileable(self, tileable: TileableType) -> \
-            Tuple[TileableType, List[Union[slice, Integral]]]:
+    def _get_to_fetch_tileable(
+        self, tileable: TileableType
+    ) -> Tuple[TileableType, List[Union[slice, Integral]]]:
         from ...tensor.indexing import TensorIndex
-        from ...dataframe.indexing.iloc import \
-            DataFrameIlocGetItem, SeriesIlocGetItem
+        from ...dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 
-        slice_op_types = \
-            TensorIndex, DataFrameIlocGetItem, SeriesIlocGetItem
+        slice_op_types = TensorIndex, DataFrameIlocGetItem, SeriesIlocGetItem
 
-        if hasattr(tileable, 'data'):
+        if hasattr(tileable, "data"):
             tileable = tileable.data
 
         indexes = None
@@ -765,14 +905,12 @@ class _IsolatedSession(AbstractAsyncSession):
             if isinstance(tileable.op, slice_op_types):
                 indexes = tileable.op.indexes
                 tileable = tileable.inputs[0]
-                if not all(isinstance(index, (slice, Integral))
-                           for index in indexes):
-                    raise ValueError('Only support fetch data slices')
+                if not all(isinstance(index, (slice, Integral)) for index in indexes):
+                    raise ValueError("Only support fetch data slices")
             elif isinstance(tileable.op, Fetch):
                 break
             else:
-                raise ValueError(f'Cannot fetch unexecuted '
-                                 f'tileable: {tileable!r}')
+                raise ValueError(f"Cannot fetch unexecuted " f"tileable: {tileable!r}")
 
         if isinstance(tileable.op, Fetch):
             return tileable, indexes
@@ -780,23 +918,26 @@ class _IsolatedSession(AbstractAsyncSession):
             return self._tileable_to_fetch[tileable], indexes
 
     @classmethod
-    def _calc_chunk_indexes(cls,
-                            fetch_tileable: TileableType,
-                            indexes: List[Union[slice, Integral]]) -> \
-            Dict[ChunkType, List[Union[slice, int]]]:
+    def _calc_chunk_indexes(
+        cls, fetch_tileable: TileableType, indexes: List[Union[slice, Integral]]
+    ) -> Dict[ChunkType, List[Union[slice, int]]]:
         axis_to_slices = {
             axis: slice_split(ind, fetch_tileable.nsplits[axis])
-            for axis, ind in enumerate(indexes)}
+            for axis, ind in enumerate(indexes)
+        }
         result = dict()
         for chunk_index in itertools.product(
-                *[v.keys() for v in axis_to_slices.values()]):
+            *[v.keys() for v in axis_to_slices.values()]
+        ):
             # slice_obj: use tuple, since numpy complains
             #
             # FutureWarning: Using a non-tuple sequence for multidimensional indexing is deprecated; use
             # `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be interpreted as an array
             # index, `arr[np.array(seq)]`, which will result either in an error or a different result.
-            slice_obj = [axis_to_slices[axis][chunk_idx]
-                         for axis, chunk_idx in enumerate(chunk_index)]
+            slice_obj = [
+                axis_to_slices[axis][chunk_idx]
+                for axis, chunk_idx in enumerate(chunk_index)
+            ]
             chunk = fetch_tileable.cix[chunk_index]
             result[chunk] = slice_obj
         return result
@@ -806,8 +947,9 @@ class _IsolatedSession(AbstractAsyncSession):
 
     @alru_cache(cache_exceptions=False)
     async def _get_storage_api(self, band: BandType):
-        if urlparse(self.address).scheme == 'http':
+        if urlparse(self.address).scheme == "http":
             from ...services.storage.api import WebStorageAPI
+
             storage_api = WebStorageAPI(self._session_id, self.address, band[1])
         else:
             storage_api = await StorageAPI.create(self._session_id, band[0], band[1])
@@ -818,9 +960,8 @@ class _IsolatedSession(AbstractAsyncSession):
         from ...tensor.array_utils import get_array_module
 
         if kwargs:  # pragma: no cover
-            unexpected_keys = ', '.join(list(kwargs.keys()))
-            raise TypeError(f'`fetch` got unexpected '
-                            f'arguments: {unexpected_keys}')
+            unexpected_keys = ", ".join(list(kwargs.keys()))
+            raise TypeError(f"`fetch` got unexpected " f"arguments: {unexpected_keys}")
 
         with enter_mode(build=True):
             chunks = []
@@ -830,26 +971,26 @@ class _IsolatedSession(AbstractAsyncSession):
                 fetch_tileable, indexes = self._get_to_fetch_tileable(tileable)
                 chunk_to_slice = None
                 if indexes is not None:
-                    chunk_to_slice = self._calc_chunk_indexes(
-                        fetch_tileable, indexes)
+                    chunk_to_slice = self._calc_chunk_indexes(fetch_tileable, indexes)
                 fetch_infos = []
                 for chunk in fetch_tileable.chunks:
                     if indexes and chunk not in chunk_to_slice:
                         continue
                     chunks.append(chunk)
                     get_chunk_metas.append(
-                        self._meta_api.get_chunk_meta.delay(
-                            chunk.key, fields=['bands']))
-                    indexes = chunk_to_slice[chunk] \
-                        if chunk_to_slice is not None else None
-                    fetch_infos.append(ChunkFetchInfo(tileable=tileable,
-                                                      chunk=chunk,
-                                                      indexes=indexes))
+                        self._meta_api.get_chunk_meta.delay(chunk.key, fields=["bands"])
+                    )
+                    indexes = (
+                        chunk_to_slice[chunk] if chunk_to_slice is not None else None
+                    )
+                    fetch_infos.append(
+                        ChunkFetchInfo(tileable=tileable, chunk=chunk, indexes=indexes)
+                    )
                 fetch_infos_list.append(fetch_infos)
-            chunk_metas = \
-                await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
-            chunk_to_band = {chunk: meta['bands'][0]
-                            for chunk, meta in zip(chunks, chunk_metas)}
+            chunk_metas = await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
+            chunk_to_band = {
+                chunk: meta["bands"][0] for chunk, meta in zip(chunks, chunk_metas)
+            }
 
             storage_api_to_gets = defaultdict(list)
             storage_api_to_fetch_infos = defaultdict(list)
@@ -859,49 +1000,58 @@ class _IsolatedSession(AbstractAsyncSession):
                 band = chunk_to_band[chunk]
                 storage_api = await self._get_storage_api(band)
                 storage_api_to_gets[storage_api].append(
-                    storage_api.get.delay(chunk.key, conditions=conditions))
+                    storage_api.get.delay(chunk.key, conditions=conditions)
+                )
                 storage_api_to_fetch_infos[storage_api].append(fetch_info)
             for storage_api in storage_api_to_gets:
                 fetched_data = await storage_api.get.batch(
-                    *storage_api_to_gets[storage_api])
+                    *storage_api_to_gets[storage_api]
+                )
                 infos = storage_api_to_fetch_infos[storage_api]
                 for info, data in zip(infos, fetched_data):
                     info.data = data
 
             result = []
             for tileable, fetch_infos in zip(tileables, fetch_infos_list):
-                index_to_data = [(fetch_info.chunk.index, fetch_info.data)
-                                 for fetch_info in fetch_infos]
+                index_to_data = [
+                    (fetch_info.chunk.index, fetch_info.data)
+                    for fetch_info in fetch_infos
+                ]
                 merged = merge_chunks(index_to_data)
-                if hasattr(tileable, 'order') and tileable.ndim > 0:
+                if hasattr(tileable, "order") and tileable.ndim > 0:
                     module = get_array_module(merged)
-                    if tileable.order == TensorOrder.F_ORDER and \
-                            hasattr(module, 'asfortranarray'):
+                    if tileable.order == TensorOrder.F_ORDER and hasattr(
+                        module, "asfortranarray"
+                    ):
                         merged = module.asfortranarray(merged)
-                    elif tileable.order == TensorOrder.C_ORDER and \
-                            hasattr(module, 'ascontiguousarray'):
+                    elif tileable.order == TensorOrder.C_ORDER and hasattr(
+                        module, "ascontiguousarray"
+                    ):
                         merged = module.ascontiguousarray(merged)
-                if hasattr(tileable, 'isscalar') and tileable.isscalar() and \
-                        getattr(merged, 'size', None) == 1:
+                if (
+                    hasattr(tileable, "isscalar")
+                    and tileable.isscalar()
+                    and getattr(merged, "size", None) == 1
+                ):
                     merged = merged.item()
                 result.append(self._process_result(tileable, merged))
             return result
 
     async def fetch_infos(self, *tileables, fields, **kwargs) -> list:
-        available_fields = {'object_id', 'level', 'memory_size', 'store_size', 'band'}
+        available_fields = {"object_id", "level", "memory_size", "store_size", "band"}
         if fields is None:
             fields = available_fields
         else:
             for field_name in fields:
                 if field_name not in available_fields:  # pragma: no cover
-                    raise TypeError(f'`fetch_infos` got unexpected '
-                                    f'field name: {field_name}')
+                    raise TypeError(
+                        f"`fetch_infos` got unexpected " f"field name: {field_name}"
+                    )
             fields = set(fields)
 
         if kwargs:  # pragma: no cover
-            unexpected_keys = ', '.join(list(kwargs.keys()))
-            raise TypeError(f'`fetch` got unexpected '
-                            f'arguments: {unexpected_keys}')
+            unexpected_keys = ", ".join(list(kwargs.keys()))
+            raise TypeError(f"`fetch` got unexpected " f"arguments: {unexpected_keys}")
 
         with enter_mode(build=True):
             chunks = []
@@ -913,16 +1063,16 @@ class _IsolatedSession(AbstractAsyncSession):
                 for chunk in fetch_tileable.chunks:
                     chunks.append(chunk)
                     get_chunk_metas.append(
-                        self._meta_api.get_chunk_meta.delay(
-                            chunk.key, fields=['bands']))
-                    fetch_infos.append(ChunkFetchInfo(tileable=tileable,
-                                                      chunk=chunk,
-                                                      indexes=None))
+                        self._meta_api.get_chunk_meta.delay(chunk.key, fields=["bands"])
+                    )
+                    fetch_infos.append(
+                        ChunkFetchInfo(tileable=tileable, chunk=chunk, indexes=None)
+                    )
                 fetch_infos_list.append(fetch_infos)
-            chunk_metas = \
-                await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
-            chunk_to_band = {chunk: meta['bands'][0]
-                            for chunk, meta in zip(chunks, chunk_metas)}
+            chunk_metas = await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
+            chunk_to_band = {
+                chunk: meta["bands"][0] for chunk, meta in zip(chunks, chunk_metas)
+            }
 
             storage_api_to_gets = defaultdict(list)
             storage_api_to_fetch_infos = defaultdict(list)
@@ -930,10 +1080,14 @@ class _IsolatedSession(AbstractAsyncSession):
                 chunk = fetch_info.chunk
                 band = chunk_to_band[chunk]
                 storage_api = await self._get_storage_api(band)
-                storage_api_to_gets[storage_api].append(storage_api.get_infos.delay(chunk.key))
+                storage_api_to_gets[storage_api].append(
+                    storage_api.get_infos.delay(chunk.key)
+                )
                 storage_api_to_fetch_infos[storage_api].append(fetch_info)
             for storage_api in storage_api_to_gets:
-                fetched_data = await storage_api.get_infos.batch(*storage_api_to_gets[storage_api])
+                fetched_data = await storage_api.get_infos.batch(
+                    *storage_api_to_gets[storage_api]
+                )
                 infos = storage_api_to_fetch_infos[storage_api]
                 for info, data in zip(infos, fetched_data):
                     info.data = data
@@ -945,18 +1099,18 @@ class _IsolatedSession(AbstractAsyncSession):
                     band = chunk_to_band[fetch_info.chunk]
                     # Currently there's only one item in the returned List from storage_api.get_infos()
                     data = fetch_info.data[0]
-                    if 'object_id' in fields:
-                        fetched['object_id'].append(data.object_id)
-                    if 'level' in fields:
-                        fetched['level'].append(data.level)
-                    if 'memory_size' in fields:
-                        fetched['memory_size'].append(data.memory_size)
-                    if 'store_size' in fields:
-                        fetched['store_size'].append(data.store_size)
+                    if "object_id" in fields:
+                        fetched["object_id"].append(data.object_id)
+                    if "level" in fields:
+                        fetched["level"].append(data.level)
+                    if "memory_size" in fields:
+                        fetched["memory_size"].append(data.memory_size)
+                    if "store_size" in fields:
+                        fetched["store_size"].append(data.store_size)
                     # data.band misses ip info, e.g. 'numa-0'
                     # while band doesn't, e.g. (address0, 'numa-0')
-                    if 'band' in fields:
-                        fetched['band'].append(band)
+                    if "band" in fields:
+                        fetched["band"].append(band)
                 result.append(fetched)
 
             return result
@@ -967,19 +1121,22 @@ class _IsolatedSession(AbstractAsyncSession):
     async def _get_ref_counts(self) -> Dict[str, int]:
         return await self._lifecycle_api.get_all_chunk_ref_counts()
 
-    async def fetch_tileable_op_logs(self,
-                                     tileable_op_key: str,
-                                     offsets: Union[Dict[str, List[int]], str, int],
-                                     sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
+    async def fetch_tileable_op_logs(
+        self,
+        tileable_op_key: str,
+        offsets: Union[Dict[str, List[int]], str, int],
+        sizes: Union[Dict[str, List[int]], str, int],
+    ) -> Dict:
         return await self._session_api.fetch_tileable_op_logs(
-            self.session_id, tileable_op_key, offsets, sizes)
+            self.session_id, tileable_op_key, offsets, sizes
+        )
 
     async def get_total_n_cpu(self):
         all_bands = await self._cluster_api.get_all_bands()
         n_cpu = 0
         for band, size in all_bands.items():
             _, band_name = band
-            if band_name.startswith('numa-'):
+            if band_name.startswith("numa-"):
                 n_cpu += size
         return n_cpu
 
@@ -998,23 +1155,35 @@ class _IsolatedSession(AbstractAsyncSession):
         if self._asyncio_task_timeout_detector_task:  # pragma: no cover
             self._asyncio_task_timeout_detector_task.cancel()
 
-    async def create_remote_object(self,
-                                   session_id: str,
-                                   name: str,
-                                   object_cls,
-                                   *args, **kwargs):
+    async def create_remote_object(
+        self, session_id: str, name: str, object_cls, *args, **kwargs
+    ):
         return await self._session_api.create_remote_object(
-            session_id, name, object_cls, *args, **kwargs)
+            session_id, name, object_cls, *args, **kwargs
+        )
 
-    async def get_remote_object(self,
-                                session_id: str,
-                                name: str):
+    async def get_remote_object(self, session_id: str, name: str):
         return await self._session_api.get_remote_object(session_id, name)
 
-    async def destroy_remote_object(self,
-                                    session_id: str,
-                                    name: str):
+    async def destroy_remote_object(self, session_id: str, name: str):
         return await self._session_api.destroy_remote_object(session_id, name)
+
+    async def create_mutable_tensor(
+        self,
+        shape: tuple,
+        dtype: Union[np.dtype, str],
+        name: str = None,
+        default_value: Union[int, float] = 0,
+        chunk_size: Union[int, Tuple] = None,
+    ):
+        tensor_info = await self._mutable_api.create_mutable_tensor(
+            shape, dtype, name, default_value, chunk_size
+        )
+        return tensor_info, self._mutable_api
+
+    async def get_mutable_tensor(self, name: str):
+        tensor_info = await self._mutable_api.get_mutable_tensor(name)
+        return tensor_info, self._mutable_api
 
     async def stop_server(self):
         if self.client:
@@ -1023,15 +1192,14 @@ class _IsolatedSession(AbstractAsyncSession):
 
 class _IsolatedWebSession(_IsolatedSession):
     @classmethod
-    async def _init(cls,
-                    address: str,
-                    session_id: str,
-                    new: bool = True,
-                    timeout: float = None):
+    async def _init(
+        cls, address: str, session_id: str, new: bool = True, timeout: float = None
+    ):
         from ...services.session import WebSessionAPI
         from ...services.lifecycle import WebLifecycleAPI
         from ...services.meta import WebMetaAPI
         from ...services.task import WebTaskAPI
+        from ...services.mutable import WebMutableAPI
         from ...services.cluster import WebClusterAPI
 
         session_api = WebSessionAPI(address)
@@ -1043,12 +1211,21 @@ class _IsolatedWebSession(_IsolatedSession):
         lifecycle_api = WebLifecycleAPI(session_id, address)
         meta_api = WebMetaAPI(session_id, address)
         task_api = WebTaskAPI(session_id, address)
+        mutable_api = WebMutableAPI(session_id, address)
         cluster_api = WebClusterAPI(address)
 
-        return cls(address, session_id,
-                   session_api, meta_api,
-                   lifecycle_api, task_api,
-                   cluster_api, None, timeout=timeout)
+        return cls(
+            address,
+            session_id,
+            session_api,
+            meta_api,
+            lifecycle_api,
+            task_api,
+            mutable_api,
+            cluster_api,
+            None,
+            timeout=timeout,
+        )
 
     async def get_web_endpoint(self) -> Optional[str]:
         return self.address
@@ -1056,26 +1233,32 @@ class _IsolatedWebSession(_IsolatedSession):
 
 def _delegate_to_isolated_session(func: Union[Callable, Coroutine]):
     if asyncio.iscoroutinefunction(func):
+
         @wraps(func)
         async def inner(session: "AsyncSession", *args, **kwargs):
             coro = getattr(session._isolated_session, func.__name__)(*args, **kwargs)
             fut = asyncio.run_coroutine_threadsafe(coro, session._loop)
             return await asyncio.wrap_future(fut)
+
     else:
+
         @wraps(func)
         def inner(session: "SyncSession", *args, **kwargs):
             coro = getattr(session._isolated_session, func.__name__)(*args, **kwargs)
             fut = asyncio.run_coroutine_threadsafe(coro, session._loop)
             return fut.result()
+
     return inner
 
 
 class AsyncSession(AbstractAsyncSession):
-    def __init__(self,
-                 address: str,
-                 session_id: str,
-                 isolated_session: _IsolatedSession,
-                 isolation: Isolation):
+    def __init__(
+        self,
+        address: str,
+        session_id: str,
+        isolated_session: _IsolatedSession,
+        isolation: Isolation,
+    ):
         super().__init__(address, session_id)
 
         self._isolated_session = _get_isolated_session(isolated_session)
@@ -1083,12 +1266,15 @@ class AsyncSession(AbstractAsyncSession):
         self._loop = isolation.loop
 
     @classmethod
-    def from_isolated_session(cls,
-                              isolated_session: _IsolatedSession) -> "AsyncSession":
-        return cls(isolated_session.address,
-                   isolated_session.session_id,
-                   isolated_session,
-                   get_isolation())
+    def from_isolated_session(
+        cls, isolated_session: _IsolatedSession
+    ) -> "AsyncSession":
+        return cls(
+            isolated_session.address,
+            isolated_session.session_id,
+            isolated_session,
+            get_isolation(),
+        )
 
     @property
     def client(self):
@@ -1100,16 +1286,17 @@ class AsyncSession(AbstractAsyncSession):
 
     @classmethod
     @implements(AbstractAsyncSession.init)
-    async def init(cls,
-                   address: str,
-                   session_id: str,
-                   backend: str = 'oscar',
-                   new: bool = True,
-                   **kwargs) -> "AbstractSession":
+    async def init(
+        cls,
+        address: str,
+        session_id: str,
+        backend: str = "oscar",
+        new: bool = True,
+        **kwargs,
+    ) -> "AbstractSession":
         session_cls = _type_name_to_session_cls[backend]
         isolation = ensure_isolation_created(kwargs)
-        coro = session_cls.init(address, session_id,
-                                new=new, **kwargs)
+        coro = session_cls.init(address, session_id, new=new, **kwargs)
         fut = asyncio.run_coroutine_threadsafe(coro, isolation.loop)
         isolated_session = await asyncio.wrap_future(fut)
         return AsyncSession(address, session_id, isolated_session, isolation)
@@ -1121,22 +1308,20 @@ class AsyncSession(AbstractAsyncSession):
     @implements(AbstractAsyncSession.destroy)
     async def destroy(self):
         coro = self._isolated_session.destroy()
-        await asyncio.wrap_future(
-            asyncio.run_coroutine_threadsafe(coro, self._loop))
+        await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(coro, self._loop))
         self.reset_default()
 
     @implements(AbstractAsyncSession.execute)
     @_delegate_to_isolated_session
-    async def execute(self,
-                      *tileables,
-                      **kwargs) -> ExecutionInfo:
+    async def execute(self, *tileables, **kwargs) -> ExecutionInfo:
         pass  # pragma: no cover
 
     @implements(AbstractAsyncSession.fetch)
     async def fetch(self, *tileables, **kwargs) -> list:
         coro = _fetch(*tileables, session=self._isolated_session, **kwargs)
         return await asyncio.wrap_future(
-            asyncio.run_coroutine_threadsafe(coro, self._loop))
+            asyncio.run_coroutine_threadsafe(coro, self._loop)
+        )
 
     @implements(AbstractAsyncSession._get_ref_counts)
     @_delegate_to_isolated_session
@@ -1145,10 +1330,12 @@ class AsyncSession(AbstractAsyncSession):
 
     @implements(AbstractAsyncSession.fetch_tileable_op_logs)
     @_delegate_to_isolated_session
-    async def fetch_tileable_op_logs(self,
-                                     tileable_op_key: str,
-                                     offsets: Union[Dict[str, List[int]], str, int],
-                                     sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
+    async def fetch_tileable_op_logs(
+        self,
+        tileable_op_key: str,
+        offsets: Union[Dict[str, List[int]], str, int],
+        sizes: Union[Dict[str, List[int]], str, int],
+    ) -> Dict:
         pass  # pragma: no cover
 
     @implements(AbstractAsyncSession.get_total_n_cpu)
@@ -1163,26 +1350,39 @@ class AsyncSession(AbstractAsyncSession):
 
     @implements(AbstractAsyncSession.create_remote_object)
     @_delegate_to_isolated_session
-    async def create_remote_object(self,
-                                   session_id: str,
-                                   name: str,
-                                   object_cls,
-                                   *args, **kwargs):
+    async def create_remote_object(
+        self, session_id: str, name: str, object_cls, *args, **kwargs
+    ):
         pass  # pragma: no cover
 
     @implements(AbstractAsyncSession.get_remote_object)
     @_delegate_to_isolated_session
-    async def get_remote_object(self,
-                                session_id: str,
-                                name: str):
+    async def get_remote_object(self, session_id: str, name: str):
         pass  # pragma: no cover
 
     @implements(AbstractAsyncSession.destroy_remote_object)
     @_delegate_to_isolated_session
-    async def destroy_remote_object(self,
-                                    session_id: str,
-                                    name: str):
+    async def destroy_remote_object(self, session_id: str, name: str):
         pass  # pragma: no cover
+
+    @implements(AbstractAsyncSession.create_mutable_tensor)
+    async def create_mutable_tensor(
+        self,
+        shape: tuple,
+        dtype: Union[np.dtype, str],
+        name: str = None,
+        default_value: Union[int, float] = 0,
+        chunk_size: Union[int, Tuple] = None,
+    ):
+        tensor_info, mutable_api = await self._isolated_session.create_mutable_tensor(
+            shape, dtype, name, default_value, chunk_size
+        )
+        return MutableTensor.create(tensor_info, mutable_api, self._loop)
+
+    @implements(AbstractAsyncSession.get_mutable_tensor)
+    async def get_mutable_tensor(self, name: str):
+        tensor_info, mutable_api = await self._isolated_session.get_mutable_tensor(name)
+        return MutableTensor.create(tensor_info, mutable_api, self._loop)
 
     @implements(AbstractAsyncSession.get_web_endpoint)
     @_delegate_to_isolated_session
@@ -1192,8 +1392,7 @@ class AsyncSession(AbstractAsyncSession):
     @implements(AbstractAsyncSession.stop_server)
     async def stop_server(self):
         coro = self._isolated_session.stop_server()
-        await asyncio.wrap_future(
-            asyncio.run_coroutine_threadsafe(coro, self._loop))
+        await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(coro, self._loop))
         stop_isolation()
 
 
@@ -1205,8 +1404,8 @@ class ProgressBar:
             try:
                 from tqdm.auto import tqdm
             except ImportError:
-                if show_progress != 'auto':  # pragma: no cover
-                    raise ImportError('tqdm is required to show progress')
+                if show_progress != "auto":  # pragma: no cover
+                    raise ImportError("tqdm is required to show progress")
                 else:
                     self.progress_bar = None
             else:
@@ -1236,11 +1435,13 @@ class ProgressBar:
 class SyncSession(AbstractSyncSession):
     _execution_pool = concurrent.futures.ThreadPoolExecutor(1)
 
-    def __init__(self,
-                 address: str,
-                 session_id: str,
-                 isolated_session: _IsolatedSession,
-                 isolation: Isolation):
+    def __init__(
+        self,
+        address: str,
+        session_id: str,
+        isolated_session: _IsolatedSession,
+        isolation: Isolation,
+    ):
         super().__init__(address, session_id)
 
         self._isolated_session = _get_isolated_session(isolated_session)
@@ -1248,24 +1449,26 @@ class SyncSession(AbstractSyncSession):
         self._loop = isolation.loop
 
     @classmethod
-    def from_isolated_session(cls,
-                              isolated_session: _IsolatedSession) -> "SyncSession":
-        return cls(isolated_session.address,
-                   isolated_session.session_id,
-                   isolated_session,
-                   get_isolation())
+    def from_isolated_session(cls, isolated_session: _IsolatedSession) -> "SyncSession":
+        return cls(
+            isolated_session.address,
+            isolated_session.session_id,
+            isolated_session,
+            get_isolation(),
+        )
 
     @classmethod
-    def init(cls,
-             address: str,
-             session_id: str,
-             backend: str = 'oscar',
-             new: bool = True,
-             **kwargs) -> "AbstractSession":
+    def init(
+        cls,
+        address: str,
+        session_id: str,
+        backend: str = "oscar",
+        new: bool = True,
+        **kwargs,
+    ) -> "AbstractSession":
         session_cls = _type_name_to_session_cls[backend]
         isolation = ensure_isolation_created(kwargs)
-        coro = session_cls.init(address, session_id,
-                                new=new, **kwargs)
+        coro = session_cls.init(address, session_id, new=new, **kwargs)
         fut = asyncio.run_coroutine_threadsafe(coro, isolation.loop)
         isolated_session = fut.result()
         return SyncSession(address, session_id, isolated_session, isolation)
@@ -1282,56 +1485,58 @@ class SyncSession(AbstractSyncSession):
         async def new_event():
             return asyncio.Event()
 
-        return asyncio.run_coroutine_threadsafe(
-            new_event(), self._loop).result()
+        return asyncio.run_coroutine_threadsafe(new_event(), self._loop).result()
 
     @implements(AbstractSyncSession.execute)
-    def execute(self,
-                tileable,
-                *tileables,
-                show_progress: Union[bool, str] = None,
-                **kwargs) -> Union[List[TileableType], TileableType, ExecutionInfo]:
-        wait = kwargs.get('wait', True)
+    def execute(
+        self, tileable, *tileables, show_progress: Union[bool, str] = None, **kwargs
+    ) -> Union[List[TileableType], TileableType, ExecutionInfo]:
+        wait = kwargs.get("wait", True)
         if show_progress is None:
             show_progress = options.show_progress
         to_execute_tileables = []
         for t in (tileable,) + tileables:
             to_execute_tileables.extend(t.op.outputs)
 
-        cancelled = kwargs.get('cancelled')
+        cancelled = kwargs.get("cancelled")
         if cancelled is None:
-            cancelled = kwargs['cancelled'] = self._new_cancel_event()
+            cancelled = kwargs["cancelled"] = self._new_cancel_event()
 
-        coro = _execute(*set(to_execute_tileables), session=self._isolated_session,
-                        show_progress=show_progress, **kwargs)
+        coro = _execute(
+            *set(to_execute_tileables),
+            session=self._isolated_session,
+            show_progress=show_progress,
+            **kwargs,
+        )
         fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
         try:
             execution_info: ExecutionInfo = fut.result(
-                timeout=self._isolated_session.timeout)
+                timeout=self._isolated_session.timeout
+            )
         except KeyboardInterrupt:  # pragma: no cover
-            logger.warning('Cancelling running task')
+            logger.warning("Cancelling running task")
             cancelled.set()
             fut.result()
-            logger.warning('Cancel finished')
+            logger.warning("Cancel finished")
 
         if wait:
-            return tileable if len(tileables) == 0 else \
-                [tileable] + list(tileables)
+            return tileable if len(tileables) == 0 else [tileable] + list(tileables)
         else:
             aio_task = execution_info.aio_task
 
             async def run():
                 await aio_task
-                return tileable if len(tileables) == 0 else \
-                    [tileable] + list(tileables)
+                return tileable if len(tileables) == 0 else [tileable] + list(tileables)
 
             async def driver():
                 return asyncio.create_task(run())
 
             new_aio_task = asyncio.run_coroutine_threadsafe(
-                driver(), execution_info.loop).result()
+                driver(), execution_info.loop
+            ).result()
             new_execution_info = ExecutionInfo(
-                new_aio_task, execution_info._progress, execution_info.loop)
+                new_aio_task, execution_info._progress, execution_info.loop
+            )
             return new_execution_info
 
     @implements(AbstractSyncSession.fetch)
@@ -1341,7 +1546,9 @@ class SyncSession(AbstractSyncSession):
 
     @implements(AbstractSyncSession.fetch_infos)
     def fetch_infos(self, *tileables, fields, **kwargs) -> list:
-        coro = _fetch_infos(*tileables, fields=fields, session=self._isolated_session, **kwargs)
+        coro = _fetch_infos(
+            *tileables, fields=fields, session=self._isolated_session, **kwargs
+        )
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
 
     @implements(AbstractSyncSession.decref)
@@ -1356,10 +1563,12 @@ class SyncSession(AbstractSyncSession):
 
     @implements(AbstractSyncSession.fetch_tileable_op_logs)
     @_delegate_to_isolated_session
-    def fetch_tileable_op_logs(self,
-                               tileable_op_key: str,
-                               offsets: Union[Dict[str, List[int]], str, int],
-                               sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
+    def fetch_tileable_op_logs(
+        self,
+        tileable_op_key: str,
+        offsets: Union[Dict[str, List[int]], str, int],
+        sizes: Union[Dict[str, List[int]], str, int],
+    ) -> Dict:
         pass  # pragma: no cover
 
     @implements(AbstractSyncSession.get_total_n_cpu)
@@ -1376,6 +1585,29 @@ class SyncSession(AbstractSyncSession):
     @_delegate_to_isolated_session
     def get_cluster_versions(self) -> List[str]:
         pass  # pragma: no cover
+
+    @implements(AbstractSyncSession.create_mutable_tensor)
+    def create_mutable_tensor(
+        self,
+        shape: tuple,
+        dtype: Union[np.dtype, str],
+        name: str = None,
+        default_value: Union[int, float] = 0,
+        chunk_size: Union[int, Tuple] = None,
+    ):
+        coro = self._isolated_session.create_mutable_tensor(
+            shape, dtype, name, default_value, chunk_size
+        )
+        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        tensor_info, mutable_api = fut.result()
+        return MutableTensor.create(tensor_info, mutable_api, self._loop)
+
+    @implements(AbstractSyncSession.get_mutable_tensor)
+    def get_mutable_tensor(self, name: str):
+        coro = self._isolated_session.get_mutable_tensor(name)
+        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        tensor_info, mutable_api = fut.result()
+        return MutableTensor.create(tensor_info, mutable_api, self._loop)
 
     def destroy(self):
         coro = self._isolated_session.destroy()
@@ -1402,14 +1634,15 @@ class SyncSession(AbstractSyncSession):
         self.close()
 
 
-async def _execute(*tileables: Tuple[TileableType],
-                   session: _IsolatedSession = None,
-                   wait: bool = True,
-                   show_progress: Union[bool, str] = 'auto',
-                   progress_update_interval: Union[int, float] = 1,
-                   cancelled: asyncio.Event = None,
-                   **kwargs):
-
+async def _execute(
+    *tileables: Tuple[TileableType],
+    session: _IsolatedSession = None,
+    wait: bool = True,
+    show_progress: Union[bool, str] = "auto",
+    progress_update_interval: Union[int, float] = 1,
+    cancelled: asyncio.Event = None,
+    **kwargs,
+):
     def _attach_session(future: asyncio.Future):
         if future.exception() is None:
             for t in tileables:
@@ -1425,8 +1658,9 @@ async def _execute(*tileables: Tuple[TileableType],
             with progress_bar:
                 while not cancelled.is_set():
                     try:
-                        await asyncio.wait_for(asyncio.shield(execution_info),
-                                               progress_update_interval)
+                        await asyncio.wait_for(
+                            asyncio.shield(execution_info), progress_update_interval
+                        )
                         # done
                         if not cancelled.is_set():
                             progress_bar.update(100)
@@ -1441,8 +1675,9 @@ async def _execute(*tileables: Tuple[TileableType],
                     execution_info.remove_done_callback(_attach_session)
                     await execution_info
         else:
-            await asyncio.wait([execution_info, cancelled.wait()],
-                               return_when=asyncio.FIRST_COMPLETED)
+            await asyncio.wait(
+                [execution_info, cancelled.wait()], return_when=asyncio.FIRST_COMPLETED
+            )
             if cancelled.is_set():
                 execution_info.remove_done_callback(_attach_session)
                 execution_info.cancel()
@@ -1454,29 +1689,37 @@ async def _execute(*tileables: Tuple[TileableType],
         return execution_info
 
 
-def execute(tileable: TileableType,
-            *tileables: Tuple[TileableType],
-            session: SyncSession = None,
-            wait: bool = True,
-            new_session_kwargs: dict = None,
-            show_progress: Union[bool, str] = None,
-            progress_update_interval=1, **kwargs):
+def execute(
+    tileable: TileableType,
+    *tileables: Tuple[TileableType],
+    session: SyncSession = None,
+    wait: bool = True,
+    new_session_kwargs: dict = None,
+    show_progress: Union[bool, str] = None,
+    progress_update_interval=1,
+    **kwargs,
+):
     if isinstance(tileable, (tuple, list)) and len(tileables) == 0:
         tileable, tileables = tileable[0], tileable[1:]
     if session is None:
-        session = get_default_or_create(
-            **(new_session_kwargs or dict()))
+        session = get_default_or_create(**(new_session_kwargs or dict()))
     session = _ensure_sync(session)
-    return session.execute(tileable, *tileables, wait=wait,
-                           show_progress=show_progress,
-                           progress_update_interval=progress_update_interval,
-                           **kwargs)
+    return session.execute(
+        tileable,
+        *tileables,
+        wait=wait,
+        show_progress=show_progress,
+        progress_update_interval=progress_update_interval,
+        **kwargs,
+    )
 
 
-async def _fetch(tileable: TileableType,
-                 *tileables: Tuple[TileableType],
-                 session: _IsolatedSession = None,
-                 **kwargs):
+async def _fetch(
+    tileable: TileableType,
+    *tileables: Tuple[TileableType],
+    session: _IsolatedSession = None,
+    **kwargs,
+):
     if isinstance(tileable, tuple) and len(tileables) == 0:
         tileable, tileables = tileable[0], tileable[1:]
     session = _get_isolated_session(session)
@@ -1484,11 +1727,13 @@ async def _fetch(tileable: TileableType,
     return data[0] if len(tileables) == 0 else data
 
 
-async def _fetch_infos(tileable: TileableType,
-                       *tileables: Tuple[TileableType],
-                       session: _IsolatedSession = None,
-                       fields: List[str] = None,
-                       **kwargs):
+async def _fetch_infos(
+    tileable: TileableType,
+    *tileables: Tuple[TileableType],
+    session: _IsolatedSession = None,
+    fields: List[str] = None,
+    **kwargs,
+):
     if isinstance(tileable, tuple) and len(tileables) == 0:
         tileable, tileables = tileable[0], tileable[1:]
     session = _get_isolated_session(session)
@@ -1496,52 +1741,54 @@ async def _fetch_infos(tileable: TileableType,
     return data[0] if len(tileables) == 0 else data
 
 
-def fetch(tileable: TileableType,
-          *tileables: Tuple[TileableType],
-          session: SyncSession = None,
-          **kwargs):
+def fetch(
+    tileable: TileableType,
+    *tileables: Tuple[TileableType],
+    session: SyncSession = None,
+    **kwargs,
+):
     if isinstance(tileable, (tuple, list)) and len(tileables) == 0:
         tileable, tileables = tileable[0], tileable[1:]
     if session is None:
         session = get_default_session()
         if session is None:  # pragma: no cover
-            raise ValueError('No session found')
+            raise ValueError("No session found")
 
     session = _ensure_sync(session)
     return session.fetch(tileable, *tileables, **kwargs)
 
 
-def fetch_infos(tileable: TileableType,
-                *tileables: Tuple[TileableType],
-                fields: List[str],
-                session: SyncSession = None,
-                **kwargs):
+def fetch_infos(
+    tileable: TileableType,
+    *tileables: Tuple[TileableType],
+    fields: List[str],
+    session: SyncSession = None,
+    **kwargs,
+):
     if isinstance(tileable, tuple) and len(tileables) == 0:
         tileable, tileables = tileable[0], tileable[1:]
     if session is None:
         session = get_default_session()
         if session is None:  # pragma: no cover
-            raise ValueError('No session found')
+            raise ValueError("No session found")
     session = _ensure_sync(session)
     return session.fetch_infos(tileable, *tileables, fields=fields, **kwargs)
 
 
-def fetch_log(*tileables: TileableType,
-              session: SyncSession = None,
-              **kwargs):
+def fetch_log(*tileables: TileableType, session: SyncSession = None, **kwargs):
     if len(tileables) == 1 and isinstance(tileables[0], (list, tuple)):
         tileables = tileables[0]
     if session is None:
         session = get_default_session()
         if session is None:  # pragma: no cover
-            raise ValueError('No session found')
+            raise ValueError("No session found")
     session = _ensure_sync(session)
     return session.fetch_log(list(tileables), **kwargs)
 
 
 def ensure_isolation_created(kwargs):
-    loop = kwargs.pop('loop', None)
-    use_uvloop = kwargs.pop('use_uvloop', 'auto')
+    loop = kwargs.pop("loop", None)
+    use_uvloop = kwargs.pop("use_uvloop", "auto")
 
     try:
         return get_isolation()
@@ -1552,9 +1799,10 @@ def ensure_isolation_created(kwargs):
             else:
                 try:
                     import uvloop
+
                     loop = uvloop.new_event_loop()
                 except ImportError:
-                    if use_uvloop == 'auto':
+                    if use_uvloop == "auto":
                         loop = asyncio.new_event_loop()
                     else:  # pragma: no cover
                         raise
@@ -1562,44 +1810,49 @@ def ensure_isolation_created(kwargs):
 
 
 def _new_session_id():
-    return ''.join(random.choice(string.ascii_letters + string.digits)
-                   for _ in range(24))
+    return "".join(
+        random.choice(string.ascii_letters + string.digits) for _ in range(24)
+    )
 
 
-async def _new_session(address: str,
-                       session_id: str = None,
-                       backend: str = 'oscar',
-                       default: bool = False,
-                       **kwargs) -> AbstractSession:
+async def _new_session(
+    address: str,
+    session_id: str = None,
+    backend: str = "oscar",
+    default: bool = False,
+    **kwargs,
+) -> AbstractSession:
     if session_id is None:
         session_id = _new_session_id()
 
     session = await AsyncSession.init(
-        address, session_id=session_id,
-        backend=backend, new=True, **kwargs)
+        address, session_id=session_id, backend=backend, new=True, **kwargs
+    )
     if default:
         session.as_default()
     return session
 
 
-def new_session(address: str = None,
-                session_id: str = None,
-                backend: str = 'oscar',
-                default: bool = True,
-                **kwargs) -> AbstractSession:
+def new_session(
+    address: str = None,
+    session_id: str = None,
+    backend: str = "oscar",
+    default: bool = True,
+    **kwargs,
+) -> AbstractSession:
     ensure_isolation_created(kwargs)
 
     if address is None:
-        address = '127.0.0.1'
-        if 'init_local' not in kwargs:
-            kwargs['init_local'] = True
+        address = "127.0.0.1"
+        if "init_local" not in kwargs:
+            kwargs["init_local"] = True
 
     if session_id is None:
         session_id = _new_session_id()
 
     session = SyncSession.init(
-        address, session_id=session_id,
-        backend=backend, new=True, **kwargs)
+        address, session_id=session_id, backend=backend, new=True, **kwargs
+    )
     if default:
         session.as_default()
     return session
@@ -1623,8 +1876,7 @@ def get_default_or_create(**kwargs):
         if session is None:
             # no session attached, try to create one
             warnings.warn(warning_msg)
-            session = new_session(
-                '127.0.0.1', init_local=True, **kwargs)
+            session = new_session("127.0.0.1", init_local=True, **kwargs)
             session.as_default()
     if isinstance(session, _IsolatedSession):
         session = SyncSession.from_isolated_session(session)
@@ -1637,7 +1889,7 @@ def stop_server():
 
 
 def _get_isolated_session(session: AbstractSession) -> _IsolatedSession:
-    if hasattr(session, '_isolated_session'):
+    if hasattr(session, "_isolated_session"):
         return session._isolated_session
     return session
 

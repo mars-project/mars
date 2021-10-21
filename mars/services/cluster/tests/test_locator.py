@@ -53,12 +53,14 @@ class MockNodeInfoCollectorActor(mo.Actor):
 
 @pytest.fixture
 async def actor_pool():
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+    pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
     await pool.start()
 
-    await mo.create_actor(MockNodeInfoCollectorActor,
-                          uid=NodeInfoCollectorActor.default_uid(),
-                          address=pool.external_address)
+    await mo.create_actor(
+        MockNodeInfoCollectorActor,
+        uid=NodeInfoCollectorActor.default_uid(),
+        address=pool.external_address,
+    )
 
     yield pool
     await pool.stop()
@@ -66,15 +68,17 @@ async def actor_pool():
 
 @pytest.mark.asyncio
 async def test_fixed_locator(actor_pool):
-    addresses = ['1.2.3.4:1234', '1.2.3.4:1235',
-                 '1.2.3.4:1236', '1.2.3.4:1237']
+    addresses = ["1.2.3.4:1234", "1.2.3.4:1235", "1.2.3.4:1236", "1.2.3.4:1237"]
     locator_ref = await mo.create_actor(
-        SupervisorPeerLocatorActor, 'fixed', ','.join(addresses),
-        address=actor_pool.external_address)
+        SupervisorPeerLocatorActor,
+        "fixed",
+        ",".join(addresses),
+        address=actor_pool.external_address,
+    )
 
-    assert await locator_ref.get_supervisor('mock_name') in addresses
+    assert await locator_ref.get_supervisor("mock_name") in addresses
 
-    dbl_addrs = await locator_ref.get_supervisor('mock_name', 2)
+    dbl_addrs = await locator_ref.get_supervisor("mock_name", 2)
     assert len(dbl_addrs) == 2
     assert all(addr in addresses for addr in dbl_addrs)
 
@@ -87,51 +91,55 @@ async def test_fixed_locator(actor_pool):
 
 @pytest.fixture
 def temp_address_file():
-    with tempfile.TemporaryDirectory(prefix='mars-test') as dir_name:
-        yield os.path.join(dir_name, 'addresses')
+    with tempfile.TemporaryDirectory(prefix="mars-test") as dir_name:
+        yield os.path.join(dir_name, "addresses")
 
 
 @pytest.mark.asyncio
 async def test_supervisor_peer_locator(actor_pool, temp_address_file):
-    addresses = ['1.2.3.4:1234', '1.2.3.4:1235',
-                 '1.2.3.4:1236', '1.2.3.4:1237']
-    with open(temp_address_file, 'w') as file_obj:
-        file_obj.write('\n'.join(addresses))
+    addresses = ["1.2.3.4:1234", "1.2.3.4:1235", "1.2.3.4:1236", "1.2.3.4:1237"]
+    with open(temp_address_file, "w") as file_obj:
+        file_obj.write("\n".join(addresses))
 
     locator_ref = await mo.create_actor(
-        SupervisorPeerLocatorActor, 'test', temp_address_file,
+        SupervisorPeerLocatorActor,
+        "test",
+        temp_address_file,
         uid=SupervisorPeerLocatorActor.default_uid(),
-        address=actor_pool.external_address)
+        address=actor_pool.external_address,
+    )
 
     # test starting nodes filled
-    info_ref = await mo.actor_ref(uid=NodeInfoCollectorActor.default_uid(),
-                                  address=actor_pool.external_address)
+    info_ref = await mo.actor_ref(
+        uid=NodeInfoCollectorActor.default_uid(), address=actor_pool.external_address
+    )
     assert set(await info_ref.get_nodes_info()) == set(addresses)
 
     # test watch nodes changes
-    version, result = await locator_ref.watch_supervisors_by_keys(['mock_name'])
+    version, result = await locator_ref.watch_supervisors_by_keys(["mock_name"])
     assert result[0] in addresses
 
-    with open(temp_address_file, 'w') as file_obj:
-        file_obj.write('\n'.join(addresses[2:]))
+    with open(temp_address_file, "w") as file_obj:
+        file_obj.write("\n".join(addresses[2:]))
 
     version, result = await locator_ref.watch_supervisors_by_keys(
-        ['mock_name'], version=version)
+        ["mock_name"], version=version
+    )
     assert result[0] in addresses[2:]
 
     # test wait all supervisors ready
-    with open(temp_address_file, 'w') as file_obj:
-        file_obj.write('\n'.join(
-            f'{a},{idx % 2}' for idx, a in enumerate(addresses)))
+    with open(temp_address_file, "w") as file_obj:
+        file_obj.write("\n".join(f"{a},{idx % 2}" for idx, a in enumerate(addresses)))
 
     async def delay_read_fun():
         await asyncio.sleep(0.2)
-        with open(temp_address_file, 'w') as file_obj:
-            file_obj.write('\n'.join(
-                f'{a},{(idx + 1) % 2}' for idx, a in enumerate(addresses)))
+        with open(temp_address_file, "w") as file_obj:
+            file_obj.write(
+                "\n".join(f"{a},{(idx + 1) % 2}" for idx, a in enumerate(addresses))
+            )
         await asyncio.sleep(0.3)
-        with open(temp_address_file, 'w') as file_obj:
-            file_obj.write('\n'.join(addresses))
+        with open(temp_address_file, "w") as file_obj:
+            file_obj.write("\n".join(addresses))
 
     asyncio.create_task(delay_read_fun())
 
@@ -145,44 +153,52 @@ async def test_supervisor_peer_locator(actor_pool, temp_address_file):
 @pytest.mark.asyncio
 async def test_worker_supervisor_locator(actor_pool, temp_address_file):
     addresses = [actor_pool.external_address]
-    with open(temp_address_file, 'w') as file_obj:
-        file_obj.write('\n'.join(addresses))
+    with open(temp_address_file, "w") as file_obj:
+        file_obj.write("\n".join(addresses))
 
     locator_ref = await mo.create_actor(
-        WorkerSupervisorLocatorActor, 'test', temp_address_file,
+        WorkerSupervisorLocatorActor,
+        "test",
+        temp_address_file,
         uid=WorkerSupervisorLocatorActor.default_uid(),
-        address=actor_pool.external_address)
+        address=actor_pool.external_address,
+    )
 
-    info_ref = await mo.actor_ref(uid=NodeInfoCollectorActor.default_uid(),
-                                  address=actor_pool.external_address)
+    info_ref = await mo.actor_ref(
+        uid=NodeInfoCollectorActor.default_uid(), address=actor_pool.external_address
+    )
     await info_ref.set_all_node_infos({actor_pool.external_address: NodeStatus.READY})
 
     # test watch nodes changes
     supervisors = await locator_ref.get_supervisors(filter_ready=False)
     assert supervisors == addresses
-    version, result = await locator_ref.watch_supervisors_by_keys(['mock_name'])
+    version, result = await locator_ref.watch_supervisors_by_keys(["mock_name"])
     assert result[0] in addresses
 
     # test watch without NodeInfoCollectorActor
     await info_ref.destroy()
 
-    addresses = ['localhost:1234', 'localhost:1235']
-    with open(temp_address_file, 'w') as file_obj:
-        file_obj.write('\n'.join(addresses))
+    addresses = ["localhost:1234", "localhost:1235"]
+    with open(temp_address_file, "w") as file_obj:
+        file_obj.write("\n".join(addresses))
     version, result = await locator_ref.watch_supervisors_by_keys(
-        ['mock_name'], version=version)
+        ["mock_name"], version=version
+    )
     assert result[0] in addresses
 
     # test watch when NodeInfoCollectorActor is created again
-    info_ref = await mo.create_actor(MockNodeInfoCollectorActor,
-                                     uid=NodeInfoCollectorActor.default_uid(),
-                                     address=actor_pool.external_address)
+    info_ref = await mo.create_actor(
+        MockNodeInfoCollectorActor,
+        uid=NodeInfoCollectorActor.default_uid(),
+        address=actor_pool.external_address,
+    )
     await info_ref.set_all_node_infos({actor_pool.external_address: NodeStatus.READY})
 
     addresses = [actor_pool.external_address]
-    with open(temp_address_file, 'w') as file_obj:
-        file_obj.write('\n'.join(addresses))
+    with open(temp_address_file, "w") as file_obj:
+        file_obj.write("\n".join(addresses))
 
     version, result = await locator_ref.watch_supervisors_by_keys(
-        ['mock_name'], version=version)
+        ["mock_name"], version=version
+    )
     assert result[0] in addresses

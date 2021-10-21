@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorArctan(TensorUnaryOp):
     _op_type_ = OperandDef.ARCTAN
-    _func_name = 'arctan'
+    _func_name = "arctan"
 
 
 @infer_dtype(np.arctan)

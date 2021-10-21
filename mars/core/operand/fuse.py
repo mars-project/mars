@@ -20,10 +20,10 @@ from .base import Operand
 
 
 class Fuse(Operand):
-    __slots__ = '_fuse_graph',
+    __slots__ = ("_fuse_graph",)
     _op_type_ = opcodes.FUSE
 
-    fuse_graph = ReferenceField('fuse_graph', ChunkGraph)
+    fuse_graph = ReferenceField("fuse_graph", ChunkGraph)
 
 
 class FuseChunkMixin:
@@ -35,5 +35,6 @@ class FuseChunkMixin:
 
     @classmethod
     def tile(cls, op):
-        raise NotSupportTile('FuseChunk is a chunk operand '
-                             'which does not support tile')
+        raise NotSupportTile(
+            "FuseChunk is a chunk operand " "which does not support tile"
+        )

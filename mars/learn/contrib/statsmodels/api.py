@@ -24,29 +24,55 @@ except ImportError:
 
 
 class MarsDistributedModel:
-    def __init__(self, factor=None, num_partitions=None, model_class=None,
-                 init_kwds=None, estimation_method=None, estimation_kwds=None,
-                 join_method=None, join_kwds=None, results_class=None, results_kwds=None):
+    def __init__(
+        self,
+        factor=None,
+        num_partitions=None,
+        model_class=None,
+        init_kwds=None,
+        estimation_method=None,
+        estimation_kwds=None,
+        join_method=None,
+        join_kwds=None,
+        results_class=None,
+        results_kwds=None,
+    ):
         self._factor = factor
         self._sm_model = DistributedModel(
-            num_partitions or 10, model_class=model_class, init_kwds=init_kwds,
-            estimation_method=estimation_method, estimation_kwds=estimation_kwds,
-            join_method=join_method, join_kwds=join_kwds, results_class=results_class,
-            results_kwds=results_kwds
+            num_partitions or 10,
+            model_class=model_class,
+            init_kwds=init_kwds,
+            estimation_method=estimation_method,
+            estimation_kwds=estimation_kwds,
+            join_method=join_method,
+            join_kwds=join_kwds,
+            results_class=results_class,
+            results_kwds=results_kwds,
         )
 
     def fit(self, endog, exog, session=None, **kwargs):
         num_partitions = None if self._factor is not None else self._sm_model.partitions
-        run_kwargs = kwargs.pop('run_kwargs', dict())
+        run_kwargs = kwargs.pop("run_kwargs", dict())
         op = StatsModelsTrain(
-            endog=endog, exog=exog, num_partitions=num_partitions, factor=self._factor,
-            model_class=self._sm_model.model_class, init_kwds=self._sm_model.init_kwds,
-            fit_kwds=kwargs, estimation_method=self._sm_model.estimation_method,
+            endog=endog,
+            exog=exog,
+            num_partitions=num_partitions,
+            factor=self._factor,
+            model_class=self._sm_model.model_class,
+            init_kwds=self._sm_model.init_kwds,
+            fit_kwds=kwargs,
+            estimation_method=self._sm_model.estimation_method,
             estimation_kwds=self._sm_model.estimation_kwds,
-            join_method=self._sm_model.join_method, join_kwds=self._sm_model.join_kwds,
+            join_method=self._sm_model.join_method,
+            join_kwds=self._sm_model.join_kwds,
             results_class=self._sm_model.results_class,
-            results_kwds=self._sm_model.results_kwds)
-        result = op(exog, endog).execute(session=session, **run_kwargs).fetch(session=session)
+            results_kwds=self._sm_model.results_kwds,
+        )
+        result = (
+            op(exog, endog)
+            .execute(session=session, **run_kwargs)
+            .fetch(session=session)
+        )
         return MarsResults(pickle.loads(result))  # nosec
 
 
@@ -59,7 +85,7 @@ class MarsResults:
         return self._model
 
     def __getattr__(self, item):
-        if item == '_model':
+        if item == "_model":
             raise AttributeError
         return getattr(self._model, item)
 
@@ -67,7 +93,9 @@ class MarsResults:
         return pickle.dumps(self.model)
 
     def predict(self, exog, *args, **kwargs):
-        session = kwargs.pop('session', None)
-        run_kwargs = kwargs.pop('run_kwargs', dict())
-        op = StatsModelsPredict(model_results=self, predict_args=args, predict_kwargs=kwargs)
+        session = kwargs.pop("session", None)
+        run_kwargs = kwargs.pop("run_kwargs", dict())
+        op = StatsModelsPredict(
+            model_results=self, predict_args=args, predict_kwargs=kwargs
+        )
         return op(exog).execute(session=session, **run_kwargs)

@@ -20,14 +20,15 @@ from .base import AbstractClusterBackend, register_cluster_backend
 
 @register_cluster_backend
 class FixedClusterBackend(AbstractClusterBackend):
-    name = 'fixed'
+    name = "fixed"
 
     def __init__(self, lookup_address: str):
-        self._supervisors = [n.strip() for n in lookup_address.split(',')]
+        self._supervisors = [n.strip() for n in lookup_address.split(",")]
 
     @classmethod
-    async def create(cls, node_role: NodeRole, lookup_address: Optional[str],
-                     pool_address: str):
+    async def create(
+        cls, node_role: NodeRole, lookup_address: Optional[str], pool_address: str
+    ):
         return cls(lookup_address)
 
     async def watch_supervisors(self) -> AsyncGenerator[List[str], None]:
@@ -37,7 +38,8 @@ class FixedClusterBackend(AbstractClusterBackend):
         return self._supervisors
 
     async def request_worker(
-            self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
+        self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None
+    ) -> str:
         raise NotImplementedError
 
     async def release_worker(self, address: str):

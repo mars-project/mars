@@ -18,7 +18,9 @@ from ..arithmetic.sqrt import sqrt
 from .nanvar import nanvar
 
 
-def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=None, combine_size=None):
+def nanstd(
+    a, axis=None, dtype=None, out=None, ddof=0, keepdims=None, combine_size=None
+):
     """
     Compute the standard deviation along the specified axis, while
     ignoring NaNs.
@@ -113,8 +115,17 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=None, combine_si
     array([ 0.,  0.5])
 
     """
-    ret = sqrt(nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims,
-                      combine_size=combine_size))
+    ret = sqrt(
+        nanvar(
+            a,
+            axis=axis,
+            dtype=dtype,
+            out=out,
+            ddof=ddof,
+            keepdims=keepdims,
+            combine_size=combine_size,
+        )
+    )
     if dtype is not None and ret.dtype != dtype:
         ret = ret.astype(dtype)
     return ret

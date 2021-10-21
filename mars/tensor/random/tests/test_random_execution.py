@@ -26,7 +26,7 @@ from ...datasource import tensor as from_ndarray
 
 
 def test_rand_execution(setup):
-    arr = tensor.random.rand(10, 20, chunk_size=8, dtype='f4')
+    arr = tensor.random.rand(10, 20, chunk_size=8, dtype="f4")
     res = arr.execute().fetch()
     assert res.shape == (10, 20)
     assert res.dtype == np.float32
@@ -138,8 +138,9 @@ def test_choice_execution(setup):
 def test_sparse_randint_execution(setup):
     # size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.SyncProviderType.MOCK)
 
-    arr = tensor.random.randint(1, 2, size=(30, 50), density=.1,
-                                chunk_size=20, dtype='f4')
+    arr = tensor.random.randint(
+        1, 2, size=(30, 50), density=0.1, chunk_size=20, dtype="f4"
+    )
     # size_res = size_executor.execute_tensor(arr, mock=True)
     # assert pytest.approx(arr.nbytes * 0.1) == sum(tp[0] for tp in size_res)
 
@@ -148,61 +149,58 @@ def test_sparse_randint_execution(setup):
     assert res.shape == (30, 50)
     np.testing.assert_array_less(res.data, 2)
     np.testing.assert_array_less(0, res.data)
-    assert pytest.approx((res >= 1).toarray().sum(), 30 * 50 * .1, abs=20)
+    assert pytest.approx((res >= 1).toarray().sum(), 30 * 50 * 0.1, abs=20)
 
 
-random_test_options = namedtuple('random_test_options',
-                                 ['func_name', 'args', 'kwargs'])
+random_test_options = namedtuple("random_test_options", ["func_name", "args", "kwargs"])
 
 random_params = [
-    random_test_options('beta', ([1, 2], [3, 4]), dict(chunk_size=2)),
-    random_test_options('binomial', (10, .5, 100), dict(chunk_size=50)),
-    random_test_options('chisquare', (2, 100), dict(chunk_size=50)),
-    random_test_options('dirichlet', ((10, 5, 3), 100), dict(chunk_size=50)),
-    random_test_options('exponential', (1.0, 100), dict(chunk_size=50)),
-    random_test_options('f', (1.0, 2.0, 100), dict(chunk_size=50)),
-    random_test_options('gamma', (1.0, 2.0, 100), dict(chunk_size=50)),
-    random_test_options('geometric', (1.0, 100), dict(chunk_size=50)),
-    random_test_options('gumbel', (.5, 1.0, 100), dict(chunk_size=50)),
-    random_test_options('hypergeometric', (10, 20, 15, 100), dict(chunk_size=50)),
-    random_test_options('laplace', (.5, 1.0, 100), dict(chunk_size=50)),
-    random_test_options('logistic', (.5, 1.0, 100), dict(chunk_size=50)),
-    random_test_options('lognormal', (.5, 1.0, 100), dict(chunk_size=50)),
-    random_test_options('logseries', (.5, 100), dict(chunk_size=50)),
-    random_test_options('multinomial', (10, [.2, .5, .3], 100), dict(chunk_size=50)),
-    random_test_options('multivariate_normal', ([1, 2], [[1, 0], [0, 1]], 100),
-                        dict(chunk_size=50)),
-    random_test_options('negative_binomial', (5, 1.0, 100), dict(chunk_size=50)),
-    random_test_options('noncentral_chisquare', (.5, 1.0, 100), dict(chunk_size=50)),
-    random_test_options('noncentral_f', (1.5, 1.0, 1.1, 100), dict(chunk_size=50)),
-    random_test_options('pareto', (1.0, 100), dict(chunk_size=50)),
-    random_test_options('poisson', (1.0, 100), dict(chunk_size=50)),
-    random_test_options('power', (1.0, 100), dict(chunk_size=50)),
-    random_test_options('rayleigh', (1.0, 100), dict(chunk_size=50)),
-    random_test_options('standard_cauchy', (100,), dict(chunk_size=50)),
-    random_test_options('standard_exponential', (100,), dict(chunk_size=50)),
-    random_test_options('standard_gamma', (1.0, 100), dict(chunk_size=50)),
-    random_test_options('standard_normal', (100,), dict(chunk_size=50)),
-    random_test_options('standard_t', (1.0, 100), dict(chunk_size=50)),
-    random_test_options('triangular', (.1, .2, .3, 100), dict(chunk_size=50)),
-    random_test_options('uniform', (.1, .2, 100), dict(chunk_size=50)),
-    random_test_options('vonmises', (.1, .2, 100), dict(chunk_size=50)),
-    random_test_options('wald', (.1, .2, 100), dict(chunk_size=50)),
-    random_test_options('weibull', (.1, 100), dict(chunk_size=50)),
-    random_test_options('zipf', (1.1, 100), dict(chunk_size=50)),
+    random_test_options("beta", ([1, 2], [3, 4]), dict(chunk_size=2)),
+    random_test_options("binomial", (10, 0.5, 100), dict(chunk_size=50)),
+    random_test_options("chisquare", (2, 100), dict(chunk_size=50)),
+    random_test_options("dirichlet", ((10, 5, 3), 100), dict(chunk_size=50)),
+    random_test_options("exponential", (1.0, 100), dict(chunk_size=50)),
+    random_test_options("f", (1.0, 2.0, 100), dict(chunk_size=50)),
+    random_test_options("gamma", (1.0, 2.0, 100), dict(chunk_size=50)),
+    random_test_options("geometric", (1.0, 100), dict(chunk_size=50)),
+    random_test_options("gumbel", (0.5, 1.0, 100), dict(chunk_size=50)),
+    random_test_options("hypergeometric", (10, 20, 15, 100), dict(chunk_size=50)),
+    random_test_options("laplace", (0.5, 1.0, 100), dict(chunk_size=50)),
+    random_test_options("logistic", (0.5, 1.0, 100), dict(chunk_size=50)),
+    random_test_options("lognormal", (0.5, 1.0, 100), dict(chunk_size=50)),
+    random_test_options("logseries", (0.5, 100), dict(chunk_size=50)),
+    random_test_options("multinomial", (10, [0.2, 0.5, 0.3], 100), dict(chunk_size=50)),
+    random_test_options(
+        "multivariate_normal", ([1, 2], [[1, 0], [0, 1]], 100), dict(chunk_size=50)
+    ),
+    random_test_options("negative_binomial", (5, 1.0, 100), dict(chunk_size=50)),
+    random_test_options("noncentral_chisquare", (0.5, 1.0, 100), dict(chunk_size=50)),
+    random_test_options("noncentral_f", (1.5, 1.0, 1.1, 100), dict(chunk_size=50)),
+    random_test_options("pareto", (1.0, 100), dict(chunk_size=50)),
+    random_test_options("poisson", (1.0, 100), dict(chunk_size=50)),
+    random_test_options("power", (1.0, 100), dict(chunk_size=50)),
+    random_test_options("rayleigh", (1.0, 100), dict(chunk_size=50)),
+    random_test_options("standard_cauchy", (100,), dict(chunk_size=50)),
+    random_test_options("standard_exponential", (100,), dict(chunk_size=50)),
+    random_test_options("standard_gamma", (1.0, 100), dict(chunk_size=50)),
+    random_test_options("standard_normal", (100,), dict(chunk_size=50)),
+    random_test_options("standard_t", (1.0, 100), dict(chunk_size=50)),
+    random_test_options("triangular", (0.1, 0.2, 0.3, 100), dict(chunk_size=50)),
+    random_test_options("uniform", (0.1, 0.2, 100), dict(chunk_size=50)),
+    random_test_options("vonmises", (0.1, 0.2, 100), dict(chunk_size=50)),
+    random_test_options("wald", (0.1, 0.2, 100), dict(chunk_size=50)),
+    random_test_options("weibull", (0.1, 100), dict(chunk_size=50)),
+    random_test_options("zipf", (1.1, 100), dict(chunk_size=50)),
 ]
 
 
-@pytest.mark.parametrize('test_opts', random_params)
+@pytest.mark.parametrize("test_opts", random_params)
 def test_random_execute(setup, test_opts):
     rs = tensor.random.RandomState(0)
-    arr1 = getattr(rs, test_opts.func_name)(
-        *test_opts.args, **test_opts.kwargs)
+    arr1 = getattr(rs, test_opts.func_name)(*test_opts.args, **test_opts.kwargs)
     rs = tensor.random.RandomState(0)
-    arr2 = getattr(rs, test_opts.func_name)(
-        *test_opts.args, **test_opts.kwargs)
-    assert np.array_equal(arr1.execute().fetch(),
-                          arr2.execute().fetch())
+    arr2 = getattr(rs, test_opts.func_name)(*test_opts.args, **test_opts.kwargs)
+    assert np.array_equal(arr1.execute().fetch(), arr2.execute().fetch())
 
 
 def test_permutation_execute(setup):

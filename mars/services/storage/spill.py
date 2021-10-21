@@ -77,8 +77,10 @@ class FIFOStrategy(SpillStrategy):
     def get_spillable_size(self):
         total_size = 0
         for data_key, data_size in self._data_sizes.items():
-            if data_key not in self._pinned_keys and \
-                    data_key not in self._spilling_keys:
+            if (
+                data_key not in self._pinned_keys
+                and data_key not in self._spilling_keys
+            ):
                 total_size += data_size
         return total_size
 
@@ -100,9 +102,14 @@ class FIFOStrategy(SpillStrategy):
         if spill_size < size:  # pragma: no cover
             pinned_sizes = dict((k, self._data_sizes[k]) for k in self._pinned_keys)
             spilling_keys = dict((k, self._data_sizes[k]) for k in self._spilling_keys)
-            logger.debug('No data can be spilled for level: %s, pinned keys: %s,'
-                         ' spilling keys: %s', self._level, pinned_sizes, spilling_keys)
-            raise NoDataToSpill(f'No data can be spilled for level: {self._level}')
+            logger.debug(
+                "No data can be spilled for level: %s, pinned keys: %s,"
+                " spilling keys: %s",
+                self._level,
+                pinned_sizes,
+                spilling_keys,
+            )
+            raise NoDataToSpill(f"No data can be spilled for level: {self._level}")
         self._spilling_keys.update(set(spill_keys))
         return spill_sizes, spill_keys
 
@@ -117,6 +124,7 @@ class SpillManagerActor(mo.StatelessActor):
     when put or unpin happens, we will notify and check spillable size,
     if size is enough for spilling, call event.set() to wake up spilling task.
     """
+
     def __init__(self, level: StorageLevel):
         self._level = level
         self._event = None
@@ -124,7 +132,7 @@ class SpillManagerActor(mo.StatelessActor):
 
     @classmethod
     def gen_uid(cls, band_name: str, level: StorageLevel):
-        return f'spill_manager_{band_name}_{level}'
+        return f"spill_manager_{band_name}_{level}"
 
     def has_spill_task(self):
         return self._event is not None
@@ -133,10 +141,12 @@ class SpillManagerActor(mo.StatelessActor):
         event = self._event
         if event is None:
             return
-        logger.debug('Notify to check if has space for spilling')
+        logger.debug("Notify to check if has space for spilling")
         if spillable_size + quota_left > event.size:
-            logger.debug('Check pass, wake up spill task, spill bytes is %s',
-                         event.size - quota_left)
+            logger.debug(
+                "Check pass, wake up spill task, spill bytes is %s",
+                event.size - quota_left,
+            )
             event.size = event.size - quota_left
             event.set()
 
@@ -151,27 +161,34 @@ class SpillManagerActor(mo.StatelessActor):
             return size
 
 
-async def spill(request_size: int,
-                level: StorageLevel,
-                band_name: str,
-                data_manager: Union[mo.ActorRef, DataManagerActor],
-                storage_handler: Union[mo.ActorRef, StorageHandlerActor],
-                block_size=None,
-                multiplier=1.1):
-    logger.debug('%s is full, need to spill %s bytes, '
-                 'multiplier is %s', level, request_size, multiplier)
+async def spill(
+    request_size: int,
+    level: StorageLevel,
+    band_name: str,
+    data_manager: Union[mo.ActorRef, DataManagerActor],
+    storage_handler: Union[mo.ActorRef, StorageHandlerActor],
+    block_size=None,
+    multiplier=1.1,
+):
+    logger.debug(
+        "%s is full, need to spill %s bytes, " "multiplier is %s",
+        level,
+        request_size,
+        multiplier,
+    )
     request_size *= multiplier
     block_size = block_size or DEFAULT_SPILL_BLOCK_SIZE
     spill_level = level.spill_level()
     spill_sizes, spill_keys = await data_manager.get_spill_keys(
-        level, band_name, request_size)
-    logger.debug('Decide to spill %s bytes, '
-                 'data keys are %s', sum(spill_sizes), spill_keys)
+        level, band_name, request_size
+    )
+    logger.debug(
+        "Decide to spill %s bytes, " "data keys are %s", sum(spill_sizes), spill_keys
+    )
 
     for (session_id, key), size in zip(spill_keys, spill_sizes):
         reader = await storage_handler.open_reader(session_id, key)
-        writer = await storage_handler.open_writer(
-            session_id, key, size, spill_level)
+        writer = await storage_handler.open_writer(session_id, key, size, spill_level)
         async with reader:
             async with writer:
                 while True:
@@ -182,10 +199,11 @@ async def spill(request_size: int,
                         await writer.write(block_data)
         try:
             await storage_handler.delete_object(
-                session_id, key, size, reader.object_id, level)
+                session_id, key, size, reader.object_id, level
+            )
         except KeyError:  # pragma: no cover
             # workaround for the case that the object
             # has been deleted during spill
-            logger.debug('Data %s %s is deleted during spill', session_id, key)
-            await storage_handler.delete(session_id, key, error='ignore')
-    logger.debug('Spill finishes, release %s bytes of %s', sum(spill_sizes), level)
+            logger.debug("Data %s %s is deleted during spill", session_id, key)
+            await storage_handler.delete(session_id, key, error="ignore")
+    logger.debug("Spill finishes, release %s bytes of %s", sum(spill_sizes), level)

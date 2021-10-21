@@ -24,13 +24,15 @@ from ..groupby_wrapper import wrapped_groupby
 
 
 def test_groupby_wrapper():
-    df = pd.DataFrame({'A': ['foo', 'bar', 'foo', 'bar',
-                             'foo', 'bar', 'foo', 'foo'],
-                       'B': ['one', 'one', 'two', 'three',
-                             'two', 'two', 'one', 'three'],
-                       'C': np.random.randn(8),
-                       'D': np.random.randn(8)},
-                      index=pd.MultiIndex.from_tuples([(i // 4, i) for i in range(8)]))
+    df = pd.DataFrame(
+        {
+            "A": ["foo", "bar", "foo", "bar", "foo", "bar", "foo", "foo"],
+            "B": ["one", "one", "two", "three", "two", "two", "one", "three"],
+            "C": np.random.randn(8),
+            "D": np.random.randn(8),
+        },
+        index=pd.MultiIndex.from_tuples([(i // 4, i) for i in range(8)]),
+    )
 
     conv_func = lambda x: pickle.loads(pickle.dumps(x))
 
@@ -46,38 +48,42 @@ def test_groupby_wrapper():
     assert grouped.shape == (8,)
     assert grouped.is_frame is False
 
-    grouped = conv_func(wrapped_groupby(df, 'B'))
-    assert_groupby_equal(grouped, df.groupby('B'))
+    grouped = conv_func(wrapped_groupby(df, "B"))
+    assert_groupby_equal(grouped, df.groupby("B"))
     assert grouped.shape == (8, 4)
     assert grouped.is_frame is True
 
-    grouped = conv_func(wrapped_groupby(df, 'B').C)
-    assert_groupby_equal(grouped, df.groupby('B').C, with_selection=True)
+    grouped = conv_func(wrapped_groupby(df, "B").C)
+    assert_groupby_equal(grouped, df.groupby("B").C, with_selection=True)
     assert grouped.shape == (8,)
     assert grouped.is_frame is False
 
-    grouped = conv_func(wrapped_groupby(df, 'B')[['C', 'D']])
-    assert_groupby_equal(grouped, df.groupby('B')[['C', 'D']], with_selection=True)
+    grouped = conv_func(wrapped_groupby(df, "B")[["C", "D"]])
+    assert_groupby_equal(grouped, df.groupby("B")[["C", "D"]], with_selection=True)
     assert grouped.shape == (8, 2)
     assert grouped.is_frame is True
 
-    grouped = conv_func(wrapped_groupby(df, ['B', 'C']))
-    assert_groupby_equal(grouped, df.groupby(['B', 'C']))
+    grouped = conv_func(wrapped_groupby(df, ["B", "C"]))
+    assert_groupby_equal(grouped, df.groupby(["B", "C"]))
     assert grouped.shape == (8, 4)
     assert grouped.is_frame is True
 
-    grouped = conv_func(wrapped_groupby(df, ['B', 'C']).C)
-    assert_groupby_equal(grouped, df.groupby(['B', 'C']).C, with_selection=True)
+    grouped = conv_func(wrapped_groupby(df, ["B", "C"]).C)
+    assert_groupby_equal(grouped, df.groupby(["B", "C"]).C, with_selection=True)
     assert grouped.shape == (8,)
     assert grouped.is_frame is False
 
-    grouped = conv_func(wrapped_groupby(df, ['B', 'C'])[['A', 'D']])
-    assert_groupby_equal(grouped, df.groupby(['B', 'C'])[['A', 'D']], with_selection=True)
+    grouped = conv_func(wrapped_groupby(df, ["B", "C"])[["A", "D"]])
+    assert_groupby_equal(
+        grouped, df.groupby(["B", "C"])[["A", "D"]], with_selection=True
+    )
     assert grouped.shape == (8, 2)
     assert grouped.is_frame is True
 
-    grouped = conv_func(wrapped_groupby(df, ['B', 'C'])[['C', 'D']])
-    assert_groupby_equal(grouped, df.groupby(['B', 'C'])[['C', 'D']], with_selection=True)
+    grouped = conv_func(wrapped_groupby(df, ["B", "C"])[["C", "D"]])
+    assert_groupby_equal(
+        grouped, df.groupby(["B", "C"])[["C", "D"]], with_selection=True
+    )
     assert grouped.shape == (8, 2)
     assert grouped.is_frame is True
 
@@ -87,16 +93,22 @@ def test_groupby_wrapper():
     assert grouped.is_frame is True
 
     grouped = conv_func(wrapped_groupby(df, lambda x: x[-1] % 2).C)
-    assert_groupby_equal(grouped, df.groupby(lambda x: x[-1] % 2).C, with_selection=True)
+    assert_groupby_equal(
+        grouped, df.groupby(lambda x: x[-1] % 2).C, with_selection=True
+    )
     assert grouped.shape == (8,)
     assert grouped.is_frame is False
 
-    grouped = conv_func(wrapped_groupby(df, lambda x: x[-1] % 2)[['C', 'D']])
-    assert_groupby_equal(grouped, df.groupby(lambda x: x[-1] % 2)[['C', 'D']], with_selection=True)
+    grouped = conv_func(wrapped_groupby(df, lambda x: x[-1] % 2)[["C", "D"]])
+    assert_groupby_equal(
+        grouped, df.groupby(lambda x: x[-1] % 2)[["C", "D"]], with_selection=True
+    )
     assert grouped.shape == (8, 2)
     assert grouped.is_frame is True
 
     grouped = conv_func(wrapped_groupby(df.B, lambda x: x[-1] % 2))
-    assert_groupby_equal(grouped, df.B.groupby(lambda x: x[-1] % 2), with_selection=True)
+    assert_groupby_equal(
+        grouped, df.B.groupby(lambda x: x[-1] % 2), with_selection=True
+    )
     assert grouped.shape == (8,)
     assert grouped.is_frame is False

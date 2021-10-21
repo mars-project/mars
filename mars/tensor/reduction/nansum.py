@@ -23,12 +23,17 @@ from .core import TensorReduction, TensorReductionMixin
 
 class TensorNanSum(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.NANSUM
-    _func_name = 'nansum'
+    _func_name = "nansum"
 
     def __init__(self, axis=None, keepdims=None, combine_size=None, stage=None, **kw):
         stage = self._rewrite_stage(stage)
-        super().__init__(_axis=axis, _keepdims=keepdims,
-                         _combine_size=combine_size, stage=stage, **kw)
+        super().__init__(
+            _axis=axis,
+            _keepdims=keepdims,
+            _combine_size=combine_size,
+            stage=stage,
+            **kw
+        )
 
 
 def nansum(a, axis=None, dtype=None, out=None, keepdims=None, combine_size=None):
@@ -118,5 +123,7 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=None, combine_size=None)
     a = astensor(a)
     if dtype is None:
         dtype = np.nansum(np.empty((1,), dtype=a.dtype)).dtype
-    op = TensorNanSum(axis=axis, dtype=dtype, keepdims=keepdims, combine_size=combine_size)
+    op = TensorNanSum(
+        axis=axis, dtype=dtype, keepdims=keepdims, combine_size=combine_size
+    )
     return op(a, out=out)

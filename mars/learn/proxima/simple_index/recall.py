@@ -80,13 +80,21 @@ def recall_one_byid(linear_key, ann_key, ann_score, topk_ids):
     return result_topk_matchs
 
 
-def compute_recall(pk_l, distance_l, pk_p, distance_p, topk_ids, method="BYID", epsilon=1e-6):
-    pk_l, distance_l, pk_p, distance_p = np.array(pk_l), np.array(distance_l), \
-                                         np.array(pk_p), np.array(distance_p)
+def compute_recall(
+    pk_l, distance_l, pk_p, distance_p, topk_ids, method="BYID", epsilon=1e-6
+):
+    pk_l, distance_l, pk_p, distance_p = (
+        np.array(pk_l),
+        np.array(distance_l),
+        np.array(pk_p),
+        np.array(distance_p),
+    )
     topk_matchs = {}
     for ids in topk_ids:
         topk_matchs[ids] = 0
-    for linear_res_k, linear_res_s, knn_res_k, knn_res_s in zip(pk_l, distance_l, pk_p, distance_p):
+    for linear_res_k, linear_res_s, knn_res_k, knn_res_s in zip(
+        pk_l, distance_l, pk_p, distance_p
+    ):
         if method == "BYID":
             res_t = recall_one_byid(linear_res_k, knn_res_k, knn_res_s, topk_ids)
         else:
@@ -100,9 +108,21 @@ def compute_recall(pk_l, distance_l, pk_p, distance_p, topk_ids, method="BYID", 
     return topk_matchs
 
 
-def recall(doc, query, topk, sample_count, pk_p, distance_p,
-           row_number=None, column_number=None,
-           topk_ids=None, method=None, epsilon=1e-6, session=None, run_kwargs=None):
+def recall(
+    doc,
+    query,
+    topk,
+    sample_count,
+    pk_p,
+    distance_p,
+    row_number=None,
+    column_number=None,
+    topk_ids=None,
+    method=None,
+    epsilon=1e-6,
+    session=None,
+    run_kwargs=None,
+):
     if topk_ids is None:
         topk_ids = [topk]
     if method is None:
@@ -110,9 +130,24 @@ def recall(doc, query, topk, sample_count, pk_p, distance_p,
 
     query_sample, idx = sample_data(query=query, sample_count=sample_count)
     pk_p_sample, distance_p_sample = pk_p[idx, :], distance_p[idx, :]
-    pk_l, distance_l = linear_build_and_search(doc=doc, query=query_sample, topk=topk,
-                                               row_number=row_number, column_number=column_number)
+    pk_l, distance_l = linear_build_and_search(
+        doc=doc,
+        query=query_sample,
+        topk=topk,
+        row_number=row_number,
+        column_number=column_number,
+    )
 
-    r = mr.spawn(compute_recall, args=(pk_l, distance_l, pk_p_sample,
-                                       distance_p_sample, topk_ids, method, epsilon))
+    r = mr.spawn(
+        compute_recall,
+        args=(
+            pk_l,
+            distance_l,
+            pk_p_sample,
+            distance_p_sample,
+            topk_ids,
+            method,
+            epsilon,
+        ),
+    )
     return r.execute(session=session, **(run_kwargs or dict())).fetch()

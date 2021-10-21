@@ -28,22 +28,20 @@ from ..tests.session import new_test_session, CONFIG_FILE
 
 class FakeCheckedTaskPreprocessor(CheckedTaskPreprocessor):
     def _check_nsplits(self, tiled: TileableType):
-        raise RuntimeError('Premeditated')
+        raise RuntimeError("Premeditated")
 
 
 class FakeCheckedSubtaskProcessor(CheckedSubtaskProcessor):
-    def _execute_operand(self,
-                         ctx: Dict[str, Any],
-                         op: OperandType):
-        if self._check_options.get('check_all', True):
-            raise RuntimeError('Premeditated')
+    def _execute_operand(self, ctx: Dict[str, Any], op: OperandType):
+        if self._check_options.get("check_all", True):
+            raise RuntimeError("Premeditated")
         else:
             return super()._execute_operand(ctx, op)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def setup():
-    with option_context({'show_progress': False}):
+    with option_context({"show_progress": False}):
         yield
 
 
@@ -61,39 +59,39 @@ def test_checked_session(setup):
 
 def test_check_task_preprocessor(setup):
     config = load_config(CONFIG_FILE)
-    config['task']['task_preprocessor_cls'] = \
-        'mars.deploy.oscar.tests.' \
-        'test_checked_session.FakeCheckedTaskPreprocessor'
+    config["task"]["task_preprocessor_cls"] = (
+        "mars.deploy.oscar.tests." "test_checked_session.FakeCheckedTaskPreprocessor"
+    )
 
     sess = new_test_session(default=True, config=config)
 
     a = mt.ones((10, 10))
     b = a + 1
 
-    with pytest.raises(RuntimeError, match='Premeditated'):
+    with pytest.raises(RuntimeError, match="Premeditated"):
         b.execute()
 
     # test test config
-    b.execute(extra_config={'check_nsplits': False})
+    b.execute(extra_config={"check_nsplits": False})
 
     sess.stop_server()
 
 
 def test_check_subtask_processor(setup):
     config = load_config(CONFIG_FILE)
-    config['subtask']['subtask_processor_cls'] = \
-        'mars.deploy.oscar.tests.' \
-        'test_checked_session.FakeCheckedSubtaskProcessor'
+    config["subtask"]["subtask_processor_cls"] = (
+        "mars.deploy.oscar.tests." "test_checked_session.FakeCheckedSubtaskProcessor"
+    )
 
     sess = new_test_session(default=True, config=config)
 
     a = mt.ones((10, 10))
     b = a + 1
 
-    with pytest.raises(RuntimeError, match='Premeditated'):
+    with pytest.raises(RuntimeError, match="Premeditated"):
         b.execute()
 
     # test test config
-    b.execute(extra_config={'check_all': False})
+    b.execute(extra_config={"check_all": False})
 
     sess.stop_server()

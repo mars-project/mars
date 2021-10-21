@@ -22,11 +22,13 @@ import yaml
 from ..services import NodeRole
 
 DEFAULT_CONFIG_FILE = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), 'oscar/config.yml')
+    os.path.dirname(os.path.abspath(__file__)), "oscar/config.yml"
+)
 
 
-def wait_services_ready(selectors: List, min_counts: List[int],
-                        count_fun: Callable, timeout=None):
+def wait_services_ready(
+    selectors: List, min_counts: List[int], count_fun: Callable, timeout=None
+):
     readies = [0] * len(selectors)
     start_time = time.time()
     while True:
@@ -39,12 +41,13 @@ def wait_services_ready(selectors: List, min_counts: List[int],
         if all_satisfy:
             break
         if timeout and timeout + start_time < time.time():
-            raise TimeoutError('Wait cluster start timeout')
+            raise TimeoutError("Wait cluster start timeout")
         time.sleep(1)
 
 
 def load_service_config_file(path: Union[str, TextIO]) -> Dict:
     import mars
+
     mars_path = os.path.dirname(os.path.abspath(mars.__file__))
 
     cfg_stack = []  # type: List[Dict]
@@ -54,9 +57,9 @@ def load_service_config_file(path: Union[str, TextIO]) -> Dict:
 
     while path is not None:
         if path in cfg_file_set:  # pragma: no cover
-            raise ValueError('Recursive config inherit detected')
+            raise ValueError("Recursive config inherit detected")
 
-        if not hasattr(path, 'read'):
+        if not hasattr(path, "read"):
             with open(path) as file:
                 cfg = yaml.safe_load(file)
         else:
@@ -64,24 +67,27 @@ def load_service_config_file(path: Union[str, TextIO]) -> Dict:
         cfg_stack.append(cfg)
         cfg_file_set.add(path)
 
-        inherit_path = cfg.pop('@inherits', None)
+        inherit_path = cfg.pop("@inherits", None)
         if not inherit_path:
             path = None
         elif os.path.isfile(inherit_path):
             path = inherit_path
-        elif inherit_path == '@default':
+        elif inherit_path == "@default":
             path = DEFAULT_CONFIG_FILE
-        elif inherit_path.startswith('@mars'):
-            path = inherit_path.replace('@mars', mars_path)
+        elif inherit_path.startswith("@mars"):
+            path = inherit_path.replace("@mars", mars_path)
         else:
             path = os.path.join(os.path.dirname(path), inherit_path)
 
     def _override_cfg(src: Union[Dict, List], override: Union[Dict, List]):
         if isinstance(override, dict):
-            overriding_fields = set(src.get('@overriding_fields') or set())
+            overriding_fields = set(src.get("@overriding_fields") or set())
             for key, val in override.items():
-                if key not in src or not isinstance(val, (list, dict)) \
-                        or key in overriding_fields:
+                if (
+                    key not in src
+                    or not isinstance(val, (list, dict))
+                    or key in overriding_fields
+                ):
                     src[key] = val
                 else:
                     _override_cfg(src[key], override[key])
@@ -91,7 +97,7 @@ def load_service_config_file(path: Union[str, TextIO]) -> Dict:
     def _clear_meta_cfg(src: Dict):
         meta_keys = []
         for k, v in src.items():
-            if k.startswith('@'):
+            if k.startswith("@"):
                 meta_keys.append(k)
             elif isinstance(v, dict):
                 _clear_meta_cfg(v)
@@ -112,6 +118,7 @@ async def wait_all_supervisors_ready(endpoint):
     Wait till all containers are ready
     """
     from ..services.cluster import ClusterAPI
+
     cluster_api = None
 
     while True:
@@ -128,25 +135,29 @@ async def wait_all_supervisors_ready(endpoint):
 
 def get_third_party_modules_from_config(config: Dict, role: NodeRole, environ=None):
     environ = environ or os.environ
-    third_party_modules = config.get('third_party_modules', [])
+    third_party_modules = config.get("third_party_modules", [])
     if isinstance(third_party_modules, list):
         modules = third_party_modules
     elif isinstance(third_party_modules, dict):
         key = {
-            NodeRole.SUPERVISOR: 'supervisor',
-            NodeRole.WORKER: 'worker',
+            NodeRole.SUPERVISOR: "supervisor",
+            NodeRole.WORKER: "worker",
         }
         modules = third_party_modules.get(key[role], [])
         if not isinstance(modules, list):
-            raise TypeError(f'The value type of third_party_modules.{key[role]} '
-                            f'should be a list, but got a {type(modules)} instead.')
+            raise TypeError(
+                f"The value type of third_party_modules.{key[role]} "
+                f"should be a list, but got a {type(modules)} instead."
+            )
     else:
-        raise TypeError(f'The value type of third_party_modules should be a list '
-                        f'or dict, but got a {type(third_party_modules)} instead.')
+        raise TypeError(
+            f"The value type of third_party_modules should be a list "
+            f"or dict, but got a {type(third_party_modules)} instead."
+        )
 
     all_modules = []
-    for mods in tuple(modules or ()) + (environ.get('MARS_LOAD_MODULES'),):
-        all_modules.extend(mods.split(',') if mods else [])
+    for mods in tuple(modules or ()) + (environ.get("MARS_LOAD_MODULES"),):
+        all_modules.extend(mods.split(",") if mods else [])
     return all_modules
 
 

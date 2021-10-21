@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pytest
+
 try:
     import xgboost
 except ImportError:
@@ -20,11 +21,12 @@ except ImportError:
 
 
 from ..... import tensor as mt
+
 if xgboost:
     from ..core import wrap_evaluation_matrices
 
 
-@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+@pytest.mark.skipif(xgboost is None, reason="XGBoost not installed")
 def test_wrap_evaluation_matrices():
     X = mt.random.rand(100, 3)
     y = mt.random.randint(3, size=(100,))
@@ -32,13 +34,10 @@ def test_wrap_evaluation_matrices():
     eval_set = [(mt.random.rand(10, 3), mt.random.randint(3, size=10))]
     with pytest.raises(ValueError):
         # sample_weight_eval_set size wrong
-        wrap_evaluation_matrices(0.0, X, y, None, None,
-                                 eval_set, [], None)
+        wrap_evaluation_matrices(0.0, X, y, None, None, eval_set, [], None)
 
     with pytest.raises(ValueError):
-        wrap_evaluation_matrices(0.0, X, y, None, None,
-                                 None, eval_set, None)
+        wrap_evaluation_matrices(0.0, X, y, None, None, None, eval_set, None)
 
-    evals = wrap_evaluation_matrices(0.0, X, y, None, None,
-                                     eval_set, None, None)[1]
+    evals = wrap_evaluation_matrices(0.0, X, y, None, None, eval_set, None, None)[1]
     assert len(evals) > 0

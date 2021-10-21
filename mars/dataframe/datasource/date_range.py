@@ -31,38 +31,58 @@ from ..utils import parse_index
 try:
     from pandas._libs.tslib import normalize_date
 except ImportError:  # pragma: no cover
+
     def normalize_date(dt):  # from pandas/_libs/tslibs/conversion.pyx
         if isinstance(dt, datetime):
             if isinstance(dt, pd.Timestamp):
-                return dt.replace(hour=0, minute=0, second=0, microsecond=0,
-                                  nanosecond=0)
+                return dt.replace(
+                    hour=0, minute=0, second=0, microsecond=0, nanosecond=0
+                )
             else:
                 return dt.replace(hour=0, minute=0, second=0, microsecond=0)
         elif isinstance(dt, date):
             return datetime(dt.year, dt.month, dt.day)
         else:
-            raise TypeError(f'Unrecognized type: {type(dt)}')
+            raise TypeError(f"Unrecognized type: {type(dt)}")
 
 
 class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATE_RANGE
 
-    _start = AnyField('start')
-    _end = AnyField('end')
-    _periods = Int64Field('periods')
-    _freq = AnyField('freq')
-    _tz = AnyField('tz')
-    _normalize = BoolField('normalize')
-    _name = StringField('name')
-    _closed = StringField('closed')
+    _start = AnyField("start")
+    _end = AnyField("end")
+    _periods = Int64Field("periods")
+    _freq = AnyField("freq")
+    _tz = AnyField("tz")
+    _normalize = BoolField("normalize")
+    _name = StringField("name")
+    _closed = StringField("closed")
 
-    def __init__(self, start=None, end=None, periods=None,
-                 freq=None, tz=None, normalize=None, name=None,
-                 closed=None, output_types=None, **kw):
-        super().__init__(_start=start, _end=end, _periods=periods,
-                         _freq=freq, _tz=tz, _normalize=normalize,
-                         _name=name, _closed=closed,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self,
+        start=None,
+        end=None,
+        periods=None,
+        freq=None,
+        tz=None,
+        normalize=None,
+        name=None,
+        closed=None,
+        output_types=None,
+        **kw,
+    ):
+        super().__init__(
+            _start=start,
+            _end=end,
+            _periods=periods,
+            _freq=freq,
+            _tz=tz,
+            _normalize=normalize,
+            _name=name,
+            _closed=closed,
+            _output_types=output_types,
+            **kw,
+        )
         if self.output_types is None:
             self.output_types = [OutputType.index]
 
@@ -100,9 +120,9 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, shape, chunk_size=None):
         dtype = pd.Index([self._start]).dtype
-        index_value = parse_index(pd.Index([], dtype=dtype),
-                                  self._start, self._end, self._periods,
-                                  self._tz)
+        index_value = parse_index(
+            pd.Index([], dtype=dtype), self._start, self._end, self._periods, self._tz
+        )
         # gen index value info
         index_value.value._min_val = self._start
         index_value.value._min_val_close = True
@@ -111,9 +131,15 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
         index_value.value._is_unique = True
         index_value.value._is_monotonic_increasing = True
         index_value.value._freq = self._freq
-        return self.new_index(None, shape=shape, dtype=dtype,
-                              index_value=index_value, name=self._name,
-                              raw_chunk_size=chunk_size, freq=self._freq)
+        return self.new_index(
+            None,
+            shape=shape,
+            dtype=dtype,
+            index_value=index_value,
+            name=self._name,
+            raw_chunk_size=chunk_size,
+            freq=self._freq,
+        )
 
     @classmethod
     def tile(cls, op):
@@ -125,9 +151,11 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
         closed = op.closed
 
         chunk_length = out.extra_params.raw_chunk_size or options.chunk_size
-        chunk_length = decide_chunk_sizes(out.shape, chunk_length, out.dtype.itemsize)[0]
+        chunk_length = decide_chunk_sizes(out.shape, chunk_length, out.dtype.itemsize)[
+            0
+        ]
 
-        if closed == 'right':
+        if closed == "right":
             # if left not close, add one more for the first chunk
             chunk_length = (chunk_length[0] + 1,) + chunk_length[1:]
 
@@ -142,7 +170,7 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
         for i, chunk_size in enumerate(chunk_length):
             chunk_op = op.copy().reset_key()
             chunk_op._periods = chunk_size
-            if closed != 'right' or i > 0:
+            if closed != "right" or i > 0:
                 chunk_op._closed = None
             chunk_i_start = cum_nsplit[i]
             if chunk_i_start > 0:
@@ -160,17 +188,21 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
             chunk_index_value.value._is_unique = True
             chunk_index_value.value._is_monotonic_increasing = True
 
-            size = chunk_size - 1 if i == 0 and closed == 'right' else chunk_size
-            out_chunk = chunk_op.new_chunk(None, shape=(size,),
-                                           index=(i,), dtype=out.dtype,
-                                           index_value=chunk_index_value,
-                                           name=out.name)
+            size = chunk_size - 1 if i == 0 and closed == "right" else chunk_size
+            out_chunk = chunk_op.new_chunk(
+                None,
+                shape=(size,),
+                index=(i,),
+                dtype=out.dtype,
+                index_value=chunk_index_value,
+                name=out.name,
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         params = out.params
-        params['chunks'] = out_chunks
-        params['nsplits'] = (tuple(c.shape[0] for c in out_chunks),)
+        params["chunks"] = out_chunks
+        params["nsplits"] = (tuple(c.shape[0] for c in out_chunks),)
         return new_op.new_indexes(None, kws=[params])
 
     @classmethod
@@ -180,9 +212,15 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
         if freq is not None:
             end = None
         ctx[op.outputs[0].key] = pd.date_range(
-            start=start, end=end, periods=periods, freq=freq,
-            tz=op.tz, normalize=op.normalize, name=op.name,
-            closed=op.closed)
+            start=start,
+            end=end,
+            periods=periods,
+            freq=freq,
+            tz=op.tz,
+            normalize=op.normalize,
+            name=op.name,
+            closed=op.closed,
+        )
 
 
 _midnight = time(0, 0)
@@ -249,7 +287,9 @@ def _infer_tz_from_endpoints(start, end, tz):  # pragma: no cover
     return tz
 
 
-def _maybe_localize_point(ts, is_none, is_not_none, freq, tz, ambiguous, nonexistent):  # pragma: no cover
+def _maybe_localize_point(
+    ts, is_none, is_not_none, freq, tz, ambiguous, nonexistent
+):  # pragma: no cover
     """
     Localize a start or end Timestamp to the timezone of the corresponding
     start or end Timestamp
@@ -282,8 +322,18 @@ def _maybe_localize_point(ts, is_none, is_not_none, freq, tz, ambiguous, nonexis
     return ts
 
 
-def date_range(start=None, end=None, periods=None, freq=None, tz=None,
-               normalize=False, name=None, closed=None, chunk_size=None, **kwargs):
+def date_range(
+    start=None,
+    end=None,
+    periods=None,
+    freq=None,
+    tz=None,
+    normalize=False,
+    name=None,
+    closed=None,
+    chunk_size=None,
+    **kwargs,
+):
     """
     Return a fixed frequency DatetimeIndex.
 
@@ -425,13 +475,15 @@ def date_range(start=None, end=None, periods=None, freq=None, tz=None,
     if isinstance(periods, (float, np.floating)):
         periods = int(periods)
     if periods is not None and not isinstance(periods, (int, np.integer)):
-        raise TypeError(f'periods must be a number, got {periods}')
+        raise TypeError(f"periods must be a number, got {periods}")
 
     if freq is None and any(arg is None for arg in [periods, start, end]):
-        freq = 'D'
+        freq = "D"
     if sum(arg is not None for arg in [start, end, periods, freq]) != 3:
-        raise ValueError('Of the four parameters: start, end, periods, '
-                         'and freq, exactly three must be specified')
+        raise ValueError(
+            "Of the four parameters: start, end, periods, "
+            "and freq, exactly three must be specified"
+        )
     freq = to_offset(freq)
 
     if start is not None:
@@ -441,7 +493,7 @@ def date_range(start=None, end=None, periods=None, freq=None, tz=None,
         end = pd.Timestamp(end)
 
     if start is pd.NaT or end is pd.NaT:
-        raise ValueError('Neither `start` nor `end` can be NaT')
+        raise ValueError("Neither `start` nor `end` can be NaT")
 
     start, end, _ = _maybe_normalize_endpoints(start, end, normalize)
     tz = _infer_tz_from_endpoints(start, end, tz)
@@ -452,9 +504,9 @@ def date_range(start=None, end=None, periods=None, freq=None, tz=None,
         end = pd.date_range(end=end, periods=1, freq=freq)[0]
         size = periods
         start = end - (periods - 1) * freq
-        if closed == 'left':
+        if closed == "left":
             size -= 1
-        elif closed == 'right':
+        elif closed == "right":
             # when start is None, closed == 'left' would not take effect
             # thus just ignore
             closed = None
@@ -464,9 +516,9 @@ def date_range(start=None, end=None, periods=None, freq=None, tz=None,
         start = pd.date_range(start=start, periods=1, freq=freq)[0]
         size = periods
         end = start + (periods - 1) * freq
-        if closed == 'right':
+        if closed == "right":
             size -= 1
-        elif closed == 'left':
+        elif closed == "left":
             # when end is None, closed == 'left' would not take effect
             # thus just ignore
             closed = None
@@ -479,7 +531,15 @@ def date_range(start=None, end=None, periods=None, freq=None, tz=None,
             size -= 1
 
     shape = (size,)
-    op = DataFrameDateRange(start=start, end=end, periods=periods,
-                            freq=freq, tz=tz, normalize=normalize,
-                            closed=closed, name=name, **kwargs)
+    op = DataFrameDateRange(
+        start=start,
+        end=end,
+        periods=periods,
+        freq=freq,
+        tz=tz,
+        normalize=normalize,
+        closed=closed,
+        name=name,
+        **kwargs,
+    )
     return op(shape, chunk_size=chunk_size)

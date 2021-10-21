@@ -15,9 +15,9 @@
 import os
 import tempfile
 
-output_dir = os.path.join(tempfile.gettempdir(), 'test_inject_module_output')
+output_dir = os.path.join(tempfile.gettempdir(), "test_inject_module_output")
 
 os.makedirs(output_dir, exist_ok=True)
 
-with open(os.path.join(output_dir, f'{os.getpid()}'), 'w') as f:
-    f.write('')
+with open(os.path.join(output_dir, f"{os.getpid()}"), "w") as f:
+    f.write("")

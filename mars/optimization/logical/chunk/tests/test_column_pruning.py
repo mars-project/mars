@@ -19,35 +19,38 @@ import pandas as pd
 import pytest
 
 from ..... import dataframe as md
-from .....core import enter_mode, TileableGraph, \
-    TileableGraphBuilder, ChunkGraphBuilder
+from .....core import enter_mode, TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 from .. import optimize
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def gen_data1():
     with tempfile.TemporaryDirectory() as tempdir:
-        df = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
-                           'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
-                           'c': list('aabaaddce'),
-                           'd': list('abaaaddce')})
+        df = pd.DataFrame(
+            {
+                "a": [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                "b": [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                "c": list("aabaaddce"),
+                "d": list("abaaaddce"),
+            }
+        )
         yield df, tempdir
 
 
 @enter_mode(build=True)
 def test_groupby_read_csv(gen_data1):
     pdf, tempdir = gen_data1
-    file_path = os.path.join(tempdir, 'test.csv')
+    file_path = os.path.join(tempdir, "test.csv")
     pdf.to_csv(file_path)
 
     df1 = md.read_csv(file_path)
-    df2 = df1[['a', 'b']]
+    df2 = df1[["a", "b"]]
     graph = TileableGraph([df2.data])
     next(TileableGraphBuilder(graph).build())
     context = dict()
-    chunk_graph_builder = ChunkGraphBuilder(graph,
-                                            fuse_enabled=False,
-                                            tile_context=context)
+    chunk_graph_builder = ChunkGraphBuilder(
+        graph, fuse_enabled=False, tile_context=context
+    )
     chunk_graph = next(chunk_graph_builder.build())
     chunk1 = context[df1.data].chunks[0].data
     chunk2 = context[df2.data].chunks[0].data
@@ -56,6 +59,6 @@ def test_groupby_read_csv(gen_data1):
     assert opt_chunk1 is None
     opt_chunk2 = records.get_optimization_result(chunk2)
     assert opt_chunk2 is not None
-    assert opt_chunk2.op.usecols == ['a', 'b']
+    assert opt_chunk2.op.usecols == ["a", "b"]
     # original tileable should not be modified
     assert chunk2.inputs[0] is chunk1

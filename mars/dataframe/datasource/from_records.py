@@ -28,18 +28,30 @@ from ..utils import parse_index
 class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_FROM_RECORDS
 
-    _columns = ListField('columns')
-    _exclude = ListField('exclude')
-    _coerce_float = BoolField('coerce_float')
-    _nrows = Int32Field('nrows')
+    _columns = ListField("columns")
+    _exclude = ListField("exclude")
+    _coerce_float = BoolField("coerce_float")
+    _nrows = Int32Field("nrows")
 
-    def __init__(self, index=None, columns=None, exclude=None,
-                 coerce_float=False, nrows=None, **kw):
+    def __init__(
+        self,
+        index=None,
+        columns=None,
+        exclude=None,
+        coerce_float=False,
+        nrows=None,
+        **kw
+    ):
         if index is not None or columns is not None:
-            raise NotImplementedError('Specifying index value is not supported for now')
-        super().__init__(_exclude=exclude, _columns=columns,
-                         _coerce_float=coerce_float, _nrows=nrows,
-                         _output_types=[OutputType.dataframe], **kw)
+            raise NotImplementedError("Specifying index value is not supported for now")
+        super().__init__(
+            _exclude=exclude,
+            _columns=columns,
+            _coerce_float=coerce_float,
+            _nrows=nrows,
+            _output_types=[OutputType.dataframe],
+            **kw
+        )
 
     @property
     def columns(self):
@@ -65,8 +77,13 @@ class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
         index_value = parse_index(pd.RangeIndex(start=0, stop=nrows))
         dtypes = pd.Series(dict((k, np.dtype(v)) for k, v in data.dtype.descr))
         columns_value = parse_index(pd.Index(data.dtype.names), store_data=True)
-        return self.new_dataframe([data], (data.shape[0], len(data.dtype.names)), dtypes=dtypes,
-                                  index_value=index_value, columns_value=columns_value)
+        return self.new_dataframe(
+            [data],
+            (data.shape[0], len(data.dtype.names)),
+            dtypes=dtypes,
+            index_value=index_value,
+            columns_value=columns_value,
+        )
 
     @classmethod
     def tile(cls, op):
@@ -78,7 +95,9 @@ class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
         for chunk in tensor.chunks:
             begin_index = nsplit_acc[chunk.index[0]] - chunk.shape[0]
             end_index = nsplit_acc[chunk.index[0]]
-            chunk_index_value = parse_index(pd.RangeIndex(start=begin_index, stop=end_index))
+            chunk_index_value = parse_index(
+                pd.RangeIndex(start=begin_index, stop=end_index)
+            )
 
             # Here the `new_chunk` is tricky:
             #
@@ -94,42 +113,85 @@ class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
             # Here, we construct new chunk with some unique `_extra_params` to make the `new_chunk` work as
             # expected.
             chunk_op = op.copy().reset_key()
-            chunk_op.extra_params['begin_index'] = begin_index
-            chunk_op.extra_params['end_index'] = end_index
+            chunk_op.extra_params["begin_index"] = begin_index
+            chunk_op.extra_params["end_index"] = end_index
             out_chunk = chunk_op.new_chunk(
-                [chunk], shape=(chunk.shape[0], df.shape[1]), index=(chunk.index[0], 0), dtypes=df.dtypes,
-                index_value=chunk_index_value, columns_value=df.columns_value)
+                [chunk],
+                shape=(chunk.shape[0], df.shape[1]),
+                index=(chunk.index[0], 0),
+                dtypes=df.dtypes,
+                index_value=chunk_index_value,
+                columns_value=df.columns_value,
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_dataframes([tensor], df.shape, dtypes=df.dtypes,
-                                     index_value=df.index_value,
-                                     columns_value=df.columns_value,
-                                     chunks=out_chunks, nsplits=[tensor.nsplits[0], [df.shape[1]]])
+        return new_op.new_dataframes(
+            [tensor],
+            df.shape,
+            dtypes=df.dtypes,
+            index_value=df.index_value,
+            columns_value=df.columns_value,
+            chunks=out_chunks,
+            nsplits=[tensor.nsplits[0], [df.shape[1]]],
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         ctx[chunk.key] = pd.DataFrame.from_records(
             ctx[op.inputs[0].key],
-            index=chunk.index_value.to_pandas(), columns=chunk.columns_value.to_pandas(),
-            exclude=op.exclude, coerce_float=op.coerce_float, nrows=op.nrows)
+            index=chunk.index_value.to_pandas(),
+            columns=chunk.columns_value.to_pandas(),
+            exclude=op.exclude,
+            coerce_float=op.coerce_float,
+            nrows=op.nrows,
+        )
 
 
-def from_records(data, index=None, exclude=None, columns=None, coerce_float=False, nrows=None,
-                 gpu=False, sparse=False, **kw):
+def from_records(
+    data,
+    index=None,
+    exclude=None,
+    columns=None,
+    coerce_float=False,
+    nrows=None,
+    gpu=False,
+    sparse=False,
+    **kw
+):
     if isinstance(data, np.ndarray):
         from .dataframe import from_pandas
-        return from_pandas(pd.DataFrame.from_records(data, index=index, exclude=exclude, columns=columns,
-                                                     coerce_float=coerce_float, nrows=nrows), **kw)
+
+        return from_pandas(
+            pd.DataFrame.from_records(
+                data,
+                index=index,
+                exclude=exclude,
+                columns=columns,
+                coerce_float=coerce_float,
+                nrows=nrows,
+            ),
+            **kw
+        )
     elif isinstance(data, TENSOR_TYPE):
         if data.dtype.names is None:
-            raise TypeError('Not a tensor with structured dtype {0}', data.dtype)
+            raise TypeError("Not a tensor with structured dtype {0}", data.dtype)
         if data.ndim != 1:
-            raise ValueError('Not a tensor with non 1-D structured dtype {0}', data.shape)
+            raise ValueError(
+                "Not a tensor with non 1-D structured dtype {0}", data.shape
+            )
 
-        op = DataFrameFromRecords(index=None, exclude=exclude, columns=columns, coerce_float=coerce_float,
-                                  nrows=nrows, gpu=gpu, sparse=sparse, **kw)
+        op = DataFrameFromRecords(
+            index=None,
+            exclude=exclude,
+            columns=columns,
+            coerce_float=coerce_float,
+            nrows=nrows,
+            gpu=gpu,
+            sparse=sparse,
+            **kw
+        )
         return op(data)
     else:
-        raise TypeError('Not support create DataFrame from {0}', type(data))
+        raise TypeError("Not support create DataFrame from {0}", type(data))

@@ -34,10 +34,10 @@ def test_ordering():
     X = mt.ones((10, 5))
     for A in X, X.T:
         for copy in (True, False):
-            B = check_array(A, order='C', copy=copy)
-            assert B.flags['C_CONTIGUOUS'] is True
-            B = check_array(A, order='F', copy=copy)
-            assert B.flags['F_CONTIGUOUS'] is True
+            B = check_array(A, order="C", copy=copy)
+            assert B.flags["C_CONTIGUOUS"] is True
+            B = check_array(A, order="F", copy=copy)
+            assert B.flags["F_CONTIGUOUS"] is True
             if copy:
                 assert A is not B
 
@@ -56,14 +56,28 @@ def test_check_array(setup):
     X_array = check_array([0, 1, 2], ensure_2d=False)
     assert X_array.ndim == 1
     # ensure_2d=True with 1d array
-    assert_raise_message(ValueError, 'Expected 2D array, got 1D array instead',
-                         check_array, [0, 1, 2], ensure_2d=True)
-    assert_raise_message(ValueError, 'Expected 2D array, got 1D array instead',
-                         check_array, mt.tensor([0, 1, 2]), ensure_2d=True)
+    assert_raise_message(
+        ValueError,
+        "Expected 2D array, got 1D array instead",
+        check_array,
+        [0, 1, 2],
+        ensure_2d=True,
+    )
+    assert_raise_message(
+        ValueError,
+        "Expected 2D array, got 1D array instead",
+        check_array,
+        mt.tensor([0, 1, 2]),
+        ensure_2d=True,
+    )
     # ensure_2d=True with scalar array
-    assert_raise_message(ValueError,
-                         'Expected 2D array, got scalar array instead',
-                         check_array, 10, ensure_2d=True)
+    assert_raise_message(
+        ValueError,
+        "Expected 2D array, got scalar array instead",
+        check_array,
+        10,
+        ensure_2d=True,
+    )
     # don't allow ndim > 3
     X_ndim = mt.arange(8).reshape(2, 2, 2)
     with pytest.raises(ValueError):
@@ -77,29 +91,32 @@ def test_check_array(setup):
     X_float = X_C.astype(mt.float)
     Xs = [X_C, X_F, X_int, X_float]
     dtypes = [mt.int32, mt.int, mt.float, mt.float32, None, mt.bool, object]
-    orders = ['C', 'F', None]
+    orders = ["C", "F", None]
     copy_flags = [True, False]
 
     for X, dtype, order, copy in product(Xs, dtypes, orders, copy_flags):
-        X_checked = check_array(X, dtype=dtype, order=order, copy=copy,
-                                force_all_finite=False)
+        X_checked = check_array(
+            X, dtype=dtype, order=order, copy=copy, force_all_finite=False
+        )
         if dtype is not None:
             assert X_checked.dtype == dtype
         else:
             assert X_checked.dtype == X.dtype
-        if order == 'C':
-            assert X_checked.flags['C_CONTIGUOUS']
-            assert not X_checked.flags['F_CONTIGUOUS']
-        elif order == 'F':
-            assert X_checked.flags['F_CONTIGUOUS']
-            assert not X_checked.flags['C_CONTIGUOUS']
+        if order == "C":
+            assert X_checked.flags["C_CONTIGUOUS"]
+            assert not X_checked.flags["F_CONTIGUOUS"]
+        elif order == "F":
+            assert X_checked.flags["F_CONTIGUOUS"]
+            assert not X_checked.flags["C_CONTIGUOUS"]
         if copy:
             assert X is not X_checked
         else:
             # doesn't copy if it was already good
-            if (X.dtype == X_checked.dtype and
-                    X_checked.flags['C_CONTIGUOUS'] == X.flags['C_CONTIGUOUS']
-                    and X_checked.flags['F_CONTIGUOUS'] == X.flags['F_CONTIGUOUS']):
+            if (
+                X.dtype == X_checked.dtype
+                and X_checked.flags["C_CONTIGUOUS"] == X.flags["C_CONTIGUOUS"]
+                and X_checked.flags["F_CONTIGUOUS"] == X.flags["F_CONTIGUOUS"]
+            ):
                 assert X is X_checked
 
     # other input formats
@@ -117,14 +134,14 @@ def test_check_array(setup):
 
     # deprecation warning if string-like array with dtype="numeric"
     expected_warn_regex = r"converted to decimal numbers if dtype='numeric'"
-    X_str = [['11', '12'], ['13', 'xx']]
-    for X in [X_str, mt.array(X_str, dtype='U'), mt.array(X_str, dtype='S')]:
+    X_str = [["11", "12"], ["13", "xx"]]
+    for X in [X_str, mt.array(X_str, dtype="U"), mt.array(X_str, dtype="S")]:
         with pytest.warns(FutureWarning, match=expected_warn_regex):
             check_array(X, dtype="numeric")
 
     # deprecation warning if byte-like array with dtype="numeric"
-    X_bytes = [[b'a', b'b'], [b'c', b'd']]
-    for X in [X_bytes, mt.array(X_bytes, dtype='V1')]:
+    X_bytes = [[b"a", b"b"], [b"c", b"d"]]
+    for X in [X_bytes, mt.array(X_bytes, dtype="V1")]:
         with pytest.warns(FutureWarning, match=expected_warn_regex):
             check_array(X, dtype="numeric")
 
@@ -147,25 +164,30 @@ def test_check_array_pandas_dtype_object_conversion():
 
 
 def test_check_array_from_dataframe():
-    X = md.DataFrame({'a': [1.0, 2.0, 3.0]})
-    assert check_array(X).dtype.kind == 'f'
+    X = md.DataFrame({"a": [1.0, 2.0, 3.0]})
+    assert check_array(X).dtype.kind == "f"
 
 
 def test_check_array_accept_sparse_type_exception():
     X = [[1, 2], [3, 4]]
     X_csr = sp.csr_matrix(X)
 
-    msg = ("A sparse tensor was passed, but dense data is required. "
-           "Use X.todense() to convert to a dense tensor.")
-    assert_raise_message(TypeError, msg,
-                         check_array, X_csr, accept_sparse=False)
+    msg = (
+        "A sparse tensor was passed, but dense data is required. "
+        "Use X.todense() to convert to a dense tensor."
+    )
+    assert_raise_message(TypeError, msg, check_array, X_csr, accept_sparse=False)
 
-    msg = ("When providing 'accept_sparse' as a tuple or list, "
-           "it must contain at least one string value.")
-    assert_raise_message(ValueError, msg.format([]),
-                         check_array, X_csr, accept_sparse=[])
-    assert_raise_message(ValueError, msg.format(()),
-                         check_array, X_csr, accept_sparse=())
+    msg = (
+        "When providing 'accept_sparse' as a tuple or list, "
+        "it must contain at least one string value."
+    )
+    assert_raise_message(
+        ValueError, msg.format([]), check_array, X_csr, accept_sparse=[]
+    )
+    assert_raise_message(
+        ValueError, msg.format(()), check_array, X_csr, accept_sparse=()
+    )
 
     with pytest.raises(ValueError):
         check_array(X_csr, accept_sparse=object)
@@ -197,41 +219,31 @@ def test_check_array_min_samples_and_features_messages():
 
 def test_check_array_complex_data_error():
     X = mt.array([[1 + 2j, 3 + 4j, 5 + 7j], [2 + 3j, 4 + 5j, 6 + 7j]])
-    assert_raises_regex(
-        ValueError, "Complex data not supported", check_array, X)
+    assert_raises_regex(ValueError, "Complex data not supported", check_array, X)
 
     # list of lists
     X = [[1 + 2j, 3 + 4j, 5 + 7j], [2 + 3j, 4 + 5j, 6 + 7j]]
-    assert_raises_regex(
-        ValueError, "Complex data not supported", check_array, X)
+    assert_raises_regex(ValueError, "Complex data not supported", check_array, X)
 
     # tuple of tuples
     X = ((1 + 2j, 3 + 4j, 5 + 7j), (2 + 3j, 4 + 5j, 6 + 7j))
-    assert_raises_regex(
-        ValueError, "Complex data not supported", check_array, X)
+    assert_raises_regex(ValueError, "Complex data not supported", check_array, X)
 
     # list of np arrays
-    X = [mt.array([1 + 2j, 3 + 4j, 5 + 7j]),
-         mt.array([2 + 3j, 4 + 5j, 6 + 7j])]
-    assert_raises_regex(
-        ValueError, "Complex data not supported", check_array, X)
+    X = [mt.array([1 + 2j, 3 + 4j, 5 + 7j]), mt.array([2 + 3j, 4 + 5j, 6 + 7j])]
+    assert_raises_regex(ValueError, "Complex data not supported", check_array, X)
 
     # tuple of np arrays
-    X = (mt.array([1 + 2j, 3 + 4j, 5 + 7j]),
-         mt.array([2 + 3j, 4 + 5j, 6 + 7j]))
-    assert_raises_regex(
-        ValueError, "Complex data not supported", check_array, X)
+    X = (mt.array([1 + 2j, 3 + 4j, 5 + 7j]), mt.array([2 + 3j, 4 + 5j, 6 + 7j]))
+    assert_raises_regex(ValueError, "Complex data not supported", check_array, X)
 
     # dataframe
-    X = MockDataFrame(
-        mt.array([[1 + 2j, 3 + 4j, 5 + 7j], [2 + 3j, 4 + 5j, 6 + 7j]]))
-    assert_raises_regex(
-        ValueError, "Complex data not supported", check_array, X)
+    X = MockDataFrame(mt.array([[1 + 2j, 3 + 4j, 5 + 7j], [2 + 3j, 4 + 5j, 6 + 7j]]))
+    assert_raises_regex(ValueError, "Complex data not supported", check_array, X)
 
     # sparse matrix
     X = sp.coo_matrix([[0, 1 + 2j], [0, 0]])
-    assert_raises_regex(
-        ValueError, "Complex data not supported", check_array, X)
+    assert_raises_regex(ValueError, "Complex data not supported", check_array, X)
 
 
 def test_check_consistent_length(setup):

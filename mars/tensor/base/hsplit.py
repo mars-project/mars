@@ -79,7 +79,7 @@ def hsplit(a, indices_or_sections):
     a = astensor(a)
 
     if a.ndim == 0:
-        raise ValueError('hsplit only works on tensors of 1 or more dimensions')
+        raise ValueError("hsplit only works on tensors of 1 or more dimensions")
     if a.ndim > 1:
         return split(ary, indices_or_sections, 1)
     else:

@@ -16,7 +16,7 @@ from ..utils import make_import_error_func
 from .core import xgboost, XGBScikitLearnBase
 
 
-XGBClassifier = make_import_error_func('xgboost')
+XGBClassifier = make_import_error_func("xgboost")
 if xgboost:
     from xgboost.sklearn import XGBClassifierBase
 
@@ -30,38 +30,64 @@ if xgboost:
         Implementation of the scikit-learn API for XGBoost classification.
         """
 
-        def fit(self, X, y, sample_weight=None, base_margin=None,
-                eval_set=None, sample_weight_eval_set=None, base_margin_eval_set=None, **kw):
-            session = kw.pop('session', None)
-            run_kwargs = kw.pop('run_kwargs', dict())
+        def fit(
+            self,
+            X,
+            y,
+            sample_weight=None,
+            base_margin=None,
+            eval_set=None,
+            sample_weight_eval_set=None,
+            base_margin_eval_set=None,
+            **kw,
+        ):
+            session = kw.pop("session", None)
+            run_kwargs = kw.pop("run_kwargs", dict())
             if kw:
-                raise TypeError(f"fit got an unexpected keyword argument '{next(iter(kw))}'")
+                raise TypeError(
+                    f"fit got an unexpected keyword argument '{next(iter(kw))}'"
+                )
 
             dtrain, evals = wrap_evaluation_matrices(
-                None, X, y, sample_weight, base_margin, eval_set,
-                sample_weight_eval_set, base_margin_eval_set)
+                None,
+                X,
+                y,
+                sample_weight,
+                base_margin,
+                eval_set,
+                sample_weight_eval_set,
+                base_margin_eval_set,
+            )
             params = self.get_xgb_params()
 
-            self.classes_ = mt.unique(y, aggregate_size=1).to_numpy(session=session, **run_kwargs)
+            self.classes_ = mt.unique(y, aggregate_size=1).to_numpy(
+                session=session, **run_kwargs
+            )
             self.n_classes_ = len(self.classes_)
 
             if self.n_classes_ > 2:
-                params['objective'] = 'multi:softprob'
-                params['num_class'] = self.n_classes_
+                params["objective"] = "multi:softprob"
+                params["num_class"] = self.n_classes_
             else:
-                params['objective'] = 'binary:logistic'
+                params["objective"] = "binary:logistic"
 
             self.evals_result_ = dict()
-            result = train(params, dtrain, num_boost_round=self.get_num_boosting_rounds(),
-                           evals=evals, evals_result=self.evals_result_,
-                           session=session, run_kwargs=run_kwargs)
+            result = train(
+                params,
+                dtrain,
+                num_boost_round=self.get_num_boosting_rounds(),
+                evals=evals,
+                evals_result=self.evals_result_,
+                session=session,
+                run_kwargs=run_kwargs,
+            )
             self._Booster = result
             return self
 
         def predict(self, data, **kw):
-            session = kw.pop('session', None)
-            run_kwargs = kw.pop('run_kwargs', dict())
-            run = kw.pop('run', True)
+            session = kw.pop("session", None)
+            run_kwargs = kw.pop("run_kwargs", dict())
+            run = kw.pop("run", True)
             prob = predict(self.get_booster(), data, run=False, **kw)
             if prob.ndim > 1:
                 prediction = mt.argmax(prob, axis=1)
@@ -73,5 +99,5 @@ if xgboost:
 
         def predict_proba(self, data, ntree_limit=None, **kw):
             if ntree_limit is not None:
-                raise NotImplementedError('ntree_limit is not currently supported')
+                raise NotImplementedError("ntree_limit is not currently supported")
             return predict(self.get_booster(), data, **kw)

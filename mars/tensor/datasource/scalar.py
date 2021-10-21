@@ -28,7 +28,7 @@ class Scalar(TensorNoInput):
 
     _op_type_ = OperandDef.SCALAR
 
-    _data = AnyField('data')
+    _data = AnyField("data")
 
     def __init__(self, data=None, **kw):
         super().__init__(_data=data, **kw)
@@ -38,8 +38,9 @@ class Scalar(TensorNoInput):
         chunk_op = op.copy().reset_key()
         chunk = chunk_op.new_chunk(None, shape=(), index=())
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
-                                  chunks=[chunk], nsplits=())
+        return new_op.new_tensors(
+            op.inputs, op.outputs[0].shape, chunks=[chunk], nsplits=()
+        )
 
     @property
     def data(self):
@@ -49,8 +50,8 @@ class Scalar(TensorNoInput):
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         if chunk.ndim != 0:
-            raise ValueError('Missing op for chunk')
-        ctx[chunk.key] = create_array(op)('asarray', op.data)
+            raise ValueError("Missing op for chunk")
+        ctx[chunk.key] = create_array(op)("asarray", op.data)
 
 
 def scalar(data, dtype=None, gpu=False):
@@ -60,4 +61,4 @@ def scalar(data, dtype=None, gpu=False):
         shape = ()
         return op(shape)
     except ValueError:
-        raise TypeError(f'Expect scalar, got: {data}')
+        raise TypeError(f"Expect scalar, got: {data}")

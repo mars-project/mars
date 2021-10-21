@@ -30,21 +30,27 @@ class SeriesDataSource(DataFrameOperand, DataFrameOperandMixin):
 
     _op_type_ = OperandDef.SERIES_DATA_SOURCE
 
-    data = SeriesField('data')
-    dtype = DataTypeField('dtype')
+    data = SeriesField("data")
+    dtype = DataTypeField("dtype")
 
     def __init__(self, data=None, dtype=None, gpu=None, **kw):
         if dtype is None and data is not None:
             dtype = data.dtype
         if gpu is None and is_cudf(data):  # pragma: no cover
             gpu = True
-        super().__init__(data=data, dtype=dtype, gpu=gpu,
-                         _output_types=[OutputType.series], **kw)
+        super().__init__(
+            data=data, dtype=dtype, gpu=gpu, _output_types=[OutputType.series], **kw
+        )
 
     def __call__(self, shape, chunk_size=None):
-        return self.new_series(None, shape=shape, dtype=self.dtype,
-                               index_value=parse_index(self.data.index),
-                               name=self.data.name, raw_chunk_size=chunk_size)
+        return self.new_series(
+            None,
+            shape=shape,
+            dtype=self.dtype,
+            index_value=parse_index(self.data.index),
+            name=self.data.name,
+            raw_chunk_size=chunk_size,
+        )
 
     @classmethod
     def tile(cls, op: "SeriesDataSource"):
@@ -57,8 +63,9 @@ class SeriesDataSource(DataFrameOperand, DataFrameOperandMixin):
         chunk_size_idxes = (range(len(size)) for size in chunk_size)
 
         out_chunks = []
-        for chunk_shape, chunk_idx in zip(itertools.product(*chunk_size),
-                                          itertools.product(*chunk_size_idxes)):
+        for chunk_shape, chunk_idx in zip(
+            itertools.product(*chunk_size), itertools.product(*chunk_size_idxes)
+        ):
             chunk_op = op.copy().reset_key()
             slc = get_chunk_slices(chunk_size, chunk_idx)
             if is_cudf(raw_series):  # pragma: no cover
@@ -66,15 +73,26 @@ class SeriesDataSource(DataFrameOperand, DataFrameOperandMixin):
             else:
                 chunk_op.data = raw_series.iloc[slc]
             chunk_op.dtype = chunk_op.data.dtype
-            out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, dtype=op.dtype, index=chunk_idx,
-                                           index_value=parse_index(chunk_op.data.index),
-                                           name=series.name)
+            out_chunk = chunk_op.new_chunk(
+                None,
+                shape=chunk_shape,
+                dtype=op.dtype,
+                index=chunk_idx,
+                index_value=parse_index(chunk_op.data.index),
+                name=series.name,
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_seriess(None, series.shape, dtype=op.dtype,
-                                  index_value=series.index_value,
-                                  name=series.name, chunks=out_chunks, nsplits=chunk_size)
+        return new_op.new_seriess(
+            None,
+            series.shape,
+            dtype=op.dtype,
+            index_value=series.index_value,
+            name=series.name,
+            chunks=out_chunks,
+            nsplits=chunk_size,
+        )
 
     @classmethod
     def execute(cls, ctx, op):

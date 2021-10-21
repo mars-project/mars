@@ -35,8 +35,12 @@ class TensorFromZarr(TensorFromHDF5Like):
         path = cls.get_path(op.group, op.dataset)
         arr = root[path]
 
-        data = arr[tuple(slice(offset, offset + size)
-                         for offset, size in zip(axis_offsets, shape))]
+        data = arr[
+            tuple(
+                slice(offset, offset + size)
+                for offset, size in zip(axis_offsets, shape)
+            )
+        ]
         ctx[op.outputs[0].key] = data
 
 
@@ -47,14 +51,14 @@ def fromzarr(path, group=None, dataset=None, chunk_size=None):
         arr = path
         if isinstance(arr.store, FSMap):
             root = arr.store.root
-            path, dataset = root.rsplit('/', 1)
+            path, dataset = root.rsplit("/", 1)
         else:
             path = arr.store.path
-            if '/' in arr.path and group is None:
-                group = arr.path.rsplit('/', 1)[0]
+            if "/" in arr.path and group is None:
+                group = arr.path.rsplit("/", 1)[0]
             dataset = arr.basename
             if not dataset:
-                path, dataset = path.rsplit('/', 1)
+                path, dataset = path.rsplit("/", 1)
         shape = arr.shape
     elif isinstance(path, str):
         fs = get_fs(path, None)
@@ -69,11 +73,12 @@ def fromzarr(path, group=None, dataset=None, chunk_size=None):
         arr = g[TensorFromZarr.get_path(group, dataset)]
         shape = arr.shape
     else:
-        raise TypeError('`path` passed has wrong type, '
-                        'expect str, or zarr.Array'
-                        f'got {type(path)}')
+        raise TypeError(
+            "`path` passed has wrong type, "
+            "expect str, or zarr.Array"
+            f"got {type(path)}"
+        )
 
     chunk_size = chunk_size if chunk_size is not None else arr.chunks
-    op = TensorFromZarr(filename=path, group=group, dataset=dataset,
-                        dtype=arr.dtype)
+    op = TensorFromZarr(filename=path, group=group, dataset=dataset, dtype=arr.dtype)
     return op(shape, chunk_size=chunk_size, order=TensorOrder(arr.order))

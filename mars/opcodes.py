@@ -538,8 +538,7 @@ BLOCKWISE_ENSEMBLE_PREDICT = 3310
 BAGGING_SHUFFLE_SAMPLE = 3400
 BAGGING_SHUFFLE_REINDEX = 3401
 BAGGING_FIT = 3402
-BAGGING_PREDICT = 3403
-ISOLATION_FOREST_TRAIN = 3405
+BAGGING_PREDICTION = 3403
 
 # Remote Functions and class
 REMOTE_FUNCATION = 5001
@@ -567,7 +566,9 @@ for _var_name, _var_val in globals().copy().items():
     if not isinstance(_var_val, int):
         continue
     if _var_val in _val_to_dict:  # pragma: no cover
-        raise ImportError(f'Cannot import opcode: {_var_name} and '
-                          f'{_val_to_dict[_var_val]} collides with value {_var_val}')
+        raise ImportError(
+            f"Cannot import opcode: {_var_name} and "
+            f"{_val_to_dict[_var_val]} collides with value {_var_val}"
+        )
     _val_to_dict[_var_val] = _var_name
 del _val_to_dict, _var_name, _var_val

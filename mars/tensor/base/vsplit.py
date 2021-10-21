@@ -72,5 +72,5 @@ def vsplit(a, indices_or_sections):
     a = astensor(a)
 
     if a.ndim < 2:
-        raise ValueError('vsplit only works on tensors of 2 or more dimensions')
+        raise ValueError("vsplit only works on tensors of 2 or more dimensions")
     return split(ary, indices_or_sections, 0)

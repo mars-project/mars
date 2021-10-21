@@ -22,24 +22,45 @@ from ...core import OutputType
 from ...serialization.serializables import BoolField, AnyField, StringField
 from ..core import IndexValue
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE
-from ..utils import parse_index, build_empty_df, build_empty_series, standardize_range_index
+from ..utils import (
+    parse_index,
+    build_empty_df,
+    build_empty_series,
+    standardize_range_index,
+)
 
 
 class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.RESET_INDEX
 
-    _level = AnyField('level')
-    _drop = BoolField('drop')
-    _name = StringField('name')
-    _col_level = AnyField('col_level')
-    _col_fill = AnyField('col_fill')
-    _incremental_index = BoolField('incremental_index')
+    _level = AnyField("level")
+    _drop = BoolField("drop")
+    _name = StringField("name")
+    _col_level = AnyField("col_level")
+    _col_fill = AnyField("col_fill")
+    _incremental_index = BoolField("incremental_index")
 
-    def __init__(self, level=None, drop=None, name=None, col_level=None, col_fill=None,
-                 incremental_index=None, output_types=None, **kwargs):
-        super().__init__(_level=level, _drop=drop, _name=name, _col_level=col_level,
-                         _col_fill=col_fill, _incremental_index=incremental_index,
-                         _output_types=output_types, **kwargs)
+    def __init__(
+        self,
+        level=None,
+        drop=None,
+        name=None,
+        col_level=None,
+        col_fill=None,
+        incremental_index=None,
+        output_types=None,
+        **kwargs
+    ):
+        super().__init__(
+            _level=level,
+            _drop=drop,
+            _name=name,
+            _col_level=col_level,
+            _col_fill=col_fill,
+            _incremental_index=incremental_index,
+            _output_types=output_types,
+            **kwargs
+        )
 
     @property
     def level(self):
@@ -70,34 +91,63 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         out = op.outputs[0]
         is_range_index = out.index_value.has_value()
-        cum_range = np.cumsum((0, ) + op.inputs[0].nsplits[0])
+        cum_range = np.cumsum((0,) + op.inputs[0].nsplits[0])
         for c in op.inputs[0].chunks:
             if is_range_index:
-                index_value = parse_index(pd.RangeIndex(cum_range[c.index[0]], cum_range[c.index[0] + 1]))
+                index_value = parse_index(
+                    pd.RangeIndex(cum_range[c.index[0]], cum_range[c.index[0] + 1])
+                )
             else:
                 index_value = out.index_value
             chunk_op = op.copy().reset_key()
             if op.drop:
-                out_chunk = chunk_op.new_chunk([c], shape=c.shape, index=c.index, dtype=c.dtype,
-                                               name=c.name, index_value=index_value)
+                out_chunk = chunk_op.new_chunk(
+                    [c],
+                    shape=c.shape,
+                    index=c.index,
+                    dtype=c.dtype,
+                    name=c.name,
+                    index_value=index_value,
+                )
             else:
                 shape = (c.shape[0], out.shape[1])
-                out_chunk = chunk_op.new_chunk([c], shape=shape, index=c.index + (0,), dtypes=out.dtypes,
-                                               index_value=index_value, columns_value=out.columns_value)
+                out_chunk = chunk_op.new_chunk(
+                    [c],
+                    shape=shape,
+                    index=c.index + (0,),
+                    dtypes=out.dtypes,
+                    index_value=index_value,
+                    columns_value=out.columns_value,
+                )
             out_chunks.append(out_chunk)
-        if not is_range_index and isinstance(out.index_value.value, IndexValue.RangeIndex) and \
-                op.incremental_index:
+        if (
+            not is_range_index
+            and isinstance(out.index_value.value, IndexValue.RangeIndex)
+            and op.incremental_index
+        ):
             out_chunks = standardize_range_index(out_chunks)
         new_op = op.copy()
         if op.drop:
-            return new_op.new_seriess(op.inputs, op.inputs[0].shape, nsplits=op.inputs[0].nsplits,
-                                      name=out.name, chunks=out_chunks, dtype=out.dtype,
-                                      index_value=out.index_value)
+            return new_op.new_seriess(
+                op.inputs,
+                op.inputs[0].shape,
+                nsplits=op.inputs[0].nsplits,
+                name=out.name,
+                chunks=out_chunks,
+                dtype=out.dtype,
+                index_value=out.index_value,
+            )
         else:
             nsplits = (op.inputs[0].nsplits[0], (out.shape[1],))
-            return new_op.new_dataframes(op.inputs, out.shape, nsplits=nsplits, chunks=out_chunks,
-                                         index_value=out.index_value, columns_value=out.columns_value,
-                                         dtypes=out.dtypes)
+            return new_op.new_dataframes(
+                op.inputs,
+                out.shape,
+                nsplits=nsplits,
+                chunks=out_chunks,
+                index_value=out.index_value,
+                columns_value=out.columns_value,
+                dtypes=out.dtypes,
+            )
 
     @classmethod
     def _tile_dataframe(cls, op: "DataFrameResetIndex"):
@@ -107,38 +157,60 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         index_has_value = out_df.index_value.has_value()
         chunk_has_nan = any(np.isnan(s) for s in in_df.nsplits[0])
-        cum_range = np.cumsum((0, ) + in_df.nsplits[0])
+        cum_range = np.cumsum((0,) + in_df.nsplits[0])
         for c in in_df.chunks:
             if index_has_value:
                 if chunk_has_nan:
                     index_value = parse_index(pd.RangeIndex(-1))
                 else:
-                    index_value = parse_index(pd.RangeIndex(cum_range[c.index[0]], cum_range[c.index[0] + 1]))
+                    index_value = parse_index(
+                        pd.RangeIndex(cum_range[c.index[0]], cum_range[c.index[0] + 1])
+                    )
             else:
                 index_value = out_df.index_value
             if c.index[1] == 0:
                 chunk_op = op.copy().reset_key()
-                dtypes = out_df.dtypes[:(added_columns_num + len(c.dtypes))]
+                dtypes = out_df.dtypes[: (added_columns_num + len(c.dtypes))]
                 columns_value = parse_index(dtypes.index)
-                new_chunk = chunk_op.new_chunk([c], shape=(c.shape[0], c.shape[1] + added_columns_num),
-                                               index=c.index, index_value=index_value,
-                                               columns_value=columns_value, dtypes=dtypes)
+                new_chunk = chunk_op.new_chunk(
+                    [c],
+                    shape=(c.shape[0], c.shape[1] + added_columns_num),
+                    index=c.index,
+                    index_value=index_value,
+                    columns_value=columns_value,
+                    dtypes=dtypes,
+                )
             else:
                 chunk_op = op.copy().reset_key()
                 chunk_op._drop = True
-                new_chunk = chunk_op.new_chunk([c], shape=c.shape, index_value=index_value,
-                                               index=c.index, columns_value=c.columns_value, dtypes=c.dtypes)
+                new_chunk = chunk_op.new_chunk(
+                    [c],
+                    shape=c.shape,
+                    index_value=index_value,
+                    index=c.index,
+                    columns_value=c.columns_value,
+                    dtypes=c.dtypes,
+                )
             out_chunks.append(new_chunk)
         if not index_has_value or chunk_has_nan:
-            if isinstance(out_df.index_value.value, IndexValue.RangeIndex) and op.incremental_index:
+            if (
+                isinstance(out_df.index_value.value, IndexValue.RangeIndex)
+                and op.incremental_index
+            ):
                 out_chunks = standardize_range_index(out_chunks)
         new_op = op.copy()
         columns_splits = list(in_df.nsplits[1])
         columns_splits[0] += added_columns_num
         nsplits = (in_df.nsplits[0], tuple(columns_splits))
-        return new_op.new_dataframes(op.inputs, out_df.shape, nsplits=nsplits,
-                                     chunks=out_chunks, dtypes=out_df.dtypes,
-                                     index_value=out_df.index_value, columns_value=out_df.columns_value)
+        return new_op.new_dataframes(
+            op.inputs,
+            out_df.shape,
+            nsplits=nsplits,
+            chunks=out_chunks,
+            dtypes=out_df.dtypes,
+            index_value=out_df.index_value,
+            columns_value=out_df.columns_value,
+        )
 
     @classmethod
     def tile(cls, op):
@@ -154,11 +226,11 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
 
         kwargs = dict()
         if op.name is not None:
-            kwargs['name'] = op.name
+            kwargs["name"] = op.name
         if op.col_level is not None:
-            kwargs['col_level'] = op.col_level
+            kwargs["col_level"] = op.col_level
         if op.col_fill is not None:
-            kwargs['col_fill'] = op.col_fill
+            kwargs["col_fill"] = op.col_fill
 
         r = in_data.reset_index(level=op.level, drop=op.drop, **kwargs)
         if out.index_value.has_value():
@@ -178,15 +250,23 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
         if self.drop:
             range_value = -1 if np.isnan(a.shape[0]) else a.shape[0]
             index_value = parse_index(pd.RangeIndex(range_value))
-            return self.new_series([a], shape=a.shape, dtype=a.dtype, name=a.name, index_value=index_value)
+            return self.new_series(
+                [a], shape=a.shape, dtype=a.dtype, name=a.name, index_value=index_value
+            )
         else:
-            empty_series = build_empty_series(dtype=a.dtype, index=a.index_value.to_pandas()[:0], name=a.name)
+            empty_series = build_empty_series(
+                dtype=a.dtype, index=a.index_value.to_pandas()[:0], name=a.name
+            )
             empty_df = empty_series.reset_index(level=self.level, name=self.name)
             shape = (a.shape[0], len(empty_df.dtypes))
             index_value = self._get_out_index(empty_df, shape)
-            return self.new_dataframe([a], shape=shape, index_value=index_value,
-                                      columns_value=parse_index(empty_df.columns),
-                                      dtypes=empty_df.dtypes)
+            return self.new_dataframe(
+                [a],
+                shape=shape,
+                index_value=index_value,
+                columns_value=parse_index(empty_df.columns),
+                dtypes=empty_df.dtypes,
+            )
 
     def _call_dataframe(self, a):
         if self.drop:
@@ -198,13 +278,20 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
         else:
             empty_df = build_empty_df(a.dtypes)
             empty_df.index = a.index_value.to_pandas()[:0]
-            empty_df = empty_df.reset_index(level=self.level, col_level=self.col_level, col_fill=self.col_fill)
+            empty_df = empty_df.reset_index(
+                level=self.level, col_level=self.col_level, col_fill=self.col_fill
+            )
             shape = (a.shape[0], len(empty_df.columns))
             columns_value = parse_index(empty_df.columns, store_data=True)
             dtypes = empty_df.dtypes
             index_value = self._get_out_index(empty_df, shape)
-        return self.new_dataframe([a], shape=shape, columns_value=columns_value,
-                                  index_value=index_value, dtypes=dtypes)
+        return self.new_dataframe(
+            [a],
+            shape=shape,
+            columns_value=columns_value,
+            index_value=index_value,
+            dtypes=dtypes,
+        )
 
     def __call__(self, a):
         if isinstance(a, DATAFRAME_TYPE):
@@ -213,8 +300,15 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
             return self._call_series(a)
 
 
-def df_reset_index(df, level=None, drop=False, inplace=False, col_level=0,
-                   col_fill='', incremental_index=False):
+def df_reset_index(
+    df,
+    level=None,
+    drop=False,
+    inplace=False,
+    col_level=0,
+    col_fill="",
+    incremental_index=False,
+):
     """
     Reset the index, or a level of it.
 
@@ -365,9 +459,14 @@ def df_reset_index(df, level=None, drop=False, inplace=False, col_level=0,
     lion           mammal   80.5     run
     monkey         mammal    NaN    jump
     """
-    op = DataFrameResetIndex(level=level, drop=drop, col_level=col_level,
-                             col_fill=col_fill, incremental_index=incremental_index,
-                             output_types=[OutputType.dataframe])
+    op = DataFrameResetIndex(
+        level=level,
+        drop=drop,
+        col_level=col_level,
+        col_fill=col_fill,
+        incremental_index=incremental_index,
+        output_types=[OutputType.dataframe],
+    )
     ret = op(df)
     if not inplace:
         return ret
@@ -375,8 +474,9 @@ def df_reset_index(df, level=None, drop=False, inplace=False, col_level=0,
         df.data = ret.data
 
 
-def series_reset_index(series, level=None, drop=False, name=None,
-                       inplace=False, incremental_index=False):
+def series_reset_index(
+    series, level=None, drop=False, name=None, inplace=False, incremental_index=False
+):
     """
     Generate a new DataFrame or Series with the index reset.
 
@@ -494,13 +594,17 @@ def series_reset_index(series, level=None, drop=False, name=None,
     2  baz  one    2
     3  baz  two    3
     """
-    op = DataFrameResetIndex(level=level, drop=drop, name=name,
-                             incremental_index=incremental_index,
-                             output_types=[OutputType.series])
+    op = DataFrameResetIndex(
+        level=level,
+        drop=drop,
+        name=name,
+        incremental_index=incremental_index,
+        output_types=[OutputType.series],
+    )
     ret = op(series)
     if not inplace:
         return ret
     elif ret.ndim == 2:
-        raise TypeError('Cannot reset_index inplace on a Series to create a DataFrame')
+        raise TypeError("Cannot reset_index inplace on a Series to create a DataFrame")
     else:
         series.data = ret.data

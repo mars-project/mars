@@ -17,8 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialization.serializables import FieldTypes, KeyField, \
-    ListField, StringField
+from ...serialization.serializables import FieldTypes, KeyField, ListField, StringField
 from ..utils import broadcast_shape, check_out_param
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -29,16 +28,16 @@ from ..array_utils import as_same_device, device
 class TensorChoose(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.CHOOSE
 
-    _a = KeyField('a')
-    _choices = ListField('choices', FieldTypes.key)
-    _mode = StringField('mode')
+    _a = KeyField("a")
+    _choices = ListField("choices", FieldTypes.key)
+    _mode = StringField("mode")
 
     def __init__(self, mode=None, **kw):
         super().__init__(_mode=mode, **kw)
 
     def __setattr__(self, key, value):
-        if key == '_mode' and value not in ('raise', 'wrap', 'clip'):
-            raise ValueError('mode should be raise, wrap or clip')
+        if key == "_mode" and value not in ("raise", "wrap", "clip"):
+            raise ValueError("mode should be raise, wrap or clip")
 
         super().__setattr__(key, value)
 
@@ -61,7 +60,7 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
 
     def __call__(self, a, choices, out=None):
         if out is not None and not isinstance(out, Tensor):
-            raise TypeError(f'out should be Tensor object, got {type(out)} instead')
+            raise TypeError(f"out should be Tensor object, got {type(out)} instead")
 
         inputs = [a] + choices
         shape = broadcast_shape(a.shape, *[c.shape for c in choices])
@@ -71,12 +70,12 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
         if out is None:
             return t
 
-        check_out_param(out, t, 'unsafe')
+        check_out_param(out, t, "unsafe")
         out_shape, out_dtype = out.shape, out.dtype
         # if `out` is specified, use out's dtype and shape
         if out_shape != t.shape:
-            raise ValueError(f'output shape should be {t.shape}, got {out_shape}')
-        setattr(self, 'dtype', out_dtype)
+            raise ValueError(f"output shape should be {t.shape}, got {out_shape}")
+        setattr(self, "dtype", out_dtype)
         out.data = t.data
         return out
 
@@ -89,16 +88,18 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
         a, choices = inputs[0], inputs[1:]
 
         out = op.outputs[0]
         with device(device_id):
             ctx[out.key] = xp.choose(a, choices, mode=op.mode).astype(
-                op.dtype, order=out.order.value, copy=False)
+                op.dtype, order=out.order.value, copy=False
+            )
 
 
-def choose(a, choices, out=None, mode='raise'):
+def choose(a, choices, out=None, mode="raise"):
     """
     Construct a tensor from an index tensor and a set of tensors to choose from.
 
@@ -219,7 +220,7 @@ def choose(a, choices, out=None, mode='raise'):
             [-1, -2, -3, -4, -5]]])
 
     """
-    a = astensor(a, dtype='i8')
+    a = astensor(a, dtype="i8")
     choices = [astensor(c) for c in choices]
 
     dtype = np.result_type(*[c.dtype for c in choices])

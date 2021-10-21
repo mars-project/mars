@@ -25,19 +25,26 @@ from .core import TensorReduction, TensorReductionMixin
 class TensorCountNonzero(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.COUNT_NONZERO
 
-    def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None,
-                 stage=None, **kw):
+    def __init__(
+        self, axis=None, dtype=None, keepdims=None, combine_size=None, stage=None, **kw
+    ):
         if dtype is None:
             dtype = np.dtype(np.intp)
         stage = self._rewrite_stage(stage)
-        super().__init__(_axis=axis, _keepdims=keepdims,
-                         _combine_size=combine_size,
-                         dtype=dtype, stage=stage, **kw)
+        super().__init__(
+            _axis=axis,
+            _keepdims=keepdims,
+            _combine_size=combine_size,
+            dtype=dtype,
+            stage=stage,
+            **kw
+        )
 
     @classmethod
     def execute_map(cls, ctx, op):
         (x,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], op.device, ret_extra=True
+        )
 
         axis = cls.get_arg_axis(op.axis, op.inputs[0].ndim)
         keepdims = op.keepdims
@@ -58,8 +65,7 @@ class TensorCountNonzero(TensorReduction, TensorReductionMixin):
     @classmethod
     def execute_one_chunk(cls, ctx, op):
         a = ctx[op.inputs[0].key]
-        (inp,), device_id, xp = as_same_device(
-            [a], device=op.device, ret_extra=True)
+        (inp,), device_id, xp = as_same_device([a], device=op.device, ret_extra=True)
         with device(device_id):
             ctx[op.outputs[0].key] = xp.count_nonzero(inp, axis=op.axis)
 
@@ -114,6 +120,7 @@ def count_nonzero(a, axis=None, combine_size=None):
     array([2, 3])
 
     """
-    op = TensorCountNonzero(axis=axis, dtype=np.dtype(np.int_),
-                            keepdims=None, combine_size=combine_size)
+    op = TensorCountNonzero(
+        axis=axis, dtype=np.dtype(np.int_), keepdims=None, combine_size=combine_size
+    )
     return op(a)

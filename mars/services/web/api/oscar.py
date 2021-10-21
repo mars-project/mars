@@ -25,9 +25,9 @@ class OscarWebAPI:
 
     @classmethod
     @alru_cache(cache_exceptions=False)
-    async def create(cls: Type['OscarWebAPI'],
-                     address: str) -> 'OscarWebAPI':
+    async def create(cls: Type["OscarWebAPI"], address: str) -> "OscarWebAPI":
         from ..supervisor import WebActor
+
         ref = await mo.actor_ref(WebActor.default_uid(), address=address)
         return cls(address, ref)
 

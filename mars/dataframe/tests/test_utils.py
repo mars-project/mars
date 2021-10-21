@@ -25,18 +25,28 @@ from ...core import tile
 from ...utils import Timer
 from ..core import IndexValue
 from ..initializer import DataFrame, Index
-from ..utils import decide_dataframe_chunk_sizes, \
-    decide_series_chunk_size, split_monotonic_index_min_max, \
-    build_split_idx_to_origin_idx, parse_index, filter_index_value, \
-    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, \
-    make_dtypes, build_concatenated_rows_frame, merge_index_value
+from ..utils import (
+    decide_dataframe_chunk_sizes,
+    decide_series_chunk_size,
+    split_monotonic_index_min_max,
+    build_split_idx_to_origin_idx,
+    parse_index,
+    filter_index_value,
+    infer_dtypes,
+    infer_index_value,
+    validate_axis,
+    fetch_corner_data,
+    make_dtypes,
+    build_concatenated_rows_frame,
+    merge_index_value,
+)
 
 
 def test_decide_dataframe_chunks():
     with option_context() as options:
         options.chunk_store_limit = 64
 
-        memory_usage = pd.Series([8, 22.2, 4, 2, 11.2], index=list('abcde'))
+        memory_usage = pd.Series([8, 22.2, 4, 2, 11.2], index=list("abcde"))
 
         shape = (10, 5)
         nsplit = decide_dataframe_chunk_sizes(shape, None, memory_usage)
@@ -88,7 +98,9 @@ def test_decide_series_chunks():
         options.chunk_store_limit = 64
 
         s = pd.Series(np.empty(50, dtype=np.int64))
-        nsplit = decide_series_chunk_size(s.shape, None, s.memory_usage(index=False, deep=True))
+        nsplit = decide_series_chunk_size(
+            s.shape, None, s.memory_usage(index=False, deep=True)
+        )
         assert len(nsplit) == 1
         assert sum(nsplit[0]) == 50
         assert nsplit[0][0] == 8
@@ -115,7 +127,7 @@ def test_parse_index():
     assert isinstance(parsed_index.value, IndexValue.RangeIndex)
     pd.testing.assert_index_equal(index, parsed_index.to_pandas())
 
-    index = pd.MultiIndex.from_arrays([[0, 1], ['a', 'b'], ['X', 'Y']])
+    index = pd.MultiIndex.from_arrays([[0, 1], ["a", "b"], ["X", "Y"]])
     parsed_index = parse_index(index)  # not parse data
     assert isinstance(parsed_index.value, IndexValue.MultiIndex)
     with pytest.raises(AssertionError):
@@ -129,62 +141,111 @@ def test_parse_index():
 def test_split_monotonic_index_min_max():
     left_min_max = [[0, True, 3, True], [3, False, 5, False]]
     right_min_max = [[1, False, 3, True], [4, False, 6, True]]
-    left_splits, right_splits = \
-        split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
-    assert left_splits == [[(0, True, 1, True), (1, False, 3, True)],
-                      [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)]]
-    assert right_splits == [[(0, True, 1, True), (1, False, 3, True)],
-                      [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)]]
-    left_splits, right_splits = split_monotonic_index_min_max(right_min_max, False, left_min_max, False)
-    assert list(reversed(left_splits)) == [[(0, True, 1, True), (1, False, 3, True)],
-                      [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)]]
-    assert list(reversed(right_splits)) == [[(0, True, 1, True), (1, False, 3, True)],
-                      [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)]]
+    left_splits, right_splits = split_monotonic_index_min_max(
+        left_min_max, True, right_min_max, True
+    )
+    assert left_splits == [
+        [(0, True, 1, True), (1, False, 3, True)],
+        [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)],
+    ]
+    assert right_splits == [
+        [(0, True, 1, True), (1, False, 3, True)],
+        [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)],
+    ]
+    left_splits, right_splits = split_monotonic_index_min_max(
+        right_min_max, False, left_min_max, False
+    )
+    assert list(reversed(left_splits)) == [
+        [(0, True, 1, True), (1, False, 3, True)],
+        [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)],
+    ]
+    assert list(reversed(right_splits)) == [
+        [(0, True, 1, True), (1, False, 3, True)],
+        [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)],
+    ]
 
     left_min_max = [[2, True, 4, True], [8, True, 9, False]]
     right_min_max = [[1, False, 3, True], [4, False, 6, True]]
-    left_splits, right_splits = \
-        split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
-    assert left_splits == [[(1, False, 2, False), (2, True, 3, True), (3, False, 4, True)],
-                      [(4, False, 6, True), (8, True, 9, False)]]
-    assert right_splits == [[(1, False, 2, False), (2, True, 3, True)],
-                      [(3, False, 4, True), (4, False, 6, True), (8, True, 9, False)]]
+    left_splits, right_splits = split_monotonic_index_min_max(
+        left_min_max, True, right_min_max, True
+    )
+    assert left_splits == [
+        [(1, False, 2, False), (2, True, 3, True), (3, False, 4, True)],
+        [(4, False, 6, True), (8, True, 9, False)],
+    ]
+    assert right_splits == [
+        [(1, False, 2, False), (2, True, 3, True)],
+        [(3, False, 4, True), (4, False, 6, True), (8, True, 9, False)],
+    ]
 
-    left_min_max = [[1, False, 3, True], [4, False, 6, True], [10, True, 12, False], [13, True, 14, False]]
+    left_min_max = [
+        [1, False, 3, True],
+        [4, False, 6, True],
+        [10, True, 12, False],
+        [13, True, 14, False],
+    ]
     right_min_max = [[2, True, 4, True], [5, True, 7, False]]
-    left_splits, right_splits = \
-        split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
-    assert left_splits == [[(1, False, 2, False), (2, True, 3, True)],
-                      [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)],
-                      [(6, False, 7, False), (10, True, 12, False)],
-                      [(13, True, 14, False)]]
-    assert right_splits == [[(1, False, 2, False), (2, True, 3, True), (3, False, 4, True)],
-                      [(4, False, 5, False), (5, True, 6, True), (6, False, 7, False),
-                       (10, True, 12, False), (13, True, 14, False)]]
-    left_splits, right_splits = \
-        split_monotonic_index_min_max(right_min_max, True, left_min_max, True)
-    assert left_splits == [[(1, False, 2, False), (2, True, 3, True), (3, False, 4, True)],
-                      [(4, False, 5, False), (5, True, 6, True), (6, False, 7, False),
-                       (10, True, 12, False), (13, True, 14, False)]]
-    assert right_splits == [[(1, False, 2, False), (2, True, 3, True)],
-                      [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)],
-                      [(6, False, 7, False), (10, True, 12, False)],
-                      [(13, True, 14, False)]]
+    left_splits, right_splits = split_monotonic_index_min_max(
+        left_min_max, True, right_min_max, True
+    )
+    assert left_splits == [
+        [(1, False, 2, False), (2, True, 3, True)],
+        [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)],
+        [(6, False, 7, False), (10, True, 12, False)],
+        [(13, True, 14, False)],
+    ]
+    assert right_splits == [
+        [(1, False, 2, False), (2, True, 3, True), (3, False, 4, True)],
+        [
+            (4, False, 5, False),
+            (5, True, 6, True),
+            (6, False, 7, False),
+            (10, True, 12, False),
+            (13, True, 14, False),
+        ],
+    ]
+    left_splits, right_splits = split_monotonic_index_min_max(
+        right_min_max, True, left_min_max, True
+    )
+    assert left_splits == [
+        [(1, False, 2, False), (2, True, 3, True), (3, False, 4, True)],
+        [
+            (4, False, 5, False),
+            (5, True, 6, True),
+            (6, False, 7, False),
+            (10, True, 12, False),
+            (13, True, 14, False),
+        ],
+    ]
+    assert right_splits == [
+        [(1, False, 2, False), (2, True, 3, True)],
+        [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)],
+        [(6, False, 7, False), (10, True, 12, False)],
+        [(13, True, 14, False)],
+    ]
 
     # left min_max like ([.., .., 4 True], [4, False, ..., ...]
     # right min_max like ([..., ..., 4 False], [4, True, ..., ...]
     left_min_max = [[1, False, 4, True], [4, False, 6, True]]
     right_min_max = [[1, False, 4, False], [4, True, 6, True]]
     left_splits, right_splits = split_monotonic_index_min_max(
-        left_min_max, True, right_min_max, True)
-    assert left_splits == [[(1, False, 4, False), (4, True, 4, True)], [(4, False, 6, True)]]
-    assert right_splits == [[(1, False, 4, False)], [(4, True, 4, True), (4, False, 6, True)]]
+        left_min_max, True, right_min_max, True
+    )
+    assert left_splits == [
+        [(1, False, 4, False), (4, True, 4, True)],
+        [(4, False, 6, True)],
+    ]
+    assert right_splits == [
+        [(1, False, 4, False)],
+        [(4, True, 4, True), (4, False, 6, True)],
+    ]
 
     # identical index
     left_min_max = [[1, False, 3, True], [4, False, 6, True]]
     right_min_max = [[1, False, 3, True], [4, False, 6, True]]
-    left_splits, right_splits = \
-        split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
+    left_splits, right_splits = split_monotonic_index_min_max(
+        left_min_max, True, right_min_max, True
+    )
     assert left_splits == [[tuple(it)] for it in left_min_max]
     assert right_splits == [[tuple(it)] for it in left_min_max]
 
@@ -206,43 +267,70 @@ def test_filter_index_value():
     index_value = parse_index(pd_index)
 
     min_max = (0, True, 9, True)
-    assert filter_index_value(index_value, min_max).to_pandas().tolist() == pd_index[(pd_index >= 0) & (pd_index <= 9)].tolist()
+    assert (
+        filter_index_value(index_value, min_max).to_pandas().tolist()
+        == pd_index[(pd_index >= 0) & (pd_index <= 9)].tolist()
+    )
 
     min_max = (0, False, 9, False)
-    assert filter_index_value(index_value, min_max).to_pandas().tolist() == pd_index[(pd_index > 0) & (pd_index < 9)].tolist()
+    assert (
+        filter_index_value(index_value, min_max).to_pandas().tolist()
+        == pd_index[(pd_index > 0) & (pd_index < 9)].tolist()
+    )
 
     pd_index = pd.RangeIndex(1, 11, 3)
     index_value = parse_index(pd_index)
 
     min_max = (2, True, 10, True)
-    assert filter_index_value(index_value, min_max).to_pandas().tolist() == pd_index[(pd_index >= 2) & (pd_index <= 10)].tolist()
+    assert (
+        filter_index_value(index_value, min_max).to_pandas().tolist()
+        == pd_index[(pd_index >= 2) & (pd_index <= 10)].tolist()
+    )
 
     min_max = (2, False, 10, False)
-    assert filter_index_value(index_value, min_max).to_pandas().tolist() == pd_index[(pd_index > 2) & (pd_index < 10)].tolist()
+    assert (
+        filter_index_value(index_value, min_max).to_pandas().tolist()
+        == pd_index[(pd_index > 2) & (pd_index < 10)].tolist()
+    )
 
     pd_index = pd.RangeIndex(9, -1, -1)
     index_value = parse_index(pd_index)
 
     min_max = (0, True, 9, True)
-    assert filter_index_value(index_value, min_max).to_pandas().tolist() == pd_index[(pd_index >= 0) & (pd_index <= 9)].tolist()
+    assert (
+        filter_index_value(index_value, min_max).to_pandas().tolist()
+        == pd_index[(pd_index >= 0) & (pd_index <= 9)].tolist()
+    )
 
     min_max = (0, False, 9, False)
-    assert filter_index_value(index_value, min_max).to_pandas().tolist() == pd_index[(pd_index > 0) & (pd_index < 9)].tolist()
+    assert (
+        filter_index_value(index_value, min_max).to_pandas().tolist()
+        == pd_index[(pd_index > 0) & (pd_index < 9)].tolist()
+    )
 
     pd_index = pd.RangeIndex(10, 0, -3)
     index_value = parse_index(pd_index, store_data=False)
 
     min_max = (2, True, 10, True)
-    assert filter_index_value(index_value, min_max).to_pandas().tolist() == pd_index[(pd_index >= 2) & (pd_index <= 10)].tolist()
+    assert (
+        filter_index_value(index_value, min_max).to_pandas().tolist()
+        == pd_index[(pd_index >= 2) & (pd_index <= 10)].tolist()
+    )
 
     min_max = (2, False, 10, False)
-    assert filter_index_value(index_value, min_max).to_pandas().tolist() == pd_index[(pd_index > 2) & (pd_index < 10)].tolist()
+    assert (
+        filter_index_value(index_value, min_max).to_pandas().tolist()
+        == pd_index[(pd_index > 2) & (pd_index < 10)].tolist()
+    )
 
     pd_index = pd.Int64Index([0, 3, 8])
     index_value = parse_index(pd_index, store_data=True)
 
     min_max = (2, True, 8, False)
-    assert filter_index_value(index_value, min_max, store_data=True).to_pandas().tolist() == pd_index[(pd_index >= 2) & (pd_index < 8)].tolist()
+    assert (
+        filter_index_value(index_value, min_max, store_data=True).to_pandas().tolist()
+        == pd_index[(pd_index >= 2) & (pd_index < 8)].tolist()
+    )
 
     index_value = parse_index(pd_index)
 
@@ -256,28 +344,30 @@ def test_merge_index_value():
     with Timer() as timer:
         index_values = {i: parse_index(pd.RangeIndex(1e7)) for i in range(20)}
         index_value = merge_index_value(index_values)
-        pd.testing.assert_index_equal(index_value.to_pandas(),
-                                      pd.Index([], dtype=np.int64))
+        pd.testing.assert_index_equal(
+            index_value.to_pandas(), pd.Index([], dtype=np.int64)
+        )
         assert index_value.min_val == 0
         assert index_value.max_val == 1e7 - 1
 
         # range indexes that are continuous
-        index_values = {i: parse_index(pd.RangeIndex(i * 1e7, (i + 1) * 1e7))
-                        for i in range(20)}
+        index_values = {
+            i: parse_index(pd.RangeIndex(i * 1e7, (i + 1) * 1e7)) for i in range(20)
+        }
         index_value = merge_index_value(index_values)
-        pd.testing.assert_index_equal(index_value.to_pandas(),
-                                      pd.RangeIndex(1e7 * 20))
+        pd.testing.assert_index_equal(index_value.to_pandas(), pd.RangeIndex(1e7 * 20))
         assert index_value.min_val == 0
         assert index_value.max_val == 1e7 * 20 - 1
     assert timer.duration < 1
 
 
 def test_infer_dtypes():
-    data1 = pd.DataFrame([[1, 'a', False]], columns=[2.0, 3.0, 4.0])
-    data2 = pd.DataFrame([[1, 3.0, 'b']], columns=[1, 2, 3])
+    data1 = pd.DataFrame([[1, "a", False]], columns=[2.0, 3.0, 4.0])
+    data2 = pd.DataFrame([[1, 3.0, "b"]], columns=[1, 2, 3])
 
-    pd.testing.assert_series_equal(infer_dtypes(data1.dtypes, data2.dtypes, operator.add),
-                                   (data1 + data2).dtypes)
+    pd.testing.assert_series_equal(
+        infer_dtypes(data1.dtypes, data2.dtypes, operator.add), (data1 + data2).dtypes
+    )
 
 
 def test_infer_index_value():
@@ -377,23 +467,28 @@ def test_infer_index_value():
 
 
 def test_index_inferred_type():
-    assert Index(pd.Index([1, 2, 3, 4])).inferred_type == 'integer'
-    assert Index(pd.Index([1, 2, 3, 4]).astype('uint32')).inferred_type == 'integer'
-    assert Index(pd.Index([1.2, 2.3, 4.5])).inferred_type == 'floating'
-    assert Index(pd.IntervalIndex.from_tuples([(0, 1), (2, 3), (4, 5)])).inferred_type == 'interval'
-    assert Index(pd.MultiIndex.from_tuples([('a', 1), ('b', 2)])).inferred_type == 'mixed'
+    assert Index(pd.Index([1, 2, 3, 4])).inferred_type == "integer"
+    assert Index(pd.Index([1, 2, 3, 4]).astype("uint32")).inferred_type == "integer"
+    assert Index(pd.Index([1.2, 2.3, 4.5])).inferred_type == "floating"
+    assert (
+        Index(pd.IntervalIndex.from_tuples([(0, 1), (2, 3), (4, 5)])).inferred_type
+        == "interval"
+    )
+    assert (
+        Index(pd.MultiIndex.from_tuples([("a", 1), ("b", 2)])).inferred_type == "mixed"
+    )
 
 
 def test_validate_axis():
     df = DataFrame(pd.DataFrame(np.random.rand(4, 3)))
 
     assert validate_axis(0, df) == 0
-    assert validate_axis('index', df) == 0
+    assert validate_axis("index", df) == 0
     assert validate_axis(1, df) == 1
-    assert validate_axis('columns', df) == 1
+    assert validate_axis("columns", df) == 1
 
     with pytest.raises(ValueError):
-        validate_axis('unknown index', df)
+        validate_axis("unknown index", df)
 
     with pytest.raises(ValueError):
         validate_axis(object(), df)
@@ -409,26 +504,28 @@ def test_validate_axis():
 
 
 def test_dataframe_dir():
-    df = DataFrame(pd.DataFrame(np.random.rand(4, 3), columns=list('ABC')))
+    df = DataFrame(pd.DataFrame(np.random.rand(4, 3), columns=list("ABC")))
     dir_result = set(dir(df))
     for c in df.dtypes.index:
         assert c in dir_result
 
 
 def test_fetch_dataframe_corner_data(setup):
-    max_rows = pd.get_option('display.max_rows')
+    max_rows = pd.get_option("display.max_rows")
     try:
-        min_rows = pd.get_option('display.min_rows')
+        min_rows = pd.get_option("display.min_rows")
     except KeyError:  # pragma: no cover
         min_rows = max_rows
 
-    for row in (5,
-                max_rows - 2,
-                max_rows - 1,
-                max_rows,
-                max_rows + 1,
-                max_rows + 2,
-                max_rows + 3):
+    for row in (
+        5,
+        max_rows - 2,
+        max_rows - 1,
+        max_rows,
+        max_rows + 1,
+        max_rows + 2,
+        max_rows + 3,
+    ):
         pdf = pd.DataFrame(np.random.rand(row, 5))
         df = DataFrame(pdf, chunk_size=max_rows // 2)
         df.execute()
@@ -436,27 +533,37 @@ def test_fetch_dataframe_corner_data(setup):
         corner = fetch_corner_data(df)
         assert corner.shape[0] <= max_rows + 2
         corner_max_rows = max_rows if row <= max_rows else corner.shape[0] - 1
-        assert corner.to_string(max_rows=corner_max_rows, min_rows=min_rows) == pdf.to_string(max_rows=max_rows, min_rows=min_rows)
+        assert corner.to_string(
+            max_rows=corner_max_rows, min_rows=min_rows
+        ) == pdf.to_string(max_rows=max_rows, min_rows=min_rows)
 
 
 def test_make_dtypes():
     s = make_dtypes([int, float, np.dtype(int)])
-    pd.testing.assert_series_equal(s, pd.Series([np.dtype(int), np.dtype(float), np.dtype(int)]))
+    pd.testing.assert_series_equal(
+        s, pd.Series([np.dtype(int), np.dtype(float), np.dtype(int)])
+    )
 
-    s = make_dtypes(OrderedDict([('a', int), ('b', float), ('c', np.dtype(int))]))
-    pd.testing.assert_series_equal(s, pd.Series([np.dtype(int), np.dtype(float), np.dtype(int)],
-                                                index=list('abc')))
+    s = make_dtypes(OrderedDict([("a", int), ("b", float), ("c", np.dtype(int))]))
+    pd.testing.assert_series_equal(
+        s, pd.Series([np.dtype(int), np.dtype(float), np.dtype(int)], index=list("abc"))
+    )
 
     s = make_dtypes(pd.Series([int, float, np.dtype(int)]))
-    pd.testing.assert_series_equal(s, pd.Series([np.dtype(int), np.dtype(float), np.dtype(int)]))
+    pd.testing.assert_series_equal(
+        s, pd.Series([np.dtype(int), np.dtype(float), np.dtype(int)])
+    )
 
     assert make_dtypes(None) is None
 
 
-@pytest.mark.parametrize('columns', [
-    pd.RangeIndex(8),
-    pd.MultiIndex.from_product([list('AB'), list('CDEF')]),
-])
+@pytest.mark.parametrize(
+    "columns",
+    [
+        pd.RangeIndex(8),
+        pd.MultiIndex.from_product([list("AB"), list("CDEF")]),
+    ],
+)
 def test_build_concatenated_rows_frame(setup, columns):
     df = pd.DataFrame(np.random.rand(16, 8), columns=columns)
 
@@ -472,5 +579,6 @@ def test_build_concatenated_rows_frame(setup, columns):
     assert len(concatenated.chunks) == 4
     for i in range(4):
         pd.testing.assert_index_equal(
-            concatenated.chunks[i].columns_value.to_pandas(), df.columns)
+            concatenated.chunks[i].columns_value.to_pandas(), df.columns
+        )
     pd.testing.assert_frame_equal(concatenated.execute().fetch(), df)

@@ -20,17 +20,17 @@ import scipy.sparse as sps
 from scipy.sparse import csr_matrix
 from sklearn.utils._testing import assert_array_equal
 from sklearn.utils.estimator_checks import _NotAnArray
-from sklearn.utils.multiclass import \
-    is_multilabel as sklearn_is_multilabel, \
-    type_of_target as sklearn_type_of_target
+from sklearn.utils.multiclass import (
+    is_multilabel as sklearn_is_multilabel,
+    type_of_target as sklearn_type_of_target,
+)
 
 from .... import tensor as mt
-from ..multiclass import is_multilabel, unique_labels, \
-    type_of_target
+from ..multiclass import is_multilabel, unique_labels, type_of_target
 
 
 EXAMPLES = {
-    'multilabel-indicator': [
+    "multilabel-indicator": [
         # valid when the data is formatted as sparse or dense, identified
         # by CSR format when the testing takes place
         csr_matrix(np.random.RandomState(42).randint(2, size=(10, 10))),
@@ -50,7 +50,7 @@ EXAMPLES = {
         np.array([[-3, 3], [3, -3]]),
         _NotAnArray(np.array([[-3, 3], [3, -3]])),
     ],
-    'multiclass': [
+    "multiclass": [
         [1, 0, 2, 2, 1, 4, 2, 4, 4, 4],
         np.array([1, 0, 2]),
         np.array([1, 0, 2], dtype=np.int8),
@@ -60,26 +60,26 @@ EXAMPLES = {
         np.array([[1], [0], [2]]),
         _NotAnArray(np.array([1, 0, 2])),
         [0, 1, 2],
-        ['a', 'b', 'c'],
-        np.array(['a', 'b', 'c']),
-        np.array(['a', 'b', 'c'], dtype=object),
-        np.array(['a', 'b', 'c'], dtype=object),
+        ["a", "b", "c"],
+        np.array(["a", "b", "c"]),
+        np.array(["a", "b", "c"], dtype=object),
+        np.array(["a", "b", "c"], dtype=object),
     ],
-    'multiclass-multioutput': [
+    "multiclass-multioutput": [
         [[1, 0, 2, 2], [1, 4, 2, 4]],
-        [['a', 'b'], ['c', 'd']],
+        [["a", "b"], ["c", "d"]],
         np.array([[1, 0, 2, 2], [1, 4, 2, 4]]),
         np.array([[1, 0, 2, 2], [1, 4, 2, 4]], dtype=np.int8),
         np.array([[1, 0, 2, 2], [1, 4, 2, 4]], dtype=np.uint8),
         np.array([[1, 0, 2, 2], [1, 4, 2, 4]], dtype=float),
         np.array([[1, 0, 2, 2], [1, 4, 2, 4]], dtype=np.float32),
-        np.array([['a', 'b'], ['c', 'd']]),
-        np.array([['a', 'b'], ['c', 'd']]),
-        np.array([['a', 'b'], ['c', 'd']], dtype=object),
+        np.array([["a", "b"], ["c", "d"]]),
+        np.array([["a", "b"], ["c", "d"]]),
+        np.array([["a", "b"], ["c", "d"]], dtype=object),
         np.array([[1, 0, 2]]),
         _NotAnArray(np.array([[1, 0, 2]])),
     ],
-    'binary': [
+    "binary": [
         [0, 1],
         [1, 1],
         [],
@@ -94,25 +94,25 @@ EXAMPLES = {
         _NotAnArray(np.array([[0], [1]])),
         [1, -1],
         [3, 5],
-        ['a'],
-        ['a', 'b'],
-        ['abc', 'def'],
-        np.array(['abc', 'def']),
-        ['a', 'b'],
-        np.array(['abc', 'def'], dtype=object),
+        ["a"],
+        ["a", "b"],
+        ["abc", "def"],
+        np.array(["abc", "def"]),
+        ["a", "b"],
+        np.array(["abc", "def"], dtype=object),
     ],
-    'continuous': [
+    "continuous": [
         [1e-5],
-        [0, .5],
-        np.array([[0], [.5]]),
-        np.array([[0], [.5]], dtype=np.float32),
+        [0, 0.5],
+        np.array([[0], [0.5]]),
+        np.array([[0], [0.5]], dtype=np.float32),
     ],
-    'continuous-multioutput': [
-        np.array([[0, .5], [.5, 0]]),
-        np.array([[0, .5], [.5, 0]], dtype=np.float32),
-        np.array([[0, .5]]),
+    "continuous-multioutput": [
+        np.array([[0, 0.5], [0.5, 0]]),
+        np.array([[0, 0.5], [0.5, 0]], dtype=np.float32),
+        np.array([[0, 0.5]]),
     ],
-    'unknown': [
+    "unknown": [
         [[]],
         [()],
         # sequence of sequences that weren't supported even before deprecation
@@ -120,23 +120,20 @@ EXAMPLES = {
         [np.array([]), np.array([1, 2, 3])],
         [{1, 2, 3}, {1, 2}],
         [frozenset([1, 2, 3]), frozenset([1, 2])],
-
         # and also confusable as sequences of sequences
-        [{0: 'a', 1: 'b'}, {0: 'a'}],
-
+        [{0: "a", 1: "b"}, {0: "a"}],
         # empty second dimension
         np.array([[], []]),
-
         # 3d
         np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]]),
-    ]
+    ],
 }
 
 NON_ARRAY_LIKE_EXAMPLES = [
     {1, 2, 3},
-    {0: 'a', 1: 'b'},
+    {0: "a", 1: "b"},
     {0: [5], 1: [5]},
-    'abc',
+    "abc",
     frozenset([1, 2, 3]),
     None,
 ]
@@ -153,20 +150,15 @@ def test_unique_labels(setup):
     assert_array_equal(unique_labels([4, 0, 2]), np.array([0, 2, 4]))
 
     # Multilabel indicator
-    assert_array_equal(unique_labels(np.array([[0, 0, 1],
-                                               [1, 0, 1],
-                                               [0, 0, 0]])),
-                       np.arange(3))
+    assert_array_equal(
+        unique_labels(np.array([[0, 0, 1], [1, 0, 1], [0, 0, 0]])), np.arange(3)
+    )
 
-    assert_array_equal(unique_labels(np.array([[0, 0, 1],
-                                               [0, 0, 0]])),
-                       np.arange(3))
+    assert_array_equal(unique_labels(np.array([[0, 0, 1], [0, 0, 0]])), np.arange(3))
 
     # Several arrays passed
-    assert_array_equal(unique_labels([4, 0, 2], range(5)),
-                       np.arange(5))
-    assert_array_equal(unique_labels((0, 1, 2), (0,), (2, 1)),
-                       np.arange(3))
+    assert_array_equal(unique_labels([4, 0, 2], range(5)), np.arange(5))
+    assert_array_equal(unique_labels((0, 1, 2), (0,), (2, 1)), np.arange(3))
 
     # Border line case with binary indicator matrix
     with pytest.raises(ValueError):
@@ -174,8 +166,7 @@ def test_unique_labels(setup):
     with pytest.raises(ValueError):
         unique_labels(np.ones((5, 4)), np.ones((5, 5))).execute()
 
-    assert_array_equal(unique_labels(np.ones((4, 5)), np.ones((5, 5))),
-                       np.arange(5))
+    assert_array_equal(unique_labels(np.ones((4, 5)), np.ones((5, 5))), np.arange(5))
 
 
 def test_unique_labels_non_specific(setup):
@@ -191,8 +182,12 @@ def test_unique_labels_non_specific(setup):
         with pytest.raises(ValueError):
             unique_labels(example).execute()
 
-    for y_type in ["unknown", "continuous", 'continuous-multioutput',
-                   'multiclass-multioutput']:
+    for y_type in [
+        "unknown",
+        "continuous",
+        "continuous-multioutput",
+        "multiclass-multioutput",
+    ]:
         for example in EXAMPLES[y_type]:
             with pytest.raises(ValueError):
                 unique_labels(example).execute()
@@ -200,9 +195,9 @@ def test_unique_labels_non_specific(setup):
 
 def test_unique_labels_mixed_types(setup):
     # Mix with binary or multiclass and multilabel
-    mix_clf_format = product(EXAMPLES["multilabel-indicator"],
-                             EXAMPLES["multiclass"] +
-                             EXAMPLES["binary"])
+    mix_clf_format = product(
+        EXAMPLES["multilabel-indicator"], EXAMPLES["multiclass"] + EXAMPLES["binary"]
+    )
 
     for y_multilabel, y_multiclass in mix_clf_format:
         with pytest.raises(ValueError):
@@ -231,7 +226,7 @@ def test_is_multilabel(setup):
         np.array([[1, 0], [0, 0]]),
         np.array([[1], [0], [0]]),
         np.array([[1, 0, 0]]),
-        np.array([[1., 0.], [0., 0.]]),
+        np.array([[1.0, 0.0], [0.0, 0.0]]),
         sps.csr_matrix([[1, 0], [0, 1]]),
     ]
 
@@ -249,10 +244,10 @@ def test_type_of_target(setup):
         np.array([[]]),  # ndim == 2, shape[1] == 0, unknown
         np.array([[1, 2], [1, 2]]),
         np.array([1, 2, 3]),
-        np.array([.1, .2, 3]),
-        np.array([[.1, .2, 3]]),
-        np.array([[1., .2]]),
-        np.array([[1., 2., 3]]),
+        np.array([0.1, 0.2, 3]),
+        np.array([[0.1, 0.2, 3]]),
+        np.array([[1.0, 0.2]]),
+        np.array([[1.0, 2.0, 3]]),
         np.array([[1, 2]]),
         np.array([1, 2]),
         np.array([["a"], ["b"]], dtype=object),
@@ -267,4 +262,4 @@ def test_type_of_target(setup):
     assert type_of_target(t).to_numpy() == sklearn_type_of_target(raws[0])
 
     with pytest.raises(ValueError):
-        type_of_target('sth')
+        type_of_target("sth")

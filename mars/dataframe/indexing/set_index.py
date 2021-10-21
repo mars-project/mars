@@ -25,15 +25,28 @@ from ..utils import build_empty_df, parse_index
 class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_SET_INDEX
 
-    _keys = AnyField('keys')
-    _drop = BoolField('drop')
-    _append = BoolField('append')
-    _verify_integrity = BoolField('verify_integrity')
+    _keys = AnyField("keys")
+    _drop = BoolField("drop")
+    _append = BoolField("append")
+    _verify_integrity = BoolField("verify_integrity")
 
-    def __init__(self, keys=None, drop=True, append=False, verify_integrity=False,
-                 output_types=None, **kw):
-        super().__init__(_keys=keys, _drop=drop, _append=append,
-                         _verify_integrity=verify_integrity, _output_types=output_types, **kw)
+    def __init__(
+        self,
+        keys=None,
+        drop=True,
+        append=False,
+        verify_integrity=False,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _keys=keys,
+            _drop=drop,
+            _append=append,
+            _verify_integrity=verify_integrity,
+            _output_types=output_types,
+            **kw
+        )
 
     @property
     def keys(self):
@@ -52,23 +65,35 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
         return self._verify_integrity
 
     def __call__(self, df):
-        new_df = build_empty_df(df.dtypes).set_index(keys=self.keys, drop=self.drop, append=self.append,
-                                                     verify_integrity=self.verify_integrity)
-        return self.new_dataframe([df], shape=(df.shape[0], new_df.shape[1]), dtypes=new_df.dtypes,
-                                  index_value=parse_index(new_df.index),
-                                  columns_value=parse_index(new_df.columns, store_data=True))
+        new_df = build_empty_df(df.dtypes).set_index(
+            keys=self.keys,
+            drop=self.drop,
+            append=self.append,
+            verify_integrity=self.verify_integrity,
+        )
+        return self.new_dataframe(
+            [df],
+            shape=(df.shape[0], new_df.shape[1]),
+            dtypes=new_df.dtypes,
+            index_value=parse_index(new_df.index),
+            columns_value=parse_index(new_df.columns, store_data=True),
+        )
 
     @classmethod
     def _tile_column_axis_n_chunk(cls, op, in_df, out_df, out_chunks):
         if not isinstance(op.keys, str):  # pragma: no cover
-            raise NotImplementedError('DataFrame.set_index only support label')
+            raise NotImplementedError("DataFrame.set_index only support label")
         if op.verify_integrity:  # pragma: no cover
-            raise NotImplementedError('DataFrame.set_index not support verify_integrity yet')
+            raise NotImplementedError(
+                "DataFrame.set_index not support verify_integrity yet"
+            )
 
         try:
             column_index = in_df.columns_value.to_pandas().get_loc(op.keys)
         except KeyError:  # pragma: no cover
-            raise NotImplementedError('The new index label must be a column of the original dataframe')
+            raise NotImplementedError(
+                "The new index label must be a column of the original dataframe"
+            )
 
         chunk_index = np.searchsorted(np.cumsum(in_df.nsplits[1]), column_index + 1)
 
@@ -86,10 +111,14 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
                     columns = input_chunk.columns_value
                     dtypes = input_chunk.dtypes
                 out_op = op.copy().reset_key()
-                out_chunk = out_op.new_chunk([index_chunk, input_chunk],
-                                             shape=new_shape, dtypes=dtypes, index=input_chunk.index,
-                                             index_value=parse_index(pd.Int64Index([])),
-                                             columns_value=columns)
+                out_chunk = out_op.new_chunk(
+                    [index_chunk, input_chunk],
+                    shape=new_shape,
+                    dtypes=dtypes,
+                    index=input_chunk.index,
+                    index_value=parse_index(pd.Int64Index([])),
+                    columns_value=columns,
+                )
                 out_chunks.append(out_chunk)
 
     @classmethod
@@ -99,10 +128,14 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
             chunk_op = op.copy().reset_key()
             chunk_shape = (c.shape[0], out_df.shape[1])
             index_value = parse_index(out_pd_index, c)
-            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape,
-                                           dtypes=out_df.dtypes, index=c.index,
-                                           index_value=index_value,
-                                           columns_value=out_df.columns_value)
+            out_chunk = chunk_op.new_chunk(
+                [c],
+                shape=chunk_shape,
+                dtypes=out_df.dtypes,
+                index=c.index,
+                index_value=index_value,
+                columns_value=out_df.columns_value,
+            )
             out_chunks.append(out_chunk)
 
     @classmethod
@@ -119,12 +152,20 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
         new_op = op.copy()
         columns_nsplits = list(in_df.nsplits[1])
         if op.drop:
-            columns_nsplits = tuple(split - 1 if i == 0 else split for i, split in enumerate(columns_nsplits))
+            columns_nsplits = tuple(
+                split - 1 if i == 0 else split
+                for i, split in enumerate(columns_nsplits)
+            )
         nsplits = (in_df.nsplits[0], columns_nsplits)
-        return new_op.new_dataframes(op.inputs, out_df.shape, dtypes=out_df.dtypes,
-                                     index_value=out_df.index_value,
-                                     columns_value=out_df.columns_value,
-                                     chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_dataframes(
+            op.inputs,
+            out_df.shape,
+            dtypes=out_df.dtypes,
+            index_value=out_df.index_value,
+            columns_value=out_df.columns_value,
+            chunks=out_chunks,
+            nsplits=nsplits,
+        )
 
     @classmethod
     def execute(cls, ctx, op):
@@ -140,19 +181,30 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
             else:
                 new_index = ctx[index_chunk.key][op.keys]
             ctx[chunk.key] = ctx[input_chunk.key].set_index(
-                new_index, drop=op.drop, append=op.append,
-                verify_integrity=op.verify_integrity)
+                new_index,
+                drop=op.drop,
+                append=op.append,
+                verify_integrity=op.verify_integrity,
+            )
         else:
             # axis 1 has 1 chunk
             inp = ctx[op.inputs[0].key]
             ctx[chunk.key] = inp.set_index(
-                op.keys, drop=op.drop, append=op.append,
-                verify_integrity=op.verify_integrity)
+                op.keys,
+                drop=op.drop,
+                append=op.append,
+                verify_integrity=op.verify_integrity,
+            )
 
 
 def set_index(df, keys, drop=True, append=False, inplace=False, verify_integrity=False):
-    op = DataFrameSetIndex(keys=keys, drop=drop, append=append,
-                           verify_integrity=verify_integrity, output_types=[OutputType.dataframe])
+    op = DataFrameSetIndex(
+        keys=keys,
+        drop=drop,
+        append=append,
+        verify_integrity=verify_integrity,
+        output_types=[OutputType.dataframe],
+    )
     result = op(df)
     if not inplace:
         return result

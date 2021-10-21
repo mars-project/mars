@@ -25,24 +25,24 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
 
         check_options = dict()
         kwargs = self.subtask.extra_config or dict()
-        self._operand_executors = operand_executors = \
-            kwargs.pop('operand_executors', dict())
+        self._operand_executors = operand_executors = kwargs.pop(
+            "operand_executors", dict()
+        )
         for op, executor in operand_executors.items():
             op.register_executor(executor)
         for key in _check_args:
             check_options[key] = kwargs.get(key, True)
         self._check_options = check_options
 
-    def _execute_operand(self,
-                         ctx: Dict[str, Any],
-                         op: OperandType):
+    def _execute_operand(self, ctx: Dict[str, Any], op: OperandType):
         super()._execute_operand(ctx, op)
-        if self._check_options.get('check_all', True):
+        if self._check_options.get("check_all", True):
             for out in op.outputs:
                 if out not in self._chunk_graph.result_chunks:
                     continue
-                if out.key not in ctx and \
-                        any(k[0] == out.key for k in ctx if isinstance(k, tuple)):
+                if out.key not in ctx and any(
+                    k[0] == out.key for k in ctx if isinstance(k, tuple)
+                ):
                     # both shuffle mapper and reducer
                     continue
                 self.assert_object_consistent(out, ctx[out.key])

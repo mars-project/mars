@@ -22,7 +22,7 @@ from .pool import create_supervisor_actor_pool
 
 
 class SupervisorCommandRunner(OscarCommandRunner):
-    command_description = 'Mars Supervisor'
+    command_description = "Mars Supervisor"
     node_role = NodeRole.SUPERVISOR
 
     def __init__(self):
@@ -31,36 +31,41 @@ class SupervisorCommandRunner(OscarCommandRunner):
 
     def config_args(self, parser):
         super().config_args(parser)
-        parser.add_argument('-w', '--web-port', help='web port of the service')
+        parser.add_argument("-w", "--web-port", help="web port of the service")
 
     def parse_args(self, parser, argv, environ=None):
         args = super().parse_args(parser, argv, environ=environ)
 
         if args.endpoint is None:
-            args.endpoint = f'{args.host}:{get_next_port()}'
+            args.endpoint = f"{args.host}:{get_next_port()}"
         self._endpoint_file_name = self._write_supervisor_endpoint_file(args)
 
-        args.supervisors = f'{args.supervisors},{args.endpoint}'.strip(',')
+        args.supervisors = f"{args.supervisors},{args.endpoint}".strip(",")
 
-        web_config = self.config.get('web', {})
+        web_config = self.config.get("web", {})
         if args.web_port is not None:
-            web_config['port'] = int(args.web_port)
-        self.config['web'] = web_config
+            web_config["port"] = int(args.web_port)
+        self.config["web"] = web_config
 
         return args
 
     async def create_actor_pool(self):
         return await create_supervisor_actor_pool(
-            self.args.endpoint, n_process=0, ports=self.ports,
+            self.args.endpoint,
+            n_process=0,
+            ports=self.ports,
             modules=self.args.load_modules,
             logging_conf=self.logging_conf,
-            subprocess_start_method='forkserver' if os.name == 'nt' else 'spawn'
+            subprocess_start_method="forkserver" if os.name == "nt" else "spawn",
         )
 
     async def start_services(self):
         return await start_supervisor(
-            self.pool.external_address, self.args.supervisors,
-            self.args.load_modules, self.config)
+            self.pool.external_address,
+            self.args.supervisors,
+            self.args.load_modules,
+            self.config,
+        )
 
     async def stop_services(self):
         if self._endpoint_file_name is not None:  # pragma: no branch
@@ -73,5 +78,5 @@ class SupervisorCommandRunner(OscarCommandRunner):
 
 main = SupervisorCommandRunner()
 
-if __name__ == '__main__':  # pragma: no branch
+if __name__ == "__main__":  # pragma: no branch
     main()

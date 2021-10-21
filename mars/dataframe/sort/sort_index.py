@@ -18,7 +18,12 @@ from ... import opcodes as OperandDef
 from ...core import OutputType, recursive_tile
 from ...serialization.serializables import ListField, BoolField
 from ...tensor.base.sort import _validate_sort_psrs_kinds
-from ..utils import parse_index, validate_axis, build_concatenated_rows_frame, standardize_range_index
+from ..utils import (
+    parse_index,
+    validate_axis,
+    build_concatenated_rows_frame,
+    standardize_range_index,
+)
 from ..operands import DATAFRAME_TYPE
 from .core import DataFrameSortOperand
 from .psrs import DataFramePSRSOperandMixin, execute_sort_index
@@ -27,8 +32,8 @@ from .psrs import DataFramePSRSOperandMixin, execute_sort_index
 class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
     _op_type_ = OperandDef.SORT_INDEX
 
-    _level = ListField('level')
-    _sort_remaining = BoolField('sort_remaining')
+    _level = ListField("level")
+    _sort_remaining = BoolField("sort_remaining")
 
     def __init__(self, level=None, sort_remaining=None, **kw):
         super().__init__(_level=level, _sort_remaining=sort_remaining, **kw)
@@ -52,45 +57,67 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
                     out_chunks = []
                     for chunk in df.chunks:
                         chunk_op = op.copy().reset_key()
-                        out_chunks.append(chunk_op.new_chunk(
-                            [chunk], shape=chunk.shape, index=chunk.index, index_value=chunk.index_value,
-                            columns_value=chunk.columns_value, dtypes=chunk.dtypes))
+                        out_chunks.append(
+                            chunk_op.new_chunk(
+                                [chunk],
+                                shape=chunk.shape,
+                                index=chunk.index,
+                                index_value=chunk.index_value,
+                                columns_value=chunk.columns_value,
+                                dtypes=chunk.dtypes,
+                            )
+                        )
                     new_op = op.copy()
                     kws = op.outputs[0].params.copy()
-                    kws['nsplits'] = df.nsplits
-                    kws['chunks'] = out_chunks
+                    kws["nsplits"] = df.nsplits
+                    kws["chunks"] = out_chunks
                     return new_op.new_dataframes(op.inputs, **kws)
                 else:
                     out_chunks = []
                     for chunk in df.chunks:
                         chunk_op = op.copy().reset_key()
-                        out_chunks.append(chunk_op.new_chunk(
-                            [chunk], shape=chunk.shape, index=chunk.index, index_value=chunk.index_value,
-                            name=chunk.name, dtype=chunk.dtype))
+                        out_chunks.append(
+                            chunk_op.new_chunk(
+                                [chunk],
+                                shape=chunk.shape,
+                                index=chunk.index,
+                                index_value=chunk.index_value,
+                                name=chunk.name,
+                                dtype=chunk.dtype,
+                            )
+                        )
                     new_op = op.copy()
                     kws = op.outputs[0].params.copy()
-                    kws['nsplits'] = df.nsplits
-                    kws['chunks'] = out_chunks
+                    kws["nsplits"] = df.nsplits
+                    kws["chunks"] = out_chunks
                     return new_op.new_seriess(op.inputs, **kws)
             else:
                 if op.output_types[0] == OutputType.dataframe:
                     df = build_concatenated_rows_frame(df)
-                if op.na_position != 'last':  # pragma: no cover
-                    raise NotImplementedError('Only support puts NaNs at the end.')
+                if op.na_position != "last":  # pragma: no cover
+                    raise NotImplementedError("Only support puts NaNs at the end.")
                 # use parallel sorting by regular sampling
                 return (yield from cls._tile_psrs(op, df))
         else:
             assert op.axis == 1
 
-            sorted_columns = list(df.columns_value.to_pandas().sort_values(ascending=op.ascending))
+            sorted_columns = list(
+                df.columns_value.to_pandas().sort_values(ascending=op.ascending)
+            )
             r = [(yield from recursive_tile(df[sorted_columns]))]
             if op.ignore_index:
                 out = op.outputs[0]
                 chunks = standardize_range_index(r[0].chunks, axis=0)
                 new_op = op.copy()
-                return new_op.new_dataframes(op.inputs, shape=out.shape, chunks=chunks,
-                                             nsplits=r[0].nsplits, index_value=out.index_value,
-                                             columns_value=out.columns_value, dtypes=out.dtypes)
+                return new_op.new_dataframes(
+                    op.inputs,
+                    shape=out.shape,
+                    chunks=chunks,
+                    nsplits=r[0].nsplits,
+                    index_value=out.index_value,
+                    columns_value=out.columns_value,
+                    dtypes=out.dtypes,
+                )
             return r
 
     @classmethod
@@ -107,26 +134,39 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
         else:
             index_value = df.index_value
         if self.axis == 0:
-            return self.new_dataframe([df], shape=df.shape, dtypes=df.dtypes,
-                                      index_value=index_value,
-                                      columns_value=df.columns_value)
+            return self.new_dataframe(
+                [df],
+                shape=df.shape,
+                dtypes=df.dtypes,
+                index_value=index_value,
+                columns_value=df.columns_value,
+            )
         else:
             dtypes = df.dtypes.sort_index(ascending=self.ascending)
             columns_value = parse_index(dtypes.index, store_data=True)
-            return self.new_dataframe([df], shape=df.shape, dtypes=dtypes,
-                                      index_value=index_value,
-                                      columns_value=columns_value)
+            return self.new_dataframe(
+                [df],
+                shape=df.shape,
+                dtypes=dtypes,
+                index_value=index_value,
+                columns_value=columns_value,
+            )
 
     def _call_series(self, series):
         if self.axis != 0:  # pragma: no cover
-            raise TypeError(f'Invalid axis: {self.axis}')
+            raise TypeError(f"Invalid axis: {self.axis}")
         if self.ignore_index:
             index_value = parse_index(pd.RangeIndex(series.shape[0]))
         else:
             index_value = series.index_value
 
-        return self.new_series([series], shape=series.shape, dtype=series.dtype,
-                               index_value=index_value, name=series.name)
+        return self.new_series(
+            [series],
+            shape=series.shape,
+            dtype=series.dtype,
+            index_value=index_value,
+            name=series.name,
+        )
 
     def __call__(self, a):
         if isinstance(a, DATAFRAME_TYPE):
@@ -137,9 +177,19 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
             return self._call_series(a)
 
 
-def sort_index(a, axis=0, level=None, ascending=True, inplace=False, kind='quicksort',
-               na_position='last', sort_remaining=True, ignore_index: bool = False,
-               parallel_kind='PSRS', psrs_kinds=None):
+def sort_index(
+    a,
+    axis=0,
+    level=None,
+    ascending=True,
+    inplace=False,
+    kind="quicksort",
+    na_position="last",
+    sort_remaining=True,
+    ignore_index: bool = False,
+    parallel_kind="PSRS",
+    psrs_kinds=None,
+):
     """
     Sort object by labels (along an axis).
 
@@ -178,15 +228,24 @@ def sort_index(a, axis=0, level=None, ascending=True, inplace=False, kind='quick
     sorted_obj : DataFrame or None
         DataFrame with sorted index if inplace=False, None otherwise.
     """
-    if na_position not in ['last', 'first']:  # pragma: no cover
-        raise TypeError(f'Invalid na_position: {na_position}')
+    if na_position not in ["last", "first"]:  # pragma: no cover
+        raise TypeError(f"Invalid na_position: {na_position}")
     psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
     axis = validate_axis(axis, a)
     level = level if isinstance(level, (list, tuple)) else [level]
-    op = DataFrameSortIndex(level=level, axis=axis, ascending=ascending, inplace=inplace,
-                            kind=kind, na_position=na_position, sort_remaining=sort_remaining,
-                            ignore_index=ignore_index, parallel_kind=parallel_kind,
-                            psrs_kinds=psrs_kinds, gpu=a.op.is_gpu())
+    op = DataFrameSortIndex(
+        level=level,
+        axis=axis,
+        ascending=ascending,
+        inplace=inplace,
+        kind=kind,
+        na_position=na_position,
+        sort_remaining=sort_remaining,
+        ignore_index=ignore_index,
+        parallel_kind=parallel_kind,
+        psrs_kinds=psrs_kinds,
+        gpu=a.op.is_gpu(),
+    )
     sorted_a = op(a)
     if inplace:
         a.data = sorted_a.data

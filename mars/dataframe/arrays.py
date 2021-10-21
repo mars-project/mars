@@ -23,20 +23,30 @@ import numpy as np
 import pandas as pd
 from pandas._libs import lib
 from pandas.api.indexers import check_array_indexer
-from pandas.api.types import pandas_dtype, is_scalar, \
-    is_array_like, is_string_dtype, is_list_like
-from pandas.api.extensions import ExtensionArray, \
-    ExtensionDtype, register_extension_dtype
+from pandas.api.types import (
+    pandas_dtype,
+    is_scalar,
+    is_array_like,
+    is_string_dtype,
+    is_list_like,
+)
+from pandas.api.extensions import (
+    ExtensionArray,
+    ExtensionDtype,
+    register_extension_dtype,
+)
 from pandas.arrays import StringArray as StringArrayBase
 from pandas.core import ops
 from pandas.core.algorithms import take
 from pandas.compat import set_function_name
+
 try:
     from pandas._libs.arrays import NDArrayBacked
 except ImportError:
     NDArrayBacked = None
 try:
     import pyarrow as pa
+
     pa_null = pa.NULL
 except ImportError:  # pragma: no cover
     pa = None
@@ -46,7 +56,7 @@ from ..config import options
 from ..core import is_kernel_mode
 from ..lib.version import parse as parse_version
 
-_use_bool_any_all = parse_version(pd.__version__) >= parse_version('1.3.0')
+_use_bool_any_all = parse_version(pd.__version__) >= parse_version("1.3.0")
 
 
 class ArrowDtype(ExtensionDtype):
@@ -109,7 +119,7 @@ class ArrowStringDtype(ArrowDtype):
 
 @register_extension_dtype
 class ArrowStringDtypeAlias(ArrowStringDtype):
-    name = 'arrow_string'  # register an alias name for compatibility
+    name = "arrow_string"  # register an alias name for compatibility
 
 
 class ArrowListDtypeType(type):
@@ -130,8 +140,7 @@ class ArrowListDtype(ArrowDtype):
             dtype = dtype.to_pandas_dtype()
 
         dtype = pandas_dtype(dtype)
-        if is_string_dtype(dtype) and \
-                not isinstance(dtype, ArrowStringDtype):
+        if is_string_dtype(dtype) and not isinstance(dtype, ArrowStringDtype):
             # convert string dtype to arrow string dtype
             dtype = ArrowStringDtype()
 
@@ -222,8 +231,9 @@ class ArrowArray(ExtensionArray):
             # just for infer dtypes purpose
             self._init_by_numpy(values, dtype=dtype, copy=copy)
         else:
-            raise ImportError('Cannot create ArrowArray '
-                              'when `pyarrow` not installed')
+            raise ImportError(
+                "Cannot create ArrowArray " "when `pyarrow` not installed"
+            )
 
         # for test purpose
         self._force_use_pandas = pandas_only
@@ -287,17 +297,19 @@ class ArrowArray(ExtensionArray):
     @property
     def nbytes(self) -> int:
         if self._use_arrow:
-            return sum(x.size
-                       for chunk in self._arrow_array.chunks
-                       for x in chunk.buffers()
-                       if x is not None)
+            return sum(
+                x.size
+                for chunk in self._arrow_array.chunks
+                for x in chunk.buffers()
+                if x is not None
+            )
         else:
             return self._ndarray.nbytes
 
     @property
     def shape(self):
         if self._use_arrow:
-            return (self._arrow_array.length(), )
+            return (self._arrow_array.length(),)
         else:
             return self._ndarray.shape
 
@@ -321,7 +333,7 @@ class ArrowArray(ExtensionArray):
 
         if pa_null is not None and isinstance(scalars, type(pa_null)):
             scalars = []
-        elif not hasattr(scalars, 'dtype'):
+        elif not hasattr(scalars, "dtype"):
             ret = np.empty(len(scalars), dtype=object)
             for i, s in enumerate(scalars):
                 ret[i] = s
@@ -343,11 +355,13 @@ class ArrowArray(ExtensionArray):
             return False
         if slc.step is not None and slc.step != 1:
             return False
-        if slc.start is not None and \
-                not isinstance(slc.start, Integral):  # pragma: no cover
+        if slc.start is not None and not isinstance(
+            slc.start, Integral
+        ):  # pragma: no cover
             return False
-        if slc.stop is not None and \
-                not isinstance(slc.stop, Integral):  # pragma: no cover
+        if slc.stop is not None and not isinstance(
+            slc.stop, Integral
+        ):  # pragma: no cover
             return False
         return True
 
@@ -385,23 +399,26 @@ class ArrowArray(ExtensionArray):
             else:
                 return type(self)(result)
 
-        has_take = hasattr(self._arrow_array, 'take')
+        has_take = hasattr(self._arrow_array, "take")
         if not self._force_use_pandas and has_take:
             if pd.api.types.is_scalar(item):
                 item = item + len(self) if item < 0 else item
-                return self._post_scalar_getitem(
-                    self._arrow_array.take([item]))
+                return self._post_scalar_getitem(self._arrow_array.take([item]))
             elif self._can_process_slice_via_arrow(item):
                 length = len(self)
                 start, stop = item.start, item.stop
                 start = self._process_pos(start, length, True)
                 stop = self._process_pos(stop, length, False)
-                return cls(self._arrow_array.slice(offset=start, length=stop - start),
-                           dtype=self._dtype)
-            elif hasattr(item, 'dtype') and np.issubdtype(item.dtype, np.bool_):
-                return cls(self._arrow_array.filter(pa.array(item, from_pandas=True)),
-                           dtype=self._dtype)
-            elif hasattr(item, 'dtype'):
+                return cls(
+                    self._arrow_array.slice(offset=start, length=stop - start),
+                    dtype=self._dtype,
+                )
+            elif hasattr(item, "dtype") and np.issubdtype(item.dtype, np.bool_):
+                return cls(
+                    self._arrow_array.filter(pa.array(item, from_pandas=True)),
+                    dtype=self._dtype,
+                )
+            elif hasattr(item, "dtype"):
                 length = len(self)
                 item = np.where(item < 0, item + length, item)
                 return cls(self._arrow_array.take(item), dtype=self._dtype)
@@ -410,14 +427,14 @@ class ArrowArray(ExtensionArray):
         return cls(array[item], dtype=self._dtype)
 
     @classmethod
-    def _concat_same_type(
-            cls, to_concat: Sequence["ArrowArray"]) -> "ArrowArray":
+    def _concat_same_type(cls, to_concat: Sequence["ArrowArray"]) -> "ArrowArray":
         if pa is None or cls._pandas_only():
             # pyarrow not installed
             return cls(np.concatenate([x._array for x in to_concat]))
 
-        chunks = list(itertools.chain.from_iterable(
-            x._arrow_array.chunks for x in to_concat))
+        chunks = list(
+            itertools.chain.from_iterable(x._arrow_array.chunks for x in to_concat)
+        )
         if len(chunks) == 0:
             chunks = [pa.array([], type=to_concat[0].dtype.arrow_type)]
         return cls(pa.chunked_array(chunks))
@@ -448,8 +465,11 @@ class ArrowArray(ExtensionArray):
 
         if pa is None or self._force_use_pandas:
             # pyarrow not installed
-            return cls(pd.Series(self.to_numpy()).fillna(
-                value=value, method=method, limit=limit))
+            return cls(
+                pd.Series(self.to_numpy()).fillna(
+                    value=value, method=method, limit=limit
+                )
+            )
 
         chunks = []
         for chunk_array in self._arrow_array.chunks:
@@ -457,8 +477,7 @@ class ArrowArray(ExtensionArray):
             if method is None:
                 result_array = self._array_fillna(array, value)
             else:
-                result_array = array.fillna(value=value, method=method,
-                                            limit=limit)
+                result_array = array.fillna(value=value, method=method, limit=limit)
             chunks.append(pa.array(result_array, from_pandas=True))
         return cls(pa.chunked_array(chunks), dtype=self._dtype)
 
@@ -479,22 +498,29 @@ class ArrowArray(ExtensionArray):
         test_array = self._arrow_array.slice(0, 1).to_pandas()
         test_result_array = test_array.astype(dtype).array
 
-        result_array = \
-            type(test_result_array)(
-                np.full(self.shape, test_result_array.dtype.na_value,
-                        dtype=np.asarray(test_result_array).dtype))
+        result_array = type(test_result_array)(
+            np.full(
+                self.shape,
+                test_result_array.dtype.na_value,
+                dtype=np.asarray(test_result_array).dtype,
+            )
+        )
 
         start = 0
         # use chunks to do astype
         for chunk_array in self._arrow_array.chunks:
-            result_array[start: start + len(chunk_array)] = \
+            result_array[start : start + len(chunk_array)] = (
                 chunk_array.to_pandas().astype(dtype).array
+            )
             start += len(chunk_array)
         return result_array
 
     def isna(self):
-        if not self._force_use_pandas and self._use_arrow and \
-                hasattr(self._arrow_array, 'is_null'):
+        if (
+            not self._force_use_pandas
+            and self._use_arrow
+            and hasattr(self._arrow_array, "is_null")
+        ):
             return self._arrow_array.is_null().to_pandas().to_numpy()
         elif self._use_arrow:
             return pd.isna(self._arrow_array.to_pandas()).to_numpy()
@@ -502,8 +528,9 @@ class ArrowArray(ExtensionArray):
             return pd.isna(self._ndarray)
 
     def take(self, indices, allow_fill=False, fill_value=None):
-        if (allow_fill is False or (allow_fill and fill_value is self.dtype.na_value)) \
-                and len(self) > 0:
+        if (
+            allow_fill is False or (allow_fill and fill_value is self.dtype.na_value)
+        ) and len(self) > 0:
             return type(self)(self[indices], dtype=self._dtype)
 
         if self._use_arrow:
@@ -512,13 +539,11 @@ class ArrowArray(ExtensionArray):
             array = self._ndarray
 
         replace = False
-        if allow_fill and \
-                (fill_value is None or fill_value == self._dtype.na_value):
+        if allow_fill and (fill_value is None or fill_value == self._dtype.na_value):
             fill_value = self.dtype.na_value
             replace = True
 
-        result = take(array, indices, fill_value=fill_value,
-                      allow_fill=allow_fill)
+        result = take(array, indices, fill_value=fill_value, allow_fill=allow_fill)
         del array
         if replace and pa is not None:
             # pyarrow cannot recognize pa.NULL
@@ -536,10 +561,10 @@ class ArrowArray(ExtensionArray):
             series = self._arrow_array.to_pandas()
         else:
             series = pd.Series(self._ndarray)
-        return type(self)(series.value_counts(dropna=dropna),
-                          dtype=self._dtype)
+        return type(self)(series.value_counts(dropna=dropna), dtype=self._dtype)
 
     if _use_bool_any_all:
+
         def any(self, axis=0, out=None):
             return self.to_numpy().astype(bool).any(axis=axis, out=out)
 
@@ -547,6 +572,7 @@ class ArrowArray(ExtensionArray):
             return self.to_numpy().astype(bool).all(axis=axis, out=out)
 
     else:
+
         def any(self, axis=0, out=None):
             return self.to_numpy().any(axis=axis, out=out)
 
@@ -555,15 +581,17 @@ class ArrowArray(ExtensionArray):
 
     def __mars_tokenize__(self):
         if self._use_arrow:
-            return [memoryview(x) for chunk in self._arrow_array.chunks
-                    for x in chunk.buffers()
-                    if x is not None]
+            return [
+                memoryview(x)
+                for chunk in self._arrow_array.chunks
+                for x in chunk.buffers()
+                if x is not None
+            ]
         else:
             return self._ndarray
 
 
 class ArrowStringArray(ArrowArray, StringArrayBase):
-
     def __init__(self, values, dtype=None, copy=False):
         if dtype is not None:
             assert isinstance(dtype, ArrowStringDtype)
@@ -619,8 +647,7 @@ class ArrowStringArray(ArrowArray, StringArrayBase):
     def _create_arithmetic_method(cls, op):
         # Note: this handles both arithmetic and comparison methods.
         def method(self, other):
-            is_arithmetic = \
-                True if op.__name__ in ops.ARITHMETIC_BINOPS else False
+            is_arithmetic = True if op.__name__ in ops.ARITHMETIC_BINOPS else False
             pandas_only = cls._pandas_only()
 
             is_other_array = False
@@ -638,8 +665,11 @@ class ArrowStringArray(ArrowArray, StringArrayBase):
                 else:
                     ret = np.zeros(self.shape, dtype=bool)
                 valid = ~mask
-                arr = self._arrow_array.to_pandas().to_numpy() \
-                    if self._use_arrow else self._ndarray
+                arr = (
+                    self._arrow_array.to_pandas().to_numpy()
+                    if self._use_arrow
+                    else self._ndarray
+                )
                 o = other[valid] if is_other_array else other
                 ret[valid] = op(arr[valid], o)
                 if is_arithmetic:
@@ -653,7 +683,7 @@ class ArrowStringArray(ArrowArray, StringArrayBase):
             for chunk_array in self._arrow_array.chunks:
                 chunk_array = np.asarray(chunk_array.to_pandas())
                 end = start + len(chunk_array)
-                chunk_mask = mask[start: end]
+                chunk_mask = mask[start:end]
                 chunk_valid = ~chunk_mask
 
                 if is_arithmetic:
@@ -663,16 +693,14 @@ class ArrowStringArray(ArrowArray, StringArrayBase):
 
                 chunk_other = other
                 if is_other_array:
-                    chunk_other = other[start: end]
+                    chunk_other = other[start:end]
                     chunk_other = chunk_other[chunk_valid]
 
                 # calculate only for both not None
-                result[chunk_valid] = op(chunk_array[chunk_valid],
-                                         chunk_other)
+                result[chunk_valid] = op(chunk_array[chunk_valid], chunk_other)
 
                 if is_arithmetic:
-                    chunks.append(pa.array(result, type=pa.string(),
-                                           from_pandas=True))
+                    chunks.append(pa.array(result, type=pa.string(), from_pandas=True))
                 else:
                     chunks.append(result)
                     mask_chunks.append(chunk_mask)
@@ -680,8 +708,9 @@ class ArrowStringArray(ArrowArray, StringArrayBase):
             if is_arithmetic:
                 return ArrowStringArray(pa.chunked_array(chunks))
             else:
-                return pd.arrays.BooleanArray(np.concatenate(chunks),
-                                              np.concatenate(mask_chunks))
+                return pd.arrays.BooleanArray(
+                    np.concatenate(chunks), np.concatenate(mask_chunks)
+                )
 
         return set_function_name(method, f"__{op.__name__}__", cls)
 
@@ -713,7 +742,7 @@ ArrowStringArray._add_comparison_ops()
 
 
 class ArrowListArray(ArrowArray):
-    def __init__(self, values, dtype: ArrowListDtype=None, copy=False):
+    def __init__(self, values, dtype: ArrowListDtype = None, copy=False):
         if dtype is None:
             if isinstance(values, type(self)):
                 dtype = values.dtype
@@ -739,7 +768,7 @@ class ArrowListArray(ArrowArray):
             s = self._arrow_array.to_pandas()
         else:
             s = pd.Series(self._ndarray)
-        s = s.map(lambda x: x.tolist() if hasattr(x, 'tolist') else x)
+        s = s.map(lambda x: x.tolist() if hasattr(x, "tolist") else x)
         if copy or na_value is not lib.no_default:
             s = s.copy()
         if na_value is not lib.no_default:
@@ -762,13 +791,14 @@ class ArrowListArray(ArrowArray):
             if pd.isna(value):
                 value = None
             elif not is_list_like(value):
-                raise ValueError('Must provide list.')
+                raise ValueError("Must provide list.")
 
         if self._use_arrow:
             array = np.asarray(self._arrow_array.to_pandas())
             array[key] = value
-            self._arrow_array = pa.chunked_array([
-                pa.array(array, type=self.dtype.arrow_type)])
+            self._arrow_array = pa.chunked_array(
+                [pa.array(array, type=self.dtype.arrow_type)]
+            )
         else:
             self._ndarray[key] = value
 
@@ -778,7 +808,7 @@ class ArrowListArray(ArrowArray):
         return series.apply(lambda x: x if is_list_like(x) or not pd.isna(x) else value)
 
     def astype(self, dtype, copy=True):
-        msg = f'cannot astype from {self.dtype} to {dtype}'
+        msg = f"cannot astype from {self.dtype} to {dtype}"
         dtype = pandas_dtype(dtype)
         if isinstance(dtype, ArrowListDtype):
             if self.dtype == dtype:
@@ -793,6 +823,7 @@ class ArrowListArray(ArrowArray):
                     except (NotImplementedError, pa.ArrowInvalid):
                         raise TypeError(msg)
                 else:
+
                     def f(x):
                         return pd.Series(x).astype(dtype.value_type.type).tolist()
 

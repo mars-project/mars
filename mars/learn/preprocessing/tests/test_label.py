@@ -51,21 +51,16 @@ def test_label_binarizer(setup):
     assert_array_equal(lb.classes_, ["neg", "pos"])
     assert_array_equal(expected, got)
 
-    to_invert = np.array([[1, 0],
-                          [0, 1],
-                          [0, 1],
-                          [1, 0]])
+    to_invert = np.array([[1, 0], [0, 1], [0, 1], [1, 0]])
     assert_array_equal(lb.inverse_transform(to_invert), inp)
 
     # multi-class case
     inp = ["spam", "ham", "eggs", "ham", "0"]
-    expected = np.array([[0, 0, 0, 1],
-                         [0, 0, 1, 0],
-                         [0, 1, 0, 0],
-                         [0, 0, 1, 0],
-                         [1, 0, 0, 0]])
+    expected = np.array(
+        [[0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 1, 0], [1, 0, 0, 0]]
+    )
     got = lb.fit_transform(inp)
-    assert_array_equal(lb.classes_, ['0', 'eggs', 'ham', 'spam'])
+    assert_array_equal(lb.classes_, ["0", "eggs", "ham", "spam"])
     assert_array_equal(expected, got)
     assert_array_equal(lb.inverse_transform(got), inp)
 
@@ -84,11 +79,15 @@ def test_label_binarizer_set_label_encoding(setup):
 
     # multi-class case
     inp = np.array([3, 2, 1, 2, 0])
-    expected = np.array([[-2, -2, -2, +2],
-                         [-2, -2, +2, -2],
-                         [-2, +2, -2, -2],
-                         [-2, -2, +2, -2],
-                         [+2, -2, -2, -2]])
+    expected = np.array(
+        [
+            [-2, -2, -2, +2],
+            [-2, -2, +2, -2],
+            [-2, +2, -2, -2],
+            [-2, -2, +2, -2],
+            [+2, -2, -2, -2],
+        ]
+    )
     got = lb.fit_transform(inp)
     assert_array_equal(expected, got)
     assert_array_equal(lb.inverse_transform(got), inp)
@@ -141,10 +140,7 @@ def test_label_binarize_with_class_order(setup):
     assert_array_equal(out, expected)
 
     out = label_binarize([0, 1, 2, 3], classes=[3, 2, 0, 1])
-    expected = np.array([[0, 0, 1, 0],
-                         [0, 0, 0, 1],
-                         [0, 1, 0, 0],
-                         [1, 0, 0, 0]])
+    expected = np.array([[0, 0, 1, 0], [0, 0, 0, 1], [0, 1, 0, 0], [1, 0, 0, 0]])
     assert_array_equal(out, expected)
 
 
@@ -156,19 +152,27 @@ def toarray(a):
 
 def check_binarized_results(y, classes, pos_label, neg_label, expected):
     for sparse_output in [True, False]:
-        if ((pos_label == 0 or neg_label != 0) and sparse_output):
+        if (pos_label == 0 or neg_label != 0) and sparse_output:
             with pytest.raises(ValueError):
-                label_binarize(y, classes=classes, neg_label=neg_label,
-                               pos_label=pos_label,
-                               sparse_output=sparse_output)
+                label_binarize(
+                    y,
+                    classes=classes,
+                    neg_label=neg_label,
+                    pos_label=pos_label,
+                    sparse_output=sparse_output,
+                )
             continue
 
         # check label_binarize
-        binarized = label_binarize(y, classes=classes, neg_label=neg_label,
-                                   pos_label=pos_label,
-                                   sparse_output=sparse_output)
+        binarized = label_binarize(
+            y,
+            classes=classes,
+            neg_label=neg_label,
+            pos_label=pos_label,
+            sparse_output=sparse_output,
+        )
         binarized = binarized.fetch()
-        if hasattr(binarized, 'raw'):
+        if hasattr(binarized, "raw"):
             binarized = binarized.raw
         assert_array_equal(toarray(binarized), expected)
         assert sp.issparse(binarized) == sparse_output
@@ -179,18 +183,19 @@ def check_binarized_results(y, classes, pos_label, neg_label, expected):
             inversed = _inverse_binarize_multiclass(binarized, classes=classes)
 
         else:
-            inversed = _inverse_binarize_thresholding(binarized,
-                                                      output_type=y_type,
-                                                      classes=classes,
-                                                      threshold=((neg_label +
-                                                                  pos_label) /
-                                                                 2.))
+            inversed = _inverse_binarize_thresholding(
+                binarized,
+                output_type=y_type,
+                classes=classes,
+                threshold=((neg_label + pos_label) / 2.0),
+            )
 
         assert_array_equal(toarray(inversed), toarray(y))
 
         # Check label binarizer
-        lb = LabelBinarizer(neg_label=neg_label, pos_label=pos_label,
-                            sparse_output=sparse_output)
+        lb = LabelBinarizer(
+            neg_label=neg_label, pos_label=pos_label, sparse_output=sparse_output
+        )
         binarized = lb.fit_transform(y)
         assert_array_equal(toarray(binarized), expected)
         assert binarized.issparse() == sparse_output
@@ -228,8 +233,9 @@ def test_label_binarize_multiclass(setup):
     check_binarized_results(y, classes, pos_label, neg_label, expected)
 
     with pytest.raises(ValueError):
-        label_binarize(y, classes=classes, neg_label=-1, pos_label=pos_label,
-                       sparse_output=True)
+        label_binarize(
+            y, classes=classes, neg_label=-1, pos_label=pos_label, sparse_output=True
+        )
 
 
 def test_label_binarize_multilabel(setup):
@@ -241,12 +247,12 @@ def test_label_binarize_multilabel(setup):
     y_sparse = [sp.csr_matrix(y_ind)]
 
     for y in [y_ind] + y_sparse:
-        check_binarized_results(y, classes, pos_label, neg_label,
-                                expected)
+        check_binarized_results(y, classes, pos_label, neg_label, expected)
 
     with pytest.raises(ValueError):
-        label_binarize(y, classes=classes, neg_label=-1, pos_label=pos_label,
-                       sparse_output=True)
+        label_binarize(
+            y, classes=classes, neg_label=-1, pos_label=pos_label, sparse_output=True
+        )
 
 
 def test_invalid_input_label_binarize(setup):

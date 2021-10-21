@@ -22,21 +22,22 @@ from ...utils import has_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, build_df, build_series, validate_axis
 
-_need_consolidate = pd.__version__ in ('1.1.0', '1.3.0', '1.3.1')
+_need_consolidate = pd.__version__ in ("1.1.0", "1.3.0", "1.3.1")
 
 
 class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.SHIFT
 
-    _input = KeyField('input')
-    _periods = Int64Field('periods')
-    _freq = AnyField('freq')
-    _axis = Int8Field('axis')
-    _fill_value = AnyField('fill_value')
+    _input = KeyField("input")
+    _periods = Int64Field("periods")
+    _freq = AnyField("freq")
+    _axis = Int8Field("axis")
+    _fill_value = AnyField("fill_value")
 
     def __init__(self, periods=None, freq=None, axis=None, fill_value=None, **kw):
-        super().__init__(_periods=periods, _freq=freq, _axis=axis,
-                         _fill_value=fill_value, **kw)
+        super().__init__(
+            _periods=periods, _freq=freq, _axis=axis, _fill_value=fill_value, **kw
+        )
 
     @property
     def input(self):
@@ -64,8 +65,12 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
 
     def _call_dataframe(self, df):
         test_df = build_df(df)
-        result_df = test_df.shift(periods=self._periods, freq=self._freq,
-                                  axis=self._axis, fill_value=self._fill_value)
+        result_df = test_df.shift(
+            periods=self._periods,
+            freq=self._freq,
+            axis=self._axis,
+            fill_value=self._fill_value,
+        )
 
         if self._freq is None:
             # shift data
@@ -75,30 +80,42 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
             # shift index
             if self._axis == 0:
                 index_value = self._get_index_value(
-                    df.index_value, self._periods, self._freq)
+                    df.index_value, self._periods, self._freq
+                )
                 columns_value = df.columns_value
             else:
                 columns_value = parse_index(result_df.dtypes.index, store_data=True)
                 index_value = df.index_value
 
-        return self.new_dataframe([df], shape=df.shape,
-                                  dtypes=result_df.dtypes, index_value=index_value,
-                                  columns_value=columns_value)
+        return self.new_dataframe(
+            [df],
+            shape=df.shape,
+            dtypes=result_df.dtypes,
+            index_value=index_value,
+            columns_value=columns_value,
+        )
 
     def _call_series(self, series):
         test_series = build_series(series)
-        result_series = test_series.shift(periods=self._periods, freq=self._freq,
-                                          axis=self._axis, fill_value=self._fill_value)
+        result_series = test_series.shift(
+            periods=self._periods,
+            freq=self._freq,
+            axis=self._axis,
+            fill_value=self._fill_value,
+        )
 
         index_value = series.index_value
         if self._freq is not None:
             # shift index
             index_value = self._get_index_value(index_value, self._periods, self._freq)
 
-        return self.new_series([series], shape=series.shape,
-                               index_value=index_value,
-                               dtype=result_series.dtype,
-                               name=series.name)
+        return self.new_series(
+            [series],
+            shape=series.shape,
+            index_value=index_value,
+            dtype=result_series.dtype,
+            name=series.name,
+        )
 
     def __call__(self, df_or_series):
         if df_or_series.op.output_types[0] == OutputType.dataframe:
@@ -111,14 +128,16 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
 
     @staticmethod
     def _get_index_value(input_index_value, periods, freq):
-        if not input_index_value.has_value() and \
-                input_index_value.min_val is not None and \
-                input_index_value.max_val is not None and \
-                freq is not None and \
-                input_index_value.is_monotonic_increasing_or_decreasing:
-            pd_index = pd.Index([input_index_value.min_val,
-                                 input_index_value.max_val]).shift(
-                periods=periods, freq=freq)
+        if (
+            not input_index_value.has_value()
+            and input_index_value.min_val is not None
+            and input_index_value.max_val is not None
+            and freq is not None
+            and input_index_value.is_monotonic_increasing_or_decreasing
+        ):
+            pd_index = pd.Index(
+                [input_index_value.min_val, input_index_value.max_val]
+            ).shift(periods=periods, freq=freq)
             index_value = parse_index(pd_index)
             index_value.value._min_val_close = input_index_value.min_val_close
             index_value.value._max_val_close = input_index_value.max_val_close
@@ -145,17 +164,23 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
                 i = c.index[axis]
                 start, end = cum_nsplit[i], cum_nsplit[i + 1]
                 if axis == 0:
-                    index_value = cls._get_index_value(c.index_value, op.periods, op.freq)
+                    index_value = cls._get_index_value(
+                        c.index_value, op.periods, op.freq
+                    )
                     columns_value = c.columns_value
                     dtypes = c.dtypes
                 else:
-                    dtypes = out.dtypes.iloc[start: end]
+                    dtypes = out.dtypes.iloc[start:end]
                     columns_value = parse_index(dtypes.index, store_data=True)
                     index_value = c.index_value
-                out_chunk = chunk_op.new_chunk([c], index=c.index, shape=c.shape,
-                                               index_value=index_value,
-                                               columns_value=columns_value,
-                                               dtypes=dtypes)
+                out_chunk = chunk_op.new_chunk(
+                    [c],
+                    index=c.index,
+                    shape=c.shape,
+                    index_value=index_value,
+                    columns_value=columns_value,
+                    dtypes=dtypes,
+                )
                 out_chunks.append(out_chunk)
         else:
             if np.isnan(np.sum(inp.nsplits[axis])):  # pragma: no cover
@@ -203,32 +228,38 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
                             to_concats.append(to_concat)
 
                     if len(to_concats) > 1:
-                        concat_op = DataFrameConcat(axis=axis,
-                                                    output_types=[OutputType.dataframe])
+                        concat_op = DataFrameConcat(
+                            axis=axis, output_types=[OutputType.dataframe]
+                        )
                         to_shift_chunk = concat_op.new_chunk(to_concats)
                     else:
                         to_shift_chunk = to_concats[0]
 
                     chunk_op = op.copy().reset_key()
                     if axis == 1:
-                        dtypes = out.dtypes.iloc[start: end]
+                        dtypes = out.dtypes.iloc[start:end]
                         columns_value = parse_index(dtypes.index, store_data=True)
                         index_value = c.index_value
                     else:
                         dtypes = c.dtypes
                         columns_value = c.columns_value
-                        index_value = cls._get_index_value(c.index_value, op.periods, op.freq)
+                        index_value = cls._get_index_value(
+                            c.index_value, op.periods, op.freq
+                        )
 
-                    out_chunk = chunk_op.new_chunk([to_shift_chunk],
-                                                   index=index, shape=c.shape,
-                                                   index_value=index_value,
-                                                   columns_value=columns_value,
-                                                   dtypes=dtypes)
+                    out_chunk = chunk_op.new_chunk(
+                        [to_shift_chunk],
+                        index=index,
+                        shape=c.shape,
+                        index_value=index_value,
+                        columns_value=columns_value,
+                        dtypes=dtypes,
+                    )
                     out_chunks.append(out_chunk)
 
         params = out.params
-        params['chunks'] = out_chunks
-        params['nsplits'] = inp.nsplits
+        params["chunks"] = out_chunks
+        params["nsplits"] = inp.nsplits
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=[params])
 
@@ -250,13 +281,15 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
 
             if op.freq is not None:
                 # shift index
-                index_value = cls._get_index_value(c.index_value,
-                                                   op.periods, op.freq)
-                out_chunk = chunk_op.new_chunk([c], shape=c.shape,
-                                               index_value=index_value,
-                                               name=c.name,
-                                               dtype=out.dtype,
-                                               index=c.index)
+                index_value = cls._get_index_value(c.index_value, op.periods, op.freq)
+                out_chunk = chunk_op.new_chunk(
+                    [c],
+                    shape=c.shape,
+                    index_value=index_value,
+                    name=c.name,
+                    dtype=out.dtype,
+                    index=c.index,
+                )
             else:
                 inc = op.periods > 0
                 prev_i = i - 1 if inc else i + 1
@@ -264,7 +297,9 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
                 to_concats = [c]
                 left = abs(op.periods)
                 while left > 0 and 0 <= prev_i < inp.chunk_shape[0]:
-                    prev_chunk = inp.cix[prev_i, ]
+                    prev_chunk = inp.cix[
+                        prev_i,
+                    ]
                     size = min(left, prev_chunk.shape[0])
                     left -= size
                     prev_i = prev_i - 1 if inc else prev_i + 1
@@ -287,15 +322,19 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
                 else:
                     to_concat = to_concats[0]
 
-                out_chunk = chunk_op.new_chunk([to_concat],
-                                               index=(i,), shape=c.shape,
-                                               index_value=c.index_value,
-                                               dtype=out.dtype, name=out.name)
+                out_chunk = chunk_op.new_chunk(
+                    [to_concat],
+                    index=(i,),
+                    shape=c.shape,
+                    index_value=c.index_value,
+                    dtype=out.dtype,
+                    name=out.name,
+                )
             out_chunks.append(out_chunk)
 
         params = out.params
-        params['chunks'] = out_chunks
-        params['nsplits'] = inp.nsplits
+        params["chunks"] = out_chunks
+        params["nsplits"] = inp.nsplits
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=[params])
 
@@ -314,8 +353,11 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
         obj = ctx[op.input.key]
         out = op.outputs[0]
 
-        if _need_consolidate and \
-                isinstance(obj, (pd.Series, pd.DataFrame)) and len(obj._data.blocks) > 1:
+        if (
+            _need_consolidate
+            and isinstance(obj, (pd.Series, pd.DataFrame))
+            and len(obj._data.blocks) > 1
+        ):
             # if #internal blocks > 1, shift will create wrong result in pandas 1.1.0
             # see https://github.com/pandas-dev/pandas/issues/35488
             # if shifting merged dataframe slices, shift will raise TypeError in pandas 1.3.0
@@ -323,8 +365,9 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
             # thus we force to do consolidate
             obj._data._consolidate_inplace()
 
-        result = obj.shift(periods=periods, freq=op.freq,
-                           axis=axis, fill_value=op.fill_value)
+        result = obj.shift(
+            periods=periods, freq=op.freq, axis=axis, fill_value=op.fill_value
+        )
         if result.shape != out.shape:
             slc = [slice(None)] * obj.ndim
             if periods > 0:
@@ -414,8 +457,7 @@ def shift(df_or_series, periods=1, freq=None, axis=0, fill_value=None):
     if periods == 0:
         return df_or_series.copy()
 
-    op = DataFrameShift(periods=periods, freq=freq,
-                        axis=axis, fill_value=fill_value)
+    op = DataFrameShift(periods=periods, freq=freq, axis=axis, fill_value=fill_value)
     return op(df_or_series)
 
 
@@ -444,8 +486,11 @@ def tshift(df_or_series, periods: int = 1, freq=None, axis=0):
     ValueError is thrown
     """
     axis = validate_axis(axis, df_or_series)
-    index = df_or_series.index_value.to_pandas() if axis == 0 else \
-        df_or_series.columns_value.to_pandas()
+    index = (
+        df_or_series.index_value.to_pandas()
+        if axis == 0
+        else df_or_series.columns_value.to_pandas()
+    )
 
     if freq is None:
         freq = getattr(index, "freq", None)
@@ -454,6 +499,6 @@ def tshift(df_or_series, periods: int = 1, freq=None, axis=0):
         freq = getattr(index, "inferred_freq", None)
 
     if freq is None:
-        raise ValueError('Freq was not given and was not set in the index')
+        raise ValueError("Freq was not given and was not set in the index")
 
     return shift(df_or_series, periods=periods, freq=freq, axis=axis)

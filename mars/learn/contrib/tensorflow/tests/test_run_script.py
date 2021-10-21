@@ -15,6 +15,7 @@
 import os
 
 import pytest
+
 try:
     import tensorflow
 except ImportError:
@@ -23,12 +24,17 @@ except ImportError:
 from .. import run_tensorflow_script
 
 
-@pytest.mark.skipif(tensorflow is None, reason='tensorflow not installed')
+@pytest.mark.skipif(tensorflow is None, reason="tensorflow not installed")
 def test_local_run_tensor_flow_script(setup_cluster):
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tf_distributed_sample.py')
-    assert run_tensorflow_script(
-        path, n_workers=2, command_argv=['multiple']
-    ).fetch()['status'] == 'ok'
+    path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "tf_distributed_sample.py"
+    )
+    assert (
+        run_tensorflow_script(path, n_workers=2, command_argv=["multiple"]).fetch()[
+            "status"
+        ]
+        == "ok"
+    )
 
     with pytest.raises(ValueError):
         run_tensorflow_script(path, n_workers=0)

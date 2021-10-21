@@ -20,14 +20,18 @@ import sys
 import time
 from collections import defaultdict
 from functools import reduce, wraps
-from typing import Callable, Coroutine, Dict, Iterator, \
-    List, Optional, Set, Type, Union
+from typing import Callable, Coroutine, Dict, Iterator, List, Optional, Set, Type, Union
 
 from .... import oscar as mo
 from ....config import Config
 from ....core import ChunkGraph, TileableGraph
-from ....core.operand import Fetch, FetchShuffle, MapReduceOperand, \
-    ShuffleProxy, OperandStage
+from ....core.operand import (
+    Fetch,
+    FetchShuffle,
+    MapReduceOperand,
+    ShuffleProxy,
+    OperandStage,
+)
 from ....optimization.logical import OptimizationRecords
 from ....typing import TileableType, BandType
 from ....utils import build_fetch
@@ -43,7 +47,7 @@ from .stage import TaskStageProcessor
 logger = logging.getLogger(__name__)
 
 
-def _record_error(func: Union[Callable, Coroutine]=None, log_when_error=True):
+def _record_error(func: Union[Callable, Coroutine] = None, log_when_error=True):
     assert asyncio.iscoroutinefunction(func)
 
     @wraps(func)
@@ -52,7 +56,7 @@ def _record_error(func: Union[Callable, Coroutine]=None, log_when_error=True):
             return await func(processor, *args, **kwargs)
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
             if log_when_error:
-                logger.exception('Unexpected error happens in %s', func)
+                logger.exception("Unexpected error happens in %s", func)
             processor._err_infos.append(sys.exc_info())
             raise
 
@@ -63,14 +67,16 @@ class TaskProcessor:
     stage_processors: List[TaskStageProcessor]
     cur_stage_processor: Optional[TaskStageProcessor]
 
-    def __init__(self,
-                 task: Task,
-                 preprocessor: TaskPreprocessor,
-                 # APIs
-                 cluster_api: ClusterAPI,
-                 lifecycle_api: LifecycleAPI,
-                 scheduling_api: SchedulingAPI,
-                 meta_api: MetaAPI):
+    def __init__(
+        self,
+        task: Task,
+        preprocessor: TaskPreprocessor,
+        # APIs
+        cluster_api: ClusterAPI,
+        lifecycle_api: LifecycleAPI,
+        scheduling_api: SchedulingAPI,
+        meta_api: MetaAPI,
+    ):
         self._task = task
         self._preprocessor = preprocessor
 
@@ -81,8 +87,11 @@ class TaskProcessor:
         self._meta_api = meta_api
 
         self.result = TaskResult(
-            task_id=task.task_id, session_id=task.session_id, start_time=time.time(),
-            status=TaskStatus.pending)
+            task_id=task.task_id,
+            session_id=task.session_id,
+            start_time=time.time(),
+            status=TaskStatus.pending,
+        )
         self.done = asyncio.Event()
         self.stage_processors = []
         self.cur_stage_processor = None
@@ -117,15 +126,19 @@ class TaskProcessor:
     async def incref_fetch_tileables(self):
         # incref fetch tileables in tileable graph to prevent them from deleting
         to_incref_tileable_keys = [
-            tileable.op.source_key for tileable in self.tileable_graph
-            if isinstance(tileable.op, Fetch) and tileable in self._raw_tile_context]
+            tileable.op.source_key
+            for tileable in self.tileable_graph
+            if isinstance(tileable.op, Fetch) and tileable in self._raw_tile_context
+        ]
         await self._lifecycle_api.incref_tileables(to_incref_tileable_keys)
 
     @_record_error
     async def decref_fetch_tileables(self):
         fetch_tileable_keys = [
-            tileable.op.source_key for tileable in self.tileable_graph
-            if isinstance(tileable.op, Fetch) and tileable in self._raw_tile_context]
+            tileable.op.source_key
+            for tileable in self.tileable_graph
+            if isinstance(tileable.op, Fetch) and tileable in self._raw_tile_context
+        ]
         await self._lifecycle_api.decref_tileables(fetch_tileable_keys)
 
     @_record_error
@@ -139,8 +152,11 @@ class TaskProcessor:
             try:
                 tiled_tileable = self._preprocessor.get_tiled(result_tileable)
                 tracks[0].append(result_tileable.key)
-                tracks[1].append(self._lifecycle_api.track.delay(
-                    result_tileable.key, [c.key for c in tiled_tileable.chunks]))
+                tracks[1].append(
+                    self._lifecycle_api.track.delay(
+                        result_tileable.key, [c.key for c in tiled_tileable.chunks]
+                    )
+                )
                 processed.add(result_tileable)
             except KeyError:
                 # not tiled, skip
@@ -152,7 +168,8 @@ class TaskProcessor:
     @_record_error
     async def decref_result_tileables(self):
         await self._lifecycle_api.decref_tileables(
-            [t.key for t in self._lifecycle_processed_tileables])
+            [t.key for t in self._lifecycle_processed_tileables]
+        )
 
     @_record_error
     async def incref_stage(self, stage_processor: "TaskStageProcessor"):
@@ -166,8 +183,10 @@ class TaskProcessor:
             # process reducer, since mapper will generate sub keys
             # we incref (main_key, sub_key) for reducer
             for chunk in subtask.chunk_graph:
-                if isinstance(chunk.op, MapReduceOperand) and \
-                        chunk.op.stage == OperandStage.reduce:
+                if (
+                    isinstance(chunk.op, MapReduceOperand)
+                    and chunk.op.stage == OperandStage.reduce
+                ):
                     # reducer
                     data_keys = chunk.op.get_dependent_data_keys()
                     incref_chunk_keys.extend(data_keys)
@@ -178,8 +197,9 @@ class TaskProcessor:
         await self._lifecycle_api.incref_chunks(incref_chunk_keys)
 
     @classmethod
-    def _get_decref_stage_chunk_keys(cls,
-                                     stage_processor: "TaskStageProcessor") -> List[str]:
+    def _get_decref_stage_chunk_keys(
+        cls, stage_processor: "TaskStageProcessor"
+    ) -> List[str]:
         decref_chunk_keys = []
         error_or_cancelled = stage_processor.error_or_cancelled()
         if stage_processor.subtask_graph:
@@ -199,12 +219,15 @@ class TaskProcessor:
                                         data_keys = chunk.op.get_dependent_data_keys()
                                         decref_chunk_keys.extend(data_keys)
                                         decref_chunk_keys.extend(
-                                            [key[0] for key in data_keys])
+                                            [key[0] for key in data_keys]
+                                        )
                         decref_chunk_keys.extend(
-                            [c.key for c in inp_subtask.chunk_graph.results])
+                            [c.key for c in inp_subtask.chunk_graph.results]
+                        )
             # decref result of chunk graphs
             decref_chunk_keys.extend(
-                [c.key for c in stage_processor.chunk_graph.results])
+                [c.key for c in stage_processor.chunk_graph.results]
+            )
         return decref_chunk_keys
 
     @mo.extensible
@@ -218,13 +241,12 @@ class TaskProcessor:
     async def decref_stage(self, args_list, kwargs_list):
         decref_chunk_keys = []
         for args, kwargs in zip(args_list, kwargs_list):
-            decref_chunk_keys.extend(
-                self._get_decref_stage_chunk_keys(*args, **kwargs))
+            decref_chunk_keys.extend(self._get_decref_stage_chunk_keys(*args, **kwargs))
         await self._lifecycle_api.decref_chunks(decref_chunk_keys)
 
-    async def _get_next_chunk_graph(self,
-                                    chunk_graph_iter: Iterator[ChunkGraph]) \
-            -> Optional[ChunkGraph]:
+    async def _get_next_chunk_graph(
+        self, chunk_graph_iter: Iterator[ChunkGraph]
+    ) -> Optional[ChunkGraph]:
         def next_chunk_graph():
             try:
                 return next(chunk_graph_iter)
@@ -257,8 +279,9 @@ class TaskProcessor:
 
         return tileable_id_to_tileable
 
-    def _get_tileable_to_subtasks(self, subtask_graph: SubtaskGraph) \
-            -> Dict[TileableType, List[Subtask]]:
+    def _get_tileable_to_subtasks(
+        self, subtask_graph: SubtaskGraph
+    ) -> Dict[TileableType, List[Subtask]]:
         tileable_to_chunks = defaultdict(set)
         chunk_to_subtasks = dict()
 
@@ -277,23 +300,26 @@ class TaskProcessor:
             for chunk in subtask.chunk_graph:
                 # for every non-fuse chunks (including fused),
                 # register subtasks if needed
-                if isinstance(chunk.op, (FetchShuffle, Fetch)) or \
-                        chunk.key not in chunk_to_subtasks:
+                if (
+                    isinstance(chunk.op, (FetchShuffle, Fetch))
+                    or chunk.key not in chunk_to_subtasks
+                ):
                     continue
                 chunk_to_subtasks[chunk.key].add(subtask)
 
         tileable_to_subtasks = dict()
         # collect subtasks for tileables
         for tileable, chunk_keys in tileable_to_chunks.items():
-            tileable_to_subtasks[tileable] = list(reduce(
-                operator.or_,
-                [chunk_to_subtasks[chunk_key] for chunk_key in chunk_keys]
-            ))
+            tileable_to_subtasks[tileable] = list(
+                reduce(
+                    operator.or_,
+                    [chunk_to_subtasks[chunk_key] for chunk_key in chunk_keys],
+                )
+            )
         return tileable_to_subtasks
 
     @_record_error
-    async def get_next_stage_processor(self) \
-            -> Optional[TaskStageProcessor]:
+    async def get_next_stage_processor(self) -> Optional[TaskStageProcessor]:
         tileable_graph = self._preprocessor.tileable_graph
         self._init_chunk_graph_iter(tileable_graph)
 
@@ -306,18 +332,26 @@ class TaskProcessor:
         # gen subtask graph
         available_bands = await self._get_available_band_slots()
         subtask_graph = await asyncio.to_thread(
-            self._preprocessor.analyze, chunk_graph, available_bands)
+            self._preprocessor.analyze, chunk_graph, available_bands
+        )
         tileable_to_subtasks = await asyncio.to_thread(
-            self._get_tileable_to_subtasks, subtask_graph)
+            self._get_tileable_to_subtasks, subtask_graph
+        )
         tileable_id_to_tileable = await asyncio.to_thread(
             self._get_tileable_id_to_tileable
         )
         stage_processor = TaskStageProcessor(
-            new_task_id(), self._task, chunk_graph, subtask_graph,
-            list(available_bands), tileable_to_subtasks,
+            new_task_id(),
+            self._task,
+            chunk_graph,
+            subtask_graph,
+            list(available_bands),
+            tileable_to_subtasks,
             tileable_id_to_tileable,
             self._get_chunk_optimization_records(),
-            self._scheduling_api, self._meta_api)
+            self._scheduling_api,
+            self._meta_api,
+        )
         return stage_processor
 
     @_record_error
@@ -350,10 +384,7 @@ class TaskProcessorActor(mo.Actor):
     _processed_task_ids: Set[str]
     _cur_processor: Optional[TaskProcessor]
 
-    def __init__(self,
-                 session_id: str,
-                 task_id: str,
-                 task_name: str = None):
+    def __init__(self, session_id: str, task_id: str, task_name: str = None):
         self.session_id = session_id
         self.task_id = task_id
         self.task_name = task_name
@@ -371,23 +402,30 @@ class TaskProcessorActor(mo.Actor):
         self._cluster_api = await ClusterAPI.create(self.address)
         self._scheduling_api = await SchedulingAPI.create(self.session_id, self.address)
         self._meta_api = await MetaAPI.create(self.session_id, self.address)
-        self._lifecycle_api = await LifecycleAPI.create(
-            self.session_id, self.address)
+        self._lifecycle_api = await LifecycleAPI.create(self.session_id, self.address)
 
     @classmethod
     def gen_uid(cls, session_id: str, task_id: str):
-        return f'task_processor_{session_id}_{task_id}'
+        return f"task_processor_{session_id}_{task_id}"
 
-    async def add_task(self,
-                       task: Task,
-                       tiled_context: Dict[TileableType, TileableType],
-                       config: Config,
-                       task_preprocessor_cls: Type[TaskPreprocessor]):
+    async def add_task(
+        self,
+        task: Task,
+        tiled_context: Dict[TileableType, TileableType],
+        config: Config,
+        task_preprocessor_cls: Type[TaskPreprocessor],
+    ):
         task_preprocessor = task_preprocessor_cls(
-            task, tiled_context=tiled_context, config=config)
-        processor = TaskProcessor(task, task_preprocessor,
-                                  self._cluster_api, self._lifecycle_api,
-                                  self._scheduling_api, self._meta_api)
+            task, tiled_context=tiled_context, config=config
+        )
+        processor = TaskProcessor(
+            task,
+            task_preprocessor,
+            self._cluster_api,
+            self._lifecycle_api,
+            self._scheduling_api,
+            self._meta_api,
+        )
         self._task_id_to_processor[task.task_id] = processor
 
         # tell self to start running
@@ -454,8 +492,9 @@ class TaskProcessorActor(mo.Actor):
                 self._cur_processor = None
 
     async def wait(self, timeout: int = None):
-        fs = [processor.done.wait() for processor
-              in self._task_id_to_processor.values()]
+        fs = [
+            processor.done.wait() for processor in self._task_id_to_processor.values()
+        ]
 
         _, pending = yield asyncio.wait(fs, timeout=timeout)
         if not pending:
@@ -494,8 +533,11 @@ class TaskProcessorActor(mo.Actor):
         subtask_progress = 0.0
         n_stage = 0
         stage_processors = itertools.chain(
-            *(processor.stage_processors for processor
-              in self._task_id_to_processor.values()))
+            *(
+                processor.stage_processors
+                for processor in self._task_id_to_processor.values()
+            )
+        )
         for stage_processor in stage_processors:
             if stage_processor.subtask_graph is None:  # pragma: no cover
                 # generating subtask
@@ -503,11 +545,14 @@ class TaskProcessorActor(mo.Actor):
             n_subtask = len(stage_processor.subtask_graph)
             if n_subtask == 0:  # pragma: no cover
                 continue
-            progress = sum(result.progress for result
-                           in stage_processor.subtask_results.values())
-            progress += sum(result.progress for subtask_key, result
-                            in stage_processor.subtask_snapshots.items()
-                            if subtask_key not in stage_processor.subtask_results)
+            progress = sum(
+                result.progress for result in stage_processor.subtask_results.values()
+            )
+            progress += sum(
+                result.progress
+                for subtask_key, result in stage_processor.subtask_snapshots.items()
+                if subtask_key not in stage_processor.subtask_results
+            )
             subtask_progress += progress / n_subtask
             n_stage += 1
         if n_stage > 0:
@@ -540,23 +585,19 @@ class TaskProcessorActor(mo.Actor):
 
             node_name = str(chunk.op)
 
-            node_list.append({
-                'tileableId': chunk.key,
-                'tileableName': node_name
-            })
+            node_list.append({"tileableId": chunk.key, "tileableName": node_name})
             for inp, is_pure_dep in zip(chunk.inputs, chunk.op.pure_depends):
                 if inp not in tileable_graph:  # pragma: no cover
                     continue
-                edge_list.append({
-                    'fromTileableId': inp.key,
-                    'toTileableId': chunk.key,
-                    'linkType': 1 if is_pure_dep else 0,
-                })
+                edge_list.append(
+                    {
+                        "fromTileableId": inp.key,
+                        "toTileableId": chunk.key,
+                        "linkType": 1 if is_pure_dep else 0,
+                    }
+                )
 
-        graph_dict = {
-            'tileables': node_list,
-            'dependencies': edge_list
-        }
+        graph_dict = {"tileables": node_list, "dependencies": edge_list}
         return graph_dict
 
     def get_tileable_details(self):
@@ -577,14 +618,18 @@ class TaskProcessorActor(mo.Actor):
 
         tileable_infos = dict()
         for tileable, subtasks in tileable_to_subtasks.items():
-            results = [subtask_results.get(subtask.subtask_id, default_result)
-                       for subtask in subtasks]
+            results = [
+                subtask_results.get(subtask.subtask_id, default_result)
+                for subtask in subtasks
+            ]
 
             # calc progress
             if not results:  # pragma: no cover
                 progress = 1.0
             else:
-                progress = 1.0 * sum(result.progress for result in results) / len(results)
+                progress = (
+                    1.0 * sum(result.progress for result in results) / len(results)
+                )
 
             # calc status
             statuses = set(result.status for result in results)
@@ -600,14 +645,17 @@ class TaskProcessorActor(mo.Actor):
                 status = SubtaskStatus.running
 
             props = {slot: getattr(tileable, slot, None) for slot in tileable.__slots__}
-            props = {k: v for k, v in props.get('_FIELD_VALUES').items()
-                     if k != 'key' and isinstance(v, (int, float, str))}
+            props = {
+                k: v
+                for k, v in props.get("_FIELD_VALUES").items()
+                if k != "key" and isinstance(v, (int, float, str))
+            }
 
             tileable_infos[tileable.key] = {
-                'progress': progress,
-                'subtaskCount': len(results),
-                'status': status.value,
-                'properties': props,
+                "progress": progress,
+                "subtaskCount": len(results),
+                "status": status.value,
+                "properties": props,
             }
 
         return tileable_infos
@@ -644,22 +692,22 @@ class TaskProcessorActor(mo.Actor):
                     if pred.subtask_id in returned_subtasks:  # pragma: no cover
                         continue
                     returned_subtasks[pred.subtask_id] = pred
-                    subtask_id_to_types[pred.subtask_id] = 'Input'
+                    subtask_id_to_types[pred.subtask_id] = "Input"
                 for succ in subtask_graph.iter_successors(subtask):
                     if succ.subtask_id in returned_subtasks:  # pragma: no cover
                         continue
                     returned_subtasks[succ.subtask_id] = succ
-                    subtask_id_to_types[succ.subtask_id] = 'Output'
+                    subtask_id_to_types[succ.subtask_id] = "Output"
 
         for subtask in returned_subtasks.values():
             subtask_result = subtask_results.get(
                 subtask, subtask_snapshots.get(subtask, default_result)
             )
             subtask_details[subtask.subtask_id] = {
-                'name': subtask.subtask_name,
-                'status': subtask_result.status.value,
-                'progress': subtask_result.progress,
-                'nodeType': subtask_id_to_types.get(subtask.subtask_id, 'Calculation'),
+                "name": subtask.subtask_name,
+                "status": subtask_result.status.value,
+                "progress": subtask_result.progress,
+                "nodeType": subtask_id_to_types.get(subtask.subtask_id, "Calculation"),
             }
 
         for subtask in returned_subtasks.values():
@@ -667,7 +715,7 @@ class TaskProcessorActor(mo.Actor):
             for pred in subtask_graph.iter_predecessors(subtask):
                 if pred.subtask_id in returned_subtasks:
                     pred_ids.append(pred.subtask_id)
-            subtask_details[subtask.subtask_id]['fromSubtaskIds'] = pred_ids
+            subtask_details[subtask.subtask_id]["fromSubtaskIds"] = pred_ids
         return subtask_details
 
     def get_result_tileable(self, tileable_key: str):
@@ -677,11 +725,11 @@ class TaskProcessorActor(mo.Actor):
             if result_tileable.key == tileable_key:
                 tiled = processor.get_tiled(result_tileable)
                 return build_fetch(tiled)
-        raise KeyError(f'Tileable {tileable_key} does not exist')  # pragma: no cover
+        raise KeyError(f"Tileable {tileable_key} does not exist")  # pragma: no cover
 
-    async def _decref_input_subtasks(self,
-                                     subtask: Subtask,
-                                     subtask_graph: SubtaskGraph):
+    async def _decref_input_subtasks(
+        self, subtask: Subtask, subtask_graph: SubtaskGraph
+    ):
         # make sure subtasks are decreffed only once
         if subtask.subtask_id not in self._subtask_decref_events:
             self._subtask_decref_events[subtask.subtask_id] = asyncio.Event()
@@ -695,8 +743,10 @@ class TaskProcessorActor(mo.Actor):
                 # for reducer chunk, decref mapper chunks
                 if isinstance(result_chunk.op, ShuffleProxy):
                     for chunk in subtask.chunk_graph:
-                        if isinstance(chunk.op, MapReduceOperand) and \
-                                chunk.op.stage == OperandStage.reduce:
+                        if (
+                            isinstance(chunk.op, MapReduceOperand)
+                            and chunk.op.stage == OperandStage.reduce
+                        ):
                             data_keys = chunk.op.get_dependent_data_keys()
                             decref_chunk_keys.extend(data_keys)
                             # decref main key as well
@@ -722,10 +772,15 @@ class TaskProcessorActor(mo.Actor):
                 # Since every worker will call supervisor to set subtask result,
                 # we need to release actor lock to make `decref_chunks` parallel to avoid blocking
                 # other `set_subtask_result` calls.
-                yield self._decref_input_subtasks(subtask, stage_processor.subtask_graph)
+                yield self._decref_input_subtasks(
+                    subtask, stage_processor.subtask_graph
+                )
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
                 _, err, tb = sys.exc_info()
-                if subtask_result.status not in (SubtaskStatus.errored, SubtaskStatus.cancelled):
+                if subtask_result.status not in (
+                    SubtaskStatus.errored,
+                    SubtaskStatus.cancelled,
+                ):
                     subtask_result.status = SubtaskStatus.errored
                     subtask_result.error = err
                     subtask_result.traceback = tb

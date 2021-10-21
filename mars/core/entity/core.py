@@ -12,25 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...serialization.serializables import Serializable, FieldTypes, \
-    DictField, ReferenceField
+from ...serialization.serializables import (
+    Serializable,
+    FieldTypes,
+    DictField,
+    ReferenceField,
+)
 from ...utils import AttributeDict
 from ..base import Base
 
 
 class EntityData(Base):
-    __slots__ = '__weakref__', '_siblings'
+    __slots__ = "__weakref__", "_siblings"
     type_name = None
 
     # required fields
-    _op = ReferenceField('op', 'mars.core.operand.base.Operand')
+    _op = ReferenceField("op", "mars.core.operand.base.Operand")
     # optional fields
-    _extra_params = DictField('extra_params',
-                              key_type=FieldTypes.string)
+    _extra_params = DictField("extra_params", key_type=FieldTypes.string)
 
     def __init__(self, *args, **kwargs):
-        extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self._FIELDS))
-        kwargs['_extra_params'] = kwargs.pop('_extra_params', extras)
+        extras = AttributeDict(
+            (k, kwargs.pop(k)) for k in set(kwargs) - set(self._FIELDS)
+        )
+        kwargs["_extra_params"] = kwargs.pop("_extra_params", extras)
         super().__init__(*args, **kwargs)
 
     @property
@@ -63,8 +68,11 @@ class EntityData(Base):
         from graphviz import Source
 
         g = self.build_graph(**kw)
-        dot = g.to_dot(graph_attrs=graph_attrs, node_attrs=node_attrs,
-                       result_chunk_keys={c.key for c in self.chunks})
+        dot = g.to_dot(
+            graph_attrs=graph_attrs,
+            node_attrs=node_attrs,
+            result_chunk_keys={c.key for c in self.chunks},
+        )
 
         return Source(dot)
 
@@ -73,7 +81,7 @@ class Entity(Serializable):
     _allow_data_type_ = ()
     type_name = None
 
-    _data = ReferenceField('data', EntityData)
+    _data = ReferenceField("data", EntityData)
 
     def __init__(self, data=None, **kw):
         super().__init__(_data=data, **kw)
@@ -92,7 +100,7 @@ class Entity(Serializable):
 
     def _check_data(self, data):
         if data is not None and not isinstance(data, self._allow_data_type_):
-            raise TypeError(f'Expect {self._allow_data_type_}, got {type(data)}')
+            raise TypeError(f"Expect {self._allow_data_type_}, got {type(data)}")
 
     @property
     def data(self):

@@ -70,16 +70,16 @@ def _install():
     from .astype import _astype
 
     for cls in (Tensor, TensorData):
-        setattr(cls, 'astype', _astype)
-        setattr(cls, 'swapaxes', swapaxes)
-        setattr(cls, 'squeeze', squeeze)
-        setattr(cls, 'repeat', repeat)
-        setattr(cls, 'ravel', ravel)
-        setattr(cls, 'flatten', flatten)
-        setattr(cls, 'to_gpu', to_gpu)
-        setattr(cls, 'to_cpu', to_cpu)
-        setattr(cls, 'rebalance', rebalance)
-        setattr(cls, 'map_chunk', map_chunk)
+        setattr(cls, "astype", _astype)
+        setattr(cls, "swapaxes", swapaxes)
+        setattr(cls, "squeeze", squeeze)
+        setattr(cls, "repeat", repeat)
+        setattr(cls, "ravel", ravel)
+        setattr(cls, "flatten", flatten)
+        setattr(cls, "to_gpu", to_gpu)
+        setattr(cls, "to_cpu", to_cpu)
+        setattr(cls, "rebalance", rebalance)
+        setattr(cls, "map_chunk", map_chunk)
 
 
 _install()
