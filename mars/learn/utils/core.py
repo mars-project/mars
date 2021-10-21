@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
+
+import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
+try:
+    from sklearn import get_config as sklearn_get_config
+except ImportError:  # pragma: no cover
+    sklearn_get_config = None
 
-from ...tensor import tensor as astensor
+from ... import options
 from ...dataframe import DataFrame, Series
 from ...dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
+from ...tensor import tensor as astensor
+from ...utils import parse_readable_size
 
 
 def convert_to_tensor_or_dataframe(item):
@@ -40,3 +49,51 @@ def copy_learned_attributes(from_estimator: BaseEstimator,
     attrs = {k: v for k, v in vars(from_estimator).items() if k.endswith('_')}
     for k, v in attrs.items():
         setattr(to_estimator, k, v)
+
+
+def get_chunk_n_rows(row_bytes, max_n_rows=None,
+                     working_memory=None):
+    """Calculates how many rows can be processed within working_memory
+
+    Parameters
+    ----------
+    row_bytes : int
+        The expected number of bytes of memory that will be consumed
+        during the processing of each row.
+    max_n_rows : int, optional
+        The maximum return value.
+    working_memory : int or float, optional
+        The number of rows to fit inside this number of MiB will be returned.
+        When None (default), the value of
+        ``sklearn.get_config()['working_memory']`` is used.
+
+    Returns
+    -------
+    int or the value of n_samples
+
+    Warns
+    -----
+    Issues a UserWarning if ``row_bytes`` exceeds ``working_memory`` MiB.
+    """
+
+    if working_memory is None:  # pragma: no cover
+        working_memory = options.learn.working_memory
+        if working_memory is None and sklearn_get_config is not None:
+            working_memory = sklearn_get_config()['working_memory']
+        elif working_memory is None:
+            working_memory = 1024
+
+    if isinstance(working_memory, int):
+        working_memory *= 2 ** 20
+    else:
+        working_memory = parse_readable_size(working_memory)[0]
+
+    chunk_n_rows = int(working_memory // row_bytes)
+    if max_n_rows is not None:
+        chunk_n_rows = min(chunk_n_rows, max_n_rows)
+    if chunk_n_rows < 1:  # pragma: no cover
+        warnings.warn('Could not adhere to working_memory config. '
+                      'Currently %.0fMiB, %.0fMiB required.' %
+                      (working_memory, np.ceil(row_bytes * 2 ** -20)))
+        chunk_n_rows = 1
+    return chunk_n_rows
