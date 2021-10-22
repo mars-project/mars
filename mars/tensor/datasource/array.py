@@ -33,7 +33,7 @@ class ArrayDataSource(TensorNoInput):
 
     _op_type_ = OperandDef.TENSOR_DATA_SOURCE
 
-    data = NDArrayField('data')
+    data = NDArrayField("data")
 
     def __init__(self, data=None, dtype=None, gpu=None, **kw):
         if dtype is not None:
@@ -50,7 +50,8 @@ class ArrayDataSource(TensorNoInput):
         _, idx, chunk_size = args
         chunk_op = self.copy().reset_key()
         chunk_op.data = self.data[get_chunk_slices(chunk_size, idx)].astype(
-            chunk_op.dtype, order=self.outputs[0].order.value, copy=False)
+            chunk_op.dtype, order=self.outputs[0].order.value, copy=False
+        )
 
         return chunk_op
 
@@ -66,16 +67,20 @@ class CSRMatrixDataSource(TensorNoInput):
 
     _op_type_ = OperandDef.SPARSE_MATRIX_DATA_SOURCE
 
-    indices = NDArrayField('indices')
-    indptr = NDArrayField('indptr')
-    data = NDArrayField('data')
-    shape = TupleField('shape', FieldTypes.int64,
-                       on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
+    indices = NDArrayField("indices")
+    indptr = NDArrayField("indptr")
+    data = NDArrayField("data")
+    shape = TupleField(
+        "shape",
+        FieldTypes.int64,
+        on_serialize=on_serialize_shape,
+        on_deserialize=on_deserialize_shape,
+    )
 
     def __init__(self, data=None, **kw):
-        kw['sparse'] = True
+        kw["sparse"] = True
         if is_cupy(data):  # pragma: no cover
-            kw['gpu'] = True
+            kw["gpu"] = True
         super().__init__(data=data, **kw)
 
     def to_chunk_op(self, *args):
@@ -86,16 +91,14 @@ class CSRMatrixDataSource(TensorNoInput):
             shape = (1, self.shape[0])
         else:
             shape = self.shape
-        data = xps.csr_matrix(
-            (self.data, self.indices, self.indptr), shape)
+        data = xps.csr_matrix((self.data, self.indices, self.indptr), shape)
         chunk_data = data[get_chunk_slices(chunk_size, idx)]
 
         chunk_op = self.copy().reset_key()
         chunk_op.data = chunk_data.data
         chunk_op.indices = chunk_data.indices
         chunk_op.indptr = chunk_data.indptr
-        chunk_shape = chunk_data.shape[1:] \
-            if len(self.shape) == 1 else chunk_data.shape
+        chunk_shape = chunk_data.shape[1:] if len(self.shape) == 1 else chunk_data.shape
         chunk_op.shape = chunk_shape
 
         return chunk_op
@@ -104,9 +107,10 @@ class CSRMatrixDataSource(TensorNoInput):
     def execute(cls, ctx, op: "CSRMatrixDataSource"):
         xps = cps if op.gpu else sps
         chunk_shape = (1, op.shape[0]) if op.outputs[0].ndim == 1 else op.shape
-        ctx[op.outputs[0].key] = SparseNDArray(xps.csr_matrix(
-            (op.data, op.indices, op.indptr), shape=chunk_shape
-        ), shape=op.shape)
+        ctx[op.outputs[0].key] = SparseNDArray(
+            xps.csr_matrix((op.data, op.indices, op.indptr), shape=chunk_shape),
+            shape=op.shape,
+        )
 
 
 def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
@@ -119,21 +123,30 @@ def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
     if dtype and spmatrix.dtype != dtype:
         spmatrix = spmatrix.astype(dtype)
     spmatrix = spmatrix.tocsr()
-    op = CSRMatrixDataSource(indices=spmatrix.indices, indptr=spmatrix.indptr,
-                             data=spmatrix.data, shape=spmatrix.shape,
-                             dtype=spmatrix.dtype, gpu=gpu)
+    op = CSRMatrixDataSource(
+        indices=spmatrix.indices,
+        indptr=spmatrix.indptr,
+        data=spmatrix.data,
+        shape=spmatrix.shape,
+        dtype=spmatrix.dtype,
+        gpu=gpu,
+    )
     return op(spmatrix.shape, chunk_size=chunk_size)
 
 
-def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None,
-           sparse=False) -> Tensor:
-    order = order or 'K'
+def tensor(
+    data=None, dtype=None, order="K", chunk_size=None, gpu=None, sparse=False
+) -> Tensor:
+    order = order or "K"
     if isinstance(data, TENSOR_TYPE):
         if isinstance(data, TensorData):
             data = Tensor(data)
         return data.astype(dtype or data.dtype, order=order, copy=False)
-    elif isinstance(data, (tuple, list)) and len(data) > 0 and \
-            all(isinstance(d, TENSOR_TYPE) for d in data):
+    elif (
+        isinstance(data, (tuple, list))
+        and len(data) > 0
+        and all(isinstance(d, TENSOR_TYPE) for d in data)
+    ):
         from ..merge import stack
 
         data = stack(data)
@@ -142,7 +155,7 @@ def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None,
         return scalar(data, dtype=dtype)
     elif issparse(data):
         return _from_spmatrix(data, dtype=dtype, chunk_size=chunk_size, gpu=gpu)
-    elif hasattr(data, '__mars_tensor__'):
+    elif hasattr(data, "__mars_tensor__"):
         return data.__mars_tensor__(dtype=dtype, order=order)
     else:
         m = get_array_module(data)
@@ -162,18 +175,19 @@ def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None,
     if is_array(data):
         if data.ndim == 0:
             return scalar(data.item(), dtype=dtype)
-        tensor_order = TensorOrder.C_ORDER \
-            if data.flags['C_CONTIGUOUS'] else TensorOrder.F_ORDER
+        tensor_order = (
+            TensorOrder.C_ORDER if data.flags["C_CONTIGUOUS"] else TensorOrder.F_ORDER
+        )
         op = ArrayDataSource(data, dtype=dtype, gpu=gpu)
         t = op(data.shape, chunk_size=chunk_size, order=tensor_order)
         if sparse and not t.issparse():
             return t.tosparse()
         return t
     else:
-        raise ValueError(f'Cannot create tensor by given data: {data}')
+        raise ValueError(f"Cannot create tensor by given data: {data}")
 
 
-def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):
+def array(x, dtype=None, copy=True, order="K", ndmin=None, chunk_size=None):
     """
     Create a tensor.
 
@@ -256,16 +270,22 @@ def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):
 
     """
     raw_x = x
-    order = order or 'K'
+    order = order or "K"
     x = tensor(x, dtype=dtype, order=order, chunk_size=chunk_size)
     while ndmin is not None and x.ndim < ndmin:
         x = x[np.newaxis]
 
     if copy and x is raw_x:
         x = x.copy(order=order)
-    elif not copy and isinstance(raw_x, TENSOR_TYPE) and raw_x.dtype == x.dtype and \
-            raw_x.order == x.order and raw_x.shape == x.shape and \
-            raw_x is not x and hasattr(raw_x, 'data'):
+    elif (
+        not copy
+        and isinstance(raw_x, TENSOR_TYPE)
+        and raw_x.dtype == x.dtype
+        and raw_x.order == x.order
+        and raw_x.shape == x.shape
+        and raw_x is not x
+        and hasattr(raw_x, "data")
+    ):
         raw_x.data = x.data
 
     return x
@@ -368,7 +388,7 @@ def ascontiguousarray(a, dtype=None, chunk_size=None):
 
     """
 
-    return array(a, dtype, copy=False, order='C', ndmin=1, chunk_size=chunk_size)
+    return array(a, dtype, copy=False, order="C", ndmin=1, chunk_size=chunk_size)
 
 
 def asfortranarray(a, dtype=None, chunk_size=None):
@@ -407,4 +427,4 @@ def asfortranarray(a, dtype=None, chunk_size=None):
     so it will not preserve 0-d tensors.
 
     """
-    return array(a, dtype, copy=False, order='F', ndmin=1, chunk_size=chunk_size)
+    return array(a, dtype, copy=False, order="F", ndmin=1, chunk_size=chunk_size)

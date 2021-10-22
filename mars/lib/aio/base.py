@@ -69,10 +69,9 @@ def proxy_property_directly(*attrs):
 
 
 class AioBase:
-    def __init__(self,
-                 file: Any,
-                 loop: asyncio.BaseEventLoop = None,
-                 executor: Executor = None):
+    def __init__(
+        self, file: Any, loop: asyncio.BaseEventLoop = None, executor: Executor = None
+    ):
         if loop is None:
             loop = asyncio.get_event_loop()
         if isinstance(file, AioBase):

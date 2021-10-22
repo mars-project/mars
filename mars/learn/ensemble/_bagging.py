@@ -16,12 +16,16 @@ import enum
 import itertools
 import warnings
 from collections import defaultdict
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Callable, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin, \
-    clone as clone_estimator
+from sklearn.base import (
+    BaseEstimator,
+    ClassifierMixin,
+    RegressorMixin,
+    clone as clone_estimator,
+)
 from sklearn.utils import check_random_state as sklearn_check_random_state
 
 from ..utils import column_or_1d, convert_to_tensor_or_dataframe
@@ -34,9 +38,18 @@ from ...core.operand import OperandStage
 from ...dataframe.core import DATAFRAME_TYPE
 from ...dataframe.utils import parse_index
 from ...deploy.oscar.session import execute
-from ...serialization.serializables import AnyField, BoolField, \
-    Int8Field, Int64Field, Float32Field, TupleField, ReferenceField, \
-    FieldTypes
+from ...serialization.serializables import (
+    AnyField,
+    BoolField,
+    DictField,
+    Int8Field,
+    Int64Field,
+    Float32Field,
+    TupleField,
+    FunctionField,
+    ReferenceField,
+    FieldTypes,
+)
 from ...tensor.core import TENSOR_CHUNK_TYPE
 from ...tensor.random import RandomStateField
 from ...tensor.utils import gen_random_seeds
@@ -45,11 +58,8 @@ from ...utils import has_unknown_shape
 from ..operands import LearnOperand, LearnOperandMixin, LearnShuffleProxy
 from ..utils.shuffle import LearnShuffle
 
-MAX_INT = np.iinfo(np.int32).max
 
-
-def _extract_bagging_io(io_list: Iterable, op: LearnOperand,
-                        output: bool = False):
+def _extract_bagging_io(io_list: Iterable, op: LearnOperand, output: bool = False):
     if not isinstance(io_list, Iterable):
         io_list = [io_list]
     input_iter = iter(io_list)
@@ -63,7 +73,7 @@ def _extract_bagging_io(io_list: Iterable, op: LearnOperand,
 
 
 def _get_by_iloc(x, idx, axis=0):
-    if hasattr(x, 'iloc'):
+    if hasattr(x, "iloc"):
         item_getter = x.iloc
     else:
         item_getter = x
@@ -112,31 +122,35 @@ def _make_estimator(estimator, random_state=None):
 class BaggingSample(LearnShuffle, LearnOperandMixin):
     _op_type_ = opcodes.BAGGING_SHUFFLE_SAMPLE
 
-    n_estimators: int = Int64Field('n_estimators')
-    max_samples = AnyField('max_samples')
-    max_features = AnyField('max_features')
-    bootstrap: bool = BoolField('bootstrap')
-    bootstrap_features: bool = BoolField('bootstrap_features')
+    n_estimators: int = Int64Field("n_estimators")
+    max_samples = AnyField("max_samples")
+    max_features = AnyField("max_features")
+    bootstrap: bool = BoolField("bootstrap")
+    bootstrap_features: bool = BoolField("bootstrap_features")
 
-    random_state = RandomStateField('random_state')
-    sample_random_state = RandomStateField('sample_random_state')
-    feature_random_state = RandomStateField('feature_random_state')
+    random_state = RandomStateField("random_state")
+    sample_random_state = RandomStateField("sample_random_state")
+    feature_random_state = RandomStateField("feature_random_state")
 
-    reducer_ratio: float = Float32Field('reducer_ratio')
-    n_reducers: int = Int64Field('n_reducers', default=None)
-    column_offset: int = Int64Field('column_offset', default=None)
+    reducer_ratio: float = Float32Field("reducer_ratio")
+    n_reducers: int = Int64Field("n_reducers", default=None)
+    column_offset: int = Int64Field("column_offset", default=None)
 
-    chunk_shape: Tuple[int] = TupleField('chunk_shape', FieldTypes.int64)
-    with_labels: bool = BoolField('with_labels')
-    with_weights: bool = BoolField('with_weights')
-    with_feature_indices: bool = BoolField('with_feature_indices')
+    chunk_shape: Tuple[int] = TupleField("chunk_shape", FieldTypes.int64)
+    with_labels: bool = BoolField("with_labels")
+    with_weights: bool = BoolField("with_weights")
+    with_feature_indices: bool = BoolField("with_feature_indices")
 
-    def __init__(self, max_samples: Union[int, float] = 1.0,
-                 max_features: Union[int, float] = 1.0,
-                 bootstrap: bool = True,
-                 bootstrap_features: bool = False,
-                 random_state: np.random.RandomState = None,
-                 reducer_ratio: float = 1.0, **kw):
+    def __init__(
+        self,
+        max_samples: Union[int, float] = 1.0,
+        max_features: Union[int, float] = 1.0,
+        bootstrap: bool = True,
+        bootstrap_features: bool = False,
+        random_state: np.random.RandomState = None,
+        reducer_ratio: float = 1.0,
+        **kw,
+    ):
         super().__init__(
             bootstrap=bootstrap,
             bootstrap_features=bootstrap_features,
@@ -144,7 +158,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             max_features=max_features,
             reducer_ratio=reducer_ratio,
             random_state=random_state,
-            **kw
+            **kw,
         )
         if self.random_state is None:
             self.random_state = np.random.RandomState()
@@ -155,9 +169,12 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             return 1 + self.with_labels + self.with_weights + self.with_feature_indices
         return 1
 
-    def __call__(self, in_sample: TileableType,
-                 in_labels: Optional[TileableType] = None,
-                 in_weights: Optional[TileableType] = None):
+    def __call__(
+        self,
+        in_sample: TileableType,
+        in_labels: Optional[TileableType] = None,
+        in_weights: Optional[TileableType] = None,
+    ):
         self._output_types = get_output_types(in_sample, in_labels, in_weights)
 
         self.with_labels = in_labels is not None
@@ -170,29 +187,31 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
         if self.with_feature_indices:
             self._output_types += (OutputType.tensor,)
 
-        new_shape = tuple(s if keep_shape else np.nan
-                          for s, keep_shape in zip(in_sample.shape, axis_keep_shape))
+        new_shape = tuple(
+            s if keep_shape else np.nan
+            for s, keep_shape in zip(in_sample.shape, axis_keep_shape)
+        )
 
         kws = []
 
         data_params = in_sample.params
-        data_params['shape'] = new_shape
+        data_params["shape"] = new_shape
         kws.append(data_params)
 
         if in_labels is not None:
             labels_params = in_labels.params
-            labels_params['shape'] = (new_shape[0],)
+            labels_params["shape"] = (new_shape[0],)
             kws.append(labels_params)
 
         if in_weights is not None:
             weights_params = in_weights.params
-            weights_params['shape'] = (new_shape[0],)
+            weights_params["shape"] = (new_shape[0],)
             kws.append(weights_params)
 
         if self.with_feature_indices:
             feature_params = {
-                'shape': (self.n_estimators, new_shape[1]),
-                'dtype': np.dtype(int),
+                "shape": (self.n_estimators, new_shape[1]),
+                "dtype": np.dtype(int),
             }
             kws.append(feature_params)
 
@@ -205,8 +224,13 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
         return self.new_tileables(inputs, kws=kws)
 
     @classmethod
-    def _scatter_samples(cls, max_samples: Union[int, float], nsplits: Tuple[int],
-                         random_state: np.random.RandomState, n_estimators: int) -> np.ndarray:
+    def _scatter_samples(
+        cls,
+        max_samples: Union[int, float],
+        nsplits: Tuple[int],
+        random_state: np.random.RandomState,
+        n_estimators: int,
+    ) -> np.ndarray:
         nsp_array = np.array(nsplits)
         dim_size = nsp_array.sum()
         if isinstance(max_samples, int):
@@ -218,18 +242,25 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             return np.array([list(nsplits)] * n_estimators)
 
         split_probs = nsp_array / dim_size
-        return random_state.multinomial(expect_sample_count, split_probs, size=n_estimators)
+        return random_state.multinomial(
+            expect_sample_count, split_probs, size=n_estimators
+        )
 
     @classmethod
-    def tile(cls, op: 'BaggingSample'):
-        in_sample, in_labels, in_weights, _ = _extract_bagging_io(op.inputs, op, output=False)
+    def tile(cls, op: "BaggingSample"):
+        in_sample, in_labels, in_weights, _ = _extract_bagging_io(
+            op.inputs, op, output=False
+        )
         out_data, out_labels, out_weights, out_feature_indices = _extract_bagging_io(
-            op.outputs, op, output=True)
+            op.outputs, op, output=True
+        )
 
         # make sure all shapes are computed
-        if has_unknown_shape(in_sample) or \
-                (in_labels is not None and has_unknown_shape(in_labels)) or \
-                (in_weights is not None and has_unknown_shape(in_weights)):
+        if (
+            has_unknown_shape(in_sample)
+            or (in_labels is not None and has_unknown_shape(in_labels))
+            or (in_weights is not None and has_unknown_shape(in_weights))
+        ):
             yield
 
         to_tile = []
@@ -249,32 +280,44 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             if in_weights is not None:
                 in_weights = next(tiled_iter)
 
-        random_seeds = [gen_random_seeds(n, op.random_state)
-                        for n in in_sample.chunk_shape]
+        random_seeds = [
+            gen_random_seeds(n, op.random_state) for n in in_sample.chunk_shape
+        ]
 
         axis_keep_shape = [
-            isinstance(op.max_samples, float) and op.max_samples == 1.0
+            isinstance(op.max_samples, float)
+            and op.max_samples == 1.0
             and not op.bootstrap,
-            isinstance(op.max_features, float) and op.max_features == 1.0
+            isinstance(op.max_features, float)
+            and op.max_features == 1.0
             and not op.bootstrap_features,
         ]
 
-        n_reducers = op.n_reducers if op.n_reducers is not None \
+        n_reducers = (
+            op.n_reducers
+            if op.n_reducers is not None
             else max(1, int(in_sample.chunk_shape[0] * op.reducer_ratio))
+        )
 
         # todo implement sampling without replacements
         map_chunks = []
-        max_samples_splits = cls._scatter_samples(op.max_samples, in_sample.nsplits[0],
-                                                  op.random_state, op.n_estimators)
-        max_features_splits = cls._scatter_samples(op.max_features, in_sample.nsplits[1],
-                                                   op.random_state, op.n_estimators)
+        max_samples_splits = cls._scatter_samples(
+            op.max_samples, in_sample.nsplits[0], op.random_state, op.n_estimators
+        )
+        max_features_splits = cls._scatter_samples(
+            op.max_features, in_sample.nsplits[1], op.random_state, op.n_estimators
+        )
 
         column_cum_offset = np.concatenate([[0], np.cumsum(in_sample.nsplits[1])])
         for chunk in in_sample.chunks:
             new_op = op.copy().reset_key()
             new_op.random_state = None
-            new_op.sample_random_state = np.random.RandomState(random_seeds[0][chunk.index[0]])
-            new_op.feature_random_state = np.random.RandomState(random_seeds[1][chunk.index[1]])
+            new_op.sample_random_state = np.random.RandomState(
+                random_seeds[0][chunk.index[0]]
+            )
+            new_op.feature_random_state = np.random.RandomState(
+                random_seeds[1][chunk.index[1]]
+            )
             new_op.stage = OperandStage.map
             new_op.max_samples = max_samples_splits[:, chunk.index[0]]
             new_op.max_features = max_features_splits[:, chunk.index[1]]
@@ -289,8 +332,10 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
                 new_op.with_labels = False
 
             params = chunk.params
-            params['shape'] = tuple(s if keep_shape else np.nan
-                                    for s, keep_shape in zip(chunk.shape, axis_keep_shape))
+            params["shape"] = tuple(
+                s if keep_shape else np.nan
+                for s, keep_shape in zip(chunk.shape, axis_keep_shape)
+            )
 
             input_chunks = [chunk]
             if new_op.with_labels:
@@ -299,8 +344,9 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
                 input_chunks.append(in_weights.cix[chunk.index[0]])
             map_chunks.append(new_op.new_chunk(input_chunks, **params))
 
-        shuffle_op = LearnShuffleProxy(output_types=[OutputType.tensor]) \
-            .new_chunk(map_chunks, dtype=np.dtype(int), shape=())
+        shuffle_op = LearnShuffleProxy(output_types=[OutputType.tensor]).new_chunk(
+            map_chunks, dtype=np.dtype(int), shape=()
+        )
 
         remain_reducers = op.n_estimators % n_reducers
         reduce_data_chunks = []
@@ -323,33 +369,37 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             kws = []
 
             data_params = out_data.params
-            data_params['index'] = (idx, 0)
-            data_params['shape'] = (np.nan, out_data.shape[1])
+            data_params["index"] = (idx, 0)
+            data_params["shape"] = (np.nan, out_data.shape[1])
             kws.append(data_params)
 
             if op.with_labels:
                 labels_params = out_labels.params
-                labels_params['index'] = (idx,)
-                labels_params['shape'] = (np.nan,)
+                labels_params["index"] = (idx,)
+                labels_params["shape"] = (np.nan,)
                 kws.append(labels_params)
 
             if op.with_weights:
                 weights_params = out_weights.params
-                weights_params['index'] = (idx,)
-                weights_params['shape'] = (np.nan,)
+                weights_params["index"] = (idx,)
+                weights_params["shape"] = (np.nan,)
                 kws.append(weights_params)
 
             if op.with_feature_indices:
                 feature_params = {
-                    'index': (idx, 0),
-                    'shape': (new_op.n_estimators, out_feature_indices.shape[1]),
-                    'dtype': np.dtype(int),
+                    "index": (idx, 0),
+                    "shape": (new_op.n_estimators, out_feature_indices.shape[1]),
+                    "dtype": np.dtype(int),
                 }
                 kws.append(feature_params)
 
             chunks = new_op.new_chunks([shuffle_op], kws=kws)
-            data_chunk, labels_chunk, weights_chunk, feature_chunk \
-                = _extract_bagging_io(chunks, op, output=True)
+            (
+                data_chunk,
+                labels_chunk,
+                weights_chunk,
+                feature_chunk,
+            ) = _extract_bagging_io(chunks, op, output=True)
 
             reduce_data_chunks.append(data_chunk)
             if labels_chunk is not None:
@@ -361,36 +411,48 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
 
         new_op = op.copy().reset_key()
 
-        kws = [{
-            'chunks': reduce_data_chunks,
-            'nsplits': ((np.nan,) * len(reduce_data_chunks), (out_data.shape[1],)),
-            **out_data.params
-        }]
+        kws = [
+            {
+                "chunks": reduce_data_chunks,
+                "nsplits": ((np.nan,) * len(reduce_data_chunks), (out_data.shape[1],)),
+                **out_data.params,
+            }
+        ]
         if op.with_labels:
-            kws.append({
-                'chunks': reduce_labels_chunks,
-                'nsplits': ((np.nan,) * len(reduce_data_chunks),),
-                **out_labels.params
-            })
+            kws.append(
+                {
+                    "chunks": reduce_labels_chunks,
+                    "nsplits": ((np.nan,) * len(reduce_data_chunks),),
+                    **out_labels.params,
+                }
+            )
         if op.with_weights:
-            kws.append({
-                'chunks': reduce_weights_chunks,
-                'nsplits': ((np.nan,) * len(reduce_data_chunks),),
-                **out_weights.params
-            })
+            kws.append(
+                {
+                    "chunks": reduce_weights_chunks,
+                    "nsplits": ((np.nan,) * len(reduce_data_chunks),),
+                    **out_weights.params,
+                }
+            )
         if op.with_feature_indices:
             estimator_nsplit = tuple(c.op.n_estimators for c in reduce_data_chunks)
-            kws.append({
-                'chunks': reduce_feature_chunks,
-                'nsplits': (estimator_nsplit, (out_feature_indices.shape[1],)),
-                **out_feature_indices.params
-            })
+            kws.append(
+                {
+                    "chunks": reduce_feature_chunks,
+                    "nsplits": (estimator_nsplit, (out_feature_indices.shape[1],)),
+                    **out_feature_indices.params,
+                }
+            )
         return new_op.new_tileables(op.inputs, kws=kws)
 
     @classmethod
-    def _gen_sample_indices(cls, max_range: int, size: int,
-                            random_state: np.random.RandomState,
-                            with_replacement: bool = False):
+    def _gen_sample_indices(
+        cls,
+        max_range: int,
+        size: int,
+        random_state: np.random.RandomState,
+        with_replacement: bool = False,
+    ):
         if not with_replacement:
             result = random_state.choice(np.arange(max_range), size, False)
         else:
@@ -399,18 +461,24 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
         return result
 
     @classmethod
-    def _execute_map(cls, ctx, op: 'BaggingSample'):
-        in_sample, in_labels, in_weights, _ = _extract_bagging_io(op.inputs, op, output=False)
+    def _execute_map(cls, ctx, op: "BaggingSample"):
+        in_sample, in_labels, in_weights, _ = _extract_bagging_io(
+            op.inputs, op, output=False
+        )
         in_sample_data = ctx[in_sample.key]
         in_labels_data = ctx[in_labels.key] if op.with_labels else None
         in_weights_data = ctx[in_weights.key] if op.with_weights else None
         out_samples = op.outputs[0]
 
         remains = op.n_estimators % op.n_reducers
-        reducer_iters = [itertools.repeat(idx, 1 + op.n_estimators // op.n_reducers)
-                         for idx in range(remains)]
-        reducer_iters += [itertools.repeat(idx, op.n_estimators // op.n_reducers)
-                          for idx in range(remains, op.n_reducers)]
+        reducer_iters = [
+            itertools.repeat(idx, 1 + op.n_estimators // op.n_reducers)
+            for idx in range(remains)
+        ]
+        reducer_iters += [
+            itertools.repeat(idx, op.n_estimators // op.n_reducers)
+            for idx in range(remains, op.n_reducers)
+        ]
         reducer_iter = itertools.chain(*reducer_iters)
 
         result_store = defaultdict(lambda: ([], [], [], []))
@@ -421,8 +489,11 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
 
             if op.max_samples[est_id] != in_sample_data.shape[0]:
                 sample_indices = cls._gen_sample_indices(
-                    in_sample_data.shape[0], op.max_samples[est_id],
-                    op.sample_random_state, op.bootstrap)
+                    in_sample_data.shape[0],
+                    op.max_samples[est_id],
+                    op.sample_random_state,
+                    op.bootstrap,
+                )
 
                 sampled_data = _get_by_iloc(sampled_data, sample_indices)
                 if sampled_labels is not None:
@@ -432,8 +503,11 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
 
             if op.max_features[est_id] != in_sample_data.shape[1]:
                 feature_indices = cls._gen_sample_indices(
-                    in_sample_data.shape[1], op.max_features[est_id],
-                    op.feature_random_state, op.bootstrap_features)
+                    in_sample_data.shape[1],
+                    op.max_features[est_id],
+                    op.feature_random_state,
+                    op.bootstrap_features,
+                )
 
                 sampled_data = _get_by_iloc(sampled_data, feature_indices, axis=1)
                 if not op.with_feature_indices:
@@ -441,8 +515,9 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             else:
                 feature_indices = None
 
-            samples, labels, weights, feature_idx_array \
-                = result_store[next(reducer_iter)]
+            samples, labels, weights, feature_idx_array = result_store[
+                next(reducer_iter)
+            ]
             samples.append(sampled_data)
             if sampled_labels is not None:
                 labels.append(sampled_labels)
@@ -451,38 +526,49 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             if feature_indices is not None:
                 feature_idx_array.append(feature_indices + op.column_offset)
 
-        for reducer_id, (samples, labels, weights, feature_idx_array) \
-                in result_store.items():
-            ctx[out_samples.key, (reducer_id, 0)] = \
-                tuple(samples + labels + weights + feature_idx_array)
+        for (
+            reducer_id,
+            (
+                samples,
+                labels,
+                weights,
+                feature_idx_array,
+            ),
+        ) in result_store.items():
+            ctx[out_samples.key, (reducer_id, 0)] = tuple(
+                samples + labels + weights + feature_idx_array
+            )
 
     @classmethod
-    def _execute_reduce(cls, ctx, op: 'BaggingSample'):
+    def _execute_reduce(cls, ctx, op: "BaggingSample"):
         out_data, out_labels, out_weights, out_feature_indices = _extract_bagging_io(
-            op.outputs, op, output=True)
+            op.outputs, op, output=True
+        )
 
         input_keys = op.inputs[0].op.source_keys
         input_idxes = op.inputs[0].op.source_idxes
 
         sample_holder = [
-            np.empty(op.chunk_shape, dtype=object)
-            for _ in range(op.n_estimators)
+            np.empty(op.chunk_shape, dtype=object) for _ in range(op.n_estimators)
         ]
 
-        labels_holder = [
-            np.empty(op.chunk_shape[0], dtype=object)
-            for _ in range(op.n_estimators)
-        ] if op.with_labels else None
+        labels_holder = (
+            [np.empty(op.chunk_shape[0], dtype=object) for _ in range(op.n_estimators)]
+            if op.with_labels
+            else None
+        )
 
-        weights_holder = [
-            np.empty(op.chunk_shape[0], dtype=object)
-            for _ in range(op.n_estimators)
-        ] if op.with_weights else None
+        weights_holder = (
+            [np.empty(op.chunk_shape[0], dtype=object) for _ in range(op.n_estimators)]
+            if op.with_weights
+            else None
+        )
 
-        feature_indices_holder = [
-            np.empty(op.chunk_shape[1], dtype=object)
-            for _ in range(op.n_estimators)
-        ] if op.with_feature_indices else None
+        feature_indices_holder = (
+            [np.empty(op.chunk_shape[1], dtype=object) for _ in range(op.n_estimators)]
+            if op.with_feature_indices
+            else None
+        )
 
         for input_key, input_idx in zip(input_keys, input_idxes):
             add_feature_index = input_idx[0] == 0
@@ -490,7 +576,8 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             chunk_data = ctx[input_key, out_data.index]
 
             num_groups = 1
-            if add_feature_index and op.with_feature_indices:  # contains feature indices
+            if add_feature_index and op.with_feature_indices:
+                # contains feature indices
                 num_groups += 1
             if add_label_weight:  # contains label or weight
                 num_groups += int(op.with_weights) + int(op.with_labels)
@@ -498,8 +585,10 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             sample_count = len(chunk_data) // num_groups
             assert len(chunk_data) % num_groups == 0
 
-            group_iter = (chunk_data[i * sample_count: (i + 1) * sample_count]
-                          for i in range(num_groups))
+            group_iter = (
+                chunk_data[i * sample_count : (i + 1) * sample_count]
+                for i in range(num_groups)
+            )
 
             for data_idx, sample in enumerate(next(group_iter)):
                 sample_holder[data_idx][input_idx] = sample
@@ -518,8 +607,12 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
 
         data_results: List[Optional[np.ndarray]] = [None] * len(sample_holder)
         for est_idx, sample_mat in enumerate(sample_holder):
-            row_chunks = np.apply_along_axis(_concat_by_row, axis=0, arr=sample_mat, out_chunk=out_data)
-            data_results[est_idx] = _concat_on_axis(row_chunks[0].tolist(), axis=1, out_chunk=out_data)
+            row_chunks = np.apply_along_axis(
+                _concat_by_row, axis=0, arr=sample_mat, out_chunk=out_data
+            )
+            data_results[est_idx] = _concat_on_axis(
+                row_chunks[0].tolist(), axis=1, out_chunk=out_data
+            )
         ctx[out_data.key] = tuple(data_results)
 
         for out, holder in zip(
@@ -537,7 +630,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
                 ctx[out.key] = tuple(results)
 
     @classmethod
-    def execute(cls, ctx, op: 'BaggingSample'):
+    def execute(cls, ctx, op: "BaggingSample"):
         if op.stage == OperandStage.map:
             cls._execute_map(ctx, op)
         else:
@@ -547,10 +640,10 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
 class BaggingSampleReindex(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.BAGGING_SHUFFLE_REINDEX
 
-    n_estimators: int = Int64Field('n_estimators')
-    feature_indices: TileableType = ReferenceField('feature_indices', default=None)
+    n_estimators: int = Int64Field("n_estimators")
+    feature_indices: TileableType = ReferenceField("feature_indices", default=None)
 
-    start_col_index: int = Int64Field('start_col_index', 0)
+    start_col_index: int = Int64Field("start_col_index", 0)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -564,9 +657,9 @@ class BaggingSampleReindex(LearnOperand, LearnOperandMixin):
         params = data.params
         if feature_indices is not None:
             inputs.append(feature_indices)
-            params['shape'] = (data.shape[0], np.nan)
+            params["shape"] = (data.shape[0], np.nan)
         if isinstance(data, DATAFRAME_TYPE):
-            params['index_value'] = parse_index(pd.Int64Index([]), data.key)
+            params["index_value"] = parse_index(pd.Int64Index([]), data.key)
         return self.new_tileable(inputs, **params)
 
     @classmethod
@@ -583,15 +676,19 @@ class BaggingSampleReindex(LearnOperand, LearnOperandMixin):
             return out
 
         # generate map chunks
-        map_holder = np.empty(t_data.chunk_shape + (t_feature_idxes.chunk_shape[0],),
-                              dtype=np.dtype(object))
+        map_holder = np.empty(
+            t_data.chunk_shape + (t_feature_idxes.chunk_shape[0],),
+            dtype=np.dtype(object),
+        )
         for chunk in t_data.chunks:
             for feature_idx_chunk in t_feature_idxes.chunks:
                 new_op = op.copy().reset_key()
                 new_op.stage = OperandStage.map
                 new_op.start_col_index = int(cum_nsplits[chunk.index[1]])
                 params = chunk.params
-                new_index = params['index'] = chunk.index + (feature_idx_chunk.index[0],)
+                new_index = params["index"] = chunk.index + (
+                    feature_idx_chunk.index[0],
+                )
                 if t_feature_idxes.chunk_shape[0] == 1:
                     new_index = new_index[:-1]
                 map_holder[new_index] = new_op.new_chunk(
@@ -600,15 +697,18 @@ class BaggingSampleReindex(LearnOperand, LearnOperandMixin):
         if op.feature_indices.chunk_shape[0] == 1:
             chunks = map_holder.reshape((t_data.chunk_shape[0],)).tolist()
         else:
+
             def _gen_combine_chunk(chunks):
                 new_op = op.copy().reset_key()
                 new_op.feature_indices = None
                 new_op.stage = OperandStage.combine
                 params = chunks[0].params
-                params['shape'] = (chunks[0].shape[0], op.feature_indices.shape[1])
-                params['index'] = (chunks[0].index[0], chunks[0].index[2])
+                params["shape"] = (chunks[0].shape[0], op.feature_indices.shape[1])
+                params["index"] = (chunks[0].index[0], chunks[0].index[2])
                 if isinstance(t_data, DATAFRAME_TYPE):
-                    params['index_value'] = parse_index(pd.Int64Index([]), chunks[0].key)
+                    params["index_value"] = parse_index(
+                        pd.Int64Index([]), chunks[0].key
+                    )
                 inputs = chunks.tolist()
                 return new_op.new_chunk(inputs, **params)
 
@@ -616,9 +716,13 @@ class BaggingSampleReindex(LearnOperand, LearnOperandMixin):
             chunks = chunks_array.reshape((chunks_array.size,)).tolist()
 
         new_op = op.copy().reset_key()
-        new_nsplits = (t_data.nsplits[0], (op.feature_indices.shape[1],) * t_feature_idxes.chunk_shape[0])
-        return new_op.new_tileables(op.inputs, chunks=chunks,
-                                    nsplits=new_nsplits, **t_out.params)
+        new_nsplits = (
+            t_data.nsplits[0],
+            (op.feature_indices.shape[1],) * t_feature_idxes.chunk_shape[0],
+        )
+        return new_op.new_tileables(
+            op.inputs, chunks=chunks, nsplits=new_nsplits, **t_out.params
+        )
 
     @classmethod
     def _execute_map(cls, ctx, op: "BaggingSampleReindex"):
@@ -649,29 +753,31 @@ class BaggingSampleReindex(LearnOperand, LearnOperandMixin):
 class BaggingFitOperand(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.BAGGING_FIT
 
-    base_estimator: BaseEstimator = AnyField('base_estimator')
-    n_estimators: int = Int64Field('n_estimators')
-    max_samples = AnyField('max_samples', default=1.0)
-    max_features = AnyField('max_features', default=1.0)
-    bootstrap: bool = BoolField('bootstrap', default=False)
-    bootstrap_features: bool = BoolField('bootstrap_features', default=True)
-    random_state = RandomStateField('random_state', default=None)
+    base_estimator: BaseEstimator = AnyField("base_estimator")
+    estimator_params: dict = DictField("estimator_params", default=None)
+    n_estimators: int = Int64Field("n_estimators")
+    max_samples = AnyField("max_samples", default=1.0)
+    max_features = AnyField("max_features", default=1.0)
+    bootstrap: bool = BoolField("bootstrap", default=False)
+    bootstrap_features: bool = BoolField("bootstrap_features", default=True)
+    random_state = RandomStateField("random_state", default=None)
 
-    reducer_ratio: float = Float32Field('reducer_ratio')
-    n_reducers: int = Int64Field('n_reducers')
+    reducer_ratio: float = Float32Field("reducer_ratio")
+    n_reducers: int = Int64Field("n_reducers")
 
-    labels: TileableType = ReferenceField('labels', default=None)
-    weights: TileableType = ReferenceField('weights', default=None)
-    feature_indices: TileableType = ReferenceField(
-        'feature_indices', default=None)
-    with_feature_indices: bool = BoolField('with_feature_indices', default=None)
+    labels: TileableType = ReferenceField("labels", default=None)
+    weights: TileableType = ReferenceField("weights", default=None)
+    feature_indices: TileableType = ReferenceField("feature_indices", default=None)
+    with_feature_indices: bool = BoolField("with_feature_indices", default=None)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if self.random_state is None:
             self.random_state = np.random.RandomState()
         if self.with_feature_indices is None:
-            full_features = isinstance(self.max_features, float) and self.max_features == 1.0
+            full_features = (
+                isinstance(self.max_features, float) and self.max_features == 1.0
+            )
             self.with_feature_indices = not full_features or self.bootstrap_features
 
     def _set_inputs(self, inputs):
@@ -701,8 +807,9 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
             with_labels=self.labels is not None,
             with_feature_indices=self.with_feature_indices,
         )
-        return _extract_bagging_io(sample_op(samples, self.labels, self.weights),
-                                   sample_op, output=True)
+        return _extract_bagging_io(
+            sample_op(samples, self.labels, self.weights), sample_op, output=True
+        )
 
     @property
     def output_limit(self) -> int:
@@ -710,10 +817,13 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
             return 2
         return 1
 
-    def __call__(self, in_data: TileableType,
-                 in_labels: Optional[TileableType] = None,
-                 in_weights: Optional[TileableType] = None,
-                 feature_indices: TileableType = None):
+    def __call__(
+        self,
+        in_data: TileableType,
+        in_labels: Optional[TileableType] = None,
+        in_weights: Optional[TileableType] = None,
+        feature_indices: TileableType = None,
+    ):
         self._output_types = [OutputType.tensor]
         inputs = [in_data]
 
@@ -728,9 +838,7 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
             self.feature_indices = feature_indices
             inputs.append(feature_indices)
 
-        kws = [
-            dict(shape=(self.n_estimators,), dtype=np.dtype(object))
-        ]
+        kws = [dict(shape=(self.n_estimators,), dtype=np.dtype(object))]
         if self.with_feature_indices:
             self._output_types.append(OutputType.tensor)
             sample_tileables = self._get_bagging_sample_tileables(in_data)
@@ -742,11 +850,16 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
     def tile(cls, op: "BaggingFitOperand"):
         out = op.outputs[0]
         sample_tileables = op._get_bagging_sample_tileables()
-        tiled_sample_iter = iter((
-            yield from recursive_tile(tuple(t for t in sample_tileables if t is not None))
-        ))
+        tiled_sample_iter = iter(
+            (
+                yield from recursive_tile(
+                    tuple(t for t in sample_tileables if t is not None)
+                )
+            )
+        )
         sampled, labels, weights, feature_indices = (
-            t if t is None else next(tiled_sample_iter) for t in sample_tileables)
+            t if t is None else next(tiled_sample_iter) for t in sample_tileables
+        )
 
         estimator_nsplits = (tuple(c.op.n_estimators for c in sampled.chunks),)
 
@@ -754,12 +867,13 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
         weight_chunks = itertools.repeat(None) if weights is None else weights.chunks
 
         out_chunks = []
-        seeds = op.random_state.randint(MAX_INT, size=len(sampled.chunks))
-        for sample_chunk, label_chunk, weight_chunk, n_estimators \
-                in zip(sampled.chunks, label_chunks, weight_chunks,
-                       estimator_nsplits[0]):
+        seeds = gen_random_seeds(len(sampled.chunks), op.random_state)
+        for sample_chunk, label_chunk, weight_chunk, n_estimators in zip(
+            sampled.chunks, label_chunks, weight_chunks, estimator_nsplits[0]
+        ):
             chunk_op = BaggingFitOperand(
                 base_estimator=op.base_estimator,
+                estimator_params=op.estimator_params,
                 labels=label_chunk,
                 weights=weight_chunk,
                 n_estimators=n_estimators,
@@ -767,48 +881,50 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
                 random_state=sklearn_check_random_state(seeds[sample_chunk.index[0]]),
             )
             chunk_op._output_types = op._output_types
-            inputs = [c for c in [sample_chunk, label_chunk, weight_chunk]
-                      if c is not None]
-            out_chunks.append(chunk_op.new_chunk(
-                inputs, index=(sample_chunk.index[0],),
-                shape=(n_estimators,),
-                dtype=out.dtype,
-            ))
+            inputs = [
+                c for c in [sample_chunk, label_chunk, weight_chunk] if c is not None
+            ]
+            out_chunks.append(
+                chunk_op.new_chunk(
+                    inputs,
+                    index=(sample_chunk.index[0],),
+                    shape=(n_estimators,),
+                    dtype=out.dtype,
+                )
+            )
 
         out_op = op.copy().reset_key()
         kws = [
             dict(chunks=out_chunks, nsplits=estimator_nsplits, **out.params),
         ]
         if feature_indices is not None:
-            kws.append(dict(
-                chunks=feature_indices.chunks,
-                nsplits=feature_indices.nsplits,
-                **feature_indices.params
-            ))
-        out_tp = out_op.new_tileables(op.inputs, kws=kws)
-        out_estimators = out_tp[0]
-        out_feature_indices = None
-        if op.with_feature_indices:
-            out_feature_indices = out_tp[1]
-
-        if op.with_feature_indices:
-            return [out_estimators, out_feature_indices]
-        else:
-            return [out_estimators]
+            kws.append(
+                dict(
+                    chunks=feature_indices.chunks,
+                    nsplits=feature_indices.nsplits,
+                    **feature_indices.params,
+                )
+            )
+        return out_op.new_tileables(op.inputs, kws=kws, output_limit=len(kws))
 
     @classmethod
-    def execute(cls, ctx: Union[dict, Context],
-                op: "BaggingFitOperand"):
+    def execute(cls, ctx: Union[dict, Context], op: "BaggingFitOperand"):
         sampled_data = ctx[op.inputs[0].key]
-        labels_data = ctx[op.labels.key] if op.labels is not None \
-            else itertools.repeat(None)
-        weights_data = ctx[op.weights.key] if op.weights is not None \
-            else itertools.repeat(None)
+        labels_data = (
+            ctx[op.labels.key] if op.labels is not None else itertools.repeat(None)
+        )
+        weights_data = (
+            ctx[op.weights.key] if op.weights is not None else itertools.repeat(None)
+        )
+
+        for k, v in (op.estimator_params or dict()).items():
+            setattr(op.base_estimator, k, v)
 
         new_estimators = []
-        seeds = op.random_state.randint(MAX_INT, size=len(sampled_data))
-        for idx, (sampled, label, weights) in \
-                enumerate(zip(sampled_data, labels_data, weights_data)):
+        seeds = gen_random_seeds(len(sampled_data), op.random_state)
+        for idx, (sampled, label, weights) in enumerate(
+            zip(sampled_data, labels_data, weights_data)
+        ):
             estimator = _make_estimator(op.base_estimator, seeds[idx])
             estimator.fit(sampled, y=label, sample_weight=weights)
             new_estimators.append(estimator)
@@ -825,15 +941,17 @@ class PredictionType(enum.Enum):
 class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.BAGGING_PREDICTION
 
-    estimators: TileableType = ReferenceField('estimators')
-    feature_indices: TileableType = ReferenceField('feature_indices', default=None)
-    n_classes: Optional[int] = Int64Field('n_classes', default=None)
+    estimators: TileableType = ReferenceField("estimators")
+    feature_indices: TileableType = ReferenceField("feature_indices", default=None)
+    n_classes: Optional[int] = Int64Field("n_classes", default=None)
     prediction_type: PredictionType = Int8Field(
-        'prediction_type',
+        "prediction_type",
         on_serialize=lambda x: x.value,
         on_deserialize=PredictionType,
-        default=PredictionType.PROBABILITY
+        default=PredictionType.PROBABILITY,
     )
+    decision_function: Callable = FunctionField("decision_function", default=None)
+    calc_means: bool = BoolField("calc_means", default=True)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -842,22 +960,24 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
         if self.feature_indices is not None:
             self.feature_indices = next(input_iter)
 
-    def __call__(self,
-                 instances: TileableType,
-                 estimators: TileableType,
-                 feature_indices: TileableType = None) -> TileableType:
+    def __call__(
+        self,
+        instances: TileableType,
+        estimators: TileableType,
+        feature_indices: TileableType = None,
+    ) -> TileableType:
         self._output_types = [OutputType.tensor]
         self.estimators = estimators
         self.feature_indices = feature_indices
 
         if self.n_classes is not None:
-            shape = (instances.shape[0], self.n_classes)
+            shape = (instances.shape[0], estimators.shape[0], self.n_classes)
         else:
-            shape = (instances.shape[0],)
-        params = {
-            'dtype': np.dtype(float),
-            'shape': shape
-        }
+            shape = (instances.shape[0], estimators.shape[0])
+        if self.calc_means:
+            shape = (shape[0],) + shape[2:]
+
+        params = {"dtype": np.dtype(float), "shape": shape}
         inputs = [instances, estimators]
         if feature_indices is not None:
             inputs.append(feature_indices)
@@ -872,23 +992,28 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
             return self.n_classes
 
     @classmethod
-    def _build_chunks_without_feature_indices(cls, op: "BaggingPredictionOperand",
-                                              t_instances: TileableType):
+    def _build_chunks_without_feature_indices(
+        cls, op: "BaggingPredictionOperand", t_instances: TileableType
+    ):
         class_shape = op._get_class_shape()
         chunks = []
         for c_instance in t_instances.chunks:
             for c_estimator in op.estimators.chunks:
                 if class_shape is not None:
                     params = {
-                        'dtype': np.dtype(float),
-                        'shape': (c_instance.shape[0], class_shape, c_estimator.shape[0]),
-                        'index': (c_instance.index[0], 0, c_estimator.index[0]),
+                        "dtype": np.dtype(float),
+                        "shape": (
+                            c_instance.shape[0],
+                            class_shape,
+                            c_estimator.shape[0],
+                        ),
+                        "index": (c_instance.index[0], 0, c_estimator.index[0]),
                     }
                 else:
                     params = {
-                        'dtype': np.dtype(float),
-                        'shape': (c_instance.shape[0], c_estimator.shape[0]),
-                        'index': (c_instance.index[0], c_estimator.index[0]),
+                        "dtype": np.dtype(float),
+                        "shape": (c_instance.shape[0], c_estimator.shape[0]),
+                        "index": (c_instance.index[0], c_estimator.index[0]),
                     }
                 new_op = op.copy().reset_key()
                 new_op.feature_indices = None
@@ -896,8 +1021,9 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
         return chunks
 
     @classmethod
-    def _build_chunks_with_feature_indices(cls, op: "BaggingPredictionOperand",
-                                           t_instances: TileableType):
+    def _build_chunks_with_feature_indices(
+        cls, op: "BaggingPredictionOperand", t_instances: TileableType
+    ):
         class_shape = op._get_class_shape()
         chunks = []
         for c in t_instances.chunks:
@@ -905,15 +1031,15 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
 
             if class_shape is not None:
                 params = {
-                    'dtype': np.dtype(float),
-                    'shape': (c.shape[0], class_shape, estimator_chunk.shape[0]),
-                    'index': (c.index[0], 0, c.index[1]),
+                    "dtype": np.dtype(float),
+                    "shape": (c.shape[0], class_shape, estimator_chunk.shape[0]),
+                    "index": (c.index[0], 0, c.index[1]),
                 }
             else:
                 params = {
-                    'dtype': np.dtype(float),
-                    'shape': (c.shape[0], estimator_chunk.shape[0]),
-                    'index': c.index,
+                    "dtype": np.dtype(float),
+                    "shape": (c.shape[0], estimator_chunk.shape[0]),
+                    "index": c.index,
                 }
 
             new_op = op.copy().reset_key()
@@ -942,36 +1068,46 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
         class_shape = op._get_class_shape()
         if class_shape is not None:
             params = {
-                'dtype': np.dtype(float),
-                'shape': (t_instances.shape[0], class_shape, n_estimators),
+                "dtype": np.dtype(float),
+                "shape": (t_instances.shape[0], class_shape, n_estimators),
             }
             nsplits = (t_instances.nsplits[0], (class_shape,), op.estimators.nsplits[0])
         else:
             params = {
-                'dtype': np.dtype(float),
-                'shape': (t_instances.shape[0], n_estimators),
+                "dtype": np.dtype(float),
+                "shape": (t_instances.shape[0], n_estimators),
             }
             nsplits = (t_instances.nsplits[0], op.estimators.nsplits[0])
         estimator_probas = new_op.new_tileable(
-            op.inputs, chunks=chunks, nsplits=nsplits, **params)
+            op.inputs, chunks=chunks, nsplits=nsplits, **params
+        )
 
-        if op.prediction_type != PredictionType.LOG_PROBABILITY:
-            return [(
-                yield from recursive_tile(mt.sum(estimator_probas, axis=-1) / n_estimators)
-            )]
-        else:
-            return [(
-                yield from recursive_tile(
-                    mt.log(mt.exp(estimator_probas).sum(axis=-1)) - np.log(n_estimators)
+        if not op.calc_means:
+            return estimator_probas
+        elif op.prediction_type != PredictionType.LOG_PROBABILITY:
+            return [
+                (
+                    yield from recursive_tile(
+                        mt.sum(estimator_probas, axis=-1) / n_estimators
+                    )
                 )
-            )]
+            ]
+        else:
+            return [
+                (
+                    yield from recursive_tile(
+                        mt.log(mt.exp(estimator_probas).sum(axis=-1))
+                        - np.log(n_estimators)
+                    )
+                )
+            ]
 
     @classmethod
     def _predict_proba(cls, instance, estimator, n_classes):
         n_samples = instance.shape[0]
         proba = np.zeros((n_samples, n_classes))
 
-        if hasattr(estimator, 'predict_proba'):
+        if hasattr(estimator, "predict_proba"):
             proba_estimator = estimator.predict_proba(instance)
             if n_classes == len(estimator.classes_):
                 proba += proba_estimator
@@ -990,6 +1126,9 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
     @classmethod
     def _predict_log_proba(cls, instance, estimator, n_classes):
         """Private function used to compute log probabilities within a job."""
+        if not hasattr(estimator, "predict_log_proba"):
+            return np.log(cls._predict_proba(instance, estimator, n_classes))
+
         n_samples = instance.shape[0]
         log_proba = np.empty((n_samples, n_classes))
         log_proba.fill(-np.inf)
@@ -1009,9 +1148,14 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
         return log_proba
 
     @classmethod
-    def execute(cls,
-                ctx: Union[dict, Context],
-                op: "BaggingPredictionOperand"):
+    def _decision_function(cls, instance, estimator, func=None):
+        if func is not None:
+            return func(instance, estimator)
+        else:
+            return estimator.decision_function(instance)
+
+    @classmethod
+    def execute(cls, ctx: Union[dict, Context], op: "BaggingPredictionOperand"):
         instances = ctx[op.inputs[0].key]
         estimators = ctx[op.estimators.key]
         if not isinstance(instances, tuple):
@@ -1019,25 +1163,20 @@ class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
 
         estimate_results = []
         for instance, estimator in zip(instances, estimators):
-            if op.n_classes is not None:
-                # classifier
-                if op.prediction_type == PredictionType.PROBABILITY:
-                    estimate_results.append(
-                        cls._predict_proba(instance, estimator, op.n_classes)
-                    )
-                elif op.prediction_type == PredictionType.LOG_PROBABILITY:
-                    if hasattr(estimator, 'predict_log_proba'):
-                        estimate_results.append(
-                            cls._predict_log_proba(instance, estimator, op.n_classes)
-                        )
-                    else:
-                        estimate_results.append(
-                            np.log(cls._predict_proba(instance, estimator, op.n_classes))
-                        )
-                else:
-                    estimate_results.append(estimator.decision_function(instance))
+            # classifier
+            if op.prediction_type == PredictionType.PROBABILITY:
+                estimate_results.append(
+                    cls._predict_proba(instance, estimator, op.n_classes)
+                )
+            elif op.prediction_type == PredictionType.LOG_PROBABILITY:
+                estimate_results.append(
+                    cls._predict_log_proba(instance, estimator, op.n_classes)
+                )
+            elif op.prediction_type == PredictionType.DECISION_FUNCTION:
+                estimate_results.append(
+                    cls._decision_function(instance, estimator, op.decision_function)
+                )
             else:
-                # regressor
                 estimate_results.append(estimator.predict(instance))
 
         out = op.outputs[0]
@@ -1071,8 +1210,11 @@ class BaseBagging:
         self.oob_score = oob_score
         self.warm_start = warm_start
         self.n_jobs = n_jobs
-        self.random_state = np.random.RandomState(random_state) \
-            if isinstance(random_state, int) else random_state
+        self.random_state = (
+            np.random.RandomState(random_state)
+            if isinstance(random_state, int)
+            else random_state
+        )
         self.verbose = verbose
         self.reducers = reducers
 
@@ -1085,37 +1227,26 @@ class BaseBagging:
         else:
             return y
 
-    def fit(self, X, y=None, sample_weight=None, session=None, run_kwargs=None):
-        """
-        Build a Bagging ensemble of estimators from the training set (X, y).
-
-        Parameters
-        ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            The training input samples. Sparse matrices are accepted only if
-            they are supported by the base estimator.
-
-        y : array-like of shape (n_samples,)
-            The target values (class labels in classification, real numbers in
-            regression).
-
-        sample_weight : array-like of shape (n_samples,), default=None
-            Sample weights. If None, then samples are equally weighted.
-            Note that this is supported only if the base estimator supports
-            sample weighting.
-
-        Returns
-        -------
-        self : object
-            Fitted estimator.
-        """
+    def _fit(
+        self,
+        X,
+        y=None,
+        sample_weight=None,
+        max_samples=None,
+        estimator_params=None,
+        session=None,
+        run_kwargs=None,
+    ):
         estimator_features, feature_indices = None, None
         n_more_estimators = self.n_estimators
 
         X = convert_to_tensor_or_dataframe(X)
         y = convert_to_tensor_or_dataframe(y) if y is not None else None
-        sample_weight = convert_to_tensor_or_dataframe(sample_weight) \
-            if sample_weight is not None else None
+        sample_weight = (
+            convert_to_tensor_or_dataframe(sample_weight)
+            if sample_weight is not None
+            else None
+        )
 
         y = self._validate_y(y)
 
@@ -1142,8 +1273,9 @@ class BaseBagging:
 
         fit_op = BaggingFitOperand(
             base_estimator=self.base_estimator,
+            estimator_params=estimator_params,
             n_estimators=n_more_estimators,
-            max_samples=self.max_samples,
+            max_samples=max_samples or self.max_samples,
             max_features=self.max_features,
             bootstrap=self.bootstrap,
             bootstrap_features=self.bootstrap_features,
@@ -1162,10 +1294,40 @@ class BaseBagging:
         if self.estimators_ is not None:
             estimators = mt.concatenate([self.estimators_, estimators])
         if self.estimator_features_ is not None:
-            estimator_features = mt.concatenate([self.estimator_features_, estimator_features])
+            estimator_features = mt.concatenate(
+                [self.estimator_features_, estimator_features]
+            )
 
         self.estimators_, self.estimator_features_ = estimators, estimator_features
         return self
+
+    def fit(self, X, y=None, sample_weight=None, session=None, run_kwargs=None):
+        """
+        Build a Bagging ensemble of estimators from the training set (X, y).
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The training input samples. Sparse matrices are accepted only if
+            they are supported by the base estimator.
+
+        y : array-like of shape (n_samples,)
+            The target values (class labels in classification, real numbers in
+            regression).
+
+        sample_weight : array-like of shape (n_samples,), default=None
+            Sample weights. If None, then samples are equally weighted.
+            Note that this is supported only if the base estimator supports
+            sample weighting.
+
+        Returns
+        -------
+        self : object
+            Fitted estimator.
+        """
+        return self._fit(
+            X, y, sample_weight=sample_weight, session=session, run_kwargs=run_kwargs
+        )
 
 
 class BaggingClassifier(ClassifierMixin, BaseBagging):
@@ -1291,7 +1453,9 @@ class BaggingClassifier(ClassifierMixin, BaseBagging):
         to_run = [check_classification_targets(y)]
         y = column_or_1d(y, warn=True)
         to_run.extend(mt.unique(y, return_inverse=True))
-        _, self.classes_, y = execute(*to_run, session=session, **(run_kwargs or dict()))
+        _, self.classes_, y = execute(
+            *to_run, session=session, **(run_kwargs or dict())
+        )
         self.n_classes_ = len(self.classes_)
 
         return y

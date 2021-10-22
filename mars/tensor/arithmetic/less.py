@@ -22,12 +22,12 @@ from .utils import arithmetic_operand
 from .core import TensorBinOp
 
 
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorLessThan(TensorBinOp):
     _op_type_ = OperandDef.LT
-    _func_name = 'less'
+    _func_name = "less"
 
-    def __init__(self, casting='same_kind', err=None, **kw):
+    def __init__(self, casting="same_kind", err=None, **kw):
         err = err if err is not None else np.geterr()
         super().__init__(_casting=casting, _err=err, **kw)
 

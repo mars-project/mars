@@ -25,8 +25,7 @@ import pytest
 
 from ..... import oscar as mo
 from ..... import remote as mr
-from .....core import ChunkGraph, ChunkGraphBuilder, \
-    TileableGraph, TileableGraphBuilder
+from .....core import ChunkGraph, ChunkGraphBuilder, TileableGraph, TileableGraphBuilder
 from .....remote.core import RemoteFunction
 from .....tensor.fetch import TensorFetch
 from .....tensor.arithmetic import TensorTreeAdd
@@ -40,16 +39,15 @@ from ....storage.handler import StorageHandlerActor
 from ....subtask import MockSubtaskAPI, Subtask, SubtaskStatus
 from ....task.supervisor.manager import TaskManagerActor
 from ....mutable import MockMutableAPI
-from ...worker import SubtaskExecutionActor, QuotaActor, \
-    BandSlotManagerActor
 from ...supervisor import GlobalSlotManagerActor
+from ...worker import SubtaskExecutionActor, QuotaActor, BandSlotManagerActor
 
 
 class CancelDetectActorMixin:
     @asynccontextmanager
     async def _delay_method(self):
-        delay_fetch_event = getattr(self, '_delay_fetch_event', None)
-        delay_wait_event = getattr(self, '_delay_wait_event', None)
+        delay_fetch_event = getattr(self, "_delay_fetch_event", None)
+        delay_wait_event = getattr(self, "_delay_wait_event", None)
         try:
             if delay_fetch_event is not None:
                 delay_fetch_event.set()
@@ -60,12 +58,14 @@ class CancelDetectActorMixin:
             self._is_cancelled = True
             raise
 
-    def set_delay_fetch_event(self, fetch_event: asyncio.Event, wait_event: asyncio.Event):
-        setattr(self, '_delay_fetch_event', fetch_event)
-        setattr(self, '_delay_wait_event', wait_event)
+    def set_delay_fetch_event(
+        self, fetch_event: asyncio.Event, wait_event: asyncio.Event
+    ):
+        setattr(self, "_delay_fetch_event", fetch_event)
+        setattr(self, "_delay_wait_event", wait_event)
 
     def get_is_cancelled(self):
-        return getattr(self, '_is_cancelled', False)
+        return getattr(self, "_is_cancelled", False)
 
 
 class MockStorageHandlerActor(StorageHandlerActor, CancelDetectActorMixin):
@@ -90,14 +90,17 @@ class MockQuotaActor(QuotaActor, CancelDetectActorMixin):
 
 class MockBandSlotManagerActor(BandSlotManagerActor, CancelDetectActorMixin):
     async def acquire_free_slot(self, session_stid: Tuple[str, str], block=True):
-        if getattr(self, '_delay_function', None) != 'acquire_free_slot':
+        if getattr(self, "_delay_function", None) != "acquire_free_slot":
             return super().acquire_free_slot(session_stid, block)
         else:
             async with self._delay_method():
                 return super().acquire_free_slot(session_stid, block)
 
     async def upload_slot_usages(self, periodical: bool = False):
-        if getattr(self, '_delay_function', None) != 'upload_slot_usages' or periodical is True:
+        if (
+            getattr(self, "_delay_function", None) != "upload_slot_usages"
+            or periodical is True
+        ):
             return super().upload_slot_usages(periodical)
         else:
             async with self._delay_method():
@@ -114,7 +117,9 @@ class MockGlobalSlotManagerActor(GlobalSlotManagerActor, CancelDetectActorMixin)
     async def __pre_destroy__(self):
         pass
 
-    async def update_subtask_slots(self, band, session_id: str, subtask_id: str, slots: int):
+    async def update_subtask_slots(
+        self, band, session_id: str, subtask_id: str, slots: int
+    ):
         pass
 
 
@@ -132,46 +137,64 @@ class MockTaskManager(mo.Actor):
 @pytest.fixture
 async def actor_pool(request):
     n_slots, enable_kill = request.param
-    pool = await mo.create_actor_pool('127.0.0.1',
-                                      labels=[None] + ['numa-0'] * n_slots,
-                                      n_process=n_slots)
+    pool = await mo.create_actor_pool(
+        "127.0.0.1", labels=[None] + ["numa-0"] * n_slots, n_process=n_slots
+    )
 
     async with pool:
-        session_id = 'test_session'
-        await MockClusterAPI.create(pool.external_address, band_to_slots={'numa-0': n_slots})
+        session_id = "test_session"
+        await MockClusterAPI.create(
+            pool.external_address, band_to_slots={"numa-0": n_slots}
+        )
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
         await MockLifecycleAPI.create(session_id, pool.external_address)
         await MockSubtaskAPI.create(pool.external_address)
         await MockMutableAPI.create(session_id, pool.external_address)
-        storage_api = await MockStorageAPI.create(session_id, pool.external_address,
-                                                  storage_handler_cls=MockStorageHandlerActor)
+        storage_api = await MockStorageAPI.create(
+            session_id,
+            pool.external_address,
+            storage_handler_cls=MockStorageHandlerActor,
+        )
 
         # create assigner actor
-        execution_ref = await mo.create_actor(SubtaskExecutionActor,
-                                              subtask_max_retries=0,
-                                              enable_kill_slot=enable_kill,
-                                              uid=SubtaskExecutionActor.default_uid(),
-                                              address=pool.external_address)
+        execution_ref = await mo.create_actor(
+            SubtaskExecutionActor,
+            subtask_max_retries=0,
+            enable_kill_slot=enable_kill,
+            uid=SubtaskExecutionActor.default_uid(),
+            address=pool.external_address,
+        )
         # create quota actor
-        quota_ref = await mo.create_actor(MockQuotaActor, 'numa-0', 102400,
-                                          uid=QuotaActor.gen_uid('numa-0'),
-                                          address=pool.external_address)
+        quota_ref = await mo.create_actor(
+            MockQuotaActor,
+            "numa-0",
+            102400,
+            uid=QuotaActor.gen_uid("numa-0"),
+            address=pool.external_address,
+        )
         # create dispatcher actor
-        band_slot_ref = await mo.create_actor(MockBandSlotManagerActor,
-                                              (pool.external_address, 'numa-0'), n_slots,
-                                              uid=BandSlotManagerActor.gen_uid('numa-0'),
-                                              address=pool.external_address)
+        band_slot_ref = await mo.create_actor(
+            MockBandSlotManagerActor,
+            (pool.external_address, "numa-0"),
+            n_slots,
+            uid=BandSlotManagerActor.gen_uid("numa-0"),
+            address=pool.external_address,
+        )
 
         # create global slot manager actor
-        global_slot_ref = await mo.create_actor(MockGlobalSlotManagerActor,
-                                                uid=GlobalSlotManagerActor.default_uid(),
-                                                address=pool.external_address)
+        global_slot_ref = await mo.create_actor(
+            MockGlobalSlotManagerActor,
+            uid=GlobalSlotManagerActor.default_uid(),
+            address=pool.external_address,
+        )
 
         # create mock task manager actor
-        task_manager_ref = await mo.create_actor(MockTaskManager,
-                                                 uid=TaskManagerActor.gen_uid(session_id),
-                                                 address=pool.external_address)
+        task_manager_ref = await mo.create_actor(
+            MockTaskManager,
+            uid=TaskManagerActor.gen_uid(session_id),
+            address=pool.external_address,
+        )
 
         try:
             yield pool, session_id, meta_api, storage_api, execution_ref
@@ -188,22 +211,35 @@ async def actor_pool(request):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('actor_pool', [(1, True)], indirect=True)
+@pytest.mark.parametrize("actor_pool", [(1, True)], indirect=True)
 async def test_execute_tensor(actor_pool):
     pool, session_id, meta_api, storage_api, execution_ref = actor_pool
 
     data1 = np.random.rand(10, 10)
     data2 = np.random.rand(10, 10)
 
-    input1 = TensorFetch(key='input1', source_key='input2', dtype=np.dtype(int)).new_chunk([])
-    input2 = TensorFetch(key='input2', source_key='input2', dtype=np.dtype(int)).new_chunk([])
-    result_chunk = TensorTreeAdd(args=[input1, input2]) \
-        .new_chunk([input1, input2], shape=data1.shape, dtype=data1.dtype)
+    input1 = TensorFetch(
+        key="input1", source_key="input2", dtype=np.dtype(int)
+    ).new_chunk([])
+    input2 = TensorFetch(
+        key="input2", source_key="input2", dtype=np.dtype(int)
+    ).new_chunk([])
+    result_chunk = TensorTreeAdd(args=[input1, input2]).new_chunk(
+        [input1, input2], shape=data1.shape, dtype=data1.dtype
+    )
 
-    await meta_api.set_chunk_meta(input1, memory_size=data1.nbytes, store_size=data1.nbytes,
-                                  bands=[(pool.external_address, 'numa-0')])
-    await meta_api.set_chunk_meta(input2, memory_size=data1.nbytes, store_size=data2.nbytes,
-                                  bands=[(pool.external_address, 'numa-0')])
+    await meta_api.set_chunk_meta(
+        input1,
+        memory_size=data1.nbytes,
+        store_size=data1.nbytes,
+        bands=[(pool.external_address, "numa-0")],
+    )
+    await meta_api.set_chunk_meta(
+        input2,
+        memory_size=data1.nbytes,
+        store_size=data2.nbytes,
+        bands=[(pool.external_address, "numa-0")],
+    )
     # todo use different storage level when storage ready
     await storage_api.put(input1.key, data1)
     await storage_api.put(input2.key, data2)
@@ -215,39 +251,42 @@ async def test_execute_tensor(actor_pool):
     chunk_graph.add_edge(input1, result_chunk)
     chunk_graph.add_edge(input2, result_chunk)
 
-    subtask = Subtask('test_subtask', session_id=session_id, chunk_graph=chunk_graph)
-    await execution_ref.run_subtask(subtask, 'numa-0', pool.external_address)
+    subtask = Subtask("test_subtask", session_id=session_id, chunk_graph=chunk_graph)
+    await execution_ref.run_subtask(subtask, "numa-0", pool.external_address)
 
     # check if results are correct
     result = await storage_api.get(result_chunk.key)
     np.testing.assert_array_equal(data1 + data2, result)
 
     # check if quota computations are correct
-    quota_ref = await mo.actor_ref(QuotaActor.gen_uid('numa-0'),
-                                   address=pool.external_address)
+    quota_ref = await mo.actor_ref(
+        QuotaActor.gen_uid("numa-0"), address=pool.external_address
+    )
     [quota] = await quota_ref.get_batch_quota_reqs()
     assert quota[(subtask.session_id, subtask.subtask_id)] == data1.nbytes
 
     # check if metas are correct
     result_meta = await meta_api.get_chunk_meta(result_chunk.key)
-    assert result_meta['object_id'] == result_chunk.key
-    assert result_meta['shape'] == result.shape
+    assert result_meta["object_id"] == result_chunk.key
+    assert result_meta["shape"] == result.shape
 
 
 _cancel_phases = [
-    'prepare',
-    'quota',
-    'slot',
-    'execute',
-    'finally',
-    'immediately',
+    "prepare",
+    "quota",
+    "slot",
+    "execute",
+    "finally",
+    "immediately",
 ]
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('actor_pool,cancel_phase',
-                         [((1, True), phase) for phase in _cancel_phases],
-                         indirect=['actor_pool'])
+@pytest.mark.parametrize(
+    "actor_pool,cancel_phase",
+    [((1, True), phase) for phase in _cancel_phases],
+    indirect=["actor_pool"],
+)
 async def test_execute_with_cancel(actor_pool, cancel_phase):
     pool, session_id, meta_api, storage_api, execution_ref = actor_pool
     delay_fetch_event = asyncio.Event()
@@ -255,21 +294,24 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
 
     # config for different phases
     ref_to_delay = None
-    if cancel_phase == 'prepare':
+    if cancel_phase == "prepare":
         ref_to_delay = await mo.actor_ref(
-            StorageHandlerActor.gen_uid('numa-0'),
-            address=pool.external_address)
-    elif cancel_phase == 'quota':
+            StorageHandlerActor.gen_uid("numa-0"), address=pool.external_address
+        )
+    elif cancel_phase == "quota":
         ref_to_delay = await mo.actor_ref(
-            QuotaActor.gen_uid('numa-0'), address=pool.external_address)
-    elif cancel_phase == 'slot':
+            QuotaActor.gen_uid("numa-0"), address=pool.external_address
+        )
+    elif cancel_phase == "slot":
         ref_to_delay = await mo.actor_ref(
-            BandSlotManagerActor.gen_uid('numa-0'), address=pool.external_address)
-        await ref_to_delay.set_delay_function('acquire_free_slot')
-    elif cancel_phase == 'finally':
+            BandSlotManagerActor.gen_uid("numa-0"), address=pool.external_address
+        )
+        await ref_to_delay.set_delay_function("acquire_free_slot")
+    elif cancel_phase == "finally":
         ref_to_delay = await mo.actor_ref(
-            BandSlotManagerActor.gen_uid('numa-0'), address=pool.external_address)
-        await ref_to_delay.set_delay_function('upload_slot_usages')
+            BandSlotManagerActor.gen_uid("numa-0"), address=pool.external_address
+        )
+        await ref_to_delay.set_delay_function("upload_slot_usages")
     if ref_to_delay:
         await ref_to_delay.set_delay_fetch_event(delay_fetch_event, delay_wait_event)
     else:
@@ -278,16 +320,22 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     def delay_fun(delay, _inp1):
         if not ref_to_delay:
             time.sleep(delay)
-        return delay,
+        return (delay,)
 
-    input1 = TensorFetch(key='input1', source_key='input1', dtype=np.dtype(int)).new_chunk([])
-    remote_result = RemoteFunction(function=delay_fun, function_args=[100, input1],
-                                   function_kwargs={}, n_output=1) \
-        .new_chunk([input1])
+    input1 = TensorFetch(
+        key="input1", source_key="input1", dtype=np.dtype(int)
+    ).new_chunk([])
+    remote_result = RemoteFunction(
+        function=delay_fun, function_args=[100, input1], function_kwargs={}, n_output=1
+    ).new_chunk([input1])
 
     data1 = np.random.rand(10, 10)
-    await meta_api.set_chunk_meta(input1, memory_size=data1.nbytes, store_size=data1.nbytes,
-                                  bands=[(pool.external_address, 'numa-0')])
+    await meta_api.set_chunk_meta(
+        input1,
+        memory_size=data1.nbytes,
+        store_size=data1.nbytes,
+        bands=[(pool.external_address, "numa-0")],
+    )
     await storage_api.put(input1.key, data1)
 
     chunk_graph = ChunkGraph([remote_result])
@@ -295,14 +343,16 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     chunk_graph.add_node(remote_result)
     chunk_graph.add_edge(input1, remote_result)
 
-    subtask = Subtask(f'test_subtask_{uuid.uuid4()}', session_id=session_id,
-                      chunk_graph=chunk_graph)
-    aiotask = asyncio.create_task(execution_ref.run_subtask(
-        subtask, 'numa-0', pool.external_address))
+    subtask = Subtask(
+        f"test_subtask_{uuid.uuid4()}", session_id=session_id, chunk_graph=chunk_graph
+    )
+    aiotask = asyncio.create_task(
+        execution_ref.run_subtask(subtask, "numa-0", pool.external_address)
+    )
     if ref_to_delay:
         await delay_fetch_event.wait()
     else:
-        if cancel_phase != 'immediately':
+        if cancel_phase != "immediately":
             await asyncio.sleep(1)
 
     with Timer() as timer:
@@ -326,40 +376,47 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
 
     chunk_graph = next(ChunkGraphBuilder(graph, fuse_enabled=False).build())
 
-    subtask = Subtask(f'test_subtask2_{uuid.uuid4()}', session_id=session_id,
-                      chunk_graph=chunk_graph)
+    subtask = Subtask(
+        f"test_subtask2_{uuid.uuid4()}", session_id=session_id, chunk_graph=chunk_graph
+    )
     await asyncio.wait_for(
-        execution_ref.run_subtask(subtask, 'numa-0', pool.external_address),
-        timeout=30)
+        execution_ref.run_subtask(subtask, "numa-0", pool.external_address), timeout=30
+    )
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('actor_pool', [(1, False)], indirect=True)
+@pytest.mark.parametrize("actor_pool", [(1, False)], indirect=True)
 async def test_cancel_without_kill(actor_pool):
     pool, session_id, meta_api, storage_api, execution_ref = actor_pool
-    executed_file = os.path.join(tempfile.gettempdir(),
-                                 f'mars_test_cancel_without_kill_{os.getpid()}.tmp')
+    executed_file = os.path.join(
+        tempfile.gettempdir(), f"mars_test_cancel_without_kill_{os.getpid()}.tmp"
+    )
 
     def delay_fun(delay):
         import mars
-        open(executed_file, 'w').close()
+
+        open(executed_file, "w").close()
         time.sleep(delay)
         mars._slot_marker = 1
         return delay
 
     def check_fun():
         import mars
-        return getattr(mars, '_slot_marker', False)
 
-    remote_result = RemoteFunction(function=delay_fun, function_args=[2],
-                                   function_kwargs={}).new_chunk([])
+        return getattr(mars, "_slot_marker", False)
+
+    remote_result = RemoteFunction(
+        function=delay_fun, function_args=[2], function_kwargs={}
+    ).new_chunk([])
     chunk_graph = ChunkGraph([remote_result])
     chunk_graph.add_node(remote_result)
 
-    subtask = Subtask(f'test_subtask_{uuid.uuid4()}', session_id=session_id,
-                      chunk_graph=chunk_graph)
-    aiotask = asyncio.create_task(execution_ref.run_subtask(
-        subtask, 'numa-0', pool.external_address))
+    subtask = Subtask(
+        f"test_subtask_{uuid.uuid4()}", session_id=session_id, chunk_graph=chunk_graph
+    )
+    aiotask = asyncio.create_task(
+        execution_ref.run_subtask(subtask, "numa-0", pool.external_address)
+    )
     await asyncio.sleep(0.5)
 
     await asyncio.wait_for(
@@ -369,15 +426,18 @@ async def test_cancel_without_kill(actor_pool):
     r = await asyncio.wait_for(aiotask, timeout=30)
     assert r.status == SubtaskStatus.cancelled
 
-    remote_result = RemoteFunction(function=check_fun, function_args=[],
-                                   function_kwargs={}).new_chunk([])
+    remote_result = RemoteFunction(
+        function=check_fun, function_args=[], function_kwargs={}
+    ).new_chunk([])
     chunk_graph = ChunkGraph([remote_result])
     chunk_graph.add_node(remote_result)
 
-    subtask = Subtask(f'test_subtask_{uuid.uuid4()}', session_id=session_id,
-                      chunk_graph=chunk_graph)
-    await asyncio.wait_for(execution_ref.run_subtask(
-        subtask, 'numa-0', pool.external_address), timeout=30)
+    subtask = Subtask(
+        f"test_subtask_{uuid.uuid4()}", session_id=session_id, chunk_graph=chunk_graph
+    )
+    await asyncio.wait_for(
+        execution_ref.run_subtask(subtask, "numa-0", pool.external_address), timeout=30
+    )
 
     # check if slots not killed (or slot assignment may be cancelled)
     if os.path.exists(executed_file):

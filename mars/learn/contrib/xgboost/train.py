@@ -37,16 +37,31 @@ def _on_serialize_evals(evals_val):
 class XGBTrain(MergeDictOperand):
     _op_type_ = OperandDef.XGBOOST_TRAIN
 
-    _params = DictField('params', key_type=FieldTypes.string)
-    _dtrain = KeyField('dtrain')
-    _evals = ListField('evals', on_serialize=_on_serialize_evals)
-    _kwargs = DictField('kwargs', key_type=FieldTypes.string)
-    _tracker = KeyField('tracker')
+    _params = DictField("params", key_type=FieldTypes.string)
+    _dtrain = KeyField("dtrain")
+    _evals = ListField("evals", on_serialize=_on_serialize_evals)
+    _kwargs = DictField("kwargs", key_type=FieldTypes.string)
+    _tracker = KeyField("tracker")
 
-    def __init__(self, params=None, dtrain=None, evals=None, kwargs=None,
-                 tracker=None, gpu=None, **kw):
-        super().__init__(_params=params, _dtrain=dtrain, _evals=evals, _kwargs=kwargs,
-                         _tracker=tracker, _gpu=gpu, **kw)
+    def __init__(
+        self,
+        params=None,
+        dtrain=None,
+        evals=None,
+        kwargs=None,
+        tracker=None,
+        gpu=None,
+        **kw
+    ):
+        super().__init__(
+            _params=params,
+            _dtrain=dtrain,
+            _evals=evals,
+            _kwargs=kwargs,
+            _tracker=tracker,
+            _gpu=gpu,
+            **kw
+        )
         if self.output_types is None:
             self.output_types = [OutputType.object]
 
@@ -94,8 +109,9 @@ class XGBTrain(MergeDictOperand):
     def _get_dmatrix_chunks_workers(ctx, dmatrix):
         # dmatrix_chunk.inputs is concat, and concat's input is the coallocated chunks
         metas = ctx.get_chunks_meta(
-            [c.inputs[0].inputs[0].key for c in dmatrix.chunks], fields=['bands'])
-        return [m['bands'][0][0] for m in metas]
+            [c.inputs[0].inputs[0].key for c in dmatrix.chunks], fields=["bands"]
+        )
+        return [m["bands"][0][0] for m in metas]
 
     @classmethod
     def tile(cls, op):
@@ -119,8 +135,8 @@ class XGBTrain(MergeDictOperand):
 
         i = itertools.count(n_chunk)
         tracker_chunk = StartTracker(
-            n_workers=len(all_workers),
-            pure_depends=[True] * n_chunk).new_chunk(in_chunks, shape=())
+            n_workers=len(all_workers), pure_depends=[True] * n_chunk
+        ).new_chunk(in_chunks, shape=())
         for worker in all_workers:
             chunk_op = op.copy().reset_key()
             chunk_op.expect_worker = worker
@@ -128,25 +144,34 @@ class XGBTrain(MergeDictOperand):
             if worker in worker_to_in_chunks:
                 in_chunk = worker_to_in_chunks[worker]
             else:
-                in_chunk_op = ToDMatrix(data=None, label=None, weight=None,
-                                        base_margin=None, missing=inp.op.missing,
-                                        feature_names=inp.op.feature_names,
-                                        feature_types=inp.op.feature_types,
-                                        _output_types=inp.op.output_types)
+                in_chunk_op = ToDMatrix(
+                    data=None,
+                    label=None,
+                    weight=None,
+                    base_margin=None,
+                    missing=inp.op.missing,
+                    feature_names=inp.op.feature_names,
+                    feature_types=inp.op.feature_types,
+                    _output_types=inp.op.output_types,
+                )
                 params = inp.params.copy()
-                params['index'] = (next(i),)
-                params['shape'] = (0, inp.shape[1])
+                params["index"] = (next(i),)
+                params["shape"] = (0, inp.shape[1])
                 in_chunk = in_chunk_op.new_chunk(None, kws=[params])
             chunk_evals = list(worker_to_evals.get(worker, list()))
             chunk_op._evals = chunk_evals
-            input_chunks = [in_chunk] + [pair[0] for pair in chunk_evals] + [tracker_chunk]
-            out_chunk = chunk_op.new_chunk(input_chunks, shape=(np.nan,),
-                                           index=in_chunk.index[:1])
+            input_chunks = (
+                [in_chunk] + [pair[0] for pair in chunk_evals] + [tracker_chunk]
+            )
+            out_chunk = chunk_op.new_chunk(
+                input_chunks, shape=(np.nan,), index=in_chunk.index[:1]
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tileables(op.inputs, chunks=out_chunks,
-                                    nsplits=((np.nan for _ in out_chunks),))
+        return new_op.new_tileables(
+            op.inputs, chunks=out_chunks, nsplits=((np.nan for _ in out_chunks),)
+        )
 
     @classmethod
     def execute(cls, ctx, op):
@@ -155,12 +180,13 @@ class XGBTrain(MergeDictOperand):
 
         from xgboost import train, rabit
 
-        dtrain = ToDMatrix.get_xgb_dmatrix(
-            ensure_own_data(ctx[op.dtrain.key]))
+        dtrain = ToDMatrix.get_xgb_dmatrix(ensure_own_data(ctx[op.dtrain.key]))
         evals = tuple()
         if op.evals is not None:
-            eval_dmatrices = [ToDMatrix.get_xgb_dmatrix(
-                ensure_own_data(ctx[t[0].key])) for t in op.evals]
+            eval_dmatrices = [
+                ToDMatrix.get_xgb_dmatrix(ensure_own_data(ctx[t[0].key]))
+                for t in op.evals
+            ]
             evals = tuple((m, ev[1]) for m, ev in zip(eval_dmatrices, op.evals))
         params = op.params
 
@@ -168,19 +194,28 @@ class XGBTrain(MergeDictOperand):
             # non distributed
             local_history = dict()
             kwargs = dict() if op.kwargs is None else op.kwargs
-            bst = train(params, dtrain, evals=evals,
-                        evals_result=local_history, **kwargs)
-            ctx[op.outputs[0].key] = {'booster': pickle.dumps(bst), 'history': local_history}
+            bst = train(
+                params, dtrain, evals=evals, evals_result=local_history, **kwargs
+            )
+            ctx[op.outputs[0].key] = {
+                "booster": pickle.dumps(bst),
+                "history": local_history,
+            }
         else:
             # distributed
             rabit_args = ctx[op.tracker.key]
-            rabit.init([arg.tobytes() if isinstance(arg, memoryview) else arg
-                        for arg in rabit_args])
+            rabit.init(
+                [
+                    arg.tobytes() if isinstance(arg, memoryview) else arg
+                    for arg in rabit_args
+                ]
+            )
             try:
                 local_history = dict()
-                bst = train(params, dtrain, evals=evals, evals_result=local_history,
-                            **op.kwargs)
-                ret = {'booster': pickle.dumps(bst), 'history': local_history}
+                bst = train(
+                    params, dtrain, evals=evals, evals_result=local_history, **op.kwargs
+                )
+                ret = {"booster": pickle.dumps(bst), "history": local_history}
                 if rabit.get_rank() != 0:
                     ret = {}
                 ctx[op.outputs[0].key] = ret
@@ -201,16 +236,16 @@ def train(params, dtrain, evals=(), **kwargs):
     results: Booster
     """
 
-    evals_result = kwargs.pop('evals_result', dict())
-    session = kwargs.pop('session', None)
-    run_kwargs = kwargs.pop('run_kwargs', dict())
+    evals_result = kwargs.pop("evals_result", dict())
+    session = kwargs.pop("session", None)
+    run_kwargs = kwargs.pop("run_kwargs", dict())
 
     processed_evals = []
     if evals:
         for eval_dmatrix, name in evals:
             if not isinstance(name, str):
-                raise TypeError('evals must a list of pairs (DMatrix, string)')
-            if hasattr(eval_dmatrix, 'op') and isinstance(eval_dmatrix.op, ToDMatrix):
+                raise TypeError("evals must a list of pairs (DMatrix, string)")
+            if hasattr(eval_dmatrix, "op") and isinstance(eval_dmatrix.op, ToDMatrix):
                 processed_evals.append((eval_dmatrix, name))
             else:
                 processed_evals.append((to_dmatrix(eval_dmatrix), name))
@@ -218,9 +253,9 @@ def train(params, dtrain, evals=(), **kwargs):
     op = XGBTrain(params=params, dtrain=dtrain, evals=processed_evals, kwargs=kwargs)
     t = op()
     ret = t.execute(session=session, **run_kwargs).fetch(session=session)
-    evals_result.update(ret['history'])
-    bst = pickle.loads(ret['booster'])
-    num_class = params.get('num_class')
+    evals_result.update(ret["history"])
+    bst = pickle.loads(ret["booster"])
+    num_class = params.get("num_class")
     if num_class:
         bst.set_attr(num_class=str(num_class))
     return bst

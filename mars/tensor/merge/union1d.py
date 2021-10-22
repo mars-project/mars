@@ -47,8 +47,7 @@ def union1d(ar1, ar2, aggregate_size=None):
     from ..base import unique, sort
     from .concatenate import concatenate
 
-    result = unique(concatenate((ar1, ar2), axis=None),
-                    aggregate_size=aggregate_size)
+    result = unique(concatenate((ar1, ar2), axis=None), aggregate_size=aggregate_size)
     if aggregate_size == 1:
         return result
     # make sure the result is sorted

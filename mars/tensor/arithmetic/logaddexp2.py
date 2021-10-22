@@ -22,10 +22,10 @@ from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='always_false')
+@arithmetic_operand(sparse_mode="always_false")
 class TensorLogAddExp2(TensorBinOp):
     _op_type_ = OperandDef.LOGADDEXP2
-    _func_name = 'logaddexp2'
+    _func_name = "logaddexp2"
 
 
 @infer_dtype(np.logaddexp2)

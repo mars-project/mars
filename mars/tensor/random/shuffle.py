@@ -55,7 +55,7 @@ def shuffle(random_state, x, axis=0):
     if isinstance(x, (list, np.ndarray, TENSOR_TYPE)):
         x = astensor(x)
     else:
-        raise TypeError('x should be list, numpy ndarray or tensor')
+        raise TypeError("x should be list, numpy ndarray or tensor")
 
     ret = permutation(random_state, x, axis=axis)
     x.data = ret.data

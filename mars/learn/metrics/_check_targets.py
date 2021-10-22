@@ -28,14 +28,19 @@ from ..utils import check_consistent_length, column_or_1d
 class CheckTargets(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.CHECK_TARGETS
 
-    _y_true = AnyField('y_true')
-    _y_pred = AnyField('y_pred')
-    _type_true = KeyField('type_true')
-    _type_pred = KeyField('type_pred')
+    _y_true = AnyField("y_true")
+    _y_pred = AnyField("y_pred")
+    _type_true = KeyField("type_true")
+    _type_pred = KeyField("type_pred")
 
     def __init__(self, y_true=None, y_pred=None, type_true=None, type_pred=None, **kw):
-        super().__init__(_y_true=y_true, _y_pred=y_pred,
-                         _type_true=type_true, _type_pred=type_pred, **kw)
+        super().__init__(
+            _y_true=y_true,
+            _y_pred=y_pred,
+            _type_true=type_true,
+            _type_pred=type_pred,
+            **kw,
+        )
         # scalar(y_type), y_true, y_pred
         self.output_types = [OutputType.tensor] * 3
 
@@ -82,14 +87,11 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
         inputs.extend([self._type_true, self._type_pred])
 
         kws = list()
-        kws.append({
-            'shape': (),
-            'dtype': np.dtype(object),
-            'order': TensorOrder.C_ORDER
-        })
-        kws.extend([y.params for y in (mt.tensor(y_true),
-                                       mt.tensor(y_pred))])
-        kws[1]['shape'] = kws[2]['shape'] = (np.nan,)
+        kws.append(
+            {"shape": (), "dtype": np.dtype(object), "order": TensorOrder.C_ORDER}
+        )
+        kws.extend([y.params for y in (mt.tensor(y_true), mt.tensor(y_pred))])
+        kws[1]["shape"] = kws[2]["shape"] = (np.nan,)
         return ExecutableTuple(self.new_tileables(inputs, kws=kws))
 
     @classmethod
@@ -107,22 +109,26 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
         yield chunks
 
         ctx = get_context()
-        type_true, type_pred = [d.item() if hasattr(d, 'item') else d
-                                for d in ctx.get_chunks_result([c.key for c in chunks])]
+        type_true, type_pred = [
+            d.item() if hasattr(d, "item") else d
+            for d in ctx.get_chunks_result([c.key for c in chunks])
+        ]
 
         y_type = {type_true, type_pred}
         if y_type == {"binary", "multiclass"}:
             y_type = {"multiclass"}
 
         if len(y_type) > 1:
-            raise ValueError(f"Classification metrics can't handle a mix of {type_true} "
-                             f"and {type_pred} targets")
+            raise ValueError(
+                f"Classification metrics can't handle a mix of {type_true} "
+                f"and {type_pred} targets"
+            )
 
         # We can't have more than one value on y_type => The set is no more needed
         y_type = y_type.pop()
 
         # No metrics support "multiclass-multioutput" format
-        if (y_type not in ["binary", "multiclass", "multilabel-indicator"]):
+        if y_type not in ["binary", "multiclass", "multilabel-indicator"]:
             raise ValueError(f"{y_type} is not supported")
 
         if y_type in ["binary", "multiclass"]:
@@ -130,12 +136,13 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
             y_pred = column_or_1d(y_pred)
             if y_type == "binary":
                 unique_values = mt.union1d(y_true, y_pred)
-                y_type = mt.where(mt.count_nonzero(unique_values) > 2,
-                                  'multiclass', y_type)
-        elif y_type.startswith('multilabel'):
+                y_type = mt.where(
+                    mt.count_nonzero(unique_values) > 2, "multiclass", y_type
+                )
+        elif y_type.startswith("multilabel"):
             y_true = mt.tensor(y_true).tosparse()
             y_pred = mt.tensor(y_pred).tosparse()
-            y_type = 'multilabel-indicator'
+            y_type = "multilabel-indicator"
 
         if not isinstance(y_true, ENTITY_TYPE):
             y_true = mt.tensor(y_true)
@@ -151,10 +158,20 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
 
         kws = [out.params for out in op.outputs]
         kws[0].update(dict(nsplits=(), chunks=[y_type.chunks[0]]))
-        kws[1].update(dict(nsplits=y_true.nsplits, chunks=y_true.chunks,
-                           shape=tuple(sum(sp) for sp in y_true.nsplits)))
-        kws[2].update(dict(nsplits=y_pred.nsplits, chunks=y_pred.chunks,
-                           shape=tuple(sum(sp) for sp in y_pred.nsplits)))
+        kws[1].update(
+            dict(
+                nsplits=y_true.nsplits,
+                chunks=y_true.chunks,
+                shape=tuple(sum(sp) for sp in y_true.nsplits),
+            )
+        )
+        kws[2].update(
+            dict(
+                nsplits=y_pred.nsplits,
+                chunks=y_pred.chunks,
+                shape=tuple(sum(sp) for sp in y_pred.nsplits),
+            )
+        )
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=kws)
 

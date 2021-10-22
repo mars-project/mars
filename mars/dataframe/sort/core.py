@@ -17,31 +17,57 @@ import pandas as pd
 from ...config import options
 from ...core import recursive_tile
 from ...core.operand import OperandStage
-from ...serialization.serializables import FieldTypes, Int32Field, Int64Field, \
-    StringField, ListField, BoolField
+from ...serialization.serializables import (
+    FieldTypes,
+    Int32Field,
+    Int64Field,
+    StringField,
+    ListField,
+    BoolField,
+)
 from ...utils import ceildiv
 from ..operands import DataFrameOperand
 from ..utils import parse_index
 
 
 class DataFrameSortOperand(DataFrameOperand):
-    _axis = Int32Field('axis')
-    _ascending = BoolField('ascending')
-    _inplace = BoolField('inplace')
-    _kind = StringField('kind')
-    _na_position = StringField('na_position')
-    _ignore_index = BoolField('ignore_index')
-    _parallel_kind = StringField('parallel_kind')
-    _psrs_kinds = ListField('psrs_kinds', FieldTypes.string)
-    _nrows = Int64Field('nrows')
+    _axis = Int32Field("axis")
+    _ascending = BoolField("ascending")
+    _inplace = BoolField("inplace")
+    _kind = StringField("kind")
+    _na_position = StringField("na_position")
+    _ignore_index = BoolField("ignore_index")
+    _parallel_kind = StringField("parallel_kind")
+    _psrs_kinds = ListField("psrs_kinds", FieldTypes.string)
+    _nrows = Int64Field("nrows")
 
-    def __init__(self, axis=None, ascending=None, inplace=None, kind=None, na_position=None,
-                 ignore_index=None, parallel_kind=None, psrs_kinds=None,
-                 nrows=None, gpu=False, **kw):
-        super().__init__(_axis=axis, _ascending=ascending, _inplace=inplace, _kind=kind,
-                         _na_position=na_position, _ignore_index=ignore_index,
-                         _parallel_kind=parallel_kind, _psrs_kinds=psrs_kinds,
-                         _nrows=nrows, _gpu=gpu, **kw)
+    def __init__(
+        self,
+        axis=None,
+        ascending=None,
+        inplace=None,
+        kind=None,
+        na_position=None,
+        ignore_index=None,
+        parallel_kind=None,
+        psrs_kinds=None,
+        nrows=None,
+        gpu=False,
+        **kw
+    ):
+        super().__init__(
+            _axis=axis,
+            _ascending=ascending,
+            _inplace=inplace,
+            _kind=kind,
+            _na_position=na_position,
+            _ignore_index=ignore_index,
+            _parallel_kind=parallel_kind,
+            _psrs_kinds=psrs_kinds,
+            _nrows=nrows,
+            _gpu=gpu,
+            **kw
+        )
 
     @property
     def axis(self):
@@ -94,14 +120,16 @@ class DataFrameSortOperand(DataFrameOperand):
             if inp.chunk_shape[1 - axis] > 1:  # pragma: no cover
                 if any(pd.isna(s) for s in inp.nsplits[1 - axis]):
                     yield
-                inp = yield from recursive_tile(inp.rechunk({1 - axis: inp.shape[1 - axis]}))
+                inp = yield from recursive_tile(
+                    inp.rechunk({1 - axis: inp.shape[1 - axis]})
+                )
 
         out_chunks = []
         for c in inp.chunks:
             chunk_op = op.copy().reset_key()
             chunk_op.stage = OperandStage.map
             chunk_params = c.params
-            chunk_params['index_value'] = parse_index(pd_index, c)
+            chunk_params["index_value"] = parse_index(pd_index, c)
             out_chunks.append(chunk_op.new_chunk([c], kws=[chunk_params]))
 
         while True:
@@ -110,22 +138,26 @@ class DataFrameSortOperand(DataFrameOperand):
             for i in range(chunk_size):
                 chunk_index = (i,) if inp.ndim == 1 else (i, 0)
 
-                to_combine_chunks = out_chunks[i * combine_size: (i + 1) * combine_size]
+                to_combine_chunks = out_chunks[
+                    i * combine_size : (i + 1) * combine_size
+                ]
                 concat_params = to_combine_chunks[0].params
-                concat_params['index'] = chunk_index
+                concat_params["index"] = chunk_index
                 shape = list(to_combine_chunks[0].shape)
                 shape[0] = sum(c.shape[0] for c in to_combine_chunks)
                 shape = tuple(shape)
-                concat_params['shape'] = shape
+                concat_params["shape"] = shape
                 c = DataFrameConcat(axis=axis, output_types=op.output_types).new_chunk(
-                    to_combine_chunks, kws=[concat_params])
+                    to_combine_chunks, kws=[concat_params]
+                )
 
                 chunk_op = op.copy().reset_key()
-                chunk_op.stage = OperandStage.combine \
-                    if chunk_size > 1 else OperandStage.agg
+                chunk_op.stage = (
+                    OperandStage.combine if chunk_size > 1 else OperandStage.agg
+                )
                 chunk_params = c.params
-                chunk_params['index_value'] = parse_index(pd_index, c)
-                chunk_params['shape'] = (min(shape[0], op.nrows),) + shape[1:]
+                chunk_params["index_value"] = parse_index(pd_index, c)
+                chunk_params["shape"] = (min(shape[0], op.nrows),) + shape[1:]
                 combine_chunks.append(chunk_op.new_chunk([c], kws=[chunk_params]))
             out_chunks = combine_chunks
             if chunk_size == 1:
@@ -133,8 +165,8 @@ class DataFrameSortOperand(DataFrameOperand):
 
         new_op = op.copy()
         params = out.params
-        params['nsplits'] = tuple((s,) for s in out.shape)
-        params['chunks'] = out_chunks
+        params["nsplits"] = tuple((s,) for s in out.shape)
+        params["chunks"] = out_chunks
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod

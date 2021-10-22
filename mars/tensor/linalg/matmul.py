@@ -32,17 +32,17 @@ from ..datasource import tensor as astensor
 class TensorMatmul(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.MATMUL
 
-    _a = KeyField('a')
-    _b = KeyField('b')
-    _casting = StringField('casting')
-    _order = StringField('order')
+    _a = KeyField("a")
+    _b = KeyField("b")
+    _casting = StringField("casting")
+    _order = StringField("order")
 
-    def __init__(self, casting=None, order=None,  **kw):
+    def __init__(self, casting=None, order=None, **kw):
         super().__init__(_casting=casting, _order=order, **kw)
         if self._casting is None:
-            self._casting = 'same_kind'
+            self._casting = "same_kind"
         if self._order is None:
-            self._order = 'K'
+            self._order = "K"
         check_order(self._order)
 
     @property
@@ -70,12 +70,12 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
         if out is not None:
             return out.order
 
-        if self._order in 'A':
+        if self._order in "A":
             if a.order == TensorOrder.C_ORDER or b.order == TensorOrder.C_ORDER:
                 return TensorOrder.C_ORDER
             else:
                 return TensorOrder.F_ORDER
-        elif self._order in 'CK':
+        elif self._order in "CK":
             return TensorOrder.C_ORDER
         else:
             return TensorOrder.F_ORDER
@@ -86,7 +86,7 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
         if a.ndim == 0 or b.ndim == 0:
             raise ValueError("Scalar operands are not allowed, use '*' instead")
         if out is not None and not isinstance(out, Tensor):
-            raise TypeError(f'out must be a Tensor, got {type(out)} instead')
+            raise TypeError(f"out must be a Tensor, got {type(out)} instead")
 
         a_is_1d = False
         if a.ndim == 1:
@@ -104,8 +104,10 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
             b = b[(a.ndim - b.ndim) * (np.newaxis,)]
 
         if a.shape[-1] != b.shape[-2]:
-            raise ValueError(f'shape {a.shape} and {b.shape} not aligned: '
-                             f'{a.shape[-1]} (dim {a.ndim - 1}) != {b.shape[-2]} (dim {b.ndim - 2})')
+            raise ValueError(
+                f"shape {a.shape} and {b.shape} not aligned: "
+                f"{a.shape[-1]} (dim {a.ndim - 1}) != {b.shape[-2]} (dim {b.ndim - 2})"
+            )
 
         shape = broadcast_shape(a.shape[:-2], b.shape[:-2]) + (a.shape[-2], b.shape[-1])
         order = self._calc_order(a, b, out)
@@ -136,47 +138,68 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
         a, b = yield from unify_chunks((a, a_axes), (b, b_axes))
 
         get_nsplit = lambda i: a.nsplits[i] if a.nsplits[i] != (1,) else b.nsplits[i]
-        get_idx = lambda ch, idx: tuple(0 if ch.nsplits[j] == (1,) else ix for j, ix in enumerate(idx))
+        get_idx = lambda ch, idx: tuple(
+            0 if ch.nsplits[j] == (1,) else ix for j, ix in enumerate(idx)
+        )
 
         prefix_idxes = [range(len(get_nsplit(i))) for i in range(a.ndim - 2)]
-        out_idxes = prefix_idxes + [range(len(a.nsplits[-2])), range(len(b.nsplits[-1]))]
+        out_idxes = prefix_idxes + [
+            range(len(a.nsplits[-2])),
+            range(len(b.nsplits[-1])),
+        ]
 
         out_chunks = []
         for out_idx in itertools.product(*out_idxes):
             chunks = []
             get_s = lambda x, idx: x[idx] if x != (1,) else x[0]
-            shape = tuple(max(get_s(a_s, j), get_s(b_s, j))
-                          for a_s, b_s, j in zip(a.nsplits[:-2], b.nsplits[:-2], out_idx[:-2])) + \
-                (get_s(a.nsplits[-2], out_idx[-2]), get_s(b.nsplits[-1], out_idx[-1]))
+            shape = tuple(
+                max(get_s(a_s, j), get_s(b_s, j))
+                for a_s, b_s, j in zip(a.nsplits[:-2], b.nsplits[:-2], out_idx[:-2])
+            ) + (get_s(a.nsplits[-2], out_idx[-2]), get_s(b.nsplits[-1], out_idx[-1]))
 
             for contract_idx in range(len(a.nsplits[-1])):
                 a_idx = get_idx(a, out_idx[: a.ndim - 1] + (contract_idx,))
                 a_chunk = a.cix[a_idx]
-                b_idx = get_idx(b, out_idx[: b.ndim - 2] + (contract_idx,) + out_idx[-1:])
+                b_idx = get_idx(
+                    b, out_idx[: b.ndim - 2] + (contract_idx,) + out_idx[-1:]
+                )
                 b_chunk = b.cix[b_idx]
                 chunk_op = op.copy().reset_key()
-                c = chunk_op.new_chunk([a_chunk, b_chunk], shape=shape, order=tensor.order)
+                c = chunk_op.new_chunk(
+                    [a_chunk, b_chunk], shape=shape, order=tensor.order
+                )
                 chunks.append(c)
 
             if len(chunks) == 1:
                 c = chunks[0]
                 out_chunk_op = c.op.copy()
-                out_chunk = out_chunk_op.new_chunk(out_chunk_op.inputs, shape=c.shape,
-                                                   index=out_idx, order=tensor.order)
+                out_chunk = out_chunk_op.new_chunk(
+                    out_chunk_op.inputs,
+                    shape=c.shape,
+                    index=out_idx,
+                    order=tensor.order,
+                )
             else:
-                out_chunk = chunk_tree_add(tensor.op.dtype, chunks, out_idx, shape, sparse=tensor.op.sparse)
+                out_chunk = chunk_tree_add(
+                    tensor.op.dtype, chunks, out_idx, shape, sparse=tensor.op.sparse
+                )
 
             out_chunks.append(out_chunk)
 
-        nsplits = tuple(get_nsplit(i) for i in range(a.ndim - 2)) + (a.nsplits[-2], b.nsplits[-1])
+        nsplits = tuple(get_nsplit(i) for i in range(a.ndim - 2)) + (
+            a.nsplits[-2],
+            b.nsplits[-1],
+        )
         new_op = op.copy()
-        return new_op.new_tensors([a, b], tensor.shape, order=tensor.order,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            [a, b], tensor.shape, order=tensor.order, chunks=out_chunks, nsplits=nsplits
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         (a, b), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             if not op.sparse and is_sparse_module(xp):
@@ -185,10 +208,13 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
             else:
                 try:
                     # `np.matmul` support `order` argument in version 1.16
-                    ctx[op.outputs[0].key] = xp.matmul(a, b, casting=op.casting, order=op.order)
+                    ctx[op.outputs[0].key] = xp.matmul(
+                        a, b, casting=op.casting, order=op.order
+                    )
                 except TypeError:  # pragma: no cover
-                    ctx[op.outputs[0].key] = xp.matmul(a, b).astype(dtype=op.dtype,
-                                                                    casting=op.casting, order=op.order)
+                    ctx[op.outputs[0].key] = xp.matmul(a, b).astype(
+                        dtype=op.dtype, casting=op.casting, order=op.order
+                    )
 
 
 def matmul(a, b, sparse=None, out=None, **kw):

@@ -20,24 +20,43 @@ from ...core.operand import OperandStage
 from ...serialization.serializables import BoolField
 from ...utils import lazy_import
 from ..operands import OutputType
-from ..utils import parse_index, hash_dataframe_on, gen_unknown_index_value, standardize_range_index
+from ..utils import (
+    parse_index,
+    hash_dataframe_on,
+    gen_unknown_index_value,
+    standardize_range_index,
+)
 from ._duplicate import DuplicateOperand, validate_subset
 
-cudf = lazy_import('cudf', globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
 
 class DataFrameDropDuplicates(DuplicateOperand):
     _op_type_ = opcodes.DROP_DUPLICATES
 
-    _ignore_index = BoolField('ignore_index')
+    _ignore_index = BoolField("ignore_index")
 
-    def __init__(self, subset=None, keep=None, ignore_index=None,
-                 output_types=None, method=None, subset_chunk=None,
-                 shuffle_size=None, **kw):
-        super().__init__(_subset=subset, _keep=keep, _ignore_index=ignore_index,
-                         _output_types=output_types, _method=method,
-                         _subset_chunk=subset_chunk,
-                         _shuffle_size=shuffle_size, **kw)
+    def __init__(
+        self,
+        subset=None,
+        keep=None,
+        ignore_index=None,
+        output_types=None,
+        method=None,
+        subset_chunk=None,
+        shuffle_size=None,
+        **kw
+    ):
+        super().__init__(
+            _subset=subset,
+            _keep=keep,
+            _ignore_index=ignore_index,
+            _output_types=output_types,
+            _method=method,
+            _subset_chunk=subset_chunk,
+            _shuffle_size=shuffle_size,
+            **kw
+        )
 
     @property
     def ignore_index(self):
@@ -54,11 +73,12 @@ class DataFrameDropDuplicates(DuplicateOperand):
     def _gen_tileable_params(cls, op: "DataFrameDropDuplicates", input_params):
         params = input_params.copy()
         if op.ignore_index:
-            params['index_value'] = parse_index(pd.RangeIndex(-1))
+            params["index_value"] = parse_index(pd.RangeIndex(-1))
         else:
-            params['index_value'] = gen_unknown_index_value(
-                input_params['index_value'], op.keep, op.subset, type(op).__name__)
-        params['shape'] = cls._get_shape(input_params['shape'], op)
+            params["index_value"] = gen_unknown_index_value(
+                input_params["index_value"], op.keep, op.subset, type(op).__name__
+            )
+        params["shape"] = cls._get_shape(input_params["shape"], op)
         return params
 
     def __call__(self, inp, inplace=False):
@@ -75,21 +95,22 @@ class DataFrameDropDuplicates(DuplicateOperand):
         input_params = input_chunk.params
         inp = op.inputs[0]
         chunk_params = input_params.copy()
-        chunk_params['index'] = input_chunk.index[:1] + (0,) * (inp.ndim - 1)
-        chunk_params['shape'] = cls._get_shape(input_params['shape'], op)
-        chunk_params['index_value'] = gen_unknown_index_value(
-            input_params['index_value'], input_chunk)
+        chunk_params["index"] = input_chunk.index[:1] + (0,) * (inp.ndim - 1)
+        chunk_params["shape"] = cls._get_shape(input_params["shape"], op)
+        chunk_params["index_value"] = gen_unknown_index_value(
+            input_params["index_value"], input_chunk
+        )
         if inp.ndim == 2:
-            chunk_params['columns_value'] = inp.columns_value
-            chunk_params['dtypes'] = inp.dtypes
+            chunk_params["columns_value"] = inp.columns_value
+            chunk_params["dtypes"] = inp.dtypes
         else:
-            chunk_params['name'] = inp.name
-            chunk_params['dtype'] = inp.dtype
+            chunk_params["name"] = inp.name
+            chunk_params["dtype"] = inp.dtype
         return chunk_params
 
     @classmethod
     def _get_map_output_types(cls, input_chunk, method: str):
-        if method == 'subset_tree':
+        if method == "subset_tree":
             return [OutputType.dataframe]
         else:
             return input_chunk.op.output_types
@@ -102,8 +123,8 @@ class DataFrameDropDuplicates(DuplicateOperand):
             put_back_chunks = standardize_range_index(put_back_chunks)
         new_op = op.copy()
         params = tiled.params
-        params['nsplits'] = tiled.nsplits
-        params['chunks'] = put_back_chunks
+        params["nsplits"] = tiled.nsplits
+        params["chunks"] = put_back_chunks
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
@@ -117,10 +138,10 @@ class DataFrameDropDuplicates(DuplicateOperand):
         out = op.outputs[0]
         idx = op.outputs[0].index[0]
         subset = ctx[op.subset_chunk.key]
-        selected = subset[subset['_chunk_index_'] == idx]['_i_']
+        selected = subset[subset["_chunk_index_"] == idx]["_i_"]
         ret = inp.iloc[selected]
         if op.ignore_index:
-            prev_size = (subset['_chunk_index_'] < out.index[0]).sum()
+            prev_size = (subset["_chunk_index_"] < out.index[0]).sum()
             ret.index = pd.RangeIndex(prev_size, prev_size + len(ret))
         ctx[op.outputs[0].key] = ret
 
@@ -138,8 +159,8 @@ class DataFrameDropDuplicates(DuplicateOperand):
         else:
             if subset is None:
                 subset = dropped.columns.tolist()
-        dropped['_chunk_index_'] = out.index[0]
-        dropped['_i_'] = np.arange(dropped.shape[0])
+        dropped["_chunk_index_"] = out.index[0]
+        dropped["_i_"] = np.arange(dropped.shape[0])
         hashed = hash_dataframe_on(dropped, subset, shuffle_size)
         for i, data in enumerate(hashed):
             reducer_idx = (i,) + out.index[1:]
@@ -152,13 +173,16 @@ class DataFrameDropDuplicates(DuplicateOperand):
 
         xdf = cls._get_xdf(inputs[0])
         inp = xdf.concat(inputs)
-        dropped = cls._drop_duplicates(inp, op,
-                                       subset=[c for c in inp.columns
-                                               if c not in ('_chunk_index_', '_i_')],
-                                       keep=op.keep, ignore_index=op.ignore_index)
+        dropped = cls._drop_duplicates(
+            inp,
+            op,
+            subset=[c for c in inp.columns if c not in ("_chunk_index_", "_i_")],
+            keep=op.keep,
+            ignore_index=op.ignore_index,
+        )
         for i in range(op.shuffle_size):
-            filtered = dropped[dropped['_chunk_index_'] == i]
-            del filtered['_chunk_index_']
+            filtered = dropped[dropped["_chunk_index_"] == i]
+            del filtered["_chunk_index_"]
             ctx[out.key, (i,)] = filtered
 
     @classmethod
@@ -168,8 +192,8 @@ class DataFrameDropDuplicates(DuplicateOperand):
 
         xdf = cls._get_xdf(inputs[0])
         inp = xdf.concat(inputs)
-        inp.sort_values('_i_', inplace=True)
-        del inp['_i_']
+        inp.sort_values("_i_", inplace=True)
+        del inp["_i_"]
 
         if out.op.output_types[0] == OutputType.index:
             assert inp.shape[1] == 1
@@ -189,10 +213,10 @@ class DataFrameDropDuplicates(DuplicateOperand):
         if op.method is None:
             # one chunk
             cls._execute_chunk(ctx, op)
-        elif op.method == 'tree':
+        elif op.method == "tree":
             # tree
             cls._execute_chunk(ctx, op)
-        elif op.method == 'subset_tree':
+        elif op.method == "subset_tree":
             # subset tree
             if op.stage == OperandStage.map:
                 cls._execute_subset_tree_map(ctx, op)
@@ -204,18 +228,19 @@ class DataFrameDropDuplicates(DuplicateOperand):
                 # post
                 cls._execute_subset_tree_post(ctx, op)
         else:
-            assert op.method == 'shuffle'
+            assert op.method == "shuffle"
             if op.stage == OperandStage.map:
                 cls._execute_shuffle_map(ctx, op)
-            elif op.reducer_phase == 'drop_duplicates':
+            elif op.reducer_phase == "drop_duplicates":
                 cls._execute_shuffle_reduce(ctx, op)
             else:
-                assert op.reducer_phase == 'put_back'
+                assert op.reducer_phase == "put_back"
                 cls._execute_shuffle_put_back(ctx, op)
 
 
-def df_drop_duplicates(df, subset=None, keep='first',
-                       inplace=False, ignore_index=False, method='auto'):
+def df_drop_duplicates(
+    df, subset=None, keep="first", inplace=False, ignore_index=False, method="auto"
+):
     """
     Return DataFrame with duplicate rows removed.
 
@@ -242,17 +267,19 @@ def df_drop_duplicates(df, subset=None, keep='first',
     DataFrame
         DataFrame with duplicates removed or None if ``inplace=True``.
     """
-    if method not in ('auto', 'tree', 'subset_tree', 'shuffle', None):
-        raise ValueError("method could only be one of "
-                         "'auto', 'tree', 'subset_tree', 'shuffle' or None")
+    if method not in ("auto", "tree", "subset_tree", "shuffle", None):
+        raise ValueError(
+            "method could only be one of "
+            "'auto', 'tree', 'subset_tree', 'shuffle' or None"
+        )
     subset = validate_subset(df, subset)
-    op = DataFrameDropDuplicates(subset=subset, keep=keep,
-                                 ignore_index=ignore_index,
-                                 method=method)
+    op = DataFrameDropDuplicates(
+        subset=subset, keep=keep, ignore_index=ignore_index, method=method
+    )
     return op(df, inplace=inplace)
 
 
-def series_drop_duplicates(series, keep='first', inplace=False, method='auto'):
+def series_drop_duplicates(series, keep="first", inplace=False, method="auto"):
     """
     Return Series with duplicate values removed.
 
@@ -328,14 +355,15 @@ def series_drop_duplicates(series, keep='first', inplace=False, method='auto'):
     5     hippo
     Name: animal, dtype: object
     """
-    if method not in ('auto', 'tree', 'shuffle', None):
-        raise ValueError("method could only be one of "
-                         "'auto', 'tree', 'shuffle' or None")
+    if method not in ("auto", "tree", "shuffle", None):
+        raise ValueError(
+            "method could only be one of " "'auto', 'tree', 'shuffle' or None"
+        )
     op = DataFrameDropDuplicates(keep=keep, method=method)
     return op(series, inplace=inplace)
 
 
-def index_drop_duplicates(index, keep='first', method='auto'):
+def index_drop_duplicates(index, keep="first", method="auto"):
     """
     Return Index with duplicate values removed.
 
@@ -383,8 +411,9 @@ def index_drop_duplicates(index, keep='first', method='auto'):
     >>> idx.drop_duplicates(keep=False).execute()
     Index(['cow', 'beetle', 'hippo'], dtype='object')
     """
-    if method not in ('auto', 'tree', 'shuffle', None):
-        raise ValueError("method could only be one of "
-                         "'auto', 'tree', 'shuffle' or None")
+    if method not in ("auto", "tree", "shuffle", None):
+        raise ValueError(
+            "method could only be one of " "'auto', 'tree', 'shuffle' or None"
+        )
     op = DataFrameDropDuplicates(keep=keep, method=method)
     return op(index)

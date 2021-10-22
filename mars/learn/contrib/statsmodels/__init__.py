@@ -17,4 +17,5 @@ from .api import MarsDistributedModel, MarsResults
 
 def register_op():
     from . import train, predict
+
     del train, predict

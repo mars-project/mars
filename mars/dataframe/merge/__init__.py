@@ -21,11 +21,11 @@ def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE
 
     for cls in DATAFRAME_TYPE:
-        setattr(cls, 'join', join)
-        setattr(cls, 'merge', merge)
+        setattr(cls, "join", join)
+        setattr(cls, "merge", merge)
 
     for cls in DATAFRAME_TYPE + SERIES_TYPE:
-        setattr(cls, 'append', append)
+        setattr(cls, "append", append)
 
 
 _install()

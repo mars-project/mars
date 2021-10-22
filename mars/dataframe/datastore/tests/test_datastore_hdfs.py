@@ -20,13 +20,14 @@ from .... import dataframe as md
 from ....tests.core import require_hadoop
 
 
-TEST_DIR = '/tmp/test'
+TEST_DIR = "/tmp/test"
 
 
 @require_hadoop
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def setup_hdfs():
     import pyarrow
+
     hdfs = pyarrow.hdfs.connect(host="localhost", port=8020)
     if hdfs.exists(TEST_DIR):
         hdfs.rm(TEST_DIR, recursive=True)
@@ -41,12 +42,16 @@ def setup_hdfs():
 def test_to_parquet_execution(setup, setup_hdfs):
     hdfs = setup_hdfs
 
-    test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
-                            'b': [f's{i}' for i in range(10)],
-                            'c': np.random.rand(10), })
+    test_df = pd.DataFrame(
+        {
+            "a": np.arange(10).astype(np.int64, copy=False),
+            "b": [f"s{i}" for i in range(10)],
+            "c": np.random.rand(10),
+        }
+    )
     df = md.DataFrame(test_df, chunk_size=5)
 
-    dir_name = f'hdfs://localhost:8020{TEST_DIR}/test_to_parquet/'
+    dir_name = f"hdfs://localhost:8020{TEST_DIR}/test_to_parquet/"
     hdfs.mkdir(dir_name)
     df.to_parquet(dir_name).execute()
 
@@ -54,9 +59,9 @@ def test_to_parquet_execution(setup, setup_hdfs):
     pd.testing.assert_frame_equal(result.reset_index(drop=True), test_df)
 
     # test wildcard
-    dir_name = f'hdfs://localhost:8020{TEST_DIR}/test_to_parquet2/*.parquet'
-    hdfs.mkdir(dir_name.rsplit('/', 1)[0])
+    dir_name = f"hdfs://localhost:8020{TEST_DIR}/test_to_parquet2/*.parquet"
+    hdfs.mkdir(dir_name.rsplit("/", 1)[0])
     df.to_parquet(dir_name).execute()
 
-    result = md.read_parquet(dir_name.rsplit('/', 1)[0]).to_pandas()
+    result = md.read_parquet(dir_name.rsplit("/", 1)[0]).to_pandas()
     pd.testing.assert_frame_equal(result.reset_index(drop=True), test_df)

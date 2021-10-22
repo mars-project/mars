@@ -23,13 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorNegativeBinomial(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_n', '_p']
+    _input_fields_ = ["_n", "_p"]
     _op_type_ = OperandDef.RAND_NEGATIVE_BINOMIAL
 
-    _fields_ = '_n', '_p', '_size'
-    _n = AnyField('n')
-    _p = AnyField('p')
-    _func_name = 'negative_binomial'
+    _fields_ = "_n", "_p", "_size"
+    _n = AnyField("n")
+    _p = AnyField("p")
+    _func_name = "negative_binomial"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -47,7 +47,9 @@ class TensorNegativeBinomial(TensorDistribution, TensorRandomOperandMixin):
         return self.new_tensor([n, p], None, raw_chunk_size=chunk_size)
 
 
-def negative_binomial(random_state, n, p, size=None, chunk_size=None, gpu=None, dtype=None):
+def negative_binomial(
+    random_state, n, p, size=None, chunk_size=None, gpu=None, dtype=None
+):
     r"""
     Draw samples from a negative binomial distribution.
 
@@ -124,8 +126,11 @@ def negative_binomial(random_state, n, p, size=None, chunk_size=None, gpu=None, 
     ...    print i, "wells drilled, probability of one success =", probability
     """
     if dtype is None:
-        dtype = np.random.RandomState().negative_binomial(
-            handle_array(n), handle_array(p), size=(0,)).dtype
+        dtype = (
+            np.random.RandomState()
+            .negative_binomial(handle_array(n), handle_array(p), size=(0,))
+            .dtype
+        )
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorNegativeBinomial(size=size, seed=seed, gpu=gpu, dtype=dtype)

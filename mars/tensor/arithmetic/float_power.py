@@ -25,11 +25,11 @@ from .utils import arithmetic_operand
 @arithmetic_operand
 class TensorFloatPower(TensorBinOp):
     _op_type_ = OperandDef.FLOAT_POWER
-    _func_name = 'float_power'
+    _func_name = "float_power"
 
     @classmethod
     def _is_sparse(cls, x1, x2):
-        if hasattr(x1, 'issparse') and x1.issparse():
+        if hasattr(x1, "issparse") and x1.issparse():
             return True
         return False
 

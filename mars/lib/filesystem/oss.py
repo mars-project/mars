@@ -24,7 +24,7 @@ from ...utils import implements, ModulePlaceholder
 try:
     import oss2
 except ImportError:
-    oss2 = ModulePlaceholder('oss2')
+    oss2 = ModulePlaceholder("oss2")
 
 _oss_time_out = 10
 
@@ -49,31 +49,30 @@ class OSSFileSystem(FileSystem):
         if not file_entry.is_dir():
             raise OSError("ls for file is not supported")
         else:
-            bucket, key, access_key_id, access_key_secret, end_point \
-                = oc.parse_osspath(path)
+            bucket, key, access_key_id, access_key_secret, end_point = oc.parse_osspath(
+                path
+            )
             oss_bucket = oss2.Bucket(
-                auth=oss2.Auth(access_key_id=access_key_id,
-                               access_key_secret=access_key_secret),
+                auth=oss2.Auth(
+                    access_key_id=access_key_id, access_key_secret=access_key_secret
+                ),
                 endpoint=end_point,
                 bucket_name=bucket,
-                connect_timeout=_oss_time_out)
+                connect_timeout=_oss_time_out,
+            )
             for obj in oss2.ObjectIteratorV2(oss_bucket, prefix=key):
-                if obj.key.endswith('/'):
+                if obj.key.endswith("/"):
                     continue
                 obj_path = rf"oss://{bucket}/{obj.key}"
                 file_list.append(obj_path)
         return file_list
 
     @implements(FileSystem.delete)
-    def delete(self,
-               path: path_type,
-               recursive: bool = False):
+    def delete(self, path: path_type, recursive: bool = False):
         raise NotImplementedError
 
     @implements(FileSystem.rename)
-    def rename(self,
-               path: path_type,
-               new_path: path_type):
+    def rename(self, path: path_type, new_path: path_type):
         raise NotImplementedError
 
     @implements(FileSystem.stat)
@@ -82,9 +81,7 @@ class OSSFileSystem(FileSystem):
         return ofe.stat()
 
     @implements(FileSystem.mkdir)
-    def mkdir(self,
-              path: path_type,
-              create_parents: bool = True):
+    def mkdir(self, path: path_type, create_parents: bool = True):
         raise NotImplementedError
 
     @implements(FileSystem.isdir)
@@ -106,26 +103,20 @@ class OSSFileSystem(FileSystem):
         return oc.oss_exists(path)
 
     @implements(FileSystem.open)
-    def open(self,
-             path: path_type,
-             mode: str = 'rb') -> OSSIOBase:
+    def open(self, path: path_type, mode: str = "rb") -> OSSIOBase:
         file_handle = OSSIOBase(path, mode)
         return file_handle
 
     @implements(FileSystem.walk)
-    def walk(self, path: path_type) \
-            -> Iterator[Tuple[str, List[str], List[str]]]:
+    def walk(self, path: path_type) -> Iterator[Tuple[str, List[str], List[str]]]:
         raise NotImplementedError
 
     @implements(FileSystem.glob)
-    def glob(self,
-             path: path_type,
-             recursive: bool = False) -> List[path_type]:
+    def glob(self, path: path_type, recursive: bool = False) -> List[path_type]:
         return glob(path, recursive=recursive)
 
 
-def build_oss_path(path: path_type, access_key_id,
-                   access_key_secret, end_point):
+def build_oss_path(path: path_type, access_key_id, access_key_secret, end_point):
     """
     Returns a path with oss info.
     Used to register the access_key_id, access_key_secret and
@@ -154,10 +145,12 @@ def build_oss_path(path: path_type, access_key_id,
     """
     if isinstance(path, (list, tuple)):
         path = path[0]
-    param_dict = {'access_key_id': access_key_id, 'end_point': end_point}
+    param_dict = {"access_key_id": access_key_id, "end_point": end_point}
     id_endpoint = dict_to_url(param_dict)
     password = access_key_secret
     parse_result = parse.urlparse(path)
-    new_path = f'{parse_result.scheme}://{id_endpoint}:{password}' \
-               f'@{parse_result.netloc}{parse_result.path}'
+    new_path = (
+        f"{parse_result.scheme}://{id_endpoint}:{password}"
+        f"@{parse_result.netloc}{parse_result.path}"
+    )
     return new_path

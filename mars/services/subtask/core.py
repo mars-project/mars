@@ -16,9 +16,20 @@ from enum import Enum
 from typing import Iterable, List, Optional, Tuple
 
 from ...core import ChunkGraph, DAG
-from ...serialization.serializables import Serializable, StringField, \
-    ReferenceField, Int32Field, Int64Field, Float64Field, \
-    BoolField, AnyField, DictField, ListField, TupleField, FieldTypes
+from ...serialization.serializables import (
+    Serializable,
+    StringField,
+    ReferenceField,
+    Int32Field,
+    Int64Field,
+    Float64Field,
+    BoolField,
+    AnyField,
+    DictField,
+    ListField,
+    TupleField,
+    FieldTypes,
+)
 from ...typing import BandType
 
 
@@ -31,47 +42,53 @@ class SubtaskStatus(Enum):
 
     @property
     def is_done(self) -> bool:
-        return self in (SubtaskStatus.succeeded,
-                        SubtaskStatus.errored,
-                        SubtaskStatus.cancelled)
+        return self in (
+            SubtaskStatus.succeeded,
+            SubtaskStatus.errored,
+            SubtaskStatus.cancelled,
+        )
 
 
 class Subtask(Serializable):
-    subtask_id: str = StringField('subtask_id')
-    subtask_name: str = StringField('subtask_name')
-    session_id: str = StringField('session_id')
-    task_id: str = StringField('task_id')
-    chunk_graph: ChunkGraph = ReferenceField('chunk_graph', ChunkGraph)
-    expect_bands: List[BandType] = ListField('expect_bands', FieldTypes.tuple)
-    virtual: bool = BoolField('virtual')
-    retryable: bool = BoolField('retryable')
-    priority: Tuple[int, int] = TupleField('priority', FieldTypes.int32)
-    rerun_time: int = Int32Field('rerun_time')
-    extra_config: dict = DictField('extra_config')
+    subtask_id: str = StringField("subtask_id")
+    subtask_name: str = StringField("subtask_name")
+    session_id: str = StringField("session_id")
+    task_id: str = StringField("task_id")
+    chunk_graph: ChunkGraph = ReferenceField("chunk_graph", ChunkGraph)
+    expect_bands: List[BandType] = ListField("expect_bands", FieldTypes.tuple)
+    virtual: bool = BoolField("virtual")
+    retryable: bool = BoolField("retryable")
+    priority: Tuple[int, int] = TupleField("priority", FieldTypes.int32)
+    rerun_time: int = Int32Field("rerun_time")
+    extra_config: dict = DictField("extra_config")
 
-    def __init__(self,
-                 subtask_id: str = None,
-                 session_id: str = None,
-                 task_id: str = None,
-                 chunk_graph: ChunkGraph = None,
-                 subtask_name: str = None,
-                 expect_bands: List[BandType] = None,
-                 priority: Tuple[int, int] = None,
-                 virtual: bool = False,
-                 retryable: bool = True,
-                 rerun_time: int = 0,
-                 extra_config: dict = None):
-        super().__init__(subtask_id=subtask_id,
-                         subtask_name=subtask_name,
-                         session_id=session_id,
-                         task_id=task_id,
-                         chunk_graph=chunk_graph,
-                         expect_bands=expect_bands,
-                         priority=priority,
-                         virtual=virtual,
-                         retryable=retryable,
-                         rerun_time=rerun_time,
-                         extra_config=extra_config)
+    def __init__(
+        self,
+        subtask_id: str = None,
+        session_id: str = None,
+        task_id: str = None,
+        chunk_graph: ChunkGraph = None,
+        subtask_name: str = None,
+        expect_bands: List[BandType] = None,
+        priority: Tuple[int, int] = None,
+        virtual: bool = False,
+        retryable: bool = True,
+        rerun_time: int = 0,
+        extra_config: dict = None,
+    ):
+        super().__init__(
+            subtask_id=subtask_id,
+            subtask_name=subtask_name,
+            session_id=session_id,
+            task_id=task_id,
+            chunk_graph=chunk_graph,
+            expect_bands=expect_bands,
+            priority=priority,
+            virtual=virtual,
+            retryable=retryable,
+            rerun_time=rerun_time,
+            extra_config=extra_config,
+        )
 
     @property
     def expect_band(self):
@@ -80,17 +97,17 @@ class Subtask(Serializable):
 
 
 class SubtaskResult(Serializable):
-    subtask_id: str = StringField('subtask_id')
-    session_id: str = StringField('session_id')
-    task_id: str = StringField('task_id')
-    status: SubtaskStatus = ReferenceField('status', SubtaskStatus)
-    progress: float = Float64Field('progress', default=0.0)
-    data_size: int = Int64Field('data_size', default=None)
-    bands: List[BandType] = ListField('band', FieldTypes.tuple)
-    error = AnyField('error', default=None)
-    traceback = AnyField('traceback', default=None)
+    subtask_id: str = StringField("subtask_id")
+    session_id: str = StringField("session_id")
+    task_id: str = StringField("task_id")
+    status: SubtaskStatus = ReferenceField("status", SubtaskStatus)
+    progress: float = Float64Field("progress", default=0.0)
+    data_size: int = Int64Field("data_size", default=None)
+    bands: List[BandType] = ListField("band", FieldTypes.tuple)
+    error = AnyField("error", default=None)
+    traceback = AnyField("traceback", default=None)
 
-    def merge_bands(self, result: Optional['SubtaskResult']):
+    def merge_bands(self, result: Optional["SubtaskResult"]):
         if result and result.bands:
             bands = self.bands or []
             self.bands = sorted(set(bands + result.bands))
@@ -101,9 +118,11 @@ class SubtaskGraph(DAG, Iterable[Subtask]):
     """
     Subtask graph.
     """
+
     @classmethod
     def _extract_operands(cls, node: Subtask):
         from ...core.operand import Fetch, FetchShuffle
+
         for node in node.chunk_graph:
             if isinstance(node.op, (Fetch, FetchShuffle)):
                 continue

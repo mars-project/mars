@@ -19,8 +19,14 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
 from ...lib.filesystem import open_file, get_fs
-from ...serialization.serializables import KeyField, AnyField, StringField, ListField, \
-    BoolField, DictField
+from ...serialization.serializables import (
+    KeyField,
+    AnyField,
+    StringField,
+    ListField,
+    BoolField,
+    DictField,
+)
 from ...utils import has_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
@@ -37,23 +43,36 @@ except ImportError:  # pragma: no cover
 class DataFrameToParquet(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.TO_PARQUET
 
-    _input = KeyField('input')
-    _path = AnyField('path')
-    _engine = StringField('engine')
-    _index = BoolField('index')
-    _compression = AnyField('compression')
-    _partition_cols = ListField('partition_cols')
-    _additional_kwargs = DictField('additional_kwargs')
-    _storage_options = DictField('storage_options')
+    _input = KeyField("input")
+    _path = AnyField("path")
+    _engine = StringField("engine")
+    _index = BoolField("index")
+    _compression = AnyField("compression")
+    _partition_cols = ListField("partition_cols")
+    _additional_kwargs = DictField("additional_kwargs")
+    _storage_options = DictField("storage_options")
 
-    def __init__(self, path=None, engine=None, index=None, compression=None,
-                 partition_cols=None, storage_options=None,
-                 additional_kwargs=None, **kw):
-        super().__init__(_path=path, _engine=engine, _index=index,
-                         _compression=compression, _partition_cols=partition_cols,
-                         _storage_options=storage_options,
-                         _additional_kwargs=additional_kwargs,
-                         **kw)
+    def __init__(
+        self,
+        path=None,
+        engine=None,
+        index=None,
+        compression=None,
+        partition_cols=None,
+        storage_options=None,
+        additional_kwargs=None,
+        **kw,
+    ):
+        super().__init__(
+            _path=path,
+            _engine=engine,
+            _index=index,
+            _compression=compression,
+            _partition_cols=partition_cols,
+            _storage_options=storage_options,
+            _additional_kwargs=additional_kwargs,
+            **kw,
+        )
 
     @property
     def input(self):
@@ -93,9 +112,9 @@ class DataFrameToParquet(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _get_path(cls, path, i):
-        if '*' not in path:
+        if "*" not in path:
             return path
-        return path.replace('*', str(i))
+        return path.replace("*", str(i))
 
     @classmethod
     def tile(cls, op):
@@ -106,23 +125,27 @@ class DataFrameToParquet(DataFrameOperand, DataFrameOperandMixin):
         if in_df.chunk_shape[1] > 1:
             if has_unknown_shape(in_df):
                 yield
-            in_df = yield from recursive_tile(
-                in_df.rechunk({1: in_df.shape[1]}))
+            in_df = yield from recursive_tile(in_df.rechunk({1: in_df.shape[1]}))
 
         out_chunks = []
         for chunk in in_df.chunks:
             chunk_op = op.copy().reset_key()
             index_value = parse_index(chunk.index_value.to_pandas()[:0], chunk)
-            out_chunk = chunk_op.new_chunk([chunk], shape=(0, 0),
-                                           index_value=index_value,
-                                           columns_value=out_df.columns_value,
-                                           dtypes=out_df.dtypes,
-                                           index=chunk.index)
+            out_chunk = chunk_op.new_chunk(
+                [chunk],
+                shape=(0, 0),
+                index_value=index_value,
+                columns_value=out_df.columns_value,
+                dtypes=out_df.dtypes,
+                index=chunk.index,
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         params = out_df.params.copy()
-        params.update(dict(chunks=out_chunks, nsplits=((0,) * in_df.chunk_shape[0], (0,))))
+        params.update(
+            dict(chunks=out_chunks, nsplits=((0,) * in_df.chunk_shape[0], (0,)))
+        )
         return new_op.new_tileables([in_df], **params)
 
     @classmethod
@@ -132,40 +155,67 @@ class DataFrameToParquet(DataFrameOperand, DataFrameOperandMixin):
         i = op.outputs[0].index[0]
         path = op.path
         has_wildcard = False
-        if '*' in path:
-            path = path.replace('*', str(i))
+        if "*" in path:
+            path = path.replace("*", str(i))
             has_wildcard = True
 
         if op.partition_cols is None:
             if not has_wildcard:
                 fs = get_fs(path, op.storage_options)
-                path = fs.pathsep.join([path.rstrip(fs.pathsep), f'{i}.parquet'])
-            if op.engine == 'fastparquet':
-                df.to_parquet(path, engine=op.engine, compression=op.compression,
-                              index=op.index, open_with=open_file, **op.additional_kwargs)
+                path = fs.pathsep.join([path.rstrip(fs.pathsep), f"{i}.parquet"])
+            if op.engine == "fastparquet":
+                df.to_parquet(
+                    path,
+                    engine=op.engine,
+                    compression=op.compression,
+                    index=op.index,
+                    open_with=open_file,
+                    **op.additional_kwargs,
+                )
             else:
-                with open_file(path, mode='wb', storage_options=op.storage_options) as f:
-                    df.to_parquet(f, engine=op.engine, compression=op.compression,
-                                  index=op.index, **op.additional_kwargs or dict())
+                with open_file(
+                    path, mode="wb", storage_options=op.storage_options
+                ) as f:
+                    df.to_parquet(
+                        f,
+                        engine=op.engine,
+                        compression=op.compression,
+                        index=op.index,
+                        **op.additional_kwargs or dict(),
+                    )
         else:
-            if op.engine == 'pyarrow':
-                pq.write_to_dataset(pa.Table.from_pandas(df), path,
-                                    partition_cols=op.partition_cols)
+            if op.engine == "pyarrow":
+                pq.write_to_dataset(
+                    pa.Table.from_pandas(df), path, partition_cols=op.partition_cols
+                )
             else:  # pragma: no cover
-                raise NotImplementedError('Only support pyarrow engine when '
-                                          'specify `partition_cols`.')
+                raise NotImplementedError(
+                    "Only support pyarrow engine when " "specify `partition_cols`."
+                )
 
         ctx[out.key] = pd.DataFrame()
 
     def __call__(self, df):
         index_value = parse_index(df.index_value.to_pandas()[:0], df)
         columns_value = parse_index(df.columns_value.to_pandas()[:0], store_data=True)
-        return self.new_dataframe([df], shape=(0, 0), dtypes=df.dtypes[:0],
-                                  index_value=index_value, columns_value=columns_value)
+        return self.new_dataframe(
+            [df],
+            shape=(0, 0),
+            dtypes=df.dtypes[:0],
+            index_value=index_value,
+            columns_value=columns_value,
+        )
 
 
-def to_parquet(df, path, engine='auto', compression='snappy', index=None,
-               partition_cols=None, **kwargs):
+def to_parquet(
+    df,
+    path,
+    engine="auto",
+    compression="snappy",
+    index=None,
+    partition_cols=None,
+    **kwargs,
+):
     """
     Write a DataFrame to the binary parquet format, each chunk will be
     written to a Parquet file.
@@ -221,6 +271,12 @@ def to_parquet(df, path, engine='auto', compression='snappy', index=None,
     >>> content = f.read()
     """
     engine = check_engine(engine)
-    op = DataFrameToParquet(path=path, engine=engine, compression=compression, index=index,
-                            partition_cols=partition_cols, additional_kwargs=kwargs)
+    op = DataFrameToParquet(
+        path=path,
+        engine=engine,
+        compression=compression,
+        index=index,
+        partition_cols=partition_cols,
+        additional_kwargs=kwargs,
+    )
     return op(df)

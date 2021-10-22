@@ -46,8 +46,8 @@ y1 = mt.tensor(raw_y, chunk_size=30)
 x2 = mt.tensor(raw_x, chunk_size=11)
 y2 = mt.tensor(raw_y, chunk_size=12)
 
-raw_sparse_x = sps.random(20, 5, density=0.4, format='csr', random_state=0)
-raw_sparse_y = sps.random(21, 5, density=0.3, format='csr', random_state=0)
+raw_sparse_x = sps.random(20, 5, density=0.4, format="csr", random_state=0)
+raw_sparse_y = sps.random(21, 5, density=0.3, format="csr", random_state=0)
 
 x3 = mt.tensor(raw_sparse_x, chunk_size=30)
 y3 = mt.tensor(raw_sparse_y, chunk_size=30)
@@ -56,11 +56,10 @@ x4 = mt.tensor(raw_sparse_x, chunk_size=11)
 y4 = mt.tensor(raw_sparse_y, chunk_size=12)
 
 
-@pytest.mark.parametrize('x, y, is_sparse',
-                         [(x1, y1, False),
-                          (x2, y2, False),
-                          (x3, y3, True),
-                          (x4, y4, True)])
+@pytest.mark.parametrize(
+    "x, y, is_sparse",
+    [(x1, y1, False), (x2, y2, False), (x3, y3, True), (x4, y4, True)],
+)
 def test_manhattan_distances_execution(setup, x, y, is_sparse):
     if is_sparse:
         rx, ry = raw_sparse_x, raw_sparse_y

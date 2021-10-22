@@ -22,8 +22,22 @@ from ....lib.sparse import issparse, SparseNDArray
 from ....utils import ignore_warning
 from ...datasource import tensor, diag, ones, arange
 from ...random import uniform
-from .. import qr, svd, cholesky, norm, lu, solve_triangular, \
-    solve, inv, tensordot, dot, inner, vdot, matmul, randomized_svd
+from .. import (
+    qr,
+    svd,
+    cholesky,
+    norm,
+    lu,
+    solve_triangular,
+    solve,
+    inv,
+    tensordot,
+    dot,
+    inner,
+    vdot,
+    matmul,
+    randomized_svd,
+)
 
 
 def test_qr_execution(setup):
@@ -55,21 +69,21 @@ def test_qr_execution(setup):
     data = rs.randn(6, 18)
 
     a = tensor(data, chunk_size=(6, 9))
-    q, r = qr(a, method='sfqr')
+    q, r = qr(a, method="sfqr")
     t = q.dot(r)
 
     res = t.execute().fetch()
     np.testing.assert_array_almost_equal(res, data)
 
     a = tensor(data, chunk_size=(3, 3))
-    q, r = qr(a, method='sfqr')
+    q, r = qr(a, method="sfqr")
     t = q.dot(r)
 
     res = t.execute().fetch()
     np.testing.assert_array_almost_equal(res, data)
 
     a = tensor(data, chunk_size=(6, 3))
-    q, r = qr(a, method='sfqr')
+    q, r = qr(a, method="sfqr")
     t = q.dot(r)
 
     res = t.execute().fetch()
@@ -128,9 +142,13 @@ def test_randomized_svd_execution(setup):
     for dtype in (np.int64, np.float64):
         # generate a matrix X of approximate effective rank `rank` and no noise
         # component (very structured signal):
-        X = make_low_rank_matrix(n_samples=n_samples, n_features=n_features,
-                                 effective_rank=rank, tail_strength=0.0,
-                                 random_state=0).astype(dtype, copy=False)
+        X = make_low_rank_matrix(
+            n_samples=n_samples,
+            n_features=n_features,
+            effective_rank=rank,
+            tail_strength=0.0,
+            random_state=0,
+        ).astype(dtype, copy=False)
         assert X.shape == (n_samples, n_features)
         dtype = np.dtype(dtype)
         decimal = 5 if dtype == np.float32 else 7
@@ -144,15 +162,16 @@ def test_randomized_svd_execution(setup):
         s = s.astype(dtype, copy=False)
         V = V.astype(dtype, copy=False)
 
-        for normalizer in ['auto', 'LU', 'QR']:  # 'none' would not be stable
+        for normalizer in ["auto", "LU", "QR"]:  # 'none' would not be stable
             # compute the singular values of X using the fast approximate method
             Ua, sa, Va = randomized_svd(
-                X, k, n_iter=1, power_iteration_normalizer=normalizer, random_state=0)
+                X, k, n_iter=1, power_iteration_normalizer=normalizer, random_state=0
+            )
 
             # If the input dtype is float, then the output dtype is float of the
             # same bit size (f32 is not upcast to f64)
             # But if the input dtype is int, the output dtype is float64
-            if dtype.kind == 'f':
+            if dtype.kind == "f":
                 assert Ua.dtype == dtype
                 assert sa.dtype == dtype
                 assert Va.dtype == dtype
@@ -172,8 +191,9 @@ def test_randomized_svd_execution(setup):
 
             # check the singular vectors too (while not checking the sign)
             dot_res = dot(Ua, Va).execute().fetch()
-            np.testing.assert_almost_equal(np.dot(U[:, :k], V[:k, :]), dot_res,
-                                           decimal=decimal)
+            np.testing.assert_almost_equal(
+                np.dot(U[:, :k], V[:k, :]), dot_res, decimal=decimal
+            )
 
 
 def test_cholesky_execution(setup):
@@ -346,12 +366,16 @@ def test_lu_execution(setup):
     np.testing.assert_allclose(res, data)
 
     # test for sparse
-    data = sps.csr_matrix([[2, 0, 0, 0, 5, 2],
-                           [0, 6, 1, 0, 0, 6],
-                           [8, 0, 9, 0, 0, 2],
-                           [0, 6, 0, 8, 7, 3],
-                           [7, 0, 6, 1, 7, 0],
-                           [0, 0, 0, 7, 0, 8]])
+    data = sps.csr_matrix(
+        [
+            [2, 0, 0, 0, 5, 2],
+            [0, 6, 1, 0, 0, 6],
+            [8, 0, 9, 0, 0, 2],
+            [0, 6, 0, 8, 7, 3],
+            [7, 0, 6, 1, 7, 0],
+            [0, 0, 0, 7, 0, 8],
+        ]
+    )
 
     a = tensor(data)
     P, L, U = lu(a)
@@ -386,10 +410,11 @@ def test_lu_execution(setup):
 
 def test_solve_triangular(setup):
     from ... import tril, triu
+
     rs = np.random.RandomState(0)
 
     data1 = rs.randint(1, 10, (20, 20))
-    data2 = rs.randint(1, 10, (20, ))
+    data2 = rs.randint(1, 10, (20,))
 
     A = tensor(data1, chunk_size=20)
     b = tensor(data2, chunk_size=20)
@@ -471,10 +496,11 @@ def test_solve_triangular(setup):
 
 def test_solve(setup):
     import scipy.linalg
+
     rs = np.random.RandomState(0)
 
     data1 = rs.randint(1, 10, (20, 20))
-    data2 = rs.randint(1, 10, (20, ))
+    data2 = rs.randint(1, 10, (20,))
 
     A = tensor(data1, chunk_size=10)
     b = tensor(data2, chunk_size=10)
@@ -523,7 +549,7 @@ def test_solve(setup):
 
     # test sparse
     data1 = sps.csr_matrix(rs.randint(1, 10, (20, 20)))
-    data2 = rs.randint(1, 10, (20, ))
+    data2 = rs.randint(1, 10, (20,))
 
     A = tensor(data1, chunk_size=10)
     b = tensor(data2, chunk_size=10)
@@ -559,12 +585,13 @@ def test_solve(setup):
 
 def test_solve_sym_pos(setup):
     import scipy.linalg
+
     rs = np.random.RandomState(0)
 
     data = rs.randint(1, 10, (20, 20))
     data_l = np.tril(data)
     data1 = data_l.dot(data_l.T)
-    data2 = rs.randint(1, 10, (20, ))
+    data2 = rs.randint(1, 10, (20,))
 
     A = tensor(data1, chunk_size=10)
     b = tensor(data2, chunk_size=10)
@@ -579,6 +606,7 @@ def test_solve_sym_pos(setup):
 
 def test_inv(setup):
     import scipy.linalg
+
     rs = np.random.RandomState(0)
 
     data = rs.randint(1, 10, (20, 20))
@@ -589,8 +617,7 @@ def test_inv(setup):
     res = inv_A.execute().fetch()
     np.testing.assert_allclose(res, scipy.linalg.inv(data))
     res = A.dot(inv_A).execute().fetch()
-    np.testing.assert_array_almost_equal(
-        res, np.eye(data.shape[0], dtype=float))
+    np.testing.assert_array_almost_equal(res, np.eye(data.shape[0], dtype=float))
 
     A = tensor(data, chunk_size=10)
     inv_A = inv(A)
@@ -598,8 +625,7 @@ def test_inv(setup):
     res = inv_A.execute().fetch()
     np.testing.assert_allclose(res, scipy.linalg.inv(data))
     res = A.dot(inv_A).execute().fetch()
-    np.testing.assert_array_almost_equal(
-        res, np.eye(data.shape[0], dtype=float))
+    np.testing.assert_array_almost_equal(res, np.eye(data.shape[0], dtype=float))
 
     # test 1 chunk
     A = tensor(data, chunk_size=20)
@@ -608,28 +634,23 @@ def test_inv(setup):
     res = inv_A.execute().fetch()
     np.testing.assert_allclose(res, scipy.linalg.inv(data))
     res = A.dot(inv_A).execute().fetch()
-    np.testing.assert_array_almost_equal(
-        res, np.eye(data.shape[0], dtype=float))
+    np.testing.assert_array_almost_equal(res, np.eye(data.shape[0], dtype=float))
 
     B = A.T.dot(A)
     inv_B = inv(B)
     res = inv_B.execute().fetch()
-    np.testing.assert_array_almost_equal(
-        res, scipy.linalg.inv(data.T.dot(data)))
+    np.testing.assert_array_almost_equal(res, scipy.linalg.inv(data.T.dot(data)))
     res = B.dot(inv_B).execute().fetch()
-    np.testing.assert_array_almost_equal(
-        res, np.eye(data.shape[0], dtype=float))
+    np.testing.assert_array_almost_equal(res, np.eye(data.shape[0], dtype=float))
 
     # test for not all chunks are square in matrix A
     A = tensor(data, chunk_size=8)
     inv_A = inv(A)
 
     res = inv_A.execute().fetch()
-    np.testing.assert_array_almost_equal(
-        res, scipy.linalg.inv(data))
+    np.testing.assert_array_almost_equal(res, scipy.linalg.inv(data))
     res = A.dot(inv_A).execute().fetch()
-    np.testing.assert_array_almost_equal(
-        res, np.eye(data.shape[0], dtype=float))
+    np.testing.assert_array_almost_equal(res, np.eye(data.shape[0], dtype=float))
 
     # test sparse
     data = rs.randint(1, 10, (20, 20))
@@ -640,11 +661,9 @@ def test_inv(setup):
 
     res = inv_A.execute().fetch()
     assert isinstance(res, SparseNDArray)
-    np.testing.assert_array_almost_equal(
-        res, scipy.linalg.inv(data))
+    np.testing.assert_array_almost_equal(res, scipy.linalg.inv(data))
     res = A.dot(inv_A).execute().fetch()
-    np.testing.assert_array_almost_equal(
-        res, np.eye(data.shape[0], dtype=float))
+    np.testing.assert_array_almost_equal(res, np.eye(data.shape[0], dtype=float))
 
     # test for not all chunks are square in matrix A
     A = tensor(sp_data, chunk_size=12)
@@ -652,11 +671,9 @@ def test_inv(setup):
 
     res = inv_A.execute().fetch()
     assert isinstance(res, SparseNDArray)
-    np.testing.assert_array_almost_equal(
-        res, scipy.linalg.inv(data))
+    np.testing.assert_array_almost_equal(res, scipy.linalg.inv(data))
     res = A.dot(inv_A).execute().fetch()
-    np.testing.assert_array_almost_equal(
-        res, np.eye(data.shape[0], dtype=float))
+    np.testing.assert_array_almost_equal(res, np.eye(data.shape[0], dtype=float))
 
 
 @ignore_warning
@@ -668,11 +685,13 @@ def test_norm_execution(setup):
 
     for i, a in enumerate(ma):
         data = d if i < 1 else d2
-        for ord in (None, 'nuc', np.inf, -np.inf, 0, 1, -1, 2, -2):
+        for ord in (None, "nuc", np.inf, -np.inf, 0, 1, -1, 2, -2):
             for axis in (0, 1, (0, 1), -1):
                 for keepdims in (True, False):
                     try:
-                        expected = np.linalg.norm(data, ord=ord, axis=axis, keepdims=keepdims)
+                        expected = np.linalg.norm(
+                            data, ord=ord, axis=axis, keepdims=keepdims
+                        )
                         t = norm(a, ord=ord, axis=axis, keepdims=keepdims)
                         res = t.execute().fetch()
 
@@ -680,7 +699,7 @@ def test_norm_execution(setup):
                         t_shape = t.shape
                         assert expected_shape == t_shape
 
-                        np.testing.assert_allclose(res, expected, atol=.0001)
+                        np.testing.assert_allclose(res, expected, atol=0.0001)
                     except ValueError:
                         continue
 
@@ -813,8 +832,8 @@ def test_tensordot_execution(setup):
 def test_sparse_dot_execution(setup):
     rs = np.random.RandomState(0)
 
-    a_data = sps.random(5, 9, density=.1)
-    b_data = sps.random(9, 10, density=.2)
+    a_data = sps.random(5, 9, density=0.1)
+    b_data = sps.random(9, 10, density=0.2)
     a = tensor(a_data, chunk_size=2)
     b = tensor(b_data, chunk_size=3)
 
@@ -919,16 +938,17 @@ def test_matmul_execution(setup):
 
     res = c.execute().fetch()
     expected = np.matmul(data_a, data_b)
-    np.testing.assert_allclose(res, expected, atol=.0001)
+    np.testing.assert_allclose(res, expected, atol=0.0001)
 
     a = arange(2 * 2 * 4, chunk_size=1).reshape((2, 2, 4))
     b = arange(2 * 2 * 4, chunk_size=1).reshape((2, 4, 2))
     c = matmul(a, b)
 
     res = c.execute().fetch()
-    expected = np.matmul(np.arange(2 * 2 * 4).reshape(2, 2, 4),
-                         np.arange(2 * 2 * 4).reshape(2, 4, 2))
-    np.testing.assert_allclose(res, expected, atol=.0001)
+    expected = np.matmul(
+        np.arange(2 * 2 * 4).reshape(2, 2, 4), np.arange(2 * 2 * 4).reshape(2, 4, 2)
+    )
+    np.testing.assert_allclose(res, expected, atol=0.0001)
 
     data_a = sps.random(10, 20)
     data_b = sps.random(20, 5)
@@ -953,21 +973,21 @@ def test_matmul_execution(setup):
     expected = np.matmul(data_a, data_b)
 
     np.testing.assert_allclose(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
-    c = matmul(a, b, order='A')
+    c = matmul(a, b, order="A")
     res = c.execute().fetch()
-    expected = np.matmul(data_a, data_b, order='A')
+    expected = np.matmul(data_a, data_b, order="A")
 
     np.testing.assert_allclose(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
-    c = matmul(a, b, order='C')
+    c = matmul(a, b, order="C")
     res = c.execute().fetch()
-    expected = np.matmul(data_a, data_b, order='C')
+    expected = np.matmul(data_a, data_b, order="C")
 
     np.testing.assert_allclose(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]

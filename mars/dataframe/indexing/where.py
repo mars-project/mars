@@ -27,19 +27,38 @@ from ..utils import build_df, build_series, validate_axis
 class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.WHERE
 
-    _input = AnyField('input')
-    _cond = AnyField('cond')
-    _other = AnyField('other')
-    _axis = Int32Field('axis')
-    _level = AnyField('level')
-    _errors = StringField('errors')
-    _try_cast = BoolField('try_cast')
-    _replace_true = BoolField('replace_true')
+    _input = AnyField("input")
+    _cond = AnyField("cond")
+    _other = AnyField("other")
+    _axis = Int32Field("axis")
+    _level = AnyField("level")
+    _errors = StringField("errors")
+    _try_cast = BoolField("try_cast")
+    _replace_true = BoolField("replace_true")
 
-    def __init__(self, input=None, cond=None, other=None,  # pylint: disable=redefined-builtin
-                 axis=None, level=None, errors=None, try_cast=None, replace_true=None, **kw):
-        super().__init__(_input=input, _cond=cond, _other=other, _axis=axis, _level=level,
-                         _errors=errors, _try_cast=try_cast, _replace_true=replace_true, **kw)
+    def __init__(
+        self,
+        input=None,
+        cond=None,
+        other=None,  # pylint: disable=redefined-builtin
+        axis=None,
+        level=None,
+        errors=None,
+        try_cast=None,
+        replace_true=None,
+        **kw
+    ):
+        super().__init__(
+            _input=input,
+            _cond=cond,
+            _other=other,
+            _axis=axis,
+            _level=level,
+            _errors=errors,
+            _try_cast=try_cast,
+            _replace_true=replace_true,
+            **kw
+        )
 
     @property
     def input(self):
@@ -76,15 +95,16 @@ class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
     def __call__(self, df_or_series):
         def _check_input_index(obj, axis=None):
             axis = axis if axis is not None else self.axis
-            if isinstance(obj, DATAFRAME_TYPE) \
-                    and (
-                        df_or_series.columns_value.key != obj.columns_value.key
-                        or df_or_series.index_value.key != obj.index_value.key
-                    ):
-                raise NotImplementedError('Aligning different indices not supported')
-            elif isinstance(obj, SERIES_TYPE) \
-                    and df_or_series.axes[axis].index_value.key != obj.index_value.key:
-                raise NotImplementedError('Aligning different indices not supported')
+            if isinstance(obj, DATAFRAME_TYPE) and (
+                df_or_series.columns_value.key != obj.columns_value.key
+                or df_or_series.index_value.key != obj.index_value.key
+            ):
+                raise NotImplementedError("Aligning different indices not supported")
+            elif (
+                isinstance(obj, SERIES_TYPE)
+                and df_or_series.axes[axis].index_value.key != obj.index_value.key
+            ):
+                raise NotImplementedError("Aligning different indices not supported")
 
         _check_input_index(self.cond, axis=0)
         _check_input_index(self.other)
@@ -101,18 +121,32 @@ class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
         else:
             mock_other = self.other
 
-        result_df = mock_obj.where(np.zeros(mock_obj.shape).astype(bool), other=mock_other,
-                                   axis=self.axis, level=self.level, errors=self.errors,
-                                   try_cast=self.try_cast)
+        result_df = mock_obj.where(
+            np.zeros(mock_obj.shape).astype(bool),
+            other=mock_other,
+            axis=self.axis,
+            level=self.level,
+            errors=self.errors,
+            try_cast=self.try_cast,
+        )
 
         inputs = filter_inputs([df_or_series, self.cond, self.other])
         if isinstance(df_or_series, DATAFRAME_TYPE):
-            return self.new_dataframe(inputs, shape=df_or_series.shape,
-                                      dtypes=result_df.dtypes, index_value=df_or_series.index_value,
-                                      columns_value=df_or_series.columns_value)
+            return self.new_dataframe(
+                inputs,
+                shape=df_or_series.shape,
+                dtypes=result_df.dtypes,
+                index_value=df_or_series.index_value,
+                columns_value=df_or_series.columns_value,
+            )
         else:
-            return self.new_series(inputs, shape=df_or_series.shape, name=df_or_series.name,
-                                   dtype=result_df.dtype, index_value=df_or_series.index_value)
+            return self.new_series(
+                inputs,
+                shape=df_or_series.shape,
+                name=df_or_series.name,
+                dtype=result_df.dtype,
+                index_value=df_or_series.index_value,
+            )
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -128,11 +162,11 @@ class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
         def rechunk_input(inp, axis=None):
             axis = axis if axis is not None else op.axis
             if isinstance(inp, DATAFRAME_TYPE):
-                inp = yield from recursive_tile(
-                    inp.rechunk(op.input.nsplits))
+                inp = yield from recursive_tile(inp.rechunk(op.input.nsplits))
             elif isinstance(inp, SERIES_TYPE):
                 inp = yield from recursive_tile(
-                    inp.rechunk({0: op.input.nsplits[axis]}))
+                    inp.rechunk({0: op.input.nsplits[axis]})
+                )
             return inp
 
         def get_tiled_chunk(obj, index, axis=None):
@@ -140,7 +174,9 @@ class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
                 return obj.cix[index[0], index[1]]
             elif isinstance(obj, SERIES_TYPE):
                 axis = axis if axis is not None else op.axis
-                return obj.cix[index[axis], ]
+                return obj.cix[
+                    index[axis],
+                ]
             else:
                 return obj
 
@@ -161,8 +197,9 @@ class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
             chunks.append(new_op.new_chunk(inputs, **c.params))
 
         new_op = op.copy().reset_key()
-        return new_op.new_tileables(op.inputs, chunks=chunks, nsplits=op.input.nsplits,
-                                    **op.input.params)
+        return new_op.new_tileables(
+            op.inputs, chunks=chunks, nsplits=op.input.nsplits, **op.input.params
+        )
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameWhere"):
@@ -178,11 +215,23 @@ class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
             other = ctx[other.key]
 
         if op.replace_true:
-            ctx[out_obj.key] = input_data.mask(cond, other, axis=op.axis, level=op.level,
-                                               errors=op.errors, try_cast=op.try_cast)
+            ctx[out_obj.key] = input_data.mask(
+                cond,
+                other,
+                axis=op.axis,
+                level=op.level,
+                errors=op.errors,
+                try_cast=op.try_cast,
+            )
         else:
-            ctx[out_obj.key] = input_data.where(cond, other, axis=op.axis, level=op.level,
-                                                errors=op.errors, try_cast=op.try_cast)
+            ctx[out_obj.key] = input_data.where(
+                cond,
+                other,
+                axis=op.axis,
+                level=op.level,
+                errors=op.errors,
+                try_cast=op.try_cast,
+            )
 
 
 _doc_template = """
@@ -303,14 +352,30 @@ dtype: int64
 """
 
 
-def _where(df_or_series, cond, other=np.nan, inplace=False, axis=None, level=None, errors='raise',
-           try_cast=False, replace_true=False):
-    if df_or_series.ndim == 2 and getattr(other, 'ndim', 2) == 1 and axis is None:
-        raise ValueError('Must specify axis=0 or 1')
+def _where(
+    df_or_series,
+    cond,
+    other=np.nan,
+    inplace=False,
+    axis=None,
+    level=None,
+    errors="raise",
+    try_cast=False,
+    replace_true=False,
+):
+    if df_or_series.ndim == 2 and getattr(other, "ndim", 2) == 1 and axis is None:
+        raise ValueError("Must specify axis=0 or 1")
 
     axis = validate_axis(axis or 0, df_or_series)
-    op = DataFrameWhere(cond=cond, other=other, axis=axis, level=level, errors=errors,
-                        try_cast=try_cast, replace_true=replace_true)
+    op = DataFrameWhere(
+        cond=cond,
+        other=other,
+        axis=axis,
+        level=level,
+        errors=errors,
+        try_cast=try_cast,
+        replace_true=replace_true,
+    )
     result = op(df_or_series)
     if inplace:
         df_or_series.data = result.data
@@ -318,17 +383,51 @@ def _where(df_or_series, cond, other=np.nan, inplace=False, axis=None, level=Non
         return result
 
 
-def where(df_or_series, cond, other=np.nan, inplace=False, axis=None, level=None, errors='raise',
-          try_cast=False):
-    return _where(df_or_series, cond, other=other, inplace=inplace, axis=axis, level=level,
-                  errors=errors, try_cast=try_cast, replace_true=False)
+def where(
+    df_or_series,
+    cond,
+    other=np.nan,
+    inplace=False,
+    axis=None,
+    level=None,
+    errors="raise",
+    try_cast=False,
+):
+    return _where(
+        df_or_series,
+        cond,
+        other=other,
+        inplace=inplace,
+        axis=axis,
+        level=level,
+        errors=errors,
+        try_cast=try_cast,
+        replace_true=False,
+    )
 
 
-def mask(df_or_series, cond, other=np.nan, inplace=False, axis=None, level=None, errors='raise',
-         try_cast=False):
-    return _where(df_or_series, cond, other=other, inplace=inplace, axis=axis, level=level,
-                  errors=errors, try_cast=try_cast, replace_true=True)
+def mask(
+    df_or_series,
+    cond,
+    other=np.nan,
+    inplace=False,
+    axis=None,
+    level=None,
+    errors="raise",
+    try_cast=False,
+):
+    return _where(
+        df_or_series,
+        cond,
+        other=other,
+        inplace=inplace,
+        axis=axis,
+        level=level,
+        errors=errors,
+        try_cast=try_cast,
+        replace_true=True,
+    )
 
 
-mask.__doc__ = _doc_template.format(replace_true=True, opposite='where')
-where.__doc__ = _doc_template.format(replace_true=False, opposite='mask')
+mask.__doc__ = _doc_template.format(replace_true=True, opposite="where")
+where.__doc__ = _doc_template.format(replace_true=False, opposite="mask")

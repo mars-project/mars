@@ -38,16 +38,16 @@ class SubtaskRunnerActor(mo.Actor):
 
     @classmethod
     def gen_uid(cls, band_name: str, slot_id: int):
-        return f'slot_{band_name}_{slot_id}_subtask_runner'
+        return f"slot_{band_name}_{slot_id}_subtask_runner"
 
-    def __init__(self,
-                 band: BandType,
-                 worker_address: str,
-                 subtask_processor_cls: Type = None):
+    def __init__(
+        self, band: BandType, worker_address: str, subtask_processor_cls: Type = None
+    ):
         self._band = band
         self._worker_address = worker_address
-        self._subtask_processor_cls = \
-            self._get_subtask_processor_cls(subtask_processor_cls)
+        self._subtask_processor_cls = self._get_subtask_processor_cls(
+            subtask_processor_cls
+        )
 
         self._cluster_api = None
 
@@ -59,9 +59,9 @@ class SubtaskRunnerActor(mo.Actor):
         self._cluster_api = await ClusterAPI.create(address=self.address)
 
     async def __pre_destroy__(self):
-        await asyncio.gather(*[
-            mo.destroy_actor(ref) for ref in self._session_id_to_processors.values()
-        ])
+        await asyncio.gather(
+            *[mo.destroy_actor(ref) for ref in self._session_id_to_processors.values()]
+        )
 
     @classmethod
     def _get_subtask_processor_cls(cls, subtask_processor_cls):
@@ -69,7 +69,7 @@ class SubtaskRunnerActor(mo.Actor):
             return SubtaskProcessor
         else:
             assert isinstance(subtask_processor_cls, str)
-            module, class_name = subtask_processor_cls.rsplit('.', 1)
+            module, class_name = subtask_processor_cls.rsplit(".", 1)
             return getattr(importlib.import_module(module), class_name)
 
     async def _run_subtask(self, subtask: Subtask):
@@ -87,17 +87,23 @@ class SubtaskRunnerActor(mo.Actor):
             running_subtask_id = await self._running_processor.get_running_subtask_id()
             # current subtask is still running
             raise SlotOccupiedAlready(
-                f'There is subtask(id: {running_subtask_id}) running in {self.uid} '
-                f'at {self.address}, cannot run subtask {subtask.subtask_id}')
+                f"There is subtask(id: {running_subtask_id}) running in {self.uid} "
+                f"at {self.address}, cannot run subtask {subtask.subtask_id}"
+            )
 
         session_id = subtask.session_id
         supervisor_address = await self._get_supervisor_address(session_id)
         if session_id not in self._session_id_to_processors:
             self._session_id_to_processors[session_id] = await mo.create_actor(
-                SubtaskProcessorActor, session_id, self._band,
-                supervisor_address, self._worker_address, self._subtask_processor_cls,
+                SubtaskProcessorActor,
+                session_id,
+                self._band,
+                supervisor_address,
+                self._worker_address,
+                self._subtask_processor_cls,
                 uid=SubtaskProcessorActor.gen_uid(session_id),
-                address=self.address)
+                address=self.address,
+            )
         processor = self._session_id_to_processors[session_id]
         self._running_processor = self._last_processor = processor
         try:

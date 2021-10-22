@@ -25,16 +25,14 @@ from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 class TensorRandomIntegers(TensorSimpleRandomData, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_RANDOM_INTEGERS
 
-    _fields_ = '_low', '_high', '_size'
-    _low = Int64Field('low')
-    _high = Int64Field('high')
-    _func_name = 'random_integers'
+    _fields_ = "_low", "_high", "_size"
+    _low = Int64Field("low")
+    _high = Int64Field("high")
+    _func_name = "random_integers"
 
-    def __init__(self, size=None, low=None, high=None,
-                 dtype=None, **kw):
+    def __init__(self, size=None, low=None, high=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _low=low, _high=high,
-                         dtype=dtype, **kw)
+        super().__init__(_size=size, _low=low, _high=high, dtype=dtype, **kw)
 
     @property
     def low(self):
@@ -131,6 +129,7 @@ def random_integers(random_state, low, high=None, size=None, chunk_size=None, gp
     """
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
-    op = TensorRandomIntegers(seed=seed, size=size, dtype=np.dtype(int),
-                              low=low, high=high, gpu=gpu)
+    op = TensorRandomIntegers(
+        seed=seed, size=size, dtype=np.dtype(int), low=low, high=high, gpu=gpu
+    )
     return op(chunk_size=chunk_size)

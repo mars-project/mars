@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+
 try:
     from sklearn.neighbors import DistanceMetric as SklearnDistanceMetric
 except ImportError:  # pragma: no cover
@@ -30,10 +31,10 @@ from .core import PairwiseDistances
 class HaversineDistances(PairwiseDistances):
     _op_type_ = OperandDef.PAIRWISE_HAVERSINE_DISTANCES
 
-    _x = KeyField('x')
-    _y = KeyField('y')
+    _x = KeyField("x")
+    _y = KeyField("y")
     # for test purpose
-    _use_sklearn = BoolField('use_sklearn')
+    _use_sklearn = BoolField("use_sklearn")
 
     def __init__(self, x=None, y=None, use_sklearn=None, **kw):
         super().__init__(_x=x, _y=y, _use_sklearn=use_sklearn, **kw)
@@ -64,12 +65,13 @@ class HaversineDistances(PairwiseDistances):
             self._y = Y
 
         if X.shape[1] != 2 or Y.shape[1] != 2:
-            raise ValueError('Haversine distance only valid in 2 dimensions')
+            raise ValueError("Haversine distance only valid in 2 dimensions")
         if X.issparse() or Y.issparse():
-            raise TypeError('Haversine distance requires inputs dense')
+            raise TypeError("Haversine distance requires inputs dense")
 
-        return self.new_tensor([X, Y], shape=(X.shape[0], Y.shape[0]),
-                               order=TensorOrder.C_ORDER)
+        return self.new_tensor(
+            [X, Y], shape=(X.shape[0], Y.shape[0]), order=TensorOrder.C_ORDER
+        )
 
     @classmethod
     def tile(cls, op):
@@ -80,7 +82,7 @@ class HaversineDistances(PairwiseDistances):
             return cls._tile_one_chunk(op)
 
         x, y = yield from cls._rechunk_cols_into_one(x, y)
-        ret, = cls._tile_chunks(op, x, y)
+        (ret,) = cls._tile_chunks(op, x, y)
         if y_is_x:
             fill_diagonal(ret, 0)
         return [(yield from recursive_tile(ret))]
@@ -88,18 +90,23 @@ class HaversineDistances(PairwiseDistances):
     @classmethod
     def execute(cls, ctx, op):
         (x, y), device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             if xp is np and op.use_sklearn and SklearnDistanceMetric is not None:
                 # CPU and sklearn installed, delegate computation to sklearn
-                d = SklearnDistanceMetric.get_metric('haversine').pairwise(x, y)
+                d = SklearnDistanceMetric.get_metric("haversine").pairwise(x, y)
             else:
                 # try to leverage xp(np, cp) to perform computation
                 sin_0 = xp.sin(0.5 * (x[:, [0]] - y[:, 0]))
                 sin_1 = xp.sin(0.5 * (x[:, [1]] - y[:, 1]))
-                d = 2 * xp.arcsin(xp.sqrt(
-                    sin_0 * sin_0 + xp.cos(x[:, [0]]) * xp.cos(y[:, 0]) * sin_1 * sin_1))
+                d = 2 * xp.arcsin(
+                    xp.sqrt(
+                        sin_0 * sin_0
+                        + xp.cos(x[:, [0]]) * xp.cos(y[:, 0]) * sin_1 * sin_1
+                    )
+                )
 
             ctx[op.outputs[0].key] = d
 

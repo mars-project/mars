@@ -19,15 +19,12 @@ from .... import dataframe as md
 
 
 def test_to_datetime():
-    wrong_args = [
-        pd.DataFrame({'a': [1, 2]}),
-        {'a': [1, 2]}
-    ]
+    wrong_args = [pd.DataFrame({"a": [1, 2]}), {"a": [1, 2]}]
 
     for arg in wrong_args:
         with pytest.raises(ValueError) as cm:
             md.to_datetime(arg)
-        assert '[year, month, day]' in str(cm.value)
+        assert "[year, month, day]" in str(cm.value)
 
     with pytest.raises(TypeError):
         md.to_datetime([[1, 2], [3, 4]])

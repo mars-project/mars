@@ -27,7 +27,7 @@ class SvcActor2(mo.Actor):
         self._ref = await mo.actor_ref(self._ref_uid, address=self.address)
 
     async def get_arg(self):
-        return await self._ref.get_arg() + ':' + self._arg
+        return await self._ref.get_arg() + ":" + self._arg
 
 
 class TestService2(AbstractService):
@@ -36,10 +36,14 @@ class TestService2(AbstractService):
         self._ref = None
 
     async def start(self):
-        svc_config = self._config['test_svc2']
+        svc_config = self._config["test_svc2"]
         self._ref = await mo.create_actor(
-            SvcActor2, uid=svc_config['uid'], arg=svc_config['arg2'],
-            ref_uid=svc_config['ref'], address=self._address)
+            SvcActor2,
+            uid=svc_config["uid"],
+            arg=svc_config["arg2"],
+            ref_uid=svc_config["ref"],
+            address=self._address,
+        )
 
     async def stop(self):
         assert self._ref is not None

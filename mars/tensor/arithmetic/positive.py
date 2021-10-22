@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorPositive(TensorUnaryOp):
     _op_type_ = OperandDef.POSITIVE
-    _func_name = 'positive'
+    _func_name = "positive"
 
 
 @infer_dtype(np.positive)

@@ -29,8 +29,8 @@ from .array import tensor
 class TensorFull(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_FULL
 
-    _fill_value = AnyField('fill_value')
-    _order = StringField('order')
+    _fill_value = AnyField("fill_value")
+    _order = StringField("order")
 
     def __init__(self, fill_value=None, dtype=None, order=None, **kw):
         if dtype is not None:
@@ -52,11 +52,12 @@ class TensorFull(TensorNoInput):
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        ctx[chunk.key] = create_array(op)('full', chunk.shape,
-                                          op.fill_value, dtype=op.dtype, order=op.order)
+        ctx[chunk.key] = create_array(op)(
+            "full", chunk.shape, op.fill_value, dtype=op.dtype, order=op.order
+        )
 
 
-def full(shape, fill_value, dtype=None, chunk_size=None, gpu=False, order='C'):
+def full(shape, fill_value, dtype=None, chunk_size=None, gpu=False, order="C"):
     """
     Return a new tensor of given shape and type, filled with `fill_value`.
 
@@ -107,11 +108,17 @@ def full(shape, fill_value, dtype=None, chunk_size=None, gpu=False, order='C'):
     v = np.asarray(fill_value)
     if len(v.shape) > 0:
         from ..base import broadcast_to
-        return broadcast_to(
-            tensor(v, dtype=dtype, chunk_size=chunk_size, gpu=gpu, order=order), shape)
 
-    tensor_order = get_order(order, None, available_options='CF',
-                             err_msg="only 'C' or 'F' order is permitted")
+        return broadcast_to(
+            tensor(v, dtype=dtype, chunk_size=chunk_size, gpu=gpu, order=order), shape
+        )
+
+    tensor_order = get_order(
+        order,
+        None,
+        available_options="CF",
+        err_msg="only 'C' or 'F' order is permitted",
+    )
     op = TensorFull(fill_value, dtype=dtype, gpu=gpu, order=order)
     return op(shape, chunk_size=chunk_size, order=tensor_order)
 
@@ -119,19 +126,27 @@ def full(shape, fill_value, dtype=None, chunk_size=None, gpu=False, order='C'):
 class TensorFullLike(TensorLike):
     _op_type_ = OperandDef.TENSOR_FULL_LIKE
 
-    _input = KeyField('input')
-    _fill_value = AnyField('fill_value')
-    _order = StringField('order')
+    _input = KeyField("input")
+    _fill_value = AnyField("fill_value")
+    _order = StringField("order")
 
-    def __init__(self, fill_value=None, dtype=None, gpu=None, sparse=False, order=None, **kw):
+    def __init__(
+        self, fill_value=None, dtype=None, gpu=None, sparse=False, order=None, **kw
+    ):
         if dtype is not None:
             dtype = np.dtype(dtype)
             if fill_value is not None:
                 fill_value = dtype.type(fill_value)
         elif fill_value is not None:
             dtype = np.array(fill_value).dtype
-        super().__init__(_fill_value=fill_value, _dtype=dtype, _gpu=gpu, _order=order,
-                         _sparse=sparse, **kw)
+        super().__init__(
+            _fill_value=fill_value,
+            _dtype=dtype,
+            _gpu=gpu,
+            _order=order,
+            _sparse=sparse,
+            **kw
+        )
 
     @property
     def fill_value(self):
@@ -148,17 +163,27 @@ class TensorFullLike(TensorLike):
             in_data = naked(ctx[op.inputs[0].key])
             xps = get_sparse_module(in_data)
             xp = get_array_module(in_data)
-            ctx[chunk.key] = SparseNDArray(xps.csr_matrix(
-                (xp.full_like(in_data.data, op.fill_value, dtype=op.dtype),
-                 in_data.indices, in_data.indptr), shape=in_data.shape
-            ))
+            ctx[chunk.key] = SparseNDArray(
+                xps.csr_matrix(
+                    (
+                        xp.full_like(in_data.data, op.fill_value, dtype=op.dtype),
+                        in_data.indices,
+                        in_data.indptr,
+                    ),
+                    shape=in_data.shape,
+                )
+            )
         else:
             ctx[chunk.key] = create_array(op)(
-                'full_like', ctx[op.inputs[0].key], op.fill_value,
-                dtype=op.dtype, order=op.order)
+                "full_like",
+                ctx[op.inputs[0].key],
+                op.fill_value,
+                dtype=op.dtype,
+                order=op.order,
+            )
 
 
-def full_like(a, fill_value, dtype=None, gpu=None, order='K'):
+def full_like(a, fill_value, dtype=None, gpu=None, order="K"):
     """
     Return a full tensor with the same shape and type as a given tensor.
 
@@ -214,6 +239,7 @@ def full_like(a, fill_value, dtype=None, gpu=None, order='K'):
     if dtype is None:
         dtype = a.dtype
     gpu = a.op.gpu if gpu is None else gpu
-    op = TensorFullLike(fill_value=fill_value, dtype=dtype,
-                        gpu=gpu, sparse=a.issparse())
+    op = TensorFullLike(
+        fill_value=fill_value, dtype=dtype, gpu=gpu, sparse=a.issparse()
+    )
     return op(a, order=tensor_order)

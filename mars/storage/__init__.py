@@ -19,6 +19,7 @@ from .cuda import CudaStorage
 from .filesystem import FileSystemStorage
 from .ray import RayStorage
 from .shared_memory import SharedMemoryStorage
+
 try:
     # require vineyard, pyarrow
     from .vineyard import VineyardStorage

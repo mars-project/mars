@@ -21,10 +21,8 @@ from ... import oscar as mo
 from ...lib.aio import alru_cache
 from ...storage import StorageLevel
 from ...typing import BandType
-from .core import NodeInfo, NodeStatus, WorkerSlotInfo, QuotaInfo, \
-    DiskInfo, StorageInfo
-from .gather import gather_node_env, gather_node_resource, \
-    gather_node_details
+from .core import NodeInfo, NodeStatus, WorkerSlotInfo, QuotaInfo, DiskInfo, StorageInfo
+from .gather import gather_node_env, gather_node_resource, gather_node_details
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +35,7 @@ class NodeInfoUploaderActor(mo.Actor):
     _disk_infos: List[DiskInfo]
     _band_storage_infos: Dict[str, Dict[StorageLevel, StorageInfo]]
 
-    def __init__(self, role=None, interval=None,
-                 band_to_slots=None, use_gpu=True):
+    def __init__(self, role=None, interval=None, band_to_slots=None, use_gpu=True):
         self._info = NodeInfo(role=role)
 
         self._env_uploaded = False
@@ -68,14 +65,17 @@ class NodeInfoUploaderActor(mo.Actor):
         from .supervisor.node_info import NodeInfoCollectorActor
 
         locator_ref = await mo.actor_ref(
-            SupervisorLocatorActor.default_uid(), address=self.address)
+            SupervisorLocatorActor.default_uid(), address=self.address
+        )
         supervisor_addr = await locator_ref.get_supervisor(
-            NodeInfoCollectorActor.default_uid())
+            NodeInfoCollectorActor.default_uid()
+        )
         if supervisor_addr is None:
             raise ValueError
 
         return await mo.actor_ref(
-            NodeInfoCollectorActor.default_uid(), address=supervisor_addr)
+            NodeInfoCollectorActor.default_uid(), address=supervisor_addr
+        )
 
     async def mark_node_ready(self):
         self._upload_enabled = True
@@ -93,16 +93,19 @@ class NodeInfoUploaderActor(mo.Actor):
         try:
             if not self._info.env:
                 self._info.env = await asyncio.to_thread(gather_node_env)
-            self._info.detail.update(await asyncio.to_thread(
-                gather_node_details,
-                disk_infos=self._disk_infos,
-                band_storage_infos=self._band_storage_infos,
-                band_slot_infos=self._band_slot_infos,
-                band_quota_infos=self._band_quota_infos
-            ))
+            self._info.detail.update(
+                await asyncio.to_thread(
+                    gather_node_details,
+                    disk_infos=self._disk_infos,
+                    band_storage_infos=self._band_storage_infos,
+                    band_slot_infos=self._band_slot_infos,
+                    band_quota_infos=self._band_quota_infos,
+                )
+            )
 
             band_resources = await asyncio.to_thread(
-                gather_node_resource, self._band_to_slots, use_gpu=self._use_gpu)
+                gather_node_resource, self._band_to_slots, use_gpu=self._use_gpu
+            )
 
             for band, res in band_resources.items():
                 try:
@@ -117,30 +120,34 @@ class NodeInfoUploaderActor(mo.Actor):
                     if not self._env_uploaded:
                         status = status or NodeStatus.READY
                     await node_info_ref.update_node_info(
-                        address=self.address, role=self._info.role,
+                        address=self.address,
+                        role=self._info.role,
                         env=self._info.env if not self._env_uploaded else None,
-                        resource=self._info.resource, detail=self._info.detail,
-                        status=status
+                        resource=self._info.resource,
+                        detail=self._info.detail,
+                        status=status,
                     )
                     self._env_uploaded = True
                 except ValueError:
                     pass
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
-            logger.exception(f'Failed to upload node info')
+            logger.exception(f"Failed to upload node info")
             raise
         finally:
             if call_next:
-                self._upload_task = self.ref().upload_node_info.tell_delay(delay=self._interval)
+                self._upload_task = self.ref().upload_node_info.tell_delay(
+                    delay=self._interval
+                )
 
     def get_bands(self) -> Dict[BandType, int]:
         band_slots = dict()
         for resource_type, info in self._info.resource.items():
-            if resource_type.startswith('numa'):
+            if resource_type.startswith("numa"):
                 # cpu
-                band_slots[(self.address, resource_type)] = info['cpu_total']
+                band_slots[(self.address, resource_type)] = info["cpu_total"]
             else:  # pragma: no cover
-                assert resource_type.startswith('gpu')
-                band_slots[(self.address, resource_type)] = info['gpu_total']
+                assert resource_type.startswith("gpu")
+                band_slots[(self.address, resource_type)] = info["gpu_total"]
         return band_slots
 
     def set_node_disk_info(self, node_disk_info: List[DiskInfo]):

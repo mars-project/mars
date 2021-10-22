@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorFloor(TensorUnaryOp):
     _op_type_ = OperandDef.FLOOR
-    _func_name = 'floor'
+    _func_name = "floor"
 
 
 @infer_dtype(np.floor)

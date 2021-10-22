@@ -20,24 +20,32 @@ from .....tests.core import require_ray
 from .....utils import lazy_import
 from ..manager import TaskConfigurationActor
 
-ray = lazy_import('ray')
+ray = lazy_import("ray")
 
 
 @require_ray
 @pytest.mark.asyncio
 async def test_task_manager_creation(ray_start_regular):
-    mo.setup_cluster(address_to_resources=placement_group_info_to_addresses('test_cluster', [{'CPU': 2}]))
+    mo.setup_cluster(
+        address_to_resources=placement_group_info_to_addresses(
+            "test_cluster", [{"CPU": 2}]
+        )
+    )
     # the pool is an ActorHandle, it does not have an async context.
-    pool = await mo.create_actor_pool('ray://test_cluster/0/0', n_process=2,
-                                      labels=[None] + ['numa-0'] * 2)
+    pool = await mo.create_actor_pool(
+        "ray://test_cluster/0/0", n_process=2, labels=[None] + ["numa-0"] * 2
+    )
     assert pool
 
     # create configuration
-    await mo.create_actor(TaskConfigurationActor, dict(),
-                          uid=TaskConfigurationActor.default_uid(),
-                          address='ray://test_cluster/0/0')
+    await mo.create_actor(
+        TaskConfigurationActor,
+        dict(),
+        uid=TaskConfigurationActor.default_uid(),
+        address="ray://test_cluster/0/0",
+    )
 
     configuration_ref = await mo.actor_ref(
-            TaskConfigurationActor.default_uid(),
-            address='ray://test_cluster/0/0')
+        TaskConfigurationActor.default_uid(), address="ray://test_cluster/0/0"
+    )
     await configuration_ref.get_config()

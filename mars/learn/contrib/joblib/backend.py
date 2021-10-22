@@ -18,8 +18,11 @@ from .... import remote
 from ....deploy.oscar.session import get_default_session, new_session
 
 try:
-    from joblib.parallel import ParallelBackendBase, AutoBatchingMixin, \
-        register_parallel_backend
+    from joblib.parallel import (
+        ParallelBackendBase,
+        AutoBatchingMixin,
+        register_parallel_backend,
+    )
 except ImportError:
     ParallelBackendBase = object
     AutoBatchingMixin = object
@@ -67,9 +70,11 @@ class MarsDistributedBackend(AutoBatchingMixin, ParallelBackendBase):
             for func_obj, args, kwargs in func.items:
                 spawned.append(remote.spawn(func_obj, args=args, kwargs=kwargs))
 
-            ret = remote.ExecutableTuple(spawned) \
-                .execute(session=self.session) \
+            ret = (
+                remote.ExecutableTuple(spawned)
+                .execute(session=self.session)
                 .fetch(self.session)
+            )
             callback(ret)
             return ret
 
@@ -79,4 +84,4 @@ class MarsDistributedBackend(AutoBatchingMixin, ParallelBackendBase):
 
 
 def register_mars_backend():
-    register_parallel_backend('mars', MarsDistributedBackend)
+    register_parallel_backend("mars", MarsDistributedBackend)

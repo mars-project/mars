@@ -30,12 +30,12 @@ def _handle_zeros_in_scale(scale, copy=True):
 
     # if we are fitting on 1D arrays, scale might be a scalar
     if np.isscalar(scale):  # pragma: no cover
-        if scale == .0:
-            scale = 1.
+        if scale == 0.0:
+            scale = 1.0
         return scale
-    elif hasattr(scale, 'ndim') and scale.ndim == 0:  # pragma: no cover
+    elif hasattr(scale, "ndim") and scale.ndim == 0:  # pragma: no cover
         # scalar that is tensor
-        return mt.where(scale == .0, 1., scale)
+        return mt.where(scale == 0.0, 1.0, scale)
     elif isinstance(scale, (np.ndarray, TENSOR_TYPE)):
         if copy:
             # New array to avoid side-effects
@@ -144,7 +144,7 @@ class MinMaxScaler(TransformerMixin, BaseEstimator):
 
         # Checking one attribute is enough, because they are all set together
         # in partial_fit
-        if hasattr(self, 'scale_'):
+        if hasattr(self, "scale_"):
             del self.scale_
             del self.min_
             del self.n_samples_seen_
@@ -197,17 +197,25 @@ class MinMaxScaler(TransformerMixin, BaseEstimator):
         """
         feature_range = self.feature_range
         if feature_range[0] >= feature_range[1]:
-            raise ValueError("Minimum of desired feature range must be smaller"
-                             " than maximum. Got %s." % str(feature_range))
+            raise ValueError(
+                "Minimum of desired feature range must be smaller"
+                " than maximum. Got %s." % str(feature_range)
+            )
 
         if mt.tensor(X).issparse():  # pragma: no cover
-            raise TypeError("MinMaxScaler does not support sparse input. "
-                            "Consider using MaxAbsScaler instead.")
+            raise TypeError(
+                "MinMaxScaler does not support sparse input. "
+                "Consider using MaxAbsScaler instead."
+            )
 
-        first_pass = not hasattr(self, 'n_samples_seen_')
-        X = self._validate_data(X, reset=first_pass,
-                                estimator=self, dtype=FLOAT_DTYPES,
-                                force_all_finite="allow-nan")
+        first_pass = not hasattr(self, "n_samples_seen_")
+        X = self._validate_data(
+            X,
+            reset=first_pass,
+            estimator=self,
+            dtype=FLOAT_DTYPES,
+            force_all_finite="allow-nan",
+        )
 
         if np.isnan(X.shape[0]):  # pragma: no cover
             X.execute(session=session, **(run_kwargs or dict()))
@@ -218,20 +226,25 @@ class MinMaxScaler(TransformerMixin, BaseEstimator):
         if first_pass:
             self.n_samples_seen_ = X.shape[0]
         else:
-            data_min = mt.minimum(self.data_min_, data_min)  # pylint: disable=access-member-before-definition
-            data_max = mt.maximum(self.data_max_, data_max)  # pylint: disable=access-member-before-definition
+            data_min = mt.minimum(
+                self.data_min_, data_min
+            )  # pylint: disable=access-member-before-definition
+            data_max = mt.maximum(
+                self.data_max_, data_max
+            )  # pylint: disable=access-member-before-definition
             self.n_samples_seen_ += X.shape[0]
 
         data_range = data_max - data_min
-        self.scale_ = ((feature_range[1] - feature_range[0]) /
-                       _handle_zeros_in_scale(data_range))
+        self.scale_ = (feature_range[1] - feature_range[0]) / _handle_zeros_in_scale(
+            data_range
+        )
         self.min_ = feature_range[0] - data_min * self.scale_
         self.data_min_ = data_min
         self.data_max_ = data_max
         self.data_range_ = data_range
-        mt.ExecutableTuple([self.scale_, self.min_, self.data_min_,
-                            self.data_max_, self.data_range_]).execute(
-            session=session, **(run_kwargs or dict()))
+        mt.ExecutableTuple(
+            [self.scale_, self.min_, self.data_min_, self.data_max_, self.data_range_]
+        ).execute(session=session, **(run_kwargs or dict()))
         return self
 
     def transform(self, X, session=None, run_kwargs=None):
@@ -249,8 +262,13 @@ class MinMaxScaler(TransformerMixin, BaseEstimator):
         """
         check_is_fitted(self)
 
-        X = self._validate_data(X, copy=self.copy, dtype=FLOAT_DTYPES,
-                                force_all_finite="allow-nan", reset=False)
+        X = self._validate_data(
+            X,
+            copy=self.copy,
+            dtype=FLOAT_DTYPES,
+            force_all_finite="allow-nan",
+            reset=False,
+        )
 
         X *= self.scale_
         X += self.min_
@@ -273,19 +291,21 @@ class MinMaxScaler(TransformerMixin, BaseEstimator):
         """
         check_is_fitted(self)
 
-        X = check_array(X, copy=self.copy, dtype=FLOAT_DTYPES,
-                        force_all_finite="allow-nan")
+        X = check_array(
+            X, copy=self.copy, dtype=FLOAT_DTYPES, force_all_finite="allow-nan"
+        )
 
         X -= self.min_
         X /= self.scale_
         return X.execute(session=session, **(run_kwargs or dict()))
 
     def _more_tags(self):  # pylint: disable=no-self-use
-        return {'allow_nan': True}
+        return {"allow_nan": True}
 
 
-def minmax_scale(X, feature_range=(0, 1), *, axis=0, copy=True,
-                 session=None, run_kwargs=None):
+def minmax_scale(
+    X, feature_range=(0, 1), *, axis=0, copy=True, session=None, run_kwargs=None
+):
     """Transform features by scaling each feature to a given range.
 
     This estimator scales and translates each feature individually such
@@ -360,8 +380,9 @@ def minmax_scale(X, feature_range=(0, 1), *, axis=0, copy=True,
     """  # noqa
     # Unlike the scaler object, this function allows 1d input.
     # If copy is required, it will be done inside the scaler object.
-    X = check_array(X, copy=False, ensure_2d=False,
-                    dtype=FLOAT_DTYPES, force_all_finite='allow-nan')
+    X = check_array(
+        X, copy=False, ensure_2d=False, dtype=FLOAT_DTYPES, force_all_finite="allow-nan"
+    )
     original_ndim = X.ndim
 
     if original_ndim == 1:

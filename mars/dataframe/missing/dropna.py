@@ -29,23 +29,43 @@ from ..utils import parse_index, validate_axis
 class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.DROP_NA
 
-    _axis = AnyField('axis')
-    _how = StringField('how')
-    _thresh = Int32Field('thresh')
-    _subset = AnyField('subset')
-    _use_inf_as_na = BoolField('use_inf_as_na')
+    _axis = AnyField("axis")
+    _how = StringField("how")
+    _thresh = Int32Field("thresh")
+    _subset = AnyField("subset")
+    _use_inf_as_na = BoolField("use_inf_as_na")
 
     # when True, dropna will be called on the input,
     # otherwise non-nan counts will be used
-    _drop_directly = BoolField('drop_directly')
+    _drop_directly = BoolField("drop_directly")
     # size of subset, used when how == 'any'
-    _subset_size = Int32Field('subset_size')
+    _subset_size = Int32Field("subset_size")
 
-    def __init__(self, axis=None, how=None, thresh=None, subset=None, use_inf_as_na=None,
-                 drop_directly=None, subset_size=None, sparse=None, output_types=None, **kw):
-        super().__init__(_axis=axis, _how=how, _thresh=thresh, _subset=subset,
-                         _use_inf_as_na=use_inf_as_na, _drop_directly=drop_directly,
-                         _subset_size=subset_size, _sparse=sparse, _output_types=output_types, **kw)
+    def __init__(
+        self,
+        axis=None,
+        how=None,
+        thresh=None,
+        subset=None,
+        use_inf_as_na=None,
+        drop_directly=None,
+        subset_size=None,
+        sparse=None,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _axis=axis,
+            _how=how,
+            _thresh=thresh,
+            _subset=subset,
+            _use_inf_as_na=use_inf_as_na,
+            _drop_directly=drop_directly,
+            _subset_size=subset_size,
+            _sparse=sparse,
+            _output_types=output_types,
+            **kw
+        )
 
     @property
     def axis(self) -> int:
@@ -80,8 +100,8 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
         new_shape[0] = np.nan
 
         params = df.params.copy()
-        params['index_value'] = parse_index(None, df.key, df.index_value.key)
-        params['shape'] = tuple(new_shape)
+        params["index_value"] = parse_index(None, df.key, df.index_value.key)
+        params["shape"] = tuple(new_shape)
         return self.new_tileable([df], **params)
 
     @classmethod
@@ -95,8 +115,8 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
             new_shape[0] = np.nan
 
             params = c.params.copy()
-            params['index_value'] = parse_index(None, c.key, c.index_value.key)
-            params['shape'] = tuple(new_shape)
+            params["index_value"] = parse_index(None, c.key, c.index_value.key)
+            params["shape"] = tuple(new_shape)
 
             new_op = op.copy().reset_key()
             new_op._drop_directly = True
@@ -123,21 +143,30 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
         if op.subset:
             subset_df = in_df[op.subset]
         count_series = yield from recursive_tile(
-            subset_df.agg('count', axis=1, _use_inf_as_na=op.use_inf_as_na))
+            subset_df.agg("count", axis=1, _use_inf_as_na=op.use_inf_as_na)
+        )
 
-        nsplits, out_shape, left_chunks, right_chunks = align_dataframe_series(in_df, count_series, axis=0)
+        nsplits, out_shape, left_chunks, right_chunks = align_dataframe_series(
+            in_df, count_series, axis=0
+        )
         out_chunk_indexes = itertools.product(*(range(s) for s in out_shape))
 
         out_chunks = []
         for out_idx, df_chunk in zip(out_chunk_indexes, left_chunks):
             series_chunk = right_chunks[out_idx[0]]
-            kw = dict(shape=(np.nan, nsplits[1][out_idx[1]]), dtypes=df_chunk.dtypes,
-                      index_value=df_chunk.index_value, columns_value=df_chunk.columns_value)
+            kw = dict(
+                shape=(np.nan, nsplits[1][out_idx[1]]),
+                dtypes=df_chunk.dtypes,
+                index_value=df_chunk.index_value,
+                columns_value=df_chunk.columns_value,
+            )
 
             new_op = op.copy().reset_key()
             new_op._drop_directly = False
             new_op._subset_size = len(op.subset) if op.subset else len(in_df.dtypes)
-            out_chunks.append(new_op.new_chunk([df_chunk, series_chunk], index=out_idx, **kw))
+            out_chunks.append(
+                new_op.new_chunk([df_chunk, series_chunk], index=out_idx, **kw)
+            )
 
         new_op = op.copy().reset_key()
         params = out_df.params.copy()
@@ -149,13 +178,14 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op: "DataFrameDropNA"):
         try:
-            pd.set_option('mode.use_inf_as_na', op.use_inf_as_na)
+            pd.set_option("mode.use_inf_as_na", op.use_inf_as_na)
 
             in_data = ctx[op.inputs[0].key]
             if op.drop_directly:
                 if isinstance(in_data, pd.DataFrame):
-                    result = in_data.dropna(axis=op.axis, how=op.how, thresh=op.thresh,
-                                            subset=op.subset)
+                    result = in_data.dropna(
+                        axis=op.axis, how=op.how, thresh=op.thresh, subset=op.subset
+                    )
                 elif isinstance(in_data, pd.Series):
                     result = in_data.dropna(axis=op.axis, how=op.how)
                 else:
@@ -164,7 +194,7 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
                 return
 
             in_counts = ctx[op.inputs[1].key]
-            if op.how == 'all':
+            if op.how == "all":
                 in_counts = in_counts[in_counts > 0]
             else:
                 thresh = op.subset_size if op.thresh is None else op.thresh
@@ -172,10 +202,10 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
 
             ctx[op.outputs[0].key] = in_data.reindex(in_counts.index)
         finally:
-            pd.reset_option('mode.use_inf_as_na')
+            pd.reset_option("mode.use_inf_as_na")
 
 
-def df_dropna(df, axis=0, how='any', thresh=None, subset=None, inplace=False):
+def df_dropna(df, axis=0, how="any", thresh=None, subset=None, inplace=False):
     """
     Remove missing values.
 
@@ -273,11 +303,17 @@ def df_dropna(df, axis=0, how='any', thresh=None, subset=None, inplace=False):
     """
     axis = validate_axis(axis, df)
     if axis != 0:
-        raise NotImplementedError('Does not support dropna on DataFrame when axis=1')
+        raise NotImplementedError("Does not support dropna on DataFrame when axis=1")
 
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameDropNA(axis=axis, how=how, thresh=thresh, subset=subset,
-                         output_types=[OutputType.dataframe], use_inf_as_na=use_inf_as_na)
+    op = DataFrameDropNA(
+        axis=axis,
+        how=how,
+        thresh=thresh,
+        subset=subset,
+        output_types=[OutputType.dataframe],
+        use_inf_as_na=use_inf_as_na,
+    )
     out_df = op(df)
     if inplace:
         df.data = out_df.data
@@ -359,8 +395,12 @@ def series_dropna(series, axis=0, inplace=False, how=None):
     """
     axis = validate_axis(axis, series)
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameDropNA(axis=axis, how=how, output_types=[OutputType.series],
-                         use_inf_as_na=use_inf_as_na)
+    op = DataFrameDropNA(
+        axis=axis,
+        how=how,
+        output_types=[OutputType.series],
+        use_inf_as_na=use_inf_as_na,
+    )
     out_series = op(series)
     if inplace:
         series.data = out_series.data
@@ -368,7 +408,7 @@ def series_dropna(series, axis=0, inplace=False, how=None):
         return out_series
 
 
-def index_dropna(index, how='any'):
+def index_dropna(index, how="any"):
     """
     Return Index without NA/NaN values.
 
@@ -383,6 +423,7 @@ def index_dropna(index, how='any'):
     Index
     """
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameDropNA(axis=0, how=how, output_types=[OutputType.index],
-                         use_inf_as_na=use_inf_as_na)
+    op = DataFrameDropNA(
+        axis=0, how=how, output_types=[OutputType.index], use_inf_as_na=use_inf_as_na
+    )
     return op(index)

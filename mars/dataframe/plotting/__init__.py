@@ -21,13 +21,13 @@ def _install():
     from .core import PlotAccessor
 
     for t in DATAFRAME_TYPE + SERIES_TYPE:
-        t.plot = CachedAccessor('plot', PlotAccessor)
+        t.plot = CachedAccessor("plot", PlotAccessor)
 
     for method in dir(pd.DataFrame.plot):
-        if not method.startswith('_'):
+        if not method.startswith("_"):
             PlotAccessor._register(method)
 
-    PlotAccessor.__doc__ = pd.DataFrame.plot.__doc__.replace('pd.', 'md.')
+    PlotAccessor.__doc__ = pd.DataFrame.plot.__doc__.replace("pd.", "md.")
 
 
 _install()

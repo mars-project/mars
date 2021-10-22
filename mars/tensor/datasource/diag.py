@@ -39,7 +39,7 @@ def _get_diag_shape(v_shape, k):
     elif k < 0:
         size_0 -= k
     size = min(v_shape[0] - size_0, v_shape[1] - size_1)
-    return size,
+    return (size,)
 
 
 class TensorDiagBase(object):
@@ -47,7 +47,7 @@ class TensorDiagBase(object):
 
     def to_chunk_op(self, *args):
         op = self.copy().reset_key()
-        k, = args
+        (k,) = args
         op._k = k
         return op
 
@@ -94,15 +94,16 @@ class TensorDiagBase(object):
             out_chunks.append(chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape, chunks=out_chunks,
-                                  nsplits=nsplits)
+        return new_op.new_tensors(
+            op.inputs, tensor.shape, chunks=out_chunks, nsplits=nsplits
+        )
 
 
 class TensorDiag(TensorDiagBase, TensorHasInput):
     _op_type_ = OperandDef.TENSOR_DIAG
 
-    _input = KeyField('input')
-    _k = Int32Field('k')
+    _input = KeyField("input")
+    _k = Int32Field("k")
 
     def __init__(self, k=None, **kw):
         super().__init__(_k=k, **kw)
@@ -133,13 +134,16 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
     def _get_chunk(cls, op, chunk_k, chunk_shape, chunk_idx):
         assert chunk_shape[0] == chunk_shape[1]
         input_idx = chunk_idx[1] if op.k < 0 else chunk_idx[0]
-        input_chunk = op.inputs[0].cix[input_idx, ]
+        input_chunk = op.inputs[0].cix[
+            input_idx,
+        ]
         op = TensorDiag(k=chunk_k, dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
         return op.new_chunk([input_chunk], shape=chunk_shape, index=chunk_idx)
 
     def __call__(self, v, shape, chunk_size=None):
-        return self.new_tensor([v], shape, raw_chunk_size=chunk_size,
-                               order=TensorOrder.C_ORDER)
+        return self.new_tensor(
+            [v], shape, raw_chunk_size=chunk_size, order=TensorOrder.C_ORDER
+        )
 
     @classmethod
     def tile(cls, op):
@@ -174,20 +178,26 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
                 chunk_shape = _get_diag_shape(c.shape, chunk_k)
                 chunk_idx = (next(idx),)
                 chunk_op = op.to_chunk_op(chunk_k)
-                chunk = chunk_op.new_chunk([c], shape=chunk_shape,
-                                           index=chunk_idx, order=tensor.order)
+                chunk = chunk_op.new_chunk(
+                    [c], shape=chunk_shape, index=chunk_idx, order=tensor.order
+                )
                 nsplit.append(chunk_shape[0])
                 chunks.append(chunk)
 
             new_op = op.copy()
-            return new_op.new_tensors(op.inputs, op.outputs[0].shape, order=tensor.order,
-                                      chunks=chunks, nsplits=(tuple(nsplit),))
+            return new_op.new_tensors(
+                op.inputs,
+                op.outputs[0].shape,
+                order=tensor.order,
+                chunks=chunks,
+                nsplits=(tuple(nsplit),),
+            )
         else:
             return (yield from super().tile(op))
 
     @property
     def k(self):
-        return getattr(self, '_k', 0)
+        return getattr(self, "_k", 0)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -195,8 +205,7 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
         if op.sparse:
             ctx[chunk.key] = sparse.diag(ctx[op.inputs[0].key], k=op.k, gpu=op.gpu)
         else:
-            ctx[chunk.key] = create_array(op)(
-                'diag', ctx[op.inputs[0].key], k=op.k)
+            ctx[chunk.key] = create_array(op)("diag", ctx[op.inputs[0].key], k=op.k)
 
 
 def diag(v, k=0, sparse=None, gpu=False, chunk_size=None):
@@ -263,8 +272,10 @@ def diag(v, k=0, sparse=None, gpu=False, chunk_size=None):
         tensor_v = tensor(v)
         if tensor_v.issparse():
             xps = get_sparse_module(tensor_v.data)
-            v = xps.csr_matrix((tensor_v.op.data, tensor_v.op.indices, tensor_v.op.indptr),
-                               tensor_v.shape)
+            v = xps.csr_matrix(
+                (tensor_v.op.data, tensor_v.op.indices, tensor_v.op.indptr),
+                tensor_v.shape,
+            )
             diag_v = sparse_diag(v, k=k)
         else:
             v = tensor(v).op.data
@@ -279,7 +290,7 @@ def diag(v, k=0, sparse=None, gpu=False, chunk_size=None):
     elif v.ndim == 2:
         shape = _get_diag_shape(v.shape, k)
     else:
-        raise ValueError('Input must be 1- or 2-d.')
+        raise ValueError("Input must be 1- or 2-d.")
 
     op = TensorDiag(k, dtype=v.dtype, gpu=gpu, sparse=sparse)
     return op(v, shape)

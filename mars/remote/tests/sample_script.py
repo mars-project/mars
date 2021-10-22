@@ -13,4 +13,5 @@
 # limitations under the License.
 
 import os
-assert os.environ['WORLD_SIZE'] == '2'
+
+assert os.environ["WORLD_SIZE"] == "2"

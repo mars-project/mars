@@ -21,8 +21,18 @@ from ...datasource import arange, tensor, empty
 from ...base import sort
 from ...merge import stack
 from ...reduction import all as tall
-from .. import average, cov, corrcoef, ptp, digitize, \
-    histogram_bin_edges, histogram, quantile, percentile, median
+from .. import (
+    average,
+    cov,
+    corrcoef,
+    ptp,
+    digitize,
+    histogram_bin_edges,
+    histogram,
+    quantile,
+    percentile,
+    median,
+)
 from ..quantile import INTERPOLATION_TYPES
 
 
@@ -41,14 +51,16 @@ def test_average_execution(setup):
     assert res == expected
 
     data = arange(6, chunk_size=2).reshape((3, 2))
-    t = average(data, axis=1, weights=tensor([1. / 4, 3. / 4], chunk_size=2))
+    t = average(data, axis=1, weights=tensor([1.0 / 4, 3.0 / 4], chunk_size=2))
 
     res = t.execute().fetch()
-    expected = np.average(np.arange(6).reshape(3, 2), axis=1, weights=(1. / 4, 3. / 4))
+    expected = np.average(
+        np.arange(6).reshape(3, 2), axis=1, weights=(1.0 / 4, 3.0 / 4)
+    )
     np.testing.assert_equal(res, expected)
 
     with pytest.raises(TypeError):
-        average(data, weights=tensor([1. / 4, 3. / 4], chunk_size=2))
+        average(data, weights=tensor([1.0 / 4, 3.0 / 4], chunk_size=2))
 
 
 def test_cov_execution(setup):
@@ -124,7 +136,7 @@ def test_digitize_execution(setup):
     expected = np.digitize(data, bins)
     np.testing.assert_equal(res, expected)
 
-    data = np.array([1.2, 10.0, 12.4, 15.5, 20.])
+    data = np.array([1.2, 10.0, 12.4, 15.5, 20.0])
     x = tensor(data, chunk_size=2)
     bins = np.array([0, 5, 10, 15, 20])
     inds = digitize(x, bins, right=True)
@@ -139,7 +151,7 @@ def test_digitize_execution(setup):
     expected = np.digitize(data, bins, right=False)
     np.testing.assert_equal(res, expected)
 
-    data = sps.random(10, 1, density=.1) * 12
+    data = sps.random(10, 1, density=0.1) * 12
     x = tensor(data, chunk_size=2)
     bins = np.array([1.0, 2.0, 2.5, 4.0, 10.0])
     inds = digitize(x, bins)
@@ -168,8 +180,17 @@ def test_histogram_bin_edges_execution(setup):
     raw3 = rs.randint(10, size=(0,))
     c = tensor(raw3)
     for t, r in [(a, raw), (b, raw2), (c, raw3), (sort(a), raw)]:
-        test_bins = [10, 'stone', 'auto', 'doane', 'fd',
-                     'rice', 'scott', 'sqrt', 'sturges']
+        test_bins = [
+            10,
+            "stone",
+            "auto",
+            "doane",
+            "fd",
+            "rice",
+            "scott",
+            "sqrt",
+            "sturges",
+        ]
         for bins in test_bins:
             bin_edges = histogram_bin_edges(t, bins=bins)
             result = bin_edges.execute().fetch()
@@ -214,7 +235,8 @@ def test_histogram_execution(setup):
             bin_edges = histogram(a, bins=bins, weights=wt, density=density)[0]
             result = bin_edges.execute().fetch()
             expected = np.histogram(
-                raw, bins=bins, weights=raw_weights, density=density)[0]
+                raw, bins=bins, weights=raw_weights, density=density
+            )[0]
             np.testing.assert_almost_equal(result, expected)
 
     raw2 = rs.randint(10, size=(1,))
@@ -223,8 +245,17 @@ def test_histogram_execution(setup):
     c = tensor(raw3)
     for t, r in [(a, raw), (b, raw2), (c, raw3), (sort(a), raw)]:
         for density in (True, False):
-            test_bins = [10, 'stone', 'auto', 'doane', 'fd',
-                         'rice', 'scott', 'sqrt', 'sturges']
+            test_bins = [
+                10,
+                "stone",
+                "auto",
+                "doane",
+                "fd",
+                "rice",
+                "scott",
+                "sqrt",
+                "sturges",
+            ]
             for bins in test_bins:
                 hist = histogram(t, bins=bins, density=density)[0]
                 result = hist.execute().fetch()
@@ -272,7 +303,8 @@ def test_quantile_execution(setup):
 
                 result = r.execute().fetch()
                 expected = np.quantile(
-                    raw, q, interpolation=interpolation, keepdims=keepdims)
+                    raw, q, interpolation=interpolation, keepdims=keepdims
+                )
 
                 np.testing.assert_array_equal(result, expected)
 
@@ -280,7 +312,8 @@ def test_quantile_execution(setup):
 
                 result = r2.execute().fetch()
                 expected = np.quantile(
-                    raw2, q, interpolation=interpolation, keepdims=keepdims)
+                    raw2, q, interpolation=interpolation, keepdims=keepdims
+                )
 
                 np.testing.assert_array_equal(result, expected)
 
@@ -296,19 +329,33 @@ def test_quantile_execution(setup):
         for interpolation in INTERPOLATION_TYPES:
             for keepdims in [True, False]:
                 for axis in [None, 0, 1]:
-                    r = quantile(a, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+                    r = quantile(
+                        a, q, axis=axis, interpolation=interpolation, keepdims=keepdims
+                    )
 
                     result = r.execute().fetch()
                     expected = np.quantile(
-                        raw, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+                        raw,
+                        q,
+                        axis=axis,
+                        interpolation=interpolation,
+                        keepdims=keepdims,
+                    )
 
                     np.testing.assert_array_equal(result, expected)
 
-                    r2 = quantile(a2, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+                    r2 = quantile(
+                        a2, q, axis=axis, interpolation=interpolation, keepdims=keepdims
+                    )
 
                     result = r2.execute().fetch()
                     expected = np.quantile(
-                        raw2, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+                        raw2,
+                        q,
+                        axis=axis,
+                        interpolation=interpolation,
+                        keepdims=keepdims,
+                    )
 
                     np.testing.assert_array_equal(result, expected)
 
@@ -327,7 +374,8 @@ def test_quantile_execution(setup):
 
                 result = r.execute().fetch()
                 expected = np.quantile(
-                    raw, q, interpolation=interpolation, keepdims=keepdims)
+                    raw, q, interpolation=interpolation, keepdims=keepdims
+                )
 
                 np.testing.assert_almost_equal(result, expected)
 
@@ -335,7 +383,8 @@ def test_quantile_execution(setup):
 
                 result = r2.execute().fetch()
                 expected = np.quantile(
-                    raw2, q, interpolation=interpolation, keepdims=keepdims)
+                    raw2, q, interpolation=interpolation, keepdims=keepdims
+                )
 
                 np.testing.assert_almost_equal(result, expected)
 
@@ -351,19 +400,33 @@ def test_quantile_execution(setup):
         for interpolation in INTERPOLATION_TYPES:
             for keepdims in [True, False]:
                 for axis in [None, 0, 1]:
-                    r = quantile(a, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+                    r = quantile(
+                        a, q, axis=axis, interpolation=interpolation, keepdims=keepdims
+                    )
 
                     result = r.execute().fetch()
                     expected = np.quantile(
-                        raw, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+                        raw,
+                        q,
+                        axis=axis,
+                        interpolation=interpolation,
+                        keepdims=keepdims,
+                    )
 
                     np.testing.assert_almost_equal(result, expected)
 
-                    r2 = quantile(a2, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+                    r2 = quantile(
+                        a2, q, axis=axis, interpolation=interpolation, keepdims=keepdims
+                    )
 
                     result = r2.execute().fetch()
                     expected = np.quantile(
-                        raw2, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+                        raw2,
+                        q,
+                        axis=axis,
+                        interpolation=interpolation,
+                        keepdims=keepdims,
+                    )
 
                     np.testing.assert_almost_equal(result, expected)
 

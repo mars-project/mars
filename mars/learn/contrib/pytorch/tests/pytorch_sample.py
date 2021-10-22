@@ -17,6 +17,7 @@ import sys
 
 def get_model():
     import torch.nn as nn
+
     return nn.Sequential(
         nn.Linear(32, 64),
         nn.ReLU(),
@@ -33,7 +34,7 @@ def main():
     import torch.optim as optim
     import torch.utils.data
 
-    dist.init_process_group(backend='gloo')
+    dist.init_process_group(backend="gloo")
     torch.manual_seed(42)
 
     data = torch.rand((1000, 32), dtype=torch.float32)
@@ -41,14 +42,12 @@ def main():
 
     train_dataset = torch.utils.data.TensorDataset(data, labels)
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                               batch_size=32,
-                                               shuffle=False,
-                                               sampler=train_sampler)
+    train_loader = torch.utils.data.DataLoader(
+        dataset=train_dataset, batch_size=32, shuffle=False, sampler=train_sampler
+    )
 
     model = nn.parallel.DistributedDataParallel(get_model())
-    optimizer = optim.SGD(model.parameters(),
-                          lr=0.01, momentum=0.5)
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
     criterion = nn.BCELoss()
 
     for _ in range(2):
@@ -63,5 +62,5 @@ def main():
 
 if __name__ == "__main__":
     assert len(sys.argv) == 2
-    assert sys.argv[1] == 'multiple'
+    assert sys.argv[1] == "multiple"
     main()

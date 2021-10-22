@@ -16,11 +16,11 @@ from .. import StorageLevel
 
 
 def test_storage_level():
-    s = 'memory'
+    s = "memory"
     assert StorageLevel.MEMORY == StorageLevel.from_str(s)
 
-    s = 'disk | memory'
+    s = "disk | memory"
     assert StorageLevel.DISK | StorageLevel.MEMORY == StorageLevel.from_str(s)
 
-    s = ' MEMORY|REMOTE '
+    s = " MEMORY|REMOTE "
     assert StorageLevel.MEMORY | StorageLevel.REMOTE == StorageLevel.from_str(s)

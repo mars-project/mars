@@ -30,23 +30,31 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
 
     _op_type_ = OperandDef.DATAFRAME_DATA_SOURCE
 
-    data = DataFrameField('data')
-    dtypes = SeriesField('dtypes')
+    data = DataFrameField("data")
+    dtypes = SeriesField("dtypes")
 
     def __init__(self, data=None, dtypes=None, gpu=None, **kw):
         if dtypes is None and data is not None:
             dtypes = data.dtypes
         if gpu is None and is_cudf(data):  # pragma: no cover
             gpu = True
-        super().__init__(data=data, dtypes=dtypes, gpu=gpu,
-                         _output_types=[OutputType.dataframe], **kw)
+        super().__init__(
+            data=data,
+            dtypes=dtypes,
+            gpu=gpu,
+            _output_types=[OutputType.dataframe],
+            **kw
+        )
 
     def __call__(self, shape, chunk_size=None):
-        return self.new_dataframe(None, shape, dtypes=self.dtypes,
-                                  index_value=parse_index(self.data.index),
-                                  columns_value=parse_index(self.data.columns,
-                                                            store_data=True),
-                                  raw_chunk_size=chunk_size)
+        return self.new_dataframe(
+            None,
+            shape,
+            dtypes=self.dtypes,
+            index_value=parse_index(self.data.index),
+            columns_value=parse_index(self.data.columns, store_data=True),
+            raw_chunk_size=chunk_size,
+        )
 
     @classmethod
     def tile(cls, op: "DataFrameDataSource"):
@@ -61,8 +69,9 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         index_values = dict()
         column_values = dict()
-        for chunk_shape, chunk_idx in zip(itertools.product(*chunk_size),
-                                          itertools.product(*chunk_size_idxes)):
+        for chunk_shape, chunk_idx in zip(
+            itertools.product(*chunk_size), itertools.product(*chunk_size_idxes)
+        ):
             chunk_op = op.copy().reset_key()
             slc = get_chunk_slices(chunk_size, chunk_idx)
             i_slc, j_slc = slc
@@ -79,20 +88,30 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
             if j in column_values:
                 column_value = column_values[j]
             else:
-                column_value = column_values[j] = parse_index(chunk_op.data.columns,
-                                                              store_data=True)
-            out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx,
-                                           index_value=index_value,
-                                           columns_value=column_value,
-                                           dtypes=chunk_op.data.dtypes)
+                column_value = column_values[j] = parse_index(
+                    chunk_op.data.columns, store_data=True
+                )
+            out_chunk = chunk_op.new_chunk(
+                None,
+                shape=chunk_shape,
+                index=chunk_idx,
+                index_value=index_value,
+                columns_value=column_value,
+                dtypes=chunk_op.data.dtypes,
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_dataframes(None, df.shape, dtypes=op.dtypes,
-                                     index_value=df.index_value,
-                                     columns_value=df.columns_value,
-                                     chunks=out_chunks, nsplits=chunk_size,
-                                     **df.extra_params)
+        return new_op.new_dataframes(
+            None,
+            df.shape,
+            dtypes=op.dtypes,
+            index_value=df.index_value,
+            columns_value=df.columns_value,
+            chunks=out_chunks,
+            nsplits=chunk_size,
+            **df.extra_params
+        )
 
     @classmethod
     def execute(cls, ctx, op):

@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorSign(TensorUnaryOp):
     _op_type_ = OperandDef.SIGN
-    _func_name = 'sign'
+    _func_name = "sign"
 
 
 @infer_dtype(np.sign)

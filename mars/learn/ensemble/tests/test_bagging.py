@@ -24,8 +24,13 @@ from sklearn.svm import SVC
 
 from .... import tensor as mt, dataframe as md, execute
 from ....core import enter_mode
-from .._bagging import _extract_bagging_io, BaggingSample, \
-    BaggingSampleReindex, BaggingClassifier, BaggingRegressor
+from .._bagging import (
+    _extract_bagging_io,
+    BaggingSample,
+    BaggingSampleReindex,
+    BaggingClassifier,
+    BaggingRegressor,
+)
 
 
 def _get_tileable_chunk_data(sync_session, tileable):
@@ -37,33 +42,35 @@ def _get_tileable_chunk_data(sync_session, tileable):
 
         t, indexes = async_session._get_to_fetch_tileable(tileable)
 
-        delays = [meta_api.get_chunk_meta.delay(chunk.key, fields=['bands'])
-                  for chunk in t.chunks]
+        delays = [
+            meta_api.get_chunk_meta.delay(chunk.key, fields=["bands"])
+            for chunk in t.chunks
+        ]
         band_infos = await meta_api.get_chunk_meta.batch(*delays)
         for chunk, band_info in zip(t.chunks, band_infos):
-            band = band_info['bands'][0]
+            band = band_info["bands"][0]
             storage_api = await async_session._get_storage_api(band)
             data = await storage_api.get(chunk.key)
             tuples.append((t, chunk, data))
         return tuples
 
     future = asyncio.run_coroutine_threadsafe(
-        _async_fetch(), sync_session._isolation.loop)
-    return future.result(120 if 'CI' in os.environ else None)
+        _async_fetch(), sync_session._isolation.loop
+    )
+    return future.result(120 if "CI" in os.environ else None)
 
 
 @pytest.mark.parametrize(
-    'use_dataframe, max_samples, max_features, with_labels, with_weights',
+    "use_dataframe, max_samples, max_features, with_labels, with_weights",
     [
         (False, 10, 1.0, False, False),
         (False, 10, 0.5, True, True),
         (True, 10, 1.0, False, False),
         (True, 10, 0.5, True, True),
-    ]
+    ],
 )
 def test_bagging_sample_execution(
-    setup, use_dataframe, max_samples, max_features,
-    with_labels, with_weights
+    setup, use_dataframe, max_samples, max_features, with_labels, with_weights
 ):
     rs = np.random.RandomState(0)
 
@@ -79,11 +86,16 @@ def test_bagging_sample_execution(
     labels = mt.tensor(raw_labels, chunk_size=20) if with_labels else None
     weights = mt.tensor(raw_weights, chunk_size=20) if with_weights else None
 
-    sample_op = BaggingSample(n_estimators=10, max_samples=max_samples,
-                              max_features=max_features, random_state=rs)
+    sample_op = BaggingSample(
+        n_estimators=10,
+        max_samples=max_samples,
+        max_features=max_features,
+        random_state=rs,
+    )
     result_tuple = execute(*sample_op(t, labels, weights))
-    t_sampled, t_labels, t_weights, t_feature_indices \
-        = _extract_bagging_io(result_tuple, sample_op, output=True)
+    t_sampled, t_labels, t_weights, t_feature_indices = _extract_bagging_io(
+        result_tuple, sample_op, output=True
+    )
 
     label_chunks, weights_chunks, feature_idx_chunks = dict(), dict(), dict()
 
@@ -97,7 +109,9 @@ def test_bagging_sample_execution(
                 assert d.shape == (10,)
 
     if t_feature_indices is not None:
-        for tiled, chunk, chunk_data in _get_tileable_chunk_data(setup, t_feature_indices):
+        for tiled, chunk, chunk_data in _get_tileable_chunk_data(
+            setup, t_feature_indices
+        ):
             assert len(tiled.chunks) == 5
             feature_idx_chunks[chunk.index] = chunk_data
             assert chunk_data.shape == (2, int(max_features * raw_data.shape[1]))
@@ -124,13 +138,13 @@ def test_bagging_sample_execution(
 
 
 @pytest.mark.parametrize(
-    'use_dataframe, max_samples, max_features, column_split',
+    "use_dataframe, max_samples, max_features, column_split",
     [
         (False, 10, 1.0, 50),
         (False, 10, 0.5, 50),
         (True, 10, 1.0, 20),
         (True, 10, 0.5, 20),
-    ]
+    ],
 )
 def test_bagging_sample_reindex(
     setup, use_dataframe, max_samples, max_features, column_split
@@ -148,15 +162,21 @@ def test_bagging_sample_reindex(
         t_insts = md.DataFrame(raw_insts, chunk_size=column_split)
         t_data = md.DataFrame(raw_data, chunk_size=column_split)
 
-    sample_op = BaggingSample(n_estimators=10, max_samples=max_samples,
-                              max_features=max_features, random_state=rs)
+    sample_op = BaggingSample(
+        n_estimators=10,
+        max_samples=max_samples,
+        max_features=max_features,
+        random_state=rs,
+    )
     result_tuple = execute(*sample_op(t_insts))
-    _t_sampled, _label, _weights, t_feature_indices \
-        = _extract_bagging_io(result_tuple, sample_op, output=True)
+    _t_sampled, _label, _weights, t_feature_indices = _extract_bagging_io(
+        result_tuple, sample_op, output=True
+    )
 
     reindex_op = BaggingSampleReindex(n_estimators=10)
-    reindexed = execute(reindex_op(t_data, t_feature_indices),
-                        extra_config={'check_dtypes': False})
+    reindexed = execute(
+        reindex_op(t_data, t_feature_indices), extra_config={"check_dtypes": False}
+    )
 
     for tiled, _chunk, chunk_data in _get_tileable_chunk_data(setup, reindexed):
         if t_feature_indices is None:
@@ -164,26 +184,34 @@ def test_bagging_sample_reindex(
             assert chunk_data.shape[1] == 50
         else:
             row_chunks = np.ceil(raw_insts.shape[0] / column_split)
-            assert len(tiled.chunks) == row_chunks * np.ceil(raw_data.shape[0] / column_split)
+            assert len(tiled.chunks) == row_chunks * np.ceil(
+                raw_data.shape[0] / column_split
+            )
             assert isinstance(chunk_data, tuple)
             for chunk_data_piece in chunk_data:
                 assert chunk_data_piece.shape[1] == 25
 
 
 @pytest.mark.parametrize(
-    'use_dataframe, max_samples, max_features, with_weights, base_estimator_cls',
+    "use_dataframe, max_samples, max_features, with_weights, base_estimator_cls",
     [
         (False, 10, 0.5, False, LogisticRegression),
         (True, 10, 1.0, True, SVC),
-    ]
+    ],
 )
-def test_bagging_classifier(setup, use_dataframe, max_samples, max_features,
-                            with_weights, base_estimator_cls):
+def test_bagging_classifier(
+    setup, use_dataframe, max_samples, max_features, with_weights, base_estimator_cls
+):
     rs = np.random.RandomState(0)
 
     raw_x, raw_y = make_classification(
-        n_samples=100, n_features=4, n_informative=2, n_redundant=0,
-        random_state=rs, shuffle=False)
+        n_samples=100,
+        n_features=4,
+        n_informative=2,
+        n_redundant=0,
+        random_state=rs,
+        shuffle=False,
+    )
 
     if not use_dataframe:
         t_x = mt.tensor(raw_x, chunk_size=20)
@@ -196,8 +224,12 @@ def test_bagging_classifier(setup, use_dataframe, max_samples, max_features,
     t_weights = mt.tensor(raw_weights, chunk_size=20) if with_weights else None
 
     clf = BaggingClassifier(
-        base_estimator=base_estimator_cls(), n_estimators=10, max_samples=max_samples,
-        max_features=max_features, random_state=rs, warm_start=True
+        base_estimator=base_estimator_cls(),
+        n_estimators=10,
+        max_samples=max_samples,
+        max_features=max_features,
+        random_state=rs,
+        warm_start=True,
     )
     clf.fit(t_x, t_y, sample_weight=t_weights)
 
@@ -238,20 +270,21 @@ def test_bagging_classifier(setup, use_dataframe, max_samples, max_features,
 
 
 @pytest.mark.parametrize(
-    'use_dataframe, max_samples, max_features, with_weights',
+    "use_dataframe, max_samples, max_features, with_weights",
     [
         (False, 10, 0.5, False),
         (True, 10, 1.0, True),
-    ]
+    ],
 )
-def test_bagging_regressor(setup, use_dataframe, max_samples, max_features,
-                           with_weights):
+def test_bagging_regressor(
+    setup, use_dataframe, max_samples, max_features, with_weights
+):
 
     rs = np.random.RandomState(0)
 
     raw_x, raw_y = make_regression(
-        n_samples=100, n_features=4, n_informative=2,
-        random_state=rs, shuffle=False)
+        n_samples=100, n_features=4, n_informative=2, random_state=rs, shuffle=False
+    )
 
     if not use_dataframe:
         t_x = mt.tensor(raw_x, chunk_size=20)
@@ -264,8 +297,12 @@ def test_bagging_regressor(setup, use_dataframe, max_samples, max_features,
     t_weights = mt.tensor(raw_weights, chunk_size=20) if with_weights else None
 
     clf = BaggingRegressor(
-        base_estimator=LinearRegression(), n_estimators=10, max_samples=max_samples,
-        max_features=max_features, random_state=rs, warm_start=True
+        base_estimator=LinearRegression(),
+        n_estimators=10,
+        max_samples=max_samples,
+        max_features=max_features,
+        random_state=rs,
+        warm_start=True,
     )
     clf.fit(t_x, t_y, sample_weight=t_weights)
 

@@ -22,12 +22,16 @@ from .. import concat
 
 
 def test_merge(setup):
-    df1 = pd.DataFrame(np.arange(20).reshape((4, 5)) + 1, columns=['a', 'b', 'c', 'd', 'e'])
-    df2 = pd.DataFrame(np.arange(20).reshape((5, 4)) + 1, columns=['a', 'b', 'x', 'y'])
+    df1 = pd.DataFrame(
+        np.arange(20).reshape((4, 5)) + 1, columns=["a", "b", "c", "d", "e"]
+    )
+    df2 = pd.DataFrame(np.arange(20).reshape((5, 4)) + 1, columns=["a", "b", "x", "y"])
     df3 = df1.copy()
-    df3.index = pd.RangeIndex(2, 6, name='index')
+    df3.index = pd.RangeIndex(2, 6, name="index")
     df4 = df1.copy()
-    df4.index = pd.MultiIndex.from_tuples([(i, i + 1) for i in range(4)], names=['i1', 'i2'])
+    df4.index = pd.MultiIndex.from_tuples(
+        [(i, i + 1) for i in range(4)], names=["i1", "i2"]
+    )
 
     mdf1 = from_pandas(df1, chunk_size=2)
     mdf2 = from_pandas(df2, chunk_size=2)
@@ -47,119 +51,141 @@ def test_merge(setup):
     expected0 = df1.merge(df2)
     jdf0 = mdf1.merge(mdf2)
     result0 = jdf0.execute().fetch()
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected0, 0), sort_dataframe_inplace(result0, 0))
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected0, 0), sort_dataframe_inplace(result0, 0)
+    )
 
     # merge on left index and `right_on`
-    expected1 = df1.merge(df2, how='left', right_on='x', left_index=True)
-    jdf1 = mdf1.merge(mdf2, how='left', right_on='x', left_index=True)
+    expected1 = df1.merge(df2, how="left", right_on="x", left_index=True)
+    jdf1 = mdf1.merge(mdf2, how="left", right_on="x", left_index=True)
     result1 = jdf1.execute().fetch()
-    expected1.set_index('a_x', inplace=True)
-    result1.set_index('a_x', inplace=True)
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected1, 0), sort_dataframe_inplace(result1, 0))
+    expected1.set_index("a_x", inplace=True)
+    result1.set_index("a_x", inplace=True)
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected1, 0), sort_dataframe_inplace(result1, 0)
+    )
 
     # merge on `left_on` and right index
-    expected2 = df1.merge(df2, how='right', left_on='a', right_index=True)
-    jdf2 = mdf1.merge(mdf2, how='right', left_on='a', right_index=True)
+    expected2 = df1.merge(df2, how="right", left_on="a", right_index=True)
+    jdf2 = mdf1.merge(mdf2, how="right", left_on="a", right_index=True)
     result2 = jdf2.execute().fetch()
-    expected2.set_index('a', inplace=True)
-    result2.set_index('a', inplace=True)
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected2, 0), sort_dataframe_inplace(result2, 0))
+    expected2.set_index("a", inplace=True)
+    result2.set_index("a", inplace=True)
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected2, 0), sort_dataframe_inplace(result2, 0)
+    )
 
     # merge on `left_on` and `right_on`
-    expected3 = df1.merge(df2, how='left', left_on='a', right_on='x')
-    jdf3 = mdf1.merge(mdf2, how='left', left_on='a', right_on='x')
+    expected3 = df1.merge(df2, how="left", left_on="a", right_on="x")
+    jdf3 = mdf1.merge(mdf2, how="left", left_on="a", right_on="x")
     result3 = jdf3.execute().fetch()
-    expected3.set_index('a_x', inplace=True)
-    result3.set_index('a_x', inplace=True)
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected3, 0), sort_dataframe_inplace(result3, 0))
+    expected3.set_index("a_x", inplace=True)
+    result3.set_index("a_x", inplace=True)
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected3, 0), sort_dataframe_inplace(result3, 0)
+    )
 
     # merge on `on`
-    expected4 = df1.merge(df2, how='right', on='a')
-    jdf4 = mdf1.merge(mdf2, how='right', on='a')
+    expected4 = df1.merge(df2, how="right", on="a")
+    jdf4 = mdf1.merge(mdf2, how="right", on="a")
     result4 = jdf4.execute().fetch()
-    expected4.set_index('a', inplace=True)
-    result4.set_index('a', inplace=True)
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected4, 0), sort_dataframe_inplace(result4, 0))
+    expected4.set_index("a", inplace=True)
+    result4.set_index("a", inplace=True)
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected4, 0), sort_dataframe_inplace(result4, 0)
+    )
 
     # merge on multiple columns
-    expected5 = df1.merge(df2, how='inner', on=['a', 'b'])
-    jdf5 = mdf1.merge(mdf2, how='inner', on=['a', 'b'])
+    expected5 = df1.merge(df2, how="inner", on=["a", "b"])
+    jdf5 = mdf1.merge(mdf2, how="inner", on=["a", "b"])
     result5 = jdf5.execute().fetch()
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected5, 0), sort_dataframe_inplace(result5, 0))
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected5, 0), sort_dataframe_inplace(result5, 0)
+    )
 
     # merge when some on is index
-    expected6 = df3.merge(df2, how='inner', left_on='index', right_on='a')
-    jdf6 = mdf3.merge(mdf2, how='inner', left_on='index', right_on='a')
+    expected6 = df3.merge(df2, how="inner", left_on="index", right_on="a")
+    jdf6 = mdf3.merge(mdf2, how="inner", left_on="index", right_on="a")
     result6 = jdf6.execute().fetch()
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected6, 0), sort_dataframe_inplace(result6, 0))
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected6, 0), sort_dataframe_inplace(result6, 0)
+    )
 
     # merge when on is in MultiIndex
-    expected7 = df4.merge(df2, how='inner', left_on='i1', right_on='a')
-    jdf7 = mdf4.merge(mdf2, how='inner', left_on='i1', right_on='a')
+    expected7 = df4.merge(df2, how="inner", left_on="i1", right_on="a")
+    jdf7 = mdf4.merge(mdf2, how="inner", left_on="i1", right_on="a")
     result7 = jdf7.execute().fetch()
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected7, 0), sort_dataframe_inplace(result7, 0))
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected7, 0), sort_dataframe_inplace(result7, 0)
+    )
 
     # merge when on is in MultiIndex, and on not in index
-    expected8 = df4.merge(df2, how='inner', on=['a', 'b'])
-    jdf8 = mdf4.merge(mdf2, how='inner', on=['a', 'b'])
+    expected8 = df4.merge(df2, how="inner", on=["a", "b"])
+    jdf8 = mdf4.merge(mdf2, how="inner", on=["a", "b"])
     result8 = jdf8.execute().fetch()
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected8, 0), sort_dataframe_inplace(result8, 0))
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected8, 0), sort_dataframe_inplace(result8, 0)
+    )
 
 
 def test_join(setup):
-    df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]], index=['a1', 'a2', 'a3'])
-    df2 = pd.DataFrame([[1, 2, 3], [1, 5, 6], [7, 8, 9]], index=['a1', 'b2', 'b3']) + 1
+    df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]], index=["a1", "a2", "a3"])
+    df2 = pd.DataFrame([[1, 2, 3], [1, 5, 6], [7, 8, 9]], index=["a1", "b2", "b3"]) + 1
     df2 = pd.concat([df2, df2 + 1])
 
     mdf1 = from_pandas(df1, chunk_size=2)
     mdf2 = from_pandas(df2, chunk_size=2)
 
     # default `how`
-    expected0 = df1.join(df2, lsuffix='l_', rsuffix='r_')
-    jdf0 = mdf1.join(mdf2, lsuffix='l_', rsuffix='r_')
+    expected0 = df1.join(df2, lsuffix="l_", rsuffix="r_")
+    jdf0 = mdf1.join(mdf2, lsuffix="l_", rsuffix="r_")
     result0 = jdf0.execute().fetch()
     pd.testing.assert_frame_equal(expected0.sort_index(), result0.sort_index())
 
     # how = 'left'
-    expected1 = df1.join(df2, how='left', lsuffix='l_', rsuffix='r_')
-    jdf1 = mdf1.join(mdf2, how='left', lsuffix='l_', rsuffix='r_')
+    expected1 = df1.join(df2, how="left", lsuffix="l_", rsuffix="r_")
+    jdf1 = mdf1.join(mdf2, how="left", lsuffix="l_", rsuffix="r_")
     result1 = jdf1.execute().fetch()
     pd.testing.assert_frame_equal(expected1.sort_index(), result1.sort_index())
 
     # how = 'right'
-    expected2 = df1.join(df2, how='right', lsuffix='l_', rsuffix='r_')
-    jdf2 = mdf1.join(mdf2, how='right', lsuffix='l_', rsuffix='r_')
+    expected2 = df1.join(df2, how="right", lsuffix="l_", rsuffix="r_")
+    jdf2 = mdf1.join(mdf2, how="right", lsuffix="l_", rsuffix="r_")
     result2 = jdf2.execute().fetch()
     pd.testing.assert_frame_equal(expected2.sort_index(), result2.sort_index())
 
     # how = 'inner'
-    expected3 = df1.join(df2, how='inner', lsuffix='l_', rsuffix='r_')
-    jdf3 = mdf1.join(mdf2, how='inner', lsuffix='l_', rsuffix='r_')
+    expected3 = df1.join(df2, how="inner", lsuffix="l_", rsuffix="r_")
+    jdf3 = mdf1.join(mdf2, how="inner", lsuffix="l_", rsuffix="r_")
     result3 = jdf3.execute().fetch()
     pd.testing.assert_frame_equal(expected3.sort_index(), result3.sort_index())
 
     # how = 'outer'
-    expected4 = df1.join(df2, how='outer', lsuffix='l_', rsuffix='r_')
-    jdf4 = mdf1.join(mdf2, how='outer', lsuffix='l_', rsuffix='r_')
+    expected4 = df1.join(df2, how="outer", lsuffix="l_", rsuffix="r_")
+    jdf4 = mdf1.join(mdf2, how="outer", lsuffix="l_", rsuffix="r_")
     result4 = jdf4.execute().fetch()
     pd.testing.assert_frame_equal(expected4.sort_index(), result4.sort_index())
 
 
 def test_join_on(setup):
-    df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]], columns=['a1', 'a2', 'a3'])
-    df2 = pd.DataFrame([[1, 2, 3], [1, 5, 6], [7, 8, 9]], columns=['a1', 'b2', 'b3']) + 1
+    df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]], columns=["a1", "a2", "a3"])
+    df2 = (
+        pd.DataFrame([[1, 2, 3], [1, 5, 6], [7, 8, 9]], columns=["a1", "b2", "b3"]) + 1
+    )
     df2 = pd.concat([df2, df2 + 1])
 
     mdf1 = from_pandas(df1, chunk_size=2)
     mdf2 = from_pandas(df2, chunk_size=2)
 
-    expected0 = df1.join(df2, on=None, lsuffix='_l', rsuffix='_r')
-    jdf0 = mdf1.join(mdf2, on=None, lsuffix='_l', rsuffix='_r')
+    expected0 = df1.join(df2, on=None, lsuffix="_l", rsuffix="_r")
+    jdf0 = mdf1.join(mdf2, on=None, lsuffix="_l", rsuffix="_r")
     result0 = jdf0.execute().fetch()
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected0, 0), sort_dataframe_inplace(result0, 0))
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected0, 0), sort_dataframe_inplace(result0, 0)
+    )
 
-    expected1 = df1.join(df2, how='left', on='a1', lsuffix='_l', rsuffix='_r')
-    jdf1 = mdf1.join(mdf2, how='left', on='a1', lsuffix='_l', rsuffix='_r')
+    expected1 = df1.join(df2, how="left", on="a1", lsuffix="_l", rsuffix="_r")
+    jdf1 = mdf1.join(mdf2, how="left", on="a1", lsuffix="_l", rsuffix="_r")
     result1 = jdf1.execute().fetch()
 
     # Note [Columns of Left Join]
@@ -199,8 +225,10 @@ def test_join_on(setup):
 
     columns_to_compare = jdf1.columns_value.to_pandas()
 
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected1[columns_to_compare], 0, 1),
-                                  sort_dataframe_inplace(result1[columns_to_compare], 0, 1))
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected1[columns_to_compare], 0, 1),
+        sort_dataframe_inplace(result1[columns_to_compare], 0, 1),
+    )
 
     # Note [Index of Join on EmptyDataFrame]
     #
@@ -235,89 +263,107 @@ def test_join_on(setup):
     # Since we chunked the `left` dataframe, it is uneasy to obtain the same index value with pandas in the
     # final result dataframe, but we guaranteed that the dataframe content is correctly.
 
-    expected2 = df1.join(df2, how='right', on='a2', lsuffix='_l', rsuffix='_r')
-    jdf2 = mdf1.join(mdf2, how='right', on='a2', lsuffix='_l', rsuffix='_r')
+    expected2 = df1.join(df2, how="right", on="a2", lsuffix="_l", rsuffix="_r")
+    jdf2 = mdf1.join(mdf2, how="right", on="a2", lsuffix="_l", rsuffix="_r")
     result2 = jdf2.execute().fetch()
 
-    expected2.set_index('a2', inplace=True)
-    result2.set_index('a2', inplace=True)
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected2, 0), sort_dataframe_inplace(result2, 0))
+    expected2.set_index("a2", inplace=True)
+    result2.set_index("a2", inplace=True)
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected2, 0), sort_dataframe_inplace(result2, 0)
+    )
 
-    expected3 = df1.join(df2, how='inner', on='a2', lsuffix='_l', rsuffix='_r')
-    jdf3 = mdf1.join(mdf2, how='inner', on='a2', lsuffix='_l', rsuffix='_r')
+    expected3 = df1.join(df2, how="inner", on="a2", lsuffix="_l", rsuffix="_r")
+    jdf3 = mdf1.join(mdf2, how="inner", on="a2", lsuffix="_l", rsuffix="_r")
     result3 = jdf3.execute().fetch()
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected3, 0), sort_dataframe_inplace(result3, 0))
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected3, 0), sort_dataframe_inplace(result3, 0)
+    )
 
-    expected4 = df1.join(df2, how='outer', on='a2', lsuffix='_l', rsuffix='_r')
-    jdf4 = mdf1.join(mdf2, how='outer', on='a2', lsuffix='_l', rsuffix='_r')
+    expected4 = df1.join(df2, how="outer", on="a2", lsuffix="_l", rsuffix="_r")
+    jdf4 = mdf1.join(mdf2, how="outer", on="a2", lsuffix="_l", rsuffix="_r")
     result4 = jdf4.execute().fetch()
 
-    expected4.set_index('a2', inplace=True)
-    result4.set_index('a2', inplace=True)
-    pd.testing.assert_frame_equal(sort_dataframe_inplace(expected4, 0), sort_dataframe_inplace(result4, 0))
+    expected4.set_index("a2", inplace=True)
+    result4.set_index("a2", inplace=True)
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected4, 0), sort_dataframe_inplace(result4, 0)
+    )
 
 
 def test_merge_one_chunk(setup):
-    df1 = pd.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
-                        'value': [1, 2, 3, 5]}, index=['a1', 'a2', 'a3', 'a4'])
-    df2 = pd.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
-                        'value': [5, 6, 7, 8]}, index=['a1', 'a2', 'a3', 'a4'])
+    df1 = pd.DataFrame(
+        {"lkey": ["foo", "bar", "baz", "foo"], "value": [1, 2, 3, 5]},
+        index=["a1", "a2", "a3", "a4"],
+    )
+    df2 = pd.DataFrame(
+        {"rkey": ["foo", "bar", "baz", "foo"], "value": [5, 6, 7, 8]},
+        index=["a1", "a2", "a3", "a4"],
+    )
 
     # all have one chunk
     mdf1 = from_pandas(df1)
     mdf2 = from_pandas(df2)
 
-    expected = df1.merge(df2, left_on='lkey', right_on='rkey')
-    jdf = mdf1.merge(mdf2, left_on='lkey', right_on='rkey')
+    expected = df1.merge(df2, left_on="lkey", right_on="rkey")
+    jdf = mdf1.merge(mdf2, left_on="lkey", right_on="rkey")
     result = jdf.execute().fetch()
 
-    pd.testing.assert_frame_equal(expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
-                                  result.sort_values(by=result.columns[1]).reset_index(drop=True))
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
+        result.sort_values(by=result.columns[1]).reset_index(drop=True),
+    )
 
     # left have one chunk
     mdf1 = from_pandas(df1)
     mdf2 = from_pandas(df2, chunk_size=2)
 
-    expected = df1.merge(df2, left_on='lkey', right_on='rkey')
-    jdf = mdf1.merge(mdf2, left_on='lkey', right_on='rkey')
+    expected = df1.merge(df2, left_on="lkey", right_on="rkey")
+    jdf = mdf1.merge(mdf2, left_on="lkey", right_on="rkey")
     result = jdf.execute().fetch()
 
-    pd.testing.assert_frame_equal(expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
-                                  result.sort_values(by=result.columns[1]).reset_index(drop=True))
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
+        result.sort_values(by=result.columns[1]).reset_index(drop=True),
+    )
 
     # right have one chunk
     mdf1 = from_pandas(df1, chunk_size=3)
     mdf2 = from_pandas(df2)
 
-    expected = df1.merge(df2, left_on='lkey', right_on='rkey')
-    jdf = mdf1.merge(mdf2, left_on='lkey', right_on='rkey')
+    expected = df1.merge(df2, left_on="lkey", right_on="rkey")
+    jdf = mdf1.merge(mdf2, left_on="lkey", right_on="rkey")
     result = jdf.execute().fetch()
 
-    pd.testing.assert_frame_equal(expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
-                                  result.sort_values(by=result.columns[1]).reset_index(drop=True))
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
+        result.sort_values(by=result.columns[1]).reset_index(drop=True),
+    )
 
 
 def test_merge_on_duplicate_columns(setup):
-    raw1 = pd.DataFrame([['foo', 1, 'bar'],
-                         ['bar', 2, 'foo'],
-                         ['baz', 3, 'foo']],
-                        columns=['lkey', 'value', 'value'],
-                        index=['a1', 'a2', 'a3'])
-    raw2 = pd.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
-                         'value': [5, 6, 7, 8]}, index=['a1', 'a2', 'a3', 'a4'])
+    raw1 = pd.DataFrame(
+        [["foo", 1, "bar"], ["bar", 2, "foo"], ["baz", 3, "foo"]],
+        columns=["lkey", "value", "value"],
+        index=["a1", "a2", "a3"],
+    )
+    raw2 = pd.DataFrame(
+        {"rkey": ["foo", "bar", "baz", "foo"], "value": [5, 6, 7, 8]},
+        index=["a1", "a2", "a3", "a4"],
+    )
 
     df1 = from_pandas(raw1, chunk_size=2)
     df2 = from_pandas(raw2, chunk_size=3)
 
-    r = df1.merge(df2, left_on='lkey', right_on='rkey')
+    r = df1.merge(df2, left_on="lkey", right_on="rkey")
     result = r.execute().fetch()
-    expected = raw1.merge(raw2, left_on='lkey', right_on='rkey')
+    expected = raw1.merge(raw2, left_on="lkey", right_on="rkey")
     pd.testing.assert_frame_equal(expected, result)
 
 
 def test_append_execution(setup):
-    df1 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
-    df2 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
+    df1 = pd.DataFrame(np.random.rand(10, 4), columns=list("ABCD"))
+    df2 = pd.DataFrame(np.random.rand(10, 4), columns=list("ABCD"))
 
     mdf1 = from_pandas(df1, chunk_size=3)
     mdf2 = from_pandas(df2, chunk_size=3)
@@ -329,7 +375,7 @@ def test_append_execution(setup):
 
     adf = mdf1.append(mdf2, ignore_index=True)
     expected = df1.append(df2, ignore_index=True)
-    result = adf.execute(extra_config={'check_index_value': False}).fetch()
+    result = adf.execute(extra_config={"check_index_value": False}).fetch()
     pd.testing.assert_frame_equal(expected, result)
 
     mdf1 = from_pandas(df1, chunk_size=3)
@@ -342,10 +388,10 @@ def test_append_execution(setup):
 
     adf = mdf1.append(mdf2, ignore_index=True)
     expected = df1.append(df2, ignore_index=True)
-    result = adf.execute(extra_config={'check_index_value': False}).fetch()
+    result = adf.execute(extra_config={"check_index_value": False}).fetch()
     pd.testing.assert_frame_equal(expected, result)
 
-    df3 = pd.DataFrame(np.random.rand(8, 4), columns=list('ABCD'))
+    df3 = pd.DataFrame(np.random.rand(8, 4), columns=list("ABCD"))
     mdf3 = from_pandas(df3, chunk_size=3)
     expected = df1.append([df2, df3])
     adf = mdf1.append([mdf2, mdf3])
@@ -354,12 +400,12 @@ def test_append_execution(setup):
 
     adf = mdf1.append(dict(A=1, B=2, C=3, D=4), ignore_index=True)
     expected = df1.append(dict(A=1, B=2, C=3, D=4), ignore_index=True)
-    result = adf.execute(extra_config={'check_index_value': False}).fetch()
+    result = adf.execute(extra_config={"check_index_value": False}).fetch()
     pd.testing.assert_frame_equal(expected, result)
 
     # test for series
-    series1 = pd.Series(np.random.rand(10,))
-    series2 = pd.Series(np.random.rand(10,))
+    series1 = pd.Series(np.random.rand(10))
+    series2 = pd.Series(np.random.rand(10))
 
     mseries1 = series_from_pandas(series1, chunk_size=3)
     mseries2 = series_from_pandas(series2, chunk_size=3)
@@ -371,7 +417,7 @@ def test_append_execution(setup):
 
     aseries = mseries1.append(mseries2, ignore_index=True)
     expected = series1.append(series2, ignore_index=True)
-    result = aseries.execute(extra_config={'check_index_value': False}).fetch()
+    result = aseries.execute(extra_config={"check_index_value": False}).fetch()
     pd.testing.assert_series_equal(expected, result)
 
     mseries1 = series_from_pandas(series1, chunk_size=3)
@@ -384,10 +430,10 @@ def test_append_execution(setup):
 
     aseries = mseries1.append(mseries2, ignore_index=True)
     expected = series1.append(series2, ignore_index=True)
-    result = aseries.execute(extra_config={'check_index_value': False}).fetch()
+    result = aseries.execute(extra_config={"check_index_value": False}).fetch()
     pd.testing.assert_series_equal(expected, result)
 
-    series3 = pd.Series(np.random.rand(4,))
+    series3 = pd.Series(np.random.rand(4))
     mseries3 = series_from_pandas(series3, chunk_size=2)
     expected = series1.append([series2, series3])
     aseries = mseries1.append([mseries2, mseries3])
@@ -396,8 +442,8 @@ def test_append_execution(setup):
 
 
 def test_concat(setup):
-    df1 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
-    df2 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
+    df1 = pd.DataFrame(np.random.rand(10, 4), columns=list("ABCD"))
+    df2 = pd.DataFrame(np.random.rand(10, 4), columns=list("ABCD"))
 
     mdf1 = from_pandas(df1, chunk_size=3)
     mdf2 = from_pandas(df2, chunk_size=3)
@@ -413,7 +459,7 @@ def test_concat(setup):
 
     r = concat([mdf1, mdf2], ignore_index=True)
     expected = pd.concat([df1, df2], ignore_index=True)
-    result = r.execute(extra_config={'check_index_value': False}).fetch()
+    result = r.execute(extra_config={"check_index_value": False}).fetch()
     pd.testing.assert_frame_equal(expected, result)
 
     # test axis=1
@@ -431,21 +477,21 @@ def test_concat(setup):
     result = r.execute().fetch()
     pd.testing.assert_frame_equal(expected, result)
 
-    df1 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
-    df2 = pd.DataFrame(np.random.rand(10, 3), columns=list('ABC'))
+    df1 = pd.DataFrame(np.random.rand(10, 4), columns=list("ABCD"))
+    df2 = pd.DataFrame(np.random.rand(10, 3), columns=list("ABC"))
 
     mdf1 = from_pandas(df1, chunk_size=3)
     mdf2 = from_pandas(df2, chunk_size=3)
 
     # test join=inner
-    r = concat([mdf1, mdf2], join='inner')
-    expected = pd.concat([df1, df2], join='inner')
+    r = concat([mdf1, mdf2], join="inner")
+    expected = pd.concat([df1, df2], join="inner")
     result = r.execute().fetch()
     pd.testing.assert_frame_equal(expected, result)
 
     # test for series
-    series1 = pd.Series(np.random.rand(10,))
-    series2 = pd.Series(np.random.rand(10,))
+    series1 = pd.Series(np.random.rand(10))
+    series2 = pd.Series(np.random.rand(10))
 
     mseries1 = series_from_pandas(series1, chunk_size=3)
     mseries2 = series_from_pandas(series2, chunk_size=3)
@@ -461,7 +507,7 @@ def test_concat(setup):
 
     r = concat([mseries1, mseries2], ignore_index=True)
     expected = pd.concat([series1, series2], ignore_index=True)
-    result = r.execute(extra_config={'check_index_value': False}).fetch()
+    result = r.execute(extra_config={"check_index_value": False}).fetch()
     pd.testing.assert_series_equal(result, expected)
 
     # test axis=1
@@ -470,19 +516,19 @@ def test_concat(setup):
 
     r = concat([mseries1, mseries2], axis=1)
     expected = pd.concat([series1, series2], axis=1)
-    result = r.execute(extra_config={'check_shape': False}).fetch()
+    result = r.execute(extra_config={"check_shape": False}).fetch()
     pd.testing.assert_frame_equal(result, expected)
 
     # test merge dataframe and series
     r = concat([mdf1, mseries2], ignore_index=True)
     expected = pd.concat([df1, series2], ignore_index=True)
-    result = r.execute(extra_config={'check_index_value': False}).fetch()
+    result = r.execute(extra_config={"check_index_value": False}).fetch()
     pd.testing.assert_frame_equal(result, expected)
 
     # test merge series and dataframe
     r = concat([mseries1, mdf2], ignore_index=True)
     expected = pd.concat([series1, df2], ignore_index=True)
-    result = r.execute(extra_config={'check_index_value': False}).fetch()
+    result = r.execute(extra_config={"check_index_value": False}).fetch()
     pd.testing.assert_frame_equal(result, expected)
 
     # test merge dataframe and series, axis=1

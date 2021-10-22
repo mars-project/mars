@@ -24,12 +24,14 @@ from ....typing import ChunkType
 
 
 class MutableTensorChunkActor(mo.Actor):
-    def __init__(self,
-                session_id: str,
-                manager_address: str,
-                chunks: List,
-                dtype: Union[np.dtype, str],
-                default_value: Union[int, float] = 0) -> None:
+    def __init__(
+        self,
+        session_id: str,
+        manager_address: str,
+        chunks: List,
+        dtype: Union[np.dtype, str],
+        default_value: Union[int, float] = 0,
+    ) -> None:
         self._session_id = session_id
         self._manager_address = manager_address
         self._chunks = chunks
@@ -43,18 +45,22 @@ class MutableTensorChunkActor(mo.Actor):
 
     @classmethod
     def gen_uid(cls, session_id: str, name: str, index: int):
-        return f'mutable-tensor-chunk-{session_id}-{name}-{index}'
+        return f"mutable-tensor-chunk-{session_id}-{name}-{index}"
 
     async def __post_create__(self):
         from ...storage import StorageAPI
         from ...meta import MetaAPI
+
         self._storage_api = await StorageAPI.create(self._session_id, self.address)
         self._meta_api = await MetaAPI.create(self._session_id, self._manager_address)
 
         self._index_to_chunk = {
             chunk.index: MutableTensorChunk(
-                chunk, self._manager_address, self.address,
-                default_value=self._default_value)
+                chunk,
+                self._manager_address,
+                self.address,
+                default_value=self._default_value,
+            )
             for chunk in self._chunks
         }
 
@@ -70,15 +76,19 @@ class MutableTensorChunkActor(mo.Actor):
         for _, chunk in self._index_to_chunk.items():
             chunk_data = await chunk.seal(timestamp)
             await self._storage_api.put(chunk.chunk.key, chunk_data)
-            await self._meta_api.set_chunk_meta(chunk.chunk, bands=[(self.address, 'numa-0')])
+            await self._meta_api.set_chunk_meta(
+                chunk.chunk, bands=[(self.address, "numa-0")]
+            )
 
 
 class MutableTensorChunk:
-    def __init__(self,
-                 chunk: ChunkType,
-                 manager_address: str,
-                 worker_address: str,
-                 default_value: Union[int, float] = 0) -> None:
+    def __init__(
+        self,
+        chunk: ChunkType,
+        manager_address: str,
+        worker_address: str,
+        default_value: Union[int, float] = 0,
+    ) -> None:
         self._chunk = chunk
         self._manager_address = manager_address
         self._worker_address = worker_address
@@ -107,10 +117,13 @@ class MutableTensorChunk:
             self._records[flat_index].sort()
             # bitsect will compare on first element in the tuple.
             index = bisect.bisect_right(
-                self._records[flat_index], (timestamp, sys.float_info.max))
+                self._records[flat_index], (timestamp, sys.float_info.max)
+            )
             if index == 0:
                 continue
-            result[value_index] = self._records[flat_index][index - 1][1]  # take the value
+            result[value_index] = self._records[flat_index][index - 1][
+                1
+            ]  # take the value
         return result
 
     async def seal(self, timestamp):

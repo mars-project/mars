@@ -24,10 +24,18 @@ import pytest
 from .....lib.aio import AioEvent
 from .....tests.core import require_cudf, require_cupy
 from .....utils import get_next_port
-from .. import \
-    SocketChannel, SocketServer, UnixSocketServer, \
-    DummyChannel, DummyServer, get_client_type, \
-    SocketClient, UnixSocketClient, DummyClient, Server
+from .. import (
+    SocketChannel,
+    SocketServer,
+    UnixSocketServer,
+    DummyChannel,
+    DummyServer,
+    get_client_type,
+    SocketClient,
+    UnixSocketClient,
+    DummyClient,
+    Server,
+)
 
 test_data = np.random.RandomState(0).rand(10, 10)
 port = get_next_port()
@@ -35,26 +43,23 @@ port = get_next_port()
 
 # server_type, config, con
 params: List[Tuple[Type[Server], Dict, str]] = [
-    (SocketServer, dict(host='127.0.0.1', port=port), f'127.0.0.1:{port}'),
+    (SocketServer, dict(host="127.0.0.1", port=port), f"127.0.0.1:{port}"),
 ]
-if sys.platform != 'win32':
-    params.append((UnixSocketServer, dict(process_index='0'), f'unixsocket:///0'))
+if sys.platform != "win32":
+    params.append((UnixSocketServer, dict(process_index="0"), f"unixsocket:///0"))
 local_params = params.copy()
-local_params.append((DummyServer, dict(), 'dummy://0'))
+local_params.append((DummyServer, dict(), "dummy://0"))
 
 
-@pytest.mark.parametrize(
-    'server_type, config, con',
-    local_params
-)
+@pytest.mark.parametrize("server_type, config, con", local_params)
 @pytest.mark.asyncio
 async def test_comm(server_type, config, con):
     async def check_data(chan: Union[SocketChannel, DummyChannel]):
         np.testing.assert_array_equal(test_data, await chan.recv())
-        await chan.send('success')
+        await chan.send("success")
 
     config = config.copy()
-    config['handle_channel'] = check_data
+    config["handle_channel"] = check_data
 
     # create server
     server = await server_type.create(config)
@@ -67,7 +72,7 @@ async def test_comm(server_type, config, con):
     assert isinstance(client.channel.info, dict)
     await client.send(test_data)
 
-    assert 'success' == await client.recv()
+    assert "success" == await client.recv()
 
     await client.close()
     assert client.closed
@@ -77,7 +82,7 @@ async def test_comm(server_type, config, con):
         assert not client2.closed
     assert client2.closed
 
-    await server.join(.001)
+    await server.join(0.001)
     await server.stop()
 
     assert server.stopped
@@ -91,11 +96,11 @@ def _wrap_test(server_started_event, conf, tp):
     async def _test():
         async def check_data(chan: SocketChannel):
             np.testing.assert_array_equal(test_data, await chan.recv())
-            await chan.send('success')
+            await chan.send("success")
 
         nonlocal conf
         conf = conf.copy()
-        conf['handle_channel'] = check_data
+        conf["handle_channel"] = check_data
 
         # create server
         server = await tp.create(conf)
@@ -106,16 +111,14 @@ def _wrap_test(server_started_event, conf, tp):
     asyncio.run(_test())
 
 
-@pytest.mark.parametrize(
-    'server_type, config, con',
-    params
-)
+@pytest.mark.parametrize("server_type, config, con", params)
 @pytest.mark.asyncio
 async def test_multiprocess_comm(server_type, config, con):
     server_started = multiprocessing.Event()
 
-    p = multiprocessing.Process(target=_wrap_test,
-                                args=(server_started, config, server_type))
+    p = multiprocessing.Process(
+        target=_wrap_test, args=(server_started, config, server_type)
+    )
     p.daemon = True
     p.start()
 
@@ -126,7 +129,7 @@ async def test_multiprocess_comm(server_type, config, con):
         client = await server_type.client_type.connect(con)
         await client.channel.send(test_data)
 
-        assert 'success' == await client.recv()
+        assert "success" == await client.recv()
 
         await client.close()
         assert client.closed
@@ -135,8 +138,7 @@ async def test_multiprocess_comm(server_type, config, con):
 
 
 cupy_data = np.arange(100).reshape((10, 10))
-cudf_data = pd.DataFrame({'col1': np.arange(10),
-                          'col2': [f's{i}' for i in range(10)]})
+cudf_data = pd.DataFrame({"col1": np.arange(10), "col2": [f"s{i}" for i in range(10)]})
 
 
 def _wrap_cuda_test(server_started_event, conf, tp):
@@ -147,14 +149,12 @@ def _wrap_cuda_test(server_started_event, conf, tp):
             r = await chan.recv()
 
             if isinstance(r, cupy.ndarray):
-                np.testing.assert_array_equal(
-                    cupy.asnumpy(r), cupy_data)
+                np.testing.assert_array_equal(cupy.asnumpy(r), cupy_data)
             else:
-                pd.testing.assert_frame_equal(
-                    r.to_pandas(), cudf_data)
-            await chan.send('success')
+                pd.testing.assert_frame_equal(r.to_pandas(), cudf_data)
+            await chan.send("success")
 
-        conf['handle_channel'] = check_data
+        conf["handle_channel"] = check_data
 
         # create server
         server = await tp.create(conf)
@@ -172,34 +172,34 @@ async def test_multiprocess_cuda_comm():
     import cupy
     import cudf
 
-    mp_ctx = multiprocessing.get_context('spawn')
+    mp_ctx = multiprocessing.get_context("spawn")
 
     server_started = mp_ctx.Event()
     port = get_next_port()
-    p = mp_ctx.Process(target=_wrap_cuda_test,
-                       args=(server_started,
-                             dict(host='127.0.0.1', port=port),
-                             SocketServer))
+    p = mp_ctx.Process(
+        target=_wrap_cuda_test,
+        args=(server_started, dict(host="127.0.0.1", port=port), SocketServer),
+    )
     p.daemon = True
     p.start()
 
     await AioEvent(server_started).wait()
 
     # create client
-    client = await SocketServer.client_type.connect(f'127.0.0.1:{port}')
+    client = await SocketServer.client_type.connect(f"127.0.0.1:{port}")
 
     await client.channel.send(cupy.asarray(cupy_data))
-    assert 'success' == await client.recv()
+    assert "success" == await client.recv()
 
-    client = await SocketServer.client_type.connect(f'127.0.0.1:{port}')
+    client = await SocketServer.client_type.connect(f"127.0.0.1:{port}")
 
     await client.channel.send(cudf.DataFrame(cudf_data))
-    assert 'success' == await client.recv()
+    assert "success" == await client.recv()
 
     await client.close()
 
 
 def test_get_client_type():
-    assert issubclass(get_client_type('127.0.0.1'), SocketClient)
-    assert issubclass(get_client_type('unixsocket:///1'), UnixSocketClient)
-    assert issubclass(get_client_type('dummy://'), DummyClient)
+    assert issubclass(get_client_type("127.0.0.1"), SocketClient)
+    assert issubclass(get_client_type("unixsocket:///1"), UnixSocketClient)
+    assert issubclass(get_client_type("dummy://"), DummyClient)

@@ -44,23 +44,23 @@ class StorageLevel(Enum):
     REMOTE = 1 << 3
 
     def __and__(self, other: _ComparableLevel):
-        other_value = getattr(other, 'value', other)
+        other_value = getattr(other, "value", other)
         return self.value & other_value
 
     __rand__ = __and__
 
     def __or__(self, other: _ComparableLevel):
-        other_value = getattr(other, 'value', other)
+        other_value = getattr(other, "value", other)
         return self.value | other_value
 
     __ror__ = __or__
 
     def __lt__(self, other: _ComparableLevel):
-        other_value = getattr(other, 'value', other)
+        other_value = getattr(other, "value", other)
         return self.value < other_value
 
     def __gt__(self, other: _ComparableLevel):
-        other_value = getattr(other, 'value', other)
+        other_value = getattr(other, "value", other)
         return self.value > other_value
 
     def spill_level(self):
@@ -74,11 +74,11 @@ class StorageLevel(Enum):
     @staticmethod
     def from_str(s: str):
         level_mapping = StorageLevel.__members__
-        level_strings = [ss.strip() for ss in s.upper().split('|')]
+        level_strings = [ss.strip() for ss in s.upper().split("|")]
         levels = []
         for ls in level_strings:
             if ls not in level_mapping:  # pragma: no cover
-                raise ValueError(f'Unknown level {ls}')
+                raise ValueError(f"Unknown level {ls}")
             levels.append(level_mapping[ls])
         return functools.reduce(operator.or_, levels)
 
@@ -156,7 +156,7 @@ class StorageBackend(ABC):
         info: dict
             Customized storage backend info dict.
         """
-        return {'name': self.name}
+        return {"name": self.name}
 
     @abstractmethod
     async def get(self, object_id, **kwargs) -> object:

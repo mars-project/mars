@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorImag(TensorUnaryOp):
     _op_type_ = OperandDef.IMAG
-    _func_name = 'imag'
+    _func_name = "imag"
 
 
 @infer_dtype(np.imag)

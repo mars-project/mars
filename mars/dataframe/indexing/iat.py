@@ -28,7 +28,7 @@ class DataFrameIat:
 
         for index in indexes:
             if not isinstance(index, Integral):
-                raise ValueError('Invalid call for scalar access (getting)!')
+                raise ValueError("Invalid call for scalar access (getting)!")
 
         return self._iloc[indexes]
 

@@ -23,18 +23,20 @@ from tensorflow.keras import layers
 
 def get_model():
     model = tf.keras.Sequential()
-    model.add(layers.Dense(64, activation='relu'))
-    model.add(layers.Dense(64, activation='relu'))
-    model.add(layers.Dense(10, activation='softmax'))
-    model.compile(optimizer=tf.keras.optimizers.Adam(0.01),
-                  loss='categorical_crossentropy',
-                  metrics=['accuracy'])
+    model.add(layers.Dense(64, activation="relu"))
+    model.add(layers.Dense(64, activation="relu"))
+    model.add(layers.Dense(10, activation="softmax"))
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(0.01),
+        loss="categorical_crossentropy",
+        metrics=["accuracy"],
+    )
     return model
 
 
-assert json.loads(os.environ['TF_CONFIG'])['task']['index'] in {0, 1}
+assert json.loads(os.environ["TF_CONFIG"])["task"]["index"] in {0, 1}
 assert len(sys.argv) == 2
-assert sys.argv[1] == 'multiple'
+assert sys.argv[1] == "multiple"
 
 multiworker_strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy()
 

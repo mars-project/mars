@@ -21,12 +21,12 @@ def _load_mkl_rt(lib_name):
     """
     Load certain MKL library
     """
-    if sys.platform.startswith('win'):
-        lib_path = os.path.join(sys.prefix, 'Library', 'bin', lib_name + '.dll')
-    elif sys.platform == 'darwin':
-        lib_path = os.path.join(sys.prefix, 'lib', 'lib' + lib_name + '.dylib')
+    if sys.platform.startswith("win"):
+        lib_path = os.path.join(sys.prefix, "Library", "bin", lib_name + ".dll")
+    elif sys.platform == "darwin":
+        lib_path = os.path.join(sys.prefix, "lib", "lib" + lib_name + ".dylib")
     else:
-        lib_path = os.path.join(sys.prefix, 'lib', 'lib' + lib_name + '.so')
+        lib_path = os.path.join(sys.prefix, "lib", "lib" + lib_name + ".so")
     if not os.path.exists(lib_path):
         lib_path = None
 
@@ -36,13 +36,13 @@ def _load_mkl_rt(lib_name):
 
 class MKLVersion(ctypes.Structure):
     _fields_ = [
-        ('major', ctypes.c_int),
-        ('minor', ctypes.c_int),
-        ('update', ctypes.c_int),
-        ('product_status', ctypes.c_char_p),
-        ('build', ctypes.c_char_p),
-        ('processor', ctypes.c_char_p),
-        ('platform', ctypes.c_char_p),
+        ("major", ctypes.c_int),
+        ("minor", ctypes.c_int),
+        ("update", ctypes.c_int),
+        ("product_status", ctypes.c_char_p),
+        ("build", ctypes.c_char_p),
+        ("processor", ctypes.c_char_p),
+        ("platform", ctypes.c_char_p),
     ]
 
 
@@ -50,7 +50,7 @@ mkl_free_buffers = None
 mkl_get_version = None
 mkl_mem_stat = None
 
-mkl_rt = _load_mkl_rt('mkl_rt')
+mkl_rt = _load_mkl_rt("mkl_rt")
 if mkl_rt:
     try:
         mkl_free_buffers = mkl_rt.mkl_free_buffers
@@ -68,6 +68,7 @@ if mkl_rt:
             n_bufs = ctypes.c_int32(0)
             size = _mkl_mem_stat(ctypes.pointer(n_bufs))
             return size, n_bufs.value
+
     except AttributeError:  # pragma: no cover
         pass
 
@@ -80,5 +81,6 @@ if mkl_rt:
             version = MKLVersion()
             _mkl_get_version(version)
             return version
+
     except AttributeError:  # pragma: no cover
         pass

@@ -33,14 +33,19 @@ from .einsumfunc import parse_einsum_input, einsum_path
 class TensorEinsum(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.EINSUM
 
-    _subscripts = StringField('subscripts')
-    _optimize = AnyField('optimize')
-    _order = StringField('order')
-    _casting = StringField('casting')
+    _subscripts = StringField("subscripts")
+    _optimize = AnyField("optimize")
+    _order = StringField("order")
+    _casting = StringField("casting")
 
     def __init__(self, subscripts=None, optimize=None, order=None, casting=None, **kw):
-        super().__init__(_subscripts=subscripts, _optimize=optimize,
-                         _order=order, _casting=casting, **kw)
+        super().__init__(
+            _subscripts=subscripts,
+            _optimize=optimize,
+            _order=order,
+            _casting=casting,
+            **kw
+        )
 
     @property
     def subscripts(self):
@@ -59,23 +64,25 @@ class TensorEinsum(TensorOperand, TensorOperandMixin):
         return self._casting
 
     def __call__(self, input_tensors, shape):
-        if self.order in 'KA':
+        if self.order in "KA":
             if any(t.order == TensorOrder.C_ORDER for t in input_tensors):
                 order = TensorOrder.C_ORDER
             else:
                 order = TensorOrder.F_ORDER
         else:
-            if self.order == 'C':
+            if self.order == "C":
                 order = TensorOrder.C_ORDER
             else:
                 order = TensorOrder.F_ORDER
-        return self.new_tensor(input_tensors, shape=shape, dtype=self.dtype, order=order)
+        return self.new_tensor(
+            input_tensors, shape=shape, dtype=self.dtype, order=order
+        )
 
     @classmethod
     def tile(cls, op):
         out_tensor = op.outputs[0]
-        input_scripts, output_scripts = op.subscripts.split('->')
-        tensor_axes = list(zip(op.inputs, input_scripts.split(',')))
+        input_scripts, output_scripts = op.subscripts.split("->")
+        tensor_axes = list(zip(op.inputs, input_scripts.split(",")))
 
         # rechunk to unify nsplits
         input_nsplits = defaultdict(list)
@@ -84,15 +91,19 @@ class TensorEinsum(TensorOperand, TensorOperandMixin):
                 input_nsplits[ax].append(splits)
         input_tensors = []
         for (t, axes) in tensor_axes:
-            new_nsplits = tuple(decide_unify_split(*input_nsplits[ax]) if t.shape[j] > 1 else (t.shape[j],)
-                                for j, ax in enumerate(axes))
+            new_nsplits = tuple(
+                decide_unify_split(*input_nsplits[ax])
+                if t.shape[j] > 1
+                else (t.shape[j],)
+                for j, ax in enumerate(axes)
+            )
             input_tensors.append((yield from recursive_tile(t.rechunk(new_nsplits))))
 
         tensor_indexes = dict()
         output_axes = defaultdict(list)
         axes_splits = dict()
         tensor_contract_axes = []
-        for i, (t, axes) in enumerate(zip(input_tensors, input_scripts.split(','))):
+        for i, (t, axes) in enumerate(zip(input_tensors, input_scripts.split(","))):
             for j in range(t.ndim):
                 if axes[j] in output_scripts:
                     # Record the output tensor's axes and its nsplit.
@@ -116,44 +127,74 @@ class TensorEinsum(TensorOperand, TensorOperandMixin):
                         all_indexes[t_idx][axis] = idx
             tensor_shape = tuple(tensor_shape)
             einsum_chunks = []
-            contract_axes = [s for s in set(input_scripts.replace(',', '')) if s not in output_scripts]
-            for contract_indexes in itertools.product(*[range(len(axes_splits[ax])) for ax in contract_axes]):
+            contract_axes = [
+                s
+                for s in set(input_scripts.replace(",", ""))
+                if s not in output_scripts
+            ]
+            for contract_indexes in itertools.product(
+                *[range(len(axes_splits[ax])) for ax in contract_axes]
+            ):
                 for j, t_contract_axes in enumerate(tensor_contract_axes):
                     for axis in t_contract_axes:
                         axis_index = tensor_axes[j][1].index(axis)
-                        all_indexes[j][axis_index] = contract_indexes[contract_axes.index(axis)]
+                        all_indexes[j][axis_index] = contract_indexes[
+                            contract_axes.index(axis)
+                        ]
                 einsum_op = op.copy().reset_key()
-                in_chunks = [t.cix[tuple(indices)] for t, indices in zip(input_tensors, all_indexes)]
-                chunk = einsum_op.new_chunk(in_chunks, shape=tensor_shape, order=out_tensor.order)
+                in_chunks = [
+                    t.cix[tuple(indices)]
+                    for t, indices in zip(input_tensors, all_indexes)
+                ]
+                chunk = einsum_op.new_chunk(
+                    in_chunks, shape=tensor_shape, order=out_tensor.order
+                )
                 einsum_chunks.append(chunk)
 
             if len(einsum_chunks) == 1:
                 c = einsum_chunks[0]
                 chunk_op = c.op.copy()
-                chunk = chunk_op.new_chunk(c.inputs, shape=c.shape, index=out_idx, order=out_tensor.order)
+                chunk = chunk_op.new_chunk(
+                    c.inputs, shape=c.shape, index=out_idx, order=out_tensor.order
+                )
             else:
-                chunk = chunk_tree_add(op.dtype, einsum_chunks, out_idx, tensor_shape, sparse=op.sparse)
+                chunk = chunk_tree_add(
+                    op.dtype, einsum_chunks, out_idx, tensor_shape, sparse=op.sparse
+                )
             out_chunks.append(chunk)
 
         nsplits = [axes_splits[ax] for ax in output_scripts]
         new_op = op.copy()
-        return new_op.new_tensors(input_tensors, out_tensor.shape, chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            input_tensors, out_tensor.shape, chunks=out_chunks, nsplits=nsplits
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             if xp is np:
-                ctx[op.outputs[0].key] = xp.einsum(op.subscripts, *inputs, optimize=op.optimize, dtype=op.dtype,
-                                                   order=op.order, casting=op.casting)
+                ctx[op.outputs[0].key] = xp.einsum(
+                    op.subscripts,
+                    *inputs,
+                    optimize=op.optimize,
+                    dtype=op.dtype,
+                    order=op.order,
+                    casting=op.casting
+                )
             else:
                 # Cupy doesn't support `optimize`, `order` and `casting`.
-                ctx[op.outputs[0].key] = xp.einsum(op.subscripts, *inputs, dtype=op.dtype)
+                ctx[op.outputs[0].key] = xp.einsum(
+                    op.subscripts, *inputs, dtype=op.dtype
+                )
 
 
-def einsum(subscripts, *operands, dtype=None, order='K', casting='safe', optimize=False):
+def einsum(
+    subscripts, *operands, dtype=None, order="K", casting="safe", optimize=False
+):
     """
     Evaluates the Einstein summation convention on the operands.
 
@@ -429,7 +470,7 @@ def einsum(subscripts, *operands, dtype=None, order='K', casting='safe', optimiz
     inputs, outputs, operands = parse_einsum_input(all_inputs)
     subscripts = "->".join((inputs, outputs))
     axes_shape = dict()
-    for axes, op in zip(inputs.split(','), operands):
+    for axes, op in zip(inputs.split(","), operands):
         for ax, s in zip(axes, op.shape):
             axes_shape[ax] = s
 
@@ -437,6 +478,11 @@ def einsum(subscripts, *operands, dtype=None, order='K', casting='safe', optimiz
         optimize, _ = einsum_path(*all_inputs, optimize=optimize)
 
     shape = tuple(axes_shape[ax] for ax in outputs)
-    op = TensorEinsum(subscripts=subscripts, optimize=optimize, dtype=dtype or operands[0].dtype,
-                      order=order, casting=casting)
+    op = TensorEinsum(
+        subscripts=subscripts,
+        optimize=optimize,
+        dtype=dtype or operands[0].dtype,
+        order=order,
+        casting=casting,
+    )
     return op(operands, shape)

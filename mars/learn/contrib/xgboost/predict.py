@@ -31,14 +31,21 @@ from .dmatrix import ToDMatrix, check_data
 class XGBPredict(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.XGBOOST_PREDICT
 
-    _data = KeyField('data')
-    _model = BytesField('model', on_serialize=pickle.dumps, on_deserialize=pickle.loads)
-    _kwargs = DictField('kwargs')
+    _data = KeyField("data")
+    _model = BytesField("model", on_serialize=pickle.dumps, on_deserialize=pickle.loads)
+    _kwargs = DictField("kwargs")
 
-    def __init__(self, data=None, model=None, kwargs=None,
-                 output_types=None, gpu=None, **kw):
-        super().__init__(_data=data, _model=model, _kwargs=kwargs,
-                         _gpu=gpu, _output_types=output_types, **kw)
+    def __init__(
+        self, data=None, model=None, kwargs=None, output_types=None, gpu=None, **kw
+    ):
+        super().__init__(
+            _data=data,
+            _model=model,
+            _kwargs=kwargs,
+            _gpu=gpu,
+            _output_types=output_types,
+            **kw,
+        )
 
     @property
     def data(self):
@@ -57,7 +64,7 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         self._data = self._inputs[0]
 
     def __call__(self):
-        num_class = self._model.attr('num_class')
+        num_class = self._model.attr("num_class")
         if num_class is not None:
             num_class = int(num_class)
         if num_class is not None:
@@ -67,18 +74,31 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         inputs = [self._data]
         if self.output_types[0] == OutputType.tensor:
             # tensor
-            return self.new_tileable(inputs, shape=shape, dtype=np.dtype(np.float32),
-                                     order=TensorOrder.C_ORDER)
+            return self.new_tileable(
+                inputs,
+                shape=shape,
+                dtype=np.dtype(np.float32),
+                order=TensorOrder.C_ORDER,
+            )
         elif self.output_types[0] == OutputType.dataframe:
             # dataframe
             dtypes = pd.DataFrame(np.random.rand(0, num_class), dtype=np.float32).dtypes
-            return self.new_tileable(inputs, shape=shape, dtypes=dtypes,
-                                     columns_value=parse_index(dtypes.index),
-                                     index_value=self._data.index_value)
+            return self.new_tileable(
+                inputs,
+                shape=shape,
+                dtypes=dtypes,
+                columns_value=parse_index(dtypes.index),
+                index_value=self._data.index_value,
+            )
         else:
             # series
-            return self.new_tileable(inputs, shape=shape, index_value=self._data.index_value,
-                                     name='predictions', dtype=np.dtype(np.float32))
+            return self.new_tileable(
+                inputs,
+                shape=shape,
+                index_value=self._data.index_value,
+                name="predictions",
+                dtype=np.dtype(np.float32),
+            )
 
     @classmethod
     def tile(cls, op):
@@ -92,37 +112,48 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         for in_chunk in data.chunks:
             chunk_op = op.copy().reset_key()
             chunk_index = (in_chunk.index[0],)
-            if op.model.attr('num_class'):
-                chunk_shape = (in_chunk.shape[0], int(op.model.attr('num_class')))
+            if op.model.attr("num_class"):
+                chunk_shape = (in_chunk.shape[0], int(op.model.attr("num_class")))
                 chunk_index += (0,)
             else:
                 chunk_shape = (in_chunk.shape[0],)
             if op.output_types[0] == OutputType.tensor:
-                out_chunk = chunk_op.new_chunk([in_chunk], shape=chunk_shape,
-                                               dtype=out.dtype,
-                                               order=out.order, index=chunk_index)
+                out_chunk = chunk_op.new_chunk(
+                    [in_chunk],
+                    shape=chunk_shape,
+                    dtype=out.dtype,
+                    order=out.order,
+                    index=chunk_index,
+                )
             elif op.output_types[0] == OutputType.dataframe:
                 # dataframe chunk
-                out_chunk = chunk_op.new_chunk([in_chunk], shape=chunk_shape,
-                                               dtypes=data.dtypes,
-                                               columns_value=data.columns_value,
-                                               index_value=in_chunk.index_value,
-                                               index=chunk_index)
+                out_chunk = chunk_op.new_chunk(
+                    [in_chunk],
+                    shape=chunk_shape,
+                    dtypes=data.dtypes,
+                    columns_value=data.columns_value,
+                    index_value=in_chunk.index_value,
+                    index=chunk_index,
+                )
             else:
                 # series chunk
-                out_chunk = chunk_op.new_chunk([in_chunk], shape=chunk_shape,
-                                               dtype=out.dtype,
-                                               index_value=in_chunk.index_value,
-                                               name=out.name, index=chunk_index)
+                out_chunk = chunk_op.new_chunk(
+                    [in_chunk],
+                    shape=chunk_shape,
+                    dtype=out.dtype,
+                    index_value=in_chunk.index_value,
+                    name=out.name,
+                    index=chunk_index,
+                )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         params = out.params
-        params['chunks'] = out_chunks
+        params["chunks"] = out_chunks
         nsplits = (data.nsplits[0],)
         if out.ndim > 1:
             nsplits += ((out.shape[1],),)
-        params['nsplits'] = nsplits
+        params["nsplits"] = nsplits
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
@@ -133,32 +164,39 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         if isinstance(data, tuple):
             data = ToDMatrix.get_xgb_dmatrix(ensure_own_data(data))
         else:
-            data = data.spmatrix if hasattr(data, 'spmatrix') else data
+            data = data.spmatrix if hasattr(data, "spmatrix") else data
             data = DMatrix(data)
 
         # do not pass arguments that are None
-        kwargs = dict((k, v) for k, v in op.kwargs.items()
-                      if v is not None)
+        kwargs = dict((k, v) for k, v in op.kwargs.items() if v is not None)
         result = op.model.predict(data, **kwargs)
 
         if isinstance(op.outputs[0], DATAFRAME_CHUNK_TYPE):
             result = pd.DataFrame(result, index=raw_data.index)
         elif isinstance(op.outputs[0], SERIES_CHUNK_TYPE):
-            result = pd.Series(result, index=raw_data.index, name='predictions')
+            result = pd.Series(result, index=raw_data.index, name="predictions")
 
         ctx[op.outputs[0].key] = result
 
 
-def predict(model, data, output_margin=False, ntree_limit=None,
-            validate_features=True, base_margin=None,
-            session=None, run_kwargs=None, run=True):
+def predict(
+    model,
+    data,
+    output_margin=False,
+    ntree_limit=None,
+    validate_features=True,
+    base_margin=None,
+    session=None,
+    run_kwargs=None,
+    run=True,
+):
     from xgboost import Booster
 
     data = check_data(data)
     if not isinstance(model, Booster):
-        raise TypeError(f'model has to be a xgboost.Booster, got {type(model)} instead')
+        raise TypeError(f"model has to be a xgboost.Booster, got {type(model)} instead")
 
-    num_class = model.attr('num_class')
+    num_class = model.attr("num_class")
     if isinstance(data, TENSOR_TYPE):
         output_types = [OutputType.tensor]
     elif num_class is not None:
@@ -167,13 +205,18 @@ def predict(model, data, output_margin=False, ntree_limit=None,
         output_types = [OutputType.series]
 
     kwargs = {
-        'output_margin': output_margin,
-        'ntree_limit': ntree_limit,
-        'validate_features': validate_features,
-        'base_margin': base_margin
+        "output_margin": output_margin,
+        "ntree_limit": ntree_limit,
+        "validate_features": validate_features,
+        "base_margin": base_margin,
     }
-    op = XGBPredict(data=data, model=model, kwargs=kwargs,
-                    gpu=data.op.gpu, output_types=output_types)
+    op = XGBPredict(
+        data=data,
+        model=model,
+        kwargs=kwargs,
+        gpu=data.op.gpu,
+        output_types=output_types,
+    )
     result = op()
     if run:
         result.execute(session=session, **(run_kwargs or dict()))

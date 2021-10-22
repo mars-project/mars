@@ -20,21 +20,21 @@ from .driver import MarsActorDriver
 from .pool import MainActorPool
 
 
-__all__ = ['MarsActorBackend']
+__all__ = ["MarsActorBackend"]
 
 
 def build_pool_kwargs(n_process: int, kwargs: Dict):
-    n_io_process = kwargs.pop('n_io_process', 0)
+    n_io_process = kwargs.pop("n_io_process", 0)
     if n_io_process:
         n_process += n_io_process
 
-        labels = kwargs['labels']
-        envs = kwargs['envs']
+        labels = kwargs["labels"]
+        envs = kwargs["envs"]
         # sub-pools for IO(transfer and spill)
         for _ in range(n_io_process):
             if envs:  # pragma: no cover
                 envs.append(dict())
-            labels.append('io')
+            labels.append("io")
     return n_process, kwargs
 
 
@@ -54,12 +54,10 @@ class MarsActorBackend(BaseActorBackend):
         return MarsActorDriver
 
     @staticmethod
-    async def create_actor_pool(
-            address: str,
-            n_process: int = None,
-            **kwargs):
+    async def create_actor_pool(address: str, n_process: int = None, **kwargs):
         from ..pool import create_actor_pool
 
         n_process, kwargs = build_pool_kwargs(n_process, kwargs)
         return await create_actor_pool(
-            address, pool_cls=MainActorPool, n_process=n_process, **kwargs)
+            address, pool_cls=MainActorPool, n_process=n_process, **kwargs
+        )

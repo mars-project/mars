@@ -19,8 +19,14 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ....core import recursive_tile
 from ....core.operand import OperandStage
-from ....serialization.serializables import FieldTypes, KeyField, \
-    AnyField, Float16Field, Int32Field, TupleField
+from ....serialization.serializables import (
+    FieldTypes,
+    KeyField,
+    AnyField,
+    Float16Field,
+    Int32Field,
+    TupleField,
+)
 from ....utils import has_unknown_shape, require_module, ensure_own_data
 from ....config import options
 from ...operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
@@ -32,27 +38,52 @@ from ...datasource.array import tensor as astensor
 class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.PDIST
 
-    _input = KeyField('input')
-    _metric = AnyField('metric')
-    _p = Float16Field('p', on_serialize=lambda x: float(x) if x is not None else x)
-    _w = KeyField('w')
-    _v = KeyField('V')
-    _vi = KeyField('VI')
-    _aggregate_size = Int32Field('aggregate_size')
+    _input = KeyField("input")
+    _metric = AnyField("metric")
+    _p = Float16Field("p", on_serialize=lambda x: float(x) if x is not None else x)
+    _w = KeyField("w")
+    _v = KeyField("V")
+    _vi = KeyField("VI")
+    _aggregate_size = Int32Field("aggregate_size")
 
-    _a = KeyField('a')
-    _a_offset = Int32Field('a_offset')
-    _b = KeyField('b')
-    _b_offset = Int32Field('b_offset')
-    _out_sizes = TupleField('out_sizes', FieldTypes.int32)
-    _n = Int32Field('n')
+    _a = KeyField("a")
+    _a_offset = Int32Field("a_offset")
+    _b = KeyField("b")
+    _b_offset = Int32Field("b_offset")
+    _out_sizes = TupleField("out_sizes", FieldTypes.int32)
+    _n = Int32Field("n")
 
-    def __init__(self, metric=None, p=None, w=None, v=None, vi=None,
-                 a=None, a_offset=None, b=None, b_offset=None, out_sizes=None, n=None,
-                 aggregate_size=None, **kw):
-        super().__init__(_metric=metric, _p=p, _w=w, _v=v, _vi=vi,
-                         _a=a, _a_offset=a_offset, _b=b, _b_offset=b_offset, _out_sizes=out_sizes,
-                         _n=n, _aggregate_size=aggregate_size, **kw)
+    def __init__(
+        self,
+        metric=None,
+        p=None,
+        w=None,
+        v=None,
+        vi=None,
+        a=None,
+        a_offset=None,
+        b=None,
+        b_offset=None,
+        out_sizes=None,
+        n=None,
+        aggregate_size=None,
+        **kw,
+    ):
+        super().__init__(
+            _metric=metric,
+            _p=p,
+            _w=w,
+            _v=v,
+            _vi=vi,
+            _a=a,
+            _a_offset=a_offset,
+            _b=b,
+            _b_offset=b_offset,
+            _out_sizes=out_sizes,
+            _n=n,
+            _aggregate_size=aggregate_size,
+            **kw,
+        )
 
     def _set_inputs(self, inputs: List) -> None:
         super()._set_inputs(inputs)
@@ -139,14 +170,21 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
         for val in [w, v, vi]:
             if val is not None:
                 chunk_inputs.append(val.chunks[0])
-        chunk = chunk_op.new_chunk(chunk_inputs, shape=out_tensor.shape,
-                                   order=out_tensor.order, index=(0,) * out_tensor.ndim)
+        chunk = chunk_op.new_chunk(
+            chunk_inputs,
+            shape=out_tensor.shape,
+            order=out_tensor.order,
+            index=(0,) * out_tensor.ndim,
+        )
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out_tensor.shape,
-                                  order=out_tensor.order,
-                                  nsplits=tuple((s,) for s in out_tensor.shape),
-                                  chunks=[chunk])
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out_tensor.shape,
+            order=out_tensor.order,
+            nsplits=tuple((s,) for s in out_tensor.shape),
+            chunks=[chunk],
+        )
 
     @classmethod
     def _tile_chunks(cls, op, in_tensor, w, v, vi):
@@ -159,8 +197,15 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
         n = in_tensor.shape[0]
         aggregate_size = op.aggregate_size
         if aggregate_size is None:
-            aggregate_size = np.ceil(out_tensor.size * out_tensor.dtype.itemsize /
-                                     options.chunk_store_limit).astype(int).item()
+            aggregate_size = (
+                np.ceil(
+                    out_tensor.size
+                    * out_tensor.dtype.itemsize
+                    / options.chunk_store_limit
+                )
+                .astype(int)
+                .item()
+            )
         out_sizes = [out_tensor.size // aggregate_size for _ in range(aggregate_size)]
         for i in range(out_tensor.size % aggregate_size):
             out_sizes[i] += 1
@@ -171,59 +216,67 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
         for i in range(chunk_size):
             for j in range(i, chunk_size):
                 kw = {
-                    'stage': OperandStage.map,
-                    'a': in_tensor.cix[i, 0],
-                    'a_offset': axis_0_cum_size[i - 1] if i > 0 else 0,
-                    'out_sizes': tuple(out_sizes),
-                    'n': n,
-                    'metric': op.metric,
-                    'p': op.p,
-                    'w': w.chunks[0] if w is not None else None,
-                    'v': v.chunks[0] if v is not None else None,
-                    'vi': vi.chunks[0] if vi is not None else None,
-                    'dtype': out_tensor.dtype
+                    "stage": OperandStage.map,
+                    "a": in_tensor.cix[i, 0],
+                    "a_offset": axis_0_cum_size[i - 1] if i > 0 else 0,
+                    "out_sizes": tuple(out_sizes),
+                    "n": n,
+                    "metric": op.metric,
+                    "p": op.p,
+                    "w": w.chunks[0] if w is not None else None,
+                    "v": v.chunks[0] if v is not None else None,
+                    "vi": vi.chunks[0] if vi is not None else None,
+                    "dtype": out_tensor.dtype,
                 }
                 if i != j:
-                    kw['b'] = in_tensor.cix[j, 0]
-                    kw['b_offset'] = axis_0_cum_size[j - 1] if j > 0 else 0
+                    kw["b"] = in_tensor.cix[j, 0]
+                    kw["b_offset"] = axis_0_cum_size[j - 1] if j > 0 else 0
                 map_op = TensorPdist(**kw)
-                map_chunk_inputs = [kw['a']]
-                if 'b' in kw:
-                    map_chunk_inputs.append(kw['b'])
-                if kw['w'] is not None:
-                    map_chunk_inputs.append(kw['w'])
-                if kw['v'] is not None:
-                    map_chunk_inputs.append(kw['v'])
-                if kw['vi'] is not None:
-                    map_chunk_inputs.append(kw['vi'])
+                map_chunk_inputs = [kw["a"]]
+                if "b" in kw:
+                    map_chunk_inputs.append(kw["b"])
+                if kw["w"] is not None:
+                    map_chunk_inputs.append(kw["w"])
+                if kw["v"] is not None:
+                    map_chunk_inputs.append(kw["v"])
+                if kw["vi"] is not None:
+                    map_chunk_inputs.append(kw["vi"])
                 # calc chunk shape
                 if i == j:
-                    a_axis_0_size = kw['a'].shape[0]
+                    a_axis_0_size = kw["a"].shape[0]
                     chunk_shape = (a_axis_0_size * (a_axis_0_size - 1) // 2,)
                 else:
-                    chunk_shape = (kw['a'].shape[0] * kw['b'].shape[0],)
-                map_chunk = map_op.new_chunk(map_chunk_inputs, shape=chunk_shape,
-                                             order=out_tensor.order,
-                                             index=(i * chunk_size + j,))
+                    chunk_shape = (kw["a"].shape[0] * kw["b"].shape[0],)
+                map_chunk = map_op.new_chunk(
+                    map_chunk_inputs,
+                    shape=chunk_shape,
+                    order=out_tensor.order,
+                    index=(i * chunk_size + j,),
+                )
                 map_chunks.append(map_chunk)
 
         proxy_chunk = TensorShuffleProxy(dtype=out_tensor.dtype).new_chunk(
-            map_chunks, shape=())
+            map_chunks, shape=()
+        )
 
         reduce_chunks = []
         for p in range(aggregate_size):
             reduce_chunk_op = TensorPdist(
-                stage=OperandStage.reduce, dtype=out_tensor.dtype)
+                stage=OperandStage.reduce, dtype=out_tensor.dtype
+            )
             reduce_chunk = reduce_chunk_op.new_chunk(
-                [proxy_chunk], shape=(out_sizes[p],), order=out_tensor.order,
-                index=(p,))
+                [proxy_chunk], shape=(out_sizes[p],), order=out_tensor.order, index=(p,)
+            )
             reduce_chunks.append(reduce_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out_tensor.shape,
-                                  order=out_tensor.order,
-                                  nsplits=(tuple(out_sizes),),
-                                  chunks=reduce_chunks)
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out_tensor.shape,
+            order=out_tensor.order,
+            nsplits=(tuple(out_sizes),),
+            chunks=reduce_chunks,
+        )
 
     @classmethod
     def tile(cls, op):
@@ -231,8 +284,7 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
         if has_unknown_shape(*op.inputs):
             yield
 
-        in_tensor = yield from recursive_tile(
-            op.input.rechunk({1: op.input.shape[1]}))
+        in_tensor = yield from recursive_tile(op.input.rechunk({1: op.input.shape[1]}))
         # rechunk w, v, vi into one chunk if any of them has value
         extra_inputs = [None] * 3
         for i, ei in enumerate([op.w, op.v, op.vi]):
@@ -253,10 +305,11 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
         from scipy.spatial.distance import pdist, cdist
 
         inputs, device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+        )
 
         if xp is cp:  # pragma: no cover
-            raise NotImplementedError('`pdist` does not support running on GPU yet')
+            raise NotImplementedError("`pdist` does not support running on GPU yet")
 
         with device(device_id):
             inputs_iter = iter(inputs)
@@ -267,13 +320,13 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
                 b = None
             kw = dict()
             if op.p is not None:
-                kw['p'] = op.p
+                kw["p"] = op.p
             if op.w is not None:
-                kw['w'] = next(inputs_iter)
+                kw["w"] = next(inputs_iter)
             if op.v is not None:
-                kw['V'] = next(inputs_iter)
+                kw["V"] = next(inputs_iter)
             if op.vi is not None:
-                kw['VI'] = next(inputs_iter)
+                kw["VI"] = next(inputs_iter)
             metric = op.metric
 
             if b is None:
@@ -284,19 +337,24 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
                 j_indices += op.a_offset
             else:
                 # two inputs, pdist on different chunks
-                dists = cdist(ensure_own_data(a), ensure_own_data(b),
-                              metric=metric, **kw).ravel()
-                mgrid = \
-                    xp.mgrid[op.a_offset: op.a_offset + a.shape[0],
-                    op.b_offset: op.b_offset + b.shape[0]]
+                dists = cdist(
+                    ensure_own_data(a), ensure_own_data(b), metric=metric, **kw
+                ).ravel()
+                mgrid = xp.mgrid[
+                    op.a_offset : op.a_offset + a.shape[0],
+                    op.b_offset : op.b_offset + b.shape[0],
+                ]
                 i_indices, j_indices = mgrid[0].ravel(), mgrid[1].ravel()
 
             out_row_sizes = xp.arange(op.n - 1, -1, -1)
             out_row_cum_sizes = xp.empty((op.n + 1,), dtype=int)
             out_row_cum_sizes[0] = 0
             xp.cumsum(out_row_sizes, out=out_row_cum_sizes[1:])
-            indices = out_row_cum_sizes[i_indices] + j_indices - \
-                (op.n - out_row_sizes[i_indices])
+            indices = (
+                out_row_cum_sizes[i_indices]
+                + j_indices
+                - (op.n - out_row_sizes[i_indices])
+            )
 
             # save as much memory as possible
             del i_indices, j_indices, out_row_sizes, out_row_cum_sizes
@@ -316,26 +374,26 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
         from scipy.spatial.distance import pdist
 
         inputs, device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+        )
 
         if xp is cp:  # pragma: no cover
-            raise NotImplementedError('`pdist` does not support running on GPU yet')
+            raise NotImplementedError("`pdist` does not support running on GPU yet")
 
         with device(device_id):
             inputs_iter = iter(inputs)
             x = next(inputs_iter)
             kw = dict()
             if op.p is not None:
-                kw['p'] = op.p
+                kw["p"] = op.p
             if op.w is not None:
-                kw['w'] = next(inputs_iter)
+                kw["w"] = next(inputs_iter)
             if op.v is not None:
-                kw['V'] = next(inputs_iter)
+                kw["V"] = next(inputs_iter)
             if op.vi is not None:
-                kw['VI'] = next(inputs_iter)
+                kw["VI"] = next(inputs_iter)
 
-        ctx[op.outputs[0].key] = pdist(ensure_own_data(x),
-                                       metric=op.metric, **kw)
+        ctx[op.outputs[0].key] = pdist(ensure_own_data(x), metric=op.metric, **kw)
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "TensorPdist"):
@@ -343,9 +401,10 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
         raw_indices = [inp[0] for inp in raw_inputs]
         raw_dists = [inp[1] for inp in raw_inputs]
         inputs, device_id, xp = as_same_device(
-            raw_indices + raw_dists, op.device, ret_extra=True)
-        raw_indices = inputs[:len(raw_indices)]
-        raw_dists = inputs[len(raw_indices):]
+            raw_indices + raw_dists, op.device, ret_extra=True
+        )
+        raw_indices = inputs[: len(raw_indices)]
+        raw_dists = inputs[len(raw_indices) :]
         output = op.outputs[0]
 
         with device(device_id):
@@ -365,8 +424,8 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
             cls._execute_single(ctx, op)
 
 
-@require_module('scipy.spatial.distance')
-def pdist(X, metric='euclidean', **kwargs):
+@require_module("scipy.spatial.distance")
+def pdist(X, metric="euclidean", **kwargs):
     """
     Pairwise distances between observations in n-dimensional space.
 
@@ -614,47 +673,56 @@ def pdist(X, metric='euclidean', **kwargs):
 
     """
 
-    X = astensor(X, order='C')
+    X = astensor(X, order="C")
 
     if X.issparse():
-        raise ValueError('Sparse tensors are not supported by this function.')
+        raise ValueError("Sparse tensors are not supported by this function.")
 
     s = X.shape
     if len(s) != 2:
-        raise ValueError('A 2-dimensional tensor must be passed.')
+        raise ValueError("A 2-dimensional tensor must be passed.")
 
     m = s[0]
     out = kwargs.pop("out", None)
     if out is not None:
-        if not hasattr(out, 'shape'):
-            raise TypeError('return arrays must be a tensor')
+        if not hasattr(out, "shape"):
+            raise TypeError("return arrays must be a tensor")
         if out.shape != (m * (m - 1) // 2,):
             raise ValueError("output tensor has incorrect shape.")
         if out.dtype != np.double:
             raise ValueError("Output tensor must be double type.")
 
     if not callable(metric) and not isinstance(metric, str):
-        raise TypeError('2nd argument metric must be a string identifier '
-                        'or a function.')
+        raise TypeError(
+            "2nd argument metric must be a string identifier " "or a function."
+        )
 
-    p = kwargs.pop('p', None)
-    w = kwargs.pop('w', None)
+    p = kwargs.pop("p", None)
+    w = kwargs.pop("w", None)
     if w is not None:
         w = astensor(w)
-    v = kwargs.pop('V', None)
+    v = kwargs.pop("V", None)
     if v is not None:
         v = astensor(v)
-    vi = kwargs.pop('VI', None)
+    vi = kwargs.pop("VI", None)
     if vi is not None:
         vi = astensor(vi)
-    aggregate_size = kwargs.pop('aggregate_size', None)
+    aggregate_size = kwargs.pop("aggregate_size", None)
 
     if len(kwargs) > 0:
-        raise TypeError(f"`pdist` got an unexpected keyword argument '{next(iter(kwargs))}'")
+        raise TypeError(
+            f"`pdist` got an unexpected keyword argument '{next(iter(kwargs))}'"
+        )
 
-    op = TensorPdist(metric=metric,
-                     p=p, w=w, v=v, vi=vi, aggregate_size=aggregate_size,
-                     dtype=np.dtype(float))
+    op = TensorPdist(
+        metric=metric,
+        p=p,
+        w=w,
+        v=v,
+        vi=vi,
+        aggregate_size=aggregate_size,
+        dtype=np.dtype(float),
+    )
     shape = (m * (m - 1) // 2,)
     ret = op(X, shape)
 

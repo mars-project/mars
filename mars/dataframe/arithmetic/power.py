@@ -23,8 +23,8 @@ from .docstring import bin_arithmetic_doc
 class DataFramePower(DataFrameBinopUfunc):
     _op_type_ = OperandDef.POW
 
-    _func_name = 'pow'
-    _rfunc_name = 'rpow'
+    _func_name = "pow"
+    _rfunc_name = "rpow"
 
     @classproperty
     def _operator(self):
@@ -33,6 +33,7 @@ class DataFramePower(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorPower
+
         return TensorPower
 
 
@@ -47,13 +48,21 @@ dtype: float64
 """
 
 
-@bin_arithmetic_doc('Exponential power', op_name='pow', equiv='**', series_example=_pow_example)
-def power(df, other, axis='columns', level=None, fill_value=None):
-    op = DataFramePower(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
+@bin_arithmetic_doc(
+    "Exponential power", op_name="pow", equiv="**", series_example=_pow_example
+)
+def power(df, other, axis="columns", level=None, fill_value=None):
+    op = DataFramePower(
+        axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other
+    )
     return op(df, other)
 
 
-@bin_arithmetic_doc('Exponential power', op_name='rpow', equiv='**', series_example=_pow_example)
-def rpower(df, other, axis='columns', level=None, fill_value=None):
-    op = DataFramePower(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
+@bin_arithmetic_doc(
+    "Exponential power", op_name="rpow", equiv="**", series_example=_pow_example
+)
+def rpower(df, other, axis="columns", level=None, fill_value=None):
+    op = DataFramePower(
+        axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df
+    )
     return op.rcall(df, other)

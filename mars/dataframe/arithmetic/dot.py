@@ -29,8 +29,8 @@ from ..utils import parse_index
 class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DOT
 
-    _lhs = KeyField('lhs')
-    _rhs = AnyField('rhs')
+    _lhs = KeyField("lhs")
+    _rhs = AnyField("rhs")
 
     def __init__(self, output_types=None, lhs=None, rhs=None, **kw):
         super().__init__(_output_types=output_types, _lhs=lhs, _rhs=rhs, **kw)
@@ -63,7 +63,7 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
             return self.new_scalar([lhs, rhs], dtype=test_ret.dtype)
         elif test_ret.ndim == 1:
             if lhs.ndim == 1:
-                if hasattr(rhs, 'columns_value'):
+                if hasattr(rhs, "columns_value"):
                     index_value = rhs.columns_value
                 else:
                     # tensor
@@ -73,21 +73,32 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
             else:
                 assert rhs.ndim == 1
                 index_value = lhs.index_value
-            return self.new_series([lhs, rhs], shape=test_ret.shape,
-                                   dtype=test_ret.dtype, index_value=index_value)
+            return self.new_series(
+                [lhs, rhs],
+                shape=test_ret.shape,
+                dtype=test_ret.dtype,
+                index_value=index_value,
+            )
         else:
             if isinstance(rhs, TENSOR_TYPE):
-                dtypes = pd.Series(np.repeat(test_ret.dtype, test_ret.shape[1]),
-                                   index=pd.RangeIndex(test_ret.shape[1]))
+                dtypes = pd.Series(
+                    np.repeat(test_ret.dtype, test_ret.shape[1]),
+                    index=pd.RangeIndex(test_ret.shape[1]),
+                )
                 columns_value = parse_index(dtypes.index, store_data=True)
             else:
-                dtypes = pd.Series(np.repeat(test_ret.dtype, test_ret.shape[1]),
-                                   index=rhs.columns_value.to_pandas())
+                dtypes = pd.Series(
+                    np.repeat(test_ret.dtype, test_ret.shape[1]),
+                    index=rhs.columns_value.to_pandas(),
+                )
                 columns_value = rhs.columns_value
-            return self.new_dataframe([lhs, rhs], shape=test_ret.shape,
-                                      index_value=lhs.index_value,
-                                      columns_value=columns_value,
-                                      dtypes=dtypes)
+            return self.new_dataframe(
+                [lhs, rhs],
+                shape=test_ret.shape,
+                index_value=lhs.index_value,
+                columns_value=columns_value,
+                dtypes=dtypes,
+            )
 
     @classmethod
     def _align(cls, lhs, rhs):
@@ -96,11 +107,13 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
             return lhs, rhs
 
         is_lhs_range_index = False
-        if isinstance(lhs, DATAFRAME_TYPE) and \
-                isinstance(lhs.columns_value.value, IndexValue.RangeIndex):
+        if isinstance(lhs, DATAFRAME_TYPE) and isinstance(
+            lhs.columns_value.value, IndexValue.RangeIndex
+        ):
             is_lhs_range_index = True
-        if isinstance(lhs, SERIES_TYPE) and \
-                isinstance(lhs.index_value.value, IndexValue.RangeIndex):
+        if isinstance(lhs, SERIES_TYPE) and isinstance(
+            lhs.index_value.value, IndexValue.RangeIndex
+        ):
             is_lhs_range_index = True
 
         is_rhs_range_index = False

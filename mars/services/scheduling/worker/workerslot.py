@@ -49,13 +49,18 @@ class WorkerSlotManagerActor(mo.Actor):
         band_to_slots = await self._cluster_api.get_bands()
         for band, n_slot in band_to_slots.items():
             self._band_slot_managers[band] = await mo.create_actor(
-                BandSlotManagerActor, band, n_slot, self._global_slots_ref,
+                BandSlotManagerActor,
+                band,
+                n_slot,
+                self._global_slots_ref,
                 uid=BandSlotManagerActor.gen_uid(band[1]),
-                address=self.address)
+                address=self.address,
+            )
 
     async def __pre_destroy__(self):
-        await asyncio.gather(*[mo.destroy_actor(ref)
-                               for ref in self._band_slot_managers.values()])
+        await asyncio.gather(
+            *[mo.destroy_actor(ref) for ref in self._band_slot_managers.values()]
+        )
 
 
 class BandSlotManagerActor(mo.Actor):
@@ -64,10 +69,11 @@ class BandSlotManagerActor(mo.Actor):
 
     @classmethod
     def gen_uid(cls, band_name: str):
-        return f'{band_name}_band_slot_manager'
+        return f"{band_name}_band_slot_manager"
 
-    def __init__(self, band: BandType, n_slots: int,
-                 global_slots_ref: mo.ActorRef = None):
+    def __init__(
+        self, band: BandType, n_slots: int, global_slots_ref: mo.ActorRef = None
+    ):
         super().__init__()
         self._cluster_api = None
 
@@ -98,18 +104,22 @@ class BandSlotManagerActor(mo.Actor):
         except mo.ActorNotExist:
             pass
 
-        strategy = IdleLabel(self._band_name, f'worker_slot_control')
+        strategy = IdleLabel(self._band_name, f"worker_slot_control")
         for slot_id in range(self._n_slots):
             self._slot_control_refs[slot_id] = await mo.create_actor(
                 BandSlotControlActor,
-                self.ref(), self._band_name, slot_id,
+                self.ref(),
+                self._band_name,
+                slot_id,
                 uid=BandSlotControlActor.gen_uid(self._band_name, slot_id),
                 address=self.address,
-                allocate_strategy=strategy)
+                allocate_strategy=strategy,
+            )
             self._fresh_slots.add(slot_id)
 
         self._usage_upload_task = self.ref().upload_slot_usages.tell_delay(
-            periodical=True, delay=1)
+            periodical=True, delay=1
+        )
 
     async def __pre_destroy__(self):
         self._usage_upload_task.cancel()
@@ -119,8 +129,10 @@ class BandSlotManagerActor(mo.Actor):
             return self._global_slots_ref
 
         from ..supervisor import GlobalSlotManagerActor
-        [self._global_slots_ref] = await self._cluster_api.get_supervisor_refs([
-            GlobalSlotManagerActor.default_uid()])
+
+        [self._global_slots_ref] = await self._cluster_api.get_supervisor_refs(
+            [GlobalSlotManagerActor.default_uid()]
+        )
         return self._global_slots_ref
 
     def get_slot_address(self, slot_id: int):
@@ -140,21 +152,23 @@ class BandSlotManagerActor(mo.Actor):
         self._fresh_slots.difference_update([slot_id])
         self._slot_to_session_stid[slot_id] = session_stid
         self._session_stid_to_slot[session_stid] = slot_id
-        logger.debug('Slot %d acquired for subtask %r', slot_id, session_stid)
+        logger.debug("Slot %d acquired for subtask %r", slot_id, session_stid)
         raise mo.Return(slot_id)
 
     def release_free_slot(self, slot_id: int, session_stid: Tuple[str, str]):
         acquired_session_stid = self._slot_to_session_stid.pop(slot_id, None)
         if acquired_session_stid is None:
-            raise SlotStateError(f'Slot {slot_id} is not acquired.')
+            raise SlotStateError(f"Slot {slot_id} is not acquired.")
         if acquired_session_stid != session_stid:
-            raise SlotStateError(f'Slot {slot_id} releasing state incorrect, '
-                                 f'the acquired session_stid: {acquired_session_stid}, '
-                                 f'the releasing session_stid: {session_stid}')
+            raise SlotStateError(
+                f"Slot {slot_id} releasing state incorrect, "
+                f"the acquired session_stid: {acquired_session_stid}, "
+                f"the releasing session_stid: {session_stid}"
+            )
         acquired_slot_id = self._session_stid_to_slot.pop(acquired_session_stid)
         assert acquired_slot_id == slot_id
 
-        logger.debug('Slot %d released', slot_id)
+        logger.debug("Slot %d released", slot_id)
 
         if slot_id not in self._free_slots:
             self._free_slots.add(slot_id)
@@ -171,8 +185,12 @@ class BandSlotManagerActor(mo.Actor):
                 # acquired by the SubtaskExecutionActor, then the slot
                 # should be released by it, too.
                 session_stid = self._slot_to_session_stid[slot_id]
-                logger.info('Slot %s registered by pid %s, current acquired session_stid is %s',
-                            slot_id, pid, session_stid)
+                logger.info(
+                    "Slot %s registered by pid %s, current acquired session_stid is %s",
+                    slot_id,
+                    pid,
+                    session_stid,
+                )
             else:
                 if slot_id not in self._free_slots:
                     self._free_slots.add(slot_id)
@@ -210,11 +228,12 @@ class BandSlotManagerActor(mo.Actor):
 
         self._restart_done_event = asyncio.Event()
         self._restarting = True
-        slot_ids = [slot_id for slot_id in self._free_slots
-                    if slot_id not in self._fresh_slots]
+        slot_ids = [
+            slot_id for slot_id in self._free_slots if slot_id not in self._fresh_slots
+        ]
         if slot_ids:
             yield asyncio.gather(*[self._kill_slot(slot_id) for slot_id in slot_ids])
-            logger.info('%d idle slots restarted', len(slot_ids))
+            logger.info("%d idle slots restarted", len(slot_ids))
 
         self._restarting = False
         self._restart_done_event.set()
@@ -233,17 +252,22 @@ class BandSlotManagerActor(mo.Actor):
             except psutil.NoSuchProcess:  # pragma: no cover
                 continue
 
-            slot_infos.append(WorkerSlotInfo(
-                slot_id=slot_id,
-                session_id=session_id,
-                subtask_id=subtask_id,
-                processor_usage=usage
-            ))
+            slot_infos.append(
+                WorkerSlotInfo(
+                    slot_id=slot_id,
+                    session_id=session_id,
+                    subtask_id=subtask_id,
+                    processor_usage=usage,
+                )
+            )
 
             if global_slots_ref is not None:  # pragma: no branch
                 # FIXME fix band slot mistake
-                delays.append(global_slots_ref.update_subtask_slots.delay(
-                    self._band[1], session_id, subtask_id, max(1.0, usage)))
+                delays.append(
+                    global_slots_ref.update_subtask_slots.delay(
+                        self._band[1], session_id, subtask_id, max(1.0, usage)
+                    )
+                )
 
         if delays:  # pragma: no branch
             yield global_slots_ref.update_subtask_slots.batch(*delays)
@@ -252,7 +276,8 @@ class BandSlotManagerActor(mo.Actor):
 
         if periodical:
             self._usage_upload_task = self.ref().upload_slot_usages.tell_delay(
-                periodical=True, delay=1)
+                periodical=True, delay=1
+            )
 
     def dump_data(self):
         """
@@ -264,7 +289,7 @@ class BandSlotManagerActor(mo.Actor):
 class BandSlotControlActor(mo.Actor):
     @classmethod
     def gen_uid(cls, band_name: str, slot_id: int):
-        return f'{band_name}_{slot_id}_band_slot_control'
+        return f"{band_name}_{slot_id}_band_slot_control"
 
     def __init__(self, manager_ref, band_name, slot_id: int):
         self._manager_ref = manager_ref
@@ -277,6 +302,7 @@ class BandSlotControlActor(mo.Actor):
 
     async def _report_slot_ready(self):
         from ...cluster.api import ClusterAPI
+
         try:
             self._cluster_api = await ClusterAPI.create(self.address)
             await self._cluster_api.wait_node_ready()

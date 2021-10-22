@@ -26,6 +26,7 @@ ray = lazy_import("ray")
 
 # TODO(fyrestone): make the SparseMatrix pickleable.
 
+
 def _mars_sparse_matrix_serializer(value):
     return [value.shape, value.spmatrix]
 
@@ -37,9 +38,11 @@ def _mars_sparse_matrix_deserializer(obj) -> sparse.SparseNDArray:
 
 def _register_sparse_matrix_serializer():
     # register a custom serializer for Mars SparseMatrix
-    register_ray_serializer(sparse.matrix.SparseMatrix,
-                            serializer=_mars_sparse_matrix_serializer,
-                            deserializer=_mars_sparse_matrix_deserializer)
+    register_ray_serializer(
+        sparse.matrix.SparseMatrix,
+        serializer=_mars_sparse_matrix_serializer,
+        deserializer=_mars_sparse_matrix_deserializer,
+    )
 
 
 class RayFileLikeObject:
@@ -107,16 +110,16 @@ def support_specify_owner():
     global _support_specify_owner
     if _support_specify_owner is None:
         sig = inspect.signature(ray.put)
-        _support_specify_owner = '_owner' in sig.parameters
+        _support_specify_owner = "_owner" in sig.parameters
     return _support_specify_owner
 
 
 @register_storage_backend
 class RayStorage(StorageBackend):
-    name = 'ray'
+    name = "ray"
 
     def __init__(self, *args, **kwargs):
-        self._owner_address = kwargs.get('owner')
+        self._owner_address = kwargs.get("owner")
         self._owner = None  # A ray actor which will own the objects put by workers.
 
     @classmethod
@@ -141,7 +144,9 @@ class RayStorage(StorageBackend):
     async def get(self, object_id, **kwargs) -> object:
         if kwargs:  # pragma: no cover
             raise NotImplementedError(f'Got unsupported args: {",".join(kwargs)}')
-        with debug_async_timeout('ray_object_retrieval_timeout', 'Storage get object timeout'):
+        with debug_async_timeout(
+            "ray_object_retrieval_timeout", "Storage get object timeout"
+        ):
             return await object_id
 
     @implements(StorageBackend.put)
@@ -167,12 +172,12 @@ class RayStorage(StorageBackend):
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:
         new_id = ray.ObjectRef.from_random()
-        ray_writer = RayFileObject(new_id, mode='w')
+        ray_writer = RayFileObject(new_id, mode="w")
         return StorageFileObject(ray_writer, object_id=new_id)
 
     @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
-        ray_reader = RayFileObject(object_id, mode='r')
+        ray_reader = RayFileObject(object_id, mode="r")
         return StorageFileObject(ray_reader, object_id=object_id)
 
     @implements(StorageBackend.list)

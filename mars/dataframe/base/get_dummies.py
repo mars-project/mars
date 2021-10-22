@@ -25,22 +25,39 @@ from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..reduction.unique import unique
 from ..utils import gen_unknown_index_value
 
-_encoding_dtype_kind = ['O', 'S', 'U']
+_encoding_dtype_kind = ["O", "S", "U"]
 
 
 class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
-    prefix = AnyField('prefix')
-    prefix_sep = StringField('prefix_sep')
-    dummy_na = BoolField('dummy_na')
-    columns = ListField('columns')
-    sparse = BoolField('sparse')
-    drop_first = BoolField('drop_first')
-    dtype = AnyField('dtype')
+    prefix = AnyField("prefix")
+    prefix_sep = StringField("prefix_sep")
+    dummy_na = BoolField("dummy_na")
+    columns = ListField("columns")
+    sparse = BoolField("sparse")
+    drop_first = BoolField("drop_first")
+    dtype = AnyField("dtype")
 
-    def __init__(self, prefix=None, prefix_sep=None, dummy_na=None,
-                 columns=None, sparse=None, drop_first=None, dtype=None, **kws):
-        super().__init__(prefix=prefix, prefix_sep=prefix_sep, dummy_na=dummy_na,
-                         columns=columns, sparse=sparse, drop_first=drop_first, dtype=dtype, **kws)
+    def __init__(
+        self,
+        prefix=None,
+        prefix_sep=None,
+        dummy_na=None,
+        columns=None,
+        sparse=None,
+        drop_first=None,
+        dtype=None,
+        **kws,
+    ):
+        super().__init__(
+            prefix=prefix,
+            prefix_sep=prefix_sep,
+            dummy_na=dummy_na,
+            columns=columns,
+            sparse=sparse,
+            drop_first=drop_first,
+            dtype=dtype,
+            **kws,
+        )
         self.output_types = [OutputType.dataframe]
 
     @classmethod
@@ -50,12 +67,12 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
         if len(inp.chunks) == 1:
             chunk_op = op.copy().reset_key()
             chunk_param = out.params
-            chunk_param['index'] = (0, 0)
+            chunk_param["index"] = (0, 0)
             chunk = chunk_op.new_chunk(inp.chunks, kws=[chunk_param])
             new_op = op.copy().reset_key()
             param = out.params
-            param['chunks'] = [chunk]
-            param['nsplits'] = ((np.nan,), (np.nan,))
+            param["chunks"] = [chunk]
+            param["nsplits"] = ((np.nan,), (np.nan,))
             return new_op.new_dataframe(op.inputs, kws=[param])
         elif isinstance(inp, SERIES_TYPE):
             unique_inp = yield from recursive_tile(unique(inp))
@@ -63,15 +80,15 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
             for c in inp.chunks:
                 chunk_op = op.copy().reset_key()
                 chunk_param = out.params
-                chunk_param['index_value'] = gen_unknown_index_value(c.index_value)
-                chunk_param['index'] = (c.index[0], 0)
+                chunk_param["index_value"] = gen_unknown_index_value(c.index_value)
+                chunk_param["index"] = (c.index[0], 0)
                 chunk = chunk_op.new_chunk([c] + unique_inp.chunks, kws=[chunk_param])
                 chunks.append(chunk)
 
             new_op = op.copy().reset_key()
             param = out.params
-            param['chunks'] = chunks
-            param['nsplits'] = (tuple([np.nan] * inp.chunk_shape[0]), (np.nan,))
+            param["chunks"] = chunks
+            param["nsplits"] = (tuple([np.nan] * inp.chunk_shape[0]), (np.nan,))
             return new_op.new_dataframe(op.inputs, kws=[param])
         else:
             if op.columns:
@@ -102,7 +119,7 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
                 if isinstance(chunk_op.prefix, list):
                     chunk_op.prefix = []
                 chunk_param = c.params
-                chunk_param['shape'] = (np.nan, np.nan)
+                chunk_param["shape"] = (np.nan, np.nan)
                 chunk_columns = c.dtypes.index
                 inp_chunk = [c]
                 for chunk_column in chunk_columns:
@@ -121,8 +138,11 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
 
             new_op = op.copy()
             kw = out.params.copy()
-            kw['chunks'] = chunks
-            kw['nsplits'] = (tuple([np.nan] * inp.chunk_shape[0]), tuple([np.nan] * inp.chunk_shape[1]))
+            kw["chunks"] = chunks
+            kw["nsplits"] = (
+                tuple([np.nan] * inp.chunk_shape[0]),
+                tuple([np.nan] * inp.chunk_shape[1]),
+            )
             return new_op.new_dataframe(op.inputs, kws=[kw])
 
     @classmethod
@@ -140,8 +160,10 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
             else:
                 # make all unique_input's length the same, then get a dataframe
                 max_length = len(max(unique_inputs, key=len))
-                unique_inputs = [unique_list + [unique_list[0]] * (max_length - len(unique_list)) for unique_list in
-                                 unique_inputs]
+                unique_inputs = [
+                    unique_list + [unique_list[0]] * (max_length - len(unique_list))
+                    for unique_list in unique_inputs
+                ]
                 extra_dataframe = pd.DataFrame(dict(zip(op.columns, unique_inputs)))
 
                 # add the columns that need not to encode, to concat extra_dataframe and inp
@@ -153,13 +175,25 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
                 if len(remain_columns) > 0:
                     for col in remain_columns:
                         not_encode_columns.append([inp[col].iloc[0]] * max_length)
-                not_encode_dataframe = pd.DataFrame(dict(zip(remain_columns, not_encode_columns)))
+                not_encode_dataframe = pd.DataFrame(
+                    dict(zip(remain_columns, not_encode_columns))
+                )
 
-                extra_dataframe = pd.concat([not_encode_dataframe, extra_dataframe], axis=1)
+                extra_dataframe = pd.concat(
+                    [not_encode_dataframe, extra_dataframe], axis=1
+                )
                 inp = pd.concat([inp, extra_dataframe], axis=0)
 
-        result = pd.get_dummies(inp, op.prefix, op.prefix_sep, op.dummy_na,
-                                op.columns, op.sparse, op.drop_first, op.dtype)
+        result = pd.get_dummies(
+            inp,
+            op.prefix,
+            op.prefix_sep,
+            op.dummy_na,
+            op.columns,
+            op.sparse,
+            op.drop_first,
+            op.dtype,
+        )
         ctx[op.outputs[0].key] = result.iloc[:result_length]
 
     def __call__(self, data):
@@ -181,30 +215,49 @@ class DataFrameGetDummies(DataFrameOperand, DataFrameOperandMixin):
                             encoding_col_num += 1
                 prefix_num = len(self.prefix)
                 if prefix_num != encoding_col_num:
-                    raise ValueError(f"Length of 'prefix' ({prefix_num}) did not match " +
-                                     f"the length of the columns being encoded ({encoding_col_num})")
+                    raise ValueError(
+                        f"Length of 'prefix' ({prefix_num}) did not match "
+                        + f"the length of the columns being encoded ({encoding_col_num})"
+                    )
             elif isinstance(self.prefix, dict):
                 if self.columns is not None:
                     encoding_col_num = len(self.columns)
                     prefix_num = len(self.prefix)
                     if prefix_num != encoding_col_num:
-                        raise ValueError(f"Length of 'prefix' ({prefix_num}) did not match " +
-                                         f"the length of the columns being encoded ({encoding_col_num})")
+                        raise ValueError(
+                            f"Length of 'prefix' ({prefix_num}) did not match "
+                            + f"the length of the columns being encoded ({encoding_col_num})"
+                        )
                     columns = self.prefix.keys()
-                    for columns_columnname, prefix_columnname in zip(columns, list(self.columns)):
+                    for columns_columnname, prefix_columnname in zip(
+                        columns, list(self.columns)
+                    ):
                         if columns_columnname != prefix_columnname:
-                            raise KeyError(f'{columns_columnname}')
+                            raise KeyError(f"{columns_columnname}")
                 else:
                     self.columns = list(self.prefix.keys())
                 # Convert prefix from dict to list, to simplify tile work
                 self.prefix = list(self.prefix.values())
 
-        return self.new_dataframe([data], shape=(np.nan, np.nan), dtypes=None,
-                                  index_value=data.index_value, columns_value=None)
+        return self.new_dataframe(
+            [data],
+            shape=(np.nan, np.nan),
+            dtypes=None,
+            index_value=data.index_value,
+            columns_value=None,
+        )
 
 
-def get_dummies(data, prefix=None, prefix_sep="_", dummy_na=False,
-                columns=None, sparse=False, drop_first=False, dtype=None):
+def get_dummies(
+    data,
+    prefix=None,
+    prefix_sep="_",
+    dummy_na=False,
+    columns=None,
+    sparse=False,
+    drop_first=False,
+    dtype=None,
+):
     """
     Convert categorical variable into dummy/indicator variables.
 
@@ -300,7 +353,8 @@ def get_dummies(data, prefix=None, prefix_sep="_", dummy_na=False,
     if columns is not None and not isinstance(columns, list):
         raise TypeError("Input must be a list-like for parameter `columns`")
 
-    op = DataFrameGetDummies(prefix, prefix_sep, dummy_na,
-                             columns, sparse, drop_first, dtype)
+    op = DataFrameGetDummies(
+        prefix, prefix_sep, dummy_na, columns, sparse, drop_first, dtype
+    )
 
     return op(data)

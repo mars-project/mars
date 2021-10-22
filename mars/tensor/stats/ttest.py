@@ -27,12 +27,15 @@ from scipy.stats import distributions as sp_distributions
 from ...core import ExecutableTuple
 from ...lib.version import parse as parse_version
 from ..arithmetic import (
-    divide as mt_divide, sqrt as mt_sqrt, absolute as mt_abs,
+    divide as mt_divide,
+    sqrt as mt_sqrt,
+    absolute as mt_abs,
     isnan as mt_isnan,
 )
 from ..base import where as mt_where
 from ..reduction import (
-    var as mt_var, mean as mt_mean,
+    var as mt_var,
+    mean as mt_mean,
 )
 from ..utils import implement_scipy
 
@@ -69,24 +72,25 @@ def _ttest_ind_from_stats(mean1, mean2, denom, df, alternative):
 
 def _ttest_finish(df, t, alternative):
     """Common code between all 3 t-test functions."""
-    if alternative != 'two-sided' and parse_version(sp_version) < parse_version('1.6.0'):  # pragma: no cover
+    if alternative != "two-sided" and parse_version(sp_version) < parse_version(
+        "1.6.0"
+    ):  # pragma: no cover
         raise ValueError("alternative must be 'two-sided' with scipy prior to 1.6.0")
 
-    if alternative == 'less':
+    if alternative == "less":
         prob = t.map_chunk(sp_distributions.t.cdf, args=(df,))
-    elif alternative == 'greater':
+    elif alternative == "greater":
         prob = t.map_chunk(sp_distributions.t.sf, args=(df,))
-    elif alternative == 'two-sided':
+    elif alternative == "two-sided":
         prob = mt_abs(t).map_chunk(sp_distributions.t.sf, args=(df,)) * 2
     else:
-        raise ValueError("alternative must be "
-                         "'less', 'greater' or 'two-sided'")
+        raise ValueError("alternative must be " "'less', 'greater' or 'two-sided'")
     if t.ndim == 0:
         t = t[()]
     return t, prob
 
 
-Ttest_1sampResult = namedtuple('Ttest_1sampResult', ('statistic', 'pvalue'))
+Ttest_1sampResult = namedtuple("Ttest_1sampResult", ("statistic", "pvalue"))
 
 
 @implement_scipy(sp_ttest_1samp)
@@ -108,7 +112,7 @@ def ttest_1samp(a, popmean, axis=0, nan_policy="propagate", alternative="two-sid
     return ExecutableTuple(Ttest_1sampResult(t, prob))
 
 
-Ttest_indResult = namedtuple('Ttest_indResult', ('statistic', 'pvalue'))
+Ttest_indResult = namedtuple("Ttest_indResult", ("statistic", "pvalue"))
 
 
 @implement_scipy(sp_ttest_ind)
@@ -123,26 +127,27 @@ def ttest_ind(a, b, axis=0, equal_var=True, alternative="two-sided"):
     else:
         df, denom = _unequal_var_ttest_denom(v1, n1, v2, n2)
 
-    res = _ttest_ind_from_stats(mt_mean(a, axis), mt_mean(b, axis), denom,
-                                df, alternative)
+    res = _ttest_ind_from_stats(
+        mt_mean(a, axis), mt_mean(b, axis), denom, df, alternative
+    )
 
     return ExecutableTuple(Ttest_indResult(*res))
 
 
 @implement_scipy(sp_ttest_ind_from_stats)
-def ttest_ind_from_stats(mean1, std1, nobs1, mean2, std2, nobs2,
-                         equal_var=True, alternative="two-sided"):
+def ttest_ind_from_stats(
+    mean1, std1, nobs1, mean2, std2, nobs2, equal_var=True, alternative="two-sided"
+):
     if equal_var:
-        df, denom = _equal_var_ttest_denom(std1**2, nobs1, std2**2, nobs2)
+        df, denom = _equal_var_ttest_denom(std1 ** 2, nobs1, std2 ** 2, nobs2)
     else:
-        df, denom = _unequal_var_ttest_denom(std1**2, nobs1,
-                                             std2**2, nobs2)
+        df, denom = _unequal_var_ttest_denom(std1 ** 2, nobs1, std2 ** 2, nobs2)
 
     res = _ttest_ind_from_stats(mean1, mean2, denom, df, alternative)
     return ExecutableTuple(Ttest_indResult(*res))
 
 
-Ttest_relResult = namedtuple('Ttest_relResult', ('statistic', 'pvalue'))
+Ttest_relResult = namedtuple("Ttest_relResult", ("statistic", "pvalue"))
 
 
 @implement_scipy(sp_ttest_rel)

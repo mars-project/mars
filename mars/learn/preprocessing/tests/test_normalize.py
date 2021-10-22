@@ -23,7 +23,7 @@ from .. import normalize
 
 def test_normalize_op():
     with pytest.raises(ValueError):
-        normalize(mt.random.random(10, 3), norm='unknown')
+        normalize(mt.random.random(10, 3), norm="unknown")
 
     with pytest.raises(ValueError):
         normalize(mt.random.random(10, 3), axis=-1)
@@ -34,26 +34,30 @@ def test_normalize_op():
 
 def test_normalize_execution(setup):
     raw_dense = np.random.rand(10, 10)
-    raw_sparse = sps.random(10, 10, density=0.4, format='csr')
+    raw_sparse = sps.random(10, 10, density=0.4, format="csr")
 
     for chunk_size in [10, 6, (10, 6), (6, 10)]:
-        for raw, x in [(raw_dense, mt.tensor(raw_dense, chunk_size=chunk_size)),
-                       (raw_sparse, mt.tensor(raw_sparse, chunk_size=chunk_size))]:
-            for norm in ['l1', 'l2', 'max']:
+        for raw, x in [
+            (raw_dense, mt.tensor(raw_dense, chunk_size=chunk_size)),
+            (raw_sparse, mt.tensor(raw_sparse, chunk_size=chunk_size)),
+        ]:
+            for norm in ["l1", "l2", "max"]:
                 for axis in (0, 1):
                     for use_sklearn in [True, False]:
                         n = normalize(x, norm=norm, axis=axis, return_norm=False)
                         n.op._use_sklearn = use_sklearn
 
                         result = n.execute().fetch()
-                        expected = sk_normalize(raw, norm=norm, axis=axis, return_norm=False)
+                        expected = sk_normalize(
+                            raw, norm=norm, axis=axis, return_norm=False
+                        )
 
                         if sps.issparse(expected):
                             expected = expected.A
                         np.testing.assert_almost_equal(np.asarray(result), expected)
 
     raw_dense = np.random.rand(10, 10)
-    raw_sparse = sps.random(10, 10, density=0.4, format='csr')
+    raw_sparse = sps.random(10, 10, density=0.4, format="csr")
 
     # test copy and return_normalize
     for axis in (0, 1):
@@ -65,7 +69,9 @@ def test_normalize_execution(setup):
                 results = n.execute().fetch()
                 raw_copy = raw.copy()
                 try:
-                    expects = sk_normalize(raw_copy, axis=axis, copy=False, return_norm=True)
+                    expects = sk_normalize(
+                        raw_copy, axis=axis, copy=False, return_norm=True
+                    )
                 except NotImplementedError:
                     continue
 

@@ -24,13 +24,48 @@ from .... import tensor as mt
 from .... import execute, fetch
 from ....tests.core import require_cupy
 from ...datasource import tensor, ones, zeros, arange
-from .. import copyto, transpose, moveaxis, broadcast_to, \
-    broadcast_arrays, where, expand_dims, rollaxis, atleast_1d, \
-    atleast_2d, atleast_3d, argwhere, array_split, split, \
-    hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, \
-    flip, flipud, fliplr, repeat, tile, isin, searchsorted, \
-    unique, sort, argsort, partition, argpartition, topk, argtopk, \
-    trapz, shape, to_gpu, to_cpu, swapaxes
+from .. import (
+    copyto,
+    transpose,
+    moveaxis,
+    broadcast_to,
+    broadcast_arrays,
+    where,
+    expand_dims,
+    rollaxis,
+    atleast_1d,
+    atleast_2d,
+    atleast_3d,
+    argwhere,
+    array_split,
+    split,
+    hsplit,
+    vsplit,
+    dsplit,
+    roll,
+    squeeze,
+    diff,
+    ediff1d,
+    flip,
+    flipud,
+    fliplr,
+    repeat,
+    tile,
+    isin,
+    searchsorted,
+    unique,
+    sort,
+    argsort,
+    partition,
+    argpartition,
+    topk,
+    argtopk,
+    trapz,
+    shape,
+    to_gpu,
+    to_cpu,
+    swapaxes,
+)
 
 
 def test_rechunk_execution(setup):
@@ -62,33 +97,33 @@ def test_copyto_execution(setup):
     expected = np.asfortranarray(np.ones((2, 3)))
 
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['F_CONTIGUOUS'] is True
-    assert res.flags['C_CONTIGUOUS'] is False
+    assert res.flags["F_CONTIGUOUS"] is True
+    assert res.flags["C_CONTIGUOUS"] is False
 
 
 def test_astype_execution(setup):
     raw = np.random.random((10, 5))
     arr = tensor(raw, chunk_size=3)
-    arr2 = arr.astype('i8')
+    arr2 = arr.astype("i8")
 
     res = arr2.execute().fetch()
-    np.testing.assert_array_equal(res, raw.astype('i8'))
+    np.testing.assert_array_equal(res, raw.astype("i8"))
 
-    raw = sps.random(10, 5, density=.2)
+    raw = sps.random(10, 5, density=0.2)
     arr = tensor(raw, chunk_size=3)
-    arr2 = arr.astype('i8')
+    arr2 = arr.astype("i8")
 
     res = arr2.execute().fetch()
-    assert np.array_equal(res.toarray(), raw.astype('i8').toarray()) is True
+    assert np.array_equal(res.toarray(), raw.astype("i8").toarray()) is True
 
     raw = np.asfortranarray(np.random.random((10, 5)))
     arr = tensor(raw, chunk_size=3)
-    arr2 = arr.astype('i8', order='C')
+    arr2 = arr.astype("i8", order="C")
 
     res = arr2.execute().fetch()
-    np.testing.assert_array_equal(res, raw.astype('i8'))
-    assert res.flags['C_CONTIGUOUS'] is True
-    assert res.flags['F_CONTIGUOUS'] is False
+    np.testing.assert_array_equal(res, raw.astype("i8"))
+    assert res.flags["C_CONTIGUOUS"] is True
+    assert res.flags["F_CONTIGUOUS"] is False
 
 
 def test_transpose_execution(setup):
@@ -120,21 +155,21 @@ def test_transpose_execution(setup):
     arr2 = transpose(arr)
 
     res = arr2.execute().fetch()
-    expected = np.transpose(raw).copy(order='A')
+    expected = np.transpose(raw).copy(order="A")
 
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
     arr = tensor(raw, chunk_size=3)
     arr2 = transpose(arr, (1, 2, 0))
 
     res = arr2.execute().fetch()
-    expected = np.transpose(raw, (1, 2, 0)).copy(order='A')
+    expected = np.transpose(raw, (1, 2, 0)).copy(order="A")
 
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
     df = md.DataFrame(mt.random.rand(10, 5, chunk_size=5))
     df = df[df[0] < 1]
@@ -160,7 +195,7 @@ def test_swapaxes_execution(setup):
     res = arr2.execute().fetch()
     np.testing.assert_array_equal(res, raw.swapaxes(2, 0))
 
-    raw = sps.random(11, 8, density=.2)
+    raw = sps.random(11, 8, density=0.2)
     arr = tensor(raw, chunk_size=3)
     arr2 = arr.swapaxes(1, 0)
 
@@ -174,31 +209,31 @@ def test_swapaxes_execution(setup):
     arr2 = arr.swapaxes(2, 0)
 
     res = arr2.execute().fetch()
-    expected = raw.swapaxes(2, 0).copy(order='A')
+    expected = raw.swapaxes(2, 0).copy(order="A")
 
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
     arr = tensor(raw, chunk_size=3)
     arr2 = arr.swapaxes(0, 2)
 
     res = arr2.execute().fetch()
-    expected = raw.swapaxes(0, 2).copy(order='A')
+    expected = raw.swapaxes(0, 2).copy(order="A")
 
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
     arr = tensor(raw, chunk_size=3)
     arr2 = arr.swapaxes(1, 0)
 
     res = arr2.execute().fetch()
-    expected = raw.swapaxes(1, 0).copy(order='A')
+    expected = raw.swapaxes(1, 0).copy(order="A")
 
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
 
 def test_moveaxis_execution(setup):
@@ -258,30 +293,43 @@ def test_broadcast_arrays_executions(setup):
 
 
 def test_where_execution(setup):
-    raw_cond = np.random.randint(0, 2, size=(4, 4), dtype='?')
+    raw_cond = np.random.randint(0, 2, size=(4, 4), dtype="?")
     raw_x = np.random.rand(4, 1)
     raw_y = np.random.rand(4, 4)
 
-    cond, x, y = tensor(raw_cond, chunk_size=2), tensor(raw_x, chunk_size=2), tensor(raw_y, chunk_size=2)
+    cond, x, y = (
+        tensor(raw_cond, chunk_size=2),
+        tensor(raw_x, chunk_size=2),
+        tensor(raw_y, chunk_size=2),
+    )
 
     arr = where(cond, x, y)
     res = arr.execute().fetch()
     assert np.array_equal(res, np.where(raw_cond, raw_x, raw_y)) is True
 
-    raw_cond = sps.csr_matrix(np.random.randint(0, 2, size=(4, 4), dtype='?'))
-    raw_x = sps.random(4, 1, density=.1)
-    raw_y = sps.random(4, 4, density=.1)
+    raw_cond = sps.csr_matrix(np.random.randint(0, 2, size=(4, 4), dtype="?"))
+    raw_x = sps.random(4, 1, density=0.1)
+    raw_y = sps.random(4, 4, density=0.1)
 
-    cond, x, y = tensor(raw_cond, chunk_size=2), tensor(raw_x, chunk_size=2), tensor(raw_y, chunk_size=2)
+    cond, x, y = (
+        tensor(raw_cond, chunk_size=2),
+        tensor(raw_x, chunk_size=2),
+        tensor(raw_y, chunk_size=2),
+    )
 
     arr = where(cond, x, y)
     res = arr.execute().fetch()
-    assert np.array_equal(res.toarray(),
-                          np.where(raw_cond.toarray(), raw_x.toarray(), raw_y.toarray())) is True
+    assert (
+        np.array_equal(
+            res.toarray(),
+            np.where(raw_cond.toarray(), raw_x.toarray(), raw_y.toarray()),
+        )
+        is True
+    )
 
     # GH 2009
-    raw_x = np.arange(9.).reshape(3, 3)
-    x = arange(9.).reshape(3, 3)
+    raw_x = np.arange(9.0).reshape(3, 3)
+    x = arange(9.0).reshape(3, 3)
     arr = where(x < 5, 2, -1)
     res = arr.execute().fetch()
     np.testing.assert_array_equal(res, np.where(raw_x < 5, 2, -1))
@@ -330,20 +378,20 @@ def test_reshape_execution(setup):
     np.testing.assert_array_equal(res, raw_data.reshape(12, 5, 8))
 
     y4 = x.reshape(12, 5, 8)
-    y4.op.extra_params['_reshape_with_shuffle'] = True
+    y4.op.extra_params["_reshape_with_shuffle"] = True
 
     # size_res = self.executor.execute_tensor(y4, mock=True)
     res = y4.execute().fetch()
     # assert res[0].nbytes == sum(v[0] for v in size_res)
     assert np.array_equal(res, raw_data.reshape(12, 5, 8)) is True
 
-    y5 = x.ravel(order='F')
+    y5 = x.ravel(order="F")
 
     res = y5.execute().fetch()
-    expected = raw_data.ravel(order='F')
+    expected = raw_data.ravel(order="F")
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
 
 def test_expand_dims_execution(setup):
@@ -450,8 +498,8 @@ def test_argwhere_execution(setup):
     expected = np.argwhere(data > 0.5)
 
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['F_CONTIGUOUS'] is True
-    assert res.flags['C_CONTIGUOUS'] is False
+    assert res.flags["F_CONTIGUOUS"] is True
+    assert res.flags["C_CONTIGUOUS"] is False
 
 
 def test_array_split_execution(setup):
@@ -524,7 +572,7 @@ def test_split_execution(setup):
     assert len(res) == len(expected)
     [np.testing.assert_equal(r, e) for r, e in zip(res, expected)]
 
-    x_data = sps.random(12, 8, density=.1)
+    x_data = sps.random(12, 8, density=0.1)
     x = tensor(x_data, chunk_size=3)
     ss = split(x, 4, axis=0)
 
@@ -612,11 +660,11 @@ def test_diff_execution(setup):
     expected = np.diff(data, axis=0)
     np.testing.assert_equal(res, expected)
 
-    x = mt.arange('1066-10-13', '1066-10-16', dtype=mt.datetime64)
+    x = mt.arange("1066-10-13", "1066-10-16", dtype=mt.datetime64)
     t = diff(x)
 
     res = t.execute().fetch()
-    expected = np.diff(np.arange('1066-10-13', '1066-10-16', dtype=np.datetime64))
+    expected = np.diff(np.arange("1066-10-13", "1066-10-16", dtype=np.datetime64))
     np.testing.assert_equal(res, expected)
 
 
@@ -709,7 +757,7 @@ def test_repeat_execution(setup):
     expected = np.repeat(x_data, np.arange(20), axis=0)
     np.testing.assert_equal(res, expected)
 
-    x_data = sps.random(20, 30, density=.1)
+    x_data = sps.random(20, 30, density=0.1)
     x = tensor(x_data, chunk_size=(12, 16))
 
     t = repeat(x, 2, axis=1)
@@ -829,61 +877,61 @@ def test_searchsorted_execution(setup):
         np.testing.assert_array_equal(res, expected)
 
         # test scalar, side left, with value exact in the middle of the array
-        t3 = searchsorted(arr, raw[10], side='left')
+        t3 = searchsorted(arr, raw[10], side="left")
 
         res = t3.execute().fetch()
-        expected = np.searchsorted(raw, raw[10], side='left')
+        expected = np.searchsorted(raw, raw[10], side="left")
         np.testing.assert_array_equal(res, expected)
 
         # test scalar, side right, with value exact in the middle of the array
-        t4 = searchsorted(arr, raw[10], side='right')
+        t4 = searchsorted(arr, raw[10], side="right")
 
         res = t4.execute().fetch()
-        expected = np.searchsorted(raw, raw[10], side='right')
+        expected = np.searchsorted(raw, raw[10], side="right")
         np.testing.assert_array_equal(res, expected)
 
         # test scalar, side left, with value exact in the end of the array
-        t5 = searchsorted(arr, raw[15], side='left')
+        t5 = searchsorted(arr, raw[15], side="left")
 
         res = t5.execute().fetch()
-        expected = np.searchsorted(raw, raw[15], side='left')
+        expected = np.searchsorted(raw, raw[15], side="left")
         np.testing.assert_array_equal(res, expected)
 
         # test scalar, side right, with value exact in the end of the array
-        t6 = searchsorted(arr, raw[15], side='right')
+        t6 = searchsorted(arr, raw[15], side="right")
 
         res = t6.execute().fetch()
-        expected = np.searchsorted(raw, raw[15], side='right')
+        expected = np.searchsorted(raw, raw[15], side="right")
         np.testing.assert_array_equal(res, expected)
 
         # test scalar, side left, with value exact in the start of the array
-        t7 = searchsorted(arr, raw[0], side='left')
+        t7 = searchsorted(arr, raw[0], side="left")
 
         res = t7.execute().fetch()
-        expected = np.searchsorted(raw, raw[0], side='left')
+        expected = np.searchsorted(raw, raw[0], side="left")
         np.testing.assert_array_equal(res, expected)
 
         # test scalar, side right, with value exact in the start of the array
-        t8 = searchsorted(arr, raw[0], side='right')
+        t8 = searchsorted(arr, raw[0], side="right")
 
         res = t8.execute().fetch()
-        expected = np.searchsorted(raw, raw[0], side='right')
+        expected = np.searchsorted(raw, raw[0], side="right")
         np.testing.assert_array_equal(res, expected)
 
         raw2 = np.random.randint(100, size=(3, 4))
 
         # test tensor, side left
-        t9 = searchsorted(arr, tensor(raw2, chunk_size=2), side='left')
+        t9 = searchsorted(arr, tensor(raw2, chunk_size=2), side="left")
 
         res = t9.execute().fetch()
-        expected = np.searchsorted(raw, raw2, side='left')
+        expected = np.searchsorted(raw, raw2, side="left")
         np.testing.assert_array_equal(res, expected)
 
         # test tensor, side right
-        t10 = searchsorted(arr, tensor(raw2, chunk_size=2), side='right')
+        t10 = searchsorted(arr, tensor(raw2, chunk_size=2), side="right")
 
         res = t10.execute().fetch()
-        expected = np.searchsorted(raw, raw2, side='right')
+        expected = np.searchsorted(raw, raw2, side="right")
         np.testing.assert_array_equal(res, expected)
 
     # test one chunk
@@ -926,7 +974,7 @@ def test_searchsorted_execution(setup):
     arr = tensor(raw4, chunk_size=2)
 
     for val in (0, 1, 2):
-        for side in ('left', 'right'):
+        for side in ("left", "right"):
             t15 = searchsorted(arr, val, side=side)
 
             res = t15.execute().fetch()
@@ -974,12 +1022,14 @@ def test_unique_execution(setup):
         np.testing.assert_array_equal(res[0], expected[0])
         np.testing.assert_array_equal(res[1], expected[1])
 
-        y, indices, inverse, counts = unique(x, return_index=True,
-                                             return_inverse=True, return_counts=True)
+        y, indices, inverse, counts = unique(
+            x, return_index=True, return_inverse=True, return_counts=True
+        )
 
         res = fetch(*execute(y, indices, inverse, counts))
-        expected = np.unique(raw, return_index=True,
-                             return_inverse=True, return_counts=True)
+        expected = np.unique(
+            raw, return_index=True, return_inverse=True, return_counts=True
+        )
         assert len(res) == 4
         assert len(expected) == 4
         np.testing.assert_array_equal(res[0], expected[0])
@@ -1021,15 +1071,24 @@ def test_unique_execution(setup):
     raw = rs.randint(10, size=(10, 20))
     raw[:, 0] = raw[:, 11] = rs.randint(10, size=(10,))
     x = tensor(raw, chunk_size=2)
-    y, ind, inv, counts = unique(x, aggregate_size=3, axis=1, return_index=True,
-                                 return_inverse=True, return_counts=True)
+    y, ind, inv, counts = unique(
+        x,
+        aggregate_size=3,
+        axis=1,
+        return_index=True,
+        return_inverse=True,
+        return_counts=True,
+    )
 
     res_unique, res_ind, res_inv, res_counts = fetch(*execute(y, ind, inv, counts))
-    exp_unique, exp_ind, exp_counts = np.unique(raw, axis=1, return_index=True, return_counts=True)
+    exp_unique, exp_ind, exp_counts = np.unique(
+        raw, axis=1, return_index=True, return_counts=True
+    )
     raw_res_unique = res_unique
     res_unique_df = pd.DataFrame(res_unique)
-    res_unique_ind = np.asarray(res_unique_df.sort_values(list(range(res_unique.shape[0])),
-                                                          axis=1).columns)
+    res_unique_ind = np.asarray(
+        res_unique_df.sort_values(list(range(res_unique.shape[0])), axis=1).columns
+    )
     res_unique = res_unique[:, res_unique_ind]
     res_ind = res_ind[res_unique_ind]
     res_counts = res_counts[res_unique_ind]
@@ -1045,7 +1104,7 @@ def test_unique_execution(setup):
     np.testing.assert_array_equal(res, np.array([0, 1]))
 
     # test sparse
-    sparse_raw = sps.random(10, 3, density=0.1, format='csr', random_state=rs)
+    sparse_raw = sps.random(10, 3, density=0.1, format="csr", random_state=rs)
     x = tensor(sparse_raw, chunk_size=2)
     y = unique(x)
     res = np.sort(y.execute().fetch())
@@ -1112,27 +1171,27 @@ def test_sort_execution(setup):
     np.testing.assert_array_equal(res, np.sort(raw))
 
     # test psrs_kinds
-    sx = sort(x, psrs_kinds=[None, None, 'quicksort'])
+    sx = sort(x, psrs_kinds=[None, None, "quicksort"])
 
     res = sx.execute().fetch()
     np.testing.assert_array_equal(res, np.sort(raw))
 
     # structured dtype
-    raw = np.empty(100, dtype=[('id', np.int32), ('size', np.int64)])
-    raw['id'] = np.random.randint(1000, size=100, dtype=np.int32)
-    raw['size'] = np.random.randint(1000, size=100, dtype=np.int64)
+    raw = np.empty(100, dtype=[("id", np.int32), ("size", np.int64)])
+    raw["id"] = np.random.randint(1000, size=100, dtype=np.int32)
+    raw["size"] = np.random.randint(1000, size=100, dtype=np.int64)
     x = tensor(raw, chunk_size=10)
 
-    sx = sort(x, order=['size', 'id'])
+    sx = sort(x, order=["size", "id"])
 
     res = sx.execute().fetch()
-    np.testing.assert_array_equal(res, np.sort(raw, order=['size', 'id']))
+    np.testing.assert_array_equal(res, np.sort(raw, order=["size", "id"]))
 
     # test psrs_kinds with structured dtype
-    sx = sort(x, order=['size', 'id'], psrs_kinds=[None, None, 'quicksort'])
+    sx = sort(x, order=["size", "id"], psrs_kinds=[None, None, "quicksort"])
 
     res = sx.execute().fetch()
-    np.testing.assert_array_equal(res, np.sort(raw, order=['size', 'id']))
+    np.testing.assert_array_equal(res, np.sort(raw, order=["size", "id"]))
 
     # test flatten case
     raw = np.random.rand(10, 10)
@@ -1147,12 +1206,12 @@ def test_sort_execution(setup):
     raw = np.random.rand(10, 100)
     x = tensor(raw, chunk_size=(5, 40))
 
-    sx = sort(x, psrs_kinds=['quicksort'] * 3)
+    sx = sort(x, psrs_kinds=["quicksort"] * 3)
 
     res = sx.execute().fetch()
     np.testing.assert_array_equal(res, np.sort(raw))
 
-    sx = sort(x, psrs_kinds=[None, None, 'quicksort'])
+    sx = sort(x, psrs_kinds=[None, None, "quicksort"])
 
     res = sx.execute().fetch()
     np.testing.assert_array_equal(res, np.sort(raw))
@@ -1174,7 +1233,7 @@ def test_sort_execution(setup):
     res = sx.execute().fetch()
     np.testing.assert_array_equal(res, np.sort(raw))
 
-    sx = sort(x, psrs_kinds=[None, None, 'quicksort'])
+    sx = sort(x, psrs_kinds=[None, None, "quicksort"])
 
     res = sx.execute().fetch()
     np.testing.assert_array_equal(res, np.sort(raw))
@@ -1184,7 +1243,7 @@ def test_sort_execution(setup):
     res = sx.execute().fetch()
     np.testing.assert_array_equal(res, np.sort(raw, axis=0))
 
-    sx = sort(x, axis=0, psrs_kinds=[None, None, 'quicksort'])
+    sx = sort(x, axis=0, psrs_kinds=[None, None, "quicksort"])
 
     res = sx.execute().fetch()
     np.testing.assert_array_equal(res, np.sort(raw, axis=0))
@@ -1194,15 +1253,15 @@ def test_sort_execution(setup):
     res = sx.execute().fetch()
     np.testing.assert_array_equal(res, np.sort(raw, axis=1))
 
-    sx = sort(x, axis=1, psrs_kinds=[None, None, 'quicksort'])
+    sx = sort(x, axis=1, psrs_kinds=[None, None, "quicksort"])
 
     res = sx.execute().fetch()
     np.testing.assert_array_equal(res, np.sort(raw, axis=1))
 
     # test multi-dimension with structured type
-    raw = np.empty((10, 100), dtype=[('id', np.int32), ('size', np.int64)])
-    raw['id'] = np.random.randint(1000, size=(10, 100), dtype=np.int32)
-    raw['size'] = np.random.randint(1000, size=(10, 100), dtype=np.int64)
+    raw = np.empty((10, 100), dtype=[("id", np.int32), ("size", np.int64)])
+    raw["id"] = np.random.randint(1000, size=(10, 100), dtype=np.int32)
+    raw["size"] = np.random.randint(1000, size=(10, 100), dtype=np.int64)
     x = tensor(raw, chunk_size=(7, 30))
 
     sx = sort(x)
@@ -1210,26 +1269,25 @@ def test_sort_execution(setup):
     res = sx.execute().fetch()
     np.testing.assert_array_equal(res, np.sort(raw))
 
-    sx = sort(x, order=['size', 'id'])
+    sx = sort(x, order=["size", "id"])
 
     res = sx.execute().fetch()
-    np.testing.assert_array_equal(res, np.sort(raw, order=['size', 'id']))
+    np.testing.assert_array_equal(res, np.sort(raw, order=["size", "id"]))
 
-    sx = sort(x, order=['size'])
-
-    res = sx.execute().fetch()
-    np.testing.assert_array_equal(res, np.sort(raw, order=['size']))
-
-    sx = sort(x, axis=0, order=['size', 'id'])
+    sx = sort(x, order=["size"])
 
     res = sx.execute().fetch()
-    np.testing.assert_array_equal(res, np.sort(raw, axis=0, order=['size', 'id']))
+    np.testing.assert_array_equal(res, np.sort(raw, order=["size"]))
 
-    sx = sort(x, axis=0, order=['size', 'id'],
-              psrs_kinds=[None, None, 'quicksort'])
+    sx = sort(x, axis=0, order=["size", "id"])
 
     res = sx.execute().fetch()
-    np.testing.assert_array_equal(res, np.sort(raw, axis=0, order=['size', 'id']))
+    np.testing.assert_array_equal(res, np.sort(raw, axis=0, order=["size", "id"]))
+
+    sx = sort(x, axis=0, order=["size", "id"], psrs_kinds=[None, None, "quicksort"])
+
+    res = sx.execute().fetch()
+    np.testing.assert_array_equal(res, np.sort(raw, axis=0, order=["size", "id"]))
 
     # test inplace sort
     raw = np.random.rand(10, 12)
@@ -1330,16 +1388,17 @@ def test_partition_execution(setup):
     np.testing.assert_array_equal(res[kth], np.partition(raw, kth)[kth])
 
     # structured dtype
-    raw = np.empty(100, dtype=[('id', np.int32), ('size', np.int64)])
-    raw['id'] = np.random.randint(1000, size=100, dtype=np.int32)
-    raw['size'] = np.random.randint(1000, size=100, dtype=np.int64)
+    raw = np.empty(100, dtype=[("id", np.int32), ("size", np.int64)])
+    raw["id"] = np.random.randint(1000, size=100, dtype=np.int32)
+    raw["size"] = np.random.randint(1000, size=100, dtype=np.int64)
     x = tensor(raw, chunk_size=20)
 
-    px = partition(x, kth, order=['size', 'id'])
+    px = partition(x, kth, order=["size", "id"])
 
     res = px.execute().fetch()
     np.testing.assert_array_equal(
-        res[kth], np.partition(raw, kth, order=['size', 'id'])[kth])
+        res[kth], np.partition(raw, kth, order=["size", "id"])[kth]
+    )
 
     # test flatten case
     raw = np.random.rand(10, 10)
@@ -1376,8 +1435,7 @@ def test_partition_execution(setup):
     px = partition(x, kth)
 
     res = px.execute().fetch()
-    np.testing.assert_array_equal(
-        res[:, :, kth], np.partition(raw, kth)[:, :, kth])
+    np.testing.assert_array_equal(res[:, :, kth], np.partition(raw, kth)[:, :, kth])
 
     kth = np.random.RandomState(0).randint(-20, 20, size=(3,))
     px = partition(x, kth, axis=0)
@@ -1389,13 +1447,12 @@ def test_partition_execution(setup):
     px = partition(x, kth, axis=1)
 
     res = px.execute().fetch()
-    np.testing.assert_array_equal(
-        res[:, kth], np.partition(raw, kth, axis=1)[:, kth])
+    np.testing.assert_array_equal(res[:, kth], np.partition(raw, kth, axis=1)[:, kth])
 
     # test multi-dimension with structured type
-    raw = np.empty((10, 100), dtype=[('id', np.int32), ('size', np.int64)])
-    raw['id'] = np.random.randint(1000, size=(10, 100), dtype=np.int32)
-    raw['size'] = np.random.randint(1000, size=(10, 100), dtype=np.int64)
+    raw = np.empty((10, 100), dtype=[("id", np.int32), ("size", np.int64)])
+    raw["id"] = np.random.randint(1000, size=(10, 100), dtype=np.int32)
+    raw["size"] = np.random.randint(1000, size=(10, 100), dtype=np.int64)
     x = tensor(raw, chunk_size=(7, 30))
 
     kth = np.random.RandomState(0).randint(-100, 100, size=(10,))
@@ -1404,24 +1461,27 @@ def test_partition_execution(setup):
     res = px.execute().fetch()
     np.testing.assert_array_equal(res[:, kth], np.partition(raw, kth)[:, kth])
 
-    px = partition(x, kth, order=['size', 'id'])
+    px = partition(x, kth, order=["size", "id"])
 
     res = px.execute().fetch()
     np.testing.assert_array_equal(
-        res[:, kth], np.partition(raw, kth, order=['size', 'id'])[:, kth])
+        res[:, kth], np.partition(raw, kth, order=["size", "id"])[:, kth]
+    )
 
-    px = partition(x, kth, order=['size'])
+    px = partition(x, kth, order=["size"])
 
     res = px.execute().fetch()
     np.testing.assert_array_equal(
-        res[:, kth], np.partition(raw, kth, order=['size'])[:, kth])
+        res[:, kth], np.partition(raw, kth, order=["size"])[:, kth]
+    )
 
     kth = np.random.RandomState(0).randint(-10, 10, size=(5,))
-    px = partition(x, kth, axis=0, order=['size', 'id'])
+    px = partition(x, kth, axis=0, order=["size", "id"])
 
     res = px.execute().fetch()
     np.testing.assert_array_equal(
-        res[kth], np.partition(raw, kth, axis=0, order=['size', 'id'])[kth])
+        res[kth], np.partition(raw, kth, axis=0, order=["size", "id"])[kth]
+    )
 
     raw = np.random.rand(10, 12)
     a = tensor(raw, chunk_size=(5, 4))
@@ -1429,16 +1489,14 @@ def test_partition_execution(setup):
     a.partition(kth, axis=1)
 
     res = a.execute().fetch()
-    np.testing.assert_array_equal(
-        res[:, kth], np.partition(raw, kth, axis=1)[:, kth])
+    np.testing.assert_array_equal(res[:, kth], np.partition(raw, kth, axis=1)[:, kth])
 
     kth = np.random.RandomState(0).randint(-10, 10, size=(2,))
     a.partition(kth, axis=0)
 
     raw_base = res
     res = a.execute().fetch()
-    np.testing.assert_array_equal(
-        res[kth], np.partition(raw_base, kth, axis=0)[kth])
+    np.testing.assert_array_equal(res[kth], np.partition(raw_base, kth, axis=0)[kth])
 
     # test kth which is tensor
     raw = np.random.rand(10, 12)
@@ -1505,14 +1563,18 @@ def test_argpartition_execution(setup):
     pa = argpartition(x, kth)
 
     r = pa.execute().fetch()
-    np.testing.assert_array_equal(np.sort(raw)[:, kth], np.take_along_axis(raw, r, axis=-1)[:, kth])
+    np.testing.assert_array_equal(
+        np.sort(raw)[:, kth], np.take_along_axis(raw, r, axis=-1)[:, kth]
+    )
 
     x = tensor(raw, chunk_size=(22, 4))
 
     pa = argpartition(x, kth)
 
     r = pa.execute().fetch()
-    np.testing.assert_array_equal(np.sort(raw)[:, kth], np.take_along_axis(raw, r, axis=-1)[:, kth])
+    np.testing.assert_array_equal(
+        np.sort(raw)[:, kth], np.take_along_axis(raw, r, axis=-1)[:, kth]
+    )
 
     raw = np.random.rand(100)
 
@@ -1542,24 +1604,31 @@ def _handle_result(result, axis, largest, order):
     return result
 
 
-@pytest.mark.parametrize('chunk_size', [7, 4])
-@pytest.mark.parametrize('axis', [0, 1, 2, None])
-@pytest.mark.parametrize('largest', [True, False])
-@pytest.mark.parametrize('to_sort', [True, False])
-@pytest.mark.parametrize('parallel_kind', ['tree', 'psrs'])
+@pytest.mark.parametrize("chunk_size", [7, 4])
+@pytest.mark.parametrize("axis", [0, 1, 2, None])
+@pytest.mark.parametrize("largest", [True, False])
+@pytest.mark.parametrize("to_sort", [True, False])
+@pytest.mark.parametrize("parallel_kind", ["tree", "psrs"])
 def test_topk_execution(setup, chunk_size, axis, largest, to_sort, parallel_kind):
     raw1, order1 = np.random.rand(5, 6, 7), None
-    raw2 = np.empty((5, 6, 7), dtype=[('a', np.int32), ('b', np.float64)])
-    raw2['a'] = np.random.randint(1000, size=(5, 6, 7), dtype=np.int32)
-    raw2['b'] = np.random.rand(5, 6, 7)
-    order2 = ['b', 'a']
+    raw2 = np.empty((5, 6, 7), dtype=[("a", np.int32), ("b", np.float64)])
+    raw2["a"] = np.random.randint(1000, size=(5, 6, 7), dtype=np.int32)
+    raw2["b"] = np.random.rand(5, 6, 7)
+    order2 = ["b", "a"]
 
     for raw, order in [(raw1, order1), (raw2, order2)]:
         a = tensor(raw, chunk_size=chunk_size)
         size = raw.shape[axis] if axis is not None else raw.size
         for k in [2, size - 2, size, size + 2]:
-            r = topk(a, k, axis=axis, largest=largest, sorted=to_sort,
-                     order=order, parallel_kind=parallel_kind)
+            r = topk(
+                a,
+                k,
+                axis=axis,
+                largest=largest,
+                sorted=to_sort,
+                order=order,
+                parallel_kind=parallel_kind,
+            )
 
             result = r.execute().fetch()
 
@@ -1568,10 +1637,16 @@ def test_topk_execution(setup, chunk_size, axis, largest, to_sort, parallel_kind
             expected = _topk_slow(raw, k, axis, largest, order)
             np.testing.assert_array_equal(result, expected)
 
-            r = topk(a, k, axis=axis, largest=largest,
-                     sorted=to_sort, order=order,
-                     parallel_kind=parallel_kind,
-                     return_index=True)
+            r = topk(
+                a,
+                k,
+                axis=axis,
+                largest=largest,
+                sorted=to_sort,
+                order=order,
+                parallel_kind=parallel_kind,
+                return_index=True,
+            )
 
             ta, ti = r.execute().fetch()
             raw2 = raw
@@ -1588,38 +1663,46 @@ def test_argtopk(setup):
     raw = np.random.rand(100, 10)
     x = tensor(raw, chunk_size=20)
 
-    pa = argtopk(x, 3, parallel_kind='tree')
+    pa = argtopk(x, 3, parallel_kind="tree")
 
     r = pa.execute().fetch()
-    np.testing.assert_array_equal(np.sort(raw)[:, -1:-4:-1], np.take_along_axis(raw, r, axis=-1))
+    np.testing.assert_array_equal(
+        np.sort(raw)[:, -1:-4:-1], np.take_along_axis(raw, r, axis=-1)
+    )
 
-    pa = argtopk(x, 3, parallel_kind='psrs')
+    pa = argtopk(x, 3, parallel_kind="psrs")
 
     r = pa.execute().fetch()
-    np.testing.assert_array_equal(np.sort(raw)[:, -1:-4:-1], np.take_along_axis(raw, r, axis=-1))
+    np.testing.assert_array_equal(
+        np.sort(raw)[:, -1:-4:-1], np.take_along_axis(raw, r, axis=-1)
+    )
 
     x = tensor(raw, chunk_size=(22, 4))
 
-    pa = argtopk(x, 3, parallel_kind='tree')
+    pa = argtopk(x, 3, parallel_kind="tree")
 
     r = pa.execute().fetch()
-    np.testing.assert_array_equal(np.sort(raw)[:, -1:-4:-1], np.take_along_axis(raw, r, axis=-1))
+    np.testing.assert_array_equal(
+        np.sort(raw)[:, -1:-4:-1], np.take_along_axis(raw, r, axis=-1)
+    )
 
-    pa = argtopk(x, 3, parallel_kind='psrs')
+    pa = argtopk(x, 3, parallel_kind="psrs")
 
     r = pa.execute().fetch()
-    np.testing.assert_array_equal(np.sort(raw)[:, -1:-4:-1], np.take_along_axis(raw, r, axis=-1))
+    np.testing.assert_array_equal(
+        np.sort(raw)[:, -1:-4:-1], np.take_along_axis(raw, r, axis=-1)
+    )
 
     raw = np.random.rand(100)
 
     x = tensor(raw, chunk_size=23)
 
-    pa = argtopk(x, 3, axis=0, parallel_kind='tree')
+    pa = argtopk(x, 3, axis=0, parallel_kind="tree")
 
     r = pa.execute().fetch()
     np.testing.assert_array_equal(np.sort(raw, axis=0)[-1:-4:-1], raw[r])
 
-    pa = argtopk(x, 3, axis=0, parallel_kind='psrs')
+    pa = argtopk(x, 3, axis=0, parallel_kind="psrs")
 
     r = pa.execute().fetch()
     np.testing.assert_array_equal(np.sort(raw, axis=0)[-1:-4:-1], raw[r])
@@ -1639,10 +1722,7 @@ def test_copy(setup):
 
 
 def test_trapz_execution(setup):
-    raws = [
-        np.random.rand(10),
-        np.random.rand(10, 3)
-    ]
+    raws = [np.random.rand(10), np.random.rand(10, 3)]
 
     for raw in raws:
         for chunk_size in (4, 10):
@@ -1652,19 +1732,19 @@ def test_trapz_execution(setup):
 
                 result = r.execute().fetch()
                 expected = np.trapz(raw, dx=dx)
-                np.testing.assert_almost_equal(result, expected,
-                                               err_msg=f'failed when raw={raw}, '
-                                                       f'chunk_size={chunk_size}, dx={dx}')
+                np.testing.assert_almost_equal(
+                    result,
+                    expected,
+                    err_msg=f"failed when raw={raw}, "
+                    f"chunk_size={chunk_size}, dx={dx}",
+                )
 
     # test x not None
-    raw_ys = [np.random.rand(10),
-              np.random.rand(10, 3)]
-    raw_xs = [np.random.rand(10),
-              np.random.rand(10, 3)]
+    raw_ys = [np.random.rand(10), np.random.rand(10, 3)]
+    raw_xs = [np.random.rand(10), np.random.rand(10, 3)]
 
     for raw_y, raw_x in zip(raw_ys, raw_xs):
-        ys = [tensor(raw_y, chunk_size=5),
-              tensor(raw_y, chunk_size=10)]
+        ys = [tensor(raw_y, chunk_size=5), tensor(raw_y, chunk_size=10)]
         x = tensor(raw_x, chunk_size=4)
 
         for y in ys:
@@ -1684,10 +1764,10 @@ def test_shape(setup):
     result = s.execute().fetch()
     assert result == [4, 3]
 
-    s = shape(x[x > .5])
+    s = shape(x[x > 0.5])
 
     result = s.execute().fetch()
-    expected = np.shape(raw[raw > .5])
+    expected = np.shape(raw[raw > 0.5])
     assert result == expected
 
     s = shape(0)
@@ -1730,8 +1810,9 @@ def test_map_chunk_execution(setup):
     results = r.execute().fetch()
     np.testing.assert_array_equal(raw * 0.5, results)
 
-    r = a.map_chunk(lambda x, chunk_index: x * 0.5 + chunk_index[0],
-                    with_chunk_index=True)
+    r = a.map_chunk(
+        lambda x, chunk_index: x * 0.5 + chunk_index[0], with_chunk_index=True
+    )
     results = r.execute().fetch()
     np.testing.assert_array_equal(raw * 0.5 + np.arange(0, 20) // 10, results)
 
@@ -1760,50 +1841,54 @@ def test_insert_execution(setup):
     r5 = mt.insert(a, [1, 2, 6], np.arange(20).reshape((20, 1)), axis=1)
     result = r5.execute().fetch()
     np.testing.assert_array_equal(
-        np.insert(raw, [1, 2, 6], np.arange(20).reshape((20, 1)), axis=1), result)
+        np.insert(raw, [1, 2, 6], np.arange(20).reshape((20, 1)), axis=1), result
+    )
 
     r6 = mt.insert(a, [1, 16, 10], np.arange(30).reshape((3, 10)), axis=0)
     result = r6.execute().fetch()
     np.testing.assert_array_equal(
-        np.insert(raw, [1, 16, 10], np.arange(30).reshape((3, 10)), axis=0), result)
+        np.insert(raw, [1, 16, 10], np.arange(30).reshape((3, 10)), axis=0), result
+    )
 
     # test mt.tensor as values
     r5 = mt.insert(a, [1, 2, 6], mt.arange(20).reshape((20, 1)), axis=1)
     result = r5.execute().fetch()
     np.testing.assert_array_equal(
-        np.insert(raw, [1, 2, 6], np.arange(20).reshape((20, 1)), axis=1), result)
+        np.insert(raw, [1, 2, 6], np.arange(20).reshape((20, 1)), axis=1), result
+    )
 
     r6 = mt.insert(a, [1, 16, 10], mt.arange(30).reshape((3, 10)), axis=0)
     result = r6.execute().fetch()
     np.testing.assert_array_equal(
-        np.insert(raw, [1, 16, 10], np.arange(30).reshape((3, 10)), axis=0), result)
+        np.insert(raw, [1, 16, 10], np.arange(30).reshape((3, 10)), axis=0), result
+    )
 
     r7 = mt.insert(a, [20, 30, 50], mt.tensor([5, 6, 7]))
     result = r7.execute().fetch()
     np.testing.assert_array_equal(np.insert(raw, [20, 30, 50], [5, 6, 7]), result)
 
     # test mt.tensor as index
-    r8 = mt.insert(a, mt.tensor([1, 2, 6]),
-                   mt.arange(20).reshape((20, 1)), axis=1)
+    r8 = mt.insert(a, mt.tensor([1, 2, 6]), mt.arange(20).reshape((20, 1)), axis=1)
     result = r8.execute().fetch()
     np.testing.assert_array_equal(
-        np.insert(raw, [1, 2, 6], np.arange(20).reshape((20, 1)), axis=1), result)
+        np.insert(raw, [1, 2, 6], np.arange(20).reshape((20, 1)), axis=1), result
+    )
 
-    r9 = mt.insert(a, mt.tensor([1, 16, 10]),
-                   mt.arange(30).reshape((3, 10)), axis=0)
+    r9 = mt.insert(a, mt.tensor([1, 16, 10]), mt.arange(30).reshape((3, 10)), axis=0)
     result = r9.execute().fetch()
     np.testing.assert_array_equal(
-        np.insert(raw, [1, 16, 10], np.arange(30).reshape((3, 10)), axis=0), result)
+        np.insert(raw, [1, 16, 10], np.arange(30).reshape((3, 10)), axis=0), result
+    )
 
-    r10 = mt.insert(a, mt.tensor([20, 30, 50]),
-                    mt.tensor([5, 6, 7]))
+    r10 = mt.insert(a, mt.tensor([20, 30, 50]), mt.tensor([5, 6, 7]))
     result = r10.execute().fetch()
     np.testing.assert_array_equal(np.insert(raw, [20, 30, 50], [5, 6, 7]), result)
 
     r11 = mt.insert(a, slice(0, 10), mt.arange(10), axis=0)
     result = r11.execute().fetch()
     np.testing.assert_array_equal(
-        np.insert(raw, slice(0, 10), np.arange(10), axis=0), result)
+        np.insert(raw, slice(0, 10), np.arange(10), axis=0), result
+    )
 
     r12 = mt.insert(a, 10, 5, axis=1)
     result = r12.execute().fetch()
@@ -1841,31 +1926,27 @@ def test_delete_execution(setup):
 
     r5 = mt.delete(a, [1, 2, 6], axis=1)
     result = r5.execute().fetch()
-    np.testing.assert_array_equal(
-        np.delete(raw, [1, 2, 6], axis=1), result)
+    np.testing.assert_array_equal(np.delete(raw, [1, 2, 6], axis=1), result)
 
     r6 = mt.delete(a, mt.tensor([1, 2, 6, 8], chunk_size=3), axis=1)
     result = r6.execute().fetch()
-    np.testing.assert_array_equal(
-        np.delete(raw, [1, 2, 6, 8], axis=1), result)
+    np.testing.assert_array_equal(np.delete(raw, [1, 2, 6, 8], axis=1), result)
 
     r7 = mt.delete(a, slice(0, 10), axis=0)
     result = r7.execute().fetch()
-    np.testing.assert_array_equal(
-        np.delete(raw, slice(0, 10), axis=0), result)
+    np.testing.assert_array_equal(np.delete(raw, slice(0, 10), axis=0), result)
 
     r8 = mt.delete(a, mt.tensor([10, 20, 6, 80]))
     result = r8.execute().fetch()
-    np.testing.assert_array_equal(
-        np.delete(raw, [10, 20, 6, 80]), result)
+    np.testing.assert_array_equal(np.delete(raw, [10, 20, 6, 80]), result)
 
     r9 = mt.delete(a, 9, axis=1)
     result = r9.execute().fetch()
     np.testing.assert_array_equal(np.delete(raw, 9, axis=1), result)
 
 
-@pytest.mark.parametrize('chunk_size', [3, 5])
-@pytest.mark.parametrize('invert', [True, False])
+@pytest.mark.parametrize("chunk_size", [3, 5])
+@pytest.mark.parametrize("invert", [True, False])
 def test_in1d_execute(setup, chunk_size, invert):
     rs = np.random.RandomState(0)
     raw1 = rs.randint(10, size=10)
@@ -1906,30 +1987,38 @@ def test_pad_execute(setup):
     np.testing.assert_array_equal(np.pad(raw, pad_width), result)
 
     constant_values = 100
-    mode = 'constant'
+    mode = "constant"
     r4 = mt.pad(a, pad_width, mode, constant_values=constant_values)
     result = r4.execute().fetch()
-    np.testing.assert_array_equal(np.pad(raw, pad_width, mode, constant_values=constant_values), result)
+    np.testing.assert_array_equal(
+        np.pad(raw, pad_width, mode, constant_values=constant_values), result
+    )
 
     end_values = 100
-    mode = 'linear_ramp'
+    mode = "linear_ramp"
     r5 = mt.pad(a, pad_width, mode, end_values=end_values)
     result = r5.execute().fetch()
-    np.testing.assert_array_equal(np.pad(raw, pad_width, mode, end_values=end_values), result)
+    np.testing.assert_array_equal(
+        np.pad(raw, pad_width, mode, end_values=end_values), result
+    )
 
-    mode = 'edge'
+    mode = "edge"
     r6 = mt.pad(a, pad_width, mode)
     result = r6.execute().fetch()
     np.testing.assert_array_equal(np.pad(raw, pad_width, mode), result)
 
-    for mode in ['mean', 'median', 'maximum', 'minimum']:
+    for mode in ["mean", "median", "maximum", "minimum"]:
         stat_length = 10
         r7 = mt.pad(a, pad_width, mode, stat_length=stat_length)
         result = r7.execute().fetch()
-        np.testing.assert_array_equal(np.pad(raw, pad_width, mode, stat_length=stat_length), result)
+        np.testing.assert_array_equal(
+            np.pad(raw, pad_width, mode, stat_length=stat_length), result
+        )
 
-    for mode in ['reflect', 'symmetric']:
-        for reflect_type in ['even', 'odd']:
+    for mode in ["reflect", "symmetric"]:
+        for reflect_type in ["even", "odd"]:
             r8 = mt.pad(a, pad_width, mode, reflect_type=reflect_type)
             result = r8.execute().fetch()
-            np.testing.assert_array_equal(np.pad(raw, pad_width, mode, reflect_type=reflect_type), result)
+            np.testing.assert_array_equal(
+                np.pad(raw, pad_width, mode, reflect_type=reflect_type), result
+            )

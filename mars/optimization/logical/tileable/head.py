@@ -17,8 +17,7 @@ from ..common.head import HeadPushDown
 from .core import register_tileable_optimization_rule
 
 
-@register_tileable_optimization_rule(
-    [DataFrameIlocGetItem, SeriesIlocGetItem])
+@register_tileable_optimization_rule([DataFrameIlocGetItem, SeriesIlocGetItem])
 class TileableHeadPushDown(HeadPushDown):
     """
     Head push down.

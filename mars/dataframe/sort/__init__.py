@@ -22,12 +22,12 @@ def _install():
     from .sort_index import sort_index
 
     for cls in DATAFRAME_TYPE:
-        setattr(cls, 'sort_values', dataframe_sort_values)
-        setattr(cls, 'sort_index', sort_index)
+        setattr(cls, "sort_values", dataframe_sort_values)
+        setattr(cls, "sort_index", sort_index)
 
     for cls in SERIES_TYPE:
-        setattr(cls, 'sort_values', series_sort_values)
-        setattr(cls, 'sort_index', sort_index)
+        setattr(cls, "sort_values", series_sort_values)
+        setattr(cls, "sort_index", sort_index)
 
 
 _install()

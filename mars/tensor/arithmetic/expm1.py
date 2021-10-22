@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorExpm1(TensorUnaryOp):
     _op_type_ = OperandDef.EXPM1
-    _func_name = 'expm1'
+    _func_name = "expm1"
 
 
 @infer_dtype(np.expm1)

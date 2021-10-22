@@ -27,15 +27,17 @@ class Fusion:
     def __init__(self, graph: ChunkGraph):
         self._graph = graph
 
-    def _fuse_nodes(self, nodes_list: List[List[ChunkType]]) -> \
-            Tuple[List[List[ChunkType]], List[ChunkType]]:
+    def _fuse_nodes(
+        self, nodes_list: List[List[ChunkType]]
+    ) -> Tuple[List[List[ChunkType]], List[ChunkType]]:
         fused_nodes = []
 
         for nodes in nodes_list:
             head_node = nodes[0]
             tail_node = nodes[-1]
             fuse_chunk = build_fuse_chunk(
-                nodes, tail_node.op.get_fuse_op_cls(tail_node), None, None).data
+                nodes, tail_node.op.get_fuse_op_cls(tail_node), None, None
+            ).data
             self._graph.add_node(fuse_chunk)
             try:
                 result_index = self._graph.results.index(tail_node)
@@ -80,18 +82,23 @@ class Fusion:
             if isinstance(v.op, (VirtualOperand, Fetch)):  # pragma: no cover
                 # cannot fuse virtual operand or fetch
                 continue
-            if v.op.scheduling_hint is not None and \
-                    not v.op.scheduling_hint.can_be_fused():  # pragma: no cover
+            if (
+                v.op.scheduling_hint is not None
+                and not v.op.scheduling_hint.can_be_fused()
+            ):  # pragma: no cover
                 # don't fuse operand that cannot be fused
                 continue
             selected = [v]
             # add successors
             cur_node = self._graph.successors(v)[0]
-            while self._graph.count_predecessors(cur_node) == 1 and \
-                    not isinstance(cur_node.op, (VirtualOperand, Fetch)):
+            while self._graph.count_predecessors(cur_node) == 1 and not isinstance(
+                cur_node.op, (VirtualOperand, Fetch)
+            ):
                 selected.append(cur_node)
-                if self._graph.count_successors(cur_node) != 1 or \
-                        cur_node in result_chunk_set:
+                if (
+                    self._graph.count_successors(cur_node) != 1
+                    or cur_node in result_chunk_set
+                ):
                     break
                 else:
                     cur_node = self._graph.successors(cur_node)[0]

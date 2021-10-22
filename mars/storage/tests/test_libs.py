@@ -47,69 +47,75 @@ except ImportError:
 
 require_lib = lambda x: x
 params = [
-    'filesystem',
-    'shared_memory',
+    "filesystem",
+    "shared_memory",
 ]
-if not sys.platform.startswith('win') and \
-        pkgutil.find_loader('pyarrow.plasma') is not None:
-    params.append('plasma')
+if (
+    not sys.platform.startswith("win")
+    and pkgutil.find_loader("pyarrow.plasma") is not None
+):
+    params.append("plasma")
 if vineyard is not None:
-    params.append('vineyard')
+    params.append("vineyard")
 if ray is not None:
-    params.append('ray')
+    params.append("ray")
     require_lib = require_ray
 
 
-@pytest.mark.parametrize('ray_start_regular', [{'enable': ray is not None}], indirect=True)
+@pytest.mark.parametrize(
+    "ray_start_regular", [{"enable": ray is not None}], indirect=True
+)
 @pytest.fixture(params=params)
 async def storage_context(ray_start_regular, request):
-    if request.param == 'filesystem':
+    if request.param == "filesystem":
         tempdir = tempfile.mkdtemp()
         params, teardown_params = await DiskStorage.setup(
-            fs=LocalFileSystem(),
-            root_dirs=[tempdir])
+            fs=LocalFileSystem(), root_dirs=[tempdir]
+        )
         storage = DiskStorage(**params)
         assert storage.level == StorageLevel.DISK
 
         yield storage
 
         await storage.teardown(**teardown_params)
-    elif request.param == 'plasma':
+    elif request.param == "plasma":
         plasma_storage_size = 10 * 1024 * 1024
-        if sys.platform == 'darwin':
-            plasma_dir = '/tmp'
+        if sys.platform == "darwin":
+            plasma_dir = "/tmp"
         else:
-            plasma_dir = '/dev/shm'
+            plasma_dir = "/dev/shm"
         params, teardown_params = await PlasmaStorage.setup(
             store_memory=plasma_storage_size,
             plasma_directory=plasma_dir,
-            check_dir_size=False)
+            check_dir_size=False,
+        )
         storage = PlasmaStorage(**params)
         assert storage.level == StorageLevel.MEMORY
 
         yield storage
 
         await PlasmaStorage.teardown(**teardown_params)
-    elif request.param == 'vineyard':
-        vineyard_size = '256M'
+    elif request.param == "vineyard":
+        vineyard_size = "256M"
         params, teardown_params = await VineyardStorage.setup(
-            vineyard_size=vineyard_size)
+            vineyard_size=vineyard_size
+        )
         storage = VineyardStorage(**params)
         assert storage.level == StorageLevel.MEMORY
 
         yield storage
 
         await VineyardStorage.teardown(**teardown_params)
-    elif request.param == 'shared_memory':
+    elif request.param == "shared_memory":
         params, teardown_params = await SharedMemoryStorage.setup()
         storage = SharedMemoryStorage(**params)
         assert storage.level == StorageLevel.MEMORY
 
         yield storage
 
-        teardown_params['object_ids'] = storage._object_ids
+        teardown_params["object_ids"] = storage._object_ids
         await SharedMemoryStorage.teardown(**teardown_params)
-    elif request.param == 'ray':
+    elif request.param == "ray":
         params, teardown_params = await RayStorage.setup()
         storage = RayStorage(**params)
         assert storage.level == StorageLevel.MEMORY | StorageLevel.REMOTE
@@ -132,7 +138,9 @@ def test_storage_level():
 
 @pytest.mark.asyncio
 @require_lib
-@pytest.mark.parametrize('ray_start_regular', [{'enable': ray is not None}], indirect=True)
+@pytest.mark.parametrize(
+    "ray_start_regular", [{"enable": ray is not None}], indirect=True
+)
 async def test_base_operations(ray_start_regular, storage_context):
     storage = storage_context
 
@@ -145,9 +153,13 @@ async def test_base_operations(ray_start_regular, storage_context):
     # FIXME: remove os check when size issue fixed
     assert info1.size == put_info1.size
 
-    data2 = pd.DataFrame({'col1': np.arange(10),
-                          'col2': [f'str{i}' for i in range(10)],
-                          'col3': np.random.rand(10)},)
+    data2 = pd.DataFrame(
+        {
+            "col1": np.arange(10),
+            "col2": [f"str{i}" for i in range(10)],
+            "col3": np.random.rand(10),
+        },
+    )
     put_info2 = await storage.put(data2)
     get_data2 = await storage.get(put_info2.object_id)
     pd.testing.assert_frame_equal(data2, get_data2)
@@ -174,17 +186,21 @@ async def test_base_operations(ray_start_regular, storage_context):
 
 @pytest.mark.asyncio
 @require_lib
-@pytest.mark.parametrize('ray_start_regular', [{'enable': ray is not None}], indirect=True)
+@pytest.mark.parametrize(
+    "ray_start_regular", [{"enable": ray is not None}], indirect=True
+)
 async def test_reader_and_writer(ray_start_regular, storage_context):
     storage = storage_context
 
     if isinstance(storage, VineyardStorage):
-        pytest.skip("open_{reader,writer} in vineyard doesn't use the DEFAULT_SERIALIZATION")
+        pytest.skip(
+            "open_{reader,writer} in vineyard doesn't use the DEFAULT_SERIALIZATION"
+        )
 
     # test writer and reader
     t = np.random.random(10)
     buffers = await AioSerializer(t).run()
-    size = sum(getattr(buf, 'nbytes', len(buf)) for buf in buffers)
+    size = sum(getattr(buf, "nbytes", len(buf)) for buf in buffers)
     async with await storage.open_writer(size=size) as writer:
         for buf in buffers:
             await writer.write(buf)
@@ -197,12 +213,12 @@ async def test_reader_and_writer(ray_start_regular, storage_context):
     # test writer and reader with seek offset
     t = np.random.random(10)
     buffers = await AioSerializer(t).run()
-    size = sum(getattr(buf, 'nbytes', len(buf)) for buf in buffers)
+    size = sum(getattr(buf, "nbytes", len(buf)) for buf in buffers)
     async with await storage.open_writer(size=20 + size) as writer:
-        await writer.write(b' ' * 10)
+        await writer.write(b" " * 10)
         for buf in buffers:
             await writer.write(buf)
-        await writer.write(b' ' * 10)
+        await writer.write(b" " * 10)
 
     async with await storage.open_reader(writer.object_id) as reader:
         with pytest.raises((OSError, ValueError)):
@@ -219,12 +235,16 @@ async def test_reader_and_writer(ray_start_regular, storage_context):
 
 @pytest.mark.asyncio
 @require_lib
-@pytest.mark.parametrize('ray_start_regular', [{'enable': ray is not None}], indirect=True)
+@pytest.mark.parametrize(
+    "ray_start_regular", [{"enable": ray is not None}], indirect=True
+)
 async def test_reader_and_writer_vineyard(ray_start_regular, storage_context):
     storage = storage_context
 
     if not isinstance(storage, VineyardStorage):
-        pytest.skip("open_{reader,writer} in vineyard doesn't use the DEFAULT_SERIALIZATION")
+        pytest.skip(
+            "open_{reader,writer} in vineyard doesn't use the DEFAULT_SERIALIZATION"
+        )
 
     # test writer and reader
     t = np.random.random(10)
@@ -277,9 +297,15 @@ async def test_cuda_backend():
     info1 = await storage.object_info(put_info1.object_id)
     assert info1.size == put_info1.size
 
-    data2 = cudf.DataFrame(pd.DataFrame({'col1': np.arange(10),
-                                         'col2': [f'str{i}' for i in range(10)],
-                                         'col3': np.random.rand(10)},))
+    data2 = cudf.DataFrame(
+        pd.DataFrame(
+            {
+                "col1": np.arange(10),
+                "col2": [f"str{i}" for i in range(10)],
+                "col3": np.random.rand(10),
+            },
+        )
+    )
     put_info2 = await storage.put(data2)
     get_data2 = await storage.get(put_info2.object_id)
     cudf.testing.assert_frame_equal(data2, get_data2)

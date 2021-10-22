@@ -79,29 +79,32 @@ def _assess_dimension(spectrum, rank, n_samples):
         # spectrum[j]) because this will take the log of something very small.
         return -np.inf
 
-    pu = -rank * log(2.)
+    pu = -rank * log(2.0)
     for i in range(1, rank + 1):
-        pu += (gammaln((n_features - i + 1) / 2.) -
-               log(np.pi) * (n_features - i + 1) / 2.)
+        pu += (
+            gammaln((n_features - i + 1) / 2.0)
+            - log(np.pi) * (n_features - i + 1) / 2.0
+        )
 
     pl = xp.sum(xp.log(spectrum[:rank]))
-    pl = -pl * n_samples / 2.
+    pl = -pl * n_samples / 2.0
 
     v = max(eps, xp.sum(spectrum[rank:]) / (n_features - rank))
-    pv = -xp.log(v) * n_samples * (n_features - rank) / 2.
+    pv = -xp.log(v) * n_samples * (n_features - rank) / 2.0
 
-    m = n_features * rank - rank * (rank + 1.) / 2.
-    pp = log(2. * np.pi) * (m + rank) / 2.
+    m = n_features * rank - rank * (rank + 1.0) / 2.0
+    pp = log(2.0 * np.pi) * (m + rank) / 2.0
 
-    pa = 0.
+    pa = 0.0
     spectrum_ = spectrum.copy()
     spectrum_[rank:n_features] = v
     for i in range(rank):
         for j in range(i + 1, len(spectrum)):
-            pa += log((spectrum[i] - spectrum[j]) *
-                      (1. / spectrum_[j] - 1. / spectrum_[i])) + log(n_samples)
+            pa += log(
+                (spectrum[i] - spectrum[j]) * (1.0 / spectrum_[j] - 1.0 / spectrum_[i])
+            ) + log(n_samples)
 
-    ll = pu + pl + pv + pp - pa / 2. - rank * log(n_samples) / 2.
+    ll = pu + pl + pv + pp - pa / 2.0 - rank * log(n_samples) / 2.0
 
     return ll
 
@@ -311,9 +314,16 @@ class PCA(_BasePCA):
     IncrementalPCA
     """
 
-    def __init__(self, n_components=None, copy=True, whiten=False,
-                 svd_solver='auto', tol=0.0, iterated_power='auto',
-                 random_state=None):
+    def __init__(
+        self,
+        n_components=None,
+        copy=True,
+        whiten=False,
+        svd_solver="auto",
+        tol=0.0,
+        iterated_power="auto",
+        random_state=None,
+    ):
         self.n_components = n_components
         self.copy = copy
         self.whiten = whiten
@@ -358,14 +368,14 @@ class PCA(_BasePCA):
 
         """
         U, S, _ = self._fit(X, session=session, run=False)
-        U = U[:, :self.n_components_]
+        U = U[:, : self.n_components_]
 
         if self.whiten:
             # X_new = X * V / S * sqrt(n_samples) = U * sqrt(n_samples)
             U *= sqrt(X.shape[0] - 1)
         else:
             # X_new = X * V = U * S * V^T * V = U * S
-            U *= S[:self.n_components_]
+            U *= S[: self.n_components_]
 
         self._run([U], session=session)
         return U
@@ -386,16 +396,19 @@ class PCA(_BasePCA):
 
         # Raise an error for sparse input.
         # This is more informative than the generic one raised by check_array.
-        if (hasattr(X, 'issparse') and X.issparse()) or issparse(X):
-            raise TypeError('PCA does not support sparse input. See '
-                            'TruncatedSVD for a possible alternative.')
+        if (hasattr(X, "issparse") and X.issparse()) or issparse(X):
+            raise TypeError(
+                "PCA does not support sparse input. See "
+                "TruncatedSVD for a possible alternative."
+            )
 
-        X = check_array(X, dtype=[mt.float64, mt.float32], ensure_2d=True,
-                        copy=self.copy)
+        X = check_array(
+            X, dtype=[mt.float64, mt.float32], ensure_2d=True, copy=self.copy
+        )
 
         # Handle n_components==None
         if self.n_components is None:
-            if self.svd_solver != 'arpack':
+            if self.svd_solver != "arpack":
                 n_components = min(X.shape)
             else:
                 n_components = min(X.shape) - 1
@@ -404,20 +417,20 @@ class PCA(_BasePCA):
 
         # Handle svd_solver
         self._fit_svd_solver = self.svd_solver
-        if self._fit_svd_solver == 'auto':
+        if self._fit_svd_solver == "auto":
             # Small problem or n_components == 'mle', just call full PCA
-            if max(X.shape) <= 500 or n_components == 'mle':
-                self._fit_svd_solver = 'full'
-            elif n_components >= 1 and n_components < .8 * min(X.shape):
-                self._fit_svd_solver = 'randomized'
+            if max(X.shape) <= 500 or n_components == "mle":
+                self._fit_svd_solver = "full"
+            elif n_components >= 1 and n_components < 0.8 * min(X.shape):
+                self._fit_svd_solver = "randomized"
             # This is also the case of n_components in (0,1)
             else:
-                self._fit_svd_solver = 'full'
+                self._fit_svd_solver = "full"
 
         # Call different fits for either full or truncated SVD
-        if self._fit_svd_solver == 'full':
+        if self._fit_svd_solver == "full":
             ret = self._fit_full(X, n_components, session=session)
-        elif self._fit_svd_solver in ['arpack', 'randomized']:
+        elif self._fit_svd_solver in ["arpack", "randomized"]:
             ret = self._fit_truncated(X, n_components, self._fit_svd_solver)
         else:
             raise ValueError(f"Unrecognized svd_solver='{self._fit_svd_solver}'")
@@ -430,21 +443,24 @@ class PCA(_BasePCA):
         """Fit the model by computing full SVD on X"""
         n_samples, n_features = X.shape
 
-        if n_components == 'mle':
+        if n_components == "mle":
             if n_samples < n_features:
-                raise ValueError("n_components='mle' is only supported "
-                                 "if n_samples >= n_features")
+                raise ValueError(
+                    "n_components='mle' is only supported " "if n_samples >= n_features"
+                )
         elif not 0 <= n_components <= min(n_samples, n_features):
-            raise ValueError("n_components=%r must be between 0 and "
-                             "min(n_samples, n_features)=%r with "
-                             "svd_solver='full'"
-                             % (n_components, min(n_samples, n_features)))
+            raise ValueError(
+                "n_components=%r must be between 0 and "
+                "min(n_samples, n_features)=%r with "
+                "svd_solver='full'" % (n_components, min(n_samples, n_features))
+            )
         elif n_components >= 1:
             if not isinstance(n_components, (numbers.Integral, np.integer)):
-                raise ValueError("n_components=%r must be of type int "
-                                 "when greater than or equal to 1, "
-                                 "was of type=%r"
-                                 % (n_components, type(n_components)))
+                raise ValueError(
+                    "n_components=%r must be of type int "
+                    "when greater than or equal to 1, "
+                    "was of type=%r" % (n_components, type(n_components))
+                )
 
         # Center data
         self.mean_ = mt.mean(X, axis=0)
@@ -463,31 +479,35 @@ class PCA(_BasePCA):
         singular_values_ = S.copy()  # Store the singular values.
 
         # Postprocess the number of components required
-        if n_components == 'mle':
-            n_components = mr.spawn(_infer_dimension, args=(explained_variance_, n_samples))
-            ExecutableTuple([n_components, U, V]).execute(session=session, **(run_kwargs or dict()))
+        if n_components == "mle":
+            n_components = mr.spawn(
+                _infer_dimension, args=(explained_variance_, n_samples)
+            )
+            ExecutableTuple([n_components, U, V]).execute(
+                session=session, **(run_kwargs or dict())
+            )
             n_components = n_components.fetch(session=session)
         elif 0 < n_components < 1.0:
             # number of components for which the cumulated explained
             # variance percentage is superior to the desired threshold
             # ratio_cumsum = stable_cumsum(explained_variance_ratio_)
             ratio_cumsum = explained_variance_ratio_.cumsum()
-            n_components = (mt.searchsorted(ratio_cumsum, n_components) + 1)\
-                .to_numpy(session=session, **(run_kwargs or dict()))
+            n_components = (mt.searchsorted(ratio_cumsum, n_components) + 1).to_numpy(
+                session=session, **(run_kwargs or dict())
+            )
 
         # Compute noise covariance using Probabilistic PCA model
         # The sigma2 maximum likelihood (cf. eq. 12.46)
         if n_components < min(n_features, n_samples):
             self.noise_variance_ = explained_variance_[n_components:].mean()
         else:
-            self.noise_variance_ = 0.
+            self.noise_variance_ = 0.0
 
         self.n_samples_, self.n_features_ = n_samples, n_features
         self.components_ = components_[:n_components]
         self.n_components_ = n_components
         self.explained_variance_ = explained_variance_[:n_components]
-        self.explained_variance_ratio_ = \
-            explained_variance_ratio_[:n_components]
+        self.explained_variance_ratio_ = explained_variance_ratio_[:n_components]
         self.singular_values_ = singular_values_[:n_components]
 
         return U, S, V
@@ -499,26 +519,30 @@ class PCA(_BasePCA):
         n_samples, n_features = X.shape
 
         if isinstance(n_components, str):
-            raise ValueError("n_components=%r cannot be a string "
-                             "with svd_solver='%s'"
-                             % (n_components, svd_solver))
+            raise ValueError(
+                "n_components=%r cannot be a string "
+                "with svd_solver='%s'" % (n_components, svd_solver)
+            )
         elif not 1 <= n_components <= min(n_samples, n_features):
-            raise ValueError("n_components=%r must be between 1 and "
-                             "min(n_samples, n_features)=%r with "
-                             "svd_solver='%s'"
-                             % (n_components, min(n_samples, n_features),
-                                svd_solver))
+            raise ValueError(
+                "n_components=%r must be between 1 and "
+                "min(n_samples, n_features)=%r with "
+                "svd_solver='%s'"
+                % (n_components, min(n_samples, n_features), svd_solver)
+            )
         elif not isinstance(n_components, (numbers.Integral, np.integer)):
-            raise ValueError("n_components=%r must be of type int "
-                             "when greater than or equal to 1, was of type=%r"
-                             % (n_components, type(n_components)))
-        elif svd_solver == 'arpack' and n_components == min(n_samples,
-                                                            n_features):
-            raise ValueError("n_components=%r must be strictly less than "
-                             "min(n_samples, n_features)=%r with "
-                             "svd_solver='%s'"
-                             % (n_components, min(n_samples, n_features),
-                                svd_solver))
+            raise ValueError(
+                "n_components=%r must be of type int "
+                "when greater than or equal to 1, was of type=%r"
+                % (n_components, type(n_components))
+            )
+        elif svd_solver == "arpack" and n_components == min(n_samples, n_features):
+            raise ValueError(
+                "n_components=%r must be strictly less than "
+                "min(n_samples, n_features)=%r with "
+                "svd_solver='%s'"
+                % (n_components, min(n_samples, n_features), svd_solver)
+            )
 
         random_state = check_random_state(self.random_state)
 
@@ -526,7 +550,7 @@ class PCA(_BasePCA):
         self.mean_ = mt.mean(X, axis=0)
         X -= self.mean_
 
-        if svd_solver == 'arpack':
+        if svd_solver == "arpack":
             # # random init solution, as ARPACK does it internally
             # v0 = random_state.uniform(-1, 1, size=min(X.shape))
             # U, S, V = svds(X, k=n_components, tol=self.tol, v0=v0)
@@ -535,14 +559,17 @@ class PCA(_BasePCA):
             # S = S[::-1]
             # # flip eigenvectors' sign to enforce deterministic output
             # U, V = svd_flip(U[:, ::-1], V[::-1])
-            raise NotImplementedError('Does not support arpack svd_resolver')
+            raise NotImplementedError("Does not support arpack svd_resolver")
 
-        elif svd_solver == 'randomized':
+        elif svd_solver == "randomized":
             # sign flipping is done inside
-            U, S, V = randomized_svd(X, n_components=n_components,
-                                     n_iter=self.iterated_power,
-                                     flip_sign=True,
-                                     random_state=random_state)
+            U, S, V = randomized_svd(
+                X,
+                n_components=n_components,
+                n_iter=self.iterated_power,
+                flip_sign=True,
+                random_state=random_state,
+            )
 
         self.n_samples_, self.n_features_ = n_samples, n_features
         self.components_ = V
@@ -551,29 +578,26 @@ class PCA(_BasePCA):
         # Get variance explained by singular values
         self.explained_variance_ = (S ** 2) / (n_samples - 1)
         total_var = mt.var(X, ddof=1, axis=0)
-        self.explained_variance_ratio_ = \
-            self.explained_variance_ / total_var.sum()
+        self.explained_variance_ratio_ = self.explained_variance_ / total_var.sum()
         self.singular_values_ = S.copy()  # Store the singular values.
 
         if self.n_components_ < min(n_features, n_samples):
-            self.noise_variance_ = (total_var.sum() -
-                                    self.explained_variance_.sum())
+            self.noise_variance_ = total_var.sum() - self.explained_variance_.sum()
             self.noise_variance_ /= min(n_features, n_samples) - n_components
         else:
-            self.noise_variance_ = 0.
+            self.noise_variance_ = 0.0
 
         return U, S, V
 
     def _score_samples(self, X, session=None):
-        check_is_fitted(self, 'mean_')
+        check_is_fitted(self, "mean_")
 
         X = check_array(X)
         Xr = X - self.mean_
         n_features = X.shape[1]
         precision = self.get_precision().fetch(session=session)
-        log_like = -.5 * (Xr * (mt.dot(Xr, precision))).sum(axis=1)
-        log_like -= .5 * (n_features * log(2. * mt.pi) -
-                          fast_logdet(precision))
+        log_like = -0.5 * (Xr * (mt.dot(Xr, precision))).sum(axis=1)
+        log_like -= 0.5 * (n_features * log(2.0 * mt.pi) - fast_logdet(precision))
         return log_like
 
     def score_samples(self, X, session=None):

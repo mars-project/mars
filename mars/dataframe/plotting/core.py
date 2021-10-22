@@ -24,23 +24,22 @@ class PlotAccessor:
     def __init__(self, obj):
         self._obj = obj
 
-    def __call__(self, kind='line', session=None, **kwargs):
+    def __call__(self, kind="line", session=None, **kwargs):
         to_executes = OrderedDict()
-        to_executes['__object__'] = self._obj
+        to_executes["__object__"] = self._obj
 
         for k, v in kwargs.items():
             if isinstance(v, ENTITY_TYPE):
                 to_executes[k] = v
 
         result = dict()
-        executed = ExecutableTuple(
-            to_executes.values()).execute().fetch()
+        executed = ExecutableTuple(to_executes.values()).execute().fetch()
         for p, v in zip(to_executes, executed):
             result[p] = v
 
-        data = result.pop('__object__')
+        data = result.pop("__object__")
         pd_kwargs = kwargs.copy()
-        pd_kwargs['kind'] = kind
+        pd_kwargs["kind"] = kind
         pd_kwargs.update(result)
 
         return data.plot(**pd_kwargs)

@@ -404,18 +404,22 @@ dtype: float64
 """
 
 
-def bin_arithmetic_doc(desc, op_name=None, equiv=None, reverse=None, series_example=None):
+def bin_arithmetic_doc(
+    desc, op_name=None, equiv=None, reverse=None, series_example=None
+):
     def wrapper(fun):
         nonlocal op_name, reverse
         op_name = op_name or fun.__name__
         if reverse is None:
-            reverse = op_name[1:] if op_name.startswith('r') else 'r' + op_name
-        fun.__frame_doc__ = _flex_doc_FRAME.format(desc=desc, op_name=op_name, equiv=equiv,
-                                                   reverse=reverse)
-        fun.__series_doc__ = _flex_doc_SERIES.format(desc=desc, op_name=op_name, equiv=equiv,
-                                                     reverse=reverse)
+            reverse = op_name[1:] if op_name.startswith("r") else "r" + op_name
+        fun.__frame_doc__ = _flex_doc_FRAME.format(
+            desc=desc, op_name=op_name, equiv=equiv, reverse=reverse
+        )
+        fun.__series_doc__ = _flex_doc_SERIES.format(
+            desc=desc, op_name=op_name, equiv=equiv, reverse=reverse
+        )
         if series_example is not None:  # pragma: no branch
-            fun.__series_doc__ += '\n' + series_example.strip()
+            fun.__series_doc__ += "\n" + series_example.strip()
         return fun
 
     return wrapper
@@ -425,10 +429,14 @@ def bin_compare_doc(desc, op_name=None, equiv=None, series_example=None):
     def wrapper(fun):
         nonlocal op_name
         op_name = op_name or fun.__name__
-        fun.__frame_doc__ = _flex_comp_doc_FRAME.format(desc=desc, op_name=op_name, equiv=equiv)
-        fun.__series_doc__ = _flex_comp_doc_SERIES.format(desc=desc, op_name=op_name, equiv=equiv)
+        fun.__frame_doc__ = _flex_comp_doc_FRAME.format(
+            desc=desc, op_name=op_name, equiv=equiv
+        )
+        fun.__series_doc__ = _flex_comp_doc_SERIES.format(
+            desc=desc, op_name=op_name, equiv=equiv
+        )
         if series_example is not None:  # pragma: no branch
-            fun.__series_doc__ += '\n' + series_example.strip()
+            fun.__series_doc__ += "\n" + series_example.strip()
         return fun
 
     return wrapper

@@ -22,7 +22,7 @@ from ..session import SessionAPI
 
 
 class ExtraConfigKey:
-    FAULT_INJECTION_MANAGER_NAME = 'fault_injection_manager_name'
+    FAULT_INJECTION_MANAGER_NAME = "fault_injection_manager_name"
 
 
 class FaultPosition(enum.Enum):
@@ -60,6 +60,7 @@ class AbstractFaultInjectionManager(ABC):
     """
     The abstract base of fault injection manager for test.
     """
+
     name = str(uuid.uuid4())
 
     @abstractmethod
@@ -94,5 +95,4 @@ class AbstractFaultInjectionManager(ABC):
         -------
         """
         session_api = await SessionAPI.create(supervisor_address)
-        await session_api.create_remote_object(
-                session_id, cls.name, cls)
+        await session_api.create_remote_object(session_id, cls.name, cls)

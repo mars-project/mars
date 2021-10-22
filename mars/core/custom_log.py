@@ -25,15 +25,12 @@ from .context import Context
 
 
 class _LogWrapper:
-    def __init__(self,
-                 ctx: Context,
-                 op: OperandType,
-                 log_path: str):
+    def __init__(self, ctx: Context, op: OperandType, log_path: str):
         self.ctx = ctx
         self.op = op
         self.log_path = log_path
 
-        self.file = open(log_path, 'w')
+        self.file = open(log_path, "w")
         self.stdout = sys.stdout
 
         self.raw_stdout = self.stdout
@@ -65,8 +62,8 @@ class _LogWrapper:
         log_path = self.log_path
 
         self.ctx.register_custom_log_path(
-            session_id, tileable_op_key, chunk_op_key,
-            worker_addr, log_path)
+            session_id, tileable_op_key, chunk_op_key, worker_addr, log_path
+        )
 
         self.is_log_path_registered = True
 
@@ -90,9 +87,7 @@ def redirect_custom_log(func: Callable[[Type, Context, OperandType], None]):
     """
 
     @functools.wraps(func)
-    def wrap(cls,
-             ctx: Context,
-             op: OperandType):
+    def wrap(cls, ctx: Context, op: OperandType):
         custom_log_dir = ctx.new_custom_log_dir()
 
         if custom_log_dir is None:
@@ -110,9 +105,7 @@ _tileable_to_log_fetcher = weakref.WeakKeyDictionary()
 
 
 class LogFetcher:
-    def __init__(self,
-                 tileable_op_key: str,
-                 session: SessionType):
+    def __init__(self, tileable_op_key: str, session: SessionType):
         self._tileable_op_key = tileable_op_key
         self._session = session
         self._chunk_op_key_to_result = dict()
@@ -133,9 +126,7 @@ class LogFetcher:
     def offsets(self) -> List[List[int]]:
         return list(self._chunk_op_key_to_offsets.values())
 
-    def fetch(self,
-              offsets: List[int] = None,
-              sizes: List[int] = None):
+    def fetch(self, offsets: List[int] = None, sizes: List[int] = None):
         if offsets is None:
             offsets = self._chunk_op_key_to_offsets
 
@@ -143,14 +134,15 @@ class LogFetcher:
             sizes = 1 * 1024 ** 2  # 1M each time
 
         result: dict = self._session.fetch_tileable_op_logs(
-            self._tileable_op_key, offsets=offsets, sizes=sizes)
+            self._tileable_op_key, offsets=offsets, sizes=sizes
+        )
 
         if result is None:
             return
 
         for chunk_key, chunk_result in result.items():
-            self._chunk_op_key_to_result[chunk_key] = chunk_result['log']
-            self._chunk_op_key_to_offsets[chunk_key] = chunk_result['offset']
+            self._chunk_op_key_to_result[chunk_key] = chunk_result["log"]
+            self._chunk_op_key_to_offsets[chunk_key] = chunk_result["offset"]
 
     def _display(self, representation: bool = True):
         if len(self) == 1:
@@ -159,11 +151,14 @@ class LogFetcher:
 
         sio = io.StringIO()
         for chunk_op_key, content in self._chunk_op_key_to_result.items():
-            sio.write(textwrap.dedent(
-                f"""
+            sio.write(
+                textwrap.dedent(
+                    f"""
                 Chunk op key: {chunk_op_key}
                 Out:
-                {content}"""))
+                {content}"""
+                )
+            )
         result = sio.getvalue()
         return repr(result) if representation else str(result)
 
@@ -175,13 +170,14 @@ class LogFetcher:
 
 
 def fetch(
-        tileables: List[TileableType],
-        session: SessionType,
-        offsets: List[int] = None,
-        sizes: List[int] = None):
+    tileables: List[TileableType],
+    session: SessionType,
+    offsets: List[int] = None,
+    sizes: List[int] = None,
+):
     log_fetchers = []
     for tileable in tileables:
-        tileable = tileable.data if hasattr(tileable, 'data') else tileable
+        tileable = tileable.data if hasattr(tileable, "data") else tileable
 
         if tileable not in _tileable_to_log_fetcher:
             _tileable_to_log_fetcher[tileable] = LogFetcher(tileable.op.key, session)

@@ -24,8 +24,8 @@ from ..array_utils import get_array_module, device
 class TensorBroadcastTo(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.BROADCAST_TO
 
-    _input = KeyField('input')
-    _shape = TupleField('shape')
+    _input = KeyField("input")
+    _shape = TupleField("shape")
 
     def __init__(self, shape=None, **kw):
         super().__init__(_shape=shape, **kw)
@@ -46,25 +46,40 @@ class TensorBroadcastTo(TensorHasInput, TensorOperandMixin):
 
         out_chunks = []
         for c in in_tensor.chunks:
-            chunk_shape = shape[:new_dim] + tuple(s if in_tensor.shape[idx] != 1 else shape[new_dim+idx]
-                                                  for idx, s in enumerate(c.shape))
+            chunk_shape = shape[:new_dim] + tuple(
+                s if in_tensor.shape[idx] != 1 else shape[new_dim + idx]
+                for idx, s in enumerate(c.shape)
+            )
             chunk_idx = (0,) * new_dim + c.index
             chunk_op = op.copy().reset_key()
             chunk_op._shape = chunk_shape
-            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=chunk_idx, order=tensor.order)
+            out_chunk = chunk_op.new_chunk(
+                [c], shape=chunk_shape, index=chunk_idx, order=tensor.order
+            )
             out_chunks.append(out_chunk)
 
-        nsplits = [tuple(c.shape[i] for c in out_chunks if all(idx == 0 for j, idx in enumerate(c.index) if j != i))
-                   for i in range(len(out_chunks[0].shape))]
+        nsplits = [
+            tuple(
+                c.shape[i]
+                for c in out_chunks
+                if all(idx == 0 for j, idx in enumerate(c.index) if j != i)
+            )
+            for i in range(len(out_chunks[0].shape))
+        ]
         new_op = op.copy()
-        return new_op.new_tensors([in_tensor], tensor.shape, order=tensor.order,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            [in_tensor],
+            tensor.shape,
+            order=tensor.order,
+            chunks=out_chunks,
+            nsplits=nsplits,
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         xp = get_array_module(ctx[op.input.key])
         input_data = ctx[op.input.key]
-        device_id = input_data.device.id if hasattr(input_data, 'device') else -1
+        device_id = input_data.device.id if hasattr(input_data, "device") else -1
 
         with device(device_id):
             shape = op.shape
@@ -113,19 +128,24 @@ def broadcast_to(tensor, shape):
     shape = tuple(shape) if isinstance(shape, (list, tuple)) else (shape,)
 
     if any(np.isnan(s) for s in tensor.shape):
-        raise ValueError('input tensor has unknown shape, '
-                         'need to call `.execute()` first')
+        raise ValueError(
+            "input tensor has unknown shape, " "need to call `.execute()` first"
+        )
 
     if tensor.shape == shape:
         return tensor
 
     new_ndim = len(shape) - tensor.ndim
     if new_ndim < 0:
-        raise ValueError('input operand has more dimensions than allowed by the axis remapping')
+        raise ValueError(
+            "input operand has more dimensions than allowed by the axis remapping"
+        )
     if any(o != n for o, n in zip(tensor.shape, shape[new_ndim:]) if o != 1):
-        raise ValueError('operands could not be broadcast together '
-                         f'with remapped shapes [original->remapped]: {tensor.shape} '
-                         f'and requested shape {shape}')
+        raise ValueError(
+            "operands could not be broadcast together "
+            f"with remapped shapes [original->remapped]: {tensor.shape} "
+            f"and requested shape {shape}"
+        )
 
     op = TensorBroadcastTo(shape, dtype=tensor.dtype, sparse=tensor.issparse())
     return op(tensor, shape)

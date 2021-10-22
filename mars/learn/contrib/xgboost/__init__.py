@@ -19,12 +19,16 @@ from .predict import predict
 
 def register_op():
     from .start_tracker import StartTracker
+
     del StartTracker
 
 
 from ..utils import config_mod_getattr as _config_mod_getattr
 
-_config_mod_getattr({
-    'XGBClassifier': '.classifier.XGBClassifier',
-    'XGBRegressor': '.regressor.XGBRegressor',
-}, globals())
+_config_mod_getattr(
+    {
+        "XGBClassifier": ".classifier.XGBClassifier",
+        "XGBRegressor": ".regressor.XGBRegressor",
+    },
+    globals(),
+)

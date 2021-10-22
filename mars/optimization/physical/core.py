@@ -22,8 +22,7 @@ from ...utils import build_fuse_chunk
 class RuntimeOptimizer(ABC):
     engine = None
 
-    def __init__(self,
-                 graph: ChunkGraph):
+    def __init__(self, graph: ChunkGraph):
         self._graph = graph
 
     @classmethod
@@ -44,10 +43,9 @@ class RuntimeOptimizer(ABC):
         Optimize chunk graph.
         """
 
-    def _fuse_nodes(self,
-                    fuses: List[List[ChunkType]],
-                    fuse_cls: OperandType) -> \
-            Tuple[List[List[ChunkType]], List[ChunkType]]:
+    def _fuse_nodes(
+        self, fuses: List[List[ChunkType]], fuse_cls: OperandType
+    ) -> Tuple[List[List[ChunkType]], List[ChunkType]]:
         graph = self._graph
         fused_nodes = []
 
@@ -56,8 +54,8 @@ class RuntimeOptimizer(ABC):
             tail_node = fuse[-1]
 
             fused_chunk = build_fuse_chunk(
-                fuse, fuse_cls,
-                op_kw={'dtype': tail_node.dtype}).data
+                fuse, fuse_cls, op_kw={"dtype": tail_node.dtype}
+            ).data
             graph.add_node(fused_chunk)
             for node in graph.iter_successors(tail_node):
                 graph.add_edge(fused_chunk, node)
@@ -85,10 +83,9 @@ def register_optimizer(optimizer_cls: Type[RuntimeOptimizer]):
     return optimizer_cls
 
 
-def optimize(graph: ChunkGraph,
-             engines: List[str] = None) -> ChunkGraph:
+def optimize(graph: ChunkGraph, engines: List[str] = None) -> ChunkGraph:
     if engines is None:
-        engines = ['numexpr', 'cupy']
+        engines = ["numexpr", "cupy"]
 
     for engine in engines:
         optimizer_cls = _engine_to_optimizers[engine]

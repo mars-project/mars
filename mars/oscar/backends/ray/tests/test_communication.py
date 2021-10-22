@@ -25,18 +25,18 @@ from ....errors import ServerClosed
 from ...communication.base import ChannelType
 from ..communication import ChannelID, Channel, RayServer, RayClient
 
-ray = lazy_import('ray')
-_is_windows: bool = sys.platform.startswith('win')
+ray = lazy_import("ray")
+_is_windows: bool = sys.platform.startswith("win")
 
 
 class ServerActor:
-
     def __new__(cls, *args, **kwargs):
         if not _is_windows:
             try:
-                if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
+                if "COV_CORE_SOURCE" in os.environ:  # pragma: no branch
                     # register coverage hooks on SIGTERM
                     from pytest_cov.embed import cleanup_on_sigterm
+
                     cleanup_on_sigterm()
             except ImportError:  # pragma: no cover
                 pass
@@ -49,7 +49,8 @@ class ServerActor:
     async def start(self):
         RayServer.set_ray_actor_started()
         self.server = await RayServer.create(
-            {'address': self.address, 'handle_channel': self.on_new_channel})
+            {"address": self.address, "handle_channel": self.on_new_channel}
+        )
 
     async def on_new_channel(self, channel: Channel):
         while True:
@@ -74,7 +75,6 @@ class ServerActor:
 
 
 class ServerCallActor(ServerActor):
-
     def __init__(self, address):
         super().__init__(address)
 
@@ -87,15 +87,17 @@ class ServerCallActor(ServerActor):
 @require_ray
 @pytest.mark.asyncio
 async def test_driver_to_actor_channel(ray_start_regular):
-    dest_address = 'ray://test_cluster/0/0'
-    server_actor = ray.remote(ServerActor).options(name=dest_address).remote(dest_address)
+    dest_address = "ray://test_cluster/0/0"
+    server_actor = (
+        ray.remote(ServerActor).options(name=dest_address).remote(dest_address)
+    )
     await server_actor.start.remote()
     client = await RayClient.connect(dest_address, None)
     assert client.channel_type == ChannelType.ray
     for i in range(10):
         await client.send(i)
         assert await client.recv() == i
-    await server_actor.server.remote('stop')
+    await server_actor.server.remote("stop")
     with pytest.raises(ServerClosed):
         await client.send(1)
         await client.recv()
@@ -104,12 +106,26 @@ async def test_driver_to_actor_channel(ray_start_regular):
 @require_ray
 @pytest.mark.asyncio
 async def test_actor_to_actor_channel(ray_start_regular):
-    server1_address, server2_address = 'ray://test_cluster/0/0', 'ray://test_cluster/0/1'
-    server_actor1 = ray.remote(ServerCallActor).options(name=server1_address).remote(server1_address)
-    server_actor2 = ray.remote(ServerCallActor).options(name=server2_address).remote(server2_address)
+    server1_address, server2_address = (
+        "ray://test_cluster/0/0",
+        "ray://test_cluster/0/1",
+    )
+    server_actor1 = (
+        ray.remote(ServerCallActor)
+        .options(name=server1_address)
+        .remote(server1_address)
+    )
+    server_actor2 = (
+        ray.remote(ServerCallActor)
+        .options(name=server2_address)
+        .remote(server2_address)
+    )
     await server_actor1.start.remote()
     await server_actor2.start.remote()
-    for client in [await RayClient.connect(addr, None) for addr in [server1_address, server2_address]]:
+    for client in [
+        await RayClient.connect(addr, None)
+        for addr in [server1_address, server2_address]
+    ]:
         for i in range(10):
             await client.send(i)
             assert await client.recv() == i

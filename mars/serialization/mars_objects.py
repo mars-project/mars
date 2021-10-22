@@ -24,19 +24,20 @@ from .core import Serializer, serialize, deserialize, buffered
 
 
 class SparseNDArraySerializer(Serializer):
-    serializer_name = 'mars.SparseNDArray'
+    serializer_name = "mars.SparseNDArray"
 
     @buffered
     def serialize(self, obj: Any, context: Dict):
         raw_header, raw_buffers = serialize(obj.raw, context)
         header = {
-            'raw_header': raw_header, 'shape': list(obj.shape),
+            "raw_header": raw_header,
+            "shape": list(obj.shape),
         }
         return header, raw_buffers
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
-        raw_csr = deserialize(header['raw_header'], buffers)
-        return SparseNDArray(raw_csr, shape=tuple(header['shape']))
+        raw_csr = deserialize(header["raw_header"], buffers)
+        return SparseNDArray(raw_csr, shape=tuple(header["shape"]))
 
 
 if sps:  # pragma: no branch

@@ -20,7 +20,7 @@ from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 class DataFrameMean(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.MEAN
-    _func_name = 'mean'
+    _func_name = "mean"
 
     @classmethod
     def get_reduction_callable(cls, op):
@@ -28,21 +28,42 @@ class DataFrameMean(DataFrameReductionOperand, DataFrameReductionMixin):
 
         def mean(x):
             return x.sum(skipna=skipna) / x.count()
+
         return mean
 
 
 def mean_series(df, axis=None, skipna=None, level=None, combine_size=None, method=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameMean(axis=axis, skipna=skipna, level=level, combine_size=combine_size,
-                       output_types=[OutputType.scalar], use_inf_as_na=use_inf_as_na,
-                       method=method)
+    op = DataFrameMean(
+        axis=axis,
+        skipna=skipna,
+        level=level,
+        combine_size=combine_size,
+        output_types=[OutputType.scalar],
+        use_inf_as_na=use_inf_as_na,
+        method=method,
+    )
     return op(df)
 
 
-def mean_dataframe(df, axis=None, skipna=None, level=None, numeric_only=None,
-                   combine_size=None, method=None):
+def mean_dataframe(
+    df,
+    axis=None,
+    skipna=None,
+    level=None,
+    numeric_only=None,
+    combine_size=None,
+    method=None,
+):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameMean(axis=axis, skipna=skipna, level=level, numeric_only=numeric_only,
-                       combine_size=combine_size, output_types=[OutputType.series],
-                       use_inf_as_na=use_inf_as_na, method=method)
+    op = DataFrameMean(
+        axis=axis,
+        skipna=skipna,
+        level=level,
+        numeric_only=numeric_only,
+        combine_size=combine_size,
+        output_types=[OutputType.series],
+        use_inf_as_na=use_inf_as_na,
+        method=method,
+    )
     return op(df)

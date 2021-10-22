@@ -20,17 +20,18 @@ from ..... import dataframe as md
 from .....utils import lazy_import
 from .. import gen_tensorflow_dataset, run_tensorflow_script
 
-tf_installed = lazy_import('tensorflow', globals=globals()) is not None
+tf_installed = lazy_import("tensorflow", globals=globals()) is not None
 
 
-@pytest.mark.skipif(not tf_installed, reason='tensorflow not installed')
+@pytest.mark.skipif(not tf_installed, reason="tensorflow not installed")
 def test_mars_dataset(setup_cluster):
     import numpy as np
     import pandas as pd
+
     tf_dataset_ops = lazy_import("tensorflow.python.data.ops.dataset_ops")
 
     # Mars tensor
-    data = mt.random.rand(1000, 32, dtype='f4')
+    data = mt.random.rand(1000, 32, dtype="f4")
     data_verify = data[:10].execute().fetch()
 
     dataset = gen_tensorflow_dataset(data)
@@ -39,8 +40,8 @@ def test_mars_dataset(setup_cluster):
         np.testing.assert_array_equal(data_1batch, data_verify)
 
     # Mars tensors
-    data = mt.random.rand(1000, 32, dtype='f4')
-    labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
+    data = mt.random.rand(1000, 32, dtype="f4")
+    labels = mt.random.randint(0, 2, (1000, 10), dtype="f4")
 
     data_verify = data[:10].execute().fetch()
     labels_verify = labels[:10].execute().fetch()
@@ -71,8 +72,9 @@ def test_mars_dataset(setup_cluster):
     data_verify = data.iloc[:10].execute().fetch().values
     labels_verify = labels.iloc[:10].execute().fetch().values
 
-    dataset = gen_tensorflow_dataset((data, labels), fetch_kwargs={
-        'extra_config': {'check_series_name': False}})
+    dataset = gen_tensorflow_dataset(
+        (data, labels), fetch_kwargs={"extra_config": {"check_series_name": False}}
+    )
     assert isinstance(dataset, tf_dataset_ops.DatasetV2)
     for _, (data_1batch, label_1batch) in enumerate(dataset.repeat().batch(10).take(1)):
         np.testing.assert_array_equal(data_1batch, data_verify)
@@ -83,8 +85,9 @@ def test_mars_dataset(setup_cluster):
 
     label_verify = label[:10].execute().fetch()
 
-    dataset = gen_tensorflow_dataset((data, label), fetch_kwargs={
-        'extra_config': {'check_series_name': False}})
+    dataset = gen_tensorflow_dataset(
+        (data, label), fetch_kwargs={"extra_config": {"check_series_name": False}}
+    )
     assert isinstance(dataset, tf_dataset_ops.DatasetV2)
     for _, (data_1batch, label_1batch) in enumerate(dataset.repeat().batch(10).take(1)):
         np.testing.assert_array_equal(data_1batch, data_verify)
@@ -133,15 +136,21 @@ def test_mars_dataset(setup_cluster):
     assert exec_msg == "Unexpected dataset type: <class 'tuple'>"
 
 
-@pytest.mark.skipif(not tf_installed, reason='tensorflow not installed')
+@pytest.mark.skipif(not tf_installed, reason="tensorflow not installed")
 def test_mars_dataset_script(setup_cluster):
     sess = setup_cluster
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        'tf_dataset.py')
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tf_dataset.py")
 
-    data = mt.random.rand(1000, 32, dtype='f4')
-    labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
+    data = mt.random.rand(1000, 32, dtype="f4")
+    labels = mt.random.randint(0, 2, (1000, 10), dtype="f4")
 
-    assert run_tensorflow_script(
-        path, n_workers=2, data={'feature_data': data, 'labels': labels},
-        command_argv=['multiple'], session=sess).fetch()['status'] == 'ok'
+    assert (
+        run_tensorflow_script(
+            path,
+            n_workers=2,
+            data={"feature_data": data, "labels": labels},
+            command_argv=["multiple"],
+            session=sess,
+        ).fetch()["status"]
+        == "ok"
+    )

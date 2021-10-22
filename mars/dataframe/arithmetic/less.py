@@ -22,8 +22,8 @@ from .docstring import bin_compare_doc
 class DataFrameLess(DataFrameBinopUfunc):
     _op_type_ = OperandDef.LT
 
-    _func_name = 'lt'
-    _rfunc_name = 'gt'
+    _func_name = "lt"
+    _rfunc_name = "gt"
 
     @classproperty
     def _operator(self):
@@ -32,6 +32,7 @@ class DataFrameLess(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorLessThan
+
         return TensorLessThan
 
 
@@ -47,7 +48,7 @@ dtype: bool
 """
 
 
-@bin_compare_doc('Less than', equiv='<', series_example=_lt_example)
-def lt(df, other, axis='columns', level=None):
+@bin_compare_doc("Less than", equiv="<", series_example=_lt_example)
+def lt(df, other, axis="columns", level=None):
     op = DataFrameLess(axis=axis, level=level, lhs=df, rhs=other)
     return op(df, other)

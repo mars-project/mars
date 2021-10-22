@@ -30,9 +30,9 @@ from ..operands import TensorHasInput, TensorOperandMixin
 class TensorDigitize(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.DIGITIZE
 
-    _input = KeyField('input')
-    _bins = AnyField('bins')
-    _right = BoolField('right')
+    _input = KeyField("input")
+    _bins = AnyField("bins")
+    _right = BoolField("right")
 
     def __init__(self, right=False, **kw):
         super().__init__(_right=right, **kw)
@@ -59,7 +59,9 @@ class TensorDigitize(TensorHasInput, TensorOperandMixin):
             self._bins = bins
         else:
             inputs.append(bins)
-        self.dtype = np.digitize([0], np.empty(1, dtype=bins.dtype), right=self._right).dtype
+        self.dtype = np.digitize(
+            [0], np.empty(1, dtype=bins.dtype), right=self._right
+        ).dtype
 
         return self.new_tensor(inputs, x.shape, order=TensorOrder.C_ORDER)
 
@@ -79,18 +81,29 @@ class TensorDigitize(TensorHasInput, TensorOperandMixin):
             input_chunks = [c]
             if len(op.inputs) == 2:
                 input_chunks.append(bins)
-            out_chunk = op.copy().reset_key().new_chunk(input_chunks, shape=c.shape,
-                                                        index=c.index, order=tensor.order)
+            out_chunk = (
+                op.copy()
+                .reset_key()
+                .new_chunk(
+                    input_chunks, shape=c.shape, index=c.index, order=tensor.order
+                )
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
-                                  chunks=out_chunks, nsplits=in_tensor.nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            tensor.shape,
+            order=tensor.order,
+            chunks=out_chunks,
+            nsplits=in_tensor.nsplits,
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         x = inputs[0]
         if len(inputs) > 1:

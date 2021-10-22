@@ -81,9 +81,9 @@ def ptp(a, axis=None, out=None, keepdims=None):
 
     if out is not None:
         if not isinstance(out, Tensor):
-            raise TypeError(f'out should be Tensor object, got {type(out)} instead')
+            raise TypeError(f"out should be Tensor object, got {type(out)} instead")
 
-        check_out_param(out, t, 'same_kind')
+        check_out_param(out, t, "same_kind")
         out.data = t.data
         return out
 

@@ -41,7 +41,8 @@ class SupervisorLocatorActor(mo.Actor):
     async def __post_create__(self):
         backend_cls = get_cluster_backend(self._backend_name)
         self._backend = await backend_cls.create(
-            self._node_role, self._lookup_address, self.address)
+            self._node_role, self._lookup_address, self.address
+        )
         await self._set_supervisors(await self._get_supervisors_from_backend())
 
         self._watch_task = asyncio.create_task(self._watch_supervisor_changes())
@@ -51,7 +52,7 @@ class SupervisorLocatorActor(mo.Actor):
 
     async def _set_supervisors(self, supervisors: List[str]):
         self._supervisors = supervisors
-        self._hash_ring = HashRing(nodes=supervisors, hash_fn='ketama')
+        self._hash_ring = HashRing(nodes=supervisors, hash_fn="ketama")
         await self._watch_notifier.notify()
 
     async def _get_supervisors_from_backend(self, filter_ready: bool = True):
@@ -83,22 +84,26 @@ class SupervisorLocatorActor(mo.Actor):
         elif size == 1:
             return self._hash_ring.get_node(key)
         else:
-            return tuple(it['nodename']
-                         for it in self._hash_ring.range(key, size=size))
+            return tuple(it["nodename"] for it in self._hash_ring.range(key, size=size))
 
     async def watch_supervisors(self, version: Optional[int] = None):
         version = yield self._watch_notifier.watch(version)
         raise mo.Return((version, self._supervisors))
 
-    async def watch_supervisors_by_keys(self, keys: List[str],
-                                        version: Optional[int] = None):
+    async def watch_supervisors_by_keys(
+        self, keys: List[str], version: Optional[int] = None
+    ):
         version = yield self._watch_notifier.watch(version)
         raise mo.Return((version, [self.get_supervisor(k) for k in keys]))
 
     async def wait_all_supervisors_ready(self):
         version = None
         while True:
-            expected_supervisors = await self._get_supervisors_from_backend(filter_ready=False)
-            if self._supervisors and set(self._supervisors) == set(expected_supervisors):
+            expected_supervisors = await self._get_supervisors_from_backend(
+                filter_ready=False
+            )
+            if self._supervisors and set(self._supervisors) == set(
+                expected_supervisors
+            ):
                 break
             version = yield self._watch_notifier.watch(version)

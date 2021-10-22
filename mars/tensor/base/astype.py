@@ -27,14 +27,15 @@ from ..utils import get_order
 class TensorAstype(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.ASTYPE
 
-    _input = KeyField('input')
-    _dtype = DataTypeField('dtype')
-    _order = StringField('order')
-    _casting = StringField('casting')
+    _input = KeyField("input")
+    _dtype = DataTypeField("dtype")
+    _order = StringField("order")
+    _casting = StringField("casting")
 
     def __init__(self, dtype=None, order=None, casting=None, sparse=False, **kw):
-        super().__init__(_dtype=dtype, _order=order, _casting=casting,
-                         sparse=sparse, **kw)
+        super().__init__(
+            _dtype=dtype, _order=order, _casting=casting, sparse=sparse, **kw
+        )
 
     @property
     def dtype(self):
@@ -63,33 +64,40 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
         out_chunks = []
         for c in in_tensor.chunks:
             chunk_op = op.copy().reset_key()
-            chunk = chunk_op.new_chunk([c], shape=c.shape, index=c.index,
-                                       order=out_tensor.order)
+            chunk = chunk_op.new_chunk(
+                [c], shape=c.shape, index=c.index, order=out_tensor.order
+            )
             out_chunks.append(chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, nsplits=in_tensor.nsplits,
-                                  chunks=out_chunks, kws=[out_tensor.params])
+        return new_op.new_tensors(
+            op.inputs,
+            nsplits=in_tensor.nsplits,
+            chunks=out_chunks,
+            kws=[out_tensor.params],
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         (x,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             if op.sparse:
                 ctx[chunk.key] = x.astype(op.dtype)
             else:
                 if xp is np:
-                    ctx[chunk.key] = x.astype(op.dtype, order=op.order,
-                                              casting=op.casting)
+                    ctx[chunk.key] = x.astype(
+                        op.dtype, order=op.order, casting=op.casting
+                    )
                 else:  # pragma: no cover
                     # cupy does not support casting
                     ctx[chunk.key] = x.astype(op.dtype, order=op.order)
 
 
-def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):
+def _astype(tensor, dtype, order="K", casting="unsafe", copy=True):
     """
     Copy of the tensor, cast to a specified type.
 
@@ -156,8 +164,12 @@ def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):
     if tensor.dtype == dtype and tensor.order == tensor_order:
         return tensor if not copy else tensor.copy(order=order)
     elif not np.can_cast(tensor.dtype, dtype, casting=casting):
-        raise TypeError(f'Cannot cast array from {tensor.dtype!r} to {dtype!r} '
-                        f'according to the rule {casting}')
+        raise TypeError(
+            f"Cannot cast array from {tensor.dtype!r} to {dtype!r} "
+            f"according to the rule {casting}"
+        )
 
-    op = TensorAstype(dtype=dtype, order=order, casting=casting, sparse=tensor.issparse())
+    op = TensorAstype(
+        dtype=dtype, order=order, casting=casting, sparse=tensor.issparse()
+    )
     return op(tensor, order=tensor_order)

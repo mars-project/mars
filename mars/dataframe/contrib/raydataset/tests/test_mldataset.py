@@ -25,8 +25,8 @@ from .....utils import lazy_import
 from ....contrib import raydataset as mdd
 
 
-ray = lazy_import('ray')
-ml_dataset = lazy_import('ray.util.data')
+ray = lazy_import("ray")
+ml_dataset = lazy_import("ray.util.data")
 try:
     import xgboost_ray
 except ImportError:  # pragma: no cover
@@ -37,12 +37,14 @@ except ImportError:  # pragma: no cover
 async def create_cluster(request):
     param = getattr(request, "param", {})
     ray_config = _load_config()
-    ray_config.update(param.get('config', {}))
-    client = await new_cluster('test_cluster',
-                               worker_num=4,
-                               worker_cpu=2,
-                               worker_mem=1 * 1024 ** 3,
-                               config=ray_config)
+    ray_config.update(param.get("config", {}))
+    client = await new_cluster(
+        "test_cluster",
+        worker_num=4,
+        worker_cpu=2,
+        worker_mem=1 * 1024 ** 3,
+        config=ray_config,
+    )
     async with client:
         yield client
 
@@ -51,6 +53,7 @@ async def create_cluster(request):
 @pytest.mark.asyncio
 async def test_dataset_related_classes(ray_large_cluster):
     from ..mldataset import ChunkRefBatch
+
     # in order to pass checks
     value1 = np.random.rand(10, 10)
     value2 = np.random.rand(10, 10)
@@ -58,8 +61,7 @@ async def test_dataset_related_classes(ray_large_cluster):
     df2 = pd.DataFrame(value2)
     if ray:
         obj_ref1, obj_ref2 = ray.put(df1), ray.put(df2)
-        batch = ChunkRefBatch(shard_id=0,
-                              obj_refs=[obj_ref1, obj_ref2])
+        batch = ChunkRefBatch(shard_id=0, obj_refs=[obj_ref1, obj_ref2])
         assert batch.shard_id == 0
         # the first data in batch
         batch = iter(batch)
@@ -69,11 +71,10 @@ async def test_dataset_related_classes(ray_large_cluster):
 
 @require_ray
 @pytest.mark.asyncio
-@pytest.mark.parametrize('test_option', [[5, 5], [5, 4],
-                                         [None, None]])
+@pytest.mark.parametrize("test_option", [[5, 5], [5, 4], [None, None]])
 async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster, test_option):
     assert create_cluster.session
-    session = new_session(address=create_cluster.address, backend='oscar', default=True)
+    session = new_session(address=create_cluster.address, backend="oscar", default=True)
     with session:
         value = np.random.rand(10, 10)
         chunk_size, num_shards = test_option
@@ -86,13 +87,13 @@ async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster, test_
 
 @require_ray
 @pytest.mark.asyncio
-@pytest.mark.skipif(xgboost_ray is None, reason='xgboost_ray not installed')
+@pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
 async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, train
     from sklearn.datasets import load_breast_cancer
 
     assert create_cluster.session
-    session = new_session(address=create_cluster.address, backend='oscar', default=True)
+    session = new_session(address=create_cluster.address, backend="oscar", default=True)
     with session:
         train_x, train_y = load_breast_cancer(return_X_y=True, as_frame=True)
         pd_df = pd.concat([train_x, train_y], axis=1)
@@ -116,11 +117,10 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
             evals=[(train_set, "train")],
             verbose_eval=False,
             ray_params=RayParams(
-                num_actors=num_shards,  # Number of remote actors
-                cpus_per_actor=1)
-            )
+                num_actors=num_shards, cpus_per_actor=1  # Number of remote actors
+            ),
+        )
         bst.save_model("model.xgb")
         assert os.path.exists("model.xgb")
         os.remove("model.xgb")
-        print("Final training error: {:.4f}".format(
-            evals_result["train"]["error"][-1]))
+        print("Final training error: {:.4f}".format(evals_result["train"]["error"][-1]))

@@ -43,14 +43,15 @@ def _permutation_on_axis(ar, axis, rs, xp):
 class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.PERMUTATION
 
-    _input = KeyField('input')
-    _axis = Int32Field('axis')
+    _input = KeyField("input")
+    _axis = Int32Field("axis")
 
-    _reduce_size = Int32Field('reduce_size')
+    _reduce_size = Int32Field("reduce_size")
 
     def __init__(self, seed=None, state=None, axis=None, reduce_size=None, **kw):
-        super().__init__(_reduce_size=reduce_size, _seed=seed, _state=state,
-                         _axis=axis, **kw)
+        super().__init__(
+            _reduce_size=reduce_size, _seed=seed, _state=state, _axis=axis, **kw
+        )
 
     @property
     def input(self):
@@ -82,11 +83,15 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
             chunk_op._state = None
             chunk_op._seed = gen_random_seeds(1, state)[0]
             c = op.input.chunks[0]
-            chunk = chunk_op.new_chunk([c], shape=c.shape,
-                                       index=c.index, order=c.order)
+            chunk = chunk_op.new_chunk([c], shape=c.shape, index=c.index, order=c.order)
             new_op = op.copy()
-            return new_op.new_tensors(op.inputs, shape=out_tensor.shape, order=out_tensor.order,
-                                      nsplits=op.input.nsplits, chunks=[chunk])
+            return new_op.new_tensors(
+                op.inputs,
+                shape=out_tensor.shape,
+                order=out_tensor.order,
+                nsplits=op.input.nsplits,
+                chunks=[chunk],
+            )
 
         chunk_size = in_tensor.chunk_shape[op.axis]
         map_seeds = gen_random_seeds(chunk_size, state)
@@ -94,7 +99,7 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
         reduce_chunks = []
         if in_tensor.ndim > 1:
             cs = in_tensor.chunk_shape
-            left_chunk_shape = cs[:op.axis] + cs[op.axis + 1:]
+            left_chunk_shape = cs[: op.axis] + cs[op.axis + 1 :]
             idx_iter = itertools.product(*[range(s) for s in left_chunk_shape])
         else:
             idx_iter = [()]
@@ -104,34 +109,56 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
                 in_idx = list(idx)
                 in_idx.insert(op.axis, j)
                 c = in_tensor.cix[tuple(in_idx)]
-                chunk_op = TensorPermutation(stage=OperandStage.map, seed=map_seeds[c.index[op.axis]],
-                                             axis=op.axis, reduce_size=chunk_size, dtype=c.dtype, gpu=c.op.gpu)
-                map_chunk = chunk_op.new_chunk([c], shape=c.shape, index=c.index, order=out_tensor.order)
+                chunk_op = TensorPermutation(
+                    stage=OperandStage.map,
+                    seed=map_seeds[c.index[op.axis]],
+                    axis=op.axis,
+                    reduce_size=chunk_size,
+                    dtype=c.dtype,
+                    gpu=c.op.gpu,
+                )
+                map_chunk = chunk_op.new_chunk(
+                    [c], shape=c.shape, index=c.index, order=out_tensor.order
+                )
                 map_chunks.append(map_chunk)
 
-            proxy_chunk = TensorShuffleProxy(dtype=out_tensor.dtype, _tensor_keys=[in_tensor.key])\
-                .new_chunk(map_chunks, shape=())
+            proxy_chunk = TensorShuffleProxy(
+                dtype=out_tensor.dtype, _tensor_keys=[in_tensor.key]
+            ).new_chunk(map_chunks, shape=())
 
             for c in map_chunks:
-                chunk_op = TensorPermutation(stage=OperandStage.reduce,
-                                             seed=reduce_seeds[c.index[op.axis]], axis=op.axis)
+                chunk_op = TensorPermutation(
+                    stage=OperandStage.reduce,
+                    seed=reduce_seeds[c.index[op.axis]],
+                    axis=op.axis,
+                )
                 chunk_shape = list(c.shape)
                 chunk_shape[op.axis] = np.nan
-                reduce_chunk = chunk_op.new_chunk([proxy_chunk], shape=tuple(chunk_shape),
-                                                  order=out_tensor.order, index=c.index,
-                                                  dtype=out_tensor.dtype)
+                reduce_chunk = chunk_op.new_chunk(
+                    [proxy_chunk],
+                    shape=tuple(chunk_shape),
+                    order=out_tensor.order,
+                    index=c.index,
+                    dtype=out_tensor.dtype,
+                )
                 reduce_chunks.append(reduce_chunk)
 
         new_op = op.copy()
         nsplits = list(in_tensor.nsplits)
-        nsplits[op.axis] = [np.nan, ] * len(nsplits[op.axis])
-        return new_op.new_tensors(op.inputs, out_tensor.shape, order=out_tensor.order,
-                                  chunks=reduce_chunks, nsplits=nsplits)
+        nsplits[op.axis] = [np.nan] * len(nsplits[op.axis])
+        return new_op.new_tensors(
+            op.inputs,
+            out_tensor.shape,
+            order=out_tensor.order,
+            chunks=reduce_chunks,
+            nsplits=nsplits,
+        )
 
     @classmethod
     def _execute_map(cls, ctx, op):
         (x,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         out_chunk = op.outputs[0]
         reduce_size = op.reduce_size
@@ -139,8 +166,11 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
             rs = xp.random.RandomState(op.seed)
             to_reduce_idxes = rs.randint(reduce_size, size=x.shape[op.axis])
             for to_reduce_idx in range(reduce_size):
-                reduce_idx = out_chunk.index[:op.axis] + (to_reduce_idx,) + \
-                             out_chunk.index[op.axis + 1:]
+                reduce_idx = (
+                    out_chunk.index[: op.axis]
+                    + (to_reduce_idx,)
+                    + out_chunk.index[op.axis + 1 :]
+                )
                 slc = (slice(None),) * op.axis + (to_reduce_idxes == to_reduce_idx,)
                 ctx[out_chunk.key, reduce_idx] = x[slc]
 
@@ -166,7 +196,8 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
             cls._execute_reduce(ctx, op)
         else:
             (x,), device_id, xp = as_same_device(
-                [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+                [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+            )
 
             with device(device_id):
                 rs = xp.random.RandomState(op.seed)
@@ -216,10 +247,9 @@ def permutation(random_state, x, axis=0, chunk_size=None):
     else:
         x = astensor(x, chunk_size=chunk_size)
         if x.ndim < 1:
-            raise np.AxisError('x must be an integer or at least 1-dimensional')
+            raise np.AxisError("x must be an integer or at least 1-dimensional")
 
     axis = validate_axis(x.ndim, axis)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
-    op = TensorPermutation(seed=seed,
-                           axis=axis, dtype=x.dtype, gpu=x.op.gpu)
+    op = TensorPermutation(seed=seed, axis=axis, dtype=x.dtype, gpu=x.op.gpu)
     return op(x)

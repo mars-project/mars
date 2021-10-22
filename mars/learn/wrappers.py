@@ -19,7 +19,7 @@ from sklearn.base import (
     MetaEstimatorMixin,
     BaseEstimator as SklearnBaseEstimator,
     RegressorMixin as SklearnRegressorMixin,
-    ClassifierMixin as SklearnClassifierMixin
+    ClassifierMixin as SklearnClassifierMixin,
 )
 
 from .. import remote as mr
@@ -134,21 +134,26 @@ class ParallelPostFit(BaseEstimator, MetaEstimatorMixin):
            [0.99527114, 0.00472886]])
     """
 
-    def __init__(self,
-                 estimator: SklearnBaseEstimator = None,
-                 scoring: Union[str, Callable] = None):
+    def __init__(
+        self,
+        estimator: SklearnBaseEstimator = None,
+        scoring: Union[str, Callable] = None,
+    ):
         self.estimator = estimator
         self.scoring = scoring
 
     def _make_fit(self, method):
         def _fit(X, y=None, **kwargs):
-            result = mr.spawn(
-                _wrap, args=(self.estimator, method, X, y),
-                kwargs=kwargs).execute().fetch()
+            result = (
+                mr.spawn(_wrap, args=(self.estimator, method, X, y), kwargs=kwargs)
+                .execute()
+                .fetch()
+            )
 
             copy_learned_attributes(result, self)
             copy_learned_attributes(result, self.estimator)
             return self
+
         return _fit
 
     def fit(self, X, y=None, **kwargs):
@@ -165,10 +170,10 @@ class ParallelPostFit(BaseEstimator, MetaEstimatorMixin):
         -------
         self : object
         """
-        return self._make_fit('fit')(X, y=y, **kwargs)
+        return self._make_fit("fit")(X, y=y, **kwargs)
 
     def partial_fit(self, X, y=None, **kwargs):  # pragma: no cover
-        return self._make_fit('partial_fit')(X, y=y, **kwargs)
+        return self._make_fit("partial_fit")(X, y=y, **kwargs)
 
     def _check_method(self, method):
         """
@@ -205,10 +210,9 @@ class ParallelPostFit(BaseEstimator, MetaEstimatorMixin):
         -------
         transformed : array-like
         """
-        self._check_method('transform')
+        self._check_method("transform")
         X = check_array(X)
-        dtype = self.estimator.transform(
-            np.zeros((1, X.shape[1]), dtype=X.dtype)).dtype
+        dtype = self.estimator.transform(np.zeros((1, X.shape[1]), dtype=X.dtype)).dtype
         return X.map_chunk(self.estimator.transform, dtype=dtype)
 
     def score(self, X, y):
@@ -237,11 +241,15 @@ class ParallelPostFit(BaseEstimator, MetaEstimatorMixin):
 
         if not scoring:
             if type(self.estimator).score in (
-                    RegressorMixin.score, SklearnRegressorMixin.score):  # pragma: no cover
-                scoring = 'r2'
+                RegressorMixin.score,
+                SklearnRegressorMixin.score,
+            ):  # pragma: no cover
+                scoring = "r2"
             elif type(self.estimator).score in (
-                    ClassifierMixin.score, SklearnClassifierMixin.score):
-                scoring = 'accuracy'
+                ClassifierMixin.score,
+                SklearnClassifierMixin.score,
+            ):
+                scoring = "accuracy"
         else:  # pragma: no cover
             scoring = self.scoring
 
@@ -268,10 +276,10 @@ class ParallelPostFit(BaseEstimator, MetaEstimatorMixin):
         y : array-like
         """
 
-        self._check_method('predict')
+        self._check_method("predict")
         X = check_array(X)
 
-        result = X.map_chunk(self.estimator.predict, dtype='int', shape=X.shape[:1])
+        result = X.map_chunk(self.estimator.predict, dtype="int", shape=X.shape[:1])
         if execute:
             result.execute()
         return result
@@ -295,10 +303,13 @@ class ParallelPostFit(BaseEstimator, MetaEstimatorMixin):
         -------
         y : array-like
         """
-        self._check_method('predict_proba')
+        self._check_method("predict_proba")
         X = check_array(X)
-        result = X.map_chunk(self.estimator.predict_proba, dtype='float',
-                             shape=(X.shape[0], len(self.estimator.classes_)))
+        result = X.map_chunk(
+            self.estimator.predict_proba,
+            dtype="float",
+            shape=(X.shape[0], len(self.estimator.classes_)),
+        )
         if execute:
             result.execute()
         return result
@@ -323,7 +334,7 @@ class ParallelPostFit(BaseEstimator, MetaEstimatorMixin):
         y : array-like
         """
 
-        self._check_method('predict_log_proba')
+        self._check_method("predict_log_proba")
         result = mt.log(self.predict_proba(X, execute=False))
         if execute:
             result.execute()

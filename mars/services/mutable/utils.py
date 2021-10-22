@@ -58,14 +58,23 @@ def compute_output_of_indexing(tensor, tensor_index):
     tensor_index = process_index(tensor.ndim, tensor_index)
     output_shape = calc_shape(tensor.shape, tensor_index)
 
-    index_tensor_op = TensorIndex(dtype=tensor.dtype, sparse=False,
-                                  indexes=list(tensor_index))
+    index_tensor_op = TensorIndex(
+        dtype=tensor.dtype, sparse=False, indexes=list(tensor_index)
+    )
     index_tensor = tile(index_tensor_op.new_tensor([tensor], shape=tuple(output_shape)))
     output_chunks = index_tensor.chunks
 
-    nsplits_acc = [np.cumsum((0,) + tuple(c.shape[i] for c in output_chunks
-            if all(idx == 0 for j, idx in enumerate(c.index) if j != i)))
-        for i in range(len(output_chunks[0].shape))]
+    nsplits_acc = [
+        np.cumsum(
+            (0,)
+            + tuple(
+                c.shape[i]
+                for c in output_chunks
+                if all(idx == 0 for j, idx in enumerate(c.index) if j != i)
+            )
+        )
+        for i in range(len(output_chunks[0].shape))
+    ]
     return output_shape, output_chunks, nsplits_acc
 
 
@@ -88,16 +97,23 @@ def setitem_on_chunk_to_records(nsplits_acc, output_chunk, value, ts, is_scalar)
     if is_scalar:
         chunk_value = value
     else:
-        chunk_value_slice = tuple(slice(nsplits_acc[i][output_chunk.index[i]],
-                                        nsplits_acc[i][output_chunk.index[i] + 1])
-                                  for i in range(len(output_chunk.index)))
+        chunk_value_slice = tuple(
+            slice(
+                nsplits_acc[i][output_chunk.index[i]],
+                nsplits_acc[i][output_chunk.index[i] + 1],
+            )
+            for i in range(len(output_chunk.index))
+        )
         chunk_value = value[chunk_value_slice]
 
     records = []
-    for chunk_idx, value_idx in zip(itertools.product(*input_indices),
-                                    itertools.product(*value_indices)):
+    for chunk_idx, value_idx in zip(
+        itertools.product(*input_indices), itertools.product(*value_indices)
+    ):
         new_value = chunk_value if is_scalar else chunk_value[value_idx]
-        index_in_chunk = np.ravel_multi_index(chunk_idx, output_chunk.op.inputs[0].shape)
+        index_in_chunk = np.ravel_multi_index(
+            chunk_idx, output_chunk.op.inputs[0].shape
+        )
         records.append((index_in_chunk, new_value, ts))
     return records
 
@@ -110,19 +126,23 @@ def setitem_to_records(tensor, tensor_index, value, timestamp):
     -------
         dict, a dict of chunk index to records in that chunk.
     """
-    output_shape, output_chunks, nsplits_acc = \
-        compute_output_of_indexing(tensor, tensor_index)
+    output_shape, output_chunks, nsplits_acc = compute_output_of_indexing(
+        tensor, tensor_index
+    )
 
-    is_scalar = np.isscalar(value) or \
-        isinstance(value, tuple) and tensor.dtype.fields is not None
+    is_scalar = (
+        np.isscalar(value)
+        or isinstance(value, tuple)
+        and tensor.dtype.fields is not None
+    )
     if not is_scalar:
         value = np.broadcast_to(value, output_shape).astype(tensor.dtype)
 
     records = dict()
     for output_chunk in output_chunks:
         records_in_chunk = setitem_on_chunk_to_records(
-            nsplits_acc, output_chunk,
-            value, timestamp, is_scalar=is_scalar)
+            nsplits_acc, output_chunk, value, timestamp, is_scalar=is_scalar
+        )
         records[output_chunk.op.inputs[0].index] = records_in_chunk
     return records
 
@@ -145,15 +165,21 @@ def getitem_on_chunk_to_records(nsplits_acc, output_chunk):
     """
     input_indices, value_indices = indexing_to_chunk_indices(output_chunk)
 
-    chunk_value_slice = \
-        tuple(slice(nsplits_acc[i][output_chunk.index[i]],
-                    nsplits_acc[i][output_chunk.index[i] + 1])
-            for i in range(len(output_chunk.index)))
+    chunk_value_slice = tuple(
+        slice(
+            nsplits_acc[i][output_chunk.index[i]],
+            nsplits_acc[i][output_chunk.index[i] + 1],
+        )
+        for i in range(len(output_chunk.index))
+    )
 
     records = []
-    for chunk_idx, value_idx in zip(itertools.product(*input_indices),
-                                    itertools.product(*value_indices)):
-        index_in_chunk = np.ravel_multi_index(chunk_idx, output_chunk.op.inputs[0].shape)
+    for chunk_idx, value_idx in zip(
+        itertools.product(*input_indices), itertools.product(*value_indices)
+    ):
+        index_in_chunk = np.ravel_multi_index(
+            chunk_idx, output_chunk.op.inputs[0].shape
+        )
         records.append((index_in_chunk, value_idx))
     return records, output_chunk.shape, chunk_value_slice
 
@@ -167,8 +193,9 @@ def getitem_to_records(tensor, tensor_index):
         records and output_chunk dict, records is a dict of chunk index to records
         in that chunk.
     """
-    output_shape, output_chunks, nsplits_acc = \
-        compute_output_of_indexing(tensor, tensor_index)
+    output_shape, output_chunks, nsplits_acc = compute_output_of_indexing(
+        tensor, tensor_index
+    )
 
     records = dict()
     for output_chunk in output_chunks:

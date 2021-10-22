@@ -33,10 +33,10 @@ from ..core import TensorOrder
 class TensorTensorDot(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.TENSORDOT
 
-    _a = KeyField('a')
-    _b = KeyField('b')
-    _a_axes = TupleField('a_axes', FieldTypes.int32)
-    _b_axes = TupleField('b_axes', FieldTypes.int32)
+    _a = KeyField("a")
+    _b = KeyField("b")
+    _a_axes = TupleField("a_axes", FieldTypes.int32)
+    _b_axes = TupleField("b_axes", FieldTypes.int32)
 
     def __init__(self, a_axes=None, b_axes=None, **kw):
         super().__init__(_a_axes=a_axes, _b_axes=b_axes, **kw)
@@ -63,8 +63,9 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
         self._b = self._inputs[1]
 
     def __call__(self, a, b):
-        shape = tuple(s for i, s in enumerate(a.shape) if i not in set(self._a_axes)) + \
-            tuple(s for i, s in enumerate(b.shape) if i not in set(self._b_axes))
+        shape = tuple(
+            s for i, s in enumerate(a.shape) if i not in set(self._a_axes)
+        ) + tuple(s for i, s in enumerate(b.shape) if i not in set(self._b_axes))
         return self.new_tensor([a, b], shape, order=TensorOrder.C_ORDER)
 
     @classmethod
@@ -95,13 +96,20 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
         a, b = yield from unify_chunks((a, a_ax), (b, b_ax))
         out = op.outputs[0]
 
-        a_output_indexes = [range(len(a.nsplits[i])) for i in range(a.ndim) if i not in a_axes]
-        b_output_indexes = [range(len(b.nsplits[i])) for i in range(b.ndim) if i not in b_axes]
-        output_axes = [(0, i) for i in range(a.ndim) if i not in a_axes] + \
-                      [(1, i) for i in range(b.ndim) if i not in b_axes]
+        a_output_indexes = [
+            range(len(a.nsplits[i])) for i in range(a.ndim) if i not in a_axes
+        ]
+        b_output_indexes = [
+            range(len(b.nsplits[i])) for i in range(b.ndim) if i not in b_axes
+        ]
+        output_axes = [(0, i) for i in range(a.ndim) if i not in a_axes] + [
+            (1, i) for i in range(b.ndim) if i not in b_axes
+        ]
 
         out_chunks = []
-        for out_idx in itertools.product(*itertools.chain(a_output_indexes, b_output_indexes)):
+        for out_idx in itertools.product(
+            *itertools.chain(a_output_indexes, b_output_indexes)
+        ):
             a_indexes = [None] * a.ndim
             b_indexes = [None] * b.ndim
             tensor_shape = []
@@ -113,7 +121,9 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
             tensor_shape = tuple(tensor_shape)
 
             tensordot_chunks = []
-            for contract_indexes in itertools.product(*[range(len(a.nsplits[ax])) for ax in a_axes]):
+            for contract_indexes in itertools.product(
+                *[range(len(a.nsplits[ax])) for ax in a_axes]
+            ):
                 a_indices, b_indices = list(a_indexes), list(b_indexes)
                 for a_axis, contract_index in zip(a_axes, contract_indexes):
                     a_indices[a_axis] = contract_index
@@ -123,27 +133,33 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
                 tensordot_chunk_op = op.copy().reset_key()
                 tensordot_chunk = tensordot_chunk_op.new_chunk(
                     [a.cix[tuple(a_indices)], b.cix[tuple(b_indices)]],
-                    shape=tensor_shape, order=out.order)
+                    shape=tensor_shape,
+                    order=out.order,
+                )
                 tensordot_chunks.append(tensordot_chunk)
 
             if len(tensordot_chunks) == 1:
                 c = tensordot_chunks[0]
                 chunk_op = c.op.copy()
-                chunk = chunk_op.new_chunk(c.inputs, shape=c.shape, index=out_idx, order=out.order)
+                chunk = chunk_op.new_chunk(
+                    c.inputs, shape=c.shape, index=out_idx, order=out.order
+                )
             else:
-                chunk = chunk_tree_add(op.dtype, tensordot_chunks, out_idx, tensor_shape, sparse=op.sparse)
+                chunk = chunk_tree_add(
+                    op.dtype, tensordot_chunks, out_idx, tensor_shape, sparse=op.sparse
+                )
             out_chunks.append(chunk)
 
         get_nsplits = lambda t_idx, i: (a, b)[t_idx].nsplits[i]
         nsplits = [get_nsplits(*it) for it in output_axes]
         new_op = op.copy()
-        return new_op.new_tensors([a, b], out.shape,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors([a, b], out.shape, chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
     def execute(cls, ctx, op):
         (a, b), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         axes = op.a_axes, op.b_axes
         with device(device_id):
@@ -304,11 +320,20 @@ def tensordot(a, b, axes=2, sparse=None):
         b_axes = (b_axes,)
     b_axes = tuple(axis if axis >= 0 else b.ndim + axis for axis in b_axes)
 
-    if a.shape and b.shape and \
-            not np.array_equal(np.array(a.shape)[list(a_axes)], np.array(b.shape)[list(b_axes)]):
-        raise ValueError('shape-mismatch for sum')
+    if (
+        a.shape
+        and b.shape
+        and not np.array_equal(
+            np.array(a.shape)[list(a_axes)], np.array(b.shape)[list(b_axes)]
+        )
+    ):
+        raise ValueError("shape-mismatch for sum")
 
     sparse = sparse if sparse is not None else a.issparse() and b.issparse()
-    op = TensorTensorDot(a_axes=a_axes, b_axes=b_axes, dtype=np.promote_types(a.dtype, b.dtype),
-                         sparse=sparse)
+    op = TensorTensorDot(
+        a_axes=a_axes,
+        b_axes=b_axes,
+        dtype=np.promote_types(a.dtype, b.dtype),
+        sparse=sparse,
+    )
     return op(a, b)

@@ -21,40 +21,48 @@ import pytest
 from ....config import options
 from ... import mod, stack, hstack
 from ...datasource import tensor, arange, zeros
-from .. import take, compress, extract, choose, \
-    unravel_index, nonzero, flatnonzero, fill_diagonal
+from .. import (
+    take,
+    compress,
+    extract,
+    choose,
+    unravel_index,
+    nonzero,
+    flatnonzero,
+    fill_diagonal,
+)
 
 
 def test_bool_indexing_execution(setup):
     raw = np.random.random((11, 8, 12, 14))
     arr = tensor(raw, chunk_size=6)
 
-    index = arr < .5
+    index = arr < 0.5
     arr2 = arr[index]
     # size_res = self.executor.execute_tensor(arr2, mock=True)
     res = arr2.execute().fetch()
 
     # assert sum(s[0] for s in size_res) == arr.nbytes
-    np.testing.assert_array_equal(np.sort(res), np.sort(raw[raw < .5]))
+    np.testing.assert_array_equal(np.sort(res), np.sort(raw[raw < 0.5]))
 
-    index2 = tensor(raw[:, :, 0, 0], chunk_size=3) < .5
+    index2 = tensor(raw[:, :, 0, 0], chunk_size=3) < 0.5
     arr3 = arr[index2]
     res = arr3.execute().fetch()
 
-    expected = raw[raw[:, :, 0, 0] < .5]
+    expected = raw[raw[:, :, 0, 0] < 0.5]
     assert sum(it.size for it in res) == expected.size
     assert res.shape == expected.shape
 
     raw = np.asfortranarray(np.random.random((11, 8, 12, 14)))
     arr = tensor(raw, chunk_size=3)
 
-    index = tensor(raw[:, :, 0, 0], chunk_size=3) < .5
+    index = tensor(raw[:, :, 0, 0], chunk_size=3) < 0.5
     arr2 = arr[index]
     res = arr2.execute().fetch()
-    expected = raw[raw[:, :, 0, 0] < .5].copy('A')
+    expected = raw[raw[:, :, 0, 0] < 0.5].copy("A")
 
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
 
 def test_fancy_indexing_numpy_execution(setup):
@@ -208,10 +216,10 @@ def test_fancy_indexing_tensor_execution(setup):
     arr11 = arr[index]
 
     res = arr11.execute().fetch()
-    expected = raw[raw_index].copy('A')
+    expected = raw[raw_index].copy("A")
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
 
 def test_slice_execution(setup):
@@ -227,7 +235,7 @@ def test_slice_execution(setup):
     res = arr3.execute().fetch()
     np.testing.assert_equal(res, raw[-4, 2:])
 
-    raw = sps.random(12, 14, density=.1)
+    raw = sps.random(12, 14, density=0.1)
     arr = tensor(raw, chunk_size=6)
 
     arr2 = arr[-1:-9:-2, 12:-11:-4]
@@ -241,19 +249,19 @@ def test_slice_execution(setup):
 
     arr2 = arr[2:9:2, 3:7, -1:-9:-2, 12:-11:-4]
     res = arr2.execute().fetch()
-    expected = raw[2:9:2, 3:7, -1:-9:-2, 12:-11:-4].copy('A')
+    expected = raw[2:9:2, 3:7, -1:-9:-2, 12:-11:-4].copy("A")
 
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
     arr3 = arr[0:13, :, None]
     res = arr3.execute().fetch()
-    expected = raw[0:13, :, None].copy('A')
+    expected = raw[0:13, :, None].copy("A")
 
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
 
 def test_mixed_indexing_execution(setup):
@@ -261,8 +269,8 @@ def test_mixed_indexing_execution(setup):
     raw = rs.random((11, 8, 12, 13))
     arr = tensor(raw, chunk_size=6)
 
-    raw_cond = raw[0, :, 0, 0] < .5
-    cond = tensor(raw[0, :, 0, 0], chunk_size=3) < .5
+    raw_cond = raw[0, :, 0, 0] < 0.5
+    cond = tensor(raw[0, :, 0, 0], chunk_size=3) < 0.5
     arr2 = arr[10::-2, cond, None, ..., :5]
     # size_res = self.executor.execute_tensor(arr2, mock=True)
     res = arr2.execute().fetch()
@@ -273,8 +281,8 @@ def test_mixed_indexing_execution(setup):
     np.testing.assert_array_equal(res, raw[10::-2, raw_cond, None, ..., :5])
 
     b_raw = np.random.random(8)
-    raw_cond = b_raw < .5
-    conds = [raw_cond, tensor(b_raw, chunk_size=2) < .5]
+    raw_cond = b_raw < 0.5
+    conds = [raw_cond, tensor(b_raw, chunk_size=2) < 0.5]
     for cond in conds:
         arr3 = arr[-2::-3, cond, ...]
         res = arr3.execute().fetch()
@@ -312,8 +320,8 @@ def test_setitem_execution(setup):
 
     raw[idx] = 20
     np.testing.assert_array_equal(res, raw)
-    assert res.flags['C_CONTIGUOUS'] == raw.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == raw.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == raw.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == raw.flags["F_CONTIGUOUS"]
 
     raw = data
     shape = raw[idx].shape
@@ -321,7 +329,7 @@ def test_setitem_execution(setup):
     arr2 = tensor(raw.copy(), chunk_size=6)
     raw = raw.copy()
 
-    replace = rs.randint(10, 20, size=shape[:-1] + (1,)).astype('f4')
+    replace = rs.randint(10, 20, size=shape[:-1] + (1,)).astype("f4")
     arr2[idx] = tensor(replace, chunk_size=7)
     res = arr2.execute().fetch()
 
@@ -329,8 +337,8 @@ def test_setitem_execution(setup):
     np.testing.assert_array_equal(res, raw)
 
     raw = np.asfortranarray(np.random.randint(0, 10, size=(11, 8, 12, 13)))
-    arr = tensor(raw.copy('A'), chunk_size=6)
-    raw = raw.copy('A')
+    arr = tensor(raw.copy("A"), chunk_size=6)
+    raw = raw.copy("A")
 
     idx = slice(2, 9, 2), slice(3, 7), slice(-1, -9, -2), 2
     arr[idx] = 20
@@ -338,18 +346,18 @@ def test_setitem_execution(setup):
 
     raw[idx] = 20
     np.testing.assert_array_equal(res, raw)
-    assert res.flags['C_CONTIGUOUS'] == raw.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == raw.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == raw.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == raw.flags["F_CONTIGUOUS"]
 
     # test bool indexing set
     raw = data
 
     arr = tensor(raw.copy(), chunk_size=6)
     raw1 = rs.rand(11)
-    arr[tensor(raw1, chunk_size=4) < 0.6, 2: 7] = 3
+    arr[tensor(raw1, chunk_size=4) < 0.6, 2:7] = 3
     res = arr.execute().fetch()
 
-    raw[raw1 < 0.6, 2: 7] = 3
+    raw[raw1 < 0.6, 2:7] = 3
     np.testing.assert_array_equal(res, raw)
 
     raw = np.random.randint(3, size=10).astype(np.int64)
@@ -383,19 +391,24 @@ def test_setitem_execution(setup):
 
 
 def test_setitem_structured_execution(setup):
-    rec_type = np.dtype([('a', np.int32), ('b', np.double),
-                         ('c', np.dtype([('a', np.int16), ('b', np.int64)]))])
+    rec_type = np.dtype(
+        [
+            ("a", np.int32),
+            ("b", np.double),
+            ("c", np.dtype([("a", np.int16), ("b", np.int64)])),
+        ]
+    )
 
     raw = np.zeros((4, 5), dtype=rec_type)
     arr = tensor(raw.copy(), chunk_size=3)
 
-    arr[1:4, 1] = (3, 4., (5, 6))
+    arr[1:4, 1] = (3, 4.0, (5, 6))
     arr[1:4, 2] = 8
     arr[1:3] = np.arange(5)
     arr[2:4] = np.arange(10).reshape(2, 5)
     arr[0] = np.arange(5)
 
-    raw[1:4, 1] = (3, 4., (5, 6))
+    raw[1:4, 1] = (3, 4.0, (5, 6))
     raw[1:4, 2] = 8
     raw[1:3] = np.arange(5)
     raw[2:4] = np.arange(10).reshape(2, 5)
@@ -480,16 +493,20 @@ def test_compress_execution(setup):
     res = t.execute().fetch()
     expected = np.compress([0, 1, 1], data, axis=0)
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
-    t = compress([0, 1, 1], a, axis=0, out=tensor(np.empty((2, 2), order='F', dtype=int)))
+    t = compress(
+        [0, 1, 1], a, axis=0, out=tensor(np.empty((2, 2), order="F", dtype=int))
+    )
 
     res = t.execute().fetch()
-    expected = np.compress([0, 1, 1], data, axis=0, out=np.empty((2, 2), order='F', dtype=int))
+    expected = np.compress(
+        [0, 1, 1], data, axis=0, out=np.empty((2, 2), order="F", dtype=int)
+    )
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
 
 def test_extract_execution(setup):
@@ -507,8 +524,7 @@ def test_extract_execution(setup):
 def test_choose_execution(setup):
     options.chunk_size = 2
 
-    choices = [[0, 1, 2, 3], [10, 11, 12, 13],
-               [20, 21, 22, 23], [30, 31, 32, 33]]
+    choices = [[0, 1, 2, 3], [10, 11, 12, 13], [20, 21, 22, 23], [30, 31, 32, 33]]
     a = choose([2, 3, 1, 0], choices)
 
     res = a.execute().fetch()
@@ -516,14 +532,14 @@ def test_choose_execution(setup):
 
     np.testing.assert_array_equal(res, expected)
 
-    a = choose([2, 4, 1, 0], choices, mode='clip')  # 4 goes to 3 (4-1)
-    expected = np.choose([2, 4, 1, 0], choices, mode='clip')
+    a = choose([2, 4, 1, 0], choices, mode="clip")  # 4 goes to 3 (4-1)
+    expected = np.choose([2, 4, 1, 0], choices, mode="clip")
 
     res = a.execute().fetch()
     np.testing.assert_array_equal(res, expected)
 
-    a = choose([2, 4, 1, 0], choices, mode='wrap')  # 4 goes to (4 mod 4)
-    expected = np.choose([2, 4, 1, 0], choices, mode='wrap')  # 4 goes to (4 mod 4)
+    a = choose([2, 4, 1, 0], choices, mode="wrap")  # 4 goes to (4 mod 4)
+    expected = np.choose([2, 4, 1, 0], choices, mode="wrap")  # 4 goes to (4 mod 4)
 
     res = a.execute().fetch()
     np.testing.assert_array_equal(res, expected)
@@ -548,25 +564,25 @@ def test_choose_execution(setup):
     np.testing.assert_array_equal(res, expected)
 
     # test order
-    a = np.array([0, 1]).reshape((2, 1, 1), order='F')
-    c1 = np.array([1, 2, 3]).reshape((1, 3, 1), order='F')
-    c2 = np.array([-1, -2, -3, -4, -5]).reshape((1, 1, 5), order='F')
+    a = np.array([0, 1]).reshape((2, 1, 1), order="F")
+    c1 = np.array([1, 2, 3]).reshape((1, 3, 1), order="F")
+    c2 = np.array([-1, -2, -3, -4, -5]).reshape((1, 1, 5), order="F")
 
     b = choose(a, (c1, c2))
     expected = np.choose(a, (c1, c2))
 
     res = b.execute().fetch()
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
-    b = choose(a, (c1, c2), out=tensor(np.empty(res.shape, order='F')))
-    expected = np.choose(a, (c1, c2), out=np.empty(res.shape, order='F'))
+    b = choose(a, (c1, c2), out=tensor(np.empty(res.shape, order="F")))
+    expected = np.choose(a, (c1, c2), out=np.empty(res.shape, order="F"))
 
     res = b.execute().fetch()
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
 
 def test_unravel_execution(setup):
@@ -610,13 +626,15 @@ def test_flatnonzero_execution(setup):
 
 def test_fill_diagonal_execution(setup):
     # 2-d
-    raws = [np.random.rand(30, 11),
-            np.random.rand(15, 15),
-            np.random.rand(11, 30),
-            sps.random(30, 11, density=0.1, format='csr')]
+    raws = [
+        np.random.rand(30, 11),
+        np.random.rand(15, 15),
+        np.random.rand(11, 30),
+        sps.random(30, 11, density=0.1, format="csr"),
+    ]
 
     def copy(x):
-        if hasattr(x, 'nnz'):
+        if hasattr(x, "nnz"):
             # sparse
             return x.A
         else:

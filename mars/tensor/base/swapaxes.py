@@ -33,13 +33,12 @@ def _swap(it, axis1, axis2):
 class TensorSwapAxes(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.SWAPAXES
 
-    _input = KeyField('input')
-    _axis1 = Int32Field('axis1')
-    _axis2 = Int32Field('axis2')
+    _input = KeyField("input")
+    _axis1 = Int32Field("axis1")
+    _axis2 = Int32Field("axis2")
 
     def __init__(self, axis1=None, axis2=None, **kw):
-        super().__init__(_axis1=axis1, _axis2=axis2,
-                         create_view=True, **kw)
+        super().__init__(_axis1=axis1, _axis2=axis2, create_view=True, **kw)
 
     @property
     def axis1(self):
@@ -63,8 +62,12 @@ class TensorSwapAxes(TensorHasInput, TensorOperandMixin):
         self._input = self._inputs[0]
 
     def on_output_modify(self, new_output):
-        op = TensorSwapAxes(axis1=self._axis2, axis2=self._axis1, dtype=new_output.dtype,
-                            sparse=new_output.issparse())
+        op = TensorSwapAxes(
+            axis1=self._axis2,
+            axis2=self._axis1,
+            dtype=new_output.dtype,
+            sparse=new_output.issparse(),
+        )
         return op(new_output)
 
     def on_input_modify(self, new_input):
@@ -82,19 +85,26 @@ class TensorSwapAxes(TensorHasInput, TensorOperandMixin):
             chunk_shape = _swap(c.shape, axis1, axis2)
             chunk_idx = _swap(c.index, axis1, axis2)
             chunk_op = op.copy().reset_key()
-            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape,
-                                           index=chunk_idx, order=out_tensor.order)
+            out_chunk = chunk_op.new_chunk(
+                [c], shape=chunk_shape, index=chunk_idx, order=out_tensor.order
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         nsplits = _swap(in_tensor.nsplits, axis1, axis2)
-        return new_op.new_tensors([in_tensor], out_tensor.shape, order=out_tensor.order,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            [in_tensor],
+            out_tensor.shape,
+            order=out_tensor.order,
+            chunks=out_chunks,
+            nsplits=nsplits,
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         (x,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         axis1, axis2 = op.axis1, op.axis2
         with device(device_id):

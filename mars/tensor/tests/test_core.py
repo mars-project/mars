@@ -25,12 +25,12 @@ def test_params():
     a = tile(a)
     c = a.chunks[0]
 
-    assert any(np.isnan(s) for s in c.params['shape'])
+    assert any(np.isnan(s) for s in c.params["shape"])
     c.params = c.get_params_from_data(raw[raw[0] < 0.5])
-    assert not any(np.isnan(s) for s in c.params['shape'])
+    assert not any(np.isnan(s) for s in c.params["shape"])
 
     params = c.params.copy()
-    params.pop('index', None)
+    params.pop("index", None)
     a.params = params
     assert np.prod(a.shape) > 0
     a.refresh_params()

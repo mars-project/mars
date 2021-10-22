@@ -27,8 +27,8 @@ from ..core import TensorOrder
 class TensorFFTFreq(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.FFTFREQ
 
-    _n = Int32Field('n')
-    _d = Float64Field('d')
+    _n = Int32Field("n")
+    _d = Float64Field("d")
 
     def __init__(self, n=None, d=None, **kw):
         super().__init__(_n=n, _d=d, **kw)
@@ -43,35 +43,47 @@ class TensorFFTFreq(TensorOperand, TensorOperandMixin):
 
     def __call__(self, chunk_size=None):
         shape = (self.n,)
-        return self.new_tensor(None, shape, raw_chunk_size=chunk_size,
-                               order=TensorOrder.C_ORDER)
+        return self.new_tensor(
+            None, shape, raw_chunk_size=chunk_size, order=TensorOrder.C_ORDER
+        )
 
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
         in_tensor = yield from recursive_tile(
-            arange(op.n, gpu=op.gpu, dtype=op.dtype,
-                   chunks=tensor.extra_params.raw_chunk_size))
+            arange(
+                op.n,
+                gpu=op.gpu,
+                dtype=op.dtype,
+                chunks=tensor.extra_params.raw_chunk_size,
+            )
+        )
 
         out_chunks = []
         for c in in_tensor.chunks:
             chunk_op = TensorFFTFreqChunk(n=op.n, d=op.d, dtype=op.dtype)
-            out_chunk = chunk_op.new_chunk([c], shape=c.shape,
-                                           index=c.index, order=tensor.order)
+            out_chunk = chunk_op.new_chunk(
+                [c], shape=c.shape, index=c.index, order=tensor.order
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
-                                  chunks=out_chunks, nsplits=in_tensor.nsplits,
-                                  **tensor.extra_params)
+        return new_op.new_tensors(
+            op.inputs,
+            tensor.shape,
+            order=tensor.order,
+            chunks=out_chunks,
+            nsplits=in_tensor.nsplits,
+            **tensor.extra_params
+        )
 
 
 class TensorFFTFreqChunk(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.FFTFREQ_CHUNK
 
-    _input = KeyField('input')
-    _n = Int32Field('n')
-    _d = Float64Field('d')
+    _input = KeyField("input")
+    _n = Int32Field("n")
+    _d = Float64Field("d")
 
     def __init__(self, n=None, d=None, dtype=None, **kw):
         super().__init__(_n=n, _d=d, _dtype=dtype, **kw)
@@ -90,7 +102,9 @@ class TensorFFTFreqChunk(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        raise NotSupportTile('FFTFreqChunk is a chunk operand which does not support tile')
+        raise NotSupportTile(
+            "FFTFreqChunk is a chunk operand which does not support tile"
+        )
 
     @classmethod
     def execute(cls, ctx, op):

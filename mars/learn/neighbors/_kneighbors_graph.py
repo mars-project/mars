@@ -28,9 +28,9 @@ from ..operands import LearnOperand, LearnOperandMixin, OutputType
 class KNeighborsGraph(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.KNEIGHBORS_GRAPH
 
-    _a_data = KeyField('a_data')
-    _a_ind = KeyField('a_ind')
-    _n_neighbors = Int64Field('n_neighbors')
+    _a_data = KeyField("a_data")
+    _a_ind = KeyField("a_ind")
+    _n_neighbors = Int64Field("n_neighbors")
 
     def __init__(self, a_data=None, a_ind=None, n_neighbors=None, **kw):
         super().__init__(_a_data=a_data, _a_ind=a_ind, _n_neighbors=n_neighbors, **kw)
@@ -59,8 +59,9 @@ class KNeighborsGraph(LearnOperand, LearnOperandMixin):
         if A_data is not None:
             inputs.append(A_data)
         inputs.append(A_ind)
-        return self.new_tileable(inputs, dtype=np.dtype(np.float64),
-                                 shape=shape, order=TensorOrder.C_ORDER)
+        return self.new_tileable(
+            inputs, dtype=np.dtype(np.float64), shape=shape, order=TensorOrder.C_ORDER
+        )
 
     @classmethod
     def tile(cls, op):
@@ -72,18 +73,16 @@ class KNeighborsGraph(LearnOperand, LearnOperandMixin):
         shape1 = A_ind.shape[1]
         if A_data is not None:
             # mode == 'distance'
-            axis0_chunk_sizes = decide_unify_split(A_data.nsplits[0],
-                                                   A_ind.nsplits[0])
+            axis0_chunk_sizes = decide_unify_split(A_data.nsplits[0], A_ind.nsplits[0])
             A_data = yield from recursive_tile(
-                A_data.rechunk({0: axis0_chunk_sizes,
-                                1: shape1}))
+                A_data.rechunk({0: axis0_chunk_sizes, 1: shape1})
+            )
             A_ind = yield from recursive_tile(
-                A_ind.rechunk({0: axis0_chunk_sizes,
-                               1: shape1}))
+                A_ind.rechunk({0: axis0_chunk_sizes, 1: shape1})
+            )
         else:
             # mode == 'connectivity'
-            A_ind = yield from recursive_tile(
-                A_ind.rechunk({1: shape1}))
+            A_ind = yield from recursive_tile(A_ind.rechunk({1: shape1}))
 
         out_chunks = []
         for i, ind_c in enumerate(A_ind.chunks):
@@ -92,21 +91,26 @@ class KNeighborsGraph(LearnOperand, LearnOperandMixin):
             if A_data is not None:
                 data_c = A_data.cix[i, 0]
                 chunk_inputs.insert(0, data_c)
-            out_chunk = chunk_op.new_chunk(chunk_inputs, dtype=out.dtype,
-                                           shape=(ind_c.shape[0], out.shape[1]),
-                                           order=out.order, index=(i, 0))
+            out_chunk = chunk_op.new_chunk(
+                chunk_inputs,
+                dtype=out.dtype,
+                shape=(ind_c.shape[0], out.shape[1]),
+                order=out.order,
+                index=(i, 0),
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         params = out.params
-        params['chunks'] = out_chunks
-        params['nsplits'] = (A_ind.nsplits[0], (out.shape[1],))
+        params["chunks"] = out_chunks
+        params["nsplits"] = (A_ind.nsplits[0], (out.shape[1],))
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
         out = op.outputs[0]
         n_samples1, n_samples2 = out.shape
         n_neighbors = op.n_neighbors
@@ -124,6 +128,7 @@ class KNeighborsGraph(LearnOperand, LearnOperandMixin):
                 A_data = xp.ravel(inputs[0])
 
             xps = get_sparse_module(A_ind)
-            graph = xps.csr_matrix((A_data, A_ind.ravel(), A_indptr),
-                                   shape=(n_samples1, n_samples2))
+            graph = xps.csr_matrix(
+                (A_data, A_ind.ravel(), A_indptr), shape=(n_samples1, n_samples2)
+            )
             ctx[out.key] = SparseNDArray(graph)

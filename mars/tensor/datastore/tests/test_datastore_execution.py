@@ -20,6 +20,7 @@ import time
 import numpy as np
 import scipy.sparse as sps
 import pytest
+
 try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
@@ -41,10 +42,10 @@ except ImportError:
 from ... import tensor, arange, totiledb, tohdf5, tozarr, tovineyard
 from ...datasource import fromvineyard
 
-_exec_timeout = 120 if 'CI' in os.environ else -1
+_exec_timeout = 120 if "CI" in os.environ else -1
 
 
-@pytest.mark.skipif(tiledb is None, reason='tiledb not installed')
+@pytest.mark.skipif(tiledb is None, reason="tiledb not installed")
 def test_store_tiledb_execution(setup):
     ctx = tiledb.Ctx()
 
@@ -83,7 +84,7 @@ def test_store_tiledb_execution(setup):
 
         with tiledb.SparseArray(uri=tempdir, ctx=ctx) as arr:
             data = arr[:, :]
-            coords = data['coords']
+            coords = data["coords"]
             value = data[arr.attr(0).name]
             ij = tuple(coords[arr.domain.dim(k).name] for k in range(arr.ndim))
             result = sps.coo_matrix((value, ij), shape=arr.shape)
@@ -102,17 +103,17 @@ def test_store_tiledb_execution(setup):
 
         with tiledb.DenseArray(uri=tempdir, ctx=ctx) as arr:
             np.testing.assert_allclose(expected, arr.read_direct())
-            assert arr.schema.cell_order == 'col-major'
+            assert arr.schema.cell_order == "col-major"
     finally:
         shutil.rmtree(tempdir)
 
 
-@pytest.mark.skipif(h5py is None, reason='h5py not installed')
+@pytest.mark.skipif(h5py is None, reason="h5py not installed")
 def test_store_hdf5_execution(setup):
     raw = np.random.RandomState(0).rand(10, 20)
 
-    group_name = 'test_group'
-    dataset_name = 'test_dataset'
+    group_name = "test_group"
+    dataset_name = "test_dataset"
 
     t1 = tensor(raw, chunk_size=20)
     t2 = tensor(raw, chunk_size=9)
@@ -121,58 +122,58 @@ def test_store_hdf5_execution(setup):
         tohdf5(object(), t2)
 
     with tempfile.TemporaryDirectory() as d:
-        filename = os.path.join(d, f'test_store_{int(time.time())}.hdf5')
+        filename = os.path.join(d, f"test_store_{int(time.time())}.hdf5")
 
         # test 1 chunk
         r = tohdf5(filename, t1, group=group_name, dataset=dataset_name)
         r.execute()
 
-        with h5py.File(filename, 'r') as f:
-            result = np.asarray(f[f'{group_name}/{dataset_name}'])
+        with h5py.File(filename, "r") as f:
+            result = np.asarray(f[f"{group_name}/{dataset_name}"])
             np.testing.assert_array_equal(result, raw)
 
         # test filename
         r = tohdf5(filename, t2, group=group_name, dataset=dataset_name)
         r.execute()
 
-        with h5py.File(filename, 'r') as f:
-            result = np.asarray(f[f'{group_name}/{dataset_name}'])
+        with h5py.File(filename, "r") as f:
+            result = np.asarray(f[f"{group_name}/{dataset_name}"])
             np.testing.assert_array_equal(result, raw)
 
         with pytest.raises(ValueError):
             tohdf5(filename, t2)
 
-        with h5py.File(filename, 'r') as f:
+        with h5py.File(filename, "r") as f:
             # test file
             r = tohdf5(f, t2, group=group_name, dataset=dataset_name)
         r.execute()
 
-        with h5py.File(filename, 'r') as f:
-            result = np.asarray(f[f'{group_name}/{dataset_name}'])
+        with h5py.File(filename, "r") as f:
+            result = np.asarray(f[f"{group_name}/{dataset_name}"])
             np.testing.assert_array_equal(result, raw)
 
         with pytest.raises(ValueError):
-            with h5py.File(filename, 'r') as f:
+            with h5py.File(filename, "r") as f:
                 tohdf5(f, t2)
 
-        with h5py.File(filename, 'r') as f:
+        with h5py.File(filename, "r") as f:
             # test dataset
-            ds = f[f'{group_name}/{dataset_name}']
+            ds = f[f"{group_name}/{dataset_name}"]
             # test file
             r = tohdf5(ds, t2)
         r.execute()
 
-        with h5py.File(filename, 'r') as f:
-            result = np.asarray(f[f'{group_name}/{dataset_name}'])
+        with h5py.File(filename, "r") as f:
+            result = np.asarray(f[f"{group_name}/{dataset_name}"])
             np.testing.assert_array_equal(result, raw)
 
 
-@pytest.mark.skipif(zarr is None, reason='zarr not installed')
+@pytest.mark.skipif(zarr is None, reason="zarr not installed")
 def test_store_zarr_execution(setup):
     raw = np.random.RandomState(0).rand(10, 20)
 
-    group_name = 'test_group'
-    dataset_name = 'test_dataset'
+    group_name = "test_group"
+    dataset_name = "test_dataset"
 
     t = tensor(raw, chunk_size=6)
 
@@ -180,10 +181,16 @@ def test_store_zarr_execution(setup):
         tozarr(object(), t)
 
     with tempfile.TemporaryDirectory() as d:
-        filename = os.path.join(d, f'test_store_{int(time.time())}.zarr')
-        path = f'{filename}/{group_name}/{dataset_name}'
+        filename = os.path.join(d, f"test_store_{int(time.time())}.zarr")
+        path = f"{filename}/{group_name}/{dataset_name}"
 
-        r = tozarr(filename, t, group=group_name, dataset=dataset_name, compressor=Zstd(level=3))
+        r = tozarr(
+            filename,
+            t,
+            group=group_name,
+            dataset=dataset_name,
+            compressor=Zstd(level=3),
+        )
         r.execute()
 
         arr = zarr.open(path)
@@ -196,8 +203,8 @@ def test_store_zarr_execution(setup):
         arr = zarr.open(path)
         np.testing.assert_array_equal(arr, raw + 2)
 
-        filters = [Delta(dtype='i4')]
-        compressor = Blosc(cname='zstd', clevel=1, shuffle=Blosc.SHUFFLE)
+        filters = [Delta(dtype="i4")]
+        compressor = Blosc(cname="zstd", clevel=1, shuffle=Blosc.SHUFFLE)
         arr = zarr.open(path, compressor=compressor, filters=filters)
 
         r = tozarr(arr, t + 1)
@@ -206,14 +213,14 @@ def test_store_zarr_execution(setup):
         np.testing.assert_array_equal(result, raw + 1)
 
 
-@pytest.mark.skipif(vineyard is None, reason='vineyard not installed')
+@pytest.mark.skipif(vineyard is None, reason="vineyard not installed")
 def test_vineyard_execution(setup):
     raw = np.random.RandomState(0).rand(55, 55)
 
     extra_config = {
-        'check_dtype': False,
-        'check_nsplits': False,
-        'check_shape': False,
+        "check_dtype": False,
+        "check_nsplits": False,
+        "check_shape": False,
     }
 
     with vineyard.deploy.local.start_vineyardd() as (_, vineyard_socket):

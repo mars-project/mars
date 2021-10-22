@@ -86,19 +86,20 @@ def compress(condition, a, axis=None, out=None):
     condition = astensor(condition, dtype=bool)
 
     if condition.ndim != 1:
-        raise ValueError('condition must be an 1-d tensor')
+        raise ValueError("condition must be an 1-d tensor")
 
     if axis is None:
         a = a.ravel()
         if len(condition) < a.size:
-            a = a[:len(condition)]
+            a = a[: len(condition)]
         return a[condition]
 
     try:
         axis = validate_axis(a.ndim, axis)
     except ValueError:
-        raise np.AxisError(f'axis {axis} is out of bounds '
-                           f'for tensor of dimension {a.ndim}')
+        raise np.AxisError(
+            f"axis {axis} is out of bounds " f"for tensor of dimension {a.ndim}"
+        )
 
     try:
         if len(condition) < a.shape[axis]:
@@ -108,13 +109,16 @@ def compress(condition, a, axis=None, out=None):
             return t
 
         if out is not None and not isinstance(out, Tensor):
-            raise TypeError(f'out should be Tensor object, got {type(out)} instead')
-        if not np.can_cast(out.dtype, t.dtype, 'safe'):
-            raise TypeError(f'Cannot cast array data from dtype(\'{out.dtype}\') to dtype(\'{t.dtype}\') '
-                            'according to the rule \'safe\'')
+            raise TypeError(f"out should be Tensor object, got {type(out)} instead")
+        if not np.can_cast(out.dtype, t.dtype, "safe"):
+            raise TypeError(
+                f"Cannot cast array data from dtype('{out.dtype}') to dtype('{t.dtype}') "
+                "according to the rule 'safe'"
+            )
         # skip shape check because out shape is unknown
         out.data = t.astype(out.dtype, order=out.order.value).data
         return out
     except IndexError:
-        raise np.AxisError(f'axis {len(condition)} is out of bounds '
-                           'for tensor of dimension 1')
+        raise np.AxisError(
+            f"axis {len(condition)} is out of bounds " "for tensor of dimension 1"
+        )

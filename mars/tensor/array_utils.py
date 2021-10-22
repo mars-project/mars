@@ -21,7 +21,7 @@ from ..lib import sparse
 from ..lib.sparse.core import issparse, get_dense_module
 from ..utils import lazy_import
 
-cp = lazy_import('cupy', globals=globals(), rename='cp')
+cp = lazy_import("cupy", globals=globals(), rename="cp")
 
 
 def is_array(x):
@@ -55,7 +55,7 @@ def get_array_module(x, nosparse=False):
 def array_module(gpu):
     if gpu:
         if cp is None:
-            raise ImportError('Execute on GPU requires for `cupy` library')
+            raise ImportError("Execute on GPU requires for `cupy` library")
         return cp
 
     return np
@@ -67,12 +67,12 @@ def _get(x):
     if m is np:
         return x
     if m is sparse:
-        return x if not hasattr(x, 'get') else x.get()
+        return x if not hasattr(x, "get") else x.get()
     return x.get()
 
 
 def move_to_device(x, device_id):
-    if hasattr(x, 'device') and x.device.id == device_id:
+    if hasattr(x, "device") and x.device.id == device_id:
         return x
 
     assert device_id >= 0
@@ -88,7 +88,7 @@ def move_to_device(x, device_id):
 
 def convert_order(x, order):
     xp = get_array_module(x)
-    if xp.isfortran(x) != (order == 'F'):
+    if xp.isfortran(x) != (order == "F"):
         x = xp.array(x, order=order)
     return x
 
@@ -101,20 +101,24 @@ def _most_nbytes_device(device_nbytes):
 
 
 def _is_array_writeable(a):
-    if hasattr(a, 'flags') and hasattr(a.flags, 'writeable'):
+    if hasattr(a, "flags") and hasattr(a.flags, "writeable"):
         return a.flags.writeable
     # writeable as default
     return True
 
 
 def as_same_device(inputs, device=None, ret_extra=False, copy_if_not_writeable=False):
-    input_tensors = [i for i in inputs if hasattr(i, 'ndim') and i.ndim > 0]  # filter scalar
+    input_tensors = [
+        i for i in inputs if hasattr(i, "ndim") and i.ndim > 0
+    ]  # filter scalar
     has_sparse = any(issparse(i) for i in inputs)
 
     if device is None:
         try:
             device = _most_nbytes_device(
-                (i.device.id if hasattr(i, 'device') else -1, i.nbytes) for i in input_tensors)
+                (i.device.id if hasattr(i, "device") else -1, i.nbytes)
+                for i in input_tensors
+            )
         except ValueError:
             device = -1
 
@@ -129,9 +133,11 @@ def as_same_device(inputs, device=None, ret_extra=False, copy_if_not_writeable=F
             if not _is_array_writeable(out):
                 new_outputs.append(out.copy())
             elif isinstance(out, (sparse.SparseMatrix, sparse.SparseVector)):
-                if not _is_array_writeable(out.data) or \
-                        not _is_array_writeable(out.indices) or \
-                        not _is_array_writeable(out.indptr):
+                if (
+                    not _is_array_writeable(out.data)
+                    or not _is_array_writeable(out.indices)
+                    or not _is_array_writeable(out.indptr)
+                ):
                     new_outputs.append(type(out)(out.spmatrix.copy(), shape=out.shape))
                 else:
                     new_outputs.append(out)

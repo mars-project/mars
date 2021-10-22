@@ -19,36 +19,51 @@ from ... import opcodes
 from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage
 from ...lib.version import parse as parse_version
-from ...serialization.serializables import KeyField, BoolField, \
-    Int64Field, StringField
+from ...serialization.serializables import KeyField, BoolField, Int64Field, StringField
 from ...utils import has_unknown_shape
 from ..core import Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_series, parse_index
 
-_keep_original_order = parse_version(pd.__version__) >= parse_version('1.3.0')
+_keep_original_order = parse_version(pd.__version__) >= parse_version("1.3.0")
 
 
 class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.VALUE_COUNTS
 
-    _input = KeyField('input')
-    _normalize = BoolField('normalize')
-    _sort = BoolField('sort')
-    _ascending = BoolField('ascending')
-    _bins = Int64Field('bins')
-    _dropna = BoolField('dropna')
-    _method = StringField('method')
-    _convert_index_to_interval = BoolField('convert_index_to_interval')
-    _nrows = Int64Field('nrows')
+    _input = KeyField("input")
+    _normalize = BoolField("normalize")
+    _sort = BoolField("sort")
+    _ascending = BoolField("ascending")
+    _bins = Int64Field("bins")
+    _dropna = BoolField("dropna")
+    _method = StringField("method")
+    _convert_index_to_interval = BoolField("convert_index_to_interval")
+    _nrows = Int64Field("nrows")
 
-    def __init__(self, normalize=None, sort=None, ascending=None,
-                 bins=None, dropna=None, method=None,
-                 convert_index_to_interval=None, nrows=None, **kw):
-        super().__init__(_normalize=normalize, _sort=sort, _ascending=ascending,
-                         _bins=bins, _dropna=dropna, _method=method,
-                         _convert_index_to_interval=convert_index_to_interval,
-                         _nrows=nrows, **kw)
+    def __init__(
+        self,
+        normalize=None,
+        sort=None,
+        ascending=None,
+        bins=None,
+        dropna=None,
+        method=None,
+        convert_index_to_interval=None,
+        nrows=None,
+        **kw
+    ):
+        super().__init__(
+            _normalize=normalize,
+            _sort=sort,
+            _ascending=ascending,
+            _bins=bins,
+            _dropna=dropna,
+            _method=method,
+            _convert_index_to_interval=convert_index_to_interval,
+            _nrows=nrows,
+            **kw
+        )
         self.output_types = [OutputType.series]
 
     @property
@@ -104,14 +119,21 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
 
             self._bins = None
             self._convert_index_to_interval = True
-            return self.new_series([inp], shape=(np.nan,),
-                                   index_value=parse_index(pd.CategoricalIndex([]),
-                                                           inp, store_data=False),
-                                   name=inp.name, dtype=test_series.dtype)
+            return self.new_series(
+                [inp],
+                shape=(np.nan,),
+                index_value=parse_index(pd.CategoricalIndex([]), inp, store_data=False),
+                name=inp.name,
+                dtype=test_series.dtype,
+            )
         else:
-            return self.new_series([inp], shape=(np.nan,),
-                                   index_value=parse_index(test_series.index, store_data=False),
-                                   name=inp.name, dtype=test_series.dtype)
+            return self.new_series(
+                [inp],
+                shape=(np.nan,),
+                index_value=parse_index(test_series.index, store_data=False),
+                name=inp.name,
+                dtype=test_series.dtype,
+            )
 
     @classmethod
     def tile(cls, op: "DataFrameValueCounts"):
@@ -121,13 +143,13 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
         if len(inp.chunks) == 1:
             chunk_op = op.copy().reset_key()
             chunk_param = out.params
-            chunk_param['index'] = (0,)
+            chunk_param["index"] = (0,)
             chunk = chunk_op.new_chunk(inp.chunks, kws=[chunk_param])
 
             new_op = op.copy()
             param = out.params
-            param['chunks'] = [chunk]
-            param['nsplits'] = ((np.nan,),)
+            param["chunks"] = [chunk]
+            param["nsplits"] = ((np.nan,),)
             return new_op.new_seriess(op.inputs, kws=[param])
 
         inp = Series(inp)
@@ -146,14 +168,16 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
                 inp = inp.truediv(inp.sum(), axis=0)
 
         if op.sort:
-            inp = inp.sort_values(ascending=op.ascending,
-                                  kind='mergesort' if _keep_original_order else 'quicksort')
+            inp = inp.sort_values(
+                ascending=op.ascending,
+                kind="mergesort" if _keep_original_order else "quicksort",
+            )
 
             if op.nrows:
                 # set to sort_values
                 inp.op._nrows = op.nrows
         elif op.nrows:
-            inp = inp.iloc[:op.nrows]
+            inp = inp.iloc[: op.nrows]
 
         ret = yield from recursive_tile(inp)
 
@@ -161,18 +185,20 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
         for c in ret.chunks:
             chunk_op = DataFrameValueCounts(
                 convert_index_to_interval=op.convert_index_to_interval,
-                stage=OperandStage.map)
+                stage=OperandStage.map,
+            )
             chunk_params = c.params
             if op.convert_index_to_interval:
                 # convert index to IntervalDtype
-                chunk_params['index_value'] = parse_index(pd.IntervalIndex([]),
-                                                          c, store_data=False)
+                chunk_params["index_value"] = parse_index(
+                    pd.IntervalIndex([]), c, store_data=False
+                )
             chunks.append(chunk_op.new_chunk([c], kws=[chunk_params]))
 
         new_op = op.copy()
         params = out.params
-        params['chunks'] = chunks
-        params['nsplits'] = ret.nsplits
+        params["chunks"] = chunks
+        params["nsplits"] = ret.nsplits
         return new_op.new_seriess(out.inputs, kws=[params])
 
     @classmethod
@@ -181,20 +207,32 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
             in_data = ctx[op.input.key]
             if op.convert_index_to_interval:
                 result = in_data.value_counts(
-                    normalize=False, sort=op.sort, ascending=op.ascending,
-                    bins=op.bins, dropna=op.dropna)
+                    normalize=False,
+                    sort=op.sort,
+                    ascending=op.ascending,
+                    bins=op.bins,
+                    dropna=op.dropna,
+                )
                 if op.normalize:
                     result /= in_data.shape[0]
             else:
                 try:
                     result = in_data.value_counts(
-                        normalize=op.normalize, sort=op.sort, ascending=op.ascending,
-                        bins=op.bins, dropna=op.dropna)
+                        normalize=op.normalize,
+                        sort=op.sort,
+                        ascending=op.ascending,
+                        bins=op.bins,
+                        dropna=op.dropna,
+                    )
                 except ValueError:
                     in_data = in_data.copy()
                     result = in_data.value_counts(
-                        normalize=op.normalize, sort=op.sort, ascending=op.ascending,
-                        bins=op.bins, dropna=op.dropna)
+                        normalize=op.normalize,
+                        sort=op.sort,
+                        ascending=op.ascending,
+                        bins=op.bins,
+                        dropna=op.dropna,
+                    )
         else:
             result = ctx[op.input.key]
             # set index name to None to keep consistency with pandas
@@ -202,14 +240,21 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
         if op.convert_index_to_interval:
             # convert CategoricalDtype which generated in `cut`
             # to IntervalDtype
-            result.index = result.index.astype('interval')
+            result.index = result.index.astype("interval")
         if op.nrows:
             result = result.head(op.nrows)
         ctx[op.outputs[0].key] = result
 
 
-def value_counts(series, normalize=False, sort=True, ascending=False,
-                 bins=None, dropna=True, method='auto'):
+def value_counts(
+    series,
+    normalize=False,
+    sort=True,
+    ascending=False,
+    bins=None,
+    dropna=True,
+    method="auto",
+):
     """
     Return a Series containing counts of unique values.
 
@@ -296,7 +341,12 @@ def value_counts(series, normalize=False, sort=True, ascending=False,
     1.0    1
     dtype: int64
     """
-    op = DataFrameValueCounts(normalize=normalize, sort=sort,
-                              ascending=ascending, bins=bins,
-                              dropna=dropna, method=method)
+    op = DataFrameValueCounts(
+        normalize=normalize,
+        sort=sort,
+        ascending=ascending,
+        bins=bins,
+        dropna=dropna,
+        method=method,
+    )
     return op(series)

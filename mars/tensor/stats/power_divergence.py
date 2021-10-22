@@ -34,7 +34,7 @@ _power_div_lambda_names = {
     "freeman-tukey": -0.5,
     "mod-log-likelihood": -1,
     "neyman": -2,
-    "cressie-read": 2/3,
+    "cressie-read": 2 / 3,
 }
 
 
@@ -45,8 +45,7 @@ def _count(a, axis=None):
         return a.shape[axis]
 
 
-Power_divergenceResult = namedtuple('Power_divergenceResult',
-                                    ('statistic', 'pvalue'))
+Power_divergenceResult = namedtuple("Power_divergenceResult", ("statistic", "pvalue"))
 
 
 @require_not_none(sp_distributions)
@@ -201,8 +200,10 @@ def power_divergence(f_obs, f_exp=None, ddof=0, axis=0, lambda_=None):
     if isinstance(lambda_, str):
         if lambda_ not in _power_div_lambda_names:
             names = repr(list(_power_div_lambda_names.keys()))[1:-1]
-            raise ValueError("invalid string for lambda_: {0!r}.  Valid strings "
-                             "are {1}".format(lambda_, names))
+            raise ValueError(
+                "invalid string for lambda_: {0!r}.  Valid strings "
+                "are {1}".format(lambda_, names)
+            )
         lambda_ = _power_div_lambda_names[lambda_]
     elif lambda_ is None:
         lambda_ = 1
@@ -219,7 +220,7 @@ def power_divergence(f_obs, f_exp=None, ddof=0, axis=0, lambda_=None):
     # cases of lambda_.
     if lambda_ == 1:
         # Pearson's chi-squared statistic
-        terms = (f_obs.astype(np.float64) - f_exp)**2 / f_exp
+        terms = (f_obs.astype(np.float64) - f_exp) ** 2 / f_exp
     elif lambda_ == 0:
         # Log-likelihood ratio (i.e. G-test)
         terms = 2.0 * special.xlogy(f_obs, f_obs / f_exp)
@@ -228,7 +229,7 @@ def power_divergence(f_obs, f_exp=None, ddof=0, axis=0, lambda_=None):
         terms = 2.0 * special.xlogy(f_exp, f_exp / f_obs)
     else:
         # General Cressie-Read power divergence.
-        terms = f_obs * ((f_obs / f_exp)**lambda_ - 1)
+        terms = f_obs * ((f_obs / f_exp) ** lambda_ - 1)
         terms /= 0.5 * lambda_ * (lambda_ + 1)
 
     stat = terms.sum(axis=axis)
@@ -236,6 +237,8 @@ def power_divergence(f_obs, f_exp=None, ddof=0, axis=0, lambda_=None):
     num_obs = _count(terms, axis=axis)
     # we decide not to support ddof for multiple dimensions
     # ddof = asarray(ddof)
-    p = stat.map_chunk(sp_distributions.chi2.sf, (num_obs - 1 - ddof,), elementwise=True)
+    p = stat.map_chunk(
+        sp_distributions.chi2.sf, (num_obs - 1 - ddof,), elementwise=True
+    )
 
     return ExecutableTuple(Power_divergenceResult(stat, p))

@@ -20,43 +20,77 @@ from .... import opcodes
 from ....core import OutputType, recursive_tile
 from ....core.context import get_context
 from ....core.operand import OperandStage, MergeDictOperand
-from ....serialization.serializables import KeyField, BytesField, DictField, Int32Field, \
-    Float32Field, FunctionField
+from ....serialization.serializables import (
+    KeyField,
+    BytesField,
+    DictField,
+    Int32Field,
+    Float32Field,
+    FunctionField,
+)
 from ....utils import has_unknown_shape
 
 
 class StatsModelsTrain(MergeDictOperand):
     _op_type_ = opcodes.STATSMODELS_TRAIN
 
-    _exog = KeyField('exog')  # exogenous
-    _endog = KeyField('endog')  # endogenous
+    _exog = KeyField("exog")  # exogenous
+    _endog = KeyField("endog")  # endogenous
 
-    _num_partitions = Int32Field('num_partitions')
-    _partition_id = Int32Field('partition_id')
-    _factor = Float32Field('factor')
-    _model_class = BytesField('model_class', on_serialize=cloudpickle.dumps,
-                              on_deserialize=cloudpickle.loads)
-    _init_kwds = DictField('init_kwds')
-    _fit_kwds = DictField('fit_kwds')
-    _estimation_method = FunctionField('estimation_method')
-    _estimation_kwds = DictField('estimation_kwds')
-    _join_method = FunctionField('join_method')
-    _join_kwds = DictField('join_kwds')
-    _results_class = BytesField('results_class', on_serialize=cloudpickle.dumps,
-                                on_deserialize=cloudpickle.loads)
-    _results_kwds = DictField('results_kwds')
+    _num_partitions = Int32Field("num_partitions")
+    _partition_id = Int32Field("partition_id")
+    _factor = Float32Field("factor")
+    _model_class = BytesField(
+        "model_class", on_serialize=cloudpickle.dumps, on_deserialize=cloudpickle.loads
+    )
+    _init_kwds = DictField("init_kwds")
+    _fit_kwds = DictField("fit_kwds")
+    _estimation_method = FunctionField("estimation_method")
+    _estimation_kwds = DictField("estimation_kwds")
+    _join_method = FunctionField("join_method")
+    _join_kwds = DictField("join_kwds")
+    _results_class = BytesField(
+        "results_class",
+        on_serialize=cloudpickle.dumps,
+        on_deserialize=cloudpickle.loads,
+    )
+    _results_kwds = DictField("results_kwds")
 
-    def __init__(self, exog=None, endog=None, num_partitions=None, partition_id=None,
-                 factor=None, model_class=None, init_kwds=None, fit_kwds=None,
-                 estimation_method=None, estimation_kwds=None, join_method=None,
-                 join_kwds=None, results_class=None, results_kwds=None, **kw):
-        super().__init__(_exog=exog, _endog=endog, _num_partitions=num_partitions,
-                         _partition_id=partition_id, _factor=factor,
-                         _model_class=model_class, _init_kwds=init_kwds,
-                         _fit_kwds=fit_kwds, _estimation_method=estimation_method,
-                         _estimation_kwds=estimation_kwds, _join_method=join_method,
-                         _join_kwds=join_kwds, _results_class=results_class,
-                         _results_kwds=results_kwds, **kw)
+    def __init__(
+        self,
+        exog=None,
+        endog=None,
+        num_partitions=None,
+        partition_id=None,
+        factor=None,
+        model_class=None,
+        init_kwds=None,
+        fit_kwds=None,
+        estimation_method=None,
+        estimation_kwds=None,
+        join_method=None,
+        join_kwds=None,
+        results_class=None,
+        results_kwds=None,
+        **kw
+    ):
+        super().__init__(
+            _exog=exog,
+            _endog=endog,
+            _num_partitions=num_partitions,
+            _partition_id=partition_id,
+            _factor=factor,
+            _model_class=model_class,
+            _init_kwds=init_kwds,
+            _fit_kwds=fit_kwds,
+            _estimation_method=estimation_method,
+            _estimation_kwds=estimation_kwds,
+            _join_method=join_method,
+            _join_kwds=join_kwds,
+            _results_class=results_class,
+            _results_kwds=results_kwds,
+            **kw
+        )
 
     @property
     def exog(self):
@@ -140,24 +174,27 @@ class StatsModelsTrain(MergeDictOperand):
         exog = op.exog
         if exog.ndim > 1 and exog.chunk_shape[1] > 1:
             exog = exog.rechunk({1: exog.shape[1]})
-        exog = yield from recursive_tile(
-            exog.rebalance(num_partitions=num_partitions))
+        exog = yield from recursive_tile(exog.rebalance(num_partitions=num_partitions))
         endog = yield from recursive_tile(
-            op.endog.rebalance(num_partitions=num_partitions))
+            op.endog.rebalance(num_partitions=num_partitions)
+        )
 
         assert len(exog.chunks) == len(endog.chunks)
 
         # generate map stage
         map_chunks = []
-        for part_id, (exog_chunk, endog_chunk) in enumerate(zip(exog.chunks, endog.chunks)):
+        for part_id, (exog_chunk, endog_chunk) in enumerate(
+            zip(exog.chunks, endog.chunks)
+        ):
             new_op = op.copy().reset_key()
             new_op._factor = None
             new_op._partition_id = part_id
             new_op._num_partitions = num_partitions
             new_op.stage = OperandStage.map
 
-            map_chunks.append(new_op.new_chunk(
-                [exog_chunk, endog_chunk], index=exog_chunk.index))
+            map_chunks.append(
+                new_op.new_chunk([exog_chunk, endog_chunk], index=exog_chunk.index)
+            )
 
         # generate combine (join) stage
         new_op = op.copy().reset_key()
@@ -178,8 +215,13 @@ class StatsModelsTrain(MergeDictOperand):
 
         # code from statsmodels.base.distributed_estimation::_helper_fit_partition
         model = op.model_class(endog, exog, **op.init_kwds)
-        results = op.estimation_method(model, op.partition_id, op.num_partitions,
-                                       fit_kwds=op.fit_kwds, **op.estimation_kwds)
+        results = op.estimation_method(
+            model,
+            op.partition_id,
+            op.num_partitions,
+            fit_kwds=op.fit_kwds,
+            **op.estimation_kwds
+        )
         ctx[op.outputs[0].key] = pickle.dumps(results)
 
     @classmethod

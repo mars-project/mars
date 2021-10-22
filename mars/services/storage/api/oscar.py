@@ -19,40 +19,45 @@ from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....storage.base import StorageLevel, StorageFileObject
 from ...cluster import StorageInfo
-from ..core import StorageManagerActor, DataManagerActor, \
-    DataInfo, WrappedStorageFileObject
+from ..core import (
+    StorageManagerActor,
+    DataManagerActor,
+    DataInfo,
+    WrappedStorageFileObject,
+)
 from ..handler import StorageHandlerActor
 from .core import AbstractStorageAPI
 
-_is_windows = sys.platform.lower().startswith('win')
-APIType = TypeVar('APIType', bound='StorageAPI')
+_is_windows = sys.platform.lower().startswith("win")
+APIType = TypeVar("APIType", bound="StorageAPI")
 
 
 class StorageAPI(AbstractStorageAPI):
     _storage_handler_ref: Union[StorageHandlerActor, mo.ActorRef]
     _data_manager_ref: Union[DataManagerActor, mo.ActorRef]
 
-    def __init__(self,
-                 address: str,
-                 session_id: str,
-                 band_name: str):
+    def __init__(self, address: str, session_id: str, band_name: str):
         self._address = address
         self._session_id = session_id
         self._band_name = band_name
 
     async def _init(self):
         self._storage_handler_ref = await mo.actor_ref(
-            self._address, StorageHandlerActor.gen_uid(self._band_name))
+            self._address, StorageHandlerActor.gen_uid(self._band_name)
+        )
         self._data_manager_ref = await mo.actor_ref(
-            self._address, DataManagerActor.default_uid())
+            self._address, DataManagerActor.default_uid()
+        )
 
     @classmethod
     @alru_cache(cache_exceptions=False)
-    async def create(cls: Type[APIType],
-                     session_id: str,
-                     address: str,
-                     band_name: str = 'numa-0',
-                     **kwargs) -> APIType:
+    async def create(
+        cls: Type[APIType],
+        session_id: str,
+        address: str,
+        band_name: str = "numa-0",
+        **kwargs,
+    ) -> APIType:
         """
         Create storage API.
 
@@ -79,27 +84,26 @@ class StorageAPI(AbstractStorageAPI):
         return api
 
     @mo.extensible
-    async def get(self,
-                  data_key: str,
-                  conditions: List = None,
-                  error: str = 'raise') -> Any:
+    async def get(
+        self, data_key: str, conditions: List = None, error: str = "raise"
+    ) -> Any:
         return await self._storage_handler_ref.get(
-            self._session_id, data_key, conditions, error)
+            self._session_id, data_key, conditions, error
+        )
 
     @get.batch
     async def batch_get(self, args_list, kwargs_list):
         gets = []
         for args, kwargs in zip(args_list, kwargs_list):
             gets.append(
-                self._storage_handler_ref.get.delay(
-                    self._session_id, *args, **kwargs)
+                self._storage_handler_ref.get.delay(self._session_id, *args, **kwargs)
             )
         return await self._storage_handler_ref.get.batch(*gets)
 
     @mo.extensible
-    async def put(self, data_key: str,
-                  obj: object,
-                  level: StorageLevel = None) -> DataInfo:
+    async def put(
+        self, data_key: str, obj: object, level: StorageLevel = None
+    ) -> DataInfo:
         return await self._storage_handler_ref.put(
             self._session_id, data_key, obj, level
         )
@@ -109,8 +113,7 @@ class StorageAPI(AbstractStorageAPI):
         puts = []
         for args, kwargs in zip(args_list, kwargs_list):
             puts.append(
-                self._storage_handler_ref.put.delay(
-                    self._session_id, *args, **kwargs)
+                self._storage_handler_ref.put.delay(self._session_id, *args, **kwargs)
             )
         return await self._storage_handler_ref.put.batch(*puts)
 
@@ -129,10 +132,11 @@ class StorageAPI(AbstractStorageAPI):
             List of information for specified key
         """
         return await self._data_manager_ref.get_data_infos(
-            self._session_id, data_key, self._band_name)
+            self._session_id, data_key, self._band_name
+        )
 
     @mo.extensible
-    async def delete(self, data_key: str, error: str = 'raise'):
+    async def delete(self, data_key: str, error: str = "raise"):
         """
         Delete object.
 
@@ -143,8 +147,7 @@ class StorageAPI(AbstractStorageAPI):
         error: str
             raise or ignore
         """
-        await self._storage_handler_ref.delete(
-            self._session_id, data_key, error=error)
+        await self._storage_handler_ref.delete(self._session_id, data_key, error=error)
 
     @delete.batch
     async def batch_delete(self, args_list, kwargs_list):
@@ -152,17 +155,20 @@ class StorageAPI(AbstractStorageAPI):
         for args, kwargs in zip(args_list, kwargs_list):
             deletes.append(
                 self._storage_handler_ref.delete.delay(
-                    self._session_id, *args, **kwargs)
+                    self._session_id, *args, **kwargs
+                )
             )
         return await self._storage_handler_ref.delete.batch(*deletes)
 
     @mo.extensible
-    async def fetch(self,
-                    data_key: str,
-                    level: StorageLevel = None,
-                    band_name: str = None,
-                    remote_address: str = None,
-                    error: str = 'raise'):
+    async def fetch(
+        self,
+        data_key: str,
+        level: StorageLevel = None,
+        band_name: str = None,
+        remote_address: str = None,
+        error: str = "raise",
+    ):
         """
         Fetch object from remote worker or load object from disk.
 
@@ -180,26 +186,27 @@ class StorageAPI(AbstractStorageAPI):
             raise or ignore
         """
         await self._storage_handler_ref.fetch_batch(
-            self._session_id, [data_key], level,
-            band_name, remote_address, error)
+            self._session_id, [data_key], level, band_name, remote_address, error
+        )
 
     @fetch.batch
     async def batch_fetch(self, args_list, kwargs_list):
         extracted_args = []
         data_keys = []
         for args, kwargs in zip(args_list, kwargs_list):
-            data_key, level, band_name, dest_address, error = \
-                self.fetch.bind(*args, **kwargs)
+            data_key, level, band_name, dest_address, error = self.fetch.bind(
+                *args, **kwargs
+            )
             if extracted_args:
                 assert extracted_args == (level, band_name, dest_address, error)
             extracted_args = (level, band_name, dest_address, error)
             data_keys.append(data_key)
         await self._storage_handler_ref.fetch_batch(
-            self._session_id, data_keys, *extracted_args)
+            self._session_id, data_keys, *extracted_args
+        )
 
     @mo.extensible
-    async def unpin(self, data_key: str,
-                    error: str = 'raise'):
+    async def unpin(self, data_key: str, error: str = "raise"):
         """
         Unpin the data, allow storage to release the data.
 
@@ -210,8 +217,7 @@ class StorageAPI(AbstractStorageAPI):
         error: str
             raise or ignore
         """
-        await self._storage_handler_ref.unpin(self._session_id,
-                                              data_key, error)
+        await self._storage_handler_ref.unpin(self._session_id, data_key, error)
 
     @unpin.batch
     async def batch_unpin(self, args_list, kwargs_list):
@@ -219,8 +225,7 @@ class StorageAPI(AbstractStorageAPI):
         for args, kwargs in zip(args_list, kwargs_list):
             data_key, error = self.unpin.bind(*args, **kwargs)
             unpins.append(
-                self._storage_handler_ref.unpin.delay(
-                    self._session_id, data_key, error)
+                self._storage_handler_ref.unpin.delay(self._session_id, data_key, error)
             )
         return await self._storage_handler_ref.unpin.batch(*unpins)
 
@@ -237,13 +242,11 @@ class StorageAPI(AbstractStorageAPI):
         -------
             return a file-like object.
         """
-        return await self._storage_handler_ref.open_reader(
-            self._session_id, data_key)
+        return await self._storage_handler_ref.open_reader(self._session_id, data_key)
 
-    async def open_writer(self,
-                          data_key: str,
-                          size: int,
-                          level: StorageLevel) -> WrappedStorageFileObject:
+    async def open_writer(
+        self, data_key: str, size: int, level: StorageLevel
+    ) -> WrappedStorageFileObject:
         """
         Return a file-like object for writing data.
 
@@ -279,8 +282,7 @@ class StorageAPI(AbstractStorageAPI):
         """
         return await self._storage_handler_ref.list(level=level)
 
-    async def get_storage_level_info(self,
-                                     level: StorageLevel) -> StorageInfo:
+    async def get_storage_level_info(self, level: StorageLevel) -> StorageInfo:
         """
         Get storage level's info.
 
@@ -314,22 +316,22 @@ class StorageAPI(AbstractStorageAPI):
 
 class MockStorageAPI(StorageAPI):
     @classmethod
-    async def create(cls: Type[APIType],
-                     session_id: str,
-                     address: str,
-                     **kwargs) -> APIType:
+    async def create(
+        cls: Type[APIType], session_id: str, address: str, **kwargs
+    ) -> APIType:
         from ..core import StorageManagerActor
 
-        storage_configs = kwargs.get('storage_configs')
+        storage_configs = kwargs.get("storage_configs")
         if not storage_configs:
-            if sys.platform == 'darwin':
-                plasma_dir = '/tmp'
+            if sys.platform == "darwin":
+                plasma_dir = "/tmp"
             else:
-                plasma_dir = '/dev/shm'
+                plasma_dir = "/dev/shm"
             plasma_setup_params = dict(
                 store_memory=10 * 1024 * 1024,
                 plasma_directory=plasma_dir,
-                check_dir_size=False)
+                check_dir_size=False,
+            )
             if _is_windows:
                 storage_configs = {"shared_memory": {}}
             else:
@@ -337,15 +339,18 @@ class MockStorageAPI(StorageAPI):
                     "plasma": plasma_setup_params,
                 }
 
-        storage_handler_cls = kwargs.pop('storage_handler_cls', StorageHandlerActor)
-        await mo.create_actor(StorageManagerActor,
-                              storage_configs,
-                              storage_handler_cls=storage_handler_cls,
-                              uid=StorageManagerActor.default_uid(),
-                              address=address)
+        storage_handler_cls = kwargs.pop("storage_handler_cls", StorageHandlerActor)
+        await mo.create_actor(
+            StorageManagerActor,
+            storage_configs,
+            storage_handler_cls=storage_handler_cls,
+            uid=StorageManagerActor.default_uid(),
+            address=address,
+        )
         return await super().create(address=address, session_id=session_id)
 
     @classmethod
     async def cleanup(cls: Type[APIType], address: str):
         await mo.destroy_actor(
-            await mo.actor_ref(address, StorageManagerActor.default_uid()))
+            await mo.actor_ref(address, StorageManagerActor.default_uid())
+        )

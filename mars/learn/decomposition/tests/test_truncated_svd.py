@@ -44,7 +44,7 @@ def test_attributes(setup):
 
 def test_too_many_components(setup):
     for n_components in (n_features, n_features + 1):
-        tsvd = TruncatedSVD(n_components=n_components, algorithm='randomized')
+        tsvd = TruncatedSVD(n_components=n_components, algorithm="randomized")
         with pytest.raises(ValueError):
             tsvd.fit(X)
 
@@ -60,7 +60,7 @@ def test_sparse_formats(setup):
 def test_inverse_transform(setup):
     # We need a lot of components for the reconstruction to be "almost
     # equal" in all positions. XXX Test means or sums instead?
-    tsvd = TruncatedSVD(n_components=52, random_state=42, algorithm='randomized')
+    tsvd = TruncatedSVD(n_components=52, random_state=42, algorithm="randomized")
     Xt = tsvd.fit_transform(X)
     Xinv = tsvd.inverse_transform(Xt)
     assert_array_almost_equal(Xinv.fetch(), Xdense, decimal=1)
@@ -87,7 +87,7 @@ def test_explained_variance(setup):
     X_trans_r_20_de = svd_r_20_de.fit_transform(X.toarray())
 
     # helper arrays for tests below
-    svds = (svd_r_10_sp, svd_r_20_sp,  svd_r_10_de, svd_r_20_de)
+    svds = (svd_r_10_sp, svd_r_20_sp, svd_r_10_de, svd_r_20_de)
     svds_trans = (
         (svd_r_10_sp, X_trans_r_10_sp),
         (svd_r_20_sp, X_trans_r_20_sp),
@@ -113,7 +113,10 @@ def test_explained_variance(setup):
 
     # Assert that 20 components has higher explained variance than 10
     for svd_10, svd_20 in svds_10_v_20:
-        assert svd_20.explained_variance_ratio_.sum().to_numpy() > svd_10.explained_variance_ratio_.sum().to_numpy()
+        assert (
+            svd_20.explained_variance_ratio_.sum().to_numpy()
+            > svd_10.explained_variance_ratio_.sum().to_numpy()
+        )
 
     # Assert that all the values are greater than 0
     for svd in svds:
@@ -125,8 +128,10 @@ def test_explained_variance(setup):
 
     # Compare sparse vs. dense
     for svd_sparse, svd_dense in svds_sparse_v_dense:
-        assert_array_almost_equal(svd_sparse.explained_variance_ratio_.to_numpy(),
-                                  svd_dense.explained_variance_ratio_.to_numpy())
+        assert_array_almost_equal(
+            svd_sparse.explained_variance_ratio_.to_numpy(),
+            svd_dense.explained_variance_ratio_.to_numpy(),
+        )
 
     # Test that explained_variance is correct
     for svd, transformed in svds_trans:
@@ -150,11 +155,10 @@ def test_singular_values(setup):
 
     X = rng.randn(n_samples, n_features)
 
-    rpca = TruncatedSVD(n_components=3, algorithm='randomized',
-                        random_state=rng)
+    rpca = TruncatedSVD(n_components=3, algorithm="randomized", random_state=rng)
     X_rpca = rpca.fit_transform(X)
 
-    X_rpca /= mt.sqrt(mt.sum(X_rpca**2.0, axis=0))
+    X_rpca /= mt.sqrt(mt.sum(X_rpca ** 2.0, axis=0))
     X_rpca[:, 0] *= 3.142
     X_rpca[:, 1] *= 2.718
 

@@ -14,3 +14,4 @@
 
 from ._bagging import BaggingClassifier, BaggingRegressor
 from ._blockwise import BlockwiseVotingClassifier, BlockwiseVotingRegressor
+from ._iforest import IsolationForest

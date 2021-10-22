@@ -23,6 +23,7 @@ from collections import namedtuple
 import numpy as np
 import pandas as pd
 import pytest
+
 try:
     import pyarrow as pa
 except ImportError:  # pragma: no cover
@@ -37,17 +38,15 @@ from ..deploy.utils import load_service_config_file
 from ..session import execute, fetch, fetch_log
 
 
-test_namedtuple_type = namedtuple('TestNamedTuple', 'a b')
+test_namedtuple_type = namedtuple("TestNamedTuple", "a b")
 
 
 @pytest.fixture
 def setup():
     from ..deploy.oscar.tests.session import new_test_session
 
-    sess = new_test_session(address='127.0.0.1',
-                            init_local=True,
-                            default=True)
-    with option_context({'show_progress': False}):
+    sess = new_test_session(address="127.0.0.1", init_local=True, default=True)
+    with option_context({"show_progress": False}):
         try:
             assert sess.get_cluster_versions() == [mars_version]
             yield sess
@@ -96,11 +95,11 @@ def test_executable_tuple_execute(setup):
     tp = test_namedtuple_type(a, df)
     executable_tp = mt.ExecutableTuple(tp)
 
-    assert 'a' in dir(executable_tp)
+    assert "a" in dir(executable_tp)
     assert executable_tp.a is a
     assert test_namedtuple_type.__name__ in repr(executable_tp)
     with pytest.raises(AttributeError):
-        getattr(executable_tp, 'c')
+        getattr(executable_tp, "c")
 
     res = mt.ExecutableTuple(tp).execute().fetch()
     assert test_namedtuple_type is type(res)
@@ -160,7 +159,7 @@ def test_closed_session():
     from ..deploy.oscar.tests.session import new_test_session
 
     session = new_test_session(default=True)
-    with option_context({'show_progress': False}):
+    with option_context({"show_progress": False}):
         arr = mt.ones((10, 10))
         try:
             result = session.execute(arr)
@@ -228,7 +227,7 @@ def test_fetch_dataframe_slices(setup):
     r2 = df1.iloc[:, :].fetch()
     pd.testing.assert_frame_equal(r2, r1.iloc[:, :])
 
-    r3 = df1.iloc[1].fetch(extra_config={'check_series_name': False})
+    r3 = df1.iloc[1].fetch(extra_config={"check_series_name": False})
     pd.testing.assert_series_equal(r3, r1.iloc[1])
 
     r4 = df1.iloc[0, 2].fetch()
@@ -257,7 +256,7 @@ def test_repr(setup):
         pdf = pd.DataFrame(np.random.randint(1000, size=(size, 10)))
 
         # test DataFrame repr
-        df = md.DataFrame(pdf, chunk_size=size//2)
+        df = md.DataFrame(pdf, chunk_size=size // 2)
 
         result = repr(df.execute())
         expected = repr(pdf)
@@ -270,28 +269,28 @@ def test_repr(setup):
 
         # test Series repr
         ps = pdf[0]
-        s = md.Series(ps, chunk_size=size//2)
+        s = md.Series(ps, chunk_size=size // 2)
 
         result = repr(s.execute())
         expected = repr(ps)
         assert result == expected
 
     # test Index repr
-    pind = pd.date_range('2020-1-1', periods=10)
+    pind = pd.date_range("2020-1-1", periods=10)
     ind = md.Index(pind, chunk_size=5)
 
-    assert 'DatetimeIndex' in repr(ind.execute())
+    assert "DatetimeIndex" in repr(ind.execute())
 
     # test groupby repr
-    df = md.DataFrame(pd.DataFrame(np.random.rand(100, 3), columns=list('abc')))
-    grouped = df.groupby(['a', 'b']).execute()
+    df = md.DataFrame(pd.DataFrame(np.random.rand(100, 3), columns=list("abc")))
+    grouped = df.groupby(["a", "b"]).execute()
 
-    assert 'DataFrameGroupBy' in repr(grouped)
+    assert "DataFrameGroupBy" in repr(grouped)
 
     # test Categorical repr
     c = md.qcut(range(5), 3)
-    assert 'Categorical' in repr(c)
-    assert 'Categorical' in str(c)
+    assert "Categorical" in repr(c)
+    assert "Categorical" in str(c)
     assert repr(c.execute()) == repr(pd.qcut(range(5), 3))
 
 
@@ -303,11 +302,10 @@ def test_iter(setup):
         pd.testing.assert_series_equal(series.execute().fetch(), raw_data[col])
 
     for i, batch in enumerate(df.iterbatch(batch_size=15)):
-        pd.testing.assert_frame_equal(batch, raw_data.iloc[i * 15: (i + 1) * 15])
+        pd.testing.assert_frame_equal(batch, raw_data.iloc[i * 15 : (i + 1) * 15])
 
     i = 0
-    for result_row, expect_row in zip(df.iterrows(batch_size=15),
-                                      raw_data.iterrows()):
+    for result_row, expect_row in zip(df.iterrows(batch_size=15), raw_data.iterrows()):
         assert result_row[0] == expect_row[0]
         pd.testing.assert_series_equal(result_row[1], expect_row[1])
         i += 1
@@ -315,8 +313,9 @@ def test_iter(setup):
     assert i == len(raw_data)
 
     i = 0
-    for result_tup, expect_tup in zip(df.itertuples(batch_size=10),
-                                      raw_data.itertuples()):
+    for result_tup, expect_tup in zip(
+        df.itertuples(batch_size=10), raw_data.itertuples()
+    ):
         assert result_tup == expect_tup
         i += 1
 
@@ -326,11 +325,12 @@ def test_iter(setup):
     s = md.Series(raw_data, chunk_size=5)
 
     for i, batch in enumerate(s.iterbatch(batch_size=15)):
-        pd.testing.assert_series_equal(batch, raw_data.iloc[i * 15: (i + 1) * 15])
+        pd.testing.assert_series_equal(batch, raw_data.iloc[i * 15 : (i + 1) * 15])
 
     i = 0
-    for result_item, expect_item in zip(s.iteritems(batch_size=15),
-                                        raw_data.iteritems()):
+    for result_item, expect_item in zip(
+        s.iteritems(batch_size=15), raw_data.iteritems()
+    ):
         assert result_item[0] == expect_item[0]
         assert result_item[1] == expect_item[1]
         i += 1
@@ -354,10 +354,10 @@ def fetch_log_setup():
 
     with tempfile.TemporaryDirectory() as temp_dir:
         config = io.StringIO(CONFIG.format(custom_log_dir=temp_dir))
-        sess = new_test_session(default=True,
-                                config=load_service_config_file(config),
-                                n_cpu=8)
-        with option_context({'show_progress': False}):
+        sess = new_test_session(
+            default=True, config=load_service_config_file(config), n_cpu=8
+        )
+        with option_context({"show_progress": False}):
             try:
                 yield sess
             finally:
@@ -366,24 +366,24 @@ def fetch_log_setup():
 
 def test_fetch_log(fetch_log_setup):
     def f():
-        print('test')
+        print("test")
 
     r = mr.spawn(f)
     r.execute()
 
     log = r.fetch_log()
-    assert str(log).strip() == 'test'
+    assert str(log).strip() == "test"
 
     # test multiple functions
     def f1(size):
-        print('f1' * size)
+        print("f1" * size)
         sys.stdout.flush()
 
     fs = mr.ExecutableTuple([mr.spawn(f1, 30), mr.spawn(f1, 40)])
     execute(*fs)
     log = fetch_log(*fs, offsets=20, sizes=10)
-    assert str(log[0]).strip() == ('f1' * 30)[20:30]
-    assert str(log[1]).strip() == ('f1' * 40)[20:30]
+    assert str(log[0]).strip() == ("f1" * 30)[20:30]
+    assert str(log[1]).strip() == ("f1" * 40)[20:30]
     assert len(log[0].offsets) > 0
     assert all(s > 0 for s in log[0].offsets)
     assert len(log[1].offsets) > 0
@@ -392,24 +392,24 @@ def test_fetch_log(fetch_log_setup):
 
     # test negative offsets
     log = fs.fetch_log(offsets=-20, sizes=10)
-    assert str(log[0]).strip() == ('f1' * 30 + os.linesep)[-20:-10]
-    assert str(log[1]).strip() == ('f1' * 40 + os.linesep)[-20:-10]
+    assert str(log[0]).strip() == ("f1" * 30 + os.linesep)[-20:-10]
+    assert str(log[1]).strip() == ("f1" * 40 + os.linesep)[-20:-10]
     assert all(s > 0 for s in log[0].offsets) is True
     assert len(log[1].offsets) > 0
     assert all(s > 0 for s in log[1].offsets) is True
     assert len(log[0].chunk_op_keys) > 0
 
     # test negative offsets which represented in string
-    log = fetch_log(*fs, offsets='-0.02K', sizes='0.01K')
-    assert str(log[0]).strip() == ('f1' * 30 + os.linesep)[-20:-10]
-    assert str(log[1]).strip() == ('f1' * 40 + os.linesep)[-20:-10]
+    log = fetch_log(*fs, offsets="-0.02K", sizes="0.01K")
+    assert str(log[0]).strip() == ("f1" * 30 + os.linesep)[-20:-10]
+    assert str(log[1]).strip() == ("f1" * 40 + os.linesep)[-20:-10]
     assert all(s > 0 for s in log[0].offsets) is True
     assert len(log[1].offsets) > 0
     assert all(s > 0 for s in log[1].offsets) is True
     assert len(log[0].chunk_op_keys) > 0
 
     def test_nested():
-        print('level0')
+        print("level0")
         fr = mr.spawn(f1, 1)
         fr.execute()
         print(fr.fetch_log())
@@ -417,20 +417,20 @@ def test_fetch_log(fetch_log_setup):
     r = mr.spawn(test_nested)
     r.execute()
     log = str(r.fetch_log())
-    assert 'level0' in log
-    assert 'f1' in log
+    assert "level0" in log
+    assert "f1" in log
 
     df = md.DataFrame(mt.random.rand(10, 3), chunk_size=5)
 
     def df_func(c):
-        print('df func')
+        print("df func")
         return c
 
     df2 = df.map_chunk(df_func)
     df2.execute()
     log = df2.fetch_log()
-    assert 'Chunk op key:' in str(log)
-    assert 'df func' in repr(log)
+    assert "Chunk op key:" in str(log)
+    assert "df func" in repr(log)
     assert len(str(df.fetch_log())) == 0
 
     def test_host(rndf):
@@ -439,13 +439,12 @@ def test_fetch_log(fetch_log_setup):
         print(rm.fetch_log())
 
     def nested(_rndf):
-        print('log_content')
+        print("log_content")
 
-    ds = [mr.spawn(test_host, n, retry_when_fail=False)
-          for n in np.random.rand(4)]
+    ds = [mr.spawn(test_host, n, retry_when_fail=False) for n in np.random.rand(4)]
     xtp = execute(ds)
     for log in fetch_log(xtp):
-        assert str(log).strip() == 'log_content'
+        assert str(log).strip() == "log_content"
 
     def test_threaded():
         import threading
@@ -455,7 +454,7 @@ def test_fetch_log(fetch_log_setup):
         def print_fun():
             nonlocal exc_info
             try:
-                print('inner')
+                print("inner")
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                 exc_info = sys.exc_info()
 
@@ -466,12 +465,12 @@ def test_fetch_log(fetch_log_setup):
         if exc_info is not None:
             raise exc_info[1].with_traceback(exc_info[-1])
 
-        print('after')
+        print("after")
 
     rm = mr.spawn(test_threaded)
     rm.execute()
     logs = str(rm.fetch_log()).strip()
-    assert logs == 'inner\nafter'
+    assert logs == "inner\nafter"
 
 
 def test_align_series(setup):

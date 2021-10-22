@@ -18,6 +18,7 @@ from .core import Serializer, buffered
 
 try:
     import pyarrow as pa
+
     pa_types = Union[pa.Table, pa.RecordBatch]
 except ImportError:  # pragma: no cover
     pa = None
@@ -25,7 +26,7 @@ except ImportError:  # pragma: no cover
 
 
 class ArrowBatchSerializer(Serializer):
-    serializer_name = 'arrow'
+    serializer_name = "arrow"
 
     @buffered
     def serialize(self, obj: pa_types, context: Dict):
@@ -34,10 +35,10 @@ class ArrowBatchSerializer(Serializer):
         sink = pa.BufferOutputStream()
         writer = pa.RecordBatchStreamWriter(sink, obj.schema)
         if isinstance(obj, pa.Table):
-            header['type'] = 'Table'
+            header["type"] = "Table"
             writer.write_table(obj)
         else:
-            header['type'] = 'Batch'
+            header["type"] = "Batch"
             writer.write_batch(obj)
         writer.close()
 
@@ -47,7 +48,7 @@ class ArrowBatchSerializer(Serializer):
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         reader = pa.RecordBatchStreamReader(pa.BufferReader(buffers[0]))
-        if header['type'] == 'Table':
+        if header["type"] == "Table":
             return reader.read_all()
         else:
             return reader.read_next_batch()

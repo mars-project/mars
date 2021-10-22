@@ -17,8 +17,12 @@ from .corrcoef import corrcoef
 from .cov import cov
 from .digitize import digitize, TensorDigitize
 from .ptp import ptp
-from .histogram import histogram_bin_edges, TensorHistogramBinEdges, \
-    histogram, TensorHistogram
+from .histogram import (
+    histogram_bin_edges,
+    TensorHistogramBinEdges,
+    histogram,
+    TensorHistogram,
+)
 from .quantile import quantile
 from .percentile import percentile
 from .median import median
@@ -28,7 +32,7 @@ def _install():
     from ..core import Tensor, TensorData
 
     for cls in (Tensor, TensorData):
-        setattr(cls, 'ptp', ptp)
+        setattr(cls, "ptp", ptp)
 
 
 _install()

@@ -22,29 +22,29 @@ def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
 
     for cls in DATAFRAME_TYPE + SERIES_TYPE:
-        setattr(cls, 'fillna', fillna)
-        setattr(cls, 'ffill', ffill)
-        setattr(cls, 'pad', ffill)
-        setattr(cls, 'backfill', bfill)
-        setattr(cls, 'bfill', bfill)
-        setattr(cls, 'isna', isna)
-        setattr(cls, 'isnull', isnull)
-        setattr(cls, 'notna', notna)
-        setattr(cls, 'notnull', notnull)
+        setattr(cls, "fillna", fillna)
+        setattr(cls, "ffill", ffill)
+        setattr(cls, "pad", ffill)
+        setattr(cls, "backfill", bfill)
+        setattr(cls, "bfill", bfill)
+        setattr(cls, "isna", isna)
+        setattr(cls, "isnull", isnull)
+        setattr(cls, "notna", notna)
+        setattr(cls, "notnull", notnull)
 
     for cls in DATAFRAME_TYPE:
-        setattr(cls, 'dropna', df_dropna)
-        setattr(cls, 'replace', df_replace)
+        setattr(cls, "dropna", df_dropna)
+        setattr(cls, "replace", df_replace)
 
     for cls in SERIES_TYPE:
-        setattr(cls, 'dropna', series_dropna)
-        setattr(cls, 'replace', series_replace)
+        setattr(cls, "dropna", series_dropna)
+        setattr(cls, "replace", series_replace)
 
     for cls in INDEX_TYPE:
-        setattr(cls, 'fillna', index_fillna)
-        setattr(cls, 'dropna', index_dropna)
-        setattr(cls, 'isna', isna)
-        setattr(cls, 'notna', notna)
+        setattr(cls, "fillna", index_fillna)
+        setattr(cls, "dropna", index_dropna)
+        setattr(cls, "isna", isna)
+        setattr(cls, "notna", notna)
 
 
 _install()

@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorCbrt(TensorUnaryOp):
     _op_type_ = OperandDef.CBRT
-    _func_name = 'cbrt'
+    _func_name = "cbrt"
 
 
 @infer_dtype(np.cbrt)

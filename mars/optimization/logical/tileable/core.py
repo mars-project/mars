@@ -28,6 +28,7 @@ def register_tileable_optimization_rule(op_types: List[Type[OperandType]]):
     def wrap(rule_type: Type[OptimizationRule]):
         TileableOptimizer.register_rule(op_types, rule_type)
         return rule_type
+
     return wrap
 
 

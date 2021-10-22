@@ -61,7 +61,7 @@ def test_reshape():
 def test_shuffle_reshape():
     a = ones((31, 27), chunk_size=10)
     b = a.reshape(27, 31)
-    b.op.extra_params['_reshape_with_shuffle'] = True
+    b.op.extra_params["_reshape_with_shuffle"] = True
 
     b = tile(b)
 

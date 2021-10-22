@@ -23,7 +23,7 @@ from ..supervisor import MetaSupervisorService
 
 @pytest.mark.asyncio
 async def test_meta_service():
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+    pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 
     async with pool:
         config = {
@@ -32,14 +32,11 @@ async def test_meta_service():
                 "backend": "fixed",
                 "lookup_address": pool.external_address,
             },
-            "meta": {
-                "store": "dict"
-            }
+            "meta": {"store": "dict"},
         }
-        await start_services(
-            NodeRole.SUPERVISOR, config, address=pool.external_address)
+        await start_services(NodeRole.SUPERVISOR, config, address=pool.external_address)
 
-        session_id = 'test_session'
+        session_id = "test_session"
         session_api = await SessionAPI.create(pool.external_address)
         await session_api.create_session(session_id)
         # get session store
@@ -54,5 +51,4 @@ async def test_meta_service():
         # test alru_cache
         assert await MetaAPI.create(session_id, pool.external_address) is meta_api
 
-        await stop_services(
-            NodeRole.SUPERVISOR, config, address=pool.external_address)
+        await stop_services(NodeRole.SUPERVISOR, config, address=pool.external_address)

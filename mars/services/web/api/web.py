@@ -1,4 +1,3 @@
-
 # Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +20,9 @@ from ..core import MarsRequestHandler
 class MarsApiEntryHandler(MarsRequestHandler):
     def get(self):
         import mars
+
         version = mars.__version__
-        self.write(json.dumps({
-            'mars_version': version,
-        }))
+        self.write(json.dumps({"mars_version": version}))
 
 
-web_handlers = {
-    '/api': MarsApiEntryHandler
-}
+web_handlers = {"/api": MarsApiEntryHandler}

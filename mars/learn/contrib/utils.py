@@ -19,8 +19,10 @@ import numpy as np
 
 def make_import_error_func(package_name):
     def _func(*_, **__):  # pragma: no cover
-        raise ImportError(f'Cannot import {package_name}, please reinstall '
-                          f'that package.')
+        raise ImportError(
+            f"Cannot import {package_name}, please reinstall " f"that package."
+        )
+
     return _func
 
 
@@ -45,8 +47,9 @@ def pick_workers(workers, size):
     while rest > 0:
         start = size - rest
         to_pick_size = min(size - start, len(workers))
-        result[start: start + to_pick_size] = \
-            np.random.permutation(workers)[:to_pick_size]
+        result[start : start + to_pick_size] = np.random.permutation(workers)[
+            :to_pick_size
+        ]
         rest = rest - to_pick_size
     return result
 
@@ -54,9 +57,10 @@ def pick_workers(workers, size):
 def config_mod_getattr(mod_dict, globals_):
     def __getattr__(name):
         import importlib
+
         if name in mod_dict:
-            mod_name, cls_name = mod_dict[name].rsplit('.', 1)
-            mod = importlib.import_module(mod_name, globals_['__name__'])
+            mod_name, cls_name = mod_dict[name].rsplit(".", 1)
+            mod = importlib.import_module(mod_name, globals_["__name__"])
             cls = globals_[name] = getattr(mod, cls_name)
             return cls
         else:  # pragma: no cover
@@ -67,12 +71,13 @@ def config_mod_getattr(mod_dict, globals_):
             __getattr__(_mod)
 
     def __dir__():
-        return sorted([n for n in globals_ if not n.startswith('_')]
-                      + list(mod_dict))
+        return sorted([n for n in globals_ if not n.startswith("_")] + list(mod_dict))
 
-    globals_.update({
-        '__getattr__': __getattr__,
-        '__dir__': __dir__,
-        '__all__': list(__dir__()),
-        '__warningregistry__': dict(),
-    })
+    globals_.update(
+        {
+            "__getattr__": __getattr__,
+            "__dir__": __dir__,
+            "__all__": list(__dir__()),
+            "__warningregistry__": dict(),
+        }
+    )

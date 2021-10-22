@@ -25,36 +25,46 @@ class DataFrameFetchMixin(DataFrameOperandMixin, FetchMixin):
 
 class DataFrameFetch(Fetch, DataFrameFetchMixin):
     # required fields
-    _shape = TupleField('shape', FieldTypes.int64,
-                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
+    _shape = TupleField(
+        "shape",
+        FieldTypes.int64,
+        on_serialize=on_serialize_shape,
+        on_deserialize=on_deserialize_shape,
+    )
 
     def __init__(self, output_types=None, **kw):
         super().__init__(_output_types=output_types, **kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        if '_key' in kw and self.source_key is None:
-            self.source_key = kw['_key']
-        if '_shape' in kw and self._shape is None:
-            self._shape = kw['_shape']
+        if "_key" in kw and self.source_key is None:
+            self.source_key = kw["_key"]
+        if "_shape" in kw and self._shape is None:
+            self._shape = kw["_shape"]
         return super()._new_chunks(inputs, kws=kws, **kw)
 
     def _new_tileables(self, inputs, kws=None, **kw):
-        if '_key' in kw and self.source_key is None:
-            self.source_key = kw['_key']
+        if "_key" in kw and self.source_key is None:
+            self.source_key = kw["_key"]
         return super()._new_tileables(inputs, kws=kws, **kw)
 
 
 class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
     # required fields
-    _shape = TupleField('shape', FieldTypes.int64,
-                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
+    _shape = TupleField(
+        "shape",
+        FieldTypes.int64,
+        on_serialize=on_serialize_shape,
+        on_deserialize=on_deserialize_shape,
+    )
 
     def __init__(self, output_types=None, **kw):
         super().__init__(_output_types=output_types, **kw)
 
 
 register_fetch_class(OutputType.dataframe, DataFrameFetch, DataFrameFetchShuffle)
-register_fetch_class(OutputType.dataframe_groupby, DataFrameFetch, DataFrameFetchShuffle)
+register_fetch_class(
+    OutputType.dataframe_groupby, DataFrameFetch, DataFrameFetchShuffle
+)
 register_fetch_class(OutputType.series, DataFrameFetch, DataFrameFetchShuffle)
 register_fetch_class(OutputType.series_groupby, DataFrameFetch, DataFrameFetchShuffle)
 register_fetch_class(OutputType.index, DataFrameFetch, DataFrameFetchShuffle)

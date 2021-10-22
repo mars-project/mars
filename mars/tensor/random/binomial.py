@@ -23,13 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorBinomial(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_n', '_p']
+    _input_fields_ = ["_n", "_p"]
     _op_type_ = OperandDef.RAND_BINOMIAL
 
-    _fields_ = '_n', '_p', '_size'
-    _n = AnyField('n')
-    _p = AnyField('p')
-    _func_name = 'binomial'
+    _fields_ = "_n", "_p", "_size"
+    _n = AnyField("n")
+    _p = AnyField("p")
+    _func_name = "binomial"
 
     def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -138,8 +138,11 @@ def binomial(random_state, n, p, size=None, chunk_size=None, gpu=None, dtype=Non
     # answer = 0.38885, or 38%.
     """
     if dtype is None:
-        dtype = np.random.RandomState().binomial(
-            handle_array(n), handle_array(p), size=(0,)).dtype
+        dtype = (
+            np.random.RandomState()
+            .binomial(handle_array(n), handle_array(p), size=(0,))
+            .dtype
+        )
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorBinomial(seed=seed, size=size, gpu=gpu, dtype=dtype)

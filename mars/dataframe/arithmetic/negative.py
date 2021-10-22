@@ -19,11 +19,12 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameNegative(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.NEGATIVE
-    _func_name = 'negative'
+    _func_name = "negative"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorNegative
+
         return TensorNegative
 
 

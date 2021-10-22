@@ -25,15 +25,16 @@ from .core import TensorRandomOperandMixin, TensorDistribution
 class TensorMultinomial(TensorDistribution, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_MULTINOMIAL
 
-    _fields_ = '_n', '_pvals', '_size'
-    _n = Int64Field('n')
-    _pvals = TupleField('pvals', FieldTypes.float64)
-    _func_name = 'multinomial'
+    _fields_ = "_n", "_pvals", "_size"
+    _n = Int64Field("n")
+    _pvals = TupleField("pvals", FieldTypes.float64)
+    _func_name = "multinomial"
 
-    def __init__(self, n=None, pvals=None, state=None, size=None,
-                 dtype=None, **kw):
+    def __init__(self, n=None, pvals=None, state=None, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_n=n, _pvals=pvals, _state=state, _size=size, dtype=dtype, **kw)
+        super().__init__(
+            _n=n, _pvals=pvals, _state=state, _size=size, dtype=dtype, **kw
+        )
 
     @property
     def n(self):
@@ -54,7 +55,9 @@ class TensorMultinomial(TensorDistribution, TensorRandomOperandMixin):
         return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
 
 
-def multinomial(random_state, n, pvals, size=None, chunk_size=None, gpu=None, dtype=None):
+def multinomial(
+    random_state, n, pvals, size=None, chunk_size=None, gpu=None, dtype=None
+):
     """
     Draw samples from a multinomial distribution.
 
@@ -140,6 +143,5 @@ def multinomial(random_state, n, pvals, size=None, chunk_size=None, gpu=None, dt
         dtype = np.random.RandomState().multinomial(n, pvals, size=(0,)).dtype
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
-    op = TensorMultinomial(n=n, pvals=pvals, seed=seed,
-                           size=size, gpu=gpu, dtype=dtype)
+    op = TensorMultinomial(n=n, pvals=pvals, seed=seed, size=size, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)

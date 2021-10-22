@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorRad2deg(TensorUnaryOp):
     _op_type_ = OperandDef.RAD2DEG
-    _func_name = 'rad2deg'
+    _func_name = "rad2deg"
 
 
 @infer_dtype(np.rad2deg)

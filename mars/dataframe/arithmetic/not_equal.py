@@ -21,8 +21,8 @@ from .docstring import bin_compare_doc
 class DataFrameNotEqual(DataFrameBinopUfunc):
     _op_type_ = OperandDef.NE
 
-    _func_name = 'ne'
-    _rfunc_name = 'ne'
+    _func_name = "ne"
+    _rfunc_name = "ne"
 
     @classproperty
     def _operator(self):
@@ -31,6 +31,7 @@ class DataFrameNotEqual(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorNotEqual
+
         return TensorNotEqual
 
 
@@ -45,7 +46,7 @@ dtype: bool
 """
 
 
-@bin_compare_doc('Not equal to', equiv='!=', series_example=_ne_example)
-def ne(df, other, axis='columns', level=None):
+@bin_compare_doc("Not equal to", equiv="!=", series_example=_ne_example)
+def ne(df, other, axis="columns", level=None):
     op = DataFrameNotEqual(axis=axis, level=level, lhs=df, rhs=other)
     return op(df, other)

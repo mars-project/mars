@@ -19,6 +19,7 @@ from copy import copy
 import numpy as np
 import scipy.sparse as sps
 import pytest
+
 try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
@@ -26,11 +27,17 @@ except (ImportError, OSError):  # pragma: no cover
 
 from .... import dataframe as md
 from ....core import enter_mode, tile
-from ... import ones, zeros, tensor, full, arange, diag, linspace, \
-    triu, tril, ones_like
+from ... import ones, zeros, tensor, full, arange, diag, linspace, triu, tril, ones_like
 from ...core import Tensor, SparseTensor
-from .. import array, fromtiledb, TensorTileDBDataSource, \
-    fromdense, asarray, ascontiguousarray, asfortranarray
+from .. import (
+    array,
+    fromtiledb,
+    TensorTileDBDataSource,
+    fromdense,
+    asarray,
+    ascontiguousarray,
+    asfortranarray,
+)
 from ..tri import TensorTriu, TensorTril
 from ..zeros import TensorZeros
 from ..from_dense import DenseToSparse
@@ -52,18 +59,18 @@ def test_array():
 def test_ascontiguousarray():
     # dtype different
     raw_a = np.asfortranarray(np.random.rand(2, 4))
-    raw_b = np.ascontiguousarray(raw_a, dtype='f4')
+    raw_b = np.ascontiguousarray(raw_a, dtype="f4")
 
     a = tensor(raw_a, chunk_size=2)
-    b = ascontiguousarray(a, dtype='f4')
+    b = ascontiguousarray(a, dtype="f4")
 
     assert a.dtype == raw_a.dtype
-    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
-    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
+    assert a.flags["C_CONTIGUOUS"] == raw_a.flags["C_CONTIGUOUS"]
+    assert a.flags["F_CONTIGUOUS"] == raw_a.flags["F_CONTIGUOUS"]
 
     assert b.dtype == raw_b.dtype
-    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
-    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
+    assert b.flags["C_CONTIGUOUS"] == raw_b.flags["C_CONTIGUOUS"]
+    assert b.flags["F_CONTIGUOUS"] == raw_b.flags["F_CONTIGUOUS"]
 
     # no copy
     raw_a = np.random.rand(2, 4)
@@ -73,29 +80,29 @@ def test_ascontiguousarray():
     b = ascontiguousarray(a)
 
     assert a.dtype == raw_a.dtype
-    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
-    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
+    assert a.flags["C_CONTIGUOUS"] == raw_a.flags["C_CONTIGUOUS"]
+    assert a.flags["F_CONTIGUOUS"] == raw_a.flags["F_CONTIGUOUS"]
 
     assert b.dtype == raw_b.dtype
-    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
-    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
+    assert b.flags["C_CONTIGUOUS"] == raw_b.flags["C_CONTIGUOUS"]
+    assert b.flags["F_CONTIGUOUS"] == raw_b.flags["F_CONTIGUOUS"]
 
 
 def test_asfortranarray():
     # dtype different
     raw_a = np.random.rand(2, 4)
-    raw_b = np.asfortranarray(raw_a, dtype='f4')
+    raw_b = np.asfortranarray(raw_a, dtype="f4")
 
     a = tensor(raw_a, chunk_size=2)
-    b = asfortranarray(a, dtype='f4')
+    b = asfortranarray(a, dtype="f4")
 
     assert a.dtype == raw_a.dtype
-    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
-    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
+    assert a.flags["C_CONTIGUOUS"] == raw_a.flags["C_CONTIGUOUS"]
+    assert a.flags["F_CONTIGUOUS"] == raw_a.flags["F_CONTIGUOUS"]
 
     assert b.dtype == raw_b.dtype
-    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
-    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
+    assert b.flags["C_CONTIGUOUS"] == raw_b.flags["C_CONTIGUOUS"]
+    assert b.flags["F_CONTIGUOUS"] == raw_b.flags["F_CONTIGUOUS"]
 
     # no copy
     raw_a = np.asfortranarray(np.random.rand(2, 4))
@@ -105,12 +112,12 @@ def test_asfortranarray():
     b = asfortranarray(a)
 
     assert a.dtype == raw_a.dtype
-    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
-    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
+    assert a.flags["C_CONTIGUOUS"] == raw_a.flags["C_CONTIGUOUS"]
+    assert a.flags["F_CONTIGUOUS"] == raw_a.flags["F_CONTIGUOUS"]
 
     assert b.dtype == raw_b.dtype
-    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
-    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
+    assert b.flags["C_CONTIGUOUS"] == raw_b.flags["C_CONTIGUOUS"]
+    assert b.flags["F_CONTIGUOUS"] == raw_b.flags["F_CONTIGUOUS"]
 
 
 def test_ones():
@@ -219,18 +226,18 @@ def test_data_source():
     assert t.op.gpu is True
     assert t.chunks[0].op.gpu is True
 
-    t = full((2, 2), 2, dtype='f4')
+    t = full((2, 2), 2, dtype="f4")
     assert t.op.gpu is False
     assert t.shape == (2, 2)
     assert t.dtype == np.float32
 
-    t = full((2, 2), [1.0, 2.0], dtype='f4')
+    t = full((2, 2), [1.0, 2.0], dtype="f4")
     assert t.shape == (2, 2)
     assert t.dtype == np.float32
     assert isinstance(t.op, TensorBroadcastTo)
 
     with pytest.raises(ValueError):
-        full((2, 2), [1.0, 2.0, 3.0], dtype='f4')
+        full((2, 2), [1.0, 2.0, 3.0], dtype="f4")
 
 
 def test_ufunc():
@@ -269,7 +276,9 @@ def test_arange():
     pytest.raises(TypeError, lambda: arange(10, start=0))
     pytest.raises(TypeError, lambda: arange(0, 10, stop=0))
     pytest.raises(TypeError, lambda: arange())
-    pytest.raises(ValueError, lambda: arange('1066-10-13', dtype=np.datetime64, chunks=3))
+    pytest.raises(
+        ValueError, lambda: arange("1066-10-13", dtype=np.datetime64, chunks=3)
+    )
 
 
 def test_diag():
@@ -296,8 +305,7 @@ def test_diag():
     assert t.shape == (3, 3)
     t = tile(t)
     assert t.nsplits == ((2, 1), (2, 1))
-    assert len([c for c in t.chunks
-               if c.op.__class__.__name__ == 'TensorDiag']) == 2
+    assert len([c for c in t.chunks if c.op.__class__.__name__ == "TensorDiag"]) == 2
     assert t.chunks[0].op.sparse is True
 
     # test 2-d, shape[0] != shape[1]
@@ -345,12 +353,12 @@ def test_linspace():
 
     a = tile(a)
     assert a.nsplits == ((2, 2, 1),)
-    assert a.chunks[0].op.start == 2.
+    assert a.chunks[0].op.start == 2.0
     assert a.chunks[0].op.stop == 2.25
     assert a.chunks[1].op.start == 2.5
     assert a.chunks[1].op.stop == 2.75
-    assert a.chunks[2].op.start == 3.
-    assert a.chunks[2].op.stop == 3.
+    assert a.chunks[2].op.start == 3.0
+    assert a.chunks[2].op.stop == 3.0
 
     a = linspace(2.0, 3.0, num=5, endpoint=False, chunk_size=2)
 
@@ -358,7 +366,7 @@ def test_linspace():
 
     a = tile(a)
     assert a.nsplits == ((2, 2, 1),)
-    assert a.chunks[0].op.start == 2.
+    assert a.chunks[0].op.start == 2.0
     assert a.chunks[0].op.stop == 2.2
     assert a.chunks[1].op.start == 2.4
     assert a.chunks[1].op.stop == 2.6
@@ -366,7 +374,7 @@ def test_linspace():
     assert a.chunks[2].op.stop == 2.8
 
     _, step = linspace(2.0, 3.0, num=5, chunk_size=2, retstep=True)
-    assert step == .25
+    assert step == 0.25
 
 
 def test_triu_tril():
@@ -484,7 +492,7 @@ def test_set_tensor_inputs():
 
 
 def test_from_spmatrix():
-    t = tensor(sps.csr_matrix([[0, 0, 1], [1, 0, 0]], dtype='f8'), chunk_size=2)
+    t = tensor(sps.csr_matrix([[0, 0, 1], [1, 0, 0]], dtype="f8"), chunk_size=2)
 
     assert isinstance(t, SparseTensor)
     assert isinstance(t.op, CSRMatrixDataSource)
@@ -516,7 +524,7 @@ def test_from_dense():
 
 def test_ones_like():
     t1 = tensor([[0, 0, 1], [1, 0, 0]], chunk_size=2).tosparse()
-    t = ones_like(t1, dtype='f8')
+    t = ones_like(t1, dtype="f8")
 
     assert isinstance(t, SparseTensor)
     assert isinstance(t.op, TensorOnesLike)
@@ -540,7 +548,7 @@ def test_from_array():
     assert z.shape == (3, 3)
 
 
-@pytest.mark.skipif(tiledb is None, reason='TileDB not installed')
+@pytest.mark.skipif(tiledb is None, reason="TileDB not installed")
 def test_from_tile_db():
     ctx = tiledb.Ctx()
 
@@ -551,8 +559,12 @@ def test_from_tile_db():
             tiledb.Dim(ctx=ctx, name="k", domain=(1, 10), tile=4, dtype=np.int32),
             ctx=ctx,
         )
-        schema = tiledb.ArraySchema(ctx=ctx, domain=dom, sparse=sparse,
-                                    attrs=[tiledb.Attr(ctx=ctx, name='a', dtype=np.float32)])
+        schema = tiledb.ArraySchema(
+            ctx=ctx,
+            domain=dom,
+            sparse=sparse,
+            attrs=[tiledb.Attr(ctx=ctx, name="a", dtype=np.float32)],
+        )
 
         tempdir = tempfile.mkdtemp()
         try:
@@ -599,7 +611,7 @@ def test_from_tile_db():
             shutil.rmtree(tempdir)
 
 
-@pytest.mark.skipif(tiledb is None, reason='TileDB not installed')
+@pytest.mark.skipif(tiledb is None, reason="TileDB not installed")
 def test_dim_start_float():
     ctx = tiledb.Ctx()
 
@@ -607,8 +619,12 @@ def test_dim_start_float():
         tiledb.Dim(ctx=ctx, name="i", domain=(0.0, 6.0), tile=6, dtype=np.float64),
         ctx=ctx,
     )
-    schema = tiledb.ArraySchema(ctx=ctx, domain=dom, sparse=True,
-                                attrs=[tiledb.Attr(ctx=ctx, name='a', dtype=np.float32)])
+    schema = tiledb.ArraySchema(
+        ctx=ctx,
+        domain=dom,
+        sparse=True,
+        attrs=[tiledb.Attr(ctx=ctx, name="a", dtype=np.float32)],
+    )
 
     tempdir = tempfile.mkdtemp()
     try:
@@ -622,8 +638,11 @@ def test_dim_start_float():
 
 
 def test_from_dataframe():
-    mdf = md.DataFrame({'a': [0, 1, 2], 'b': [3, 4, 5],
-                        'c': [0.1, 0.2, 0.3]}, index=['c', 'd', 'e'], chunk_size=2)
+    mdf = md.DataFrame(
+        {"a": [0, 1, 2], "b": [3, 4, 5], "c": [0.1, 0.2, 0.3]},
+        index=["c", "d", "e"],
+        chunk_size=2,
+    )
     tensor = from_dataframe(mdf)
     assert tensor.shape == (3, 3)
     assert np.float64 == tensor.dtype

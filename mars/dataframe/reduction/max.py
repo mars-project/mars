@@ -20,7 +20,7 @@ from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 class DataFrameMax(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.MAX
-    _func_name = 'max'
+    _func_name = "max"
 
     @property
     def is_atomic(self):
@@ -29,23 +29,47 @@ class DataFrameMax(DataFrameReductionOperand, DataFrameReductionMixin):
 
 def max_series(df, axis=None, skipna=None, level=None, combine_size=None, method=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameMax(axis=axis, skipna=skipna, level=level, combine_size=combine_size,
-                      output_types=[OutputType.scalar], use_inf_as_na=use_inf_as_na,
-                      method=method)
+    op = DataFrameMax(
+        axis=axis,
+        skipna=skipna,
+        level=level,
+        combine_size=combine_size,
+        output_types=[OutputType.scalar],
+        use_inf_as_na=use_inf_as_na,
+        method=method,
+    )
     return op(df)
 
 
-def max_dataframe(df, axis=None, skipna=None, level=None, numeric_only=None,
-                  combine_size=None, method=None):
+def max_dataframe(
+    df,
+    axis=None,
+    skipna=None,
+    level=None,
+    numeric_only=None,
+    combine_size=None,
+    method=None,
+):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameMax(axis=axis, skipna=skipna, level=level, numeric_only=numeric_only,
-                      combine_size=combine_size, output_types=[OutputType.series],
-                      use_inf_as_na=use_inf_as_na, method=method)
+    op = DataFrameMax(
+        axis=axis,
+        skipna=skipna,
+        level=level,
+        numeric_only=numeric_only,
+        combine_size=combine_size,
+        output_types=[OutputType.series],
+        use_inf_as_na=use_inf_as_na,
+        method=method,
+    )
     return op(df)
 
 
 def max_index(df, axis=None, skipna=True):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameMax(axis=axis, skipna=skipna, output_types=[OutputType.scalar],
-                      use_inf_as_na=use_inf_as_na)
+    op = DataFrameMax(
+        axis=axis,
+        skipna=skipna,
+        output_types=[OutputType.scalar],
+        use_inf_as_na=use_inf_as_na,
+    )
     return op(df)

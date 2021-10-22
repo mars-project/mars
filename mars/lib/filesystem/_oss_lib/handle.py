@@ -19,15 +19,18 @@ from .common import *
 try:
     import oss2
 except ImportError:
-    oss2 = ModulePlaceholder('oss2')
+    oss2 = ModulePlaceholder("oss2")
 
 
 class OSSIOBase(IOBase):
     def __init__(self, path, mode):
         self._path = path
         (
-            self._bucket_name, self._key_name, self._access_key_id,
-            self._access_key_secret, self._end_point
+            self._bucket_name,
+            self._key_name,
+            self._access_key_id,
+            self._access_key_secret,
+            self._end_point,
         ) = parse_osspath(self._path)
         self._bucket = self._get_bucket()
         self._current_pos = 0
@@ -45,8 +48,10 @@ class OSSIOBase(IOBase):
 
     def _get_bucket(self):
         return oss2.Bucket(
-            auth=oss2.Auth(access_key_id=self._access_key_id,
-                           access_key_secret=self._access_key_secret),
+            auth=oss2.Auth(
+                access_key_id=self._access_key_id,
+                access_key_secret=self._access_key_secret,
+            ),
             endpoint=self._end_point,
             bucket_name=self._bucket_name,
         )
@@ -91,15 +96,16 @@ class OSSIOBase(IOBase):
         Returns an empty bytes array on EOF.
         """
         if self._current_pos == self._get_size() or size == 0:
-            return b''
+            return b""
         elif size < 0:
             obj = self._bucket.get_object(
-                self._key_name, byte_range=(self._current_pos, None))
+                self._key_name, byte_range=(self._current_pos, None)
+            )
             self._current_pos = self._get_size()
         else:
             obj = self._bucket.get_object(
                 self._key_name,
-                byte_range=(self._current_pos, self._current_pos + size - 1)
+                byte_range=(self._current_pos, self._current_pos + size - 1),
             )
             self._current_pos = self._current_pos + size
         content = obj.read()
@@ -109,11 +115,11 @@ class OSSIOBase(IOBase):
         # For backwards compatibility, a (slowish) readline().
         def nreadahead():
             # Read to the beginning of the next line
-            read_to = min(self._get_size() - 1,
-                          self._current_pos + self._buffer_size - 1)
+            read_to = min(
+                self._get_size() - 1, self._current_pos + self._buffer_size - 1
+            )
             buffer = self._bucket.get_object(
-                self._key_name,
-                byte_range=(self._current_pos, read_to)
+                self._key_name, byte_range=(self._current_pos, read_to)
             ).read()
             if not buffer:
                 return 1

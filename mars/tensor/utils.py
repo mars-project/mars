@@ -25,6 +25,7 @@ from numbers import Integral
 from typing import Dict, List, Union
 
 import numpy as np
+
 try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
@@ -34,14 +35,14 @@ from ..core import ExecutableTuple, recursive_tile
 from ..utils import lazy_import
 from ..lib.mmh3 import hash_from_buffer
 
-cp = lazy_import('cupy', globals=globals(), rename='cp')
+cp = lazy_import("cupy", globals=globals(), rename="cp")
 
 
 def normalize_shape(shape):
     if isinstance(shape, Iterable):
         return tuple(shape)
     else:
-        return shape,
+        return (shape,)
 
 
 def normalize_chunk_sizes(shape, chunk_size):
@@ -53,8 +54,10 @@ def normalize_chunk_sizes(shape, chunk_size):
             chunk_size = (chunk_size,) * len(shape)
 
     if len(shape) != len(chunk_size):
-        raise ValueError('Chunks must have the same dimemsion, '
-                         f'got shape: {shape}, chunks: {chunk_size}')
+        raise ValueError(
+            "Chunks must have the same dimemsion, "
+            f"got shape: {shape}, chunks: {chunk_size}"
+        )
 
     chunk_sizes = []
     for size, chunk in zip(shape, chunk_size):
@@ -63,8 +66,10 @@ def normalize_chunk_sizes(shape, chunk_size):
                 chunk = tuple(chunk)
 
             if sum(chunk) != size:
-                raise ValueError('chunks shape should be of the same length, '
-                                 f'got shape: {size}, chunks: {chunk}')
+                raise ValueError(
+                    "chunks shape should be of the same length, "
+                    f"got shape: {size}, chunks: {chunk}"
+                )
             chunk_sizes.append(chunk)
         else:
             assert isinstance(chunk, int)
@@ -72,8 +77,9 @@ def normalize_chunk_sizes(shape, chunk_size):
             if size == 0:
                 sizes = (0,)
             else:
-                sizes = tuple(chunk for _ in range(int(size / chunk))) + \
-                    (tuple() if size % chunk == 0 else (size % chunk,))
+                sizes = tuple(chunk for _ in range(int(size / chunk))) + (
+                    tuple() if size % chunk == 0 else (size % chunk,)
+                )
             chunk_sizes.append(sizes)
 
     return tuple(chunk_sizes)
@@ -87,15 +93,19 @@ def broadcast_shape(*shapes):
     for ss in itertools.zip_longest(*[reversed(s) for s in shapes], fillvalue=-1):
         shape = max(s for s in ss if s != -1)
         if any(i != -1 and i != 1 and i != shape and not np.isnan(i) for i in ss):
-            raise ValueError('Operands could not be broadcast together '
-                             'with shape {0}'.format(' '.join(map(str, shapes))))
+            raise ValueError(
+                "Operands could not be broadcast together "
+                "with shape {0}".format(" ".join(map(str, shapes)))
+            )
         out_shapes.append(shape)
     return tuple(reversed(out_shapes))
 
 
 def get_chunk_slices(nsplits, idx):
-    return tuple(slice(sum(nsplit[:idx]), sum(nsplit[:idx + 1]))
-                 for idx, nsplit in zip(idx, nsplits))
+    return tuple(
+        slice(sum(nsplit[:idx]), sum(nsplit[: idx + 1]))
+        for idx, nsplit in zip(idx, nsplits)
+    )
 
 
 def gen_random_seeds(n, random_state):
@@ -161,16 +171,16 @@ def normalize_axis_tuple(axis, ndim, argname=None, allow_duplicate=False):
     axis = tuple([validate_axis(ndim, ax, argname) for ax in axis])
     if not allow_duplicate and len(set(axis)) != len(axis):
         if argname:
-            raise ValueError(f'repeated axis in `{argname}` argument')
+            raise ValueError(f"repeated axis in `{argname}` argument")
         else:
-            raise ValueError('repeated axis')
+            raise ValueError("repeated axis")
     return axis
 
 
 def validate_order(dtype, order):
-    if getattr(dtype, 'fields', None) is None:
+    if getattr(dtype, "fields", None) is None:
         if order is not None:
-            raise ValueError('Cannot specify order when the array has no fields')
+            raise ValueError("Cannot specify order when the array has no fields")
         else:
             return
 
@@ -185,7 +195,7 @@ def validate_order(dtype, order):
     if need_check:
         for o in order:
             if o not in dtype.fields:
-                raise ValueError(f'unknown field name: {o}')
+                raise ValueError(f"unknown field name: {o}")
     return order
 
 
@@ -193,16 +203,20 @@ def inject_dtype(dtype):
     def inner(func):
         @wraps(func)
         def call(*tensors, **kw):
-            kw['dtype'] = np.dtype(dtype)
+            kw["dtype"] = np.dtype(dtype)
             ret = func(*tensors, **kw)
             if ret is NotImplemented:
-                reverse_func = getattr(inspect.getmodule(func), f'r{func.__name__}', None)
+                reverse_func = getattr(
+                    inspect.getmodule(func), f"r{func.__name__}", None
+                )
                 if reverse_func is not None:
                     ret = reverse_func(*tensors[::-1], **kw)
                 if ret is NotImplemented:
                     raise TypeError(
                         "unsupported operand type(s) for {0}: '{1}' and '{2}".format(
-                            func.__name__, *[type(t) for t in tensors]))
+                            func.__name__, *[type(t) for t in tensors]
+                        )
+                    )
             return ret
 
         return call
@@ -215,59 +229,71 @@ def infer_dtype(np_func, empty=True, reverse=False, check=True):
         if empty:
             return np.empty((1,) * max(1, arg.ndim), dtype=arg.dtype)
         else:
-            if hasattr(arg, 'op') and hasattr(arg.op, 'data'):
+            if hasattr(arg, "op") and hasattr(arg.op, "data"):
                 arg = arg.op.data
             return arg[(0,) * max(1, arg.ndim)]
 
-    tensor_ufunc = '__tensor_ufunc__'
+    tensor_ufunc = "__tensor_ufunc__"
 
     def is_arg(arg):
         if hasattr(arg, tensor_ufunc):
             return False
-        return hasattr(arg, 'ndim') and hasattr(arg, 'dtype')
+        return hasattr(arg, "ndim") and hasattr(arg, "dtype")
 
     def inner(func):
         @wraps(func)
         def h(*tensors, **kw):
-            usr_dtype = np.dtype(kw.pop('dtype')) if 'dtype' in kw else None
+            usr_dtype = np.dtype(kw.pop("dtype")) if "dtype" in kw else None
             args = [make_arg(t) if is_arg(t) else t for t in tensors]
             if reverse:
                 args = args[::-1]
-            np_kw = dict((k, make_arg(v) if hasattr(v, 'op') else v) for k, v in kw.items()
-                         if is_arg(v) and k != 'out')
+            np_kw = dict(
+                (k, make_arg(v) if hasattr(v, "op") else v)
+                for k, v in kw.items()
+                if is_arg(v) and k != "out"
+            )
 
             dtype = None
-            if not any(hasattr(arg, tensor_ufunc)
-                       for arg in itertools.chain(args, np_kw.values())):
+            if not any(
+                hasattr(arg, tensor_ufunc)
+                for arg in itertools.chain(args, np_kw.values())
+            ):
                 # skip infer if encounter mars DataFrame etc
                 # that implements __tensor_ufunc__
                 try:
-                    with np.errstate(all='ignore'):
+                    with np.errstate(all="ignore"):
                         dtype = np_func(*args, **np_kw).dtype
                 except:  # noqa: E722
                     dtype = None
 
             if usr_dtype and dtype:
                 can_cast_kwargs = {}
-                if kw.get('casting') is not None:
-                    can_cast_kwargs['casting'] = kw.get('casting')
+                if kw.get("casting") is not None:
+                    can_cast_kwargs["casting"] = kw.get("casting")
                 if check and not np.can_cast(dtype, usr_dtype, **can_cast_kwargs):
-                    raise TypeError('No loop matching the specified signature '
-                                    f'and casting was found for ufunc {np_func}')
-                kw['dtype'] = usr_dtype
+                    raise TypeError(
+                        "No loop matching the specified signature "
+                        f"and casting was found for ufunc {np_func}"
+                    )
+                kw["dtype"] = usr_dtype
             else:
-                kw['dtype'] = dtype
+                kw["dtype"] = dtype
 
             ret = func(*tensors, **kw)
             if ret is NotImplemented:
-                reverse_func = getattr(inspect.getmodule(func), f'r{func.__name__}', None) \
-                    if not reverse else None
+                reverse_func = (
+                    getattr(inspect.getmodule(func), f"r{func.__name__}", None)
+                    if not reverse
+                    else None
+                )
                 if reverse_func is not None:
                     ret = reverse_func(*tensors[::-1], **kw)
                 if ret is NotImplemented:
                     raise TypeError(
                         "unsupported operand type(s) for {0}: '{1}' and '{2}".format(
-                            func.__name__, *[type(t) for t in tensors]))
+                            func.__name__, *[type(t) for t in tensors]
+                        )
+                    )
             return ret
 
         return h
@@ -294,7 +320,9 @@ def replace_ellipsis(index, ndim):
 
     illipsis_index = all_illipsis[0]
     n_extra = ndim - sum([index_ndim(i) for i in index]) + 1
-    return index[:illipsis_index] + (slice(None),) * n_extra + index[illipsis_index + 1:]
+    return (
+        index[:illipsis_index] + (slice(None),) * n_extra + index[illipsis_index + 1 :]
+    )
 
 
 def calc_sliced_size(size, sliceobj):
@@ -314,8 +342,9 @@ def calc_object_length(obj, size=None):
         return len(obj)
 
 
-def slice_split(index: Union[int, slice],
-                sizes: List[int]) -> Dict[int, Union[int, slice]]:
+def slice_split(
+    index: Union[int, slice], sizes: List[int]
+) -> Dict[int, Union[int, slice]]:
     size = sum(sizes)
 
     if isinstance(index, Integral):
@@ -357,10 +386,11 @@ def slice_split(index: Union[int, slice],
 
             # if our slice is in this chunk
             if (chunk_start <= rstart < chunk_stop) and (rstart > stop):
-                d[i] = slice(rstart - chunk_stop,
-                             max(chunk_start - chunk_stop - 1,
-                                 stop - chunk_stop),
-                             step)
+                d[i] = slice(
+                    rstart - chunk_stop,
+                    max(chunk_start - chunk_stop - 1, stop - chunk_stop),
+                    step,
+                )
 
                 # compute the next running start point,
                 offset = (rstart - (chunk_start - 1)) % step
@@ -390,16 +420,16 @@ def split_indexes_into_chunks(nsplits, indexes, ret_is_asc=True):
     cum_nsplits = [np.cumsum(nsplit) for nsplit in nsplits]
     for i, cum_nsplit, index in zip(itertools.count(0), cum_nsplits, indexes):
         # handle negative value in index
-        if hasattr(index, 'flags') and not index.flags.writeable:
+        if hasattr(index, "flags") and not index.flags.writeable:
             index = index.copy()
         index = np.add(index, cum_nsplit[-1], out=index, where=index < 0)
         sorted_idx = np.argsort(index)
 
         if np.any(index >= cum_nsplit[-1]):
             idx = index[index >= cum_nsplit[-1]][0]
-            raise IndexError(f'index {idx} is out of bounds with size {cum_nsplit[-1]}')
+            raise IndexError(f"index {idx} is out of bounds with size {cum_nsplit[-1]}")
 
-        chunk_idx = np.searchsorted(cum_nsplit, index[sorted_idx], side='right')
+        chunk_idx = np.searchsorted(cum_nsplit, index[sorted_idx], side="right")
         chunk_idxes[i, sorted_idx] = chunk_idx
 
     chunk_idxes_asc = False
@@ -413,7 +443,9 @@ def split_indexes_into_chunks(nsplits, indexes, ret_is_asc=True):
         cond = (chunk_idxes == np.array(idx).reshape((len(idx), 1))).all(axis=0)
         filtered = indexes[:, cond]
         for i in range(len(indexes)):
-            filtered[i] = filtered[i] - (cum_nsplits[i][idx[i] - 1] if idx[i] > 0 else 0)
+            filtered[i] = filtered[i] - (
+                cum_nsplits[i][idx[i] - 1] if idx[i] > 0 else 0
+            )
         chunk_index_to_indexes[idx] = filtered
         chunk_index_to_poses[idx] = poses[cond]
 
@@ -445,9 +477,9 @@ def decide_unify_split(*splits):
         return raw_splits[0]
 
     if any(np.isnan(sum(s)) for s in splits):
-        raise ValueError(f'Tensor chunk sizes are unknown: {splits}')
+        raise ValueError(f"Tensor chunk sizes are unknown: {splits}")
     if len(set(sum(s) for s in splits)) > 1:
-        raise ValueError(f'Splits not of same size: {splits}')
+        raise ValueError(f"Splits not of same size: {splits}")
 
     q = [list(s) for s in splits]
     size = sum(q[0])
@@ -468,19 +500,30 @@ def decide_unify_split(*splits):
 
 
 def unify_nsplits(*tensor_axes):
-    tensor_splits = [dict((a, split) for a, split in zip(axes, t.nsplits) if split != (1,))
-                     for t, axes in tensor_axes if t.nsplits]
-    common_axes = reduce(operator.and_, [set(ts.keys()) for ts in tensor_splits]) if tensor_splits else set()
-    axes_unified_splits = dict((ax, decide_unify_split(*(t[ax] for t in tensor_splits)))
-                               for ax in common_axes)
+    tensor_splits = [
+        dict((a, split) for a, split in zip(axes, t.nsplits) if split != (1,))
+        for t, axes in tensor_axes
+        if t.nsplits
+    ]
+    common_axes = (
+        reduce(operator.and_, [set(ts.keys()) for ts in tensor_splits])
+        if tensor_splits
+        else set()
+    )
+    axes_unified_splits = dict(
+        (ax, decide_unify_split(*(t[ax] for t in tensor_splits))) for ax in common_axes
+    )
 
     if len(common_axes) == 0:
         return tuple(t[0] for t in tensor_axes)
 
     res = []
     for t, axes in tensor_axes:
-        new_chunk = dict((i, axes_unified_splits[ax]) for ax, i in zip(axes, range(t.ndim))
-                         if ax in axes_unified_splits)
+        new_chunk = dict(
+            (i, axes_unified_splits[ax])
+            for ax, i in zip(axes, range(t.ndim))
+            if ax in axes_unified_splits
+        )
         t = yield from recursive_tile(t.rechunk(new_chunk))
         res.append(t)
 
@@ -488,8 +531,9 @@ def unify_nsplits(*tensor_axes):
 
 
 def unify_chunks(*tensors):
-    tensor_axes = [(t, range(t.ndim)) if not isinstance(t, tuple) else t
-                   for t in tensors]
+    tensor_axes = [
+        (t, range(t.ndim)) if not isinstance(t, tuple) else t for t in tensors
+    ]
 
     if len(tensor_axes) < 2:
         return tuple(t[0] if isinstance(t, tuple) else t for t in tensors)
@@ -500,20 +544,25 @@ def unify_chunks(*tensors):
 def check_out_param(out, t, casting):
     from .base import broadcast_to
 
-    if not hasattr(out, 'shape'):
-        raise TypeError('return arrays must be a tensor')
+    if not hasattr(out, "shape"):
+        raise TypeError("return arrays must be a tensor")
 
     try:
         broadcast_to(t, out.shape)
     except ValueError:
-        raise ValueError("operands could not be broadcast together "
-                         "with shapes ({0}) ({1})".format(','.join(str(s) for s in t.shape),
-                                                          ','.join(str(s) for s in out.shape)))
+        raise ValueError(
+            "operands could not be broadcast together "
+            "with shapes ({0}) ({1})".format(
+                ",".join(str(s) for s in t.shape), ",".join(str(s) for s in out.shape)
+            )
+        )
 
     if not np.can_cast(t.dtype, out.dtype, casting):
-        raise TypeError(f"output (typecode '{t.dtype.char}') could not be coerced "
-                        f"to provided output parameter (typecode '{out.dtype.char}') "
-                        f"according to the casting rule ''{casting}''")
+        raise TypeError(
+            f"output (typecode '{t.dtype.char}') could not be coerced "
+            f"to provided output parameter (typecode '{out.dtype.char}') "
+            f"according to the casting rule ''{casting}''"
+        )
 
 
 def dictify_chunk_size(shape, chunk_size):
@@ -532,7 +581,7 @@ def dictify_chunk_size(shape, chunk_size):
         elif isinstance(chunk_size, int):
             chunk_size = {i: chunk_size for i in range(len(shape))}
         else:
-            raise TypeError(f'chunks must be iterable, got {type(chunk_size)}')
+            raise TypeError(f"chunks must be iterable, got {type(chunk_size)}")
 
     if chunk_size is None:
         chunk_size = dict()
@@ -559,19 +608,26 @@ def decide_chunk_sizes(shape, chunk_size, itemsize):
     if nleft < 0:
         raise ValueError("chunks have more dimensions than input tensor")
     if nleft == 0:
-        return normalize_chunk_sizes(shape, tuple(chunk_size[j] for j in range(len(shape))))
+        return normalize_chunk_sizes(
+            shape, tuple(chunk_size[j] for j in range(len(shape)))
+        )
 
     max_chunk_size = options.chunk_store_limit
 
     # normalize the dimension which specified first
-    dim_to_normalized = {i: normalize_chunk_sizes((shape[i],), (c,))[0]
-                         for i, c in chunk_size.items()}
+    dim_to_normalized = {
+        i: normalize_chunk_sizes((shape[i],), (c,))[0] for i, c in chunk_size.items()
+    }
 
     left = {j: [] for j in range(len(shape)) if j not in dim_to_normalized}
     left_unsplit = {j: shape[j] for j in left}
     while True:
-        nbytes_occupied = np.prod([max(c) for c in dim_to_normalized.values()]) * itemsize
-        dim_size = np.maximum(int(np.power(max_chunk_size / nbytes_occupied, 1 / float(len(left)))), 1)
+        nbytes_occupied = (
+            np.prod([max(c) for c in dim_to_normalized.values()]) * itemsize
+        )
+        dim_size = np.maximum(
+            int(np.power(max_chunk_size / nbytes_occupied, 1 / float(len(left)))), 1
+        )
         for j, ns in left.copy().items():
             unsplit = left_unsplit[j]
             ns.append(int(np.minimum(unsplit, dim_size)))
@@ -608,8 +664,9 @@ def check_random_state(seed):
         return mtrand.RandomState.from_numpy(seed)
     if isinstance(seed, mtrand.RandomState):
         return seed
-    raise ValueError(f'{seed} cannot be used to seed a mt.random.RandomState'
-                     ' instance')
+    raise ValueError(
+        f"{seed} cannot be used to seed a mt.random.RandomState" " instance"
+    )
 
 
 def filter_inputs(inputs):
@@ -641,23 +698,22 @@ def to_numpy(pdf):
         return pdf.values
 
 
-def check_order(order_str, available_options='KACF',
-                err_msg='order not understood'):
+def check_order(order_str, available_options="KACF", err_msg="order not understood"):
     order_str = order_str.upper()
     if order_str not in available_options:
         raise TypeError(err_msg)
 
 
-def get_order(order_str, to_keep_order, available_options='KACF',
-              err_msg='order not understood'):
+def get_order(
+    order_str, to_keep_order, available_options="KACF", err_msg="order not understood"
+):
     from .core import TensorOrder
 
-    check_order(order_str, available_options=available_options,
-                err_msg=err_msg)
+    check_order(order_str, available_options=available_options, err_msg=err_msg)
 
-    if order_str in 'KA':
+    if order_str in "KA":
         return to_keep_order
-    elif order_str == 'C':
+    elif order_str == "C":
         return TensorOrder.C_ORDER
     else:
         return TensorOrder.F_ORDER
@@ -667,7 +723,9 @@ def reverse_order(old_order):
     from .core import TensorOrder
 
     assert isinstance(old_order, TensorOrder)
-    return TensorOrder.C_ORDER if old_order == TensorOrder.F_ORDER else TensorOrder.F_ORDER
+    return (
+        TensorOrder.C_ORDER if old_order == TensorOrder.F_ORDER else TensorOrder.F_ORDER
+    )
 
 
 def hash_on_axis(ar, axis, n_dest):
@@ -690,6 +748,7 @@ def hash_on_axis(ar, axis, n_dest):
         np.apply_along_axis(_hash_to_dest, 0, np.arange(ar.shape[axis])[np.newaxis, :])
         return ret
     else:
+
         def _hash_to_dest(data):
             return hash_from_buffer(memoryview(data)) % n_dest
 
@@ -701,9 +760,9 @@ def hash_on_axis(ar, axis, n_dest):
 def fetch_corner_data(tensor, session=None):
     print_option = np.get_printoptions()
     # only fetch corner data when data > threshold
-    threshold = print_option['threshold']
+    threshold = print_option["threshold"]
     # number of edge items to print
-    edgeitems = print_option['edgeitems']
+    edgeitems = print_option["edgeitems"]
 
     # we fetch corner data based on the fact that
     # the tensor must have been executed,
@@ -754,18 +813,18 @@ def implement_scipy(scipy_fun):
             lines = []
             for line in doc_str.splitlines(keepends=False):
                 # skip function headers
-                if line.startswith(scipy_fun.__name__ + '('):
+                if line.startswith(scipy_fun.__name__ + "("):
                     continue
                 # skip version marks
-                if line.strip().startswith('.. versionadded::'):
+                if line.strip().startswith(".. versionadded::"):
                     continue
                 # skip examples
-                if line.strip() == 'Examples':
+                if line.strip() == "Examples":
                     break
                 lines.append(line)
-            doc_str = '\n'.join(lines).strip()
+            doc_str = "\n".join(lines).strip()
             # remove trailing empty sections
-            fun.__doc__ = re.sub(r'[A-Za-z]+\n-+$', '', doc_str).strip()
+            fun.__doc__ = re.sub(r"[A-Za-z]+\n-+$", "", doc_str).strip()
         return fun
 
     return wrapper

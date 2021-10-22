@@ -16,7 +16,12 @@
 
 import React, { lazy, Suspense } from 'react';
 import PropTypes from 'prop-types';
-import { Tabs, Tab } from '@material-ui/core';
+import Table from '@material-ui/core/Table';
+import TableBody from '@material-ui/core/TableBody';
+import TableRow from '@material-ui/core/TableRow';
+import TableCell from '@material-ui/core/TableCell';
+import Tabs from '@material-ui/core/Tabs';
+import Tab from '@material-ui/core/Tab';
 const SubtaskGraph = lazy(() => {
     return import('./SubtaskGraph');
 });
@@ -51,22 +56,52 @@ class TileableDetail extends React.Component {
                         <Tab label='Tileable Info' />
                         <Tab label='Subtask Info' />
                     </Tabs><br />
-
                     <div>
                         {
                             this.state.displayedTileableDetail === 0
                                 ?
                                 <React.Fragment>
-                                    <h2>Tileable Graph Info:</h2>
-                                    <div>Tileable ID: <br/>{this.props.tileable.id}</div><br/>
-                                    <div>Tileable Name: <br/>{this.props.tileable.name}</div><br/><br />
+                                    <Table size="small" style={{ height: '100%' }}>
+                                        <TableBody>
+                                            <TableRow>
+                                                <TableCell variant='head'>
+                                                    <b>Tileable ID</b>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {this.props.tileable.id}
+                                                </TableCell>
+                                            </TableRow>
+                                            <TableRow>
+                                                <TableCell variant='head'>
+                                                    <b>Tileable Name</b>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {this.props.tileable.name}
+                                                </TableCell>
+                                            </TableRow>
+                                            {
+                                                Object.keys(this.props.tileable.properties).map((key) => {
+                                                    return (
+                                                        <TableRow key={key}>
+                                                            <TableCell variant='head'>
+                                                                <b>{key}</b>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {this.props.tileable.properties[key]}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })
+                                            }
+                                        </TableBody>
+                                    </Table>
                                 </React.Fragment>
                                 :
                                 <Suspense fallback={<div>Loading...</div>}>
                                     <SubtaskGraph
                                         sessionId={this.props.sessionId}
                                         taskId={this.props.taskId}
-                                        tileableId={this.props.tileable.id}
+                                        id={this.props.tileable.id}
                                     />
                                 </Suspense>
                         }
@@ -84,6 +119,9 @@ TileableDetail.propTypes = {
     tileable: PropTypes.shape({
         id: PropTypes.string,
         name: PropTypes.string,
+        properties: PropTypes.shape({
+            id: PropTypes.string,
+        }),
     }),
     sessionId: PropTypes.string.isRequired,
     taskId: PropTypes.string.isRequired,

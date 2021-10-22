@@ -15,5 +15,10 @@
 from .base import Client, Server, Channel
 from .core import get_client_type, get_server_type, gen_local_address
 from .dummy import DummyClient, DummyServer, DummyChannel
-from .socket import SocketClient, SocketServer, UnixSocketClient, \
-    UnixSocketServer, SocketChannel
+from .socket import (
+    SocketClient,
+    SocketServer,
+    UnixSocketClient,
+    UnixSocketServer,
+    SocketChannel,
+)

@@ -47,13 +47,20 @@ class ClassifierMixin:
             Mean accuracy of self.predict(X) wrt. y.
         """
         from .metrics import accuracy_score
-        result = accuracy_score(y, self.predict(X), sample_weight=sample_weight,
-                                session=session, run_kwargs=run_kwargs)
+
+        result = accuracy_score(
+            y,
+            self.predict(X),
+            sample_weight=sample_weight,
+            session=session,
+            run_kwargs=run_kwargs,
+        )
         return result
 
 
 class RegressorMixin:
     """Mixin class for all regression estimators in scikit-learn."""
+
     _estimator_type = "regressor"
 
     def score(self, X, y, sample_weight=None):
@@ -104,12 +111,13 @@ class RegressorMixin:
         return r2_score(y, y_pred, sample_weight=sample_weight)
 
     def _more_tags(self):  # noqa: R0201  # pylint: disable=no-self-use
-        return {'requires_y': True}
+        return {"requires_y": True}
 
 
 class BaseEstimator(SklearnBaseEstimator):
-    def _validate_data(self, X, y=None, reset=True,
-                       validate_separately=False, **check_params):
+    def _validate_data(
+        self, X, y=None, reset=True, validate_separately=False, **check_params
+    ):
         """Validate input data and set or check the `n_features_in_` attribute.
 
         Parameters
@@ -140,15 +148,16 @@ class BaseEstimator(SklearnBaseEstimator):
         """
 
         if y is None:
-            if hasattr(self, '_get_tags') and \
-                    self._get_tags().get('requires_y', False):  # pragma: no cover
+            if hasattr(self, "_get_tags") and self._get_tags().get(
+                "requires_y", False
+            ):  # pragma: no cover
                 raise ValueError(
                     f"This {type(self).__name__} estimator requires y to be passed, "
                     "but the target y is None."
                 )
             X = check_array(X, **check_params)
             out = X
-        elif isinstance(y, str) and y == 'no_validation':
+        elif isinstance(y, str) and y == "no_validation":
             X = check_array(X, **check_params)
             out = X
         else:  # pragma: no cover
@@ -164,8 +173,7 @@ class BaseEstimator(SklearnBaseEstimator):
                 X, y = check_X_y(X, y, **check_params)
             out = X, y
 
-        if check_params.get('ensure_2d', True) and \
-                hasattr(self, '_check_n_features'):
+        if check_params.get("ensure_2d", True) and hasattr(self, "_check_n_features"):
             self._check_n_features(X, reset=reset)
 
         return out

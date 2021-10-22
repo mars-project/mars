@@ -27,8 +27,11 @@ from ...core import IndexValue, DatetimeIndex, Int64Index, Float64Index
 from ..dataframe import from_pandas as from_pandas_df
 from ..date_range import date_range
 from ..from_records import from_records
-from ..from_tensor import dataframe_from_tensor, \
-    series_from_tensor, dataframe_from_1d_tileables
+from ..from_tensor import (
+    dataframe_from_tensor,
+    series_from_tensor,
+    dataframe_from_1d_tileables,
+)
 from ..index import from_pandas as from_pandas_index, from_tileable
 from ..read_csv import read_csv, DataFrameReadCSV
 from ..read_sql import read_sql_table, read_sql_query, DataFrameReadSQL
@@ -38,11 +41,13 @@ from ....tests.core import require_ray
 from ....utils import lazy_import
 
 
-ray = lazy_import('ray')
+ray = lazy_import("ray")
 
 
 def test_from_pandas_dataframe():
-    data = pd.DataFrame(np.random.rand(10, 10), columns=['c' + str(i) for i in range(10)])
+    data = pd.DataFrame(
+        np.random.rand(10, 10), columns=["c" + str(i) for i in range(10)]
+    )
     df = from_pandas_df(data, chunk_size=4)
 
     pd.testing.assert_series_equal(df.op.dtypes, data.dtypes)
@@ -129,7 +134,7 @@ def test_from_pandas_dataframe():
 
 
 def test_from_pandas_series():
-    data = pd.Series(np.random.rand(10), name='a')
+    data = pd.Series(np.random.rand(10), name="a")
     series = from_pandas_series(data, chunk_size=4)
 
     assert series.name == data.name
@@ -162,7 +167,7 @@ def test_from_pandas_series():
 
 
 def test_from_pandas_index():
-    data = pd.date_range('2020-1-1', periods=10, name='date')
+    data = pd.date_range("2020-1-1", periods=10, name="date")
     index = from_pandas_index(data, chunk_size=4)
 
     assert isinstance(index, DatetimeIndex)
@@ -174,7 +179,7 @@ def test_from_pandas_index():
 
     for i, c in enumerate(index.chunks):
         assert c.name == data.name
-        pd.testing.assert_index_equal(c.op.data, data[i * 4: (i + 1) * 4])
+        pd.testing.assert_index_equal(c.op.data, data[i * 4 : (i + 1) * 4])
         assert c.dtype == data.dtype
         assert isinstance(c.index_value.value, IndexValue.DatetimeIndex)
 
@@ -185,9 +190,10 @@ def test_from_tileable_index():
     with pytest.raises(ValueError):
         from_tileable(t)
 
-    pd_df = pd.DataFrame(np.random.rand(10, 4),
-                         index=np.arange(10, 0, -1).astype(np.int64))
-    pd_df.index.name = 'ind'
+    pd_df = pd.DataFrame(
+        np.random.rand(10, 4), index=np.arange(10, 0, -1).astype(np.int64)
+    )
+    pd_df.index.name = "ind"
     df = from_pandas_df(pd_df, chunk_size=6)
 
     for o in [df, df[0]]:
@@ -206,11 +212,11 @@ def test_from_tileable_index():
             assert isinstance(c.index_value.value, IndexValue.Int64Index)
 
     t = mt.random.rand(10, chunk_size=6)
-    index = from_tileable(t, name='new_name')
+    index = from_tileable(t, name="new_name")
 
     assert isinstance(index, Float64Index)
     assert index.dtype == np.float64
-    assert index.name == 'new_name'
+    assert index.name == "new_name"
     assert isinstance(index.index_value.value, IndexValue.Float64Index)
 
     index = tile(index)
@@ -218,7 +224,7 @@ def test_from_tileable_index():
     assert len(index.chunks) == 2
     for c in index.chunks:
         assert c.dtype == np.float64
-        assert c.name == 'new_name'
+        assert c.name == "new_name"
         assert isinstance(c.index_value.value, IndexValue.Float64Index)
 
 
@@ -254,10 +260,18 @@ def test_from_tensor():
     # from tensor with given index
     df = dataframe_from_tensor(tensor, index=np.arange(0, 20, 2))
     df = tile(df)
-    pd.testing.assert_index_equal(df.chunks[0].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2)))
-    pd.testing.assert_index_equal(df.chunks[1].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2)))
-    pd.testing.assert_index_equal(df.chunks[2].index_value.to_pandas(), pd.Index(np.arange(10, 20, 2)))
-    pd.testing.assert_index_equal(df.chunks[3].index_value.to_pandas(), pd.Index(np.arange(10, 20, 2)))
+    pd.testing.assert_index_equal(
+        df.chunks[0].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2))
+    )
+    pd.testing.assert_index_equal(
+        df.chunks[1].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2))
+    )
+    pd.testing.assert_index_equal(
+        df.chunks[2].index_value.to_pandas(), pd.Index(np.arange(10, 20, 2))
+    )
+    pd.testing.assert_index_equal(
+        df.chunks[3].index_value.to_pandas(), pd.Index(np.arange(10, 20, 2))
+    )
 
     # from tensor with index that is a tensor as well
     df = dataframe_from_tensor(tensor, index=mt.arange(0, 20, 2))
@@ -266,43 +280,68 @@ def test_from_tensor():
     assert df.chunks[0].index_value.has_value() is False
 
     # from tensor with given columns
-    df = dataframe_from_tensor(tensor, columns=list('abcdefghij'))
+    df = dataframe_from_tensor(tensor, columns=list("abcdefghij"))
     df = tile(df)
-    pd.testing.assert_index_equal(df.dtypes.index, pd.Index(list('abcdefghij')))
-    pd.testing.assert_index_equal(df.chunks[0].columns_value.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
-    pd.testing.assert_index_equal(df.chunks[0].dtypes.index, pd.Index(['a', 'b', 'c', 'd', 'e']))
-    pd.testing.assert_index_equal(df.chunks[1].columns_value.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
-    pd.testing.assert_index_equal(df.chunks[1].dtypes.index, pd.Index(['f', 'g', 'h', 'i', 'j']))
-    pd.testing.assert_index_equal(df.chunks[2].columns_value.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
-    pd.testing.assert_index_equal(df.chunks[2].dtypes.index, pd.Index(['a', 'b', 'c', 'd', 'e']))
-    pd.testing.assert_index_equal(df.chunks[3].columns_value.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
-    pd.testing.assert_index_equal(df.chunks[3].dtypes.index, pd.Index(['f', 'g', 'h', 'i', 'j']))
+    pd.testing.assert_index_equal(df.dtypes.index, pd.Index(list("abcdefghij")))
+    pd.testing.assert_index_equal(
+        df.chunks[0].columns_value.to_pandas(), pd.Index(["a", "b", "c", "d", "e"])
+    )
+    pd.testing.assert_index_equal(
+        df.chunks[0].dtypes.index, pd.Index(["a", "b", "c", "d", "e"])
+    )
+    pd.testing.assert_index_equal(
+        df.chunks[1].columns_value.to_pandas(), pd.Index(["f", "g", "h", "i", "j"])
+    )
+    pd.testing.assert_index_equal(
+        df.chunks[1].dtypes.index, pd.Index(["f", "g", "h", "i", "j"])
+    )
+    pd.testing.assert_index_equal(
+        df.chunks[2].columns_value.to_pandas(), pd.Index(["a", "b", "c", "d", "e"])
+    )
+    pd.testing.assert_index_equal(
+        df.chunks[2].dtypes.index, pd.Index(["a", "b", "c", "d", "e"])
+    )
+    pd.testing.assert_index_equal(
+        df.chunks[3].columns_value.to_pandas(), pd.Index(["f", "g", "h", "i", "j"])
+    )
+    pd.testing.assert_index_equal(
+        df.chunks[3].dtypes.index, pd.Index(["f", "g", "h", "i", "j"])
+    )
 
     # test series from tensor
     tensor = mt.random.rand(10, chunk_size=4)
-    series = series_from_tensor(tensor, name='a')
+    series = series_from_tensor(tensor, name="a")
 
     assert series.dtype == tensor.dtype
-    assert series.name == 'a'
+    assert series.name == "a"
     pd.testing.assert_index_equal(series.index_value.to_pandas(), pd.RangeIndex(10))
 
     series = tile(series)
     assert len(series.chunks) == 3
-    pd.testing.assert_index_equal(series.chunks[0].index_value.to_pandas(), pd.RangeIndex(0, 4))
-    assert series.chunks[0].name == 'a'
-    pd.testing.assert_index_equal(series.chunks[1].index_value.to_pandas(), pd.RangeIndex(4, 8))
-    assert series.chunks[1].name == 'a'
-    pd.testing.assert_index_equal(series.chunks[2].index_value.to_pandas(), pd.RangeIndex(8, 10))
-    assert series.chunks[2].name == 'a'
+    pd.testing.assert_index_equal(
+        series.chunks[0].index_value.to_pandas(), pd.RangeIndex(0, 4)
+    )
+    assert series.chunks[0].name == "a"
+    pd.testing.assert_index_equal(
+        series.chunks[1].index_value.to_pandas(), pd.RangeIndex(4, 8)
+    )
+    assert series.chunks[1].name == "a"
+    pd.testing.assert_index_equal(
+        series.chunks[2].index_value.to_pandas(), pd.RangeIndex(8, 10)
+    )
+    assert series.chunks[2].name == "a"
 
-    d = OrderedDict([(0, mt.tensor(np.random.rand(4))),
-                     (1, mt.tensor(np.random.rand(4)))])
+    d = OrderedDict(
+        [(0, mt.tensor(np.random.rand(4))), (1, mt.tensor(np.random.rand(4)))]
+    )
     df = dataframe_from_1d_tileables(d)
     pd.testing.assert_index_equal(df.columns_value.to_pandas(), pd.RangeIndex(2))
 
     df = tile(df)
 
-    pd.testing.assert_index_equal(df.chunks[0].index_value.to_pandas(), pd.RangeIndex(4))
+    pd.testing.assert_index_equal(
+        df.chunks[0].index_value.to_pandas(), pd.RangeIndex(4)
+    )
 
     series = series_from_tensor(mt.random.rand(4))
     pd.testing.assert_index_equal(series.index_value.to_pandas(), pd.RangeIndex(4))
@@ -310,9 +349,13 @@ def test_from_tensor():
     series = series_from_tensor(mt.random.rand(4), index=[1, 2, 3])
     pd.testing.assert_index_equal(series.index_value.to_pandas(), pd.Index([1, 2, 3]))
 
-    series = series_from_tensor(mt.random.rand(4), index=pd.Index([1, 2, 3], name='my_index'))
-    pd.testing.assert_index_equal(series.index_value.to_pandas(), pd.Index([1, 2, 3], name='my_index'))
-    assert series.index_value.name == 'my_index'
+    series = series_from_tensor(
+        mt.random.rand(4), index=pd.Index([1, 2, 3], name="my_index")
+    )
+    pd.testing.assert_index_equal(
+        series.index_value.to_pandas(), pd.Index([1, 2, 3], name="my_index")
+    )
+    assert series.index_value.name == "my_index"
 
     with pytest.raises(TypeError):
         series_from_tensor(mt.ones((10, 10)))
@@ -323,27 +366,33 @@ def test_from_tensor():
 
     # columns have wrong shape
     with pytest.raises(ValueError):
-        dataframe_from_tensor(mt.random.rand(4, 3), columns=['a', 'b'])
+        dataframe_from_tensor(mt.random.rand(4, 3), columns=["a", "b"])
 
     # index should be 1-d
     with pytest.raises(ValueError):
-        dataframe_from_tensor(mt.tensor(np.random.rand(3, 2)),
-                              index=mt.tensor(np.random.rand(3, 2)))
+        dataframe_from_tensor(
+            mt.tensor(np.random.rand(3, 2)), index=mt.tensor(np.random.rand(3, 2))
+        )
 
     # 1-d tensors should have same shape
     with pytest.raises(ValueError):
-        dataframe_from_1d_tileables(OrderedDict([(0, mt.tensor(np.random.rand(3))),
-                                                 (1, mt.tensor(np.random.rand(2)))]))
+        dataframe_from_1d_tileables(
+            OrderedDict(
+                [(0, mt.tensor(np.random.rand(3))), (1, mt.tensor(np.random.rand(2)))]
+            )
+        )
 
     # index has wrong shape
     with pytest.raises(ValueError):
-        dataframe_from_1d_tileables({0: mt.tensor(np.random.rand(3))},
-                                    index=mt.tensor(np.random.rand(2)))
+        dataframe_from_1d_tileables(
+            {0: mt.tensor(np.random.rand(3))}, index=mt.tensor(np.random.rand(2))
+        )
 
     # columns have wrong shape
     with pytest.raises(ValueError):
-        dataframe_from_1d_tileables({0: mt.tensor(np.random.rand(3))},
-                                    columns=['a', 'b'])
+        dataframe_from_1d_tileables(
+            {0: mt.tensor(np.random.rand(3))}, columns=["a", "b"]
+        )
 
     # index should be 1-d
     with pytest.raises(ValueError):
@@ -351,7 +400,7 @@ def test_from_tensor():
 
 
 def test_from_records():
-    dtype = np.dtype([('x', 'int'), ('y', 'double'), ('z', '<U16')])
+    dtype = np.dtype([("x", "int"), ("y", "double"), ("z", "<U16")])
 
     tensor = mt.ones((10,), dtype=dtype, chunk_size=3)
     df = from_records(tensor)
@@ -368,28 +417,42 @@ def test_from_records():
     assert df.chunks[2].inputs[0].shape == (3,)
     assert df.chunks[3].inputs[0].shape == (1,)
 
-    assert df.chunks[0].op.extra_params == {'begin_index': 0, 'end_index': 3}
-    assert df.chunks[1].op.extra_params == {'begin_index': 3, 'end_index': 6}
-    assert df.chunks[2].op.extra_params == {'begin_index': 6, 'end_index': 9}
-    assert df.chunks[3].op.extra_params == {'begin_index': 9, 'end_index': 10}
+    assert df.chunks[0].op.extra_params == {"begin_index": 0, "end_index": 3}
+    assert df.chunks[1].op.extra_params == {"begin_index": 3, "end_index": 6}
+    assert df.chunks[2].op.extra_params == {"begin_index": 6, "end_index": 9}
+    assert df.chunks[3].op.extra_params == {"begin_index": 9, "end_index": 10}
 
-    names = pd.Index(['x', 'y', 'z'])
-    dtypes = pd.Series({'x': np.dtype('int'), 'y': np.dtype('double'), 'z': np.dtype('<U16')})
+    names = pd.Index(["x", "y", "z"])
+    dtypes = pd.Series(
+        {"x": np.dtype("int"), "y": np.dtype("double"), "z": np.dtype("<U16")}
+    )
     for chunk in df.chunks:
         pd.testing.assert_index_equal(chunk.columns_value.to_pandas(), names)
         pd.testing.assert_series_equal(chunk.dtypes, dtypes)
 
-    pd.testing.assert_index_equal(df.chunks[0].index_value.to_pandas(), pd.RangeIndex(0, 3))
-    pd.testing.assert_index_equal(df.chunks[1].index_value.to_pandas(), pd.RangeIndex(3, 6))
-    pd.testing.assert_index_equal(df.chunks[2].index_value.to_pandas(), pd.RangeIndex(6, 9))
-    pd.testing.assert_index_equal(df.chunks[3].index_value.to_pandas(), pd.RangeIndex(9, 10))
+    pd.testing.assert_index_equal(
+        df.chunks[0].index_value.to_pandas(), pd.RangeIndex(0, 3)
+    )
+    pd.testing.assert_index_equal(
+        df.chunks[1].index_value.to_pandas(), pd.RangeIndex(3, 6)
+    )
+    pd.testing.assert_index_equal(
+        df.chunks[2].index_value.to_pandas(), pd.RangeIndex(6, 9)
+    )
+    pd.testing.assert_index_equal(
+        df.chunks[3].index_value.to_pandas(), pd.RangeIndex(9, 10)
+    )
 
 
 def test_read_csv():
     tempdir = tempfile.mkdtemp()
-    file_path = os.path.join(tempdir, 'test.csv')
+    file_path = os.path.join(tempdir, "test.csv")
     try:
-        df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'], dtype=np.int64)
+        df = pd.DataFrame(
+            np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+            columns=["a", "b", "c"],
+            dtype=np.int64,
+        )
         df.to_csv(file_path)
         mdf = read_csv(file_path, index_col=0, chunk_bytes=10)
         assert isinstance(mdf.op, DataFrameReadCSV)
@@ -409,12 +472,16 @@ def test_read_csv():
 
 
 def test_read_sql():
-    test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
-                            'b': [f's{i}' for i in range(10)]})
+    test_df = pd.DataFrame(
+        {
+            "a": np.arange(10).astype(np.int64, copy=False),
+            "b": [f"s{i}" for i in range(10)],
+        }
+    )
 
     with tempfile.TemporaryDirectory() as d:
-        table_name = 'test'
-        uri = 'sqlite:///' + os.path.join(d, 'test.db')
+        table_name = "test"
+        uri = "sqlite:///" + os.path.join(d, "test.db")
 
         test_df.to_sql(table_name, uri, index=False)
 
@@ -431,19 +498,27 @@ def test_read_sql():
             assert c.op.offset is not None
 
         with pytest.raises(NotImplementedError):
-            read_sql_table(table_name, uri, chunksize=4, index_col=b'a')
+            read_sql_table(table_name, uri, chunksize=4, index_col=b"a")
         with pytest.raises(TypeError):
-            read_sql_table(table_name, uri, chunk_size=4, index_col=b'a')
+            read_sql_table(table_name, uri, chunk_size=4, index_col=b"a")
         with pytest.raises(TypeError):
-            read_sql_query('select * from ' + table_name, uri, partition_col='b')
+            read_sql_query("select * from " + table_name, uri, partition_col="b")
 
 
 @require_ray
 def test_read_raydataset():
-    test_df1 = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
-                             'b': [f's{i}' for i in range(10)]})
-    test_df2 = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
-                             'b': [f's{i}' for i in range(10)]})
+    test_df1 = pd.DataFrame(
+        {
+            "a": np.arange(10).astype(np.int64, copy=False),
+            "b": [f"s{i}" for i in range(10)],
+        }
+    )
+    test_df2 = pd.DataFrame(
+        {
+            "a": np.arange(10).astype(np.int64, copy=False),
+            "b": [f"s{i}" for i in range(10)],
+        }
+    )
     df = pd.concat([test_df1, test_df2])
     ds = ray.data.from_pandas([ray.put(test_df1), ray.put(test_df2)])
     mdf = read_raydataset(ds)
@@ -461,17 +536,17 @@ def test_read_raydataset():
 
 def test_date_range():
     with pytest.raises(TypeError):
-        _ = date_range('2020-1-1', periods='2')
+        _ = date_range("2020-1-1", periods="2")
 
     with pytest.raises(ValueError):
-        _ = date_range('2020-1-1', '2020-1-10', periods=10, freq='D')
+        _ = date_range("2020-1-1", "2020-1-10", periods=10, freq="D")
 
     with pytest.raises(ValueError):
         _ = date_range(pd.NaT, periods=10)
 
-    expected = pd.date_range('2020-1-1', periods=9., name='date')
+    expected = pd.date_range("2020-1-1", periods=9.0, name="date")
 
-    dr = date_range('2020-1-1', periods=9., name='date', chunk_size=3)
+    dr = date_range("2020-1-1", periods=9.0, name="date", chunk_size=3)
     assert isinstance(dr, DatetimeIndex)
     assert dr.shape == (9,)
     assert dr.dtype == expected.dtype
@@ -487,7 +562,7 @@ def test_date_range():
     dr = tile(dr)
 
     for i, c in enumerate(dr.chunks):
-        ec = expected[i * 3: (i + 1) * 3]
+        ec = expected[i * 3 : (i + 1) * 3]
         assert c.shape == (3,)
         assert c.dtype == ec.dtype
         assert isinstance(c.index_value.value, IndexValue.DatetimeIndex)

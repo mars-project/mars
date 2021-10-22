@@ -26,10 +26,10 @@ from ...task.api import TaskAPI
 from .. import SessionAPI, WebSessionAPI
 
 
-@pytest.mark.parametrize('test_web', [False, True])
+@pytest.mark.parametrize("test_web", [False, True])
 @pytest.mark.asyncio
 async def test_session_service(test_web):
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+    pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 
     async with pool:
         config = {
@@ -38,22 +38,19 @@ async def test_session_service(test_web):
                 "backend": "fixed",
                 "lookup_address": pool.external_address,
             },
-            "meta": {
-                "store": "dict"
-            }
+            "meta": {"store": "dict"},
         }
         if test_web:
-            config['services'] += ['web']
-            config['web'] = {'port': get_next_port()}
+            config["services"] += ["web"]
+            config["web"] = {"port": get_next_port()}
 
-        await start_services(
-            NodeRole.SUPERVISOR, config, address=pool.external_address)
+        await start_services(NodeRole.SUPERVISOR, config, address=pool.external_address)
 
         if not test_web:
             session_api = await SessionAPI.create(pool.external_address)
         else:
             session_api = WebSessionAPI(f'http://127.0.0.1:{config["web"]["port"]}')
-        session_id = 'test_session'
+        session_id = "test_session"
         session_address = await session_api.create_session(session_id)
         assert session_address == pool.external_address
         assert await session_api.has_session(session_id) is True
@@ -64,37 +61,46 @@ async def test_session_service(test_web):
         assert await session_api.has_session(session_id) is False
         assert await session_api.get_sessions() == []
 
-        await stop_services(
-            NodeRole.SUPERVISOR, config, address=pool.external_address)
+        await stop_services(NodeRole.SUPERVISOR, config, address=pool.external_address)
 
 
 @pytest.mark.asyncio
 async def test_get_last_idle_time():
-    sv_pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
-    worker_pool = await mo.create_actor_pool('127.0.0.1',
-                                             n_process=2,
-                                             labels=['main'] + ['numa-0'] * 2,
-                                             subprocess_start_method='spawn')
+    sv_pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
+    worker_pool = await mo.create_actor_pool(
+        "127.0.0.1",
+        n_process=2,
+        labels=["main"] + ["numa-0"] * 2,
+        subprocess_start_method="spawn",
+    )
     async with sv_pool, worker_pool:
         config = {
-            "services": ["cluster", "session", "meta", "lifecycle",
-                         "scheduling", "subtask", "task", "mutable"],
+            "services": [
+                "cluster",
+                "session",
+                "meta",
+                "lifecycle",
+                "scheduling",
+                "subtask",
+                "task",
+                "mutable",
+            ],
             "cluster": {
                 "backend": "fixed",
                 "lookup_address": sv_pool.external_address,
-                "resource": {"numa-0": 2}
+                "resource": {"numa-0": 2},
             },
-            "meta": {
-                "store": "dict"
-            }
+            "meta": {"store": "dict"},
         }
         await start_services(
-            NodeRole.SUPERVISOR, config, address=sv_pool.external_address)
+            NodeRole.SUPERVISOR, config, address=sv_pool.external_address
+        )
         await start_services(
-            NodeRole.WORKER, config, address=worker_pool.external_address)
+            NodeRole.WORKER, config, address=worker_pool.external_address
+        )
 
         session_api = await SessionAPI.create(sv_pool.external_address)
-        session_id = 'test_session'
+        session_id = "test_session"
         await session_api.create_session(session_id)
         # check last idle time is not None
         last_idle_time = await session_api.get_last_idle_time(session_id)
@@ -135,6 +141,7 @@ async def test_get_last_idle_time():
         # blocking task.
         def f4():
             import time
+
             time.sleep(10)
 
         r4 = mr.spawn(f4)
@@ -144,42 +151,49 @@ async def test_get_last_idle_time():
         assert await session_api.get_last_idle_time() is None
 
         await stop_services(
-            NodeRole.WORKER, config, address=worker_pool.external_address)
+            NodeRole.WORKER, config, address=worker_pool.external_address
+        )
         await stop_services(
-            NodeRole.SUPERVISOR, config, address=sv_pool.external_address)
+            NodeRole.SUPERVISOR, config, address=sv_pool.external_address
+        )
 
 
 @pytest.mark.asyncio
 async def test_dmap():
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+    pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 
     async with pool:
         config = {
-            "services": ["cluster", "session", "meta", "lifecycle",
-                         "scheduling", "subtask", "task", "mutable"],
+            "services": [
+                "cluster",
+                "session",
+                "meta",
+                "lifecycle",
+                "scheduling",
+                "subtask",
+                "task",
+                "mutable",
+            ],
             "cluster": {
                 "backend": "fixed",
                 "lookup_address": pool.external_address,
             },
-            "meta": {
-                "store": "dict"
-            }
+            "meta": {"store": "dict"},
         }
-        await start_services(
-            NodeRole.SUPERVISOR, config, address=pool.external_address)
+        await start_services(NodeRole.SUPERVISOR, config, address=pool.external_address)
 
         session_api = await SessionAPI.create(pool.external_address)
 
-        session_id = 'test_session'
+        session_id = "test_session"
         await session_api.create_session(session_id)
-        lock = await session_api.create_remote_object(session_id, 'my_lock',
-                                                      threading.Lock)
+        lock = await session_api.create_remote_object(
+            session_id, "my_lock", threading.Lock
+        )
         await lock.acquire()
-        lock = await session_api.get_remote_object(session_id, 'my_lock')
+        lock = await session_api.get_remote_object(session_id, "my_lock")
         await lock.release()
         with pytest.raises(AttributeError):
             await lock.abc()
-        await session_api.destroy_remote_object(session_id, 'my_lock')
+        await session_api.destroy_remote_object(session_id, "my_lock")
 
-        await stop_services(
-            NodeRole.SUPERVISOR, config, address=pool.external_address)
+        await stop_services(NodeRole.SUPERVISOR, config, address=pool.external_address)

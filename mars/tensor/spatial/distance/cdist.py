@@ -30,18 +30,16 @@ from ...array_utils import as_same_device, cp, device
 class TensorCdist(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.CDIST
 
-    _xa = KeyField('XA')
-    _xb = KeyField('XB')
-    _metric = AnyField('metric')
-    _p = Float16Field('p', on_serialize=lambda x: float(x) if x is not None else x)
-    _w = KeyField('w')
-    _v = KeyField('V')
-    _vi = KeyField('VI')
+    _xa = KeyField("XA")
+    _xb = KeyField("XB")
+    _metric = AnyField("metric")
+    _p = Float16Field("p", on_serialize=lambda x: float(x) if x is not None else x)
+    _w = KeyField("w")
+    _v = KeyField("V")
+    _vi = KeyField("VI")
 
-    def __init__(self, metric=None, p=None, w=None,
-                 v=None, vi=None, **kw):
-        super().__init__(_metric=metric, _p=p,
-                         _w=w, _v=v, _vi=vi, **kw)
+    def __init__(self, metric=None, p=None, w=None, v=None, vi=None, **kw):
+        super().__init__(_metric=metric, _p=p, _w=w, _v=v, _vi=vi, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -98,14 +96,21 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
         for val in [w, v, vi]:
             if val is not None:
                 chunk_inputs.append(val.chunks[0])
-        chunk = chunk_op.new_chunk(chunk_inputs, shape=out_tensor.shape,
-                                   order=out_tensor.order, index=(0,) * out_tensor.ndim)
+        chunk = chunk_op.new_chunk(
+            chunk_inputs,
+            shape=out_tensor.shape,
+            order=out_tensor.order,
+            index=(0,) * out_tensor.ndim,
+        )
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out_tensor.shape,
-                                  order=out_tensor.order,
-                                  nsplits=tuple((s,) for s in out_tensor.shape),
-                                  chunks=[chunk])
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out_tensor.shape,
+            order=out_tensor.order,
+            nsplits=tuple((s,) for s in out_tensor.shape),
+            chunks=[chunk],
+        )
 
     @classmethod
     def _tile_chunks(cls, op, xa, xb, w, v, vi):
@@ -131,15 +136,21 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
                 vi_chunk = chunk_op._vi = vi.chunks[0]
                 chunk_inputs.append(vi_chunk)
             chunk = chunk_op.new_chunk(
-                chunk_inputs, shape=(xa_chunk.shape[0], xb_chunk.shape[0]),
-                order=out_tensor.order, index=idx)
+                chunk_inputs,
+                shape=(xa_chunk.shape[0], xb_chunk.shape[0]),
+                order=out_tensor.order,
+                index=idx,
+            )
             out_chunks.append(chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out_tensor.shape,
-                                  order=out_tensor.order,
-                                  chunks=out_chunks,
-                                  nsplits=(xa.nsplits[0], xb.nsplits[0]))
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out_tensor.shape,
+            order=out_tensor.order,
+            chunks=out_chunks,
+            nsplits=(xa.nsplits[0], xb.nsplits[0]),
+        )
 
     @classmethod
     def tile(cls, op):
@@ -171,10 +182,11 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
         from scipy.spatial.distance import cdist
 
         inputs, device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+        )
 
         if xp is cp:  # pragma: no cover
-            raise NotImplementedError('`cdist` does not support running on GPU yet')
+            raise NotImplementedError("`cdist` does not support running on GPU yet")
 
         with device(device_id):
             inputs_iter = iter(inputs)
@@ -182,20 +194,21 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
             xb = next(inputs_iter)
             kw = dict()
             if op.p is not None:
-                kw['p'] = op.p
+                kw["p"] = op.p
             if op.w is not None:
-                kw['w'] = next(inputs_iter)
+                kw["w"] = next(inputs_iter)
             if op.v is not None:
-                kw['V'] = next(inputs_iter)
+                kw["V"] = next(inputs_iter)
             if op.vi is not None:
-                kw['VI'] = next(inputs_iter)
+                kw["VI"] = next(inputs_iter)
 
         ctx[op.outputs[0].key] = cdist(
-            ensure_own_data(xa), ensure_own_data(xb), metric=op.metric, **kw)
+            ensure_own_data(xa), ensure_own_data(xb), metric=op.metric, **kw
+        )
 
 
-@require_module('scipy.spatial.distance')
-def cdist(XA, XB, metric='euclidean', **kwargs):
+@require_module("scipy.spatial.distance")
+def cdist(XA, XB, metric="euclidean", **kwargs):
     """
     Compute distance between each pair of the two collections of inputs.
 
@@ -484,54 +497,58 @@ def cdist(XA, XB, metric='euclidean', **kwargs):
            [ 2.3]])
 
     """
-    XA = astensor(XA, order='C')
-    XB = astensor(XB, order='C')
+    XA = astensor(XA, order="C")
+    XB = astensor(XB, order="C")
 
     if XA.issparse() or XB.issparse():
-        raise ValueError('Sparse tensors are not supported by this function.')
+        raise ValueError("Sparse tensors are not supported by this function.")
 
     s = XA.shape
     sB = XB.shape
 
     if len(s) != 2:
-        raise ValueError('XA must be a 2-dimensional array.')
+        raise ValueError("XA must be a 2-dimensional array.")
     if len(sB) != 2:
-        raise ValueError('XB must be a 2-dimensional array.')
+        raise ValueError("XB must be a 2-dimensional array.")
     if s[1] != sB[1]:
-        raise ValueError('XA and XB must have the same number of columns '
-                         '(i.e. feature dimension.)')
+        raise ValueError(
+            "XA and XB must have the same number of columns "
+            "(i.e. feature dimension.)"
+        )
 
     mA = s[0]
     mB = sB[0]
     out = kwargs.pop("out", None)
     if out is not None:
-        if not hasattr(out, 'shape'):
-            raise TypeError('return arrays must be a tensor')
+        if not hasattr(out, "shape"):
+            raise TypeError("return arrays must be a tensor")
         if out.shape != (mA, mB):
             raise ValueError("Output tensor has incorrect shape.")
         if out.dtype != np.double:
             raise ValueError("Output tensor must be double type.")
 
     if not isinstance(metric, str) and not callable(metric):
-        raise TypeError('3rd argument metric must be a string identifier '
-                        'or a function.')
+        raise TypeError(
+            "3rd argument metric must be a string identifier " "or a function."
+        )
 
-    p = kwargs.pop('p', None)
-    w = kwargs.pop('w', None)
+    p = kwargs.pop("p", None)
+    w = kwargs.pop("w", None)
     if w is not None:
         w = astensor(w)
-    v = kwargs.pop('V', None)
+    v = kwargs.pop("V", None)
     if v is not None:
         v = astensor(v)
-    vi = kwargs.pop('VI', None)
+    vi = kwargs.pop("VI", None)
     if vi is not None:
         vi = astensor(vi)
 
     if len(kwargs) > 0:
-        raise TypeError(f"`cdist` got an unexpected keyword argument '{next(iter(kwargs))}'")
+        raise TypeError(
+            f"`cdist` got an unexpected keyword argument '{next(iter(kwargs))}'"
+        )
 
-    op = TensorCdist(metric=metric,
-                     p=p, w=w, v=v, vi=vi, dtype=np.dtype(float))
+    op = TensorCdist(metric=metric, p=p, w=w, v=v, vi=vi, dtype=np.dtype(float))
     shape = (XA.shape[0], XB.shape[0])
     ret = op(XA, XB, shape)
 

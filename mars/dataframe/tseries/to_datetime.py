@@ -33,25 +33,45 @@ from ..utils import parse_index
 class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.TO_DATETIME
 
-    _arg = KeyField('arg')
-    _errors = StringField('errors')
-    _dayfirst = BoolField('dayfirst')
-    _yearfirst = BoolField('yearfirst')
-    _utc = BoolField('utc')
-    _format = StringField('format')
-    _exact = BoolField('exact')
-    _unit = StringField('unit')
-    _infer_datetime_format = BoolField('infer_datetime_format')
-    _origin = AnyField('origin')
-    _cache = BoolField('cache')
+    _arg = KeyField("arg")
+    _errors = StringField("errors")
+    _dayfirst = BoolField("dayfirst")
+    _yearfirst = BoolField("yearfirst")
+    _utc = BoolField("utc")
+    _format = StringField("format")
+    _exact = BoolField("exact")
+    _unit = StringField("unit")
+    _infer_datetime_format = BoolField("infer_datetime_format")
+    _origin = AnyField("origin")
+    _cache = BoolField("cache")
 
-    def __init__(self, errors=None, dayfirst=None, yearfirst=None, utc=None,
-                 format=None, exact=None, unit=None, infer_datetime_format=None,
-                 origin=None, cache=None, **kw):
-        super().__init__(_errors=errors, _dayfirst=dayfirst, _yearfirst=yearfirst,
-                         _utc=utc, _format=format, _exact=exact, _unit=unit,
-                         _infer_datetime_format=infer_datetime_format, _origin=origin,
-                         _cache=cache, **kw)
+    def __init__(
+        self,
+        errors=None,
+        dayfirst=None,
+        yearfirst=None,
+        utc=None,
+        format=None,
+        exact=None,
+        unit=None,
+        infer_datetime_format=None,
+        origin=None,
+        cache=None,
+        **kw,
+    ):
+        super().__init__(
+            _errors=errors,
+            _dayfirst=dayfirst,
+            _yearfirst=yearfirst,
+            _utc=utc,
+            _format=format,
+            _exact=exact,
+            _unit=unit,
+            _infer_datetime_format=infer_datetime_format,
+            _origin=origin,
+            _cache=cache,
+            **kw,
+        )
 
     @property
     def arg(self):
@@ -99,9 +119,11 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
 
     @property
     def _params(self):
-        return tuple(getattr(self, k) for k in self._keys_
-                     if k not in self._no_copy_attrs_ and
-                     k != '_arg' and hasattr(self, k))
+        return tuple(
+            getattr(self, k)
+            for k in self._keys_
+            if k not in self._no_copy_attrs_ and k != "_arg" and hasattr(self, k)
+        )
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -109,44 +131,67 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, arg):
         if is_scalar(arg):
-            ret = pd.to_datetime(arg, errors=self._errors, dayfirst=self._dayfirst,
-                                 yearfirst=self._yearfirst, utc=self._utc,
-                                 format=self._format, exact=self._exact,
-                                 unit=self._unit, infer_datetime_format=self._infer_datetime_format,
-                                 origin=self._origin, cache=self._cache)
+            ret = pd.to_datetime(
+                arg,
+                errors=self._errors,
+                dayfirst=self._dayfirst,
+                yearfirst=self._yearfirst,
+                utc=self._utc,
+                format=self._format,
+                exact=self._exact,
+                unit=self._unit,
+                infer_datetime_format=self._infer_datetime_format,
+                origin=self._origin,
+                cache=self._cache,
+            )
             return astensor(ret)
 
-        dtype = np.datetime64(1, 'ns').dtype
+        dtype = np.datetime64(1, "ns").dtype
         if isinstance(arg, (pd.Series, SERIES_TYPE)):
             arg = asseries(arg)
-            return self.new_series([arg], shape=arg.shape,
-                                   dtype=dtype, index_value=arg.index_value,
-                                   name=arg.name)
+            return self.new_series(
+                [arg],
+                shape=arg.shape,
+                dtype=dtype,
+                index_value=arg.index_value,
+                name=arg.name,
+            )
         if is_dict_like(arg) or isinstance(arg, DATAFRAME_TYPE):
             arg = asdataframe(arg)
             columns = arg.columns_value.to_pandas().tolist()
-            if sorted(columns) != sorted(['year', 'month', 'day']):
-                missing = ','.join(c for c in ['day', 'month', 'year'] if c not in columns)
-                raise ValueError('to assemble mappings requires at least '
-                                 f'that [year, month, day] be specified: [{missing}] is missing')
-            return self.new_series([arg], shape=(arg.shape[0],),
-                                   dtype=dtype, index_value=arg.index_value)
+            if sorted(columns) != sorted(["year", "month", "day"]):
+                missing = ",".join(
+                    c for c in ["day", "month", "year"] if c not in columns
+                )
+                raise ValueError(
+                    "to assemble mappings requires at least "
+                    f"that [year, month, day] be specified: [{missing}] is missing"
+                )
+            return self.new_series(
+                [arg], shape=(arg.shape[0],), dtype=dtype, index_value=arg.index_value
+            )
         elif isinstance(arg, (pd.Index, INDEX_TYPE)):
             arg = asindex(arg)
-            return self.new_index([arg], shape=arg.shape,
-                                  dtype=dtype,
-                                  index_value=parse_index(pd.Index([], dtype=dtype),
-                                                          self._params, arg),
-                                  name=arg.name)
+            return self.new_index(
+                [arg],
+                shape=arg.shape,
+                dtype=dtype,
+                index_value=parse_index(pd.Index([], dtype=dtype), self._params, arg),
+                name=arg.name,
+            )
         else:
             arg = astensor(arg)
             if arg.ndim != 1:
-                raise TypeError('arg must be a string, datetime, '
-                                'list, tuple, 1-d tensor, or Series')
-            return self.new_index([arg], shape=arg.shape,
-                                  dtype=dtype,
-                                  index_value=parse_index(pd.Index([], dtype=dtype),
-                                                          self._params, arg))
+                raise TypeError(
+                    "arg must be a string, datetime, "
+                    "list, tuple, 1-d tensor, or Series"
+                )
+            return self.new_index(
+                [arg],
+                shape=arg.shape,
+                dtype=dtype,
+                index_value=parse_index(pd.Index([], dtype=dtype), self._params, arg),
+            )
 
     @classmethod
     def tile(cls, op: "DataFrameToDatetime"):
@@ -154,8 +199,9 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
         arg = op.arg
 
         if isinstance(arg, DATAFRAME_TYPE):
-            if np.isnan(arg.shape[0]) or \
-                    any(np.isnan(s) for s in arg.nsplits[1]):  # pragma: no cover
+            if np.isnan(arg.shape[0]) or any(
+                np.isnan(s) for s in arg.nsplits[1]
+            ):  # pragma: no cover
                 yield
 
             arg = yield from recursive_tile(arg.rechunk({1: arg.shape[1]}))
@@ -165,20 +211,24 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
             chunk_op = op.copy().reset_key()
             if isinstance(chunk, (TENSOR_CHUNK_TYPE, INDEX_CHUNK_TYPE)):
                 chunk_index_value = parse_index(
-                    pd.Index([], dtype=out.dtype), op._params, chunk)
+                    pd.Index([], dtype=out.dtype), op._params, chunk
+                )
             else:
                 chunk_index_value = chunk.index_value
 
-            out_chunk = chunk_op.new_chunk([chunk], shape=(chunk.shape[0],),
-                                           dtype=out.dtype,
-                                           index_value=chunk_index_value,
-                                           name=out.name,
-                                           index=(chunk.index[0],))
+            out_chunk = chunk_op.new_chunk(
+                [chunk],
+                shape=(chunk.shape[0],),
+                dtype=out.dtype,
+                index_value=chunk_index_value,
+                name=out.name,
+                index=(chunk.index[0],),
+            )
             out_chunks.append(out_chunk)
 
         params = out.params
-        params['nsplits'] = (arg.nsplits[0],)
-        params['chunks'] = out_chunks
+        params["nsplits"] = (arg.nsplits[0],)
+        params["chunks"] = out_chunks
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=[params])
 
@@ -186,12 +236,19 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op: "DataFrameToDatetime"):
         arg = ctx[op.arg.key]
 
-        call = partial(pd.to_datetime,
-                       errors=op.errors, dayfirst=op.dayfirst,
-                       yearfirst=op.yearfirst, utc=op.utc,
-                       format=op.format, exact=op.exact, unit=op.unit,
-                       infer_datetime_format=op.infer_datetime_format,
-                       origin=op.origin, cache=op.cache)
+        call = partial(
+            pd.to_datetime,
+            errors=op.errors,
+            dayfirst=op.dayfirst,
+            yearfirst=op.yearfirst,
+            utc=op.utc,
+            format=op.format,
+            exact=op.exact,
+            unit=op.unit,
+            infer_datetime_format=op.infer_datetime_format,
+            origin=op.origin,
+            cache=op.cache,
+        )
 
         try:
             ctx[op.outputs[0].key] = call(arg)
@@ -199,17 +256,19 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
             ctx[op.outputs[0].key] = call(arg.copy())
 
 
-def to_datetime(arg,
-                errors: str = 'raise',
-                dayfirst: bool = False,
-                yearfirst: bool = False,
-                utc: bool = None,
-                format: str = None,
-                exact: bool = True,
-                unit: str = None,
-                infer_datetime_format: bool = False,
-                origin: Any = 'unix',
-                cache: bool = True):
+def to_datetime(
+    arg,
+    errors: str = "raise",
+    dayfirst: bool = False,
+    yearfirst: bool = False,
+    utc: bool = None,
+    format: str = None,
+    exact: bool = True,
+    unit: str = None,
+    infer_datetime_format: bool = False,
+    origin: Any = "unix",
+    cache: bool = True,
+):
     """
     Convert argument to datetime.
 
@@ -356,9 +415,16 @@ def to_datetime(arg,
     DatetimeIndex(['1960-01-02', '1960-01-03', '1960-01-04'], \
 dtype='datetime64[ns]', freq=None)
     """
-    op = DataFrameToDatetime(errors=errors, dayfirst=dayfirst,
-                             yearfirst=yearfirst, utc=utc, format=format,
-                             exact=exact, unit=unit,
-                             infer_datetime_format=infer_datetime_format,
-                             origin=origin, cache=cache)
+    op = DataFrameToDatetime(
+        errors=errors,
+        dayfirst=dayfirst,
+        yearfirst=yearfirst,
+        utc=utc,
+        format=format,
+        exact=exact,
+        unit=unit,
+        infer_datetime_format=infer_datetime_format,
+        origin=origin,
+        cache=cache,
+    )
     return op(arg)

@@ -69,22 +69,29 @@ def test_dag():
     rev_dag = dag.build_reversed()
     for n in dag:
         assert n in rev_dag
-        assert all(rev_dag.has_successor(n, pred)
-                   for pred in dag.predecessors(n)) is True
+        assert (
+            all(rev_dag.has_successor(n, pred) for pred in dag.predecessors(n)) is True
+        )
 
     undigraph = dag.build_undirected()
     for n in dag:
         assert n in undigraph
-        assert all(undigraph.has_predecessor(pred, n)
-                   for pred in dag.predecessors(n)) is True
-        assert all(undigraph.has_successor(n, pred)
-                   for pred in dag.predecessors(n)) is True
+        assert (
+            all(undigraph.has_predecessor(pred, n) for pred in dag.predecessors(n))
+            is True
+        )
+        assert (
+            all(undigraph.has_successor(n, pred) for pred in dag.predecessors(n))
+            is True
+        )
 
     dag_copy = dag.copy()
     for n in dag:
         assert n in dag_copy
-        assert all(dag_copy.has_successor(pred, n)
-                   for pred in dag_copy.predecessors(n)) is True
+        assert (
+            all(dag_copy.has_successor(pred, n) for pred in dag_copy.predecessors(n))
+            is True
+        )
 
 
 def test_to_dot():

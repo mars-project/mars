@@ -20,34 +20,58 @@ from .... import dataframe as md
 from .... import tensor as mt
 from ....core import tile
 from ....tensor.core import TENSOR_CHUNK_TYPE, TENSOR_TYPE, Tensor
-from ...core import SERIES_CHUNK_TYPE, SERIES_TYPE, Series, \
-    DATAFRAME_TYPE, DataFrame, DATAFRAME_CHUNK_TYPE
-from ..iloc import DataFrameIlocGetItem, DataFrameIlocSetItem, \
-    IndexingError, HeadTailOptimizedOperandMixin
+from ...core import (
+    SERIES_CHUNK_TYPE,
+    SERIES_TYPE,
+    Series,
+    DATAFRAME_TYPE,
+    DataFrame,
+    DATAFRAME_CHUNK_TYPE,
+)
+from ..iloc import (
+    DataFrameIlocGetItem,
+    DataFrameIlocSetItem,
+    IndexingError,
+    HeadTailOptimizedOperandMixin,
+)
 from ..loc import DataFrameLocGetItem
 
 
 def test_set_index():
-    df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
-                       index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
+    df1 = pd.DataFrame(
+        [[1, 3, 3], [4, 2, 6], [7, 8, 9]],
+        index=["a1", "a2", "a3"],
+        columns=["x", "y", "z"],
+    )
     df2 = md.DataFrame(df1, chunk_size=2)
 
-    df3 = df2.set_index('y', drop=True)
+    df3 = df2.set_index("y", drop=True)
     df3 = tile(df3)
     assert df3.chunk_shape == (2, 2)
-    pd.testing.assert_index_equal(df3.chunks[0].columns_value.to_pandas(), pd.Index(['x']))
-    pd.testing.assert_index_equal(df3.chunks[1].columns_value.to_pandas(), pd.Index(['z']))
+    pd.testing.assert_index_equal(
+        df3.chunks[0].columns_value.to_pandas(), pd.Index(["x"])
+    )
+    pd.testing.assert_index_equal(
+        df3.chunks[1].columns_value.to_pandas(), pd.Index(["z"])
+    )
 
-    df4 = df2.set_index('y', drop=False)
+    df4 = df2.set_index("y", drop=False)
     df4 = tile(df4)
     assert df4.chunk_shape == (2, 2)
-    pd.testing.assert_index_equal(df4.chunks[0].columns_value.to_pandas(), pd.Index(['x', 'y']))
-    pd.testing.assert_index_equal(df4.chunks[1].columns_value.to_pandas(), pd.Index(['z']))
+    pd.testing.assert_index_equal(
+        df4.chunks[0].columns_value.to_pandas(), pd.Index(["x", "y"])
+    )
+    pd.testing.assert_index_equal(
+        df4.chunks[1].columns_value.to_pandas(), pd.Index(["z"])
+    )
 
 
 def test_iloc_getitem():
-    df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
-                       index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
+    df1 = pd.DataFrame(
+        [[1, 3, 3], [4, 2, 6], [7, 8, 9]],
+        index=["a1", "a2", "a3"],
+        columns=["x", "y", "z"],
+    )
     df2 = md.DataFrame(df1, chunk_size=2)
 
     with pytest.raises(IndexingError):
@@ -55,14 +79,14 @@ def test_iloc_getitem():
 
     # index cannot be tuple
     with pytest.raises(IndexingError):
-        _ = df2.iloc[(1,), ]
+        _ = df2.iloc[((1,),)]
 
     # index wrong type
     with pytest.raises(TypeError):
-        _ = df2.iloc['a1':]
+        _ = df2.iloc["a1":]
 
     with pytest.raises(NotImplementedError):
-        _ = df2.iloc[0, md.Series(['a2', 'a3'])]
+        _ = df2.iloc[0, md.Series(["a2", "a3"])]
 
     # fancy index should be 1-d
     with pytest.raises(ValueError):
@@ -101,16 +125,26 @@ def test_iloc_getitem():
     assert df4.shape == (3, 1)
     assert df4.chunk_shape == (2, 1)
     assert df4.chunks[0].shape == (2, 1)
-    pd.testing.assert_index_equal(df4.chunks[0].columns_value.to_pandas(), df1.columns[2:3])
+    pd.testing.assert_index_equal(
+        df4.chunks[0].columns_value.to_pandas(), df1.columns[2:3]
+    )
     pd.testing.assert_series_equal(df4.chunks[0].dtypes, df1.dtypes[2:3])
     assert isinstance(df4.chunks[0].index_value.to_pandas(), type(df1.index))
     assert df4.chunks[1].shape == (1, 1)
-    pd.testing.assert_index_equal(df4.chunks[1].columns_value.to_pandas(), df1.columns[2:3])
+    pd.testing.assert_index_equal(
+        df4.chunks[1].columns_value.to_pandas(), df1.columns[2:3]
+    )
     pd.testing.assert_series_equal(df4.chunks[1].dtypes, df1.dtypes[2:3])
     assert df4.chunks[0].index_value.key != df4.chunks[1].index_value.key
     assert isinstance(df4.chunks[1].index_value.to_pandas(), type(df1.index))
-    assert df4.chunks[0].op.indexes == [slice(None, None, None), slice(None, None, None)]
-    assert df4.chunks[1].op.indexes == [slice(None, None, None), slice(None, None, None)]
+    assert df4.chunks[0].op.indexes == [
+        slice(None, None, None),
+        slice(None, None, None),
+    ]
+    assert df4.chunks[1].op.indexes == [
+        slice(None, None, None),
+        slice(None, None, None),
+    ]
     assert df4.chunks[0].inputs[0].index == (0, 1)
     assert df4.chunks[0].inputs[0].shape == (2, 1)
     assert df4.chunks[1].inputs[0].index == (1, 1)
@@ -124,11 +158,15 @@ def test_iloc_getitem():
     assert df5.shape == (1, 3)
     assert df5.chunk_shape == (1, 2)
     assert df5.chunks[0].shape == (1, 2)
-    pd.testing.assert_index_equal(df5.chunks[0].columns_value.to_pandas(), df1.columns[:2])
+    pd.testing.assert_index_equal(
+        df5.chunks[0].columns_value.to_pandas(), df1.columns[:2]
+    )
     pd.testing.assert_series_equal(df5.chunks[0].dtypes, df1.dtypes[:2])
     assert isinstance(df5.chunks[0].index_value.to_pandas(), type(df1.index))
     assert df5.chunks[1].shape == (1, 1)
-    pd.testing.assert_index_equal(df5.chunks[1].columns_value.to_pandas(), df1.columns[2:])
+    pd.testing.assert_index_equal(
+        df5.chunks[1].columns_value.to_pandas(), df1.columns[2:]
+    )
     pd.testing.assert_series_equal(df5.chunks[1].dtypes, df1.dtypes[2:])
     assert isinstance(df5.chunks[1].index_value.to_pandas(), type(df1.index))
     np.testing.assert_array_equal(df5.chunks[0].op.indexes[0], [0])
@@ -192,9 +230,9 @@ def test_iloc_getitem():
     assert len(series.chunks) == 2
     assert series.chunks[0].shape == (2,)
     assert series.chunks[0].index == (0,)
-    assert series.chunks[0].op.indexes == [slice(1, 3, 1), ]
+    assert series.chunks[0].op.indexes == [slice(1, 3, 1)]
     assert series.chunks[1].shape == (2,)
-    assert series.chunks[1].op.indexes == [slice(0, 2, 1), ]
+    assert series.chunks[1].op.indexes == [slice(0, 2, 1)]
     assert series.chunks[1].index == (1,)
 
     # fancy index
@@ -216,8 +254,11 @@ def test_iloc_getitem():
 
 
 def test_iloc_setitem():
-    df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
-                       index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
+    df1 = pd.DataFrame(
+        [[1, 3, 3], [4, 2, 6], [7, 8, 9]],
+        index=["a1", "a2", "a3"],
+        columns=["x", "y", "z"],
+    )
     df2 = md.DataFrame(df1, chunk_size=2)
     df2 = tile(df2)
 
@@ -227,12 +268,20 @@ def test_iloc_setitem():
     df3 = tile(df3)
     assert isinstance(df3.op, DataFrameIlocSetItem)
     assert df3.chunk_shape == df2.chunk_shape
-    pd.testing.assert_index_equal(df2.index_value.to_pandas(), df3.index_value.to_pandas())
-    pd.testing.assert_index_equal(df2.columns_value.to_pandas(), df3.columns_value.to_pandas())
+    pd.testing.assert_index_equal(
+        df2.index_value.to_pandas(), df3.index_value.to_pandas()
+    )
+    pd.testing.assert_index_equal(
+        df2.columns_value.to_pandas(), df3.columns_value.to_pandas()
+    )
     for c1, c2 in zip(df2.chunks, df3.chunks):
         assert c1.shape == c2.shape
-        pd.testing.assert_index_equal(c1.index_value.to_pandas(), c2.index_value.to_pandas())
-        pd.testing.assert_index_equal(c1.columns_value.to_pandas(), c2.columns_value.to_pandas())
+        pd.testing.assert_index_equal(
+            c1.index_value.to_pandas(), c2.index_value.to_pandas()
+        )
+        pd.testing.assert_index_equal(
+            c1.columns_value.to_pandas(), c2.columns_value.to_pandas()
+        )
         if isinstance(c2.op, DataFrameIlocSetItem):
             assert c1.key == c2.inputs[0].key
         else:
@@ -246,18 +295,32 @@ def test_iloc_setitem():
     df4 = tile(df4)
     assert isinstance(df4.op, DataFrameIlocSetItem)
     assert df4.chunk_shape == df2.chunk_shape
-    pd.testing.assert_index_equal(df2.index_value.to_pandas(), df4.index_value.to_pandas())
-    pd.testing.assert_index_equal(df2.columns_value.to_pandas(), df4.columns_value.to_pandas())
+    pd.testing.assert_index_equal(
+        df2.index_value.to_pandas(), df4.index_value.to_pandas()
+    )
+    pd.testing.assert_index_equal(
+        df2.columns_value.to_pandas(), df4.columns_value.to_pandas()
+    )
     for c1, c2 in zip(df2.chunks, df4.chunks):
         assert c1.shape == c2.shape
-        pd.testing.assert_index_equal(c1.index_value.to_pandas(), c2.index_value.to_pandas())
-        pd.testing.assert_index_equal(c1.columns_value.to_pandas(), c2.columns_value.to_pandas())
+        pd.testing.assert_index_equal(
+            c1.index_value.to_pandas(), c2.index_value.to_pandas()
+        )
+        pd.testing.assert_index_equal(
+            c1.columns_value.to_pandas(), c2.columns_value.to_pandas()
+        )
         if isinstance(c2.op, DataFrameIlocSetItem):
             assert c1.key == c2.inputs[0].key
         else:
             assert c1.key == c2.key
-    assert df4.chunks[1].op.indexes == [slice(None, None, None), slice(None, None, None)]
-    assert df4.chunks[3].op.indexes == [slice(None, None, None), slice(None, None, None)]
+    assert df4.chunks[1].op.indexes == [
+        slice(None, None, None),
+        slice(None, None, None),
+    ]
+    assert df4.chunks[3].op.indexes == [
+        slice(None, None, None),
+        slice(None, None, None),
+    ]
 
     # plain fancy index
     df5 = md.DataFrame(df1, chunk_size=2)
@@ -265,12 +328,20 @@ def test_iloc_setitem():
     df5 = tile(df5)
     assert isinstance(df5.op, DataFrameIlocSetItem)
     assert df5.chunk_shape == df2.chunk_shape
-    pd.testing.assert_index_equal(df2.index_value.to_pandas(), df5.index_value.to_pandas())
-    pd.testing.assert_index_equal(df2.columns_value.to_pandas(), df5.columns_value.to_pandas())
+    pd.testing.assert_index_equal(
+        df2.index_value.to_pandas(), df5.index_value.to_pandas()
+    )
+    pd.testing.assert_index_equal(
+        df2.columns_value.to_pandas(), df5.columns_value.to_pandas()
+    )
     for c1, c2 in zip(df2.chunks, df5.chunks):
         assert c1.shape == c2.shape
-        pd.testing.assert_index_equal(c1.index_value.to_pandas(), c2.index_value.to_pandas())
-        pd.testing.assert_index_equal(c1.columns_value.to_pandas(), c2.columns_value.to_pandas())
+        pd.testing.assert_index_equal(
+            c1.index_value.to_pandas(), c2.index_value.to_pandas()
+        )
+        pd.testing.assert_index_equal(
+            c1.columns_value.to_pandas(), c2.columns_value.to_pandas()
+        )
         if isinstance(c2.op, DataFrameIlocSetItem):
             assert c1.key == c2.inputs[0].key
         else:
@@ -286,12 +357,20 @@ def test_iloc_setitem():
     df6 = tile(df6)
     assert isinstance(df6.op, DataFrameIlocSetItem)
     assert df6.chunk_shape == df2.chunk_shape
-    pd.testing.assert_index_equal(df2.index_value.to_pandas(), df6.index_value.to_pandas())
-    pd.testing.assert_index_equal(df2.columns_value.to_pandas(), df6.columns_value.to_pandas())
+    pd.testing.assert_index_equal(
+        df2.index_value.to_pandas(), df6.index_value.to_pandas()
+    )
+    pd.testing.assert_index_equal(
+        df2.columns_value.to_pandas(), df6.columns_value.to_pandas()
+    )
     for c1, c2 in zip(df2.chunks, df6.chunks):
         assert c1.shape == c2.shape
-        pd.testing.assert_index_equal(c1.index_value.to_pandas(), c2.index_value.to_pandas())
-        pd.testing.assert_index_equal(c1.columns_value.to_pandas(), c2.columns_value.to_pandas())
+        pd.testing.assert_index_equal(
+            c1.index_value.to_pandas(), c2.index_value.to_pandas()
+        )
+        pd.testing.assert_index_equal(
+            c1.columns_value.to_pandas(), c2.columns_value.to_pandas()
+        )
         if isinstance(c2.op, DataFrameIlocSetItem):
             assert c1.key == c2.inputs[0].key
         else:
@@ -311,12 +390,20 @@ def test_iloc_setitem():
     df7 = tile(df7)
     assert isinstance(df7.op, DataFrameIlocSetItem)
     assert df7.chunk_shape == df2.chunk_shape
-    pd.testing.assert_index_equal(df2.index_value.to_pandas(), df7.index_value.to_pandas())
-    pd.testing.assert_index_equal(df2.columns_value.to_pandas(), df7.columns_value.to_pandas())
+    pd.testing.assert_index_equal(
+        df2.index_value.to_pandas(), df7.index_value.to_pandas()
+    )
+    pd.testing.assert_index_equal(
+        df2.columns_value.to_pandas(), df7.columns_value.to_pandas()
+    )
     for c1, c2 in zip(df2.chunks, df7.chunks):
         assert c1.shape == c2.shape
-        pd.testing.assert_index_equal(c1.index_value.to_pandas(), c2.index_value.to_pandas())
-        pd.testing.assert_index_equal(c1.columns_value.to_pandas(), c2.columns_value.to_pandas())
+        pd.testing.assert_index_equal(
+            c1.index_value.to_pandas(), c2.index_value.to_pandas()
+        )
+        pd.testing.assert_index_equal(
+            c1.columns_value.to_pandas(), c2.columns_value.to_pandas()
+        )
         if isinstance(c2.op, DataFrameIlocSetItem):
             assert c1.key == c2.inputs[0].key
         else:
@@ -333,9 +420,13 @@ def test_iloc_setitem():
     assert series.shape == (10,)
     assert len(series.chunks) == 4
 
-    assert series.chunks[0].op.indexes == [slice(None, None, None), ]
+    assert series.chunks[0].op.indexes == [
+        slice(None, None, None),
+    ]
     assert series.chunks[0].op.value == 2
-    assert series.chunks[1].op.indexes == [slice(0, 1, 1), ]
+    assert series.chunks[1].op.indexes == [
+        slice(0, 1, 1),
+    ]
     assert series.chunks[1].op.value == 2
 
     # fancy index
@@ -358,108 +449,133 @@ def test_iloc_setitem():
 
 
 def test_dataframe_loc():
-    raw = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
-                       index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
+    raw = pd.DataFrame(
+        [[1, 3, 3], [4, 2, 6], [7, 8, 9]],
+        index=["a1", "a2", "a3"],
+        columns=["x", "y", "z"],
+    )
     df = md.DataFrame(raw, chunk_size=2)
     raw2 = raw.copy()
     raw2.reset_index(inplace=True, drop=True)
     df3 = md.DataFrame(raw2, chunk_size=2)
-    s = pd.Series([1, 3, 5], index=['a1', 'a2', 'a3'])
+    s = pd.Series([1, 3, 5], index=["a1", "a2", "a3"])
     series = md.Series(s, chunk_size=2)
 
     # test return scalar
-    df2 = df.loc['a1', 'z']
+    df2 = df.loc["a1", "z"]
     assert isinstance(df2, Tensor)
     assert df2.shape == ()
-    assert df2.dtype == raw['z'].dtype
+    assert df2.dtype == raw["z"].dtype
 
     df2 = tile(df2)
     assert len(df2.chunks) == 1
     assert isinstance(df2.chunks[0], TENSOR_CHUNK_TYPE)
 
     # test return series for index axis
-    df2 = df.loc[:, 'y']
+    df2 = df.loc[:, "y"]
     assert isinstance(df2, Series)
     assert df2.shape == (3,)
-    pd.testing.assert_index_equal(df2.index_value.to_pandas(), df.index_value.to_pandas())
-    assert df2.name == 'y'
+    pd.testing.assert_index_equal(
+        df2.index_value.to_pandas(), df.index_value.to_pandas()
+    )
+    assert df2.name == "y"
 
     df2 = tile(df2)
     assert len(df2.chunks) == 2
     for c in df2.chunks:
         assert isinstance(c, SERIES_CHUNK_TYPE)
         assert isinstance(c.index_value.to_pandas(), type(raw.index))
-        assert c.name == 'y'
-        assert c.dtype == raw['y'].dtype
+        assert c.name == "y"
+        assert c.dtype == raw["y"].dtype
 
     # test return series for column axis
-    df2 = df.loc['a2', :]
+    df2 = df.loc["a2", :]
     assert isinstance(df2, Series)
     assert df2.shape == (3,)
-    pd.testing.assert_index_equal(df2.index_value.to_pandas(), df.columns_value.to_pandas())
-    assert df2.name == 'a2'
+    pd.testing.assert_index_equal(
+        df2.index_value.to_pandas(), df.columns_value.to_pandas()
+    )
+    assert df2.name == "a2"
 
     df2 = tile(df2)
     assert len(df2.chunks) == 2
     for c in df2.chunks:
         assert isinstance(c, SERIES_CHUNK_TYPE)
         assert isinstance(c.index_value.to_pandas(), type(raw.columns))
-        assert c.name == 'a2'
-        assert c.dtype == raw.loc['a2'].dtype
+        assert c.name == "a2"
+        assert c.dtype == raw.loc["a2"].dtype
 
     # test slice
-    df2 = df.loc['a2': 'a3', 'y': 'z']
+    df2 = df.loc["a2":"a3", "y":"z"]
     assert isinstance(df2, DataFrame)
     assert df2.shape == (np.nan, 2)
-    pd.testing.assert_index_equal(df2.index_value.to_pandas(), df.index_value.to_pandas())
+    pd.testing.assert_index_equal(
+        df2.index_value.to_pandas(), df.index_value.to_pandas()
+    )
     assert df2.index_value.key != df.index_value.key
-    pd.testing.assert_index_equal(df2.columns_value.to_pandas(), raw.loc[:, 'y': 'z'].columns)
-    pd.testing.assert_series_equal(df2.dtypes, raw.loc[:, 'y': 'z'].dtypes)
+    pd.testing.assert_index_equal(
+        df2.columns_value.to_pandas(), raw.loc[:, "y":"z"].columns
+    )
+    pd.testing.assert_series_equal(df2.dtypes, raw.loc[:, "y":"z"].dtypes)
 
     # test fancy index on index axis
-    df2 = df.loc[['a3', 'a2'], [True, False, True]]
+    df2 = df.loc[["a3", "a2"], [True, False, True]]
     assert isinstance(df2, DataFrame)
     assert df2.shape == (2, 2)
-    pd.testing.assert_index_equal(df2.index_value.to_pandas(), df.index_value.to_pandas())
+    pd.testing.assert_index_equal(
+        df2.index_value.to_pandas(), df.index_value.to_pandas()
+    )
     assert df2.index_value.key != df.index_value.key
-    pd.testing.assert_index_equal(df2.columns_value.to_pandas(),
-                                  raw.loc[:, [True, False, True]].columns)
+    pd.testing.assert_index_equal(
+        df2.columns_value.to_pandas(), raw.loc[:, [True, False, True]].columns
+    )
     pd.testing.assert_series_equal(df2.dtypes, raw.loc[:, [True, False, True]].dtypes)
 
     # test fancy index which is md.Series on index axis
-    df2 = df.loc[md.Series(['a3', 'a2']), [True, False, True]]
+    df2 = df.loc[md.Series(["a3", "a2"]), [True, False, True]]
     assert isinstance(df2, DataFrame)
     assert df2.shape == (2, 2)
-    pd.testing.assert_index_equal(df2.index_value.to_pandas(), df.index_value.to_pandas())
+    pd.testing.assert_index_equal(
+        df2.index_value.to_pandas(), df.index_value.to_pandas()
+    )
     assert df2.index_value.key != df.index_value.key
-    pd.testing.assert_index_equal(df2.columns_value.to_pandas(),
-                                  raw.loc[:, [True, False, True]].columns)
+    pd.testing.assert_index_equal(
+        df2.columns_value.to_pandas(), raw.loc[:, [True, False, True]].columns
+    )
     pd.testing.assert_series_equal(df2.dtypes, raw.loc[:, [True, False, True]].dtypes)
 
     # test fancy index on columns axis
-    df2 = df.loc[[True, False, True], ['z', 'x', 'y']]
+    df2 = df.loc[[True, False, True], ["z", "x", "y"]]
     assert isinstance(df2, DataFrame)
     assert df2.shape == (2, 3)
-    pd.testing.assert_index_equal(df2.index_value.to_pandas(), df.index_value.to_pandas())
+    pd.testing.assert_index_equal(
+        df2.index_value.to_pandas(), df.index_value.to_pandas()
+    )
     assert df2.index_value.key != df.index_value.key
-    pd.testing.assert_index_equal(df2.columns_value.to_pandas(),
-                                  raw.loc[:, ['z', 'x', 'y']].columns)
-    pd.testing.assert_series_equal(df2.dtypes, raw.loc[:, ['z', 'x', 'y']].dtypes)
+    pd.testing.assert_index_equal(
+        df2.columns_value.to_pandas(), raw.loc[:, ["z", "x", "y"]].columns
+    )
+    pd.testing.assert_series_equal(df2.dtypes, raw.loc[:, ["z", "x", "y"]].dtypes)
 
     df2 = tile(df2)
     assert len(df2.chunks) == 2
     for c in df2.chunks:
         assert isinstance(c, DATAFRAME_CHUNK_TYPE)
-        pd.testing.assert_index_equal(c.index_value.to_pandas(), df.index_value.to_pandas())
+        pd.testing.assert_index_equal(
+            c.index_value.to_pandas(), df.index_value.to_pandas()
+        )
         assert c.index_value.key != df.index_value.key
-        pd.testing.assert_index_equal(c.columns_value.to_pandas(),
-                                      raw.loc[:, ['z', 'x', 'y']].columns)
-        pd.testing.assert_series_equal(c.dtypes, raw.loc[:, ['z', 'x', 'y']].dtypes)
+        pd.testing.assert_index_equal(
+            c.columns_value.to_pandas(), raw.loc[:, ["z", "x", "y"]].columns
+        )
+        pd.testing.assert_series_equal(c.dtypes, raw.loc[:, ["z", "x", "y"]].dtypes)
 
     df2 = df.loc[md.Series([True, False, True])]
     assert isinstance(df2, DataFrame)
     assert df2.shape == (np.nan, 3)
-    pd.testing.assert_index_equal(df2.index_value.to_pandas(), df.index_value.to_pandas())
+    pd.testing.assert_index_equal(
+        df2.index_value.to_pandas(), df.index_value.to_pandas()
+    )
     assert df2.index_value.key != df.index_value.key
     pd.testing.assert_index_equal(df2.columns_value.to_pandas(), raw.columns)
     pd.testing.assert_series_equal(df2.dtypes, raw.dtypes)
@@ -467,7 +583,9 @@ def test_dataframe_loc():
     df2 = df3.loc[md.Series([True, False, True])]
     assert isinstance(df2, DataFrame)
     assert df2.shape == (np.nan, 3)
-    assert isinstance(df2.index_value.to_pandas(), type(raw.loc[[True, False, True]].index))
+    assert isinstance(
+        df2.index_value.to_pandas(), type(raw.loc[[True, False, True]].index)
+    )
     assert df2.index_value.key != df3.index_value.key
     pd.testing.assert_index_equal(df2.columns_value.to_pandas(), raw.columns)
     pd.testing.assert_series_equal(df2.dtypes, raw.dtypes)
@@ -480,30 +598,29 @@ def test_dataframe_loc():
     pd.testing.assert_index_equal(df2.columns_value.to_pandas(), raw.columns)
     pd.testing.assert_series_equal(df2.dtypes, raw.dtypes)
 
-    series2 = series.loc['a2']
+    series2 = series.loc["a2"]
     assert isinstance(series2, Tensor)
     assert series2.shape == ()
     assert series2.dtype == s.dtype
 
-    series2 = series.loc[['a2', 'a3']]
+    series2 = series.loc[["a2", "a3"]]
     assert isinstance(series2, Series)
     assert series2.shape == (2,)
     assert series2.dtype == s.dtype
     assert series2.name == s.name
 
     with pytest.raises(IndexingError):
-        _ = df.loc['a1', 'z', ...]
+        _ = df.loc["a1", "z", ...]
 
     with pytest.raises(NotImplementedError):
         _ = df.loc[:, md.Series([True, False, True])]
 
     with pytest.raises(KeyError):
-        _ = df.loc[:, ['non_exist']]
+        _ = df.loc[:, ["non_exist"]]
 
 
 def test_loc_use_iloc():
-    raw = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
-                       columns=['x', 'y', 'z'])
+    raw = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]], columns=["x", "y", "z"])
     df = md.DataFrame(raw, chunk_size=2)
 
     assert isinstance(df.loc[:3].op, DataFrameIlocGetItem)
@@ -514,7 +631,7 @@ def test_loc_use_iloc():
     with pytest.raises(KeyError):
         _ = df.loc[-3]
     # index 1 not None
-    assert isinstance(df.loc[:3, :'y'].op, DataFrameLocGetItem)
+    assert isinstance(df.loc[:3, :"y"].op, DataFrameLocGetItem)
     # index 1 not slice
     assert isinstance(df.loc[:3, [True, False, True]].op, DataFrameLocGetItem)
     assert isinstance(df.loc[[True, False, True]].op, DataFrameLocGetItem)
@@ -524,24 +641,24 @@ def test_loc_use_iloc():
     df2 = md.DataFrame(raw2, chunk_size=2)
 
     assert isinstance(df2.loc[:3].op, DataFrameLocGetItem)
-    assert isinstance(df2.loc['a3':].op, DataFrameLocGetItem)
+    assert isinstance(df2.loc["a3":].op, DataFrameLocGetItem)
 
     raw2 = raw.copy()
-    raw2.index = [f'a{i}' for i in range(3)]
+    raw2.index = [f"a{i}" for i in range(3)]
     df2 = md.DataFrame(raw2, chunk_size=2)
 
     assert isinstance(df2.loc[:3].op, DataFrameLocGetItem)
 
 
 def test_dataframe_getitem():
-    data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+    data = pd.DataFrame(np.random.rand(10, 5), columns=["c1", "c2", "c3", "c4", "c5"])
     df = md.DataFrame(data, chunk_size=2)
 
-    series = df['c3']
+    series = df["c3"]
     assert isinstance(series, Series)
     assert series.shape == (10,)
-    assert series.name == 'c3'
-    assert series.dtype == data['c3'].dtype
+    assert series.name == "c3"
+    assert series.dtype == data["c3"].dtype
     assert series.index_value == df.index_value
 
     series = tile(series)
@@ -554,12 +671,14 @@ def test_dataframe_getitem():
         assert c.index == (i,)
         assert c.shape == (2,)
 
-    df1 = df[['c1', 'c2', 'c3']]
+    df1 = df[["c1", "c2", "c3"]]
     assert isinstance(df1, DataFrame)
     assert df1.shape == (10, 3)
     assert df1.index_value == df.index_value
-    pd.testing.assert_index_equal(df1.columns_value.to_pandas(), data[['c1', 'c2', 'c3']].columns)
-    pd.testing.assert_series_equal(df1.dtypes, data[['c1', 'c2', 'c3']].dtypes)
+    pd.testing.assert_index_equal(
+        df1.columns_value.to_pandas(), data[["c1", "c2", "c3"]].columns
+    )
+    pd.testing.assert_series_equal(df1.dtypes, data[["c1", "c2", "c3"]].dtypes)
 
     df1 = tile(df1)
     assert df1.nsplits == ((2, 2, 2, 2, 2), (2, 1))
@@ -575,9 +694,11 @@ def test_dataframe_getitem():
 
 
 def test_dataframe_getitem_bool():
-    data = pd.DataFrame(np.random.rand(10, 5),
-                        columns=['c1', 'c2', 'c3', 'c4', 'c5'],
-                        index=pd.RangeIndex(10, name='i'))
+    data = pd.DataFrame(
+        np.random.rand(10, 5),
+        columns=["c1", "c2", "c3", "c4", "c5"],
+        index=pd.RangeIndex(10, name="i"),
+    )
     df = md.DataFrame(data, chunk_size=2)
 
     mask_data1 = data.c1 > 0.5
@@ -593,7 +714,7 @@ def test_dataframe_getitem_bool():
     assert r1.index_value.key != mask1.index_value.key
     assert r1.columns_value.key == df.columns_value.key
     assert r1.columns_value is df.columns_value
-    assert r1.index_value.name == 'i'
+    assert r1.index_value.name == "i"
 
     assert r1.index_value.key != r2.index_value.key
     assert r1.columns_value.key == r2.columns_value.key
@@ -605,7 +726,7 @@ def test_dataframe_getitem_bool():
 
 
 def test_series_getitem():
-    data = pd.Series(np.random.rand(10, ), name='a')
+    data = pd.Series(np.random.rand(10), name="a")
     series = md.Series(data, chunk_size=3)
 
     result1 = series[2]
@@ -628,31 +749,31 @@ def test_series_getitem():
     assert result2.chunks[1].op.labels == [1, 2]
     assert result2.chunks[2].op.labels == [3]
 
-    data = pd.Series(np.random.rand(10), index=['i' + str(i) for i in range(10)])
+    data = pd.Series(np.random.rand(10), index=["i" + str(i) for i in range(10)])
     series = md.Series(data, chunk_size=3)
 
-    result1 = series['i2']
+    result1 = series["i2"]
     assert result1.shape == ()
 
     result1 = tile(result1)
     assert result1.nsplits == ()
     assert result1.chunks[0].dtype == data.dtype
-    assert result1.chunks[0].op.labels == 'i2'
+    assert result1.chunks[0].op.labels == "i2"
 
-    result2 = series[['i2', 'i4']]
+    result2 = series[["i2", "i4"]]
     assert result2.shape == (2,)
 
     result2 = tile(result2)
     assert result2.nsplits == ((2,),)
     assert result2.chunks[0].dtype == data.dtype
-    assert result2.chunks[0].op.labels == ['i2', 'i4']
+    assert result2.chunks[0].op.labels == ["i2", "i4"]
 
 
 def test_setitem():
-    data = pd.DataFrame(np.random.rand(10, 2), columns=['c1', 'c2'])
+    data = pd.DataFrame(np.random.rand(10, 2), columns=["c1", "c2"])
     df = md.DataFrame(data, chunk_size=4)
 
-    df['new'] = 1
+    df["new"] = 1
     assert df.shape == (10, 3)
     pd.testing.assert_series_equal(df.inputs[0].dtypes, data.dtypes)
 
@@ -669,12 +790,11 @@ def test_setitem():
 
 
 def test_reset_index():
-    data = pd.DataFrame([('bird',    389.0),
-                         ('bird',     24.0),
-                         ('mammal',   80.5),
-                         ('mammal', np.nan)],
-                        index=['falcon', 'parrot', 'lion', 'monkey'],
-                        columns=('class', 'max_speed'))
+    data = pd.DataFrame(
+        [("bird", 389.0), ("bird", 24.0), ("mammal", 80.5), ("mammal", np.nan)],
+        index=["falcon", "parrot", "lion", "monkey"],
+        columns=("class", "max_speed"),
+    )
     df = md.DataFrame(data, chunk_size=2).reset_index()
     r = data.reset_index()
 
@@ -686,10 +806,14 @@ def test_reset_index():
 
     assert len(df2.chunks) == 2
     assert df2.chunks[0].shape == (2, 3)
-    pd.testing.assert_index_equal(df2.chunks[0].index_value.to_pandas(), pd.RangeIndex(2))
+    pd.testing.assert_index_equal(
+        df2.chunks[0].index_value.to_pandas(), pd.RangeIndex(2)
+    )
     pd.testing.assert_series_equal(df2.chunks[0].dtypes, r.dtypes)
     assert df2.chunks[1].shape == (2, 3)
-    pd.testing.assert_index_equal(df2.chunks[1].index_value.to_pandas(), pd.RangeIndex(2, 4))
+    pd.testing.assert_index_equal(
+        df2.chunks[1].index_value.to_pandas(), pd.RangeIndex(2, 4)
+    )
     pd.testing.assert_series_equal(df2.chunks[1].dtypes, r.dtypes)
 
     df = md.DataFrame(data, chunk_size=1).reset_index(drop=True)
@@ -704,12 +828,15 @@ def test_reset_index():
 
     for c in df2.chunks:
         assert c.shape == (1, 1)
-        pd.testing.assert_index_equal(c.index_value.to_pandas(), pd.RangeIndex(c.index[0], c.index[0] + 1))
-        pd.testing.assert_series_equal(c.dtypes, r.dtypes[c.index[1]: c.index[1] + 1])
+        pd.testing.assert_index_equal(
+            c.index_value.to_pandas(), pd.RangeIndex(c.index[0], c.index[0] + 1)
+        )
+        pd.testing.assert_series_equal(c.dtypes, r.dtypes[c.index[1] : c.index[1] + 1])
 
     # test Series
-    series_data = pd.Series([1, 2, 3, 4], name='foo',
-                            index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
+    series_data = pd.Series(
+        [1, 2, 3, 4], name="foo", index=pd.Index(["a", "b", "c", "d"], name="idx")
+    )
     s = md.Series(series_data, chunk_size=2).reset_index()
     r = series_data.reset_index()
 
@@ -719,9 +846,13 @@ def test_reset_index():
     s2 = tile(s)
     assert len(s2.chunks) == 2
     assert s2.chunks[0].shape == (2, 2)
-    pd.testing.assert_index_equal(s2.chunks[0].index_value.to_pandas(), pd.RangeIndex(2))
+    pd.testing.assert_index_equal(
+        s2.chunks[0].index_value.to_pandas(), pd.RangeIndex(2)
+    )
     assert s2.chunks[1].shape == (2, 2)
-    pd.testing.assert_index_equal(s2.chunks[1].index_value.to_pandas(), pd.RangeIndex(2, 4))
+    pd.testing.assert_index_equal(
+        s2.chunks[1].index_value.to_pandas(), pd.RangeIndex(2, 4)
+    )
 
     with pytest.raises(TypeError):
         md.Series(series_data, chunk_size=2).reset_index(inplace=True)
@@ -733,7 +864,9 @@ def test_head_tail_optimize():
     df = md.DataFrame(raw, chunk_size=2)
 
     # no nan chunk shape
-    assert HeadTailOptimizedOperandMixin._need_tile_head_tail(tile(df).head(2).op) is False
+    assert (
+        HeadTailOptimizedOperandMixin._need_tile_head_tail(tile(df).head(2).op) is False
+    )
 
     df2 = tile(df[df[0] < 0.5])
     # chunk shape on axis 1 greater than 1
@@ -744,11 +877,15 @@ def test_head_tail_optimize():
     # not slice
     assert HeadTailOptimizedOperandMixin._need_tile_head_tail(df2.iloc[2].op) is False
     # step not None
-    assert HeadTailOptimizedOperandMixin._need_tile_head_tail(df2.iloc[:2:2].op) is False
+    assert (
+        HeadTailOptimizedOperandMixin._need_tile_head_tail(df2.iloc[:2:2].op) is False
+    )
     # not head or tail
     assert HeadTailOptimizedOperandMixin._need_tile_head_tail(df2.iloc[1:3].op) is False
     # slice 1 is not slice(None)
-    assert HeadTailOptimizedOperandMixin._need_tile_head_tail(df2.iloc[:3, :2].op) is False
+    assert (
+        HeadTailOptimizedOperandMixin._need_tile_head_tail(df2.iloc[:3, :2].op) is False
+    )
 
 
 def test_reindex():

@@ -31,8 +31,8 @@ from .utils import calc_svd_shapes
 class TensorSVD(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.SVD
 
-    _input = KeyField('input')
-    _method = StringField('method')
+    _input = KeyField("input")
+    _method = StringField("method")
 
     def __init__(self, method=None, **kw):
         super().__init__(_method=method, **kw)
@@ -57,21 +57,24 @@ class TensorSVD(TensorHasInput, TensorOperandMixin):
         a = astensor(a)
 
         if a.ndim != 2:
-            raise LinAlgError(f'{a.ndim}-dimensional tensor given. '
-                              'Tensor must be two-dimensional')
+            raise LinAlgError(
+                f"{a.ndim}-dimensional tensor given. " "Tensor must be two-dimensional"
+            )
 
         tiny_U, tiny_s, tiny_V = np.linalg.svd(np.ones((1, 1), dtype=a.dtype))
 
         # if a's shape is (6, 18), U's shape is (6, 6), s's shape is (6,), V's shape is (6, 18)
         # if a's shape is (18, 6), U's shape is (18, 6), s's shape is (6,), V's shape is (6, 6)
         U_shape, s_shape, V_shape = calc_svd_shapes(a)
-        U, s, V = self.new_tensors([a],
-                                   order=TensorOrder.C_ORDER,
-                                   kws=[
-                                       {'side': 'U', 'dtype': tiny_U.dtype, 'shape': U_shape},
-                                       {'side': 's', 'dtype': tiny_s.dtype, 'shape': s_shape},
-                                       {'side': 'V', 'dtype': tiny_V.dtype, 'shape': V_shape}
-                                   ])
+        U, s, V = self.new_tensors(
+            [a],
+            order=TensorOrder.C_ORDER,
+            kws=[
+                {"side": "U", "dtype": tiny_U.dtype, "shape": U_shape},
+                {"side": "s", "dtype": tiny_s.dtype, "shape": s_shape},
+                {"side": "V", "dtype": tiny_V.dtype, "shape": V_shape},
+            ],
+        )
         return ExecutableTuple([U, s, V])
 
     @classmethod
@@ -83,42 +86,66 @@ class TensorSVD(TensorHasInput, TensorOperandMixin):
         if in_tensor.chunk_shape == (1, 1):
             in_chunk = in_tensor.chunks[0]
             chunk_op = op.copy().reset_key()
-            svd_chunks = chunk_op.new_chunks([in_chunk],
-                                             kws=[
-                                                 {'side': 'U', 'dtype': U_dtype,
-                                                  'index': in_chunk.index,
-                                                  'shape': U_shape,
-                                                  'order': U.order},
-                                                 {'side': 's', 'dtype': s_dtype,
-                                                  'index': in_chunk.index[1:],
-                                                  'shape': s_shape,
-                                                  'order': s.order},
-                                                 {'side': 'V', 'dtype': V_dtype,
-                                                  'index': in_chunk.index,
-                                                  'shape': V_shape,
-                                                  'order': V.order}
-                                             ])
+            svd_chunks = chunk_op.new_chunks(
+                [in_chunk],
+                kws=[
+                    {
+                        "side": "U",
+                        "dtype": U_dtype,
+                        "index": in_chunk.index,
+                        "shape": U_shape,
+                        "order": U.order,
+                    },
+                    {
+                        "side": "s",
+                        "dtype": s_dtype,
+                        "index": in_chunk.index[1:],
+                        "shape": s_shape,
+                        "order": s.order,
+                    },
+                    {
+                        "side": "V",
+                        "dtype": V_dtype,
+                        "index": in_chunk.index,
+                        "shape": V_shape,
+                        "order": V.order,
+                    },
+                ],
+            )
             U_chunk, s_chunk, V_chunk = svd_chunks
 
             new_op = op.copy()
             kws = [
-                {'chunks': [U_chunk], 'nsplits': tuple((s,) for s in U_shape),
-                 'dtype': U_dtype, 'shape': U_shape},
-                {'chunks': [s_chunk], 'nsplits': tuple((s,) for s in s_shape),
-                 'dtype': s_dtype, 'shape': s_shape},
-                {'chunks': [V_chunk], 'nsplits': tuple((s,) for s in V_shape),
-                 'dtype': V_dtype, 'shape': V_shape}
+                {
+                    "chunks": [U_chunk],
+                    "nsplits": tuple((s,) for s in U_shape),
+                    "dtype": U_dtype,
+                    "shape": U_shape,
+                },
+                {
+                    "chunks": [s_chunk],
+                    "nsplits": tuple((s,) for s in s_shape),
+                    "dtype": s_dtype,
+                    "shape": s_shape,
+                },
+                {
+                    "chunks": [V_chunk],
+                    "nsplits": tuple((s,) for s in V_shape),
+                    "dtype": V_dtype,
+                    "shape": V_shape,
+                },
             ]
             return new_op.new_tensors(op.inputs, kws=kws)
-        elif op.method == 'tsqr':
+        elif op.method == "tsqr":
             return (yield from TSQR.tile(op))
         else:
-            raise NotImplementedError('Only tsqr method supported for now')
+            raise NotImplementedError("Only tsqr method supported for now")
 
     @classmethod
     def execute(cls, ctx, op):
         (a,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             u, s, v = xp.linalg.svd(a, full_matrices=False)
@@ -128,7 +155,7 @@ class TensorSVD(TensorHasInput, TensorOperandMixin):
             ctx[vc.key] = v
 
 
-def svd(a, method='tsqr'):
+def svd(a, method="tsqr"):
     """
     Singular Value Decomposition.
 

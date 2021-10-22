@@ -32,8 +32,8 @@ from .array import tensor
 class DenseToSparse(TensorHasInput):
     _op_type_ = OperandDef.DENSE_TO_SPARSE
 
-    _input = KeyField('input')
-    _missing = AnyField('missing')
+    _input = KeyField("input")
+    _missing = AnyField("missing")
 
     def __init__(self, missing=None, **kw):
         super().__init__(sparse=True, _missing=missing, **kw)
@@ -56,17 +56,14 @@ class DenseToSparse(TensorHasInput):
         out = op.outputs[0]
         in_data = naked(ctx[op.inputs[0].key])
         missing = op.missing
-        shape = in_data.shape \
-            if any(np.isnan(s) for s in out.shape) else out.shape
+        shape = in_data.shape if any(np.isnan(s) for s in out.shape) else out.shape
 
         xps = cps if op.gpu else sps
         if missing is None:
-            ctx[out.key] = \
-                SparseNDArray(xps.csr_matrix(in_data), shape=shape)
+            ctx[out.key] = SparseNDArray(xps.csr_matrix(in_data), shape=shape)
         else:
             mask = cls._get_mask(in_data, missing)
-            spmatrix = xps.csr_matrix((in_data[mask], mask.nonzero()),
-                                      shape=shape)
+            spmatrix = xps.csr_matrix((in_data[mask], mask.nonzero()), shape=shape)
             ctx[out.key] = SparseNDArray(spmatrix)
 
 

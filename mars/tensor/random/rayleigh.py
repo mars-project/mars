@@ -23,12 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorRayleigh(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_scale']
+    _input_fields_ = ["_scale"]
     _op_type_ = OperandDef.RAND_RAYLEIGH
 
-    _fields_ = '_scale', '_size'
-    _scale = AnyField('scale')
-    _func_name = 'rayleigh'
+    _fields_ = "_scale", "_size"
+    _scale = AnyField("scale")
+    _func_name = "rayleigh"
 
     def __init__(self, size=None, state=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -111,8 +111,7 @@ def rayleigh(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, dtyp
     0.087300000000000003
     """
     if dtype is None:
-        dtype = np.random.RandomState().rayleigh(
-            handle_array(scale), size=(0,)).dtype
+        dtype = np.random.RandomState().rayleigh(handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorRayleigh(size=size, seed=seed, gpu=gpu, dtype=dtype)

@@ -33,25 +33,36 @@ class TaskSupervisorService(AbstractService):
         }
     }
     """
+
     async def start(self):
-        task_config = self._config.get('task', dict())
-        options = task_config.get('default_config', dict())
-        task_preprocessor_cls = task_config.get('task_preprocessor_cls')
-        await mo.create_actor(TaskConfigurationActor, options,
-                              task_preprocessor_cls=task_preprocessor_cls,
-                              address=self._address,
-                              uid=TaskConfigurationActor.default_uid())
+        task_config = self._config.get("task", dict())
+        options = task_config.get("default_config", dict())
+        task_preprocessor_cls = task_config.get("task_preprocessor_cls")
+        await mo.create_actor(
+            TaskConfigurationActor,
+            options,
+            task_preprocessor_cls=task_preprocessor_cls,
+            address=self._address,
+            uid=TaskConfigurationActor.default_uid(),
+        )
 
     async def stop(self):
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=TaskConfigurationActor.default_uid(), address=self._address))
+        await mo.destroy_actor(
+            mo.create_actor_ref(
+                uid=TaskConfigurationActor.default_uid(), address=self._address
+            )
+        )
 
     async def create_session(self, session_id: str):
         await mo.create_actor(
-            TaskManagerActor, session_id, address=self._address,
-            uid=TaskManagerActor.gen_uid(session_id))
+            TaskManagerActor,
+            session_id,
+            address=self._address,
+            uid=TaskManagerActor.gen_uid(session_id),
+        )
 
     async def destroy_session(self, session_id: str):
         task_manager_ref = await mo.actor_ref(
-            self._address, TaskManagerActor.gen_uid(session_id))
+            self._address, TaskManagerActor.gen_uid(session_id)
+        )
         return await mo.destroy_actor(task_manager_ref)

@@ -28,10 +28,10 @@ from .shift import DataFrameShift
 class DataFrameDiff(DataFrameOperandMixin, DataFrameOperand):
     _op_type_ = opcodes.DATAFRAME_DIFF
 
-    _periods = Int64Field('periods')
-    _axis = Int8Field('axis')
+    _periods = Int64Field("periods")
+    _axis = Int8Field("axis")
 
-    _bool_columns = AnyField('bool_columns')
+    _bool_columns = AnyField("bool_columns")
 
     @property
     def periods(self):
@@ -54,11 +54,11 @@ class DataFrameDiff(DataFrameOperandMixin, DataFrameOperand):
         if isinstance(df_or_series, DATAFRAME_TYPE):
             self.output_types = [OutputType.dataframe]
             mock_obj = build_empty_df(df_or_series.dtypes)
-            params['dtypes'] = mock_obj.diff().dtypes
+            params["dtypes"] = mock_obj.diff().dtypes
         else:
             self.output_types = [OutputType.series]
             mock_obj = build_empty_series(df_or_series.dtype, name=df_or_series.name)
-            params['dtype'] = mock_obj.diff().dtype
+            params["dtype"] = mock_obj.diff().dtype
 
         return self.new_tileable([df_or_series], **params)
 
@@ -70,7 +70,8 @@ class DataFrameDiff(DataFrameOperandMixin, DataFrameOperand):
 
         if in_obj.chunk_shape[axis] > 1:
             shifted = yield from recursive_tile(
-                DataFrameShift(periods=op.periods, axis=axis)(in_obj))
+                DataFrameShift(periods=op.periods, axis=axis)(in_obj)
+            )
             shift_chunks = shifted.chunks
         else:
             shift_chunks = itertools.repeat(None)
@@ -80,15 +81,18 @@ class DataFrameDiff(DataFrameOperandMixin, DataFrameOperand):
         for in_chunk, shift_chunk in zip(in_obj.chunks, shift_chunks):
             params = in_chunk.params.copy()
             if in_chunk.ndim == 2:
-                params['dtypes'] = out_obj.dtypes[in_chunk.dtypes.index]
+                params["dtypes"] = out_obj.dtypes[in_chunk.dtypes.index]
                 try:
                     bool_columns = bool_columns_dict[in_chunk.index[1]]
                 except KeyError:
-                    bool_columns = bool_columns_dict[in_chunk.index[1]] = \
-                        [col for col, dt in in_chunk.dtypes.items() if dt == np.dtype(bool)]
+                    bool_columns = bool_columns_dict[in_chunk.index[1]] = [
+                        col
+                        for col, dt in in_chunk.dtypes.items()
+                        if dt == np.dtype(bool)
+                    ]
             else:
-                params['dtype'] = out_obj.dtype
-                bool_columns = (in_chunk.dtype == np.dtype(bool))
+                params["dtype"] = out_obj.dtype
+                bool_columns = in_chunk.dtype == np.dtype(bool)
 
             new_op = op.copy().reset_key()
             new_op._bool_columns = bool_columns
@@ -99,8 +103,9 @@ class DataFrameDiff(DataFrameOperandMixin, DataFrameOperand):
                 chunks.append(new_op.new_chunk([in_chunk, shift_chunk], **params))
 
         new_op = op.copy().reset_key()
-        return new_op.new_tileables([in_obj], chunks=chunks, nsplits=in_obj.nsplits,
-                                    **out_obj.params)
+        return new_op.new_tileables(
+            [in_obj], chunks=chunks, nsplits=in_obj.nsplits, **out_obj.params
+        )
 
     @classmethod
     def execute(cls, ctx, op):
@@ -108,9 +113,13 @@ class DataFrameDiff(DataFrameOperandMixin, DataFrameOperand):
         if len(op.inputs) == 1:
             if in_data.ndim == 2:
                 try:
-                    ctx[op.outputs[0].key] = in_data.diff(periods=op.periods, axis=op.axis)
+                    ctx[op.outputs[0].key] = in_data.diff(
+                        periods=op.periods, axis=op.axis
+                    )
                 except ValueError:
-                    ctx[op.outputs[0].key] = in_data.copy().diff(periods=op.periods, axis=op.axis)
+                    ctx[op.outputs[0].key] = in_data.copy().diff(
+                        periods=op.periods, axis=op.axis
+                    )
             else:
                 ctx[op.outputs[0].key] = in_data.diff(periods=op.periods)
         else:
@@ -118,8 +127,10 @@ class DataFrameDiff(DataFrameOperandMixin, DataFrameOperand):
             result = in_data - in_shift
             if op.bool_columns:
                 if in_data.ndim == 2:
-                    result.replace({c: {1: True, -1: True, 0: False} for c in op.bool_columns},
-                                   inplace=True)
+                    result.replace(
+                        {c: {1: True, -1: True, 0: False} for c in op.bool_columns},
+                        inplace=True,
+                    )
                 else:
                     result.replace({1: True, -1: True, 0: False}, inplace=True)
             ctx[op.outputs[0].key] = result

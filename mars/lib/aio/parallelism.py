@@ -23,20 +23,15 @@ from .base import AioBase, delegate_to_executor, proxy_method_directly
 event_types = Union[threading.Event, multiprocessing.Event]
 
 
-@delegate_to_executor(
-    "wait"
-)
-@proxy_method_directly(
-    "set",
-    "is_set",
-    "clear"
-)
+@delegate_to_executor("wait")
+@proxy_method_directly("set", "is_set", "clear")
 class AioEvent(AioBase):
-    def __init__(self,
-                 event: event_types = None,
-                 loop: asyncio.BaseEventLoop = None,
-                 executor: Executor = None):
+    def __init__(
+        self,
+        event: event_types = None,
+        loop: asyncio.BaseEventLoop = None,
+        executor: Executor = None,
+    ):
         if event is None:
             event = threading.Event()
-        super().__init__(event, loop=loop,
-                         executor=executor)
+        super().__init__(event, loop=loop, executor=executor)

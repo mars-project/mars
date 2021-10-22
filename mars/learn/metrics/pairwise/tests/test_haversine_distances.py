@@ -46,8 +46,8 @@ x2 = mt.tensor(raw_x, chunk_size=(11, 1))
 y2 = mt.tensor(raw_y, chunk_size=(17, 1))
 
 
-@pytest.mark.parametrize('x, y', [(x1, y1), (x2, y2)])
-@pytest.mark.parametrize('use_sklearn', [True, False])
+@pytest.mark.parametrize("x, y", [(x1, y1), (x2, y2)])
+@pytest.mark.parametrize("use_sklearn", [True, False])
 def test_haversine_distances_execution(setup, x, y, use_sklearn):
     distance = haversine_distances(x, y)
     distance.op._use_sklearn = use_sklearn

@@ -25,9 +25,9 @@ from ...utils import check_array
 
 
 class PairwiseDistances(TensorOperand, TensorOperandMixin):
-    _op_module_ = 'learn'
+    _op_module_ = "learn"
 
-    chunk_store_limit = Int64Field('chunk_store_limit')
+    chunk_store_limit = Int64Field("chunk_store_limit")
 
     @staticmethod
     def _return_float_dtype(X, Y):
@@ -55,27 +55,28 @@ class PairwiseDistances(TensorOperand, TensorOperandMixin):
     def check_pairwise_arrays(X, Y, precomputed=False, dtype=None):
         X, Y, dtype_float = PairwiseDistances._return_float_dtype(X, Y)
 
-        estimator = 'check_pairwise_arrays'
+        estimator = "check_pairwise_arrays"
         if dtype is None:
             dtype = dtype_float
 
         if Y is X or Y is None:
-            X = Y = check_array(X, accept_sparse=True, dtype=dtype,
-                                estimator=estimator)
+            X = Y = check_array(X, accept_sparse=True, dtype=dtype, estimator=estimator)
         else:
-            X = check_array(X, accept_sparse=True, dtype=dtype,
-                            estimator=estimator)
-            Y = check_array(Y, accept_sparse=True, dtype=dtype,
-                            estimator=estimator)
+            X = check_array(X, accept_sparse=True, dtype=dtype, estimator=estimator)
+            Y = check_array(Y, accept_sparse=True, dtype=dtype, estimator=estimator)
 
         if precomputed:
             if X.shape[1] != Y.shape[0]:
-                raise ValueError("Precomputed metric requires shape "
-                                 f"(n_queries, n_indexed). Got ({X.shape[0]}, {X.shape[1]}) "
-                                 f"for {Y.shape[0]} indexed.")
+                raise ValueError(
+                    "Precomputed metric requires shape "
+                    f"(n_queries, n_indexed). Got ({X.shape[0]}, {X.shape[1]}) "
+                    f"for {Y.shape[0]} indexed."
+                )
         elif X.shape[1] != Y.shape[1]:
-            raise ValueError("Incompatible dimension for X and Y matrices: "
-                             f"X.shape[1] == {X.shape[1]} while Y.shape[1] == {Y.shape[1]}")
+            raise ValueError(
+                "Incompatible dimension for X and Y matrices: "
+                f"X.shape[1] == {X.shape[1]} while Y.shape[1] == {Y.shape[1]}"
+            )
 
         return X, Y
 
@@ -83,34 +84,49 @@ class PairwiseDistances(TensorOperand, TensorOperandMixin):
     def _tile_one_chunk(cls, op):
         out = op.outputs[0]
         chunk_op = op.copy().reset_key()
-        chunk = chunk_op.new_chunk([op.x.chunks[0], op.y.chunks[0]],
-                                   shape=out.shape, order=out.order,
-                                   index=(0, 0))
+        chunk = chunk_op.new_chunk(
+            [op.x.chunks[0], op.y.chunks[0]],
+            shape=out.shape,
+            order=out.order,
+            index=(0, 0),
+        )
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape,
-                                  order=out.order, chunks=[chunk],
-                                  nsplits=tuple((s,) for s in out.shape))
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out.shape,
+            order=out.order,
+            chunks=[chunk],
+            nsplits=tuple((s,) for s in out.shape),
+        )
 
     @classmethod
     def _tile_chunks(cls, op, x, y):
         out = op.outputs[0]
         out_chunks = []
-        for idx in itertools.product(range(x.chunk_shape[0]),
-                                     range(y.chunk_shape[0])):
+        for idx in itertools.product(range(x.chunk_shape[0]), range(y.chunk_shape[0])):
             xi, yi = idx
 
             chunk_op = op.copy().reset_key()
             chunk_inputs = [x.cix[xi, 0], y.cix[yi, 0]]
             out_chunk = chunk_op.new_chunk(
-                chunk_inputs, shape=(chunk_inputs[0].shape[0],
-                                     chunk_inputs[1].shape[0],),
-                order=out.order, index=idx)
+                chunk_inputs,
+                shape=(
+                    chunk_inputs[0].shape[0],
+                    chunk_inputs[1].shape[0],
+                ),
+                order=out.order,
+                index=idx,
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape,
-                                  order=out.order, chunks=out_chunks,
-                                  nsplits=(x.nsplits[0], y.nsplits[0]))
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out.shape,
+            order=out.order,
+            chunks=out_chunks,
+            nsplits=(x.nsplits[0], y.nsplits[0]),
+        )
 
     @classmethod
     def _rechunk_cols_into_one(cls, x, y):
@@ -139,15 +155,24 @@ class PairwiseDistances(TensorOperand, TensorOperandMixin):
             # chunk is too huge, try to rechunk X and Y
             if X.shape[0] > Y.shape[0]:
                 # y is smaller, rechunk y is more efficient
-                expected_y_chunk_size = max(int(chunk_store_limit / itemsize / max_x_chunk_size), 1)
-                if max_x_chunk_size * expected_y_chunk_size * itemsize <= chunk_store_limit:
+                expected_y_chunk_size = max(
+                    int(chunk_store_limit / itemsize / max_x_chunk_size), 1
+                )
+                if (
+                    max_x_chunk_size * expected_y_chunk_size * itemsize
+                    <= chunk_store_limit
+                ):
                     adjust_succeeded = True
-                    Y = yield from recursive_tile(
-                        Y.rechunk({0: expected_y_chunk_size}))
+                    Y = yield from recursive_tile(Y.rechunk({0: expected_y_chunk_size}))
             else:
                 # x is smaller, rechunk x is more efficient
-                expected_x_chunk_size = max(int(chunk_store_limit / itemsize / max_y_chunk_size), 1)
-                if max_y_chunk_size * expected_x_chunk_size * itemsize <= chunk_store_limit:
+                expected_x_chunk_size = max(
+                    int(chunk_store_limit / itemsize / max_y_chunk_size), 1
+                )
+                if (
+                    max_y_chunk_size * expected_x_chunk_size * itemsize
+                    <= chunk_store_limit
+                ):
                     adjust_succeeded = True
                     X = yield from recursive_tile(X.rechunk({0: expected_x_chunk_size}))
 

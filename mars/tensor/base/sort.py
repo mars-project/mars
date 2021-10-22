@@ -15,8 +15,13 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialization.serializables import FieldTypes, Int32Field, \
-    StringField, ListField, BoolField
+from ...serialization.serializables import (
+    FieldTypes,
+    Int32Field,
+    StringField,
+    ListField,
+    BoolField,
+)
 from ...core import ExecutableTuple
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder
@@ -29,23 +34,42 @@ from .psrs import TensorPSRSOperandMixin
 class TensorSort(TensorOperand, TensorPSRSOperandMixin):
     _op_type_ = OperandDef.SORT
 
-    _axis = Int32Field('axis')
-    _kind = StringField('kind')
-    _parallel_kind = StringField('parallel_kind')
-    _order = ListField('order', FieldTypes.string)
-    _psrs_kinds = ListField('psrs_kinds', FieldTypes.string)
-    _need_align = BoolField('need_align')
-    _return_value = BoolField('return_value')
-    _return_indices = BoolField('return_indices')
+    _axis = Int32Field("axis")
+    _kind = StringField("kind")
+    _parallel_kind = StringField("parallel_kind")
+    _order = ListField("order", FieldTypes.string)
+    _psrs_kinds = ListField("psrs_kinds", FieldTypes.string)
+    _need_align = BoolField("need_align")
+    _return_value = BoolField("return_value")
+    _return_indices = BoolField("return_indices")
 
-    def __init__(self, axis=None, kind=None, parallel_kind=None, order=None,
-                 psrs_kinds=None, need_align=None, return_value=None,
-                 return_indices=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _kind=kind, _parallel_kind=parallel_kind,
-                         _order=order, _psrs_kinds=psrs_kinds,
-                         _need_align=need_align, _return_value=return_value,
-                         _return_indices=return_indices,
-                         dtype=dtype, gpu=gpu, **kw)
+    def __init__(
+        self,
+        axis=None,
+        kind=None,
+        parallel_kind=None,
+        order=None,
+        psrs_kinds=None,
+        need_align=None,
+        return_value=None,
+        return_indices=None,
+        dtype=None,
+        gpu=None,
+        **kw,
+    ):
+        super().__init__(
+            _axis=axis,
+            _kind=kind,
+            _parallel_kind=parallel_kind,
+            _order=order,
+            _psrs_kinds=psrs_kinds,
+            _need_align=need_align,
+            _return_value=return_value,
+            _return_indices=return_indices,
+            dtype=dtype,
+            gpu=gpu,
+            **kw,
+        )
 
     @property
     def axis(self):
@@ -86,19 +110,18 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
     def __call__(self, a):
         kws = []
         if self._return_value:
-            kws.append({
-                'shape': a.shape,
-                'order': a.order,
-                'dtype': a.dtype,
-                'type': 'sorted'
-            })
+            kws.append(
+                {"shape": a.shape, "order": a.order, "dtype": a.dtype, "type": "sorted"}
+            )
         if self._return_indices:
-            kws.append({
-                'shape': a.shape,
-                'order': TensorOrder.C_ORDER,
-                'dtype': np.dtype(np.int64),
-                'type': 'argsort'
-            })
+            kws.append(
+                {
+                    "shape": a.shape,
+                    "order": TensorOrder.C_ORDER,
+                    "dtype": np.dtype(np.int64),
+                    "type": "argsort",
+                }
+            )
         ret = self.new_tensors([a], kws=kws)
         if len(kws) == 1:
             return ret[0]
@@ -111,31 +134,45 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
         to see explanation of parallel sorting by regular sampling
         """
         out_tensor = op.outputs[0]
-        in_tensor, axis_chunk_shape, out_idxes, need_align = \
-            yield from cls.preprocess(op)
+        in_tensor, axis_chunk_shape, out_idxes, need_align = yield from cls.preprocess(
+            op
+        )
         axis_offsets = [0] + np.cumsum(in_tensor.nsplits[op.axis]).tolist()[:-1]
         return_value, return_indices = op.return_value, op.return_indices
 
         out_value_chunks, out_indices_chunks = [], []
         for out_idx in out_idxes:
             # stage 1: local sort and regular samples collected
-            sorted_chunks, indices_chunks, sampled_chunks = cls.local_sort_and_regular_sample(
-                op, in_tensor, axis_chunk_shape, axis_offsets, out_idx)
+            (
+                sorted_chunks,
+                indices_chunks,
+                sampled_chunks,
+            ) = cls.local_sort_and_regular_sample(
+                op, in_tensor, axis_chunk_shape, axis_offsets, out_idx
+            )
 
             # stage 2: gather and merge samples, choose and broadcast p-1 pivots
             concat_pivot_chunk = cls.concat_and_pivot(
-                op, axis_chunk_shape, out_idx, sorted_chunks, sampled_chunks)
+                op, axis_chunk_shape, out_idx, sorted_chunks, sampled_chunks
+            )
 
             # stage 3: Local data is partitioned
             partition_chunks = cls.partition_local_data(
-                op, axis_chunk_shape, sorted_chunks, indices_chunks, concat_pivot_chunk)
+                op, axis_chunk_shape, sorted_chunks, indices_chunks, concat_pivot_chunk
+            )
 
             proxy_chunk = TensorShuffleProxy(dtype=partition_chunks[0].dtype).new_chunk(
-                partition_chunks, shape=())
+                partition_chunks, shape=()
+            )
 
             # stage 4: all *ith* classes are gathered and merged
-            partition_sort_chunks, partition_indices_chunks, sort_info_chunks = \
-                cls.partition_merge_data(op, need_align, None, partition_chunks, proxy_chunk)
+            (
+                partition_sort_chunks,
+                partition_indices_chunks,
+                sort_info_chunks,
+            ) = cls.partition_merge_data(
+                op, need_align, None, partition_chunks, proxy_chunk
+            )
 
             if not need_align:
                 if return_value:
@@ -143,10 +180,17 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
                 if return_indices:
                     out_indices_chunks.extend(partition_indices_chunks)
             else:
-                align_reduce_value_chunks, align_reduce_indices_chunks = \
-                    cls.align_partitions_data(
-                        op, out_idx, in_tensor, partition_sort_chunks,
-                        partition_indices_chunks, sort_info_chunks)
+                (
+                    align_reduce_value_chunks,
+                    align_reduce_indices_chunks,
+                ) = cls.align_partitions_data(
+                    op,
+                    out_idx,
+                    in_tensor,
+                    partition_sort_chunks,
+                    partition_indices_chunks,
+                    sort_info_chunks,
+                )
                 if return_value:
                     out_value_chunks.extend(align_reduce_value_chunks)
                 if return_indices:
@@ -158,21 +202,25 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
             nsplits[op.axis] = (np.nan,) * axis_chunk_shape
         kws = []
         if return_value:
-            kws.append({
-                'shape': out_tensor.shape,
-                'order': out_tensor.order,
-                'chunks': out_value_chunks,
-                'nsplits': nsplits,
-                'dtype': out_tensor.dtype
-            })
+            kws.append(
+                {
+                    "shape": out_tensor.shape,
+                    "order": out_tensor.order,
+                    "chunks": out_value_chunks,
+                    "nsplits": nsplits,
+                    "dtype": out_tensor.dtype,
+                }
+            )
         if return_indices:
-            kws.append({
-                'shape': out_tensor.shape,
-                'order': TensorOrder.C_ORDER,
-                'chunks': out_indices_chunks,
-                'nsplits': nsplits,
-                'dtype': np.dtype(np.int64)
-            })
+            kws.append(
+                {
+                    "shape": out_tensor.shape,
+                    "order": TensorOrder.C_ORDER,
+                    "chunks": out_indices_chunks,
+                    "nsplits": nsplits,
+                    "dtype": np.dtype(np.int64),
+                }
+            )
         return new_op.new_tensors(op.inputs, kws=kws)
 
     @classmethod
@@ -186,21 +234,25 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
                 chunk_op = op.copy().reset_key()
                 kws = []
                 if return_value:
-                    kws.append({
-                        'shape': chunk.shape,
-                        'index': chunk.index,
-                        'order': chunk.order,
-                        'dtype': chunk.dtype,
-                        'type': 'sorted'
-                    })
+                    kws.append(
+                        {
+                            "shape": chunk.shape,
+                            "index": chunk.index,
+                            "order": chunk.order,
+                            "dtype": chunk.dtype,
+                            "type": "sorted",
+                        }
+                    )
                 if return_indices:
-                    kws.append({
-                        'shape': chunk.shape,
-                        'index': chunk.index,
-                        'order': TensorOrder.C_ORDER,
-                        'dtype': np.dtype(np.int64),
-                        'type': 'argsort'
-                    })
+                    kws.append(
+                        {
+                            "shape": chunk.shape,
+                            "index": chunk.index,
+                            "order": TensorOrder.C_ORDER,
+                            "dtype": np.dtype(np.int64),
+                            "type": "argsort",
+                        }
+                    )
                 chunks = chunk_op.new_chunks([chunk], kws=kws)
                 if return_value:
                     out_chunks.append(chunks[0])
@@ -210,11 +262,11 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
             new_op = op.copy()
             kws = [out.params for out in op.outputs]
             if return_value:
-                kws[0]['nsplits'] = in_tensor.nsplits
-                kws[0]['chunks'] = out_chunks
+                kws[0]["nsplits"] = in_tensor.nsplits
+                kws[0]["chunks"] = out_chunks
             if return_indices:
-                kws[-1]['nsplits'] = in_tensor.nsplits
-                kws[-1]['chunks'] = out_indices_chunks
+                kws[-1]["nsplits"] = in_tensor.nsplits
+                kws[-1]["chunks"] = out_indices_chunks
             return new_op.new_tensors([in_tensor], kws=kws)
         else:
             # use parallel sorting by regular sampling
@@ -222,16 +274,17 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        (a,), device_id, xp = as_same_device([ctx[inp.key] for inp in op.inputs],
-                                             device=op.device, ret_extra=True)
+        (a,), device_id, xp = as_same_device(
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+        )
         return_value, return_indices = op.return_value, op.return_indices
 
         with device(device_id):
             kw = {}
             if op.kind is not None:
-                kw['kind'] = op.kind
+                kw["kind"] = op.kind
             if op.order is not None:
-                kw['order'] = op.order
+                kw["order"] = op.order
 
             if return_indices:
                 if not return_value:
@@ -243,7 +296,7 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
                 ctx[op.outputs[0].key] = xp.sort(a, axis=op.axis, **kw)
 
 
-_AVAILABLE_KINDS = {'QUICKSORT', 'MERGESORT', 'HEAPSORT', 'STABLE'}
+_AVAILABLE_KINDS = {"QUICKSORT", "MERGESORT", "HEAPSORT", "STABLE"}
 
 
 def _validate_sort_psrs_kinds(psrs_kinds):
@@ -251,22 +304,24 @@ def _validate_sort_psrs_kinds(psrs_kinds):
         if isinstance(psrs_kinds, (list, tuple)):
             psrs_kinds = list(psrs_kinds)
             if len(psrs_kinds) != 3:
-                raise ValueError('psrs_kinds should have 3 elements')
+                raise ValueError("psrs_kinds should have 3 elements")
             for i, psrs_kind in enumerate(psrs_kinds):
                 if psrs_kind is None:
                     if i < 2:
                         continue
                     else:
-                        raise ValueError('3rd element of psrs_kinds '
-                                         'should be specified')
+                        raise ValueError(
+                            "3rd element of psrs_kinds " "should be specified"
+                        )
                 upper_psrs_kind = psrs_kind.upper()
                 if upper_psrs_kind not in _AVAILABLE_KINDS:
-                    raise ValueError(f'{psrs_kind} is an unrecognized kind '
-                                     'in psrs_kinds')
+                    raise ValueError(
+                        f"{psrs_kind} is an unrecognized kind " "in psrs_kinds"
+                    )
         else:
-            raise TypeError('psrs_kinds should be list or tuple')
+            raise TypeError("psrs_kinds should be list or tuple")
     else:
-        psrs_kinds = ['quicksort', 'mergesort', 'mergesort']
+        psrs_kinds = ["quicksort", "mergesort", "mergesort"]
     return psrs_kinds
 
 
@@ -282,21 +337,30 @@ def _validate_sort_arguments(a, axis, kind, parallel_kind, psrs_kinds, order):
         kind = kind.upper()
         if kind not in _AVAILABLE_KINDS:
             # check kind
-            raise ValueError(f'{raw_kind} is an unrecognized kind of sort')
+            raise ValueError(f"{raw_kind} is an unrecognized kind of sort")
     if parallel_kind is not None:
         raw_parallel_kind = parallel_kind
         parallel_kind = parallel_kind.upper()
-        if parallel_kind not in {'PSRS'}:
-            raise ValueError(f'{raw_parallel_kind} is an unrecognized kind of '
-                             'parallel sort')
+        if parallel_kind not in {"PSRS"}:
+            raise ValueError(
+                f"{raw_parallel_kind} is an unrecognized kind of " "parallel sort"
+            )
 
     order = validate_order(a.dtype, order)
     psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
     return a, axis, kind, parallel_kind, psrs_kinds, order
 
 
-def sort(a, axis=-1, kind=None, parallel_kind=None, psrs_kinds=None,
-         order=None, return_index=False, **kw):
+def sort(
+    a,
+    axis=-1,
+    kind=None,
+    parallel_kind=None,
+    psrs_kinds=None,
+    order=None,
+    return_index=False,
+    **kw,
+):
     r"""
     Return a sorted copy of a tensor.
 
@@ -423,14 +487,24 @@ def sort(a, axis=-1, kind=None, parallel_kind=None, psrs_kinds=None,
            ('Arthur', 1.8, 41)],
           dtype=[('name', '|S10'), ('height', '<f8'), ('age', '<i4')])
     """
-    need_align = kw.pop('need_align', None)
+    need_align = kw.pop("need_align", None)
     if len(kw) > 0:
-        raise TypeError('sort() got an unexpected keyword '
-                        f'argument \'{next(iter(kw))}\'')
-    a, axis, kind, parallel_kind, psrs_kinds, order = \
-        _validate_sort_arguments(a, axis, kind, parallel_kind, psrs_kinds, order)
-    op = TensorSort(axis=axis, kind=kind, parallel_kind=parallel_kind,
-                    order=order, psrs_kinds=psrs_kinds, need_align=need_align,
-                    return_value=True, return_indices=return_index,
-                    dtype=a.dtype, gpu=a.op.gpu)
+        raise TypeError(
+            "sort() got an unexpected keyword " f"argument '{next(iter(kw))}'"
+        )
+    a, axis, kind, parallel_kind, psrs_kinds, order = _validate_sort_arguments(
+        a, axis, kind, parallel_kind, psrs_kinds, order
+    )
+    op = TensorSort(
+        axis=axis,
+        kind=kind,
+        parallel_kind=parallel_kind,
+        order=order,
+        psrs_kinds=psrs_kinds,
+        need_align=need_align,
+        return_value=True,
+        return_indices=return_index,
+        dtype=a.dtype,
+        gpu=a.op.gpu,
+    )
     return op(a)

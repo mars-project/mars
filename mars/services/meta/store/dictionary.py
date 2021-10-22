@@ -25,14 +25,14 @@ from .base import AbstractMetaStore, register_meta_store
 
 @register_meta_store
 class DictMetaStore(AbstractMetaStore):
-    name = 'dict'
+    name = "dict"
 
     def __init__(self, session_id: str, **kw):
         super().__init__(session_id)
         self._store: Dict[str, _CommonMeta] = dict()
         self._band_chunks: Dict[BandType, Set[str]] = defaultdict(set)
         if kw:  # pragma: no cover
-            raise TypeError(f'Keyword arguments {kw!r} cannot be recognized.')
+            raise TypeError(f"Keyword arguments {kw!r} cannot be recognized.")
 
     @classmethod
     @implements(AbstractMetaStore.create)
@@ -41,9 +41,7 @@ class DictMetaStore(AbstractMetaStore):
         # no extra kwargs.
         return dict()
 
-    def _set_meta(self,
-                  object_id: str,
-                  meta: _CommonMeta):
+    def _set_meta(self, object_id: str, meta: _CommonMeta):
         self._store[object_id] = meta
         if isinstance(meta, _ChunkMeta):
             for band in meta.bands:
@@ -51,9 +49,7 @@ class DictMetaStore(AbstractMetaStore):
 
     @implements(AbstractMetaStore.set_meta)
     @mo.extensible
-    async def set_meta(self,
-                       object_id: str,
-                       meta: _CommonMeta):
+    async def set_meta(self, object_id: str, meta: _CommonMeta):
         self._set_meta(object_id, meta)
 
     @set_meta.batch
@@ -61,29 +57,27 @@ class DictMetaStore(AbstractMetaStore):
         for args, kwargs in zip(args_list, kwargs_list):
             self._set_meta(*args, **kwargs)
 
-    def _get_meta(self,
-                  object_id: str,
-                  fields: List[str] = None,
-                  error: str = 'raise') -> Dict:
-        if error not in ('raise', 'ignore'):  # pragma: no cover
-            raise ValueError('error must be raise or ignore')
+    def _get_meta(
+        self, object_id: str, fields: List[str] = None, error: str = "raise"
+    ) -> Dict:
+        if error not in ("raise", "ignore"):  # pragma: no cover
+            raise ValueError("error must be raise or ignore")
         try:
             meta = asdict(self._store[object_id])
             if fields:
                 return {k: meta[k] for k in fields}
             return meta
         except KeyError:
-            if error == 'raise':
+            if error == "raise":
                 raise
             else:
                 return
 
     @implements(AbstractMetaStore.get_meta)
     @mo.extensible
-    async def get_meta(self,
-                       object_id: str,
-                       fields: List[str] = None,
-                       error: str = 'raise') -> Dict:
+    async def get_meta(
+        self, object_id: str, fields: List[str] = None, error: str = "raise"
+    ) -> Dict:
         return self._get_meta(object_id, fields=fields, error=error)
 
     @get_meta.batch
@@ -105,8 +99,7 @@ class DictMetaStore(AbstractMetaStore):
 
     @implements(AbstractMetaStore.del_meta)
     @mo.extensible
-    async def del_meta(self,
-                       object_id: str):
+    async def del_meta(self, object_id: str):
         self._del_meta(object_id)
 
     @del_meta.batch
@@ -114,9 +107,7 @@ class DictMetaStore(AbstractMetaStore):
         for args, kwargs in zip(args_list, kwargs_list):
             self._del_meta(*args, **kwargs)
 
-    def _add_chunk_bands(self,
-                         object_id: str,
-                         bands: List[BandType]):
+    def _add_chunk_bands(self, object_id: str, bands: List[BandType]):
         meta = self._store[object_id]
         assert isinstance(meta, _ChunkMeta)
         meta.bands = list(set(meta.bands) | set(bands))
@@ -125,9 +116,7 @@ class DictMetaStore(AbstractMetaStore):
 
     @implements(AbstractMetaStore.add_chunk_bands)
     @mo.extensible
-    async def add_chunk_bands(self,
-                              object_id: str,
-                              bands: List[BandType]):
+    async def add_chunk_bands(self, object_id: str, bands: List[BandType]):
         self._add_chunk_bands(object_id, bands)
 
     @add_chunk_bands.batch
@@ -135,9 +124,7 @@ class DictMetaStore(AbstractMetaStore):
         for args, kwargs in zip(args_list, kwargs_list):
             self._add_chunk_bands(*args, **kwargs)
 
-    def _remove_chunk_bands(self,
-                            object_id: str,
-                            bands: List[BandType]):
+    def _remove_chunk_bands(self, object_id: str, bands: List[BandType]):
         meta = self._store[object_id]
         assert isinstance(meta, _ChunkMeta)
         meta.bands = list(set(meta.bands) - set(bands))
@@ -146,9 +133,7 @@ class DictMetaStore(AbstractMetaStore):
 
     @implements(AbstractMetaStore.remove_chunk_bands)
     @mo.extensible
-    async def remove_chunk_bands(self,
-                                 object_id: str,
-                                 bands: List[BandType]):
+    async def remove_chunk_bands(self, object_id: str, bands: List[BandType]):
         self._remove_chunk_bands(object_id, bands)
 
     @remove_chunk_bands.batch

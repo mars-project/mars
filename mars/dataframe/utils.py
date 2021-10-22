@@ -32,9 +32,9 @@ from ..utils import tokenize, sbytes, lazy_import, ModulePlaceholder
 try:
     import pyarrow as pa
 except ImportError:  # pragma: no cover
-    pa = ModulePlaceholder('pyarrow')
+    pa = ModulePlaceholder("pyarrow")
 
-cudf = lazy_import('cudf', globals=globals(), rename='cudf')
+cudf = lazy_import("cudf", globals=globals(), rename="cudf")
 
 
 def hash_index(index, size):
@@ -126,9 +126,11 @@ def _get_range_index_step(pd_range_index):
 
 
 def is_pd_range_empty(pd_range_index):
-    start, stop, step = _get_range_index_start(pd_range_index), \
-                        _get_range_index_stop(pd_range_index), \
-                        _get_range_index_step(pd_range_index)
+    start, stop, step = (
+        _get_range_index_start(pd_range_index),
+        _get_range_index_stop(pd_range_index),
+        _get_range_index_step(pd_range_index),
+    )
     return (start >= stop and step >= 0) or (start <= stop and step < 0)
 
 
@@ -153,7 +155,9 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
     if nleft < 0:
         raise ValueError("chunks have more than two dimensions")
     if nleft == 0:
-        return normalize_chunk_sizes(shape, tuple(chunk_size[j] for j in range(len(shape))))
+        return normalize_chunk_sizes(
+            shape, tuple(chunk_size[j] for j in range(len(shape)))
+        )
 
     max_chunk_size = options.chunk_store_limit
 
@@ -172,13 +176,19 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
     else:
         col_chunk_size = normalize_chunk_sizes((shape[1],), (chunk_size[1],))[0]
         acc = [0] + np.cumsum(col_chunk_size).tolist()
-        col_chunk_store = [average_memory_usage[acc[i]: acc[i + 1]].sum()
-                           for i in range(len(col_chunk_size))]
+        col_chunk_store = [
+            average_memory_usage[acc[i] : acc[i + 1]].sum()
+            for i in range(len(col_chunk_size))
+        ]
         col_left_size = -1
 
     while True:
-        nbytes_occupied = np.prod([max(it) for it in (row_chunk_size, col_chunk_store) if it])
-        dim_size = np.maximum(int(np.power(max_chunk_size / nbytes_occupied, 1 / float(nleft))), 1)
+        nbytes_occupied = np.prod(
+            [max(it) for it in (row_chunk_size, col_chunk_store) if it]
+        )
+        dim_size = np.maximum(
+            int(np.power(max_chunk_size / nbytes_occupied, 1 / float(nleft))), 1
+        )
 
         if col_left_size == 0:
             col_chunk_size.append(0)
@@ -191,7 +201,7 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
             cs = min(col_left_size, dim_size)
             col_chunk_size.append(cs)
             start = int(np.sum(col_chunk_size[:-1]))
-            col_chunk_store.append(average_memory_usage.iloc[start: start + cs].sum())
+            col_chunk_store.append(average_memory_usage.iloc[start : start + cs].sum())
             col_left_size -= cs
         if row_left_size > 0:
             if col_chunk_store:
@@ -231,18 +241,18 @@ def parse_index(index_value, *args, store_data=False, key=None):
 
     def _extract_property(index, tp, ret_data):
         kw = {
-            '_min_val': _get_index_min(index),
-            '_max_val': _get_index_max(index),
-            '_min_val_close': True,
-            '_max_val_close': True,
-            '_key': key or _tokenize_index(index, *args),
+            "_min_val": _get_index_min(index),
+            "_max_val": _get_index_max(index),
+            "_min_val_close": True,
+            "_max_val_close": True,
+            "_key": key or _tokenize_index(index, *args),
         }
         if ret_data:
-            kw['_data'] = index.values
+            kw["_data"] = index.values
         for field in tp._FIELDS:
-            if field in kw or field == '_data':
+            if field in kw or field == "_data":
                 continue
-            val = getattr(index, field.lstrip('_'), None)
+            val = getattr(index, field.lstrip("_"), None)
             if val is not None:
                 kw[field] = val
         return kw
@@ -276,48 +286,54 @@ def parse_index(index_value, *args, store_data=False, key=None):
     def _serialize_index(index):
         tp = getattr(IndexValue, type(index).__name__)
         properties = _extract_property(index, tp, store_data)
-        properties['_name'] = index.name
+        properties["_name"] = index.name
         return tp(**properties)
 
     def _serialize_range_index(index):
         if is_pd_range_empty(index):
             properties = {
-                '_is_monotonic_increasing': True,
-                '_is_monotonic_decreasing': False,
-                '_is_unique': True,
-                '_min_val': _get_index_min(index),
-                '_max_val': _get_index_max(index),
-                '_min_val_close': True,
-                '_max_val_close': False,
-                '_key': key or _tokenize_index(index, *args),
-                '_name': index.name,
-                '_dtype': index.dtype,
+                "_is_monotonic_increasing": True,
+                "_is_monotonic_decreasing": False,
+                "_is_unique": True,
+                "_min_val": _get_index_min(index),
+                "_max_val": _get_index_max(index),
+                "_min_val_close": True,
+                "_max_val_close": False,
+                "_key": key or _tokenize_index(index, *args),
+                "_name": index.name,
+                "_dtype": index.dtype,
             }
         else:
             properties = _extract_property(index, IndexValue.RangeIndex, False)
-        return IndexValue.RangeIndex(_slice=slice(_get_range_index_start(index),
-                                                  _get_range_index_stop(index),
-                                                  _get_range_index_step(index)),
-                                     **properties)
+        return IndexValue.RangeIndex(
+            _slice=slice(
+                _get_range_index_start(index),
+                _get_range_index_stop(index),
+                _get_range_index_step(index),
+            ),
+            **properties,
+        )
 
     def _serialize_multi_index(index):
         kw = _extract_property(index, IndexValue.MultiIndex, store_data)
-        kw['_sortorder'] = index.sortorder
-        kw['_dtypes'] = [lev.dtype for lev in index.levels]
+        kw["_sortorder"] = index.sortorder
+        kw["_dtypes"] = [lev.dtype for lev in index.levels]
         return IndexValue.MultiIndex(**kw)
 
     if index_value is None:
-        return IndexValue(_index_value=IndexValue.Index(
-            _is_monotonic_increasing=False,
-            _is_monotonic_decreasing=False,
-            _is_unique=False,
-            _min_val=None,
-            _max_val=None,
-            _min_val_close=True,
-            _max_val_close=True,
-            _key=key or tokenize(*args),
-        ))
-    if hasattr(index_value, 'to_pandas'):  # pragma: no cover
+        return IndexValue(
+            _index_value=IndexValue.Index(
+                _is_monotonic_increasing=False,
+                _is_monotonic_decreasing=False,
+                _is_unique=False,
+                _min_val=None,
+                _max_val=None,
+                _min_val_close=True,
+                _max_val_close=True,
+                _key=key or tokenize(*args),
+            )
+        )
+    if hasattr(index_value, "to_pandas"):  # pragma: no cover
         # convert cudf.Index to pandas
         index_value = index_value.to_pandas()
 
@@ -336,12 +352,15 @@ def gen_unknown_index_value(index_value, *args):
     elif not isinstance(pd_index, pd.MultiIndex):
         return parse_index(pd.Index([], dtype=pd_index.dtype), *args)
     else:
-        i = pd.MultiIndex.from_arrays([c[:0] for c in pd_index.levels],
-                                      names=pd_index.names)
+        i = pd.MultiIndex.from_arrays(
+            [c[:0] for c in pd_index.levels], names=pd_index.names
+        )
         return parse_index(i, *args)
 
 
-def split_monotonic_index_min_max(left_min_max, left_increase, right_min_max, right_increase):
+def split_monotonic_index_min_max(
+    left_min_max, left_increase, right_min_max, right_increase
+):
     """
     Split the original two min_max into new min_max. Each min_max should be a list
     in which each item should be a 4-tuple indicates that this chunk's min value,
@@ -398,8 +417,12 @@ def split_monotonic_index_min_max(left_min_max, left_increase, right_min_max, ri
             right_min = [right_curr_min_max[0], not right_curr_min_max[1]]
             max_val = min(left_curr_min_max[2:], right_min)
             assert len(max_val) == 2
-            min_max = (left_curr_min_max[0], left_curr_min_max[1],
-                       max_val[0], max_val[1])
+            min_max = (
+                left_curr_min_max[0],
+                left_curr_min_max[1],
+                max_val[0],
+                max_val[1],
+            )
             left_idx_to_min_max[left_curr_idx].append(min_max)
             right_idx_to_min_max[right_curr_idx].append(min_max)
             if left_curr_min_max[2:] == max_val:
@@ -416,8 +439,12 @@ def split_monotonic_index_min_max(left_min_max, left_increase, right_min_max, ri
             # left min > right min
             left_min = [left_curr_min_max[0], not left_curr_min_max[1]]
             max_val = min(right_curr_min_max[2:], left_min)
-            min_max = (right_curr_min_max[0], right_curr_min_max[1],
-                       max_val[0], max_val[1])
+            min_max = (
+                right_curr_min_max[0],
+                right_curr_min_max[1],
+                max_val[0],
+                max_val[1],
+            )
             left_idx_to_min_max[left_curr_idx].append(min_max)
             right_idx_to_min_max[right_curr_idx].append(min_max)
             if right_curr_min_max[2:] == max_val:
@@ -434,7 +461,12 @@ def split_monotonic_index_min_max(left_min_max, left_increase, right_min_max, ri
             # left min == right min
             max_val = min(left_curr_min_max[2:], right_curr_min_max[2:])
             assert len(max_val) == 2
-            min_max = (left_curr_min_max[0], left_curr_min_max[1], max_val[0], max_val[1])
+            min_max = (
+                left_curr_min_max[0],
+                left_curr_min_max[1],
+                max_val[0],
+                max_val[1],
+            )
             left_idx_to_min_max[left_curr_idx].append(min_max)
             right_idx_to_min_max[right_curr_idx].append(min_max)
             if max_val == left_curr_min_max[2:]:
@@ -535,9 +567,13 @@ def build_df(df_obj, fill_value=1, size=1, ensure_string=False):
         if len(record) != 0:  # columns is empty in some cases
             target_index = df_obj.index_value.to_pandas()
             if isinstance(target_index, pd.MultiIndex):
-                index_val = tuple(_generate_value(level.dtype, fill_value)
-                                  for level in target_index.levels)
-                df.index = pd.MultiIndex.from_tuples([index_val] * size, names=target_index.names)
+                index_val = tuple(
+                    _generate_value(level.dtype, fill_value)
+                    for level in target_index.levels
+                )
+                df.index = pd.MultiIndex.from_tuples(
+                    [index_val] * size, names=target_index.names
+                )
             else:
                 index_val = _generate_value(target_index.dtype, fill_value)
                 df.index = pd.Index([index_val] * size, name=target_index.name)
@@ -554,15 +590,19 @@ def build_df(df_obj, fill_value=1, size=1, ensure_string=False):
         ret_df = pd.concat(dfs)
 
     if ensure_string:
-        obj_dtypes = df_obj.dtypes[df_obj.dtypes == np.dtype('O')]
-        ret_df[obj_dtypes.index] = ret_df[obj_dtypes.index].radd('O')
+        obj_dtypes = df_obj.dtypes[df_obj.dtypes == np.dtype("O")]
+        ret_df[obj_dtypes.index] = ret_df[obj_dtypes.index].radd("O")
     return ret_df
 
 
 def build_empty_series(dtype, index=None, name=None):
     length = len(index) if index is not None else 0
-    return pd.Series([_generate_value(dtype, 1) for _ in range(length)],
-                     dtype=dtype, index=index, name=name)
+    return pd.Series(
+        [_generate_value(dtype, 1) for _ in range(length)],
+        dtype=dtype,
+        index=index,
+        name=name,
+    )
 
 
 def build_series(series_obj, fill_value=1, size=1, name=None, ensure_string=False):
@@ -578,13 +618,18 @@ def build_series(series_obj, fill_value=1, size=1, name=None, ensure_string=Fals
         fill_values = fill_value
 
     for size, fill_value in zip(sizes, fill_values):
-        empty_series = build_empty_series(series_obj.dtype, name=name,
-                                          index=series_obj.index_value.to_pandas()[:0])
+        empty_series = build_empty_series(
+            series_obj.dtype, name=name, index=series_obj.index_value.to_pandas()[:0]
+        )
         record = _generate_value(series_obj.dtype, fill_value)
         if isinstance(empty_series.index, pd.MultiIndex):
-            index = tuple(_generate_value(level.dtype, fill_value) for level in empty_series.index.levels)
+            index = tuple(
+                _generate_value(level.dtype, fill_value)
+                for level in empty_series.index.levels
+            )
             empty_series = empty_series.reindex(
-                index=pd.MultiIndex.from_tuples([index], names=empty_series.index.names))
+                index=pd.MultiIndex.from_tuples([index], names=empty_series.index.names)
+            )
             empty_series.iloc[0] = record
         else:
             if isinstance(empty_series.index.dtype, pd.CategoricalDtype):
@@ -603,8 +648,8 @@ def build_series(series_obj, fill_value=1, size=1, name=None, ensure_string=Fals
     else:
         ret_series = pd.concat(seriess)
 
-    if ensure_string and series_obj.dtype == np.dtype('O'):
-        ret_series = ret_series.radd('O')
+    if ensure_string and series_obj.dtype == np.dtype("O"):
+        ret_series = ret_series.radd("O")
     return ret_series
 
 
@@ -630,29 +675,46 @@ def build_concatenated_rows_frame(df):
     if df.chunk_shape[1] == 1:
         return df
 
-    columns = concat_index_value([df.cix[0, idx].columns_value for idx in range(df.chunk_shape[1])],
-                                 store_data=True)
+    columns = concat_index_value(
+        [df.cix[0, idx].columns_value for idx in range(df.chunk_shape[1])],
+        store_data=True,
+    )
     columns_size = columns.to_pandas().size
 
     out_chunks = []
     for idx in range(df.chunk_shape[0]):
-        out_chunk = DataFrameConcat(axis=1, output_types=[OutputType.dataframe]).new_chunk(
-            [df.cix[idx, k] for k in range(df.chunk_shape[1])], index=(idx, 0),
-            shape=(df.cix[idx, 0].shape[0], columns_size), dtypes=df.dtypes,
-            index_value=df.cix[idx, 0].index_value, columns_value=columns)
+        out_chunk = DataFrameConcat(
+            axis=1, output_types=[OutputType.dataframe]
+        ).new_chunk(
+            [df.cix[idx, k] for k in range(df.chunk_shape[1])],
+            index=(idx, 0),
+            shape=(df.cix[idx, 0].shape[0], columns_size),
+            dtypes=df.dtypes,
+            index_value=df.cix[idx, 0].index_value,
+            columns_value=columns,
+        )
         out_chunks.append(out_chunk)
 
     return DataFrameConcat(axis=1, output_types=[OutputType.dataframe]).new_dataframe(
-        [df], chunks=out_chunks, nsplits=((chunk.shape[0] for chunk in out_chunks), (df.shape[1],)),
-        shape=df.shape, dtypes=df.dtypes,
-        index_value=df.index_value, columns_value=df.columns_value)
+        [df],
+        chunks=out_chunks,
+        nsplits=((chunk.shape[0] for chunk in out_chunks), (df.shape[1],)),
+        shape=df.shape,
+        dtypes=df.dtypes,
+        index_value=df.index_value,
+        columns_value=df.columns_value,
+    )
 
 
 def _filter_range_index(pd_range_index, min_val, min_val_close, max_val, max_val_close):
     if is_pd_range_empty(pd_range_index):
         return pd_range_index
 
-    raw_min, raw_max, step = pd_range_index.min(), pd_range_index.max(), _get_range_index_step(pd_range_index)
+    raw_min, raw_max, step = (
+        pd_range_index.min(),
+        pd_range_index.max(),
+        _get_range_index_step(pd_range_index),
+    )
 
     # seek min range
     greater_func = operator.gt if min_val_close else operator.ge
@@ -678,21 +740,27 @@ def _filter_range_index(pd_range_index, min_val, min_val_close, max_val, max_val
 def infer_index_value(left_index_value, right_index_value):
     from .core import IndexValue
 
-    if isinstance(left_index_value.value, IndexValue.RangeIndex) and \
-            isinstance(right_index_value.value, IndexValue.RangeIndex):
+    if isinstance(left_index_value.value, IndexValue.RangeIndex) and isinstance(
+        right_index_value.value, IndexValue.RangeIndex
+    ):
         if left_index_value.value.slice == right_index_value.value.slice:
             return left_index_value
         return parse_index(pd.Int64Index([]), left_index_value, right_index_value)
 
     # when left index and right index is identical, and both of them are elements unique,
     # we can infer that the out index should be identical also
-    if left_index_value.is_unique and right_index_value.is_unique and \
-            left_index_value.key == right_index_value.key:
+    if (
+        left_index_value.is_unique
+        and right_index_value.is_unique
+        and left_index_value.key == right_index_value.key
+    ):
         return left_index_value
 
     left_index = left_index_value.to_pandas()
     right_index = right_index_value.to_pandas()
-    out_index = pd.Index([], dtype=find_common_type([left_index.dtype, right_index.dtype]))
+    out_index = pd.Index(
+        [], dtype=find_common_type([left_index.dtype, right_index.dtype])
+    )
     return parse_index(out_index, left_index_value, right_index_value)
 
 
@@ -704,8 +772,9 @@ def filter_index_value(index_value, min_max, store_data=False):
     pd_index = index_value.to_pandas()
 
     if isinstance(index_value.value, IndexValue.RangeIndex):
-        pd_filtered_index = _filter_range_index(pd_index, min_val, min_val_close,
-                                                max_val, max_val_close)
+        pd_filtered_index = _filter_range_index(
+            pd_index, min_val, min_val_close, max_val, max_val_close
+        )
         return parse_index(pd_filtered_index, store_data=store_data)
 
     if min_val_close:
@@ -735,10 +804,12 @@ def indexing_index_value(index_value, indexes, store_data=False):
         elif isinstance(indexes, Entity):
             if isinstance(pd_index, pd.RangeIndex):
                 return parse_index(
-                    pd.RangeIndex(-1), indexes, index_value, store_data=False)
+                    pd.RangeIndex(-1), indexes, index_value, store_data=False
+                )
             else:
                 return parse_index(
-                    type(pd_index)([]), indexes, index_value, store_data=False)
+                    type(pd_index)([]), indexes, index_value, store_data=False
+                )
         if isinstance(indexes, tuple):
             return parse_index(pd_index[list(indexes)], store_data=store_data)
         else:
@@ -766,18 +837,19 @@ def merge_index_value(to_merge_index_values: dict, store_data: bool = False):
     for _, chunk_index_value in sorted(to_merge_index_values.items()):
         if pd_index is None:
             pd_index = chunk_index_value.to_pandas()
-            min_val, min_val_close, max_val, max_val_close = \
-                chunk_index_value.min_val, \
-                chunk_index_value.min_val_close, \
-                chunk_index_value.max_val, \
-                chunk_index_value.max_val_close
+            min_val, min_val_close, max_val, max_val_close = (
+                chunk_index_value.min_val,
+                chunk_index_value.min_val_close,
+                chunk_index_value.max_val,
+                chunk_index_value.max_val_close,
+            )
         else:
             cur_pd_index = chunk_index_value.to_pandas()
             if store_data or (
-                    isinstance(pd_index, pd.RangeIndex) and
-                    isinstance(cur_pd_index, pd.RangeIndex) and
-                    cur_pd_index.step == pd_index.step and
-                    cur_pd_index.start == pd_index.stop
+                isinstance(pd_index, pd.RangeIndex)
+                and isinstance(cur_pd_index, pd.RangeIndex)
+                and cur_pd_index.step == pd_index.step
+                and cur_pd_index.start == pd_index.stop
             ):
                 # range index that is continuous
                 pd_index = pd_index.append(cur_pd_index)
@@ -830,9 +902,11 @@ def in_range_index(i, pd_range_index):
     """
     Check whether the input `i` is within `pd_range_index` which is a pd.RangeIndex.
     """
-    start, stop, step = _get_range_index_start(pd_range_index), \
-        _get_range_index_stop(pd_range_index), \
-        _get_range_index_step(pd_range_index)
+    start, stop, step = (
+        _get_range_index_start(pd_range_index),
+        _get_range_index_stop(pd_range_index),
+        _get_range_index_step(pd_range_index),
+    )
     if step > 0 and start <= i < stop and (i - start) % step == 0:
         return True
     if step < 0 and start >= i > stop and (start - i) % step == 0:
@@ -852,9 +926,9 @@ def wrap_notimplemented_exception(func):
 
 
 def validate_axis(axis, tileable=None):
-    if axis == 'index':
+    if axis == "index":
         axis = 0
-    elif axis == 'columns':
+    elif axis == "columns":
         axis = 1
 
     illegal = False
@@ -866,11 +940,13 @@ def validate_axis(axis, tileable=None):
         illegal = True
 
     if illegal:
-        raise ValueError(f'No axis named {axis} for object type {type(tileable)}')
+        raise ValueError(f"No axis named {axis} for object type {type(tileable)}")
     return axis
 
 
-def validate_axis_style_args(data, args, kwargs, arg_name, method_name):  # pragma: no cover
+def validate_axis_style_args(
+    data, args, kwargs, arg_name, method_name
+):  # pragma: no cover
     """Argument handler for mixed index, columns / axis functions
 
     In an attempt to handle both `.method(index, columns)`, and
@@ -898,7 +974,7 @@ def validate_axis_style_args(data, args, kwargs, arg_name, method_name):  # prag
     # like out = {'index': foo, 'columns': bar}
 
     # Start by validating for consistency
-    axes_names = ['index'] if data.ndim == 1 else ['index', 'columns']
+    axes_names = ["index"] if data.ndim == 1 else ["index", "columns"]
     if "axis" in kwargs and any(x in kwargs for x in axes_names):
         msg = "Cannot specify both 'axis' and any of 'index' or 'columns'."
         raise TypeError(msg)
@@ -951,24 +1027,36 @@ def validate_axis_style_args(data, args, kwargs, arg_name, method_name):  # prag
 def validate_output_types(**kwargs):
     from ..core import OutputType
 
-    output_type = kwargs.pop('object_type', None) or kwargs.pop('output_type', None)
-    output_types = kwargs.pop('output_types', None) \
-        or ([output_type] if output_type is not None else None)
-    return [getattr(OutputType, v.lower()) if isinstance(v, str) else v for v in output_types] \
-        if output_types else None
+    output_type = kwargs.pop("object_type", None) or kwargs.pop("output_type", None)
+    output_types = kwargs.pop("output_types", None) or (
+        [output_type] if output_type is not None else None
+    )
+    return (
+        [
+            getattr(OutputType, v.lower()) if isinstance(v, str) else v
+            for v in output_types
+        ]
+        if output_types
+        else None
+    )
 
 
 def standardize_range_index(chunks, axis=0):
     from .base.standardize_range_index import ChunkStandardizeRangeIndex
 
-    row_chunks = dict((k, next(v)) for k, v in itertools.groupby(chunks, key=lambda x: x.index[axis]))
+    row_chunks = dict(
+        (k, next(v)) for k, v in itertools.groupby(chunks, key=lambda x: x.index[axis])
+    )
     row_chunks = [row_chunks[i] for i in range(len(row_chunks))]
 
     out_chunks = []
     for c in chunks:
-        inputs = row_chunks[:c.index[axis]] + [c]
+        inputs = row_chunks[: c.index[axis]] + [c]
         op = ChunkStandardizeRangeIndex(
-            pure_depends=[True] * (len(inputs) - 1) + [False], axis=axis, output_types=c.op.output_types)
+            pure_depends=[True] * (len(inputs) - 1) + [False],
+            axis=axis,
+            output_types=c.op.output_types,
+        )
         out_chunks.append(op.new_chunk(inputs, **c.params.copy()))
 
     return out_chunks
@@ -983,17 +1071,19 @@ def fetch_corner_data(df_or_series, session=None) -> pd.DataFrame:
     """
     from .indexing.iloc import iloc
 
-    max_rows = pd.get_option('display.max_rows')
+    max_rows = pd.get_option("display.max_rows")
     try:
-        min_rows = pd.get_option('display.min_rows')
+        min_rows = pd.get_option("display.min_rows")
         min_rows = min(min_rows, max_rows)
     except KeyError:  # pragma: no cover
         # display.min_rows is introduced in pandas 0.25
         min_rows = max_rows
 
     index_size = None
-    if df_or_series.shape[0] > max_rows and \
-            df_or_series.shape[0] > min_rows // 2 * 2 + 2:
+    if (
+        df_or_series.shape[0] > max_rows
+        and df_or_series.shape[0] > min_rows // 2 * 2 + 2
+    ):
         # for pandas, greater than max_rows
         # will display min_rows
         # thus we fetch min_rows + 2 lines
@@ -1004,10 +1094,9 @@ def fetch_corner_data(df_or_series, session=None) -> pd.DataFrame:
     else:
         head = iloc(df_or_series)[:index_size]
         tail = iloc(df_or_series)[-index_size:]
-        head_data, tail_data = \
-            ExecutableTuple([head, tail]).fetch(session=session)
+        head_data, tail_data = ExecutableTuple([head, tail]).fetch(session=session)
         xdf = cudf if head.op.is_gpu() else pd
-        return xdf.concat([head_data, tail_data], axis='index')
+        return xdf.concat([head_data, tail_data], axis="index")
 
 
 class ReprSeries(pd.Series):
@@ -1026,8 +1115,12 @@ def filter_dtypes_by_index(dtypes, index):
     try:
         new_dtypes = dtypes.loc[index].dropna()
     except KeyError:
-        dtypes_idx = dtypes.index.to_frame().merge(index.to_frame()) \
-            .set_index(list(range(dtypes.index.nlevels))).index
+        dtypes_idx = (
+            dtypes.index.to_frame()
+            .merge(index.to_frame())
+            .set_index(list(range(dtypes.index.nlevels)))
+            .index
+        )
         new_dtypes = dtypes.loc[dtypes_idx]
         new_dtypes.index.names = dtypes.index.names
     return new_dtypes
@@ -1088,9 +1181,11 @@ def arrow_table_to_pandas_dataframe(arrow_table, use_arrow_dtype=True, **kw):
             other_arrays.append(table.columns[i])
 
     df: pd.DataFrame = pa.Table.from_arrays(
-        other_arrays, names=other_field_names).to_pandas(**kw)
-    for arrow_index, arrow_name, arrow_array in \
-            zip(arrow_indexes, arrow_field_names, arrow_arrays):
+        other_arrays, names=other_field_names
+    ).to_pandas(**kw)
+    for arrow_index, arrow_name, arrow_array in zip(
+        arrow_indexes, arrow_field_names, arrow_arrays
+    ):
         if arrow_array.type == pa.string():
             series = pd.Series(ArrowStringArray(arrow_array))
         else:

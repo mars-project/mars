@@ -23,8 +23,8 @@ from .docstring import bin_arithmetic_doc
 class DataFrameMul(DataFrameBinopUfunc):
     _op_type_ = OperandDef.MUL
 
-    _func_name = 'mul'
-    _rfunc_name = 'rmul'
+    _func_name = "mul"
+    _rfunc_name = "rmul"
 
     @classproperty
     def _operator(self):
@@ -33,6 +33,7 @@ class DataFrameMul(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorMultiply
+
         return TensorMultiply
 
 
@@ -47,13 +48,13 @@ dtype: float64
 """
 
 
-@bin_arithmetic_doc('Multiplication', equiv='*', series_example=_mul_example)
-def mul(df, other, axis='columns', level=None, fill_value=None):
+@bin_arithmetic_doc("Multiplication", equiv="*", series_example=_mul_example)
+def mul(df, other, axis="columns", level=None, fill_value=None):
     op = DataFrameMul(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
-@bin_arithmetic_doc('Multiplication', equiv='*', series_example=_mul_example)
-def rmul(df, other, axis='columns', level=None, fill_value=None):
+@bin_arithmetic_doc("Multiplication", equiv="*", series_example=_mul_example)
+def rmul(df, other, axis="columns", level=None, fill_value=None):
     op = DataFrameMul(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)

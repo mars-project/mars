@@ -21,8 +21,8 @@ from .docstring import bin_compare_doc
 class DataFrameGreater(DataFrameBinopUfunc):
     _op_type_ = OperandDef.GT
 
-    _func_name = 'gt'
-    _rfunc_name = 'lt'
+    _func_name = "gt"
+    _rfunc_name = "lt"
 
     @classproperty
     def _operator(self):
@@ -31,6 +31,7 @@ class DataFrameGreater(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorGreaterThan
+
         return TensorGreaterThan
 
 
@@ -46,7 +47,7 @@ dtype: bool
 """
 
 
-@bin_compare_doc('Greater than', equiv='>', series_example=_gt_example)
-def gt(df, other, axis='columns', level=None):
+@bin_compare_doc("Greater than", equiv=">", series_example=_gt_example)
+def gt(df, other, axis="columns", level=None):
     op = DataFrameGreater(axis=axis, level=level, lhs=df, rhs=other)
     return op(df, other)

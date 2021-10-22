@@ -16,79 +16,82 @@ from typing import Union, List, Dict
 
 
 class ActorPoolConfig:
-    __slots__ = '_conf',
+    __slots__ = ("_conf",)
 
     def __init__(self, conf: Dict = None):
         if conf is None:
             conf = dict()
         self._conf = conf
-        if 'pools' not in self._conf:
-            self._conf['pools'] = dict()
-        if 'mapping' not in self._conf:
-            self._conf['mapping'] = dict()
+        if "pools" not in self._conf:
+            self._conf["pools"] = dict()
+        if "mapping" not in self._conf:
+            self._conf["mapping"] = dict()
 
     @property
     def n_pool(self):
-        return len(self._conf['pools'])
+        return len(self._conf["pools"])
 
-    def add_pool_conf(self,
-                      process_index: int,
-                      label: str,
-                      internal_address: str,
-                      external_address: Union[str, List[str]],
-                      env: Dict = None,
-                      modules: List[str] = None,
-                      suspend_sigint: bool = False,
-                      use_uvloop: bool = False,
-                      logging_conf: Dict = None,
-                      kwargs: Dict = None):
-        pools: Dict = self._conf['pools']
+    def add_pool_conf(
+        self,
+        process_index: int,
+        label: str,
+        internal_address: str,
+        external_address: Union[str, List[str]],
+        env: Dict = None,
+        modules: List[str] = None,
+        suspend_sigint: bool = False,
+        use_uvloop: bool = False,
+        logging_conf: Dict = None,
+        kwargs: Dict = None,
+    ):
+        pools: Dict = self._conf["pools"]
         if not isinstance(external_address, list):
             external_address = [external_address]
         pools[process_index] = {
-            'label': label,
-            'internal_address': internal_address,
-            'external_address': external_address,
-            'env': env,
-            'modules': modules,
-            'suspend_sigint': suspend_sigint,
-            'use_uvloop': use_uvloop,
-            'logging_conf': logging_conf,
-            'kwargs': kwargs or {},
+            "label": label,
+            "internal_address": internal_address,
+            "external_address": external_address,
+            "env": env,
+            "modules": modules,
+            "suspend_sigint": suspend_sigint,
+            "use_uvloop": use_uvloop,
+            "logging_conf": logging_conf,
+            "kwargs": kwargs or {},
         }
         for addr in external_address:
-            mapping: Dict = self._conf['mapping']
+            mapping: Dict = self._conf["mapping"]
             mapping[addr] = internal_address
 
     def get_pool_config(self, process_index: int):
-        return self._conf['pools'][process_index]
+        return self._conf["pools"][process_index]
 
     def get_external_address(self, process_index: int) -> str:
-        return self._conf['pools'][process_index]['external_address'][0]
+        return self._conf["pools"][process_index]["external_address"][0]
 
     def get_process_indexes(self):
-        return list(self._conf['pools'])
+        return list(self._conf["pools"])
 
     def get_process_index(self, external_address: str):
-        for process_index, conf in self._conf['pools'].items():
-            if external_address in conf['external_address']:
+        for process_index, conf in self._conf["pools"].items():
+            if external_address in conf["external_address"]:
                 return process_index
-        raise ValueError(f'Cannot get process_index '
-                         f'for {external_address}')  # pragma: no cover
+        raise ValueError(
+            f"Cannot get process_index " f"for {external_address}"
+        )  # pragma: no cover
 
     def get_external_addresses(self, label=None) -> List[str]:
         result = []
-        for c in self._conf['pools'].values():
+        for c in self._conf["pools"].values():
             if label is not None:
-                if label == c['label']:
-                    result.append(c['external_address'][0])
+                if label == c["label"]:
+                    result.append(c["external_address"][0])
             else:
-                result.append(c['external_address'][0])
+                result.append(c["external_address"][0])
         return result
 
     @property
     def external_to_internal_address_map(self) -> Dict[str, str]:
-        return self._conf['mapping']
+        return self._conf["mapping"]
 
     def as_dict(self):
         return self._conf

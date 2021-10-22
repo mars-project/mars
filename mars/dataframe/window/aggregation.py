@@ -20,52 +20,90 @@ import numpy as np
 import pandas as pd
 
 from ...core.operand import OperandStage
-from ...serialization.serializables import AnyField, BoolField, Int32Field, Int64Field, \
-    DictField, StringField
+from ...serialization.serializables import (
+    AnyField,
+    BoolField,
+    Int32Field,
+    Int64Field,
+    DictField,
+    StringField,
+)
 from ...utils import tokenize
 from ..core import DATAFRAME_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import build_df, parse_index, build_empty_series, \
-    filter_dtypes_by_index
+from ..utils import build_df, parse_index, build_empty_series, filter_dtypes_by_index
 
-_stage_info = namedtuple('_stage_info', ('map_groups', 'map_sources', 'combine_sources',
-                                         'combine_columns', 'combine_funcs', 'key_to_funcs',
-                                         'valid_columns', 'min_periods_func_name'))
+_stage_info = namedtuple(
+    "_stage_info",
+    (
+        "map_groups",
+        "map_sources",
+        "combine_sources",
+        "combine_columns",
+        "combine_funcs",
+        "key_to_funcs",
+        "valid_columns",
+        "min_periods_func_name",
+    ),
+)
 
 
 class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
-    _min_periods = Int64Field('min_periods')
-    _axis = Int32Field('axis')
-    _func = AnyField('func')
+    _min_periods = Int64Field("min_periods")
+    _axis = Int32Field("axis")
+    _func = AnyField("func")
 
     # always treat count as valid. this behavior is cancelled in pandas 1.0
-    _count_always_valid = BoolField('count_always_valid')
+    _count_always_valid = BoolField("count_always_valid")
     # True if function name is treated as new index
-    _append_index = BoolField('append_index')
+    _append_index = BoolField("append_index")
 
     # chunk params
-    _output_agg = BoolField('output_agg')
+    _output_agg = BoolField("output_agg")
 
-    _map_groups = DictField('map_groups')
-    _map_sources = DictField('map_sources')
-    _combine_sources = DictField('combine_sources')
-    _combine_columns = DictField('combine_columns')
-    _combine_funcs = DictField('combine_funcs')
-    _key_to_funcs = DictField('keys_to_funcs')
+    _map_groups = DictField("map_groups")
+    _map_sources = DictField("map_sources")
+    _combine_sources = DictField("combine_sources")
+    _combine_columns = DictField("combine_columns")
+    _combine_funcs = DictField("combine_funcs")
+    _key_to_funcs = DictField("keys_to_funcs")
 
-    _min_periods_func_name = StringField('min_periods_func_name')
+    _min_periods_func_name = StringField("min_periods_func_name")
 
-    def __init__(self, min_periods=None, axis=None, func=None, count_always_valid=None,
-                 append_index=None, output_agg=False, map_groups=None, map_sources=None,
-                 combine_sources=None, combine_columns=None, combine_funcs=None,
-                 key_to_funcs=None, min_periods_func_name=None, **kw):
-        super().__init__(_min_periods=min_periods, _axis=axis, _func=func,
-                         _count_always_valid=count_always_valid, _append_index=append_index,
-                         _output_agg=output_agg, _map_groups=map_groups, _map_sources=map_sources,
-                         _combine_sources=combine_sources, _combine_columns=combine_columns,
-                         _combine_funcs=combine_funcs, _key_to_funcs=key_to_funcs,
-                         _min_periods_func_name=min_periods_func_name, **kw)
+    def __init__(
+        self,
+        min_periods=None,
+        axis=None,
+        func=None,
+        count_always_valid=None,
+        append_index=None,
+        output_agg=False,
+        map_groups=None,
+        map_sources=None,
+        combine_sources=None,
+        combine_columns=None,
+        combine_funcs=None,
+        key_to_funcs=None,
+        min_periods_func_name=None,
+        **kw
+    ):
+        super().__init__(
+            _min_periods=min_periods,
+            _axis=axis,
+            _func=func,
+            _count_always_valid=count_always_valid,
+            _append_index=append_index,
+            _output_agg=output_agg,
+            _map_groups=map_groups,
+            _map_sources=map_sources,
+            _combine_sources=combine_sources,
+            _combine_columns=combine_columns,
+            _combine_funcs=combine_funcs,
+            _key_to_funcs=key_to_funcs,
+            _min_periods_func_name=min_periods_func_name,
+            **kw
+        )
 
     @property
     def min_periods(self) -> int:
@@ -131,32 +169,46 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(inp, DATAFRAME_TYPE):
             empty_df = build_df(inp)
             for c, t in empty_df.dtypes.items():
-                if t == np.dtype('O'):
-                    empty_df[c] = 'O'
+                if t == np.dtype("O"):
+                    empty_df[c] = "O"
 
             test_df = expanding(empty_df).agg(raw_func)
             if self._axis == 0:
                 index_value = inp.index_value
             else:
-                index_value = parse_index(test_df.index,
-                                          expanding.params, inp,
-                                          store_data=False)
+                index_value = parse_index(
+                    test_df.index, expanding.params, inp, store_data=False
+                )
             self._append_index = test_df.columns.nlevels != empty_df.columns.nlevels
             return self.new_dataframe(
-                [inp], shape=(inp.shape[0], test_df.shape[1]),
-                dtypes=test_df.dtypes, index_value=index_value,
-                columns_value=parse_index(test_df.columns, store_data=True))
+                [inp],
+                shape=(inp.shape[0], test_df.shape[1]),
+                dtypes=test_df.dtypes,
+                index_value=index_value,
+                columns_value=parse_index(test_df.columns, store_data=True),
+            )
         else:
             pd_index = inp.index_value.to_pandas()
-            empty_series = build_empty_series(inp.dtype, index=pd_index[:0], name=inp.name)
+            empty_series = build_empty_series(
+                inp.dtype, index=pd_index[:0], name=inp.name
+            )
             test_obj = expanding(empty_series).agg(raw_func)
             if isinstance(test_obj, pd.DataFrame):
-                return self.new_dataframe([inp], shape=(inp.shape[0], test_obj.shape[1]),
-                                          dtypes=test_obj.dtypes, index_value=inp.index_value,
-                                          columns_value=parse_index(test_obj.dtypes.index, store_data=True))
+                return self.new_dataframe(
+                    [inp],
+                    shape=(inp.shape[0], test_obj.shape[1]),
+                    dtypes=test_obj.dtypes,
+                    index_value=inp.index_value,
+                    columns_value=parse_index(test_obj.dtypes.index, store_data=True),
+                )
             else:
-                return self.new_series([inp], shape=inp.shape, dtype=test_obj.dtype,
-                                       index_value=inp.index_value, name=test_obj.name)
+                return self.new_series(
+                    [inp],
+                    shape=inp.shape,
+                    dtype=test_obj.dtype,
+                    index_value=inp.index_value,
+                    name=test_obj.name,
+                )
 
     def _normalize_funcs(self):
         if isinstance(self._func, dict):
@@ -184,7 +236,9 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
         raise NotImplementedError
 
     @classmethod
-    def _gen_chunk_stage_info(cls, op: "BaseDataFrameExpandingAgg", chunk_cols=None, min_periods=1):
+    def _gen_chunk_stage_info(
+        cls, op: "BaseDataFrameExpandingAgg", chunk_cols=None, min_periods=1
+    ):
         map_groups = OrderedDict()
         map_sources = OrderedDict()
         combine_sources = OrderedDict()
@@ -195,7 +249,9 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
         min_periods_func_name = None
 
         def _clean_dict(d):
-            return OrderedDict((k, sorted(v) if v != [None] else None) for k, v in d.items())
+            return OrderedDict(
+                (k, sorted(v) if v != [None] else None) for k, v in d.items()
+            )
 
         def _fun_to_str(fun):
             if isinstance(fun, str):
@@ -228,24 +284,36 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
                 valid_columns.append(col)
 
             if min_periods > 1:
-                min_periods_func_name = tokenize(chunk_cols, 'min_periods')
-                _add_column_to_functions(col, min_periods_func_name,
-                                         *cls._get_stage_functions(op, '_data_count'))
+                min_periods_func_name = tokenize(chunk_cols, "min_periods")
+                _add_column_to_functions(
+                    col,
+                    min_periods_func_name,
+                    *cls._get_stage_functions(op, "_data_count")
+                )
 
             for func in funcs:
                 mapper_funcs, combine_func = cls._get_stage_functions(op, func)
                 _add_column_to_functions(col, func, mapper_funcs, combine_func)
 
-        return _stage_info(map_groups=_clean_dict(map_groups), map_sources=map_sources,
-                           combine_sources=combine_sources, combine_columns=_clean_dict(combine_columns),
-                           combine_funcs=combine_funcs, key_to_funcs=key_to_funcs,
-                           valid_columns=valid_columns or None, min_periods_func_name=min_periods_func_name)
+        return _stage_info(
+            map_groups=_clean_dict(map_groups),
+            map_sources=map_sources,
+            combine_sources=combine_sources,
+            combine_columns=_clean_dict(combine_columns),
+            combine_funcs=combine_funcs,
+            key_to_funcs=key_to_funcs,
+            valid_columns=valid_columns or None,
+            min_periods_func_name=min_periods_func_name,
+        )
 
     @classmethod
     def _remap_dtypes(cls, in_df, out_df):
         if in_df.ndim == 1:
             if out_df.ndim == 2:
-                return {0: (0, out_df.dtypes)}, (in_df.nsplits[0], (len(out_df.dtypes),))
+                return (
+                    {0: (0, out_df.dtypes)},
+                    (in_df.nsplits[0], (len(out_df.dtypes),)),
+                )
             return None, in_df.nsplits
 
         axis = out_df.op.axis
@@ -273,7 +341,9 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
         for c in in_df.chunks:
             try:
                 if out_df.ndim == 2:
-                    new_axis_idx, new_dtypes = chunk_idx_to_dtypes[c.index[1] if c.ndim > 1 else 0]
+                    new_axis_idx, new_dtypes = chunk_idx_to_dtypes[
+                        c.index[1] if c.ndim > 1 else 0
+                    ]
                 else:
                     new_axis_idx, new_dtypes = None, None
             except KeyError:
@@ -282,20 +352,26 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
             chunk_op = op.copy().reset_key()
 
             if out_df.ndim == 2:
-                chunks.append(chunk_op.new_chunk(
-                    [in_df.chunks[0]], dtypes=new_dtypes, index=(c.index[0], new_axis_idx),
-                    shape=(c.shape[0], len(new_dtypes)), index_value=c.index_value,
-                    columns_value=parse_index(new_dtypes.index, store_data=True)))
+                chunks.append(
+                    chunk_op.new_chunk(
+                        [in_df.chunks[0]],
+                        dtypes=new_dtypes,
+                        index=(c.index[0], new_axis_idx),
+                        shape=(c.shape[0], len(new_dtypes)),
+                        index_value=c.index_value,
+                        columns_value=parse_index(new_dtypes.index, store_data=True),
+                    )
+                )
             else:
                 params = c.params.copy()
-                params['dtype'] = out_df.dtype
+                params["dtype"] = out_df.dtype
                 chunks.append(chunk_op.new_chunk([in_df.chunks[0]], **params))
 
         tileable_op = op.copy().reset_key()
         params = out_df.params.copy()
-        params['chunks'] = chunks
+        params["chunks"] = chunks
         if new_nsplits:
-            params['nsplits'] = new_nsplits
+            params["nsplits"] = new_nsplits
         return tileable_op.new_tileables([in_df], **params)
 
     @classmethod
@@ -317,7 +393,9 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
         for c in in_df.chunks:
             try:
                 if out_df.ndim == 2:
-                    new_axis_idx, new_dtypes = dtypes_mapping[c.index[1] if c.ndim > 1 else 0]
+                    new_axis_idx, new_dtypes = dtypes_mapping[
+                        c.index[1] if c.ndim > 1 else 0
+                    ]
                 else:
                     new_axis_idx, new_dtypes = None, None
             except KeyError:
@@ -329,8 +407,9 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
                 stage_info = stage_info_dict[new_index[1]]
             except KeyError:
                 cols = c.dtypes.index if c.ndim == 2 else None
-                stage_info = stage_info_dict[new_index[1]] \
-                    = cls._gen_chunk_stage_info(op, cols, min_periods=op.min_periods)
+                stage_info = stage_info_dict[new_index[1]] = cls._gen_chunk_stage_info(
+                    op, cols, min_periods=op.min_periods
+                )
 
             chunk_op = op.copy().reset_key()
             chunk_op._output_agg = c.index[axis] != in_df.chunk_shape[axis] - 1
@@ -340,17 +419,25 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
             chunk_op._key_to_funcs = stage_info.key_to_funcs
 
             if out_df.ndim == 2:
-                kw0 = dict(dtypes=new_dtypes, index=new_index,
-                           shape=(c.shape[0], len(new_dtypes)),
-                           index_value=c.index_value,
-                           columns_value=parse_index(new_dtypes.index, store_data=True))
+                kw0 = dict(
+                    dtypes=new_dtypes,
+                    index=new_index,
+                    shape=(c.shape[0], len(new_dtypes)),
+                    index_value=c.index_value,
+                    columns_value=parse_index(new_dtypes.index, store_data=True),
+                )
                 kw1 = kw0.copy()
-                kw1['shape'] = (1, len(new_dtypes)) if axis == 0 else (c.shape[0], 1)
+                kw1["shape"] = (1, len(new_dtypes)) if axis == 0 else (c.shape[0], 1)
             else:
-                kw0 = dict(dtype=out_df.dtype, index=c.index, shape=c.shape,
-                           name=c.name, index_value=c.index_value)
+                kw0 = dict(
+                    dtype=out_df.dtype,
+                    index=c.index,
+                    shape=c.shape,
+                    name=c.name,
+                    index_value=c.index_value,
+                )
                 kw1 = kw0.copy()
-                kw1['shape'] = (1,)
+                kw1["shape"] = (1,)
             out_chunks = chunk_op.new_chunks([c], [kw0, kw1])
             data_chunks.append(out_chunks[0])
             if chunk_op.output_agg:
@@ -372,12 +459,14 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
 
             params = c.params.copy()
             if c.ndim == 2:
-                summary_inputs = list(summary_chunks[:c.index[0], c.index[1]])
+                summary_inputs = list(summary_chunks[: c.index[0], c.index[1]])
             else:
-                summary_inputs = list(summary_chunks[:c.index[0]])
+                summary_inputs = list(summary_chunks[: c.index[0]])
 
             if len(summary_inputs) > 1:
-                concat_op = DataFrameConcat(output_types=out_df.op.output_types, axis=op.axis)
+                concat_op = DataFrameConcat(
+                    output_types=out_df.op.output_types, axis=op.axis
+                )
                 concat_summary = concat_op.new_chunk(summary_inputs)
                 chunks.append(chunk_op.new_chunk([c, concat_summary], **params))
             elif len(summary_inputs) == 1:
@@ -413,7 +502,9 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
                 summary_results.append(summary)
 
         if op.output_agg:
-            summary_results.append(pd.Series([len(in_data)], index=summary_results[0].index))
+            summary_results.append(
+                pd.Series([len(in_data)], index=summary_results[0].index)
+            )
 
         ctx[op.outputs[0].key] = tuple(map_results)
         if op.output_agg:
@@ -427,11 +518,13 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
         col_frame = df.columns.to_frame().copy()
         col_frame[len(col_frame.columns)] = func_name
         df.columns = pd.MultiIndex.from_frame(
-            col_frame, names=tuple(df.columns.names) + (None,))
+            col_frame, names=tuple(df.columns.names) + (None,)
+        )
 
     @classmethod
-    def _execute_combine_function(cls, op: "BaseDataFrameExpandingAgg", func,
-                                  pred_inputs, local_inputs, func_cols):
+    def _execute_combine_function(
+        cls, op: "BaseDataFrameExpandingAgg", func, pred_inputs, local_inputs, func_cols
+    ):
         raise NotImplementedError
 
     @classmethod
@@ -450,11 +543,14 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
                 if func_cols is None:
                     local_inputs = [local_data_dict[src] for src in func_sources]
                 else:
-                    local_inputs = [local_data_dict[src][func_cols] for src in func_sources]
+                    local_inputs = [
+                        local_data_dict[src][func_cols] for src in func_sources
+                    ]
 
                 func = op.key_to_funcs[func_str]
                 func_to_aggs[func_name] = cls._execute_combine_function(
-                    op, func, None, local_inputs, func_cols)
+                    op, func, None, local_inputs, func_cols
+                )
         else:
             pred_data = ctx[op.inputs[1].key]
             pred_record_count = pred_data[-1].sum()
@@ -467,24 +563,36 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
                     local_inputs = [local_data_dict[src] for src in func_sources]
                     pred_inputs = [pred_data_dict[src] for src in func_sources]
                 else:
-                    local_inputs = [local_data_dict[src][func_cols] for src in func_sources]
-                    pred_inputs = [pred_data_dict[src][func_cols] for src in func_sources]
+                    local_inputs = [
+                        local_data_dict[src][func_cols] for src in func_sources
+                    ]
+                    pred_inputs = [
+                        pred_data_dict[src][func_cols] for src in func_sources
+                    ]
 
                 func = op.key_to_funcs[func_str]
                 func_to_aggs[func_name] = cls._execute_combine_function(
-                    op, func, pred_inputs, local_inputs, func_cols)
+                    op, func, pred_inputs, local_inputs, func_cols
+                )
 
         if op.min_periods_func_name is not None:
             valid_counts = func_to_aggs.pop(op.min_periods_func_name)
             invalid_poses = valid_counts < op.min_periods
             for func_name in func_to_aggs.keys():
-                if func_name == 'count':
-                    if not op.count_always_valid and pred_record_count < op.min_periods - 1:
+                if func_name == "count":
+                    if (
+                        not op.count_always_valid
+                        and pred_record_count < op.min_periods - 1
+                    ):
                         try:
-                            func_to_aggs[func_name].iloc[:op.min_periods - pred_record_count - 1] = np.nan
+                            func_to_aggs[func_name].iloc[
+                                : op.min_periods - pred_record_count - 1
+                            ] = np.nan
                         except ValueError:
                             func_to_aggs[func_name] = func_to_aggs[func_name].copy()
-                            func_to_aggs[func_name].iloc[:op.min_periods - pred_record_count - 1] = np.nan
+                            func_to_aggs[func_name].iloc[
+                                : op.min_periods - pred_record_count - 1
+                            ] = np.nan
                 else:
                     func_to_aggs[func_name][invalid_poses] = np.nan
 
@@ -501,7 +609,9 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
             val = pd.concat(list(func_to_aggs.values()), axis=1 - op.axis)
 
         if out_df.ndim > 1:
-            val = val.reindex(out_df.columns_value.to_pandas(), axis=1 - op.axis, copy=False)
+            val = val.reindex(
+                out_df.columns_value.to_pandas(), axis=1 - op.axis, copy=False
+            )
         else:
             val.name = out_df.name
         ctx[op.outputs[0].key] = val

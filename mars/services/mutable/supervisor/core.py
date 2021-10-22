@@ -24,13 +24,17 @@ from ...core import NodeRole
 from ...cluster import ClusterAPI
 from ...meta import MetaAPI
 from ..core import MutableTensorInfo
-from ..utils import getitem_to_records, setitem_to_records, normalize_name, normalize_timestamp
+from ..utils import (
+    getitem_to_records,
+    setitem_to_records,
+    normalize_name,
+    normalize_timestamp,
+)
 from ..worker import MutableTensorChunkActor
 
 
 class MutableObjectManagerActor(mo.Actor):
-    def __init__(self,
-                 session_id: str):
+    def __init__(self, session_id: str):
         self._session_id = session_id
         self._cluster_api: Optional[ClusterAPI] = None
 
@@ -40,9 +44,9 @@ class MutableObjectManagerActor(mo.Actor):
         self._cluster_api = await ClusterAPI.create(self.address)
 
     async def __pre_destroy__(self):
-        await asyncio.gather(*[
-            mo.destroy_actor(ref) for ref in self._mutable_objects.values()
-        ])
+        await asyncio.gather(
+            *[mo.destroy_actor(ref) for ref in self._mutable_objects.values()]
+        )
 
     @classmethod
     def gen_uid(cls, session_id: str):
@@ -53,11 +57,20 @@ class MutableObjectManagerActor(mo.Actor):
         if name in self._mutable_objects:
             raise ValueError(f"Mutable tensor {name} already exists!")
 
-        workers: List[str] = list(await self._cluster_api.get_nodes_info(role=NodeRole.WORKER))
+        workers: List[str] = list(
+            await self._cluster_api.get_nodes_info(role=NodeRole.WORKER)
+        )
 
         tensor_ref = await mo.create_actor(
-            MutableTensorActor, self._session_id, name, workers, *args, **kwargs,
-            address=self.address, uid=MutableTensorActor.gen_uid(self._session_id, name))
+            MutableTensorActor,
+            self._session_id,
+            name,
+            workers,
+            *args,
+            **kwargs,
+            address=self.address,
+            uid=MutableTensorActor.gen_uid(self._session_id, name),
+        )
         self._mutable_objects[name] = tensor_ref
         return tensor_ref
 
@@ -78,14 +91,16 @@ class MutableObjectManagerActor(mo.Actor):
 
 
 class MutableTensorActor(mo.Actor):
-    def __init__(self,
-                 session_id: str,
-                 name: str,
-                 workers: List[str],
-                 shape: Tuple,
-                 dtype: Union[np.dtype, str],
-                 default_value : Union[int, float] = 0,
-                 chunk_size: Union[int, Tuple] = None):
+    def __init__(
+        self,
+        session_id: str,
+        name: str,
+        workers: List[str],
+        shape: Tuple,
+        dtype: Union[np.dtype, str],
+        default_value: Union[int, float] = 0,
+        chunk_size: Union[int, Tuple] = None,
+    ):
         self._session_id = session_id
         self._name = name
         self._workers = workers
@@ -99,7 +114,9 @@ class MutableTensorActor(mo.Actor):
         self._fetch = None
         self._chunk_actors = []
         # chunk to actor: {chunk index -> actor uid}
-        self._chunk_to_actor: Dict[Tuple, Union[MutableTensorChunkActor, mo.ActorRef]] = dict()
+        self._chunk_to_actor: Dict[
+            Tuple, Union[MutableTensorChunkActor, mo.ActorRef]
+        ] = dict()
 
     async def __post_create__(self):
         self._meta_api = await MetaAPI.create(self._session_id, self.address)
@@ -107,36 +124,48 @@ class MutableTensorActor(mo.Actor):
         # tiling a random tensor to generate keys, but we doesn't actually execute
         # the random generator
         from ....tensor.random import rand
-        self._fetch = build_fetch(tile(rand(*self._shape, dtype=self._dtype,
-                                            chunk_size=self._chunk_size)))
+
+        self._fetch = build_fetch(
+            tile(rand(*self._shape, dtype=self._dtype, chunk_size=self._chunk_size))
+        )
 
         chunk_groups = np.array_split(self._fetch.chunks, len(self._workers))
         for idx, (worker, chunks) in enumerate(zip(self._workers, chunk_groups)):
             if len(chunks) == 0:
                 break
             chunk_actor_ref = await mo.create_actor(
-                MutableTensorChunkActor, self._session_id, self.address, list(chunks),
-                dtype=self._dtype, default_value=self._default_value, address=worker,
-                uid=MutableTensorChunkActor.gen_uid(self._session_id, self._name, idx))
+                MutableTensorChunkActor,
+                self._session_id,
+                self.address,
+                list(chunks),
+                dtype=self._dtype,
+                default_value=self._default_value,
+                address=worker,
+                uid=MutableTensorChunkActor.gen_uid(self._session_id, self._name, idx),
+            )
             self._chunk_actors.append(chunk_actor_ref)
             for chunk in chunks:
                 self._chunk_to_actor[chunk.index] = chunk_actor_ref
 
     async def __pre_destroy__(self):
-        await asyncio.gather(*[
-            mo.destroy_actor(ref) for ref in self._chunk_actors
-        ])
+        await asyncio.gather(*[mo.destroy_actor(ref) for ref in self._chunk_actors])
 
     @classmethod
     def gen_uid(cls, session_id, name):
         return f"mutable-tensor-{session_id}-{name}"
 
     async def info(self) -> "MutableTensorInfo":
-        return MutableTensorInfo(self._shape, self._dtype, self._name, self._default_value)
+        return MutableTensorInfo(
+            self._shape, self._dtype, self._name, self._default_value
+        )
 
     @mo.extensible
-    async def _read_chunk(self, chunk_actor_ref, chunk_index, records, chunk_value_shape, timestamp):
-        return await chunk_actor_ref.read(chunk_index, records, chunk_value_shape, timestamp)
+    async def _read_chunk(
+        self, chunk_actor_ref, chunk_index, records, chunk_value_shape, timestamp
+    ):
+        return await chunk_actor_ref.read(
+            chunk_index, records, chunk_value_shape, timestamp
+        )
 
     async def read(self, index, timestamp=None):
         """
@@ -156,8 +185,11 @@ class MutableTensorActor(mo.Actor):
         read_tasks, chunk_indices = [], []
         for chunk_index, (records, chunk_value_shape, indices) in records.items():
             chunk_actor_ref = self._chunk_to_actor[chunk_index]
-            read_tasks.append(self._read_chunk.delay(chunk_actor_ref, chunk_index, records,
-                                                     chunk_value_shape, timestamp))
+            read_tasks.append(
+                self._read_chunk.delay(
+                    chunk_actor_ref, chunk_index, records, chunk_value_shape, timestamp
+                )
+            )
             chunk_indices.append(indices)
         chunks = await self._read_chunk.batch(*read_tasks)
         result = np.full(output_shape, fill_value=self._default_value)
@@ -190,7 +222,9 @@ class MutableTensorActor(mo.Actor):
         write_tasks = []
         for chunk_index, records in records.items():
             chunk_actor_ref = self._chunk_to_actor[chunk_index]
-            write_tasks.append(self._write_chunk.delay(chunk_actor_ref, chunk_index, records))
+            write_tasks.append(
+                self._write_chunk.delay(chunk_actor_ref, chunk_index, records)
+            )
         await self._write_chunk.batch(*write_tasks)
 
     @mo.extensible

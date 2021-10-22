@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorRint(TensorUnaryOp):
     _op_type_ = OperandDef.RINT
-    _func_name = 'rint'
+    _func_name = "rint"
 
 
 @infer_dtype(np.rint)

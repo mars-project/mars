@@ -20,7 +20,7 @@ from .... import tensor as mt
 from ...core import Tensor
 
 
-@pytest.mark.parametrize('ufunc_name', ['negative'])
+@pytest.mark.parametrize("ufunc_name", ["negative"])
 def test_unary_ufunc(setup, ufunc_name):
     raw_data = np.random.rand(100, 100)
     t = mt.tensor(raw_data.copy(), chunk_size=20)
@@ -37,8 +37,7 @@ def test_unary_ufunc(setup, ufunc_name):
     np.testing.assert_array_equal(t.execute().fetch(), raw_data)
 
 
-@pytest.mark.parametrize('ufunc_name',
-                         ['add', 'multiply', 'logaddexp', 'logaddexp2'])
+@pytest.mark.parametrize("ufunc_name", ["add", "multiply", "logaddexp", "logaddexp2"])
 def test_binary_ufunc(setup, ufunc_name):
     raw_data1 = np.random.rand(100, 100)
     t1 = mt.tensor(raw_data1.copy(), chunk_size=50)

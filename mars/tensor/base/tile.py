@@ -104,7 +104,7 @@ def tile(A, reps):
             slc = (slice(None),) * axis + (slice(0),)
             a = a[slc]
         elif rep < 0:
-            raise ValueError('negative dimensions are not allowed')
+            raise ValueError("negative dimensions are not allowed")
         elif rep > 1:
             a = concatenate([a] * rep, axis=axis)
 
