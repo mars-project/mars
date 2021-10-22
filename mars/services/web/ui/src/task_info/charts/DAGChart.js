@@ -63,6 +63,7 @@ export default class DAGChart extends React.Component {
             inputNodeColor: '#3281a8',
             outputNodeColor: '#c334eb',
         };
+        this.lastSelectedId = null;
     }
 
     componentDidMount() {
@@ -71,6 +72,14 @@ export default class DAGChart extends React.Component {
 
     componentWillUnmount() {
         clearInterval(this.interval);
+    }
+
+    getNodeStyle(nodeId) {
+        if (nodeId !== this.lastSelectedId) {
+            return 'cursor: pointer; stroke: #333; fill: url(#progress-' + nodeId + ')';
+        } else {
+            return 'cursor: pointer; stroke: #ff5252; stroke-width: 3; fill: url(#progress-' + nodeId + ')';
+        }
     }
 
     /* eslint no-unused-vars: ["error", { "args": "none" }] */
@@ -96,8 +105,8 @@ export default class DAGChart extends React.Component {
 
             // Add the nodes to DAG
             this.props.nodes.forEach((node) => {
-                const value = { node };
                 const nodeDetail = this.props.nodesStatus[node.id];
+                const value = { node };
 
                 if (this.props.graphName === 'tileableGraph') {
                     const nameEndIndex = node.name.indexOf('key') - 1;
@@ -156,7 +165,7 @@ export default class DAGChart extends React.Component {
                     .attr('offset', '0');
 
                 dagNode.shape = this.props.nodeShape;
-                dagNode.style = 'cursor: pointer; stroke: #333; fill: url(#progress-' + node.id + ')';
+                dagNode.style = this.getNodeStyle(node.id);
                 dagNode.labelStyle = 'cursor: pointer';
             });
 
@@ -201,11 +210,25 @@ export default class DAGChart extends React.Component {
             }
 
             // onClick function for the tileable
-            const handleClick = (e, dagNode) => {
+            const handleClick = (e, dagNodeId) => {
                 if (this.props.onNodeClick) {
                     const selectedNode = this.props.nodes.filter(
-                        (node) => node.id === dagNode
+                        (node) => node.id === dagNodeId
                     )[0];
+                    const nodeDetail = this.props.nodesStatus[selectedNode.id];
+                    selectedNode['properties'] = nodeDetail['properties'];
+
+                    if (dagNodeId !== this.lastSelectedId) {
+                        const lastSelectedId = this.lastSelectedId;
+                        this.lastSelectedId = dagNodeId;
+
+                        if (lastSelectedId !== null) {
+                            this.g.node(lastSelectedId).style = this.getNodeStyle(lastSelectedId);
+                        }
+                        this.g.node(dagNodeId).style = this.getNodeStyle(dagNodeId);
+                        render(inner, this.g);
+                    }
+
                     this.props.onNodeClick(e, selectedNode);
                 }
             };
@@ -221,7 +244,10 @@ export default class DAGChart extends React.Component {
                 fullHeight = parent.clientHeight;
             const initialScale = fullHeight >= height ? 1 : fullHeight / height;
 
-            d3Select('#' + this.props.graphName).select('.output').attr('transform', 'translate(' + (fullWidth - width * initialScale) / 2 + ', ' + (fullHeight - height * initialScale) / 2 + ')');
+            d3Select('#' + this.props.graphName).select('.output').attr(
+                'transform',
+                'translate(' + (fullWidth - width * initialScale) / 2 + ', ' + (fullHeight - height * initialScale) / 2 + ')'
+            );
 
             // Set up zoom support
             const zoom = d3Zoom().on('zoom', function (e) {

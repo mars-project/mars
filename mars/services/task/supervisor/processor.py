@@ -599,9 +599,11 @@ class TaskProcessorActor(mo.Actor):
             else:
                 status = SubtaskStatus.running
 
-            props = {slot: getattr(tileable, slot, None) for slot in tileable.__slots__}
-            props = {k: v for k, v in props.get('_FIELD_VALUES').items()
-                     if k != 'key' and isinstance(v, (int, float, str))}
+            props = {
+                k: v
+                for k, v in getattr(tileable.op, "_FIELD_VALUES").items()
+                if k != "key" and isinstance(v, (int, float, str))
+            }
 
             tileable_infos[tileable.key] = {
                 'progress': progress,
