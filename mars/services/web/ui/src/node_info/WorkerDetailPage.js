@@ -28,38 +28,38 @@ import NodeResourceTab from './NodeResourceTab';
 
 
 export default function WorkerDetailPage(props) {
-    const classes = useStyles();
-    const [value, setValue] = React.useState(0);
+  const classes = useStyles();
+  const [value, setValue] = React.useState(0);
 
-    const handleChange = (event, newValue) => {
-        setValue(newValue);
-    };
+  const handleChange = (event, newValue) => {
+    setValue(newValue);
+  };
 
-    const title_text = `${props.nodeRole.replace(/\w/, (first) => first.toUpperCase())}: ${props.endpoint}`;
-    return (
-        <Grid container spacing={3}>
-            <Grid item xs={12}>
-                <Title>{title_text}</Title>
-            </Grid>
-            <Grid item xs={12}>
-                <Paper className={classes.paper}>
-                    <Tabs value={value} onChange={handleChange}>
-                        <Tab label="Environment" />
-                        <Tab label="Resources" />
-                    </Tabs>
-                    <TabPanel value={value} index={0}>
-                        <NodeEnvTab endpoint={props.endpoint} />
-                    </TabPanel>
-                    <TabPanel value={value} index={1}>
-                        <NodeResourceTab endpoint={props.endpoint} />
-                    </TabPanel>
-                </Paper>
-            </Grid>
-        </Grid>
-    );
+  const title_text = `${props.nodeRole.replace(/\w/, (first) => first.toUpperCase())}: ${props.endpoint}`;
+  return (
+    <Grid container spacing={3}>
+      <Grid item xs={12}>
+        <Title>{title_text}</Title>
+      </Grid>
+      <Grid item xs={12}>
+        <Paper className={classes.paper}>
+          <Tabs value={value} onChange={handleChange}>
+            <Tab label="Environment" />
+            <Tab label="Resources" />
+          </Tabs>
+          <TabPanel value={value} index={0}>
+            <NodeEnvTab endpoint={props.endpoint} />
+          </TabPanel>
+          <TabPanel value={value} index={1}>
+            <NodeResourceTab endpoint={props.endpoint} />
+          </TabPanel>
+        </Paper>
+      </Grid>
+    </Grid>
+  );
 }
 
 WorkerDetailPage.propTypes = {
-    nodeRole: PropTypes.string,
-    endpoint: PropTypes.string,
+  nodeRole: PropTypes.string,
+  endpoint: PropTypes.string,
 };
