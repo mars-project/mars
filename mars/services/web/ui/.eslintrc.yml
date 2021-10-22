@@ -12,7 +12,7 @@ parserOptions:
 plugins:
   - react
 rules:
-  indent: ['error', 4]
+  indent: ['error', 2]
   new-cap: 'error'
   semi: ['error', 'always']
   quotes: ['error', 'single']
