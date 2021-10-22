@@ -49,12 +49,24 @@ class TensorIndexSetValue(TensorMapReduceOperand, TensorOperandMixin):
     chunk_offsets = TupleField("chunk_offsets")
     shuffle_axes = TupleField("shuffle_axes")
 
-    def __init__(self, indexes=None, value=None, is_fancy_index=None,
-                 input_nsplits=None, chunk_offsets=None, shuffle_axes=None, **kw):
+    def __init__(
+        self,
+        indexes=None,
+        value=None,
+        is_fancy_index=None,
+        input_nsplits=None,
+        chunk_offsets=None,
+        shuffle_axes=None,
+        **kw,
+    ):
         super().__init__(
-            indexes=indexes, value=value, is_fancy_index=is_fancy_index,
-            input_nsplits=input_nsplits, chunk_offsets=chunk_offsets,
-            shuffle_axes=shuffle_axes, **kw
+            indexes=indexes,
+            value=value,
+            is_fancy_index=is_fancy_index,
+            input_nsplits=input_nsplits,
+            chunk_offsets=chunk_offsets,
+            shuffle_axes=shuffle_axes,
+            **kw,
         )
 
     def _set_inputs(self, inputs):
