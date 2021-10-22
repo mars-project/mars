@@ -16,7 +16,7 @@
 
 import React from 'react';
 import {
-    HashRouter,
+  HashRouter,
 } from 'react-router-dom';
 import clsx from 'clsx';
 import CssBaseline from '@material-ui/core/CssBaseline';
@@ -34,46 +34,46 @@ import PageRouter from './PageRouter';
 import { useStyles } from './Style';
 
 export default function MainFrame() {
-    const classes = useStyles();
-    const [open, setOpen] = React.useState(true);
-    const handleDrawerStateChange = () => {
-        setOpen(!open);
-    };
+  const classes = useStyles();
+  const [open, setOpen] = React.useState(true);
+  const handleDrawerStateChange = () => {
+    setOpen(!open);
+  };
 
-    return (
-        <div className={classes.root}>
-            <CssBaseline />
-            <AppBar position="absolute" className={classes.appBar}>
-                <Toolbar className={classes.toolbar}>
-                    <Typography component="h1" variant="h6" color="inherit" noWrap className={classes.title}>
-                        Mars UI
-                    </Typography>
-                </Toolbar>
-            </AppBar>
-            <HashRouter>
-                <Drawer
-                    variant="permanent"
-                    classes={{
-                        paper: clsx(classes.drawerPaper, !open && classes.drawerPaperClose),
-                    }}
-                    open={open}
-                >
-                    <div className={classes.toolbarIcon} />
-                    <LeftMenu />
-                    <Divider className={classes.leftMenuBottomItem} />
-                    <div className={`${classes.toolbarIcon} ${classes.leftMenuBottomItem}`}>
-                        <IconButton onClick={handleDrawerStateChange}>
-                            {open? <ChevronLeftIcon /> : <ChevronRightIcon />}
-                        </IconButton>
-                    </div>
-                </Drawer>
-                <main className={classes.content}>
-                    <div className={classes.appBarSpacer} />
-                    <Container maxWidth="lg" className={classes.container}>
-                        <PageRouter />
-                    </Container>
-                </main>
-            </HashRouter>
-        </div>
-    );
+  return (
+    <div className={classes.root}>
+      <CssBaseline />
+      <AppBar position="absolute" className={classes.appBar}>
+        <Toolbar className={classes.toolbar}>
+          <Typography component="h1" variant="h6" color="inherit" noWrap className={classes.title}>
+            Mars UI
+          </Typography>
+        </Toolbar>
+      </AppBar>
+      <HashRouter>
+        <Drawer
+          variant="permanent"
+          classes={{
+            paper: clsx(classes.drawerPaper, !open && classes.drawerPaperClose),
+          }}
+          open={open}
+        >
+          <div className={classes.toolbarIcon} />
+          <LeftMenu />
+          <Divider className={classes.leftMenuBottomItem} />
+          <div className={`${classes.toolbarIcon} ${classes.leftMenuBottomItem}`}>
+            <IconButton onClick={handleDrawerStateChange}>
+              {open? <ChevronLeftIcon /> : <ChevronRightIcon />}
+            </IconButton>
+          </div>
+        </Drawer>
+        <main className={classes.content}>
+          <div className={classes.appBarSpacer} />
+          <Container maxWidth="lg" className={classes.container}>
+            <PageRouter />
+          </Container>
+        </main>
+      </HashRouter>
+    </div>
+  );
 }

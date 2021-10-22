@@ -27,71 +27,71 @@ import { useStyles } from './Style';
 import Title from './Title';
 
 class SessionList extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {};
+  constructor(props) {
+    super(props);
+    this.state = {};
+  }
+
+  refreshInfo() {
+    fetch('api/session')
+      .then((res) => res.json())
+      .then((res) => {
+        this.setState(res);
+      });
+  }
+
+  componentDidMount() {
+    if (this.interval !== undefined) {
+      clearInterval(this.interval);
+    }
+    this.interval = setInterval(() => this.refreshInfo(), 5000);
+    this.refreshInfo();
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.interval);
+  }
+
+  render() {
+    if (this.state === undefined || this.state.sessions === undefined) {
+      return (
+        <div>Loading</div>
+      );
     }
 
-    refreshInfo() {
-        fetch('api/session')
-            .then((res) => res.json())
-            .then((res) => {
-                this.setState(res);
-            });
-    }
-
-    componentDidMount() {
-        if (this.interval !== undefined) {
-            clearInterval(this.interval);
-        }
-        this.interval = setInterval(() => this.refreshInfo(), 5000);
-        this.refreshInfo();
-    }
-
-    componentWillUnmount() {
-        clearInterval(this.interval);
-    }
-
-    render() {
-        if (this.state === undefined || this.state.sessions === undefined) {
-            return (
-                <div>Loading</div>
-            );
-        }
-
-        return (
-            <Table size="small">
-                <TableHead>
-                    <TableRow>
-                        <TableCell style={{ fontWeight: 'bolder' }}>Session ID</TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {this.state.sessions.map((session) => (
-                        <TableRow key={`session_row_${session.session_id}`}>
-                            <TableCell>
-                                <Link to={`/session/${session.session_id}/task`}>{session.session_id}</Link>
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        );
-    }
+    return (
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell style={{ fontWeight: 'bolder' }}>Session ID</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {this.state.sessions.map((session) => (
+            <TableRow key={`session_row_${session.session_id}`}>
+              <TableCell>
+                <Link to={`/session/${session.session_id}/task`}>{session.session_id}</Link>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  }
 }
 
 export default function SessionListPage() {
-    const classes = useStyles();
-    return (
-        <Grid container spacing={3}>
-            <Grid item xs={12}>
-                <Title>Sessions</Title>
-            </Grid>
-            <Grid item xs={12}>
-                <Paper className={classes.paper}>
-                    <SessionList />
-                </Paper>
-            </Grid>
-        </Grid>
-    );
+  const classes = useStyles();
+  return (
+    <Grid container spacing={3}>
+      <Grid item xs={12}>
+        <Title>Sessions</Title>
+      </Grid>
+      <Grid item xs={12}>
+        <Paper className={classes.paper}>
+          <SessionList />
+        </Paper>
+      </Grid>
+    </Grid>
+  );
 }
