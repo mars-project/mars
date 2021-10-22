@@ -367,6 +367,22 @@ def test_setitem_fancy_index_execution(setup):
     expected[raw_index] = raw_value
     np.testing.assert_array_equal(res, expected)
 
+    # input's nsplits is unknown
+    raw = rs.randint(0, 10, size=(11, 11))
+    arr = tensor(raw.copy(), chunk_size=6)
+    arr1 = arr[arr[0] < 20, :]
+    raw_index1 = rs.randint(0, 11, (10,))
+    idx1 = tensor(raw_index1.copy(), chunk_size=3)
+    raw_index2 = rs.randint(0, 11, (10,))
+    idx2 = tensor(raw_index2.copy(), chunk_size=4)
+    raw_value = rs.randint(100, 110, (10,))
+    arr1[idx1, idx2] = tensor(raw_value, chunk_size=4)
+    res = arr1.execute().fetch()
+    expected = raw.copy()
+    expected = expected[expected[0] < 20, :]
+    expected[raw_index1, raw_index2] = raw_value
+    np.testing.assert_array_equal(res, expected)
+
 
 def test_setitem_execution(setup):
     rs = np.random.RandomState(0)

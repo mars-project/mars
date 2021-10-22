@@ -259,6 +259,8 @@ class SubtaskProcessor:
         if unpins:
             await self._storage_api.unpin.batch(*unpins)
         if shuffle_unpins:
+            # TODO(hks): The batch method doesn't accept different error arguments,
+            #  combine them when it can.
             await self._storage_api.unpin.batch(*shuffle_unpins)
 
     async def _store_data(self, chunk_graph: ChunkGraph):

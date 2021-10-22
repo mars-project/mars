@@ -176,6 +176,8 @@ class SubtaskExecutionActor(mo.StatelessActor):
         if queries:
             await storage_api.fetch.batch(*queries)
         if shuffle_queries:
+            # TODO(hks): The batch method doesn't accept different error arguments,
+            #  combine them when it can.
             await storage_api.fetch.batch(*shuffle_queries)
 
     async def _collect_input_sizes(
