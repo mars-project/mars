@@ -15,11 +15,14 @@
 
 import logging
 import os
+import subprocess
 import sys
 import uuid
 from collections import namedtuple
 from ctypes import c_char, c_char_p, c_int, c_uint, c_ulonglong, byref,\
     create_string_buffer, Structure, POINTER, CDLL
+
+from ..utils import parse_readable_size
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +65,9 @@ class _nvmlBAR1Memory_t(Structure):
         ('used', c_ulonglong),
     ]
 
+
 _is_windows: bool = sys.platform.startswith('win')
+_is_wsl: bool = "WSL_DISTRO_NAME" in os.environ
 
 
 def _load_nv_library(*libnames):
@@ -117,7 +122,8 @@ def _cu_check_error(result):
     if result != CUDA_SUCCESS:
         _error_str = c_char_p()
         _cuda_lib.cuGetErrorString(result, byref(_error_str))
-        raise NVDeviceAPIError(_error_str.value.decode(), errno=result)
+        err_value = _error_str.value.decode() if _error_str.value is not None else None
+        raise NVDeviceAPIError(err_value, errno=result)
 
 
 _nvmlErrorString = None
@@ -153,7 +159,10 @@ def _init_cp():
     if _init_pid == os.getpid():
         return
 
-    _cuda_lib = _load_nv_library('libcuda.so', 'libcuda.dylib', 'cuda.dll', 'nvcuda.dll')
+    libcuda_paths = ["libcuda.so", "libcuda.dylib", "cuda.dll", "nvcuda.dll"]
+    if _is_wsl:
+        libcuda_paths = ["/usr/lib/wsl/lib/libcuda.so"] + libcuda_paths
+    _cuda_lib = _load_nv_library(*libcuda_paths)
 
     if _cuda_lib is None:
         return
@@ -179,6 +188,8 @@ def _init_nvml():
     if _is_windows:
         nvml_paths.append(os.path.join(os.getenv("ProgramFiles", "C:/Program Files"),
                                        "NVIDIA Corporation/NVSMI/nvml.dll"))
+    if _is_wsl:
+        nvml_paths = ["/usr/lib/wsl/lib/libnvidia-ml.so.1"] + nvml_paths
     _nvml_lib = _load_nv_library(*nvml_paths)
 
     if _nvml_lib is None:
@@ -300,26 +311,62 @@ def get_device_status(dev_index):
     if _init_pid is None:
         return None
 
-    device = _nvmlDevice_t()
-    utils = _nvmlUtilization_t()
-    temperature = c_uint()
-    memory_info = _nvmlBAR1Memory_t()
+    c_device = _nvmlDevice_t()
+    c_utils = _nvmlUtilization_t()
+    c_temperature = c_uint()
+    c_memory_info = _nvmlBAR1Memory_t()
 
     dev_uuid = get_device_info(dev_index).uuid
 
     uuid_str = ('GPU-' + str(dev_uuid)).encode()
 
-    _nvml_check_error(_nvml_lib.nvmlDeviceGetHandleByUUID(uuid_str, byref(device)))
-    _nvml_check_error(_nvml_lib.nvmlDeviceGetUtilizationRates(device, byref(utils)))
-    _nvml_check_error(_nvml_lib.nvmlDeviceGetTemperature(
-        device, NVML_TEMPERATURE_GPU, byref(temperature)))
-    _nvml_check_error(_nvml_lib.nvmlDeviceGetBAR1MemoryInfo(device, byref(memory_info)))
+    if not _is_wsl:
+        _nvml_check_error(_nvml_lib.nvmlDeviceGetHandleByUUID(uuid_str, byref(c_device)))
+
+        _nvml_check_error(_nvml_lib.nvmlDeviceGetUtilizationRates(c_device, byref(c_utils)))
+        gpu_util = c_utils.gpu
+        mem_util = c_utils.memory
+        _nvml_check_error(_nvml_lib.nvmlDeviceGetTemperature(
+            c_device, NVML_TEMPERATURE_GPU, byref(c_temperature)))
+        temperature = c_temperature.value
+
+        _nvml_check_error(_nvml_lib.nvmlDeviceGetMemoryInfo(c_device, byref(c_memory_info)))
+        fb_total_mem = c_memory_info.total
+        fb_free_mem = c_memory_info.free
+        fb_used_mem = c_memory_info.used
+    else:
+        import defusedxml
+
+        proc = subprocess.Popen(
+            ["/usr/lib/wsl/lib/nvidia-smi", "-q", f"--id={dev_index}", "-x"],
+            stdout=subprocess.PIPE,
+        )
+        proc.wait()
+        xml_result = defusedxml.ElementTree.fromstring(proc.stdout.read())
+        gpu_node = xml_result.find("gpu")
+
+        fb_node = gpu_node.find("fb_memory_usage")
+        fb_total_mem = int(parse_readable_size(fb_node.find("total").text)[0])
+        fb_free_mem = int(parse_readable_size(fb_node.find("free").text)[0])
+        fb_used_mem = int(parse_readable_size(fb_node.find("used").text)[0])
+
+        util_node = gpu_node.find("utilization")
+        if util_node.find("gpu_util").text == "N/A":
+            gpu_util = 0
+        else:
+            gpu_util = int(util_node.find("gpu_util"))
+        if util_node.find("memory_util").text == "N/A":
+            mem_util = 0
+        else:
+            mem_util = int(util_node.find("memory_util"))
+
+        temperature = int(gpu_node.find("temperature").find("gpu_temp").text[:-1])
 
     return _nvml_device_status(
-        gpu_util=utils.gpu,
-        mem_util=utils.memory,
-        temperature=temperature.value,
-        fb_total_mem=memory_info.total,
-        fb_free_mem=memory_info.free,
-        fb_used_mem=memory_info.used,
+        gpu_util=gpu_util,
+        mem_util=mem_util,
+        temperature=temperature,
+        fb_total_mem=fb_total_mem,
+        fb_free_mem=fb_free_mem,
+        fb_used_mem=fb_used_mem,
     )

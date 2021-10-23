@@ -14,3 +14,5 @@ numexpr
 scikit-learn
 psutil
 tornado
+defusedxml
+pyyaml

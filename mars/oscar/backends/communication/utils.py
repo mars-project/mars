@@ -30,7 +30,7 @@ CUDA_CHUNK_SIZE = 16 * 1024 ** 2
 def write_buffers(writer: StreamWriter,
                   buffers: List):
     if cupy is not None and cudf is not None:
-        from cudf.core import Buffer as CPBuffer
+        from cudf.core.buffer import Buffer as CPBuffer
         from cupy import ndarray as cp_ndarray
     else:
         CPBuffer = cp_ndarray = None
@@ -59,7 +59,7 @@ def write_buffers(writer: StreamWriter,
 async def read_buffers(header: Dict,
                        reader: StreamReader):
     if cupy is not None and cudf is not None:
-        from cudf.core import Buffer as CPBuffer
+        from cudf.core.buffer import Buffer as CPBuffer
         from cupy.cuda.memory import UnownedMemory as CPUnownedMemory, \
             MemoryPointer as CPMemoryPointer
     else:
