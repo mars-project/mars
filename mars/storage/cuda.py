@@ -64,7 +64,7 @@ class CudaFileObject:
         return self._mode
 
     def _initialize_read(self):
-        from cudf.core import Buffer
+        from cudf.core.buffer import Buffer
         from cupy.cuda.memory import UnownedMemory
 
         self._offset = 0
@@ -101,7 +101,7 @@ class CudaFileObject:
     def read(self, size: int):
         # we read cuda_header first and then read cuda buffers one by one,
         # the return value's size is not exactly the specified size.
-        from cudf.core import Buffer
+        from cudf.core.buffer import Buffer
         from cupy.cuda import MemoryPointer
         from cupy.cuda.memory import UnownedMemory
 
@@ -137,7 +137,7 @@ class CudaFileObject:
                 return cur_buf[self._offset, self._offset + size]
 
     def write(self, content):
-        from cudf.core import Buffer
+        from cudf.core.buffer import Buffer
         from cupy.cuda import MemoryPointer
         from cupy.cuda.memory import UnownedMemory
 
@@ -252,7 +252,7 @@ class CudaStorage(StorageBackend):
 
     @implements(StorageBackend.get)
     async def get(self, object_id: str, **kwargs) -> object:
-        from cudf.core import Buffer
+        from cudf.core.buffer import Buffer as CPBuffer
         from rmm import DeviceBuffer
 
         headers, buffers = _id_to_buffers[object_id]
@@ -260,9 +260,11 @@ class CudaStorage(StorageBackend):
         for buf in buffers:
             if isinstance(buf, cupy.ndarray):
                 new_buffers.append(DeviceBuffer(ptr=buf.data.ptr, size=buf.size))
-            elif isinstance(buf, cudf.core.Buffer):
+            elif isinstance(buf, CPBuffer):
                 new_buffers.append(
-                    Buffer(buf.ptr, buf.size, DeviceBuffer(ptr=buf.ptr, size=buf.size))
+                    CPBuffer(
+                        buf.ptr, buf.size, DeviceBuffer(ptr=buf.ptr, size=buf.size)
+                    )
                 )
             else:
                 new_buffers.append(buf)
@@ -270,12 +272,12 @@ class CudaStorage(StorageBackend):
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
+        from cudf.core.buffer import Buffer as CPBuffer
+
         string_id = str(uuid.uuid4())
         headers, buffers = serialize(obj)
         size = sum(
-            buf.size
-            for buf in buffers
-            if isinstance(buf, (cupy.ndarray, cudf.core.Buffer))
+            buf.size for buf in buffers if isinstance(buf, (cupy.ndarray, CPBuffer))
         )
         _id_to_buffers[string_id] = headers, buffers
         return ObjectInfo(size=size, object_id=string_id)
@@ -287,10 +289,12 @@ class CudaStorage(StorageBackend):
 
     @implements(StorageBackend.object_info)
     async def object_info(self, object_id: str) -> ObjectInfo:
+        from cudf.core.buffer import Buffer as CPBuffer
+
         size = sum(
             buf.size
             for buf in _id_to_buffers[object_id][1]
-            if isinstance(buf, (cupy.ndarray, cudf.core.Buffer))
+            if isinstance(buf, (cupy.ndarray, CPBuffer))
         )
         return ObjectInfo(size=size, object_id=object_id)
 

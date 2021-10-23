@@ -38,7 +38,7 @@ class AioSerializer:
 
         def _is_cuda_buffer(buf):  # pragma: no cover
             if cupy is not None and cudf is not None:
-                from cudf.core import Buffer as CPBuffer
+                from cudf.core.buffer import Buffer as CPBuffer
                 from cupy import ndarray as cp_ndarray
             else:
                 CPBuffer = cp_ndarray = None
