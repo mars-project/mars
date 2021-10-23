@@ -145,6 +145,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
 
     async def _prepare_input_data(self, subtask: Subtask, band_name: str):
         queries = []
+        shuffle_queries = []
         storage_api = await StorageAPI.create(
             subtask.session_id, address=self.address, band_name=band_name
         )
@@ -167,13 +168,17 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 )
             elif isinstance(chunk.op, FetchShuffle):
                 for key in chunk_key_to_data_keys[chunk.key]:
-                    queries.append(
+                    shuffle_queries.append(
                         storage_api.fetch.delay(
                             key, band_name=to_fetch_band, error="ignore"
                         )
                     )
         if queries:
             await storage_api.fetch.batch(*queries)
+        if shuffle_queries:
+            # TODO(hks): The batch method doesn't accept different error arguments,
+            #  combine them when it can.
+            await storage_api.fetch.batch(*shuffle_queries)
 
     async def _collect_input_sizes(
         self, subtask: Subtask, supervisor_address: str, band_name: str
