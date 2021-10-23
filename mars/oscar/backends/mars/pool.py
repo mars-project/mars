@@ -35,14 +35,18 @@ if sys.version_info[:2] == (3, 9):
     # fix for Python 3.9, see https://bugs.python.org/issue43517
     if sys.platform == 'win32':
         from multiprocessing import popen_spawn_win32 as popen_spawn
+
+        popen_forkserver = popen_fork = synchronize = None
     else:
         from multiprocessing import popen_spawn_posix as popen_spawn
-    from multiprocessing import popen_forkserver, popen_fork, synchronize
+        from multiprocessing import popen_forkserver, popen_fork, synchronize
     _ = popen_spawn, popen_forkserver, popen_fork, synchronize
+    del _
 elif sys.version_info[:2] == (3, 6):  # pragma: no cover
+
     # define kill method for multiprocessing
-    if not _is_windows:
-        def _mp_kill(self):
+    def _mp_kill(self):
+        if not _is_windows:
             try:
                 os.kill(self.pid, signal.SIGKILL)
             except ProcessLookupError:
@@ -50,8 +54,7 @@ elif sys.version_info[:2] == (3, 6):  # pragma: no cover
             except OSError:
                 if self.wait(timeout=0.1) is None:
                     raise
-    else:
-        def _mp_kill(self):
+        else:
             self.terminate()
 
     from multiprocessing.process import BaseProcess
