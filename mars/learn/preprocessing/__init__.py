@@ -14,5 +14,5 @@
 
 from ._data import MinMaxScaler
 from ._data import minmax_scale
-from ._label import LabelBinarizer, label_binarize
+from ._label import LabelBinarizer, label_binarize, LabelEncoder
 from .normalize import normalize

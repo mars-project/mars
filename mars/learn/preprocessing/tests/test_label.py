@@ -21,7 +21,7 @@ from sklearn.utils._testing import assert_array_equal, ignore_warnings
 from sklearn.utils.multiclass import type_of_target
 
 from .... import tensor as mt
-from .. import LabelBinarizer, label_binarize
+from .. import LabelBinarizer, label_binarize, LabelEncoder
 
 
 def test_label_binarizer(setup):
@@ -256,3 +256,111 @@ def test_invalid_input_label_binarize(setup):
         label_binarize([1.2, 2.7], classes=[0, 1])
     with pytest.raises(ValueError, match="mismatch with the labels"):
         label_binarize([[1, 3]], classes=[1, 2, 3])
+
+
+@pytest.mark.parametrize(
+    "values, classes, unknown",
+    [
+        (
+            np.array([2, 1, 3, 1, 3], dtype="int64"),
+            np.array([1, 2, 3], dtype="int64"),
+            np.array([4], dtype="int64"),
+        ),
+        (
+            np.array(["b", "a", "c", "a", "c"], dtype=object),
+            np.array(["a", "b", "c"], dtype=object),
+            np.array(["d"], dtype=object),
+        ),
+        (
+            np.array(["b", "a", "c", "a", "c"]),
+            np.array(["a", "b", "c"]),
+            np.array(["d"]),
+        ),
+    ],
+    ids=["int64", "object", "str"],
+)
+def test_label_encoder(setup, values, classes, unknown):
+    # Test LabelEncoder's transform, fit_transform and
+    # inverse_transform methods
+    values_t = mt.tensor(values)
+
+    le = LabelEncoder()
+    le.fit(values_t)
+    assert_array_equal(le.classes_.fetch(), classes)
+    assert_array_equal(le.transform(values_t).fetch(), [1, 0, 2, 0, 2])
+    assert_array_equal(le.inverse_transform(mt.tensor([1, 0, 2, 0, 2])).fetch(), values)
+
+    le = LabelEncoder()
+    ret = le.fit_transform(values)
+    assert_array_equal(ret.fetch(), [1, 0, 2, 0, 2])
+
+    with pytest.raises(ValueError, match="unseen labels"):
+        le.transform(unknown)
+
+
+def test_label_encoder_negative_ints(setup):
+    le = LabelEncoder()
+    le.fit(mt.tensor([1, 1, 4, 5, -1, 0]))
+    assert_array_equal(le.classes_, [-1, 0, 1, 4, 5])
+    assert_array_equal(
+        le.transform(mt.tensor([0, 1, 4, 4, 5, -1, -1])), [1, 2, 3, 3, 4, 0, 0]
+    )
+    assert_array_equal(
+        le.inverse_transform(mt.tensor([1, 2, 3, 3, 4, 0, 0])), [0, 1, 4, 4, 5, -1, -1]
+    )
+    with pytest.raises(ValueError):
+        le.transform(mt.tensor([0, 6]))
+
+
+@pytest.mark.parametrize("dtype", ["str", "object"])
+def test_label_encoder_str_bad_shape(setup, dtype):
+    le = LabelEncoder()
+    le.fit(mt.tensor(np.array(["apple", "orange"], dtype=dtype)))
+    msg = "should be a 1d array"
+    with pytest.raises(ValueError, match=msg):
+        le.transform("apple")
+
+
+def test_label_encoder_errors(setup):
+    # Check that invalid arguments yield ValueError
+    le = LabelEncoder()
+    with pytest.raises(ValueError):
+        le.transform([])
+    with pytest.raises(ValueError):
+        le.inverse_transform([])
+
+    # Fail on unseen labels
+    le = LabelEncoder()
+    le.fit(mt.tensor([1, 2, 3, -1, 1]))
+    msg = "contains previously unseen labels"
+    with pytest.raises(ValueError, match=msg):
+        le.inverse_transform(mt.tensor([-2]))
+    with pytest.raises(ValueError, match=msg):
+        le.inverse_transform(mt.tensor([-2, -3, -4]))
+
+    # Fail on inverse_transform("")
+    msg = r"should be a 1d array.+shape \(\)"
+    with pytest.raises(ValueError, match=msg):
+        le.inverse_transform("")
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        np.array([2, 1, 3, 1, 3], dtype="int64"),
+        np.array(["b", "a", "c", "a", "c"], dtype=object),
+        np.array(["b", "a", "c", "a", "c"]),
+    ],
+    ids=["int64", "object", "str"],
+)
+def test_label_encoder_empty_array(setup, values):
+    values_t = mt.tensor(values)
+
+    le = LabelEncoder()
+    le.fit(values_t)
+    # test empty transform
+    transformed = le.transform(mt.array([]))
+    assert_array_equal(np.array([]), transformed)
+    # test empty inverse transform
+    inverse_transformed = le.inverse_transform([])
+    assert_array_equal(np.array([]), inverse_transformed)

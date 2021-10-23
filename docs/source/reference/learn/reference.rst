@@ -216,6 +216,7 @@ Preprocessing and Normalization
    :toctree: generated/
 
    preprocessing.LabelBinarizer
+   preprocessing.LabelEncoder
    preprocessing.MinMaxScaler
    preprocessing.minmax_scale
    preprocessing.label_binarize

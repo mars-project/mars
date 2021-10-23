@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+import numbers
+
 import pandas as pd
 from sklearn.base import BaseEstimator
 
@@ -40,3 +43,33 @@ def copy_learned_attributes(from_estimator: BaseEstimator,
     attrs = {k: v for k, v in vars(from_estimator).items() if k.endswith('_')}
     for k, v in attrs.items():
         setattr(to_estimator, k, v)
+
+
+def is_scalar_nan(x):
+    """Tests if x is NaN.
+
+    This function is meant to overcome the issue that np.isnan does not allow
+    non-numerical types as input, and that np.nan is not float('nan').
+
+    Parameters
+    ----------
+    x : any type
+
+    Returns
+    -------
+    boolean
+
+    Examples
+    --------
+    >>> is_scalar_nan(np.nan)
+    True
+    >>> is_scalar_nan(float("nan"))
+    True
+    >>> is_scalar_nan(None)
+    False
+    >>> is_scalar_nan("")
+    False
+    >>> is_scalar_nan([np.nan])
+    False
+    """
+    return isinstance(x, numbers.Real) and math.isnan(x)
