@@ -604,7 +604,9 @@ def column_or_1d(y, warn=False):
                           DataConversionWarning, stacklevel=2)
         return mt.ravel(y)
 
-    raise ValueError(f"bad input shape {shape}")
+    raise ValueError(
+        "y should be a 1d array, got an array of shape {} instead.".format(shape)
+    )
 
 
 check_is_fitted = check_is_fitted

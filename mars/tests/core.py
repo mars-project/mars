@@ -189,12 +189,16 @@ class ObjectCheckMixin:
             return
 
         if len(expected_shape) != len(real_shape):
-            raise AssertionError('ndim in metadata %r is not consistent with real ndim %r'
-                                 % (len(expected_shape), len(real_shape)))
+            raise AssertionError(
+                f"ndim in metadata {len(expected_shape)} is not consistent "
+                f"with real ndim {len(real_shape)}"
+            )
         for e, r in zip(expected_shape, real_shape):
             if not np.isnan(e) and e != r:
-                raise AssertionError('shape in metadata %r is not consistent with real shape %r'
-                                     % (expected_shape, real_shape))
+                raise AssertionError(
+                    f"shape in metadata {expected_shape!r} is not consistent "
+                    f"with real shape {real_shape!r}"
+                )
 
     @staticmethod
     def assert_dtype_consistent(expected_dtype, real_dtype):
@@ -208,9 +212,13 @@ class ObjectCheckMixin:
                 raise AssertionError('Expected dtype cannot be None')
             if isinstance(real_dtype, pd.CategoricalDtype) and isinstance(expected_dtype, pd.CategoricalDtype):
                 return
-            if not np.can_cast(real_dtype, expected_dtype) and not np.can_cast(expected_dtype, real_dtype):
-                raise AssertionError('cannot cast between dtype of real dtype %r and dtype %r defined in metadata'
-                                     % (real_dtype, expected_dtype))
+            if not np.can_cast(real_dtype, expected_dtype) and not np.can_cast(
+                expected_dtype, real_dtype
+            ):
+                raise AssertionError(
+                    f"cannot cast between dtype of real dtype {real_dtype} "
+                    f"and dtype {expected_dtype} defined in metadata"
+                )
 
     def assert_tensor_consistent(self, expected, real):
         from ..lib.sparse import SparseNDArray
@@ -258,8 +266,10 @@ class ObjectCheckMixin:
                     for expected_dtype, real_dtype in zip(expected.dtypes, real.dtypes):
                         self.assert_dtype_consistent(expected_dtype, real_dtype)
                 except AssertionError:
-                    raise AssertionError('dtypes in metadata %r cannot cast to real dtype %r'
-                                         % (expected.dtypes, real.dtypes))
+                    raise AssertionError(
+                        f"dtypes in metadata {expected.dtype} cannot cast "
+                        f"to real dtype {real.dtype}"
+                    )
 
         if self._check_options['check_columns_value'] and not np.isnan(expected.shape[1]):
             self.assert_index_value_consistent(expected.columns_value, real.columns)
@@ -326,9 +336,11 @@ class ObjectCheckMixin:
             raise AssertionError(f'Type of real value ({type(real)}) not Index')
         self.assert_shape_consistent(expected.shape, real.shape)
 
-        if self._check_options['check_series_name'] and expected.name != real.name:
-            raise AssertionError('series name in metadata %r is not equal to real name %r'
-                                 % (expected.name, real.name))
+        if self._check_options["check_series_name"] and expected.name != real.name:
+            raise AssertionError(
+                f"series name in metadata {expected.name} is not equal to "
+                f"real name {real.name}"
+            )
 
         self.assert_dtype_consistent(expected.dtype, real.dtype)
         self.assert_index_value_consistent(expected.index_value, real)
