@@ -311,7 +311,6 @@ GET_SHAPE = 445
 # according to the original fancy index order
 FANCY_INDEX_DISTRIBUTE = 424
 FANCY_INDEX_CONCAT = 425
-INDEX_SETVALUE_SHUFFLE = 426
 
 # linear algebra
 TENSORDOT = 501
