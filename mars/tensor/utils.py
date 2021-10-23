@@ -65,6 +65,11 @@ def normalize_chunk_sizes(shape, chunk_size):
             if not isinstance(chunk, tuple):
                 chunk = tuple(chunk)
 
+            # if chunk is (np.nan,), it means we need to concat
+            # all chunks together.
+            if chunk == (np.nan,):
+                chunk = (size,)
+
             if sum(chunk) != size:
                 raise ValueError(
                     "chunks shape should be of the same length, "

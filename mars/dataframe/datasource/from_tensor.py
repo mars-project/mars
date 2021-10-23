@@ -692,10 +692,19 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
             tensor_data = ctx[op.input.key]
         else:
             tensor_data = None
+
         if op.index is not None:
             index_data = ctx[op.index.key]
         else:
             index_data = chunk.index_value.to_pandas()
+            if (
+                tensor_data is not None
+                and isinstance(index_data, pd.RangeIndex)
+                and len(index_data) == 0
+            ):
+                # index not specified
+                index_data = None
+
         ctx[chunk.key] = pd.Series(
             tensor_data, index=index_data, name=chunk.name, dtype=chunk.dtype
         )
@@ -723,9 +732,11 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
             else:
                 index_value = parse_index(index, store_data=True)
         elif input_tensor is not None:
-            index_value = parse_index(
-                pd.RangeIndex(start=0, stop=input_tensor.shape[0])
-            )
+            if pd.isna(input_tensor.shape[0]):
+                pd_index_value = pd.RangeIndex(-1)
+            else:
+                pd_index_value = pd.RangeIndex(start=0, stop=input_tensor.shape[0])
+            index_value = parse_index(pd_index_value)
         else:
             index_value = parse_index(pd.Index([], dtype=object))
 

@@ -186,8 +186,9 @@ class GraphAnalyzer:
             else:
                 inp_chunk = fuse_to_copied[fused_chunks[i - 1]]
                 copied_fuse_chunk = copied_op.new_chunks(
-                    [inp_chunk] * len(fuse_chunk.inputs), kws=[fuse_chunk.params.copy()]
-                )[0].data
+                    [inp_chunk] * len(fuse_chunk.inputs),
+                    kws=[out.params.copy() for out in fuse_chunk.op.outputs],
+                )[fuse_chunk.extra_params["_i"]].data
                 copied_fuse_chunk._key = fuse_chunk.key
                 subtask_chunk_graph.add_node(copied_fuse_chunk)
                 subtask_chunk_graph.add_edge(inp_chunk, copied_fuse_chunk)
