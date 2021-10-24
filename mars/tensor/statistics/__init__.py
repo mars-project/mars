@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .average import average
+from .bincount import bincount
 from .corrcoef import corrcoef
 from .cov import cov
 from .digitize import digitize, TensorDigitize
