@@ -44,8 +44,6 @@ class LabelEncoder(TransformerMixin, BaseEstimator):
 
     Read more in the :ref:`User Guide <preprocessing_targets>`.
 
-    .. versionadded:: 0.12
-
     Attributes
     ----------
     classes_ : ndarray of shape (n_classes,)

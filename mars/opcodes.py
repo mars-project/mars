@@ -305,6 +305,7 @@ NORMALIZE = 442
 TOPK = 443
 TRAPZ = 444
 GET_SHAPE = 445
+BINCOUNT = 446
 # fancy index, distributed phase is a shuffle operation that
 # the fancy indexes will be distributed to the left chunks
 # the concat phase will concat back the indexed left chunks and index
