@@ -49,9 +49,10 @@ Histograms
    :toctree: generated/
    :nosignatures:
 
+   mars.tensor.bincount
+   mars.tensor.digitize
    mars.tensor.histogram
    mars.tensor.histogram_bin_edges
-   mars.tensor.digitize
 
 
 Statistical tests
