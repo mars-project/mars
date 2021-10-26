@@ -83,7 +83,7 @@ def new_cluster(
     log_config=None,
     skein_client=None,
     app_name=None,
-    queue=None,
+    app_queue=None,
     **kwargs,
 ):
     import skein
@@ -150,7 +150,7 @@ def new_cluster(
         cmd_tmpl=cmd_tmpl,
     )
     app_config = MarsApplicationConfig(
-        app_name, supervisor_config=supervisor_config, worker_config=worker_config, queue=queue
+        app_name, app_queue, supervisor_config=supervisor_config, worker_config=worker_config, queue=queue
     )
 
     skein_client = skein_client or skein.Client()
