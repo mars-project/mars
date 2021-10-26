@@ -378,6 +378,10 @@ default_options.register_option(
     "rechunk.chunk_size_limit", int(1e8), validator=is_integer, serialize=True
 )
 
+default_options.register_option(
+    "bincount.chunk_size_limit", int(1e8), validator=is_integer, serialize=True
+)
+
 # deploy
 default_options.register_option("deploy.open_browser", True, validator=is_bool)
 

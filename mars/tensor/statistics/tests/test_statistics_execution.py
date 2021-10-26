@@ -23,6 +23,7 @@ from ...merge import stack
 from ...reduction import all as tall
 from .. import (
     average,
+    bincount,
     cov,
     corrcoef,
     ptp,
@@ -503,3 +504,60 @@ def test_median_execution(setup):
     expected = np.median(raw, axis=1)
 
     np.testing.assert_array_equal(result, expected)
+
+
+def test_bincount_execution(setup):
+    rs = np.random.RandomState(0)
+    raw = rs.randint(0, 9, (100,))
+    raw[raw == 3] = 0
+    raw_weights = rs.rand(100)
+
+    # test non-chunked
+    a = tensor(raw)
+    result = bincount(a).execute().fetch()
+    expected = np.bincount(raw)
+    np.testing.assert_array_equal(result, expected)
+
+    weights = tensor(raw_weights)
+    result = bincount(a, weights=weights).execute().fetch()
+    expected = np.bincount(raw, weights=raw_weights)
+    np.testing.assert_array_equal(result, expected)
+
+    # test chunked
+    a = tensor(raw, chunk_size=13)
+    result = bincount(a, chunk_size_limit=5).execute().fetch()
+    expected = np.bincount(raw)
+    np.testing.assert_array_equal(result, expected)
+
+    # test minlength
+    a = tensor(raw, chunk_size=13)
+    result = bincount(a, chunk_size_limit=5, minlength=15).execute().fetch()
+    expected = np.bincount(raw, minlength=15)
+    np.testing.assert_array_equal(result, expected)
+
+    # test with gap
+    raw1 = np.concatenate([raw, [20]])
+    a = tensor(raw1, chunk_size=13)
+    result = bincount(a, chunk_size_limit=5).execute().fetch()
+    expected = np.bincount(raw1)
+    np.testing.assert_array_equal(result, expected)
+
+    # test with weights
+    a = tensor(raw, chunk_size=13)
+    weights = tensor(raw_weights, chunk_size=15)
+    result = bincount(a, chunk_size_limit=5, weights=weights).execute().fetch()
+    expected = np.bincount(raw, weights=raw_weights)
+    np.testing.assert_array_almost_equal(result, expected)
+
+    # test errors
+    a = tensor(raw, chunk_size=13)
+    with pytest.raises(TypeError, match="cast array data"):
+        bincount(a.astype(float)).execute()
+    with pytest.raises(ValueError, match="1 dimension"):
+        bincount(np.array([[1, 2], [3, 4]])).execute()
+    with pytest.raises(ValueError, match="be negative"):
+        bincount(a, minlength=-1).execute()
+    with pytest.raises(ValueError, match="the same length"):
+        bincount([-1, 1, 2, 3], weights=[3, 4]).execute()
+    with pytest.raises(ValueError, match="negative elements"):
+        bincount(tensor([-1, 1, 2, 3], chunk_size=2)).execute()

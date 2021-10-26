@@ -212,15 +212,16 @@ from .arithmetic import (
 )
 from .statistics import (
     average,
+    bincount,
     cov,
     corrcoef,
     digitize,
     ptp,
     histogram_bin_edges,
     histogram,
+    median,
     quantile,
     percentile,
-    median,
 )
 from .linalg.tensordot import tensordot
 from .linalg.dot import dot

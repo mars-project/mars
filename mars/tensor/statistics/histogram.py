@@ -422,8 +422,6 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
         bins=None,
         range=None,
         weights=None,
-        input_min=None,
-        input_max=None,
         **kw,
     ):
         super().__init__(_input=input, _bins=bins, _range=range, _weights=weights, **kw)
