@@ -19,7 +19,7 @@ import scipy.sparse as sp
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.sparsefuncs import min_max_axis
 
-from ... import execute, fetch
+from ... import execute as execute_tileable, fetch as fetch_tileable
 from ... import opcodes
 from ... import tensor as mt
 from ...core import ENTITY_TYPE, OutputType, recursive_tile
@@ -84,7 +84,7 @@ class LabelEncoder(TransformerMixin, BaseEstimator):
     ['tokyo', 'tokyo', 'paris']
     """
 
-    def fit(self, y, session=None, run_kwargs=None):
+    def fit(self, y, session=None, run_kwargs=None, execute=True):
         """Fit label encoder.
 
         Parameters
@@ -98,7 +98,11 @@ class LabelEncoder(TransformerMixin, BaseEstimator):
             Fitted label encoder.
         """
         y = column_or_1d(y, warn=True)
-        self.classes_ = execute(_unique(y), session=session, **(run_kwargs or dict()))
+        self.classes_ = _unique(y)
+        if execute:
+            self.classes_ = execute_tileable(
+                self.classes_, session=session, **(run_kwargs or dict())
+            )
         return self
 
     def fit_transform(self, y, session=None, run_kwargs=None):
@@ -115,12 +119,12 @@ class LabelEncoder(TransformerMixin, BaseEstimator):
             Encoded labels.
         """
         y = column_or_1d(y, warn=True)
-        self.classes_, y = execute(
+        self.classes_, y = execute_tileable(
             _unique(y, return_inverse=True), session=session, **(run_kwargs or dict())
         )
         return y
 
-    def transform(self, y, session=None, run_kwargs=None):
+    def transform(self, y, session=None, run_kwargs=None, execute=True):
         """Transform labels to normalized encoding.
 
         Parameters
@@ -139,9 +143,10 @@ class LabelEncoder(TransformerMixin, BaseEstimator):
         if _num_samples(y) == 0:
             return mt.array([])
 
-        return _encode(y, uniques=self.classes_).execute(
-            session=session, **(run_kwargs or dict())
-        )
+        t = _encode(y, uniques=self.classes_)
+        if execute:
+            t = t.execute(session=session, **(run_kwargs or dict()))
+        return t
 
     def inverse_transform(self, y, session=None, run_kwargs=None):
         """Transform labels back to original encoding.
@@ -298,8 +303,10 @@ class LabelBinarizer(TransformerMixin, BaseEstimator):
         -------
         self : returns an instance of self.
         """
-        self.y_type_ = fetch(
-            execute(type_of_target(y), session=session, **(run_kwargs or dict()))
+        self.y_type_ = fetch_tileable(
+            execute_tileable(
+                type_of_target(y), session=session, **(run_kwargs or dict())
+            )
         )
         if "multioutput" in self.y_type_:
             raise ValueError(
@@ -361,8 +368,10 @@ class LabelBinarizer(TransformerMixin, BaseEstimator):
         """
         check_is_fitted(self)
 
-        target = fetch(
-            execute(type_of_target(y), session=session, **(run_kwargs or dict()))
+        target = fetch_tileable(
+            execute_tileable(
+                type_of_target(y), session=session, **(run_kwargs or dict())
+            )
         )
         y_is_multilabel = target.startswith("multilabel")
         if y_is_multilabel and not self.y_type_.startswith("multilabel"):
