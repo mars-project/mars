@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 from collections import defaultdict
-from dataclasses import asdict
+from dataclasses import fields as dataclass_fields
 from typing import Dict, List, Set
 
 from .... import oscar as mo
@@ -21,6 +22,11 @@ from ....utils import implements
 from ....typing import BandType
 from ..core import _CommonMeta, _ChunkMeta
 from .base import AbstractMetaStore, register_meta_store
+
+
+@functools.lru_cache(100)
+def _get_meta_fields(meta_cls):
+    return [f.name for f in dataclass_fields(meta_cls)]
 
 
 @register_meta_store
@@ -63,10 +69,10 @@ class DictMetaStore(AbstractMetaStore):
         if error not in ("raise", "ignore"):  # pragma: no cover
             raise ValueError("error must be raise or ignore")
         try:
-            meta = asdict(self._store[object_id])
-            if fields:
-                return {k: meta[k] for k in fields}
-            return meta
+            meta = self._store[object_id]
+            if fields is None:
+                fields = _get_meta_fields(type(meta))
+            return {k: getattr(meta, k) for k in fields}
         except KeyError:
             if error == "raise":
                 raise

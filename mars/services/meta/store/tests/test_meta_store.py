@@ -38,9 +38,15 @@ async def test_mock_meta_store():
         ),
     )
 
+    meta = await meta_store.get_meta(t.key)
+    assert meta["shape"] == t.shape
+    assert meta["order"] == t.order
+    assert meta["dtype"] == t.dtype
+
     meta = await meta_store.get_meta(t.key, fields=["shape", "order"])
     assert meta["shape"] == t.shape
     assert meta["order"] == t.order
+    assert "dtype" not in meta
 
     await meta_store.del_meta(t.key)
 
