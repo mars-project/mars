@@ -360,8 +360,8 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         # for backward compatibility
         dtype = dtype if dtype is not None else dtypes
         if self._convert_dtype:
+            test_series = build_series(series, size=2, name=series.name)
             try:
-                test_series = build_series(series, size=2, name=series.name)
                 with np.errstate(all="ignore"), quiet_stdio():
                     infer_series = test_series.apply(
                         self._func, args=self.args, **self.kwds
@@ -374,7 +374,10 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
             if index is not None:
                 index_value = parse_index(index)
             elif infer_series is not None:
-                index_value = parse_index(infer_series.index)
+                if infer_series.index is test_series.index:
+                    index_value = series.index_value
+                else:  # pragma: no cover
+                    index_value = parse_index(infer_series.index)
             else:
                 index_value = parse_index(None, series)
 
