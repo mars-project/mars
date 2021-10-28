@@ -7,5 +7,6 @@ Development
 
    contributing
    overview
+   operand
    oscar/index
    services/index
