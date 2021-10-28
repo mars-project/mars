@@ -188,5 +188,10 @@ async def test_web_storage_api():
         )
         np.testing.assert_array_equal(value[3:5, :], sliced_value)
 
+        infos = await web_storage_api.get_infos(t.chunks[0].key)
+        assert len(infos) == 1
+        assert infos[0].level == StorageLevel.MEMORY
+        assert infos[0].memory_size == t.chunks[0].nbytes
+
         await MockStorageAPI.cleanup(pool.external_address)
         await MockClusterAPI.cleanup(pool.external_address)
