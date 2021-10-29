@@ -26,7 +26,7 @@ method is also needed for creating a Mars dataframe.
         path = StringField('path')
 
         def __init__(self, path=None, **kw):
-            super().__init__(_path=path, _output_types=[OutputType.dataframe], **kw,)
+            super().__init__(path=path, _output_types=[OutputType.dataframe], **kw,)
 
         def __call__(self, index_value=None, columns_value=None,
                      dtypes=None, chunk_bytes=None):
@@ -42,7 +42,7 @@ method is also needed for creating a Mars dataframe.
 
 For the ``SimpleReadCSV`` operator, the property ``path`` means the path of csv file,
 we use a ``StringField`` to indicate the property's type which is useful for serialization.
-If the type is uncertain, ``AnyField`` will works.
+If the type is uncertain, ``AnyField`` will work.
 
 Implement tile method
 ------------------------
@@ -191,7 +191,7 @@ After reading the chunk data by ``pd.read_csv``, we store the results in ``ctx``
 ``SimpleReadCSV`` only has one output here, for operator like ``SVD`` that has multiple
 outputs, we can store them separately using output's keys.
 
-define user interface
+Define user interface
 ----------------------
 Finally, we need define function ``read_csv`` exposed to users. In this function, besides
 creating a ``SimpleReadCSV`` operator, a sample data is taken to infer some meta information
@@ -218,8 +218,10 @@ of Mars DataFrame, such as dtypes, columns, index, etc.
             chunk_bytes=chunk_bytes,
         )
 
-functional testing
+Functional testing
 -------------------
+Write a script to test if the ``read_csv`` works.
+
 .. code-block:: python
 
     file_path = 'data.csv'
