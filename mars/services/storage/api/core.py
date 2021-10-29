@@ -64,3 +64,18 @@ class AbstractStorageAPI(ABC):
         object information: ObjectInfo
             the put object information
         """
+
+    @abstractmethod
+    async def get_infos(self, data_key: str) -> List[DataInfo]:
+        """
+        Get data information items for specific data key
+
+        Parameters
+        ----------
+        data_key
+
+        Returns
+        -------
+        out
+            List of information for specified key
+        """

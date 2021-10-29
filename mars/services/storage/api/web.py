@@ -77,6 +77,12 @@ class StorageWebAPIHandler(MarsServiceWebAPIHandler):
         )
         self.write(serialize_serializable(res))
 
+    @web_api("(?P<data_key>[^/]+)", method="get", arg_filter={"action": "get_infos"})
+    async def get_infos(self, session_id: str, data_key: str):
+        oscar_api = await self._get_storage_api_by_object_id(session_id, data_key)
+        res = await oscar_api.get_infos(data_key)
+        self.write(serialize_serializable(res))
+
 
 web_handlers = {StorageWebAPIHandler.get_root_pattern(): StorageWebAPIHandler}
 
@@ -104,6 +110,7 @@ class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
         )
         return deserialize_serializable(res.body)
 
+    @mo.extensible
     async def put(
         self, data_key: str, obj: object, level: StorageLevel = StorageLevel.MEMORY
     ) -> DataInfo:
@@ -115,5 +122,17 @@ class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
             params=params,
             headers={"Content-Type": "application/octet-stream"},
             data=serialize_serializable(obj),
+        )
+        return deserialize_serializable(res.body)
+
+    @mo.extensible
+    async def get_infos(self, data_key: str) -> List[DataInfo]:
+        path = f"{self._address}/api/session/{self._session_id}/storage/{data_key}"
+        params = dict(action="get_infos")
+        res = await self._request_url(
+            path=path,
+            method="GET",
+            headers={"Content-Type": "application/octet-stream"},
+            params=params,
         )
         return deserialize_serializable(res.body)
