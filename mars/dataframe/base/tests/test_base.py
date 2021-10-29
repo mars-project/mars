@@ -338,6 +338,7 @@ def test_series_apply():
     r = tile(series.apply(np.sqrt))
     assert np.dtype("float64") == r.dtype
     assert r.shape == series.shape
+    assert r.index_value is series.index_value
     assert r.op._op_type_ == opcodes.APPLY
     assert r.op.output_types[0] == OutputType.series
     assert r.chunks[0].shape == (5,)
