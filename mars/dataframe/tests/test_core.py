@@ -359,3 +359,35 @@ def test_between(setup):
     result = series.between(left, right).execute().fetch()
     expected = pd_series.between(pd_left, pd_right)
     pd.testing.assert_series_equal(result, expected)
+
+
+def test_series_median(setup):
+    raw = pd.Series(np.random.rand(10), name="col")
+    series = Series(raw)
+    
+    r = series.median()
+    result = r.execute().fetch()
+    assert np.isclose(raw.median(), result)
+    
+    raw = pd.Series(np.random.rand(100), name="col")
+    series = Series(raw)
+    
+    r = series.median()
+    result = r.execute().fetch()
+    assert np.isclose(raw.median(), result)
+    
+    raw = pd.Series(np.random.rand(10), name="col")
+    raw[np.random.randint(0,10)] = None
+    series = Series(raw)
+    
+    r = series.median()
+    result = r.execute().fetch()
+    assert np.isclose(raw.median(), result)
+    
+    raw = pd.Series(np.random.rand(10), name="col")
+    raw[np.random.randint(0,10)] = None
+    series = Series(raw)
+    
+    r = series.median(skipna=False)
+    result = r.execute().fetch()
+    assert np.isnan(raw.median(skipna=False)) and np.isnan(result)
