@@ -1,17 +1,17 @@
 .. _operand_implementation:
 
-How to implement a Mars operator
+How to implement a Mars operand
 ================================
 
-Use ``read_csv`` as an example to illustrate how to implement a Mars operator.
+Use ``read_csv`` as an example to illustrate how to implement a Mars operand.
 
-Define operator class
+Define operand class
 ---------------------
-All Mars operators inherit from the base class ``Operand``, it defines the
-basic properties of operator, each module has it's own child class, such as
-``DataFrameOperand``, ``TensorOperand``, etc. For tilebale operator, it also
+All Mars operands inherit from the base class ``Operand``, it defines the
+basic properties of operand, each module has it's own child class, such as
+``DataFrameOperand``, ``TensorOperand``, etc. For tilebale operand, it also
 needs to inherit from ``TileableOperandMixin`` to implement ``tile`` and ``execute``
-functions. So we firstly define operator class and its init function, ``__call__``
+functions. So we firstly define operand class and its init function, ``__call__``
 method is also needed for creating a Mars dataframe.
 
 .. code-block:: python
@@ -40,7 +40,7 @@ method is also needed for creating a Mars dataframe.
                 chunk_bytes=chunk_bytes,
             )
 
-For the ``SimpleReadCSV`` operator, the property ``path`` means the path of csv file,
+For the ``SimpleReadCSV`` operand, the property ``path`` means the path of csv file,
 we use a ``StringField`` to indicate the property's type which is useful for serialization.
 If the type is uncertain, ``AnyField`` will work.
 
@@ -50,9 +50,9 @@ Tile method is the next goal, this method will split the computing task into
 several sub tasks. Ideally, these tasks can be assigned on different executors
 in parallel. In the specific case of ``read_csv``, each sub task read a block of bytes
 from the file, so we need calculate the offset and length of each block in the
-tile function. As we use the same class for both coarse-grained and fine-grained operator,
+tile function. As we use the same class for both coarse-grained and fine-grained operand,
 ``offset``, ``length`` and other properties are added to record information for
-fine-grained operator.
+fine-grained operand.
 
 .. code-block:: python
 
@@ -137,7 +137,7 @@ fine-grained operator.
 
 Implement execute method
 -------------------------
-When sub task is delivered to executor, Mars will call operator's execute method to
+When sub task is delivered to executor, Mars will call operand's execute method to
 perform calculations. When it comes to ``read_csv``, we need read the block from the file
 according to the ``offset`` and ``length``, however the ``offset`` is a rough position as
 we can't read a csv file from the middle of a line, using ``readline`` to find the starts
@@ -188,13 +188,13 @@ and ends at delimiter boundaries.
             ctx[out.key] = data
 
 After reading the chunk data by ``pd.read_csv``, we store the results in ``ctx``.
-``SimpleReadCSV`` only has one output here, for operator like ``SVD`` that has multiple
+``SimpleReadCSV`` only has one output here, for operand like ``SVD`` that has multiple
 outputs, we can store them separately using output's keys.
 
 Define user interface
 ----------------------
 Finally, we need define function ``read_csv`` exposed to users. In this function, besides
-creating a ``SimpleReadCSV`` operator, a sample data is taken to infer some meta information
+creating a ``SimpleReadCSV`` operand, a sample data is taken to infer some meta information
 of Mars DataFrame, such as dtypes, columns, index, etc.
 
 .. code-block:: python
