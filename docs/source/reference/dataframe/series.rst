@@ -123,6 +123,7 @@ Computations / descriptive stats
    Series.kurtosis
    Series.max
    Series.mean
+   Series.median
    Series.min
    Series.pct_change
    Series.prod
