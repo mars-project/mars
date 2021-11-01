@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.8.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-10-30 13:07+0800\n"
+"POT-Creation-Date: 2021-11-01 16:53+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,8 +18,8 @@ msgstr ""
 "Generated-By: Babel 2.9.1\n"
 
 #: ../../source/development/operand.rst:4
-msgid "How to implement a Mars operand"
-msgstr "如何实现 Mars 算子"
+msgid "implement a Mars operand"
+msgstr "实现 Mars 算子"
 
 #: ../../source/development/operand.rst:6
 msgid ""
@@ -31,23 +31,24 @@ msgstr "这篇文档里使用 ``read_csv`` 作为例子介绍如何实现一个 
 msgid "Define operand class"
 msgstr "定义算子类"
 
-#: ../../source/development/operand.rst:10
+#: ../../source/development/operand.rst:11
 msgid ""
 "All Mars operands inherit from the base class ``Operand``, it defines the"
 " basic properties of operand, each module has it's own child class, such "
 "as ``DataFrameOperand``, ``TensorOperand``, etc. For tilebale operand, it"
 " also needs to inherit from ``TileableOperandMixin`` to implement "
 "``tile`` and ``execute`` functions. So we firstly define operand class "
-"and its init function, ``__call__`` method is also needed for creating a "
-"Mars dataframe."
+"and set output types in init method, the types could be DataFrame or "
+"Tensor which depends on the type of operand's output data, ``__call__`` "
+"method is also needed for creating a Mars dataframe."
 msgstr ""
 "所有的 Mars 算子都继承自基类 ``Operand``，基类里定义了算子的基本属性，在每个大模块里都实现了对应的子类，比如 "
 "``DataFrameOperand``、 ``TensorOperand`` 等。对于一个可以被 tile 的算子，它还需要继承 "
-"``TileableOperandMixin`` 用以实现 "
-"``tile`` 、``execute`` 等必要的方法。所以首先我们可以先定义好算子类和它的初始化方法，并且在 ``__call__`` "
-"函数里定义好创建 Mars DataFrame 的逻辑。"
+"``TileableOperandMixin`` 用以实现 ``tile`` 、``execute`` "
+"等必要的方法。所以首先我们可以先定义好算子类和它的初始化方法，指定算子的输出类型，"
+"并且在 ``__call__`` 函数里定义好创建 Mars DataFrame 的逻辑。"
 
-#: ../../source/development/operand.rst:43
+#: ../../source/development/operand.rst:47
 msgid ""
 "For the ``SimpleReadCSV`` operand, the property ``path`` means the path "
 "of csv file, we use a ``StringField`` to indicate the property's type "
@@ -57,11 +58,11 @@ msgstr ""
 "对于 ``SimpleReadCSV`` 算子，类持有的 ``path`` 属性记录 csv 的文件地址，这里使用``StringField`` "
 "表示改属性的类型是字符串，指定类型主要是为了方便序列化算子，如果某个属性的类型是不确定的，可以用 ``AnyField`` 表示。"
 
-#: ../../source/development/operand.rst:48
+#: ../../source/development/operand.rst:52
 msgid "Implement tile method"
 msgstr "实现 tile 方法"
 
-#: ../../source/development/operand.rst:49
+#: ../../source/development/operand.rst:54
 msgid ""
 "Tile method is the next goal, this method will split the computing task "
 "into several sub tasks. Ideally, these tasks can be assigned on different"
@@ -78,7 +79,7 @@ msgstr ""
 "函数里我们需要计算出每个子任务读取文件块的偏移值以及读取长度。由于粗粒度算子与细粒度算子都使用同一个算子类表示，所以需要在刚刚定义好的算子中添加 "
 "``offset``、``length`` 等属性记录细粒度算子需要的一些信息。"
 
-#: ../../source/development/operand.rst:139
+#: ../../source/development/operand.rst:138
 msgid "Implement execute method"
 msgstr "实现 execute 方法"
 
@@ -109,7 +110,7 @@ msgstr ""
 msgid "Define user interface"
 msgstr "定义用户接口"
 
-#: ../../source/development/operand.rst:196
+#: ../../source/development/operand.rst:197
 msgid ""
 "Finally, we need define function ``read_csv`` exposed to users. In this "
 "function, besides creating a ``SimpleReadCSV`` operand, a sample data is "
@@ -119,15 +120,40 @@ msgstr ""
 "最后，需要定义一个暴露给用户的函数接口 ``read_csv``。在这个函数里，我们需要创建``SimpleReadCSV`` "
 "算子，并且需要读取一小块采样数据，推断出输出的 DataFrame 的dtypes, columns, index 等元信息。"
 
-#: ../../source/development/operand.rst:222
-msgid "Functional testing"
-msgstr "测试"
-
 #: ../../source/development/operand.rst:223
-msgid "Write a script to test if the ``read_csv`` works."
-msgstr "编写一个脚本测试 ``read_csv`` 是否正常工作。"
+msgid "Write tests"
+msgstr "编写测试用例"
 
-#: ../../source/development/operand.rst:237
-msgid "The result is printed to the console:"
-msgstr "最终结果会打印在控制台上："
+#: ../../source/development/operand.rst:225
+msgid ""
+"Mars uses pytest for testing, we can add tests under the ``tests`` "
+"subdirectory of the specific module and follow the current examples of "
+"tests. Define a test function and use the shared fixture ``setup`` to run"
+" your tests under the test environment."
+msgstr ""
+"Mars 使用 pytest 运行测试用例，可以参考当前模块的单元测试，在 ``tests`` 目录下添加对应的用例。"
+"在测试函数里，需要使用共享的 fixture ``setup`` 来使得你的测试跑在测试环境中。"
 
+#: ../../source/development/operand.rst:244
+msgid ""
+"When tests pass locally, we can submit a pull requests on GitHub, the "
+"test suite will run automatically on GitHub Actions and Azure Pipelines "
+"continuous integration services, if all checks have passed, it means the "
+"pull request is up to the quality of merging."
+msgstr ""
+"如果在本地测试通过，这时候我们可以在 GitHub 提交一个 pull requests，所有的测试会自动"
+"运行在 GitHub Actions 和 Azure Pipelines 这两个持续集成的平台上，如果所有的检测都通过了，"
+"意味着这个 pull requests 达到了合并的要求。"
+
+#: ../../source/development/operand.rst:250
+msgid "Documenting your code"
+msgstr "添加文档"
+
+#: ../../source/development/operand.rst:252
+msgid ""
+"If the changes add APIs to Mars modules, we should document our code in "
+"``docs`` directory, it can be done following the regarding "
+":ref:`documentation <build_documentation>`."
+msgstr ""
+"如果代码里增加了 API，那我们需要在 ``docs`` 目录下添加说明，可以参考相关 "
+":ref:`文档 <build_documentation>` 完成。"

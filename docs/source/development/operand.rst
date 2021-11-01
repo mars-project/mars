@@ -1,18 +1,20 @@
 .. _operand_implementation:
 
-How to implement a Mars operand
-================================
+implement a Mars operand
+========================
 
 Use ``read_csv`` as an example to illustrate how to implement a Mars operand.
 
 Define operand class
 ---------------------
+
 All Mars operands inherit from the base class ``Operand``, it defines the
 basic properties of operand, each module has it's own child class, such as
 ``DataFrameOperand``, ``TensorOperand``, etc. For tilebale operand, it also
 needs to inherit from ``TileableOperandMixin`` to implement ``tile`` and ``execute``
-functions. So we firstly define operand class and its init function, ``__call__``
-method is also needed for creating a Mars dataframe.
+functions. So we firstly define operand class and set output types in init method,
+the types could be DataFrame or Tensor which depends on the type of operand's output data,
+``__call__`` method is also needed for creating a Mars dataframe.
 
 .. code-block:: python
 
@@ -25,11 +27,13 @@ method is also needed for creating a Mars dataframe.
     class SimpleReadCSV(DataFrameOperand, DataFrameOperandMixin):
         path = StringField('path')
 
-        def __init__(self, path=None, **kw):
-            super().__init__(path=path, _output_types=[OutputType.dataframe], **kw,)
+        def __init__(self, **kw):
+            super().__init__(**kw)
+            self._output_types=[OutputType.dataframe]
 
         def __call__(self, index_value=None, columns_value=None,
                      dtypes=None, chunk_bytes=None):
+            # np.nan means its size is unknown on axis 0
             shape = (np.nan, len(dtypes))
             return self.new_dataframe(
                 None,
@@ -46,6 +50,7 @@ If the type is uncertain, ``AnyField`` will work.
 
 Implement tile method
 ------------------------
+
 Tile method is the next goal, this method will split the computing task into
 several sub tasks. Ideally, these tasks can be assigned on different executors
 in parallel. In the specific case of ``read_csv``, each sub task read a block of bytes
@@ -68,19 +73,13 @@ fine-grained operand.
 
     class SimpleReadCSV(DataFrameOperand, DataFrameOperandMixin):
         path = StringField("path")
-        chunk_bytes = Int64Field('chunk_bytes')
+        chunk_bytes = AnyFiled('chunk_bytes')
         offset = Int64Field("offset")
         length = Int64Field("length")
 
-        def __init__(self, path=None, chunk_bytes=None, offset=None, length=None, **kw):
-            super().__init__(
-                path=path,
-                chunk_bytes=chunk_bytes,
-                offset=offset,
-                length=length,
-                _output_types=[OutputType.dataframe],
-                **kw,
-            )
+        def __init__(self, **kw):
+            super().__init__(**kw)
+            self._output_types=[OutputType.dataframe]
 
         @classmethod
         def tile(cls, op: "SimpleReadCSV"):
@@ -137,6 +136,7 @@ fine-grained operand.
 
 Implement execute method
 -------------------------
+
 When sub task is delivered to executor, Mars will call operand's execute method to
 perform calculations. When it comes to ``read_csv``, we need read the block from the file
 according to the ``offset`` and ``length``, however the ``offset`` is a rough position as
@@ -193,6 +193,7 @@ outputs, we can store them separately using output's keys.
 
 Define user interface
 ----------------------
+
 Finally, we need define function ``read_csv`` exposed to users. In this function, besides
 creating a ``SimpleReadCSV`` operand, a sample data is taken to infer some meta information
 of Mars DataFrame, such as dtypes, columns, index, etc.
@@ -218,36 +219,35 @@ of Mars DataFrame, such as dtypes, columns, index, etc.
             chunk_bytes=chunk_bytes,
         )
 
-Functional testing
--------------------
-Write a script to test if the ``read_csv`` works.
+Write tests
+------------
+
+Mars uses pytest for testing, we can add tests under the ``tests`` subdirectory
+of the specific module and follow the current examples of tests. Define a test
+function and use the shared fixture ``setup`` to run your tests under the test
+environment.
 
 .. code-block:: python
 
-    file_path = 'data.csv'
-    # write to a csv file
-    pd.DataFrame({
-        'int': range(10),
-        'float': np.random.rand(10),
-        'str': [f'value_{i}' for i in range(10)]
-    }).to_csv(file_path, index=False)
-    df = read_csv(file_path)
-    print(df.execute())
+    def test_simple_read_csv_execution(setup):
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, "test.csv")
+            # write to a csv file
+            raw = pd.DataFrame({
+                'int': range(10),
+                'float': np.random.rand(10),
+                'str': [f'value_{i}' for i in range(10)]
+            }).to_csv(file_path, index=False)
+            mdf = read_csv(file_path).execute().fetch()
+            pd.testing.assert_frame_equal(raw, mdf)
 
-The result is printed to the console:
+When tests pass locally, we can submit a pull requests on GitHub, the test suite
+will run automatically on GitHub Actions and Azure Pipelines continuous integration
+services, if all checks have passed, it means the pull request is up to the quality
+of merging.
 
-.. code-block::
+Documenting your code
+----------------------
 
-    Web service started at http://0.0.0.0:49965
-    100%|██████████| 100.0/100 [00:00<00:00, 768.97it/s]
-       int     float      str
-    0    0  0.780434  value_0
-    1    1  0.224308  value_1
-    2    2  0.075975  value_2
-    3    3  0.001357  value_3
-    4    4  0.970998  value_4
-    5    5  0.356761  value_5
-    6    6  0.688267  value_6
-    7    7  0.250834  value_7
-    8    8  0.434001  value_8
-    9    9  0.113293  value_9
+If the changes add APIs to Mars modules, we should document our code in ``docs``
+directory, it can be done following the regarding :ref:`documentation <build_documentation>`.
