@@ -20,6 +20,7 @@ from typing import Dict, List, Tuple, Type
 
 from ...core import OperandType, ChunkType, EntityType, enter_mode
 from ...core.graph import EntityGraph
+from ...core.operand import Operand
 
 
 class OptimizationRecordType(Enum):
@@ -191,6 +192,20 @@ class Optimizer(ABC):
                     succ.inputs = new_inputs
 
     @classmethod
+    def _get_rules(cls, op):
+        op_cls = type(op)
+        rule_types = cls._rules.get(op_cls, None)
+        if rule_types is None:
+            for op_cls in type(op).__mro__:
+                if op_cls is Operand:
+                    break
+                rule_types = cls._rules.get(op_cls)
+                if rule_types is not None:
+                    break
+            cls._rules[type(op)] = rule_types or []
+        return rule_types
+
+    @classmethod
     @enter_mode(build=True)
     def optimize(cls, graph: EntityGraph) -> OptimizationRecords:
         """
@@ -215,8 +230,8 @@ class Optimizer(ABC):
                 continue
             visited.add(op)
 
-            rule_types = cls._rules.get(type(op))
-            if not rule_types:
+            rule_types = cls._get_rules(op)
+            if rule_types is None:
                 continue
 
             rules = [rule_type(graph, records, cls) for rule_type in rule_types]

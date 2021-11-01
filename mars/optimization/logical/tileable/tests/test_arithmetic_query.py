@@ -12,7 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .arithmetic_query import SeriesArithmeticToEval
-from .column_pruning import GroupByPruneDataSource, GetitemPruneDataSource
-from .core import optimize
-from .head import HeadPushDown
+import numpy as np
+import pandas as pd
+
+from ..... import dataframe as md
+from .....core import enter_mode, TileableGraph, TileableGraphBuilder
+from .. import optimize
+
+
+@enter_mode(build=True)
+def test_arithmetic_query(setup):
+    raw = pd.DataFrame(np.random.rand(100, 10), columns=list("ABCDEFGHIJ"))
+    df1 = md.DataFrame(raw, chunk_size=10)
+    df2 = -df1["A"] + df1["B"] * 5
+    graph = TileableGraph([df2.data])
+    next(TileableGraphBuilder(graph).build())
+    records = optimize(graph)
+    opt_df2 = records.get_optimization_result(df2.data)
+    print(opt_df2.op.expr)
