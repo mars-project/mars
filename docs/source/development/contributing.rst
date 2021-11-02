@@ -131,6 +131,8 @@ We also require relative import in code for all Mars modules. Use
 
 to check if your code meet the requirement.
 
+.. _build_documentation:
+
 Building Documentations
 -----------------------
 Mars uses ``sphinx`` to build documents. You need to install necessary packages
