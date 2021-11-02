@@ -61,6 +61,7 @@ from ..utils import (
     tokenize,
 )
 from .utils import fetch_corner_data, ReprSeries, parse_index, merge_index_value
+from ..tensor import statistics
 
 
 class IndexValue(Serializable):
@@ -1522,6 +1523,74 @@ class Series(HasShapeTileable, _ToPandasMixin):
             )
 
         return lmask & rmask
+
+    def median(
+        self, axis=None, skipna=True, out=None, overwrite_input=False, keepdims=False
+    ):
+        """
+        Return the median of the values over the requested axis.
+
+        Parameters
+        ----------
+        axis : {index (0)}
+            Axis or axes along which the medians are computed. The default
+            is to compute the median along a flattened version of the tensor.
+            A sequence of axes is supported since version 1.9.0.
+        skipna : bool, optional, default True
+            Exclude NA/null values when computing the result.
+        out : Tensor, default None
+            Output tensor in which to place the result. It must
+            have the same shape and buffer length as the expected output,
+            but the type (of the output) will be cast if necessary.
+        overwrite_input : bool, default False
+            Just for compatibility with Numpy, would not take effect.
+        keepdims : bool, default False
+            If this is set to True, the axes which are reduced are left
+            in the result as dimensions with size one. With this option,
+            the result will broadcast correctly against the original `arr`.
+
+        Returns
+        -------
+        median : scalar
+            Return the median of the values over the requested axis.
+
+        See Also
+        --------
+        tensor.mean, tensor.percentile
+
+        Notes
+        -----
+        Given a vector ``V`` of length ``N``, the median of ``V`` is the
+        middle value of a sorted copy of ``V``, ``V_sorted`` - i
+        e., ``V_sorted[(N-1)/2]``, when ``N`` is odd, and the average of the
+        two middle values of ``V_sorted`` when ``N`` is even.
+
+        Examples
+        --------
+        >>> import mars.dataframe as md
+        >>> a = md.Series([10, 7, 4, 3, 2, 1])
+        >>> a.median().execute()
+        2.0
+        >>> mt.median(a).execute()
+        3.5
+        >>> a = md.Series([10, 7, 4, None, 2, 1])
+        >>> a.median().execute()
+        4.0
+        >>> a.median(skipna=False).execute()
+        nan
+        """
+        if skipna:
+            return statistics.median(
+                self.dropna(),
+                axis=None,
+                out=None,
+                overwrite_input=False,
+                keepdims=False,
+            )
+        else:
+            return statistics.median(
+                self, axis=None, out=None, overwrite_input=False, keepdims=False
+            )
 
 
 class BaseDataFrameChunkData(ChunkData):
