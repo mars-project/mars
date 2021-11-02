@@ -6,7 +6,7 @@ Implement a Mars Operand
 Use ``read_csv`` as an example to illustrate how to implement a Mars operand.
 
 Define Operand Class
----------------------
+--------------------
 
 All Mars operands inherit from the base class ``Operand``, it defines the
 basic properties of operand, each module has it's own child class, such as
@@ -49,7 +49,7 @@ we use a ``StringField`` to indicate the property's type which is useful for ser
 If the type is uncertain, ``AnyField`` will work.
 
 Implement Tile Method
-------------------------
+---------------------
 
 Tile method is the next goal, this method will split the computing task into
 several sub tasks. Ideally, these tasks can be assigned on different executors
@@ -135,7 +135,7 @@ fine-grained operand.
 
 
 Implement Execute Method
--------------------------
+------------------------
 
 When sub task is delivered to executor, Mars will call operand's execute method to
 perform calculations. When it comes to ``read_csv``, we need read the block from the file
@@ -192,7 +192,7 @@ After reading the chunk data by ``pd.read_csv``, we store the results in ``ctx``
 outputs, we can store them separately using output's keys.
 
 Define User Interface
-----------------------
+---------------------
 
 Finally, we need define function ``read_csv`` exposed to users. In this function, besides
 creating a ``SimpleReadCSV`` operand, a sample data is taken to infer some meta information
@@ -220,7 +220,7 @@ of Mars DataFrame, such as dtypes, columns, index, etc.
         )
 
 Write Tests
-------------
+-----------
 
 Mars uses pytest for testing, we can add tests under the ``tests`` subdirectory
 of the specific module and follow the current examples of tests. Define a test
@@ -247,7 +247,7 @@ services, if all checks have passed, it means the pull request is up to the qual
 of merging.
 
 Documenting Your Code
-----------------------
+---------------------
 
 If the changes add APIs to Mars modules, we should document our code in ``docs``
 directory, it can be done following the regarding :ref:`documentation <build_documentation>`.
