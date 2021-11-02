@@ -1,11 +1,11 @@
 .. _operand_implementation:
 
-implement a Mars operand
+Implement a Mars Operand
 ========================
 
 Use ``read_csv`` as an example to illustrate how to implement a Mars operand.
 
-Define operand class
+Define Operand Class
 ---------------------
 
 All Mars operands inherit from the base class ``Operand``, it defines the
@@ -48,7 +48,7 @@ For the ``SimpleReadCSV`` operand, the property ``path`` means the path of csv f
 we use a ``StringField`` to indicate the property's type which is useful for serialization.
 If the type is uncertain, ``AnyField`` will work.
 
-Implement tile method
+Implement Tile Method
 ------------------------
 
 Tile method is the next goal, this method will split the computing task into
@@ -134,7 +134,7 @@ fine-grained operand.
             )
 
 
-Implement execute method
+Implement Execute Method
 -------------------------
 
 When sub task is delivered to executor, Mars will call operand's execute method to
@@ -191,7 +191,7 @@ After reading the chunk data by ``pd.read_csv``, we store the results in ``ctx``
 ``SimpleReadCSV`` only has one output here, for operand like ``SVD`` that has multiple
 outputs, we can store them separately using output's keys.
 
-Define user interface
+Define User Interface
 ----------------------
 
 Finally, we need define function ``read_csv`` exposed to users. In this function, besides
@@ -219,7 +219,7 @@ of Mars DataFrame, such as dtypes, columns, index, etc.
             chunk_bytes=chunk_bytes,
         )
 
-Write tests
+Write Tests
 ------------
 
 Mars uses pytest for testing, we can add tests under the ``tests`` subdirectory
@@ -246,7 +246,7 @@ will run automatically on GitHub Actions and Azure Pipelines continuous integrat
 services, if all checks have passed, it means the pull request is up to the quality
 of merging.
 
-Documenting your code
+Documenting Your Code
 ----------------------
 
 If the changes add APIs to Mars modules, we should document our code in ``docs``
