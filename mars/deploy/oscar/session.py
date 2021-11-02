@@ -1206,8 +1206,6 @@ class _IsolatedWebSession(_IsolatedSession):
         if new:
             # create new session
             await session_api.create_session(session_id)
-        else:
-            await session_api.get_session_address(session_id)
         lifecycle_api = WebLifecycleAPI(session_id, address)
         meta_api = WebMetaAPI(session_id, address)
         task_api = WebTaskAPI(session_id, address)
@@ -1838,6 +1836,7 @@ def new_session(
     session_id: str = None,
     backend: str = "oscar",
     default: bool = True,
+    new: bool = True,
     **kwargs,
 ) -> AbstractSession:
     ensure_isolation_created(kwargs)
@@ -1851,7 +1850,7 @@ def new_session(
         session_id = _new_session_id()
 
     session = SyncSession.init(
-        address, session_id=session_id, backend=backend, new=True, **kwargs
+        address, session_id=session_id, backend=backend, new=new, **kwargs
     )
     if default:
         session.as_default()

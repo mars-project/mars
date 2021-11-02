@@ -64,7 +64,7 @@ class DummyChannel(Channel):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed("Channel already closed, cannot send message")
         # put message directly into queue
-        await self._out_queue.put(message)
+        self._out_queue.put_nowait(message)
 
     @implements(Channel.recv)
     async def recv(self):
