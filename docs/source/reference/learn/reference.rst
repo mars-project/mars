@@ -131,7 +131,13 @@ Classification metrics
 
    metrics.accuracy_score
    metrics.auc
+   metrics.f1_score
+   metrics.fbeta_score
    metrics.log_loss
+   metrics.multilabel_confusion_matrix
+   metrics.precision_score
+   metrics.precision_recall_fscore_support
+   metrics.recall_score
    metrics.roc_curve
 
 Regression metrics

@@ -13,7 +13,16 @@
 # limitations under the License.
 
 from .pairwise import euclidean_distances, pairwise_distances, pairwise_distances_topk
-from ._classification import accuracy_score, log_loss
+from ._classification import (
+    accuracy_score,
+    log_loss,
+    multilabel_confusion_matrix,
+    precision_recall_fscore_support,
+    precision_score,
+    recall_score,
+    f1_score,
+    fbeta_score,
+)
 from ._ranking import roc_curve, auc
 from ._regresssion import r2_score
 from ._scorer import get_scorer
