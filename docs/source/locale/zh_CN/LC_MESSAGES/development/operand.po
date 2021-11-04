@@ -55,7 +55,7 @@ msgid ""
 "which is useful for serialization. If the type is uncertain, ``AnyField``"
 " will work."
 msgstr ""
-"对于 ``SimpleReadCSV`` 算子，类持有的 ``path`` 属性记录 csv 的文件地址，这里使用``StringField`` "
+"对于 ``SimpleReadCSV`` 算子，类持有的 ``path`` 属性记录 csv 的文件地址，这里使用 ``StringField`` "
 "表示改属性的类型是字符串，指定类型主要是为了方便序列化算子，如果某个属性的类型是不确定的，可以用 ``AnyField`` 表示。"
 
 #: ../../source/development/operand.rst:52
@@ -93,7 +93,7 @@ msgid ""
 " at delimiter boundaries."
 msgstr ""
 "当拆分好的子任务被分发到执行器时，Mars 会调用算子的 ``execute`` 方法来做计算，对于 ``read_csv`` "
-"的子任务，在函数里需要根据 ``offset`` 和 ``length``读取对应的数据块，但是这两个值只是一个粗略的值，因为 csv "
+"的子任务，在函数里需要根据 ``offset`` 和 ``length`` 读取对应的数据块，但是这两个值只是一个粗略的值，因为 csv "
 "文件不能从一行的中间读取，所以每次执行的时候需要计算出分隔符所在的起始位置。"
 
 #: ../../source/development/operand.rst:190
@@ -117,7 +117,7 @@ msgid ""
 "taken to infer some meta information of Mars DataFrame, such as dtypes, "
 "columns, index, etc."
 msgstr ""
-"最后，需要定义一个暴露给用户的函数接口 ``read_csv``。在这个函数里，我们需要创建``SimpleReadCSV`` "
+"最后，需要定义一个暴露给用户的函数接口 ``read_csv``。在这个函数里，我们需要创建 ``SimpleReadCSV`` "
 "算子，并且需要读取一小块采样数据，推断出输出的 DataFrame 的dtypes, columns, index 等元信息。"
 
 #: ../../source/development/operand.rst:223
