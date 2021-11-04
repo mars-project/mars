@@ -168,15 +168,18 @@ def test_cupy(np_val):
 
 @require_cudf
 def test_cudf():
-    test_df = cudf.DataFrame(
-        pd.DataFrame(
-            {
-                "a": np.random.rand(1000),
-                "b": np.random.choice(list("abcd"), size=(1000,)),
-                "c": np.random.randint(0, 100, size=(1000,)),
-            }
-        )
+    raw_df = pd.DataFrame(
+        {
+            "a": np.random.rand(1000),
+            "b": np.random.choice(list("abcd"), size=(1000,)),
+            "c": np.random.randint(0, 100, size=(1000,)),
+        }
     )
+    test_df = cudf.DataFrame(raw_df)
+    cudf.testing.assert_frame_equal(test_df, deserialize(*serialize(test_df)))
+
+    raw_df.columns = pd.MultiIndex.from_tuples([("a", "a"), ("a", "b"), ("b", "c")])
+    test_df = cudf.DataFrame(raw_df)
     cudf.testing.assert_frame_equal(test_df, deserialize(*serialize(test_df)))
 
 
