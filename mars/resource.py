@@ -151,7 +151,9 @@ def cpu_count():
 
 _last_cgroup_cpu_measure = None
 _last_proc_cpu_measure = None
+_last_psutil_measure = None
 _last_cpu_percent = None
+_cpu_percent_interval = 0.1
 
 
 def _take_process_cpu_snapshot():
@@ -167,7 +169,7 @@ def _take_process_cpu_snapshot():
 
 
 def cpu_percent():
-    global _last_cgroup_cpu_measure, _last_proc_cpu_measure, _last_cpu_percent
+    global _last_cgroup_cpu_measure, _last_proc_cpu_measure, _last_cpu_percent, _last_psutil_measure
     if _cpu_use_cgroup_stat:
         # see https://www.kernel.org/doc/Documentation/cgroup-v1/cpuacct.txt
         with open(CGROUP_CPU_STAT_FILE, "r") as cgroup_file:
@@ -179,15 +181,15 @@ def cpu_percent():
 
         last_cpu_acct, last_sample_time = _last_cgroup_cpu_measure
         time_delta = sample_time - last_sample_time
-        if time_delta < 1e-2:
-            return _last_cpu_percent
+        if time_delta < _cpu_percent_interval:
+            return _last_cpu_percent or 0
 
         _last_cgroup_cpu_measure = (cpu_acct, sample_time)
         # nanoseconds / seconds * 100, we shall divide 1e7.
         _last_cpu_percent = round(
             (cpu_acct - last_cpu_acct) / (sample_time - last_sample_time) / 1e7, 1
         )
-        return _last_cpu_percent
+        return _last_cpu_percent or 0
     elif _cpu_use_process_stat:
         pts, sts = _take_process_cpu_snapshot()
 
@@ -206,14 +208,22 @@ def cpu_percent():
             delta_proc = (pt2.user - pt1.user) + (pt2.system - pt1.system)
             time_delta = sts[pid] - old_sts[pid]
 
-            if time_delta < 1e-2:
+            if time_delta < _cpu_percent_interval:
                 return _last_cpu_percent or 0
             percents.append((delta_proc / time_delta) * 100)
         _last_proc_cpu_measure = (pts, sts)
         _last_cpu_percent = round(sum(percents), 1)
-        return _last_cpu_percent
+        return _last_cpu_percent or 0
     else:
-        return sum(psutil.cpu_percent(percpu=True))
+        measure_time = time.time()
+        if (
+            _last_psutil_measure is not None
+            and measure_time - _last_psutil_measure < _cpu_percent_interval
+        ):
+            return _last_cpu_percent or 0
+        _last_psutil_measure = measure_time
+        _last_cpu_percent = psutil.cpu_percent() * _cpu_total
+        return _last_cpu_percent or 0
 
 
 def disk_usage(d):

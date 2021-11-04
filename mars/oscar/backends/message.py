@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -24,6 +23,14 @@ from ...lib.tblib import pickling_support
 from ...serialization.core import Serializer, pickle, buffered
 from ...utils import classproperty, dataslots, implements
 from ..core import ActorRef
+
+try:
+    from random import randbytes
+except ImportError:
+    from random import getrandbits
+
+    def randbytes(n: int) -> bytes:
+        return getrandbits(n * 8).to_bytes(n, "little")
 
 
 # make sure traceback can be pickled
@@ -368,4 +375,4 @@ def _get_slots(message_cls: Type[_MessageBase]):
 
 
 def new_message_id():
-    return os.urandom(32)
+    return randbytes(32)
