@@ -44,6 +44,7 @@ class NodeInfoUploaderActor(mo.Actor):
         self._interval = interval or DEFAULT_INFO_UPLOAD_INTERVAL
         self._upload_task = None
         self._upload_enabled = False
+        self._uploaded_future = asyncio.Future()
         self._node_ready_event = asyncio.Event()
 
         self._use_gpu = use_gpu
@@ -54,7 +55,8 @@ class NodeInfoUploaderActor(mo.Actor):
         self._disk_infos = []
 
     async def __post_create__(self):
-        await self.upload_node_info()
+        self._upload_task = asyncio.create_task(self._periodical_upload_node_info())
+        await self._uploaded_future
 
     async def __pre_destroy__(self):
         self._upload_task.cancel()
@@ -77,10 +79,27 @@ class NodeInfoUploaderActor(mo.Actor):
             NodeInfoCollectorActor.default_uid(), address=supervisor_addr
         )
 
+    async def _periodical_upload_node_info(self):
+        while True:
+            try:
+                await self.upload_node_info()
+                if not self._uploaded_future.done():
+                    self._uploaded_future.set_result(None)
+            except asyncio.CancelledError:  # pragma: no cover
+                break
+            except Exception as ex:  # pragma: no cover  # noqa: E722  # nosec  # pylint: disable=bare-except
+                logger.error(f"Failed to upload node info: {ex}")
+                if not self._uploaded_future.done():
+                    self._uploaded_future.set_exception(ex)
+            try:
+                await asyncio.sleep(self._interval)
+            except asyncio.CancelledError:  # pragma: no cover
+                break
+
     async def mark_node_ready(self):
         self._upload_enabled = True
         # upload info in time to reduce latency
-        await self.upload_node_info(call_next=False, status=NodeStatus.READY)
+        await self.upload_node_info(status=NodeStatus.READY)
         self._node_ready_event.set()
 
     def is_node_ready(self):
@@ -89,7 +108,7 @@ class NodeInfoUploaderActor(mo.Actor):
     async def wait_node_ready(self):
         return self._node_ready_event.wait()
 
-    async def upload_node_info(self, call_next: bool = True, status: NodeStatus = None):
+    async def upload_node_info(self, status: NodeStatus = None):
         try:
             if not self._info.env:
                 self._info.env = await asyncio.to_thread(gather_node_env)
@@ -133,11 +152,6 @@ class NodeInfoUploaderActor(mo.Actor):
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
             logger.exception(f"Failed to upload node info")
             raise
-        finally:
-            if call_next:
-                self._upload_task = self.ref().upload_node_info.tell_delay(
-                    delay=self._interval
-                )
 
     def get_bands(self) -> Dict[BandType, int]:
         band_slots = dict()

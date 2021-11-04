@@ -83,7 +83,8 @@ jobs:
 
           if [[ "$(mars.test.module)" == "learn" ]]; then
             # remove version limit when blue-yonder/tsfresh#897 is fixed.
-            pip install xgboost lightgbm tensorflow faiss-cpu torch torchvision \
+            # remove keras version after https://github.com/tensorflow/tensorflow/issues/52922 is fixed.
+            pip install xgboost lightgbm keras==2.6.0 tensorflow faiss-cpu torch torchvision \
               statsmodels\<0.13.0 tsfresh
           fi
         fi
