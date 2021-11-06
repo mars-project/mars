@@ -15,6 +15,7 @@
 import asyncio
 import logging
 import sys
+import time
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Type
 
@@ -80,6 +81,7 @@ class SubtaskProcessor:
             subtask_id=subtask.subtask_id,
             session_id=subtask.session_id,
             task_id=subtask.task_id,
+            stage_id=subtask.stage_id,
             status=SubtaskStatus.pending,
             bands=[self._band],
             progress=0.0,
@@ -352,6 +354,7 @@ class SubtaskProcessor:
     ):
         key_to_result_chunk = {c.key: c for c in chunk_graph.result_chunks}
         # store meta
+        timestamp = time.time_ns()
         set_chunk_metas = []
         result_data_size = 0
         for chunk_key in stored_keys:
@@ -371,6 +374,7 @@ class SubtaskProcessor:
                     bands=[self._band],
                     chunk_key=chunk_key,
                     object_ref=object_ref,
+                    timestamp=timestamp,
                 )
             )
         for chunk in chunk_graph.result_chunks:
@@ -380,7 +384,7 @@ class SubtaskProcessor:
                 # due to it's empty actually
                 set_chunk_metas.append(
                     self._meta_api.set_chunk_meta.delay(
-                        chunk, memory_size=0, store_size=0, bands=[self._band]
+                        chunk, memory_size=0, store_size=0, bands=[self._band], timestamp=timestamp
                     )
                 )
         logger.debug(
@@ -406,6 +410,9 @@ class SubtaskProcessor:
                     self.subtask.subtask_id,
                 )
                 set_chunks_meta.cancel()
+                await self._meta_api.del_chunk_meta.batch(*[
+                    self._meta_api.del_chunk_meta.delay(chunk_key, timestamp=timestamp)
+                    for chunk_key in stored_keys])
 
                 # remote stored data
                 deletes = []
@@ -430,6 +437,7 @@ class SubtaskProcessor:
         self.is_done.set()
 
     async def run(self):
+        start_time = time.time()
         self.result.status = SubtaskStatus.running
         input_keys = None
         unpinned = False
@@ -564,7 +572,7 @@ class SubtaskProcessorActor(mo.Actor):
         set_context(context)
 
     async def run(self, subtask: Subtask):
-        logger.debug("Start to run subtask: %s", subtask.subtask_id)
+        logger.info("Start to run subtask: %s on %s.", subtask.subtask_id, self.address)
 
         assert subtask.session_id == self._session_id
 
@@ -582,6 +590,7 @@ class SubtaskProcessorActor(mo.Actor):
         self._running_aio_task = asyncio.create_task(processor.run())
         try:
             result = yield self._running_aio_task
+            logger.info("Finished subtask: %s", subtask.subtask_id)
             raise mo.Return(result)
         finally:
             self._processor = self._running_aio_task = None
@@ -593,7 +602,7 @@ class SubtaskProcessorActor(mo.Actor):
         return self._last_processor.result
 
     async def cancel(self):
-        logger.debug("Cancelling subtask: %s", self._processor.subtask_id)
+        logger.info("Cancelling subtask: %s", self._processor.subtask_id)
 
         aio_task = self._running_aio_task
         aio_task.cancel()

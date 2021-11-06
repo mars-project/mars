@@ -44,6 +44,12 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             _func=func, _args=args, _kwds=kwds, _output_types=output_types, **kw
         )
 
+    def _get_logic_key_token_values(self):
+        if self.func:
+            return super()._get_logic_key_token_values() + [self.func.__code__]
+        else:
+            return super()._get_logic_key_token_values()
+
     @property
     def func(self):
         return self._func

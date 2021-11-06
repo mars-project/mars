@@ -96,7 +96,7 @@ class SchedulingAPI(AbstractSchedulingAPI):
         )
 
     async def cancel_subtasks(
-        self, subtask_ids: List[str], kill_timeout: Union[float, int] = 5
+        self, subtask_ids: List[str], kill_timeout: Union[float, int] = None
     ):
         """
         Cancel pending and running subtasks.
@@ -110,7 +110,7 @@ class SchedulingAPI(AbstractSchedulingAPI):
         """
         await self._manager_ref.cancel_subtasks(subtask_ids, kill_timeout=kill_timeout)
 
-    async def finish_subtasks(self, subtask_ids: List[str], schedule_next: bool = True):
+    async def finish_subtasks(self, subtask_ids: List[str], bands: List[Tuple] = None, schedule_next: bool = True):
         """
         Mark subtasks as finished, letting scheduling service to schedule
         next tasks in the ready queue
@@ -119,10 +119,12 @@ class SchedulingAPI(AbstractSchedulingAPI):
         ----------
         subtask_ids
             ids of subtasks to mark as finished
+        bands
+            bands of subtasks to mark as finished
         schedule_next
             whether to schedule succeeding subtasks
         """
-        await self._manager_ref.finish_subtasks(subtask_ids, schedule_next)
+        await self._manager_ref.finish_subtasks(subtask_ids, bands, schedule_next)
 
 
 class MockSchedulingAPI(SchedulingAPI):

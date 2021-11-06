@@ -110,7 +110,7 @@ class MockSlotsActor(mo.Actor):
 
 
 class MockAssignerActor(mo.Actor):
-    def assign_subtasks(self, subtasks: List[Subtask]):
+    def assign_subtasks(self, subtasks: List[Subtask], exclude_bands=None, exclude_bands_force=False):
         return [subtask.expect_bands[0] for subtask in subtasks]
 
     def reassign_subtasks(self, band_num_queued_subtasks):

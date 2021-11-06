@@ -36,10 +36,12 @@ class GraphAnalyzer:
         band_slots: Dict[BandType, int],
         task: Task,
         graph_assigner_cls: Type[AbstractGraphAssigner] = None,
+        stage_id: str = None,
     ):
         self._chunk_graph = chunk_graph
         self._band_slots = band_slots
         self._task = task
+        self._stage_id = stage_id
         self._fuse_enabled = task.fuse_enabled
         self._extra_config = task.extra_config
         if graph_assigner_cls is None:
@@ -224,23 +226,27 @@ class GraphAnalyzer:
         priority = (depth, chunk.op.priority or 0)
         for out in chunk.op.outputs:
             chunk_to_priorities[out] = priority
-
         band = chunk_to_bands.get(chunk)
         if not isinstance(chunk.op, Fuse):
             subtask_chunk_graph = self._build_subtask_chunk_graph(
                 chunk, chunk_to_fetch_chunk
             )
+            bands_specified = chunk.op.expect_worker is not None
         else:
             subtask_chunk_graph = self._build_fuse_subtask_chunk_graph(
                 chunk, chunk_to_fetch_chunk
             )
+            bands_specified = chunk.composed[0].op.expect_worker is not None
 
         subtask = Subtask(
             subtask_id=new_task_id(),
+            stage_id=self._stage_id,
+            logic_id=chunk.op.logic_key,
             session_id=self._task.session_id,
             task_id=self._task.task_id,
             chunk_graph=subtask_chunk_graph,
             expect_bands=[band] if band is not None else None,
+            bands_specified=bands_specified,
             virtual=virtual,
             priority=priority,
             retryable=all(
@@ -293,21 +299,21 @@ class GraphAnalyzer:
             for op in start_ops
             if op.expect_worker is not None
         }
-        logger.debug(
+        logger.info(
             "Start to assign %s start chunks for task %s",
             len(start_ops),
             self._task.task_id,
         )
         chunk_to_bands = assigner.assign(cur_assigns=cur_assigns)
-        logger.debug(
+        logger.info(
             "Assigned %s start chunks for task %s", len(start_ops), self._task.task_id
         )
 
         # fuse node
         if self._fuse_enabled:
-            logger.debug("Start to fuse chunks for task %s", self._task.task_id)
+            logger.info("Start to fuse chunks for task %s", self._task.task_id)
             chunk_to_bands = self._fuse(chunk_to_bands)
-            logger.debug("Chunks fused for task %s", self._task.task_id)
+            logger.info("Chunks fused for task %s", self._task.task_id)
 
         subtask_graph = SubtaskGraph()
         chunk_to_priorities = dict()
@@ -337,4 +343,8 @@ class GraphAnalyzer:
             for inp_subtask in inp_subtasks:
                 subtask_graph.add_edge(inp_subtask, subtask)
 
+        for subtasks in subtask_graph.logic_id_to_subtasks.values():
+            for index, subtask in enumerate(subtasks):
+                subtask.index = index
+                subtask.parallelism = len(subtasks)
         return subtask_graph

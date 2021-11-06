@@ -49,7 +49,7 @@ class MockSlotsActor(mo.Actor):
 
 
 class MockAssignerActor(mo.Actor):
-    def assign_subtasks(self, subtasks: List[Subtask]):
+    def assign_subtasks(self, subtasks: List[Subtask], exclude_bands=None, exclude_bands_force=False):
         return [(self.address, "numa-0")] * len(subtasks)
 
 

@@ -105,20 +105,35 @@ class RayMainActorPool(MainActorPoolBase):
         if not pg:
             bundle_index = -1
         # Hold actor_handle to avoid actor being freed.
-        num_cpus = config["kwargs"].get("sub_pool_cpus", 1)
+        num_cpus = config["kwargs"].get("sub_pool_cpus", 0)
         actor_handle = (
             ray.remote(RaySubPool)
             .options(
                 num_cpus=num_cpus,
                 name=external_address,
-                max_concurrency=10000,  # By default, 1000 tasks can be running concurrently.
+                memory=50 * 1024 * 1024,
+                max_concurrency=10000000,  # By default, 1000 tasks can be running concurrently.
                 max_restarts=-1,  # Auto restarts by ray
                 placement_group=pg,
                 placement_group_bundle_index=bundle_index,
+                placement_group_capture_child_tasks=False,
             )
             .remote(actor_pool_config, process_index)
         )
-        await actor_handle.start.remote()
+        logger.info(
+            "Start to start ray sub pool %s with num_cpus %s", external_address, str(num_cpus)
+        )
+        create_sub_pool_timeout = 60
+        done, _ = await asyncio.wait(
+            [actor_handle.start.remote()], timeout=create_sub_pool_timeout
+        )
+        if not done:
+            msg = (
+                f"Can not start ray sub pool {external_address} in {create_sub_pool_timeout} seconds.",
+            )
+            logger.error(msg)
+            raise Exception(msg)
+        logger.info("Start ray sub pool %s successfully.", external_address)
         return actor_handle
 
     @classmethod
@@ -137,9 +152,13 @@ class RayMainActorPool(MainActorPoolBase):
             await process.mark_service_ready.remote()
 
     async def kill_sub_pool(
-        self, process: "ray.actor.ActorHandle", force: bool = False
+        self,
+        process: "ray.actor.ActorHandle",
+        force: bool = False,
+        no_restart: bool = False,
     ):
-        await kill_and_wait(process)
+        logger.info("Start to kill ray sub pool %s", process)
+        await kill_and_wait(process, no_restart=no_restart)
 
     async def is_sub_pool_alive(self, process: "ray.actor.ActorHandle"):
         try:
@@ -186,6 +205,7 @@ class RayPoolBase(ABC):
         return super().__new__(cls, *args, **kwargs)
 
     def __init__(self):
+        # logging.basicConfig(format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO, force=True)
         self._actor_pool = None
         self._ray_server = None
         register_ray_serializers()

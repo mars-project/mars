@@ -51,6 +51,7 @@ class DataFrameToSQLTable(DataFrameOperand, DataFrameOperandMixin):
         on_serialize=cloudpickle.dumps,
         on_deserialize=cloudpickle.loads,
     )
+    exclude_fields_for_logic_id = DataFrameOperand.exclude_fields_for_logic_id + ['_con']
 
     def __init__(
         self,

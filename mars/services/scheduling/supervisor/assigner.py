@@ -16,14 +16,14 @@ import asyncio
 import itertools
 import random
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from .... import oscar as mo
 from ....core.operand import Fetch, FetchShuffle
 from ....typing import BandType
 from ...core import NodeRole
 from ...subtask import Subtask
-from ..errors import NoMatchingSlots
+from ..errors import NoMatchingSlots, NoBandAvailable
 
 
 class AssignerActor(mo.Actor):
@@ -85,32 +85,36 @@ class AssignerActor(mo.Actor):
             raise NoMatchingSlots("gpu" if is_gpu else "cpu")
         return filtered_bands
 
-    def _get_random_band(self, is_gpu: bool):
-        avail_bands = self._get_device_bands(is_gpu)
-        return random.choice(avail_bands)
+    def _get_random_band(self,
+                         is_gpu: bool,
+                         exclude_bands: Set[BandType] = None,
+                         exclude_bands_force: bool = False):
+        if exclude_bands:
+            avail_bands = [band for band in self._get_device_bands(is_gpu) if band not in exclude_bands]
+            if avail_bands:
+                return random.choice(avail_bands)
+            elif exclude_bands_force:
+                raise Exception(f'No bands available after excluding bands {exclude_bands}')
+        return random.choice(self._get_device_bands(is_gpu))
 
-    async def assign_subtasks(self, subtasks: List[Subtask]):
+    async def assign_subtasks(self,
+                              subtasks: List[Subtask],
+                              exclude_bands: Set[BandType] = None,
+                              exclude_bands_force: bool = False):
+        exclude_bands = exclude_bands or set()
         inp_keys = set()
         selected_bands = dict()
         for subtask in subtasks:
             is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
             if subtask.expect_bands:
-                if all(
-                    expect_band in self._bands for expect_band in subtask.expect_bands
-                ):
-                    # pass if all expected bands are available
-                    selected_bands[subtask.subtask_id] = subtask.expect_bands
-                else:
-                    # exclude expected but unready bands
-                    expect_available_bands = [
-                        expect_band
-                        for expect_band in subtask.expect_bands
-                        if expect_band in self._bands
-                    ]
-                    # fill in if all expected bands are unready
-                    if not expect_available_bands:
-                        expect_available_bands = [self._get_random_band(is_gpu)]
-                    selected_bands[subtask.subtask_id] = expect_available_bands
+                # exclude expected but unready bands
+                expect_available_bands = [expect_band
+                                          for expect_band in subtask.expect_bands
+                                          if expect_band in self._bands and expect_band not in exclude_bands]
+                # fill in if all expected bands are unready
+                if not expect_available_bands:
+                    expect_available_bands = [self._get_random_band(is_gpu, exclude_bands, exclude_bands_force)]
+                selected_bands[subtask.subtask_id] = expect_available_bands
                 continue
             for indep_chunk in subtask.chunk_graph.iter_indep():
                 if isinstance(indep_chunk.op, Fetch):
@@ -120,7 +124,9 @@ class AssignerActor(mo.Actor):
                         self._update_bands(
                             list(await self._cluster_api.get_all_bands(NodeRole.WORKER))
                         )
-                    selected_bands[subtask.subtask_id] = [self._get_random_band(is_gpu)]
+                    selected_bands[subtask.subtask_id] = [
+                        self._get_random_band(is_gpu, exclude_bands, exclude_bands_force)
+                    ]
                     break
 
         fields = ["store_size", "bands"]
@@ -144,17 +150,14 @@ class AssignerActor(mo.Actor):
                     if not isinstance(inp.op, Fetch):  # pragma: no cover
                         continue
                     meta = inp_metas[inp.key]
-                    for band in meta["bands"]:
+                    for band in meta['bands']:
                         if not band[1].startswith(band_prefix):
-                            sel_bands = [
-                                b
-                                for b in self._address_to_bands[band[0]]
-                                if b[1].startswith(band_prefix)
-                            ]
+                            sel_bands = [b for b in self._address_to_bands[band[0]]
+                                         if b[1].startswith(band_prefix) and b not in exclude_bands]
                             if sel_bands:
-                                band = (band[0], random.choice(sel_bands))
-                        if band not in filtered_bands:
-                            band = self._get_random_band(is_gpu)
+                                band = random.choice(sel_bands)
+                        if band not in filtered_bands or band in exclude_bands:
+                            band = self._get_random_band(is_gpu, exclude_bands, exclude_bands_force)
                         band_sizes[band] += meta["store_size"]
                 bands = []
                 max_size = -1
@@ -164,7 +167,14 @@ class AssignerActor(mo.Actor):
                         max_size = size
                     elif size == max_size:
                         bands.append(band)
-            assigns.append(random.choice(bands))
+            band = random.choice(bands)
+            if band in exclude_bands and exclude_bands_force:
+                raise NoBandAvailable(f'No bands available for subtask {subtask.subtask_id} after '
+                                      f'excluded {exclude_bands}')
+            if subtask.bands_specified and band not in subtask.expect_bands:
+                raise Exception(f'No bands available for subtask {subtask.subtask_id} on bands {subtask.expect_bands} '
+                                f'after excluded {exclude_bands}')
+            assigns.append(band)
         return assigns
 
     async def reassign_subtasks(

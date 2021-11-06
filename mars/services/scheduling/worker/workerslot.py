@@ -17,6 +17,7 @@ import logging
 import os
 import time
 from typing import Dict, List, NamedTuple, Set, Tuple
+from collections import defaultdict
 
 import psutil
 
@@ -91,8 +92,10 @@ class BandSlotManagerActor(mo.Actor):
         self._restarting = False
         self._restart_done_event = asyncio.Event()
 
-        self._session_stid_to_slot = dict()
+        self._session_stid_to_slots = defaultdict(set)
         self._slot_to_session_stid = dict()
+        self._slot_to_timestamp = dict()
+        self._timestamp_to_slot = dict()
         self._last_report_time = time.time()
 
         self._slot_to_proc = dict()
@@ -138,10 +141,14 @@ class BandSlotManagerActor(mo.Actor):
     def get_slot_address(self, slot_id: int):
         return self._slot_control_refs[slot_id].address
 
-    def get_subtask_slot(self, session_stid: Tuple[str, str]):
-        return self._session_stid_to_slot.get(session_stid)
+    def get_subtask_slot_by_ts(self, timestamp: int = None):
+        return self._timestamp_to_slot.get(timestamp)
 
-    async def acquire_free_slot(self, session_stid: Tuple[str, str], block=True):
+    def get_subtask_slots(self, session_stid: Tuple[str, str]):
+        return self._session_stid_to_slots.get(session_stid)
+
+    async def acquire_free_slot(self, session_stid: Tuple[str, str], block=True, timestamp: int = None):
+        timestamp = timestamp or time.time_ns()
         if not block and self._semaphore.locked():
             raise NoFreeSlot(f"No free slot for {session_stid}")
         yield self._semaphore.acquire()
@@ -151,8 +158,10 @@ class BandSlotManagerActor(mo.Actor):
         slot_id = self._free_slots.pop()
         self._fresh_slots.difference_update([slot_id])
         self._slot_to_session_stid[slot_id] = session_stid
-        self._session_stid_to_slot[session_stid] = slot_id
-        logger.debug("Slot %d acquired for subtask %r", slot_id, session_stid)
+        self._session_stid_to_slots[session_stid].add(slot_id)
+        self._slot_to_timestamp[slot_id] = timestamp
+        self._timestamp_to_slot[timestamp] = slot_id
+        logger.info("Slot %d acquired for subtask %r", slot_id, session_stid)
         raise mo.Return(slot_id)
 
     def release_free_slot(self, slot_id: int, session_stid: Tuple[str, str]):
@@ -165,9 +174,12 @@ class BandSlotManagerActor(mo.Actor):
                 f"the acquired session_stid: {acquired_session_stid}, "
                 f"the releasing session_stid: {session_stid}"
             )
-        acquired_slot_id = self._session_stid_to_slot.pop(acquired_session_stid)
-        assert acquired_slot_id == slot_id
-
+        slots = self._session_stid_to_slots[acquired_session_stid]
+        assert slot_id in slots
+        slots.remove(slot_id)
+        self._timestamp_to_slot.pop(self._slot_to_timestamp.pop(slot_id), None)
+        if not slots:
+            self._session_stid_to_slots.pop(acquired_session_stid)
         logger.debug("Slot %d released", slot_id)
 
         if slot_id not in self._free_slots:
@@ -251,6 +263,9 @@ class BandSlotManagerActor(mo.Actor):
                 usage = proc.cpu_percent(interval=None) / 100.0
             except psutil.NoSuchProcess:  # pragma: no cover
                 continue
+            except psutil.AccessDenied as e:  # pragma: no cover
+                logger.warning('NO permission to get cpu percent: %s', e)
+                usage = 0.0
 
             slot_infos.append(
                 WorkerSlotInfo(

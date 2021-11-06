@@ -212,6 +212,7 @@ class ClusterStateActor(mo.StatelessActor):
         return worker_pool
 
     async def release_worker(self, address: str):
+        logger.info("Start to release worker %s", address)
         task = self._reconstructing_tasks.get(address)
         if task is not None:
             task.cancel()
@@ -233,6 +234,7 @@ class ClusterStateActor(mo.StatelessActor):
                     pass
             ray.kill(pool)
             ray.util.remove_placement_group(pg)
+            logger.info("Released worker %s", address)
 
         task = asyncio.create_task(_release_worker())
         task.add_done_callback(lambda _: self._releasing_tasks.pop(address, None))
@@ -283,10 +285,10 @@ class ClusterStateActor(mo.StatelessActor):
 
 async def new_cluster(
     cluster_name: str,
-    supervisor_mem: int = 4 * 1024 ** 3,
+    supervisor_mem: int = 1 * 1024 ** 3,
     worker_num: int = 1,
     worker_cpu: int = 16,
-    worker_mem: int = 32 * 1024 ** 3,
+    worker_mem: int = 16 * 1024 ** 3,
     config: Union[str, Dict] = None,
     **kwargs,
 ):
@@ -338,6 +340,8 @@ class RayCluster:
         self.web_address = None
 
     async def start(self):
+        logging.basicConfig(format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO, force=True)
+        logger.info('Start cluster with config %s', self._config)
         address_to_resources = dict()
         supervisor_standalone = (
             self._config.get("cluster", {})

@@ -14,6 +14,7 @@
 
 import asyncio
 import os
+import random
 import threading
 import tempfile
 import time
@@ -543,3 +544,61 @@ def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: 
 
     session.stop_server()
     assert get_default_session() is None
+
+
+min_task_runtime = 2
+
+
+@pytest.fixture
+async def speculative_cluster():
+    config = load_config()
+    config['scheduling']['speculation']['enabled'] = True
+    config['scheduling']['speculation']['interval'] = 0.5
+    config['scheduling']['speculation']['threshold'] = 0.3
+    config['scheduling']['speculation']['min_task_runtime'] = min_task_runtime
+    config['scheduling']['speculation']['multiplier'] = 2
+    config['scheduling']['speculation']['max_concurrent_run'] = 10
+    config['scheduling']['subtask_cancel_timeout'] = 0.1
+    config['scheduling']['enable_kill_slot'] = True
+    client = await new_cluster(
+        config=config,
+        n_worker=10,
+        n_cpu=20,
+        use_uvloop=False,
+    )
+    async with client:
+        yield client
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(timeout=120)
+async def test_task_speculation_execution(speculative_cluster):
+    series_size = 30
+
+    def time_consuming(start, x):
+        print(f'subtask index {x}')
+        if x >= series_size - 2:  # leave some workers not excluded from speculative submit.
+            if time.time() - start < min_task_runtime:
+                print(f'subtask with index {x} starts to hang.')
+                time.sleep(1000000)
+        return x * x
+    from functools import partial
+    assert md.Series(list(range(series_size)), chunk_size=1)\
+           .apply(partial(time_consuming, time.time())).sum().execute().fetch() == \
+           pd.Series(list(range(series_size))).apply(lambda x: x*x).sum()
+
+    def time_consuming2(x):
+        index = x.index[0]
+        print(f'dataframe group_by_apply subtask index {index}')
+        if index >= series_size - 2 and random.random() > 0.5:
+            print(f'dataframe group_by_apply subtask {index} starts to hang.')
+            time.sleep(100000)
+        return x
+
+    df = md.DataFrame({f'col{i}': md.Series(list(range(series_size)), chunk_size=1)
+                      .apply(partial(time_consuming, time.time())) for i in range(2)})
+    df = df.groupby(['col0']).apply(time_consuming2).sort_index().execute()
+    pd_df = pd.DataFrame({f'col{i}': pd.Series(list(range(series_size)))
+                         .apply(lambda x: x*x) for i in range(2)}).groupby(['col0'])\
+        .apply(lambda x: x)
+    pd.testing.assert_frame_equal(df.to_pandas(), pd_df)

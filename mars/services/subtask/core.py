@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
 from enum import Enum
 from typing import Iterable, List, Optional, Tuple
 
@@ -61,6 +62,15 @@ class Subtask(Serializable):
     priority: Tuple[int, int] = TupleField("priority", FieldTypes.int32)
     rerun_time: int = Int32Field("rerun_time")
     extra_config: dict = DictField("extra_config")
+    stage_id: str = StringField('stage_id')
+    # An unique and deterministic key for subtask compute logic. See logic_key in operator.py.
+    logic_id: str = StringField('logic_id')
+    # index for subtask with same compute logic.
+    index: int = Int32Field('index')
+    # parallelism for subtask with same compute logic.
+    parallelism: int = Int32Field('parallelism')
+    # subtask can only run in specified bands in `expect_bands`
+    bands_specified: bool = BoolField('bands_specified')
 
     def __init__(
         self,
@@ -75,6 +85,11 @@ class Subtask(Serializable):
         retryable: bool = True,
         rerun_time: int = 0,
         extra_config: dict = None,
+        stage_id: str = None,
+        logic_id: str = None,
+        index: int = None,
+        parallelism: int = None,
+        bands_specified: bool = False,
     ):
         super().__init__(
             subtask_id=subtask_id,
@@ -88,6 +103,11 @@ class Subtask(Serializable):
             retryable=retryable,
             rerun_time=rerun_time,
             extra_config=extra_config,
+            stage_id=stage_id,
+            logic_id=logic_id,
+            index=index,
+            parallelism=parallelism,
+            bands_specified=bands_specified,
         )
 
     @property
@@ -100,10 +120,11 @@ class SubtaskResult(Serializable):
     subtask_id: str = StringField("subtask_id")
     session_id: str = StringField("session_id")
     task_id: str = StringField("task_id")
+    stage_id: str = StringField('stage_id')
     status: SubtaskStatus = ReferenceField("status", SubtaskStatus)
     progress: float = Float64Field("progress", default=0.0)
     data_size: int = Int64Field("data_size", default=None)
-    bands: List[BandType] = ListField("band", FieldTypes.tuple)
+    bands: List[BandType] = ListField("band", FieldTypes.tuple, default=None)
     error = AnyField("error", default=None)
     traceback = AnyField("traceback", default=None)
 
@@ -115,6 +136,11 @@ class SubtaskResult(Serializable):
 
 
 class SubtaskGraph(DAG, Iterable[Subtask]):
+
+    def __init__(self):
+        super().__init__()
+        self.logic_id_to_subtasks = defaultdict(list)
+
     """
     Subtask graph.
     """
@@ -127,3 +153,7 @@ class SubtaskGraph(DAG, Iterable[Subtask]):
             if isinstance(node.op, (Fetch, FetchShuffle)):
                 continue
             yield node.op
+
+    def add_node(self, subtask: Subtask):
+        super().add_node(subtask)
+        self.logic_id_to_subtasks[subtask.logic_id].append(subtask)

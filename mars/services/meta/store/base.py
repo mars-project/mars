@@ -46,7 +46,10 @@ class AbstractMetaStore(ABC):
         """
 
     @abstractmethod
-    async def set_meta(self, object_id: str, meta: _CommonMeta):
+    async def set_meta(self,
+                       object_id: str,
+                       meta: _CommonMeta,
+                       timestamp: int = None):
         """
         Set meta.
 
@@ -56,6 +59,8 @@ class AbstractMetaStore(ABC):
             Object ID.
         meta : _CommonMeta
             Meta.
+        timestamp : float
+            timestamp as a optimistic lock.
         """
 
     @abstractmethod
@@ -81,7 +86,9 @@ class AbstractMetaStore(ABC):
         """
 
     @abstractmethod
-    async def del_meta(self, object_id: str):
+    async def del_meta(self,
+                       object_id: str,
+                       timestamp: int = None):
         """
         Delete meta.
 
@@ -89,6 +96,8 @@ class AbstractMetaStore(ABC):
         ----------
         object_id : str
             Object ID.
+        timestamp : float
+            timestamp as a optimistic lock.
         """
 
     @abstractmethod

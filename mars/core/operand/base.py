@@ -33,7 +33,7 @@ from ...serialization.core import Placeholder
 from ...serialization.serializables import Serializable
 from ...serialization.serializables.core import SerializableSerializer
 from ...typing import OperandType
-from ...utils import AttributeDict, classproperty
+from ...utils import AttributeDict, classproperty, tokenize
 from ..base import Base
 from ..entity.core import Entity, EntityData
 from ..entity.chunks import Chunk
@@ -142,6 +142,12 @@ class Operand(Base, metaclass=OperandMetaclass):
     _inputs = ListField("inputs", FieldTypes.reference(EntityData))
     _outputs = ListField("outputs")
     _output_types = ListField("output_type", FieldTypes.reference(OutputType))
+    # An unique and deterministic key for subtask compute logic. It should be even the same
+    # for different run if the compute logic doesn't change. This id will be used in subtask speculative
+    # execution and hbo scheduling and so on.
+    logic_key = StringField('logic_key')
+    exclude_fields_for_logic_id = ['extra_params', 'id', 'key', 'data', 'inputs',
+                                   'outputs', 'scheduling_hint', 'device']
 
     def __init__(self: OperandType, *args, **kwargs):
         extra_names = (
@@ -151,6 +157,23 @@ class Operand(Base, metaclass=OperandMetaclass):
         kwargs["extra_params"] = kwargs.pop("extra_params", extras)
         self._extract_scheduling_hint(kwargs)
         super().__init__(*args, **kwargs)
+        if not hasattr(self, 'logic_key') or not self.logic_key:
+            token_values = self._get_logic_key_token_values()
+            try:
+                self._obj_set('logic_key', tokenize(*token_values))
+            except Exception as e:
+                raise Exception(f'Cannot generate token from values {token_values}') from e
+
+    def _get_logic_key_token_values(self):
+        """The subclass may need to override this method to ensure unique and deterministic."""
+        fields_to_tokenize = [getattr(self, k, None) for k in self._keys_
+                              if (k not in self._no_copy_attrs_ and k not in self.exclude_fields_for_logic_id)]
+        for input_chunk in self.inputs:
+            fields_to_tokenize.append(input_chunk.op.logic_key)
+        if self.outputs:
+            for output_chunk in self.outputs:
+                fields_to_tokenize.append(output_chunk.op.logic_key)
+        return [type(self).__name__] + fields_to_tokenize
 
     @classmethod
     def _extract_scheduling_hint(cls, kwargs: Dict[str, Any]):

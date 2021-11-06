@@ -55,6 +55,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
     _elementwise = BoolField("elementwise")
     _args = TupleField("args")
     _kwds = DictField("kwds")
+    exclude_fields_for_logic_id = DataFrameOperand.exclude_fields_for_logic_id + ['func']
 
     def __init__(
         self,

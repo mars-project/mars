@@ -81,6 +81,7 @@ class DataFrameReadSQL(
     _left_end = BoolField("left_end")
     _right_end = BoolField("right_end")
     _nrows = Int64Field("nrows")
+    exclude_fields_for_logic_id = IncrementalIndexDatasource.exclude_fields_for_logic_id + ['_con']
 
     def __init__(
         self,

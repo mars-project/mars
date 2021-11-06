@@ -105,8 +105,8 @@ class SubtaskRunnerActor(mo.Actor):
                 address=self.address,
             )
         processor = self._session_id_to_processors[session_id]
-        self._running_processor = self._last_processor = processor
         try:
+            self._running_processor = self._last_processor = processor
             result = yield self._running_processor.run(subtask)
         finally:
             self._running_processor = None
@@ -121,4 +121,8 @@ class SubtaskRunnerActor(mo.Actor):
     async def cancel_subtask(self):
         if self._running_processor is None:
             return
-        yield self._running_processor.cancel()
+        running_subtask_id = await self._running_processor.get_running_subtask_id()
+        logger.info('Start to cancel subtask %s.', running_subtask_id)
+        await self._running_processor.cancel()
+        self._running_processor = None
+        logger.info('Canceled subtask %s.', running_subtask_id)

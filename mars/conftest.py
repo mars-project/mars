@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import os
 import subprocess
 
@@ -30,12 +31,13 @@ ray = lazy_import("ray")
 @pytest.fixture
 def ray_start_regular(request):
     param = getattr(request, "param", {})
+    num_cpus = param.get("num_cpus", 16)
     if not param.get("enable", True):
         yield
     else:
         register_ray_serializers()
         try:
-            yield ray.init(num_cpus=20)
+            yield ray.init(num_cpus=num_cpus, memory=num_cpus * 2 * 1024 ** 3)
         finally:
             ray.shutdown()
             unregister_ray_serializers()
@@ -50,7 +52,7 @@ def ray_start_regular(request):
 def ray_large_cluster(request):  # pragma: no cover
     param = getattr(request, "param", {})
     num_nodes = param.get("num_nodes", 3)
-    num_cpus = param.get("num_cpus", 10)
+    num_cpus = param.get("num_cpus", 16)
     try:
         from ray.cluster_utils import Cluster
     except ModuleNotFoundError:
@@ -58,9 +60,18 @@ def ray_large_cluster(request):  # pragma: no cover
     cluster = Cluster()
     remote_nodes = []
     for i in range(num_nodes):
-        remote_nodes.append(cluster.add_node(num_cpus=num_cpus))
+        remote_nodes.append(cluster.add_node(num_cpus=num_cpus, memory=num_cpus * 2 * 1024 ** 3))
         if len(remote_nodes) == 1:
-            ray.init(address=cluster.address)
+            sig = inspect.signature(ray.job_config.JobConfig)
+            if "total_memory_mb" in sig.parameters:
+                ray.init(
+                    address=cluster.address,
+                    job_config=ray.job_config.JobConfig(
+                        total_memory_mb=num_nodes * 32 * 1024 ** 3
+                    ),
+                )
+            else:
+                ray.init(address=cluster.address)
     register_ray_serializers()
     try:
         yield

@@ -166,13 +166,13 @@ class TaskPreprocessor:
             self._update_tileables_params(tileable_graph, meta_updated)
 
     def analyze(
-        self, chunk_graph: ChunkGraph, available_bands: Dict[BandType, int]
+        self, chunk_graph: ChunkGraph, available_bands: Dict[BandType, int], stage_id: str = None
     ) -> SubtaskGraph:
-        logger.debug("Start to gen subtask graph for task %s", self._task.task_id)
+        logger.info("Start to gen subtask graph for task %s", self._task.task_id)
         task = self._task
-        analyzer = GraphAnalyzer(chunk_graph, available_bands, task)
+        analyzer = GraphAnalyzer(chunk_graph, available_bands, task, stage_id=stage_id)
         graph = analyzer.gen_subtask_graph()
-        logger.debug(
+        logger.info(
             "Generated subtask graph of %s subtasks for task %s",
             len(graph),
             self._task.task_id,

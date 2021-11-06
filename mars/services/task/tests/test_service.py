@@ -60,6 +60,7 @@ async def actor_pools():
 @pytest.fixture(params=[False, True])
 async def start_test_service(actor_pools, request):
     sv_pool, worker_pool = actor_pools
+    param = getattr(request, "param", {})
 
     config = {
         "services": [
