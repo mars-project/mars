@@ -37,7 +37,7 @@ def ray_start_regular(request):
     else:
         register_ray_serializers()
         try:
-            yield ray.init(num_cpus=num_cpus, memory=num_cpus * 2 * 1024 ** 3)
+            yield ray.init(num_cpus=num_cpus)
         finally:
             ray.shutdown()
             unregister_ray_serializers()

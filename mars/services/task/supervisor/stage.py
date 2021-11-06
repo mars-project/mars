@@ -87,6 +87,8 @@ class TaskStageProcessor:
     async def _schedule_subtasks(self, subtasks: List[Subtask]):
         if not subtasks:
             return
+        subtasks = [subtask for subtask in subtasks
+                                if subtask.subtask_id not in self._submitted_subtask_ids]
         self._submitted_subtask_ids.update(subtask.subtask_id for subtask in subtasks)
         return await self._scheduling_api.add_subtasks(
             subtasks, [subtask.priority for subtask in subtasks]
@@ -181,8 +183,6 @@ class TaskStageProcessor:
                 ):
                     # all predecessors finished
                     to_schedule_subtasks.append(succ_subtask)
-            to_schedule_subtasks = [subtask for subtask in to_schedule_subtasks
-                                    if subtask.subtask_id not in self._submitted_subtask_ids]
             await self._schedule_subtasks(to_schedule_subtasks)
             await self._scheduling_api.finish_subtasks([result.subtask_id], bands=[band])
 

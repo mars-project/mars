@@ -571,7 +571,6 @@ async def speculative_cluster():
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(timeout=120)
 async def test_task_speculation_execution(speculative_cluster):
     series_size = 30
 
