@@ -333,9 +333,11 @@ class TaskProcessor:
         stage_id = new_task_id()
         available_bands = await self._get_available_band_slots()
         subtask_graph = await asyncio.to_thread(
-            self._preprocessor.analyze, chunk_graph, available_bands, stage_id=stage_id)
+            self._preprocessor.analyze, chunk_graph, available_bands, stage_id=stage_id
+        )
         tileable_to_subtasks = await asyncio.to_thread(
-            self._get_tileable_to_subtasks, subtask_graph)
+            self._get_tileable_to_subtasks, subtask_graph
+        )
         tileable_id_to_tileable = await asyncio.to_thread(
             self._get_tileable_id_to_tileable
         )
@@ -465,7 +467,7 @@ class TaskProcessorActor(mo.Actor):
                 # schedule stage
                 processor.stage_processors.append(stage_processor)
                 processor.cur_stage_processor = stage_processor
-                logger.info('Start new stage with id %s.', stage_processor.stage_id)
+                logger.info("Start new stage with id %s.", stage_processor.stage_id)
                 yield processor.schedule(stage_processor)
                 if stage_processor.error_or_cancelled():
                     break
@@ -620,7 +622,12 @@ class TaskProcessorActor(mo.Actor):
             results = [
                 subtask_results.get(
                     subtask.subtask_id,
-                    SubtaskResult(progress=0.0, status=SubtaskStatus.pending, stage_id=subtask.stage_id))
+                    SubtaskResult(
+                        progress=0.0,
+                        status=SubtaskStatus.pending,
+                        stage_id=subtask.stage_id,
+                    ),
+                )
                 for subtask in subtasks
             ]
 
@@ -699,8 +706,15 @@ class TaskProcessorActor(mo.Actor):
 
         for subtask in returned_subtasks.values():
             subtask_result = subtask_results.get(
-                subtask, subtask_snapshots.get(
-                    subtask, SubtaskResult(progress=0.0, status=SubtaskStatus.pending, stage_id=subtask.stage_id))
+                subtask,
+                subtask_snapshots.get(
+                    subtask,
+                    SubtaskResult(
+                        progress=0.0,
+                        status=SubtaskStatus.pending,
+                        stage_id=subtask.stage_id,
+                    ),
+                ),
             )
             subtask_details[subtask.subtask_id] = {
                 "name": subtask.subtask_name,
@@ -755,22 +769,40 @@ class TaskProcessorActor(mo.Actor):
         self._subtask_decref_events.pop(subtask.subtask_id).set()
 
     async def set_subtask_result(self, subtask_result: SubtaskResult):
-        logger.debug('Set subtask %s with result %s.', subtask_result.subtask_id, subtask_result)
-        if self._cur_processor is None or self._cur_processor.cur_stage_processor is None or \
-                (subtask_result.stage_id and
-                 self._cur_processor.cur_stage_processor.stage_id != subtask_result.stage_id):
-            logger.warning('Stage %s for subtask %s not exists, got stale subtask result %s which may be '
-                           'speculative execution from previous stages, just ignore it.',
-                           subtask_result.stage_id, subtask_result.subtask_id, subtask_result)
+        logger.debug(
+            "Set subtask %s with result %s.", subtask_result.subtask_id, subtask_result
+        )
+        if (
+            self._cur_processor is None
+            or self._cur_processor.cur_stage_processor is None
+            or (
+                subtask_result.stage_id
+                and self._cur_processor.cur_stage_processor.stage_id
+                != subtask_result.stage_id
+            )
+        ):
+            logger.warning(
+                "Stage %s for subtask %s not exists, got stale subtask result %s which may be "
+                "speculative execution from previous stages, just ignore it.",
+                subtask_result.stage_id,
+                subtask_result.subtask_id,
+                subtask_result,
+            )
             return
         stage_processor = self._cur_processor.cur_stage_processor
         subtask = stage_processor.subtask_id_to_subtask[subtask_result.subtask_id]
 
         prev_result = stage_processor.subtask_results.get(subtask)
-        if prev_result and (prev_result.status == SubtaskStatus.succeeded or
-                            prev_result.progress > subtask_result.progress):
-            logger.info('Skip set subtask %s with result %s, previous result is %s.',
-                        subtask.subtask_id, subtask_result, prev_result)
+        if prev_result and (
+            prev_result.status == SubtaskStatus.succeeded
+            or prev_result.progress > subtask_result.progress
+        ):
+            logger.info(
+                "Skip set subtask %s with result %s, previous result is %s.",
+                subtask.subtask_id,
+                subtask_result,
+                prev_result,
+            )
             # For duplicate run of subtasks, if the progress or s
             # For subtask canceled in task speculation, just do nothing.
             # TODO(chaokunyang) If duplicate run of subtasks failed, it may be the fault in worker node,

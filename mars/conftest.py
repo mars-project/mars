@@ -60,7 +60,9 @@ def ray_large_cluster(request):  # pragma: no cover
     cluster = Cluster()
     remote_nodes = []
     for i in range(num_nodes):
-        remote_nodes.append(cluster.add_node(num_cpus=num_cpus, memory=num_cpus * 2 * 1024 ** 3))
+        remote_nodes.append(
+            cluster.add_node(num_cpus=num_cpus, memory=num_cpus * 2 * 1024 ** 3)
+        )
         if len(remote_nodes) == 1:
             sig = inspect.signature(ray.job_config.JobConfig)
             if "total_memory_mb" in sig.parameters:

@@ -81,9 +81,19 @@ class DataFrameToSQLTable(DataFrameOperand, DataFrameOperandMixin):
         )
 
     def _get_logic_key_token_values(self):
-        fields_to_tokenize = [getattr(self, k, None) for k in [
-            '_table_name', '_schema', '_if_exists', '_index', '_index_label',
-            '_chunksize', '_dtype', '_method']]
+        fields_to_tokenize = [
+            getattr(self, k, None)
+            for k in [
+                "_table_name",
+                "_schema",
+                "_if_exists",
+                "_index",
+                "_index_label",
+                "_chunksize",
+                "_dtype",
+                "_method",
+            ]
+        ]
         return super()._get_logic_key_token_values() + fields_to_tokenize
 
     @property

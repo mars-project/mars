@@ -305,9 +305,12 @@ class TaskManagerActor(mo.Actor):
             processor_ref = self._task_id_to_processor_ref[task_id]
         except KeyError:  # pragma: no cover
             # raise TaskNotExist(f'Task {task_id} does not exist')
-            logger.warning('Current task is finished, got stale result %s  for subtask %s '
-                           'which may be speculative execution from previous tasks, just ignore it.',
-                           subtask_result.subtask_id, subtask_result)
+            logger.warning(
+                "Current task is finished, got stale result %s  for subtask %s "
+                "which may be speculative execution from previous tasks, just ignore it.",
+                subtask_result.subtask_id,
+                subtask_result,
+            )
             return
 
         yield processor_ref.set_subtask_result(subtask_result)

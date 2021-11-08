@@ -110,7 +110,12 @@ class SchedulingAPI(AbstractSchedulingAPI):
         """
         await self._manager_ref.cancel_subtasks(subtask_ids, kill_timeout=kill_timeout)
 
-    async def finish_subtasks(self, subtask_ids: List[str], bands: List[Tuple] = None, schedule_next: bool = True):
+    async def finish_subtasks(
+        self,
+        subtask_ids: List[str],
+        bands: List[Tuple] = None,
+        schedule_next: bool = True,
+    ):
         """
         Mark subtasks as finished, letting scheduling service to schedule
         next tasks in the ready queue

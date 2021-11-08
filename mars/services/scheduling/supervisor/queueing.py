@@ -147,12 +147,16 @@ class SubtaskQueueingActor(mo.Actor):
             SubtaskManagerActor.gen_uid(self._session_id), address=self.address
         )
 
-    async def add_subtasks(self,
-                           subtasks: List[Subtask],
-                           priorities: List[Tuple],
-                           exclude_bands: Set[Tuple] = None,
-                           exclude_bands_force: bool = False):
-        bands = await self._assigner_ref.assign_subtasks(subtasks, exclude_bands, exclude_bands_force)
+    async def add_subtasks(
+        self,
+        subtasks: List[Subtask],
+        priorities: List[Tuple],
+        exclude_bands: Set[Tuple] = None,
+        exclude_bands_force: bool = False,
+    ):
+        bands = await self._assigner_ref.assign_subtasks(
+            subtasks, exclude_bands, exclude_bands_force
+        )
         for subtask, band, priority in zip(subtasks, bands, priorities):
             assert band is not None
             self._stid_to_bands[subtask.subtask_id].append(band)
@@ -161,8 +165,13 @@ class SubtaskQueueingActor(mo.Actor):
             )
             self._max_enqueue_id += 1
             heapq.heappush(self._band_queues[band], heap_item)
-            logger.debug('Subtask %s enqueued to band %s excluded from %s.', subtask.subtask_id, band, exclude_bands)
-        logger.debug('%d subtasks enqueued', len(subtasks))
+            logger.debug(
+                "Subtask %s enqueued to band %s excluded from %s.",
+                subtask.subtask_id,
+                band,
+                exclude_bands,
+            )
+        logger.debug("%d subtasks enqueued", len(subtasks))
 
     async def submit_subtasks(self, band: Tuple = None, limit: Optional[int] = None):
         logger.debug("Submitting subtasks with limit %s", limit)
@@ -178,7 +187,10 @@ class SubtaskQueueingActor(mo.Actor):
             band_limit = limit or self._band_slot_nums[band]
             task_queue = self._band_queues[band]
             submit_items = dict()
-            while self._ensure_top_item_valid(task_queue) and len(submit_items) < band_limit:
+            while (
+                self._ensure_top_item_valid(task_queue)
+                and len(submit_items) < band_limit
+            ):
                 item = heapq.heappop(task_queue)
                 submit_items[item.subtask.subtask_id] = item
 
@@ -228,7 +240,9 @@ class SubtaskQueueingActor(mo.Actor):
     def _ensure_top_item_valid(self, task_queue):
         """Clean invalid subtask item from the queue to ensure that when the queue is not empty,
         there is always some subtasks waiting being scheduled."""
-        while task_queue and task_queue[0].subtask.subtask_id not in self._stid_to_items:
+        while (
+            task_queue and task_queue[0].subtask.subtask_id not in self._stid_to_items
+        ):
             #  skip removed items (as they may be re-pushed into the queue)
             heapq.heappop(task_queue)
         if task_queue:

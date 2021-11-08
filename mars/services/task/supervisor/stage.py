@@ -87,8 +87,11 @@ class TaskStageProcessor:
     async def _schedule_subtasks(self, subtasks: List[Subtask]):
         if not subtasks:
             return
-        subtasks = [subtask for subtask in subtasks
-                                if subtask.subtask_id not in self._submitted_subtask_ids]
+        subtasks = [
+            subtask
+            for subtask in subtasks
+            if subtask.subtask_id not in self._submitted_subtask_ids
+        ]
         self._submitted_subtask_ids.update(subtask.subtask_id for subtask in subtasks)
         return await self._scheduling_api.add_subtasks(
             subtasks, [subtask.priority for subtask in subtasks]
@@ -161,7 +164,11 @@ class TaskStageProcessor:
                             ),
                         )
                     if result.status == SubtaskStatus.cancelled:
-                        logger.warning('Subtask %s from band %s canceled.', subtask.subtask_id, band)
+                        logger.warning(
+                            "Subtask %s from band %s canceled.",
+                            subtask.subtask_id,
+                            band,
+                        )
                     logger.info(
                         "Start to cancel stage %s of task %s.", self.stage_id, self.task
                     )
@@ -184,7 +191,9 @@ class TaskStageProcessor:
                     # all predecessors finished
                     to_schedule_subtasks.append(succ_subtask)
             await self._schedule_subtasks(to_schedule_subtasks)
-            await self._scheduling_api.finish_subtasks([result.subtask_id], bands=[band])
+            await self._scheduling_api.finish_subtasks(
+                [result.subtask_id], bands=[band]
+            )
 
     async def run(self):
         if len(self.subtask_graph) == 0:

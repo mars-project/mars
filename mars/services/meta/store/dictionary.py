@@ -47,9 +47,7 @@ class DictMetaStore(AbstractMetaStore):
         # no extra kwargs.
         return dict()
 
-    def _set_meta(self,
-                  object_id: str,
-                  meta: _CommonMeta):
+    def _set_meta(self, object_id: str, meta: _CommonMeta):
         if isinstance(meta, _ChunkMeta):
             for band in meta.bands:
                 self._band_chunks[band].add(object_id)
@@ -60,9 +58,7 @@ class DictMetaStore(AbstractMetaStore):
 
     @implements(AbstractMetaStore.set_meta)
     @mo.extensible
-    async def set_meta(self,
-                       object_id: str,
-                       meta: _CommonMeta):
+    async def set_meta(self, object_id: str, meta: _CommonMeta):
         self._set_meta(object_id, meta)
 
     @set_meta.batch

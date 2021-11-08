@@ -139,9 +139,20 @@ class DataFrameReadSQL(
             self._output_types = [OutputType.dataframe]
 
     def _get_logic_key_token_values(self):
-        fields_to_tokenize = [getattr(self, k, None) for k in [
-            '_table_or_sql', '_schema', '_coerce_float', '_parse_dates',
-            '_columns', '_method', '_incremental_index', '_use_arrow_dtype', '_partition_col']]
+        fields_to_tokenize = [
+            getattr(self, k, None)
+            for k in [
+                "_table_or_sql",
+                "_schema",
+                "_coerce_float",
+                "_parse_dates",
+                "_columns",
+                "_method",
+                "_incremental_index",
+                "_use_arrow_dtype",
+                "_partition_col",
+            ]
+        ]
         return super()._get_logic_key_token_values() + fields_to_tokenize
 
     @property

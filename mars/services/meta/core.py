@@ -78,7 +78,7 @@ class _CommonMeta:
     store_size: int = None  # size that stored in storage
     extra: Dict = None
 
-    def merge_from(self, value: '_CommonMeta'):
+    def merge_from(self, value: "_CommonMeta"):
         return self
 
 
@@ -169,7 +169,7 @@ class _ChunkMeta(_CommonMeta):
     # needed by ray ownership to keep object alive when worker died.
     object_refs: List[Any] = None
 
-    def merge_from(self, value: '_ChunkMeta'):
+    def merge_from(self, value: "_ChunkMeta"):
         self.bands.extend(value.bands)
         self.object_refs.extend(value.object_refs)
         return self

@@ -77,14 +77,12 @@ class SchedulingSupervisorService(AbstractService):
 
     async def create_session(self, session_id: str):
         service_config = self._config or dict()
-        scheduling_config = service_config.get('scheduling', {})
+        scheduling_config = service_config.get("scheduling", {})
         subtask_max_reschedules = scheduling_config.get(
             "subtask_max_reschedules", DEFAULT_SUBTASK_MAX_RESCHEDULES
         )
-        subtask_cancel_timeout = scheduling_config.get(
-            "subtask_cancel_timeout", 5
-        )
-        speculation_config = scheduling_config.get('speculation', {})
+        subtask_cancel_timeout = scheduling_config.get("subtask_cancel_timeout", 5)
+        speculation_config = scheduling_config.get("speculation", {})
 
         from .assigner import AssignerActor
 

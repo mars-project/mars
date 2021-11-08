@@ -122,7 +122,7 @@ class SubtaskRunnerActor(mo.Actor):
         if self._running_processor is None:
             return
         running_subtask_id = await self._running_processor.get_running_subtask_id()
-        logger.info('Start to cancel subtask %s.', running_subtask_id)
+        logger.info("Start to cancel subtask %s.", running_subtask_id)
         await self._running_processor.cancel()
         self._running_processor = None
-        logger.info('Canceled subtask %s.', running_subtask_id)
+        logger.info("Canceled subtask %s.", running_subtask_id)

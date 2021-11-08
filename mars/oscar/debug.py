@@ -186,7 +186,12 @@ async def task_with_ex_logged(coro, call_site=None):
     except asyncio.CancelledError:
         raise
     except Exception as e:
-        logger.exception('Coroutine %r at call_site %s execution got exception %s.', coro, call_site, e)
+        logger.exception(
+            "Coroutine %r at call_site %s execution got exception %s.",
+            coro,
+            call_site,
+            e,
+        )
         raise
 
 

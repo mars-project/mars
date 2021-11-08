@@ -62,15 +62,15 @@ class Subtask(Serializable):
     priority: Tuple[int, int] = TupleField("priority", FieldTypes.int32)
     rerun_time: int = Int32Field("rerun_time")
     extra_config: dict = DictField("extra_config")
-    stage_id: str = StringField('stage_id')
+    stage_id: str = StringField("stage_id")
     # An unique and deterministic key for subtask compute logic. See logic_key in operator.py.
-    logic_id: str = StringField('logic_id')
+    logic_id: str = StringField("logic_id")
     # index for subtask with same compute logic.
-    index: int = Int32Field('index')
+    index: int = Int32Field("index")
     # parallelism for subtask with same compute logic.
-    parallelism: int = Int32Field('parallelism')
+    parallelism: int = Int32Field("parallelism")
     # subtask can only run in specified bands in `expect_bands`
-    bands_specified: bool = BoolField('bands_specified')
+    bands_specified: bool = BoolField("bands_specified")
 
     def __init__(
         self,
@@ -120,7 +120,7 @@ class SubtaskResult(Serializable):
     subtask_id: str = StringField("subtask_id")
     session_id: str = StringField("session_id")
     task_id: str = StringField("task_id")
-    stage_id: str = StringField('stage_id')
+    stage_id: str = StringField("stage_id")
     status: SubtaskStatus = ReferenceField("status", SubtaskStatus)
     progress: float = Float64Field("progress", default=0.0)
     data_size: int = Int64Field("data_size", default=None)
@@ -136,7 +136,6 @@ class SubtaskResult(Serializable):
 
 
 class SubtaskGraph(DAG, Iterable[Subtask]):
-
     def __init__(self):
         super().__init__()
         self.logic_id_to_subtasks = defaultdict(list)

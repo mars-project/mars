@@ -154,7 +154,9 @@ class BandSlotManagerActor(mo.Actor):
     def get_subtask_slots(self, session_stid: Tuple[str, str]):
         return self._session_stid_to_slots.get(session_stid)
 
-    async def acquire_free_slot(self, session_stid: Tuple[str, str], block=True, timestamp: int = None):
+    async def acquire_free_slot(
+        self, session_stid: Tuple[str, str], block=True, timestamp: int = None
+    ):
         timestamp = timestamp or time.time_ns()
         if not block and self._semaphore.locked():
             raise NoFreeSlot(f"No free slot for {session_stid}")
@@ -271,7 +273,7 @@ class BandSlotManagerActor(mo.Actor):
             except psutil.NoSuchProcess:  # pragma: no cover
                 continue
             except psutil.AccessDenied as e:  # pragma: no cover
-                logger.warning('NO permission to get cpu percent: %s', e)
+                logger.warning("NO permission to get cpu percent: %s", e)
                 usage = 0.0
 
             slot_infos.append(

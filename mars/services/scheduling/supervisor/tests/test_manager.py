@@ -47,11 +47,13 @@ class MockSubtaskQueueingActor(mo.Actor):
         self._subtasks = dict()
         self._error = None
 
-    def add_subtasks(self,
-                     subtasks: List[Subtask],
-                     priorities: List[Tuple],
-                     exclude_bands: Set[Tuple] = None,
-                     exclude_bands_force: bool = False):
+    def add_subtasks(
+        self,
+        subtasks: List[Subtask],
+        priorities: List[Tuple],
+        exclude_bands: Set[Tuple] = None,
+        exclude_bands_force: bool = False,
+    ):
         if self._error is not None:
             raise self._error
         for subtask, priority in zip(subtasks, priorities):

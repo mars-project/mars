@@ -124,9 +124,11 @@ class GlobalSlotManagerActor(mo.Actor):
         return self._band_used_slots
 
     def get_remaining_slots(self) -> Dict[BandType, int]:
-        return {band: slot_nums - self._band_used_slots[band]
-                for band, slot_nums in self._band_total_slots.items()
-                if slot_nums - self._band_used_slots[band] > 0}
+        return {
+            band: slot_nums - self._band_used_slots[band]
+            for band, slot_nums in self._band_total_slots.items()
+            if slot_nums - self._band_used_slots[band] > 0
+        }
 
     async def get_idle_bands(self, idle_duration: int):
         """Return a band list which all bands has been idle for at least `idle_duration` seconds."""

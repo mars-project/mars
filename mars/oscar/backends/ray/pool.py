@@ -121,7 +121,9 @@ class RayMainActorPool(MainActorPoolBase):
             .remote(actor_pool_config, process_index)
         )
         logger.info(
-            "Start to start ray sub pool %s with num_cpus %s", external_address, str(num_cpus)
+            "Start to start ray sub pool %s with num_cpus %s",
+            external_address,
+            str(num_cpus),
         )
         create_sub_pool_timeout = 60
         done, _ = await asyncio.wait(

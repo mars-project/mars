@@ -340,8 +340,10 @@ class RayCluster:
         self.web_address = None
 
     async def start(self):
-        logging.basicConfig(format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO, force=True)
-        logger.info('Start cluster with config %s', self._config)
+        logging.basicConfig(
+            format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO, force=True
+        )
+        logger.info("Start cluster with config %s", self._config)
         address_to_resources = dict()
         supervisor_standalone = (
             self._config.get("cluster", {})

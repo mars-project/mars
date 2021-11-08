@@ -46,9 +46,7 @@ class AbstractMetaStore(ABC):
         """
 
     @abstractmethod
-    async def set_meta(self,
-                       object_id: str,
-                       meta: _CommonMeta):
+    async def set_meta(self, object_id: str, meta: _CommonMeta):
         """
         Set meta.
 

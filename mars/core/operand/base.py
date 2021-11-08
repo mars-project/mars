@@ -145,7 +145,7 @@ class Operand(Base, metaclass=OperandMetaclass):
     # An unique and deterministic key for subtask compute logic. It should be even the same
     # for different run if the compute logic doesn't change. This id will be used in subtask speculative
     # execution and hbo scheduling and so on.
-    logic_key = StringField('logic_key')
+    logic_key = StringField("logic_key")
 
     def __init__(self: OperandType, *args, **kwargs):
         extra_names = (
@@ -158,8 +158,8 @@ class Operand(Base, metaclass=OperandMetaclass):
 
     def _update_key(self):
         super()._update_key()
-        if not hasattr(self, 'logic_key') or not self.logic_key:
-            self._obj_set('logic_key', self._get_logic_key())
+        if not hasattr(self, "logic_key") or not self.logic_key:
+            self._obj_set("logic_key", self._get_logic_key())
 
     def _get_logic_key(self):
         """The subclass may need to override this method to ensure unique and deterministic."""
@@ -167,7 +167,9 @@ class Operand(Base, metaclass=OperandMetaclass):
         try:
             return tokenize(*fields)
         except Exception as e:
-            raise Exception(f'Cannot generate logic key for operator {self} with fields {fields}') from e
+            raise Exception(
+                f"Cannot generate logic key for operator {self} with fields {fields}"
+            ) from e
 
     def _get_logic_key_token_values(self):
         token_values = [type(self).__module__, type(self).__name__]
