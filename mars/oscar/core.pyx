@@ -37,7 +37,7 @@ cdef:
 def set_debug_options(options):
     global _log_unhandled_errors, _log_cycle_send
     if options is None:
-        _log_unhandled_errors = _log_cycle_send = True
+        _log_unhandled_errors = _log_cycle_send = False
     else:
         _log_unhandled_errors = options.log_unhandled_errors
         _log_cycle_send = options.log_cycle_send
