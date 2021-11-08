@@ -110,6 +110,7 @@ class MetaAPI(AbstractMetaAPI):
             chunk = chunk.chunk
         params = chunk.params.copy()
         chunk_key = extra.pop("chunk_key", chunk.key)
+        object_ref = extra.pop("object_ref", None)
         if isinstance(
             chunk,
             (
@@ -128,7 +129,8 @@ class MetaAPI(AbstractMetaAPI):
             **params,
             bands=bands,
             memory_size=memory_size,
-            store_size=store_size
+            store_size=store_size,
+            object_refs=[object_ref]
         )
 
     @mo.extensible
@@ -138,7 +140,6 @@ class MetaAPI(AbstractMetaAPI):
         memory_size: int = None,
         store_size: int = None,
         bands: List[BandType] = None,
-        timestamp: int = None,
         **extra
     ):
         """
@@ -152,9 +153,6 @@ class MetaAPI(AbstractMetaAPI):
             serialized size for chunk data
         bands:
             chunk data bands
-        timestamp: int
-            a version which can be an optimistic lock for set/del meta for same object. If
-            version is not None and not same, delete chunk meta will be skipped.
         extra
 
         Returns
@@ -164,16 +162,15 @@ class MetaAPI(AbstractMetaAPI):
         meta = self._extract_chunk_meta(
             chunk, memory_size=memory_size, store_size=store_size, bands=bands, **extra
         )
-        return await self._meta_store.set_meta(meta.object_id, meta, timestamp=timestamp)
+        return await self._meta_store.set_meta(meta.object_id, meta)
 
     @set_chunk_meta.batch
     async def batch_set_chunk_meta(self, args_list, kwargs_list):
         set_chunk_metas = []
         for args, kwargs in zip(args_list, kwargs_list):
-            timestamp = kwargs.pop('timestamp', None)
             meta = self._extract_chunk_meta(*args, **kwargs)
             set_chunk_metas.append(
-                self._meta_store.set_meta.delay(meta.object_id, meta, timestamp=timestamp)
+                self._meta_store.set_meta.delay(meta.object_id, meta)
             )
         return await self._meta_store.set_meta.batch(*set_chunk_metas)
 
@@ -191,17 +188,14 @@ class MetaAPI(AbstractMetaAPI):
         return await self._meta_store.get_meta.batch(*get_chunk_metas)
 
     @mo.extensible
-    async def del_chunk_meta(self, object_id: str, timestamp: int = None):
+    async def del_chunk_meta(self, object_id: str):
         """
         Parameters
         ----------
         object_id: str
             chunk id
-        timestamp: int
-            a version which can be an optimistic lock for set/del meta for same object. If
-            version is not None and not same, delete chunk meta will be skipped.
         """
-        return await self._meta_store.del_meta(object_id, timestamp=timestamp)
+        return await self._meta_store.del_meta(object_id)
 
     @del_chunk_meta.batch
     async def batch_del_chunk_meta(self, args_list, kwargs_list):

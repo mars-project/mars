@@ -354,7 +354,6 @@ class SubtaskProcessor:
     ):
         key_to_result_chunk = {c.key: c for c in chunk_graph.result_chunks}
         # store meta
-        timestamp = time.time_ns()
         set_chunk_metas = []
         result_data_size = 0
         for chunk_key in stored_keys:
@@ -374,7 +373,6 @@ class SubtaskProcessor:
                     bands=[self._band],
                     chunk_key=chunk_key,
                     object_ref=object_ref,
-                    timestamp=timestamp,
                 )
             )
         for chunk in chunk_graph.result_chunks:
@@ -384,7 +382,7 @@ class SubtaskProcessor:
                 # due to it's empty actually
                 set_chunk_metas.append(
                     self._meta_api.set_chunk_meta.delay(
-                        chunk, memory_size=0, store_size=0, bands=[self._band], timestamp=timestamp
+                        chunk, memory_size=0, store_size=0, bands=[self._band]
                     )
                 )
         logger.debug(
@@ -410,16 +408,13 @@ class SubtaskProcessor:
                     self.subtask.subtask_id,
                 )
                 set_chunks_meta.cancel()
-                await self._meta_api.del_chunk_meta.batch(*[
-                    self._meta_api.del_chunk_meta.delay(chunk_key, timestamp=timestamp)
-                    for chunk_key in stored_keys])
-
-                # remote stored data
-                deletes = []
-                for data_key in stored_keys:
-                    deletes.append(self._storage_api.delete.delay(data_key))
-                await self._storage_api.delete.batch(*deletes)
-
+                try:
+                    await set_chunks_meta
+                except asyncio.CancelledError:
+                    pass
+                # Since we don't delete chunk data on this worker, we need to ensure chunk meta are recorded
+                # in meta service, so that `processor.decref_stage` can delete the chunk data finally.
+                await self._meta_api.set_chunk_meta.batch(*set_chunk_metas)
                 self.result.status = SubtaskStatus.cancelled
                 logger.debug(
                     "Cancelled store chunk metas for data keys: %s, " "subtask id: %s",

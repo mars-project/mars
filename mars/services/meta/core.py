@@ -78,6 +78,9 @@ class _CommonMeta:
     store_size: int = None  # size that stored in storage
     extra: Dict = None
 
+    def merge_from(self, value: '_CommonMeta'):
+        return self
+
 
 @dataslots
 @dataclass
@@ -164,7 +167,12 @@ class _ChunkMeta(_CommonMeta):
     index: Tuple[int] = None
     bands: List[BandType] = None
     # needed by ray ownership to keep object alive when worker died.
-    object_ref: Any = None
+    object_refs: List[Any] = None
+
+    def merge_from(self, value: '_ChunkMeta'):
+        self.bands.extend(value.bands)
+        self.object_refs.extend(value.object_refs)
+        return self
 
 
 @_register_type(TENSOR_CHUNK_TYPE)

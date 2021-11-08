@@ -94,6 +94,7 @@ class BandSlotManagerActor(mo.Actor):
 
         self._session_stid_to_slots = defaultdict(set)
         self._slot_to_session_stid = dict()
+        # a version which can be used for getting acquired slot.
         self._slot_to_timestamp = dict()
         self._timestamp_to_slot = dict()
         self._last_report_time = time.time()
@@ -142,6 +143,12 @@ class BandSlotManagerActor(mo.Actor):
         return self._slot_control_refs[slot_id].address
 
     def get_subtask_slot_by_ts(self, timestamp: int = None):
+        """
+        Parameters
+        ----------
+        timestamp: int
+            a version which can be used for getting acquired slot.
+        """
         return self._timestamp_to_slot.get(timestamp)
 
     def get_subtask_slots(self, session_stid: Tuple[str, str]):
