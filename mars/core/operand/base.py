@@ -173,8 +173,9 @@ class Operand(Base, metaclass=OperandMetaclass):
         token_values = [type(self).__module__, type(self).__name__]
         if self.stage is not None:
             token_values.append(self.stage.name)
-        for input_chunk in self.inputs:
-            token_values.append(input_chunk.op.logic_key)
+        for input_chunk in self.inputs or ():
+            if input_chunk is not None:
+                token_values.append(input_chunk.op.logic_key)
         return token_values
 
     @classmethod
