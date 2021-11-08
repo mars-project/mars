@@ -23,7 +23,7 @@ from ....core.operand import Fetch, FetchShuffle
 from ....typing import BandType
 from ...core import NodeRole
 from ...subtask import Subtask
-from ..errors import NoMatchingSlots, NoBandAvailable
+from ..errors import NoMatchingSlots, NoAvailableBand
 
 
 class AssignerActor(mo.Actor):
@@ -94,7 +94,7 @@ class AssignerActor(mo.Actor):
             if avail_bands:
                 return random.choice(avail_bands)
             elif exclude_bands_force:
-                raise NoBandAvailable(f'No bands available after excluding bands {exclude_bands}')
+                raise NoAvailableBand(f'No bands available after excluding bands {exclude_bands}')
         return random.choice(self._get_device_bands(is_gpu))
 
     async def assign_subtasks(self,
@@ -169,7 +169,7 @@ class AssignerActor(mo.Actor):
                         bands.append(band)
             band = random.choice(bands)
             if band in exclude_bands and exclude_bands_force:
-                raise NoBandAvailable(f'No bands available for subtask {subtask.subtask_id} after '
+                raise NoAvailableBand(f'No bands available for subtask {subtask.subtask_id} after '
                                       f'excluded {exclude_bands}')
             if subtask.bands_specified and band not in subtask.expect_bands:
                 raise Exception(f'No bands available for subtask {subtask.subtask_id} on bands {subtask.expect_bands} '

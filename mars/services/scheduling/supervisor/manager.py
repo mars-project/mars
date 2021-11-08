@@ -29,7 +29,7 @@ from ....utils import dataslots, parse_readable_size
 from ...subtask import Subtask, SubtaskResult, SubtaskStatus
 from ...task import TaskAPI
 from ..core import SubtaskScheduleSummary
-from ..errors import NoBandAvailable
+from ..errors import NoAvailableBand
 from ..utils import redirect_subtask_errors
 
 logger = logging.getLogger(__name__)
@@ -505,7 +505,7 @@ class SpeculativeScheduler:
                             logger.info('Subtask %s reached max speculative execution: %s',
                                         subtask.subtask_id,
                                         self._subtask_speculation_max_concurrent_run)
-                    except NoBandAvailable:
+                    except NoAvailableBand:
                         logger.warning('No bands available for subtask %s after excluded bands %s, '
                                        'try resubmit later.', subtask.subtask_id, exclude_bands)
                     except KeyError as e:

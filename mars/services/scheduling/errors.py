@@ -23,5 +23,5 @@ class NoMatchingSlots(MarsError):
         return str(self.slot_prefix)
 
 
-class NoBandAvailable(MarsError):
+class NoAvailableBand(MarsError):
     pass
