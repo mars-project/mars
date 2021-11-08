@@ -81,7 +81,6 @@ class DataFrameReadSQL(
     _left_end = BoolField("left_end")
     _right_end = BoolField("right_end")
     _nrows = Int64Field("nrows")
-    exclude_fields_for_logic_id = IncrementalIndexDatasource.exclude_fields_for_logic_id + ['_con']
 
     def __init__(
         self,
@@ -138,6 +137,12 @@ class DataFrameReadSQL(
         )
         if not self.output_types:
             self._output_types = [OutputType.dataframe]
+
+    def _get_logic_key_token_values(self):
+        fields_to_tokenize = [getattr(self, k, None) for k in [
+            '_table_or_sql', '_schema', '_coerce_float', '_parse_dates',
+            '_columns', '_method', '_incremental_index', '_use_arrow_dtype', '_partition_col']]
+        return super()._get_logic_key_token_values() + fields_to_tokenize
 
     @property
     def table_or_sql(self):

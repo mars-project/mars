@@ -51,7 +51,6 @@ class DataFrameToSQLTable(DataFrameOperand, DataFrameOperandMixin):
         on_serialize=cloudpickle.dumps,
         on_deserialize=cloudpickle.loads,
     )
-    exclude_fields_for_logic_id = DataFrameOperand.exclude_fields_for_logic_id + ['_con']
 
     def __init__(
         self,
@@ -80,6 +79,12 @@ class DataFrameToSQLTable(DataFrameOperand, DataFrameOperandMixin):
             _engine_kwargs=engine_kwargs,
             **kw
         )
+
+    def _get_logic_key_token_values(self):
+        fields_to_tokenize = [getattr(self, k, None) for k in [
+            '_table_name', '_schema', '_if_exists', '_index', '_index_label',
+            '_chunksize', '_dtype', '_method']]
+        return super()._get_logic_key_token_values() + fields_to_tokenize
 
     @property
     def table_name(self):

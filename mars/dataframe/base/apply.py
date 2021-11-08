@@ -55,7 +55,6 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
     _elementwise = BoolField("elementwise")
     _args = TupleField("args")
     _kwds = DictField("kwds")
-    exclude_fields_for_logic_id = DataFrameOperand.exclude_fields_for_logic_id + ['func']
 
     def __init__(
         self,
@@ -83,6 +82,14 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
             _elementwise=elementwise,
             **kw,
         )
+
+    def _get_logic_key_token_values(self):
+        token_values = super()._get_logic_key_token_values() + [
+            self._axis, self._convert_dtype, self._raw, self._result_type, self._elementwise]
+        if self.func:
+            return token_values + [self.func.__code__]
+        else:
+            return token_values
 
     @property
     def func(self):

@@ -146,8 +146,6 @@ class Operand(Base, metaclass=OperandMetaclass):
     # for different run if the compute logic doesn't change. This id will be used in subtask speculative
     # execution and hbo scheduling and so on.
     logic_key = StringField('logic_key')
-    exclude_fields_for_logic_id = ['extra_params', 'id', 'key', 'data', 'inputs',
-                                   'outputs', 'scheduling_hint', 'device']
 
     def __init__(self: OperandType, *args, **kwargs):
         extra_names = (
@@ -157,23 +155,24 @@ class Operand(Base, metaclass=OperandMetaclass):
         kwargs["extra_params"] = kwargs.pop("extra_params", extras)
         self._extract_scheduling_hint(kwargs)
         super().__init__(*args, **kwargs)
+
+    def _update_key(self):
+        super()._update_key()
         if not hasattr(self, 'logic_key') or not self.logic_key:
-            token_values = self._get_logic_key_token_values()
             try:
-                self._obj_set('logic_key', tokenize(*token_values))
+                self._obj_set('logic_key', self._get_logic_key())
             except Exception as e:
-                raise Exception(f'Cannot generate token from values {token_values}') from e
+                raise Exception(f'Cannot generate logic key for operator {self}') from e
+
+    def _get_logic_key(self):
+        """The subclass may need to override this method to ensure unique and deterministic."""
+        return tokenize(*self._get_logic_key_token_values())
 
     def _get_logic_key_token_values(self):
-        """The subclass may need to override this method to ensure unique and deterministic."""
-        fields_to_tokenize = [getattr(self, k, None) for k in self._keys_
-                              if (k not in self._no_copy_attrs_ and k not in self.exclude_fields_for_logic_id)]
+        token_values = [type(self).__module__, type(self).__name__, self.stage.name]
         for input_chunk in self.inputs:
-            fields_to_tokenize.append(input_chunk.op.logic_key)
-        if self.outputs:
-            for output_chunk in self.outputs:
-                fields_to_tokenize.append(output_chunk.op.logic_key)
-        return [type(self).__name__] + fields_to_tokenize
+            token_values.append(input_chunk.op.logic_key)
+        return token_values
 
     @classmethod
     def _extract_scheduling_hint(cls, kwargs: Dict[str, Any]):
