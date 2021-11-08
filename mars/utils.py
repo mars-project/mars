@@ -870,6 +870,7 @@ def build_fuse_chunk(
         fuse_graph=fuse_graph,
         **(op_kw or dict()),
     )
+    fuse_op.logic_key = fuse_op._get_logic_key()
     return fuse_op.new_chunk(
         head_chunk.inputs,
         kws=[tail_chunk.params],

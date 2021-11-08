@@ -159,17 +159,20 @@ class Operand(Base, metaclass=OperandMetaclass):
     def _update_key(self):
         super()._update_key()
         if not hasattr(self, 'logic_key') or not self.logic_key:
-            try:
-                self._obj_set('logic_key', self._get_logic_key())
-            except Exception as e:
-                raise Exception(f'Cannot generate logic key for operator {self}') from e
+            self._obj_set('logic_key', self._get_logic_key())
 
     def _get_logic_key(self):
         """The subclass may need to override this method to ensure unique and deterministic."""
-        return tokenize(*self._get_logic_key_token_values())
+        fields = self._get_logic_key_token_values()
+        try:
+            return tokenize(*fields)
+        except Exception as e:
+            raise Exception(f'Cannot generate logic key for operator {self} with fields {fields}') from e
 
     def _get_logic_key_token_values(self):
-        token_values = [type(self).__module__, type(self).__name__, self.stage.name]
+        token_values = [type(self).__module__, type(self).__name__]
+        if self.stage is not None:
+            token_values.append(self.stage.name)
         for input_chunk in self.inputs:
             token_values.append(input_chunk.op.logic_key)
         return token_values

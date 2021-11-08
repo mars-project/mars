@@ -87,7 +87,10 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         token_values = super()._get_logic_key_token_values() + [
             self._axis, self._convert_dtype, self._raw, self._result_type, self._elementwise]
         if self.func:
-            return token_values + [self.func.__code__]
+            if hasattr(self.func, '__code__'):
+                return token_values + [self.func.__code__]
+            else:
+                return token_values + [self.func.__class__.__module__, self.func.__class__.__name__]
         else:
             return token_values
 

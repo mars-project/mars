@@ -45,8 +45,12 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
         )
 
     def _get_logic_key_token_values(self):
+        token_values = super()._get_logic_key_token_values()
         if self.func:
-            return super()._get_logic_key_token_values() + [self.func.__code__]
+            if hasattr(self.func, '__code__'):
+                return token_values + [self.func.__code__]
+            else:
+                return token_values + [self.func.__class__.__module__, self.func.__class__.__name__]
         else:
             return super()._get_logic_key_token_values()
 
