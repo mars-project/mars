@@ -36,7 +36,8 @@ class DictMetaStore(AbstractMetaStore):
     def __init__(self, session_id: str, **kw):
         super().__init__(session_id)
         self._store: Dict[str, _CommonMeta] = dict()
-        self._store_timestamp: Dict[str, float] = dict()
+        # timestamp for object is a version which can be an optimistic lock for set/del meta for same object.
+        self._store_timestamp: Dict[str, int] = dict()
         self._band_chunks: Dict[BandType, Set[str]] = defaultdict(set)
         if kw:  # pragma: no cover
             raise TypeError(f"Keyword arguments {kw!r} cannot be recognized.")
@@ -103,7 +104,7 @@ class DictMetaStore(AbstractMetaStore):
         return metas
 
     def _del_meta(self, object_id: str, timestamp: int = None):
-        if timestamp and self._store_timestamp[object_id] != timestamp:
+        if timestamp is not None and self._store_timestamp[object_id] != timestamp:
             return
         meta = self._store[object_id]
         if isinstance(meta, _ChunkMeta):
@@ -113,6 +114,7 @@ class DictMetaStore(AbstractMetaStore):
                 if len(chunks) == 0:
                     del self._band_chunks[band]
         del self._store[object_id]
+        del self._store_timestamp[object_id]
 
     @implements(AbstractMetaStore.del_meta)
     @mo.extensible

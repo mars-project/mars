@@ -94,7 +94,7 @@ class AssignerActor(mo.Actor):
             if avail_bands:
                 return random.choice(avail_bands)
             elif exclude_bands_force:
-                raise Exception(f'No bands available after excluding bands {exclude_bands}')
+                raise NoBandAvailable(f'No bands available after excluding bands {exclude_bands}')
         return random.choice(self._get_device_bands(is_gpu))
 
     async def assign_subtasks(self,

@@ -141,6 +141,26 @@ class MetaAPI(AbstractMetaAPI):
         timestamp: int = None,
         **extra
     ):
+        """
+        Parameters
+        ----------
+        chunk: ChunkType
+            chunk to set meta
+        memory_size: int
+            memory size for chunk data
+        store_size: int
+            serialized size for chunk data
+        bands:
+            chunk data bands
+        timestamp: int
+            a version which can be an optimistic lock for set/del meta for same object. If
+            version is not None and not same, delete chunk meta will be skipped.
+        extra
+
+        Returns
+        -------
+
+        """
         meta = self._extract_chunk_meta(
             chunk, memory_size=memory_size, store_size=store_size, bands=bands, **extra
         )
@@ -172,6 +192,15 @@ class MetaAPI(AbstractMetaAPI):
 
     @mo.extensible
     async def del_chunk_meta(self, object_id: str, timestamp: int = None):
+        """
+        Parameters
+        ----------
+        object_id: str
+            chunk id
+        timestamp: int
+            a version which can be an optimistic lock for set/del meta for same object. If
+            version is not None and not same, delete chunk meta will be skipped.
+        """
         return await self._meta_store.del_meta(object_id, timestamp=timestamp)
 
     @del_chunk_meta.batch

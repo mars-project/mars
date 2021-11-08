@@ -30,8 +30,8 @@ CALL_METHOD_BATCH = 1
 logger = logging.getLogger(__name__)
 
 cdef:
-    bint _log_unhandled_errors = True
-    bint _log_cycle_send = True
+    bint _log_unhandled_errors = False
+    bint _log_cycle_send = False
 
 
 def set_debug_options(options):

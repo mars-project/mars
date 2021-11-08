@@ -59,7 +59,7 @@ class AbstractMetaStore(ABC):
             Object ID.
         meta : _CommonMeta
             Meta.
-        timestamp : float
+        timestamp : int
             timestamp as a optimistic lock.
         """
 
@@ -96,7 +96,7 @@ class AbstractMetaStore(ABC):
         ----------
         object_id : str
             Object ID.
-        timestamp : float
+        timestamp : int
             timestamp as a optimistic lock.
         """
 
