@@ -826,6 +826,9 @@ class TaskProcessorActor(mo.Actor):
                     subtask, stage_processor.subtask_graph
                 )
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+                logger.debug(
+                    "Decref input subtasks for subtask %s failed.", subtask.subtask_id
+                )
                 _, err, tb = sys.exc_info()
                 if subtask_result.status not in (
                     SubtaskStatus.errored,

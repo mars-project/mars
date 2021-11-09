@@ -157,7 +157,7 @@ class BandSlotManagerActor(mo.Actor):
     async def acquire_free_slot(
         self, session_stid: Tuple[str, str], block=True, timestamp: int = None
     ):
-        timestamp = timestamp or time.time_ns()
+        timestamp = timestamp or int(time.time() * 1e6)
         if not block and self._semaphore.locked():
             raise NoFreeSlot(f"No free slot for {session_stid}")
         yield self._semaphore.acquire()

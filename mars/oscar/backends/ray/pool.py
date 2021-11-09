@@ -304,6 +304,7 @@ class RaySubPool(RayPoolBase):
         self._kwargs = kwargs
 
     async def start(self):
+        logger.info("Start to init sub pool.")
         # create mars pool outside the constructor is to avoid ray actor creation failed.
         # ray can't get the creation exception.
         actor_config, process_index = self._args

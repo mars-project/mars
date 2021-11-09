@@ -149,19 +149,24 @@ class ClusterStateActor(mo.StatelessActor):
         self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None
     ) -> Optional[str]:
         worker_cpu = worker_cpu or self._worker_cpu
-        bundle = {
-            "CPU": worker_cpu,
-            # 'memory': worker_mem or self._worker_mem
-        }
+        bundle = {"CPU": worker_cpu, "memory": worker_mem or self._worker_mem}
         band_to_slot = {"numa-0": worker_cpu}
         start_time = time.time()
         logger.info("Start to request worker with resource %s.", bundle)
         # TODO rescale ray placement group instead of creating new placement group
         pg_name = f"{self._pg_name}_{next(self._pg_counter)}"
         pg = ray.util.placement_group(name=pg_name, bundles=[bundle], strategy="SPREAD")
-        create_pg_timeout = timeout or 5
+        create_pg_timeout = timeout or 60
         try:
             await asyncio.wait_for(pg.ready(), timeout=create_pg_timeout)
+        except asyncio.CancelledError:
+            logger.warning(
+                "Request worker with placement group %s in %s seconds canceled.",
+                pg.bundle_specs,
+                create_pg_timeout,
+            )
+            ray.util.remove_placement_group(pg)
+            return None
         except asyncio.TimeoutError:
             logger.warning(
                 "Request worker failed, "
@@ -371,7 +376,7 @@ class RayCluster:
         self._config["cluster"]["lookup_address"] = self.supervisor_address
         address_to_resources[node_placement_to_address(self._cluster_name, 0)] = {
             "CPU": 1,
-            # 'memory': self._supervisor_mem
+            "memory": self._supervisor_mem,
         }
         worker_addresses = []
         if supervisor_standalone:
@@ -385,7 +390,7 @@ class RayCluster:
                 )
                 address_to_resources[worker_node_address] = {
                     "CPU": self._worker_cpu,
-                    # 'memory': self._worker_mem
+                    "memory": self._worker_mem,
                 }
         else:
             for worker_index in range(self._worker_num):
@@ -401,7 +406,7 @@ class RayCluster:
                 )
                 address_to_resources[worker_node_address] = {
                     "CPU": self._worker_cpu,
-                    # 'memory': self._worker_mem
+                    "memory": self._worker_mem,
                 }
         mo.setup_cluster(address_to_resources)
 

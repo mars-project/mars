@@ -14,6 +14,7 @@
 
 import pytest
 
+from ....tests.core import require_ray
 from ....utils import lazy_import
 from ..ray import new_cluster
 from ..tests import test_local
@@ -31,7 +32,7 @@ async def speculative_cluster():
         "test_cluster",
         worker_num=10,
         worker_cpu=2,
-        worker_mem=2 * 1024 ** 3,
+        worker_mem=512 * 1024 ** 2,
         supervisor_mem=100 * 1024 ** 2,
         config={
             "scheduling": {
@@ -51,8 +52,8 @@ async def speculative_cluster():
         yield client
 
 
-@pytest.mark.timeout(timeout=180)
 @pytest.mark.parametrize("ray_large_cluster", [{"num_nodes": 2}], indirect=True)
+@require_ray
 @pytest.mark.asyncio
 async def test_task_speculation_execution(ray_large_cluster, speculative_cluster):
     await test_local.test_task_speculation_execution(speculative_cluster)

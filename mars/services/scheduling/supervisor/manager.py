@@ -515,7 +515,7 @@ class SpeculativeScheduler:
                                 await self._global_slot_ref.get_remaining_slots()
                             )
                             logger.warning(
-                                "%s subtasks in %s for group %s has not been finished in %s seconds, "
+                                "%s subtasks in %s for group %s has not been finished in %s seconds on bands %s, "
                                 "median duration is %s, average duration for %s finished subtasks "
                                 "is %s. trying speculative running. "
                                 "Current cluster remaining resources %s",
@@ -523,6 +523,7 @@ class SpeculativeScheduler:
                                 parallelism,
                                 logic_id,
                                 duration_threshold,
+                                exclude_bands,
                                 median,
                                 len(subtask_infos),
                                 duration_array.mean(),
@@ -615,5 +616,6 @@ class SpeculativeScheduler:
                         logger.warning(
                             "Subtask %s may happen to be finished just now, cannot add it to"
                             "subtask queue, got error %s, just ignore it.",
+                            subtask.subtask_id,
                             e,
                         )

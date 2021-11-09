@@ -333,7 +333,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
         async def _run_subtask_once():
             aiotask = None
             slot_id = None
-            timestamp = time.time_ns()
+            timestamp = int(time.time() * 1e6)
             try:
                 await quota_ref.request_batch_quota(batch_quota_req)
                 self._check_cancelling(subtask_info)
@@ -397,7 +397,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                         slot_id, (subtask.session_id, subtask.subtask_id)
                     )
                     logger.info(
-                        "Released slot %s for subtask %s", slot_id, subtask.subtask_id
+                        "Released slot %d for subtask %s", slot_id, subtask.subtask_id
                     )
                 await quota_ref.release_quotas(tuple(batch_quota_req.keys()))
 
