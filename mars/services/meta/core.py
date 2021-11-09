@@ -170,8 +170,10 @@ class _ChunkMeta(_CommonMeta):
     object_refs: List[Any] = None
 
     def merge_from(self, value: "_ChunkMeta"):
-        self.bands.extend(value.bands)
-        self.object_refs.extend(value.object_refs)
+        if value.bands:
+            self.bands = list(set(self.bands) | set(value.bands))
+        if value.object_refs:
+            self.object_refs = list(set(self.object_refs) | set(value.object_refs))
         return self
 
 

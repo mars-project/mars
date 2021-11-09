@@ -111,6 +111,10 @@ class MetaAPI(AbstractMetaAPI):
         params = chunk.params.copy()
         chunk_key = extra.pop("chunk_key", chunk.key)
         object_ref = extra.pop("object_ref", None)
+        if object_ref:
+            object_refs = [object_ref]
+        else:
+            object_refs = []
         if isinstance(
             chunk,
             (
@@ -130,7 +134,7 @@ class MetaAPI(AbstractMetaAPI):
             bands=bands,
             memory_size=memory_size,
             store_size=store_size,
-            object_refs=[object_ref]
+            object_refs=object_refs
         )
 
     @mo.extensible
