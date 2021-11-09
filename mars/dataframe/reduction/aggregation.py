@@ -710,7 +710,12 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             elif not isinstance(value, xdf.DataFrame):
                 new_index = None if not op.gpu else getattr(value, "index", None)
                 dtype = getattr(value, "dtype", None)
-                value = xdf.DataFrame(value, columns=index, index=new_index)
+                if xdf is pd:
+                    value = xdf.DataFrame(value, columns=index, index=new_index)
+                else:  # pragma: no cover
+                    value = xdf.DataFrame(value)
+                    value.index = new_index
+                    value.columns = index
             else:
                 return value
 
