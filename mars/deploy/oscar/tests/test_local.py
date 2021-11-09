@@ -546,7 +546,7 @@ def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: 
     assert get_default_session() is None
 
 
-min_task_runtime = 2
+min_task_runtime = 0.01
 
 
 @pytest.fixture
@@ -560,6 +560,8 @@ async def speculative_cluster():
     config["scheduling"]["speculation"]["max_concurrent_run"] = 10
     config["scheduling"]["subtask_cancel_timeout"] = 0.1
     config["scheduling"]["enable_kill_slot"] = True
+    config["storage"]["backends"] = ["plasma"]
+    config["storage"]["plasma"]["store_memory"] = 0.1
     client = await new_cluster(
         config=config,
         n_worker=10,
