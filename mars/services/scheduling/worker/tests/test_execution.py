@@ -21,11 +21,18 @@ from contextlib import asynccontextmanager
 from typing import Tuple
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from ..... import oscar as mo
 from ..... import remote as mr
-from .....core import ChunkGraph, ChunkGraphBuilder, TileableGraph, TileableGraphBuilder
+from .....core import (
+    ChunkGraph,
+    ChunkGraphBuilder,
+    TileableGraph,
+    TileableGraphBuilder,
+    OutputType,
+)
 from .....remote.core import RemoteFunction
 from .....tensor.fetch import TensorFetch
 from .....tensor.arithmetic import TensorTreeAdd
@@ -382,6 +389,47 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     await asyncio.wait_for(
         execution_ref.run_subtask(subtask, "numa-0", pool.external_address), timeout=30
     )
+
+
+def test_estimate_size():
+    from ..execution import SubtaskExecutionActor
+    from .....dataframe.arithmetic import DataFrameAdd
+    from .....dataframe.fetch import DataFrameFetch
+    from .....dataframe.utils import parse_index
+
+    index_value = parse_index(pd.Int64Index([10, 20, 30]))
+
+    input1 = DataFrameFetch(output_types=[OutputType.series],).new_chunk(
+        [], _key="INPUT1", shape=(np.nan,), dtype=np.dtype("O"), index_value=index_value
+    )
+    input2 = DataFrameFetch(output_types=[OutputType.series],).new_chunk(
+        [], _key="INPUT2", shape=(np.nan,), dtype=np.dtype("O"), index_value=index_value
+    )
+    result_chunk = DataFrameAdd(
+        axis=0, output_types=[OutputType.series], lhs=input1, rhs=input2
+    ).new_chunk(
+        [input1, input2],
+        _key="ADD_RESULT",
+        shape=(np.nan,),
+        dtype=np.dtype("O"),
+        index_value=index_value,
+    )
+
+    chunk_graph = ChunkGraph([result_chunk])
+    chunk_graph.add_node(input1)
+    chunk_graph.add_node(input2)
+    chunk_graph.add_node(result_chunk)
+    chunk_graph.add_edge(input1, result_chunk)
+    chunk_graph.add_edge(input2, result_chunk)
+
+    input_sizes = {
+        "INPUT1": (1024, 1024),
+        "INPUT2": (1024, 1024),
+    }
+
+    subtask = Subtask("test_subtask", session_id="session_id", chunk_graph=chunk_graph)
+    result = SubtaskExecutionActor._estimate_sizes(subtask, input_sizes)
+    assert result[0] == 1024
 
 
 @pytest.mark.asyncio

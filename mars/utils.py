@@ -420,12 +420,24 @@ def estimate_pandas_size(
         else:
             return isinstance(dtype, ArrowDtype)
 
-    if hasattr(df_obj, "dtype"):
-        if _is_fast_dtype(df_obj.dtype):
-            return sys.getsizeof(df_obj)
+    dtypes = []
+    if isinstance(df_obj, pd.DataFrame):
+        dtypes.extend(df_obj.dtypes)
+        index_obj = df_obj.index
+    elif isinstance(df_obj, pd.Series):
+        dtypes.append(df_obj.dtype)
+        index_obj = df_obj.index
     else:
-        if all(_is_fast_dtype(dtype) for dtype in df_obj.dtypes):
-            return sys.getsizeof(df_obj)
+        index_obj = df_obj
+
+    # handling possible MultiIndex
+    if hasattr(index_obj, "dtypes"):
+        dtypes.extend(index_obj.dtypes)
+    else:
+        dtypes.append(index_obj.dtype)
+
+    if all(_is_fast_dtype(dtype) for dtype in dtypes):
+        return sys.getsizeof(df_obj)
 
     indices = np.sort(np.random.choice(len(df_obj), size=max_samples, replace=False))
     iloc = df_obj if isinstance(df_obj, pd.Index) else df_obj.iloc

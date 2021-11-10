@@ -489,15 +489,31 @@ def test_estimate_pandas_size():
     df2 = pd.DataFrame(np.random.rand(1000, 10))
     assert utils.estimate_pandas_size(df2) == sys.getsizeof(df2)
 
-    df3 = pd.DataFrame({
-        "A": np.random.choice(["abcd", "def", "gh"], size=(1000,)),
-        "B": np.random.rand(1000),
-        "C": np.random.rand(1000),
-    })
+    df3 = pd.DataFrame(
+        {
+            "A": np.random.choice(["abcd", "def", "gh"], size=(1000,)),
+            "B": np.random.rand(1000),
+            "C": np.random.rand(1000),
+        }
+    )
     assert utils.estimate_pandas_size(df3) != sys.getsizeof(df3)
 
     s1 = pd.Series(np.random.rand(1000))
     assert utils.estimate_pandas_size(s1) == sys.getsizeof(s1)
+
+    from ..dataframe.arrays import ArrowStringArray
+
+    array = ArrowStringArray(np.random.choice(["abcd", "def", "gh"], size=(1000,)))
+    s2 = pd.Series(array)
+    assert utils.estimate_pandas_size(s2) == sys.getsizeof(s2)
+
+    s3 = pd.Series(np.random.choice(["abcd", "def", "gh"], size=(1000,)))
+    assert utils.estimate_pandas_size(s3) != sys.getsizeof(s3)
+
+    idx1 = pd.MultiIndex.from_arrays(
+        [np.arange(0, 1000), np.random.choice(["abcd", "def", "gh"], size=(1000,))]
+    )
+    assert utils.estimate_pandas_size(idx1) != sys.getsizeof(idx1)
 
 
 @require_ray
