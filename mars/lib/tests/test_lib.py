@@ -19,7 +19,7 @@ import pandas as pd
 import numpy as np
 
 from ...tests.core import assert_groupby_equal
-from ...utils import calc_data_size
+from ...utils import calc_data_size, estimate_pandas_size
 from ..groupby_wrapper import wrapped_groupby
 
 
@@ -42,6 +42,7 @@ def test_groupby_wrapper():
     assert grouped.is_frame is True
     assert sys.getsizeof(grouped) > sys.getsizeof(grouped.groupby_obj)
     assert calc_data_size(grouped) > sys.getsizeof(grouped.groupby_obj)
+    assert grouped.estimate_size() > estimate_pandas_size(grouped.groupby_obj)
 
     grouped = conv_func(wrapped_groupby(df, level=0).C)
     assert_groupby_equal(grouped, df.groupby(level=0).C)

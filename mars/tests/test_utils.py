@@ -188,8 +188,8 @@ def test_lazy_import():
     old_sys_path = sys.path
     mock_mod = textwrap.dedent(
         """
-    __version__ = '0.1.0b1'
-    """.strip()
+        __version__ = '0.1.0b1'
+        """.strip()
     )
 
     temp_dir = tempfile.mkdtemp(prefix="mars-utils-test-")
@@ -480,6 +480,40 @@ def test_readable_size():
     assert utils.readable_size(14354000) == "13.69M"
     assert utils.readable_size(14354000000) == "13.37G"
     assert utils.readable_size(14354000000000) == "13.05T"
+
+
+def test_estimate_pandas_size():
+    df1 = pd.DataFrame(np.random.rand(50, 10))
+    assert utils.estimate_pandas_size(df1) == sys.getsizeof(df1)
+
+    df2 = pd.DataFrame(np.random.rand(1000, 10))
+    assert utils.estimate_pandas_size(df2) == sys.getsizeof(df2)
+
+    df3 = pd.DataFrame(
+        {
+            "A": np.random.choice(["abcd", "def", "gh"], size=(1000,)),
+            "B": np.random.rand(1000),
+            "C": np.random.rand(1000),
+        }
+    )
+    assert utils.estimate_pandas_size(df3) != sys.getsizeof(df3)
+
+    s1 = pd.Series(np.random.rand(1000))
+    assert utils.estimate_pandas_size(s1) == sys.getsizeof(s1)
+
+    from ..dataframe.arrays import ArrowStringArray
+
+    array = ArrowStringArray(np.random.choice(["abcd", "def", "gh"], size=(1000,)))
+    s2 = pd.Series(array)
+    assert utils.estimate_pandas_size(s2) == sys.getsizeof(s2)
+
+    s3 = pd.Series(np.random.choice(["abcd", "def", "gh"], size=(1000,)))
+    assert utils.estimate_pandas_size(s3) != sys.getsizeof(s3)
+
+    idx1 = pd.MultiIndex.from_arrays(
+        [np.arange(0, 1000), np.random.choice(["abcd", "def", "gh"], size=(1000,))]
+    )
+    assert utils.estimate_pandas_size(idx1) != sys.getsizeof(idx1)
 
 
 @require_ray

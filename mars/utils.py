@@ -380,8 +380,10 @@ def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
         return sum(calc_data_size(c) for c in dt)
 
     shape = getattr(dt, "shape", None) or shape
-    if hasattr(dt, "memory_usage") or hasattr(dt, "groupby_obj"):
-        return sys.getsizeof(dt)
+    if isinstance(dt, (pd.DataFrame, pd.Series)):
+        return estimate_pandas_size(dt)
+    if hasattr(dt, "estimate_size"):
+        return dt.estimate_size()
     if hasattr(dt, "nbytes"):
         return max(sys.getsizeof(dt), dt.nbytes)
     if hasattr(dt, "shape") and len(dt.shape) == 0:
@@ -402,6 +404,45 @@ def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
 
     # object chunk
     return sys.getsizeof(dt)
+
+
+def estimate_pandas_size(
+    df_obj, max_samples: int = 10, min_sample_rows: int = 100
+) -> int:
+    if len(df_obj) <= min_sample_rows or isinstance(df_obj, pd.RangeIndex):
+        return sys.getsizeof(df_obj)
+
+    from .dataframe.arrays import ArrowDtype
+
+    def _is_fast_dtype(dtype):
+        if isinstance(dtype, np.dtype):
+            return np.issubdtype(dtype, np.number)
+        else:
+            return isinstance(dtype, ArrowDtype)
+
+    dtypes = []
+    if isinstance(df_obj, pd.DataFrame):
+        dtypes.extend(df_obj.dtypes)
+        index_obj = df_obj.index
+    elif isinstance(df_obj, pd.Series):
+        dtypes.append(df_obj.dtype)
+        index_obj = df_obj.index
+    else:
+        index_obj = df_obj
+
+    # handling possible MultiIndex
+    if hasattr(index_obj, "dtypes"):
+        dtypes.extend(index_obj.dtypes)
+    else:
+        dtypes.append(index_obj.dtype)
+
+    if all(_is_fast_dtype(dtype) for dtype in dtypes):
+        return sys.getsizeof(df_obj)
+
+    indices = np.sort(np.random.choice(len(df_obj), size=max_samples, replace=False))
+    iloc = df_obj if isinstance(df_obj, pd.Index) else df_obj.iloc
+    sample_size = sys.getsizeof(iloc[indices])
+    return sample_size * len(df_obj) // max_samples
 
 
 def build_fetch_chunk(
