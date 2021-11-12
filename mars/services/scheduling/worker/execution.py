@@ -207,19 +207,22 @@ class SubtaskExecutionActor(mo.StatelessActor):
             *(storage_api.get_infos.delay(k) for k in fetch_keys)
         )
 
+        # compute memory quota size. when data located in shared memory, the cost
+        # should be differences between deserialized memory cost and serialized cost,
+        # otherwise we should take deserialized memory cost
         for key, meta, infos in zip(fetch_keys, fetch_metas, data_infos):
             level = functools.reduce(operator.or_, (info.level for info in infos))
             if level & StorageLevel.MEMORY:
                 mem_cost = max(0, meta["memory_size"] - meta["store_size"])
             else:
                 mem_cost = meta["memory_size"]
-            sizes[key] = (mem_cost, mem_cost)
+            sizes[key] = (meta["store_size"], mem_cost)
 
         return sizes
 
     @classmethod
     def _estimate_sizes(cls, subtask: Subtask, input_sizes: Dict):
-        size_context = {k: (s, 0) for k, (s, _c) in input_sizes.items()}
+        size_context = dict(input_sizes.items())
         graph = subtask.chunk_graph
 
         key_to_ops = defaultdict(set)
@@ -243,7 +246,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
 
         visited_op_keys = set()
         total_memory_cost = 0
-        max_memory_cost = 0
+        max_memory_cost = sum(calc_size for _, calc_size in size_context.values())
         while key_stack:
             key = key_stack.pop()
             op = key_to_ops[key][0]
@@ -255,24 +258,31 @@ class SubtaskExecutionActor(mo.StatelessActor):
             total_memory_cost += calc_cost
             max_memory_cost = max(total_memory_cost, max_memory_cost)
 
-            result_cost = sum(size_context[out.key][0] for out in op.outputs)
-            total_memory_cost += result_cost - calc_cost
+            if not isinstance(op, Fetch):
+                # when calculation result is stored, memory cost of calculation
+                #  can be replaced with result memory cost
+                result_cost = sum(size_context[out.key][0] for out in op.outputs)
+                total_memory_cost += result_cost - calc_cost
 
-            visited_op_keys.add(op.key)
+            visited_op_keys.add(key)
 
             for succ_op_key in op_key_graph.iter_successors(key):
                 pred_ref_count[succ_op_key] -= 1
                 if pred_ref_count[succ_op_key] == 0:
                     key_stack.append(succ_op_key)
+
             for pred_op_key in op_key_graph.iter_predecessors(key):
                 succ_ref_count[pred_op_key] -= 1
                 if succ_ref_count[pred_op_key] == 0:
+                    pred_op = key_to_ops[pred_op_key][0]
+                    # when clearing fetches, subtract memory size, otherwise subtract store size
+                    account_idx = 1 if isinstance(pred_op, Fetch) else 0
                     pop_result_cost = sum(
-                        size_context.pop(out.key, (0, 0))[0]
+                        size_context.pop(out.key, (0, 0))[account_idx]
                         for out in key_to_ops[pred_op_key][0].outputs
                     )
                     total_memory_cost -= pop_result_cost
-        return sum(t[1] for t in size_context.values()), max_memory_cost
+        return sum(t[0] for t in size_context.values()), max_memory_cost
 
     @classmethod
     def _check_cancelling(cls, subtask_info: SubtaskExecutionInfo):

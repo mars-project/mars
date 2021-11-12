@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
 
+from ..utils import estimate_pandas_size
 from .version import parse as parse_version
 
 _HAS_SQUEEZE = parse_version(pd.__version__) < parse_version("1.1.0")
@@ -123,6 +124,9 @@ class GroupByWrapper:
         return sys.getsizeof(self.obj) + sys.getsizeof(
             getattr(self.groupby_obj.grouper, "_cache", None)
         )
+
+    def estimate_size(self):
+        return estimate_pandas_size(self.obj) + estimate_pandas_size(self.obj.index)
 
     def __reduce__(self):
         return (
