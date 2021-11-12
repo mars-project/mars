@@ -1458,3 +1458,15 @@ def flatten_dict_to_nested_dict(flatten_dict: Dict, sep=".") -> Dict:
                 else:
                     sub_nested_dict = sub_nested_dict[sub_key]
     return nested_dict
+
+
+@contextmanager
+def timeit(result_dict, key):
+    if result_dict is None:
+        yield
+    else:
+        start_time = time.time()
+        try:
+            yield
+        finally:
+            result_dict[key] = time.time() - start_time

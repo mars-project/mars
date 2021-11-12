@@ -38,6 +38,7 @@ from .message import (
     CancelMessage,
     ControlMessage,
     ControlMessageType,
+    ProfilingContext,
 )
 from .router import Router
 
@@ -155,10 +156,18 @@ class MarsActorContext(BaseActorContext):
         return self._process_result_message(result)
 
     async def send(
-        self, actor_ref: ActorRef, message: Tuple, wait_response: bool = True
+        self,
+        actor_ref: ActorRef,
+        message: Tuple,
+        wait_response: bool = True,
+        profiling_context: ProfilingContext = None,
     ):
         message = SendMessage(
-            new_message_id(), actor_ref, message, protocol=DEFAULT_PROTOCOL
+            new_message_id(),
+            actor_ref,
+            message,
+            protocol=DEFAULT_PROTOCOL,
+            profiling_context=profiling_context,
         )
 
         with debug_async_timeout(

@@ -191,9 +191,9 @@ cdef class ClientActorContext(BaseActorContext):
         context = self._get_backend_context(actor_ref.address)
         return context.actor_ref(actor_ref)
 
-    def send(self, ActorRef actor_ref, object message, bint wait_response=True):
+    def send(self, ActorRef actor_ref, object message, bint wait_response=True, object profiling_context=None):
         context = self._get_backend_context(actor_ref.address)
-        return context.send(actor_ref, message, wait_response=wait_response)
+        return context.send(actor_ref, message, wait_response=wait_response, profiling_context=profiling_context)
 
     def wait_actor_pool_recovered(self, str address, str main_address = None):
         context = self._get_backend_context(address)

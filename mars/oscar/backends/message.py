@@ -60,16 +60,24 @@ class MessageTraceItem:
     uid: str
     address: str
     method: str
+    task_id: str
+
+
+@dataslots
+@dataclass
+class ProfilingContext:
+    task_id: str
 
 
 class _MessageBase(ABC):
-    __slots__ = "protocol", "message_id", "message_trace"
+    __slots__ = "protocol", "message_id", "message_trace", "profiling_context"
 
     def __init__(
         self,
         message_id: bytes,
         protocol: int = None,
         message_trace: List[MessageTraceItem] = None,
+        profiling_context: ProfilingContext = None,
     ):
         self.message_id = message_id
         if protocol is None:
@@ -84,6 +92,7 @@ class _MessageBase(ABC):
         # `A` will find that id:1 already exists in inbox,
         # thus deadlock detected.
         self.message_trace = message_trace
+        self.profiling_context = profiling_context
 
     @classproperty
     @abstractmethod
@@ -137,8 +146,14 @@ class ResultMessage(_MessageBase):
         result: Any,
         protocol: int = None,
         message_trace: List[MessageTraceItem] = None,
+        profiling_context: ProfilingContext = None,
     ):
-        super().__init__(message_id, protocol=protocol, message_trace=message_trace)
+        super().__init__(
+            message_id,
+            protocol=protocol,
+            message_trace=message_trace,
+            profiling_context=profiling_context,
+        )
         self.result = result
 
     @classproperty
@@ -269,8 +284,14 @@ class SendMessage(_MessageBase):
         content: Any,
         protocol: int = None,
         message_trace: List[MessageTraceItem] = None,
+        profiling_context: ProfilingContext = None,
     ):
-        super().__init__(message_id, protocol=protocol, message_trace=message_trace)
+        super().__init__(
+            message_id,
+            protocol=protocol,
+            message_trace=message_trace,
+            profiling_context=profiling_context,
+        )
         self.actor_ref = actor_ref
         self.content = content
 

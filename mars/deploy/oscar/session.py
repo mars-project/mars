@@ -16,6 +16,7 @@ import asyncio
 import concurrent.futures
 import itertools
 import logging
+import json
 import random
 import string
 import threading
@@ -846,6 +847,12 @@ class _IsolatedSession(AbstractAsyncSession):
                         raise TimeoutError(
                             f"Task({task_id}) running time > {self.timeout}"
                         )
+            if task_result.profiling:
+                logger.warning(
+                    "Profile task %s execution result:\n%s",
+                    task_id,
+                    json.dumps(task_result.profiling, indent=4),
+                )
             if task_result.error:
                 raise task_result.error.with_traceback(task_result.traceback)
             if cancelled:

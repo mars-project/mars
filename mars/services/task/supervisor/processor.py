@@ -23,6 +23,7 @@ from functools import reduce, wraps
 from typing import Callable, Coroutine, Dict, Iterator, List, Optional, Set, Type, Union
 
 from .... import oscar as mo
+from ....oscar.profiling import ProfilingData
 from ....config import Config
 from ....core import ChunkGraph, TileableGraph
 from ....core.operand import (
@@ -34,7 +35,7 @@ from ....core.operand import (
 )
 from ....optimization.logical import OptimizationRecords
 from ....typing import TileableType, BandType
-from ....utils import build_fetch
+from ....utils import build_fetch, timeit
 from ...cluster.api import ClusterAPI
 from ...lifecycle.api import LifecycleAPI
 from ...meta.api import MetaAPI
@@ -86,6 +87,9 @@ class TaskProcessor:
         self._scheduling_api = scheduling_api
         self._meta_api = meta_api
 
+        if task.extra_config and task.extra_config.get("enable_profiling"):
+            ProfilingData.init(task.task_id)
+
         self.result = TaskResult(
             task_id=task.task_id,
             session_id=task.session_id,
@@ -100,6 +104,10 @@ class TaskProcessor:
         self._chunk_graph_iter = None
         self._raw_tile_context = preprocessor.tile_context.copy()
         self._lifecycle_processed_tileables = set()
+
+    @property
+    def task_id(self):
+        return self._task.task_id
 
     @property
     def preprocessor(self):
@@ -323,17 +331,31 @@ class TaskProcessor:
         tileable_graph = self._preprocessor.tileable_graph
         self._init_chunk_graph_iter(tileable_graph)
 
+        start_time = time.time()
         chunk_graph = await self._get_next_chunk_graph(self._chunk_graph_iter)
         if chunk_graph is None:
             # tile finished
             self._preprocessor.done = True
             return
 
+        stage_id = new_task_id()
+        stage_profiling = None
+        profiling = ProfilingData.general(self._task.task_id)
+        if profiling is not None:
+            stage_profiling = profiling.setdefault(f"stage_{stage_id}", {})
+
+        if stage_profiling is not None:
+            stage_profiling["tile"] = time.time() - start_time
+
         # gen subtask graph
         available_bands = await self._get_available_band_slots()
-        subtask_graph = await asyncio.to_thread(
-            self._preprocessor.analyze, chunk_graph, available_bands
-        )
+
+        with timeit(stage_profiling, f"gen_subtask_graph"):
+            subtask_graph = await asyncio.to_thread(
+                self._preprocessor.analyze,
+                chunk_graph,
+                available_bands,
+            )
         tileable_to_subtasks = await asyncio.to_thread(
             self._get_tileable_to_subtasks, subtask_graph
         )
@@ -374,6 +396,14 @@ class TaskProcessor:
 
     def finish(self):
         self.done.set()
+        if self._task.extra_config and self._task.extra_config.get("enable_profiling"):
+            ProfilingData.general(self._task.task_id)["total"] = (
+                time.time() - self.result.start_time
+            )
+            data = ProfilingData.pop(self._task.task_id)
+            self.result.profiling = {
+                "supervisor": data,
+            }
 
     def is_done(self) -> bool:
         return self.done.is_set()
@@ -448,16 +478,23 @@ class TaskProcessorActor(mo.Actor):
         processor.result.status = TaskStatus.running
 
         incref_fetch, incref_result = False, False
+        profiling = ProfilingData.general(processor.task_id)
         try:
             # optimization
-            yield processor.optimize()
+            with timeit(profiling, "optimize"):
+                yield processor.optimize()
             # incref fetch tileables to ensure fetch data not deleted
-            yield processor.incref_fetch_tileables()
+            with timeit(profiling, "incref_fetch_tileables"):
+                yield processor.incref_fetch_tileables()
             incref_fetch = True
             while True:
+                start_time = time.time()
                 stage_processor = yield processor.get_next_stage_processor()
                 if stage_processor is None:
                     break
+                stage_profiling = profiling and profiling.get(
+                    f"stage_{stage_processor.stage_id}"
+                )
                 # track and incref result tileables
                 yield processor.incref_result_tileables()
                 incref_result = True
@@ -466,7 +503,10 @@ class TaskProcessorActor(mo.Actor):
                 # schedule stage
                 processor.stage_processors.append(stage_processor)
                 processor.cur_stage_processor = stage_processor
-                yield processor.schedule(stage_processor)
+                with timeit(stage_profiling, f"run"):
+                    yield processor.schedule(stage_processor)
+                if stage_profiling is not None:
+                    stage_profiling[f"total"] = time.time() - start_time
                 if stage_processor.error_or_cancelled():
                     break
         finally:
