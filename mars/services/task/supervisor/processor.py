@@ -646,7 +646,7 @@ class TaskProcessorActor(mo.Actor):
 
             props = {
                 k: v
-                for k, v in getattr(tileable.op, "_FIELD_VALUES").items()
+                for k, v in getattr(tileable.op, "__field_values__").items()
                 if k != "key" and isinstance(v, (int, float, str))
             }
 

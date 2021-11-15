@@ -49,14 +49,15 @@ class Base(Serializable):
     @property
     def _values_(self):
         return [
-            getattr(self, k, None) for k in self._keys_ if k not in self._no_copy_attrs_
+            v for k, v in self.__field_values__.items() if k not in self._no_copy_attrs_
         ]
 
     def __mars_tokenize__(self):
-        if hasattr(self, "_key"):
+        try:
             return self._key
-        else:
-            return (type(self), *self._values_)
+        except AttributeError:
+            self._update_key()
+            return self._key
 
     def _obj_set(self, k, v):
         object.__setattr__(self, k, v)

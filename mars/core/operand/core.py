@@ -62,24 +62,25 @@ class TileableOperandMixin:
 
     @classmethod
     def _check_if_gpu(cls, inputs: List[TileableType]):
-        if (
-            inputs is not None
-            and len(
-                [
-                    inp
-                    for inp in inputs
-                    if inp is not None and getattr(inp, "op", None) is not None
-                ]
-            )
-            > 0
-        ):
-            if all(inp.op.gpu is True for inp in inputs):
-                return True
-            elif all(inp.op.gpu is False for inp in inputs):
-                return False
+        if inputs is None:
+            return None
+        input_count = is_gpu_count = not_gpu_count = 0
+        for inp in inputs:
+            op = getattr(inp, "op", None)
+            if op is not None:
+                input_count += 1
+                inp_gpu = op.gpu
+                if inp_gpu is True:
+                    is_gpu_count += 1
+                elif inp_gpu is False:
+                    not_gpu_count += 1
+        if input_count == is_gpu_count:
+            return True
+        elif input_count == not_gpu_count:
+            return False
 
     def _create_chunk(self, output_idx: int, index: Tuple[int], **kw) -> ChunkType:
-        output_type = kw.pop("output_type", self._get_output_type(output_idx))
+        output_type = kw.pop("output_type", None) or self._get_output_type(output_idx)
         if not output_type:
             raise ValueError("output_type should be specified")
 
@@ -232,8 +233,8 @@ class TileableOperandMixin:
             # so that either no one or everyone are gc collected
             for j, t in enumerate(tileables):
                 t.data._siblings = [
-                    tileable.data for tileable in tileables[:j] + tileables[j + 1 :]
-                ]
+                    tileable.data for tileable in tileables[:j]
+                ] + [tileable.data for tileable in tileables[j + 1 :]]
         return tileables
 
     def new_tileables(

@@ -18,7 +18,6 @@ import pickle
 import pkgutil
 import types
 import uuid
-from collections import deque
 from datetime import date, datetime, timedelta, tzinfo
 from enum import Enum
 from functools import lru_cache, partial
@@ -156,7 +155,13 @@ def tokenize_int(*args, **kwargs):
 cdef class Tokenizer(TypeDispatcher):
     def __call__(self, object obj, *args, **kwargs):
         if hasattr(obj, '__mars_tokenize__') and not isinstance(obj, type):
-            return super().__call__(obj.__mars_tokenize__(), *args, **kwargs)
+            if len(args) == 0 and len(kwargs) == 0:
+                value = obj.__mars_tokenize__()
+                if type(value) is bytes:
+                    return value
+                return super().__call__(value)
+            else:
+                return super().__call__(obj.__mars_tokenize__(), *args, **kwargs)
         if callable(obj):
             if PDTick is not None and not isinstance(obj, PDTick):
                 return tokenize_function(obj)
@@ -171,10 +176,12 @@ cdef class Tokenizer(TypeDispatcher):
 
 
 cdef inline list iterative_tokenize(object ob):
-    dq = deque(ob)
-    h_list = []
-    while dq:
-        x = dq.pop()
+    cdef list dq = [ob]
+    cdef int dq_pos = 0
+    cdef list h_list = []
+    while dq_pos < len(dq):
+        x = dq[dq_pos]
+        dq_pos += 1
         if isinstance(x, (list, tuple)):
             dq.extend(x)
         elif isinstance(x, set):

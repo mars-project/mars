@@ -141,7 +141,7 @@ class DataFrameReductionOperand(DataFrameOperand):
 
     def get_reduction_args(self, axis=None):
         args = dict(skipna=self.skipna)
-        if self.inputs[0].ndim > 1:
+        if self.inputs and self.inputs[0].ndim > 1:
             args["axis"] = axis
         if self.numeric_only is not None:
             args["numeric_only"] = self.numeric_only
@@ -203,6 +203,31 @@ def _default_agg_fun(value, func_name=None, **kw):
         return getattr(value, func_name)(**kw)
     else:
         return getattr(value, func_name)(**kw)
+
+
+@functools.lru_cache(100)
+def _get_series_reduction_dtype(dtype, func_name, axis=None, bool_only=False, skipna=False, numeric_only=False,
+                                custom_reduction=None):
+    empty_series = build_series(dtype=dtype, ensure_string=True)
+    if func_name == "count":
+        reduced_series = empty_series.count()
+    elif func_name == "nunique":
+        reduced_series = empty_series.nunique()
+    elif func_name in ("all", "any"):
+        reduced_series = getattr(empty_series, func_name)(
+            axis=axis, bool_only=bool_only
+        )
+    elif func_name == "size":
+        reduced_series = empty_series.size
+    elif func_name == "custom_reduction":
+        reduced_series = custom_reduction.__call_agg__(empty_series)
+    elif func_name == "str_concat":
+        reduced_series = pd.Series([empty_series.str.cat()])
+    else:
+        reduced_series = getattr(empty_series, func_name)(
+            axis=axis, skipna=skipna, numeric_only=numeric_only
+        )
+    return np.array(reduced_series).dtype
 
 
 class DataFrameReductionMixin(DataFrameOperandMixin):
@@ -316,31 +341,12 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if level is not None:
             return self._call_groupby_level(series, level)
 
-        empty_series = build_series(series, ensure_string=True)
-        if func_name == "count":
-            reduced_series = empty_series.count(level=level)
-        elif func_name == "nunique":
-            reduced_series = empty_series.nunique()
-        elif func_name in ("all", "any"):
-            reduced_series = getattr(empty_series, func_name)(
-                axis=axis, level=level, bool_only=bool_only
-            )
-        elif func_name == "size":
-            reduced_series = empty_series.size
-        elif func_name == "custom_reduction":
-            reduced_series = getattr(self, "custom_reduction").__call_agg__(
-                empty_series
-            )
-        elif func_name == "str_concat":
-            reduced_series = pd.Series(
-                [empty_series.str.cat(**getattr(self, "get_reduction_args")())]
-            )
-        else:
-            reduced_series = getattr(empty_series, func_name)(
-                axis=axis, level=level, skipna=skipna, numeric_only=numeric_only
-            )
-
-        return self.new_scalar([series], dtype=np.array(reduced_series).dtype)
+        result_dtype = _get_series_reduction_dtype(
+            series.dtype, func_name, axis=axis, bool_only=bool_only,
+            numeric_only=numeric_only, skipna=skipna,
+            custom_reduction=getattr(self, "custom_reduction", None),
+        )
+        return self.new_scalar([series], dtype=result_dtype)
 
     def __call__(self, a):
         if is_kernel_mode() and not getattr(self, "is_atomic", False):

@@ -40,8 +40,40 @@ class SerializableMeta(type):
 
         properties["_FIELDS"] = property_to_fields
         slots = set(properties.pop("__slots__", set()))
-        if property_to_fields:
-            slots.add("_FIELD_VALUES")
+
+        field_values_getter = [
+            "def getter(self):",
+            "    result = dict()"
+        ]
+        field_values_setter = [
+            "def setter(self, values):"
+        ]
+        for attr, field in property_to_fields.items():
+            properties.pop(attr)
+            slots.add(attr)
+            field_values_getter.append(
+                f"    try:\n"
+                f"        result[{field.tag!r}] = self.{attr}\n"
+                f"    except AttributeError:\n"
+                f"        pass"
+            )
+            field_values_setter.append(
+                f"    try:\n"
+                f"        self.{attr} = values[{field.tag!r}]\n"
+                f"    except KeyError:\n"
+                f"        pass"
+            )
+        field_values_getter.append("    return result")
+        if not property_to_fields:
+            field_values_setter.append("    pass")
+
+        locals_dict = dict()
+        exec("\n".join(field_values_getter), globals(), locals_dict)
+        getter = locals_dict.pop("getter")
+        exec("\n".join(field_values_setter), globals(), locals_dict)
+        setter = locals_dict.pop("setter")
+
+        properties["__field_values__"] = property(getter, setter)
         properties["__slots__"] = tuple(slots)
 
         clz = type.__new__(mcs, name, bases, properties)
@@ -52,14 +84,10 @@ class Serializable(metaclass=SerializableMeta):
     __slots__ = ()
 
     _FIELDS: Dict[str, Field]
-    _FIELD_VALUES: Dict[str, Any]
 
     def __init__(self, *args, **kwargs):
-        setattr(self, "_FIELD_VALUES", dict())
-
         for slot, arg in zip(self.__slots__, args):  # pragma: no cover
             object.__setattr__(self, slot, arg)
-
         for key, val in kwargs.items():
             object.__setattr__(self, key, val)
 
@@ -72,6 +100,20 @@ class Serializable(metaclass=SerializableMeta):
         )
         return "{}({})".format(self.__class__.__name__, values)
 
+    def __getattr__(self, item):
+        if item in self._FIELDS:
+            field = self._FIELDS[item]
+            if field._default_value is not field._notset:
+                object.__setattr__(self, item, field._default_value)
+                return field._default_value
+            elif self._default_factory is not None:
+                val = field._default_factory()
+                object.__setattr__(self, item, val)
+                return val
+        raise AttributeError(
+            f"'{type(self)}' has no attribute {item}"
+        )
+
 
 class SerializableSerializer(Serializer):
     """
@@ -83,7 +125,7 @@ class SerializableSerializer(Serializer):
     @classmethod
     def _get_tag_to_values(cls, obj: Serializable):
         fields = obj._FIELDS
-        tag_to_values = obj._FIELD_VALUES.copy()
+        tag_to_values = obj.__field_values__
 
         for field in fields.values():
             tag = field.tag
@@ -157,7 +199,7 @@ class SerializableSerializer(Serializer):
                         cb(value, field)
 
         obj = obj_class()
-        obj._FIELD_VALUES = tag_to_values
+        obj.__field_values__ = tag_to_values
         return obj
 
 
