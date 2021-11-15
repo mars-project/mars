@@ -52,21 +52,21 @@ from . import datastore
 from . import window
 from . import plotting
 
-del (
-    reduction,
-    statistics,
-    arithmetic,
-    indexing,
-    merge_,
-    base,
-    groupby,
-    missing,
-    ufunc,
-    datastore,
-    sort,
-    window,
-    plotting,
-)
+# del (
+#     reduction,
+#     statistics,
+#     arithmetic,
+#     indexing,
+#     merge_,
+#     base,
+#     groupby,
+#     missing,
+#     ufunc,
+#     datastore,
+#     sort,
+#     window,
+#     plotting,
+# )
 del DataFrameFetch, DataFrameFetchShuffle
 
 # noinspection PyUnresolvedReferences

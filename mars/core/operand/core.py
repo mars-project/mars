@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
     UFuncTypeError = None
 
 from ...typing import TileableType, ChunkType, OperandType
-from ...utils import calc_data_size
+from ...utils import calc_data_size, tokenize
 from ..context import Context
 from ..mode import is_eager_mode
 from ..entity import (
@@ -189,6 +189,10 @@ class TileableOperandMixin:
 
         if isinstance(output_type, (list, tuple)):
             output_type = output_type[output_idx]
+
+        if '_key' not in kw:
+            kw['_key'] = tokenize(self._key, output_idx, output_type.value)
+
         tileable_type, tileable_data_type = get_tileable_types(output_type)
         kw["_i"] = output_idx
         kw["op"] = self
