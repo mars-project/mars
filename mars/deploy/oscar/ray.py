@@ -37,7 +37,7 @@ from ...utils import merge_dict, flatten_dict_to_nested_dict
 from ...utils import lazy_import
 from ..utils import load_service_config_file, get_third_party_modules_from_config
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
-from .session import _new_session, AbstractSession, ensure_isolation_created
+from .session import _new_session, new_session, AbstractSession, SyncSession, ensure_isolation_created
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 
 ray = lazy_import("ray")
@@ -283,13 +283,16 @@ class ClusterStateActor(mo.StatelessActor):
 
 async def new_cluster(
     cluster_name: str,
-    supervisor_mem: int = 4 * 1024 ** 3,
+    supervisor_mem: int = 1 * 1024 ** 3,
     worker_num: int = 1,
-    worker_cpu: int = 16,
-    worker_mem: int = 32 * 1024 ** 3,
+    worker_cpu: int = 2,
+    worker_mem: int = 2 * 1024 ** 3,
     config: Union[str, Dict] = None,
     **kwargs,
 ):
+    if not ray.is_initialized():
+        logger.warning("Ray is not started, start the local ray cluster by `ray.init`.")
+        ray.init()
     ensure_isolation_created(kwargs)
     if kwargs:  # pragma: no cover
         raise TypeError(f"new_cluster got unexpected " f"arguments: {list(kwargs)}")
@@ -306,6 +309,45 @@ async def new_cluster(
         except Exception as stop_ex:
             raise stop_ex from ex
         raise ex
+
+
+def new_cluster_sync(cluster_name: str, **kwargs):
+    isolation = ensure_isolation_created(kwargs)
+    coro = new_cluster(cluster_name, **kwargs)
+    fut = asyncio.run_coroutine_threadsafe(coro, isolation.loop)
+    client = fut.result()
+    client.session.as_default()
+    return client
+
+
+new_cluster_sync.__doc__ = new_cluster.__doc__
+
+
+def new_ray_session(
+        address: str = None,
+        session_id: str = None,
+        default: bool = True,
+        **kwargs,
+) -> AbstractSession:
+    """
+
+    Parameters
+    ----------
+    address: str
+        mars web server address.
+    session_id: str
+        session id. If not specified, will be generated automatically.
+    default: bool
+        whether set the session as default session.
+    kwargs:
+        See Also `new_cluster` arguments.
+    """
+    if not address:
+        cluster_name = kwargs.pop("cluster_name", f"ray-cluster-{int(time.time())}")
+        client = new_cluster_sync(cluster_name, **kwargs)
+        session_id = session_id or client.session.session_id
+        address = client.address
+    return new_session(address=address, session_id=session_id, backend="oscar", default=default)
 
 
 class RayCluster:
@@ -443,6 +485,7 @@ class RayCluster:
             WebActor.default_uid(), address=self.supervisor_address
         )
         self.web_address = await web_actor.get_web_address()
+        logger.warning("Web service started at %s", self.web_address)
 
     async def stop(self):
         if not self._stopped:
