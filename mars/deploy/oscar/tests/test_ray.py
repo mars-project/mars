@@ -139,7 +139,7 @@ def test_new_cluster_in_ray(stop_ray):
     mt.random.RandomState(0).rand(100, 5).sum().execute()
     cluster.session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
-    session = new_ray_session(session_id="abcd", worker_num=2, default=True)
+    session = new_ray_session(address=cluster.address, session_id="abcd", default=True)
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
     cluster.stop()

@@ -28,14 +28,15 @@ Or connecting to a existing Ray cluster using `Ray client <https://docs.ray.io/e
     >> import ray
     >> ray.init(address="ray://<head_node_host>:10001")
 
-Creating Mars on Ray runtime in the Ray cluster:
+Creating Mars on Ray runtime in the Ray cluster and do the computing:
 
 .. code-block:: python
 
     >>> import mars
-    >>> session = mars.new_ray_session(worker_num=2, worker_mem=2 * 1024 ** 3)
     >>> import mars.tensor as mt
+    >>> session = mars.new_ray_session(worker_num=2, worker_mem=2 * 1024 ** 3)
     >>> mt.random.RandomState(0).rand(1000_0000, 5).sum().execute()
+    >>> session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     >>> df = md.DataFrame(
     >>>     mt.random.rand(1000_0000, 4, chunk_size=500_0000),
     >>>     columns=list('abcd'))
@@ -43,17 +44,25 @@ Creating Mars on Ray runtime in the Ray cluster:
     >>> print(df.describe().execute())
 
 
-Stop the Mars on Ray runtime in the Ray cluster:
+Create a Mars on Ray runtime in the Ray cluster:
 .. code-block:: python
 
     import mars
     import mars.tensor as mt
     cluster = mars.new_cluster_in_ray(worker_num=2, worker_mem=2 * 1024 ** 3)
-    mt.random.RandomState(0).rand(100, 5).sum().execute()
-    cluster.session.execute(mt.random.RandomState(0).rand(100, 5).sum())
-    mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
-    session = new_ray_session(session_id="abcd", worker_num=2, default=True)
+
+Connect to the created Mars on Ray runtime and do the computing:
+.. code-block:: python
+
+    import mars
+    import mars.tensor as mt
+    session = mars.new_ray_session(address="http://ip:port", session_id="abcd", default=True)
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
+
+Stop the created Mars on Ray runtime:
+
+.. code-block:: python
+
     cluster.stop()
 
 
