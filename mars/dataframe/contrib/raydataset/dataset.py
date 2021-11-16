@@ -48,7 +48,7 @@ def to_ray_dataset(df, num_shards: int = None):
     # Ray Datasets is available in early preview at ray.data with Ray 1.6+
     # (and ray.experimental.data in Ray 1.5)
     real_ray_dataset = ray_dataset or ray_exp_dataset
-    return real_ray_dataset.from_pandas(chunk_refs)
+    return real_ray_dataset.from_pandas_refs(chunk_refs)
 
 
 def get_chunk_refs(df):

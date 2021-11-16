@@ -23,6 +23,7 @@ from .base.get_dummies import get_dummies
 from .base.melt import melt
 from .base.qcut import qcut
 from .base.to_numeric import to_numeric
+from .contrib.raydataset import to_ray_mldataset, to_ray_dataset
 from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor
 from .datasource.from_index import series_from_index
 from .datasource.from_records import from_records
@@ -30,7 +31,7 @@ from .datasource.from_vineyard import from_vineyard
 from .datasource.read_csv import read_csv
 from .datasource.read_sql import read_sql, read_sql_table, read_sql_query
 from .datasource.read_parquet import read_parquet
-from .datasource.read_raydataset import read_raydataset
+from .datasource.read_raydataset import read_raydataset, read_ray_mldataset
 from .datasource.date_range import date_range
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 from .merge import concat, merge

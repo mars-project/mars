@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 
 from ..... import dataframe as md
-from .....deploy.oscar.ray import new_cluster, _load_config
+from .....deploy.oscar.ray import new_cluster
 from .....deploy.oscar.session import new_session
 from .....tests.core import require_ray
 from .....utils import lazy_import
@@ -39,15 +39,12 @@ except ImportError:  # pragma: no cover
 
 @pytest.fixture
 async def create_cluster(request):
-    param = getattr(request, "param", {})
-    ray_config = _load_config()
-    ray_config.update(param.get("config", {}))
     client = await new_cluster(
         "test_cluster",
+        supervisor_mem=1 * 1024 ** 3,
         worker_num=4,
         worker_cpu=2,
         worker_mem=1 * 1024 ** 3,
-        config=ray_config,
     )
     async with client:
         yield client
@@ -55,7 +52,7 @@ async def create_cluster(request):
 
 @require_ray
 @pytest.mark.asyncio
-@pytest.mark.parametrize("test_option", [[5, 5], [5, 4], [None, None]])
+@pytest.mark.parametrize("test_option", [[3, 3], [3, 2], [None, None]])
 async def test_convert_to_ray_dataset(ray_large_cluster, create_cluster, test_option):
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend="oscar", default=True)
@@ -85,7 +82,7 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
         df.execute()
 
         num_shards = 4
-        ds = mdd.to_ray_dataset(df)
+        ds = md.to_ray_dataset(df, num_shards=num_shards)
         assert isinstance(ds, real_ray_dataset.Dataset)
 
         # train
