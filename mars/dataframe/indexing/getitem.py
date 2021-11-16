@@ -496,8 +496,9 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                         index=(j, i),
                         dtypes=dtypes,
                         index_value=c.index_value,
-                        columns_value=parse_index(pd.Index(dtypes.index),
-                                                  store_data=True),
+                        columns_value=parse_index(
+                            pd.Index(dtypes.index), store_data=True
+                        ),
                     )
                     out_chunks[j].append(out_chunk)
             out_chunks = [item for cl in out_chunks for item in cl]

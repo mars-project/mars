@@ -28,8 +28,10 @@ def calc_columns_index(column_name, df):
     columns = df.columns_value.to_pandas().to_numpy()
     column_locs = (columns == column_name).nonzero()[0]
 
-    return [np.searchsorted(np.cumsum(column_nsplits), column_loc + 1)
-            for column_loc in column_locs]
+    return [
+        np.searchsorted(np.cumsum(column_nsplits), column_loc + 1)
+        for column_loc in column_locs
+    ]
 
 
 def convert_labels_into_positions(pandas_index, labels):
