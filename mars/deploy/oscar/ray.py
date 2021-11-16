@@ -282,7 +282,7 @@ class ClusterStateActor(mo.StatelessActor):
 
 
 async def new_cluster(
-    cluster_name: str,
+    cluster_name: str = None,
     supervisor_mem: int = 1 * 1024 ** 3,
     worker_num: int = 1,
     worker_cpu: int = 2,
@@ -290,6 +290,7 @@ async def new_cluster(
     config: Union[str, Dict] = None,
     **kwargs,
 ):
+    cluster_name = cluster_name or f"ray-cluster-{int(time.time())}"
     if not ray.is_initialized():
         logger.warning("Ray is not started, start the local ray cluster by `ray.init`.")
         ray.init()
@@ -311,23 +312,23 @@ async def new_cluster(
         raise ex
 
 
-def new_cluster_sync(cluster_name: str, **kwargs):
+def new_cluster_in_ray(**kwargs):
     isolation = ensure_isolation_created(kwargs)
-    coro = new_cluster(cluster_name, **kwargs)
+    coro = new_cluster(**kwargs)
     fut = asyncio.run_coroutine_threadsafe(coro, isolation.loop)
     client = fut.result()
     client.session.as_default()
     return client
 
 
-new_cluster_sync.__doc__ = new_cluster.__doc__
+new_cluster_in_ray.__doc__ = new_cluster.__doc__
 
 
 def new_ray_session(
         address: str = None,
         session_id: str = None,
         default: bool = True,
-        **kwargs,
+        **new_cluster_kwargs,
 ) -> AbstractSession:
     """
 
@@ -339,12 +340,11 @@ def new_ray_session(
         session id. If not specified, will be generated automatically.
     default: bool
         whether set the session as default session.
-    kwargs:
-        See Also `new_cluster` arguments.
+    new_cluster_kwargs:
+        See `new_cluster` arguments.
     """
     if not address:
-        cluster_name = kwargs.pop("cluster_name", f"ray-cluster-{int(time.time())}")
-        client = new_cluster_sync(cluster_name, **kwargs)
+        client = new_cluster_in_ray(**new_cluster_kwargs)
         session_id = session_id or client.session.session_id
         address = client.address
     return new_session(address=address, session_id=session_id, backend="oscar", default=default)
@@ -528,7 +528,12 @@ class RayClient:
         return self
 
     async def __aexit__(self, *_):
-        await self.stop()
+        await self._stop()
 
-    async def stop(self):
+    def stop(self):
+        isolation = ensure_isolation_created({})
+        fut = asyncio.run_coroutine_threadsafe(self._stop(), isolation.loop)
+        return fut.result()
+
+    async def _stop(self):
         await self._cluster.stop()

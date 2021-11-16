@@ -35,7 +35,7 @@ from ....services.cluster import ClusterAPI
 from ....services.scheduling.supervisor.autoscale import AutoscalerActor
 from ....tests.core import require_ray, mock
 from ....utils import lazy_import
-from ..ray import new_cluster, _load_config, ClusterStateActor, new_cluster_sync, new_ray_session
+from ..ray import new_cluster, _load_config, ClusterStateActor, new_cluster_in_ray, new_ray_session
 from ..session import get_default_session, new_session
 from ..tests import test_local
 from .modules.utils import (  # noqa: F401  # pylint: disable=unused-variable
@@ -134,14 +134,15 @@ def _sync_web_session_test(web_address):
 
 
 @require_ray
-def test_new_cluster_sync(stop_ray):
-    cluster = new_cluster_sync(cluster_name='test_cluster', worker_num=2)
+def test_new_cluster_in_ray(stop_ray):
+    cluster = new_cluster_in_ray(cluster_name='test_cluster', worker_num=2)
     mt.random.RandomState(0).rand(100, 5).sum().execute()
     cluster.session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
     session = new_ray_session(session_id="abcd", worker_num=2, default=True)
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
+    cluster.stop()
 
 
 @require_ray
