@@ -434,8 +434,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         ):
             x2_dtype = x2.dtype if hasattr(x2, "dtype") else type(x2)
             x2_dtype = get_dtype(x2_dtype)
-            if hasattr(cls, "dtype"):
-                dtype = cls.dtype
+            if hasattr(cls, "return_dtype"):
+                dtype = cls.return_dtype
             else:
                 dtype = infer_dtype(x1.dtype, x2_dtype, cls._operator)
             ret = {"shape": x1.shape, "dtype": dtype, "index_value": x1.index_value}

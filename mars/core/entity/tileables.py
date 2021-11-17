@@ -25,7 +25,7 @@ from ...serialization.serializables import FieldTypes, TupleField
 from ...typing import OperandType, TileableType, ChunkType
 from ...utils import on_serialize_shape, on_deserialize_shape, on_serialize_nsplits
 from ..base import Base
-from ..mode import enter_mode, is_build_mode
+from ..mode import enter_mode
 from .chunks import Chunk
 from .core import EntityData, Entity
 from .executable import _ExecutableMixin
@@ -280,8 +280,12 @@ class TileableData(EntityData, _ExecutableMixin):
 
         super().__init__(*args, **kwargs)
 
-        if hasattr(self, "_chunks") and self._chunks:
-            self._chunks = sorted(self._chunks, key=attrgetter("index"))
+        try:
+            chunks = self._chunks
+            if chunks:
+                self._chunks = sorted(chunks, key=attrgetter("index"))
+        except AttributeError:
+            pass
 
         self._entities = WeakSet()
         self._executed_sessions = []
@@ -331,11 +335,9 @@ class TileableData(EntityData, _ExecutableMixin):
             return True
         return False
 
-    @enter_mode(build=True)
     def attach(self, entity):
         self._entities.add(entity)
 
-    @enter_mode(build=True)
     def detach(self, entity):
         self._entities.discard(entity)
 
@@ -345,10 +347,11 @@ class Tileable(Entity):
 
     def __init__(self, data: TileableType = None, **kw):
         super().__init__(data=data, **kw)
-        if self._data is not None:
-            self._data.attach(self)
-            if self._data.op.create_view:
-                entity_view_handler.add_observer(self._data.inputs[0], self)
+        data = self._data
+        if data is not None:
+            data.attach(self)
+            if data.op.create_view:
+                entity_view_handler.add_observer(data.inputs[0], self)
 
     def __copy__(self):
         return self._view()
@@ -412,11 +415,9 @@ class HasShapeTileableData(TileableData):
 
     def __len__(self):
         try:
-            return self.shape[0]
-        except IndexError:
-            if is_build_mode():
-                return 0
-            raise TypeError("len() of unsized object")
+            return int(self.shape[0])
+        except (IndexError, ValueError):
+            return 0
 
     @property
     def shape(self):

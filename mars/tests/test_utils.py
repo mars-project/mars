@@ -233,6 +233,8 @@ def test_chunks_indexer():
     expected = a.chunks[0].key
     assert chunk_key == expected
 
+    # as chunks[9] and chunks[10] shares the same shape,
+    #  their keys should be equal.
     chunk_key = a.cix[1, 1, 1].key
     expected = a.chunks[9].key
     assert chunk_key == expected

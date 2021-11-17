@@ -26,7 +26,7 @@ class DataFrameEqual(DataFrameBinopUfunc):
     _func_name = "eq"
     _rfunc_name = "eq"
 
-    dtype = np.dtype(bool)
+    return_dtype = np.dtype(bool)
 
     @classproperty
     def _operator(self):

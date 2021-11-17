@@ -605,8 +605,15 @@ def build_empty_series(dtype, index=None, name=None):
     )
 
 
-def build_series(series_obj=None, fill_value=1, size=1, name=None, ensure_string=False,
-                 dtype=None, index=None):
+def build_series(
+    series_obj=None,
+    fill_value=1,
+    size=1,
+    name=None,
+    ensure_string=False,
+    dtype=None,
+    index=None,
+):
     seriess = []
     if not isinstance(size, (list, tuple)):
         sizes = [size]

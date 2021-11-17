@@ -15,6 +15,7 @@
 import itertools
 import importlib
 import inspect
+import os
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Any, Callable, Optional, Type, Union
 
@@ -28,6 +29,7 @@ from .field_type import (
 )
 
 _notset = object()
+_is_ci = "CI" in os.environ
 
 
 class Field(ABC):
@@ -44,8 +46,6 @@ class Field(ABC):
     _default_value: Any
     _default_factory: Optional[Callable]
     _attr_name: str  # attribute name that set to
-
-    _notset = _notset
 
     def __init__(
         self,
@@ -93,38 +93,45 @@ class Field(ABC):
         field_type : AbstractFieldType
              Field type.
         """
-    #
-    # def __get__(self, instance, owner):
-    #     tag_to_values = instance._FIELD_VALUES
-    #     try:
-    #         return tag_to_values[self._tag]
-    #     except KeyError:
-    #         if self._default_value is not _notset:
-    #             return self._default_value
-    #         elif self._default_factory is not None:
-    #             val = tag_to_values[self._tag] = self._default_factory()
-    #             return val
-    #         else:
-    #             raise AttributeError(
-    #                 f"'{type(instance)}' has no attribute {self._attr_name}"
-    #             )
-    #
-    # def __set__(self, instance, value):
-    #     from ...core import is_kernel_mode
-    #
-    #     if not is_kernel_mode():
-    #         field_type = self.field_type
-    #         try:
-    #             to_check_value = value
-    #             if to_check_value is not None and self._on_serialize:
-    #                 to_check_value = self._on_serialize(to_check_value)
-    #             field_type.validate(to_check_value)
-    #         except (TypeError, ValueError) as e:
-    #             raise type(e)(f"Failed to set `{self._attr_name}`: {str(e)}")
-    #     instance._FIELD_VALUES[self._tag] = value
-    #
-    # def __delete__(self, instance):
-    #     del instance._FIELD_VALUES[self._tag]
+
+    def __get__(self, instance, owner):
+        tag_to_values = instance._FIELD_VALUES
+        try:
+            return tag_to_values[self._attr_name]
+        except KeyError:
+            if self._default_value is not _notset:
+                val = tag_to_values[self._attr_name] = self._default_value
+                return val
+            elif self._default_factory is not None:
+                val = tag_to_values[self._attr_name] = self._default_factory()
+                return val
+            else:
+                raise AttributeError(
+                    f"'{type(instance)}' has no attribute {self._attr_name}"
+                )
+
+    def __set__(self, instance, value):
+        if _is_ci:  # pragma: no branch
+            from ...core import is_kernel_mode
+
+            if not is_kernel_mode():
+                field_type = self.field_type
+                try:
+                    to_check_value = value
+                    if to_check_value is not None and self._on_serialize:
+                        to_check_value = self._on_serialize(to_check_value)
+                    field_type.validate(to_check_value)
+                except (TypeError, ValueError) as e:
+                    raise type(e)(f"Failed to set `{self._attr_name}`: {str(e)}")
+        instance._FIELD_VALUES[self._attr_name] = value
+
+    def __delete__(self, instance):
+        try:
+            del instance._FIELD_VALUES[self._attr_name]
+        except KeyError:
+            raise AttributeError(
+                f"'{type(instance)}' has no attribute {self._attr_name}"
+            ) from None
 
 
 class AnyField(Field):
@@ -502,25 +509,25 @@ class ReferenceField(Field):
             self._field_type = ReferenceType(reference_type)
         return self._field_type
 
-    # def __set__(self, instance, value):
-    #     from ...core import is_kernel_mode
-    #
-    #     if self._field_type is None:
-    #         if not is_kernel_mode():
-    #             field_type = self.get_field_type(instance)
-    #             try:
-    #                 to_check_value = value
-    #                 if to_check_value is not None and self._on_serialize:
-    #                     to_check_value = self._on_serialize(to_check_value)
-    #                 field_type.validate(to_check_value)
-    #             except (TypeError, ValueError) as e:
-    #                 if not self._attr_name:
-    #                     raise
-    #                 else:
-    #                     raise type(e)(f"Failed to set `{self._attr_name}`: {str(e)}")
-    #         instance._FIELD_VALUES[self._tag] = value
-    #     else:
-    #         super().__set__(instance, value)
+    def __set__(self, instance, value):
+        if _is_ci and self._field_type is None:
+            from ...core import is_kernel_mode
+
+            if not is_kernel_mode():
+                field_type = self.get_field_type(instance)
+                try:
+                    to_check_value = value
+                    if to_check_value is not None and self._on_serialize:
+                        to_check_value = self._on_serialize(to_check_value)
+                    field_type.validate(to_check_value)
+                except (TypeError, ValueError) as e:
+                    if not self._attr_name:
+                        raise
+                    else:
+                        raise type(e)(f"Failed to set `{self._attr_name}`: {e}")
+            instance._FIELD_VALUES[self._attr_name] = value
+        else:
+            super().__set__(instance, value)
 
 
 class OneOfField(Field):
@@ -557,46 +564,30 @@ class OneOfField(Field):
         # we will do check in __set__ instead
         return FieldTypes.any
 
-    # def __set__(self, instance, value):
-    #     field_values = instance._FIELD_VALUES
-    #     for reference_field in self._reference_fields:
-    #         try:
-    #             to_check_value = value
-    #             if to_check_value is not None and self._on_serialize:
-    #                 to_check_value = self._on_serialize(to_check_value)
-    #             reference_field.get_field_type(instance).validate(to_check_value)
-    #             field_values[reference_field.tag] = value
-    #             return
-    #         except TypeError:
-    #             continue
-    #     valid_types = list(
-    #         itertools.chain(
-    #             *[
-    #                 r.get_field_type(instance).valid_types
-    #                 for r in self._reference_fields
-    #             ]
-    #         )
-    #     )
-    #     raise TypeError(
-    #         f"Failed to set `{self._attr_name}`: type of instance cannot "
-    #         f"match any of {valid_types}, got {type(value)}"
-    #     )
-    #
-    # def __get__(self, instance, owner):
-    #     field_values = instance._FIELD_VALUES
-    #     for reference_field in self._reference_fields:
-    #         try:
-    #             return field_values[reference_field.tag]
-    #         except KeyError:
-    #             continue
-    #     raise AttributeError("cannot get attribute, " "maybe value not set before")
-    #
-    # def __delete__(self, instance):
-    #     field_values = instance._FIELD_VALUES
-    #     for reference_field in self._reference_fields:
-    #         try:
-    #             del field_values[reference_field.tag]
-    #             return
-    #         except KeyError:
-    #             continue
-    #     raise AttributeError("cannot delete attribute, " "maybe value not set before")
+    def __set__(self, instance, value):
+        if not _is_ci:
+            return super().__set__(instance, value)
+
+        field_values = instance._FIELD_VALUES
+        for reference_field in self._reference_fields:
+            try:
+                to_check_value = value
+                if to_check_value is not None and self._on_serialize:
+                    to_check_value = self._on_serialize(to_check_value)
+                reference_field.get_field_type(instance).validate(to_check_value)
+                field_values[self._attr_name] = value
+                return
+            except TypeError:
+                continue
+        valid_types = list(
+            itertools.chain(
+                *[
+                    r.get_field_type(instance).valid_types
+                    for r in self._reference_fields
+                ]
+            )
+        )
+        raise TypeError(
+            f"Failed to set `{self._attr_name}`: type of instance cannot "
+            f"match any of {valid_types}, got {type(value)}"
+        )

@@ -47,10 +47,23 @@ class Base(Serializable):
             return slots
 
     @property
+    def _copy_tags_(self):
+        cls = type(self)
+        member = f"__copy_tags_{cls.__name__}"
+        try:
+            return getattr(cls, member)
+        except AttributeError:
+            slots = sorted(
+                f.attr_name
+                for k, f in self._FIELDS.items()
+                if k not in self._no_copy_attrs_
+            )
+            setattr(cls, member, slots)
+            return slots
+
+    @property
     def _values_(self):
-        return [
-            v for k, v in self.__field_values__.items() if k not in self._no_copy_attrs_
-        ]
+        return [self._FIELD_VALUES.get(k) for k in self._copy_tags_]
 
     def __mars_tokenize__(self):
         try:

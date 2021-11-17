@@ -71,6 +71,10 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
     def index(self):
         return self._index
 
+    def _tokenize_output(self, output_idx: int, **kw):
+        # make sure all necessary arguments tokenized
+        return None
+
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)

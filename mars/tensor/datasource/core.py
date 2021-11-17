@@ -32,6 +32,10 @@ class TensorDataSource(TensorOperand, TensorOperandMixin):
 
     __slots__ = ()
 
+    def _tokenize_output(self, output_idx: int, **kw):
+        # make sure all necessary arguments tokenized
+        return None
+
     def to_chunk_op(self, *args):
         chunk_shape = args[0]
         chunk_op = self.copy().reset_key()

@@ -127,6 +127,7 @@ class Operand(Base, metaclass=OperandMetaclass):
     attr_tag = "attr"
     _init_update_key_ = False
     _output_type_ = None
+    _no_copy_attrs_ = Base._no_copy_attrs_ | {"scheduling_hint"}
 
     sparse = BoolField("sparse", default=False)
     device = Int32Field("device", default=None)

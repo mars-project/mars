@@ -26,7 +26,7 @@ class DataFrameLessEqual(DataFrameBinopUfunc):
     _func_name = "le"
     _rfunc_name = "ge"
 
-    dtype = np.dtype(bool)
+    return_dtype = np.dtype(bool)
 
     @classproperty
     def _operator(self):

@@ -206,28 +206,52 @@ def _default_agg_fun(value, func_name=None, **kw):
 
 
 @functools.lru_cache(100)
-def _get_series_reduction_dtype(dtype, func_name, axis=None, bool_only=False, skipna=False, numeric_only=False,
-                                custom_reduction=None):
+def _get_series_reduction_dtype(
+    dtype,
+    func_name,
+    axis=None,
+    bool_only=False,
+    skipna=False,
+    numeric_only=False,
+):
     empty_series = build_series(dtype=dtype, ensure_string=True)
     if func_name == "count":
-        reduced_series = empty_series.count()
+        reduced = empty_series.count()
     elif func_name == "nunique":
-        reduced_series = empty_series.nunique()
+        reduced = empty_series.nunique()
     elif func_name in ("all", "any"):
-        reduced_series = getattr(empty_series, func_name)(
-            axis=axis, bool_only=bool_only
-        )
+        reduced = getattr(empty_series, func_name)(axis=axis, bool_only=bool_only)
     elif func_name == "size":
-        reduced_series = empty_series.size
-    elif func_name == "custom_reduction":
-        reduced_series = custom_reduction.__call_agg__(empty_series)
+        reduced = empty_series.size
     elif func_name == "str_concat":
-        reduced_series = pd.Series([empty_series.str.cat()])
+        reduced = pd.Series([empty_series.str.cat()])
     else:
-        reduced_series = getattr(empty_series, func_name)(
+        reduced = getattr(empty_series, func_name)(
             axis=axis, skipna=skipna, numeric_only=numeric_only
         )
-    return np.array(reduced_series).dtype
+    return pd.Series(reduced).dtype
+
+
+@functools.lru_cache(100)
+def _get_df_reduction_dtype(
+    dtype, func_name, axis=None, bool_only=False, skipna=False, numeric_only=False
+):
+    empty_df = build_series(dtype=dtype, ensure_string=True).to_frame()
+    if func_name == "count":
+        reduced = getattr(empty_df, func_name)(axis=axis, numeric_only=numeric_only)
+    elif func_name == "nunique":
+        reduced = getattr(empty_df, func_name)(axis=axis)
+    elif func_name in ("all", "any"):
+        reduced = getattr(empty_df, func_name)(axis=axis, bool_only=bool_only)
+    elif func_name == "str_concat":
+        reduced = empty_df.apply(lambda s: s.str.cat(), axis=axis)
+    else:
+        reduced = getattr(empty_df, func_name)(
+            axis=axis, skipna=skipna, numeric_only=numeric_only
+        )
+    if len(reduced) == 0:
+        return None
+    return reduced.dtype
 
 
 class DataFrameReductionMixin(DataFrameOperandMixin):
@@ -289,44 +313,58 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if level is not None and axis == 1:
             raise NotImplementedError("Not support specify level for axis==1")
 
-        empty_df = build_df(df, ensure_string=True)
-        if func_name == "count":
-            reduced_df = getattr(empty_df, func_name)(
-                axis=axis, level=level, numeric_only=numeric_only
-            )
-        elif func_name == "nunique":
-            reduced_df = getattr(empty_df, func_name)(axis=axis)
-        elif func_name in ("all", "any"):
-            reduced_df = getattr(empty_df, func_name)(
-                axis=axis, level=level, bool_only=bool_only
-            )
-        elif func_name == "size":
-            reduced_df = pd.Series(
+        if func_name == "size":
+            reduced = pd.Series(
                 np.zeros(df.shape[1 - axis]),
-                index=empty_df.columns if axis == 0 else None,
+                index=df.dtypes.index if axis == 0 else None,
             )
+            reduced_cols = list(reduced.index)
+            reduced_dtype = reduced.dtype
         elif func_name == "custom_reduction":
-            reduced_df = getattr(self, "custom_reduction").__call_agg__(empty_df)
-        elif func_name == "str_concat":
-            reduced_df = empty_df.apply(
-                lambda s: s.str.cat(**getattr(self, "get_reduction_args")()), axis=axis
-            )
+            empty_df = build_df(df, ensure_string=True)
+            reduced = getattr(self, "custom_reduction").__call_agg__(empty_df)
+            reduced_cols = list(reduced.index)
+            reduced_dtype = reduced.dtype
         else:
-            reduced_df = getattr(empty_df, func_name)(
-                axis=axis, level=level, skipna=skipna, numeric_only=numeric_only
-            )
+            reduced_cols, dtypes = [], []
+            for col, dt in df.dtypes.items():
+                dt = _get_df_reduction_dtype(
+                    dt,
+                    func_name,
+                    axis=axis,
+                    bool_only=bool_only,
+                    skipna=skipna,
+                    numeric_only=numeric_only,
+                )
+                if dt is not None:
+                    reduced_cols.append(col)
+                    dtypes.append(dt)
+            if len(dtypes) == 0:
+                reduced_dtype = np.dtype("O")
+            elif all(dt == dtypes[0] for dt in dtypes):
+                reduced_dtype = dtypes[0]
+            elif not all(isinstance(dt, np.dtype) and dt != bool for dt in dtypes):
+                # todo currently we return mixed dtypes as np.dtype('O').
+                #  handle pandas Dtypes in the future more carefully.
+                reduced_dtype = np.dtype("O")
+            else:
+                reduced_dtype = np.find_common_type(dtypes, [])
 
         if level is not None:
-            return self._call_groupby_level(df[list(reduced_df.columns)], level)
+            return self._call_groupby_level(df[reduced_cols], level)
 
-        reduced_shape = (df.shape[0],) if axis == 1 else reduced_df.shape
-        index_value = (
-            parse_index(reduced_df.index, store_data=True)
-            if axis == 0
-            else parse_index(pd.RangeIndex(-1))
-        )
+        if axis == 0:
+            reduced_shape = (len(reduced_cols),)
+            reduced_index_value = parse_index(pd.Index(reduced_cols), store_data=True)
+        else:
+            reduced_shape = (df.shape[0],)
+            reduced_index_value = parse_index(pd.RangeIndex(-1))
+
         return self.new_series(
-            [df], shape=reduced_shape, dtype=reduced_df.dtype, index_value=index_value
+            [df],
+            shape=reduced_shape,
+            dtype=reduced_dtype,
+            index_value=reduced_index_value,
         )
 
     def _call_series(self, series):
@@ -341,11 +379,19 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if level is not None:
             return self._call_groupby_level(series, level)
 
-        result_dtype = _get_series_reduction_dtype(
-            series.dtype, func_name, axis=axis, bool_only=bool_only,
-            numeric_only=numeric_only, skipna=skipna,
-            custom_reduction=getattr(self, "custom_reduction", None),
-        )
+        if func_name == "custom_reduction":
+            empty_series = build_series(series, ensure_string=True)
+            result_scalar = getattr(self, "custom_reduction").__call_agg__(empty_series)
+            result_dtype = pd.Series(result_scalar).dtype
+        else:
+            result_dtype = _get_series_reduction_dtype(
+                series.dtype,
+                func_name,
+                axis=axis,
+                bool_only=bool_only,
+                numeric_only=numeric_only,
+                skipna=skipna,
+            )
         return self.new_scalar([series], dtype=result_dtype)
 
     def __call__(self, a):

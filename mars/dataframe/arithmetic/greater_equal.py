@@ -26,7 +26,7 @@ class DataFrameGreaterEqual(DataFrameBinopUfunc):
     _func_name = "ge"
     _rfunc_name = "le"
 
-    dtype = np.dtype(bool)
+    return_dtype = np.dtype(bool)
 
     @classproperty
     def _operator(self):
