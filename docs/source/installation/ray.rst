@@ -1,10 +1,9 @@
-.. _ray:
+.. _mars_ray:
 
 Run on Ray
 =================
 
 Mars also has deep integration with Ray and can run on `Ray <https://docs.ray.io/en/latest/>`_ efficiently and natively.
-Running Mars on Ray is simple.
 
 Basic steps
 -----------
@@ -28,7 +27,7 @@ Or connecting to a existing Ray cluster using `Ray client <https://docs.ray.io/e
     import ray
     ray.init(address="ray://<head_node_host>:10001")
 
-Creating Mars on Ray runtime in the Ray cluster and do the computing:
+Creating a Mars on Ray runtime in the Ray cluster and do the computing:
 
 .. code-block:: python
 
@@ -51,7 +50,7 @@ Creating Mars on Ray runtime in the Ray cluster and do the computing:
     print(df2.head(5).execute())
 
 
-Create a Mars on Ray runtime in the Ray cluster:
+Create a Mars on Ray runtime independently in the Ray cluster:
 
 .. code-block:: python
 
@@ -85,8 +84,7 @@ Arguments for supervisors:
 +----------------------+-----------------------------------------------------------+
 | Argument             | Description                                               |
 +======================+===========================================================+
-| supervisor_mem       | Memory size for supervisor in the cluster, in bytes      |
-|                      | or size units like ``1g``                                 |
+| supervisor_mem       | Memory size for supervisor in the cluster, in bytes.      |
 +----------------------+-----------------------------------------------------------+
 
 Arguments for workers:
@@ -94,11 +92,11 @@ Arguments for workers:
 +--------------------+-----------------------------------------------------------------+
 | Argument           | Description                                                     |
 +====================+=================================================================+
-| worker_num         | Number of workers in the cluster, 1 by default                  |
+| worker_num         | Number of workers in the cluster, 1 by default.                 |
 +--------------------+-----------------------------------------------------------------+
-| worker_cpu         | Number of CPUs for every worker, 2 by default .                 |
+| worker_cpu         | Number of CPUs for every worker, 2 by default.                  |
 +--------------------+-----------------------------------------------------------------+
-| worker_mem         | Memory size for workers in the cluster, in bytes, 2G by default.|                              |
+| worker_mem         | Memory size for workers in the cluster, in bytes, 2G by default.|
 +--------------------+-----------------------------------------------------------------+
 
 For instance, if you want to create a Mars cluster with 100 workers,

@@ -164,9 +164,8 @@ msgid "Mars on Ray"
 msgstr ""
 
 #: ../../source/index.rst:174
-#, fuzzy
-msgid "Refer to :ref:`Mars on Ray <ray>`."
-msgstr "参考 :ref:`Mars on Ray <ray>`。"
+msgid "Refer to :ref:`Mars on Ray <mars_ray>`."
+msgstr "参考 :ref:`Mars on Ray <mars_ray>`。"
 
 #: ../../source/index.rst:177
 msgid "Easy to scale in and scale out"
@@ -196,9 +195,8 @@ msgid ":ref:`Run on cluster <deploy>`"
 msgstr ":ref:`在集群中运行 <deploy>`"
 
 #: ../../source/index.rst:188
-#, fuzzy
-msgid ":ref:`Run on Ray <ray>`"
-msgstr ":ref:`在 Ray 中运行 Mars <ray>`"
+msgid ":ref:`Run on Ray <mars_ray>`"
+msgstr ":ref:`在 Ray 中运行 Mars <mars_ray>`"
 
 #: ../../source/index.rst:189
 msgid ":ref:`Run on Kubernetes <k8s>`"

@@ -171,7 +171,7 @@ Refer to :ref:`DASK on Mars <integrate_dask>`.
 Mars on Ray
 ------------
 
-Refer to :ref:`Mars on Ray <ray>`.
+Refer to :ref:`Mars on Ray <mars_ray>`.
 
 Easy to scale in and scale out
 ------------------------------
@@ -185,7 +185,7 @@ Mars can run in a few ways:
 
 - :ref:`Local scheduling <local>`
 - :ref:`Run on cluster <deploy>`
-- :ref:`Run on Ray <ray>`
+- :ref:`Run on Ray <mars_ray>`
 - :ref:`Run on Kubernetes <k8s>`
 - :ref:`Run on Yarn <mars_yarn>`
 
