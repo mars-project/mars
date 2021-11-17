@@ -77,7 +77,7 @@ def _rechunk_if_needed(df, num_shards: int = None):
             assert isinstance(num_shards, int) and num_shards > 0
             df = df.rebalance(axis=0, num_partitions=num_shards)
         df = df.rechunk({1: df.shape[1]})
-        df = df.reset_index()
+        df = df.reset_index(drop=True)
         return df.execute()
     except Exception as e:
         raise Exception(f"rechunk failed df.shape {df.shape}") from e
