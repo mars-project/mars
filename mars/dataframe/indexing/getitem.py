@@ -287,18 +287,17 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
     def __call__(self, df):
         if self.col_names is not None:
             # if col_names is a list, return a DataFrame, else return a Series
-            if isinstance(self._col_names, list):
-                dtypes = df.dtypes[self._col_names]
-                columns = parse_index(pd.Index(self._col_names), store_data=True)
+            dtype = df.dtypes[self._col_names]
+            if isinstance(dtype, pd.Series):
+                columns = parse_index(dtype.index, store_data=True)
                 return self.new_dataframe(
                     [df],
-                    shape=(df.shape[0], len(self._col_names)),
-                    dtypes=dtypes,
+                    shape=(df.shape[0], len(dtype)),
+                    dtypes=dtype,
                     index_value=df.index_value,
                     columns_value=columns,
                 )
             else:
-                dtype = df.dtypes[self._col_names]
                 return self.new_series(
                     [df],
                     shape=(df.shape[0],),
@@ -439,8 +438,8 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
         col_names = op.col_names
-        if not isinstance(col_names, list):
-            column_index = calc_columns_index(col_names, in_df)
+        if not isinstance(out_df, DATAFRAME_TYPE):
+            column_index = calc_columns_index(col_names, in_df)[0]
             out_chunks = []
             dtype = in_df.dtypes[col_names]
             for i in range(in_df.chunk_shape[0]):
@@ -471,7 +470,10 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             # When chunk columns are ['c1', 'c2', 'c3'], ['c4', 'c5'],
             # selected columns are ['c2', 'c3', 'c4', 'c2'], `column_splits` will be
             # [(['c2', 'c3'], 0), ('c4', 1), ('c2', 0)].
+            if not isinstance(col_names, _list_like_types):
+                col_names = [col_names]
             selected_index = [calc_columns_index(col, in_df) for col in col_names]
+            selected_index = list(itertools.chain.from_iterable(selected_index))
             condition = np.where(np.diff(selected_index))[0] + 1
             column_splits = np.split(col_names, condition)
             column_indexes = np.split(selected_index, condition)
@@ -482,7 +484,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                 zip(column_splits, column_indexes)
             ):
                 dtypes = in_df.dtypes[columns]
-                column_nsplits.append(len(columns))
+                column_nsplits.append(len(dtypes))
                 for j in range(in_df.chunk_shape[0]):
                     c = in_df.cix[(j, column_idx[0])]
                     index_op = DataFrameIndex(
@@ -490,11 +492,13 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                     )
                     out_chunk = index_op.new_chunk(
                         [c],
-                        shape=(c.shape[0], len(columns)),
+                        shape=(c.shape[0], len(dtypes)),
                         index=(j, i),
                         dtypes=dtypes,
                         index_value=c.index_value,
-                        columns_value=parse_index(pd.Index(columns), store_data=True),
+                        columns_value=parse_index(
+                            pd.Index(dtypes.index), store_data=True
+                        ),
                     )
                     out_chunks[j].append(out_chunk)
             out_chunks = [item for cl in out_chunks for item in cl]
@@ -525,8 +529,6 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                 mask = op.mask
             if hasattr(mask, "reindex_like"):
                 mask = mask.reindex_like(df).fillna(False)
-            if mask.ndim == 2:
-                mask = mask[df.columns.tolist()]
             ctx[op.outputs[0].key] = df[mask]
 
     @classmethod
