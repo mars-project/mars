@@ -159,7 +159,7 @@ class ClusterStateActor(mo.StatelessActor):
         # TODO rescale ray placement group instead of creating new placement group
         pg_name = f"{self._pg_name}_{next(self._pg_counter)}"
         pg = ray.util.placement_group(name=pg_name, bundles=[bundle], strategy="SPREAD")
-        create_pg_timeout = timeout or 5
+        create_pg_timeout = timeout or 60
         try:
             await asyncio.wait_for(pg.ready(), timeout=create_pg_timeout)
         except asyncio.TimeoutError:
@@ -293,7 +293,8 @@ async def new_cluster(
     cluster_name = cluster_name or f"ray-cluster-{int(time.time())}"
     if not ray.is_initialized():
         logger.warning("Ray is not started, start the local ray cluster by `ray.init`.")
-        ray.init()
+        # add 16 logical cpus for other computing in ray.
+        ray.init(num_cpus=16 + worker_num*worker_cpu)
     ensure_isolation_created(kwargs)
     if kwargs:  # pragma: no cover
         raise TypeError(f"new_cluster got unexpected " f"arguments: {list(kwargs)}")
