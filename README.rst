@@ -251,21 +251,37 @@ Starting a new Mars on Ray runtime locally via:
 
 .. code-block:: python
 
-    >>> import ray
-    >>> ray.init()
-    >>> import mars
-    >>> mars.new_ray_session(worker_num=2)
-    >>> import mars.tensor as mt
-    >>> mt.random.RandomState(0).rand(1000_0000, 5).sum().execute()
+    import ray
+    ray.init()
+    import mars
+    mars.new_ray_session(worker_num=2)
+    import mars.tensor as mt
+    mt.random.RandomState(0).rand(1000_0000, 5).sum().execute()
 
 Or connecting to a Mars on Ray cluster which is already initialized.
 
 .. code-block:: python
 
-    >>> import mars
-    >>> mars.new_ray_session('http://<web_ip>:<ui_port>')
-    >>> # perform computation
+    import mars
+    mars.new_ray_session('http://<web_ip>:<ui_port>')
+    # perform computation
 
+Interact with Ray Dataset:
+
+.. code-block:: python
+
+    import mars.tensor as mt
+    import mars.dataframe as md
+    df = md.DataFrame(
+        mt.random.rand(1000_0000, 4),
+        columns=list('abcd'))
+    # Convert mars dataframe to ray dataset
+    ds = md.to_ray_dataset(df)
+    print(ds.schema(), ds.count())
+    ds.filter(lambda row: row["a"] > 0.5).show(5)
+    # Convert ray dataset to mars dataframe
+    df2 = md.read_ray_dataset(ds)
+    print(df2.head(5).execute())
 
 Refer to `Mars on Ray`_ for more information.
 

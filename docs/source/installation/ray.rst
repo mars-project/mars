@@ -3,8 +3,8 @@
 Run on Ray
 =================
 
-Mars also has deep integration with Ray and can run on `Ray <https://docs.ray.io/en/latest/>` efficiently and natively.
-Running mars on ray is simple.
+Mars also has deep integration with Ray and can run on `Ray <https://docs.ray.io/en/latest/>`_ efficiently and natively.
+Running Mars on Ray is simple.
 
 Basic steps
 -----------
@@ -18,33 +18,41 @@ Start a Ray cluster:
 
 .. code-block:: python
 
-    >> import ray
-    >> ray.init()
+    import ray
+    ray.init()
 
-Or connecting to a existing Ray cluster using `Ray client <https://docs.ray.io/en/latest/cluster/ray-client.html>`:
+Or connecting to a existing Ray cluster using `Ray client <https://docs.ray.io/en/latest/cluster/ray-client.html>`_:
 
 .. code-block:: python
 
-    >> import ray
-    >> ray.init(address="ray://<head_node_host>:10001")
+    import ray
+    ray.init(address="ray://<head_node_host>:10001")
 
 Creating Mars on Ray runtime in the Ray cluster and do the computing:
 
 .. code-block:: python
 
-    >>> import mars
-    >>> import mars.tensor as mt
-    >>> session = mars.new_ray_session(worker_num=2, worker_mem=2 * 1024 ** 3)
-    >>> mt.random.RandomState(0).rand(1000_0000, 5).sum().execute()
-    >>> session.execute(mt.random.RandomState(0).rand(100, 5).sum())
-    >>> df = md.DataFrame(
-    >>>     mt.random.rand(1000_0000, 4, chunk_size=500_0000),
-    >>>     columns=list('abcd'))
-    >>> print(df.sum().execute())
-    >>> print(df.describe().execute())
+    import mars
+    import mars.tensor as mt
+    import mars.dataframe as md
+    session = mars.new_ray_session(worker_num=2, worker_mem=2 * 1024 ** 3)
+    mt.random.RandomState(0).rand(1000_0000, 5).sum().execute()
+    df = md.DataFrame(
+        mt.random.rand(1000_0000, 4, chunk_size=500_0000),
+        columns=list('abcd'))
+    print(df.sum().execute())
+    print(df.describe().execute())
+    # Convert mars dataframe to ray dataset
+    ds = md.to_ray_dataset(df)
+    print(ds.schema(), ds.count())
+    ds.filter(lambda row: row["a"] > 0.5).show(5)
+    # Convert ray dataset to mars dataframe
+    df2 = md.read_ray_dataset(ds)
+    print(df2.head(5).execute())
 
 
 Create a Mars on Ray runtime in the Ray cluster:
+
 .. code-block:: python
 
     import mars
@@ -52,6 +60,7 @@ Create a Mars on Ray runtime in the Ray cluster:
     cluster = mars.new_cluster_in_ray(worker_num=2, worker_mem=2 * 1024 ** 3)
 
 Connect to the created Mars on Ray runtime and do the computing:
+
 .. code-block:: python
 
     import mars
@@ -76,7 +85,7 @@ Arguments for supervisors:
 +----------------------+-----------------------------------------------------------+
 | Argument             | Description                                               |
 +======================+===========================================================+
-| supervisor_mem       | Memory size for supervisors in the cluster, in bytes      |
+| supervisor_mem       | Memory size for supervisor in the cluster, in bytes      |
 |                      | or size units like ``1g``                                 |
 +----------------------+-----------------------------------------------------------+
 
