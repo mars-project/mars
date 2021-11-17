@@ -37,7 +37,12 @@ from ...utils import merge_dict, flatten_dict_to_nested_dict
 from ...utils import lazy_import
 from ..utils import load_service_config_file, get_third_party_modules_from_config
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
-from .session import _new_session, new_session, AbstractSession, SyncSession, ensure_isolation_created
+from .session import (
+    _new_session,
+    new_session,
+    AbstractSession,
+    ensure_isolation_created,
+)
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 
 ray = lazy_import("ray")
@@ -294,7 +299,7 @@ async def new_cluster(
     if not ray.is_initialized():
         logger.warning("Ray is not started, start the local ray cluster by `ray.init`.")
         # add 16 logical cpus for other computing in ray.
-        ray.init(num_cpus=16 + worker_num*worker_cpu)
+        ray.init(num_cpus=16 + worker_num * worker_cpu)
     ensure_isolation_created(kwargs)
     if kwargs:  # pragma: no cover
         raise TypeError(f"new_cluster got unexpected " f"arguments: {list(kwargs)}")
@@ -326,10 +331,10 @@ new_cluster_in_ray.__doc__ = new_cluster.__doc__
 
 
 def new_ray_session(
-        address: str = None,
-        session_id: str = None,
-        default: bool = True,
-        **new_cluster_kwargs,
+    address: str = None,
+    session_id: str = None,
+    default: bool = True,
+    **new_cluster_kwargs,
 ) -> AbstractSession:
     """
 
@@ -348,7 +353,9 @@ def new_ray_session(
         client = new_cluster_in_ray(**new_cluster_kwargs)
         session_id = session_id or client.session.session_id
         address = client.address
-    return new_session(address=address, session_id=session_id, backend="oscar", default=default)
+    return new_session(
+        address=address, session_id=session_id, backend="oscar", default=default
+    )
 
 
 class RayCluster:
