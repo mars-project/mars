@@ -235,16 +235,9 @@ by default session once it is created.
     dtype: int64
 
 
-Easy to scale in and scale out
-------------------------------
-
-Mars can scale in to a single machine, and scale out to a cluster with thousands of machines.
-It's fairly simple to migrate from a single machine to a cluster to
-process more data or gain a better performance.
-
 Mars on Ray
 ------------
-Mars also has deep integration with Ray and can run on `Ray <https://docs.ray.io/en/latest/>` efficiently and
+Mars also has deep integration with Ray and can run on `Ray <https://docs.ray.io/en/latest/>`_ efficiently and
 interact with the large ecosystem of machine learning and distributed systems built on top of the core Ray.
 
 Starting a new Mars on Ray runtime locally via:
@@ -258,7 +251,7 @@ Starting a new Mars on Ray runtime locally via:
     import mars.tensor as mt
     mt.random.RandomState(0).rand(1000_0000, 5).sum().execute()
 
-Or connecting to a Mars on Ray cluster which is already initialized.
+Or connecting to a Mars on Ray runtime which is already initialized.
 
 .. code-block:: python
 
@@ -284,6 +277,15 @@ Interact with Ray Dataset:
     print(df2.head(5).execute())
 
 Refer to `Mars on Ray`_ for more information.
+
+
+Easy to scale in and scale out
+------------------------------
+
+Mars can scale in to a single machine, and scale out to a cluster with thousands of machines.
+It's fairly simple to migrate from a single machine to a cluster to
+process more data or gain a better performance.
+
 
 Bare Metal Deployment
 `````````````````````
