@@ -35,7 +35,7 @@ class RayActorDriver(BaseActorDriver):
         pg_name, bundles = addresses_to_placement_group_info(address_to_resources)
         logger.info("Creating placement group %s with bundles %s.", pg_name, bundles)
         pg = ray.util.placement_group(name=pg_name, bundles=bundles, strategy="SPREAD")
-        create_pg_timeout = 10
+        create_pg_timeout = 60
         done, _ = ray.wait([pg.ready()], timeout=create_pg_timeout)
         if not done:  # pragma: no cover
             raise Exception(

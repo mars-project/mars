@@ -15,5 +15,6 @@ You can simply install Mars via pip:
 
    install
    deploy
+   ray
    kubernetes
    yarn
