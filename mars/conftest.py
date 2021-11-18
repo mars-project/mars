@@ -75,6 +75,13 @@ def ray_large_cluster(request):  # pragma: no cover
             subprocess.check_call(["ray", "stop", "--force"])
 
 
+@pytest.fixture
+def stop_ray(request):  # pragma: no cover
+    yield
+    if ray.is_initialized():
+        ray.shutdown()
+
+
 @pytest.fixture(scope="module")
 def _stop_isolation():
     yield
