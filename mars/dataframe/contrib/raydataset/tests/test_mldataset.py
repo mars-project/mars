@@ -130,5 +130,4 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
         assert os.path.exists("model.xgb")
         os.remove("model.xgb")
         print("Final training error: {:.4f}".format(evals_result["train"]["error"][-1]))
-        pred_ray = predict(bst, train_set, ray_params=RayParams(num_actors=2))
-        print(pred_ray)
+        predict(bst, train_set, ray_params=RayParams(num_actors=2))

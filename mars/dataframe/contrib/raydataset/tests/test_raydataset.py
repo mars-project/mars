@@ -148,9 +148,7 @@ async def test_mars_with_xgboost_sklearn_clf(ray_large_cluster, create_cluster):
         )
         # train
         clf.fit(RayDMatrix(ds, "target"), y=None, ray_params=ray_params)
-        print(f"classfier {clf}")
-        pred = clf.predict(RayDMatrix(ds, "target"))
-        print("predicted values: ", pred)
+        clf.predict(RayDMatrix(ds, "target"))
         # Enable it when https://github.com/ray-project/xgboost_ray/issues/177 got fixed
         # pred = clf.predict(train_x)
         # print("predicted values: ", pred)
@@ -186,8 +184,5 @@ async def test_mars_with_xgboost_sklearn_reg(ray_large_cluster, create_cluster):
         reg = RayXGBRegressor(ray_params=ray_params, random_state=42)
         # train
         reg.fit(RayDMatrix(ds, "target"), y=None, ray_params=ray_params)
-        print(f"Regressor {reg}")
-        pred = reg.predict(RayDMatrix(ds, "target"))
-        print("predicted values: ", pred)
-        pred = reg.predict(pd.DataFrame(np_X))
-        print("predicted values: ", pred)
+        reg.predict(RayDMatrix(ds, "target"))
+        reg.predict(pd.DataFrame(np_X))

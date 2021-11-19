@@ -79,7 +79,7 @@ def _rechunk_if_needed(df, num_shards: int = None):
         df = df.rechunk({1: df.shape[1]})
         df = df.reset_index(drop=True)
         return df.execute()
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         raise Exception(f"rechunk failed df.shape {df.shape}") from e
 
 

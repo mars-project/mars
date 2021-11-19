@@ -161,10 +161,6 @@ class DataFrameReadMLDataset(HeadOptimizedDataSource):
     def mldataset(self):
         return self._mldataset
 
-    @property
-    def columns(self):
-        return self._columns
-
     def _update_key(self):
         """We can't direct generate token for mldataset when we use
         ray client, so we use all mldataset's actor_id to generate
