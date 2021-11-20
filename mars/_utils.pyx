@@ -141,7 +141,7 @@ cdef class TypeDispatcher:
 cdef inline build_canonical_bytes(tuple args, kwargs):
     if kwargs:
         args = args + (kwargs,)
-    return pickle.dumps(iterative_tokenize(args), pickle.HIGHEST_PROTOCOL)
+    return pickle.dumps(tokenize_handler(args))
 
 
 def tokenize(*args, **kwargs):
@@ -205,15 +205,20 @@ cdef inline tuple tokenize_numpy(ob):
                 ob.shape, ob.strides, offset)
     if ob.dtype.hasobject:
         try:
-            data = mmh_hash_bytes(pickle.dumps(ob, pickle.HIGHEST_PROTOCOL))
-        except:
-            # nothing can do, generate uuid
-            data = uuid.uuid4().bytes
+            data = mmh_hash_bytes('-'.join(ob.flat).encode('utf-8', errors='surrogatepass')).hex()
+        except UnicodeDecodeError:
+            data = mmh_hash_bytes(b'-'.join([to_binary(x) for x in ob.flat])).hex()
+        except TypeError:
+            try:
+                data = mmh_hash_bytes(pickle.dumps(ob, pickle.HIGHEST_PROTOCOL)).hex()
+            except:
+                # nothing can do, generate uuid
+                data = uuid.uuid4().hex
     else:
         try:
-            data = mmh_hash_bytes(ob.ravel().view('i1').data)
+            data = mmh_hash_bytes(ob.ravel().view('i1').data).hex()
         except (BufferError, AttributeError, ValueError):
-            data = mmh_hash_bytes(ob.copy().ravel().view('i1').data)
+            data = mmh_hash_bytes(ob.copy().ravel().view('i1').data).hex()
     return data, ob.dtype, ob.shape, ob.strides
 
 
@@ -233,29 +238,29 @@ cdef list tokenize_pandas_index(ob):
         stop = _extract_range_index_attr(ob, 'stop')
         step = _extract_range_index_attr(ob, 'step')
         # for range index, there is no need to get the values
-        return [ob.name, getattr(ob, 'names', None), start, stop, step]
+        return iterative_tokenize([ob.name, getattr(ob, 'names', None), slice(start, stop, step)])
     else:
-        return [ob.name, getattr(ob, 'names', None), iterative_tokenize(ob.values)]
+        return iterative_tokenize([ob.name, getattr(ob, 'names', None), ob.values])
 
 
 cdef list tokenize_pandas_series(ob):
-    return [ob.name, iterative_tokenize([ob.dtype, ob.values, ob.index])]
+    return iterative_tokenize([ob.name, ob.dtype, ob.values, ob.index])
 
 
 cdef list tokenize_pandas_dataframe(ob):
-    cdef list l = [block.values for block in ob._data.blocks]
+    l = [block.values for block in ob._data.blocks]
     l.extend([ob.columns, ob.index])
     return iterative_tokenize(l)
 
 
 cdef list tokenize_pandas_categorical(ob):
-    cdef list l = iterative_tokenize(ob.to_list())
+    l = ob.to_list()
     l.append(ob.shape)
-    return l
+    return iterative_tokenize(l)
 
 
 cdef list tokenize_pd_extension_dtype(ob):
-    return [ob.name]
+    return iterative_tokenize([ob.name])
 
 
 cdef list tokenize_categories_dtype(ob):
@@ -263,15 +268,15 @@ cdef list tokenize_categories_dtype(ob):
 
 
 cdef list tokenize_interval_dtype(ob):
-    return [type(ob).__name__, iterative_tokenize(ob.subtype)]
+    return iterative_tokenize([type(ob).__name__, ob.subtype])
 
 
 cdef list tokenize_pandas_time_arrays(ob):
-    return iterative_tokenize([ob.asi7, ob.dtype])
+    return iterative_tokenize([ob.asi8, ob.dtype])
 
 
 cdef list tokenize_pandas_tick(ob):
-    return [ob.freqstr]
+    return iterative_tokenize([ob.freqstr])
 
 
 cdef list tokenize_pandas_interval_arrays(ob):
@@ -279,11 +284,16 @@ cdef list tokenize_pandas_interval_arrays(ob):
 
 
 cdef list tokenize_sqlalchemy_data_type(ob):
-    return [repr(ob)]
+    return iterative_tokenize([repr(ob)])
 
 
 cdef list tokenize_sqlalchemy_selectable(ob):
-    return [str(ob)]
+    return iterative_tokenize([str(ob)])
+
+
+cdef list tokenize_enum(ob):
+    cls = type(ob)
+    return iterative_tokenize([id(cls), cls.__name__, ob.name])
 
 
 @lru_cache(500)
@@ -295,7 +305,7 @@ def tokenize_function(ob):
     else:
         try:
             if isinstance(ob, types.FunctionType):
-                return [pickle.dumps(ob, protocol=0), id(ob)]
+                return iterative_tokenize([pickle.dumps(ob, protocol=0), id(ob)])
             else:
                 return pickle.dumps(ob, protocol=0)
         except:
@@ -314,13 +324,13 @@ def tokenize_pickled_with_cache(ob):
 def tokenize_cupy(ob):
     from .serialization import serialize
     header, _buffers = serialize(ob)
-    return [header, ob.data.ptr]
+    return iterative_tokenize([header, ob.data.ptr])
 
 
 def tokenize_cudf(ob):
     from .serialization import serialize
     header, buffers = serialize(ob)
-    return [header] + [(buf.ptr, buf.size) for buf in buffers]
+    return iterative_tokenize([header] + [(buf.ptr, buf.size) for buf in buffers])
 
 
 cdef Tokenizer tokenize_handler = Tokenizer()
@@ -333,15 +343,15 @@ for t in base_types:
 for t in (np.dtype, np.generic):
     tokenize_handler.register(t, lambda ob: repr(ob))
 
-for t in (list, tuple):
-    tokenize_handler.register(t, lambda ob: ob)
+for t in (list, tuple, dict, set):
+    tokenize_handler.register(t, iterative_tokenize)
 
 tokenize_handler.register(np.ndarray, tokenize_numpy)
-tokenize_handler.register(dict, lambda ob: ob.copy())
-tokenize_handler.register(set, lambda ob: sorted(ob))
-tokenize_handler.register(np.random.RandomState, lambda ob: ob.get_state())
-tokenize_handler.register(Enum, lambda ob: (type(ob).__qualname__, ob.name))
+tokenize_handler.register(dict, lambda ob: iterative_tokenize(sorted(ob.items())))
+tokenize_handler.register(set, lambda ob: iterative_tokenize(sorted(ob)))
+tokenize_handler.register(np.random.RandomState, lambda ob: iterative_tokenize(ob.get_state()))
 tokenize_handler.register(memoryview, lambda ob: mmh3_hash_from_buffer(ob))
+tokenize_handler.register(Enum, tokenize_enum)
 tokenize_handler.register(pd.Index, tokenize_pandas_index)
 tokenize_handler.register(pd.Series, tokenize_pandas_series)
 tokenize_handler.register(pd.DataFrame, tokenize_pandas_dataframe)
