@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 
 from ..... import dataframe as md
-from .....deploy.oscar.ray import new_cluster, _load_config
+from .....deploy.oscar.ray import new_cluster
 from .....deploy.oscar.session import new_session
 from .....tests.core import require_ray
 from .....utils import lazy_import
@@ -29,25 +29,24 @@ ray = lazy_import("ray")
 # Ray Datasets is available in early preview at ray.data with Ray 1.6+
 # (and ray.experimental.data in Ray 1.5)
 ray_dataset = lazy_import("ray.data")
-ray_exp_dataset = lazy_import("ray.experimental.data")
-real_ray_dataset = ray_dataset or ray_exp_dataset
 try:
     import xgboost_ray
 except ImportError:  # pragma: no cover
     xgboost_ray = None
+try:
+    import sklearn
+except ImportError:  # pragma: no cover
+    sklearn = None
 
 
 @pytest.fixture
 async def create_cluster(request):
-    param = getattr(request, "param", {})
-    ray_config = _load_config()
-    ray_config.update(param.get("config", {}))
     client = await new_cluster(
         "test_cluster",
+        supervisor_mem=1 * 1024 ** 3,
         worker_num=4,
         worker_cpu=2,
         worker_mem=1 * 1024 ** 3,
-        config=ray_config,
     )
     async with client:
         yield client
@@ -55,7 +54,7 @@ async def create_cluster(request):
 
 @require_ray
 @pytest.mark.asyncio
-@pytest.mark.parametrize("test_option", [[5, 5], [5, 4], [None, None]])
+@pytest.mark.parametrize("test_option", [[3, 3], [3, 2], [None, None]])
 async def test_convert_to_ray_dataset(ray_large_cluster, create_cluster, test_option):
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend="oscar", default=True)
@@ -66,7 +65,7 @@ async def test_convert_to_ray_dataset(ray_large_cluster, create_cluster, test_op
         df.execute()
 
         ds = mdd.to_ray_dataset(df, num_shards=num_shards)
-        assert isinstance(ds, real_ray_dataset.Dataset)
+        assert isinstance(ds, ray_dataset.Dataset)
 
 
 @require_ray
@@ -85,8 +84,8 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
         df.execute()
 
         num_shards = 4
-        ds = mdd.to_ray_dataset(df)
-        assert isinstance(ds, real_ray_dataset.Dataset)
+        ds = md.to_ray_dataset(df, num_shards=num_shards)
+        assert isinstance(ds, ray_dataset.Dataset)
 
         # train
         train_set = RayDMatrix(ds, "target")
@@ -108,3 +107,82 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
         assert os.path.exists("model.xgb")
         os.remove("model.xgb")
         print("Final training error: {:.4f}".format(evals_result["train"]["error"][-1]))
+
+
+@require_ray
+@pytest.mark.parametrize(
+    "ray_large_cluster", [{"num_nodes": 3, "num_cpus": 16}], indirect=True
+)
+@pytest.mark.asyncio
+@pytest.mark.skipif(sklearn is None, reason="sklearn not installed")
+@pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
+async def test_mars_with_xgboost_sklearn_clf(ray_large_cluster, create_cluster):
+    from xgboost_ray import RayDMatrix, RayParams, RayXGBClassifier
+    from sklearn.datasets import load_breast_cancer
+
+    assert create_cluster.session
+    session = new_session(address=create_cluster.address, backend="oscar", default=True)
+    with session:
+        train_x, train_y = load_breast_cancer(return_X_y=True, as_frame=True)
+        df: md.DataFrame = md.concat(
+            [md.DataFrame(train_x), md.DataFrame(train_y)], axis=1
+        )
+        df.execute()
+        columns = list(df.columns.to_pandas())
+        print(f"Columns {columns}, pandas columns {train_x.columns}")
+        assert columns[:-1] == list(train_x.columns)
+        num_shards = 4
+        ds = md.to_ray_dataset(df, num_shards)
+        assert isinstance(ds, ray_dataset.Dataset)
+        print(f"Columns {columns}, dataset columns {train_x.columns}")
+        assert columns == ds.schema().names
+        import gc
+
+        gc.collect()  # Ensure MLDataset does hold mars dataframe to avoid gc.
+        ray_params = RayParams(num_actors=2, cpus_per_actor=1)
+        clf = RayXGBClassifier(
+            ray_params=ray_params,
+            random_state=42,
+            use_label_encoder=False,
+            num_class=2,
+        )
+        # train
+        clf.fit(RayDMatrix(ds, "target"), y=None, ray_params=ray_params)
+        clf.predict(RayDMatrix(ds, "target"))
+        # Enable it when https://github.com/ray-project/xgboost_ray/issues/177 got fixed
+        # pred = clf.predict(train_x)
+        # print("predicted values: ", pred)
+
+
+@require_ray
+@pytest.mark.parametrize(
+    "ray_large_cluster", [{"num_nodes": 3, "num_cpus": 16}], indirect=True
+)
+@pytest.mark.asyncio
+@pytest.mark.skipif(sklearn is None, reason="sklearn not installed")
+@pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
+async def test_mars_with_xgboost_sklearn_reg(ray_large_cluster, create_cluster):
+    from xgboost_ray import RayDMatrix, RayParams, RayXGBRegressor
+    from sklearn.datasets import make_regression
+
+    assert create_cluster.session
+    session = new_session(address=create_cluster.address, backend="oscar", default=True)
+    with session:
+        np_X, np_y = make_regression(n_samples=1_0000, n_features=10)
+        X, y = md.DataFrame(np_X), md.DataFrame({"target": np_y})
+        df: md.DataFrame = md.concat([md.DataFrame(X), md.DataFrame(y)], axis=1)
+        df.execute()
+
+        num_shards = 4
+        ds = md.to_ray_dataset(df, num_shards)
+        assert isinstance(ds, ray_dataset.Dataset)
+
+        import gc
+
+        gc.collect()  # Ensure MLDataset does hold mars dataframe to avoid gc.
+        ray_params = RayParams(num_actors=2, cpus_per_actor=1)
+        reg = RayXGBRegressor(ray_params=ray_params, random_state=42)
+        # train
+        reg.fit(RayDMatrix(ds, "target"), y=None, ray_params=ray_params)
+        reg.predict(RayDMatrix(ds, "target"))
+        reg.predict(pd.DataFrame(np_X))

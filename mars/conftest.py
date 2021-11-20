@@ -50,7 +50,7 @@ def ray_start_regular(request):
 def ray_large_cluster(request):  # pragma: no cover
     param = getattr(request, "param", {})
     num_nodes = param.get("num_nodes", 3)
-    num_cpus = param.get("num_cpus", 10)
+    num_cpus = param.get("num_cpus", 16)
     try:
         from ray.cluster_utils import Cluster
     except ModuleNotFoundError:
@@ -58,7 +58,9 @@ def ray_large_cluster(request):  # pragma: no cover
     cluster = Cluster()
     remote_nodes = []
     for i in range(num_nodes):
-        remote_nodes.append(cluster.add_node(num_cpus=num_cpus))
+        remote_nodes.append(
+            cluster.add_node(num_cpus=num_cpus, memory=num_cpus * 2 * 1024 ** 3)
+        )
         if len(remote_nodes) == 1:
             ray.init(address=cluster.address)
     register_ray_serializers()
@@ -80,6 +82,29 @@ def stop_ray(request):  # pragma: no cover
     yield
     if ray.is_initialized():
         ray.shutdown()
+
+
+@pytest.fixture
+async def ray_create_mars_cluster(request):
+    from mars.deploy.oscar.ray import new_cluster, _load_config
+
+    ray_config = _load_config()
+    param = getattr(request, "param", {})
+    supervisor_mem = param.get("supervisor_mem", 1 * 1024 ** 3)
+    worker_num = param.get("worker_num", 2)
+    worker_cpu = param.get("worker_cpu", 2)
+    worker_mem = param.get("worker_mem", 256 * 1024 ** 2)
+    ray_config.update(param.get("config", {}))
+    client = await new_cluster(
+        "test_cluster",
+        supervisor_mem=supervisor_mem,
+        worker_num=worker_num,
+        worker_cpu=worker_cpu,
+        worker_mem=worker_mem,
+        config=ray_config,
+    )
+    async with client:
+        yield client
 
 
 @pytest.fixture(scope="module")

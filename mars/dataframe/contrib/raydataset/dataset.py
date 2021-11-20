@@ -20,7 +20,28 @@ ray = lazy_import("ray")
 # Ray Datasets is available in early preview at ray.data with Ray 1.6+
 # (and ray.experimental.data in Ray 1.5)
 ray_dataset = lazy_import("ray.data")
-ray_exp_dataset = lazy_import("ray.experimental.data")
+
+
+if ray:
+    import ray.data.dataset
+
+    class _Dataset(ray_dataset.Dataset):
+        def __init__(self, mars_dataframe, blocks):
+            super().__init__(blocks, 0)
+            # Hold mars dataframe to avoid mars dataframe and ray object gc.
+            # TODO(mubai) Use a separate operator for rechunk and avoiding gc.
+            self.dataframe = mars_dataframe
+
+        def __getstate__(self):
+            state = self.__dict__.copy()
+            state.pop("dataframe", None)
+            return state
+
+        # The default __setstate__ will update _MLDataset's __dict__;
+
+
+else:
+    _Dataset = None
 
 
 def to_ray_dataset(df, num_shards: int = None):
@@ -45,10 +66,7 @@ def to_ray_dataset(df, num_shards: int = None):
     #       chunk2 & chunk3 for addr2,
     #       chunk4 for addr1
     chunk_refs: List["ray.ObjectRef"] = get_chunk_refs(df)
-    # Ray Datasets is available in early preview at ray.data with Ray 1.6+
-    # (and ray.experimental.data in Ray 1.5)
-    real_ray_dataset = ray_dataset or ray_exp_dataset
-    return real_ray_dataset.from_pandas(chunk_refs)
+    return _Dataset(df, ray_dataset.from_pandas_refs(chunk_refs)._blocks)
 
 
 def get_chunk_refs(df):

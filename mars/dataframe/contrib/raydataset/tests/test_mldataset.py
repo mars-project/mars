@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 
 from ..... import dataframe as md
-from .....deploy.oscar.ray import new_cluster, _load_config
+from .....deploy.oscar.ray import new_cluster
 from .....deploy.oscar.session import new_session
 from .....tests.core import require_ray
 from .....utils import lazy_import
@@ -31,19 +31,20 @@ try:
     import xgboost_ray
 except ImportError:  # pragma: no cover
     xgboost_ray = None
+try:
+    import sklearn
+except ImportError:  # pragma: no cover
+    sklearn = None
 
 
 @pytest.fixture
 async def create_cluster(request):
-    param = getattr(request, "param", {})
-    ray_config = _load_config()
-    ray_config.update(param.get("config", {}))
     client = await new_cluster(
         "test_cluster",
+        supervisor_mem=1 * 1024 ** 3,
         worker_num=4,
         worker_cpu=2,
         worker_mem=1 * 1024 ** 3,
-        config=ray_config,
     )
     async with client:
         yield client
@@ -89,20 +90,25 @@ async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster, test_
 @pytest.mark.asyncio
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
 async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
-    from xgboost_ray import RayDMatrix, RayParams, train
+    from xgboost_ray import RayDMatrix, RayParams, train, predict
     from sklearn.datasets import load_breast_cancer
 
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend="oscar", default=True)
     with session:
         train_x, train_y = load_breast_cancer(return_X_y=True, as_frame=True)
-        pd_df = pd.concat([train_x, train_y], axis=1)
-        df: md.DataFrame = md.DataFrame(pd_df)
+        df: md.DataFrame = md.concat(
+            [md.DataFrame(train_x), md.DataFrame(train_y)], axis=1
+        )
         df.execute()
 
         num_shards = 4
-        ds = mdd.to_ray_mldataset(df)
+        ds = mdd.to_ray_mldataset(df, num_shards)
         assert isinstance(ds, ml_dataset.MLDataset)
+
+        import gc
+
+        gc.collect()  # Ensure MLDataset does hold mars dataframe to avoid gc.
 
         # train
         train_set = RayDMatrix(ds, "target")
@@ -124,3 +130,4 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
         assert os.path.exists("model.xgb")
         os.remove("model.xgb")
         print("Final training error: {:.4f}".format(evals_result["train"]["error"][-1]))
+        predict(bst, train_set, ray_params=RayParams(num_actors=2))

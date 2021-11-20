@@ -1066,7 +1066,7 @@ def test_read_parquet_fast_parquet(setup):
 
 
 @require_ray
-def test_read_raydataset(setup):
+def test_read_raydataset(ray_start_regular, ray_create_mars_cluster):
     test_df1 = pd.DataFrame(
         {
             "a": np.arange(10).astype(np.int64, copy=False),
@@ -1080,7 +1080,33 @@ def test_read_raydataset(setup):
         }
     )
     df = pd.concat([test_df1, test_df2])
-    ds = ray.data.from_pandas([ray.put(test_df1), ray.put(test_df2)])
+    ds = ray.data.from_pandas_refs([ray.put(test_df1), ray.put(test_df2)])
     mdf = md.read_raydataset(ds)
     assert df.equals(mdf.execute().fetch())
-    ray.shutdown()
+
+
+@require_ray
+def test_read_ray_mldataset(ray_start_regular, ray_create_mars_cluster):
+    test_dfs = [
+        pd.DataFrame(
+            {
+                "a": np.arange(i * 10, (i + 1) * 10).astype(np.int64, copy=False),
+                "b": [f"s{j}" for j in range(i * 10, (i + 1) * 10)],
+            }
+        )
+        for i in range(5)
+    ]
+    import ray.util.iter
+    from ray.util.data import from_parallel_iter
+
+    ml_dataset = from_parallel_iter(
+        ray.util.iter.from_items(test_dfs, num_shards=4), need_convert=False
+    )
+    dfs = []
+    for shard in ml_dataset.shards():
+        dfs.extend(list(shard))
+    df = pd.concat(dfs).reset_index(drop=True)
+    mdf = md.read_ray_mldataset(ml_dataset)
+    pd.testing.assert_frame_equal(df, mdf.execute().fetch())
+    pd.testing.assert_frame_equal(df.head(5), mdf.head(5).execute().fetch())
+    pd.testing.assert_frame_equal(df.head(15), mdf.head(15).execute().fetch())

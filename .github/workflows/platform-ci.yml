@@ -83,10 +83,8 @@ jobs:
               rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
             fi
             if [ -n "$WITH_RAY" ]; then
-              # Change back to `pip install ray[default]` when ray-1.7.0 is released.
-              pip install https://s3-us-west-2.amazonaws.com/ray-wheels/master/aee7ba2510dd0eeed8f84dba3e9c5d58cb97d49a/ray-2.0.0.dev0-cp38-cp38-manylinux2014_x86_64.whl
-              # Change back to `pip install xgboost_ray` when it doesn't install older version of numpy
-              pip install git+https://github.com/ray-project/xgboost_ray.git#xgboost_ray
+              pip install pip install ray[default]
+              pip install xgboost_ray
               pip install --upgrade numpy
             fi
             if [ -n "$RUN_DASK" ]; then
