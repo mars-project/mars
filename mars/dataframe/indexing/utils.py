@@ -24,8 +24,14 @@ def calc_columns_index(column_name, df):
     :return: chunk index on the columns axis
     """
     column_nsplits = df.nsplits[1]
-    column_loc = df.columns_value.to_pandas().get_loc(column_name)
-    return np.searchsorted(np.cumsum(column_nsplits), column_loc + 1)
+    # if has duplicate columns, will return multiple values
+    columns = df.columns_value.to_pandas().to_numpy()
+    column_locs = (columns == column_name).nonzero()[0]
+
+    return [
+        np.searchsorted(np.cumsum(column_nsplits), column_loc + 1)
+        for column_loc in column_locs
+    ]
 
 
 def convert_labels_into_positions(pandas_index, labels):

@@ -414,6 +414,9 @@ def test_dataframe_getitem(setup):
     df7 = df[1:7:2]
     pd.testing.assert_frame_equal(df7.execute().fetch(), data[1:7:2])
 
+    df8 = df[["c1", "c1"]]["c1"]
+    pd.testing.assert_frame_equal(df8.execute().fetch(), data[["c1", "c1"]]["c1"])
+
     series3 = df["c1"][0]
     assert series3.execute().fetch() == data["c1"][0]
 

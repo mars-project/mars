@@ -37,7 +37,12 @@ from ...utils import merge_dict, flatten_dict_to_nested_dict
 from ...utils import lazy_import
 from ..utils import load_service_config_file, get_third_party_modules_from_config
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
-from .session import _new_session, AbstractSession, ensure_isolation_created
+from .session import (
+    _new_session,
+    new_session,
+    AbstractSession,
+    ensure_isolation_created,
+)
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 
 ray = lazy_import("ray")
@@ -289,14 +294,19 @@ class ClusterStateActor(mo.StatelessActor):
 
 
 async def new_cluster(
-    cluster_name: str,
-    supervisor_mem: int = 1 * 1024 ** 3,
-    worker_num: int = 1,
-    worker_cpu: int = 16,
-    worker_mem: int = 16 * 1024 ** 3,
-    config: Union[str, Dict] = None,
-    **kwargs,
+        cluster_name: str = None,
+        supervisor_mem: int = 1 * 1024 ** 3,
+        worker_num: int = 1,
+        worker_cpu: int = 2,
+        worker_mem: int = 2 * 1024 ** 3,
+        config: Union[str, Dict] = None,
+        **kwargs,
 ):
+    cluster_name = cluster_name or f"ray-cluster-{int(time.time())}"
+    if not ray.is_initialized():
+        logger.warning("Ray is not started, start the local ray cluster by `ray.init`.")
+        # add 16 logical cpus for other computing in ray.
+        ray.init(num_cpus=16 + worker_num * worker_cpu)
     ensure_isolation_created(kwargs)
     if kwargs:  # pragma: no cover
         raise TypeError(f"new_cluster got unexpected " f"arguments: {list(kwargs)}")
@@ -313,6 +323,46 @@ async def new_cluster(
         except Exception as stop_ex:
             raise stop_ex from ex
         raise ex
+
+
+def new_cluster_in_ray(**kwargs):
+    isolation = ensure_isolation_created(kwargs)
+    coro = new_cluster(**kwargs)
+    fut = asyncio.run_coroutine_threadsafe(coro, isolation.loop)
+    client = fut.result()
+    client.session.as_default()
+    return client
+
+
+new_cluster_in_ray.__doc__ = new_cluster.__doc__
+
+
+def new_ray_session(
+    address: str = None,
+    session_id: str = None,
+    default: bool = True,
+    **new_cluster_kwargs,
+) -> AbstractSession:
+    """
+
+    Parameters
+    ----------
+    address: str
+        mars web server address.
+    session_id: str
+        session id. If not specified, will be generated automatically.
+    default: bool
+        whether set the session as default session.
+    new_cluster_kwargs:
+        See `new_cluster` arguments.
+    """
+    if not address:
+        client = new_cluster_in_ray(**new_cluster_kwargs)
+        session_id = session_id or client.session.session_id
+        address = client.address
+    return new_session(
+        address=address, session_id=session_id, backend="oscar", default=default
+    )
 
 
 class RayCluster:
@@ -454,6 +504,7 @@ class RayCluster:
             WebActor.default_uid(), address=self.supervisor_address
         )
         self.web_address = await web_actor.get_web_address()
+        logger.warning("Web service started at %s", self.web_address)
 
     async def stop(self):
         if not self._stopped:
@@ -496,7 +547,12 @@ class RayClient:
         return self
 
     async def __aexit__(self, *_):
-        await self.stop()
+        await self._stop()
 
-    async def stop(self):
+    def stop(self):
+        isolation = ensure_isolation_created({})
+        fut = asyncio.run_coroutine_threadsafe(self._stop(), isolation.loop)
+        return fut.result()
+
+    async def _stop(self):
         await self._cluster.stop()

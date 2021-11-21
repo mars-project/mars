@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-29 00:57+0800\n"
+"POT-Creation-Date: 2021-11-17 17:55+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.8.0\n"
+"Generated-By: Babel 2.9.1\n"
 
 #: ../../source/index.rst:5
 msgid "Mars Documentation"
@@ -160,10 +160,18 @@ msgid "Refer to :ref:`DASK on Mars <integrate_dask>`."
 msgstr "参考 :ref:`DASK on Mars <integrate_dask>`。"
 
 #: ../../source/index.rst:172
+msgid "Mars on Ray"
+msgstr ""
+
+#: ../../source/index.rst:174
+msgid "Refer to :ref:`Mars on Ray <mars_ray>`."
+msgstr "参考 :ref:`Mars on Ray <mars_ray>`。"
+
+#: ../../source/index.rst:177
 msgid "Easy to scale in and scale out"
 msgstr "适应各种数据规模"
 
-#: ../../source/index.rst:174
+#: ../../source/index.rst:179
 msgid ""
 "Mars can scale in to a single machine, and scale out to a cluster with "
 "hundreds of machines. Both the local and distributed version share the "
@@ -174,23 +182,27 @@ msgstr ""
 "两种环境下可使用相同的代码。因此，Mars 可以方便地从单台机器迁移到集群，以"
 "处理更多数据或者获得更好的性能。"
 
-#: ../../source/index.rst:179
+#: ../../source/index.rst:184
 msgid "Mars can run in a few ways:"
 msgstr "Mars 能以若干种方式运行："
 
-#: ../../source/index.rst:181
+#: ../../source/index.rst:186
 msgid ":ref:`Local scheduling <local>`"
 msgstr ":ref:`本地执行 <local>`"
 
-#: ../../source/index.rst:182
+#: ../../source/index.rst:187
 msgid ":ref:`Run on cluster <deploy>`"
 msgstr ":ref:`在集群中运行 <deploy>`"
 
-#: ../../source/index.rst:183
+#: ../../source/index.rst:188
+msgid ":ref:`Run on Ray <mars_ray>`"
+msgstr ":ref:`在 Ray 中运行 Mars <mars_ray>`"
+
+#: ../../source/index.rst:189
 msgid ":ref:`Run on Kubernetes <k8s>`"
 msgstr ":ref:`在 Kubernetes 中部署 <k8s>`"
 
-#: ../../source/index.rst:184
+#: ../../source/index.rst:190
 msgid ":ref:`Run on Yarn <mars_yarn>`"
 msgstr ":ref:`在 Yarn 中部署 <k8s>`"
 

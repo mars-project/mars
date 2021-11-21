@@ -35,7 +35,12 @@ from ..from_tensor import (
 from ..index import from_pandas as from_pandas_index, from_tileable
 from ..read_csv import read_csv, DataFrameReadCSV
 from ..read_sql import read_sql_table, read_sql_query, DataFrameReadSQL
-from ..read_raydataset import read_raydataset, DataFrameReadRayDataset
+from ..read_raydataset import (
+    read_raydataset,
+    DataFrameReadRayDataset,
+    read_ray_mldataset,
+    DataFrameReadMLDataset,
+)
 from ..series import from_pandas as from_pandas_series
 from ....tests.core import require_ray
 from ....utils import lazy_import
@@ -506,7 +511,7 @@ def test_read_sql():
 
 
 @require_ray
-def test_read_raydataset():
+def test_read_raydataset(ray_start_regular):
     test_df1 = pd.DataFrame(
         {
             "a": np.arange(10).astype(np.int64, copy=False),
@@ -520,7 +525,7 @@ def test_read_raydataset():
         }
     )
     df = pd.concat([test_df1, test_df2])
-    ds = ray.data.from_pandas([ray.put(test_df1), ray.put(test_df2)])
+    ds = ray.data.from_pandas_refs([ray.put(test_df1), ray.put(test_df2)])
     mdf = read_raydataset(ds)
 
     assert mdf.shape[1] == 2
@@ -531,7 +536,6 @@ def test_read_raydataset():
     assert len(mdf.chunks) == 2
     for chunk in mdf.chunks:
         assert isinstance(chunk.op, DataFrameReadRayDataset)
-    ray.shutdown()
 
 
 def test_date_range():
@@ -573,3 +577,36 @@ def test_date_range():
         assert c.index_value.is_unique == ec.is_unique
         assert c.index_value.is_monotonic_increasing == ec.is_monotonic_increasing
         assert c.name == ec.name
+
+
+@require_ray
+def test_read_ray_mldataset(ray_start_regular):
+    test_df1 = pd.DataFrame(
+        {
+            "a": np.arange(10).astype(np.int64, copy=False),
+            "b": [f"s{i}" for i in range(10)],
+        }
+    )
+    test_df2 = pd.DataFrame(
+        {
+            "a": np.arange(10).astype(np.int64, copy=False),
+            "b": [f"s{i}" for i in range(10)],
+        }
+    )
+    df = pd.concat([test_df1, test_df2])
+    import ray.util.iter
+    from ray.util.data import from_parallel_iter
+
+    ml_dataset = from_parallel_iter(
+        ray.util.iter.from_items([test_df1, test_df2], num_shards=2), need_convert=False
+    )
+    mdf = read_ray_mldataset(ml_dataset)
+
+    assert mdf.shape[1] == 2
+    pd.testing.assert_index_equal(df.columns, mdf.columns_value.to_pandas())
+    pd.testing.assert_series_equal(df.dtypes, mdf.dtypes)
+
+    mdf = tile(mdf)
+    assert len(mdf.chunks) == 2
+    for chunk in mdf.chunks:
+        assert isinstance(chunk.op, DataFrameReadMLDataset)

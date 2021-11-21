@@ -83,8 +83,9 @@ jobs:
               rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
             fi
             if [ -n "$WITH_RAY" ]; then
-              pip install ray[default]
+              pip install pip install ray[default]
               pip install xgboost_ray
+              pip install --upgrade numpy
             fi
             if [ -n "$RUN_DASK" ]; then
               pip install dask[complete] mimesis sklearn

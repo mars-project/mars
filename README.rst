@@ -235,6 +235,50 @@ by default session once it is created.
     dtype: int64
 
 
+Mars on Ray
+------------
+Mars also has deep integration with Ray and can run on `Ray <https://docs.ray.io/en/latest/>`_ efficiently and
+interact with the large ecosystem of machine learning and distributed systems built on top of the core Ray.
+
+Starting a new Mars on Ray runtime locally via:
+
+.. code-block:: python
+
+    import ray
+    ray.init()
+    import mars
+    mars.new_ray_session(worker_num=2)
+    import mars.tensor as mt
+    mt.random.RandomState(0).rand(1000_0000, 5).sum().execute()
+
+Or connecting to a Mars on Ray runtime which is already initialized.
+
+.. code-block:: python
+
+    import mars
+    mars.new_ray_session('http://<web_ip>:<ui_port>')
+    # perform computation
+
+Interact with Ray Dataset:
+
+.. code-block:: python
+
+    import mars.tensor as mt
+    import mars.dataframe as md
+    df = md.DataFrame(
+        mt.random.rand(1000_0000, 4),
+        columns=list('abcd'))
+    # Convert mars dataframe to ray dataset
+    ds = md.to_ray_dataset(df)
+    print(ds.schema(), ds.count())
+    ds.filter(lambda row: row["a"] > 0.5).show(5)
+    # Convert ray dataset to mars dataframe
+    df2 = md.read_ray_dataset(ds)
+    print(df2.head(5).execute())
+
+Refer to `Mars on Ray`_ for more information.
+
+
 Easy to scale in and scale out
 ------------------------------
 
@@ -310,6 +354,7 @@ Thank you in advance for your contributions!
 .. _`pull requests`: https://github.com/mars-project/mars/pulls
 .. _`Documentation`: https://docs.pymars.org
 .. _`中文文档`: https://docs.pymars.org/zh_CN/latest/
+.. _`Mars on Ray`: https://docs.pymars.org/en/latest/installation/ray.html
 .. _`Run on Kubernetes`: https://docs.pymars.org/en/latest/installation/kubernetes.html
 .. _`Run on Yarn`: https://docs.pymars.org/en/latest/installation/yarn.html
 .. _`DASK on Mars`: https://docs.pymars.org/en/latest/user_guide/contrib/dask.html
