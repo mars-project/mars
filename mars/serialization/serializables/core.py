@@ -58,10 +58,9 @@ class Serializable(metaclass=SerializableMeta):
         if args:  # pragma: no cover
             values = dict(zip(self.__slots__, args))
             values.update(kwargs)
+            self._FIELD_VALUES = values
         else:
-            values = kwargs
-
-        self._FIELD_VALUES = values
+            self._FIELD_VALUES = kwargs
 
     def __repr__(self):
         values = ", ".join(

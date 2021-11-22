@@ -68,7 +68,7 @@ class Base(Serializable):
     def __mars_tokenize__(self):
         try:
             return self._key
-        except AttributeError:
+        except AttributeError:  # pragma: no cover
             self._update_key()
             return self._key
 

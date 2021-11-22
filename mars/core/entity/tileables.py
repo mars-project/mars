@@ -284,7 +284,7 @@ class TileableData(EntityData, _ExecutableMixin):
             chunks = self._chunks
             if chunks:
                 self._chunks = sorted(chunks, key=attrgetter("index"))
-        except AttributeError:
+        except AttributeError:  # pragma: no cover
             pass
 
         self._entities = WeakSet()
@@ -416,7 +416,7 @@ class HasShapeTileableData(TileableData):
     def __len__(self):
         try:
             return int(self.shape[0])
-        except (IndexError, ValueError):
+        except (IndexError, ValueError):  # pragma: no cover
             return 0
 
     @property

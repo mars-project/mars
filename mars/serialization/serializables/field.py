@@ -565,7 +565,7 @@ class OneOfField(Field):
         return FieldTypes.any
 
     def __set__(self, instance, value):
-        if not _is_ci:
+        if not _is_ci:  # pragma: no cover
             return super().__set__(instance, value)
 
         field_values = instance._FIELD_VALUES
