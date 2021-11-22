@@ -1,30 +1,27 @@
-from collections import OrderedDict
+class _ProfilingData:
+    def __init__(self):
+        self._data = {}
 
-
-class ProfilingData:
-    _data = {}
-
-    @classmethod
-    def init(cls, task_id: str):
-        cls._data[task_id] = {
+    def init(self, task_id: str):
+        self._data[task_id] = {
             "general": {},
             "serialization": {},
         }
 
-    @classmethod
-    def pop(cls, task_id: str):
-        return cls._data.pop(task_id, None)
+    def pop(self, task_id: str):
+        return self._data.pop(task_id, None)
 
-    @classmethod
-    def general(cls, task_id: str):
-        task_data = cls._data.get(task_id)
-        if task_data is not None:
-            return task_data["general"]
-        return None
+    def __getitem__(self, item):
+        key = item if isinstance(item, tuple) else (item,)
+        v = None
+        d = self._data
+        for k in key:
+            v = d.get(k, None)
+            if v is None:
+                break
+            else:
+                d = v
+        return v
 
-    @classmethod
-    def serialization(cls, task_id: str):
-        task_data = cls._data.get(task_id)
-        if task_data is not None:
-            return task_data["serialization"]
-        return None
+
+ProfilingData = _ProfilingData()

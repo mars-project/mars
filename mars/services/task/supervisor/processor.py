@@ -340,7 +340,7 @@ class TaskProcessor:
 
         stage_id = new_task_id()
         stage_profiling = None
-        profiling = ProfilingData.general(self._task.task_id)
+        profiling = ProfilingData[self._task.task_id, "general"]
         if profiling is not None:
             stage_profiling = profiling.setdefault(f"stage_{stage_id}", {})
 
@@ -397,7 +397,7 @@ class TaskProcessor:
     def finish(self):
         self.done.set()
         if self._task.extra_config and self._task.extra_config.get("enable_profiling"):
-            ProfilingData.general(self._task.task_id)["total"] = (
+            ProfilingData[self._task.task_id, "general"]["total"] = (
                 time.time() - self.result.start_time
             )
             data = ProfilingData.pop(self._task.task_id)
@@ -478,7 +478,7 @@ class TaskProcessorActor(mo.Actor):
         processor.result.status = TaskStatus.running
 
         incref_fetch, incref_result = False, False
-        profiling = ProfilingData.general(processor.task_id)
+        profiling = ProfilingData[processor.task_id, "general"]
         try:
             # optimization
             with timeit(profiling, "optimize"):

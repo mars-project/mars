@@ -76,7 +76,7 @@ class SocketChannel(Channel):
         buffers = await serializer.run()
         if message.profiling_context is not None:
             task_id = message.profiling_context.task_id
-            profiling = ProfilingData.serialization(task_id)
+            profiling = ProfilingData[task_id, "serialization"]
             if profiling is not None:
                 last = profiling.get("serialize", 0)
                 profiling["serialize"] = last + time.time() - start_time
@@ -98,7 +98,7 @@ class SocketChannel(Channel):
         message = deserialize(header, buffers)
         if message.profiling_context is not None:
             task_id = message.profiling_context.task_id
-            profiling = ProfilingData.serialization(task_id)
+            profiling = ProfilingData[task_id, "serialization"]
             if profiling is not None:
                 last = profiling.get("deserialize", 0)
                 profiling["deserialize"] = last + time.time() - start_time

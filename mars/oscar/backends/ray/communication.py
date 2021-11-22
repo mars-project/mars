@@ -58,7 +58,7 @@ def _serialize(self, value):
         serialized_object = _ray_serialize(self, value)
         if message.profiling_context is not None:
             task_id = message.profiling_context.task_id
-            profiling = ProfilingData.serialization(task_id)
+            profiling = ProfilingData[task_id, "serialization"]
             if profiling is not None:
                 last = profiling.get("serialize", 0)
                 profiling["serialize"] = last + time.time() - start_time
@@ -74,7 +74,7 @@ def _deserialize_object(self, data, metadata, object_ref):
         message = deserialize(*value.message)
         if message.profiling_context is not None:
             task_id = message.profiling_context.task_id
-            profiling = ProfilingData.serialization(task_id)
+            profiling = ProfilingData[task_id, "serialization"]
             if profiling is not None:
                 last = profiling.get("deserialize", 0)
                 profiling["deserialize"] = last + time.time() - start_time
