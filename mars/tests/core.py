@@ -491,7 +491,7 @@ class ObjectCheckMixin:
             self.assert_categorical_consistent(expected, real)
 
 
-def test_dict_structure_same(a, b, prefix=None):
+def check_dict_structure_same(a, b, prefix=None):
     def _p(k):
         return ".".join(str(i) for i in prefix + [k])
 
@@ -510,6 +510,6 @@ def test_dict_structure_same(a, b, prefix=None):
         if type(ai[1]) is not type(bi[1]):
             raise TypeError(f"Value type of {_p(ai[0])} mismatch {ai[1]} != {bi[1]}")
         if isinstance(ai[1], dict):
-            test_dict_structure_same(
+            check_dict_structure_same(
                 ai[1], bi[1], [ai[0]] if prefix is None else prefix + [ai[0]]
             )

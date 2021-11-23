@@ -36,7 +36,7 @@ from ....lib.aio import new_isolation
 from ....storage import StorageLevel
 from ....services.storage import StorageAPI
 from ....tensor.arithmetic.add import TensorAdd
-from ....tests.core import test_dict_structure_same
+from ....tests.core import check_dict_structure_same
 from ..local import new_cluster
 from ..service import load_config
 from ..session import (
@@ -181,7 +181,7 @@ async def test_execute(create_cluster, extra_config):
                 },
             }
         }
-        test_dict_structure_same(info.profiling_result(), expect_structure)
+        check_dict_structure_same(info.profiling_result(), expect_structure)
     else:
         assert not info.profiling_result()
     assert info.result() is None
