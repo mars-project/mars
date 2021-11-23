@@ -165,10 +165,11 @@ async def test_optional_supervisor_node(ray_large_cluster, test_option):
 
 
 @require_ray
+@pytest.mark.parametrize("extra_config", [{"enable_profiling": True}, {}])
 @pytest.mark.asyncio
-async def test_web_session(ray_large_cluster, create_cluster):
+async def test_web_session(ray_large_cluster, create_cluster, extra_config):
     client = create_cluster[0]
-    await test_local.test_web_session(create_cluster)
+    await test_local.test_web_session(create_cluster, extra_config)
     web_address = client.web_address
     assert await ray.remote(_run_web_session).remote(web_address)
     assert await ray.remote(_sync_web_session_test).remote(web_address)

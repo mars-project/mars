@@ -321,8 +321,9 @@ async def _run_web_session_test(web_address):
     await session.destroy()
 
 
+@pytest.mark.parametrize("extra_config", [{"enable_profiling": True}, {}])
 @pytest.mark.asyncio
-async def test_web_session(create_cluster):
+async def test_web_session(create_cluster, extra_config):
     client = create_cluster[0]
     session_id = str(uuid.uuid4())
     web_address = client.web_address
@@ -330,7 +331,7 @@ async def test_web_session(create_cluster):
     assert await session.get_web_endpoint() == web_address
     session.as_default()
     assert isinstance(session._isolated_session, _IsolatedWebSession)
-    await test_execute(client)
+    await test_execute(client, extra_config)
     await test_iterative_tiling(client)
     AsyncSession.reset_default()
     await session.destroy()
