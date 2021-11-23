@@ -101,7 +101,7 @@ cdef class BaseActorContext:
         bool
         """
 
-    async def send(self, ActorRef actor_ref, object message, bint wait_response=True):
+    async def send(self, ActorRef actor_ref, object message, bint wait_response=True, object profiling_context=None):
         """
         Send a message to given actor by its reference
 
@@ -113,6 +113,8 @@ cdef class BaseActorContext:
             Message to send to an actor, need to comply to Actor.__on_receive__
         wait_response : bool
             Whether to wait for responses from the actor.
+        profiling_context: ProfilingContext
+            The profiling context.
 
         Returns
         -------

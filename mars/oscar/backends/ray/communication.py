@@ -56,12 +56,19 @@ def _serialize(self, value):
         message = value.message
         value.message = serialize(message)
         serialized_object = _ray_serialize(self, value)
-        if message.profiling_context is not None:
-            task_id = message.profiling_context.task_id
-            profiling = ProfilingData[task_id, "serialization"]
-            if profiling is not None:
-                last = profiling.get("serialize", 0)
-                profiling["serialize"] = last + time.time() - start_time
+        try:
+            if message.profiling_context is not None:
+                task_id = message.profiling_context.task_id
+                profiling = ProfilingData[task_id, "serialization"]
+                if profiling is not None:
+                    last = profiling.get("serialize", 0)
+                    profiling["serialize"] = last + time.time() - start_time
+        except AttributeError:
+            logger.debug(
+                "Profiling serialization got error, the send "
+                "message %s may not be an instance of message",
+                type(message),
+            )
     else:
         serialized_object = _ray_serialize(self, value)
     return serialized_object
@@ -72,12 +79,19 @@ def _deserialize_object(self, data, metadata, object_ref):
     value = _ray_deserialize_object(self, data, metadata, object_ref)
     if type(value) is _ArgWrapper:
         message = deserialize(*value.message)
-        if message.profiling_context is not None:
-            task_id = message.profiling_context.task_id
-            profiling = ProfilingData[task_id, "serialization"]
-            if profiling is not None:
-                last = profiling.get("deserialize", 0)
-                profiling["deserialize"] = last + time.time() - start_time
+        try:
+            if message.profiling_context is not None:
+                task_id = message.profiling_context.task_id
+                profiling = ProfilingData[task_id, "serialization"]
+                if profiling is not None:
+                    last = profiling.get("deserialize", 0)
+                    profiling["deserialize"] = last + time.time() - start_time
+        except AttributeError:
+            logger.debug(
+                "Profiling serialization got error, the recv "
+                "message %s may not be an instance of message",
+                type(message),
+            )
         value = message
     return value
 
@@ -255,7 +269,6 @@ class RayServerChannel(RayChannelBase):
             raise ChannelClosed("Channel already closed")
         if done:
             result_message = await done.pop()
-            result_message.profiling_context = message.profiling_context
             return _ArgWrapper(result_message)
 
 

@@ -60,7 +60,6 @@ class MessageTraceItem:
     uid: str
     address: str
     method: str
-    task_id: str
 
 
 @dataslots

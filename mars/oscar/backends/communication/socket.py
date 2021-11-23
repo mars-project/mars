@@ -74,13 +74,19 @@ class SocketChannel(Channel):
         compress = self.compression or 0
         serializer = AioSerializer(message, compress=compress)
         buffers = await serializer.run()
-        if message.profiling_context is not None:
-            task_id = message.profiling_context.task_id
-            profiling = ProfilingData[task_id, "serialization"]
-            if profiling is not None:
-                last = profiling.get("serialize", 0)
-                profiling["serialize"] = last + time.time() - start_time
-
+        try:
+            if message.profiling_context:
+                task_id = message.profiling_context.task_id
+                profiling = ProfilingData[task_id, "serialization"]
+                if profiling is not None:
+                    last = profiling.get("serialize", 0)
+                    profiling["serialize"] = last + time.time() - start_time
+        except AttributeError:
+            logger.debug(
+                "Profiling serialization got error, the send "
+                "message %s may not be an instance of message",
+                type(message),
+            )
         # write buffers
         write_buffers(self.writer, buffers)
         async with self._send_lock:
@@ -96,12 +102,19 @@ class SocketChannel(Channel):
             buffers = await read_buffers(header, self.reader)
         start_time = time.time()
         message = deserialize(header, buffers)
-        if message.profiling_context is not None:
-            task_id = message.profiling_context.task_id
-            profiling = ProfilingData[task_id, "serialization"]
-            if profiling is not None:
-                last = profiling.get("deserialize", 0)
-                profiling["deserialize"] = last + time.time() - start_time
+        try:
+            if message.profiling_context is not None:
+                task_id = message.profiling_context.task_id
+                profiling = ProfilingData[task_id, "serialization"]
+                if profiling is not None:
+                    last = profiling.get("deserialize", 0)
+                    profiling["deserialize"] = last + time.time() - start_time
+        except AttributeError:
+            logger.debug(
+                "Profiling serialization got error, the recv "
+                "message %s may not be an instance of message",
+                type(message),
+            )
         return message
 
     @implements(Channel.close)
