@@ -14,6 +14,7 @@
 
 import asyncio
 import concurrent.futures as futures
+import logging
 import os
 import socket
 import sys
@@ -34,6 +35,7 @@ from .core import register_client, register_server
 from .utils import read_buffers, write_buffers
 
 _is_windows: bool = sys.platform.startswith("win")
+logger = logging.getLogger(__name__)
 
 
 class SocketChannel(Channel):
