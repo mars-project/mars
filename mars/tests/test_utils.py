@@ -15,6 +15,7 @@
 
 import asyncio
 import copy
+import fnmatch
 import logging
 import multiprocessing
 import os
@@ -493,3 +494,18 @@ def test_web_serialize_lambda():
     s = utils.serialize_serializable(graph)
     f = utils.deserialize_serializable(s)
     assert isinstance(f, TileableGraph)
+
+
+def test_dict_structure_same(a, b):
+    for ai, bi in zip(a.items(), b.items()):
+        if ai[0] != bi[0]:
+            if "*" in ai[0]:
+                pattern, target = ai[0], bi[0]
+            elif "*" in bi[0]:
+                pattern, target = bi[0], ai[0]
+            else:
+                assert ai[0] == bi[0], f"Key {ai[0]} != {bi[0]}"
+            assert fnmatch.fnmatch(target, pattern), f"Key {target} not match {pattern}"
+        assert type(ai[1]) is type(bi[1]), f"Value type {ai[1]} != {bi[1]}"
+        if isinstance(ai[1], dict):
+            test_dict_structure_same(ai[1], bi[1])

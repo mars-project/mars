@@ -67,9 +67,10 @@ async def create_cluster(request):
 
 
 @require_ray
+@pytest.mark.parametrize("extra_config", [{"enable_profiling": True}, {}])
 @pytest.mark.asyncio
-async def test_execute(ray_large_cluster, create_cluster):
-    await test_local.test_execute(create_cluster)
+async def test_execute(ray_large_cluster, create_cluster, extra_config):
+    await test_local.test_execute(create_cluster, extra_config)
 
 
 @require_ray

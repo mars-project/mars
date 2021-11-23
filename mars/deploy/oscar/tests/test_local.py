@@ -36,6 +36,7 @@ from ....lib.aio import new_isolation
 from ....storage import StorageLevel
 from ....services.storage import StorageAPI
 from ....tensor.arithmetic.add import TensorAdd
+from ....tests.test_utils import test_dict_structure_same
 from ..local import new_cluster
 from ..service import load_config
 from ..session import (
@@ -146,8 +147,9 @@ async def test_vineyard_operators(create_cluster):
     pd.testing.assert_frame_equal(df, raw)
 
 
+@pytest.mark.parametrize("extra_config", [{"enable_profiling": True}, {}])
 @pytest.mark.asyncio
-async def test_execute(create_cluster):
+async def test_execute(create_cluster, extra_config):
     session = get_default_async_session()
     assert session.address is not None
     assert session.session_id is not None
@@ -156,8 +158,31 @@ async def test_execute(create_cluster):
     a = mt.tensor(raw, chunk_size=5)
     b = a + 1
 
-    info = await session.execute(b)
+    info = await session.execute(b, extra_config=extra_config)
     await info
+    if extra_config:
+        expect_structure = {
+            "supervisor": {
+                "general": {
+                    "optimize": 0.0006198883056640625,
+                    "incref_fetch_tileables": 0.0011222362518310547,
+                    "stage_*": {
+                        "tile": 0.009758949279785156,
+                        "gen_subtask_graph": 0.008953094482421875,
+                        "run": 0.24303698539733887,
+                        "total": 0.2655649185180664,
+                    },
+                    "total": 0.2710378170013428,
+                },
+                "serialization": {
+                    "serialize": 0.014154434204101562,
+                    "deserialize": 0.0011363029479980469,
+                },
+            }
+        }
+        test_dict_structure_same(info.profiling_result(), expect_structure)
+    else:
+        assert not info.profiling_result()
     assert info.result() is None
     assert info.exception() is None
     assert info.progress() == 1
