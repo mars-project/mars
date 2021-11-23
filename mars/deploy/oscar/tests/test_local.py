@@ -36,7 +36,7 @@ from ....lib.aio import new_isolation
 from ....storage import StorageLevel
 from ....services.storage import StorageAPI
 from ....tensor.arithmetic.add import TensorAdd
-from ....tests.test_utils import test_dict_structure_same
+from ....tests.core import test_dict_structure_same
 from ..local import new_cluster
 from ..service import load_config
 from ..session import (
