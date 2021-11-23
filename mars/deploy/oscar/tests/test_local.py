@@ -164,19 +164,20 @@ async def test_execute(create_cluster, extra_config):
         expect_structure = {
             "supervisor": {
                 "general": {
-                    "optimize": 0.0006198883056640625,
-                    "incref_fetch_tileables": 0.0011222362518310547,
+                    "optimize": 0.0005879402160644531,
+                    "incref_fetch_tileables": 0.0010840892791748047,
                     "stage_*": {
-                        "tile": 0.009758949279785156,
-                        "gen_subtask_graph": 0.008953094482421875,
-                        "run": 0.24303698539733887,
-                        "total": 0.2655649185180664,
+                        "tile": 0.008243083953857422,
+                        "gen_subtask_graph": 0.012202978134155273,
+                        "run": 0.27870702743530273,
+                        "total": 0.30318617820739746,
                     },
-                    "total": 0.2710378170013428,
+                    "total": 0.30951380729675293,
                 },
                 "serialization": {
-                    "serialize": 0.014154434204101562,
-                    "deserialize": 0.0011363029479980469,
+                    "serialize": 0.014928340911865234,
+                    "deserialize": 0.0011813640594482422,
+                    "total": 0.016109704971313477,
                 },
             }
         }

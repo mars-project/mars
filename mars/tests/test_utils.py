@@ -16,6 +16,7 @@
 import asyncio
 import copy
 import fnmatch
+import itertools
 import logging
 import multiprocessing
 import os
@@ -496,16 +497,25 @@ def test_web_serialize_lambda():
     assert isinstance(f, TileableGraph)
 
 
-def test_dict_structure_same(a, b):
-    for ai, bi in zip(a.items(), b.items()):
+def test_dict_structure_same(a, b, prefix=None):
+    def _p(k):
+        return ".".join(str(i) for i in prefix + [k])
+
+    for ai, bi in itertools.zip_longest(
+        a.items(), b.items(), fillvalue=("_KEY_NOT_EXISTS_", None)
+    ):
         if ai[0] != bi[0]:
             if "*" in ai[0]:
                 pattern, target = ai[0], bi[0]
             elif "*" in bi[0]:
                 pattern, target = bi[0], ai[0]
             else:
-                assert ai[0] == bi[0], f"Key {ai[0]} != {bi[0]}"
-            assert fnmatch.fnmatch(target, pattern), f"Key {target} not match {pattern}"
-        assert type(ai[1]) is type(bi[1]), f"Value type {ai[1]} != {bi[1]}"
+                raise KeyError(f"Key {_p(ai[0])} != {_p(bi[0])}")
+            if not fnmatch.fnmatch(target, pattern):
+                raise KeyError(f"Key {_p(target)} not match {_p(pattern)}")
+        if type(ai[1]) is not type(bi[1]):
+            raise TypeError(f"Value type of {_p(ai[0])} mismatch {ai[1]} != {bi[1]}")
         if isinstance(ai[1], dict):
-            test_dict_structure_same(ai[1], bi[1])
+            test_dict_structure_same(
+                ai[1], bi[1], [ai[0]] if prefix is None else prefix + [ai[0]]
+            )

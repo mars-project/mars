@@ -400,6 +400,9 @@ class TaskProcessor:
             ProfilingData[self._task.task_id, "general"]["total"] = (
                 time.time() - self.result.start_time
             )
+            ProfilingData[self._task.task_id, "serialization"]["total"] = sum(
+                ProfilingData[self._task.task_id, "serialization"].values()
+            )
             data = ProfilingData.pop(self._task.task_id)
             self.result.profiling = {
                 "supervisor": data,
