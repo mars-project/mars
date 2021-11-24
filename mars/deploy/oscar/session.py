@@ -814,17 +814,20 @@ class _IsolatedSession(AbstractAsyncSession):
             while True:
                 try:
                     if not cancelled:
-                        task_result: TaskResult = await self._task_api.wait_task(
-                            task_id, timeout=0.5
-                        )
-                        if task_result is None:
-                            # not finished, set progress
-                            progress.value = await self._task_api.get_task_progress(
-                                task_id
+                        task_result: Union[TaskResult, None] = None
+                        try:
+                            task_result = await self._task_api.wait_task(
+                                task_id, timeout=0.5
                             )
-                        else:
-                            progress.value = 1.0
-                            break
+                        finally:
+                            if task_result is None:
+                                # not finished, set progress
+                                progress.value = await self._task_api.get_task_progress(
+                                    task_id
+                                )
+                            else:
+                                progress.value = 1.0
+                                break
                     else:
                         # wait for task to finish
                         task_result: TaskResult = await self._task_api.wait_task(
