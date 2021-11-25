@@ -1597,6 +1597,7 @@ class Series(HasShapeTileable, _ToPandasMixin):
 
 class BaseDataFrameChunkData(ChunkData):
     __slots__ = ("_dtypes_value",)
+    _no_copy_attrs_ = ChunkData._no_copy_attrs_ | {"_dtypes"}
 
     # required fields
     _shape = TupleField(

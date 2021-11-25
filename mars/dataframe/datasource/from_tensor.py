@@ -364,7 +364,24 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         else:
             index_tensor = None
 
+        # build column attrs for all chunks
+        if in_tensor.ndim == 1:
+            columns_value_list = [
+                parse_index(out_df.columns_value.to_pandas()[0:1], store_data=True)
+            ]
+            dtypes_list = [out_df.dtypes]
+        else:
+            columns_value_list = [None] * in_tensor.chunk_shape[1]
+            dtypes_list = [None] * in_tensor.chunk_shape[1]
+            cum_cols = np.cumsum((0,) + in_tensor.nsplits[1])
+            for idx in range(in_tensor.chunk_shape[1]):
+                dtypes_list[idx] = out_df.dtypes[cum_cols[idx] : cum_cols[idx + 1]]
+                pd_columns = out_df.columns_value.to_pandas()
+                chunk_pd_columns = pd_columns[cum_cols[idx] : cum_cols[idx + 1]]
+                columns_value_list[idx] = parse_index(chunk_pd_columns, store_data=True)
+
         cum_size = [np.cumsum(s) for s in nsplits]
+        index_value_list = [None] * in_tensor.chunk_shape[0]
         for in_chunk in in_tensor.chunks:
             out_op = op.copy().reset_key()
             chunk_inputs = [in_chunk]
@@ -372,21 +389,15 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 (i,) = in_chunk.index
                 column_stop = 1
                 chunk_index = (in_chunk.index[0], 0)
-                dtypes = out_df.dtypes
-                columns_value = parse_index(
-                    out_df.columns_value.to_pandas()[0:1], store_data=True
-                )
+                dtypes = dtypes_list[0]
+                columns_value = columns_value_list[0]
                 chunk_shape = (in_chunk.shape[0], 1)
             else:
                 i, j = in_chunk.index
                 column_stop = cum_size[1][j]
                 chunk_index = in_chunk.index
-                dtypes = out_df.dtypes[column_stop - in_chunk.shape[1] : column_stop]
-                pd_columns = out_df.columns_value.to_pandas()
-                chunk_pd_columns = pd_columns[
-                    column_stop - in_chunk.shape[1] : column_stop
-                ]
-                columns_value = parse_index(chunk_pd_columns, store_data=True)
+                dtypes = dtypes_list[in_chunk.index[1]]
+                columns_value = columns_value_list[in_chunk.index[1]]
                 chunk_shape = in_chunk.shape
 
             index_stop = cum_size[0][i]
@@ -396,23 +407,37 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 chunk_inputs.append(index_chunk)
             elif isinstance(in_chunk, SERIES_CHUNK_TYPE):
                 index_value = in_chunk.index_value
-            elif out_df.index_value.has_value():
-                pd_index = out_df.index_value.to_pandas()
-                chunk_pd_index = pd_index[index_stop - in_chunk.shape[0] : index_stop]
-                index_value = parse_index(chunk_pd_index, store_data=True)
-            elif op.index is None:
-                # input tensor has unknown shape
-                index_value = parse_index(pd.RangeIndex(-1), in_chunk)
+            elif index_value_list[in_chunk.index[0]] is not None:
+                # value already cached
+                index_value = index_value_list[in_chunk.index[0]]
+                if index_tensor is not None:
+                    index_chunk = index_tensor.cix[
+                        in_chunk.index[0],
+                    ]
+                    chunk_inputs.append(index_chunk)
             else:
-                index_chunk = index_tensor.cix[
-                    in_chunk.index[0],
-                ]
-                chunk_inputs.append(index_chunk)
-                index_value = parse_index(
-                    pd.Index([], dtype=index_tensor.dtype),
-                    index_chunk,
-                    type(out_op).__name__,
-                )
+                if out_df.index_value.has_value():
+                    pd_index = out_df.index_value.to_pandas()
+                    chunk_pd_index = pd_index[
+                        index_stop - in_chunk.shape[0] : index_stop
+                    ]
+                    index_value = parse_index(chunk_pd_index, store_data=True)
+                elif op.index is None:
+                    # input tensor has unknown shape
+                    index_value = parse_index(
+                        pd.RangeIndex(-1), in_tensor, in_chunk.index[0]
+                    )
+                else:
+                    index_chunk = index_tensor.cix[
+                        in_chunk.index[0],
+                    ]
+                    chunk_inputs.append(index_chunk)
+                    index_value = parse_index(
+                        pd.Index([], dtype=index_tensor.dtype),
+                        index_chunk,
+                        type(out_op).__name__,
+                    )
+                index_value_list[in_chunk.index[0]] = index_value
 
             out_op.extra_params["index_stop"] = index_stop
             out_op.extra_params["column_stop"] = column_stop
