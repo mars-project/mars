@@ -232,12 +232,15 @@ class GraphAnalyzer:
                 chunk, chunk_to_fetch_chunk
             )
             bands_specified = chunk.op.expect_worker is not None
+            expect_worker = chunk.op.expect_worker
         else:
             subtask_chunk_graph = self._build_fuse_subtask_chunk_graph(
                 chunk, chunk_to_fetch_chunk
             )
             bands_specified = chunk.composed[0].op.expect_worker is not None
-
+            expect_worker = chunk.composed[0].op.expect_worker
+        expect_bands = [expect_worker] if bands_specified else (
+            [band] if band is not None else None)
         subtask = Subtask(
             subtask_id=new_task_id(),
             stage_id=self._stage_id,
@@ -245,7 +248,7 @@ class GraphAnalyzer:
             session_id=self._task.session_id,
             task_id=self._task.task_id,
             chunk_graph=subtask_chunk_graph,
-            expect_bands=[band] if band is not None else None,
+            expect_bands=expect_bands,
             bands_specified=bands_specified,
             virtual=virtual,
             priority=priority,
