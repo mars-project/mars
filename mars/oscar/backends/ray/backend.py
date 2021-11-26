@@ -51,7 +51,6 @@ class RayActorBackend(BaseActorBackend):
             ray.remote(RayMainPool)
             .options(
                 num_cpus=num_cpus,
-                memory=50 * 1024 * 1024,
                 name=address,
                 max_concurrency=10000,  # By default, 1000 tasks can be running concurrently.
                 max_restarts=-1,  # Auto restarts by ray

@@ -111,7 +111,6 @@ class RayMainActorPool(MainActorPoolBase):
             .options(
                 num_cpus=num_cpus,
                 name=external_address,
-                memory=50 * 1024 * 1024,
                 max_concurrency=10000000,  # By default, 1000 tasks can be running concurrently.
                 max_restarts=-1,  # Auto restarts by ray
                 placement_group=pg,

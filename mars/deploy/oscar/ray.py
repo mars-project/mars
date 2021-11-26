@@ -154,7 +154,10 @@ class ClusterStateActor(mo.StatelessActor):
         self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None
     ) -> Optional[str]:
         worker_cpu = worker_cpu or self._worker_cpu
-        bundle = {"CPU": worker_cpu, "memory": worker_mem or self._worker_mem}
+        bundle = {
+            "CPU": worker_cpu,
+            # "memory": worker_mem or self._worker_mem
+        }
         band_to_slot = {"numa-0": worker_cpu}
         start_time = time.time()
         logger.info("Start to request worker with resource %s.", bundle)
@@ -426,7 +429,7 @@ class RayCluster:
         self._config["cluster"]["lookup_address"] = self.supervisor_address
         address_to_resources[node_placement_to_address(self._cluster_name, 0)] = {
             "CPU": 1,
-            "memory": self._supervisor_mem,
+            # "memory": self._supervisor_mem,
         }
         worker_addresses = []
         if supervisor_standalone:
@@ -440,7 +443,7 @@ class RayCluster:
                 )
                 address_to_resources[worker_node_address] = {
                     "CPU": self._worker_cpu,
-                    "memory": self._worker_mem,
+                    # "memory": self._worker_mem,
                 }
         else:
             for worker_index in range(self._worker_num):
@@ -456,7 +459,7 @@ class RayCluster:
                 )
                 address_to_resources[worker_node_address] = {
                     "CPU": self._worker_cpu,
-                    "memory": self._worker_mem,
+                    # "memory": self._worker_mem,
                 }
         mo.setup_cluster(address_to_resources)
 
