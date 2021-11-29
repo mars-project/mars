@@ -172,6 +172,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
 
         out_chunks = []
         nsplits = [[]] if out.ndim == 1 else [[], [out.shape[1]]]
+        pd_out_index = out.index_value.to_pandas()
         for chunk in inp.chunks:
             chunk_op = op.copy().reset_key()
             chunk_op.tileable_op_key = op.key
@@ -180,9 +181,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                     shape = (np.nan, out.shape[1])
                 else:
                     shape = (chunk.shape[0], out.shape[1])
-                index_value = parse_index(
-                    out.index_value.to_pandas(), chunk, op.func, op.args, op.kwargs
-                )
+                index_value = parse_index(pd_out_index, chunk, op.key)
                 out_chunk = chunk_op.new_chunk(
                     [chunk],
                     shape=shape,
@@ -198,9 +197,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                     shape = (np.nan,)
                 else:
                     shape = (chunk.shape[0],)
-                index_value = parse_index(
-                    out.index_value.to_pandas(), chunk, op.func, op.args, op.kwargs
-                )
+                index_value = parse_index(pd_out_index, chunk, op.key)
                 out_chunk = chunk_op.new_chunk(
                     [chunk],
                     shape=shape,
