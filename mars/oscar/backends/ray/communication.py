@@ -51,7 +51,7 @@ if ray:
     _ray_deserialize_object = ray.serialization.SerializationContext._deserialize_object
 
     def _serialize(self, value):
-        if type(value) is _ArgWrapper:
+        if type(value) is _ArgWrapper:  # pylint: disable=unidiomatic-typecheck
             start_time = time.time()
             message = value.message
             value.message = serialize(message)
