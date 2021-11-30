@@ -55,6 +55,7 @@ except ImportError:  # pragma: no cover
 from ..config import options
 from ..core import is_kernel_mode
 from ..lib.version import parse as parse_version
+from ..utils import tokenize
 
 _use_bool_any_all = parse_version(pd.__version__) >= parse_version("1.3.0")
 
@@ -581,12 +582,14 @@ class ArrowArray(ExtensionArray):
 
     def __mars_tokenize__(self):
         if self._use_arrow:
-            return [
-                memoryview(x)
-                for chunk in self._arrow_array.chunks
-                for x in chunk.buffers()
-                if x is not None
-            ]
+            return tokenize(
+                [
+                    memoryview(x)
+                    for chunk in self._arrow_array.chunks
+                    for x in chunk.buffers()
+                    if x is not None
+                ]
+            )
         else:
             return self._ndarray
 

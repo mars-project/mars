@@ -605,7 +605,15 @@ def build_empty_series(dtype, index=None, name=None):
     )
 
 
-def build_series(series_obj, fill_value=1, size=1, name=None, ensure_string=False):
+def build_series(
+    series_obj=None,
+    fill_value=1,
+    size=1,
+    name=None,
+    ensure_string=False,
+    dtype=None,
+    index=None,
+):
     seriess = []
     if not isinstance(size, (list, tuple)):
         sizes = [size]
@@ -617,11 +625,18 @@ def build_series(series_obj, fill_value=1, size=1, name=None, ensure_string=Fals
     else:
         fill_values = fill_value
 
+    if series_obj is not None:
+        dtype = series_obj.dtype
+        try:
+            series_index = series_obj.index_value.to_pandas()[:0]
+        except AttributeError:
+            series_index = series_obj.index[:0]
+    else:
+        series_index = index[:0] if index else None
+
     for size, fill_value in zip(sizes, fill_values):
-        empty_series = build_empty_series(
-            series_obj.dtype, name=name, index=series_obj.index_value.to_pandas()[:0]
-        )
-        record = _generate_value(series_obj.dtype, fill_value)
+        empty_series = build_empty_series(dtype, name=name, index=series_index)
+        record = _generate_value(dtype, fill_value)
         if isinstance(empty_series.index, pd.MultiIndex):
             index = tuple(
                 _generate_value(level.dtype, fill_value)
@@ -640,7 +655,7 @@ def build_series(series_obj, fill_value=1, size=1, name=None, ensure_string=Fals
 
         empty_series = pd.concat([empty_series] * size)
         # make sure dtype correct for MultiIndex
-        empty_series = empty_series.astype(series_obj.dtype, copy=False)
+        empty_series = empty_series.astype(dtype, copy=False)
         seriess.append(empty_series)
 
     if len(seriess) == 1:
@@ -648,7 +663,7 @@ def build_series(series_obj, fill_value=1, size=1, name=None, ensure_string=Fals
     else:
         ret_series = pd.concat(seriess)
 
-    if ensure_string and series_obj.dtype == np.dtype("O"):
+    if ensure_string and dtype == np.dtype("O"):
         ret_series = ret_series.radd("O")
     return ret_series
 
@@ -884,6 +899,7 @@ def infer_dtypes(left_dtypes, right_dtypes, operator):
     return operator(left, right).dtypes
 
 
+@functools.lru_cache(100)
 def infer_dtype(left_dtype, right_dtype, operator):
     left = build_empty_series(left_dtype)
     right = build_empty_series(right_dtype)

@@ -644,10 +644,13 @@ class TaskProcessorActor(mo.Actor):
             else:
                 status = SubtaskStatus.running
 
+            fields = tileable.op._FIELDS
+            field_values = tileable.op._FIELD_VALUES
             props = {
-                k: v
-                for k, v in getattr(tileable.op, "_FIELD_VALUES").items()
-                if k != "key" and isinstance(v, (int, float, str))
+                fields[attr_name].tag: value
+                for attr_name, value in field_values.items()
+                if attr_name not in ("_key", "_id")
+                and isinstance(value, (int, float, str))
             }
 
             tileable_infos[tileable.key] = {

@@ -18,7 +18,6 @@ import pickle
 import pkgutil
 import types
 import uuid
-from collections import deque
 from datetime import date, datetime, timedelta, tzinfo
 from enum import Enum
 from functools import lru_cache, partial
@@ -142,7 +141,7 @@ cdef class TypeDispatcher:
 cdef inline build_canonical_bytes(tuple args, kwargs):
     if kwargs:
         args = args + (kwargs,)
-    return str([tokenize_handler(arg) for arg in args]).encode('utf-8')
+    return pickle.dumps(tokenize_handler(args))
 
 
 def tokenize(*args, **kwargs):
@@ -155,15 +154,18 @@ def tokenize_int(*args, **kwargs):
 
 cdef class Tokenizer(TypeDispatcher):
     def __call__(self, object obj, *args, **kwargs):
-        if hasattr(obj, '__mars_tokenize__') and not isinstance(obj, type):
-            return super().__call__(obj.__mars_tokenize__(), *args, **kwargs)
-        if callable(obj):
-            if PDTick is not None and not isinstance(obj, PDTick):
-                return tokenize_function(obj)
-
         try:
             return super().__call__(obj, *args, **kwargs)
         except KeyError:
+            if hasattr(obj, '__mars_tokenize__') and not isinstance(obj, type):
+                if len(args) == 0 and len(kwargs) == 0:
+                    return obj.__mars_tokenize__()
+                else:
+                    return super().__call__(obj.__mars_tokenize__(), *args, **kwargs)
+            if callable(obj):
+                if PDTick is not None and not isinstance(obj, PDTick):
+                    return tokenize_function(obj)
+
             try:
                 return cloudpickle.dumps(obj)
             except:
@@ -171,10 +173,12 @@ cdef class Tokenizer(TypeDispatcher):
 
 
 cdef inline list iterative_tokenize(object ob):
-    dq = deque(ob)
-    h_list = []
-    while dq:
-        x = dq.pop()
+    cdef list dq = [ob]
+    cdef int dq_pos = 0
+    cdef list h_list = []
+    while dq_pos < len(dq):
+        x = dq[dq_pos]
+        dq_pos += 1
         if isinstance(x, (list, tuple)):
             dq.extend(x)
         elif isinstance(x, set):
@@ -188,7 +192,6 @@ cdef inline list iterative_tokenize(object ob):
 
 cdef inline tuple tokenize_numpy(ob):
     cdef int offset
-    cdef str data
 
     if not ob.shape:
         return str(ob), ob.dtype
@@ -288,6 +291,11 @@ cdef list tokenize_sqlalchemy_selectable(ob):
     return iterative_tokenize([str(ob)])
 
 
+cdef list tokenize_enum(ob):
+    cls = type(ob)
+    return iterative_tokenize([id(cls), cls.__name__, ob.name])
+
+
 @lru_cache(500)
 def tokenize_function(ob):
     if isinstance(ob, partial):
@@ -342,8 +350,8 @@ tokenize_handler.register(np.ndarray, tokenize_numpy)
 tokenize_handler.register(dict, lambda ob: iterative_tokenize(sorted(ob.items())))
 tokenize_handler.register(set, lambda ob: iterative_tokenize(sorted(ob)))
 tokenize_handler.register(np.random.RandomState, lambda ob: iterative_tokenize(ob.get_state()))
-tokenize_handler.register(Enum, lambda ob: iterative_tokenize((type(ob), ob.name)))
 tokenize_handler.register(memoryview, lambda ob: mmh3_hash_from_buffer(ob))
+tokenize_handler.register(Enum, tokenize_enum)
 tokenize_handler.register(pd.Index, tokenize_pandas_index)
 tokenize_handler.register(pd.Series, tokenize_pandas_series)
 tokenize_handler.register(pd.DataFrame, tokenize_pandas_dataframe)

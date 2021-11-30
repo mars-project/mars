@@ -23,12 +23,11 @@ except ImportError:  # pragma: no cover
     UFuncTypeError = None
 
 from ...typing import TileableType, ChunkType, OperandType
-from ...utils import calc_data_size
+from ...utils import calc_data_size, tokenize
 from ..context import Context
 from ..mode import is_eager_mode
 from ..entity import (
     OutputType,
-    TILEABLE_TYPE,
     ExecutableTuple,
     get_chunk_types,
     get_tileable_types,
@@ -46,13 +45,11 @@ class TileableOperandMixin:
     def check_inputs(self, inputs: List[TileableType]):
         if not inputs:
             return
+
+        from ...dataframe.core import DATAFRAME_TYPE
+
         for inp in inputs:
-            if isinstance(inp, TILEABLE_TYPE):
-                i = inp.extra_params["_i"]
-                if not inp.op.output_types:
-                    continue
-                if inp.op.output_types[i] != OutputType.dataframe:
-                    continue
+            if isinstance(inp, DATAFRAME_TYPE):
                 dtypes = getattr(inp, "dtypes", None)
                 if dtypes is None:
                     raise ValueError(
@@ -62,24 +59,25 @@ class TileableOperandMixin:
 
     @classmethod
     def _check_if_gpu(cls, inputs: List[TileableType]):
-        if (
-            inputs is not None
-            and len(
-                [
-                    inp
-                    for inp in inputs
-                    if inp is not None and getattr(inp, "op", None) is not None
-                ]
-            )
-            > 0
-        ):
-            if all(inp.op.gpu is True for inp in inputs):
-                return True
-            elif all(inp.op.gpu is False for inp in inputs):
-                return False
+        if not inputs:
+            return None
+        true_num = 0
+        for inp in inputs:
+            op = getattr(inp, "op", None)
+            if op is None or op.gpu is None:
+                return None
+            true_num += int(op.gpu)
+        if true_num == len(inputs):
+            return True
+        elif true_num == 0:
+            return False
+        return None
+
+    def _tokenize_output(self, output_idx: int, **kw):
+        return tokenize(self._key, output_idx)
 
     def _create_chunk(self, output_idx: int, index: Tuple[int], **kw) -> ChunkType:
-        output_type = kw.pop("output_type", self._get_output_type(output_idx))
+        output_type = kw.pop("output_type", None) or self._get_output_type(output_idx)
         if not output_type:
             raise ValueError("output_type should be specified")
 
@@ -92,6 +90,11 @@ class TileableOperandMixin:
         if output_type == OutputType.scalar:
             # tensor
             kw["order"] = "C_ORDER"
+
+        # key of output chunks may only contain keys for its output ids
+        if "_key" not in kw:
+            kw["_key"] = self._tokenize_output(output_idx, **kw)
+
         data = chunk_data_type(**kw)
         return chunk_type(data)
 
@@ -189,6 +192,7 @@ class TileableOperandMixin:
 
         if isinstance(output_type, (list, tuple)):
             output_type = output_type[output_idx]
+
         tileable_type, tileable_data_type = get_tileable_types(output_type)
         kw["_i"] = output_idx
         kw["op"] = self
@@ -197,6 +201,11 @@ class TileableOperandMixin:
             kw["order"] = "C_ORDER"
 
         kw = self._fill_nan_shape(kw)
+
+        # key of output chunks may only contain keys for its output ids
+        if "_key" not in kw:
+            kw["_key"] = self._tokenize_output(output_idx, **kw)
+
         data = tileable_data_type(**kw)
         return tileable_type(data)
 
@@ -207,12 +216,11 @@ class TileableOperandMixin:
         if output_limit is None:
             output_limit = getattr(self, "output_limit")
 
-        self.check_inputs(inputs)
-        getattr(self, "_set_inputs")(inputs)
-        if getattr(self, "gpu", None) is None:
+        self._set_inputs(inputs)
+        if self.gpu is None:
             self.gpu = self._check_if_gpu(self._inputs)
         if getattr(self, "_key", None) is None:
-            getattr(self, "_update_key")()  # update key when inputs are set
+            self._update_key()  # update key when inputs are set
 
         tileables = []
         for j in range(output_limit):
@@ -222,7 +230,7 @@ class TileableOperandMixin:
             tileable = self._create_tileable(j, **create_tensor_kw)
             tileables.append(tileable)
 
-        setattr(self, "outputs", tileables)
+        self.outputs = tileables
         if len(tileables) > 1:
             # for each output tileable, hold the reference to the other outputs
             # so that either no one or everyone are gc collected

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 from ... import opcodes as OperandDef
 from ...utils import classproperty
 from .core import DataFrameBinopUfunc
@@ -23,6 +25,8 @@ class DataFrameGreater(DataFrameBinopUfunc):
 
     _func_name = "gt"
     _rfunc_name = "lt"
+
+    return_dtype = np.dtype(bool)
 
     @classproperty
     def _operator(self):

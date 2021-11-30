@@ -55,13 +55,12 @@ class Serializable(metaclass=SerializableMeta):
     _FIELD_VALUES: Dict[str, Any]
 
     def __init__(self, *args, **kwargs):
-        setattr(self, "_FIELD_VALUES", dict())
-
-        for slot, arg in zip(self.__slots__, args):  # pragma: no cover
-            object.__setattr__(self, slot, arg)
-
-        for key, val in kwargs.items():
-            object.__setattr__(self, key, val)
+        if args:  # pragma: no cover
+            values = dict(zip(self.__slots__, args))
+            values.update(kwargs)
+            self._FIELD_VALUES = values
+        else:
+            self._FIELD_VALUES = kwargs
 
     def __repr__(self):
         values = ", ".join(
@@ -83,16 +82,19 @@ class SerializableSerializer(Serializer):
     @classmethod
     def _get_tag_to_values(cls, obj: Serializable):
         fields = obj._FIELDS
-        tag_to_values = obj._FIELD_VALUES.copy()
+        attr_to_values = obj._FIELD_VALUES
+        tag_to_values = dict()
 
         for field in fields.values():
             tag = field.tag
+            attr_name = field.attr_name
             try:
-                value = tag_to_values[tag]
+                value = attr_to_values[attr_name]
             except KeyError:
                 continue
             if field.on_serialize:
-                tag_to_values[tag] = field.on_serialize(value)
+                value = field.on_serialize(value)
+            tag_to_values[tag] = value
 
         return tag_to_values
 
@@ -134,22 +136,23 @@ class SerializableSerializer(Serializer):
             )  # noqa: E999
             pos += value_size
 
+        attr_to_values = dict()
         for field in obj_class._FIELDS.values():
+            try:
+                value = attr_to_values[field.attr_name] = tag_to_values[field.tag]
+            except KeyError:
+                continue
             if not isinstance(field, OneOfField):
-                try:
-                    value = tag_to_values[field.tag]
-                except KeyError:
-                    continue
                 if value is not None:
                     if field.on_deserialize:
 
                         def cb(v, field_):
-                            tag_to_values[field_.tag] = field_.on_deserialize(v)
+                            attr_to_values[field_.attr_name] = field_.on_deserialize(v)
 
                     else:
 
                         def cb(v, field_):
-                            tag_to_values[field_.tag] = v
+                            attr_to_values[field_.attr_name] = v
 
                     if isinstance(value, Placeholder):
                         value.callbacks.append(partial(cb, field_=field))
@@ -157,7 +160,7 @@ class SerializableSerializer(Serializer):
                         cb(value, field)
 
         obj = obj_class()
-        obj._FIELD_VALUES = tag_to_values
+        obj._FIELD_VALUES = attr_to_values
         return obj
 
 
