@@ -46,58 +46,59 @@ class _ArgWrapper:
     message: Any = None
 
 
-_ray_serialize = ray.serialization.SerializationContext.serialize
-_ray_deserialize_object = ray.serialization.SerializationContext._deserialize_object
+if ray:
+    _ray_serialize = ray.serialization.SerializationContext.serialize
+    _ray_deserialize_object = ray.serialization.SerializationContext._deserialize_object
 
 
-def _serialize(self, value):
-    if type(value) is _ArgWrapper:
+    def _serialize(self, value):
+        if type(value) is _ArgWrapper:
+            start_time = time.time()
+            message = value.message
+            value.message = serialize(message)
+            serialized_object = _ray_serialize(self, value)
+            try:
+                if message.profiling_context is not None:
+                    task_id = message.profiling_context.task_id
+                    profiling = ProfilingData[task_id, "serialization"]
+                    if profiling is not None:
+                        last = profiling.get("serialize", 0)
+                        profiling["serialize"] = last + time.time() - start_time
+            except AttributeError:
+                logger.debug(
+                    "Profiling serialization got error, the send "
+                    "message %s may not be an instance of message",
+                    type(message),
+                )
+        else:
+            serialized_object = _ray_serialize(self, value)
+        return serialized_object
+
+
+    def _deserialize_object(self, data, metadata, object_ref):
         start_time = time.time()
-        message = value.message
-        value.message = serialize(message)
-        serialized_object = _ray_serialize(self, value)
-        try:
-            if message.profiling_context is not None:
-                task_id = message.profiling_context.task_id
-                profiling = ProfilingData[task_id, "serialization"]
-                if profiling is not None:
-                    last = profiling.get("serialize", 0)
-                    profiling["serialize"] = last + time.time() - start_time
-        except AttributeError:
-            logger.debug(
-                "Profiling serialization got error, the send "
-                "message %s may not be an instance of message",
-                type(message),
-            )
-    else:
-        serialized_object = _ray_serialize(self, value)
-    return serialized_object
+        value = _ray_deserialize_object(self, data, metadata, object_ref)
+        if type(value) is _ArgWrapper:
+            message = deserialize(*value.message)
+            try:
+                if message.profiling_context is not None:
+                    task_id = message.profiling_context.task_id
+                    profiling = ProfilingData[task_id, "serialization"]
+                    if profiling is not None:
+                        last = profiling.get("deserialize", 0)
+                        profiling["deserialize"] = last + time.time() - start_time
+            except AttributeError:
+                logger.debug(
+                    "Profiling serialization got error, the recv "
+                    "message %s may not be an instance of message",
+                    type(message),
+                )
+            value = message
+        return value
 
 
-def _deserialize_object(self, data, metadata, object_ref):
-    start_time = time.time()
-    value = _ray_deserialize_object(self, data, metadata, object_ref)
-    if type(value) is _ArgWrapper:
-        message = deserialize(*value.message)
-        try:
-            if message.profiling_context is not None:
-                task_id = message.profiling_context.task_id
-                profiling = ProfilingData[task_id, "serialization"]
-                if profiling is not None:
-                    last = profiling.get("deserialize", 0)
-                    profiling["deserialize"] = last + time.time() - start_time
-        except AttributeError:
-            logger.debug(
-                "Profiling serialization got error, the recv "
-                "message %s may not be an instance of message",
-                type(message),
-            )
-        value = message
-    return value
-
-
-ray.serialization.SerializationContext.serialize = _serialize
-ray.serialization.SerializationContext._deserialize_object = _deserialize_object
+    ray.serialization.SerializationContext.serialize = _serialize
+    ray.serialization.SerializationContext._deserialize_object = _deserialize_object
 
 
 class RayChannelException(Exception):
