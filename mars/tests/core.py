@@ -493,6 +493,8 @@ class ObjectCheckMixin:
 
 def check_dict_structure_same(a, b, prefix=None):
     def _p(k):
+        if prefix is None:
+            return k
         return ".".join(str(i) for i in prefix + [k])
 
     for ai, bi in itertools.zip_longest(

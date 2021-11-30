@@ -339,8 +339,8 @@ class TaskProcessor:
             return
 
         stage_id = new_task_id()
-        stage_profiling = ProfilingData[self._task.task_id, "general"].setdefault(
-            f"stage_{stage_id}", {}
+        stage_profiling = ProfilingData[self._task.task_id, "general"].nest(
+            f"stage_{stage_id}"
         )
         stage_profiling.set("tile", time.time() - start_time)
 
@@ -497,7 +497,7 @@ class TaskProcessorActor(mo.Actor):
                 stage_processor = yield processor.get_next_stage_processor()
                 if stage_processor is None:
                     break
-                stage_profiling = profiling.get(f"stage_{stage_processor.stage_id}")
+                stage_profiling = profiling.nest(f"stage_{stage_processor.stage_id}")
                 # track and incref result tileables
                 yield processor.incref_result_tileables()
                 incref_result = True

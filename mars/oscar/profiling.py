@@ -8,12 +8,8 @@ class DummyOperator:
         pass
 
     @staticmethod
-    def setdefault(key, default=None):
+    def nest(key):
         return DummyOperator
-
-    @staticmethod
-    def get(key, default=None):
-        pass
 
     @staticmethod
     def values():
@@ -30,16 +26,16 @@ class ProfilingDataOperator:
         self._target[key] = value
 
     def inc(self, key, value):
-        old = getattr(self._target, key, 0)
+        old = self._target.get(key, 0)
         self._target[key] = old + value
 
-    def setdefault(self, key, default=None):
-        r = self._target.setdefault(key, default)
-        return DummyOperator if r is None else ProfilingDataOperator(r)
-
-    def get(self, key, default=None):
-        r = self._target.get(key, default)
-        return DummyOperator if r is None else ProfilingDataOperator(r)
+    def nest(self, key):
+        v = self._target.setdefault(key, {})
+        if not isinstance(v, dict):
+            raise TypeError(
+                f"The value type of key {key} is {type(v)}, but a dict is expected."
+            )
+        return ProfilingDataOperator(v)
 
     def values(self):
         return self._target.values()
