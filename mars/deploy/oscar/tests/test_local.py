@@ -572,6 +572,7 @@ async def speculative_cluster():
         yield client
 
 
+@pytest.mark.timeout(timeout=360)
 @pytest.mark.asyncio
 async def test_task_speculation_execution(speculative_cluster):
     series_size = 30
@@ -579,7 +580,7 @@ async def test_task_speculation_execution(speculative_cluster):
     def time_consuming(start, x):
         print(f"subtask index {x}")
         if (
-            x >= series_size - 2
+            x >= series_size - 1
         ):  # leave some workers not excluded from speculative submit.
             if time.time() - start < min_task_runtime:
                 print(f"subtask with index {x} starts to hang.")
