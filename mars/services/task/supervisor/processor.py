@@ -363,7 +363,7 @@ class TaskProcessor:
             self._get_tileable_id_to_tileable
         )
         stage_processor = TaskStageProcessor(
-            new_task_id(),
+            stage_id,
             self._task,
             chunk_graph,
             subtask_graph,
