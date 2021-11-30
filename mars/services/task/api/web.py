@@ -85,7 +85,7 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         graph = body_args["graph"]
         extra_config = body_args.get("extra_config", None)
         if extra_config:
-            extra_config = deserialize_serializable(extra_config, client=True)
+            extra_config = deserialize_serializable(extra_config)
 
         oscar_api = await self._get_oscar_task_api(session_id)
         task_id = await oscar_api.submit_tileable_graph(

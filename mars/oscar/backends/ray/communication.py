@@ -50,7 +50,6 @@ if ray:
     _ray_serialize = ray.serialization.SerializationContext.serialize
     _ray_deserialize_object = ray.serialization.SerializationContext._deserialize_object
 
-
     def _serialize(self, value):
         if type(value) is _ArgWrapper:
             start_time = time.time()
@@ -60,10 +59,9 @@ if ray:
             try:
                 if message.profiling_context is not None:
                     task_id = message.profiling_context.task_id
-                    profiling = ProfilingData[task_id, "serialization"]
-                    if profiling is not None:
-                        last = profiling.get("serialize", 0)
-                        profiling["serialize"] = last + time.time() - start_time
+                    ProfilingData[task_id, "serialization"].inc(
+                        "serialize", time.time() - start_time
+                    )
             except AttributeError:
                 logger.debug(
                     "Profiling serialization got error, the send "
@@ -74,7 +72,6 @@ if ray:
             serialized_object = _ray_serialize(self, value)
         return serialized_object
 
-
     def _deserialize_object(self, data, metadata, object_ref):
         start_time = time.time()
         value = _ray_deserialize_object(self, data, metadata, object_ref)
@@ -83,10 +80,9 @@ if ray:
             try:
                 if message.profiling_context is not None:
                     task_id = message.profiling_context.task_id
-                    profiling = ProfilingData[task_id, "serialization"]
-                    if profiling is not None:
-                        last = profiling.get("deserialize", 0)
-                        profiling["deserialize"] = last + time.time() - start_time
+                    ProfilingData[task_id, "serialization"].inc(
+                        "deserialize", time.time() - start_time
+                    )
             except AttributeError:
                 logger.debug(
                     "Profiling serialization got error, the recv "
@@ -95,7 +91,6 @@ if ray:
                 )
             value = message
         return value
-
 
     ray.serialization.SerializationContext.serialize = _serialize
     ray.serialization.SerializationContext._deserialize_object = _deserialize_object

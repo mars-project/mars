@@ -35,7 +35,7 @@ from ....core.operand import (
 )
 from ....optimization.logical import OptimizationRecords
 from ....typing import TileableType, BandType
-from ....utils import build_fetch, timeit
+from ....utils import build_fetch, Timer
 from ...cluster.api import ClusterAPI
 from ...lifecycle.api import LifecycleAPI
 from ...meta.api import MetaAPI
@@ -339,23 +339,22 @@ class TaskProcessor:
             return
 
         stage_id = new_task_id()
-        stage_profiling = None
-        profiling = ProfilingData[self._task.task_id, "general"]
-        if profiling is not None:
-            stage_profiling = profiling.setdefault(f"stage_{stage_id}", {})
-
-        if stage_profiling is not None:
-            stage_profiling["tile"] = time.time() - start_time
+        stage_profiling = ProfilingData[self._task.task_id, "general"].setdefault(
+            f"stage_{stage_id}", {}
+        )
+        stage_profiling.set("tile", time.time() - start_time)
 
         # gen subtask graph
         available_bands = await self._get_available_band_slots()
 
-        with timeit(stage_profiling, f"gen_subtask_graph"):
+        with Timer() as timer:
             subtask_graph = await asyncio.to_thread(
                 self._preprocessor.analyze,
                 chunk_graph,
                 available_bands,
             )
+        stage_profiling.set("gen_subtask_graph", timer.duration)
+
         tileable_to_subtasks = await asyncio.to_thread(
             self._get_tileable_to_subtasks, subtask_graph
         )
@@ -397,11 +396,12 @@ class TaskProcessor:
     def finish(self):
         self.done.set()
         if self._task.extra_config and self._task.extra_config.get("enable_profiling"):
-            ProfilingData[self._task.task_id, "general"]["total"] = (
-                time.time() - self.result.start_time
+            ProfilingData[self._task.task_id, "general"].set(
+                "total", time.time() - self.result.start_time
             )
-            ProfilingData[self._task.task_id, "serialization"]["total"] = sum(
-                ProfilingData[self._task.task_id, "serialization"].values()
+            ProfilingData[self._task.task_id, "serialization"].set(
+                "total",
+                sum(ProfilingData[self._task.task_id, "serialization"].values()),
             )
             data = ProfilingData.pop(self._task.task_id)
             self.result.profiling = {
@@ -484,20 +484,20 @@ class TaskProcessorActor(mo.Actor):
         profiling = ProfilingData[processor.task_id, "general"]
         try:
             # optimization
-            with timeit(profiling, "optimize"):
+            with Timer() as timer:
                 yield processor.optimize()
+            profiling.set("optimize", timer.duration)
             # incref fetch tileables to ensure fetch data not deleted
-            with timeit(profiling, "incref_fetch_tileables"):
+            with Timer() as timer:
                 yield processor.incref_fetch_tileables()
+            profiling.set("incref_fetch_tileables", timer.duration)
             incref_fetch = True
             while True:
                 start_time = time.time()
                 stage_processor = yield processor.get_next_stage_processor()
                 if stage_processor is None:
                     break
-                stage_profiling = profiling and profiling.get(
-                    f"stage_{stage_processor.stage_id}"
-                )
+                stage_profiling = profiling.get(f"stage_{stage_processor.stage_id}")
                 # track and incref result tileables
                 yield processor.incref_result_tileables()
                 incref_result = True
@@ -506,10 +506,10 @@ class TaskProcessorActor(mo.Actor):
                 # schedule stage
                 processor.stage_processors.append(stage_processor)
                 processor.cur_stage_processor = stage_processor
-                with timeit(stage_profiling, f"run"):
+                with Timer() as timer:
                     yield processor.schedule(stage_processor)
-                if stage_profiling is not None:
-                    stage_profiling[f"total"] = time.time() - start_time
+                stage_profiling.set("run", timer.duration)
+                stage_profiling.set("total", time.time() - start_time)
                 if stage_processor.error_or_cancelled():
                     break
         finally:

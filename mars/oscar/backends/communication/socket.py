@@ -79,10 +79,9 @@ class SocketChannel(Channel):
         try:
             if message.profiling_context:
                 task_id = message.profiling_context.task_id
-                profiling = ProfilingData[task_id, "serialization"]
-                if profiling is not None:
-                    last = profiling.get("serialize", 0)
-                    profiling["serialize"] = last + time.time() - start_time
+                ProfilingData[task_id, "serialization"].inc(
+                    "serialize", time.time() - start_time
+                )
         except AttributeError:
             logger.debug(
                 "Profiling serialization got error, the send "
@@ -107,10 +106,9 @@ class SocketChannel(Channel):
         try:
             if message.profiling_context is not None:
                 task_id = message.profiling_context.task_id
-                profiling = ProfilingData[task_id, "serialization"]
-                if profiling is not None:
-                    last = profiling.get("deserialize", 0)
-                    profiling["deserialize"] = last + time.time() - start_time
+                ProfilingData[task_id, "serialization"].inc(
+                    "deserialize", time.time() - start_time
+                )
         except AttributeError:
             logger.debug(
                 "Profiling serialization got error, the recv "
