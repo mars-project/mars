@@ -1558,7 +1558,10 @@ class SyncSession(AbstractSyncSession):
                 driver(), execution_info.loop
             ).result()
             new_execution_info = ExecutionInfo(
-                new_aio_task, execution_info._progress, execution_info.loop
+                new_aio_task,
+                execution_info._progress,
+                execution_info._profiling,
+                execution_info.loop,
             )
             return new_execution_info
 

@@ -75,7 +75,7 @@ if ray:
     def _deserialize_object(self, data, metadata, object_ref):
         start_time = time.time()
         value = _ray_deserialize_object(self, data, metadata, object_ref)
-        if type(value) is _ArgWrapper:
+        if type(value) is _ArgWrapper:  # pylint: disable=unidiomatic-typecheck
             message = deserialize(*value.message)
             try:
                 if message.profiling_context is not None:
