@@ -53,7 +53,7 @@ def test_init_entrypoint():
         )
         entrypoints.setdefault("mars_extensions", {})["init"] = my_entrypoint
 
-        from mars.core import entrypoints
+        from .. import entrypoints
 
         # Allow reinitialization
         entrypoints.init_all.cache_clear()
@@ -100,7 +100,7 @@ def test_entrypoint_tolerance():
         )
         entrypoints.setdefault("mars_extensions", {})["init"] = my_entrypoint
 
-        from mars.core import entrypoints
+        from .. import entrypoints
 
         # Allow reinitialization
         entrypoints.init_all.cache_clear()
