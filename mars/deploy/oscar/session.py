@@ -827,7 +827,8 @@ class _IsolatedSession(AbstractAsyncSession):
                                 )
                             else:
                                 progress.value = 1.0
-                                break
+                        if task_result is not None:
+                            break
                     else:
                         # wait for task to finish
                         task_result: TaskResult = await self._task_api.wait_task(
