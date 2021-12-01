@@ -15,6 +15,10 @@ class DummyOperator:
     def values():
         return []
 
+    @staticmethod
+    def empty():
+        return True
+
 
 class ProfilingDataOperator:
     __slots__ = ("_target",)
@@ -39,6 +43,9 @@ class ProfilingDataOperator:
 
     def values(self):
         return self._target.values()
+
+    def empty(self):
+        return len(self._target) == 0
 
 
 class _ProfilingData:

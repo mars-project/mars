@@ -13,12 +13,14 @@ def test_profiling_data():
         assert ProfilingData["abc", "def", 1] is DummyOperator
         ProfilingData["def"].set("a", 1)
         ProfilingData["def"].inc("b", 1)
+        assert ProfilingData["def"].empty()
         assert sum(ProfilingData["def"].nest("a").values()) == 0
         ProfilingData["abc", "serialization"].set("a", 1)
         ProfilingData["abc", "serialization"].inc("b", 1)
         with pytest.raises(TypeError):
             assert ProfilingData["abc", "serialization"].nest("a")
         assert sum(ProfilingData["abc", "serialization"].nest("c").values()) == 0
+        assert not ProfilingData["abc", "serialization"].empty()
     finally:
         v = ProfilingData.pop("abc")
         check_dict_structure_same(

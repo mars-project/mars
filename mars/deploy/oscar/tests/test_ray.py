@@ -49,6 +49,27 @@ CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
     os.path.dirname(__file__), "ray_test_with_third_parity_modules_config.yml"
 )
 
+EXPECT_PROFILING_STRUCTURE = {
+    "supervisor": {
+        "general": {
+            "optimize": 0.0005879402160644531,
+            "incref_fetch_tileables": 0.0010840892791748047,
+            "stage_*": {
+                "tile": 0.008243083953857422,
+                "gen_subtask_graph": 0.012202978134155273,
+                "run": 0.27870702743530273,
+                "total": 0.30318617820739746,
+            },
+            "total": 0.30951380729675293,
+        },
+        "serialization": {
+            "serialize": 0.014928340911865234,
+            "deserialize": 0.0011813640594482422,
+            "total": 0.016109704971313477,
+        },
+    }
+}
+
 
 @pytest.fixture
 async def create_cluster(request):
@@ -67,10 +88,16 @@ async def create_cluster(request):
 
 
 @require_ray
-@pytest.mark.parametrize("extra_config", [{"enable_profiling": True}, {}])
+@pytest.mark.parametrize(
+    "config",
+    [
+        [{"enable_profiling": True}, EXPECT_PROFILING_STRUCTURE],
+        [{}, {}],
+    ],
+)
 @pytest.mark.asyncio
-async def test_execute(ray_large_cluster, create_cluster, extra_config):
-    await test_local.test_execute(create_cluster, extra_config)
+async def test_execute(ray_large_cluster, create_cluster, config):
+    await test_local.test_execute(create_cluster, config)
 
 
 @require_ray
@@ -165,11 +192,17 @@ async def test_optional_supervisor_node(ray_large_cluster, test_option):
 
 
 @require_ray
-@pytest.mark.parametrize("extra_config", [{"enable_profiling": True}, {}])
+@pytest.mark.parametrize(
+    "config",
+    [
+        [{"enable_profiling": True}, EXPECT_PROFILING_STRUCTURE],
+        [{}, {}],
+    ],
+)
 @pytest.mark.asyncio
-async def test_web_session(ray_large_cluster, create_cluster, extra_config):
+async def test_web_session(ray_large_cluster, create_cluster, config):
     client = create_cluster[0]
-    await test_local.test_web_session(create_cluster, extra_config)
+    await test_local.test_web_session(create_cluster, config)
     web_address = client.web_address
     assert await ray.remote(_run_web_session).remote(web_address)
     assert await ray.remote(_sync_web_session_test).remote(web_address)

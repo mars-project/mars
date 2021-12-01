@@ -67,6 +67,22 @@ CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
     os.path.dirname(__file__), "local_test_with_third_parity_modules_config.yml"
 )
 
+EXPECT_PROFILING_STRUCTURE = {
+    "supervisor": {
+        "general": {
+            "optimize": 0.0005879402160644531,
+            "incref_fetch_tileables": 0.0010840892791748047,
+            "stage_*": {
+                "tile": 0.008243083953857422,
+                "gen_subtask_graph": 0.012202978134155273,
+                "run": 0.27870702743530273,
+                "total": 0.30318617820739746,
+            },
+            "total": 0.30951380729675293,
+        },
+        "serialization": {},
+    }
+}
 
 params = ["default"]
 if vineyard is not None:
@@ -147,9 +163,15 @@ async def test_vineyard_operators(create_cluster):
     pd.testing.assert_frame_equal(df, raw)
 
 
-@pytest.mark.parametrize("extra_config", [{"enable_profiling": True}, {}])
+@pytest.mark.parametrize(
+    "config",
+    [
+        [{"enable_profiling": True}, EXPECT_PROFILING_STRUCTURE],
+        [{}, {}],
+    ],
+)
 @pytest.mark.asyncio
-async def test_execute(create_cluster, extra_config):
+async def test_execute(create_cluster, config):
     session = get_default_async_session()
     assert session.address is not None
     assert session.session_id is not None
@@ -158,30 +180,12 @@ async def test_execute(create_cluster, extra_config):
     a = mt.tensor(raw, chunk_size=5)
     b = a + 1
 
+    extra_config, expect_profiling_structure = config
+
     info = await session.execute(b, extra_config=extra_config)
     await info
     if extra_config:
-        expect_structure = {
-            "supervisor": {
-                "general": {
-                    "optimize": 0.0005879402160644531,
-                    "incref_fetch_tileables": 0.0010840892791748047,
-                    "stage_*": {
-                        "tile": 0.008243083953857422,
-                        "gen_subtask_graph": 0.012202978134155273,
-                        "run": 0.27870702743530273,
-                        "total": 0.30318617820739746,
-                    },
-                    "total": 0.30951380729675293,
-                },
-                "serialization": {
-                    "serialize": 0.014928340911865234,
-                    "deserialize": 0.0011813640594482422,
-                    "total": 0.016109704971313477,
-                },
-            }
-        }
-        check_dict_structure_same(info.profiling_result(), expect_structure)
+        check_dict_structure_same(info.profiling_result(), expect_profiling_structure)
     else:
         assert not info.profiling_result()
     assert info.result() is None
@@ -321,9 +325,15 @@ async def _run_web_session_test(web_address):
     await session.destroy()
 
 
-@pytest.mark.parametrize("extra_config", [{"enable_profiling": True}, {}])
+@pytest.mark.parametrize(
+    "config",
+    [
+        [{"enable_profiling": True}, EXPECT_PROFILING_STRUCTURE],
+        [{}, {}],
+    ],
+)
 @pytest.mark.asyncio
-async def test_web_session(create_cluster, extra_config):
+async def test_web_session(create_cluster, config):
     client = create_cluster[0]
     session_id = str(uuid.uuid4())
     web_address = client.web_address
@@ -331,7 +341,7 @@ async def test_web_session(create_cluster, extra_config):
     assert await session.get_web_endpoint() == web_address
     session.as_default()
     assert isinstance(session._isolated_session, _IsolatedWebSession)
-    await test_execute(client, extra_config)
+    await test_execute(client, config)
     await test_iterative_tiling(client)
     AsyncSession.reset_default()
     await session.destroy()

@@ -25,8 +25,7 @@ from urllib.parse import urlparse
 
 from ....oscar.profiling import ProfilingData
 from ....serialization import serialize, deserialize
-from ....utils import implements, classproperty
-from ....utils import lazy_import
+from ....utils import lazy_import, implements, classproperty, Timer
 from ...debug import debug_async_timeout
 from ...errors import ServerClosed
 from ..communication.base import Channel, ChannelType, Server, Client
@@ -52,15 +51,15 @@ if ray:
 
     def _serialize(self, value):
         if type(value) is _ArgWrapper:  # pylint: disable=unidiomatic-typecheck
-            start_time = time.time()
-            message = value.message
-            value.message = serialize(message)
-            serialized_object = _ray_serialize(self, value)
+            with Timer() as timer:
+                message = value.message
+                value.message = serialize(message)
+                serialized_object = _ray_serialize(self, value)
             try:
                 if message.profiling_context is not None:
                     task_id = message.profiling_context.task_id
                     ProfilingData[task_id, "serialization"].inc(
-                        "serialize", time.time() - start_time
+                        "serialize", timer.duration
                     )
             except AttributeError:
                 logger.debug(

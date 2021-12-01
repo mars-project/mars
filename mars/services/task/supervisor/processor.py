@@ -399,10 +399,12 @@ class TaskProcessor:
             ProfilingData[self._task.task_id, "general"].set(
                 "total", time.time() - self.result.start_time
             )
-            ProfilingData[self._task.task_id, "serialization"].set(
-                "total",
-                sum(ProfilingData[self._task.task_id, "serialization"].values()),
-            )
+            serialization = ProfilingData[self._task.task_id, "serialization"]
+            if not serialization.empty():
+                serialization.set(
+                    "total",
+                    sum(serialization.values()),
+                )
             data = ProfilingData.pop(self._task.task_id)
             self.result.profiling = {
                 "supervisor": data,
