@@ -53,6 +53,7 @@ from ._utils import (
     register_tokenizer,
     insert_reversed_tuple,
     ceildiv,
+    Timer,
 )
 from .typing import ChunkType, TileableType, EntityType, OperandType
 
@@ -1067,16 +1068,6 @@ def enter_current_session(func: Callable):
         return result
 
     return wrapped
-
-
-class Timer:
-    def __enter__(self):
-        self._start = time.time()
-        return self
-
-    def __exit__(self, *_):
-        end = time.time()
-        self.duration = end - self._start
 
 
 _io_quiet_local = threading.local()

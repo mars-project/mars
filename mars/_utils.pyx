@@ -16,6 +16,7 @@ import importlib
 import os
 import pickle
 import pkgutil
+import time
 import types
 import uuid
 from collections import deque
@@ -401,6 +402,18 @@ cpdef tuple insert_reversed_tuple(tuple a, object x):
 @cython.cdivision(True)
 cpdef long long ceildiv(long long x, long long y) nogil:
     return x // y + (x % y != 0)
+
+
+cdef class Timer:
+    cdef object _start
+    cdef readonly object duration
+
+    def __enter__(self):
+        self._start = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.duration = time.time() - self._start
 
 
 __all__ = ['to_str', 'to_binary', 'to_text', 'TypeDispatcher', 'tokenize', 'tokenize_int',
