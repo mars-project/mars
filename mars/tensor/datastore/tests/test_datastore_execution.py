@@ -223,7 +223,7 @@ def test_vineyard_execution(setup):
         "check_shape": False,
     }
 
-    with vineyard.deploy.local.start_vineyardd() as (_, vineyard_socket):
+    with vineyard.deploy.local.start_vineyardd() as (_, vineyard_socket, _):
         a = tensor(raw, chunk_size=15)
         a.execute()  # n.b.: pre-execute
 
