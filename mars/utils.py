@@ -43,7 +43,7 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
 
-from ._utils import (  # noqa: F401; pylint: disable=unused-variable
+from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     to_binary,
     to_str,
     to_text,
