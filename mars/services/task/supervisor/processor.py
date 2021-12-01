@@ -23,7 +23,6 @@ from functools import reduce, wraps
 from typing import Callable, Coroutine, Dict, Iterator, List, Optional, Set, Type, Union
 
 from .... import oscar as mo
-from ....oscar.profiling import ProfilingData
 from ....config import Config
 from ....core import ChunkGraph, TileableGraph
 from ....core.operand import (
@@ -34,6 +33,7 @@ from ....core.operand import (
     OperandStage,
 )
 from ....optimization.logical import OptimizationRecords
+from ....oscar.profiling import ProfilingData
 from ....typing import TileableType, BandType
 from ....utils import build_fetch, Timer
 from ...cluster.api import ClusterAPI
@@ -331,18 +331,18 @@ class TaskProcessor:
         tileable_graph = self._preprocessor.tileable_graph
         self._init_chunk_graph_iter(tileable_graph)
 
-        start_time = time.time()
-        chunk_graph = await self._get_next_chunk_graph(self._chunk_graph_iter)
-        if chunk_graph is None:
-            # tile finished
-            self._preprocessor.done = True
-            return
+        with Timer() as timer:
+            chunk_graph = await self._get_next_chunk_graph(self._chunk_graph_iter)
+            if chunk_graph is None:
+                # tile finished
+                self._preprocessor.done = True
+                return
 
         stage_id = new_task_id()
         stage_profiling = ProfilingData[self._task.task_id, "general"].nest(
             f"stage_{stage_id}"
         )
-        stage_profiling.set("tile", time.time() - start_time)
+        stage_profiling.set("tile", timer.duration)
 
         # gen subtask graph
         available_bands = await self._get_available_band_slots()
@@ -495,23 +495,25 @@ class TaskProcessorActor(mo.Actor):
             profiling.set("incref_fetch_tileables", timer.duration)
             incref_fetch = True
             while True:
-                start_time = time.time()
-                stage_processor = yield processor.get_next_stage_processor()
-                if stage_processor is None:
-                    break
-                stage_profiling = profiling.nest(f"stage_{stage_processor.stage_id}")
-                # track and incref result tileables
-                yield processor.incref_result_tileables()
-                incref_result = True
-                # incref stage
-                yield processor.incref_stage(stage_processor)
-                # schedule stage
-                processor.stage_processors.append(stage_processor)
-                processor.cur_stage_processor = stage_processor
-                with Timer() as timer:
-                    yield processor.schedule(stage_processor)
-                stage_profiling.set("run", timer.duration)
-                stage_profiling.set("total", time.time() - start_time)
+                with Timer() as stage_timer:
+                    stage_processor = yield processor.get_next_stage_processor()
+                    if stage_processor is None:
+                        break
+                    stage_profiling = profiling.nest(
+                        f"stage_{stage_processor.stage_id}"
+                    )
+                    # track and incref result tileables
+                    yield processor.incref_result_tileables()
+                    incref_result = True
+                    # incref stage
+                    yield processor.incref_stage(stage_processor)
+                    # schedule stage
+                    processor.stage_processors.append(stage_processor)
+                    processor.cur_stage_processor = stage_processor
+                    with Timer() as timer:
+                        yield processor.schedule(stage_processor)
+                    stage_profiling.set("run", timer.duration)
+                stage_profiling.set("total", stage_timer.duration)
                 if stage_processor.error_or_cancelled():
                     break
         finally:
