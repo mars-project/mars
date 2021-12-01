@@ -417,4 +417,4 @@ cdef class Timer:
 
 
 __all__ = ['to_str', 'to_binary', 'to_text', 'TypeDispatcher', 'tokenize', 'tokenize_int',
-           'register_tokenizer', 'insert_reversed_tuple', 'ceildiv']
+           'register_tokenizer', 'insert_reversed_tuple', 'ceildiv', 'Timer']
