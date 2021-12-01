@@ -23,6 +23,7 @@ import multiprocessing
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
+from ...core.entrypoints import init_all
 from ...utils import implements, to_binary
 from ...utils import lazy_import, register_asyncio_task_timeout_detector
 from ..api import Actor
@@ -141,6 +142,8 @@ class AbstractActorPool(ABC):
         self._asyncio_task_timeout_detector_task = (
             register_asyncio_task_timeout_detector()
         )
+        # load third party extensions.
+        init_all()
 
     @property
     def router(self):
