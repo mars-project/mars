@@ -18,7 +18,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...core.context import get_context
-from ...serialization.serializables import StringField
+from ...serialization.serializables import Int32Field, StringField
 from ...tensor.datasource.from_vineyard import resolve_vineyard_socket
 from ...utils import calc_nsplits, has_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -43,6 +43,9 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
 
     # ObjectID in vineyard
     object_id = StringField("object_id")
+
+    # a dummy attr to make sure ops have different keys
+    operator_index = Int32Field("operator_index")
 
     def __init__(self, vineyard_socket=None, object_id=None, **kw):
         super().__init__(
@@ -92,6 +95,7 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
         for index, worker in enumerate(workers):
             chunk_op = op.copy().reset_key()
             chunk_op.expect_worker = worker
+            chunk_op.operator_index = index
             out_chunk = chunk_op.new_chunk(
                 [],
                 dtypes=dtypes,
