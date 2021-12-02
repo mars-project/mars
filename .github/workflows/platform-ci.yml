@@ -71,7 +71,7 @@ jobs:
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein conda-pack
             fi
             if [ -n "$WITH_VINEYARD" ]; then
-              pip install vineyard==0.2.7 -i https://pypi.org/simple
+              pip install vineyard -i https://pypi.org/simple
 
               mkdir -p /tmp/etcd-download-test
               export ETCD_VER=v3.4.13
