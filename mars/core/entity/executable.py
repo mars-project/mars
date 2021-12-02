@@ -46,11 +46,7 @@ class _TileableSession:
                     try:
                         s = SyncSession.from_isolated_session(s)
                         s.decref(key)
-                    except (
-                        RuntimeError,
-                        ConnectionError,
-                        KeyError,
-                    ):
+                    except (RuntimeError, ConnectionError, KeyError):
                         pass
 
             fut = _decref_pool.submit(decref)
