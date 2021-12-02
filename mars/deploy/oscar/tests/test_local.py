@@ -32,6 +32,7 @@ from .... import dataframe as md
 from .... import tensor as mt
 from .... import remote as mr
 from ....config import option_context
+from ....core.context import get_context
 from ....lib.aio import new_isolation
 from ....storage import StorageLevel
 from ....services.storage import StorageAPI
@@ -376,6 +377,34 @@ def test_no_default_session():
     assert get_default_async_session() is not None
     stop_server()
     assert get_default_async_session() is None
+
+
+@pytest.mark.asyncio
+async def test_session_progress(create_cluster):
+    session = get_default_async_session()
+    assert session.address is not None
+    assert session.session_id is not None
+
+    def f1(interval: float, count: int):
+        for idx in range(count):
+            time.sleep(interval)
+            get_context().set_progress((1 + idx) * 1.0 / count)
+
+    r = mr.spawn(f1, args=(0.5, 10))
+
+    info = await session.execute(r)
+
+    for _ in range(20):
+        if 0 < info.progress() < 1:
+            break
+        await asyncio.sleep(0.1)
+    else:
+        raise Exception("progress test failed.")
+
+    await info
+    assert info.result() is None
+    assert info.exception() is None
+    assert info.progress() == 1
 
 
 @pytest.fixture
