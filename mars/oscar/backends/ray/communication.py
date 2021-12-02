@@ -261,9 +261,9 @@ class RayServerChannel(RayChannelBase):
         return _ArgWrapper(result_message)
 
     @implements(Channel.close)
-    def close(self):
-        super().close()
-        self._out_queue.put(None)
+    async def close(self):
+        await super().close()
+        self._out_queue.put_nowait(None)
 
 
 @register_server
