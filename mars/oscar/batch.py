@@ -134,7 +134,10 @@ class _ExtensibleWrapper(_ExtensibleCallable):
         return args_list, kwargs_list
 
     async def _async_batch(self, *delays):
-        if self.batch_func:
+        if len(delays) == 1:
+            d = delays[0]
+            return [await self.func(*d.args, **d.kwargs)]
+        elif self.batch_func:
             args_list, kwargs_list = self._gen_args_kwargs_list(delays)
             return await self.batch_func(args_list, kwargs_list)
         else:

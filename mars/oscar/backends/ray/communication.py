@@ -174,7 +174,7 @@ class RayClientChannel(RayChannelBase):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed("Channel already closed, cannot send message")
         # Put ray object ref to queue
-        await self._in_queue.put(
+        self._in_queue.put_nowait(
             (
                 message,
                 self._peer_actor.__on_ray_recv__.remote(
@@ -255,16 +255,15 @@ class RayServerChannel(RayChannelBase):
         """This method will be invoked when current process is a ray actor rather than a ray driver"""
         self._msg_recv_counter += 1
         await self._in_queue.put(message)
-        # Avoid hang when channel is closed after `self._out_queue.get()` is awaited.
-        done, _ = await asyncio.wait(
-            [self._out_queue.get(), self._closed.wait()],
-            return_when=asyncio.FIRST_COMPLETED,
-        )
+        result_message = await self._out_queue.get()
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed("Channel already closed")
-        if done:
-            result_message = await done.pop()
-            return _ArgWrapper(result_message)
+        return _ArgWrapper(result_message)
+
+    @implements(Channel.close)
+    def close(self):
+        super().close()
+        self._out_queue.put(None)
 
 
 @register_server

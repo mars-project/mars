@@ -70,8 +70,17 @@ class MarsActorContext(BaseActorContext):
             raise message.error.with_traceback(message.traceback)
 
     async def _wait(self, future: asyncio.Future, address: str, message: _MessageBase):
+        fut = asyncio.get_running_loop().create_future()
+
+        def future_setter(_):
+            try:
+                fut.set_result(True)
+            except asyncio.InvalidStateError:
+                pass
+
+        future.add_done_callback(future_setter)
         try:
-            await asyncio.wait([future])
+            await fut
         except asyncio.CancelledError:
             try:
                 await self.cancel(address, message.message_id)
