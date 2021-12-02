@@ -16,7 +16,7 @@ import json
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialization.serializables import StringField
+from ...serialization.serializables import Int32Field, StringField
 from ...storage.base import StorageLevel
 from ...utils import calc_nsplits, has_unknown_shape
 from ...core.context import get_context
@@ -50,6 +50,9 @@ class TensorFromVineyard(TensorNoInput):
     # ObjectID in vineyard
     object_id = StringField("object_id")
 
+    # a dummy attr to make sure ops have different keys
+    operator_index = Int32Field("operator_index")
+
     def __init__(self, vineyard_socket=None, object_id=None, **kw):
         super().__init__(vineyard_socket=vineyard_socket, object_id=object_id, **kw)
 
@@ -62,6 +65,7 @@ class TensorFromVineyard(TensorNoInput):
         for index, worker in enumerate(workers):
             chunk_op = op.copy().reset_key()
             chunk_op.expect_worker = worker
+            chunk_op.operator_index = index
             out_chunk = chunk_op.new_chunk(
                 [], dtype=np.dtype(object), shape=(1,), index=(index,)
             )
@@ -183,7 +187,7 @@ def fromvineyard(tensor, vineyard_socket=None):
         dtype=np.dtype("byte"),
         gpu=False,
     )
-    meta = metaop(shape=(np.nan,), chunk_size=(1,))
+    meta = metaop(shape=(np.nan,), chunk_size=(np.nan,))
     op = TensorFromVineyardChunk(
         vineyard_socket=vineyard_socket, object_id=object_id, gpu=False
     )
