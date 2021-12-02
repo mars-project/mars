@@ -46,7 +46,11 @@ class _TileableSession:
                     try:
                         s = SyncSession.from_isolated_session(s)
                         s.decref(key)
-                    except (RuntimeError, ConnectionError, KeyError):
+                    except (
+                        RuntimeError,
+                        ConnectionError,
+                        KeyError,
+                    ):
                         pass
 
             fut = _decref_pool.submit(decref)
@@ -80,8 +84,7 @@ _cleaner = _TileableDataCleaner()
 def _get_session(executable: "_ExecutableMixin", session: SessionType = None):
     from ...deploy.oscar.session import get_default_session
 
-    if session is None and len(executable._executed_sessions) > 0:
-        session = executable._executed_sessions[-1]
+    # if session is not specified, use default session
     if session is None:
         session = get_default_session()
 
@@ -151,6 +154,9 @@ class _ExecuteAndFetchMixin:
 
         session = _get_session(self, session)
         fetch_kwargs = kw.pop("fetch_kwargs", dict())
+        if session in self._executed_sessions:
+            # if has been executed, fetch directly.
+            return self.fetch(session=session, **fetch_kwargs)
         ret = self.execute(session=session, **kw)
         if isinstance(ret, ExecutionInfo):
             # wait=False
