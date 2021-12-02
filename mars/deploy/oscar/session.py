@@ -870,15 +870,16 @@ class _IsolatedSession(AbstractAsyncSession):
                     progress.value = await self._task_api.get_task_progress(task_id)
                 if self.timeout is not None and time.time() - start_time > self.timeout:
                     raise TimeoutError(f"Task({task_id}) running time > {self.timeout}")
-            profiling.result = task_result.profiling
-            if task_result.profiling:
-                logger.warning(
-                    "Profile task %s execution result:\n%s",
-                    task_id,
-                    json.dumps(task_result.profiling, indent=4),
-                )
-            if task_result is not None and task_result.error:
-                raise task_result.error.with_traceback(task_result.traceback)
+            if task_result is not None:
+                profiling.result = task_result.profiling
+                if task_result.profiling:
+                    logger.warning(
+                        "Profile task %s execution result:\n%s",
+                        task_id,
+                        json.dumps(task_result.profiling, indent=4),
+                    )
+                if task_result.error:
+                    raise task_result.error.with_traceback(task_result.traceback)
             if cancelled:
                 return
             fetch_tileables = await self._task_api.get_fetch_tileables(task_id)
