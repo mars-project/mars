@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # from https://github.com/numba/numba/blob/master/numba/core/entrypoints.py
 # Must put this here to avoid extensions re-triggering initialization
 @functools.lru_cache(maxsize=None)
-def init_all():
+def init_extension_entrypoints():
     """Execute all `mars_extensions` entry points with the name `init`
     If extensions have already been initialized, this function does nothing.
     """

@@ -20,7 +20,7 @@ import time
 from typing import Union, Dict, List, Optional, AsyncGenerator
 
 from ... import oscar as mo
-from ...core.entrypoints import init_all
+from ...core.entrypoints import init_extension_entrypoints
 from ...oscar.backends.ray.driver import RayActorDriver
 from ...oscar.backends.ray.utils import (
     process_placement_to_address,
@@ -373,7 +373,7 @@ class RayCluster:
         config: Union[str, Dict] = None,
     ):
         # load third party extensions.
-        init_all()
+        init_extension_entrypoints()
         self._cluster_name = cluster_name
         self._supervisor_mem = supervisor_mem
         self._worker_num = worker_num

@@ -56,15 +56,15 @@ def test_init_entrypoint():
         from .. import entrypoints
 
         # Allow reinitialization
-        entrypoints.init_all.cache_clear()
+        entrypoints.init_extension_entrypoints.cache_clear()
 
-        entrypoints.init_all()
+        entrypoints.init_extension_entrypoints()
 
         # was our init function called?
         assert counters["init"] == 1
 
         # ensure we do not initialize twice
-        entrypoints.init_all()
+        entrypoints.init_extension_entrypoints()
         assert counters["init"] == 1
     finally:
         # remove fake module
@@ -103,10 +103,10 @@ def test_entrypoint_tolerance():
         from .. import entrypoints
 
         # Allow reinitialization
-        entrypoints.init_all.cache_clear()
+        entrypoints.init_extension_entrypoints.cache_clear()
 
         with warnings.catch_warnings(record=True) as w:
-            entrypoints.init_all()
+            entrypoints.init_extension_entrypoints()
 
         bad_str = "Mars extension module '_test_mars_bad_extension'"
         for x in w:
