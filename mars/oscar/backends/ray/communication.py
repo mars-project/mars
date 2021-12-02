@@ -16,14 +16,16 @@ import asyncio
 import concurrent.futures as futures
 import itertools
 import logging
+import time
 from abc import ABC
 from collections import namedtuple
+from dataclasses import dataclass
 from typing import Any, Callable, Coroutine, Dict, Type
 from urllib.parse import urlparse
 
+from ....oscar.profiling import ProfilingData
 from ....serialization import serialize, deserialize
-from ....utils import implements, classproperty
-from ....utils import lazy_import
+from ....utils import lazy_import, implements, classproperty, Timer
 from ...debug import debug_async_timeout
 from ...errors import ServerClosed
 from ..communication.base import Channel, ChannelType, Server, Client
@@ -36,6 +38,61 @@ logger = logging.getLogger(__name__)
 ChannelID = namedtuple(
     "ChannelID", ["local_address", "client_id", "channel_index", "dest_address"]
 )
+
+
+@dataclass
+class _ArgWrapper:
+    message: Any = None
+
+
+if ray:
+    _ray_serialize = ray.serialization.SerializationContext.serialize
+    _ray_deserialize_object = ray.serialization.SerializationContext._deserialize_object
+
+    def _serialize(self, value):
+        if type(value) is _ArgWrapper:  # pylint: disable=unidiomatic-typecheck
+            with Timer() as timer:
+                message = value.message
+                value.message = serialize(message)
+                serialized_object = _ray_serialize(self, value)
+            try:
+                if message.profiling_context is not None:
+                    task_id = message.profiling_context.task_id
+                    ProfilingData[task_id, "serialization"].inc(
+                        "serialize", timer.duration
+                    )
+            except AttributeError:
+                logger.debug(
+                    "Profiling serialization got error, the send "
+                    "message %s may not be an instance of message",
+                    type(message),
+                )
+        else:
+            serialized_object = _ray_serialize(self, value)
+        return serialized_object
+
+    def _deserialize_object(self, data, metadata, object_ref):
+        start_time = time.time()
+        value = _ray_deserialize_object(self, data, metadata, object_ref)
+        if type(value) is _ArgWrapper:  # pylint: disable=unidiomatic-typecheck
+            message = deserialize(*value.message)
+            try:
+                if message.profiling_context is not None:
+                    task_id = message.profiling_context.task_id
+                    ProfilingData[task_id, "serialization"].inc(
+                        "deserialize", time.time() - start_time
+                    )
+            except AttributeError:
+                logger.debug(
+                    "Profiling serialization got error, the recv "
+                    "message %s may not be an instance of message",
+                    type(message),
+                )
+            value = message
+        return value
+
+    ray.serialization.SerializationContext.serialize = _serialize
+    ray.serialization.SerializationContext._deserialize_object = _deserialize_object
 
 
 class RayChannelException(Exception):
@@ -121,7 +178,7 @@ class RayClientChannel(RayChannelBase):
             (
                 message,
                 self._peer_actor.__on_ray_recv__.remote(
-                    self.channel_id, serialize(message)
+                    self.channel_id, _ArgWrapper(message)
                 ),
             )
         )
@@ -139,7 +196,7 @@ class RayClientChannel(RayChannelBase):
                 result = await object_ref
             if isinstance(result, RayChannelException):
                 raise result.exc_value.with_traceback(result.exc_traceback)
-            return deserialize(*result)
+            return result
         except ray.exceptions.RayActorError:
             if not self._closed.is_set():
                 # raise a EOFError as the SocketChannel does
@@ -178,7 +235,7 @@ class RayServerChannel(RayChannelBase):
         # Current process is ray actor, we use ray call reply to send message to ray driver/actor.
         # Not that we can only send once for every read message in channel, otherwise
         # it will be taken as other message's reply.
-        await self._out_queue.put(serialize(message))
+        await self._out_queue.put(message)
         self._msg_sent_counter += 1
         assert (
             self._msg_sent_counter <= self._msg_recv_counter
@@ -189,7 +246,7 @@ class RayServerChannel(RayChannelBase):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed("Channel already closed, cannot write message")
         try:
-            return deserialize(*(await self._in_queue.get()))
+            return await self._in_queue.get()
         except RuntimeError:  # pragma: no cover
             if not self._closed.is_set():
                 raise
@@ -206,7 +263,8 @@ class RayServerChannel(RayChannelBase):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed("Channel already closed")
         if done:
-            return await done.pop()
+            result_message = await done.pop()
+            return _ArgWrapper(result_message)
 
 
 @register_server
@@ -319,7 +377,7 @@ class RayServer(Server):
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
         if self.stopped:
             raise ServerClosed(
-                f"Remote server {self.address} closed, but got message {deserialize(*message)} "
+                f"Remote server {self.address} closed, but got message {message} "
                 f"from channel {channel_id}"
             )
         channel = self._channels.get(channel_id)

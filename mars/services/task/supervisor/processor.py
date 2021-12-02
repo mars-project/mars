@@ -33,8 +33,9 @@ from ....core.operand import (
     OperandStage,
 )
 from ....optimization.logical import OptimizationRecords
+from ....oscar.profiling import ProfilingData
 from ....typing import TileableType, BandType
-from ....utils import build_fetch
+from ....utils import build_fetch, Timer
 from ...cluster.api import ClusterAPI
 from ...lifecycle.api import LifecycleAPI
 from ...meta.api import MetaAPI
@@ -86,6 +87,9 @@ class TaskProcessor:
         self._scheduling_api = scheduling_api
         self._meta_api = meta_api
 
+        if task.extra_config and task.extra_config.get("enable_profiling"):
+            ProfilingData.init(task.task_id)
+
         self.result = TaskResult(
             task_id=task.task_id,
             session_id=task.session_id,
@@ -100,6 +104,10 @@ class TaskProcessor:
         self._chunk_graph_iter = None
         self._raw_tile_context = preprocessor.tile_context.copy()
         self._lifecycle_processed_tileables = set()
+
+    @property
+    def task_id(self):
+        return self._task.task_id
 
     @property
     def preprocessor(self):
@@ -323,17 +331,30 @@ class TaskProcessor:
         tileable_graph = self._preprocessor.tileable_graph
         self._init_chunk_graph_iter(tileable_graph)
 
-        chunk_graph = await self._get_next_chunk_graph(self._chunk_graph_iter)
-        if chunk_graph is None:
-            # tile finished
-            self._preprocessor.done = True
-            return
+        with Timer() as timer:
+            chunk_graph = await self._get_next_chunk_graph(self._chunk_graph_iter)
+            if chunk_graph is None:
+                # tile finished
+                self._preprocessor.done = True
+                return
+
+        stage_id = new_task_id()
+        stage_profiling = ProfilingData[self._task.task_id, "general"].nest(
+            f"stage_{stage_id}"
+        )
+        stage_profiling.set("tile", timer.duration)
 
         # gen subtask graph
         available_bands = await self._get_available_band_slots()
-        subtask_graph = await asyncio.to_thread(
-            self._preprocessor.analyze, chunk_graph, available_bands
-        )
+
+        with Timer() as timer:
+            subtask_graph = await asyncio.to_thread(
+                self._preprocessor.analyze,
+                chunk_graph,
+                available_bands,
+            )
+        stage_profiling.set("gen_subtask_graph", timer.duration)
+
         tileable_to_subtasks = await asyncio.to_thread(
             self._get_tileable_to_subtasks, subtask_graph
         )
@@ -341,7 +362,7 @@ class TaskProcessor:
             self._get_tileable_id_to_tileable
         )
         stage_processor = TaskStageProcessor(
-            new_task_id(),
+            stage_id,
             self._task,
             chunk_graph,
             subtask_graph,
@@ -374,6 +395,20 @@ class TaskProcessor:
 
     def finish(self):
         self.done.set()
+        if self._task.extra_config and self._task.extra_config.get("enable_profiling"):
+            ProfilingData[self._task.task_id, "general"].set(
+                "total", time.time() - self.result.start_time
+            )
+            serialization = ProfilingData[self._task.task_id, "serialization"]
+            if not serialization.empty():
+                serialization.set(
+                    "total",
+                    sum(serialization.values()),
+                )
+            data = ProfilingData.pop(self._task.task_id)
+            self.result.profiling = {
+                "supervisor": data,
+            }
 
     def is_done(self) -> bool:
         return self.done.is_set()
@@ -448,25 +483,37 @@ class TaskProcessorActor(mo.Actor):
         processor.result.status = TaskStatus.running
 
         incref_fetch, incref_result = False, False
+        profiling = ProfilingData[processor.task_id, "general"]
         try:
             # optimization
-            yield processor.optimize()
+            with Timer() as timer:
+                yield processor.optimize()
+            profiling.set("optimize", timer.duration)
             # incref fetch tileables to ensure fetch data not deleted
-            yield processor.incref_fetch_tileables()
+            with Timer() as timer:
+                yield processor.incref_fetch_tileables()
+            profiling.set("incref_fetch_tileables", timer.duration)
             incref_fetch = True
             while True:
-                stage_processor = yield processor.get_next_stage_processor()
-                if stage_processor is None:
-                    break
-                # track and incref result tileables
-                yield processor.incref_result_tileables()
-                incref_result = True
-                # incref stage
-                yield processor.incref_stage(stage_processor)
-                # schedule stage
-                processor.stage_processors.append(stage_processor)
-                processor.cur_stage_processor = stage_processor
-                yield processor.schedule(stage_processor)
+                with Timer() as stage_timer:
+                    stage_processor = yield processor.get_next_stage_processor()
+                    if stage_processor is None:
+                        break
+                    stage_profiling = profiling.nest(
+                        f"stage_{stage_processor.stage_id}"
+                    )
+                    # track and incref result tileables
+                    yield processor.incref_result_tileables()
+                    incref_result = True
+                    # incref stage
+                    yield processor.incref_stage(stage_processor)
+                    # schedule stage
+                    processor.stage_processors.append(stage_processor)
+                    processor.cur_stage_processor = stage_processor
+                    with Timer() as timer:
+                        yield processor.schedule(stage_processor)
+                    stage_profiling.set("run", timer.duration)
+                stage_profiling.set("total", stage_timer.duration)
                 if stage_processor.error_or_cancelled():
                     break
         finally:

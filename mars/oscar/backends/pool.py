@@ -523,7 +523,10 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             with self._run_coro(message.message_id, coro) as future:
                 result = await future
             processor.result = ResultMessage(
-                message.message_id, result, protocol=message.protocol
+                message.message_id,
+                result,
+                protocol=message.protocol,
+                profiling_context=message.profiling_context,
             )
         return processor.result
 
@@ -538,7 +541,10 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             asyncio.create_task(call)
             await asyncio.sleep(0)
             processor.result = ResultMessage(
-                message.message_id, None, protocol=message.protocol
+                message.message_id,
+                None,
+                protocol=message.protocol,
+                profiling_context=message.profiling_context,
             )
         return processor.result
 
