@@ -303,8 +303,9 @@ class GraphAnalyzer:
             "Assigned %s start chunks for task %s", len(start_ops), self._task.task_id
         )
 
-        # assign expect workers for successors
-        for chunk in self._chunk_graph.topological_iter():
+        # assign expect workers for those specified with `expect_worker`
+        # skip `start_ops`, which have been assigned before
+        for chunk in self._chunk_graph:
             if chunk not in start_ops:
                 if chunk.op.expect_worker is not None:
                     chunk_to_bands[chunk] = self._to_band(chunk.op.expect_worker)
