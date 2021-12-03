@@ -156,17 +156,16 @@ class ClusterStateActor(mo.StatelessActor):
             self._config, NodeRole.WORKER
         )
 
-    def update_worker_node_resources(self, worker_node_to_resources: Dict[
-            str, Dict[str, float]]):
+    def update_worker_node_resources(
+        self, worker_node_to_resources: Dict[str, Dict[str, float]]
+    ):
         if worker_node_to_resources:
             self._worker_node_to_resources.update(worker_node_to_resources)
 
     def _remove_worker_node_resources(self, worker_address: str):
         if worker_address:
-            pg_name, bundle_index, _ = process_address_to_placement(
-                worker_address)
-            worker_node_address = node_placement_to_address(pg_name,
-                                                            bundle_index)
+            pg_name, bundle_index, _ = process_address_to_placement(worker_address)
+            worker_node_address = node_placement_to_address(pg_name, bundle_index)
             self._worker_node_to_resources.pop(worker_node_address, {})
 
     async def request_worker(
@@ -210,7 +209,8 @@ class ClusterStateActor(mo.StatelessActor):
         self._dynamic_created_workers[worker_address] = (worker_pool, pg)
         self._worker_count += 1
         self.update_worker_node_resources(
-            {node_placement_to_address(pg_name, 0): bundle})
+            {node_placement_to_address(pg_name, 0): bundle}
+        )
         return worker_address
 
     async def new_worker(self, worker_address, band_to_slot=None):
@@ -500,8 +500,9 @@ class RayCluster:
         await self._cluster_backend.get_cluster_state_ref().set_config(
             self._worker_cpu, self._worker_mem, self._config
         )
-        await self._cluster_backend.get_cluster_state_ref() \
-            .update_worker_node_resources(original_address_to_resources)
+        await self._cluster_backend.get_cluster_state_ref().update_worker_node_resources(
+            original_address_to_resources
+        )
 
         # start service
         await start_supervisor(self.supervisor_address, config=self._config)
