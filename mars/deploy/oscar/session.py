@@ -847,20 +847,35 @@ class _IsolatedSession(AbstractAsyncSession):
         with enter_mode(build=True, kernel=True):
             # wait for task to finish
             cancelled = False
-            start_time = time.time()
             progress_task = asyncio.create_task(
                 self._update_progress(task_id, progress)
             )
+            start_time = time.time()
             task_result: Optional[TaskResult] = None
             try:
-                task_result = await self._task_api.wait_task(task_id)
+                if self.timeout is None:
+                    check_interval = 30
+                else:
+                    elapsed = time.time() - start_time
+                    check_interval = min(self.timeout - elapsed, 30)
+
+                while True:
+                    task_result = await self._task_api.wait_task(
+                        task_id, timeout=check_interval
+                    )
+                    if task_result is not None:
+                        break
+                    elif (
+                        self.timeout is not None
+                        and time.time() - start_time > self.timeout
+                    ):
+                        raise TimeoutError(
+                            f"Task({task_id}) running time > {self.timeout}"
+                        )
             except asyncio.CancelledError:
                 # cancelled
                 cancelled = True
                 await self._task_api.cancel_task(task_id)
-            except TimeoutError:  # pragma: no cover
-                # ignore timeout when waiting for subtask progresses
-                pass
             finally:
                 progress_task.cancel()
                 if task_result is not None:
@@ -868,8 +883,6 @@ class _IsolatedSession(AbstractAsyncSession):
                 else:
                     # not finished, set progress
                     progress.value = await self._task_api.get_task_progress(task_id)
-                if self.timeout is not None and time.time() - start_time > self.timeout:
-                    raise TimeoutError(f"Task({task_id}) running time > {self.timeout}")
             if task_result is not None:
                 profiling.result = task_result.profiling
                 if task_result.profiling:
