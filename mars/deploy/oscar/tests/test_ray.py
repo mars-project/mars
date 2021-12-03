@@ -593,3 +593,20 @@ async def test_ownership_when_scale_in(ray_large_cluster):
         assert (
             groupby_sum_df.to_pandas().to_dict() == pd_df.groupby("a").sum().to_dict()
         )
+
+
+@pytest.mark.parametrize(
+    "ray_large_cluster", [{"num_nodes": 3, "num_cpus": 1}], indirect=True
+)
+@require_ray
+@pytest.mark.asyncio
+async def test_worker_node_resources(ray_large_cluster):
+    worker_cpu, worker_mem = 1, 100 * 1024 ** 2
+    client = await new_cluster("test_cluster", worker_num=0,
+                               worker_cpu=worker_cpu, worker_mem=worker_mem)
+    async with client:
+        cluster_api = await ClusterAPI.create(
+            client._cluster.supervisor_address)
+        worker_node_resources = await cluster_api.get_worker_node_resources()
+        assert len(worker_node_resources) == 1
+        assert 'ray://test_cluster/0' in worker_node_resources

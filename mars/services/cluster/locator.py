@@ -107,3 +107,6 @@ class SupervisorLocatorActor(mo.Actor):
             ):
                 break
             version = yield self._watch_notifier.watch(version)
+
+    async def get_worker_node_resources(self):
+        return await self._backend.get_worker_node_resources()

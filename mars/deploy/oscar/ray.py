@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import copy
 import itertools
 import logging
 import os
@@ -125,6 +126,9 @@ class RayClusterBackend(AbstractClusterBackend):
     def get_cluster_state_ref(self):
         return self._cluster_state_ref
 
+    async def get_worker_node_resources(self):
+        return await self._cluster_state_ref.get_worker_node_resources()
+
 
 class ClusterStateActor(mo.StatelessActor):
     def __init__(self):
@@ -135,6 +139,7 @@ class ClusterStateActor(mo.StatelessActor):
         self._dynamic_created_workers = {}
         self._releasing_tasks = {}
         self._reconstructing_tasks = {}
+        self._worker_node_to_resources = {}
 
     async def __post_create__(self):
         self._pg_name, _, _ = process_address_to_placement(self.address)
@@ -150,6 +155,19 @@ class ClusterStateActor(mo.StatelessActor):
         self._worker_modules = get_third_party_modules_from_config(
             self._config, NodeRole.WORKER
         )
+
+    def update_worker_node_resources(self, worker_node_to_resources: Dict[
+            str, Dict[str, float]]):
+        if worker_node_to_resources:
+            self._worker_node_to_resources.update(worker_node_to_resources)
+
+    def _remove_worker_node_resources(self, worker_address: str):
+        if worker_address:
+            pg_name, bundle_index, _ = process_address_to_placement(
+                worker_address)
+            worker_node_address = node_placement_to_address(pg_name,
+                                                            bundle_index)
+            self._worker_node_to_resources.pop(worker_node_address, {})
 
     async def request_worker(
         self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None
@@ -191,6 +209,8 @@ class ClusterStateActor(mo.StatelessActor):
         )
         self._dynamic_created_workers[worker_address] = (worker_pool, pg)
         self._worker_count += 1
+        self.update_worker_node_resources(
+            {node_placement_to_address(pg_name, 0): bundle})
         return worker_address
 
     async def new_worker(self, worker_address, band_to_slot=None):
@@ -230,6 +250,7 @@ class ClusterStateActor(mo.StatelessActor):
         async def _release_worker():
             await stop_worker(address, self._config)
             pool, pg = self._dynamic_created_workers.pop(address)
+            self._remove_worker_node_resources(address)
             await pool.actor_pool.remote("stop")
             if "COV_CORE_SOURCE" in os.environ:  # pragma: no cover
                 try:
@@ -285,6 +306,9 @@ class ClusterStateActor(mo.StatelessActor):
         task.add_done_callback(lambda _: self._reconstructing_tasks.pop(address, None))
         self._reconstructing_tasks[address] = task
         return await task
+
+    def get_worker_node_resources(self):
+        return self._worker_node_to_resources
 
 
 async def new_cluster(
@@ -450,6 +474,10 @@ class RayCluster:
                     "CPU": self._worker_cpu,
                     # 'memory': self._worker_mem
                 }
+        # Note: Deep copy the dict to keep the origin values, because `bundles`
+        # returned by `addresses_to_placement_group_info()` will be modified
+        # by `ray.util.placement_group()` in `RayActorDriver::setup_cluster`
+        original_address_to_resources = copy.deepcopy(address_to_resources)
         mo.setup_cluster(address_to_resources)
 
         # third party modules from config
@@ -472,6 +500,9 @@ class RayCluster:
         await self._cluster_backend.get_cluster_state_ref().set_config(
             self._worker_cpu, self._worker_mem, self._config
         )
+        await self._cluster_backend.get_cluster_state_ref() \
+            .update_worker_node_resources(original_address_to_resources)
+
         # start service
         await start_supervisor(self.supervisor_address, config=self._config)
         logger.info(
