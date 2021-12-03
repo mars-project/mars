@@ -35,6 +35,7 @@ import numpy as np
 from ... import oscar as mo
 from ...config import options
 from ...core import ChunkType, TileableType, TileableGraph, enter_mode
+from ...core.entrypoints import init_extension_entrypoints
 from ...core.operand import Fetch
 from ...lib.aio import (
     alru_cache,
@@ -1843,6 +1844,8 @@ def new_session(
     new: bool = True,
     **kwargs,
 ) -> AbstractSession:
+    # load third party extensions.
+    init_extension_entrypoints()
     ensure_isolation_created(kwargs)
 
     if address is None:
