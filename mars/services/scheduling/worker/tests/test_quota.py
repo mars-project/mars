@@ -23,16 +23,16 @@ import pytest
 from ..... import oscar as mo
 from .....tests.core import mock
 from .....utils import get_next_port
-from ...worker import QuotaActor, MemQuotaActor, BandSlotManagerActor
+from .. import QuotaActor, MemQuotaActor, SubtaskExecutionQueueActor
 
 QuotaActorRef = Union[QuotaActor, mo.ActorRef]
 
 
-class MockBandSlotManagerActor(mo.Actor):
+class MockSubtaskExecutionQueueActor(mo.Actor):
     def get_restart_record(self):
         return getattr(self, "_restart_record", False)
 
-    def restart_free_slots(self):
+    def restart_free_slots(self, band_name: str):
         self._restart_record = True
 
 
@@ -146,9 +146,9 @@ async def test_mem_quota_allocation(actor_pool, enable_kill_slot):
     from .....utils import AttributeDict
 
     mock_mem_stat = AttributeDict(dict(total=300, available=50, used=0, free=50))
-    mock_band_slot_manager_ref = await mo.create_actor(
-        MockBandSlotManagerActor,
-        uid=BandSlotManagerActor.gen_uid("numa-0"),
+    mock_execution_queue_ref = await mo.create_actor(
+        MockSubtaskExecutionQueueActor,
+        uid=SubtaskExecutionQueueActor.default_uid(),
         address=actor_pool.external_address,
     )
     quota_ref = await mo.create_actor(
@@ -179,6 +179,6 @@ async def test_mem_quota_allocation(actor_pool, enable_kill_slot):
         await asyncio.wait_for(task, timeout=1)
         assert 0.15 < abs(time_recs[0] - time_recs[1]) < 1
         assert (
-            bool(await mock_band_slot_manager_ref.get_restart_record())
+            bool(await mock_execution_queue_ref.get_restart_record())
             == enable_kill_slot
         )

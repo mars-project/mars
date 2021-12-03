@@ -99,8 +99,18 @@ class TaskAPI(AbstractTaskAPI):
     async def get_fetch_tileables(self, task_id: str) -> List[Tileable]:
         return await self._task_manager_ref.get_task_result_tileables(task_id)
 
+    @mo.extensible
     async def set_subtask_result(self, subtask_result: SubtaskResult):
         return await self._task_manager_ref.set_subtask_result.tell(subtask_result)
+
+    @set_subtask_result.batch
+    async def batch_set_subtask_result(self, args_list, kwargs_list):
+        batches = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            batches.append(
+                self._task_manager_ref.set_subtask_result.delay(*args, **kwargs)
+            )
+        await self._task_manager_ref.set_subtask_result.batch(*batches, send=False)
 
     async def get_last_idle_time(self) -> Union[float, None]:
         return await self._task_manager_ref.get_last_idle_time()

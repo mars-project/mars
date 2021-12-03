@@ -12,11 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .exec import SubtaskExecutionActor
-from .queues import SubtaskExecutionQueueActor, SubtaskPrepareQueueActor
-from .quota import QuotaActor, MemQuotaActor, WorkerQuotaManagerActor
-from .service import SchedulingWorkerService
-from .slotmanager import SlotManagerActor
-
-_ = SubtaskExecutionActor
-del _
+from .actor import SubtaskExecutionActor
+from .prepare import SubtaskPreparer

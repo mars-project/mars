@@ -46,11 +46,11 @@ class AutoscalerActor(mo.Actor):
             strategy_cls = getattr(importlib.import_module(module), name)
         else:
             strategy_cls = PendingTaskBacklogStrategy
-        from ..supervisor import GlobalSlotManagerActor
-
-        self.global_slot_ref = await mo.actor_ref(
-            GlobalSlotManagerActor.default_uid(), address=self.address
-        )
+        # from ..supervisor import GlobalSlotManagerActor
+        #
+        # self.global_slot_ref = await mo.actor_ref(
+        #     GlobalSlotManagerActor.default_uid(), address=self.address
+        # )
         self._cluster_api = await ClusterAPI.create(self.address)
         self._strategy = await strategy_cls.create(self._autoscale_conf, self)
         if self._enabled:
@@ -62,11 +62,12 @@ class AutoscalerActor(mo.Actor):
             await self._strategy.stop()
 
     async def register_session(self, session_id: str, address: str):
-        from .queueing import SubtaskQueueingActor
-
-        self.queueing_refs[session_id] = await mo.actor_ref(
-            SubtaskQueueingActor.gen_uid(session_id), address=address
-        )
+        pass
+        # from .queueing import SubtaskQueueingActor
+        #
+        # self.queueing_refs[session_id] = await mo.actor_ref(
+        #     SubtaskQueueingActor.gen_uid(session_id), address=address
+        # )
 
     async def unregister_session(self, session_id: str):
         self.queueing_refs.pop(session_id, None)

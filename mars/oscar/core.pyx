@@ -111,8 +111,8 @@ cdef class ActorRefMethod:
     """
     Wrapper for an Actor method at client
     """
-    cdef ActorRef ref
-    cdef object method_name
+    cdef public ActorRef ref
+    cdef public object method_name
     cdef object _options
 
     def __init__(self, ref, method_name, options=None):

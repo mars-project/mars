@@ -57,6 +57,8 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
         n_output=None,
         **kw,
     ):
+        function_args = function_args or []
+        function_kwargs = function_kwargs or {}
         super().__init__(
             _function=function,
             _function_args=function_args,

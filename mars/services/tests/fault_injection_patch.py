@@ -19,7 +19,7 @@ from ...core import OperandType
 from ...lib.aio import alru_cache
 from ...tests.core import patch_cls, patch_super as super
 from ..session import SessionAPI
-from ..scheduling.worker.execution import SubtaskExecutionActor
+from ..scheduling.worker.exec import SubtaskExecutionActor
 from ..subtask import Subtask
 from ..subtask.worker.processor import SubtaskProcessor
 from ..tests.fault_injection_manager import (

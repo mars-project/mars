@@ -74,6 +74,7 @@ class Subtask(Serializable):
         virtual: bool = False,
         retryable: bool = True,
         rerun_time: int = 0,
+        forward_successors: bool = False,
         extra_config: dict = None,
     ):
         super().__init__(
@@ -87,6 +88,7 @@ class Subtask(Serializable):
             virtual=virtual,
             retryable=retryable,
             rerun_time=rerun_time,
+            forward_successors=forward_successors,
             extra_config=extra_config,
         )
 

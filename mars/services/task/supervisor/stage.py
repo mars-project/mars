@@ -66,6 +66,7 @@ class TaskStageProcessor:
         self.subtask_snapshots: Dict[Subtask, SubtaskResult] = dict()
         self.subtask_results: Dict[Subtask, SubtaskResult] = dict()
         self._submitted_subtask_ids = set()
+        self._cached_subtask_ids = set()
 
         # All subtask IDs whose input chunk reference count is reduced.
         self.decref_subtask = set()
@@ -90,10 +91,26 @@ class TaskStageProcessor:
     async def _schedule_subtasks(self, subtasks: List[Subtask]):
         if not subtasks:
             return
+        to_cache_subtasks = []
+        for subtask in subtasks:
+            for succ_subtask in self.subtask_graph.successors(subtask):
+                if (
+                    succ_subtask.subtask_id in self._submitted_subtask_ids
+                    or succ_subtask.subtask_id in self._cached_subtask_ids
+                ):
+                    continue
+                to_cache_subtasks.append(succ_subtask)
+        self._cached_subtask_ids.update(
+            subtask.subtask_id for subtask in to_cache_subtasks
+        )
         self._submitted_subtask_ids.update(subtask.subtask_id for subtask in subtasks)
-        return await self._scheduling_api.add_subtasks(
+        await self._scheduling_api.add_subtasks(
             subtasks, [subtask.priority for subtask in subtasks]
         )
+        if to_cache_subtasks:
+            await self._scheduling_api.cache_subtasks(
+                to_cache_subtasks, [subtask.priority for subtask in to_cache_subtasks]
+            )
 
     async def _update_chunks_meta(self, chunk_graph: ChunkGraph):
         get_meta = []

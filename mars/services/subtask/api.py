@@ -15,6 +15,7 @@
 from ... import oscar as mo
 from ...lib.aio import alru_cache
 from ...oscar.backends.message import ProfilingContext
+from ..core import ActorCallback
 from .core import Subtask
 
 
@@ -42,7 +43,14 @@ class SubtaskAPI:
             SubtaskProcessorActor.gen_uid(session_id), address=slot_address
         )
 
-    async def run_subtask_in_slot(self, band_name: str, slot_id: int, subtask: Subtask):
+    async def run_subtask_in_slot(
+        self,
+        band_name: str,
+        slot_id: int,
+        subtask: Subtask,
+        forward_successors: bool = False,
+        finish_callback: ActorCallback = None,
+    ):
         """
         Run subtask in current worker
 
@@ -51,6 +59,8 @@ class SubtaskAPI:
         band_name
         subtask
         slot_id
+        forward_successors
+        finish_callback
 
         Returns
         -------
@@ -64,7 +74,9 @@ class SubtaskAPI:
             else None
         )
         return await ref.run_subtask.options(profiling_context=profiling_context).send(
-            subtask
+            subtask,
+            forward_successors=forward_successors,
+            finish_callback=finish_callback,
         )
 
     async def cancel_subtask_in_slot(self, band_name: str, slot_id: int):
