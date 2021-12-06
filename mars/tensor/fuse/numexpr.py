@@ -35,7 +35,7 @@ from .core import TensorFuseChunkMixin
 
 class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
     _op_type_ = None  # no opcode, cannot be serialized
-    _dtype = DataTypeField("dtype")
+    dtype = DataTypeField("dtype")
 
     if sys.platform == "win32":
         # since we found thread-safe problem for ne.evaluate
@@ -46,11 +46,7 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
 
     # use for numexpr-fused operand
     def __init__(self, dtype=None, **kw):
-        super().__init__(_dtype=dtype, **kw)
-
-    @property
-    def dtype(self):
-        return getattr(self, "_dtype", None)
+        super().__init__(dtype=dtype, **kw)
 
     @classmethod
     def execute(cls, ctx, op):

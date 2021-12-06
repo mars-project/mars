@@ -39,8 +39,8 @@ class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
         super().__init__(
             _positive=positive,
             _use_inf_as_na=use_inf_as_na,
-            _sparse=sparse,
             _output_types=output_types,
+            sparse=sparse,
             **kw
         )
 

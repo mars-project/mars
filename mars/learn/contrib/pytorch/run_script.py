@@ -42,7 +42,7 @@ class RunPyTorch(RunScript):
             _master_port=master_port,
             _master_addr=master_addr,
             _init_method=init_method,
-            _gpu=gpu,
+            gpu=gpu,
             **kw
         )
 

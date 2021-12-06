@@ -59,7 +59,7 @@ class XGBTrain(MergeDictOperand):
             _evals=evals,
             _kwargs=kwargs,
             _tracker=tracker,
-            _gpu=gpu,
+            gpu=gpu,
             **kw
         )
         if self.output_types is None:

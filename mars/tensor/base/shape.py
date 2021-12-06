@@ -31,7 +31,7 @@ class TensorGetShape(TensorOperand, TensorOperandMixin):
 
     def __init__(self, pure_depends=None, a=None, ndim=None, dtype=None, **kw):
         super().__init__(
-            _dtype=dtype, _a=a, _ndim=ndim, _pure_depends=pure_depends, **kw
+            dtype=dtype, _a=a, _ndim=ndim, _pure_depends=pure_depends, **kw
         )
 
     @property

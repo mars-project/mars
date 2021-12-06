@@ -56,8 +56,8 @@ class KMeansElkanInitBounds(LearnOperand, LearnOperandMixin):
             _centers=centers,
             _center_half_distances=center_half_distances,
             _n_clusters=n_clusters,
-            _sparse=sparse,
-            _gpu=gpu,
+            sparse=sparse,
+            gpu=gpu,
             _output_types=output_types,
             **kw
         )
