@@ -345,7 +345,6 @@ class TaskProcessor:
         stage_profiling.set("tile", timer.duration)
 
         # gen subtask graph
-        stage_id = new_task_id()
         available_bands = await self._get_available_band_slots()
 
         with Timer() as timer:

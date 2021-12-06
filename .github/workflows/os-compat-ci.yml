@@ -57,7 +57,7 @@ jobs:
 
         mkdir -p build
         if [[ $UNAME == "darwin" ]]; then
-          python -m pytest $PYTEST_CONFIG --forked --timeout=1500 \
+          python -m pytest $PYTEST_CONFIG -v -s --forked --timeout=1500 \
             mars/oscar mars/services mars/storage mars/lib mars/tests
           mv .coverage build/.coverage.dist.file
         elif [[ $UNAME == "windows" ]]; then
