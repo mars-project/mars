@@ -30,6 +30,7 @@ from ...serialization.serializables import (
     FunctionField,
 )
 from ...utils import enter_current_session, quiet_stdio
+from ..arrays import ArrowArray
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import (
     build_df,
@@ -138,9 +139,22 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
                 **op.kwds,
             )
         else:
-            result = input_data.apply(
-                op.func, convert_dtype=op.convert_dtype, args=op.args, **op.kwds
-            )
+            try:
+                result = input_data.apply(
+                    op.func, convert_dtype=op.convert_dtype, args=op.args, **op.kwds
+                )
+            except TypeError:
+                if isinstance(input_data.values, ArrowArray):
+                    input_data = pd.Series(
+                        input_data.to_numpy(),
+                        name=input_data.name,
+                        index=input_data.index,
+                    )
+                    result = input_data.apply(
+                        op.func, convert_dtype=op.convert_dtype, args=op.args, **op.kwds
+                    )
+                else:  # pragma: no cover
+                    raise
         ctx[out.key] = result
 
     @classmethod

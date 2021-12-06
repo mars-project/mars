@@ -565,21 +565,23 @@ def test_transform_execute(setup):
 
 @pytest.mark.skipif(pa is None, reason="pyarrow not installed")
 def test_transform_with_arrow_dtype_execution(setup):
-    df1 = pd.DataFrame({"a": [1, 2, 1], "b": ["a", "b", "a"]})
-    df = from_pandas_df(df1)
+    raw = pd.DataFrame({"a": [1, 2, 1], "b": ["a", "b", "a"]})
+    df = from_pandas_df(raw)
     df["b"] = df["b"].astype("Arrow[string]")
 
     r = df.transform({"b": lambda x: x + "_suffix"})
     result = r.execute().fetch()
-    expected = df1.transform({"b": lambda x: x + "_suffix"})
+    result["b"] = result["b"].to_numpy()
+    expected = raw.transform({"b": lambda x: x + "_suffix"})
     pd.testing.assert_frame_equal(result, expected)
 
-    s1 = df1["b"]
+    s1 = raw["b"]
     s = from_pandas_series(s1)
     s = s.astype("arrow_string")
 
     r = s.transform(lambda x: x + "_suffix")
     result = r.execute().fetch()
+    result = pd.Series(result.to_numpy(), name=result.name, index=result.index)
     expected = s1.transform(lambda x: x + "_suffix")
     pd.testing.assert_series_equal(result, expected)
 

@@ -40,7 +40,14 @@ class EWM(Window):
     _method = StringField("method")
 
     def __init__(
-        self, alpha=None, min_periods=None, adjust=None, ignore_na=None, axis=None, method=None, **kw
+        self,
+        alpha=None,
+        min_periods=None,
+        adjust=None,
+        ignore_na=None,
+        axis=None,
+        method=None,
+        **kw
     ):
         super().__init__(
             _alpha=alpha,
