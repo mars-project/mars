@@ -22,6 +22,7 @@ from typing import Dict, List, Union
 import numpy as np
 
 from ... import oscar as mo
+from ...core.entrypoints import init_extension_entrypoints
 from ...lib.aio import get_isolation, stop_isolation
 from ...resource import cpu_count, cuda_count
 from ...services import NodeRole
@@ -111,6 +112,8 @@ class LocalCluster:
         web: Union[bool, str] = "auto",
         timeout: float = None,
     ):
+        # load third party extensions.
+        init_extension_entrypoints()
         # load config file to dict.
         if not config or isinstance(config, str):
             config = load_config(config)

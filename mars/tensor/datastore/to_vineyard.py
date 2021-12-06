@@ -17,7 +17,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core.operand.base import SchedulingHint
-from ...serialization.serializables import KeyField, StringField
+from ...serialization.serializables import FieldTypes, KeyField, StringField, TupleField
 from ...storage.base import StorageLevel
 from ..datasource import tensor as astensor
 from .core import TensorDataStore
@@ -52,6 +52,9 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
     # vineyard ipc socket
     vineyard_socket = StringField("vineyard_socket")
 
+    # a dummy attr to make sure ops have different keys
+    operator_index = TupleField("operator_index", FieldTypes.int32)
+
     def __init__(self, vineyard_socket=None, **kw):
         super().__init__(vineyard_socket=vineyard_socket, **kw)
 
@@ -71,6 +74,7 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
         for idx, chunk in enumerate(op.inputs[0].chunks):
             chunk_op = op.copy().reset_key()
             chunk_op.scheduling_hint = scheduling_hint
+            chunk_op.operator_index = chunk.index
             out_chunk = chunk_op.new_chunk(
                 [chunk], dtype=np.dtype("O"), shape=(1,), index=(idx,)
             )

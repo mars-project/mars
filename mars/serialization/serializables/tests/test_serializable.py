@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
+import os
 from collections import namedtuple
 from datetime import timezone
 
@@ -63,6 +65,22 @@ from .. import (
 )
 
 my_namedtuple = namedtuple("my_namedtuple", "a, b")
+
+
+@pytest.fixture(autouse=True)
+def set_environ():
+    from .. import field
+
+    _notset = field._notset
+    try:
+        os.environ["CI"] = "true"
+        importlib.reload(field)
+        field._notset = _notset
+        yield
+    finally:
+        os.environ.pop("CI", None)
+        importlib.reload(field)
+        field._notset = _notset
 
 
 class MyHasKey(EntityData):

@@ -15,7 +15,7 @@
 import random
 from enum import Enum
 from string import ascii_letters, digits
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
 from ...core import TileableGraph
 from ...serialization.serializables import (
@@ -79,6 +79,7 @@ class TaskResult(Serializable):
     status: TaskStatus = ReferenceField("status", TaskStatus)
     error = AnyField("error")
     traceback = AnyField("traceback")
+    profiling: Dict = DictField("profiling")
 
     def __init__(
         self,
@@ -91,6 +92,7 @@ class TaskResult(Serializable):
         status: TaskStatus = None,
         error: Any = None,
         traceback: Any = None,
+        profiling: Dict = None,
     ):
         super().__init__(
             task_id=task_id,
@@ -102,6 +104,7 @@ class TaskResult(Serializable):
             status=status,
             error=error,
             traceback=traceback,
+            profiling=profiling,
         )
 
 

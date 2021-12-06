@@ -259,51 +259,50 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
 class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.INDEX
 
-    _col_names = AnyField("col_names")
-    _mask = AnyField("mask")
+    col_names = AnyField("col_names", default=None)
+    mask = AnyField("mask", default=None)
 
-    def __init__(self, col_names=None, mask=None, output_types=None, **kw):
-        super().__init__(
-            _col_names=col_names, _mask=mask, _output_types=output_types, **kw
-        )
-        if not self.output_types:
-            self.output_types = [OutputType.series]
-
-    @property
-    def col_names(self):
-        return self._col_names
-
-    @property
-    def mask(self):
-        return self._mask
+    def __init__(self, output_types=None, **kw):
+        output_types = output_types or [OutputType.series]
+        super().__init__(_output_types=output_types, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if isinstance(self._col_names, ENTITY_TYPE):
-            self._col_names = self._inputs[0]
-        if isinstance(self._mask, ENTITY_TYPE):
-            self._mask = self._inputs[-1]
+        if isinstance(self.col_names, ENTITY_TYPE):
+            self.col_names = self._inputs[0]
+        if isinstance(self.mask, ENTITY_TYPE):
+            self.mask = self._inputs[-1]
 
     def __call__(self, df):
         if self.col_names is not None:
             # if col_names is a list, return a DataFrame, else return a Series
-            dtype = df.dtypes[self._col_names]
-            if isinstance(dtype, pd.Series):
-                columns = parse_index(dtype.index, store_data=True)
+            col_names = self.col_names
+            if not isinstance(col_names, list):
+                col_names = [col_names]
+                is_list = False
+            else:
+                is_list = True
+
+            dtypes_list = df._get_dtypes_by_columns(col_names)
+            if is_list or len(dtypes_list) > 1:
+                if len(col_names) != len(dtypes_list):
+                    col_names = df._get_columns_by_columns(col_names)
+                columns = parse_index(pd.Index(col_names), store_data=True)
                 return self.new_dataframe(
                     [df],
-                    shape=(df.shape[0], len(dtype)),
-                    dtypes=dtype,
+                    shape=(df.shape[0], len(col_names)),
+                    dtypes=pd.Series(dtypes_list, index=col_names, dtype=np.dtype("O")),
                     index_value=df.index_value,
                     columns_value=columns,
                 )
             else:
+                dtype = dtypes_list[0]
                 return self.new_series(
                     [df],
                     shape=(df.shape[0],),
                     dtype=dtype,
                     index_value=df.index_value,
-                    name=self._col_names,
+                    name=self.col_names,
                 )
         else:
             if isinstance(self.mask, (SERIES_TYPE, DATAFRAME_TYPE, TENSOR_TYPE)):
@@ -314,10 +313,10 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                         name=df.index_value.name,
                     ),
                     df,
-                    self._mask,
+                    self.mask,
                 )
                 return self.new_dataframe(
-                    [df, self._mask],
+                    [df, self.mask],
                     shape=(np.nan, df.shape[1]),
                     dtypes=df.dtypes,
                     index_value=index_value,
@@ -331,7 +330,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                         name=df.index_value.name,
                     ),
                     df,
-                    self._mask,
+                    self.mask,
                 )
                 return self.new_dataframe(
                     [df],
@@ -405,7 +404,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                 for idxj in range(in_df.chunk_shape[1]):
                     in_chunk = in_df.cix[idx, idxj]
                     chunk_op = op.copy().reset_key()
-                    chunk_op._mask = op.mask.iloc[
+                    chunk_op.mask = op.mask.iloc[
                         nsplits_acc[idx] : nsplits_acc[idx + 1]
                     ]
                     out_chunk = chunk_op.new_chunk(
@@ -542,7 +541,7 @@ _list_like_types = (list, np.ndarray, SERIES_TYPE, pd.Series, TENSOR_TYPE)
 
 
 def dataframe_getitem(df, item):
-    columns = df.columns_value.to_pandas()
+    columns_set = set(df.dtypes.keys())
 
     if isinstance(item, (np.ndarray, pd.Series)) and item.dtype != np.bool_:
         item = item.tolist()
@@ -555,14 +554,14 @@ def dataframe_getitem(df, item):
             return df.loc[item]
     elif isinstance(item, list):
         for col_name in item:
-            if col_name not in columns:
+            if col_name not in columns_set:
                 raise KeyError(f"{col_name} not in columns")
         op = DataFrameIndex(col_names=item, output_types=[OutputType.dataframe])
     elif isinstance(item, _list_like_types) or hasattr(item, "dtypes"):
         # NB: don't enforce the dtype of `item` to be `bool` since it may be unknown
         op = DataFrameIndex(mask=item, output_types=[OutputType.dataframe])
     else:
-        if item not in columns:
+        if item not in columns_set:
             raise KeyError(f"{item} not in columns")
         op = DataFrameIndex(col_names=item)
     return op(df)

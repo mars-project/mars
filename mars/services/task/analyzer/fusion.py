@@ -31,6 +31,7 @@ class Fusion:
         self, nodes_list: List[List[ChunkType]]
     ) -> Tuple[List[List[ChunkType]], List[ChunkType]]:
         fused_nodes = []
+        replace_dict = dict()
 
         for nodes in nodes_list:
             head_node = nodes[0]
@@ -39,11 +40,7 @@ class Fusion:
                 nodes, tail_node.op.get_fuse_op_cls(tail_node), None, None
             ).data
             self._graph.add_node(fuse_chunk)
-            try:
-                result_index = self._graph.results.index(tail_node)
-                self._graph.results[result_index] = fuse_chunk
-            except ValueError:
-                pass
+            replace_dict[tail_node] = fuse_chunk
             for node in self._graph.iter_successors(tail_node):
                 self._graph.add_edge(fuse_chunk, node)
                 # replace inputs
@@ -62,6 +59,11 @@ class Fusion:
                 self._graph.remove_node(node)
             fused_nodes.append(fuse_chunk)
 
+        # replace outputs
+        self._graph.results = [
+            replace_dict.get(out, out) for out in self._graph.results
+        ]
+
         return nodes_list, fused_nodes
 
     def fuse(self) -> Tuple[List[List[ChunkType]], List[ChunkType]]:
@@ -73,11 +75,14 @@ class Fusion:
         for v in self._graph.topological_iter():
             if v in explored or v in result_chunk_set:
                 continue
-            if self._graph.count_successors(v) != 1:
+            successors = self._graph.successors(v)
+            if len(successors) != 1:
                 continue
+
+            cur_node = successors[0]
             if len(v.op.outputs) != 1:  # pragma: no cover
                 continue
-            if v.op.gpu != self._graph.successors(v)[0].op.gpu:
+            if v.op.gpu != cur_node.op.gpu:
                 continue
             if isinstance(v.op, (VirtualOperand, Fetch)):  # pragma: no cover
                 # cannot fuse virtual operand or fetch
@@ -90,7 +95,6 @@ class Fusion:
                 continue
             selected = [v]
             # add successors
-            cur_node = self._graph.successors(v)[0]
             while self._graph.count_predecessors(cur_node) == 1 and not isinstance(
                 cur_node.op, (VirtualOperand, Fetch)
             ):

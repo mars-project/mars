@@ -33,10 +33,12 @@ from .... import dataframe as md
 from .... import tensor as mt
 from .... import remote as mr
 from ....config import option_context
+from ....core.context import get_context
 from ....lib.aio import new_isolation
 from ....storage import StorageLevel
 from ....services.storage import StorageAPI
 from ....tensor.arithmetic.add import TensorAdd
+from ....tests.core import check_dict_structure_same
 from ..local import new_cluster
 from ..service import load_config
 from ..session import (
@@ -67,6 +69,22 @@ CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
     os.path.dirname(__file__), "local_test_with_third_parity_modules_config.yml"
 )
 
+EXPECT_PROFILING_STRUCTURE = {
+    "supervisor": {
+        "general": {
+            "optimize": 0.0005879402160644531,
+            "incref_fetch_tileables": 0.0010840892791748047,
+            "stage_*": {
+                "tile": 0.008243083953857422,
+                "gen_subtask_graph": 0.012202978134155273,
+                "run": 0.27870702743530273,
+                "total": 0.30318617820739746,
+            },
+            "total": 0.30951380729675293,
+        },
+        "serialization": {},
+    }
+}
 
 params = ["default"]
 if vineyard is not None:
@@ -147,8 +165,15 @@ async def test_vineyard_operators(create_cluster):
     pd.testing.assert_frame_equal(df, raw)
 
 
+@pytest.mark.parametrize(
+    "config",
+    [
+        [{"enable_profiling": True}, EXPECT_PROFILING_STRUCTURE],
+        [{}, {}],
+    ],
+)
 @pytest.mark.asyncio
-async def test_execute(create_cluster):
+async def test_execute(create_cluster, config):
     session = get_default_async_session()
     assert session.address is not None
     assert session.session_id is not None
@@ -157,8 +182,14 @@ async def test_execute(create_cluster):
     a = mt.tensor(raw, chunk_size=5)
     b = a + 1
 
-    info = await session.execute(b)
+    extra_config, expect_profiling_structure = config
+
+    info = await session.execute(b, extra_config=extra_config)
     await info
+    if extra_config:
+        check_dict_structure_same(info.profiling_result(), expect_profiling_structure)
+    else:
+        assert not info.profiling_result()
     assert info.result() is None
     assert info.exception() is None
     assert info.progress() == 1
@@ -296,8 +327,15 @@ async def _run_web_session_test(web_address):
     await session.destroy()
 
 
+@pytest.mark.parametrize(
+    "config",
+    [
+        [{"enable_profiling": True}, EXPECT_PROFILING_STRUCTURE],
+        [{}, {}],
+    ],
+)
 @pytest.mark.asyncio
-async def test_web_session(create_cluster):
+async def test_web_session(create_cluster, config):
     client = create_cluster[0]
     session_id = str(uuid.uuid4())
     web_address = client.web_address
@@ -305,7 +343,7 @@ async def test_web_session(create_cluster):
     assert await session.get_web_endpoint() == web_address
     session.as_default()
     assert isinstance(session._isolated_session, _IsolatedWebSession)
-    await test_execute(client)
+    await test_execute(client, config)
     await test_iterative_tiling(client)
     AsyncSession.reset_default()
     await session.destroy()
@@ -377,6 +415,34 @@ def test_no_default_session():
     assert get_default_async_session() is not None
     stop_server()
     assert get_default_async_session() is None
+
+
+@pytest.mark.asyncio
+async def test_session_progress(create_cluster):
+    session = get_default_async_session()
+    assert session.address is not None
+    assert session.session_id is not None
+
+    def f1(interval: float, count: int):
+        for idx in range(count):
+            time.sleep(interval)
+            get_context().set_progress((1 + idx) * 1.0 / count)
+
+    r = mr.spawn(f1, args=(0.5, 10))
+
+    info = await session.execute(r)
+
+    for _ in range(20):
+        if 0 < info.progress() < 1:
+            break
+        await asyncio.sleep(0.1)
+    else:
+        raise Exception("progress test failed.")
+
+    await info
+    assert info.result() is None
+    assert info.exception() is None
+    assert info.progress() == 1
 
 
 @pytest.fixture

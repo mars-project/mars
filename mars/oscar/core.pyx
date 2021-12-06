@@ -52,15 +52,15 @@ cdef class ActorRef:
         self.address = address
         self._methods = dict()
 
-    cdef __send__(self, object message):
+    cdef __send__(self, object message, object options):
         from .context import get_context
         ctx = get_context()
-        return ctx.send(self, message)
+        return ctx.send(self, message, **options)
 
-    cdef __tell__(self, object message, object delay=None):
+    cdef __tell__(self, object message, object options):
         from .context import get_context
         ctx = get_context()
-        return ctx.send(self, message, wait_response=False)
+        return ctx.send(self, message, wait_response=False, **options)
 
     def destroy(self, object callback=None):
         from .context import get_context
@@ -111,21 +111,26 @@ cdef class ActorRefMethod:
     """
     cdef ActorRef ref
     cdef object method_name
+    cdef object _options
 
-    def __init__(self, ref, method_name):
+    def __init__(self, ref, method_name, options=None):
         self.ref = ref
         self.method_name = method_name
+        self._options = options or {}
 
     def __call__(self, *args, **kwargs):
         return self.send(*args, **kwargs)
 
+    def options(self, **options):
+        return ActorRefMethod(self.ref, self.method_name, options)
+
     def send(self, *args, **kwargs):
         arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
-        return self.ref.__send__(arg_tuple)
+        return self.ref.__send__(arg_tuple, self._options)
 
     def tell(self, *args, **kwargs):
         arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
-        return self.ref.__tell__(arg_tuple)
+        return self.ref.__tell__(arg_tuple, self._options)
 
     def delay(self, *args, **kwargs):
         arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
@@ -150,16 +155,16 @@ cdef class ActorRefMethod:
 
         if send:
             return self.ref.__send__((last_method, CALL_METHOD_BATCH,
-                                      (args_list, kwargs_list), {}))
+                                      (args_list, kwargs_list), {}), self._options)
         else:
             return self.ref.__tell__((last_method, CALL_METHOD_BATCH,
-                                      (args_list, kwargs_list), {}))
+                                      (args_list, kwargs_list), {}), self._options)
 
     def tell_delay(self, *args, delay=None, ignore_conn_fail=True, **kwargs):
         async def delay_fun():
             try:
                 await asyncio.sleep(delay)
-                await self.ref.__tell__((self.method_name, CALL_METHOD_DEFAULT, args, kwargs))
+                await self.ref.__tell__((self.method_name, CALL_METHOD_DEFAULT, args, kwargs), self._options)
             except Exception as ex:
                 if ignore_conn_fail and isinstance(ex, ConnectionRefusedError):
                     return

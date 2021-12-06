@@ -1791,7 +1791,7 @@ def test_map_chunk_execution(setup):
     r = df2.map_chunk(
         lambda x: x["a"].apply(pd.Series), output_type="dataframe", dtypes=dtypes
     )
-    assert r.shape == (2, 3)
+    assert r.shape == (np.nan, 3)
     pd.testing.assert_series_equal(r.dtypes, dtypes)
     result = r.execute().fetch()
     expected = raw2.apply(lambda x: x["a"], axis=1, result_type="expand")

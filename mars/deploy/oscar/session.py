@@ -16,6 +16,7 @@ import asyncio
 import concurrent.futures
 import itertools
 import logging
+import json
 import random
 import string
 import threading
@@ -35,6 +36,7 @@ import numpy as np
 from ... import oscar as mo
 from ...config import options
 from ...core import ChunkType, TileableType, TileableGraph, enter_mode
+from ...core.entrypoints import init_extension_entrypoints
 from ...core.operand import Fetch
 from ...lib.aio import (
     alru_cache,
@@ -71,15 +73,22 @@ class Progress:
     value: float = 0.0
 
 
+@dataclass
+class Profiling:
+    result: dict = None
+
+
 class ExecutionInfo:
     def __init__(
         self,
         aio_task: asyncio.Task,
         progress: Progress,
+        profiling: Profiling,
         loop: asyncio.AbstractEventLoop,
     ):
         self._aio_task = aio_task
         self._progress = progress
+        self._profiling = profiling
         self._loop = loop
 
         self._future_local = threading.local()
@@ -107,6 +116,9 @@ class ExecutionInfo:
 
     def progress(self) -> float:
         return self._progress.value
+
+    def profiling_result(self) -> dict:
+        return self._profiling.result
 
     def result(self, timeout=None):
         self._ensure_future()
@@ -805,7 +817,11 @@ class _IsolatedSession(AbstractAsyncSession):
             return await cls._init(address, session_id, new=new, timeout=timeout)
 
     async def _run_in_background(
-        self, tileables: list, task_id: str, progress: Progress
+        self,
+        tileables: list,
+        task_id: str,
+        progress: Progress,
+        profiling: Profiling,
     ):
         with enter_mode(build=True, kernel=True):
             # wait for task to finish
@@ -814,16 +830,20 @@ class _IsolatedSession(AbstractAsyncSession):
             while True:
                 try:
                     if not cancelled:
-                        task_result: TaskResult = await self._task_api.wait_task(
-                            task_id, timeout=0.5
-                        )
-                        if task_result is None:
-                            # not finished, set progress
-                            progress.value = await self._task_api.get_task_progress(
-                                task_id
+                        task_result: Union[TaskResult, None] = None
+                        try:
+                            task_result = await self._task_api.wait_task(
+                                task_id, timeout=0.5
                             )
-                        else:
-                            progress.value = 1.0
+                        finally:
+                            if task_result is None:
+                                # not finished, set progress
+                                progress.value = await self._task_api.get_task_progress(
+                                    task_id
+                                )
+                            else:
+                                progress.value = 1.0
+                        if task_result is not None:
                             break
                     else:
                         # wait for task to finish
@@ -846,6 +866,13 @@ class _IsolatedSession(AbstractAsyncSession):
                         raise TimeoutError(
                             f"Task({task_id}) running time > {self.timeout}"
                         )
+            profiling.result = task_result.profiling
+            if task_result.profiling:
+                logger.warning(
+                    "Profile task %s execution result:\n%s",
+                    task_id,
+                    json.dumps(task_result.profiling, indent=4),
+                )
             if task_result.error:
                 raise task_result.error.with_traceback(task_result.traceback)
             if cancelled:
@@ -882,11 +909,12 @@ class _IsolatedSession(AbstractAsyncSession):
         )
 
         progress = Progress()
+        profiling = Profiling()
         # create asyncio.Task
         aio_task = asyncio.create_task(
-            self._run_in_background(tileables, task_id, progress)
+            self._run_in_background(tileables, task_id, progress, profiling)
         )
-        return ExecutionInfo(aio_task, progress, asyncio.get_running_loop())
+        return ExecutionInfo(aio_task, progress, profiling, asyncio.get_running_loop())
 
     def _get_to_fetch_tileable(
         self, tileable: TileableType
@@ -1533,7 +1561,10 @@ class SyncSession(AbstractSyncSession):
                 driver(), execution_info.loop
             ).result()
             new_execution_info = ExecutionInfo(
-                new_aio_task, execution_info._progress, execution_info.loop
+                new_aio_task,
+                execution_info._progress,
+                execution_info._profiling,
+                execution_info.loop,
             )
             return new_execution_info
 
@@ -1839,6 +1870,8 @@ def new_session(
     new: bool = True,
     **kwargs,
 ) -> AbstractSession:
+    # load third party extensions.
+    init_extension_entrypoints()
     ensure_isolation_created(kwargs)
 
     if address is None:

@@ -91,5 +91,6 @@ def enter_mode(kernel=None, build=None):
         "kernel": kernel,
         "build": build,
     }
+    mode_name_to_value = {k: v for k, v in mode_name_to_value.items() if v is not None}
 
     return _EnterModeFuncWrapper(mode_name_to_value)

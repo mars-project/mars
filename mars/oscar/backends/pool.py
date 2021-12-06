@@ -23,6 +23,7 @@ import multiprocessing
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
+from ...core.entrypoints import init_extension_entrypoints
 from ...utils import implements, to_binary
 from ...utils import lazy_import, register_asyncio_task_timeout_detector
 from ..api import Actor
@@ -141,6 +142,8 @@ class AbstractActorPool(ABC):
         self._asyncio_task_timeout_detector_task = (
             register_asyncio_task_timeout_detector()
         )
+        # load third party extensions.
+        init_extension_entrypoints()
 
     @property
     def router(self):
@@ -523,7 +526,10 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             with self._run_coro(message.message_id, coro) as future:
                 result = await future
             processor.result = ResultMessage(
-                message.message_id, result, protocol=message.protocol
+                message.message_id,
+                result,
+                protocol=message.protocol,
+                profiling_context=message.profiling_context,
             )
         return processor.result
 
@@ -538,7 +544,10 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             asyncio.create_task(call)
             await asyncio.sleep(0)
             processor.result = ResultMessage(
-                message.message_id, None, protocol=message.protocol
+                message.message_id,
+                None,
+                protocol=message.protocol,
+                profiling_context=message.profiling_context,
             )
         return processor.result
 

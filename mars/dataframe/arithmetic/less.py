@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 
 from ... import opcodes as OperandDef
 from ...utils import classproperty
@@ -24,6 +25,8 @@ class DataFrameLess(DataFrameBinopUfunc):
 
     _func_name = "lt"
     _rfunc_name = "gt"
+
+    return_dtype = np.dtype(bool)
 
     @classproperty
     def _operator(self):

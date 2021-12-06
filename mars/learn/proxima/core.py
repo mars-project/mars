@@ -69,13 +69,13 @@ def rechunk_tensor(tensor, chunk_size):
         if start_chunk_index == end_chunk_index:
             t = tensor.chunks[start_chunk_index]
             slice_op = TensorSlice(
-                (
+                [
                     slice(
                         offset - tensor_cumnrows[start_chunk_index],
                         split + offset - tensor_cumnrows[end_chunk_index],
                     ),
                     slice(None),
-                ),
+                ],
                 dtype=t.dtype,
             )
             out_groups.append(
@@ -93,7 +93,7 @@ def rechunk_tensor(tensor, chunk_size):
             start_chunk = tensor.chunks[start_chunk_index]
             start_slice = int(offset - tensor_cumnrows[start_chunk_index])
             slice_op = TensorSlice(
-                (slice(start_slice, None), slice(None)), dtype=start_chunk.dtype
+                [slice(start_slice, None), slice(None)], dtype=start_chunk.dtype
             )
             chunks.append(
                 slice_op.new_chunk(
@@ -107,7 +107,7 @@ def rechunk_tensor(tensor, chunk_size):
             end_chunk = tensor.chunks[end_chunk_index]
             end_slice = int(split + offset - tensor_cumnrows[end_chunk_index])
             slice_op_end = TensorSlice(
-                (slice(None, end_slice), slice(None)), dtype=start_chunk.dtype
+                [slice(None, end_slice), slice(None)], dtype=start_chunk.dtype
             )
             chunks.append(
                 slice_op_end.new_chunk(

@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+import operator
 import weakref
 from collections.abc import Iterable
 from io import StringIO
@@ -1595,6 +1597,7 @@ class Series(HasShapeTileable, _ToPandasMixin):
 
 class BaseDataFrameChunkData(ChunkData):
     __slots__ = ("_dtypes_value",)
+    _no_copy_attrs_ = ChunkData._no_copy_attrs_ | {"_dtypes"}
 
     # required fields
     _shape = TupleField(
@@ -1730,7 +1733,7 @@ class DataFrameChunk(Chunk):
 
 
 class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
-    __slots__ = "_accessors", "_dtypes_value"
+    __slots__ = "_accessors", "_dtypes_value", "_dtypes_dict"
 
     # optional fields
     _dtypes = SeriesField("dtypes")
@@ -1770,6 +1773,7 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
         )
         self._accessors = dict()
         self._dtypes_value = None
+        self._dtypes_dict = None
 
     def _get_params(self) -> Dict[str, Any]:
         # params return the properties which useful to rebuild a new tileable object
@@ -1878,6 +1882,27 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
     @property
     def axes(self):
         return [self.index, self.columns]
+
+    def _get_dtypes_dict(self):
+        if self._dtypes_dict is None:
+            self._dtypes_dict = d = dict()
+            for k, v in self.dtypes.items():
+                try:
+                    obj_list = d[k]
+                except KeyError:
+                    obj_list = d[k] = []
+                obj_list.append(v)
+        return self._dtypes_dict
+
+    def _get_dtypes_by_columns(self, columns: list):
+        dtypes_dict = self._get_dtypes_dict()
+        return functools.reduce(operator.add, (dtypes_dict[c] for c in columns), [])
+
+    def _get_columns_by_columns(self, columns: list):
+        dtypes_dict = self._get_dtypes_dict()
+        return functools.reduce(
+            operator.add, ([c] * len(dtypes_dict[c]) for c in columns), []
+        )
 
 
 class DataFrameData(_BatchedFetcher, BaseDataFrameData):

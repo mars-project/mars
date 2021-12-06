@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import recursive_tile
+from ...core import recursive_tile, get_output_types
 from ...core.custom_log import redirect_custom_log
 from ...serialization.serializables import (
     KeyField,
@@ -90,67 +90,98 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
         super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
-    def __call__(self, df_or_series, index=None, dtypes=None):
+    def _infer_attrs_by_call(self, df_or_series):
         test_obj = (
             build_df(df_or_series, size=2)
             if df_or_series.ndim == 2
             else build_series(df_or_series, size=2, name=df_or_series.name)
         )
-        output_type = self._output_types[0] if self.output_types else None
+        kwargs = self.kwargs or dict()
+        if self.with_chunk_index:
+            kwargs["chunk_index"] = (0,) * df_or_series.ndim
+        with np.errstate(all="ignore"), quiet_stdio():
+            obj = self._func(test_obj, *self._args, **kwargs)
 
-        # try run to infer meta
-        try:
-            kwargs = self.kwargs or dict()
-            if self.with_chunk_index:
-                kwargs["chunk_index"] = (0,) * df_or_series.ndim
-            with np.errstate(all="ignore"), quiet_stdio():
-                obj = self._func(test_obj, *self._args, **kwargs)
-        except:  # noqa: E722  # nosec
-            if df_or_series.ndim == 1 or output_type == OutputType.series:
-                obj = pd.Series([], dtype=np.dtype(object))
-            elif output_type == OutputType.dataframe and dtypes is not None:
-                obj = build_empty_df(dtypes)
-            else:
-                raise TypeError(
-                    "Cannot determine `output_type`, "
-                    "you have to specify it as `dataframe` or `series`, "
-                    "for dataframe, `dtypes` is required as well "
-                    "if output_type='dataframe'"
-                )
-
-        if getattr(obj, "ndim", 0) == 1 or output_type == OutputType.series:
-            shape = self._kwargs.pop("shape", None)
-            if shape is None:
-                # series
-                if obj.shape == test_obj.shape:
-                    shape = df_or_series.shape
-                else:
-                    shape = (np.nan,)
-            if index is None:
-                index = obj.index
-            index_value = parse_index(
-                index, df_or_series, self._func, self._args, self._kwargs
-            )
-            return self.new_series(
-                [df_or_series],
-                dtype=obj.dtype,
-                shape=shape,
-                index_value=index_value,
-                name=obj.name,
-            )
-        else:
-            dtypes = dtypes if dtypes is not None else obj.dtypes
-            # dataframe
+        if obj.ndim == 2:
+            output_type = OutputType.dataframe
+            dtypes = obj.dtypes
             if obj.shape == test_obj.shape:
                 shape = (df_or_series.shape[0], len(dtypes))
-            else:
+            else:  # pragma: no cover
                 shape = (np.nan, len(dtypes))
-            columns_value = parse_index(dtypes.index, store_data=True)
-            if index is None:
-                index = obj.index
+        else:
+            output_type = OutputType.series
+            dtypes = pd.Series([obj.dtype], name=obj.name)
+            if obj.shape == test_obj.shape:
+                shape = df_or_series.shape
+            else:
+                shape = (np.nan,)
+
+        index_value = parse_index(
+            obj.index, df_or_series, self._func, self._args, self._kwargs
+        )
+        return {
+            "output_type": output_type,
+            "index_value": index_value,
+            "shape": shape,
+            "dtypes": dtypes,
+        }
+
+    def __call__(self, df_or_series, index=None, dtypes=None):
+        output_type = (
+            self.output_types[0]
+            if self.output_types
+            else get_output_types(df_or_series)[0]
+        )
+        shape = self._kwargs.pop("shape", None)
+
+        if dtypes is not None:
+            index = index if index is not None else pd.RangeIndex(-1)
             index_value = parse_index(
                 index, df_or_series, self._func, self._args, self._kwargs
             )
+            if shape is None:  # pragma: no branch
+                shape = (
+                    (np.nan,)
+                    if output_type == OutputType.series
+                    else (np.nan, len(dtypes))
+                )
+        else:
+            # try run to infer meta
+            try:
+                attrs = self._infer_attrs_by_call(df_or_series)
+                output_type = attrs["output_type"]
+                index_value = attrs["index_value"]
+                shape = attrs["shape"]
+                dtypes = attrs["dtypes"]
+            except:  # noqa: E722  # nosec
+                if df_or_series.ndim == 1 or output_type == OutputType.series:
+                    output_type = OutputType.series
+                    index = index if index is not None else pd.RangeIndex(-1)
+                    index_value = parse_index(
+                        index, df_or_series, self._func, self._args, self._kwargs
+                    )
+                    dtypes = pd.Series([np.dtype(object)])
+                    shape = (np.nan,)
+                else:
+                    raise TypeError(
+                        "Cannot determine `output_type`, "
+                        "you have to specify it as `dataframe` or `series`, "
+                        "for dataframe, `dtypes` is required as well "
+                        "if output_type='dataframe'"
+                    )
+
+        if output_type == OutputType.series:
+            return self.new_series(
+                [df_or_series],
+                dtype=dtypes.iloc[0],
+                shape=shape,
+                index_value=index_value,
+                name=dtypes.name,
+            )
+        else:
+            # dataframe
+            columns_value = parse_index(dtypes.index, store_data=True)
             return self.new_dataframe(
                 [df_or_series],
                 shape=shape,
@@ -172,6 +203,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
 
         out_chunks = []
         nsplits = [[]] if out.ndim == 1 else [[], [out.shape[1]]]
+        pd_out_index = out.index_value.to_pandas()
         for chunk in inp.chunks:
             chunk_op = op.copy().reset_key()
             chunk_op.tileable_op_key = op.key
@@ -180,9 +212,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                     shape = (np.nan, out.shape[1])
                 else:
                     shape = (chunk.shape[0], out.shape[1])
-                index_value = parse_index(
-                    out.index_value.to_pandas(), chunk, op.func, op.args, op.kwargs
-                )
+                index_value = parse_index(pd_out_index, chunk, op.key)
                 out_chunk = chunk_op.new_chunk(
                     [chunk],
                     shape=shape,
@@ -198,9 +228,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                     shape = (np.nan,)
                 else:
                     shape = (chunk.shape[0],)
-                index_value = parse_index(
-                    out.index_value.to_pandas(), chunk, op.func, op.args, op.kwargs
-                )
+                index_value = parse_index(pd_out_index, chunk, op.key)
                 out_chunk = chunk_op.new_chunk(
                     [chunk],
                     shape=shape,

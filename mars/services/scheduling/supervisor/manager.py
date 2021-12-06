@@ -23,6 +23,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....oscar.debug import create_task_with_ex_logged
+from ....oscar.backends.message import ProfilingContext
 from ....oscar.errors import MarsError
 from ....typing import BandType
 from ....utils import dataslots, parse_readable_size
@@ -226,11 +227,17 @@ class SubtaskManagerActor(mo.Actor):
             try:
                 subtask_info = self._subtask_infos[subtask_id]
                 execution_ref = await self._get_execution_ref(band)
+                extra_config = subtask_info.subtask.extra_config
+                profiling_context = (
+                    ProfilingContext(subtask_info.subtask.task_id)
+                    if extra_config and extra_config.get("enable_profiling")
+                    else None
+                )
                 logger.debug("Start run subtask %s in band %s.", subtask_id, band)
                 task = asyncio.create_task(
-                    execution_ref.run_subtask(
-                        subtask_info.subtask, band[1], self.address
-                    )
+                    execution_ref.run_subtask.options(
+                        profiling_context=profiling_context
+                    ).send(subtask_info.subtask, band[1], self.address)
                 )
                 subtask_info.band_futures[band] = task
                 subtask_info.start_time = time.time()

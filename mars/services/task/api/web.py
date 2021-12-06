@@ -41,6 +41,7 @@ def _json_serial_task_result(result: Optional[TaskResult]):
         "traceback": base64.b64encode(serialize_serializable(result.traceback)).decode()
         if result.traceback is not None
         else None,
+        "profiling": result.profiling,
     }
 
 
@@ -83,6 +84,8 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
 
         graph = body_args["graph"]
         extra_config = body_args.get("extra_config", None)
+        if extra_config:
+            extra_config = deserialize_serializable(extra_config)
 
         oscar_api = await self._get_oscar_task_api(session_id)
         task_id = await oscar_api.submit_tileable_graph(
@@ -240,7 +243,9 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
 
     async def wait_task(self, task_id: str, timeout: float = None):
         path = f"{self._address}/api/session/{self._session_id}/task/{task_id}"
-        params = {"action": "wait", "timeout": str(timeout or "")}
+        # client timeout should be longer than server timeout.
+        server_timeout = "" if timeout is None else str(max(timeout / 2.0, timeout - 1))
+        params = {"action": "wait", "timeout": server_timeout}
         res = await self._request_url(
             "GET", path, params=params, request_timeout=timeout or 0
         )

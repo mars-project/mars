@@ -18,7 +18,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...core.operand.base import SchedulingHint
-from ...serialization.serializables import StringField
+from ...serialization.serializables import FieldTypes, StringField, TupleField
 from ...tensor.datastore.to_vineyard import resolve_vineyard_socket
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
@@ -36,6 +36,9 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
 
     # vineyard ipc socket
     vineyard_socket = StringField("vineyard_socket")
+
+    # a dummy attr to make sure ops have different keys
+    operator_index = TupleField("operator_index", FieldTypes.int32)
 
     def __init__(self, vineyard_socket=None, dtypes=None, **kw):
         super().__init__(
@@ -75,6 +78,7 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
         for idx, chunk in enumerate(op.inputs[0].chunks):
             chunk_op = op.copy().reset_key()
             chunk_op.scheduling_hint = scheduling_hint
+            chunk_op.operator_index = chunk.index
             out_chunk = chunk_op.new_chunk(
                 [chunk],
                 shape=(1, 1),

@@ -312,6 +312,12 @@ class GraphAnalyzer:
             "Assigned %s start chunks for task %s", len(start_ops), self._task.task_id
         )
 
+        # assign expect workers for those specified with `expect_worker`
+        # skip `start_ops`, which have been assigned before
+        for chunk in self._chunk_graph:
+            if chunk not in start_ops and chunk.op.expect_worker is not None:
+                chunk_to_bands[chunk] = self._to_band(chunk.op.expect_worker)
+
         # fuse node
         if self._fuse_enabled:
             logger.info("Start to fuse chunks for task %s", self._task.task_id)
