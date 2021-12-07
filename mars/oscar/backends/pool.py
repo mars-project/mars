@@ -16,9 +16,9 @@ import asyncio
 import concurrent.futures as futures
 import itertools
 import logging
+import multiprocessing
 import os
 import threading
-import multiprocessing
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
@@ -450,7 +450,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     @implements(AbstractActorPool.create_actor)
     async def create_actor(self, message: CreateActorMessage) -> result_message_type:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
-            actor_id = message.actor_id
+            actor_id = to_binary(message.actor_id)
             if actor_id in self._actors:
                 raise ActorAlreadyExist(
                     f"Actor {actor_id} already exist, " f"cannot create"
@@ -481,7 +481,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     @implements(AbstractActorPool.destroy_actor)
     async def destroy_actor(self, message: DestroyActorMessage) -> result_message_type:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
-            actor_id = message.actor_ref.uid
+            actor_id = to_binary(message.actor_ref.uid)
             try:
                 actor = self._actors[actor_id]
             except KeyError:
@@ -513,7 +513,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         with _ErrorProcessor(
             message.message_id, message.protocol
         ) as processor, record_message_trace(message):
-            actor_id = message.actor_ref.uid
+            actor_id = to_binary(message.actor_ref.uid)
             if actor_id not in self._actors:
                 raise ActorNotExist(f"Actor {actor_id} does not exist")
             coro = self._actors[actor_id].__on_receive__(message.content)
@@ -529,7 +529,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     @implements(AbstractActorPool.tell)
     async def tell(self, message: TellMessage) -> result_message_type:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
-            actor_id = message.actor_ref.uid
+            actor_id = to_binary(message.actor_ref.uid)
             if actor_id not in self._actors:  # pragma: no cover
                 raise ActorNotExist(f"Actor {actor_id} does not exist")
             call = self._actors[actor_id].__on_receive__(message.content)
@@ -648,6 +648,22 @@ class SubActorPoolBase(ActorPoolBase):
         self, message: DestroyActorMessage
     ):  # pragma: no cover
         await self.call(self._main_address, message)
+
+    async def notify_main_pool_to_create(self, message: CreateActorMessage):
+        reg_message = ControlMessage(
+            new_message_id(),
+            self.external_address,
+            ControlMessageType.add_sub_pool_actor,
+            (self.external_address, message.allocate_strategy, message),
+        )
+        await self.call(self._main_address, reg_message)
+
+    @implements(AbstractActorPool.create_actor)
+    async def create_actor(self, message: CreateActorMessage) -> result_message_type:
+        result = await super().create_actor(message)
+        if not message.from_main:
+            await self.notify_main_pool_to_create(message)
+        return result
 
     @implements(AbstractActorPool.actor_ref)
     async def actor_ref(self, message: ActorRefMessage) -> result_message_type:
@@ -775,6 +791,7 @@ class MainActorPoolBase(ActorPoolBase):
                     message.args,
                     message.kwargs,
                     allocate_strategy=new_allocate_strategy,
+                    from_main=True,
                     protocol=message.protocol,
                     message_trace=message.message_trace,
                 )
@@ -831,7 +848,7 @@ class MainActorPoolBase(ActorPoolBase):
 
     @implements(AbstractActorPool.send)
     async def send(self, message: SendMessage) -> result_message_type:
-        if message.actor_ref.uid in self._actors:
+        if to_binary(message.actor_ref.uid) in self._actors:
             return await super().send(message)
         actor_ref_message = ActorRefMessage(
             message.message_id, message.actor_ref, protocol=message.protocol
@@ -851,7 +868,7 @@ class MainActorPoolBase(ActorPoolBase):
 
     @implements(AbstractActorPool.tell)
     async def tell(self, message: TellMessage) -> result_message_type:
-        if message.actor_ref.uid in self._actors:
+        if to_binary(message.actor_ref.uid) in self._actors:
             return await super().tell(message)
         actor_ref_message = ActorRefMessage(
             message.message_id, message.actor_ref, protocol=message.protocol
@@ -949,6 +966,17 @@ class MainActorPoolBase(ActorPoolBase):
                 event = self._recover_events.get(message.address, None)
                 if event is not None:
                     await event.wait()
+                processor.result = ResultMessage(
+                    message.message_id, True, protocol=message.protocol
+                )
+            elif message.control_message_type == ControlMessageType.add_sub_pool_actor:
+                address, allocate_strategy, create_message = message.content
+                create_message.from_main = True
+                ref = create_actor_ref(address, to_binary(create_message.actor_id))
+                self._allocated_actors[address][ref] = (
+                    allocate_strategy,
+                    create_message,
+                )
                 processor.result = ResultMessage(
                     message.message_id, True, protocol=message.protocol
                 )
@@ -1114,9 +1142,8 @@ class MainActorPoolBase(ActorPoolBase):
     async def monitor_sub_pools(self):
         try:
             while not self._stopped.is_set():
-                for address in self.sub_processes:
+                for address, process in self.sub_processes.items():
                     try:
-                        process = self.sub_processes[address]
                         recover_events_discovered = address in self._recover_events
                         if not await self.is_sub_pool_alive(
                             process

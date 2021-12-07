@@ -20,11 +20,12 @@ import re
 import sys
 import urllib.parse
 from collections import defaultdict
-from typing import Callable, Dict, List, NamedTuple, Optional, Union
+from typing import Callable, Dict, List, NamedTuple, Optional, Type, Union
 
 from tornado import httpclient, web
 from tornado.simple_httpclient import HTTPTimeoutError
 
+from ...lib.aio import alru_cache
 from ...utils import serialize_serializable, deserialize_serializable
 
 if sys.version_info[:2] == (3, 6):
@@ -81,6 +82,25 @@ def web_api(
     return wrapper
 
 
+@alru_cache(cache_exceptions=False)
+async def _get_cluster_api(address: str):
+    from ..cluster import ClusterAPI
+
+    return await ClusterAPI.create(address)
+
+
+@alru_cache(cache_exceptions=False)
+async def _get_api_by_key(
+    api_cls: Type, session_id: str, address: str, with_key_arg: bool = True
+):
+    cluster_api = await _get_cluster_api(address)
+    [address] = await cluster_api.get_supervisors_by_keys([session_id])
+    if with_key_arg:
+        return await api_cls.create(session_id, address)
+    else:
+        return await api_cls.create(address)
+
+
 class MarsServiceWebAPIHandler(MarsRequestHandler):
     _root_pattern = None
     _method_to_handlers = None
@@ -88,6 +108,16 @@ class MarsServiceWebAPIHandler(MarsRequestHandler):
     def __init__(self, *args, **kwargs):
         self._collect_services()
         super().__init__(*args, **kwargs)
+
+    def _get_api_by_key(
+        self, api_cls: Type, session_id: str, with_key_arg: bool = True
+    ):
+        return _get_api_by_key(
+            api_cls,
+            session_id,
+            address=self._supervisor_addr,
+            with_key_arg=with_key_arg,
+        )
 
     @classmethod
     def _collect_services(cls):

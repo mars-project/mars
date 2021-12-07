@@ -103,7 +103,7 @@ def _get_labelled_port(label=None, create=True):
     test_name = os.environ["PYTEST_CURRENT_TEST"]
     if (test_name, label) not in _test_port_cache:
         if create:
-            _test_port_cache[(test_name, label)] = get_next_port()
+            _test_port_cache[(test_name, label)] = get_next_port(occupy=True)
         else:
             return None
     return _test_port_cache[(test_name, label)]
@@ -128,6 +128,8 @@ start_params = {
             lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
             "-w",
             lambda: str(_get_labelled_port("web")),
+            "--n-process",
+            "2",
         ],
         worker_cmd_start
         + [

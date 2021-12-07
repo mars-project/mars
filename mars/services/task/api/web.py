@@ -17,7 +17,6 @@ import json
 from typing import List, Optional, Union
 
 from ....core import TileableGraph, Tileable
-from ....lib.aio import alru_cache
 from ....utils import serialize_serializable, deserialize_serializable
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from ..core import TaskResult, TaskStatus
@@ -59,19 +58,10 @@ def _json_deserial_task_result(d: dict) -> Optional[TaskResult]:
 class TaskWebAPIHandler(MarsServiceWebAPIHandler):
     _root_pattern = "/api/session/(?P<session_id>[^/]+)/task"
 
-    @alru_cache(cache_exceptions=False)
-    async def _get_cluster_api(self):
-        from ...cluster import ClusterAPI
-
-        return await ClusterAPI.create(self._supervisor_addr)
-
-    @alru_cache(cache_exceptions=False)
     async def _get_oscar_task_api(self, session_id: str):
         from .oscar import TaskAPI
 
-        cluster_api = await self._get_cluster_api()
-        [address] = await cluster_api.get_supervisors_by_keys([session_id])
-        return await TaskAPI.create(session_id, address)
+        return await self._get_api_by_key(TaskAPI, session_id)
 
     @web_api("", method="post")
     async def submit_tileable_graph(self, session_id: str):

@@ -1715,7 +1715,10 @@ async def _execute(
                         break
                     except asyncio.TimeoutError:
                         # timeout
-                        if not cancelled.is_set():
+                        if (
+                            not cancelled.is_set()
+                            and execution_info.progress() is not None
+                        ):
                             progress_bar.update(execution_info.progress() * 100)
                 if cancelled.is_set():
                     # cancel execution
