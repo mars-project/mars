@@ -134,6 +134,8 @@ class _ExtensibleWrapper(_ExtensibleCallable):
         return args_list, kwargs_list
 
     async def _async_batch(self, *delays):
+        # when there is only one call in batch, calling one-pass method
+        # will be more efficient
         if len(delays) == 1:
             d = delays[0]
             return [await self.func(*d.args, **d.kwargs)]

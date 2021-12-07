@@ -244,6 +244,8 @@ cdef class _BaseActor:
                     value = res_item
                 values.append(value)
 
+            # when there is only one coroutine, we do not need to use
+            # asyncio.wait as it introduces much overhead
             if len(coros) == 1:
                 task_result = await coros[0]
                 if extract_tuple:
