@@ -94,7 +94,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
             _index_shuffle_size=index_shuffle_size,
             _column_shuffle_size=column_shuffle_size,
             _column_shuffle_segments=column_shuffle_segments,
-            _sparse=sparse,
+            sparse=sparse,
             _dtype=dtype,
             _dtypes=dtypes,
             _output_types=output_types,

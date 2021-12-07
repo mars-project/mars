@@ -86,7 +86,7 @@ class TensorFFTFreqChunk(TensorHasInput, TensorOperandMixin):
     _d = Float64Field("d")
 
     def __init__(self, n=None, d=None, dtype=None, **kw):
-        super().__init__(_n=n, _d=d, _dtype=dtype, **kw)
+        super().__init__(_n=n, _d=d, dtype=dtype, **kw)
 
     @property
     def n(self):

@@ -70,8 +70,8 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
             _axis=axis,
             _numeric_only=numeric_only,
             _dtype=dtype,
-            _gpu=gpu,
             _output_types=output_types,
+            gpu=gpu,
             **kw
         )
 

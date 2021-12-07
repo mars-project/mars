@@ -24,4 +24,4 @@ class TensorFuseChunkMixin(FuseChunkMixin, TensorOperandMixin):
 
 class TensorFuseChunk(TensorFuse, TensorFuseChunkMixin):
     def __init__(self, dtype=None, **kw):
-        super().__init__(_dtype=dtype, **kw)
+        super().__init__(dtype=dtype, **kw)

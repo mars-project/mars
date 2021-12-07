@@ -65,7 +65,7 @@ class DataFrameSortOperand(DataFrameOperand):
             _parallel_kind=parallel_kind,
             _psrs_kinds=psrs_kinds,
             _nrows=nrows,
-            _gpu=gpu,
+            gpu=gpu,
             **kw
         )
 
