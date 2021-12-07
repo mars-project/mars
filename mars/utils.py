@@ -1085,6 +1085,10 @@ def arrow_array_to_objects(
     return obj
 
 
+_lock_for_current_session = threading.Lock()
+_local_for_current_session = threading.local()
+
+
 def enter_current_session(func: Callable):
     @functools.wraps(func)
     def wrapped(cls, ctx, op):
@@ -1094,17 +1098,23 @@ def enter_current_session(func: Callable):
         if not hasattr(ctx, "get_current_session"):
             return func(cls, ctx, op)
 
-        session = ctx.get_current_session()
-        prev_default_session = get_default_session()
-        session.as_default()
+        reset_session = False
+        with _lock_for_current_session:
+            if not getattr(_local_for_current_session, "is_set", False):
+                session = ctx.get_current_session()
+                prev_default_session = get_default_session()
+                session.as_default()
+                _local_for_current_session.is_set = True
+                reset_session = True
 
         try:
             result = func(cls, ctx, op)
         finally:
-            if prev_default_session:
-                prev_default_session.as_default()
-            else:
-                AbstractSession.reset_default()
+            if reset_session:
+                if prev_default_session:
+                    prev_default_session.as_default()
+                else:
+                    AbstractSession.reset_default()
 
         return result
 
