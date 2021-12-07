@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialization.serializables import KeyField, DataTypeField, StringField
+from ...serialization.serializables import KeyField, StringField
 from ...utils import get_dtype
 from ..array_utils import as_same_device, device
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -28,18 +28,13 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.ASTYPE
 
     _input = KeyField("input")
-    _dtype = DataTypeField("dtype")
     _order = StringField("order")
     _casting = StringField("casting")
 
     def __init__(self, dtype=None, order=None, casting=None, sparse=False, **kw):
         super().__init__(
-            _dtype=dtype, _order=order, _casting=casting, sparse=sparse, **kw
+            dtype=dtype, _order=order, _casting=casting, sparse=sparse, **kw
         )
-
-    @property
-    def dtype(self):
-        return self._dtype
 
     @property
     def order(self):

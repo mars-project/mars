@@ -40,7 +40,7 @@ class TensorAngle(TensorUnaryOp):
     ):
         err = err if err is not None else np.geterr()
         super().__init__(
-            _deg=deg, _casting=casting, _err=err, _dtype=dtype, _sparse=sparse, **kw
+            _deg=deg, _casting=casting, _err=err, dtype=dtype, sparse=sparse, **kw
         )
 
     @classmethod

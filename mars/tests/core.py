@@ -314,7 +314,15 @@ class ObjectCheckMixin:
         if not hasattr(expected, "dtype"):
             return
         if self._check_options["check_dtypes"]:
-            self.assert_dtype_consistent(expected.dtype, real.dtype)
+            try:
+                self.assert_dtype_consistent(expected.dtype, real.dtype)
+            except AssertionError as ex:
+                if hasattr(expected, "op"):
+                    raise AssertionError(
+                        f"dtype assertion error: {ex}, source operand {expected.op}"
+                    )
+                else:
+                    raise
         if self._check_options["check_shape"]:
             self.assert_shape_consistent(expected.shape, real.shape)
 

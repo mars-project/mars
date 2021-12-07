@@ -132,7 +132,7 @@ class DataFrameReadSQL(
             _high_limit=high_limit,
             _nrows=nrows,
             _output_types=output_types,
-            _gpu=gpu,
+            gpu=gpu,
             **kw,
         )
         if not self.output_types:

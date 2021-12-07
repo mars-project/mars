@@ -139,7 +139,7 @@ class TensorVineyardDataStoreMeta(TensorDataStore):
 
     def __init__(self, vineyard_socket=None, dtype=None, sparse=None, **kw):
         super().__init__(
-            vineyard_socket=vineyard_socket, _dtype=dtype, _sparse=sparse, **kw
+            vineyard_socket=vineyard_socket, dtype=dtype, sparse=sparse, **kw
         )
 
     @classmethod

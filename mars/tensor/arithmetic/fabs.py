@@ -14,7 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 from ... import opcodes as OperandDef
+from ..utils import infer_dtype
 from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
@@ -25,6 +28,7 @@ class TensorFabs(TensorUnaryOp):
     _func_name = "fabs"
 
 
+@infer_dtype(np.fabs)
 def fabs(x, out=None, where=None, **kwargs):
     """
     Compute the absolute values element-wise.

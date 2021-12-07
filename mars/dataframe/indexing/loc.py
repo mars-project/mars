@@ -117,7 +117,7 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
         super().__init__(
-            _indexes=indexes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw
+            _indexes=indexes, gpu=gpu, sparse=sparse, _output_types=output_types, **kw
         )
 
     @property

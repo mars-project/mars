@@ -161,7 +161,7 @@ class TensorNanVar(TensorReduction, TensorReductionMixin):
     ):
         super().__init__(
             _axis=axis,
-            _dtype=dtype,
+            dtype=dtype,
             _keepdims=keepdims,
             _ddof=ddof,
             _combine_size=combine_size,

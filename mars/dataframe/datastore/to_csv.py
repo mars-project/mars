@@ -436,7 +436,7 @@ class DataFrameToCSVStat(TensorOperand, TensorOperandMixin):
 
     def __init__(self, path=None, storage_options=None, dtype=None, **kw):
         super().__init__(
-            _path=path, _storage_options=storage_options, _dtype=dtype, **kw
+            _path=path, _storage_options=storage_options, dtype=dtype, **kw
         )
 
     @property

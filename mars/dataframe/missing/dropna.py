@@ -62,8 +62,8 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
             _use_inf_as_na=use_inf_as_na,
             _drop_directly=drop_directly,
             _subset_size=subset_size,
-            _sparse=sparse,
             _output_types=output_types,
+            sparse=sparse,
             **kw
         )
 

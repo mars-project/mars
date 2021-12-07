@@ -161,8 +161,8 @@ class _DataFrameMergeBase(DataFrameOperand, DataFrameOperandMixin):
             _copy=copy,
             _indicator=indicator,
             _validate=validate,
-            _sparse=sparse,
             _output_types=output_types,
+            sparse=sparse,
             **kw
         )
 

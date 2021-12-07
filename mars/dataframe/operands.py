@@ -440,7 +440,7 @@ DataFrameOperand = Operand
 
 class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
     def __init__(self, sparse=None, output_types=None, **kwargs):
-        super().__init__(_sparse=sparse, _output_types=output_types, **kwargs)
+        super().__init__(sparse=sparse, _output_types=output_types, **kwargs)
 
     @classmethod
     def execute(cls, ctx, op):

@@ -255,7 +255,7 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
 
     def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
         super().__init__(
-            _indexes=indexes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw
+            _indexes=indexes, gpu=gpu, sparse=sparse, _output_types=output_types, **kw
         )
         if not self.output_types:
             self.output_types = [OutputType.dataframe]
@@ -411,8 +411,8 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         super().__init__(
             _indexes=indexes,
             _value=value,
-            _gpu=gpu,
-            _sparse=sparse,
+            gpu=gpu,
+            sparse=sparse,
             _output_types=output_types,
             **kw,
         )
@@ -504,7 +504,7 @@ class SeriesIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
 
     def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
         super().__init__(
-            _indexes=indexes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw
+            _indexes=indexes, gpu=gpu, sparse=sparse, _output_types=output_types, **kw
         )
         if not self.output_types:
             self.output_types = [OutputType.series]
@@ -586,8 +586,8 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         super().__init__(
             _indexes=indexes,
             _value=value,
-            _gpu=gpu,
-            _sparse=sparse,
+            gpu=gpu,
+            sparse=sparse,
             _output_types=[OutputType.series],
             **kw,
         )
@@ -668,7 +668,7 @@ class IndexIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
         super().__init__(
-            _indexes=indexes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw
+            _indexes=indexes, gpu=gpu, sparse=sparse, _output_types=output_types, **kw
         )
         if not self.output_types:
             self.output_types = [OutputType.index]

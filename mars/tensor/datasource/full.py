@@ -141,10 +141,10 @@ class TensorFullLike(TensorLike):
             dtype = np.array(fill_value).dtype
         super().__init__(
             _fill_value=fill_value,
-            _dtype=dtype,
-            _gpu=gpu,
             _order=order,
-            _sparse=sparse,
+            dtype=dtype,
+            gpu=gpu,
+            sparse=sparse,
             **kw
         )
 

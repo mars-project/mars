@@ -49,8 +49,8 @@ class TensorAround(TensorUnaryOp):
             _decimals=decimals,
             _casting=casting,
             _err=err,
-            _dtype=dtype,
-            _sparse=sparse,
+            dtype=dtype,
+            sparse=sparse,
             **kw
         )
 
