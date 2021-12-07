@@ -39,7 +39,6 @@ if ray:
 
         # The default __setstate__ will update _MLDataset's __dict__;
 
-
 else:
     _Dataset = None
 

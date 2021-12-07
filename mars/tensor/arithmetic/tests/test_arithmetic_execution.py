@@ -138,6 +138,7 @@ def test_ufunc_execution(setup):
     _new_unary_ufunc = UNARY_UFUNC - _sp_unary_ufunc
     for func in _new_unary_ufunc:
         res_tensor = func(arr1)
+        assert res_tensor.dtype is not None
         res = res_tensor.execute().fetch()
         expected = _get_func(res_tensor.op._func_name)(data1)
         np.testing.assert_array_almost_equal(res, expected)
@@ -145,8 +146,11 @@ def test_ufunc_execution(setup):
     _new_bin_ufunc = BIN_UFUNC - _sp_bin_ufunc
     for func in _new_bin_ufunc:
         res_tensor1 = func(arr1, arr2)
+        assert res_tensor1.dtype is not None
         res_tensor2 = func(arr1, rand)
+        assert res_tensor2.dtype is not None
         res_tensor3 = func(rand, arr1)
+        assert res_tensor3.dtype is not None
 
         res1 = res_tensor1.execute().fetch()
         res2 = res_tensor2.execute().fetch()
@@ -168,14 +172,18 @@ def test_ufunc_execution(setup):
 
     for func in _sp_unary_ufunc:
         res_tensor = func(arr1)
+        assert res_tensor.dtype is not None
         res = res_tensor.execute().fetch()
         expected = _get_func(res_tensor.op._func_name)(data1)
         np.testing.assert_array_almost_equal(res, expected)
 
     for func in _sp_bin_ufunc:
         res_tensor1 = func(arr1, arr2)
+        assert res_tensor1.dtype is not None
         res_tensor2 = func(arr1, rand)
+        assert res_tensor2.dtype is not None
         res_tensor3 = func(rand, arr1)
+        assert res_tensor3.dtype is not None
 
         res1 = res_tensor1.execute().fetch()
         res2 = res_tensor2.execute().fetch()

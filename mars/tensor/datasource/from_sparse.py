@@ -30,7 +30,7 @@ class SparseToDense(TensorHasInput):
     _fill_value = AnyField("fill_value")
 
     def __init__(self, fill_value=None, order=None, **kw):
-        super().__init__(_fill_value=fill_value, _sparse=False, _order=order, **kw)
+        super().__init__(_fill_value=fill_value, sparse=False, _order=order, **kw)
 
     @property
     def order(self):
