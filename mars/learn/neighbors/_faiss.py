@@ -627,7 +627,7 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
             _return_distance=return_distance,
             _output_types=output_types,
             _nprobe=nprobe,
-            _gpu=gpu,
+            gpu=gpu,
             **kw,
         )
         if self.output_types is None:

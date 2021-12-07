@@ -89,7 +89,7 @@ class TensorTreeMultiply(TensorMultiOp):
     _func_name = "multiply"
 
     def __init__(self, sparse=False, **kw):
-        super().__init__(_sparse=sparse, **kw)
+        super().__init__(sparse=sparse, **kw)
 
     @classmethod
     def _is_sparse(cls, *args):

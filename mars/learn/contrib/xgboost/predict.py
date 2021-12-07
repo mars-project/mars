@@ -42,8 +42,8 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
             _data=data,
             _model=model,
             _kwargs=kwargs,
-            _gpu=gpu,
             _output_types=output_types,
+            gpu=gpu,
             **kw,
         )
 

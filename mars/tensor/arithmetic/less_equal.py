@@ -27,10 +27,6 @@ class TensorLessEqual(TensorBinOp):
     _op_type_ = OperandDef.LE
     _func_name = "less_equal"
 
-    def __init__(self, casting="same_kind", err=None, dtype=None, sparse=None, **kw):
-        err = err if err is not None else np.geterr()
-        super().__init__(_casting=casting, _err=err, _dtype=dtype, _sparse=sparse, **kw)
-
 
 @inject_dtype(np.bool_)
 def less_equal(x1, x2, out=None, where=None, **kwargs):

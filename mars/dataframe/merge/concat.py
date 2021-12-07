@@ -75,8 +75,8 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             _verify_integrity=verify_integrity,
             _sort=sort,
             _copy=copy,
-            _sparse=sparse,
             _output_types=output_types,
+            sparse=sparse,
             **kw
         )
 

@@ -53,8 +53,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             _input=input_,
             _index=index,
             _dtypes=dtypes,
-            _gpu=gpu,
-            _sparse=sparse,
+            gpu=gpu,
+            sparse=sparse,
             _output_types=[OutputType.dataframe],
             **kw,
         )
@@ -566,8 +566,8 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
             _input=input_,
             _index=index,
             _dtype=dtype,
-            _gpu=gpu,
-            _sparse=sparse,
+            gpu=gpu,
+            sparse=sparse,
             _output_types=[OutputType.series],
             **kw,
         )

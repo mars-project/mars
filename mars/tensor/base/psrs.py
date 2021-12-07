@@ -469,8 +469,8 @@ class PSRSSortRegularSample(TensorOperand, TensorOperandMixin):
             _return_indices=return_indices,
             _n_partition=n_partition,
             _axis_offset=axis_offset,
-            _dtype=dtype,
-            _gpu=gpu,
+            dtype=dtype,
+            gpu=gpu,
             **kw
         )
 
@@ -561,7 +561,7 @@ class PSRSConcatPivot(TensorOperand, TensorOperandMixin):
 
     def __init__(self, axis=None, order=None, kind=None, dtype=None, gpu=None, **kw):
         super().__init__(
-            _axis=axis, _order=order, _kind=kind, _dtype=dtype, _gpu=gpu, **kw
+            _axis=axis, _order=order, _kind=kind, dtype=dtype, gpu=gpu, **kw
         )
 
     @property
