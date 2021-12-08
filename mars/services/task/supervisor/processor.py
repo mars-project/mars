@@ -215,8 +215,9 @@ class TaskProcessor:
             if error_or_cancelled:
                 # error or cancel, rollback incref for subtask results
                 for subtask in subtask_graph:
-                    if stage_processor.subtask_results.get(subtask):
+                    if subtask.subtask_id in stage_processor.decref_subtask:
                         continue
+                    stage_processor.decref_subtask.add(subtask.subtask_id)
                     # if subtask not executed, rollback incref of predecessors
                     for inp_subtask in subtask_graph.predecessors(subtask):
                         for result_chunk in inp_subtask.chunk_graph.results:
@@ -821,9 +822,12 @@ class TaskProcessorActor(mo.Actor):
                 # Since every worker will call supervisor to set subtask result,
                 # we need to release actor lock to make `decref_chunks` parallel to avoid blocking
                 # other `set_subtask_result` calls.
-                yield self._decref_input_subtasks(
-                    subtask, stage_processor.subtask_graph
-                )
+                if subtask.subtask_id not in stage_processor.decref_subtask:
+                    stage_processor.decref_subtask.add(subtask.subtask_id)
+                    yield self._decref_input_subtasks(
+                        subtask, stage_processor.subtask_graph
+                    )
+
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
                 _, err, tb = sys.exc_info()
                 if subtask_result.status not in (
