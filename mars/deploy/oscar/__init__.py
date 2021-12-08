@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .ray import RayClusterBackend
+from .ray import RayClusterBackend, new_cluster_in_ray, new_ray_session

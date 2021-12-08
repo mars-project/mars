@@ -1,0 +1,134 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.8.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-11-17 20:47+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.1\n"
+
+#: ../../source/installation/ray.rst:4
+msgid "Run on Ray"
+msgstr "在 Ray 中运行 Mars"
+
+#: ../../source/installation/ray.rst:6
+msgid ""
+"Mars also has deep integration with Ray and can run on `Ray "
+"<https://docs.ray.io/en/latest/>`_ efficiently and natively."
+msgstr ""
+"Mars 与 `Ray <https://docs.ray.io/en/latest/>`_ 进行了深度集成，并可以"
+"高效原生地运行在 Ray 上。"
+
+#: ../../source/installation/ray.rst:9
+msgid "Basic steps"
+msgstr "基本步骤"
+
+#: ../../source/installation/ray.rst:10
+msgid "Install Ray locally:"
+msgstr "在本地安装 Ray ："
+
+#: ../../source/installation/ray.rst:16
+msgid "Start a Ray cluster:"
+msgstr "启动 Ray 集群："
+
+#: ../../source/installation/ray.rst:23
+msgid ""
+"Or connecting to a existing Ray cluster using `Ray client "
+"<https://docs.ray.io/en/latest/cluster/ray-client.html>`_:"
+msgstr ""
+"或者使用 `Ray Client <https://docs.ray.io/en/latest/cluster/ray-client."
+"html>`_ 连接到一个已有的集群："
+
+#: ../../source/installation/ray.rst:30
+msgid "Creating a Mars on Ray runtime in the Ray cluster and do the computing:"
+msgstr "创建 Mars on Ray 运行时并执行计算："
+
+#: ../../source/installation/ray.rst:53
+msgid "Create a Mars on Ray runtime independently in the Ray cluster:"
+msgstr "在 Ray 集群里面独立创建 Mars on Ray运行时："
+
+#: ../../source/installation/ray.rst:61
+msgid "Connect to the created Mars on Ray runtime and do the computing:"
+msgstr "连接到创建的 Mars on Ray 运行时并执行计算："
+
+#: ../../source/installation/ray.rst:70
+msgid "Stop the created Mars on Ray runtime:"
+msgstr "停止 Mars on Ray 运行时："
+
+#: ../../source/installation/ray.rst:78
+msgid "Customizing cluster"
+msgstr "自定义集群"
+
+#: ../../source/installation/ray.rst:79
+msgid ""
+"``new_ray_session``/``new_cluster_in_ray`` function provides several "
+"keyword arguments for users to define the cluster."
+msgstr ""
+"``new_ray_session``/``new_cluster_in_ray`` 函数提供了一些用于自定义集群的"
+"关键字参数。"
+
+#: ../../source/installation/ray.rst:82
+msgid "Arguments for supervisors:"
+msgstr "Supervisor 相关参数："
+
+#: ../../source/installation/ray.rst:85 ../../source/installation/ray.rst:93
+msgid "Argument"
+msgstr "参数"
+
+#: ../../source/installation/ray.rst:85 ../../source/installation/ray.rst:93
+msgid "Description"
+msgstr "描述"
+
+#: ../../source/installation/ray.rst:87
+msgid "supervisor_mem"
+msgstr ""
+
+#: ../../source/installation/ray.rst:87
+msgid "Memory size for supervisor in the cluster, in bytes."
+msgstr "Supervisor 的内存大小，单位是字节"
+
+#: ../../source/installation/ray.rst:90
+msgid "Arguments for workers:"
+msgstr "Worker 相关参数："
+
+#: ../../source/installation/ray.rst:95
+msgid "worker_num"
+msgstr ""
+
+#: ../../source/installation/ray.rst:95
+msgid "Number of workers in the cluster, 1 by default."
+msgstr "集群中 Worker 的数目，默认为 1"
+
+#: ../../source/installation/ray.rst:97
+msgid "worker_cpu"
+msgstr ""
+
+#: ../../source/installation/ray.rst:97
+msgid "Number of CPUs for every worker, 2 by default."
+msgstr "每个 Worker 的 CPU 数目，默认为 2"
+
+#: ../../source/installation/ray.rst:99
+msgid "worker_mem"
+msgstr ""
+
+#: ../../source/installation/ray.rst:99
+msgid "Memory size for workers in the cluster, in bytes, 2G by default."
+msgstr "每个 Worker 的内存大小，单位是字节，默认2G"
+
+#: ../../source/installation/ray.rst:102
+msgid ""
+"For instance, if you want to create a Mars cluster with 100 workers, each"
+" worker has 4 cores and 16GB memory, you can use the code below:"
+msgstr ""
+"比如你想创建一个100个 Worker 的 Mars 集群，每个 Worker 拥有 4 核 16GB "
+"内存，你可以使用下面的代码："
