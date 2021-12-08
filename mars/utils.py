@@ -1116,7 +1116,7 @@ def enter_current_session(func: Callable):
                         prev_default_session.as_default()
                     else:
                         AbstractSession.reset_default()
-                _is_current_session_set = False
+                    _is_current_session_set = False
         return result
 
     return wrapped
