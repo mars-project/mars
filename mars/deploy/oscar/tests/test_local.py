@@ -667,7 +667,7 @@ async def test_task_speculation_execution(speculative_cluster):
     def time_consuming2(x):
         index = x.index[0]
         print(f"dataframe group_by_apply subtask index {index}")
-        if index >= series_size - 2 and random.random() > 0.5:
+        if index >= series_size - 1 and random.random() > 0.5:
             print(f"dataframe group_by_apply subtask {index} starts to hang.")
             time.sleep(100000)
         return x
@@ -680,7 +680,7 @@ async def test_task_speculation_execution(speculative_cluster):
             for i in range(2)
         }
     )
-    df = df.groupby(["col0"]).apply(time_consuming2).sort_index().execute()
+    df = df.rechunk(chunk_size=2).groupby(["col0"]).apply(time_consuming2).sort_index().execute()
     pd_df = (
         pd.DataFrame(
             {
