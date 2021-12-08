@@ -335,20 +335,22 @@ class TileableOperandMixin:
     def estimate_size(cls, ctx: dict, op: OperandType):
         from .fetch import FetchShuffle
 
-        exec_size = 0
+        # when sizes of all outputs are deterministic, return directly
         outputs = op.outputs
-        pure_dep_keys = set(
-            inp.key
-            for inp, is_dep in zip(op.inputs or (), op.pure_depends or ())
-            if is_dep
-        )
         if all(
             not c.is_sparse() and hasattr(c, "nbytes") and not np.isnan(c.nbytes)
             for c in outputs
         ):
             for out in outputs:
                 ctx[out.key] = (out.nbytes, out.nbytes)
+            return
 
+        pure_dep_keys = set(
+            inp.key
+            for inp, is_dep in zip(op.inputs or (), op.pure_depends or ())
+            if is_dep
+        )
+        exec_sizes = [0]
         for inp in op.inputs or ():
             if inp.key in pure_dep_keys:
                 continue
@@ -361,13 +363,16 @@ class TileableOperandMixin:
                 # execution size of a specific data chunk may be
                 # larger than stored type due to objects
                 for key, shape in keys_and_shapes:
-                    exec_size += ctx[key][0]
+                    exec_sizes.append(ctx[key][0])
             except KeyError:
                 if not op.sparse:
                     inp_size = calc_data_size(inp)
                     if not np.isnan(inp_size):
-                        exec_size += inp_size
-        exec_size = int(exec_size)
+                        exec_sizes.append(inp_size)
+        if any(c.is_sparse() for c in op.inputs):
+            exec_size = sum(exec_sizes)
+        else:
+            exec_size = max(exec_sizes)
 
         total_out_size = 0
         chunk_sizes = dict()
@@ -408,7 +413,7 @@ class TileableOperandMixin:
                 max_sparse_size = np.nan
             if not np.isnan(max_sparse_size):
                 result_size = min(result_size, max_sparse_size)
-            ctx[out.key] = (result_size, exec_size * memory_scale // len(outputs))
+            ctx[out.key] = (result_size, int(exec_size * memory_scale // len(outputs)))
 
     @classmethod
     def concat_tileable_chunks(cls, tileable: TileableType):
