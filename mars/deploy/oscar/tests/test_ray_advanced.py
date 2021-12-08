@@ -39,8 +39,8 @@ async def speculative_cluster():
                 "speculation": {
                     "enabled": True,
                     "interval": 0.5,
-                    "threshold": 0.3,
-                    "min_task_runtime": 1,
+                    "threshold": 0.2,
+                    "min_task_runtime": 2,
                     "multiplier": 1.5,
                 },
                 # used to kill hanged subtask to release slot.

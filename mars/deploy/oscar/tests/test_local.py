@@ -612,7 +612,7 @@ def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: 
     assert get_default_session() is None
 
 
-min_task_runtime = 1
+min_task_runtime = 2
 
 
 @pytest.fixture
@@ -620,7 +620,7 @@ async def speculative_cluster():
     config = load_config()
     config["scheduling"]["speculation"]["enabled"] = True
     config["scheduling"]["speculation"]["interval"] = 0.5
-    config["scheduling"]["speculation"]["threshold"] = 0.3
+    config["scheduling"]["speculation"]["threshold"] = 0.2
     config["scheduling"]["speculation"]["min_task_runtime"] = min_task_runtime
     config["scheduling"]["speculation"]["multiplier"] = 2
     config["scheduling"]["speculation"]["max_concurrent_run"] = 10
@@ -641,12 +641,12 @@ async def speculative_cluster():
 @pytest.mark.timeout(timeout=360)
 @pytest.mark.asyncio
 async def test_task_speculation_execution(speculative_cluster):
-    series_size = 30
+    series_size = 10
 
     def time_consuming(start, x):
         print(f"subtask index {x}")
         if (
-                x >= series_size - 1
+            x >= series_size - 1
         ):  # leave some workers not excluded from speculative submit.
             if time.time() - start < min_task_runtime:
                 print(f"subtask with index {x} starts to hang.")
@@ -656,12 +656,12 @@ async def test_task_speculation_execution(speculative_cluster):
     from functools import partial
 
     assert (
-            md.Series(list(range(series_size)), chunk_size=1)
-            .apply(partial(time_consuming, time.time()))
-            .sum()
-            .execute()
-            .fetch()
-            == pd.Series(list(range(series_size))).apply(lambda x: x * x).sum()
+        md.Series(list(range(series_size)), chunk_size=1)
+        .apply(partial(time_consuming, time.time()))
+        .sum()
+        .execute()
+        .fetch()
+        == pd.Series(list(range(series_size))).apply(lambda x: x * x).sum()
     )
 
     def time_consuming2(x):
@@ -680,7 +680,13 @@ async def test_task_speculation_execution(speculative_cluster):
             for i in range(1)
         }
     )
-    df = df.rechunk(chunk_size=2).groupby(["col0"]).apply(time_consuming2).sort_index().execute()
+    df = (
+        df.rechunk(chunk_size=2)
+        .groupby(["col0"])
+        .apply(time_consuming2)
+        .sort_index()
+        .execute()
+    )
     pd_df = (
         pd.DataFrame(
             {
@@ -688,7 +694,7 @@ async def test_task_speculation_execution(speculative_cluster):
                 for i in range(1)
             }
         )
-            .groupby(["col0"])
-            .apply(lambda x: x)
+        .groupby(["col0"])
+        .apply(lambda x: x)
     )
     pd.testing.assert_frame_equal(df.to_pandas(), pd_df)

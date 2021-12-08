@@ -298,13 +298,13 @@ class ClusterStateActor(mo.StatelessActor):
 
 
 async def new_cluster(
-        cluster_name: str = None,
-        supervisor_mem: int = 1 * 1024 ** 3,
-        worker_num: int = 1,
-        worker_cpu: int = 2,
-        worker_mem: int = 2 * 1024 ** 3,
-        config: Union[str, Dict] = None,
-        **kwargs,
+    cluster_name: str = None,
+    supervisor_mem: int = 1 * 1024 ** 3,
+    worker_num: int = 1,
+    worker_cpu: int = 2,
+    worker_mem: int = 2 * 1024 ** 3,
+    config: Union[str, Dict] = None,
+    **kwargs,
 ):
     cluster_name = cluster_name or f"ray-cluster-{int(time.time())}"
     if not ray.is_initialized():
