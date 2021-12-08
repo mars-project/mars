@@ -30,7 +30,7 @@ ray = lazy_import("ray")
 async def speculative_cluster():
     client = await new_cluster(
         "test_cluster",
-        worker_num=10,
+        worker_num=5,
         worker_cpu=2,
         worker_mem=512 * 1024 ** 2,
         supervisor_mem=100 * 1024 ** 2,
@@ -40,7 +40,7 @@ async def speculative_cluster():
                     "enabled": True,
                     "interval": 0.5,
                     "threshold": 0.3,
-                    "min_task_runtime": 0.01,
+                    "min_task_runtime": 1,
                     "multiplier": 1.5,
                 },
                 # used to kill hanged subtask to release slot.
