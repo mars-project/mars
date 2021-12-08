@@ -92,8 +92,6 @@ jobs:
             fi
           fi
           conda list -n test
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
       - name: Test with pytest
         env:
           WITH_HADOOP: ${{ matrix.with-hadoop }}
@@ -133,7 +131,7 @@ jobs:
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG -v -s --timeout=120 -m ray
+            pytest $PYTEST_CONFIG --timeout=120 -m ray
             coverage report
           fi
           if [ -n "$RUN_DASK" ]; then
