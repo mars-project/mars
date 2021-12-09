@@ -90,25 +90,38 @@ class AbstractClusterBackend(ABC):
         Reconstruct a worker
         """
 
-    async def get_worker_node_resources(self):
+    async def get_cluster_info(self):
         """
-        Get worker node resources
+        Get cluster information
 
         Returns
         -------
-        Worker node resources are like follows:
+        Cluster information is as follows:
         {
-            'mars_cluster_0': {
-                'cpu': 4,
-                'memory': 8589934592
-            },
-            'mars_cluster_1': {
-                'cpu': 4,
-                'memory': 8589934592
+            'worker_cpu': 1,
+            'worker_mem': 2147483648,
+            'config': {
+                'services': ['cluster', 'session',],
+                'cluster': {
+                    'backend': 'fixed',
+                },
+                'session': {
+                    'custom_log_dir': '/tmp/logs',
+                },
+            }
+            'worker_node_to_resources': {
+                'mars_cluster_0': {
+                    'cpu': 4,
+                    'memory': 8589934592
+                },
+                'mars_cluster_1': {
+                    'cpu': 4,
+                    'memory': 8589934592
+                }
             }
         }
         """
-        pass
+        return {}
 
 
 _cluster_backend_types: Dict[str, Type[AbstractClusterBackend]] = dict()

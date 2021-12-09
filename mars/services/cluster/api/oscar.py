@@ -287,8 +287,8 @@ class ClusterAPI(AbstractClusterAPI):
         )
         return node_allocator_ref
 
-    async def get_worker_node_resources(self):
-        return await self._locator_ref.get_worker_node_resources()
+    async def get_cluster_info(self):
+        return await self._locator_ref.get_cluster_info()
 
 
 class MockClusterAPI(ClusterAPI):

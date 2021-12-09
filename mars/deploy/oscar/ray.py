@@ -126,8 +126,8 @@ class RayClusterBackend(AbstractClusterBackend):
     def get_cluster_state_ref(self):
         return self._cluster_state_ref
 
-    async def get_worker_node_resources(self):
-        return await self._cluster_state_ref.get_worker_node_resources()
+    async def get_cluster_info(self):
+        return await self._cluster_state_ref.get_cluster_info()
 
 
 class ClusterStateActor(mo.StatelessActor):
@@ -307,8 +307,13 @@ class ClusterStateActor(mo.StatelessActor):
         self._reconstructing_tasks[address] = task
         return await task
 
-    def get_worker_node_resources(self):
-        return self._worker_node_to_resources
+    def get_cluster_info(self):
+        return {
+            "worker_cpu": self._worker_cpu,
+            "worker_mem": self._worker_mem,
+            "config": self._config,
+            "worker_node_to_resources": self._worker_node_to_resources,
+        }
 
 
 async def new_cluster(

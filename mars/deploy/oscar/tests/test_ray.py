@@ -607,6 +607,7 @@ async def test_worker_node_resources(ray_large_cluster):
     )
     async with client:
         cluster_api = await ClusterAPI.create(client._cluster.supervisor_address)
-        worker_node_resources = await cluster_api.get_worker_node_resources()
+        cluster_info = await cluster_api.get_cluster_info()
+        worker_node_resources = cluster_info.get("worker_node_to_resources")
         assert len(worker_node_resources) == 1
         assert "ray://test_cluster/0" in worker_node_resources
