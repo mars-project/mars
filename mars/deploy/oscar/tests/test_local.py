@@ -37,7 +37,7 @@ from ....lib.aio import new_isolation
 from ....storage import StorageLevel
 from ....services.storage import StorageAPI
 from ....tensor.arithmetic.add import TensorAdd
-from ....tests.core import check_dict_structure_same
+from ....tests.core import check_dict_structure_same, DICT_NOT_EMPTY
 from ..local import new_cluster
 from ..service import load_config
 from ..session import (
@@ -74,14 +74,18 @@ EXPECT_PROFILING_STRUCTURE = {
             "optimize": 0.0005879402160644531,
             "incref_fetch_tileables": 0.0010840892791748047,
             "stage_*": {
-                "tile": 0.008243083953857422,
-                "gen_subtask_graph": 0.012202978134155273,
+                "tile(*)": 0.008243083953857422,
+                "gen_subtask_graph(*)": 0.012202978134155273,
                 "run": 0.27870702743530273,
                 "total": 0.30318617820739746,
             },
             "total": 0.30951380729675293,
         },
         "serialization": {},
+        "most_calls": DICT_NOT_EMPTY,
+        "slowest_calls": DICT_NOT_EMPTY,
+        "band_subtasks": DICT_NOT_EMPTY,
+        "slowest_subtasks": DICT_NOT_EMPTY,
     }
 }
 

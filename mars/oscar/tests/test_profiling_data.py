@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 
 import pytest
 from ..profiling import ProfilingData, ProfilingDataOperator, DummyOperator
-from ...tests.core import check_dict_structure_same
+from ...tests.core import check_dict_structure_same, mock
 
 
 def test_profiling_data():
@@ -38,5 +39,28 @@ def test_profiling_data():
     finally:
         v = ProfilingData.pop("abc")
         check_dict_structure_same(
-            v, {"general": {}, "serialization": {"a": 1, "b": 1, "c": {}}}
+            v,
+            {
+                "general": {},
+                "serialization": {"a": 1, "b": 1, "c": {}},
+                "most_calls": {},
+                "slowest_calls": {},
+                "band_subtasks": {},
+                "slowest_subtasks": {},
+            },
         )
+
+
+@pytest.mark.asyncio
+@mock.patch("mars.oscar.profiling.logger.warning")
+async def test_profiling_debug(fake_warning):
+    ProfilingData.init("abc", 0.1)
+    assert len(ProfilingData._debug_task) == 1
+    assert not ProfilingData._debug_task["abc"].done()
+    await asyncio.sleep(0.5)
+    assert fake_warning.call_count > 1
+    ProfilingData.pop("abc")
+    call_count = fake_warning.call_count
+    assert len(ProfilingData._debug_task) == 0
+    await asyncio.sleep(0.5)
+    assert fake_warning.call_count == call_count

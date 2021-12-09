@@ -33,7 +33,7 @@ from ....oscar.errors import ReconstructWorkerError
 from ....serialization.ray import register_ray_serializers
 from ....services.cluster import ClusterAPI
 from ....services.scheduling.supervisor.autoscale import AutoscalerActor
-from ....tests.core import require_ray, mock
+from ....tests.core import require_ray, mock, DICT_NOT_EMPTY
 from ....utils import lazy_import
 from ..ray import (
     new_cluster,
@@ -62,8 +62,8 @@ EXPECT_PROFILING_STRUCTURE = {
             "optimize": 0.0005879402160644531,
             "incref_fetch_tileables": 0.0010840892791748047,
             "stage_*": {
-                "tile": 0.008243083953857422,
-                "gen_subtask_graph": 0.012202978134155273,
+                "tile(*)": 0.008243083953857422,
+                "gen_subtask_graph(*)": 0.012202978134155273,
                 "run": 0.27870702743530273,
                 "total": 0.30318617820739746,
             },
@@ -74,6 +74,10 @@ EXPECT_PROFILING_STRUCTURE = {
             "deserialize": 0.0011813640594482422,
             "total": 0.016109704971313477,
         },
+        "most_calls": DICT_NOT_EMPTY,
+        "slowest_calls": DICT_NOT_EMPTY,
+        "band_subtasks": DICT_NOT_EMPTY,
+        "slowest_subtasks": DICT_NOT_EMPTY,
     }
 }
 
