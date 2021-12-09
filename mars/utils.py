@@ -1085,27 +1085,40 @@ def arrow_array_to_objects(
     return obj
 
 
+_enter_counter = 0
+_initial_session = None
+
+
 def enter_current_session(func: Callable):
     @functools.wraps(func)
     def wrapped(cls, ctx, op):
         from .deploy.oscar.session import AbstractSession, get_default_session
 
+        global _enter_counter, _initial_session
         # skip in some test cases
         if not hasattr(ctx, "get_current_session"):
             return func(cls, ctx, op)
 
-        session = ctx.get_current_session()
-        prev_default_session = get_default_session()
-        session.as_default()
+        with AbstractSession._lock:
+            if _enter_counter == 0:
+                # to handle nested call, only set initial session
+                # in first call
+                session = ctx.get_current_session()
+                _initial_session = get_default_session()
+                session.as_default()
+            _enter_counter += 1
 
         try:
             result = func(cls, ctx, op)
         finally:
-            if prev_default_session:
-                prev_default_session.as_default()
-            else:
-                AbstractSession.reset_default()
-
+            with AbstractSession._lock:
+                _enter_counter -= 1
+                if _enter_counter == 0:
+                    # set previous session when counter is 0
+                    if _initial_session:
+                        _initial_session.as_default()
+                    else:
+                        AbstractSession.reset_default()
         return result
 
     return wrapped
