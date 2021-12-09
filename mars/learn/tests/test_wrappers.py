@@ -23,11 +23,9 @@ from ... import tensor as mt
 from ..wrappers import ParallelPostFit
 
 
-raw_x, raw_y = make_classification(n_samples=1000)
-X, y = mt.tensor(raw_x, chunk_size=100), mt.tensor(raw_y, chunk_size=100)
-
-
 def test_parallel_post_fit_basic(setup):
+    raw_x, raw_y = make_classification(n_samples=1000)
+    X, y = mt.tensor(raw_x, chunk_size=100), mt.tensor(raw_y, chunk_size=100)
     clf = ParallelPostFit(GradientBoostingClassifier())
     clf.fit(X, y)
 
@@ -47,6 +45,8 @@ def test_parallel_post_fit_basic(setup):
 
 
 def test_parallel_post_fit_predict(setup):
+    raw_x, raw_y = make_classification(n_samples=1000)
+    X, y = mt.tensor(raw_x, chunk_size=100), mt.tensor(raw_y, chunk_size=100)
     base = LogisticRegression(random_state=0, n_jobs=1, solver="lbfgs")
     wrap = ParallelPostFit(LogisticRegression(random_state=0, n_jobs=1, solver="lbfgs"))
 
@@ -67,6 +67,8 @@ def test_parallel_post_fit_predict(setup):
 
 
 def test_parallel_post_fit_transform(setup):
+    raw_x, raw_y = make_classification(n_samples=1000)
+    X, y = mt.tensor(raw_x, chunk_size=100), mt.tensor(raw_y, chunk_size=100)
     base = PCA(random_state=0)
     wrap = ParallelPostFit(PCA(random_state=0))
 
@@ -79,6 +81,8 @@ def test_parallel_post_fit_transform(setup):
 
 
 def test_parallel_post_fit_multiclass(setup):
+    raw_x, raw_y = make_classification(n_samples=1000)
+    X, y = mt.tensor(raw_x, chunk_size=100), mt.tensor(raw_y, chunk_size=100)
     raw_x, raw_y = make_classification(n_classes=3, n_informative=4)
     X, y = mt.tensor(raw_x, chunk_size=50), mt.tensor(raw_y, chunk_size=50)
 

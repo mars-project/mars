@@ -59,6 +59,7 @@ from ..utils import (
     on_serialize_numpy_type,
     ceildiv,
     tokenize,
+    estimate_pandas_size,
 )
 from .utils import fetch_corner_data, ReprSeries, parse_index, merge_index_value
 from ..tensor import statistics
@@ -563,20 +564,44 @@ class _ToPandasMixin(_ExecuteAndFetchMixin):
 class _BatchedFetcher:
     __slots__ = ()
 
-    def _iter(self, batch_size=1000, session=None, **kw):
+    def _iter(self, batch_size=None, session=None, **kw):
         from .indexing.iloc import iloc
 
-        size = self.shape[0]
-        n_batch = ceildiv(size, batch_size)
+        if batch_size is not None:
+            size = self.shape[0]
+            n_batch = ceildiv(size, batch_size)
 
-        if n_batch > 1:
-            for i in range(n_batch):
-                batch_data = iloc(self)[batch_size * i : batch_size * (i + 1)]
-                yield batch_data._fetch(session=session, **kw)
+            if n_batch > 1:
+                for i in range(n_batch):
+                    batch_data = iloc(self)[batch_size * i : batch_size * (i + 1)]
+                    yield batch_data._fetch(session=session, **kw)
+            else:
+                yield self._fetch(session=session, **kw)
         else:
-            yield self._fetch(session=session, **kw)
+            # if batch_size is not specified, use first batch to estimate
+            # batch_size.
+            default_batch_bytes = 50 * 1024 ** 2
+            first_batch = 1000
+            size = self.shape[0]
 
-    def iterbatch(self, batch_size=1000, session=None, **kw):
+            if size >= first_batch:
+                batch_data = iloc(self)[:first_batch]
+                first_batch_data = batch_data._fetch(session=session, **kw)
+                yield first_batch_data
+                data_size = estimate_pandas_size(first_batch_data)
+                batch_size = int(default_batch_bytes / data_size * first_batch)
+                n_batch = ceildiv(size - 1000, batch_size)
+                for i in range(n_batch):
+                    batch_data = iloc(self)[
+                        first_batch
+                        + batch_size * i : first_batch
+                        + batch_size * (i + 1)
+                    ]
+                    yield batch_data._fetch(session=session, **kw)
+            else:
+                yield self._fetch(session=session, **kw)
+
+    def iterbatch(self, batch_size=None, session=None, **kw):
         # trigger execution
         self.execute(session=session, **kw)
         return self._iter(batch_size=batch_size, session=session)
@@ -584,7 +609,7 @@ class _BatchedFetcher:
     def fetch(self, session=None, **kw):
         from .indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 
-        batch_size = kw.pop("batch_size", 1000)
+        batch_size = kw.pop("batch_size", None)
         if isinstance(self.op, (DataFrameIlocGetItem, SeriesIlocGetItem)):
             # see GH#1871
             # already iloc, do not trigger batch fetch
