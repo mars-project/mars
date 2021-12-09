@@ -600,7 +600,7 @@ async def test_ownership_when_scale_in(ray_large_cluster):
 )
 @require_ray
 @pytest.mark.asyncio
-async def test_worker_node_resources(ray_large_cluster):
+async def test_get_cluster_info(ray_large_cluster):
     worker_cpu, worker_mem = 1, 100 * 1024 ** 2
     client = await new_cluster(
         "test_cluster", worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem
@@ -608,6 +608,11 @@ async def test_worker_node_resources(ray_large_cluster):
     async with client:
         cluster_api = await ClusterAPI.create(client._cluster.supervisor_address)
         cluster_info = await cluster_api.get_cluster_info()
+        assert cluster_info
+        assert "worker_cpu" in cluster_info
+        assert "worker_mem" in cluster_info
+        assert "config" in cluster_info
+        assert "worker_node_to_resources" in cluster_info
         worker_node_resources = cluster_info.get("worker_node_to_resources")
         assert len(worker_node_resources) == 1
         assert "ray://test_cluster/0" in worker_node_resources
