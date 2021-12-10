@@ -34,5 +34,6 @@ scheduling:
     enabled: false
     min_workers: 1  # Must >=1, mars need at least 1 worker to fetch data
     max_workers: 100
+    initial_round_scale_out_workers: 2
     scheduler_backlog_timeout: 60
     worker_idle_timeout: 120

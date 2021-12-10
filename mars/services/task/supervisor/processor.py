@@ -37,6 +37,7 @@ from ....oscar.profiling import (
     ProfilingData,
     MARS_ENABLE_PROFILING,
 )
+from ....oscar.debug import debug_async_timeout
 from ....typing import TileableType, BandType
 from ....utils import build_fetch, Timer
 from ...cluster.api import ClusterAPI
@@ -793,8 +794,13 @@ class TaskProcessorActor(mo.Actor):
         if subtask.subtask_id not in self._subtask_decref_events:
             self._subtask_decref_events[subtask.subtask_id] = asyncio.Event()
         else:  # pragma: no cover
-            await self._subtask_decref_events[subtask.subtask_id].wait()
-            return
+            with debug_async_timeout(
+                "async_call_timeout",
+                "Wait event of decref input of subtask %s.",
+                subtask.subtask_id,
+            ):
+                await self._subtask_decref_events[subtask.subtask_id].wait()
+                return
 
         decref_chunk_keys = []
         for in_subtask in subtask_graph.iter_predecessors(subtask):
@@ -811,7 +817,12 @@ class TaskProcessorActor(mo.Actor):
                             # decref main key as well
                             decref_chunk_keys.extend([key[0] for key in data_keys])
                 decref_chunk_keys.append(result_chunk.key)
-        await self._lifecycle_api.decref_chunks(decref_chunk_keys)
+        with debug_async_timeout(
+            "async_call_timeout",
+            "Call lifecycle_api.decref_chunks with keys %s.",
+            decref_chunk_keys,
+        ):
+            await self._lifecycle_api.decref_chunks(decref_chunk_keys)
 
         # `set_subtask_result` will be called when subtask finished
         # but report progress will call set_subtask_result too,

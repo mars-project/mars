@@ -20,6 +20,7 @@ from typing import Dict, List
 from .... import oscar as mo
 from ....core import ChunkGraph
 from ....core.operand import Fuse
+from ....metric import Metrics
 from ....optimization.logical import OptimizationRecords
 from ....typing import BandType, TileableType
 from ....utils import get_params_fields
@@ -84,12 +85,24 @@ class TaskStageProcessor:
         self._done = asyncio.Event()
         self._cancelled = asyncio.Event()
 
+        # metrics
+        self._stage_execution_time = Metrics.gauge(
+            'mars.stage_execution_time_secs',
+            'Time consuming in seconds to execute a stage',
+            ('session_id', 'task_id', 'stage_id'))
+
     def is_cancelled(self):
         return self._cancelled.is_set()
 
     async def _schedule_subtasks(self, subtasks: List[Subtask]):
+        """Submitted subtasks won't be resubmitted again."""
         if not subtasks:
             return
+        subtasks = [
+            subtask
+            for subtask in subtasks
+            if subtask.subtask_id not in self._submitted_subtask_ids
+        ]
         self._submitted_subtask_ids.update(subtask.subtask_id for subtask in subtasks)
         return await self._scheduling_api.add_subtasks(
             subtasks, [subtask.priority for subtask in subtasks]
@@ -115,11 +128,10 @@ class TaskStageProcessor:
     def _schedule_done(self):
         self._done.set()
 
-    async def set_subtask_result(self, result: SubtaskResult):
+    async def set_subtask_result(self, result: SubtaskResult, band: BandType = None):
+        assert result.status.is_done
         subtask = self.subtask_id_to_subtask[result.subtask_id]
-        self.subtask_results[subtask] = result.merge_bands(
-            self.subtask_results.get(subtask)
-        )
+        #  update subtask_results in `TaskProcessorActor.set_subtask_result`
         self._submitted_subtask_ids.difference_update([result.subtask_id])
 
         all_done = len(self.subtask_results) == len(self.subtask_graph)
@@ -136,7 +148,7 @@ class TaskStageProcessor:
 
             # tell scheduling to finish subtasks
             await self._scheduling_api.finish_subtasks(
-                [result.subtask_id], schedule_next=not error_or_cancelled
+                [result.subtask_id], bands=[band], schedule_next=not error_or_cancelled
             )
             if self.result.status != TaskStatus.terminated:
                 self.result = TaskResult(
@@ -160,11 +172,30 @@ class TaskStageProcessor:
                                 result.traceback,
                             ),
                         )
+                    if result.status == SubtaskStatus.cancelled:
+                        logger.warning(
+                            "Subtask %s from band %s canceled.",
+                            subtask.subtask_id,
+                            band,
+                        )
+                    logger.info(
+                        "Start to cancel stage %s of task %s.", self.stage_id, self.task
+                    )
                     # if error or cancel, cancel all submitted subtasks
                     await self._scheduling_api.cancel_subtasks(
                         list(self._submitted_subtask_ids)
                     )
                 self._schedule_done()
+                cost_time_secs = self.result.end_time - self.result.start_time
+                logger.info(
+                    'Time consuming to execute a stage is %ss with '
+                    'session id %s, task id %s, stage id %s',
+                    cost_time_secs, self.result.session_id, self.result.task_id,
+                    self.result.stage_id)
+                self._stage_execution_time.record(cost_time_secs, {
+                    'session_id': self.result.session_id,
+                    'task_id': self.result.task_id,
+                    'stage_id': self.result.stage_id})
         else:
             # not terminated, push success subtasks to queue if they are ready
             to_schedule_subtasks = []
@@ -196,6 +227,7 @@ class TaskStageProcessor:
         await self._done.wait()
 
     async def cancel(self):
+        logger.debug("Start to cancel stage %s of task %s.", self.stage_id, self.task)
         if self._done.is_set():  # pragma: no cover
             # already finished, ignore cancel
             return

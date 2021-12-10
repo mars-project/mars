@@ -60,6 +60,11 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
 from .lib.version import parse as parse_version
 from .typing import ChunkType, TileableType, EntityType, OperandType
 
+try:
+    import ray
+except ImportError:
+    ray = None
+
 logger = logging.getLogger(__name__)
 random.seed(int(time.time()) * os.getpid())
 pd_release_version: Tuple[int] = parse_version(pd.__version__).release
@@ -1575,3 +1580,9 @@ def wrap_exception(
             "__basename__": name,
         },
     )().with_traceback(traceback)
+
+
+def report_event(severity, label, message):
+    if ray and ray.is_initialized():
+        severity = getattr(ray.EventSeverity, severity) if isinstance(severity, str) else severity
+        ray.report_event(severity, label, message)
