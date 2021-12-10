@@ -106,5 +106,11 @@ try:
         hyp0f1,
         TensorHYP0F1,
     )
+    from .airy_funcs import (
+        airy,
+        TensorAiry,
+        airye,
+        TensorAirye,
+    )
 except ImportError:  # pragma: no cover
     pass

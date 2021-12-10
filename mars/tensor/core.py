@@ -147,7 +147,10 @@ class TensorChunkData(ChunkData):
 
     @property
     def dtype(self):
-        return getattr(self, "_dtype", None) or self.op.dtype
+        try:
+            return getattr(self, "_dtype", None) or self.op.dtype
+        except AttributeError:
+            return None
 
     @property
     def order(self):
@@ -286,7 +289,10 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
 
     @property
     def dtype(self):
-        return getattr(self, "_dtype", None) or self.op.dtype
+        try:
+            return getattr(self, "_dtype", None) or self.op.dtype
+        except AttributeError:
+            return None
 
     @property
     def order(self):

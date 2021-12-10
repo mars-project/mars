@@ -108,7 +108,7 @@ class TensorElementWiseWithInputs(TensorElementWise):
 
 
 def _handle_out_dtype(val, dtype):
-    if val.dtype != dtype:
+    if not isinstance(val, tuple) and val.dtype != dtype:
         return val.astype(dtype)
     return val
 
