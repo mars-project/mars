@@ -14,5 +14,7 @@ scheduling:
     enabled: false
     scheduler_backlog_timeout: 20
     worker_idle_timeout: 40
+  subtask_max_retries: 3
+  subtask_max_reschedules: 2
 metrics:
   backend: ray
