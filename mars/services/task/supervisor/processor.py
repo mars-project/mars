@@ -547,6 +547,8 @@ class TaskProcessorActor(mo.Actor):
         _, pending = yield asyncio.wait(fs, timeout=timeout)
         if not pending:
             raise mo.Return(self.result())
+        else:
+            [fut.cancel() for fut in pending]
 
     async def cancel(self):
         if self._cur_processor:

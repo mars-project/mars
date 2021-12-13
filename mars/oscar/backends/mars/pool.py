@@ -240,7 +240,7 @@ class MainActorPool(MainActorPoolBase):
         await asyncio.to_thread(process.join, 5)
 
     async def is_sub_pool_alive(self, process: multiprocessing.Process):
-        return process.is_alive()
+        return await asyncio.to_thread(process.is_alive)
 
     async def recover_sub_pool(self, address: str):
         process_index = self._config.get_process_index(address)
