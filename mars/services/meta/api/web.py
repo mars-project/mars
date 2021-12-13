@@ -48,6 +48,16 @@ class MetaWebAPIHandler(MarsServiceWebAPIHandler):
         result = await oscar_api.get_chunk_meta(data_key, fields=fields, error=error)
         self.write(serialize_serializable(result))
 
+    @web_api("", method="post")
+    async def get_chunks_meta(self, session_id: str):
+        body_args = deserialize_serializable(self.request.body)
+        oscar_api = await self._get_oscar_meta_api(session_id)
+        get_metas = []
+        for data_key, fields, error in body_args:
+            get_metas.append(oscar_api.get_chunk_meta.delay(data_key, fields, error))
+        results = await oscar_api.get_chunk_meta.batch(*get_metas)
+        self.write(serialize_serializable(results))
+
 
 web_handlers = {MetaWebAPIHandler.get_root_pattern(): MetaWebAPIHandler}
 
@@ -66,4 +76,17 @@ class WebMetaAPI(AbstractMetaAPI, MarsWebAPIClientMixin):
         if fields:
             params["fields"] = ",".join(fields)
         res = await self._request_url("GET", req_addr, params=params)
+        return deserialize_serializable(res.body)
+
+    @get_chunk_meta.batch
+    async def get_chunks_meta(self, args_list, kwargs_list):
+        get_chunk_metas = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            object_id, fields, error = self.get_chunk_meta.bind(*args, **kwargs)
+            get_chunk_metas.append([object_id, fields, error])
+
+        req_addr = f"{self._address}/api/session/{self._session_id}/meta"
+        res = await self._request_url(
+            "POST", req_addr, data=serialize_serializable(get_chunk_metas)
+        )
         return deserialize_serializable(res.body)
