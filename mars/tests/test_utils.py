@@ -27,6 +27,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from io import BytesIO
 from enum import Enum
+from random import random
 
 import numpy as np
 
@@ -559,3 +560,34 @@ def test_web_serialize_lambda():
     s = utils.serialize_serializable(graph)
     f = utils.deserialize_serializable(s)
     assert isinstance(f, TileableGraph)
+
+def test_percentile_report():
+    from ..utils import _percentile_builder, Percentile
+    def gen_callback(data):
+        def callback(value):
+            data.append(value)
+        return callback
+
+    data90 = []
+    data95 = []
+    data99 = []
+
+    all_data = []
+    percentile_args= [
+                (Percentile.PercentileType.P90, gen_callback(data90), 100),
+                (Percentile.PercentileType.P95, gen_callback(data95), 100),
+                (Percentile.PercentileType.P99, gen_callback(data99), 100),
+    ]
+    percentile_list = [
+        _percentile_builder[percentile_type](callback, window)
+        for percentile_type, callback, window in percentile_args]
+    for _ in range(199):
+        data = random()
+        all_data.append(data)
+        for percentile in percentile_list:
+            percentile.record_data(data)
+    sub_data = sorted(all_data[:100])
+    print(sub_data[:10])
+    assert len(data90) == 1 and sub_data[10 - 1] == data90[0]
+    assert len(data95) == 1 and sub_data[5 - 1] == data95[0]
+    assert len(data99) == 1 and sub_data[1 - 1] == data99[0]
