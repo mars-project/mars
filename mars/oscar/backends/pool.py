@@ -14,7 +14,6 @@
 
 import asyncio
 import concurrent.futures as futures
-import contextlib
 import itertools
 import logging
 import os
@@ -314,12 +313,10 @@ class AbstractActorPool(ABC):
 
         return processor.result
 
-    @contextlib.contextmanager
-    def _run_coro(self, message_id: bytes, coro: Coroutine):
-        future = asyncio.create_task(coro)
-        self._process_messages[message_id] = future
+    async def _run_coro(self, message_id: bytes, coro: Coroutine):
+        self._process_messages[message_id] = asyncio.tasks.current_task()
         try:
-            yield future
+            return await coro
         finally:
             self._process_messages.pop(message_id, None)
 
@@ -332,10 +329,9 @@ class AbstractActorPool(ABC):
                 message,
                 channel,
             ):
-                with self._run_coro(
+                processor.result = await self._run_coro(
                     message.message_id, handler(self, message)
-                ) as future:
-                    processor.result = await future
+                )
         try:
             await channel.send(processor.result)
         except (ChannelClosed, ConnectionResetError):
@@ -464,8 +460,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             actor.uid = actor_id
             actor.address = address = self.external_address
             self._actors[actor_id] = actor
-            with self._run_coro(message.message_id, actor.__post_create__()) as future:
-                await future
+            await self._run_coro(message.message_id, actor.__post_create__())
 
             result = ActorRef(address, actor_id)
             # ensemble result message
@@ -491,8 +486,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
                 actor = self._actors[actor_id]
             except KeyError:
                 raise ActorNotExist(f"Actor {actor_id} does not exist")
-            with self._run_coro(message.message_id, actor.__pre_destroy__()) as future:
-                await future
+            await self._run_coro(message.message_id, actor.__pre_destroy__())
             del self._actors[actor_id]
 
             processor.result = ResultMessage(
@@ -523,8 +517,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             if actor_id not in self._actors:
                 raise ActorNotExist(f"Actor {actor_id} does not exist")
             coro = self._actors[actor_id].__on_receive__(message.content)
-            with self._run_coro(message.message_id, coro) as future:
-                result = await future
+            result = await self._run_coro(message.message_id, coro)
             processor.result = ResultMessage(
                 message.message_id, result, protocol=message.protocol
             )

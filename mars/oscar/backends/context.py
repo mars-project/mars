@@ -70,13 +70,15 @@ class MarsActorContext(BaseActorContext):
 
     async def _wait(self, future: asyncio.Future, address: str, message: _MessageBase):
         try:
-            await asyncio.wait([future])
+            await asyncio.shield(future)
         except asyncio.CancelledError:
             try:
                 await self.cancel(address, message.message_id)
             except CannotCancelTask:
                 # cancel failed, already finished
                 raise asyncio.CancelledError
+        except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+            pass
         return await future
 
     async def create_actor(
