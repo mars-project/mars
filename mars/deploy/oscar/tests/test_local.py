@@ -399,7 +399,7 @@ async def test_session_progress(create_cluster):
             break
         await asyncio.sleep(0.1)
     else:
-        raise Exception("progress test failed.")
+        raise Exception(f"progress test failed, actual value {info.progress()}.")
 
     await info
     assert info.result() is None

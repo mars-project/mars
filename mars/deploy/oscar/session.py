@@ -805,53 +805,71 @@ class _IsolatedSession(AbstractAsyncSession):
         else:
             return await cls._init(address, session_id, new=new, timeout=timeout)
 
+    async def _update_progress(self, task_id: str, progress: Progress):
+        zero_acc_time = 0
+        delay = 0.5
+        while True:
+            try:
+                last_progress_value = progress.value
+                progress.value = await self._task_api.get_task_progress(task_id)
+                if abs(progress.value - last_progress_value) < 1e-4:
+                    # if percentage does not change, we add delay time by 0.5 seconds every time
+                    zero_acc_time = min(5, zero_acc_time + 0.5)
+                    delay = zero_acc_time
+                else:
+                    # percentage changes, we use percentage speed to calc progress time
+                    zero_acc_time = 0
+                    speed = abs(progress.value - last_progress_value) / delay
+                    # one percent for one second
+                    delay = 0.01 / speed
+                delay = max(0.5, min(delay, 5.0))
+                await asyncio.sleep(delay)
+            except asyncio.CancelledError:
+                break
+
     async def _run_in_background(
         self, tileables: list, task_id: str, progress: Progress
     ):
         with enter_mode(build=True, kernel=True):
             # wait for task to finish
             cancelled = False
+            progress_task = asyncio.create_task(
+                self._update_progress(task_id, progress)
+            )
             start_time = time.time()
-            while True:
-                try:
-                    if not cancelled:
-                        task_result: Union[TaskResult, None] = None
-                        try:
-                            task_result = await self._task_api.wait_task(
-                                task_id, timeout=0.5
-                            )
-                        finally:
-                            if task_result is None:
-                                # not finished, set progress
-                                progress.value = await self._task_api.get_task_progress(
-                                    task_id
-                                )
-                            else:
-                                progress.value = 1.0
-                        if task_result is not None:
-                            break
-                    else:
-                        # wait for task to finish
-                        task_result: TaskResult = await self._task_api.wait_task(
-                            task_id
-                        )
+            task_result: Optional[TaskResult] = None
+            try:
+                if self.timeout is None:
+                    check_interval = 30
+                else:
+                    elapsed = time.time() - start_time
+                    check_interval = min(self.timeout - elapsed, 30)
+
+                while True:
+                    task_result = await self._task_api.wait_task(
+                        task_id, timeout=check_interval
+                    )
+                    if task_result is not None:
                         break
-                except asyncio.CancelledError:
-                    # cancelled
-                    cancelled = True
-                    await self._task_api.cancel_task(task_id)
-                except TimeoutError:  # pragma: no cover
-                    # ignore timeout when waiting for subtask progresses
-                    pass
-                finally:
-                    if (
+                    elif (
                         self.timeout is not None
                         and time.time() - start_time > self.timeout
                     ):
                         raise TimeoutError(
                             f"Task({task_id}) running time > {self.timeout}"
                         )
-            if task_result.error:
+            except asyncio.CancelledError:
+                # cancelled
+                cancelled = True
+                await self._task_api.cancel_task(task_id)
+            finally:
+                progress_task.cancel()
+                if task_result is not None:
+                    progress.value = 1.0
+                else:
+                    # not finished, set progress
+                    progress.value = await self._task_api.get_task_progress(task_id)
+            if task_result is not None and task_result.error:
                 raise task_result.error.with_traceback(task_result.traceback)
             if cancelled:
                 return
