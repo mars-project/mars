@@ -14,6 +14,7 @@
 
 import os
 import pytest
+import traceback
 import numpy as np
 import pandas as pd
 
@@ -239,22 +240,43 @@ async def test_rerun_subtask_describe(fault_cluster, fault_config):
 @pytest.mark.parametrize(
     "fault_cluster", [{"config": RERUN_SUBTASK_CONFIG_FILE}], indirect=True
 )
+@pytest.mark.parametrize(
+    "fault_config",
+    [
+        [
+            FaultType.UnhandledException,
+            {FaultPosition.ON_EXECUTE_OPERAND: 1},
+            pytest.raises(FaultInjectionUnhandledError),
+            ["_UnhandledException", "handle_fault"],
+        ],
+        [
+            FaultType.Exception,
+            {FaultPosition.ON_EXECUTE_OPERAND: 100},
+            pytest.raises(FaultInjectionError),
+            ["_ExceedMaxRerun", "handle_fault"],
+        ],
+    ],
+)
 @pytest.mark.asyncio
-async def test_rerun_subtask_unhandled(fault_cluster):
+async def test_rerun_subtask_fail(fault_cluster, fault_config):
+    fault_type, fault_count, expect_raises, exception_match = fault_config
     name = await create_fault_injection_manager(
         session_id=fault_cluster.session.session_id,
         address=fault_cluster.session.address,
-        fault_count={FaultPosition.ON_EXECUTE_OPERAND: 1},
-        fault_type=FaultType.UnhandledException,
+        fault_count=fault_count,
+        fault_type=fault_type,
     )
+    exception_typename, stack_string = exception_match
     extra_config = {ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME: name}
 
     raw = np.random.RandomState(0).rand(10, 10)
     a = mt.tensor(raw, chunk_size=5)
     b = a + 1
 
-    with pytest.raises(FaultInjectionUnhandledError):
+    with expect_raises as e:
         b.execute(extra_config=extra_config)
+    assert e.typename == exception_typename, "".join(traceback.format_tb(e.tb))
+    assert e.traceback[-1].name == stack_string, "".join(traceback.format_tb(e.tb))
 
 
 @pytest.mark.parametrize(
@@ -266,29 +288,36 @@ async def test_rerun_subtask_unhandled(fault_cluster):
         [
             FaultType.Exception,
             {FaultPosition.ON_EXECUTE_OPERAND: 1},
-            pytest.raises(FaultInjectionError, match="Fault Injection"),
+            pytest.raises(FaultInjectionError, match="RemoteFunction"),
+            ["_UnretryableException", "handle_fault"],
         ],
         [
             FaultType.ProcessExit,
             {FaultPosition.ON_EXECUTE_OPERAND: 1},
             pytest.raises(ServerClosed),
+            ["_UnretryableException", "*"],
         ],
     ],
 )
 @pytest.mark.asyncio
 async def test_retryable(fault_cluster, fault_config):
-    fault_type, fault_count, expect_raises = fault_config
+    fault_type, fault_count, expect_raises, exception_match = fault_config
     name = await create_fault_injection_manager(
         session_id=fault_cluster.session.session_id,
         address=fault_cluster.session.address,
         fault_count=fault_count,
         fault_type=fault_type,
     )
+    exception_typename, stack_string = exception_match
     extra_config = {ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME: name}
 
     def f(x):
         return x + 1
 
     r = spawn(f, args=(1,), retry_when_fail=False)
-    with expect_raises:
+    with expect_raises as e:
         r.execute(extra_config=extra_config)
+    assert e.typename == exception_typename, "".join(traceback.format_tb(e.tb))
+    assert stack_string == "*" or e.traceback[-1].name == stack_string, "".join(
+        traceback.format_tb(e.tb)
+    )

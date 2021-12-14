@@ -168,7 +168,7 @@ async def test_task_error(start_test_service):
 
     await task_api.wait_task(task_id, timeout=10)
     results = await task_api.get_task_results(progress=True)
-    assert type(results[0].error) is SystemError
+    assert isinstance(results[0].error, SystemError)
 
 
 @pytest.mark.asyncio
