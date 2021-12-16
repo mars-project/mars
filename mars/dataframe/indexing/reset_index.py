@@ -29,6 +29,8 @@ from ..utils import (
     standardize_range_index,
 )
 
+_notset = object()
+
 
 class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.RESET_INDEX
@@ -475,7 +477,7 @@ def df_reset_index(
 
 
 def series_reset_index(
-    series, level=None, drop=False, name=None, inplace=False, incremental_index=False
+    series, level=None, drop=False, name=_notset, inplace=False, incremental_index=False
 ):
     """
     Generate a new DataFrame or Series with the index reset.
@@ -594,6 +596,9 @@ def series_reset_index(
     2  baz  one    2
     3  baz  two    3
     """
+    if name is _notset:
+        name = series.name if series.name is not None else 0
+
     op = DataFrameResetIndex(
         level=level,
         drop=drop,

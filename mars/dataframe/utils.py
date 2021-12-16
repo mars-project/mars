@@ -632,7 +632,7 @@ def build_series(
         except AttributeError:
             series_index = series_obj.index[:0]
     else:
-        series_index = index[:0] if index else None
+        series_index = index[:0] if index is not None else None
 
     for size, fill_value in zip(sizes, fill_values):
         empty_series = build_empty_series(dtype, name=name, index=series_index)
