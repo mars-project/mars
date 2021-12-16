@@ -843,6 +843,11 @@ def test_groupby_head(setup):
         r.execute().fetch().sort_index(), df1.groupby("b").head(1)
     )
 
+    r = mdf.groupby("b").head(-1)
+    pd.testing.assert_frame_equal(
+        r.execute().fetch().sort_index(), df1.groupby("b").head(-1)
+    )
+
     # test head with selection
     r = mdf.groupby("b")["a", "d"].head(1)
     pd.testing.assert_frame_equal(

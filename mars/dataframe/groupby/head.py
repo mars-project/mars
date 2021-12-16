@@ -17,29 +17,22 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import OutputType, get_output_types, recursive_tile
-from ...serialization.serializables import DictField, Int64Field
+from ...lib.version import parse as parse_version
+from ...serialization.serializables import DictField, Int64Field, BoolField
 from ..core import IndexValue
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_concatenated_rows_frame, parse_index
+
+_pandas_enable_negative = parse_version(pd.__version__).release >= (1, 4, 0)
 
 
 class GroupByHead(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.GROUPBY_HEAD
     _op_module_ = "dataframe.groupby"
 
-    _row_count = Int64Field("row_count")
-    _groupby_params = DictField("groupby_params")
-
-    def __init__(self, row_count=None, groupby_params=None, **kw):
-        super().__init__(_row_count=row_count, _groupby_params=groupby_params, **kw)
-
-    @property
-    def row_count(self) -> int:
-        return self._row_count
-
-    @property
-    def groupby_params(self) -> dict:
-        return self._groupby_params
+    row_count = Int64Field("row_count")
+    groupby_params = DictField("groupby_params")
+    enable_negative = BoolField("enable_negative")
 
     def __call__(self, groupby):
         df = groupby
@@ -72,30 +65,32 @@ class GroupByHead(DataFrameOperand, DataFrameOperandMixin):
         groupby_params = op.groupby_params.copy()
         selection = groupby_params.pop("selection", None)
 
+        enable_negative = _pandas_enable_negative and op.enable_negative
+
         if len(in_df.shape) > 1:
             in_df = build_concatenated_rows_frame(in_df)
         out_df = op.outputs[0]
 
-        # when row_count is not positive or there is only one chunk,
-        # tile with a single chunk
-        if op.row_count <= 0 or len(in_df.chunks) == 0:
+        # when row_count is not positive and pandas does not support negative head,
+        #  or there is only one chunk, tile with a single chunk
+        if (not enable_negative and op.row_count <= 0) or len(in_df.chunks) <= 1:
+            row_num = 0 if not enable_negative and op.row_count <= 0 else np.nan
+            new_shape = (row_num,)
+            new_nsplits = ((row_num,),)
+            if out_df.ndim > 1:
+                new_shape += (out_df.shape[1],)
+                new_nsplits += ((out_df.shape[1],),)
+
             c = in_df.chunks[0]
             chunk_op = op.copy().reset_key()
-            params = c.params
-            row_num = 0 if op.row_count <= 0 else np.nan
-            params["shape"] = (row_num,) + c.shape[1:]
-            params["index_value"] = out_df.index_value
+            params = out_df.params
+            params["shape"] = new_shape
+            params["index"] = (0,) * out_df.ndim
             out_chunk = chunk_op.new_chunk([c], **params)
 
             tileable_op = op.copy().reset_key()
-            params = out_df.params
-            params["shape"] = (row_num,) + c.shape[1:]
-            params["index_value"] = out_df.index_value
             return tileable_op.new_tileables(
-                [in_df],
-                nsplits=((row_num,),) + in_df.nsplits[1:],
-                chunks=[out_chunk],
-                **params
+                [in_df], nsplits=new_nsplits, chunks=[out_chunk], **params
             )
 
         if in_df.ndim > 1 and selection:
@@ -116,15 +111,19 @@ class GroupByHead(DataFrameOperand, DataFrameOperandMixin):
                 in_df = yield from recursive_tile(in_df[pre_selection])
 
         # generate pre chunks
-        pre_chunks = []
-        for c in in_df.chunks:
-            pre_op = op.copy().reset_key()
-            pre_op._output_types = get_output_types(c)
-            pre_op._groupby_params = op.groupby_params.copy()
-            pre_op._groupby_params.pop("selection", None)
-            params = c.params
-            params["shape"] = (np.nan,) + c.shape[1:]
-            pre_chunks.append(pre_op.new_chunk([c], **params))
+        if op.row_count < 0:
+            # when we have negative row counts, pre-groupby optimization is not possible
+            pre_chunks = in_df.chunks
+        else:
+            pre_chunks = []
+            for c in in_df.chunks:
+                pre_op = op.copy().reset_key()
+                pre_op._output_types = get_output_types(c)
+                pre_op.groupby_params = op.groupby_params.copy()
+                pre_op.groupby_params.pop("selection", None)
+                params = c.params
+                params["shape"] = (np.nan,) + c.shape[1:]
+                pre_chunks.append(pre_op.new_chunk([c], **params))
 
         new_op = op.copy().reset_key()
         new_op._output_types = get_output_types(in_df)
@@ -142,8 +141,8 @@ class GroupByHead(DataFrameOperand, DataFrameOperandMixin):
         post_chunks = []
         for c in grouped.chunks:
             post_op = op.copy().reset_key()
-            post_op._groupby_params = op.groupby_params.copy()
-            post_op._groupby_params.pop("selection", None)
+            post_op.groupby_params = op.groupby_params.copy()
+            post_op.groupby_params.pop("selection", None)
             if op.output_types[0] == OutputType.dataframe:
                 index = c.index
             else:
@@ -175,7 +174,10 @@ class GroupByHead(DataFrameOperand, DataFrameOperandMixin):
         if selection:
             grouped = grouped[selection]
 
-        ctx[op.outputs[0].key] = grouped.head(op.row_count)
+        result = grouped.head(op.row_count)
+        if not op.enable_negative:  # pragma: no cover
+            result = result.iloc[:0]
+        ctx[op.outputs[0].key] = result
 
 
 def head(groupby, n=5):
@@ -215,5 +217,9 @@ def head(groupby, n=5):
     groupby_params = groupby.op.groupby_params.copy()
     groupby_params.pop("as_index", None)
 
-    op = GroupByHead(row_count=n, groupby_params=groupby_params)
+    op = GroupByHead(
+        row_count=n,
+        groupby_params=groupby_params,
+        enable_negative=_pandas_enable_negative,
+    )
     return op(groupby)
