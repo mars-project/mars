@@ -28,13 +28,11 @@ else
   CONDA=$(echo "/$CONDA" | sed -e 's/\\/\//g' -e 's/://')
   echo "Using installed conda at $CONDA"
   CONDA_BIN_PATH=$CONDA/Scripts
-  export PATH="$CONDA/envs/test/Scripts:$CONDA/envs/test:$CONDA/Scripts:$CONDA:$PATH"
 fi
 $CONDA_BIN_PATH/conda create --quiet --yes -n test python=$PYTHON $TEST_PACKAGES
 
-# deploy pythonx.dll into windows system directory
 if [[ "$CONDA_OS" == "Windows" ]]; then
-  cp "$CONDA/libs/python*.dll" "/c/Windows/System32"
+  source "$CONDA/Scripts/activate" test
 fi
 
 #check python version
