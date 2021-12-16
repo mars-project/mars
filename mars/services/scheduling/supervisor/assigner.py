@@ -16,14 +16,14 @@ import asyncio
 import itertools
 import random
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from .... import oscar as mo
 from ....core.operand import Fetch, FetchShuffle
 from ....typing import BandType
 from ...core import NodeRole
 from ...subtask import Subtask
-from ..errors import NoMatchingSlots
+from ..errors import NoMatchingSlots, NoAvailableBand
 
 
 class AssignerActor(mo.Actor):
@@ -85,11 +85,33 @@ class AssignerActor(mo.Actor):
             raise NoMatchingSlots("gpu" if is_gpu else "cpu")
         return filtered_bands
 
-    def _get_random_band(self, is_gpu: bool):
-        avail_bands = self._get_device_bands(is_gpu)
-        return random.choice(avail_bands)
+    def _get_random_band(
+        self,
+        is_gpu: bool,
+        exclude_bands: Set[BandType] = None,
+        exclude_bands_force: bool = False,
+    ):
+        if exclude_bands:
+            avail_bands = [
+                band
+                for band in self._get_device_bands(is_gpu)
+                if band not in exclude_bands
+            ]
+            if avail_bands:
+                return random.choice(avail_bands)
+            elif exclude_bands_force:
+                raise NoAvailableBand(
+                    f"No bands available after excluding bands {exclude_bands}"
+                )
+        return random.choice(self._get_device_bands(is_gpu))
 
-    async def assign_subtasks(self, subtasks: List[Subtask]):
+    async def assign_subtasks(
+        self,
+        subtasks: List[Subtask],
+        exclude_bands: Set[BandType] = None,
+        exclude_bands_force: bool = False,
+    ):
+        exclude_bands = exclude_bands or set()
         inp_keys = set()
         selected_bands = dict()
 
@@ -101,28 +123,30 @@ class AssignerActor(mo.Actor):
         for subtask in subtasks:
             is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
             if subtask.expect_bands:
-                if all(
-                    expect_band in self._bands for expect_band in subtask.expect_bands
-                ):
-                    # pass if all expected bands are available
-                    selected_bands[subtask.subtask_id] = subtask.expect_bands
-                else:
-                    # exclude expected but unready bands
+                # exclude expected but unready bands
+                expect_available_bands = [
+                    expect_band
+                    for expect_band in subtask.expect_bands
+                    if expect_band in self._bands and expect_band not in exclude_bands
+                ]
+                # fill in if all expected bands are unready
+                if not expect_available_bands:
                     expect_available_bands = [
-                        expect_band
-                        for expect_band in subtask.expect_bands
-                        if expect_band in self._bands
+                        self._get_random_band(
+                            is_gpu, exclude_bands, exclude_bands_force
+                        )
                     ]
-                    # fill in if all expected bands are unready
-                    if not expect_available_bands:
-                        expect_available_bands = [self._get_random_band(is_gpu)]
-                    selected_bands[subtask.subtask_id] = expect_available_bands
+                selected_bands[subtask.subtask_id] = expect_available_bands
                 continue
             for indep_chunk in subtask.chunk_graph.iter_indep():
                 if isinstance(indep_chunk.op, Fetch):
                     inp_keys.add(indep_chunk.key)
                 elif isinstance(indep_chunk.op, FetchShuffle):
-                    selected_bands[subtask.subtask_id] = [self._get_random_band(is_gpu)]
+                    selected_bands[subtask.subtask_id] = [
+                        self._get_random_band(
+                            is_gpu, exclude_bands, exclude_bands_force
+                        )
+                    ]
                     break
 
         fields = ["store_size", "bands"]
@@ -152,11 +176,14 @@ class AssignerActor(mo.Actor):
                                 b
                                 for b in self._address_to_bands[band[0]]
                                 if b[1].startswith(band_prefix)
+                                and b not in exclude_bands
                             ]
                             if sel_bands:
-                                band = (band[0], random.choice(sel_bands))
-                        if band not in filtered_bands:
-                            band = self._get_random_band(is_gpu)
+                                band = random.choice(sel_bands)
+                        if band not in filtered_bands or band in exclude_bands:
+                            band = self._get_random_band(
+                                is_gpu, exclude_bands, exclude_bands_force
+                            )
                         band_sizes[band] += meta["store_size"]
                 bands = []
                 max_size = -1
@@ -166,12 +193,24 @@ class AssignerActor(mo.Actor):
                         max_size = size
                     elif size == max_size:
                         bands.append(band)
-            assigns.append(random.choice(bands))
+            band = random.choice(bands)
+            if band in exclude_bands and exclude_bands_force:
+                raise NoAvailableBand(
+                    f"No bands available for subtask {subtask.subtask_id} after "
+                    f"excluded {exclude_bands}"
+                )
+            if subtask.bands_specified and band not in subtask.expect_bands:
+                raise Exception(
+                    f"No bands available for subtask {subtask.subtask_id} on bands {subtask.expect_bands} "
+                    f"after excluded {exclude_bands}"
+                )
+            assigns.append([band])
         return assigns
 
     async def reassign_subtasks(
-        self, band_to_queued_num: Dict[BandType, int]
+        self, band_to_queued_num: Dict[BandType, int], used_slots: Dict[BandType, int] = None
     ) -> Dict[BandType, int]:
+        used_slots = used_slots or {}
         move_queued_subtasks = {}
         for is_gpu in (False, True):
             band_name_prefix = "numa" if not is_gpu else "gpu"
@@ -187,8 +226,8 @@ class AssignerActor(mo.Actor):
 
             if not filtered_bands:
                 continue
-
-            num_used_bands = len(filtered_band_to_queued_num.keys())
+            used_bands = filtered_band_to_queued_num.keys()
+            num_used_bands = len(used_bands)
             if num_used_bands == 1:
                 [(band, length)] = filtered_band_to_queued_num.items()
                 if length == 0:
@@ -213,7 +252,7 @@ class AssignerActor(mo.Actor):
                     k: filtered_band_to_queued_num[k] for k in unready_bands
                 }
             # approximate total of subtasks moving to each ready band
-            num_all_subtasks = sum(filtered_band_to_queued_num.values())
+            num_all_subtasks = sum(filtered_band_to_queued_num.values()) + sum(used_slots.values())
             mean = int(num_all_subtasks / len(filtered_bands))
             # all_bands (namely) includes:
             # a. ready bands recorded in band_num_queued_subtasks
@@ -229,19 +268,23 @@ class AssignerActor(mo.Actor):
             # assuming bands not recorded in band_num_queued_subtasks hold 0 subtasks
             band_move_nums = {}
             for band in all_bands:
+                existing_subtask_nums = filtered_band_to_queued_num.get(band, 0)
                 if band in filtered_bands:
-                    band_move_nums[band] = mean - filtered_band_to_queued_num.get(
-                        band, 0
-                    )
+                    band_move_num = mean - existing_subtask_nums - used_slots.get(band, 0)
+                    # If slot of band already has some subtasks running, band_move_num may be greater than
+                    # existing_subtask_nums.
+                    if band_move_num + existing_subtask_nums < 0:
+                        band_move_num = -existing_subtask_nums
                 else:
-                    band_move_nums[band] = -filtered_band_to_queued_num.get(band, 0)
+                    band_move_num = -existing_subtask_nums
+                band_move_nums[band] = band_move_num
             # ensure the balance of moving in and out
             total_move = sum(band_move_nums.values())
-            # int() is going to be closer to zero, so `mean` is no more than actual mean value
-            # total_move = mean * len(self._bands) - num_all_subtasks
-            #            <= actual_mean * len(self._bands) - num_all_subtasks = 0
-            assert total_move <= 0
-            if total_move != 0:
-                band_move_nums[self._get_random_band(False)] -= total_move
+            exclude_bands = set(used_bands)
+            unit = (total_move > 0) - (total_move < 0)
+            while total_move != 0:
+                band_move_nums[self._get_random_band(False, exclude_bands=exclude_bands)] -= unit
+                total_move -= unit
+            assert sum(band_move_nums.values()) == 0, f"band_move_nums {band_move_nums}"
             move_queued_subtasks.update(band_move_nums)
         return dict(sorted(move_queued_subtasks.items(), key=lambda item: item[1]))

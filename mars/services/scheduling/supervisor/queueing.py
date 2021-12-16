@@ -22,6 +22,8 @@ from typing import DefaultDict, Dict, List, Optional, Tuple, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
+from ....metric import Metrics
+from ....oscar.debug import create_task_with_ex_logged
 from ....utils import dataslots
 from ...subtask import Subtask
 from ...task import TaskAPI
@@ -75,39 +77,8 @@ class SubtaskQueueingActor(mo.Actor):
 
         self._cluster_api = await ClusterAPI.create(self.address)
         self._band_slot_nums = {}
-
-        async def watch_bands():
-            async for bands in self._cluster_api.watch_all_bands():
-                # confirm ready bands indeed changed
-                if bands != self._band_slot_nums:
-                    old_band_slot_nums = self._band_slot_nums
-                    self._band_slot_nums = copy.deepcopy(bands)
-                    if self._band_queues:
-                        await self.balance_queued_subtasks()
-                        # Refresh global slot manager to get latest bands,
-                        # so that subtasks reassigned to the new bands can be
-                        # ensured to get submitted as least one subtask every band
-                        # successfully.
-                        await self._slots_ref.refresh_bands()
-                        all_bands = {*bands.keys(), *old_band_slot_nums.keys()}
-                        bands_delta = {}
-                        for b in all_bands:
-                            delta = bands.get(b, 0) - old_band_slot_nums.get(b, 0)
-                            if delta != 0:
-                                bands_delta[b] = delta
-                        # Submit tasks on new bands manually, otherwise some subtasks
-                        # will never got submitted. Note that we must ensure every new
-                        # band will get at least one subtask submitted successfully.
-                        # Later subtasks submit on the band will be triggered by the
-                        # success of previous subtasks on the same band.
-                        logger.info(
-                            "Bands changed with delta %s, submit all bands.",
-                            bands_delta,
-                        )
-                        await self.ref().submit_subtasks()
-
-        self._band_watch_task = asyncio.create_task(watch_bands())
-
+        cluster_info = await self._cluster_api.get_cluster_info()
+        self._config = cluster_info.get('config', {})
         from .globalslot import GlobalSlotManagerActor
 
         [self._slots_ref] = await self._cluster_api.get_supervisor_refs(
@@ -118,6 +89,39 @@ class SubtaskQueueingActor(mo.Actor):
         self._assigner_ref = await mo.actor_ref(
             AssignerActor.gen_uid(self._session_id), address=self.address
         )
+
+        async def watch_bands():
+            async for bands in self._cluster_api.watch_all_bands():
+                # confirm ready bands indeed changed
+                if bands != self._band_slot_nums:
+                    old_band_slot_nums = self._band_slot_nums
+                    self._band_slot_nums = copy.deepcopy(bands)
+                    await self._slots_ref.refresh_bands()
+                    all_bands = {*bands.keys(), *old_band_slot_nums.keys()}
+                    bands_delta = {}
+                    for b in all_bands:
+                        delta = bands.get(b, 0) - old_band_slot_nums.get(b, 0)
+                        if delta != 0:
+                            bands_delta[b] = delta
+                    # Submit tasks on new bands manually, otherwise some subtasks
+                    # will never got submitted. Note that we must ensure every new
+                    # band will get at least one subtask submitted successfully.
+                    # Later subtasks submit on the band will be triggered by the
+                    # success of previous subtasks on the same band.
+                    logger.info(
+                        "Bands changed with delta %s, submit all bands.",
+                        bands_delta,
+                    )
+                    # submit_subtasks may empty _band_queues, so use `ref()` to wait previous `submit_subtasks` call
+                    # finish.
+                    await self.ref().balance_queued_subtasks()
+                    # Refresh global slot manager to get latest bands,
+                    # so that subtasks reassigned to the new bands can be
+                    # ensured to get submitted as least one subtask every band
+                    # successfully.
+                    await self.ref().submit_subtasks()
+
+        self._band_watch_task = create_task_with_ex_logged(watch_bands())
 
         if self._submit_period > 0:
             self._periodical_submit_task = self.ref().periodical_submit.tell_delay(
@@ -160,7 +164,7 @@ class SubtaskQueueingActor(mo.Actor):
         logger.debug("%d subtasks enqueued", len(subtasks))
 
     async def submit_subtasks(self, band: Tuple = None, limit: Optional[int] = None):
-        logger.debug("Submitting subtasks with limit %s", limit)
+        logger.debug("Submitting subtasks with limit %s to band %s", limit, band)
 
         if not limit and band not in self._band_slot_nums:
             self._band_slot_nums = await self._cluster_api.get_all_bands()
@@ -177,8 +181,10 @@ class SubtaskQueueingActor(mo.Actor):
             band_limit = limit or self._band_slot_nums[band]
             task_queue = self._band_queues[band]
             submit_items = dict()
-            while task_queue and len(submit_items) < band_limit:
+            while (
                 self._ensure_top_item_valid(task_queue)
+                and len(submit_items) < band_limit
+            ):
                 item = heapq.heappop(task_queue)
                 submit_items[item.subtask.subtask_id] = item
 
@@ -225,6 +231,7 @@ class SubtaskQueueingActor(mo.Actor):
                         if stid not in submitted_ids:
                             continue
                         item = submit_items[stid]
+                        item.subtask.submitted = True
                         logger.debug(
                             "Submit subtask %s to band %r",
                             item.subtask.subtask_id,
@@ -243,18 +250,30 @@ class SubtaskQueueingActor(mo.Actor):
                     logger.debug("No slots available")
 
             for stid in non_submitted_ids:
-                heapq.heappush(task_queue, submit_items[stid])
+                item = submit_items[stid]
+                self._max_enqueue_id += 1
+                # lower priority to ensure other subtasks can be scheduled.
+                item.priority = item.priority[:-1] + (self._max_enqueue_id,)
+                heapq.heappush(task_queue, item)
+            if non_submitted_ids:
+                log_func = logger.info if self._periodical_submit_task is None else logger.debug
+                log_func("No slots available, band queues status: %s", self.band_queue_subtask_nums())
 
         if submit_aio_tasks:
             yield asyncio.gather(*submit_aio_tasks)
 
     def _ensure_top_item_valid(self, task_queue):
-        """Clean invalid subtask item from queue to ensure that"""
+        """Clean invalid subtask item from the queue to ensure that when the queue is not empty,
+        there is always some subtasks waiting being scheduled."""
         while (
             task_queue and task_queue[0].subtask.subtask_id not in self._stid_to_items
         ):
             #  skip removed items (as they may be re-pushed into the queue)
             heapq.heappop(task_queue)
+        if task_queue:
+            return True
+        else:
+            return False
 
     @mo.extensible
     def update_subtask_priority(self, subtask_id: str, priority: Tuple):
@@ -280,28 +299,59 @@ class SubtaskQueueingActor(mo.Actor):
             return all(len(self._band_queues[band]) > 0 for band in bands)
         return False
 
+    def band_queue_subtask_nums(self):
+        return {q: len(subtasks) for q, subtasks in self._band_queues.items()}
+
     async def balance_queued_subtasks(self):
+        used_slots = await self._slots_ref.get_used_slots()
+        remaining_slots = await self._slots_ref.get_remaining_slots()
         # record length of band queues
         band_num_queued_subtasks = {
-            band: len(queue) for band, queue in self._band_queues.items()
+            band: len([item for item in queue if item.subtask.subtask_id in self._stid_to_items])
+            for band, queue in self._band_queues.items()
         }
+        logger.info("Start to balance subtasks:\n"
+                    "used_slots %s\n remaining_slots %s\n queue size %s\n band_num_queued_subtasks %s",
+                    used_slots, remaining_slots,
+                    {band: len(queue) for band, queue in self._band_queues.items()},
+                    band_num_queued_subtasks)
+        if sum(band_num_queued_subtasks.values()) == 0:
+            logger.info("No subtasks in queue, skip balance.")
+            return
         move_queued_subtasks = await self._assigner_ref.reassign_subtasks(
-            band_num_queued_subtasks
+            band_num_queued_subtasks, used_slots=used_slots
         )
         items = []
         # rewrite band queues according to feedbacks from assigner
         for band, move in move_queued_subtasks.items():
             task_queue = self._band_queues[band]
-            assert move + len(task_queue) >= 0
+            assert move + len(task_queue) >= 0, f"move {move} queue length {len(task_queue)}"
             for _ in range(abs(move)):
                 if move < 0:
                     # TODO: pop item of low priority
+                    self._ensure_top_item_valid(task_queue)
                     item = heapq.heappop(task_queue)
                     self._stid_to_bands[item.subtask.subtask_id].remove(band)
                     items.append(item)
                 elif move > 0:
                     item = items.pop()
-                    self._stid_to_bands[item.subtask.subtask_id].append(band)
-                    heapq.heappush(task_queue, item)
+                    subtask = item.subtask
+                    if subtask.bands_specified and band not in subtask.expect_bands:
+                        logger.warning("Skip reschedule subtask %s to band %s because it's band is specified to %s.",
+                                       subtask.subtask_id, band, subtask.expect_bands)
+                        specified_band = subtask.expect_band
+                        specified_band_queue = self._band_queues[specified_band]
+                        heapq.heappush(specified_band_queue, item)
+                        self._stid_to_bands[item.subtask.subtask_id].append(specified_band)
+                    else:
+                        subtask.expect_bands = [band]
+                        self._stid_to_bands[item.subtask.subtask_id].append(band)
+                        heapq.heappush(task_queue, item)
             if len(task_queue) == 0:
                 self._band_queues.pop(band)
+        balanced_num_queued_subtasks = {
+            band: len([item for item in queue if item.subtask.subtask_id in self._stid_to_items])
+            for band, queue in self._band_queues.items()
+        }
+        logger.info("Balance subtasks succeed:\n move_queued_subtasks %s\n "
+                    "balanced_num_queued_subtasks %s", move_queued_subtasks, balanced_num_queued_subtasks)
