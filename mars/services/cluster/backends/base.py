@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, Dict, List, Optional, Type
+from typing import AsyncGenerator, Dict, List, Optional, Type, Any
 
 from ..core import NodeRole
 
@@ -90,7 +90,7 @@ class AbstractClusterBackend(ABC):
         Reconstruct a worker
         """
 
-    async def get_cluster_info(self):
+    async def get_cluster_info(self) -> Dict[str, Any]:
         """
         Get cluster information
 

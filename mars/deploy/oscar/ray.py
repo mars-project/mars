@@ -18,7 +18,7 @@ import itertools
 import logging
 import os
 import time
-from typing import Union, Dict, List, Optional, AsyncGenerator
+from typing import Union, Dict, List, Optional, AsyncGenerator, Any
 
 from ... import oscar as mo
 from ...core.entrypoints import init_extension_entrypoints
@@ -126,7 +126,7 @@ class RayClusterBackend(AbstractClusterBackend):
     def get_cluster_state_ref(self):
         return self._cluster_state_ref
 
-    async def get_cluster_info(self):
+    async def get_cluster_info(self) -> Dict[str, Any]:
         return await self._cluster_state_ref.get_cluster_info()
 
 
