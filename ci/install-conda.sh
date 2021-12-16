@@ -32,6 +32,11 @@ else
 fi
 $CONDA_BIN_PATH/conda create --quiet --yes -n test python=$PYTHON $TEST_PACKAGES
 
+# deploy pythonx.dll into windows system directory
+if [[ "$CONDA_OS" == "Windows" ]]; then
+  cp "$CONDA/libs/python*.dll" "/c/Windows/System32"
+fi
+
 #check python version
 export PYTHON=$(python -c "import sys; print('.'.join(str(v) for v in sys.version_info[:3]))")
 echo "Installed Python version: $PYTHON"

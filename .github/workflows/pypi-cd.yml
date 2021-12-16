@@ -61,10 +61,14 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') && matrix.no-deploy != '1'
         shell: bash
         env:
-          DOCKER_IMAGE: "quay.io/pypa/manylinux1_x86_64"
           PYABI: ${{ matrix.python-abis }}
           BUILD_STATIC: ${{ matrix.build-static }}
           PYPI_PWD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           source ./ci/reload-env.sh
+          if [[ "$PYTHON" =~ "3.10" ]]; then
+            export DOCKER_IMAGE="quay.io/pypa/manylinux2014_x86_64"
+          else
+            export DOCKER_IMAGE="quay.io/pypa/manylinux1_x86_64"
+          fi
           source ./.github/workflows/upload-packages.sh
