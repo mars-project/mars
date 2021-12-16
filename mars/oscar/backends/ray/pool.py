@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import asyncio
+import datetime
 import inspect
 import itertools
 import logging
 import os
 import sys
+import time
 import types
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -277,6 +279,7 @@ class RayMainPool(RayPoolBase):
         super().__init__()
         self._args = args
         self._kwargs = kwargs
+        self._start_timestamp = time.time_ns()
 
     async def start(self):
         # create mars pool outside the constructor is to avoid ray actor creation failed.
@@ -302,8 +305,8 @@ class RayMainPool(RayPoolBase):
         await self._actor_pool.start_monitor()
 
     async def alive(self):
-        while True:
-            await asyncio.sleep(1000)
+        await asyncio.sleep(30)
+        return self._start_timestamp
 
 
 class RaySubPool(RayPoolBase):
@@ -314,6 +317,7 @@ class RaySubPool(RayPoolBase):
         self._args = args
         self._actor_pool_config = None
         self._check_alive_task = None
+        self._main_pool_start_timestamp = None
 
     def set_actor_pool_config(self, actor_pool_config):
         self._actor_pool_config = actor_pool_config
@@ -347,7 +351,13 @@ class RaySubPool(RayPoolBase):
 
     async def check_main_pool_alive(self, main_pool):
         try:
-            await main_pool.alive.remote()
+            main_pool_start_timestamp = await main_pool.alive.remote()
+            if self._main_pool_start_timestamp is None:
+                self._main_pool_start_timestamp = main_pool_start_timestamp
+            if main_pool_start_timestamp != self._main_pool_start_timestamp:
+                logger.error("Main pool has restarted at %s, exit current sub pool now.",
+                             datetime.datetime.fromtimestamp(main_pool_start_timestamp / 1e9), main_pool)
+                os._exit(0)
         except:
             logger.exception("Main pool %s has exited, exit current sub pool now.", main_pool)
             os._exit(0)
