@@ -429,10 +429,13 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
                 else:
                     left = cls._convert_to_dense(inputs[j])
                     right = cls._convert_to_dense(inputs[j + 1])
-                if ((~left.isna()) & (~right.isna())).sum() > 0:
+
+                left_notna = left.notna()
+                right_notna = right.notna()
+                if (left_notna & right_notna).sum() > 0:
                     raise ValueError("cannot reindex from a duplicate axis")
-                curr.loc[~left.isna()] = left
-                curr.loc[~right.isna()] = right
+                curr.loc[left_notna] = left.loc[left_notna]
+                curr.loc[right_notna] = right.loc[right_notna]
             if ndim == 1:
                 result = curr
             else:

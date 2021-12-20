@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import typing
+from typing import AsyncGenerator
 
 import numpy as np
 
@@ -67,7 +67,7 @@ cdef bint is_async_generator(obj):
     if tp in _is_async_generator_typecache:
         return True
 
-    if isinstance(obj, typing.AsyncGenerator):
+    if isinstance(obj, AsyncGenerator):
         if len(_is_async_generator_typecache) < 100:
             _is_async_generator_typecache.add(tp)
         return True
