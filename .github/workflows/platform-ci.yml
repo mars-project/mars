@@ -110,6 +110,7 @@ jobs:
 
           if [ -n "$WITH_HADOOP" ]; then
             source $CONDA/bin/activate test
+            source ./ci/reload-env.sh
             pytest $PYTEST_CONFIG -m hadoop
             coverage report
           fi
