@@ -574,7 +574,7 @@ def series_getitem(series, labels, combine_size=None):
     if isinstance(labels, list) or np.isscalar(labels):
         op = SeriesIndex(labels=labels, combine_size=combine_size)
         return op(series, name=series.name)
-    elif isinstance(labels, _list_like_types) and astensor(labels).dtype == np.bool:
+    elif isinstance(labels, _list_like_types) and astensor(labels).dtype == np.bool_:
         return series.loc[labels]
     elif isinstance(labels, slice):
         edge = labels.start if labels.start is not None else labels.stop

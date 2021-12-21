@@ -177,7 +177,7 @@ def preprocess_index(index, convert_bool_to_fancy=None):
 def process_index(tensor_ndim, item, convert_bool_to_fancy=None):
     if isinstance(item, list):
         arr = np.array(item)
-        if arr.dtype == np.object_:
+        if arr.dtype == object:
             item = tuple(item)
         elif arr.dtype.kind == "f":
             raise IndexError(_INDEX_ERROR_MSG)

@@ -240,7 +240,7 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
         else:
             out = op.outputs[0]
             inp = ctx[op.inputs[0].key]
-            dtype = out.dtype if out.dtype != np.object else None
+            dtype = out.dtype if out.dtype != object else None
             if hasattr(inp, "index"):
                 # DataFrame, Series
                 ctx[out.key] = pd.Index(inp.index, dtype=dtype, name=out.name)

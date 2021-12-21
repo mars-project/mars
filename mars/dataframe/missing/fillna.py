@@ -241,8 +241,8 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         n_rows, n_cols = in_df.chunk_shape
 
         # map to get individual results and summaries
-        src_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
-        summary_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
+        src_chunks = np.empty(in_df.chunk_shape, dtype=object)
+        summary_chunks = np.empty(in_df.chunk_shape, dtype=object)
         for c in in_df.chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op.stage = OperandStage.map
@@ -256,7 +256,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             )
 
         # combine summaries into results
-        output_chunk_array = np.empty(in_df.chunk_shape, dtype=np.object)
+        output_chunk_array = np.empty(in_df.chunk_shape, dtype=object)
         if op.axis == 1:
             for row in range(n_rows):
                 row_src = src_chunks[row, :]
@@ -293,7 +293,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         forward = op.method == "ffill"
 
         # map to get individual results and summaries
-        summary_chunks = np.empty(in_series.chunk_shape, dtype=np.object)
+        summary_chunks = np.empty(in_series.chunk_shape, dtype=object)
         for c in in_series.chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op.stage = OperandStage.map

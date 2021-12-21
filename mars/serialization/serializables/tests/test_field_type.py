@@ -38,7 +38,7 @@ my_named_tuple = namedtuple("my_named_tuple", "a b")
 
 fields_values = [
     # field_type, valid values, invalid values
-    [FieldTypes.bool, [True, np.bool(False)], [1]],
+    [FieldTypes.bool, [True, np.bool_(False)], [1]],
     [FieldTypes.int8, [8, np.int8(8)], [8.0]],
     [FieldTypes.int16, [16, np.int16(16)], [16.0]],
     [FieldTypes.int32, [32, np.int32(32)], [64.0]],

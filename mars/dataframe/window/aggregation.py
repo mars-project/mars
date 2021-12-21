@@ -388,7 +388,7 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
         new_chunk_shape = tuple(len(split) for split in new_nsplits)
 
         data_chunks = []
-        summary_chunks = np.empty(new_chunk_shape, dtype=np.object)
+        summary_chunks = np.empty(new_chunk_shape, dtype=object)
         stage_info_dict = dict()
         for c in in_df.chunks:
             try:
