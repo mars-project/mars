@@ -27,7 +27,7 @@ class DataFrameMin(DataFrameReductionOperand, DataFrameReductionMixin):
         return True
 
 
-def min_series(df, axis=None, skipna=None, level=None, combine_size=None, method=None):
+def min_series(df, axis=None, skipna=True, level=None, combine_size=None, method=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameMin(
         axis=axis,
@@ -44,7 +44,7 @@ def min_series(df, axis=None, skipna=None, level=None, combine_size=None, method
 def min_dataframe(
     df,
     axis=None,
-    skipna=None,
+    skipna=True,
     level=None,
     numeric_only=None,
     combine_size=None,

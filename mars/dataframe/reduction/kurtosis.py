@@ -75,7 +75,7 @@ class DataFrameKurtosis(DataFrameReductionOperand, DataFrameReductionMixin):
 def kurt_series(
     df,
     axis=None,
-    skipna=None,
+    skipna=True,
     level=None,
     combine_size=None,
     bias=False,
@@ -100,7 +100,7 @@ def kurt_series(
 def kurt_dataframe(
     df,
     axis=None,
-    skipna=None,
+    skipna=True,
     level=None,
     numeric_only=None,
     combine_size=None,

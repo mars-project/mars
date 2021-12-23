@@ -19,7 +19,7 @@ from .var import var_dataframe, var_series
 def std_dataframe(
     df,
     axis=None,
-    skipna=None,
+    skipna=True,
     level=None,
     ddof=1,
     numeric_only=None,
@@ -42,7 +42,7 @@ def std_dataframe(
 
 
 def std_series(
-    series, axis=None, skipna=None, level=None, ddof=1, combine_size=None, method=None
+    series, axis=None, skipna=True, level=None, ddof=1, combine_size=None, method=None
 ):
     ret = sqrt(
         var_series(
