@@ -149,19 +149,20 @@ def _reload_args(args):
     return [arg if not callable(arg) else arg() for arg in args]
 
 
-_rerun_errors = (_ProcessExitedException,) + (
+_rerun_errors = (
+    _ProcessExitedException,
     asyncio.TimeoutError,
     futures.TimeoutError,
     TimeoutError,
 )
 
 
-@flaky(max_runs=10, rerun_filter=lambda err, *_: issubclass(err[0], _rerun_errors))
 @pytest.mark.parametrize(
     "supervisor_args,worker_args,use_web_addr",
     list(start_params.values()),
     ids=list(start_params.keys()),
 )
+@flaky(max_runs=10, rerun_filter=lambda err, *_: issubclass(err[0], _rerun_errors))
 def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
     new_isolation()
     sv_proc = w_procs = None

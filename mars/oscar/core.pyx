@@ -48,6 +48,8 @@ cdef class ActorRef:
     Reference of an Actor at user side
     """
     def __init__(self, str address, object uid):
+        if isinstance(uid, str):
+            uid = uid.encode()
         self.uid = uid
         self.address = address
         self._methods = dict()

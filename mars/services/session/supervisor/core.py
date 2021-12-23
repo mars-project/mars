@@ -52,6 +52,8 @@ class SessionManagerActor(mo.Actor):
                 allocate_strategy=mo.allocate_strategy.RandomSubPool(),
             )
         except IndexError:
+            # when there is only one supervisor process, strategy RandomSubPool
+            # fails with IndexError. So we need to retry using strategy Random.
             session_actor_ref = await mo.create_actor(
                 SessionActor,
                 session_id,

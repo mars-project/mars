@@ -450,7 +450,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     @implements(AbstractActorPool.create_actor)
     async def create_actor(self, message: CreateActorMessage) -> result_message_type:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
-            actor_id = to_binary(message.actor_id)
+            actor_id = message.actor_id
             if actor_id in self._actors:
                 raise ActorAlreadyExist(
                     f"Actor {actor_id} already exist, " f"cannot create"
@@ -473,7 +473,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     async def has_actor(self, message: HasActorMessage) -> ResultMessage:
         result = ResultMessage(
             message.message_id,
-            to_binary(message.actor_ref.uid) in self._actors,
+            message.actor_ref.uid in self._actors,
             protocol=message.protocol,
         )
         return result
@@ -481,7 +481,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     @implements(AbstractActorPool.destroy_actor)
     async def destroy_actor(self, message: DestroyActorMessage) -> result_message_type:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
-            actor_id = to_binary(message.actor_ref.uid)
+            actor_id = message.actor_ref.uid
             try:
                 actor = self._actors[actor_id]
             except KeyError:
@@ -497,7 +497,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     @implements(AbstractActorPool.actor_ref)
     async def actor_ref(self, message: ActorRefMessage) -> result_message_type:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
-            actor_id = to_binary(message.actor_ref.uid)
+            actor_id = message.actor_ref.uid
             if actor_id not in self._actors:
                 raise ActorNotExist(f"Actor {actor_id} does not exist")
             result = ResultMessage(
@@ -513,7 +513,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         with _ErrorProcessor(
             message.message_id, message.protocol
         ) as processor, record_message_trace(message):
-            actor_id = to_binary(message.actor_ref.uid)
+            actor_id = message.actor_ref.uid
             if actor_id not in self._actors:
                 raise ActorNotExist(f"Actor {actor_id} does not exist")
             coro = self._actors[actor_id].__on_receive__(message.content)
@@ -529,7 +529,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     @implements(AbstractActorPool.tell)
     async def tell(self, message: TellMessage) -> result_message_type:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
-            actor_id = to_binary(message.actor_ref.uid)
+            actor_id = message.actor_ref.uid
             if actor_id not in self._actors:  # pragma: no cover
                 raise ActorNotExist(f"Actor {actor_id} does not exist")
             call = self._actors[actor_id].__on_receive__(message.content)
@@ -848,7 +848,7 @@ class MainActorPoolBase(ActorPoolBase):
 
     @implements(AbstractActorPool.send)
     async def send(self, message: SendMessage) -> result_message_type:
-        if to_binary(message.actor_ref.uid) in self._actors:
+        if message.actor_ref.uid in self._actors:
             return await super().send(message)
         actor_ref_message = ActorRefMessage(
             message.message_id, message.actor_ref, protocol=message.protocol
@@ -868,7 +868,7 @@ class MainActorPoolBase(ActorPoolBase):
 
     @implements(AbstractActorPool.tell)
     async def tell(self, message: TellMessage) -> result_message_type:
-        if to_binary(message.actor_ref.uid) in self._actors:
+        if message.actor_ref.uid in self._actors:
             return await super().tell(message)
         actor_ref_message = ActorRefMessage(
             message.message_id, message.actor_ref, protocol=message.protocol
