@@ -116,9 +116,11 @@ def clear_routers():
 
 
 @pytest.mark.asyncio
+@mock.patch("mars.oscar.backends.mars.pool.SubActorPool.notify_main_pool_to_create")
 @mock.patch("mars.oscar.backends.mars.pool.SubActorPool.notify_main_pool_to_destroy")
-async def test_sub_actor_pool(notify_main_pool):
-    notify_main_pool.return_value = None
+async def test_sub_actor_pool(notify_main_pool_to_create, notify_main_pool_to_destroy):
+    notify_main_pool_to_create.return_value = None
+    notify_main_pool_to_destroy.return_value = None
     config = ActorPoolConfig()
 
     ext_address0 = f"127.0.0.1:{get_next_port()}"
@@ -850,3 +852,34 @@ async def test_logging_config(logging_conf):
             _Actor, allocate_strategy=strategy, address=pool.external_address
         )
         assert await ref.get_logger_level() == logging.DEBUG
+
+
+@pytest.mark.asyncio
+async def test_ref_sub_pool_actor():
+    start_method = (
+        os.environ.get("POOL_START_METHOD", "forkserver")
+        if sys.platform != "win32"
+        else None
+    )
+    pool = await create_actor_pool(
+        "127.0.0.1",
+        pool_cls=MainActorPool,
+        n_process=1,
+        subprocess_start_method=start_method,
+    )
+
+    async with pool:
+        ctx = get_context()
+        ref1 = await ctx.create_actor(
+            TestActor, address=pool.external_address, allocate_strategy=RandomSubPool()
+        )
+        sub_address = ref1.address
+        ref2 = await ctx.create_actor(TestActor, address=sub_address)
+        ref2_main = await ctx.actor_ref(ref2.uid, address=pool.external_address)
+        assert ref2_main.address == sub_address
+
+        await ctx.destroy_actor(create_actor_ref(pool.external_address, ref2.uid))
+        assert not await ctx.has_actor(
+            create_actor_ref(pool.external_address, ref2.uid)
+        )
+        assert not await ctx.has_actor(create_actor_ref(sub_address, ref2.uid))

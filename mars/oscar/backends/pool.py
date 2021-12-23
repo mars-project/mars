@@ -16,9 +16,9 @@ import asyncio
 import concurrent.futures as futures
 import itertools
 import logging
+import multiprocessing
 import os
 import threading
-import multiprocessing
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
@@ -473,7 +473,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     async def has_actor(self, message: HasActorMessage) -> ResultMessage:
         result = ResultMessage(
             message.message_id,
-            to_binary(message.actor_ref.uid) in self._actors,
+            message.actor_ref.uid in self._actors,
             protocol=message.protocol,
         )
         return result
@@ -497,7 +497,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     @implements(AbstractActorPool.actor_ref)
     async def actor_ref(self, message: ActorRefMessage) -> result_message_type:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
-            actor_id = to_binary(message.actor_ref.uid)
+            actor_id = message.actor_ref.uid
             if actor_id not in self._actors:
                 raise ActorNotExist(f"Actor {actor_id} does not exist")
             result = ResultMessage(
@@ -643,6 +643,22 @@ class SubActorPoolBase(ActorPoolBase):
     ):  # pragma: no cover
         await self.call(self._main_address, message)
 
+    async def notify_main_pool_to_create(self, message: CreateActorMessage):
+        reg_message = ControlMessage(
+            new_message_id(),
+            self.external_address,
+            ControlMessageType.add_sub_pool_actor,
+            (self.external_address, message.allocate_strategy, message),
+        )
+        await self.call(self._main_address, reg_message)
+
+    @implements(AbstractActorPool.create_actor)
+    async def create_actor(self, message: CreateActorMessage) -> result_message_type:
+        result = await super().create_actor(message)
+        if not message.from_main:
+            await self.notify_main_pool_to_create(message)
+        return result
+
     @implements(AbstractActorPool.actor_ref)
     async def actor_ref(self, message: ActorRefMessage) -> result_message_type:
         result = await super().actor_ref(message)
@@ -769,6 +785,7 @@ class MainActorPoolBase(ActorPoolBase):
                     message.args,
                     message.kwargs,
                     allocate_strategy=new_allocate_strategy,
+                    from_main=True,
                     protocol=message.protocol,
                     message_trace=message.message_trace,
                 )
@@ -946,6 +963,17 @@ class MainActorPoolBase(ActorPoolBase):
                 processor.result = ResultMessage(
                     message.message_id, True, protocol=message.protocol
                 )
+            elif message.control_message_type == ControlMessageType.add_sub_pool_actor:
+                address, allocate_strategy, create_message = message.content
+                create_message.from_main = True
+                ref = create_actor_ref(address, to_binary(create_message.actor_id))
+                self._allocated_actors[address][ref] = (
+                    allocate_strategy,
+                    create_message,
+                )
+                processor.result = ResultMessage(
+                    message.message_id, True, protocol=message.protocol
+                )
             else:
                 processor.result = await self.call(message.address, message)
         return processor.result
@@ -1108,9 +1136,8 @@ class MainActorPoolBase(ActorPoolBase):
     async def monitor_sub_pools(self):
         try:
             while not self._stopped.is_set():
-                for address in self.sub_processes:
+                for address, process in self.sub_processes.items():
                     try:
-                        process = self.sub_processes[address]
                         recover_events_discovered = address in self._recover_events
                         if not await self.is_sub_pool_alive(
                             process
