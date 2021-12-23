@@ -87,6 +87,9 @@ jobs:
             pip install xgboost lightgbm keras==2.6.0 tensorflow faiss-cpu torch torchvision \
               statsmodels\<0.13.0 tsfresh
           fi
+          if [[ "$(mars.test.module)" == "dataframe" ]]; then
+            pip install pandas==1.0.5 pyarrow==4.0.1
+          fi
         fi
         conda list -n test
       displayName: 'Install dependencies'
