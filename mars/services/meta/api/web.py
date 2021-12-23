@@ -15,7 +15,6 @@
 from typing import Dict, List, Optional
 
 from .... import oscar as mo
-from ....lib.aio import alru_cache
 from ....utils import serialize_serializable, deserialize_serializable
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from .core import AbstractMetaAPI
@@ -24,19 +23,10 @@ from .core import AbstractMetaAPI
 class MetaWebAPIHandler(MarsServiceWebAPIHandler):
     _root_pattern = "/api/session/(?P<session_id>[^/]+)/meta"
 
-    @alru_cache(cache_exceptions=False)
-    async def _get_cluster_api(self):
-        from ...cluster import ClusterAPI
-
-        return await ClusterAPI.create(self._supervisor_addr)
-
-    @alru_cache(cache_exceptions=False)
     async def _get_oscar_meta_api(self, session_id: str):
         from .oscar import MetaAPI
 
-        cluster_api = await self._get_cluster_api()
-        [address] = await cluster_api.get_supervisors_by_keys([session_id])
-        return await MetaAPI.create(session_id, address)
+        return await self._get_api_by_key(MetaAPI, session_id)
 
     @web_api("(?P<data_key>[^/]+)", method="get")
     async def get_chunk_meta(self, session_id: str, data_key: str):

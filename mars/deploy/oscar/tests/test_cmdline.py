@@ -103,7 +103,7 @@ def _get_labelled_port(label=None, create=True):
     test_name = os.environ["PYTEST_CURRENT_TEST"]
     if (test_name, label) not in _test_port_cache:
         if create:
-            _test_port_cache[(test_name, label)] = get_next_port()
+            _test_port_cache[(test_name, label)] = get_next_port(occupy=True)
         else:
             return None
     return _test_port_cache[(test_name, label)]
@@ -128,6 +128,8 @@ start_params = {
             lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
             "-w",
             lambda: str(_get_labelled_port("web")),
+            "--n-process",
+            "2",
         ],
         worker_cmd_start
         + [
@@ -147,19 +149,20 @@ def _reload_args(args):
     return [arg if not callable(arg) else arg() for arg in args]
 
 
-_rerun_errors = (_ProcessExitedException,) + (
+_rerun_errors = (
+    _ProcessExitedException,
     asyncio.TimeoutError,
     futures.TimeoutError,
     TimeoutError,
 )
 
 
-@flaky(max_runs=10, rerun_filter=lambda err, *_: issubclass(err[0], _rerun_errors))
 @pytest.mark.parametrize(
     "supervisor_args,worker_args,use_web_addr",
     list(start_params.values()),
     ids=list(start_params.keys()),
 )
+@flaky(max_runs=10, rerun_filter=lambda err, *_: issubclass(err[0], _rerun_errors))
 def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
     new_isolation()
     sv_proc = w_procs = None
