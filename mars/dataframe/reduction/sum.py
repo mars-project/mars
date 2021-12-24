@@ -46,7 +46,7 @@ class DataFrameSum(DataFrameReductionOperand, DataFrameReductionMixin):
 
 
 def sum_series(
-    df, axis=None, skipna=None, level=None, min_count=0, combine_size=None, method=None
+    df, axis=None, skipna=True, level=None, min_count=0, combine_size=None, method=None
 ):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameSum(
@@ -65,7 +65,7 @@ def sum_series(
 def sum_dataframe(
     df,
     axis=None,
-    skipna=None,
+    skipna=True,
     level=None,
     min_count=0,
     numeric_only=None,

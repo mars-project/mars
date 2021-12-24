@@ -308,7 +308,7 @@ def test_dataframe_level_reduction(
 
     if func_name not in skip_funcs:
         data_dict = dict((str(i), rs.rand(100)) for i in range(10))
-        data_dict["string"] = [str(i) for i in range(100)]
+        data_dict["string"] = ["O" + str(i) for i in range(100)]
         data_dict["bool"] = rs.choice([True, False], (100,))
         data = pd.DataFrame(data_dict, index=idx)
 

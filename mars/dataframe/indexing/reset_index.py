@@ -19,7 +19,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...serialization.serializables import BoolField, AnyField, StringField
+from ...serialization.serializables import AnyField, BoolField
 from ...utils import no_default
 from ..core import IndexValue
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE
@@ -36,7 +36,7 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
 
     _level = AnyField("level")
     _drop = BoolField("drop")
-    _name = StringField("name")
+    _name = AnyField("name")
     _col_level = AnyField("col_level")
     _col_fill = AnyField("col_fill")
     _incremental_index = BoolField("incremental_index")
