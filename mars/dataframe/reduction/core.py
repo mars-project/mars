@@ -28,7 +28,7 @@ from ...core import (
     recursive_tile,
 )
 from ...core.operand import OperandStage
-from ...utils import tokenize
+from ...lib.version import parse as parse_version
 from ...serialization.serializables import (
     BoolField,
     AnyField,
@@ -36,6 +36,7 @@ from ...serialization.serializables import (
     Int32Field,
     StringField,
 )
+from ...utils import tokenize
 from ..core import SERIES_TYPE
 from ..utils import (
     parse_index,
@@ -46,6 +47,14 @@ from ..utils import (
     validate_axis,
 )
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE
+
+_pd_release = parse_version(pd.__version__).release[:2]
+# in pandas<1.3, when aggregating with multiple levels and numeric_only is True,
+# object cols not ignored with min-max funcs
+_level_reduction_keep_object = _pd_release < (1, 3)
+# in pandas>=1.3, when dataframes are reduced into series, mixture of float and bool
+# results in object.
+_reduce_bool_as_object = _pd_release >= (1, 3)
 
 
 class DataFrameReductionOperand(DataFrameOperand):
@@ -211,22 +220,22 @@ def _get_series_reduction_dtype(
     func_name,
     axis=None,
     bool_only=False,
-    skipna=False,
+    skipna=True,
     numeric_only=False,
 ):
-    empty_series = build_series(dtype=dtype, ensure_string=True)
+    test_series = build_series(dtype=dtype, ensure_string=True)
     if func_name == "count":
-        reduced = empty_series.count()
+        reduced = test_series.count()
     elif func_name == "nunique":
-        reduced = empty_series.nunique()
+        reduced = test_series.nunique()
     elif func_name in ("all", "any"):
-        reduced = getattr(empty_series, func_name)(axis=axis, bool_only=bool_only)
+        reduced = getattr(test_series, func_name)(axis=axis, bool_only=bool_only)
     elif func_name == "size":
-        reduced = empty_series.size
+        reduced = test_series.size
     elif func_name == "str_concat":
-        reduced = pd.Series([empty_series.str.cat()])
+        reduced = pd.Series([test_series.str.cat()])
     else:
-        reduced = getattr(empty_series, func_name)(
+        reduced = getattr(test_series, func_name)(
             axis=axis, skipna=skipna, numeric_only=numeric_only
         )
     return pd.Series(reduced).dtype
@@ -236,17 +245,17 @@ def _get_series_reduction_dtype(
 def _get_df_reduction_dtype(
     dtype, func_name, axis=None, bool_only=False, skipna=False, numeric_only=False
 ):
-    empty_df = build_series(dtype=dtype, ensure_string=True).to_frame()
+    test_df = build_series(dtype=dtype, ensure_string=True).to_frame()
     if func_name == "count":
-        reduced = getattr(empty_df, func_name)(axis=axis, numeric_only=numeric_only)
+        reduced = getattr(test_df, func_name)(axis=axis, numeric_only=numeric_only)
     elif func_name == "nunique":
-        reduced = getattr(empty_df, func_name)(axis=axis)
+        reduced = getattr(test_df, func_name)(axis=axis)
     elif func_name in ("all", "any"):
-        reduced = getattr(empty_df, func_name)(axis=axis, bool_only=bool_only)
+        reduced = getattr(test_df, func_name)(axis=axis, bool_only=bool_only)
     elif func_name == "str_concat":
-        reduced = empty_df.apply(lambda s: s.str.cat(), axis=axis)
+        reduced = test_df.apply(lambda s: s.str.cat(), axis=axis)
     else:
-        reduced = getattr(empty_df, func_name)(
+        reduced = getattr(test_df, func_name)(
             axis=axis, skipna=skipna, numeric_only=numeric_only
         )
     if len(reduced) == 0:
@@ -304,7 +313,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
     def _call_dataframe(self, df):
         axis = getattr(self, "axis", None) or 0
         level = getattr(self, "level", None)
-        skipna = getattr(self, "skipna", None)
+        skipna = getattr(self, "skipna", True)
         numeric_only = getattr(self, "numeric_only", None)
         bool_only = getattr(self, "bool_only", None)
         self._axis = axis = validate_axis(axis, df)
@@ -327,9 +336,9 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             reduced_dtype = reduced.dtype
         else:
             reduced_cols, dtypes = [], []
-            for col, dt in df.dtypes.items():
+            for col, src_dt in df.dtypes.items():
                 dt = _get_df_reduction_dtype(
-                    dt,
+                    src_dt,
                     func_name,
                     axis=axis,
                     bool_only=bool_only,
@@ -339,16 +348,29 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                 if dt is not None:
                     reduced_cols.append(col)
                     dtypes.append(dt)
+                elif (
+                    _level_reduction_keep_object
+                    and numeric_only
+                    and level is not None
+                    and func_name in ("min", "max")
+                    and src_dt == np.dtype(object)
+                ):  # pragma: no cover
+                    reduced_cols.append(col)
+                    dtypes.append(np.dtype(object))
             if len(dtypes) == 0:
                 reduced_dtype = np.dtype("O")
             elif all(dt == dtypes[0] for dt in dtypes):
                 reduced_dtype = dtypes[0]
-            elif not all(isinstance(dt, np.dtype) and dt != bool for dt in dtypes):
-                # todo currently we return mixed dtypes as np.dtype('O').
-                #  handle pandas Dtypes in the future more carefully.
-                reduced_dtype = np.dtype("O")
             else:
-                reduced_dtype = np.find_common_type(dtypes, [])
+                has_bool = any(dt == bool for dt in dtypes)
+                if _reduce_bool_as_object and has_bool:
+                    reduced_dtype = np.dtype("O")
+                elif not all(isinstance(dt, np.dtype) for dt in dtypes):
+                    # todo currently we return mixed dtypes as np.dtype('O').
+                    #  handle pandas Dtypes in the future more carefully.
+                    reduced_dtype = np.dtype("O")
+                else:
+                    reduced_dtype = np.find_common_type(dtypes, [])
 
         if level is not None:
             return self._call_groupby_level(df[reduced_cols], level)
@@ -370,7 +392,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
     def _call_series(self, series):
         level = getattr(self, "level", None)
         axis = getattr(self, "axis", None)
-        skipna = getattr(self, "skipna", None)
+        skipna = getattr(self, "skipna", True)
         numeric_only = getattr(self, "numeric_only", None)
         bool_only = getattr(self, "bool_only", None)
         self._axis = axis = validate_axis(axis or 0, series)
@@ -442,8 +464,8 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         n_rows, n_cols = in_df.chunk_shape
 
         # map to get individual results and summaries
-        src_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
-        summary_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
+        src_chunks = np.empty(in_df.chunk_shape, dtype=object)
+        summary_chunks = np.empty(in_df.chunk_shape, dtype=object)
         for c in in_df.chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op.stage = OperandStage.map
@@ -457,7 +479,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
             )
 
         # combine summaries into results
-        output_chunk_array = np.empty(in_df.chunk_shape, dtype=np.object)
+        output_chunk_array = np.empty(in_df.chunk_shape, dtype=object)
         if op.axis == 1:
             for row in range(n_rows):
                 row_src = src_chunks[row, :]
@@ -493,7 +515,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         series = op.outputs[0]
 
         # map to get individual results and summaries
-        summary_chunks = np.empty(in_series.chunk_shape, dtype=np.object)
+        summary_chunks = np.empty(in_series.chunk_shape, dtype=object)
         for c in in_series.chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op.stage = OperandStage.map

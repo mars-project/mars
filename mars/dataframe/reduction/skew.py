@@ -65,7 +65,7 @@ class DataFrameSkew(DataFrameReductionOperand, DataFrameReductionMixin):
 
 
 def skew_series(
-    df, axis=None, skipna=None, level=None, combine_size=None, bias=False, method=None
+    df, axis=None, skipna=True, level=None, combine_size=None, bias=False, method=None
 ):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameSkew(
@@ -84,7 +84,7 @@ def skew_series(
 def skew_dataframe(
     df,
     axis=None,
-    skipna=None,
+    skipna=True,
     level=None,
     numeric_only=None,
     combine_size=None,
