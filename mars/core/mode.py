@@ -69,18 +69,19 @@ class _EnterModeFuncWrapper:
             setattr(_internal_mode, mode_name, mode_name_to_old_value[mode_name])
 
     def __call__(self, func):
+        mode_name_to_value = self.mode_name_to_value.copy()
         if not inspect.iscoroutinefunction(func):
             # sync
             @functools.wraps(func)
             def _inner(*args, **kwargs):
-                with self:
+                with enter_mode(**mode_name_to_value):
                     return func(*args, **kwargs)
 
         else:
             # async
             @functools.wraps(func)
             async def _inner(*args, **kwargs):
-                with self:
+                with enter_mode(**mode_name_to_value):
                     return await func(*args, **kwargs)
 
         return _inner

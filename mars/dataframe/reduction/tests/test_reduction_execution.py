@@ -986,7 +986,8 @@ class MockReduction2(CustomReduction):
 
 
 def test_custom_dataframe_aggregate(setup, check_ref_counts):
-    data = pd.DataFrame(np.random.rand(30, 20))
+    rs = np.random.RandomState(0)
+    data = pd.DataFrame(rs.rand(30, 20))
 
     df = md.DataFrame(data)
     result = df.agg(MockReduction1())
@@ -1004,7 +1005,8 @@ def test_custom_dataframe_aggregate(setup, check_ref_counts):
 
 
 def test_custom_series_aggregate(setup, check_ref_counts):
-    data = pd.Series(np.random.rand(20))
+    rs = np.random.RandomState(0)
+    data = pd.Series(rs.rand(20))
 
     s = md.Series(data)
     result = s.agg(MockReduction1())

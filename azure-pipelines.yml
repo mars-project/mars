@@ -88,7 +88,7 @@ jobs:
               statsmodels\<0.13.0 tsfresh
           fi
           if [[ "$(mars.test.module)" == "dataframe" ]]; then
-            pip install pandas==1.0.5 pyarrow==4.0.1
+            pip install pandas==1.0.5
           fi
         fi
         conda list -n test

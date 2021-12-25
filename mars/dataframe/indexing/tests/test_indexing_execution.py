@@ -30,9 +30,12 @@ except ImportError:  # pragma: no cover
 
 from .... import dataframe as md
 from .... import tensor as mt
+from ....lib.version import parse as parse_version
 from ...datasource.read_csv import DataFrameReadCSV
 from ...datasource.read_sql import DataFrameReadSQL
 from ...datasource.read_parquet import DataFrameReadParquet
+
+_allow_set_missing_list = parse_version(pd.__version__).release >= (1, 1)
 
 
 @pytest.mark.parametrize("chunk_size", [2, (2, 3)])
@@ -663,7 +666,11 @@ def test_setitem(setup):
     df[["c11", "c12"]] = mt.tensor(data3, chunk_size=4)
 
     result = df.execute().fetch()
-    expected = data.copy()
+    if not _allow_set_missing_list:
+        expected = data.copy().reindex(
+            ["c" + str(i) for i in range(5)] + ["c10", "c11", "c12"],
+            axis=1,
+        )
     expected[["c0", "c2"]] = 1
     expected[["c1", "c10"]] = expected["c4"].mean()
     expected[["c11", "c12"]] = data3

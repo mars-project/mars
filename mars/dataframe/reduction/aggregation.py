@@ -971,6 +971,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                     result = op.func[0](in_data)
                 else:
                     result = in_data.agg(op.raw_func, axis=op.axis)
+                    if op.outputs[0].ndim == 1:
+                        result = result.astype(op.outputs[0].dtype, copy=False)
 
                 if op.output_types[0] == OutputType.tensor:
                     result = xp.array(result)

@@ -18,12 +18,16 @@ from pandas.api.types import is_list_like
 
 from ... import opcodes
 from ...core import OutputType, recursive_tile
+from ...lib.version import parse as parse_version
 from ...serialization.serializables import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, DataFrame
 from ..initializer import DataFrame as asframe, Series as asseries
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
+
+# in pandas 1.0.x, __setitem__ with a list with missing items are not allowed
+_allow_set_missing_list = parse_version(pd.__version__).release >= (1, 1)
 
 
 class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
@@ -268,7 +272,20 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op: "DataFrameSetitem"):
         target = ctx[op.target.key].copy()
         value = ctx[op.value.key] if not np.isscalar(op.value) else op.value
-        target[op.indexes] = value
+        try:
+
+            target[op.indexes] = value
+        except KeyError:
+            if _allow_set_missing_list:  # pragma: no cover
+                raise
+            else:
+                existing = set(target.columns)
+                new_columns = target.columns.append(
+                    pd.Index([idx for idx in op.indexes if idx not in existing])
+                )
+                target = target.reindex(new_columns, axis=1)
+                target[op.indexes] = value
+
         ctx[op.outputs[0].key] = target
 
 

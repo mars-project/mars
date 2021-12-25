@@ -157,7 +157,7 @@ class DataFrameDuplicated(DuplicateOperand):
         inp = ctx[op.input.key]
         result = inp.copy()
         duplicated_filter = ~inp.iloc[:, -1]
-        duplicates = inp[duplicated_filter]
+        duplicates = inp.loc[duplicated_filter]
         dup_on_duplicated = cls._duplicated(duplicates, op)
         result.iloc[duplicated_filter.values, -1] = dup_on_duplicated
         duplicated = result.iloc[:, -1]
