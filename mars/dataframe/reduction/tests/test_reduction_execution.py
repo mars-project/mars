@@ -33,12 +33,16 @@ from ... import CustomReduction, NamedAgg
 from ...base import to_gpu
 
 cp = lazy_import("cupy", rename="cp", globals=globals())
-_agg_size_as_series = parse_version(pd.__version__) >= parse_version("1.3.0")
+_agg_size_as_series = parse_version(pd.__version__).release >= (1, 3)
+_support_kw_agg = parse_version(pd.__version__).release >= (1, 1)
 
 
 @pytest.fixture
 def check_ref_counts():
     yield
+    import gc
+
+    gc.collect()
     sess = get_default_session()
     assert len(sess._get_ref_counts()) == 0
 
@@ -297,7 +301,7 @@ def test_dataframe_level_reduction(
 
     # behavior of 'skew', 'kurt' differs for cases with and without level
     skip_funcs = ("skew", "kurt")
-    if pd.__version__ == "1.2.0":
+    if parse_version(pd.__version__).release <= (1, 2, 0):
         # fails under pandas 1.2. see pandas-dev/pandas#38774 for more details
         skip_funcs += ("sem",)
 
@@ -885,17 +889,14 @@ def test_dataframe_aggregate(setup, check_ref_counts):
         data.agg({0: ["sum", "min", "var"], 9: ["mean", "var", "std"]}),
     )
 
-    result = df.agg(
-        sum_0=NamedAgg(0, "sum"), min_0=NamedAgg(0, "min"), mean_9=NamedAgg(9, "mean")
-    )
-    pd.testing.assert_frame_equal(
-        result.execute().fetch(),
-        data.agg(
+    if _support_kw_agg:
+        agg_kw = dict(
             sum_0=NamedAgg(0, "sum"),
             min_0=NamedAgg(0, "min"),
             mean_9=NamedAgg(9, "mean"),
-        ),
-    )
+        )
+        result = df.agg(**agg_kw)
+        pd.testing.assert_frame_equal(result.execute().fetch(), data.agg(**agg_kw))
 
 
 def test_series_aggregate(setup, check_ref_counts):
@@ -937,10 +938,11 @@ def test_series_aggregate(setup, check_ref_counts):
         result.execute().fetch(), data.agg({"col_sum": "sum", "col_count": "count"})
     )
 
-    result = series.agg(col_var="var", col_skew="skew")
-    pd.testing.assert_series_equal(
-        result.execute().fetch(), data.agg(col_var="var", col_skew="skew")
-    )
+    if _support_kw_agg:
+        result = series.agg(col_var="var", col_skew="skew")
+        pd.testing.assert_series_equal(
+            result.execute().fetch(), data.agg(col_var="var", col_skew="skew")
+        )
 
 
 def test_aggregate_str_cat(setup, check_ref_counts):

@@ -26,6 +26,7 @@ except ImportError:  # pragma: no cover
 
 from ....config import options, option_context
 from ....dataframe import DataFrame
+from ....lib.version import parse as parse_version
 from ....tensor import arange, tensor
 from ....tensor.random import rand
 from ....tests.core import require_cudf
@@ -39,6 +40,8 @@ from ..to_numeric import to_numeric
 from ..rebalance import DataFrameRebalance
 
 cudf = lazy_import("cudf", globals=globals())
+
+_explode_with_ignore_index = parse_version(pd.__version__).release >= (1, 1)
 
 
 @require_cudf
@@ -1968,7 +1971,12 @@ def test_stack_execution(setup):
             assert_method(result, expected)
 
 
-def test_explode_execution(setup):
+@pytest.mark.parametrize(
+    "ignore_index", [False, True] if _explode_with_ignore_index else [False]
+)
+def test_explode_execution(setup, ignore_index):
+    explode_kw = {"ignore_index": True} if ignore_index else {}
+
     raw = pd.DataFrame(
         {
             "a": np.random.rand(10),
@@ -1978,20 +1986,12 @@ def test_explode_execution(setup):
         }
     )
     df = from_pandas_df(raw, chunk_size=(4, 2))
-
-    for ignore_index in [False, True]:
-        r = df.explode("b", ignore_index=ignore_index)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch(), raw.explode("b", ignore_index=ignore_index)
-        )
+    r = df.explode("b", ignore_index=ignore_index)
+    pd.testing.assert_frame_equal(r.execute().fetch(), raw.explode("b", **explode_kw))
 
     series = from_pandas_series(raw.b, chunk_size=4)
-
-    for ignore_index in [False, True]:
-        r = series.explode(ignore_index=ignore_index)
-        pd.testing.assert_series_equal(
-            r.execute().fetch(), raw.b.explode(ignore_index=ignore_index)
-        )
+    r = series.explode(ignore_index=ignore_index)
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.b.explode(**explode_kw))
 
 
 def test_eval_query_execution(setup):

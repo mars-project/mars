@@ -54,7 +54,7 @@ _pd_release = parse_version(pd.__version__).release[:2]
 _level_reduction_keep_object = _pd_release < (1, 3)
 # in pandas>=1.3, when dataframes are reduced into series, mixture of float and bool
 # results in object.
-_reduce_bool_as_object = _pd_release >= (1, 3)
+_reduce_bool_as_object = _pd_release != (1, 2)
 
 
 class DataFrameReductionOperand(DataFrameOperand):
@@ -362,8 +362,11 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             elif all(dt == dtypes[0] for dt in dtypes):
                 reduced_dtype = dtypes[0]
             else:
-                has_bool = any(dt == bool for dt in dtypes)
-                if _reduce_bool_as_object and has_bool:
+                # as we already bypassed dtypes with same values,
+                # when has_mixed_bool is True, there are other dtypes
+                # other than bool.
+                has_mixed_bool = any(dt == np.dtype(bool) for dt in dtypes)
+                if _reduce_bool_as_object and has_mixed_bool:
                     reduced_dtype = np.dtype("O")
                 elif not all(isinstance(dt, np.dtype) for dt in dtypes):
                     # todo currently we return mixed dtypes as np.dtype('O').
