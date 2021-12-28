@@ -32,6 +32,9 @@ class SupervisorCommandRunner(OscarCommandRunner):
     def config_args(self, parser):
         super().config_args(parser)
         parser.add_argument("-w", "--web-port", help="web port of the service")
+        parser.add_argument(
+            "--n-process", help="number of supervisor processes", default="0"
+        )
 
     def parse_args(self, parser, argv, environ=None):
         args = super().parse_args(parser, argv, environ=environ)
@@ -52,7 +55,7 @@ class SupervisorCommandRunner(OscarCommandRunner):
     async def create_actor_pool(self):
         return await create_supervisor_actor_pool(
             self.args.endpoint,
-            n_process=0,
+            n_process=int(self.args.n_process),
             ports=self.ports,
             modules=self.args.load_modules,
             logging_conf=self.logging_conf,

@@ -59,6 +59,7 @@ class ControlMessageType(Enum):
     sync_config = 2
     get_config = 3
     wait_pool_recovered = 4
+    add_sub_pool_actor = 5
 
 
 @dataslots
@@ -178,7 +179,14 @@ class ErrorMessage(_MessageBase):
 
 
 class CreateActorMessage(_MessageBase):
-    __slots__ = "actor_cls", "actor_id", "args", "kwargs", "allocate_strategy"
+    __slots__ = (
+        "actor_cls",
+        "actor_id",
+        "args",
+        "kwargs",
+        "allocate_strategy",
+        "from_main",
+    )
 
     def __init__(
         self,
@@ -188,6 +196,7 @@ class CreateActorMessage(_MessageBase):
         args: Tuple,
         kwargs: Dict,
         allocate_strategy,
+        from_main: bool = False,
         protocol: int = None,
         message_trace: List[MessageTraceItem] = None,
     ):
@@ -197,6 +206,7 @@ class CreateActorMessage(_MessageBase):
         self.args = args
         self.kwargs = kwargs
         self.allocate_strategy = allocate_strategy
+        self.from_main = from_main
 
     @classproperty
     @implements(_MessageBase.message_type)

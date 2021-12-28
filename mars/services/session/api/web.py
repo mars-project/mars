@@ -15,7 +15,6 @@
 import json
 from typing import Dict, List, Union
 
-from ....lib.aio import alru_cache
 from ....utils import parse_readable_size
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from ..core import SessionInfo
@@ -46,19 +45,10 @@ def _decode_size(encoded: str) -> Union[int, str, Dict[str, Union[int, List[int]
 
 
 class SessionWebAPIBaseHandler(MarsServiceWebAPIHandler):
-    @alru_cache(cache_exceptions=False)
-    async def _get_cluster_api(self):
-        from ...cluster import ClusterAPI
-
-        return await ClusterAPI.create(self._supervisor_addr)
-
-    @alru_cache(cache_exceptions=False)
     async def _get_oscar_session_api(self):
         from .oscar import SessionAPI
 
-        cluster_api = await self._get_cluster_api()
-        [address] = await cluster_api.get_supervisors_by_keys(["Session"])
-        return await SessionAPI.create(address)
+        return await self._get_api_by_key(SessionAPI, "Session", with_key_arg=False)
 
 
 class SessionWebAPIHandler(SessionWebAPIBaseHandler):

@@ -66,6 +66,8 @@ class ActorCaller:
                 self._client_to_message_futures[client] = dict()
                 for future in message_futures.values():
                     future.set_exception(e)
+            finally:
+                await asyncio.sleep(0)
 
         message_futures = self._client_to_message_futures.get(client)
         self._client_to_message_futures[client] = dict()
