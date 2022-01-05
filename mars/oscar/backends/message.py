@@ -170,11 +170,22 @@ class ResultMessage(_MessageBase):
 
 
 class ErrorMessage(_MessageBase):
-    __slots__ = "error_type", "error", "traceback"
+    __slots__ = "address", "pid", "error_type", "error", "traceback"
+
+    # Check the as_instanceof_cause is not recursive.
+    #
+    # e.g. SubtaskRunnerActor.run_subtask will reraise the exception raised
+    # from SubtaskProcessorActor.run. But these two actors are in the same
+    # process, so we don't want to append duplicated address and pid in the
+    # error message.
+    class AsCauseBase:
+        pass
 
     def __init__(
         self,
         message_id: bytes,
+        address: str,
+        pid: int,
         error_type: Type[BaseException],
         error: BaseException,
         traceback: TracebackType,
@@ -182,6 +193,8 @@ class ErrorMessage(_MessageBase):
         message_trace: List[MessageTraceItem] = None,
     ):
         super().__init__(message_id, protocol=protocol, message_trace=message_trace)
+        self.address = address
+        self.pid = pid
         self.error_type = error_type
         self.error = error
         self.traceback = traceback
@@ -190,6 +203,17 @@ class ErrorMessage(_MessageBase):
     @implements(_MessageBase.message_type)
     def message_type(self) -> MessageType:
         return MessageType.error
+
+    def as_instanceof_cause(self):
+        if issubclass(self.error_type, ErrorMessage.AsCauseBase):
+            return self.error.with_traceback(self.traceback)
+
+        class _MarsError(ErrorMessage.AsCauseBase, type(self.error)):
+            pass
+
+        return _MarsError(
+            f"[address={self.address}, pid={self.pid}] {self.error}"
+        ).with_traceback(self.traceback)
 
 
 class CreateActorMessage(_MessageBase):
