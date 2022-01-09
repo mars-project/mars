@@ -1015,6 +1015,7 @@ def test_groupby_agg_with_arrow_dtype(setup):
 
     r = mdf.groupby("b").count()
     result = r.execute().fetch()
+    result.index = result.index.astype(object)
     expected = df1.groupby("b").count()
     pd.testing.assert_frame_equal(result, expected)
 
@@ -1023,6 +1024,7 @@ def test_groupby_agg_with_arrow_dtype(setup):
 
     r = mseries.groupby(mseries).count()
     result = r.execute().fetch()
+    result.index = result.index.astype(object)
     expected = series1.groupby(series1).count()
     pd.testing.assert_series_equal(result, expected)
 
@@ -1032,6 +1034,7 @@ def test_groupby_agg_with_arrow_dtype(setup):
 
     r = mseries.groupby(mseries).count()
     result = r.execute().fetch()
+    result.index = result.index.astype(object)
     expected = series2.groupby(series2).count()
     pd.testing.assert_series_equal(result, expected)
 
@@ -1044,6 +1047,7 @@ def test_groupby_apply_with_arrow_dtype(setup):
 
     applied = mdf.groupby("b").apply(lambda df: df.a.sum())
     result = applied.execute().fetch()
+    result.index = result.index.astype(object)
     expected = df1.groupby("b").apply(lambda df: df.a.sum())
     pd.testing.assert_series_equal(result, expected)
 
@@ -1052,5 +1056,6 @@ def test_groupby_apply_with_arrow_dtype(setup):
 
     applied = mseries.groupby(mseries).apply(lambda s: s)
     result = applied.execute().fetch()
+    result.index = result.index.astype(np.int64)
     expected = series1.groupby(series1).apply(lambda s: s)
     pd.testing.assert_series_equal(arrow_array_to_objects(result), expected)
