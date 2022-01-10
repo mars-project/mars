@@ -26,15 +26,14 @@ except ImportError:  # pragma: no cover
 from .... import dataframe as md
 from ....config import option_context
 from ....deploy.oscar.session import get_default_session
-from ....lib.version import parse as parse_version
 from ....tests.core import require_cudf, require_cupy
-from ....utils import lazy_import
+from ....utils import lazy_import, pd_release_version
 from ... import CustomReduction, NamedAgg
 from ...base import to_gpu
 
 cp = lazy_import("cupy", rename="cp", globals=globals())
-_agg_size_as_series = parse_version(pd.__version__).release >= (1, 3)
-_support_kw_agg = parse_version(pd.__version__).release >= (1, 1)
+_agg_size_as_series = pd_release_version >= (1, 3)
+_support_kw_agg = pd_release_version >= (1, 1)
 
 
 @pytest.fixture
@@ -301,7 +300,7 @@ def test_dataframe_level_reduction(
 
     # behavior of 'skew', 'kurt' differs for cases with and without level
     skip_funcs = ("skew", "kurt")
-    if parse_version(pd.__version__).release <= (1, 2, 0):
+    if pd_release_version <= (1, 2, 0):
         # fails under pandas 1.2. see pandas-dev/pandas#38774 for more details
         skip_funcs += ("sem",)
 

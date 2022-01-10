@@ -26,11 +26,10 @@ except ImportError:  # pragma: no cover
 
 from ....config import options, option_context
 from ....dataframe import DataFrame
-from ....lib.version import parse as parse_version
 from ....tensor import arange, tensor
 from ....tensor.random import rand
 from ....tests.core import require_cudf
-from ....utils import lazy_import
+from ....utils import lazy_import, pd_release_version
 from ... import eval as mars_eval, cut, qcut, get_dummies
 from ...datasource.dataframe import from_pandas as from_pandas_df
 from ...datasource.series import from_pandas as from_pandas_series
@@ -41,7 +40,7 @@ from ..rebalance import DataFrameRebalance
 
 cudf = lazy_import("cudf", globals=globals())
 
-_explode_with_ignore_index = parse_version(pd.__version__).release >= (1, 1)
+_explode_with_ignore_index = pd_release_version[:2] >= (1, 1)
 
 
 @require_cudf

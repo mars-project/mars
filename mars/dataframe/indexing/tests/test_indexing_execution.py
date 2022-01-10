@@ -30,12 +30,12 @@ except ImportError:  # pragma: no cover
 
 from .... import dataframe as md
 from .... import tensor as mt
-from ....lib.version import parse as parse_version
+from ....utils import pd_release_version
 from ...datasource.read_csv import DataFrameReadCSV
 from ...datasource.read_sql import DataFrameReadSQL
 from ...datasource.read_parquet import DataFrameReadParquet
 
-_allow_set_missing_list = parse_version(pd.__version__).release >= (1, 1)
+_allow_set_missing_list = pd_release_version[:2] >= (1, 1)
 
 
 @pytest.mark.parametrize("chunk_size", [2, (2, 3)])

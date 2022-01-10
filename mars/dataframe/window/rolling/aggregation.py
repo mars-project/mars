@@ -17,7 +17,6 @@ import pandas as pd
 
 from .... import opcodes
 from ....core import recursive_tile
-from ....lib.version import parse as parse_version
 from ....serialization.serializables import (
     FieldTypes,
     AnyField,
@@ -30,12 +29,13 @@ from ....serialization.serializables import (
     DictField,
     ListField,
 )
-from ....utils import lazy_import, has_unknown_shape
+from ....utils import lazy_import, has_unknown_shape, pd_release_version
 from ...operands import DataFrameOperand, DataFrameOperandMixin
 from ...core import DATAFRAME_TYPE
 from ...utils import build_empty_df, build_empty_series, parse_index
 
 cudf = lazy_import("cudf", globals=globals())
+_with_pandas_issue_38908 = pd_release_version == (1, 2, 0)
 
 
 class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
@@ -465,7 +465,7 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
             # df.rolling().aggregate('skew') modified original data
             # so we copy it first for skew only
             if (
-                parse_version(pd.__version__) == parse_version("1.2.0")
+                _with_pandas_issue_38908
                 and op.func in ["skew", "kurt"]
                 and op.outputs[0].index[0] == 0
             ):

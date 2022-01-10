@@ -18,16 +18,16 @@ from pandas.api.types import is_list_like
 
 from ... import opcodes
 from ...core import OutputType, recursive_tile
-from ...lib.version import parse as parse_version
 from ...serialization.serializables import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
+from ...utils import pd_release_version
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, DataFrame
 from ..initializer import DataFrame as asframe, Series as asseries
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
 # in pandas 1.0.x, __setitem__ with a list with missing items are not allowed
-_allow_set_missing_list = parse_version(pd.__version__).release >= (1, 1)
+_allow_set_missing_list = pd_release_version[:2] >= (1, 1)
 
 
 class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):

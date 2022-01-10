@@ -25,12 +25,11 @@ except ImportError:  # pragma: no cover
 
 from .... import dataframe as md
 from ....core.operand import OperandStage
-from ....lib.version import parse as parse_version
 from ....tests.core import assert_groupby_equal, require_cudf
-from ....utils import arrow_array_to_objects
+from ....utils import arrow_array_to_objects, pd_release_version
 from ..aggregation import DataFrameGroupByAgg
 
-_agg_size_as_frame = parse_version(pd.__version__).release[:2] > (1, 0)
+_agg_size_as_frame = pd_release_version[:2] > (1, 0)
 
 
 class MockReduction1(md.CustomReduction):
@@ -220,7 +219,11 @@ def test_groupby_getitem(setup):
         r = mdf.groupby("b", as_index=False).b.count(method=method)
         result = r.execute().fetch().sort_values("b", ignore_index=True)
         try:
-            expected = raw.groupby("b", as_index=False).b.count().sort_values("b", ignore_index=True)
+            expected = (
+                raw.groupby("b", as_index=False)
+                .b.count()
+                .sort_values("b", ignore_index=True)
+            )
         except ValueError:
             expected = raw.groupby("b").b.count().to_frame()
             expected.index.names = [None] * expected.index.nlevels
@@ -230,7 +233,11 @@ def test_groupby_getitem(setup):
         r = mdf.groupby("b", as_index=False).b.agg({"cnt": "count"}, method=method)
         result = r.execute().fetch().sort_values("b", ignore_index=True)
         try:
-            expected = raw.groupby("b", as_index=False).b.agg({"cnt": "count"}).sort_values("b", ignore_index=True)
+            expected = (
+                raw.groupby("b", as_index=False)
+                .b.agg({"cnt": "count"})
+                .sort_values("b", ignore_index=True)
+            )
         except ValueError:
             expected = raw.groupby("b").b.agg({"cnt": "count"}).to_frame()
             expected.index.names = [None] * expected.index.nlevels
@@ -361,7 +368,11 @@ def test_dataframe_groupby_agg(setup):
         r = mdf.groupby("c2", as_index=False).agg("size", method=method)
         if _agg_size_as_frame:
             result = r.execute().fetch().sort_values("c2", ignore_index=True)
-            expected = raw.groupby("c2", as_index=False).agg("size").sort_values("c2", ignore_index=True)
+            expected = (
+                raw.groupby("c2", as_index=False)
+                .agg("size")
+                .sort_values("c2", ignore_index=True)
+            )
             pd.testing.assert_frame_equal(result, expected)
         else:
             result = r.execute().fetch().sort_index()

@@ -18,11 +18,11 @@ import pytest
 
 from ...core import tile
 from ...lib.groupby_wrapper import wrapped_groupby
-from ...lib.version import parse as parse_version
+from ...utils import pd_release_version
 from .. import cut
 from ..initializer import DataFrame, Series, Index
 
-_with_inclusive_bounds = parse_version(pd.__version__) >= parse_version("1.3.0")
+_with_inclusive_bounds = pd_release_version >= (1, 3, 0)
 
 
 def test_dataframe_params():

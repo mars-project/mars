@@ -23,7 +23,6 @@ except ImportError:  # pragma: no cover
 from ... import opcodes
 from ...core import ENTITY_TYPE, recursive_tile
 from ...core.operand import OperandStage
-from ...lib.version import parse as parse_version
 from ...serialization.serializables import (
     KeyField,
     AnyField,
@@ -32,7 +31,7 @@ from ...serialization.serializables import (
     BoolField,
 )
 from ...tensor import tensor as astensor
-from ...utils import lazy_import
+from ...utils import lazy_import, pd_release_version
 from ..core import Index as DataFrameIndexType, INDEX_TYPE
 from ..initializer import Index as asindex
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -43,7 +42,7 @@ from .index_lib import DataFrameReindexHandler
 cudf = lazy_import("cudf", globals=globals())
 
 # under pandas<1.1, SparseArray ignores zeros on creation
-_pd_sparse_miss_zero = parse_version(pd.__version__).release[:2] < (1, 1)
+_pd_sparse_miss_zero = pd_release_version[:2] < (1, 1)
 
 
 class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
@@ -284,6 +283,7 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
                             )
                         else:
                             from pandas._libs.sparse import IntIndex
+
                             sparse_array = pd.arrays.SparseArray(
                                 data,
                                 sparse_index=IntIndex(index_shape, ind),
