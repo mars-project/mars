@@ -38,6 +38,8 @@ from .. import to_gpu, to_cpu
 from ..to_numeric import to_numeric
 from ..rebalance import DataFrameRebalance
 
+pytestmark = pytest.mark.pd_compat
+
 cudf = lazy_import("cudf", globals=globals())
 
 _explode_with_ignore_index = pd_release_version[:2] >= (1, 1)

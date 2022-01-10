@@ -383,6 +383,7 @@ def test_loc_getitem(setup):
     pd.testing.assert_frame_equal(result, expected)
 
 
+@pytest.mark.pd_compat
 def test_dataframe_getitem(setup):
     data = pd.DataFrame(np.random.rand(10, 5), columns=["c1", "c2", "c3", "c4", "c5"])
     df = md.DataFrame(data, chunk_size=2)
@@ -634,6 +635,7 @@ def test_iat(setup):
     assert result == data.iloc[:, 2].iat[3]
 
 
+@pytest.mark.pd_compat
 def test_setitem(setup):
     data = pd.DataFrame(
         np.random.rand(10, 5),
@@ -671,6 +673,8 @@ def test_setitem(setup):
             ["c" + str(i) for i in range(5)] + ["c10", "c11", "c12"],
             axis=1,
         )
+    else:
+        expected = data.copy()
     expected[["c0", "c2"]] = 1
     expected[["c1", "c10"]] = expected["c4"].mean()
     expected[["c11", "c12"]] = data3
@@ -1006,6 +1010,7 @@ def _wrap_execute_data_source_mixed(limit, usecols, op_cls):
     return _execute_data_source
 
 
+@pytest.mark.pd_compat
 def test_optimization(setup):
     import sqlalchemy as sa
 

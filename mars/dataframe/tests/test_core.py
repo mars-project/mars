@@ -301,6 +301,7 @@ def test_key_value(setup):
     np.testing.assert_array_equal(result, raw.values)
 
 
+@pytest.mark.pd_compat
 def test_between(setup):
     pd_series = pd.Series(pd.date_range("1/1/2000", periods=10))
     pd_left, pd_right = pd_series[3], pd_series[7]

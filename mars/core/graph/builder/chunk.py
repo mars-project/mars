@@ -259,8 +259,14 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
         return node not in visited and node not in self._processed_chunks
 
     def _build(self) -> Iterable[Union[TileableGraph, ChunkGraph]]:
-        yield from self.tiler
+        tile_iterator = iter(self.tiler)
+        while True:
+            try:
+                with enter_mode(build=True, kernel=True):
+                    graph = next(tile_iterator)
+                yield graph
+            except StopIteration:
+                break
 
     def build(self) -> Generator[Union[TileableGraph, ChunkGraph], None, None]:
-        with enter_mode(build=True, kernel=True):
-            yield from self._build()
+        yield from self._build()

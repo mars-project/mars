@@ -167,9 +167,9 @@ def _new_gpu_test_session(_stop_isolation):  # pragma: no cover
 
 @pytest.fixture
 def setup(_new_test_session):
-    assert not (is_build_mode() or is_kernel_mode())
     _new_test_session.as_default()
     yield _new_test_session
+    assert not (is_build_mode() or is_kernel_mode())
 
 
 @pytest.fixture

@@ -18,7 +18,6 @@ import threading
 
 from ..config import options
 
-
 _internal_mode = threading.local()
 
 

@@ -29,6 +29,8 @@ from ....tests.core import assert_groupby_equal, require_cudf
 from ....utils import arrow_array_to_objects, pd_release_version
 from ..aggregation import DataFrameGroupByAgg
 
+pytestmark = pytest.mark.pd_compat
+
 _agg_size_as_frame = pd_release_version[:2] > (1, 0)
 
 

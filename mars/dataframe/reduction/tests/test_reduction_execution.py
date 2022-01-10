@@ -31,6 +31,8 @@ from ....utils import lazy_import, pd_release_version
 from ... import CustomReduction, NamedAgg
 from ...base import to_gpu
 
+pytestmark = pytest.mark.pd_compat
+
 cp = lazy_import("cupy", rename="cp", globals=globals())
 _agg_size_as_series = pd_release_version >= (1, 3)
 _support_kw_agg = pd_release_version >= (1, 1)
