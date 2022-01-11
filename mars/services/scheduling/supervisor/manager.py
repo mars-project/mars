@@ -183,8 +183,6 @@ class SubtaskManagerActor(mo.Actor):
                         ).send(subtask_info.subtask, band[1], self.address)
                     )
                     subtask_info.band_futures[band] = task
-                    subtask_info.start_time = time.time()
-                    self._speculation_execution_scheduler.add_subtask(subtask_info)
                     result = yield task
                 ProfilingData.collect_subtask(
                     subtask_info.subtask, band, timer.duration
