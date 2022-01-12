@@ -18,14 +18,13 @@ import pandas as pd
 from ... import opcodes
 from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage
-from ...lib.version import parse as parse_version
 from ...serialization.serializables import KeyField, BoolField, Int64Field, StringField
-from ...utils import has_unknown_shape
+from ...utils import has_unknown_shape, pd_release_version
 from ..core import Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_series, parse_index
 
-_keep_original_order = parse_version(pd.__version__) >= parse_version("1.3.0")
+_keep_original_order = pd_release_version >= (1, 3, 0)
 
 
 class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):

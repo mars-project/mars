@@ -53,6 +53,8 @@ from .. import (
 from ..aggregation import where_function
 from ..core import ReductionCompiler
 
+pytestmark = pytest.mark.pd_compat
+
 
 class FunctionOptions(NamedTuple):
     has_skipna: bool = True

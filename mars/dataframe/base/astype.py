@@ -18,14 +18,14 @@ from pandas.api.types import CategoricalDtype
 
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
-from ...lib.version import parse as parse_version
 from ...serialization.serializables import AnyField, StringField, ListField
 from ...tensor.base import sort
+from ...utils import pd_release_version
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_df, build_empty_series, parse_index
 
-_need_astype_contiguous = parse_version(pd.__version__) == parse_version("1.3.0")
+_need_astype_contiguous = pd_release_version == (1, 3, 0)
 
 
 class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):

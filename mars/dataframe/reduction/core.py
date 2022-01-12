@@ -28,7 +28,6 @@ from ...core import (
     recursive_tile,
 )
 from ...core.operand import OperandStage
-from ...lib.version import parse as parse_version
 from ...serialization.serializables import (
     BoolField,
     AnyField,
@@ -36,7 +35,7 @@ from ...serialization.serializables import (
     Int32Field,
     StringField,
 )
-from ...utils import tokenize
+from ...utils import pd_release_version, tokenize
 from ..core import SERIES_TYPE
 from ..utils import (
     parse_index,
@@ -48,13 +47,12 @@ from ..utils import (
 )
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE
 
-_pd_release = parse_version(pd.__version__).release[:2]
 # in pandas<1.3, when aggregating with multiple levels and numeric_only is True,
 # object cols not ignored with min-max funcs
-_level_reduction_keep_object = _pd_release < (1, 3)
+_level_reduction_keep_object = pd_release_version[:2] < (1, 3)
 # in pandas>=1.3, when dataframes are reduced into series, mixture of float and bool
 # results in object.
-_reduce_bool_as_object = _pd_release >= (1, 3)
+_reduce_bool_as_object = pd_release_version[:2] != (1, 2)
 
 
 class DataFrameReductionOperand(DataFrameOperand):
@@ -362,8 +360,11 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             elif all(dt == dtypes[0] for dt in dtypes):
                 reduced_dtype = dtypes[0]
             else:
-                has_bool = any(dt == bool for dt in dtypes)
-                if _reduce_bool_as_object and has_bool:
+                # as we already bypassed dtypes with same values,
+                # when has_mixed_bool is True, there are other dtypes
+                # other than bool.
+                has_mixed_bool = any(dt == np.dtype(bool) for dt in dtypes)
+                if _reduce_bool_as_object and has_mixed_bool:
                     reduced_dtype = np.dtype("O")
                 elif not all(isinstance(dt, np.dtype) for dt in dtypes):
                     # todo currently we return mixed dtypes as np.dtype('O').

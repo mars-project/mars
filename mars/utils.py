@@ -55,10 +55,12 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     ceildiv,
     Timer,
 )
+from .lib.version import parse as parse_version
 from .typing import ChunkType, TileableType, EntityType, OperandType
 
 logger = logging.getLogger(__name__)
 random.seed(int(time.time()) * os.getpid())
+pd_release_version: Tuple[int] = parse_version(pd.__version__).release
 
 OBJECT_FIELD_OVERHEAD = 50
 

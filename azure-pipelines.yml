@@ -94,8 +94,18 @@ jobs:
     - bash: |
         set -e
         source ci/reload-env.sh
+        mkdir -p build
         pytest $PYTEST_CONFIG mars/$(mars.test.module)
-        coverage report
+        mv .coverage build/.coverage.main.file
+        
+        # do compatibility test for earliest supported pandas release
+        if [[ "$(mars.test.module)" == "dataframe" ]]; then
+          pip install pandas==1.0.5
+          pytest $PYTEST_CONFIG -m pd_compat mars/dataframe
+          mv .coverage build/.coverage.pd_compat.file
+        fi
+        
+        coverage combine build/ && coverage report
         coverage xml
       displayName: 'Run tests'
 
