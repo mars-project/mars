@@ -17,13 +17,13 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import OutputType, get_output_types, recursive_tile
-from ...lib.version import parse as parse_version
 from ...serialization.serializables import DictField, Int64Field, BoolField
+from ...utils import pd_release_version
 from ..core import IndexValue
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_concatenated_rows_frame, parse_index
 
-_pandas_enable_negative = parse_version(pd.__version__).release >= (1, 4, 0)
+_pandas_enable_negative = pd_release_version >= (1, 4, 0)
 
 
 class GroupByHead(DataFrameOperand, DataFrameOperandMixin):
@@ -175,7 +175,7 @@ class GroupByHead(DataFrameOperand, DataFrameOperandMixin):
             grouped = grouped[selection]
 
         result = grouped.head(op.row_count)
-        if not op.enable_negative:  # pragma: no cover
+        if not op.enable_negative and op.row_count < 0:
             result = result.iloc[:0]
         ctx[op.outputs[0].key] = result
 
