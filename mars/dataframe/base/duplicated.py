@@ -148,7 +148,7 @@ class DataFrameDuplicated(DuplicateOperand):
         duplicated = cls._duplicated(inp, op)
         if not duplicated.name:
             duplicated.name = "_duplicated_"
-        result.iloc[duplicated] = None
+        result.iloc[duplicated.values] = None
         result = xdf.concat([result, duplicated], axis=1)
         ctx[op.outputs[0].key] = result
 
@@ -156,11 +156,12 @@ class DataFrameDuplicated(DuplicateOperand):
     def _execute_tree_combine(cls, ctx, op):
         inp = ctx[op.input.key]
         result = inp.copy()
-        duplicates = inp[~inp.iloc[:, -1]]
+        duplicated_filter = ~inp.iloc[:, -1]
+        duplicates = inp.loc[duplicated_filter]
         dup_on_duplicated = cls._duplicated(duplicates, op)
-        result.iloc[~inp.iloc[:, -1], -1] = dup_on_duplicated
+        result.iloc[duplicated_filter.values, -1] = dup_on_duplicated
         duplicated = result.iloc[:, -1]
-        result.iloc[duplicated, :-1] = None
+        result.iloc[duplicated.values, :-1] = None
         ctx[op.outputs[0].key] = result
 
     @classmethod

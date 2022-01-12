@@ -1236,10 +1236,7 @@ def make_dtypes(dtypes):
     if dtypes is None:
         return None
     if not isinstance(dtypes, pd.Series):
-        if isinstance(dtypes, dict):
-            dtypes = pd.Series(dtypes.values(), index=dtypes.keys())
-        else:
-            dtypes = pd.Series(dtypes)
+        dtypes = pd.Series(dtypes)
     return dtypes.apply(make_dtype)
 
 

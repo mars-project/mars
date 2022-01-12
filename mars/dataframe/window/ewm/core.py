@@ -15,20 +15,18 @@
 import math
 from collections import OrderedDict
 
-import pandas as pd
-
-from ....lib.version import parse as parse_version
 from ....serialization.serializables import (
     Int64Field,
     BoolField,
     Int32Field,
     Float64Field,
 )
+from ....utils import pd_release_version
 from ...utils import validate_axis
 from ..core import Window
 
-_default_min_period_1 = parse_version(pd.__version__) >= parse_version("1.1.0")
-_pd_1_3_repr = parse_version(pd.__version__) >= parse_version("1.3.0")
+_default_min_period_1 = pd_release_version >= (1, 1, 0)
+_pd_1_3_repr = pd_release_version >= (1, 3, 0)
 
 
 class EWM(Window):

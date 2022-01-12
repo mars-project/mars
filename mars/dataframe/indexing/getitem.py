@@ -483,7 +483,10 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             for i, (columns, column_idx) in enumerate(
                 zip(column_splits, column_indexes)
             ):
-                dtypes = in_df.dtypes[columns]
+                try:
+                    dtypes = in_df.dtypes[columns]
+                except ValueError:  # pragma: no cover
+                    dtypes = in_df.dtypes[list(columns)]
                 column_nsplits.append(len(dtypes))
                 for j in range(in_df.chunk_shape[0]):
                     c = in_df.cix[(j, column_idx[0])]

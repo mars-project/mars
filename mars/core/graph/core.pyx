@@ -143,7 +143,7 @@ cdef class DirectedGraph:
         try:
             return list(self._successors[n])
         except KeyError:
-            return KeyError(f'Node {n} does not exist in the directed graph')
+            raise KeyError(f'Node {n} does not exist in the directed graph')
 
     def iter_predecessors(self, n):
         try:

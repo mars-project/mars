@@ -14,19 +14,17 @@
 
 from collections import OrderedDict
 
-import pandas as pd
-
-from ....lib.version import parse as parse_version
 from ....serialization.serializables import (
     BoolField,
     Int32Field,
     Int64Field,
     StringField,
 )
+from ....utils import pd_release_version
 from ...utils import validate_axis
 from ..core import Window
 
-_window_has_method = parse_version(pd.__version__) >= parse_version("1.3.0")
+_window_has_method = pd_release_version >= (1, 3, 0)
 
 
 class Expanding(Window):

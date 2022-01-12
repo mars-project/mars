@@ -18,6 +18,7 @@ import subprocess
 import pytest
 
 from mars.config import option_context
+from mars.core.mode import is_kernel_mode, is_build_mode
 from mars.lib.aio import stop_isolation
 from mars.oscar.backends.router import Router
 from mars.oscar.backends.ray.communication import RayServer
@@ -143,6 +144,7 @@ def _new_gpu_test_session(_stop_isolation):  # pragma: no cover
 def setup(_new_test_session):
     _new_test_session.as_default()
     yield _new_test_session
+    assert not (is_build_mode() or is_kernel_mode())
 
 
 @pytest.fixture

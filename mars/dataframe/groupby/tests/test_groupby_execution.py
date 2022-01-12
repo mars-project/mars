@@ -26,8 +26,12 @@ except ImportError:  # pragma: no cover
 from .... import dataframe as md
 from ....core.operand import OperandStage
 from ....tests.core import assert_groupby_equal, require_cudf
-from ....utils import arrow_array_to_objects
+from ....utils import arrow_array_to_objects, pd_release_version
 from ..aggregation import DataFrameGroupByAgg
+
+pytestmark = pytest.mark.pd_compat
+
+_agg_size_as_frame = pd_release_version[:2] > (1, 0)
 
 
 class MockReduction1(md.CustomReduction):
@@ -215,20 +219,32 @@ def test_groupby_getitem(setup):
         )
 
         r = mdf.groupby("b", as_index=False).b.count(method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch().sort_values("b", ignore_index=True),
-            raw.groupby("b", as_index=False)
-            .b.count()
-            .sort_values("b", ignore_index=True),
-        )
+        result = r.execute().fetch().sort_values("b", ignore_index=True)
+        try:
+            expected = (
+                raw.groupby("b", as_index=False)
+                .b.count()
+                .sort_values("b", ignore_index=True)
+            )
+        except ValueError:
+            expected = raw.groupby("b").b.count().to_frame()
+            expected.index.names = [None] * expected.index.nlevels
+            expected = expected.sort_values("b", ignore_index=True)
+        pd.testing.assert_frame_equal(result, expected)
 
         r = mdf.groupby("b", as_index=False).b.agg({"cnt": "count"}, method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch().sort_values("b", ignore_index=True),
-            raw.groupby("b", as_index=False)
-            .b.agg({"cnt": "count"})
-            .sort_values("b", ignore_index=True),
-        )
+        result = r.execute().fetch().sort_values("b", ignore_index=True)
+        try:
+            expected = (
+                raw.groupby("b", as_index=False)
+                .b.agg({"cnt": "count"})
+                .sort_values("b", ignore_index=True)
+            )
+        except ValueError:
+            expected = raw.groupby("b").b.agg({"cnt": "count"}).to_frame()
+            expected.index.names = [None] * expected.index.nlevels
+            expected = expected.sort_values("b", ignore_index=True)
+        pd.testing.assert_frame_equal(result, expected)
 
     r = mdf.groupby("b").a.apply(lambda x: x + 1)
     pd.testing.assert_series_equal(
@@ -352,12 +368,18 @@ def test_dataframe_groupby_agg(setup):
     # test as_index=False
     for method in ["tree", "shuffle"]:
         r = mdf.groupby("c2", as_index=False).agg("size", method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch().sort_values("c2", ignore_index=True),
-            raw.groupby("c2", as_index=False)
-            .agg("size")
-            .sort_values("c2", ignore_index=True),
-        )
+        if _agg_size_as_frame:
+            result = r.execute().fetch().sort_values("c2", ignore_index=True)
+            expected = (
+                raw.groupby("c2", as_index=False)
+                .agg("size")
+                .sort_values("c2", ignore_index=True)
+            )
+            pd.testing.assert_frame_equal(result, expected)
+        else:
+            result = r.execute().fetch().sort_index()
+            expected = raw.groupby("c2", as_index=False).agg("size").sort_index()
+            pd.testing.assert_series_equal(result, expected)
 
         r = mdf.groupby("c2", as_index=False).agg("mean", method=method)
         pd.testing.assert_frame_equal(

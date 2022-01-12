@@ -27,7 +27,6 @@ from ...config import options
 from ...core import OutputType, ENTITY_TYPE, enter_mode, recursive_tile
 from ...core.custom_log import redirect_custom_log
 from ...core.operand import OperandStage
-from ...lib.version import parse as parse_version
 from ...serialization.serializables import (
     BoolField,
     AnyField,
@@ -35,7 +34,7 @@ from ...serialization.serializables import (
     ListField,
     DictField,
 )
-from ...utils import ceildiv, lazy_import, enter_current_session
+from ...utils import ceildiv, lazy_import, enter_current_session, pd_release_version
 from ..core import INDEX_CHUNK_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -52,7 +51,7 @@ from .core import (
 cp = lazy_import("cupy", globals=globals(), rename="cp")
 cudf = lazy_import("cudf", globals=globals())
 
-_agg_size_as_series = parse_version(pd.__version__) >= parse_version("1.3.0")
+_agg_size_as_series = pd_release_version >= (1, 3, 0)
 
 
 def where_function(cond, var1, var2):
@@ -969,6 +968,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                     result = op.func[0](in_data)
                 else:
                     result = in_data.agg(op.raw_func, axis=op.axis)
+                    if op.outputs[0].ndim == 1:
+                        result = result.astype(op.outputs[0].dtype, copy=False)
 
                 if op.output_types[0] == OutputType.tensor:
                     result = xp.array(result)
