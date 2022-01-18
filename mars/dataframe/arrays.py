@@ -54,9 +54,9 @@ except ImportError:  # pragma: no cover
 
 from ..config import options
 from ..core import is_kernel_mode
-from ..lib.version import parse as parse_version
+from ..utils import pd_release_version
 
-_use_bool_any_all = parse_version(pd.__version__) >= parse_version("1.3.0")
+_use_bool_any_all = pd_release_version >= (1, 3, 0)
 
 
 class ArrowDtype(ExtensionDtype):

@@ -18,11 +18,11 @@ import pytest
 
 from ...core import tile
 from ...lib.groupby_wrapper import wrapped_groupby
-from ...lib.version import parse as parse_version
+from ...utils import pd_release_version
 from .. import cut
 from ..initializer import DataFrame, Series, Index
 
-_with_inclusive_bounds = parse_version(pd.__version__) >= parse_version("1.3.0")
+_with_inclusive_bounds = pd_release_version >= (1, 3, 0)
 
 
 def test_dataframe_params():
@@ -301,6 +301,7 @@ def test_key_value(setup):
     np.testing.assert_array_equal(result, raw.values)
 
 
+@pytest.mark.pd_compat
 def test_between(setup):
     pd_series = pd.Series(pd.date_range("1/1/2000", periods=10))
     pd_left, pd_right = pd_series[3], pd_series[7]

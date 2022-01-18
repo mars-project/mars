@@ -35,7 +35,7 @@ from ...serialization.serializables import (
     DictField,
 )
 from ...typing import ChunkType, TileableType
-from ...utils import enter_current_session, lazy_import
+from ...utils import enter_current_session, lazy_import, pd_release_version
 from ..core import GROUPBY_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
@@ -52,6 +52,8 @@ from .core import DataFrameGroupByOperand
 
 cp = lazy_import("cupy", globals=globals(), rename="cp")
 cudf = lazy_import("cudf", globals=globals())
+
+_support_get_group_without_as_index = pd_release_version[:2] > (1, 0)
 
 
 class SizeRecorder:
@@ -281,9 +283,22 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         )
 
     def _call_series(self, groupby, in_series):
-        agg_result = groupby.op.build_mock_groupby().aggregate(
-            self.raw_func, **self.raw_func_kw
-        )
+        try:
+            agg_result = groupby.op.build_mock_groupby().aggregate(
+                self.raw_func, **self.raw_func_kw
+            )
+        except ValueError:
+            if (
+                self._groupby_params.get("as_index")
+                or _support_get_group_without_as_index
+            ):  # pragma: no cover
+                raise
+            agg_result = (
+                groupby.op.build_mock_groupby(as_index=True)
+                .aggregate(self.raw_func, **self.raw_func_kw)
+                .to_frame()
+            )
+            agg_result.index.names = [None] * agg_result.index.nlevels
 
         index_value = parse_index(
             agg_result.index, groupby.key, groupby.index_value.key
