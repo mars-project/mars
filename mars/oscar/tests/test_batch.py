@@ -128,6 +128,11 @@ async def test_extensible_batch_only(use_async):
 
         @extensible
         @_wrap_async(use_async)
+        def not_implemented_method(self, *args, **kw):
+            raise NotImplementedError
+
+        @extensible
+        @_wrap_async(use_async)
         def method(self, *args, **kwargs):
             raise NotImplementedError
 
@@ -142,6 +147,11 @@ async def test_extensible_batch_only(use_async):
         assert asyncio.iscoroutinefunction(TestClass.method)
 
     test_inst = TestClass()
+    ret = test_inst.method.batch(test_inst.method.delay(12))
+    ret = await ret if use_async else ret
+    assert ret == [1]
+
+    test_inst = TestClass()
     ret = test_inst.method.batch(test_inst.method.delay(12), test_inst.method.delay(10))
     ret = await ret if use_async else ret
     assert ret == [2, 2]
@@ -149,6 +159,10 @@ async def test_extensible_batch_only(use_async):
     assert test_inst.kwarg_list == [{}, {}]
 
     test_inst = TestClass()
+    for _ in range(2):
+        with pytest.raises(NotImplementedError):
+            ret = test_inst.not_implemented_method()
+            await ret if use_async else ret
     ret = test_inst.method(12, kwarg=34)
     ret = await ret if use_async else ret
     assert ret == 1
