@@ -18,8 +18,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.core.graph.builder import chunk
-
 from .... import dataframe as md
 from .... import opcodes
 from ....core import OutputType, tile
@@ -391,6 +389,13 @@ def test_groupby_fill():
     assert r.dtypes.index.tolist() == ["three"]
 
     r = tile(getattr(mdf.groupby(["two"]), "bfill")())
+    assert r.op.output_types[0] == OutputType.dataframe
+    assert r.shape == (len(df1), 2)
+    assert len(r.chunks) == 3
+    assert r.chunks[0].shape == (np.nan, 2)
+    assert r.dtypes.index.tolist() == ["one", "three"]
+    
+    r = tile(getattr(mdf.groupby(["two"]), "backfill")())
     assert r.op.output_types[0] == OutputType.dataframe
     assert r.shape == (len(df1), 2)
     assert len(r.chunks) == 3

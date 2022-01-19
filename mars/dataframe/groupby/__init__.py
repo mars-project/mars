@@ -69,6 +69,7 @@ def _install():
 
         setattr(cls, "ffill", ffill)
         setattr(cls, "bfill", bfill)
+        setattr(cls, "backfill", bfill)
         setattr(cls, "fillna", fillna)
 
     for cls in DATAFRAME_GROUPBY_TYPE:

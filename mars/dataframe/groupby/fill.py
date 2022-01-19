@@ -17,59 +17,39 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import OutputType
-from ...serialization.serializables import BoolField, AnyField, DictField
-from ..utils import parse_index, build_empty_df, build_empty_series, validate_axis
+from ...serialization.serializables import AnyField, DictField
+from ..utils import parse_index, build_empty_df, build_empty_series
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 
 
 class GroupByFillOperand(DataFrameOperand, DataFrameOperandMixin):
     _op_module_ = "dataframe.groupby"
 
-    _value = AnyField("value")
-    _method = AnyField("method")
-    _axis = AnyField("axis")
-    _limit = AnyField("limit")
-    _downcast = DictField("downcast")
+    value = AnyField("value", default=None)
+    method = AnyField("method", default=None)
+    axis = AnyField("axis", default=0)
+    limit = AnyField("limit", default=None)
+    downcast = DictField("downcast", default=None)
 
     def __init__(
         self,
         value=None,
         method=None,
-        axis=None,
+        axis=0,
         limit=None,
         downcast=None,
         output_types=None,
         **kw
     ):
         super().__init__(
-            _value=value,
-            _method=method,
-            _axis=axis,
-            _limit=limit,
-            _downcast=downcast,
-            _output_types=output_types,
+            value=value,
+            method=method,
+            axis=axis,
+            limit=limit,
+            downcast=downcast,
+            output_types=output_types,
             **kw
         )
-
-    @property
-    def value(self):
-        return getattr(self, "_value", None)
-
-    @property
-    def method(self):
-        return getattr(self, "_method", None)
-
-    @property
-    def axis(self):
-        return getattr(self, "_axis", 0)
-
-    @property
-    def limit(self):
-        return getattr(self, "_limit", None)
-
-    @property
-    def downcast(self):
-        return getattr(self, "_downcast", None)
 
     def _calc_out_dtypes(self, in_groupby):
         mock_groupby = in_groupby.op.build_mock_groupby()
@@ -84,9 +64,7 @@ class GroupByFillOperand(DataFrameOperand, DataFrameOperandMixin):
                 downcast=self.downcast,
             )
         else:
-            result_df = getattr(mock_groupby, func_name)(limit=self.limit).astype(
-                "float64"
-            )
+            result_df = getattr(mock_groupby, func_name)(limit=self.limit)
 
         if isinstance(result_df, pd.DataFrame):
             self.output_types = [OutputType.dataframe]
@@ -96,12 +74,10 @@ class GroupByFillOperand(DataFrameOperand, DataFrameOperandMixin):
         in_df = groupby
         while in_df.op.output_types[0] not in (OutputType.dataframe, OutputType.series):
             in_df = in_df.inputs[0]
-        print("fill call in_df", in_df)
         out_dtypes = self._calc_out_dtypes(groupby)
 
         kw = in_df.params.copy()
         kw["index_value"] = parse_index(pd.RangeIndex(-1), groupby.key)
-        print("fill call index value", kw["index_value"])
         if self.output_types[0] == OutputType.dataframe:
             kw.update(
                 dict(
@@ -171,12 +147,12 @@ class GroupByFillOperand(DataFrameOperand, DataFrameOperandMixin):
 
 
 class GroupByFFill(GroupByFillOperand):
-    _op_type_ = opcodes.FORWARD_FILL
+    _op_type_ = opcodes.FILL_NA
     _func_name = "ffill"
 
 
 class GroupByBFill(GroupByFillOperand):
-    _op_type = opcodes.BACKWARD_FILL
+    _op_type = opcodes.FILL_NA
     _func_name = "bfill"
 
 
