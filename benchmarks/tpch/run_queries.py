@@ -277,6 +277,24 @@ def q03(lineitem, orders, customer):
     print("Q03 Execution time (s): ", time.time() - t1)
 
 
+def q04(lineitem, orders):
+    t1 = time.time()
+    date1 = pd.Timestamp("1993-11-01")
+    date2 = pd.Timestamp("1993-08-01")
+    lsel = lineitem.L_COMMITDATE < lineitem.L_RECEIPTDATE
+    osel = (orders.O_ORDERDATE < date1) & (orders.O_ORDERDATE >= date2)
+    flineitem = lineitem[lsel]
+    forders = orders[osel]
+    jn = forders[forders["O_ORDERKEY"].isin(flineitem["L_ORDERKEY"])]
+    total = (
+        jn.groupby("O_ORDERPRIORITY", as_index=False)["O_ORDERKEY"]
+        .count()
+        .sort_values(["O_ORDERPRIORITY"])
+    )
+    print(total.execute())
+    print("Q04 Execution time (s): ", time.time() - t1)
+
+
 def run_queries(data_folder: str):
     mars.new_session()
 
@@ -296,6 +314,7 @@ def run_queries(data_folder: str):
     q01(lineitem)
     q02(part, partsupp, supplier, nation, region)
     q03(lineitem, orders, customer)
+    q04(lineitem, orders)
 
 
 def main():
