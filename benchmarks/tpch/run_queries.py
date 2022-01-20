@@ -246,6 +246,37 @@ def q02(part, partsupp, supplier, nation, region):
     print("Q02 Execution time (s): ", time.time() - t1)
 
 
+def q03(lineitem, orders, customer):
+    t1 = time.time()
+    date = pd.Timestamp("1995-03-04")
+    lineitem_filtered = lineitem.loc[
+        :, ["L_ORDERKEY", "L_EXTENDEDPRICE", "L_DISCOUNT", "L_SHIPDATE"]
+    ]
+    orders_filtered = orders.loc[
+        :, ["O_ORDERKEY", "O_CUSTKEY", "O_ORDERDATE", "O_SHIPPRIORITY"]
+    ]
+    customer_filtered = customer.loc[:, ["C_MKTSEGMENT", "C_CUSTKEY"]]
+    lsel = lineitem_filtered.L_SHIPDATE > date
+    osel = orders_filtered.O_ORDERDATE < date
+    csel = customer_filtered.C_MKTSEGMENT == "HOUSEHOLD"
+    flineitem = lineitem_filtered[lsel]
+    forders = orders_filtered[osel]
+    fcustomer = customer_filtered[csel]
+    jn1 = fcustomer.merge(forders, left_on="C_CUSTKEY", right_on="O_CUSTKEY")
+    jn2 = jn1.merge(flineitem, left_on="O_ORDERKEY", right_on="L_ORDERKEY")
+    jn2["TMP"] = jn2.L_EXTENDEDPRICE * (1 - jn2.L_DISCOUNT)
+    total = (
+        jn2.groupby(["L_ORDERKEY", "O_ORDERDATE", "O_SHIPPRIORITY"], as_index=False)[
+            "TMP"
+        ]
+        .sum()
+        .sort_values(["TMP"], ascending=False)
+    )
+    res = total.loc[:, ["L_ORDERKEY", "TMP", "O_ORDERDATE", "O_SHIPPRIORITY"]]
+    print(res.head(10).execute())
+    print("Q03 Execution time (s): ", time.time() - t1)
+
+
 def run_queries(data_folder: str):
     mars.new_session()
 
@@ -264,6 +295,7 @@ def run_queries(data_folder: str):
 
     q01(lineitem)
     q02(part, partsupp, supplier, nation, region)
+    q03(lineitem, orders, customer)
 
 
 def main():
