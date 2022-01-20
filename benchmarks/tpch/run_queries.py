@@ -295,19 +295,42 @@ def q04(lineitem, orders):
     print("Q04 Execution time (s): ", time.time() - t1)
 
 
+def q05(lineitem, orders, customer, nation, region, supplier):
+    t1 = time.time()
+    date1 = pd.Timestamp("1996-01-01")
+    date2 = pd.Timestamp("1997-01-01")
+    rsel = region.R_NAME == "ASIA"
+    osel = (orders.O_ORDERDATE >= date1) & (orders.O_ORDERDATE < date2)
+    forders = orders[osel]
+    fregion = region[rsel]
+    jn1 = fregion.merge(nation, left_on="R_REGIONKEY", right_on="N_REGIONKEY")
+    jn2 = jn1.merge(customer, left_on="N_NATIONKEY", right_on="C_NATIONKEY")
+    jn3 = jn2.merge(forders, left_on="C_CUSTKEY", right_on="O_CUSTKEY")
+    jn4 = jn3.merge(lineitem, left_on="O_ORDERKEY", right_on="L_ORDERKEY")
+    jn5 = supplier.merge(
+        jn4, left_on=["S_SUPPKEY", "S_NATIONKEY"], right_on=["L_SUPPKEY", "N_NATIONKEY"]
+    )
+    jn5["TMP"] = jn5.L_EXTENDEDPRICE * (1.0 - jn5.L_DISCOUNT)
+    gb = jn5.groupby("N_NAME", as_index=False)["TMP"].sum()
+    total = gb.sort_values("TMP", ascending=False)
+    print(total.execute())
+    print("Q05 Execution time (s): ", time.time() - t1)
+
+
 def run_queries(data_folder: str):
     mars.new_session()
 
     # Load the data
     t1 = time.time()
-    lineitem = load_lineitem(data_folder)
-    orders = load_orders(data_folder)
-    customer = load_customer(data_folder)
-    nation = load_nation(data_folder)
-    region = load_region(data_folder)
-    supplier = load_supplier(data_folder)
-    part = load_part(data_folder)
-    partsupp = load_partsupp(data_folder)
+    # TODO: remove rebalance once it's automatically optimized
+    lineitem = load_lineitem(data_folder).rebalance()
+    orders = load_orders(data_folder).rebalance()
+    customer = load_customer(data_folder).rebalance()
+    nation = load_nation(data_folder).rebalance()
+    region = load_region(data_folder).rebalance()
+    supplier = load_supplier(data_folder).rebalance()
+    part = load_part(data_folder).rebalance()
+    partsupp = load_partsupp(data_folder).rebalance()
     mars.execute([lineitem, orders, customer, nation, region, supplier, part, partsupp])
     print("Reading time (s): ", time.time() - t1)
 
@@ -315,6 +338,7 @@ def run_queries(data_folder: str):
     q02(part, partsupp, supplier, nation, region)
     q03(lineitem, orders, customer)
     q04(lineitem, orders)
+    q05(lineitem, orders, customer, nation, region, supplier)
 
 
 def main():
