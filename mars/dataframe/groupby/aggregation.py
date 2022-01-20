@@ -825,9 +825,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
         for input_key, output_key, cols, func in op.pre_funcs:
             if input_key == output_key:
-                ret_map_groupbys[output_key] = (
-                    grouped if cols is None else grouped[cols]
-                )
+                ret_map_groupbys[output_key] = grouped
             else:
 
                 def _wrapped_func(col):
