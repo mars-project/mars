@@ -808,7 +808,6 @@ def test_groupby_cum(setup):
             r1.execute().fetch().sort_index(),
             getattr(series1.groupby(lambda x: x % 2), fun)().sort_index(),
         )
-        
 
 def test_groupby_fill(setup):
     df1 = pd.DataFrame(
@@ -830,28 +829,24 @@ def test_groupby_fill(setup):
         r1.execute().fetch().sort_index(),
         getattr(df1.groupby(["one", "two"]), "ffill")().sort_index(),
     )
-    
+
     r2 = getattr(mdf.groupby("two"), "bfill")()
     pd.testing.assert_frame_equal(
         r2.execute().fetch().sort_index(),
         getattr(df1.groupby("two"), "bfill")().sort_index(),
     )
-    
+
     r3 = getattr(mdf.groupby("one"), "fillna")(5)
     pd.testing.assert_frame_equal(
         r3.execute().fetch().sort_index(),
         getattr(df1.groupby("one"), "fillna")(5).sort_index(),
     )
-    
+
     r4 = getattr(mdf.groupby("two"), "backfill")()
     pd.testing.assert_frame_equal(
         r4.execute().fetch().sort_index(),
         getattr(df1.groupby("two"), "backfill")().sort_index(),
     )
-    
-    
-    
-
 
 def test_groupby_head(setup):
     df1 = pd.DataFrame(

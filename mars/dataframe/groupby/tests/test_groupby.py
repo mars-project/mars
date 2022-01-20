@@ -394,7 +394,7 @@ def test_groupby_fill():
     assert len(r.chunks) == 3
     assert r.chunks[0].shape == (np.nan, 2)
     assert r.dtypes.index.tolist() == ["one", "three"]
-    
+
     r = tile(getattr(mdf.groupby(["two"]), "backfill")())
     assert r.op.output_types[0] == OutputType.dataframe
     assert r.shape == (len(df1), 2)
