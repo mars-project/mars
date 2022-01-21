@@ -479,6 +479,7 @@ def test_dataframe_loc():
         df2.index_value.to_pandas(), df.index_value.to_pandas()
     )
     assert df2.name == "y"
+    assert df2.index_value.key == df.index_value.key
 
     df2 = tile(df2)
     assert len(df2.chunks) == 2

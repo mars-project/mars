@@ -154,7 +154,17 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
         axis: int,
     ) -> Dict:
         param = dict()
-        if input_index_value.has_value():
+        if (
+            (index.start == 0 or index.start is None)
+            and index.stop is None
+            and index.step is None
+        ):
+            # full slice on this axis
+            param["shape"] = inp.shape[axis]
+            param["index_value"] = input_index_value
+            if axis == 1:
+                param["dtypes"] = inp.dtypes
+        elif input_index_value.has_value():
             start, end = pd_index.slice_locs(
                 index.start, index.stop, index.step, kind="loc"
             )
