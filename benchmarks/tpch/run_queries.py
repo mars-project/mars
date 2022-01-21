@@ -501,6 +501,394 @@ def q08(part, lineitem, supplier, orders, customer, nation, region):
     print("Q08 Execution time (s): ", time.time() - t1)
 
 
+def q09(lineitem, orders, part, nation, partsupp, supplier):
+    t1 = time.time()
+    psel = part.P_NAME.str.contains("ghost")
+    fpart = part[psel]
+    jn1 = lineitem.merge(fpart, left_on="L_PARTKEY", right_on="P_PARTKEY")
+    jn2 = jn1.merge(supplier, left_on="L_SUPPKEY", right_on="S_SUPPKEY")
+    jn3 = jn2.merge(nation, left_on="S_NATIONKEY", right_on="N_NATIONKEY")
+    jn4 = partsupp.merge(
+        jn3, left_on=["PS_PARTKEY", "PS_SUPPKEY"], right_on=["L_PARTKEY", "L_SUPPKEY"]
+    )
+    jn5 = jn4.merge(orders, left_on="L_ORDERKEY", right_on="O_ORDERKEY")
+    jn5["TMP"] = jn5.L_EXTENDEDPRICE * (1 - jn5.L_DISCOUNT) - (
+        (1 * jn5.PS_SUPPLYCOST) * jn5.L_QUANTITY
+    )
+    # jn5["O_YEAR"] = jn5.O_ORDERDATE.apply(lambda x: x.year)
+    # FIXME: move back to apply
+    jn5["O_YEAR"] = jn5.O_ORDERDATE.map(lambda x: x.year, dtype=np.int64)
+    gb = jn5.groupby(["N_NAME", "O_YEAR"], as_index=False)["TMP"].sum()
+    total = gb.sort_values(["N_NAME", "O_YEAR"], ascending=[True, False])
+    print(total.execute())
+    print("Q09 Execution time (s): ", time.time() - t1)
+
+
+def q10(lineitem, orders, customer, nation):
+    t1 = time.time()
+    date1 = pd.Timestamp("1994-11-01")
+    date2 = pd.Timestamp("1995-02-01")
+    osel = (orders.O_ORDERDATE >= date1) & (orders.O_ORDERDATE < date2)
+    lsel = lineitem.L_RETURNFLAG == "R"
+    forders = orders[osel]
+    flineitem = lineitem[lsel]
+    jn1 = flineitem.merge(forders, left_on="L_ORDERKEY", right_on="O_ORDERKEY")
+    jn2 = jn1.merge(customer, left_on="O_CUSTKEY", right_on="C_CUSTKEY")
+    jn3 = jn2.merge(nation, left_on="C_NATIONKEY", right_on="N_NATIONKEY")
+    jn3["TMP"] = jn3.L_EXTENDEDPRICE * (1.0 - jn3.L_DISCOUNT)
+    gb = jn3.groupby(
+        [
+            "C_CUSTKEY",
+            "C_NAME",
+            "C_ACCTBAL",
+            "C_PHONE",
+            "N_NAME",
+            "C_ADDRESS",
+            "C_COMMENT",
+        ],
+        as_index=False,
+    )["TMP"].sum()
+    total = gb.sort_values("TMP", ascending=False)
+    print(total.head(20).execute())
+    print("Q10 Execution time (s): ", time.time() - t1)
+
+
+def q11(partsupp, supplier, nation):
+    t1 = time.time()
+    partsupp_filtered = partsupp.loc[:, ["PS_PARTKEY", "PS_SUPPKEY"]]
+    partsupp_filtered["TOTAL_COST"] = (
+        partsupp["PS_SUPPLYCOST"] * partsupp["PS_AVAILQTY"]
+    )
+    supplier_filtered = supplier.loc[:, ["S_SUPPKEY", "S_NATIONKEY"]]
+    ps_supp_merge = partsupp_filtered.merge(
+        supplier_filtered, left_on="PS_SUPPKEY", right_on="S_SUPPKEY", how="inner"
+    )
+    ps_supp_merge.loc[:, ["PS_PARTKEY", "S_NATIONKEY", "TOTAL_COST"]]
+    nation_filtered = nation[(nation["N_NAME"] == "GERMANY")]
+    nation_filtered = nation_filtered.loc[:, ["N_NATIONKEY"]]
+    ps_supp_n_merge = ps_supp_merge.merge(
+        nation_filtered, left_on="S_NATIONKEY", right_on="N_NATIONKEY", how="inner"
+    )
+    ps_supp_n_merge = ps_supp_n_merge.loc[:, ["PS_PARTKEY", "TOTAL_COST"]]
+    sum_val = ps_supp_n_merge["TOTAL_COST"].sum() * 0.0001
+    total = ps_supp_n_merge.groupby(["PS_PARTKEY"], as_index=False).agg(
+        VALUE=pd.NamedAgg(column="TOTAL_COST", aggfunc="sum")
+    )
+    total = total[total["VALUE"] > sum_val]
+    total = total.sort_values("VALUE", ascending=False)
+    print(total.execute())
+    print("Q11 Execution time (s): ", time.time() - t1)
+
+
+def q12(lineitem, orders):
+    t1 = time.time()
+    date1 = pd.Timestamp("1994-01-01")
+    date2 = pd.Timestamp("1995-01-01")
+    sel = (
+        (lineitem.L_RECEIPTDATE < date2)
+        & (lineitem.L_COMMITDATE < date2)
+        & (lineitem.L_SHIPDATE < date2)
+        & (lineitem.L_SHIPDATE < lineitem.L_COMMITDATE)
+        & (lineitem.L_COMMITDATE < lineitem.L_RECEIPTDATE)
+        & (lineitem.L_RECEIPTDATE >= date1)
+        & ((lineitem.L_SHIPMODE == "MAIL") | (lineitem.L_SHIPMODE == "SHIP"))
+    )
+    flineitem = lineitem[sel]
+    jn = flineitem.merge(orders, left_on="L_ORDERKEY", right_on="O_ORDERKEY")
+
+    def g1(x):
+        return ((x == "1-URGENT") | (x == "2-HIGH")).sum()
+
+    def g2(x):
+        return ((x != "1-URGENT") & (x != "2-HIGH")).sum()
+
+    total = jn.groupby("L_SHIPMODE", as_index=False)["O_ORDERPRIORITY"].agg((g1, g2))
+    total = total.reset_index()  # reset index to keep consistency with pandas
+    total = total.sort_values("L_SHIPMODE")
+    print(total.execute())
+    print("Q12 Execution time (s): ", time.time() - t1)
+
+
+def q13(customer, orders):
+    t1 = time.time()
+    customer_filtered = customer.loc[:, ["C_CUSTKEY"]]
+    orders_filtered = orders[
+        ~orders["O_COMMENT"].str.contains("special(\S|\s)*requests")
+    ]
+    orders_filtered = orders_filtered.loc[:, ["O_ORDERKEY", "O_CUSTKEY"]]
+    c_o_merged = customer_filtered.merge(
+        orders_filtered, left_on="C_CUSTKEY", right_on="O_CUSTKEY", how="left"
+    )
+    c_o_merged = c_o_merged.loc[:, ["C_CUSTKEY", "O_ORDERKEY"]]
+    count_df = c_o_merged.groupby(["C_CUSTKEY"], as_index=False).agg(
+        C_COUNT=pd.NamedAgg(column="O_ORDERKEY", aggfunc="count")
+    )
+    total = count_df.groupby(["C_COUNT"], as_index=False).size()
+    total.columns = ["C_COUNT", "CUSTDIST"]
+    total = total.sort_values(by=["CUSTDIST", "C_COUNT"], ascending=[False, False])
+    print(total.execute())
+    print("Q13 Execution time (s): ", time.time() - t1)
+
+
+def q14(lineitem, part):
+    t1 = time.time()
+    startDate = pd.Timestamp("1994-03-01")
+    endDate = pd.Timestamp("1994-04-01")
+    p_type_like = "PROMO"
+    part_filtered = part.loc[:, ["P_PARTKEY", "P_TYPE"]]
+    lineitem_filtered = lineitem.loc[
+        :, ["L_EXTENDEDPRICE", "L_DISCOUNT", "L_SHIPDATE", "L_PARTKEY"]
+    ]
+    sel = (lineitem_filtered.L_SHIPDATE >= startDate) & (
+        lineitem_filtered.L_SHIPDATE < endDate
+    )
+    flineitem = lineitem_filtered[sel]
+    jn = flineitem.merge(part_filtered, left_on="L_PARTKEY", right_on="P_PARTKEY")
+    jn["TMP"] = jn.L_EXTENDEDPRICE * (1.0 - jn.L_DISCOUNT)
+    total = jn[jn.P_TYPE.str.startswith(p_type_like)].TMP.sum() * 100 / jn.TMP.sum()
+    print(total.execute())
+    print("Q14 Execution time (s): ", time.time() - t1)
+
+
+def q15(lineitem, supplier):
+    t1 = time.time()
+    lineitem_filtered = lineitem[
+        (lineitem["L_SHIPDATE"] >= pd.Timestamp("1996-01-01"))
+        & (
+            lineitem["L_SHIPDATE"]
+            < (pd.Timestamp("1996-01-01") + pd.DateOffset(months=3))
+        )
+    ]
+    lineitem_filtered["REVENUE_PARTS"] = lineitem_filtered["L_EXTENDEDPRICE"] * (
+        1.0 - lineitem_filtered["L_DISCOUNT"]
+    )
+    lineitem_filtered = lineitem_filtered.loc[:, ["L_SUPPKEY", "REVENUE_PARTS"]]
+    revenue_table = (
+        lineitem_filtered.groupby("L_SUPPKEY", as_index=False)
+        .agg(TOTAL_REVENUE=md.NamedAgg(column="REVENUE_PARTS", aggfunc="sum"))
+        .rename(columns={"L_SUPPKEY": "SUPPLIER_NO"})
+    )
+    max_revenue = revenue_table["TOTAL_REVENUE"].max()
+    revenue_table = revenue_table[revenue_table["TOTAL_REVENUE"] == max_revenue]
+    supplier_filtered = supplier.loc[:, ["S_SUPPKEY", "S_NAME", "S_ADDRESS", "S_PHONE"]]
+    total = supplier_filtered.merge(
+        revenue_table, left_on="S_SUPPKEY", right_on="SUPPLIER_NO", how="inner"
+    )
+    total = total.loc[
+        :, ["S_SUPPKEY", "S_NAME", "S_ADDRESS", "S_PHONE", "TOTAL_REVENUE"]
+    ]
+    print(total.execute())
+    print("Q15 Execution time (s): ", time.time() - t1)
+
+
+def q16(part, partsupp, supplier):
+    t1 = time.time()
+    part_filtered = part[
+        (part["P_BRAND"] != "Brand#45")
+        & (~part["P_TYPE"].str.contains("^MEDIUM POLISHED"))
+        & part["P_SIZE"].isin([49, 14, 23, 45, 19, 3, 36, 9])
+    ]
+    part_filtered = part_filtered.loc[:, ["P_PARTKEY", "P_BRAND", "P_TYPE", "P_SIZE"]]
+    partsupp_filtered = partsupp.loc[:, ["PS_PARTKEY", "PS_SUPPKEY"]]
+    total = part_filtered.merge(
+        partsupp_filtered, left_on="P_PARTKEY", right_on="PS_PARTKEY", how="inner"
+    )
+    total = total.loc[:, ["P_BRAND", "P_TYPE", "P_SIZE", "PS_SUPPKEY"]]
+    supplier_filtered = supplier[
+        supplier["S_COMMENT"].str.contains("Customer(\S|\s)*Complaints")
+    ]
+    supplier_filtered = supplier_filtered.loc[:, ["S_SUPPKEY"]].drop_duplicates()
+    # left merge to select only PS_SUPPKEY values not in supplier_filtered
+    total = total.merge(
+        supplier_filtered, left_on="PS_SUPPKEY", right_on="S_SUPPKEY", how="left"
+    )
+    total = total[total["S_SUPPKEY"].isna()]
+    total = total.loc[:, ["P_BRAND", "P_TYPE", "P_SIZE", "PS_SUPPKEY"]]
+    total = total.groupby(["P_BRAND", "P_TYPE", "P_SIZE"], as_index=False)[
+        "PS_SUPPKEY"
+    ].nunique()
+    total.columns = ["P_BRAND", "P_TYPE", "P_SIZE", "SUPPLIER_CNT"]
+    total = total.sort_values(
+        by=["SUPPLIER_CNT", "P_BRAND", "P_TYPE", "P_SIZE"],
+        ascending=[False, True, True, True],
+    )
+    print(total.execute())
+    print("Q16 Execution time (s): ", time.time() - t1)
+
+
+def q17(lineitem, part):
+    t1 = time.time()
+    left = lineitem.loc[:, ["L_PARTKEY", "L_QUANTITY", "L_EXTENDEDPRICE"]]
+    right = part[((part["P_BRAND"] == "Brand#23") & (part["P_CONTAINER"] == "MED BOX"))]
+    right = right.loc[:, ["P_PARTKEY"]]
+    line_part_merge = left.merge(
+        right, left_on="L_PARTKEY", right_on="P_PARTKEY", how="inner"
+    )
+    line_part_merge = line_part_merge.loc[
+        :, ["L_QUANTITY", "L_EXTENDEDPRICE", "P_PARTKEY"]
+    ]
+    lineitem_filtered = lineitem.loc[:, ["L_PARTKEY", "L_QUANTITY"]]
+    lineitem_avg = lineitem_filtered.groupby(["L_PARTKEY"], as_index=False).agg(
+        avg=md.NamedAgg(column="L_QUANTITY", aggfunc="mean")
+    )
+    lineitem_avg["avg"] = 0.2 * lineitem_avg["avg"]
+    lineitem_avg = lineitem_avg.loc[:, ["L_PARTKEY", "avg"]]
+    total = line_part_merge.merge(
+        lineitem_avg, left_on="P_PARTKEY", right_on="L_PARTKEY", how="inner"
+    )
+    total = total[total["L_QUANTITY"] < total["avg"]]
+    total = pd.DataFrame(
+        {"avg_yearly": [(total["L_EXTENDEDPRICE"].sum() / 7.0).execute().fetch()]}
+    )
+    print(total)
+    print("Q17 Execution time (s): ", time.time() - t1)
+
+
+def q18(lineitem, orders, customer):
+    t1 = time.time()
+    gb1 = lineitem.groupby("L_ORDERKEY", as_index=False)["L_QUANTITY"].sum()
+    fgb1 = gb1[gb1.L_QUANTITY > 300]
+    jn1 = fgb1.merge(orders, left_on="L_ORDERKEY", right_on="O_ORDERKEY")
+    jn2 = jn1.merge(customer, left_on="O_CUSTKEY", right_on="C_CUSTKEY")
+    gb2 = jn2.groupby(
+        ["C_NAME", "C_CUSTKEY", "O_ORDERKEY", "O_ORDERDATE", "O_TOTALPRICE"],
+        as_index=False,
+    )["L_QUANTITY"].sum()
+    total = gb2.sort_values(["O_TOTALPRICE", "O_ORDERDATE"], ascending=[False, True])
+    print(total.head(100).execute())
+    print("Q18 Execution time (s): ", time.time() - t1)
+
+
+def q19(lineitem, part):
+    t1 = time.time()
+    Brand31 = "Brand#31"
+    Brand43 = "Brand#43"
+    SMBOX = "SM BOX"
+    SMCASE = "SM CASE"
+    SMPACK = "SM PACK"
+    SMPKG = "SM PKG"
+    MEDBAG = "MED BAG"
+    MEDBOX = "MED BOX"
+    MEDPACK = "MED PACK"
+    MEDPKG = "MED PKG"
+    LGBOX = "LG BOX"
+    LGCASE = "LG CASE"
+    LGPACK = "LG PACK"
+    LGPKG = "LG PKG"
+    DELIVERINPERSON = "DELIVER IN PERSON"
+    AIR = "AIR"
+    AIRREG = "AIRREG"
+    lsel = (
+        (
+            ((lineitem.L_QUANTITY <= 36) & (lineitem.L_QUANTITY >= 26))
+            | ((lineitem.L_QUANTITY <= 25) & (lineitem.L_QUANTITY >= 15))
+            | ((lineitem.L_QUANTITY <= 14) & (lineitem.L_QUANTITY >= 4))
+        )
+        & (lineitem.L_SHIPINSTRUCT == DELIVERINPERSON)
+        & ((lineitem.L_SHIPMODE == AIR) | (lineitem.L_SHIPMODE == AIRREG))
+    )
+    psel = (part.P_SIZE >= 1) & (
+        (
+            (part.P_SIZE <= 5)
+            & (part.P_BRAND == Brand31)
+            & (
+                (part.P_CONTAINER == SMBOX)
+                | (part.P_CONTAINER == SMCASE)
+                | (part.P_CONTAINER == SMPACK)
+                | (part.P_CONTAINER == SMPKG)
+            )
+        )
+        | (
+            (part.P_SIZE <= 10)
+            & (part.P_BRAND == Brand43)
+            & (
+                (part.P_CONTAINER == MEDBAG)
+                | (part.P_CONTAINER == MEDBOX)
+                | (part.P_CONTAINER == MEDPACK)
+                | (part.P_CONTAINER == MEDPKG)
+            )
+        )
+        | (
+            (part.P_SIZE <= 15)
+            & (part.P_BRAND == Brand43)
+            & (
+                (part.P_CONTAINER == LGBOX)
+                | (part.P_CONTAINER == LGCASE)
+                | (part.P_CONTAINER == LGPACK)
+                | (part.P_CONTAINER == LGPKG)
+            )
+        )
+    )
+    flineitem = lineitem[lsel]
+    fpart = part[psel]
+    jn = flineitem.merge(fpart, left_on="L_PARTKEY", right_on="P_PARTKEY")
+    jnsel = (
+        (jn.P_BRAND == Brand31)
+        & (
+            (jn.P_CONTAINER == SMBOX)
+            | (jn.P_CONTAINER == SMCASE)
+            | (jn.P_CONTAINER == SMPACK)
+            | (jn.P_CONTAINER == SMPKG)
+        )
+        & (jn.L_QUANTITY >= 4)
+        & (jn.L_QUANTITY <= 14)
+        & (jn.P_SIZE <= 5)
+        | (jn.P_BRAND == Brand43)
+        & (
+            (jn.P_CONTAINER == MEDBAG)
+            | (jn.P_CONTAINER == MEDBOX)
+            | (jn.P_CONTAINER == MEDPACK)
+            | (jn.P_CONTAINER == MEDPKG)
+        )
+        & (jn.L_QUANTITY >= 15)
+        & (jn.L_QUANTITY <= 25)
+        & (jn.P_SIZE <= 10)
+        | (jn.P_BRAND == Brand43)
+        & (
+            (jn.P_CONTAINER == LGBOX)
+            | (jn.P_CONTAINER == LGCASE)
+            | (jn.P_CONTAINER == LGPACK)
+            | (jn.P_CONTAINER == LGPKG)
+        )
+        & (jn.L_QUANTITY >= 26)
+        & (jn.L_QUANTITY <= 36)
+        & (jn.P_SIZE <= 15)
+    )
+    jn = jn[jnsel]
+    total = (jn.L_EXTENDEDPRICE * (1.0 - jn.L_DISCOUNT)).sum()
+    print(total.execute())
+    print("Q19 Execution time (s): ", time.time() - t1)
+
+
+def q20(lineitem, part, nation, partsupp, supplier):
+    t1 = time.time()
+    date1 = pd.Timestamp("1996-01-01")
+    date2 = pd.Timestamp("1997-01-01")
+    psel = part.P_NAME.str.startswith("azure")
+    nsel = nation.N_NAME == "JORDAN"
+    lsel = (lineitem.L_SHIPDATE >= date1) & (lineitem.L_SHIPDATE < date2)
+    fpart = part[psel]
+    fnation = nation[nsel]
+    flineitem = lineitem[lsel]
+    jn1 = fpart.merge(partsupp, left_on="P_PARTKEY", right_on="PS_PARTKEY")
+    jn2 = jn1.merge(
+        flineitem,
+        left_on=["PS_PARTKEY", "PS_SUPPKEY"],
+        right_on=["L_PARTKEY", "L_SUPPKEY"],
+    )
+    gb = jn2.groupby(["PS_PARTKEY", "PS_SUPPKEY", "PS_AVAILQTY"], as_index=False)[
+        "L_QUANTITY"
+    ].sum()
+    gbsel = gb.PS_AVAILQTY > (0.5 * gb.L_QUANTITY)
+    fgb = gb[gbsel]
+    jn3 = fgb.merge(supplier, left_on="PS_SUPPKEY", right_on="S_SUPPKEY")
+    jn4 = fnation.merge(jn3, left_on="N_NATIONKEY", right_on="S_NATIONKEY")
+    jn4 = jn4.loc[:, ["S_NAME", "S_ADDRESS"]]
+    total = jn4.sort_values("S_NAME").drop_duplicates()
+    print(total.execute())
+    print("Q20 Execution time (s): ", time.time() - t1)
+
+
 def run_queries(data_folder: str):
     mars.new_session()
 
@@ -526,6 +914,18 @@ def run_queries(data_folder: str):
     q06(lineitem)
     q07(lineitem, supplier, orders, customer, nation)
     q08(part, lineitem, supplier, orders, customer, nation, region)
+    q09(lineitem, orders, part, nation, partsupp, supplier)
+    q10(lineitem, orders, customer, nation)
+    q11(partsupp, supplier, nation)
+    q12(lineitem, orders)
+    q13(customer, orders)
+    q14(lineitem, part)
+    q15(lineitem, supplier)
+    q16(part, partsupp, supplier)  # FIXME: wait for groupby().nunique()
+    q17(lineitem, part)
+    q18(lineitem, orders, customer)
+    q19(lineitem, part)
+    q20(lineitem, part, nation, partsupp, supplier)  # FIXME: wait for GH#2648
 
 
 def main():
