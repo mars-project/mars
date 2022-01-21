@@ -19,6 +19,7 @@ import time
 
 import mars
 import mars.dataframe as md
+import numpy as np
 import pandas as pd
 
 
@@ -317,12 +318,191 @@ def q05(lineitem, orders, customer, nation, region, supplier):
     print("Q05 Execution time (s): ", time.time() - t1)
 
 
+def q06(lineitem):
+    t1 = time.time()
+    date1 = pd.Timestamp("1996-01-01")
+    date2 = pd.Timestamp("1997-01-01")
+    lineitem_filtered = lineitem.loc[
+        :, ["L_QUANTITY", "L_EXTENDEDPRICE", "L_DISCOUNT", "L_SHIPDATE"]
+    ]
+    sel = (
+        (lineitem_filtered.L_SHIPDATE >= date1)
+        & (lineitem_filtered.L_SHIPDATE < date2)
+        & (lineitem_filtered.L_DISCOUNT >= 0.08)
+        & (lineitem_filtered.L_DISCOUNT <= 0.1)
+        & (lineitem_filtered.L_QUANTITY < 24)
+    )
+    flineitem = lineitem_filtered[sel]
+    total = (flineitem.L_EXTENDEDPRICE * flineitem.L_DISCOUNT).sum()
+    print(total.execute())
+    print("Q06 Execution time (s): ", time.time() - t1)
+
+
+def q07(lineitem, supplier, orders, customer, nation):
+    """This version is faster than q07_old. Keeping the old one for reference"""
+    t1 = time.time()
+
+    lineitem_filtered = lineitem[
+        (lineitem["L_SHIPDATE"] >= pd.Timestamp("1995-01-01"))
+        & (lineitem["L_SHIPDATE"] < pd.Timestamp("1997-01-01"))
+    ]
+    # lineitem_filtered["L_YEAR"] = lineitem_filtered["L_SHIPDATE"].apply(
+    #     lambda x: x.year)
+    # FIXME: move back to apply
+    lineitem_filtered["L_YEAR"] = lineitem_filtered["L_SHIPDATE"].map(
+        lambda x: x.year, dtype=np.int64
+    )
+    lineitem_filtered["VOLUME"] = lineitem_filtered["L_EXTENDEDPRICE"] * (
+        1.0 - lineitem_filtered["L_DISCOUNT"]
+    )
+    lineitem_filtered = lineitem_filtered.loc[
+        :, ["L_ORDERKEY", "L_SUPPKEY", "L_YEAR", "VOLUME"]
+    ]
+    supplier_filtered = supplier.loc[:, ["S_SUPPKEY", "S_NATIONKEY"]]
+    orders_filtered = orders.loc[:, ["O_ORDERKEY", "O_CUSTKEY"]]
+    customer_filtered = customer.loc[:, ["C_CUSTKEY", "C_NATIONKEY"]]
+    n1 = nation[(nation["N_NAME"] == "FRANCE")].loc[:, ["N_NATIONKEY", "N_NAME"]]
+    n2 = nation[(nation["N_NAME"] == "GERMANY")].loc[:, ["N_NATIONKEY", "N_NAME"]]
+
+    # ----- do nation 1 -----
+    N1_C = customer_filtered.merge(
+        n1, left_on="C_NATIONKEY", right_on="N_NATIONKEY", how="inner"
+    )
+    N1_C = N1_C.drop(columns=["C_NATIONKEY", "N_NATIONKEY"]).rename(
+        columns={"N_NAME": "CUST_NATION"}
+    )
+    N1_C_O = N1_C.merge(
+        orders_filtered, left_on="C_CUSTKEY", right_on="O_CUSTKEY", how="inner"
+    )
+    N1_C_O = N1_C_O.drop(columns=["C_CUSTKEY", "O_CUSTKEY"])
+
+    N2_S = supplier_filtered.merge(
+        n2, left_on="S_NATIONKEY", right_on="N_NATIONKEY", how="inner"
+    )
+    N2_S = N2_S.drop(columns=["S_NATIONKEY", "N_NATIONKEY"]).rename(
+        columns={"N_NAME": "SUPP_NATION"}
+    )
+    N2_S_L = N2_S.merge(
+        lineitem_filtered, left_on="S_SUPPKEY", right_on="L_SUPPKEY", how="inner"
+    )
+    N2_S_L = N2_S_L.drop(columns=["S_SUPPKEY", "L_SUPPKEY"])
+
+    total1 = N1_C_O.merge(
+        N2_S_L, left_on="O_ORDERKEY", right_on="L_ORDERKEY", how="inner"
+    )
+    total1 = total1.drop(columns=["O_ORDERKEY", "L_ORDERKEY"])
+
+    # ----- do nation 2 -----
+    N2_C = customer_filtered.merge(
+        n2, left_on="C_NATIONKEY", right_on="N_NATIONKEY", how="inner"
+    )
+    N2_C = N2_C.drop(columns=["C_NATIONKEY", "N_NATIONKEY"]).rename(
+        columns={"N_NAME": "CUST_NATION"}
+    )
+    N2_C_O = N2_C.merge(
+        orders_filtered, left_on="C_CUSTKEY", right_on="O_CUSTKEY", how="inner"
+    )
+    N2_C_O = N2_C_O.drop(columns=["C_CUSTKEY", "O_CUSTKEY"])
+
+    N1_S = supplier_filtered.merge(
+        n1, left_on="S_NATIONKEY", right_on="N_NATIONKEY", how="inner"
+    )
+    N1_S = N1_S.drop(columns=["S_NATIONKEY", "N_NATIONKEY"]).rename(
+        columns={"N_NAME": "SUPP_NATION"}
+    )
+    N1_S_L = N1_S.merge(
+        lineitem_filtered, left_on="S_SUPPKEY", right_on="L_SUPPKEY", how="inner"
+    )
+    N1_S_L = N1_S_L.drop(columns=["S_SUPPKEY", "L_SUPPKEY"])
+
+    total2 = N2_C_O.merge(
+        N1_S_L, left_on="O_ORDERKEY", right_on="L_ORDERKEY", how="inner"
+    )
+    total2 = total2.drop(columns=["O_ORDERKEY", "L_ORDERKEY"])
+
+    # concat results
+    total = md.concat([total1, total2])
+
+    total = total.groupby(["SUPP_NATION", "CUST_NATION", "L_YEAR"], as_index=False).agg(
+        REVENUE=md.NamedAgg(column="VOLUME", aggfunc="sum")
+    )
+    total = total.sort_values(
+        by=["SUPP_NATION", "CUST_NATION", "L_YEAR"], ascending=[True, True, True]
+    )
+    print(total.execute())
+    print("Q07 Execution time (s): ", time.time() - t1)
+
+
+def q08(part, lineitem, supplier, orders, customer, nation, region):
+    t1 = time.time()
+    part_filtered = part[(part["P_TYPE"] == "ECONOMY ANODIZED STEEL")]
+    part_filtered = part_filtered.loc[:, ["P_PARTKEY"]]
+    lineitem_filtered = lineitem.loc[:, ["L_PARTKEY", "L_SUPPKEY", "L_ORDERKEY"]]
+    lineitem_filtered["VOLUME"] = lineitem["L_EXTENDEDPRICE"] * (
+        1.0 - lineitem["L_DISCOUNT"]
+    )
+    total = part_filtered.merge(
+        lineitem_filtered, left_on="P_PARTKEY", right_on="L_PARTKEY", how="inner"
+    )
+    total = total.loc[:, ["L_SUPPKEY", "L_ORDERKEY", "VOLUME"]]
+    supplier_filtered = supplier.loc[:, ["S_SUPPKEY", "S_NATIONKEY"]]
+    total = total.merge(
+        supplier_filtered, left_on="L_SUPPKEY", right_on="S_SUPPKEY", how="inner"
+    )
+    total = total.loc[:, ["L_ORDERKEY", "VOLUME", "S_NATIONKEY"]]
+    orders_filtered = orders[
+        (orders["O_ORDERDATE"] >= pd.Timestamp("1995-01-01"))
+        & (orders["O_ORDERDATE"] < pd.Timestamp("1997-01-01"))
+    ]
+    orders_filtered["O_YEAR"] = orders_filtered["O_ORDERDATE"].apply(lambda x: x.year)
+    orders_filtered = orders_filtered.loc[:, ["O_ORDERKEY", "O_CUSTKEY", "O_YEAR"]]
+    total = total.merge(
+        orders_filtered, left_on="L_ORDERKEY", right_on="O_ORDERKEY", how="inner"
+    )
+    total = total.loc[:, ["VOLUME", "S_NATIONKEY", "O_CUSTKEY", "O_YEAR"]]
+    customer_filtered = customer.loc[:, ["C_CUSTKEY", "C_NATIONKEY"]]
+    total = total.merge(
+        customer_filtered, left_on="O_CUSTKEY", right_on="C_CUSTKEY", how="inner"
+    )
+    total = total.loc[:, ["VOLUME", "S_NATIONKEY", "O_YEAR", "C_NATIONKEY"]]
+    n1_filtered = nation.loc[:, ["N_NATIONKEY", "N_REGIONKEY"]]
+    n2_filtered = nation.loc[:, ["N_NATIONKEY", "N_NAME"]].rename(
+        columns={"N_NAME": "NATION"}
+    )
+    total = total.merge(
+        n1_filtered, left_on="C_NATIONKEY", right_on="N_NATIONKEY", how="inner"
+    )
+    total = total.loc[:, ["VOLUME", "S_NATIONKEY", "O_YEAR", "N_REGIONKEY"]]
+    total = total.merge(
+        n2_filtered, left_on="S_NATIONKEY", right_on="N_NATIONKEY", how="inner"
+    )
+    total = total.loc[:, ["VOLUME", "O_YEAR", "N_REGIONKEY", "NATION"]]
+    region_filtered = region[(region["R_NAME"] == "AMERICA")]
+    region_filtered = region_filtered.loc[:, ["R_REGIONKEY"]]
+    total = total.merge(
+        region_filtered, left_on="N_REGIONKEY", right_on="R_REGIONKEY", how="inner"
+    )
+    total = total.loc[:, ["VOLUME", "O_YEAR", "NATION"]]
+
+    def udf(df):
+        demonimator = df["VOLUME"].sum()
+        df = df[df["NATION"] == "BRAZIL"]
+        numerator = df["VOLUME"].sum()
+        return numerator / demonimator
+
+    total = total.groupby("O_YEAR", as_index=False).apply(udf)
+    total.columns = ["O_YEAR", "MKT_SHARE"]
+    total = total.sort_values(by=["O_YEAR"], ascending=[True])
+    print(total.execute())
+    print("Q08 Execution time (s): ", time.time() - t1)
+
+
 def run_queries(data_folder: str):
     mars.new_session()
 
     # Load the data
     t1 = time.time()
-    # TODO: remove rebalance once it's automatically optimized
+    # FIXME: remove rebalance once it's automatically optimized
     lineitem = load_lineitem(data_folder).rebalance()
     orders = load_orders(data_folder).rebalance()
     customer = load_customer(data_folder).rebalance()
@@ -339,6 +519,9 @@ def run_queries(data_folder: str):
     q03(lineitem, orders, customer)
     q04(lineitem, orders)
     q05(lineitem, orders, customer, nation, region, supplier)
+    q06(lineitem)
+    q07(lineitem, supplier, orders, customer, nation)
+    q08(part, lineitem, supplier, orders, customer, nation, region)
 
 
 def main():
