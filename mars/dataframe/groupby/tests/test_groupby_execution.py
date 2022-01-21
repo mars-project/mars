@@ -280,21 +280,23 @@ def test_groupby_getitem(setup):
             "c1": np.arange(100).astype(np.int64),
             "c2": rs.choice(["a", "b", "c"], (100,)),
             "c3": rs.rand(100),
-            "c4": rs.rand(100)
+            "c4": rs.rand(100),
         }
     )
     mdf = md.DataFrame(raw, chunk_size=20)
-    r = mdf.groupby(['c2'])[['c1', 'c3']].agg({'c1': 'max', 'c3': 'min'}, method='tree')
+    r = mdf.groupby(["c2"])[["c1", "c3"]].agg({"c1": "max", "c3": "min"}, method="tree")
     pd.testing.assert_frame_equal(
         r.execute().fetch(),
-        raw.groupby(['c2'])[['c1', 'c3']].agg({'c1': 'max', 'c3': 'min'}),
+        raw.groupby(["c2"])[["c1", "c3"]].agg({"c1": "max", "c3": "min"}),
     )
 
     mdf = md.DataFrame(raw.copy(), chunk_size=30)
-    r = mdf.groupby(['c2'])[['c1', 'c4']].agg({'c1': 'max', 'c4': 'mean'}, method='shuffle')
+    r = mdf.groupby(["c2"])[["c1", "c4"]].agg(
+        {"c1": "max", "c4": "mean"}, method="shuffle"
+    )
     pd.testing.assert_frame_equal(
         r.execute().fetch(),
-        raw.groupby(['c2'])[['c1', 'c4']].agg({'c1': 'max', 'c4': 'mean'}),
+        raw.groupby(["c2"])[["c1", "c4"]].agg({"c1": "max", "c4": "mean"}),
     )
 
 
