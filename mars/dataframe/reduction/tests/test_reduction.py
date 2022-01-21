@@ -539,6 +539,20 @@ def test_compile_function():
             assert "np.where" not in result.post_funcs[0].func.__source__
             assert ".where" in result.post_funcs[0].func.__source__
 
+        # check boolean expressions
+        compiler = ReductionCompiler(store_source=True)
+        compiler.add_function(
+            lambda x: (x == "1").sum(), ndim=ndim
+        )
+        result = compiler.compile()
+        # check pre_funcs
+        assert len(result.pre_funcs) == 1
+        assert "eq" in result.pre_funcs[0].func.__source__
+        # check agg_funcs
+        assert len(result.agg_funcs) == 1
+        assert result.agg_funcs[0].map_func_name == "sum"
+        assert result.agg_funcs[0].agg_func_name == "sum"
+
     # test agg for specific columns
     compiler = ReductionCompiler(store_source=True)
     compiler.add_function(lambda x: 1 + x.sum(), ndim=2, cols=["a", "b"])

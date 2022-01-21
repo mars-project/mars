@@ -889,7 +889,7 @@ class ReductionCompiler:
             mock_obj = MarsDataFrame(mock_df)
 
         # calc target tileable to generate DAG
-        with enter_mode(kernel=True):
+        with enter_mode(kernel=True, build=False):
             return func(mock_obj)
 
     @enter_mode(build=True)
