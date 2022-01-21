@@ -122,6 +122,7 @@ def test_iloc_getitem():
     df4 = tile(df4)
     assert isinstance(df4, DATAFRAME_TYPE)
     assert isinstance(df4.op, DataFrameIlocGetItem)
+    assert df4.index_value.key == df2.index_value.key
     assert df4.shape == (3, 1)
     assert df4.chunk_shape == (2, 1)
     assert df4.chunks[0].shape == (2, 1)

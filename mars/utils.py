@@ -1505,3 +1505,13 @@ def flatten_dict_to_nested_dict(flatten_dict: Dict, sep=".") -> Dict:
                 else:
                     sub_nested_dict = sub_nested_dict[sub_key]
     return nested_dict
+
+
+def is_full_slice(slc: Any) -> bool:
+    """Check if the input is a full slice ((:) or (0:))"""
+    return (
+        isinstance(slc, slice)
+        and (slc.start == 0 or slc.start is None)
+        and slc.stop is None
+        and slc.step is None
+    )
