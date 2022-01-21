@@ -454,7 +454,11 @@ def q08(part, lineitem, supplier, orders, customer, nation, region):
         (orders["O_ORDERDATE"] >= pd.Timestamp("1995-01-01"))
         & (orders["O_ORDERDATE"] < pd.Timestamp("1997-01-01"))
     ]
-    orders_filtered["O_YEAR"] = orders_filtered["O_ORDERDATE"].apply(lambda x: x.year)
+    # orders_filtered["O_YEAR"] = orders_filtered["O_ORDERDATE"].apply(lambda x: x.year)
+    # FIXME: move back to apply
+    orders_filtered["O_YEAR"] = orders_filtered["O_ORDERDATE"].map(
+        lambda x: x.year, dtype=np.int64
+    )
     orders_filtered = orders_filtered.loc[:, ["O_ORDERKEY", "O_CUSTKEY", "O_YEAR"]]
     total = total.merge(
         orders_filtered, left_on="L_ORDERKEY", right_on="O_ORDERKEY", how="inner"
