@@ -987,7 +987,7 @@ def is_funcs_aggregate(func, func_kw=None, ndim=2):
 
     to_check = []
     if func is not None:
-        if isinstance(func, list):
+        if isinstance(func, (list, tuple)):
             to_check.extend(func)
         elif isinstance(func, dict):
             if ndim == 2:

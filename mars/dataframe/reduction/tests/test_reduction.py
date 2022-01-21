@@ -480,7 +480,7 @@ def test_compile_function():
         assert result.agg_funcs[0].agg_func_name == "sum"
         # check post_funcs
         assert len(result.post_funcs) == 1
-        assert result.post_funcs[0].func_name == "<lambda_0>"
+        assert result.post_funcs[0].func_name == "<lambda>"
         assert "add" in result.post_funcs[0].func.__source__
 
         compiler.add_function(
@@ -541,9 +541,7 @@ def test_compile_function():
 
         # check boolean expressions
         compiler = ReductionCompiler(store_source=True)
-        compiler.add_function(
-            lambda x: (x == "1").sum(), ndim=ndim
-        )
+        compiler.add_function(lambda x: (x == "1").sum(), ndim=ndim)
         result = compiler.compile()
         # check pre_funcs
         assert len(result.pre_funcs) == 1

@@ -242,6 +242,22 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                     inputs.append(v)
         return inputs
 
+    def _get_index_levels(self, groupby, mock_index):
+        if not self.groupby_params["as_index"]:
+            try:
+                as_index_agg_df = groupby.op.build_mock_groupby(
+                    as_index=True
+                ).aggregate(self.raw_func, **self.raw_func_kw)
+            except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                # handling cases like mdf.groupby("b", as_index=False).b.agg({"c": "count"})
+                if isinstance(self._groupby_params["by"], list):
+                    return len(self.groupby_params["by"])
+                raise  # pragma: no cover
+            pd_index = as_index_agg_df.index
+        else:
+            pd_index = mock_index
+        return 1 if not isinstance(pd_index, pd.MultiIndex) else len(pd_index.levels)
+
     def _call_dataframe(self, groupby, input_df):
         agg_df = groupby.op.build_mock_groupby().aggregate(
             self.raw_func, **self.raw_func_kw
@@ -251,27 +267,17 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         index_value = parse_index(agg_df.index, groupby.key, groupby.index_value.key)
         index_value.value.should_be_monotonic = True
 
-        as_index = self.groupby_params.get("as_index")
         # make sure if as_index=False takes effect
         if isinstance(agg_df.index, pd.MultiIndex):
             # if MultiIndex, as_index=False definitely takes no effect
-            self.groupby_params["as_index"] = as_index = True
+            self.groupby_params["as_index"] = True
         elif agg_df.index.name is not None:
             # if not MultiIndex and agg_df.index has a name
             # means as_index=False takes no effect
-            self.groupby_params["as_index"] = as_index = True
+            self.groupby_params["as_index"] = True
 
         # determine num of indices to group in intermediate steps
-        if not as_index:
-            as_index_agg_df = groupby.op.build_mock_groupby(as_index=True).aggregate(
-                self.raw_func, **self.raw_func_kw
-            )
-            pd_index = as_index_agg_df.index
-        else:
-            pd_index = agg_df.index
-        self._index_levels = (
-            1 if not isinstance(pd_index, pd.MultiIndex) else len(pd_index.levels)
-        )
+        self._index_levels = self._get_index_levels(groupby, agg_df.index)
 
         inputs = self._get_inputs([input_df])
         return self.new_dataframe(
@@ -308,10 +314,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         inputs = self._get_inputs([in_series])
 
         # determine num of indices to group in intermediate steps
-        pd_index = agg_result.index
-        self._index_levels = (
-            1 if not isinstance(pd_index, pd.MultiIndex) else len(pd_index.levels)
-        )
+        self._index_levels = self._get_index_levels(groupby, agg_result.index)
 
         # update value type
         if isinstance(agg_result, pd.DataFrame):
@@ -924,7 +927,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 combines.append(
                     cls._do_predefined_agg(input_obj, agg_func_name, **kwds)
                 )
-            ctx[op.outputs[0].key] = tuple(combines)
+        ctx[op.outputs[0].key] = tuple(combines)
 
     @classmethod
     def _execute_agg(cls, ctx, op: "DataFrameGroupByAgg"):
