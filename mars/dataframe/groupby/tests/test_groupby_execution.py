@@ -849,6 +849,27 @@ def test_groupby_fill(setup):
         getattr(df1.groupby("two"), "backfill")().sort_index(),
     )
 
+    s1 = pd.Series([4, 3, 9, np.nan, np.nan, 7, 10, 8, 1, 6])
+    ms1 = md.Series(s1, chunk_size=3)
+
+    r1 = getattr(ms1.groupby(lambda x: x % 2), "ffill")()
+    pd.testing.assert_series_equal(
+        r1.execute().fetch().sort_index(),
+        getattr(s1.groupby(lambda x: x % 2), "ffill")().sort_index(),
+    )
+
+    r2 = getattr(ms1.groupby(lambda x: x % 2), "bfill")()
+    pd.testing.assert_series_equal(
+        r2.execute().fetch().sort_index(),
+        getattr(s1.groupby(lambda x: x % 2), "bfill")().sort_index(),
+    )
+
+    r4 = getattr(ms1.groupby(lambda x: x % 2), "backfill")()
+    pd.testing.assert_series_equal(
+        r4.execute().fetch().sort_index(),
+        getattr(s1.groupby(lambda x: x % 2), "backfill")().sort_index(),
+    )
+
 
 def test_groupby_head(setup):
     df1 = pd.DataFrame(

@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import OutputType
-from ...serialization.serializables import AnyField, DictField
+from ...serialization.serializables import AnyField, DictField, StringField, Int64Field
 from ..utils import parse_index, build_empty_df, build_empty_series
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 
@@ -26,30 +26,10 @@ class GroupByFillOperand(DataFrameOperand, DataFrameOperandMixin):
     _op_module_ = "dataframe.groupby"
 
     value = AnyField("value", default=None)
-    method = AnyField("method", default=None)
+    method = StringField("method", default=None)
     axis = AnyField("axis", default=0)
-    limit = AnyField("limit", default=None)
+    limit = Int64Field("limit", default=None)
     downcast = DictField("downcast", default=None)
-
-    def __init__(
-        self,
-        value=None,
-        method=None,
-        axis=0,
-        limit=None,
-        downcast=None,
-        output_types=None,
-        **kw
-    ):
-        super().__init__(
-            value=value,
-            method=method,
-            axis=axis,
-            limit=limit,
-            downcast=downcast,
-            output_types=output_types,
-            **kw
-        )
 
     def _calc_out_dtypes(self, in_groupby):
         mock_groupby = in_groupby.op.build_mock_groupby()
@@ -69,6 +49,9 @@ class GroupByFillOperand(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(result_df, pd.DataFrame):
             self.output_types = [OutputType.dataframe]
             return result_df.dtypes
+        else:
+            self.output_types = [OutputType.series]
+            return result_df.name, result_df.dtype
 
     def __call__(self, groupby):
         in_df = groupby
@@ -86,6 +69,9 @@ class GroupByFillOperand(DataFrameOperand, DataFrameOperandMixin):
                     shape=(groupby.shape[0], len(out_dtypes)),
                 )
             )
+        else:
+            name, dtype = out_dtypes
+            kw.update(dtype=dtype, name=name, shape=(groupby.shape[0],))
         return self.new_tileable([groupby], **kw)
 
     @classmethod
@@ -109,11 +95,24 @@ class GroupByFillOperand(DataFrameOperand, DataFrameOperandMixin):
                         index_value=new_index,
                     )
                 )
+            else:
+                chunks.append(
+                    new_op.new_chunk(
+                        [c],
+                        index=(c.index[0],),
+                        shape=(np.nan,),
+                        dtype=out_df.dtype,
+                        index_value=new_index,
+                        name=out_df.name,
+                    )
+                )
         new_op = op.copy().reset_key()
         kw = out_df.params.copy()
         kw["chunks"] = chunks
         if op.output_types[0] == OutputType.dataframe:
             kw["nsplits"] = ((np.nan,) * len(chunks), (len(out_df.dtypes),))
+        else:
+            kw["nsplits"] = ((np.nan,) * len(chunks),)
         return new_op.new_tileables([in_groupby], **kw)
 
     @classmethod
@@ -162,16 +161,46 @@ class GroupByFillNa(GroupByFillOperand):
 
 
 def ffill(groupby, limit=None):
+    """
+        Forward fill the values.
+        
+        limit:  int, default None
+                Limit number of values to fill
+                
+        return: Series or DataFrame
+    """
     op = GroupByFFill(limit=limit)
     return op(groupby)
 
 
 def bfill(groupby, limit=None):
+    """
+        Backward fill the values.
+        
+        limit:  int, default None
+                Limit number of values to fill
+                
+        return: Series or DataFrame
+    """
     op = GroupByBFill(limit=limit)
     return op(groupby)
 
 
 def fillna(groupby, value=None, method=None, axis=None, limit=None, downcast=None):
+    """
+        Fill NA/NaN values using the specified method
+        
+        value:  scalar, dict, Series, or DataFrame
+                Value to use to fill holes (e.g. 0), alternately a dict/Series/DataFrame of values specifying which value to use for each index (for a Series) or column (for a DataFrame). Values not in the dict/Series/DataFrame will not be filled. This value cannot be a list.
+        method: {'backfill','bfill','ffill',None}, default None
+        axis:   {0 or 'index', 1 or 'column'}
+        limit:  int, default None
+                If method is specified, this is the maximum number of consecutive NaN values to forward/backward fill
+        downcast:   dict, default None
+                    A dict of item->dtype of what to downcast if possible, or the string ‘infer’ which will try to downcast to an appropriate equal type
+                    
+        return: DataFrame or None
+    """
     op = GroupByFillNa(
         value=value, method=method, axis=axis, limit=limit, downcast=downcast
     )
