@@ -53,8 +53,6 @@ jobs:
         source ci/reload-env.sh
         export DEFAULT_VENV=$VIRTUAL_ENV
 
-        pip install git+https://github.com/pandas-dev/pandas.git@1.4.x
-
         if [[ ! "$PYTHON" =~ "3.9" ]]; then
           conda install -n test --quiet --yes -c conda-forge python=$PYTHON numba
         fi
