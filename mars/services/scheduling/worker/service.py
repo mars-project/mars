@@ -15,10 +15,10 @@
 from .... import oscar as mo
 from ....utils import calc_size_by_str
 from ...core import AbstractService
+from .execution import SubtaskExecutionActor
 from .slotmanager import SlotManagerActor
 from .queues import SubtaskPrepareQueueActor, SubtaskExecutionQueueActor
 from .quota import WorkerQuotaManagerActor
-from .exec import SubtaskExecutionActor
 
 
 class SchedulingWorkerService(AbstractService):

@@ -171,7 +171,6 @@ async def test_schedule_success(actor_pools):
     subtask.expect_bands = [(worker_pool.external_address, "numa-0")]
     await scheduling_api.add_subtasks([subtask], [(0,)])
     await task_manager_ref.wait_subtask_result(subtask.subtask_id)
-    await scheduling_api.finish_subtasks([subtask.subtask_id])
 
     result_key = next(subtask.chunk_graph.iter_indep(reverse=True)).key
     result = await storage_api.get(result_key)
@@ -197,7 +196,6 @@ async def test_schedule_queue(actor_pools):
 
     async def _waiter_fun(subtask_id):
         await task_manager_ref.wait_subtask_result(subtask_id)
-        await scheduling_api.finish_subtasks([subtask_id])
         finish_ids.append(subtask_id)
         finish_time.append(time.time())
 
@@ -245,7 +243,6 @@ async def test_schedule_cancel(actor_pools):
 
     async def _waiter_fun(subtask_id):
         await task_manager_ref.wait_subtask_result(subtask_id)
-        await scheduling_api.finish_subtasks([subtask_id])
 
     subtasks = []
     wait_tasks = []

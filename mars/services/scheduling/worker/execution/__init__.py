@@ -13,4 +13,5 @@
 # limitations under the License.
 
 from .actor import SubtaskExecutionActor
+from .core import SubtaskExecutionInfo
 from .prepare import SubtaskPreparer

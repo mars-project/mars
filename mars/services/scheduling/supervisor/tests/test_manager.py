@@ -136,7 +136,7 @@ async def actor_pool():
             uid=SubtaskExecutionActor.default_uid(),
             address=pool.external_address,
         )
-        assigner_ref = await mo.create_actor(
+        await mo.create_actor(
             MockAssignerActor,
             uid=AssignerActor.gen_uid(session_id),
             address=pool.external_address,

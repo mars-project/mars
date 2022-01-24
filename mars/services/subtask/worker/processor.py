@@ -448,9 +448,9 @@ class SubtaskProcessor:
         self.is_done.set()
 
     async def _release_scheduling(self):
+        self.is_released = True
         if self._finish_callback is not None:
             await self._finish_callback()
-        self.is_released = True
 
     async def run(self):
         self.result.status = SubtaskStatus.running

@@ -152,9 +152,6 @@ class TaskStageProcessor:
                 await self._update_chunks_meta(self.chunk_graph)
 
             # tell scheduling to finish subtasks
-            await self._scheduling_api.finish_subtasks(
-                [result.subtask_id], schedule_next=not error_or_cancelled
-            )
             if self.result.status != TaskStatus.terminated:
                 self.result = TaskResult(
                     self.task.task_id,
@@ -196,7 +193,6 @@ class TaskStageProcessor:
                     # all predecessors finished
                     to_schedule_subtasks.append(succ_subtask)
             await self._schedule_subtasks(to_schedule_subtasks)
-            await self._scheduling_api.finish_subtasks([result.subtask_id])
 
     async def run(self):
         if len(self.subtask_graph) == 0:

@@ -24,7 +24,6 @@ from weakref import WeakValueDictionary
 from .... import oscar as mo
 from ....core.operand import Fetch
 from ....lib.aio import alru_cache
-from ....oscar.backends.message import ProfilingContext
 from ....oscar.errors import MarsError
 from ....typing import BandType
 from ....utils import dataslots
@@ -95,8 +94,7 @@ class SubtaskManagerActor(mo.Actor):
             AssignerActor.gen_uid(self._session_id), address=self.address
         )
 
-    @alru_cache
-    async def _get_task_api(self):
+    async def _get_task_api(self) -> TaskAPI:
         return await TaskAPI.create(self._session_id, self.address)
 
     def _put_subtask_with_priority(self, subtask: Subtask, priority: Tuple = None):
@@ -272,21 +270,47 @@ class SubtaskManagerActor(mo.Actor):
 
     @alru_cache(maxsize=10000)
     async def _get_execution_ref(self, address: str):
-        from ..worker.exec import SubtaskExecutionActor
+        from ..worker.execution import SubtaskExecutionActor
 
         return await mo.actor_ref(SubtaskExecutionActor.default_uid(), address=address)
 
-    async def finish_subtasks(self, subtask_ids: List[str], schedule_next: bool = True):
-        band_tasks = defaultdict(lambda: 0)
-        for subtask_id in subtask_ids:
-            subtask_info = self._subtask_infos.pop(subtask_id, None)
+    async def set_subtask_results(
+        self, subtask_results: List[SubtaskResult], source_bands: List[BandType]
+    ):
+        delays = []
+        task_api = await self._get_task_api()
+        for result, band in zip(subtask_results, source_bands):
+            if result.status == SubtaskStatus.errored:
+                subtask_info = self._subtask_infos.get(result.subtask_id)
+                if (
+                    subtask_info is not None
+                    and subtask_info.subtask.retryable
+                    and subtask_info.num_reschedules < subtask_info.max_reschedules
+                    and isinstance(result.error, (MarsError, OSError))
+                ):
+                    subtask_info.num_reschedules += 1
+                    logger.warning(
+                        "Resubmit subtask %s at attempt %d",
+                        subtask_info.subtask.subtask_id,
+                        subtask_info.num_reschedules,
+                    )
+                    execution_ref = await self._get_execution_ref(band[0])
+                    await execution_ref.submit_subtasks.tell(
+                        [subtask_info.subtask],
+                        [subtask_info.priority],
+                        self.address,
+                        band[1],
+                    )
+                    continue
+
+            subtask_info = self._subtask_infos.pop(result.subtask_id, None)
             if subtask_info is not None:
-                self._subtask_summaries[subtask_id] = subtask_info.to_summary(
+                self._subtask_summaries[result.subtask_id] = subtask_info.to_summary(
                     is_finished=True
                 )
-                if schedule_next:
-                    for band in subtask_info.submitted_bands:
-                        band_tasks[band] += 1
+            delays.append(task_api.set_subtask_result.delay(result))
+
+        await task_api.set_subtask_result.batch(*delays)
 
     def _get_subtasks_by_ids(self, subtask_ids: List[str]) -> List[Optional[Subtask]]:
         subtasks = []

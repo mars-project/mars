@@ -58,12 +58,17 @@ async def call_with_retry(
         try:
             return await async_fun()
         except (OSError, MarsError):
+            exc_info_raw = sys.exc_info()
+            exc_info = error_callback(trial=trial, exc_info=exc_info_raw, retry=True)
+            exc_info = exc_info or exc_info_raw
+
             if trial >= max_retries - 1:
-                error_callback(trial=trial, exc_info=sys.exc_info(), retry=False)
-                raise
-            error_callback(trial=trial, exc_info=sys.exc_info(), retry=True)
+                raise exc_info[1].with_traceback(exc_info[-1])
         except asyncio.CancelledError:
             raise
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
-            error_callback(trial=trial, exc_info=sys.exc_info(), retry=False)
-            raise
+            exc_info_raw = sys.exc_info()
+            exc_info = error_callback(trial=trial, exc_info=exc_info_raw, retry=False)
+            exc_info = exc_info or exc_info_raw
+
+            raise exc_info[1].with_traceback(exc_info[-1])

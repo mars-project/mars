@@ -26,7 +26,6 @@ from .....oscar.errors import MarsError
 from ....cluster import ClusterAPI
 from ....core import ActorCallback
 from ....subtask import Subtask, SubtaskAPI, SubtaskResult, SubtaskStatus
-from ....task import TaskAPI
 from ..queues import SubtaskPrepareQueueActor, SubtaskExecutionQueueActor
 from ..quota import QuotaActor
 from ..slotmanager import SlotManagerActor
@@ -102,6 +101,16 @@ class SubtaskExecutionActor(mo.Actor):
     ) -> Union[mo.ActorRef, QuotaActor]:
         return await mo.actor_ref(QuotaActor.gen_uid(band_name), address=self.address)
 
+    @staticmethod
+    @alru_cache(cache_exceptions=False)
+    async def _get_manager_ref(session_id: str, supervisor_address: str):
+        from ...supervisor.manager import SubtaskManagerActor
+
+        return await mo.actor_ref(
+            uid=SubtaskManagerActor.gen_uid(session_id),
+            address=supervisor_address,
+        )
+
     def _build_subtask_info(
         self,
         subtask: Subtask,
@@ -109,12 +118,20 @@ class SubtaskExecutionActor(mo.Actor):
         supervisor_address: str,
         band_name: str,
     ) -> SubtaskExecutionInfo:
+        subtask_max_retries = (
+            subtask.extra_config.get("subtask_max_retries")
+            if subtask.extra_config
+            else None
+        )
+        if subtask_max_retries is None:
+            subtask_max_retries = self._subtask_max_retries
+
         subtask_info = SubtaskExecutionInfo(
             subtask,
             priority,
             supervisor_address=supervisor_address,
             band_name=band_name,
-            max_retries=self._subtask_max_retries,
+            max_retries=subtask_max_retries,
         )
         subtask_info.result = SubtaskResult(
             subtask_id=subtask.subtask_id,
@@ -216,8 +233,15 @@ class SubtaskExecutionActor(mo.Actor):
                     subtask = self._subtask_caches[subtask].subtask
                 except KeyError:
                     subtask = self._subtask_executions[subtask].subtask
-            if subtask.subtask_id in self._subtask_executions:
-                continue
+            try:
+                info = self._subtask_executions[subtask.subtask_id]
+                if info.result.status not in (
+                    SubtaskStatus.cancelled,
+                    SubtaskStatus.errored,
+                ):
+                    continue
+            except KeyError:
+                pass
 
             subtask_info = self._build_subtask_info(
                 subtask,
@@ -252,18 +276,19 @@ class SubtaskExecutionActor(mo.Actor):
                 infos_to_report.append(subtask_info)
         await self._report_subtask_results(infos_to_report)
 
-    @staticmethod
-    async def _report_subtask_results(subtask_infos: List[SubtaskExecutionInfo]):
+    async def _report_subtask_results(self, subtask_infos: List[SubtaskExecutionInfo]):
         if not subtask_infos:
             return
-        task_api = await TaskAPI.create(
-            subtask_infos[0].result.session_id, subtask_infos[0].supervisor_address
+        try:
+            manager_ref = await self._get_manager_ref(
+                subtask_infos[0].result.session_id, subtask_infos[0].supervisor_address
+            )
+        except mo.ActorNotExist:
+            return
+        await manager_ref.set_subtask_results.tell(
+            [info.result for info in subtask_infos],
+            [(self.address, info.band_name) for info in subtask_infos],
         )
-        batch = [
-            task_api.set_subtask_result.delay(subtask_info.result)
-            for subtask_info in subtask_infos
-        ]
-        await task_api.set_subtask_result.batch(*batch)
 
     async def cancel_subtasks(
         self, subtask_ids: List[str], kill_timeout: Optional[int] = 5
@@ -289,6 +314,7 @@ class SubtaskExecutionActor(mo.Actor):
 
         self.uncache_subtasks(subtask_ids)
 
+        infos_to_report = []
         for subtask_id in subtask_ids:
             try:
                 subtask_info = self._subtask_executions[subtask_id]
@@ -296,6 +322,8 @@ class SubtaskExecutionActor(mo.Actor):
                 continue
             if not subtask_info.result.status.is_done:
                 self._fill_result_with_exc(subtask_info, exc_cls=asyncio.CancelledError)
+                infos_to_report.append(subtask_info)
+        await self._report_subtask_results(infos_to_report)
 
     async def wait_subtasks(self, subtask_ids: List[str]):
         infos = [
@@ -306,6 +334,28 @@ class SubtaskExecutionActor(mo.Actor):
         if infos:
             yield asyncio.wait([info.finish_future for info in infos])
         raise mo.Return([info.result for info in infos])
+
+    def _create_subtask_with_exception(self, subtask_id, coro):
+        info = self._subtask_executions[subtask_id]
+
+        async def _run_with_exception_handling():
+            try:
+                return await coro
+            except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                self._fill_result_with_exc(info)
+                await self._report_subtask_results([info])
+                await self._prepare_queue_ref.release_slot(
+                    info.subtask.subtask_id, errors="ignore"
+                )
+                await self._execution_queue_ref.release_slot(
+                    info.subtask.subtask_id, errors="ignore"
+                )
+                for aio_task in info.aio_tasks:
+                    if aio_task is not asyncio.current_task():
+                        aio_task.cancel()
+
+        task = asyncio.create_task(_run_with_exception_handling())
+        info.aio_tasks.append(task)
 
     async def handle_prepare_queue(self, band_name: str):
         while True:
@@ -322,8 +372,8 @@ class SubtaskExecutionActor(mo.Actor):
                 continue
 
             logger.debug(f"Obtained subtask {subtask_id} from prepare queue")
-            subtask_info.aio_tasks.append(
-                asyncio.create_task(self._prepare_subtask_with_retry(subtask_info))
+            self._create_subtask_with_exception(
+                subtask_id, self._prepare_subtask_with_retry(subtask_info)
             )
 
     async def handle_execute_queue(self, band_name: str):
@@ -355,8 +405,8 @@ class SubtaskExecutionActor(mo.Actor):
                 c.key in self._pred_key_mapping_dag
                 for c in subtask_info.subtask.chunk_graph.result_chunks
             )
-            subtask_info.aio_tasks.append(
-                asyncio.create_task(self._execute_subtask_with_retry(subtask_info))
+            self._create_subtask_with_exception(
+                subtask_id, self._execute_subtask_with_retry(subtask_info)
             )
 
     async def _prepare_subtask_once(self, subtask_info: SubtaskExecutionInfo):
@@ -438,7 +488,20 @@ class SubtaskExecutionActor(mo.Actor):
                 subtask_info,
                 max_retries=subtask_info.max_retries if subtask.retryable else 0,
             )
-        except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+        except Exception as ex:  # noqa: E722  # nosec  # pylint: disable=bare-except
+            if not subtask.retryable:
+                unretryable_op = [
+                    chunk.op
+                    for chunk in subtask.chunk_graph
+                    if not getattr(chunk.op, "retryable", True)
+                ]
+                logger.exception(
+                    "Run subtask failed due to %r, the subtask %s is "
+                    "not retryable, it contains unretryable op: %r",
+                    ex,
+                    subtask.subtask_id,
+                    unretryable_op,
+                )
             self._fill_result_with_exc(subtask_info)
         finally:
             self._subtask_executions.pop(subtask.subtask_id, None)
@@ -454,18 +517,19 @@ class SubtaskExecutionActor(mo.Actor):
         return subtask_info.result
 
     @classmethod
-    async def _call_with_retry(
+    def _log_subtask_retry(
         cls,
-        target_func: Callable,
         subtask_info: SubtaskExecutionInfo,
-        max_retries: Optional[int] = None,
+        target_func: Callable,
+        trial: int,
+        exc_info: Tuple,
+        retry: bool = True,
     ):
         subtask = subtask_info.subtask
-        max_retries = max_retries or subtask_info.max_retries
-
-        def log_func(trial: int, exc_info: Tuple, retry: bool = True):
-            subtask_info.num_retries = trial
-            if retry:
+        max_retries = subtask_info.max_retries
+        subtask_info.num_retries = trial
+        if retry:
+            if trial < max_retries - 1:
                 logger.error(
                     "Rerun %s of subtask %s at attempt %d due to %s",
                     target_func,
@@ -475,22 +539,42 @@ class SubtaskExecutionActor(mo.Actor):
                 )
             else:
                 logger.exception(
-                    "Failed to rerun the %s of subtask %s, "
-                    "num_retries: %s, max_retries: %s",
-                    target_func,
-                    subtask.subtask_id,
+                    "Exceed max rerun (%s / %s): %s of subtask %s due to %s",
                     trial + 1,
                     max_retries,
+                    target_func,
+                    subtask.subtask_id,
+                    exc_info[1],
                     exc_info=exc_info,
                 )
+        else:
+            logger.exception(
+                "Failed to rerun %s of subtask %s due to unhandled exception: %s",
+                target_func,
+                subtask.subtask_id,
+                exc_info[1],
+                exc_info=exc_info,
+            )
+
+    @classmethod
+    async def _call_with_retry(
+        cls,
+        target_func: Callable,
+        subtask_info: SubtaskExecutionInfo,
+        max_retries: Optional[int] = None,
+    ):
+        subtask_info.max_retries = max_retries or subtask_info.max_retries
 
         if subtask_info.max_retries <= 1:
             return await target_func(subtask_info)
         else:
+            err_callback = functools.partial(
+                cls._log_subtask_retry, subtask_info, target_func
+            )
             return await call_with_retry(
                 functools.partial(target_func, subtask_info),
                 max_retries=max_retries,
-                error_callback=log_func,
+                error_callback=err_callback,
             )
 
     @classmethod
@@ -572,4 +656,4 @@ class SubtaskExecutionActor(mo.Actor):
             )
             self.uncache_subtasks([subtask_id])
         except PrepareFastFailed:
-            self._subtask_executions.pop(subtask_id)
+            self._subtask_executions.pop(subtask_id, None)
