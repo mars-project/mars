@@ -28,7 +28,7 @@ from ...core import (
     recursive_tile,
 )
 from ...core.operand import OperandStage
-from ...utils import tokenize
+from ...lib.version import parse as parse_version
 from ...serialization.serializables import (
     BoolField,
     AnyField,
@@ -36,6 +36,7 @@ from ...serialization.serializables import (
     Int32Field,
     StringField,
 )
+from ...utils import tokenize
 from ..core import SERIES_TYPE
 from ..utils import (
     parse_index,
@@ -46,6 +47,14 @@ from ..utils import (
     validate_axis,
 )
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE
+
+_pd_release = parse_version(pd.__version__).release[:2]
+# in pandas<1.3, when aggregating with multiple levels and numeric_only is True,
+# object cols not ignored with min-max funcs
+_level_reduction_keep_object = _pd_release < (1, 3)
+# in pandas>=1.3, when dataframes are reduced into series, mixture of float and bool
+# results in object.
+_reduce_bool_as_object = _pd_release >= (1, 3)
 
 
 class DataFrameReductionOperand(DataFrameOperand):
@@ -255,7 +264,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
     def _call_dataframe(self, df):
         axis = getattr(self, "axis", None) or 0
         level = getattr(self, "level", None)
-        skipna = getattr(self, "skipna", None)
+        skipna = getattr(self, "skipna", True)
         numeric_only = getattr(self, "numeric_only", None)
         bool_only = getattr(self, "bool_only", None)
         self._axis = axis = validate_axis(axis, df)
@@ -307,7 +316,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
     def _call_series(self, series):
         level = getattr(self, "level", None)
         axis = getattr(self, "axis", None)
-        skipna = getattr(self, "skipna", None)
+        skipna = getattr(self, "skipna", True)
         numeric_only = getattr(self, "numeric_only", None)
         bool_only = getattr(self, "bool_only", None)
         self._axis = axis = validate_axis(axis or 0, series)
@@ -390,8 +399,8 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         n_rows, n_cols = in_df.chunk_shape
 
         # map to get individual results and summaries
-        src_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
-        summary_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
+        src_chunks = np.empty(in_df.chunk_shape, dtype=object)
+        summary_chunks = np.empty(in_df.chunk_shape, dtype=object)
         for c in in_df.chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op.stage = OperandStage.map
@@ -405,7 +414,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
             )
 
         # combine summaries into results
-        output_chunk_array = np.empty(in_df.chunk_shape, dtype=np.object)
+        output_chunk_array = np.empty(in_df.chunk_shape, dtype=object)
         if op.axis == 1:
             for row in range(n_rows):
                 row_src = src_chunks[row, :]
@@ -441,7 +450,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         series = op.outputs[0]
 
         # map to get individual results and summaries
-        summary_chunks = np.empty(in_series.chunk_shape, dtype=np.object)
+        summary_chunks = np.empty(in_series.chunk_shape, dtype=object)
         for c in in_series.chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op.stage = OperandStage.map

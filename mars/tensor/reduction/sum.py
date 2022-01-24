@@ -127,7 +127,7 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=None, combine_size=None):
     """
     a = astensor(a)
     if dtype is None:
-        if a.dtype == np.object_:
+        if a.dtype == object:
             dtype = a.dtype
         else:
             dtype = np.empty((1,), dtype=a.dtype).sum().dtype

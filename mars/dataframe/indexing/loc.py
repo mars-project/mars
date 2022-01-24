@@ -253,7 +253,7 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(index, slice):
             return cls._calc_slice_param(input_index_value, pd_index, inp, index, axis)
         elif hasattr(index, "dtype") and index.ndim == 1:
-            if index.dtype == np.bool:
+            if index.dtype == np.bool_:
                 # bool indexing
                 return cls._calc_bool_index_param(
                     input_index_value, pd_index, inp, index, axis

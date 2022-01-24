@@ -711,6 +711,8 @@ class IndexIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
             )
         else:
             indexes = tuple(op.indexes)
+            if len(indexes) == 1:
+                indexes = indexes[0]
         ctx[chunk.key] = idx[indexes]
 
     def __call__(self, idx):

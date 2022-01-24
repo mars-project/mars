@@ -55,7 +55,7 @@ class DataFrameToNumeric(DataFrameOperand, DataFrameOperandMixin):
             self.output_types = [OutputType.tensor]
             dtype = tensor.dtype
             if dtype.kind == "U":
-                dtype = np.dtype(np.object_)
+                dtype = np.dtype(object)
             return self.new_tileables([tensor], shape=tensor.shape, dtype=dtype)[0]
 
     @classmethod
