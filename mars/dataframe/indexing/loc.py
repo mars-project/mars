@@ -26,7 +26,7 @@ from ...core.operand import OperandStage
 from ...serialization.serializables import KeyField, ListField
 from ...tensor.datasource import asarray
 from ...tensor.utils import calc_sliced_size, filter_inputs
-from ...utils import lazy_import
+from ...utils import lazy_import, is_full_slice
 from ..core import IndexValue, DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
@@ -154,7 +154,13 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
         axis: int,
     ) -> Dict:
         param = dict()
-        if input_index_value.has_value():
+        if is_full_slice(index):
+            # full slice on this axis
+            param["shape"] = inp.shape[axis]
+            param["index_value"] = input_index_value
+            if axis == 1:
+                param["dtypes"] = inp.dtypes
+        elif input_index_value.has_value():
             start, end = pd_index.slice_locs(
                 index.start, index.stop, index.step, kind="loc"
             )
