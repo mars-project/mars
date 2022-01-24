@@ -16,6 +16,7 @@
 
 import asyncio
 import dataclasses
+import enum
 import functools
 import importlib
 import io
@@ -87,6 +88,19 @@ if sys.platform == "win32":  # pragma: no cover
     to_binary = _replace_default_encoding(to_binary)
     to_text = _replace_default_encoding(to_text)
     to_str = _replace_default_encoding(to_str)
+
+
+try:
+    from pandas._libs.lib import NoDefault, no_default
+except ImportError:  # pragma: no cover
+
+    class NoDefault(enum.Enum):
+        no_default = "NO_DEFAULT"
+
+        def __repr__(self) -> str:
+            return "<no_default>"
+
+    no_default = NoDefault.no_default
 
 
 class AttributeDict(dict):

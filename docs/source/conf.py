@@ -193,6 +193,7 @@ intersphinx_mapping = {
 
 locale_dirs = ['locale/']   # path is example but recommended.
 gettext_compact = False     # optional.
+ipython_warning_is_error = False
 
 
 import sphinx

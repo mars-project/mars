@@ -23,8 +23,8 @@ from ...serialization.serializables import (
     AnyField,
     Int32Field,
     ListField,
-    StringField,
 )
+from ...utils import no_default
 from ..operands import (
     DataFrameOperand,
     DataFrameOperandMixin,
@@ -41,7 +41,7 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
     _value = AnyField("value")
     _limit = Int32Field("limit")
     _regex = AnyField("regex")
-    _method = StringField("method")
+    _method = AnyField("method")
 
     _fill_chunks = ListField("fill_chunks", FieldTypes.key)
 
@@ -214,7 +214,7 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
                 )
 
             for in_chunk in in_obj.chunks:
-                if op.method in ("pad", "ffill"):
+                if op.method in (no_default, "pad", "ffill"):
                     slc = slice(0, in_chunk.index[0])
                 else:
                     slc = slice(in_chunk.index[0] + 1, in_obj.chunk_shape[0])
@@ -249,27 +249,33 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
             concat_data = in_data
         else:
             to_concat = [ctx[c.key] for c in op.fill_chunks]
-            if op.method in ("pad", "ffill"):
+            if op.method in (no_default, "pad", "ffill"):
                 to_concat += [in_data]
             else:
                 to_concat = [in_data] + to_concat
             concat_data = pd.concat(to_concat)
 
-        result = concat_data.replace(
-            to_replace, value, regex=op.regex, method=op.method, limit=op.limit
-        )
+        replace_args = (to_replace,)
+        if value is not no_default:
+            replace_args += (value,)
+        replace_kwargs = dict(regex=op.regex, method=op.method, limit=op.limit)
+        replace_kwargs = {
+            k: v for k, v in replace_kwargs.items() if v is not no_default
+        }
+
+        result = concat_data.replace(*replace_args, **replace_kwargs)
         del concat_data
 
         if op.stage == OperandStage.map:
             to_slice = op.outputs[0].shape[0]
-            if op.method in ("pad", "ffill"):
+            if op.method in (no_default, "pad", "ffill"):
                 result = result.iloc[-to_slice:]
             else:
                 result = result.iloc[:to_slice]
         else:
             to_remove = len(result) - len(in_data)
             if to_remove > 0:
-                if op.method in ("pad", "ffill"):
+                if op.method in (no_default, "pad", "ffill"):
                     result = result.iloc[to_remove:]
                 else:
                     result = result.iloc[:-to_remove]
@@ -574,7 +580,7 @@ def _replace(
     inplace=False,
     limit=None,
     regex=False,
-    method="pad",
+    method=no_default,
 ):
     if not isinstance(to_replace, dict) and value is None and limit is not None:
         raise NotImplementedError("fill with limit not supported when value is None")
@@ -594,12 +600,12 @@ def _replace(
 
 def df_replace(
     df,
-    to_replace=None,
+    to_replace=no_default,
     value=None,
     inplace=False,
     limit=None,
     regex=False,
-    method="pad",
+    method=no_default,
 ):
     return _replace(
         df,
@@ -614,12 +620,12 @@ def df_replace(
 
 def series_replace(
     series,
-    to_replace=None,
+    to_replace=no_default,
     value=None,
     inplace=False,
     limit=None,
     regex=False,
-    method="pad",
+    method=no_default,
 ):
     return _replace(
         series,

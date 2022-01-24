@@ -107,7 +107,7 @@ def all(a, axis=None, out=None, keepdims=None, combine_size=None):
 
     """
     a = astensor(a)
-    if a.dtype == np.object_:
+    if a.dtype == object:
         dtype = a.dtype
     else:
         dtype = np.dtype(bool)
