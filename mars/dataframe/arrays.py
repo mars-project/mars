@@ -56,7 +56,8 @@ from ..config import options
 from ..core import is_kernel_mode
 from ..utils import pd_release_version
 
-_use_bool_any_all = pd_release_version >= (1, 3, 0)
+_use_bool_any_all = pd_release_version[:2] >= (1, 3)
+_use_extension_index = pd_release_version[:2] >= (1, 4)
 
 
 class ArrowDtype(ExtensionDtype):
@@ -497,8 +498,14 @@ class ArrowArray(ExtensionArray):
         # try to slice 1 record to get the result dtype
         test_array = self._arrow_array.slice(0, 1).to_pandas()
         test_result_array = test_array.astype(dtype).array
+        if _use_extension_index:
+            test_result_type = type(test_array.astype(dtype).values)
+            if test_result_type is np.ndarray:
+                test_result_type = np.array
+        else:
+            test_result_type = type(test_result_array)
 
-        result_array = type(test_result_array)(
+        result_array = test_result_type(
             np.full(
                 self.shape,
                 test_result_array.dtype.na_value,
