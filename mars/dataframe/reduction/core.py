@@ -664,7 +664,7 @@ class CustomReduction:
         return self.name
 
     def __call__(self, value):
-        if is_build_mode():
+        if isinstance(value, ENTITY_TYPE):
             from .custom_reduction import build_custom_reduction_result
 
             return build_custom_reduction_result(value, self)
@@ -889,7 +889,7 @@ class ReductionCompiler:
             mock_obj = MarsDataFrame(mock_df)
 
         # calc target tileable to generate DAG
-        with enter_mode(kernel=True):
+        with enter_mode(kernel=True, build=False):
             return func(mock_obj)
 
     @enter_mode(build=True)
@@ -1210,11 +1210,17 @@ class ReductionCompiler:
             else:
                 post_cols = cols
 
+            func_name = step.func_name
+            if self._lambda_counter == 1 and step.func_name == "<lambda_0>":
+                func_name = "<lambda>"
+            if self._custom_counter == 1 and step.func_name == "<custom_0>":
+                func_name = "<custom>"
+
             post_funcs.append(
                 ReductionPostStep(
                     step.input_keys,
                     step.output_key,
-                    step.func_name,
+                    func_name,
                     post_cols,
                     step.func,
                 )
