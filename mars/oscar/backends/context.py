@@ -180,12 +180,11 @@ class MarsActorContext(BaseActorContext):
             actor_ref.address,
         ):
             detect_cycle_send(message, wait_response)
-            future = await self._call(actor_ref.address, message, wait=False)
+            result_or_future = await self._call(actor_ref.address, message, wait=wait_response)
             if wait_response:
-                result = await self._wait(future, actor_ref.address, message)
-                return self._process_result_message(result)
+                return self._process_result_message(result_or_future)
             else:
-                return future
+                return result_or_future
 
     async def cancel(self, address: str, cancel_message_id: bytes):
         message = CancelMessage(

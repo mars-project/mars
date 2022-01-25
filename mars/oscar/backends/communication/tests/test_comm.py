@@ -54,13 +54,17 @@ local_params.append((DummyServer, dict(), "dummy://0"))
 @pytest.mark.parametrize("server_type, config, con", local_params)
 @pytest.mark.asyncio
 async def test_comm(server_type, config, con):
-    async def check_data(chan: Union[SocketChannel, DummyChannel]):
-        np.testing.assert_array_equal(test_data, await chan.recv())
-        await chan.send("success")
-
     config = config.copy()
-    config["handle_channel"] = check_data
-
+    if server_type == DummyServer:
+        async def check_data(msg):
+            np.testing.assert_array_equal(test_data, msg)
+            return "success"
+        config["message_handler"] = check_data
+    else:
+        async def check_data(chan: SocketChannel):
+            np.testing.assert_array_equal(test_data, await chan.recv())
+            await chan.send("success")
+        config["handle_channel"] = check_data
     # create server
     server = await server_type.create(config)
     await server.start()

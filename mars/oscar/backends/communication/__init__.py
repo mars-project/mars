@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .base import Client, Server, Channel
-from .core import get_client_type, get_server_type, gen_local_address
+from .core import get_client_type, get_server_type, gen_local_address, is_local_address
 from .dummy import DummyClient, DummyServer, DummyChannel
 from .socket import (
     SocketClient,

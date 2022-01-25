@@ -254,7 +254,7 @@ class Client(ABC):
         """
 
     @implements(Channel.send)
-    async def send(self, message):
+    async def send(self, message, wait_response: bool = False):
         return await self.channel.send(message)
 
     @implements(Channel.recv)

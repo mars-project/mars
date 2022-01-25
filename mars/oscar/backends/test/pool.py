@@ -17,7 +17,7 @@ import multiprocessing
 from typing import List, Dict
 
 from ..config import ActorPoolConfig
-from ..communication import gen_local_address, get_server_type, DummyServer
+from ..communication import gen_local_address, get_server_type, DummyServer, is_local_address
 from ..mars.pool import MainActorPool, SubActorPool, SubpoolStatus
 from ..pool import ActorPoolType
 
@@ -94,13 +94,15 @@ class TestSubActorPool(SubActorPool):
         create_server_tasks = []
         for addr in set(external_addresses + [gen_local_address(process_index)]):
             server_type = get_server_type(addr)
-            task = asyncio.create_task(
-                server_type.create(dict(address=addr, handle_channel=handle_channel))
-            )
-            create_server_tasks.append(task)
+            if is_local_address(addr):
+                def message_handler(message):
+                    return pool._process_message(message)
+                create_server_coro = server_type.create(dict(address=addr, message_handler=message_handler))
+            else:
+                create_server_coro = server_type.create(dict(address=addr, handle_channel=handle_channel))
+            create_server_tasks.append(asyncio.create_task(create_server_coro))
         await asyncio.gather(*create_server_tasks)
         kw["servers"] = [f.result() for f in create_server_tasks]
-
         # create pool
         pool = cls(**kw)
         return pool

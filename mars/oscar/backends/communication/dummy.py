@@ -32,18 +32,18 @@ class DummyChannel(Channel):
     Channel for communications in same process.
     """
 
-    __slots__ = "_in_queue", "_out_queue", "_closed"
+    __slots__ = "_in_queue", "_closed", "_message_handler"
 
     name = "dummy"
 
     def __init__(
         self,
         in_queue: asyncio.Queue,
-        out_queue: asyncio.Queue,
         closed: asyncio.Event,
         local_address: str = None,
         dest_address: str = None,
         compression=None,
+        message_handler=None,
     ):
         super().__init__(
             local_address=local_address,
@@ -51,8 +51,8 @@ class DummyChannel(Channel):
             compression=compression,
         )
         self._in_queue = in_queue
-        self._out_queue = out_queue
         self._closed = closed
+        self._message_handler = message_handler
 
     @property
     @implements(Channel.type)
@@ -63,8 +63,8 @@ class DummyChannel(Channel):
     async def send(self, message: Any):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed("Channel already closed, cannot send message")
-        # put message directly into queue
-        self._out_queue.put_nowait(message)
+        result = await self._message_handler(message)
+        self._in_queue.put_nowait(result)
 
     @implements(Channel.recv)
     async def recv(self):
@@ -89,7 +89,7 @@ class DummyChannel(Channel):
 @register_server
 class DummyServer(Server):
     __slots__ = (
-        ("_closed", "_channels", "_tasks") + ("__weakref__",)
+        ("_closed", "message_handler") + ("__weakref__",)
         if abc_type_require_weakref_slot
         else tuple()
     )
@@ -98,12 +98,11 @@ class DummyServer(Server):
     scheme = "dummy"
 
     def __init__(
-        self, address: str, channel_handler: Callable[[Channel], Coroutine] = None
+        self, address: str, message_handler: Callable[[Any, Channel], Coroutine] = None
     ):
-        super().__init__(address, channel_handler)
+        super().__init__(address, None)
         self._closed = asyncio.Event()
-        self._channels = []
-        self._tasks = []
+        self.message_handler = message_handler
 
     @classmethod
     def get_instance(cls, address: str):
@@ -124,7 +123,7 @@ class DummyServer(Server):
     async def create(config: Dict) -> "DummyServer":
         config = config.copy()
         address = config.pop("address", DEFAULT_DUMMY_ADDRESS)
-        handle_channel = config.pop("handle_channel")
+        message_handler = config.pop("message_handler")
         if urlparse(address).scheme != DummyServer.scheme:  # pragma: no cover
             raise ValueError(
                 f"Address for DummyServer "
@@ -140,7 +139,7 @@ class DummyServer(Server):
             if server.stopped:
                 raise KeyError("server closed")
         except KeyError:
-            server = DummyServer(address, handle_channel)
+            server = DummyServer(address, message_handler)
             DummyServer._address_to_instances[address] = server
         return server
 
@@ -161,22 +160,12 @@ class DummyServer(Server):
     async def on_connected(self, *args, **kwargs):
         if self._closed.is_set():  # pragma: no cover
             raise ServerClosed("Dummy server already closed")
-
-        channel = args[0]
-        assert isinstance(channel, DummyChannel)
-        if kwargs:  # pragma: no cover
-            raise TypeError(
-                f"{type(self).__name__} got unexpected "
-                f'arguments: {",".join(kwargs)}'
-            )
-        self._channels.append(channel)
-        await self.channel_handler(channel)
+        raise RuntimeError(f"DummyServer.on_connected shouldn't be invoked, "
+                           f"but invoked with arguments: args {args} and kwargs {kwargs}")
 
     @implements(Server.stop)
     async def stop(self):
         self._closed.set()
-        _ = [t.cancel() for t in self._tasks]
-        await asyncio.gather(*(channel.close() for channel in self._channels))
 
     @property
     @implements(Server.stopped)
@@ -203,7 +192,7 @@ class DummyClient(Client):
                 f'Destination address should start with "dummy://" '
                 f"for DummyClient, got {dest_address}"
             )
-        server = DummyServer.get_instance(dest_address)
+        server: DummyServer = DummyServer.get_instance(dest_address)
         if server is None:  # pragma: no cover
             raise RuntimeError(
                 "DummyServer needs to be created " "first before DummyClient"
@@ -211,20 +200,33 @@ class DummyClient(Client):
         if server.stopped:  # pragma: no cover
             raise ConnectionError("Dummy server closed")
 
-        q1, q2 = asyncio.Queue(), asyncio.Queue()
         closed = asyncio.Event()
-        client_channel = DummyChannel(q1, q2, closed, local_address=local_address)
-        server_channel = DummyChannel(q2, q1, closed, dest_address=local_address)
-
-        conn_coro = server.on_connected(server_channel)
-        task = asyncio.create_task(conn_coro)
+        client_channel = DummyChannel(asyncio.Queue(), closed, local_address=local_address,
+                                      message_handler=server.message_handler)
         client = DummyClient(local_address, dest_address, client_channel)
-        client._task = task
-        server._tasks.append(task)
         return client
+
+    @implements(Channel.send)
+    async def send(self, message, wait_response: bool = False):
+        """
+
+        Parameters
+        ----------
+        message:
+            sent message
+        wait_response: bool
+            Whether wait message processed by the server
+        """
+        coro = self.channel.send(message)
+        if wait_response:
+            return await coro
+        else:
+            return asyncio.create_task(coro)
+
+    @implements(Channel.recv)
+    async def recv(self):
+        return await self.channel.recv()
 
     @implements(Client.close)
     async def close(self):
         await super().close()
-        self._task.cancel()
-        self._task = None

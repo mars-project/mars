@@ -64,3 +64,7 @@ def get_server_type(address: str) -> Type[Server]:
 
 def gen_local_address(process_index: int) -> str:
     return f"dummy://{process_index}"
+
+
+def is_local_address(address: str) -> bool:
+    return get_scheme(address) == "dummy"

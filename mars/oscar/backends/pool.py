@@ -31,7 +31,7 @@ from ..debug import record_message_trace, debug_async_timeout
 from ..errors import ActorAlreadyExist, ActorNotExist, ServerClosed, CannotCancelTask
 from ..utils import create_actor_ref
 from .allocate_strategy import allocated_type, AddressSpecified
-from .communication import Channel, Server, get_server_type, gen_local_address
+from .communication import Channel, Server, get_server_type, gen_local_address, is_local_address
 from .communication.errors import ChannelClosed
 from .config import ActorPoolConfig
 from .core import result_message_type, ActorCaller
@@ -320,20 +320,23 @@ class AbstractActorPool(ABC):
         finally:
             self._process_messages.pop(message_id, None)
 
-    async def process_message(self, message: _MessageBase, channel: Channel):
+    async def _process_message(self, message: _MessageBase):
         handler = self._message_handler[message.message_type]
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
             with debug_async_timeout(
-                "process_message_timeout",
-                "Process message %s of channel %s timeout.",
-                message,
-                channel,
+                    "process_message_timeout",
+                    "Process message %s timeout.",
+                    message,
             ):
                 processor.result = await self._run_coro(
                     message.message_id, handler(self, message)
                 )
+                return processor.result
+
+    async def process_message(self, message: _MessageBase, channel: Channel):
+        result = await self._process_message(message)
         try:
-            await channel.send(processor.result)
+            await channel.send(result)
         except (ChannelClosed, ConnectionResetError):
             if not self._stopped.is_set():
                 raise
@@ -597,16 +600,18 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         # create servers
         create_server_tasks = []
         for addr in set(
-            external_addresses + [internal_address, gen_local_address(process_index)]
+                external_addresses + [internal_address, gen_local_address(process_index)]
         ):
             server_type = get_server_type(addr)
-            task = asyncio.create_task(
-                server_type.create(dict(address=addr, handle_channel=handle_channel))
-            )
-            create_server_tasks.append(task)
+            if is_local_address(addr):
+                def message_handler(message):
+                    return pool._process_message(message)
+                create_server_coro = server_type.create(dict(address=addr, message_handler=message_handler))
+            else:
+                create_server_coro = server_type.create(dict(address=addr, handle_channel=handle_channel))
+            create_server_tasks.append(asyncio.create_task(create_server_coro))
         await asyncio.gather(*create_server_tasks)
         kw["servers"] = [f.result() for f in create_server_tasks]
-
         # create pool
         pool = cls(**kw)
         return pool

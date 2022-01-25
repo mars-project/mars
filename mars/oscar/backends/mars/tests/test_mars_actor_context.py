@@ -237,7 +237,7 @@ async def actor_pool_context(request):
     )
 
     try:
-        if request:
+        if request.param:
             set_debug_options(DebugOptions())
 
         await pool.start()

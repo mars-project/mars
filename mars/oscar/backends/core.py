@@ -88,7 +88,7 @@ class ActorCaller:
         self._client_to_message_futures[client][message.message_id] = wait_response
 
         try:
-            await client.send(message)
+            await client.send(message, wait_response=wait)
         except ConnectionError:
             try:
                 await client.close()
