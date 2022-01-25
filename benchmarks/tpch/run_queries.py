@@ -921,11 +921,11 @@ def run_queries(data_folder: str):
     q13(customer, orders)
     q14(lineitem, part)
     q15(lineitem, supplier)
-    q16(part, partsupp, supplier)  # FIXME: wait for groupby().nunique()
+    q16(part, partsupp, supplier)  # FIXME: wait for groupby().nunique(), GH#2644
     q17(lineitem, part)
     q18(lineitem, orders, customer)
     q19(lineitem, part)
-    q20(lineitem, part, nation, partsupp, supplier)  # FIXME: wait for GH#2648
+    q20(lineitem, part, nation, partsupp, supplier)
 
 
 def main():
