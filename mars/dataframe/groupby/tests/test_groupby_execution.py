@@ -852,6 +852,67 @@ def test_groupby_cum(setup):
         )
 
 
+def test_groupby_fill(setup):
+    df1 = pd.DataFrame(
+        [
+            [1, 1, 10],
+            [1, 1, np.nan],
+            [1, 1, np.nan],
+            [1, 2, np.nan],
+            [1, 2, 20],
+            [1, 2, np.nan],
+            [1, 3, np.nan],
+            [1, 3, np.nan],
+        ],
+        columns=["one", "two", "three"],
+    )
+    mdf = md.DataFrame(df1, chunk_size=3)
+    r1 = getattr(mdf.groupby(["one", "two"]), "ffill")()
+    pd.testing.assert_frame_equal(
+        r1.execute().fetch().sort_index(),
+        getattr(df1.groupby(["one", "two"]), "ffill")().sort_index(),
+    )
+
+    r2 = getattr(mdf.groupby("two"), "bfill")()
+    pd.testing.assert_frame_equal(
+        r2.execute().fetch().sort_index(),
+        getattr(df1.groupby("two"), "bfill")().sort_index(),
+    )
+
+    r3 = getattr(mdf.groupby("one"), "fillna")(5)
+    pd.testing.assert_frame_equal(
+        r3.execute().fetch().sort_index(),
+        getattr(df1.groupby("one"), "fillna")(5).sort_index(),
+    )
+
+    r4 = getattr(mdf.groupby("two"), "backfill")()
+    pd.testing.assert_frame_equal(
+        r4.execute().fetch().sort_index(),
+        getattr(df1.groupby("two"), "backfill")().sort_index(),
+    )
+
+    s1 = pd.Series([4, 3, 9, np.nan, np.nan, 7, 10, 8, 1, 6])
+    ms1 = md.Series(s1, chunk_size=3)
+
+    r1 = getattr(ms1.groupby(lambda x: x % 2), "ffill")()
+    pd.testing.assert_series_equal(
+        r1.execute().fetch().sort_index(),
+        getattr(s1.groupby(lambda x: x % 2), "ffill")().sort_index(),
+    )
+
+    r2 = getattr(ms1.groupby(lambda x: x % 2), "bfill")()
+    pd.testing.assert_series_equal(
+        r2.execute().fetch().sort_index(),
+        getattr(s1.groupby(lambda x: x % 2), "bfill")().sort_index(),
+    )
+
+    r4 = getattr(ms1.groupby(lambda x: x % 2), "backfill")()
+    pd.testing.assert_series_equal(
+        r4.execute().fetch().sort_index(),
+        getattr(s1.groupby(lambda x: x % 2), "backfill")().sort_index(),
+    )
+
+
 def test_groupby_head(setup):
     df1 = pd.DataFrame(
         {
