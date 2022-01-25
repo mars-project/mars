@@ -26,6 +26,7 @@ def _install():
     from .head import head
     from .transform import groupby_transform
     from .sample import groupby_sample
+    from .fill import ffill, bfill, fillna
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, "groupby", groupby)
@@ -65,6 +66,11 @@ def _install():
         setattr(cls, "head", head)
 
         setattr(cls, "sample", groupby_sample)
+
+        setattr(cls, "ffill", ffill)
+        setattr(cls, "bfill", bfill)
+        setattr(cls, "backfill", bfill)
+        setattr(cls, "fillna", fillna)
 
     for cls in DATAFRAME_GROUPBY_TYPE:
         setattr(cls, "__getitem__", df_groupby_getitem)
