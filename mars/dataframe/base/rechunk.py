@@ -209,11 +209,14 @@ def compute_rechunk(a, chunk_size):
                 calc_sliced_size(s, chunk_slice[0]) for s in old_chunk.shape
             )
             new_index_value = indexing_index_value(
-                old_chunk.index_value, chunk_slice[0]
+                old_chunk.index_value, chunk_slice[0], rechunk=True
             )
             if is_dataframe:
                 new_columns_value = indexing_index_value(
-                    old_chunk.columns_value, chunk_slice[1], store_data=True
+                    old_chunk.columns_value,
+                    chunk_slice[1],
+                    store_data=True,
+                    rechunk=True,
                 )
                 merge_chunk_op = DataFrameIlocGetItem(
                     list(chunk_slice),
