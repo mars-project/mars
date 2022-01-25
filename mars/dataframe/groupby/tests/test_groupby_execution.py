@@ -277,13 +277,14 @@ def test_groupby_getitem(setup):
     rs = np.random.RandomState(0)
     raw = pd.DataFrame(
         {
-            "c1": np.arange(100).astype(np.int64),
+            "c1": rs.randint(0, 10, size=(100,)).astype(np.int64),
             "c2": rs.choice(["a", "b", "c"], (100,)),
             "c3": rs.rand(100),
             "c4": rs.rand(100),
         }
     )
     mdf = md.DataFrame(raw, chunk_size=20)
+
     r = mdf.groupby(["c2"])[["c1", "c3"]].agg({"c1": "max", "c3": "min"}, method="tree")
     pd.testing.assert_frame_equal(
         r.execute().fetch(),
@@ -297,6 +298,21 @@ def test_groupby_getitem(setup):
     pd.testing.assert_frame_equal(
         r.execute().fetch(),
         raw.groupby(["c2"])[["c1", "c4"]].agg({"c1": "max", "c4": "mean"}),
+    )
+
+    # test anonymous function lists
+    agg_funs = [lambda x: (x + 1).sum()]
+    r = mdf.groupby(["c2"])["c1"].agg(agg_funs)
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(), raw.groupby(["c2"])["c1"].agg(agg_funs)
+    )
+
+    # test group by multiple cols
+    r = mdf.groupby(["c1", "c2"], as_index=False)["c3"].sum()
+    expected = raw.groupby(["c1", "c2"], as_index=False)["c3"].sum()
+    pd.testing.assert_frame_equal(
+        r.execute().fetch().sort_values(["c1", "c2"]).reset_index(drop=True),
+        expected.sort_values(["c1", "c2"]).reset_index(drop=True),
     )
 
 
