@@ -276,7 +276,9 @@ class LabelSliceIndexHandler(IndexHandler):
                 kw["index_value"] = chunk_input.index_value
             else:
                 index = chunk_input.index_value.to_pandas()
-                start, stop = index.slice_locs(slc.start, slc.stop, slc.step, kind="loc")
+                start, stop = index.slice_locs(
+                    slc.start, slc.stop, slc.step, kind="loc"
+                )
                 pos_slc = slice(start, stop, slc.step)
                 kw["index_value"] = parse_index(
                     index[pos_slc], chunk_input, slc, store_data=False
