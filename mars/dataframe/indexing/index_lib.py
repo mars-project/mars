@@ -190,10 +190,13 @@ class SliceIndexHandler(SliceIndexHandlerBase):
             "dtypes": None,
         }
         if index_info.input_axis == 0:
-            index = chunk_input.index_value.to_pandas()
-            kw["index_value"] = parse_index(
-                index[slc], chunk_input, slc, store_data=False
-            )
+            if is_full_slice(slc):
+                kw["index_value"] = chunk_input.index_value
+            else:
+                index = chunk_input.index_value.to_pandas()
+                kw["index_value"] = parse_index(
+                    index[slc], chunk_input, slc, store_data=False
+                )
         else:
             assert index_info.input_axis == 1
             index = chunk_input.columns_value.to_pandas()
