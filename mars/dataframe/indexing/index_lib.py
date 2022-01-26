@@ -44,7 +44,7 @@ from ...tensor.utils import (
     to_numpy,
     normalize_chunk_sizes,
 )
-from ...utils import classproperty, has_unknown_shape
+from ...utils import classproperty, has_unknown_shape, is_full_slice
 from ..core import SERIES_CHUNK_TYPE, SERIES_TYPE, IndexValue
 from ..utils import parse_index
 from .utils import convert_labels_into_positions
@@ -272,12 +272,15 @@ class LabelSliceIndexHandler(IndexHandler):
             "dtypes": None,
         }
         if index_info.input_axis == 0:
-            index = chunk_input.index_value.to_pandas()
-            start, stop = index.slice_locs(slc.start, slc.stop, slc.step, kind="loc")
-            pos_slc = slice(start, stop, slc.step)
-            kw["index_value"] = parse_index(
-                index[pos_slc], chunk_input, slc, store_data=False
-            )
+            if is_full_slice(index):
+                kw["index_value"] = chunk_input.index_value
+            else:
+                index = chunk_input.index_value.to_pandas()
+                start, stop = index.slice_locs(slc.start, slc.stop, slc.step, kind="loc")
+                pos_slc = slice(start, stop, slc.step)
+                kw["index_value"] = parse_index(
+                    index[pos_slc], chunk_input, slc, store_data=False
+                )
         else:
             assert index_info.input_axis == 1
             dtypes = chunk_input.dtypes

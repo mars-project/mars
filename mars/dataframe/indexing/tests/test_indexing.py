@@ -620,6 +620,19 @@ def test_dataframe_loc():
     with pytest.raises(KeyError):
         _ = df.loc[:, ["non_exist"]]
 
+    # test loc chunk's index_value
+    raw = pd.DataFrame(
+        np.random.rand(9, 2),
+        index=["a1", "a2", "a3"] * 3,
+        columns=["x", "y"],
+    )
+    df = md.DataFrame(raw, chunk_size=4)
+    loc_df = df.loc[:, ["x"]]
+    tiled_df, tiled_loc_df = tile(df, loc_df)
+    # for full slice, index_value should be same as input chunk
+    for loc_chunk, chunk in zip(tiled_loc_df.chunks, tiled_df.chunks):
+        assert loc_chunk.index_value.key == chunk.index_value.key
+
 
 def test_loc_use_iloc():
     raw = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]], columns=["x", "y", "z"])
