@@ -20,6 +20,7 @@ import numpy as np
 
 from ...core import recursive_tile
 from ...core.context import get_context, Context
+from ...config import options
 from ...oscar import ActorNotExist
 from ...serialization.serializables import Int64Field, StringField
 from ...typing import TileableType, OperandType
@@ -190,7 +191,7 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
 def merge_small_files(
     df: TileableType,
     n_sample_file: int = 10,
-    merged_file_size: Union[int, float, str] = "32M",
+    merged_file_size: Union[int, float, str] = None,
 ) -> TileableType:
     from ..merge import DataFrameConcat
 
@@ -199,7 +200,10 @@ def merge_small_files(
         # skip this process
         return df
 
-    merged_file_size = parse_readable_size(merged_file_size)[0]
+    if merged_file_size is not None:
+        merged_file_size = parse_readable_size(merged_file_size)[0]
+    else:
+        merged_file_size = options.chunk_store_limit
     # sample files whose size equals `n_sample_file`
     sampled_chunks = np.random.choice(df.chunks, n_sample_file)
     max_chunk_size = 0
