@@ -546,19 +546,30 @@ def test_read_csv_execution(setup):
         pd.testing.assert_frame_equal(pdf, mdf2)
 
     # test multiple files
-    with tempfile.TemporaryDirectory() as tempdir:
-        df = pd.DataFrame(np.random.rand(300, 3), columns=["a", "b", "c"])
+    for merge_small_file_option in [{"n_sample_file": 1}, None]:
+        with tempfile.TemporaryDirectory() as tempdir:
+            df = pd.DataFrame(np.random.rand(300, 3), columns=["a", "b", "c"])
 
-        file_paths = [os.path.join(tempdir, f"test{i}.csv") for i in range(3)]
-        df[:100].to_csv(file_paths[0])
-        df[100:200].to_csv(file_paths[1])
-        df[200:].to_csv(file_paths[2])
+            file_paths = [os.path.join(tempdir, f"test{i}.csv") for i in range(3)]
+            df[:100].to_csv(file_paths[0])
+            df[100:200].to_csv(file_paths[1])
+            df[200:].to_csv(file_paths[2])
 
-        mdf = md.read_csv(file_paths, index_col=0).execute().fetch()
-        pd.testing.assert_frame_equal(df, mdf)
+            mdf = (
+                md.read_csv(
+                    file_paths,
+                    index_col=0,
+                    merge_small_file_options=merge_small_file_option,
+                )
+                .execute()
+                .fetch()
+            )
+            pd.testing.assert_frame_equal(df, mdf)
 
-        mdf2 = md.read_csv(file_paths, index_col=0, chunk_bytes=50).execute().fetch()
-        pd.testing.assert_frame_equal(df, mdf2)
+            mdf2 = (
+                md.read_csv(file_paths, index_col=0, chunk_bytes=50).execute().fetch()
+            )
+            pd.testing.assert_frame_equal(df, mdf2)
 
     # test wildcards in path
     with tempfile.TemporaryDirectory() as tempdir:

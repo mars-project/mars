@@ -193,10 +193,10 @@ class DataFrameReadParquet(
     first_chunk_raw_bytes = Int64Field("first_chunk_raw_bytes")
 
     def get_columns(self):
-        return self._columns
+        return self.columns
 
     def set_pruned_columns(self, columns, *, keep_order=None):
-        self._columns = columns
+        self.columns = columns
 
     @classmethod
     def _to_arrow_dtypes(cls, dtypes, op):
@@ -463,6 +463,10 @@ def read_parquet(
         Options for storage connection.
     memory_scale: int, optional
         Scale that real memory occupation divided with raw file size.
+    merge_small_files: bool, default True
+        Merge small files whose size is small.
+    merge_small_file_options: dict
+        Options for merging small files
     **kwargs
         Any additional kwargs are passed to the engine.
 
