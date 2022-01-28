@@ -53,6 +53,7 @@ from .core import (
     IncrementalIndexDatasource,
     ColumnPruneSupportedDataSourceMixin,
     IncrementalIndexDataSourceMixin,
+    merge_small_files,
 )
 
 
@@ -180,6 +181,8 @@ class DataFrameReadParquet(
     read_kwargs = DictField("read_kwargs")
     incremental_index = BoolField("incremental_index")
     storage_options = DictField("storage_options")
+    merge_small_files = BoolField("merge_small_files")
+    merge_small_file_options = DictField("merge_small_file_options")
     # for chunk
     partitions = BytesField("partitions", default=None)
     partition_keys = ListField("partition_keys", default=None)
@@ -327,11 +330,16 @@ class DataFrameReadParquet(
         )
 
     @classmethod
-    def _tile(cls, op):
+    def _tile(cls, op: "DataFrameReadParquet"):
         if get_fs(op.path, op.storage_options).isdir(op.path):
-            return cls._tile_partitioned(op)
+            tiled = cls._tile_partitioned(op)
         else:
-            return cls._tile_no_partitioned(op)
+            tiled = cls._tile_no_partitioned(op)
+        if op.merge_small_files:
+            tiled = [
+                merge_small_files(tiled[0], **(op.merge_small_file_options or dict()))
+            ]
+        return tiled
 
     @classmethod
     def _execute_partitioned(cls, ctx, op: "DataFrameReadParquet"):
@@ -411,12 +419,14 @@ class DataFrameReadParquet(
 def read_parquet(
     path,
     engine: str = "auto",
-    columns=None,
-    groups_as_chunks=False,
-    use_arrow_dtype=None,
-    incremental_index=False,
-    storage_options=None,
-    memory_scale=None,
+    columns: list = None,
+    groups_as_chunks: bool = False,
+    use_arrow_dtype: bool = None,
+    incremental_index: bool = False,
+    storage_options: dict = None,
+    memory_scale: int = None,
+    merge_small_files: bool = True,
+    merge_small_file_options: dict = None,
     **kwargs,
 ):
     """
@@ -503,5 +513,7 @@ def read_parquet(
         incremental_index=incremental_index,
         storage_options=storage_options,
         memory_scale=memory_scale,
+        merge_small_files=merge_small_files,
+        merge_small_file_options=merge_small_file_options,
     )
     return op(index_value=index_value, columns_value=columns_value, dtypes=dtypes)
