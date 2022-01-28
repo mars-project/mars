@@ -31,7 +31,7 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
     # First, it will try to trigger first_chunk.head() and raise TilesError,
     # When iterative tiling is triggered,
     # check if the first_chunk.head() meets requirements.
-    _nrows = Int64Field("nrows")
+    _nrows = Int64Field("nrows", default=None)
 
     @property
     def nrows(self):
