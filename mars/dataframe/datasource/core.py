@@ -142,14 +142,21 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
             and isinstance(results[0].index_value.value, IndexValue.RangeIndex)
         ):
             result = results[0]
+            chunks = []
             for chunk in result.chunks:
+                if not isinstance(chunk.op, cls):
+                    # some chunks are merged, get the inputs
+                    chunks.extend(chunk.inputs)
+                else:
+                    chunks.append(chunk)
+            for chunk in chunks:
                 chunk.op.priority = -chunk.index[0]
-            n_chunk = len(result.chunks)
+            n_chunk = len(chunks)
             ctx = get_context()
             if ctx:
                 name = str(uuid.uuid4())
                 ctx.create_remote_object(name, _IncrementalIndexRecorder, n_chunk)
-                for chunk in result.chunks:
+                for chunk in chunks:
                     chunk.op.incremental_index_recorder_name = name
 
     @classmethod
