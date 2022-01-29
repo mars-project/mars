@@ -135,6 +135,9 @@ class MarsServiceWebAPIHandler(MarsRequestHandler):
             for api_def in web_api_defs:
                 cls._method_to_handlers[api_def.method.lower()][handle_func] = api_def
 
+    def prepare(self):
+        self.set_header("Content-Type", "application/octet-stream")
+
     @classmethod
     def get_root_pattern(cls):
         return cls._root_pattern + "(?:/(?P<sub_path>.*)$|$)"
