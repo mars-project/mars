@@ -259,4 +259,4 @@ def wrapped_groupby(
         groupby_kw.pop("squeeze")
 
     groupby_obj = obj.groupby(**groupby_kw)
-    return GroupByWrapper(obj, groupby_obj=groupby_obj)
+    return GroupByWrapper(obj, groupby_obj=groupby_obj, as_index=as_index)
