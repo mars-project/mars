@@ -14,7 +14,7 @@
 
 import base64
 import json
-from typing import List, Optional, Union
+from typing import Callable, List, Optional, Union
 
 from ....core import TileableGraph, Tileable
 from ....utils import serialize_serializable, deserialize_serializable
@@ -165,9 +165,12 @@ web_handlers = {TaskWebAPIHandler.get_root_pattern(): TaskWebAPIHandler}
 
 
 class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
-    def __init__(self, session_id: str, address: str):
+    def __init__(
+        self, session_id: str, address: str, request_rewriter: Callable = None
+    ):
         self._session_id = session_id
         self._address = address.rstrip("/")
+        self.request_rewriter = request_rewriter
 
     async def get_task_results(self, progress: bool = False) -> List[TaskResult]:
         path = f"{self._address}/api/session/{self._session_id}/task"
@@ -203,7 +206,7 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
             headers={"Content-Type": "application/octet-stream"},
             data=body,
         )
-        return res.body.decode()
+        return res.body.decode().strip()
 
     async def get_fetch_tileables(self, task_id: str) -> List[Tileable]:
         path = (

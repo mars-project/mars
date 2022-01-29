@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union
+from typing import Union, Callable
 
 import numpy as np
 
@@ -105,9 +105,12 @@ web_handlers = {
 
 
 class WebMutableAPI(AbstractMutableAPI, MarsWebAPIClientMixin):
-    def __init__(self, session_id: str, address: str):
+    def __init__(
+        self, session_id: str, address: str, request_rewriter: Callable = None
+    ):
         self._session_id = session_id
         self._address = address.rstrip("/")
+        self.request_rewriter = request_rewriter
 
     async def create_mutable_tensor(
         self,

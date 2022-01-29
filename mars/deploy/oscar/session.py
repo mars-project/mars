@@ -736,6 +736,7 @@ class _IsolatedSession(AbstractAsyncSession):
         web_api: Optional[OscarWebAPI],
         client: ClientType = None,
         timeout: float = None,
+        request_rewriter: Callable = None,
     ):
         super().__init__(address, session_id)
         self._session_api = session_api
@@ -747,6 +748,7 @@ class _IsolatedSession(AbstractAsyncSession):
         self._web_api = web_api
         self.client = client
         self.timeout = timeout
+        self._request_rewriter = request_rewriter
 
         self._tileable_to_fetch = WeakKeyDictionary()
         self._asyncio_task_timeout_detector_task = (
@@ -796,6 +798,7 @@ class _IsolatedSession(AbstractAsyncSession):
         **kwargs,
     ) -> "AbstractAsyncSession":
         init_local = kwargs.pop("init_local", False)
+        request_rewriter = kwargs.pop("request_rewriter", None)
         if init_local:
             from .local import new_cluster_in_isolation
 
@@ -811,7 +814,11 @@ class _IsolatedSession(AbstractAsyncSession):
 
         if urlparse(address).scheme == "http":
             return await _IsolatedWebSession._init(
-                address, session_id, new=new, timeout=timeout
+                address,
+                session_id,
+                new=new,
+                timeout=timeout,
+                request_rewriter=request_rewriter,
             )
         else:
             return await cls._init(address, session_id, new=new, timeout=timeout)
@@ -997,7 +1004,9 @@ class _IsolatedSession(AbstractAsyncSession):
         if urlparse(self.address).scheme == "http":
             from ...services.storage.api import WebStorageAPI
 
-            storage_api = WebStorageAPI(self._session_id, self.address, band[1])
+            storage_api = WebStorageAPI(
+                self._session_id, self.address, band[1], self._request_rewriter
+            )
         else:
             storage_api = await StorageAPI.create(self._session_id, band[0], band[1])
         return storage_api
@@ -1240,7 +1249,12 @@ class _IsolatedSession(AbstractAsyncSession):
 class _IsolatedWebSession(_IsolatedSession):
     @classmethod
     async def _init(
-        cls, address: str, session_id: str, new: bool = True, timeout: float = None
+        cls,
+        address: str,
+        session_id: str,
+        new: bool = True,
+        timeout: float = None,
+        request_rewriter: Callable = None,
     ):
         from ...services.session import WebSessionAPI
         from ...services.lifecycle import WebLifecycleAPI
@@ -1249,15 +1263,15 @@ class _IsolatedWebSession(_IsolatedSession):
         from ...services.mutable import WebMutableAPI
         from ...services.cluster import WebClusterAPI
 
-        session_api = WebSessionAPI(address)
+        session_api = WebSessionAPI(address, request_rewriter)
         if new:
             # create new session
             await session_api.create_session(session_id)
-        lifecycle_api = WebLifecycleAPI(session_id, address)
-        meta_api = WebMetaAPI(session_id, address)
-        task_api = WebTaskAPI(session_id, address)
-        mutable_api = WebMutableAPI(session_id, address)
-        cluster_api = WebClusterAPI(address)
+        lifecycle_api = WebLifecycleAPI(session_id, address, request_rewriter)
+        meta_api = WebMetaAPI(session_id, address, request_rewriter)
+        task_api = WebTaskAPI(session_id, address, request_rewriter)
+        mutable_api = WebMutableAPI(session_id, address, request_rewriter)
+        cluster_api = WebClusterAPI(address, request_rewriter)
 
         return cls(
             address,
@@ -1270,6 +1284,7 @@ class _IsolatedWebSession(_IsolatedSession):
             cluster_api,
             None,
             timeout=timeout,
+            request_rewriter=request_rewriter,
         )
 
     async def get_web_endpoint(self) -> Optional[str]:
