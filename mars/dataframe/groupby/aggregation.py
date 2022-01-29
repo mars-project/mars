@@ -1096,9 +1096,15 @@ def agg(groupby, func=None, method="auto", *args, **kwargs):
         agg_result = build_mock_agg_result(
             groupby, groupby.op.groupby_params, func, **kwargs
         )
-        index_value = parse_index(
-            agg_result.index, groupby.key, groupby.index_value.key
-        )
+        if isinstance(agg_result.index, pd.RangeIndex):
+            # set -1 to represent unknown size for RangeIndex
+            index_value = parse_index(
+                pd.RangeIndex(-1), groupby.key, groupby.index_value.key
+            )
+        else:
+            index_value = parse_index(
+                agg_result.index, groupby.key, groupby.index_value.key
+            )
         return groupby.transform(
             func, *args, _call_agg=True, index=index_value, **kwargs
         )

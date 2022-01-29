@@ -1181,15 +1181,30 @@ def test_groupby_nunique(setup):
         df1.groupby("c").nunique().sort_index(),
     )
 
-    # test with as_index=False
+    # multiple chunks
     mdf = md.DataFrame(df1, chunk_size=13)
     pd.testing.assert_frame_equal(
-        mdf.groupby("b", as_index=False)["a"]
-        .nunique()
-        .execute()
-        .fetch()
-        .sort_values(by="b", ignore_index=True),
-        df1.groupby("b", as_index=False)["a"]
-        .nunique()
-        .sort_values(by="b", ignore_index=True),
+        mdf.groupby("b").nunique().execute().fetch().sort_index(),
+        df1.groupby("b").nunique().sort_index(),
     )
+
+    # getitem and nunique
+    mdf = md.DataFrame(df1, chunk_size=13)
+    pd.testing.assert_series_equal(
+        mdf.groupby("b")["a"].nunique().execute().fetch().sort_index(),
+        df1.groupby("b")["a"].nunique().sort_index(),
+    )
+
+    # test with as_index=False
+    mdf = md.DataFrame(df1, chunk_size=13)
+    if _agg_size_as_frame:
+        pd.testing.assert_frame_equal(
+            mdf.groupby("b", as_index=False)["a"]
+            .nunique()
+            .execute()
+            .fetch()
+            .sort_values(by="b", ignore_index=True),
+            df1.groupby("b", as_index=False)["a"]
+            .nunique()
+            .sort_values(by="b", ignore_index=True),
+        )
