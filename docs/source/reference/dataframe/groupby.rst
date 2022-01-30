@@ -74,6 +74,7 @@ application to columns of a specific data type.
    DataFrameGroupBy.cummin
    DataFrameGroupBy.cumprod
    DataFrameGroupBy.cumsum
+   DataFrameGroupBy.fillna
    DataFrameGroupBy.nunique
    DataFrameGroupBy.sample
 
