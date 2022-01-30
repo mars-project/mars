@@ -289,10 +289,10 @@ class ClusterStateActor(mo.StatelessActor):
 
 async def new_cluster(
     cluster_name: str = None,
-    supervisor_mem: int = 1 * 1024 ** 3,
+    supervisor_mem: int = 1 * 1024**3,
     worker_num: int = 1,
     worker_cpu: int = 2,
-    worker_mem: int = 2 * 1024 ** 3,
+    worker_mem: int = 2 * 1024**3,
     config: Union[str, Dict] = None,
     **kwargs,
 ):
@@ -375,10 +375,10 @@ class RayCluster:
     def __init__(
         self,
         cluster_name: str,
-        supervisor_mem: int = 4 * 1024 ** 3,
+        supervisor_mem: int = 4 * 1024**3,
         worker_num: int = 1,
         worker_cpu: int = 16,
-        worker_mem: int = 32 * 1024 ** 3,
+        worker_mem: int = 32 * 1024**3,
         config: Union[str, Dict] = None,
         n_supervisor_process: int = DEFAULT_SUPERVISOR_SUB_POOL_NUM,
     ):

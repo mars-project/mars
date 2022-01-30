@@ -238,7 +238,7 @@ def _binary_roc_auc_score(
 
     # McClish correction: standardize result to be 0.5 if non-discriminant
     # and 1 if maximal
-    min_area = 0.5 * max_fpr ** 2
+    min_area = 0.5 * max_fpr**2
     max_area = max_fpr
     return 0.5 * (
         1 + (partial_auc.fetch(session=session) - min_area) / (max_area - min_area)

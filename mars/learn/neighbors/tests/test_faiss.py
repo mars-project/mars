@@ -169,54 +169,54 @@ def test_gen_index_string_and_sample_count(setup):
     d = 32
 
     # accuracy=True, could be Flat only
-    ret = _gen_index_string_and_sample_count((10 ** 9, d), None, True, "minimum")
+    ret = _gen_index_string_and_sample_count((10**9, d), None, True, "minimum")
     assert ret == ("Flat", None)
 
     # no memory concern
-    ret = _gen_index_string_and_sample_count((10 ** 5, d), None, False, "maximum")
+    ret = _gen_index_string_and_sample_count((10**5, d), None, False, "maximum")
     assert ret == ("HNSW32", None)
     index = faiss.index_factory(d, ret[0])
     assert index.is_trained is True
 
     # memory concern not much
-    ret = _gen_index_string_and_sample_count((10 ** 5, d), None, False, "high")
+    ret = _gen_index_string_and_sample_count((10**5, d), None, False, "high")
     assert ret == ("IVF1580,Flat", 47400)
     index = faiss.index_factory(d, ret[0])
     assert index.is_trained is False
 
     # memory quite important
-    ret = _gen_index_string_and_sample_count((5 * 10 ** 6, d), None, False, "low")
+    ret = _gen_index_string_and_sample_count((5 * 10**6, d), None, False, "low")
     assert ret == ("PCAR16,IVF65536_HNSW32,SQ8", 32 * 65536)
     index = faiss.index_factory(d, ret[0])
     assert index.is_trained is False
 
     # memory very important
-    ret = _gen_index_string_and_sample_count((10 ** 8, d), None, False, "minimum")
+    ret = _gen_index_string_and_sample_count((10**8, d), None, False, "minimum")
     assert ret == ("OPQ16_32,IVF1048576_HNSW32,PQ16", 64 * 65536)
     index = faiss.index_factory(d, ret[0])
     assert index.is_trained is False
 
-    ret = _gen_index_string_and_sample_count((10 ** 10, d), None, False, "low")
+    ret = _gen_index_string_and_sample_count((10**10, d), None, False, "low")
     assert ret == ("PCAR16,IVF1048576_HNSW32,SQ8", 64 * 65536)
     index = faiss.index_factory(d, ret[0])
     assert index.is_trained is False
 
     with pytest.raises(ValueError):
         # M > 64 raise error
-        _gen_index_string_and_sample_count((10 ** 5, d), None, False, "maximum", M=128)
+        _gen_index_string_and_sample_count((10**5, d), None, False, "maximum", M=128)
 
     with pytest.raises(ValueError):
         # M > 64
-        _gen_index_string_and_sample_count((10 ** 5, d), None, False, "minimum", M=128)
+        _gen_index_string_and_sample_count((10**5, d), None, False, "minimum", M=128)
 
     with pytest.raises(ValueError):
         # dim should be multiple of M
         _gen_index_string_and_sample_count(
-            (10 ** 5, d), None, False, "minimum", M=16, dim=17
+            (10**5, d), None, False, "minimum", M=16, dim=17
         )
 
     with pytest.raises(ValueError):
-        _gen_index_string_and_sample_count((10 ** 5, d), None, False, "low", k=5)
+        _gen_index_string_and_sample_count((10**5, d), None, False, "low", k=5)
 
 
 @pytest.mark.skipif(faiss is None, reason="faiss not installed")

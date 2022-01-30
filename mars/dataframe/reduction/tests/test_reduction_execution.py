@@ -977,7 +977,7 @@ class MockReduction1(CustomReduction):
 
 class MockReduction2(CustomReduction):
     def pre(self, value):
-        return value + 1, value ** 2
+        return value + 1, value**2
 
     def agg(self, v1, v2):
         return v1.sum(), v2.prod()

@@ -158,7 +158,7 @@ def test_singular_values(setup):
     rpca = TruncatedSVD(n_components=3, algorithm="randomized", random_state=rng)
     X_rpca = rpca.fit_transform(X)
 
-    X_rpca /= mt.sqrt(mt.sum(X_rpca ** 2.0, axis=0))
+    X_rpca /= mt.sqrt(mt.sum(X_rpca**2.0, axis=0))
     X_rpca[:, 0] *= 3.142
     X_rpca[:, 1] *= 2.718
 

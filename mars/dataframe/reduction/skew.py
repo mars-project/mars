@@ -44,13 +44,13 @@ class DataFrameSkew(DataFrameReductionOperand, DataFrameReductionMixin):
             cnt = x.count()
             mean = x.mean(skipna=skipna)
             divided = (
-                (x ** 3).mean(skipna=skipna)
-                - 3 * (x ** 2).mean(skipna=skipna) * mean
-                + 2 * mean ** 3
+                (x**3).mean(skipna=skipna)
+                - 3 * (x**2).mean(skipna=skipna) * mean
+                + 2 * mean**3
             )
             var = x.var(skipna=skipna, ddof=0)
             if isinstance(var, ENTITY_TYPE) or var > 0:
-                val = where_function(var > 0, divided / var ** 1.5, np.nan)
+                val = where_function(var > 0, divided / var**1.5, np.nan)
             else:
                 val = np.nan
             if not bias:

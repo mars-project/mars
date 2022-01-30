@@ -149,8 +149,8 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
 
         sum_left = left_tensor.T.dot(nna_right)
         sum_right = right_tensor.T.dot(nna_left)
-        sum_left2 = (left_tensor.T ** 2).dot(nna_right)
-        sum_right2 = (right_tensor.T ** 2).dot(nna_left)
+        sum_left2 = (left_tensor.T**2).dot(nna_right)
+        sum_right2 = (right_tensor.T**2).dot(nna_left)
         sum_mul = left_tensor.T.dot(right_tensor)
         data_count = nna_left.T.dot(nna_right)
 
@@ -172,8 +172,8 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
 
         sum_left = left.mul(nna_right, axis=axis).sum(axis=axis)
         sum_right = nna_left.mul(right, axis=axis).sum(axis=axis)
-        sum_left2 = (left ** 2).mul(nna_right, axis=axis).sum(axis=axis)
-        sum_right2 = nna_left.mul(right ** 2, axis=axis).sum(axis=axis)
+        sum_left2 = (left**2).mul(nna_right, axis=axis).sum(axis=axis)
+        sum_right2 = nna_left.mul(right**2, axis=axis).sum(axis=axis)
         sum_mul = left.mul(right, axis=axis).sum(axis=axis)
         data_count = nna_left.mul(nna_right, axis=axis).sum(axis=axis)
 

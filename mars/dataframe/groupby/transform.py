@@ -184,12 +184,16 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         in_data = ctx[op.inputs[0].key]
         out_chunk = op.outputs[0]
 
-        if not in_data:
+        if in_data is None:
             if op.output_types[0] == OutputType.dataframe:
-                ctx[op.outputs[0].key] = build_empty_df(out_chunk.dtypes)
+                ctx[op.outputs[0].key] = build_empty_df(
+                    out_chunk.dtypes, index=out_chunk.index_value.to_pandas()
+                )
             else:
                 ctx[op.outputs[0].key] = build_empty_series(
-                    out_chunk.dtype, name=out_chunk.name
+                    out_chunk.dtype,
+                    name=out_chunk.name,
+                    index=out_chunk.index_value.to_pandas(),
                 )
             return
 
