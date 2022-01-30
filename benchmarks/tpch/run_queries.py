@@ -996,14 +996,14 @@ def run_queries(data_folder: str):
     # Load the data
     t1 = time.time()
     # FIXME: remove rebalance once it's automatically optimized
-    lineitem = load_lineitem(data_folder).rebalance()
-    orders = load_orders(data_folder).rebalance()
-    customer = load_customer(data_folder).rebalance()
-    nation = load_nation(data_folder).rebalance()
-    region = load_region(data_folder).rebalance()
-    supplier = load_supplier(data_folder).rebalance()
-    part = load_part(data_folder).rebalance()
-    partsupp = load_partsupp(data_folder).rebalance()
+    lineitem = load_lineitem(data_folder)
+    orders = load_orders(data_folder)
+    customer = load_customer(data_folder)
+    nation = load_nation(data_folder)
+    region = load_region(data_folder)
+    supplier = load_supplier(data_folder)
+    part = load_part(data_folder)
+    partsupp = load_partsupp(data_folder)
     mars.execute([lineitem, orders, customer, nation, region, supplier, part, partsupp])
     print("Reading time (s): ", time.time() - t1)
 
