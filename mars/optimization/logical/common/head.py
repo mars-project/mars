@@ -36,9 +36,16 @@ class HeadPushDown(OptimizationRule):
             rule_types = self._optimizer_cls.get_rule_types(type(succ.op))
             if rule_types is None:
                 return False
-            for rule_type in rule_types:
-                if not issubclass(rule_type, HeadPushDown):
-                    return False
+
+            push_down_rule_types = [
+                rule_type
+                for rule_type in rule_types
+                if issubclass(rule_type, HeadPushDown)
+            ]
+            if not push_down_rule_types:
+                return False
+
+            for rule_type in push_down_rule_types:
                 rule = rule_type(self._graph, self._records, self._optimizer_cls)
                 if not rule._can_push_down(succ.op):
                     return False

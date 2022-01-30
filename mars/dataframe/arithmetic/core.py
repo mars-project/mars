@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from ...core import ENTITY_TYPE, recursive_tile
-from ...serialization.serializables import AnyField, Float64Field
+from ...serialization.serializables import AnyField
 from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, ChunkData, Chunk
 from ...tensor.datasource import tensor as astensor
 from ...utils import classproperty, get_dtype
@@ -706,7 +706,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 class DataFrameBinOp(DataFrameOperand, DataFrameBinOpMixin):
     _axis = AnyField("axis")
     _level = AnyField("level")
-    _fill_value = Float64Field("fill_value")
+    _fill_value = AnyField("fill_value")
     _lhs = AnyField("lhs")
     _rhs = AnyField("rhs")
 

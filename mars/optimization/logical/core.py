@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import weakref
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
@@ -20,6 +21,7 @@ from typing import Dict, List, Tuple, Type
 
 from ...core import OperandType, ChunkType, EntityType, enter_mode
 from ...core.graph import EntityGraph
+from ...core.operand import Operand
 
 
 class OptimizationRecordType(Enum):
@@ -89,6 +91,7 @@ class OptimizationRule(ABC):
         Tuple[Type["OptimizationRule"], EntityGraph, OptimizationRecords],
         "OptimizationRule",
     ] = dict()
+    _preds_to_remove = weakref.WeakKeyDictionary()
 
     def __init__(
         self,
@@ -148,46 +151,81 @@ class OptimizationRule(ABC):
         for succ in successors:
             self._graph.add_edge(new_node, succ)
 
+    @classmethod
+    def _add_collapsable_predecessor(cls, node: EntityType, predecessor: EntityType):
+        if predecessor not in cls._preds_to_remove:
+            cls._preds_to_remove[predecessor] = {node}
+        else:
+            cls._preds_to_remove[predecessor].add(node)
+
+    def _remove_collapsable_predecessors(self, node: EntityType):
+        node = self._records.get_optimization_result(node) or node
+        preds_opt_to_remove = []
+        for pred in self._graph.predecessors(node):
+            pred_original = self._records.get_original_chunk(pred) or pred
+            pred_opt = self._records.get_optimization_result(pred) or pred
+            if pred_opt in self._graph.results or pred_original in self._graph.results:
+                continue
+            affect_succ = self._preds_to_remove.get(pred_original) or []
+            affect_succ_opt = [
+                self._records.get_optimization_result(s) or s for s in affect_succ
+            ]
+            if all(s in affect_succ_opt for s in self._graph.successors(pred)):
+                preds_opt_to_remove.append((pred_original, pred_opt))
+
+        for pred_original, pred_opt in preds_opt_to_remove:
+            self._graph.remove_node(pred_opt)
+            self._records.append_record(
+                OptimizationRecord(pred_original, None, OptimizationRecordType.delete)
+            )
+
 
 class Optimizer(ABC):
-    _rules: Dict[Type[OperandType], List[Type[OptimizationRule]]]
+    _rules: List[Type[OptimizationRule]]
+    _op_to_rules: Dict[Type[OperandType], List[Type[OptimizationRule]]]
 
     @classmethod
     def register_rule(
         cls, operand_types: List[Type[OperandType]], rule: Type[OptimizationRule]
     ):
         if not hasattr(cls, "_rules"):
-            cls._rules = defaultdict(list)
+            cls._rules = []
+        cls._rules.append(rule)
+
+        if not hasattr(cls, "_op_to_rules"):
+            cls._op_to_rules = defaultdict(list)
         for operand_type in operand_types:
-            cls._rules[operand_type].append(rule)
+            cls._op_to_rules[operand_type].append(rule)
 
     @classmethod
     def get_rule_types(
         cls, operand_type: Type[OperandType]
     ) -> List[Type[OptimizationRule]]:
-        return cls._rules.get(operand_type)
+        rule_types = cls._op_to_rules.get(operand_type, None)
+        if rule_types is None:
+            for op_cls in operand_type.__mro__:
+                if op_cls is Operand:
+                    break
+                rule_types = cls._op_to_rules.get(op_cls)
+                if rule_types is not None:
+                    break
+            cls._op_to_rules[operand_type] = rule_types or []
+        return rule_types
 
     @classmethod
     def _replace_inputs(cls, graph: EntityGraph, records: OptimizationRecords):
         for node in graph:
             for succ in graph.successors(node):
+                input_optimized = False
                 new_inputs = []
-                input_opt = False
-                pred_iter = graph.iter_predecessors(succ)
-                inp_to_pred = dict()
                 for inp in succ.inputs:
-                    if inp not in inp_to_pred:
-                        pred = next(pred_iter)
-                        inp_to_pred[inp] = pred
-                    else:
-                        pred = inp_to_pred[inp]
-                    optimized = records.get_optimization_result(pred)
+                    optimized = records.get_optimization_result(inp)
                     if optimized is None:
-                        optimized = pred
+                        optimized = inp
                     if optimized is not inp:
-                        input_opt = True
+                        input_optimized = True
                     new_inputs.append(optimized)
-                if input_opt:
+                if input_optimized:
                     succ.inputs = new_inputs
 
     @classmethod
@@ -207,24 +245,26 @@ class Optimizer(ABC):
             Optimization records.
         """
         records = OptimizationRecords()
+        optimized = False
+        for rule_type in cls._rules:
+            visited = set()
+            for entity in list(graph.topological_iter()):
+                op = entity.op
+                if op in visited:
+                    continue
+                visited.add(op)
 
-        visited = set()
-        for entity in list(graph.topological_iter()):
-            op = entity.op
-            if op in visited:
-                continue
-            visited.add(op)
+                rule_types = cls.get_rule_types(type(op)) or []
+                if rule_type not in rule_types:
+                    continue
 
-            rule_types = cls._rules.get(type(op))
-            if not rule_types:
-                continue
-
-            rules = [rule_type(graph, records, cls) for rule_type in rule_types]
-            for rule in rules:
+                rule = rule_type(graph, records, cls)
                 if entity not in graph:  # pragma: no cover
                     # maybe removed during optimization
                     continue
                 if rule.match(op):
+                    optimized = True
                     rule.apply(op)
-        cls._replace_inputs(graph, records)
+        if optimized:
+            cls._replace_inputs(graph, records)
         return records

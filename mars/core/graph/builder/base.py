@@ -62,6 +62,8 @@ class AbstractGraphBuilder(ABC):
                 graph.add_node(node)
 
             children = self._select_inputs(node.inputs or [])
+            if children:
+                node.inputs = children
             for c in children:
                 c = self._process_node(c)
                 if not graph.contains(c):
