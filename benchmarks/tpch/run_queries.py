@@ -891,57 +891,66 @@ def q20(lineitem, part, nation, partsupp, supplier):
 
 def q21(lineitem, orders, supplier, nation):
     t1 = time.time()
-    lineitem_filtered = lineitem.loc[:, [
-        "L_ORDERKEY", "L_SUPPKEY", "L_RECEIPTDATE", "L_COMMITDATE"]]
+    lineitem_filtered = lineitem.loc[
+        :, ["L_ORDERKEY", "L_SUPPKEY", "L_RECEIPTDATE", "L_COMMITDATE"]
+    ]
 
     # Keep all rows that have another row in linetiem with the same orderkey and different suppkey
-    lineitem_orderkeys = lineitem_filtered.loc[:, ["L_ORDERKEY", "L_SUPPKEY"]].groupby(
-        "L_ORDERKEY", as_index=False)["L_SUPPKEY"].nunique()
+    lineitem_orderkeys = (
+        lineitem_filtered.loc[:, ["L_ORDERKEY", "L_SUPPKEY"]]
+        .groupby("L_ORDERKEY", as_index=False)["L_SUPPKEY"]
+        .nunique()
+    )
     lineitem_orderkeys.columns = ["L_ORDERKEY", "nunique_col"]
     lineitem_orderkeys = lineitem_orderkeys[lineitem_orderkeys["nunique_col"] > 1]
     lineitem_orderkeys = lineitem_orderkeys.loc[:, ["L_ORDERKEY"]]
 
     # Keep all rows that have l_receiptdate > l_commitdate
-    lineitem_filtered = lineitem_filtered[lineitem_filtered["L_RECEIPTDATE"]
-                                          > lineitem_filtered["L_COMMITDATE"]]
+    lineitem_filtered = lineitem_filtered[
+        lineitem_filtered["L_RECEIPTDATE"] > lineitem_filtered["L_COMMITDATE"]
+    ]
     lineitem_filtered = lineitem_filtered.loc[:, ["L_ORDERKEY", "L_SUPPKEY"]]
 
     # Merge Filter + Exists
     lineitem_filtered = lineitem_filtered.merge(
-        lineitem_orderkeys, on="L_ORDERKEY", how="inner")
+        lineitem_orderkeys, on="L_ORDERKEY", how="inner"
+    )
 
     # Not Exists: Check the exists condition isn't still satisfied on the output.
     lineitem_orderkeys = lineitem_filtered.groupby("L_ORDERKEY", as_index=False)[
-        "L_SUPPKEY"].nunique()
+        "L_SUPPKEY"
+    ].nunique()
     lineitem_orderkeys.columns = ["L_ORDERKEY", "nunique_col"]
     lineitem_orderkeys = lineitem_orderkeys[lineitem_orderkeys["nunique_col"] == 1]
     lineitem_orderkeys = lineitem_orderkeys.loc[:, ["L_ORDERKEY"]]
 
     # Merge Filter + Not Exists
     lineitem_filtered = lineitem_filtered.merge(
-        lineitem_orderkeys, on="L_ORDERKEY", how="inner")
+        lineitem_orderkeys, on="L_ORDERKEY", how="inner"
+    )
 
     orders_filtered = orders.loc[:, ["O_ORDERSTATUS", "O_ORDERKEY"]]
     orders_filtered = orders_filtered[orders_filtered["O_ORDERSTATUS"] == "F"]
     orders_filtered = orders_filtered.loc[:, ["O_ORDERKEY"]]
     total = lineitem_filtered.merge(
-        orders_filtered, left_on="L_ORDERKEY", right_on="O_ORDERKEY", how="inner")
+        orders_filtered, left_on="L_ORDERKEY", right_on="O_ORDERKEY", how="inner"
+    )
     total = total.loc[:, ["L_SUPPKEY"]]
 
     supplier_filtered = supplier.loc[:, ["S_SUPPKEY", "S_NATIONKEY", "S_NAME"]]
-    total = total.merge(supplier_filtered, left_on="L_SUPPKEY",
-                        right_on="S_SUPPKEY", how="inner")
+    total = total.merge(
+        supplier_filtered, left_on="L_SUPPKEY", right_on="S_SUPPKEY", how="inner"
+    )
     total = total.loc[:, ["S_NATIONKEY", "S_NAME"]]
     nation_filtered = nation.loc[:, ["N_NAME", "N_NATIONKEY"]]
-    nation_filtered = nation_filtered[nation_filtered["N_NAME"]
-                                      == "SAUDI ARABIA"]
-    total = total.merge(nation_filtered, left_on="S_NATIONKEY",
-                        right_on="N_NATIONKEY", how="inner")
+    nation_filtered = nation_filtered[nation_filtered["N_NAME"] == "SAUDI ARABIA"]
+    total = total.merge(
+        nation_filtered, left_on="S_NATIONKEY", right_on="N_NATIONKEY", how="inner"
+    )
     total = total.loc[:, ["S_NAME"]]
     total = total.groupby("S_NAME", as_index=False).size()
     total.columns = ["S_NAME", "NUMWAIT"]
-    total = total.sort_values(
-        by=["NUMWAIT", "S_NAME"], ascending=[False, True])
+    total = total.sort_values(by=["NUMWAIT", "S_NAME"], ascending=[False, True])
     print(total.execute())
     print("Q21 Execution time (s): ", time.time() - t1)
 
@@ -950,26 +959,31 @@ def q22(customer, orders):
     t1 = time.time()
     customer_filtered = customer.loc[:, ["C_ACCTBAL", "C_CUSTKEY"]]
     customer_filtered["CNTRYCODE"] = customer["C_PHONE"].str.slice(0, 2)
-    customer_filtered = customer_filtered[(customer["C_ACCTBAL"] > 0.00) & customer_filtered["CNTRYCODE"].isin([
-        "13", "31", "23", "29", "30", "18", "17"])]
+    customer_filtered = customer_filtered[
+        (customer["C_ACCTBAL"] > 0.00)
+        & customer_filtered["CNTRYCODE"].isin(
+            ["13", "31", "23", "29", "30", "18", "17"]
+        )
+    ]
     avg_value = customer_filtered["C_ACCTBAL"].mean()
     customer_filtered = customer_filtered[customer_filtered["C_ACCTBAL"] > avg_value]
     # Select only the keys that don't match by performing a left join and only selecting columns with an na value
     orders_filtered = orders.loc[:, ["O_CUSTKEY"]].drop_duplicates()
     customer_keys = customer_filtered.loc[:, ["C_CUSTKEY"]].drop_duplicates()
     customer_selected = customer_keys.merge(
-        orders_filtered, left_on='C_CUSTKEY', right_on='O_CUSTKEY', how='left')
-    customer_selected = customer_selected[customer_selected["O_CUSTKEY"].isna(
-    )]
+        orders_filtered, left_on="C_CUSTKEY", right_on="O_CUSTKEY", how="left"
+    )
+    customer_selected = customer_selected[customer_selected["O_CUSTKEY"].isna()]
     customer_selected = customer_selected.loc[:, ["C_CUSTKEY"]]
-    customer_selected = customer_selected.merge(customer_filtered,
-                                                on="C_CUSTKEY", how="inner")
+    customer_selected = customer_selected.merge(
+        customer_filtered, on="C_CUSTKEY", how="inner"
+    )
     customer_selected = customer_selected.loc[:, ["CNTRYCODE", "C_ACCTBAL"]]
     agg1 = customer_selected.groupby(["CNTRYCODE"], as_index=False).size()
     agg1.columns = ["CNTRYCODE", "NUMCUST"]
     agg2 = customer_selected.groupby(["CNTRYCODE"], as_index=False).agg(
-        TOTACCTBAL=pd.NamedAgg(column="C_ACCTBAL",
-                               aggfunc="sum"))
+        TOTACCTBAL=pd.NamedAgg(column="C_ACCTBAL", aggfunc="sum")
+    )
     total = agg1.merge(agg2, on="CNTRYCODE", how="inner")
     total = total.sort_values(by=["CNTRYCODE"], ascending=[True])
     print(total.execute())
