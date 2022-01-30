@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import Dict, List, Union
+from typing import Callable, Dict, List, Union
 
 from ....utils import parse_readable_size
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
@@ -116,8 +116,9 @@ web_handlers = {
 
 
 class WebSessionAPI(AbstractSessionAPI, MarsWebAPIClientMixin):
-    def __init__(self, address: str):
+    def __init__(self, address: str, request_rewriter: Callable = None):
         self._address = address.rstrip("/")
+        self.request_rewriter = request_rewriter
 
     async def get_sessions(self) -> List[SessionInfo]:
         addr = f"{self._address}/api/session"

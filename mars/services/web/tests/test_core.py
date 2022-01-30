@@ -90,8 +90,14 @@ class SimpleWebClient(MarsWebAPIClientMixin):
 @pytest.mark.asyncio
 async def test_web_api(actor_pool):
     _pool, web_port = actor_pool
+    recorded_urls = []
+
+    def url_recorder(request):
+        recorded_urls.append(request.url)
+        return request
 
     client = SimpleWebClient()
+    client.request_rewriter = url_recorder
 
     res = await client.fetch(f"http://localhost:{web_port}/")
     assert res.body.decode()
@@ -139,3 +145,5 @@ async def test_web_api(actor_pool):
 
     res = await client.fetch(f"http://localhost:{web_port}/api/extra_test")
     assert "Test" in res.body.decode()
+
+    assert len(recorded_urls) > 0

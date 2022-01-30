@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from collections import defaultdict
-from typing import Any, List
+from typing import Any, Callable, List
 
 from .... import oscar as mo
 from ....storage import StorageLevel
@@ -98,10 +98,17 @@ web_handlers = {StorageWebAPIHandler.get_root_pattern(): StorageWebAPIHandler}
 
 
 class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
-    def __init__(self, session_id: str, address: str, band_name: str):
+    def __init__(
+        self,
+        session_id: str,
+        address: str,
+        band_name: str,
+        request_rewriter: Callable = None,
+    ):
         self._session_id = session_id
         self._address = address.rstrip("/")
         self._band_name = band_name
+        self.request_rewriter = request_rewriter
 
     @mo.extensible
     async def get(

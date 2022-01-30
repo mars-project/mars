@@ -338,7 +338,9 @@ async def test_web_session(create_cluster, config):
     client = create_cluster[0]
     session_id = str(uuid.uuid4())
     web_address = client.web_address
-    session = await AsyncSession.init(web_address, session_id)
+    session = await AsyncSession.init(
+        web_address, session_id, request_rewriter=lambda x: x
+    )
     assert await session.get_web_endpoint() == web_address
     session.as_default()
     assert isinstance(session._isolated_session, _IsolatedWebSession)

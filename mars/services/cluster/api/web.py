@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import Dict, List, Optional, Set
+from typing import Callable, Dict, List, Optional, Set
 
 from ....lib.aio import alru_cache
 from ....typing import BandType
@@ -143,8 +143,9 @@ web_handlers = {ClusterWebAPIHandler.get_root_pattern(): ClusterWebAPIHandler}
 
 
 class WebClusterAPI(AbstractClusterAPI, MarsWebAPIClientMixin):
-    def __init__(self, address: str):
+    def __init__(self, address: str, request_rewriter: Callable = None):
         self._address = address.rstrip("/")
+        self.request_rewriter = request_rewriter
 
     @staticmethod
     def _convert_node_dict(node_info_list: Dict[str, Dict]):
