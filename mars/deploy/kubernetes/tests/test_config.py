@@ -56,13 +56,13 @@ def test_supervisor_object():
     assert supervisor_config_dict["spec"]["replicas"] == 1
 
     container_dict = supervisor_config_dict["spec"]["template"]["spec"]["containers"][0]
-    assert int(container_dict["resources"]["requests"]["memory"]) == 10 * 1024 ** 3
+    assert int(container_dict["resources"]["requests"]["memory"]) == 10 * 1024**3
 
     container_envs = dict((p["name"], p) for p in container_dict["env"])
     assert container_envs["TEST_ENV"]["value"] == "test_val"
     assert container_envs["MKL_NUM_THREADS"]["value"] == "2"
     assert container_envs["MARS_CPU_TOTAL"]["value"] == "2"
-    assert int(container_envs["MARS_MEMORY_TOTAL"]["value"]) == 10 * 1024 ** 3
+    assert int(container_envs["MARS_MEMORY_TOTAL"]["value"]) == 10 * 1024**3
     assert container_envs["MARS_LOAD_MODULES"]["value"] == "mars.test_mod"
 
 
@@ -70,7 +70,7 @@ def test_worker_object():
     worker_config_dict = MarsWorkersConfig(
         4,
         cpu=2,
-        memory=10 * 1024 ** 3,
+        memory=10 * 1024**3,
         limit_resources=True,
         memory_limit_ratio=2,
         spill_volumes=[
@@ -86,13 +86,13 @@ def test_worker_object():
     assert worker_config_dict["spec"]["replicas"] == 4
 
     container_dict = worker_config_dict["spec"]["template"]["spec"]["containers"][0]
-    assert int(container_dict["resources"]["requests"]["memory"]) == 10 * 1024 ** 3
-    assert int(container_dict["resources"]["limits"]["memory"]) == 20 * 1024 ** 3
+    assert int(container_dict["resources"]["requests"]["memory"]) == 10 * 1024**3
+    assert int(container_dict["resources"]["limits"]["memory"]) == 20 * 1024**3
 
     container_envs = dict((p["name"], p) for p in container_dict["env"])
     assert container_envs["MKL_NUM_THREADS"]["value"] == "2"
     assert container_envs["MARS_CPU_TOTAL"]["value"] == "2"
-    assert int(container_envs["MARS_MEMORY_TOTAL"]["value"]) == 10 * 1024 ** 3
+    assert int(container_envs["MARS_MEMORY_TOTAL"]["value"]) == 10 * 1024**3
     assert container_envs["MARS_LOAD_MODULES"]["value"] == "mars.test_mod"
     assert set(container_envs["MARS_SPILL_DIRS"]["value"].split(":")) == {
         "/tmp/empty",
@@ -112,7 +112,7 @@ def test_worker_object():
     worker_config_dict = MarsWorkersConfig(
         4,
         cpu=2,
-        memory=10 * 1024 ** 3,
+        memory=10 * 1024**3,
         limit_resources=False,
         spill_volumes=[
             "/tmp/spill_vol",

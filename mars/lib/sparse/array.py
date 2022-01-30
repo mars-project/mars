@@ -1463,7 +1463,7 @@ class SparseArray(SparseNDArray):
         if issparse(naked_other):
             naked_other = other.toarray()
 
-        return SparseNDArray(self.spmatrix.multiply(2 ** naked_other))
+        return SparseNDArray(self.spmatrix.multiply(2**naked_other))
 
     def frexp(self, **kw):
         xp = get_array_module(self.spmatrix)

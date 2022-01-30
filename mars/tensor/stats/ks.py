@@ -350,7 +350,7 @@ def _calc_prob_2samp(d, n1, n2, alternative, mode):  # pragma: no cover
             z = np.sqrt(en) * d
             # Use Hodges' suggested approximation Eqn 5.3
             # Requires m to be the larger of (n1, n2)
-            expt = -2 * z ** 2 - 2 * z * (m + 2 * n) / np.sqrt(m * n * (m + n)) / 3.0
+            expt = -2 * z**2 - 2 * z * (m + 2 * n) / np.sqrt(m * n * (m + n)) / 3.0
             prob = np.exp(expt)
 
     return np.clip(prob, 0, 1)

@@ -94,10 +94,10 @@ def _combine_var(pred_results, local_results, axis=0):
     pred_sum_data, pred_count_data, pred_var_data = pred_results
 
     local_sum_square = (
-        local_count_data * local_var_data + local_sum_data ** 2 / local_count_data
+        local_count_data * local_var_data + local_sum_data**2 / local_count_data
     )
     pred_sum_square = (
-        pred_count_data * pred_var_data + pred_sum_data ** 2 / pred_count_data
+        pred_count_data * pred_var_data + pred_sum_data**2 / pred_count_data
     )
 
     local_sum_square, local_sum_data, local_count_data = _add_pred_results(
@@ -106,7 +106,7 @@ def _combine_var(pred_results, local_results, axis=0):
         axis=axis,
     )
 
-    return (local_sum_square - local_sum_data ** 2 / local_count_data) / (
+    return (local_sum_square - local_sum_data**2 / local_count_data) / (
         local_count_data - 1
     )
 

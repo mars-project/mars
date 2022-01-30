@@ -307,7 +307,7 @@ def test_describe_execution(setup):
 
 def test_data_frame_apply_execute(setup):
     cols = [chr(ord("A") + i) for i in range(10)]
-    df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
+    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
 
     old_chunk_store_limit = options.chunk_store_limit
     try:
@@ -379,7 +379,7 @@ def test_data_frame_apply_execute(setup):
 
 def test_series_apply_execute(setup):
     idxes = [chr(ord("A") + i) for i in range(20)]
-    s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
+    s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
 
     series = from_pandas_series(s_raw, chunk_size=5)
 
@@ -441,10 +441,10 @@ def test_apply_with_arrow_dtype_execution(setup):
 
 def test_transform_execute(setup):
     cols = [chr(ord("A") + i) for i in range(10)]
-    df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
+    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
 
     idx_vals = [chr(ord("A") + i) for i in range(20)]
-    s_raw = pd.Series([i ** 2 for i in range(20)], index=idx_vals)
+    s_raw = pd.Series([i**2 for i in range(20)], index=idx_vals)
 
     def rename_fn(f, new_name):
         f.__name__ = new_name

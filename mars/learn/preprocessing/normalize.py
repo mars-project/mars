@@ -214,7 +214,7 @@ class TensorNormalize(TensorOperand, TensorOperandMixin):
             if norm == "l1":
                 norms = mt.abs(x).sum(axis=axis)
             elif norm == "l2":
-                norms = mt.sqrt((x ** 2).sum(axis=axis))
+                norms = mt.sqrt((x**2).sum(axis=axis))
             else:
                 assert norm == "max"
                 # sparse.max will still be a sparse,
@@ -280,7 +280,7 @@ class TensorNormalize(TensorOperand, TensorOperandMixin):
             if norm == "l1":
                 norms = xp.abs(x).sum(axis=1)
             elif norm == "l2":
-                norms = xp.sqrt((x ** 2).sum(axis=1))
+                norms = xp.sqrt((x**2).sum(axis=1))
             else:
                 norms = xp.max(x, axis=1)
                 if issparse(norms):

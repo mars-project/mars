@@ -186,17 +186,17 @@ def readable_size(size: int, trunc: bool = False) -> str:
     if size < 1024:
         ret_size = size
         size_unit = ""
-    elif 1024 <= size < 1024 ** 2:
+    elif 1024 <= size < 1024**2:
         ret_size = size * 1.0 / 1024
         size_unit = "K"
-    elif 1024 ** 2 <= size < 1024 ** 3:
-        ret_size = size * 1.0 / (1024 ** 2)
+    elif 1024**2 <= size < 1024**3:
+        ret_size = size * 1.0 / (1024**2)
         size_unit = "M"
-    elif 1024 ** 3 <= size < 1024 ** 4:
-        ret_size = size * 1.0 / (1024 ** 3)
+    elif 1024**3 <= size < 1024**4:
+        ret_size = size * 1.0 / (1024**3)
         size_unit = "G"
     else:
-        ret_size = size * 1.0 / (1024 ** 4)
+        ret_size = size * 1.0 / (1024**4)
         size_unit = "T"
 
     if not trunc:

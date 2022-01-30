@@ -39,8 +39,8 @@ class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
         def var(x):
             cnt = x.count()
             if ddof == 0:
-                return (x ** 2).mean(skipna=skipna) - (x.mean(skipna=skipna)) ** 2
-            return ((x ** 2).sum(skipna=skipna) - x.sum(skipna=skipna) ** 2 / cnt) / (
+                return (x**2).mean(skipna=skipna) - (x.mean(skipna=skipna)) ** 2
+            return ((x**2).sum(skipna=skipna) - x.sum(skipna=skipna) ** 2 / cnt) / (
                 cnt - ddof
             )
 

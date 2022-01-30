@@ -49,7 +49,7 @@ from ..core import (
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_INDEX_SIZE = 5 * 10 ** 6
+DEFAULT_INDEX_SIZE = 5 * 10**6
 
 
 class ProximaBuilder(LearnOperand, LearnOperandMixin):
@@ -338,7 +338,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
                     with fs.open(out_path, "wb") as out_f:
                         with open(path, "rb") as in_f:
                             # 128M
-                            chunk_bytes = 128 * 1024 ** 2
+                            chunk_bytes = 128 * 1024**2
                             while True:
                                 data = in_f.read(chunk_bytes)
                                 if data:
