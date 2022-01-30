@@ -323,7 +323,7 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
         while any(
             [await queueing_ref.all_bands_busy() for queueing_ref in queueing_refs]
         ):
-            worker_num = 2 ** rnd
+            worker_num = 2**rnd
             if (
                 self._autoscaler.get_dynamic_worker_nums() + worker_num
                 > self._max_workers

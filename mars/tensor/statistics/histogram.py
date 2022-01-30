@@ -119,7 +119,7 @@ class HistBinScottSelector(HistBinSelector):
     """
 
     def __call__(self):
-        return (24.0 * np.pi ** 0.5 / self._x.size) ** (1.0 / 3.0) * mt.std(self._x)
+        return (24.0 * np.pi**0.5 / self._x.size) ** (1.0 / 3.0) * mt.std(self._x)
 
 
 class HistBinStoneSelector(HistBinSelector):

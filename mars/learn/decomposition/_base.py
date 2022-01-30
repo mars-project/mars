@@ -89,7 +89,7 @@ class _BasePCA(BaseEstimator, TransformerMixin, metaclass=ABCMeta):
         precision = mt.dot(components_, components_.T) / self.noise_variance_
         precision.flat[:: len(precision) + 1] += 1.0 / exp_var_diff
         precision = mt.dot(components_.T, mt.dot(linalg.inv(precision), components_))
-        precision /= -(self.noise_variance_ ** 2)
+        precision /= -(self.noise_variance_**2)
         precision.flat[:: len(precision) + 1] += 1.0 / self.noise_variance_
         precision.execute(session=session)
         return precision

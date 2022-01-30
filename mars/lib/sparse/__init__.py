@@ -90,7 +90,7 @@ def floor_divide(a, b, **_):
 
 def power(a, b, **_):
     try:
-        return a ** b
+        return a**b
     except TypeError:
         if hasattr(b, "__rpow__"):
             return b.__rpow__(a)

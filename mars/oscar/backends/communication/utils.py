@@ -24,7 +24,7 @@ from ....utils import lazy_import
 cupy = lazy_import("cupy", globals=globals())
 cudf = lazy_import("cudf", globals=globals())
 
-CUDA_CHUNK_SIZE = 16 * 1024 ** 2
+CUDA_CHUNK_SIZE = 16 * 1024**2
 
 
 def write_buffers(writer: StreamWriter, buffers: List):

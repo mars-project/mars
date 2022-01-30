@@ -55,7 +55,7 @@ async def fault_cluster(request):
         "test_cluster",
         worker_num=2,
         worker_cpu=2,
-        worker_mem=1 * 1024 ** 3,
+        worker_mem=1 * 1024**3,
         config=ray_config,
     )
     async with client:

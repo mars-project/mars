@@ -486,7 +486,7 @@ def _gen_index_string_and_sample_count(
     size, dim = shape
     memory_require = _get_memory_require(memory_require)
 
-    if accuracy or size < 10 ** 5:
+    if accuracy or size < 10**5:
         # Flat is the only index that guarantees exact results
         # no need to train, thus sample count is None
         return "Flat", None
@@ -518,7 +518,7 @@ def _gen_index_string_and_sample_count(
         raise ValueError("unknown memory require")
 
     # now choose the clustering options
-    if size < 10 ** 6 or (size < 10 ** 7 and gpu):
+    if size < 10**6 or (size < 10**7 and gpu):
         # < 1M, or <10M but need GPU
         k = kw.get("k", 5 * int(np.sqrt(size)))
         if k < 4 * int(np.sqrt(size)) or k > 16 * int(np.sqrt(size)):
@@ -529,13 +529,13 @@ def _gen_index_string_and_sample_count(
         if n_sample is None:
             # 30 * k - 256 * k
             n_sample = min(30 * k, size)
-    elif size < 10 ** 7 and not gpu:
+    elif size < 10**7 and not gpu:
         # 1M - 10M
         index_str = basement.format("IVF65536_HNSW32")
         if n_sample is None:
             # between 30 * 65536 and 256 * 65536
             n_sample = 32 * 65536
-    elif size < 10 ** 8:
+    elif size < 10**8:
         index_str = basement.format("IVF65536_HNSW32")
         n_sample = 64 * 65536 if n_sample is None else n_sample
     else:

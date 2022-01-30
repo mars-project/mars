@@ -870,8 +870,8 @@ def test_rename(setup):
     r = series.rename("new_series")
     pd.testing.assert_series_equal(r.execute().fetch(), raw.rename("new_series"))
 
-    r = series.rename(lambda x: 2 ** x)
-    pd.testing.assert_series_equal(r.execute().fetch(), raw.rename(lambda x: 2 ** x))
+    r = series.rename(lambda x: 2**x)
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.rename(lambda x: 2**x))
 
     with pytest.raises(TypeError):
         series.name = {1: 10, 2: 20}
