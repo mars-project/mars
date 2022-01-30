@@ -15,10 +15,10 @@
 import weakref
 from typing import Optional, Tuple
 
-import numpy as np
+from pandas.api.types import is_scalar
 
 from .... import dataframe as md
-from ....core import Tileable, get_output_types
+from ....core import Tileable, get_output_types, ENTITY_TYPE
 from ....dataframe.arithmetic.core import DataFrameUnaryUfunc, DataFrameBinopUfunc
 from ....dataframe.base.eval import DataFrameEval
 from ....dataframe.indexing.getitem import DataFrameIndex
@@ -94,8 +94,11 @@ class SeriesArithmeticToEval(OptimizationRule):
     def _extract_eval_expression(
         cls, tileable
     ) -> Tuple[Optional[Tileable], Optional[str]]:
-        if np.isscalar(tileable):
+        if is_scalar(tileable):
             return None, repr(tileable)
+
+        if not isinstance(tileable, ENTITY_TYPE):  # pragma: no cover
+            return None, None
 
         if tileable in _extract_result_cache:
             return _extract_result_cache[tileable]
