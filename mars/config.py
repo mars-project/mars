@@ -364,7 +364,7 @@ default_options.register_option("combine_size", 4, validator=is_integer, seriali
 
 # the default chunk store size
 default_options.register_option(
-    "chunk_store_limit", 128 * 1024 ** 2, validator=is_numeric
+    "chunk_store_limit", 128 * 1024**2, validator=is_numeric
 )
 default_options.register_option(
     "chunk_size", None, validator=any_validator(is_null, is_integer), serialize=True
@@ -417,7 +417,7 @@ default_options.register_option(
     "scheduler.retry_num", 4, validator=is_integer, serialize=True
 )
 default_options.register_option(
-    "scheduler.fetch_limit", 10 * 1024 ** 2, validator=is_integer, serialize=True
+    "scheduler.fetch_limit", 10 * 1024**2, validator=is_integer, serialize=True
 )
 default_options.register_option(
     "scheduler.retry_delay", 60, validator=is_integer, serialize=True
@@ -471,7 +471,7 @@ default_options.register_option(
 )
 default_options.register_option("worker.cuda_thread_num", 2, validator=is_integer)
 default_options.register_option(
-    "worker.transfer_block_size", 1 * 1024 ** 2, validator=is_integer
+    "worker.transfer_block_size", 1 * 1024**2, validator=is_integer
 )
 default_options.register_option(
     "worker.transfer_compression", "lz4", validator=is_string, serialize=True
@@ -506,7 +506,7 @@ default_options.register_option(
 )
 default_options.register_option(
     "worker.filemerger.max_file_size",
-    32 * 1024 ** 2,
+    32 * 1024**2,
     validator=is_integer,
     serialize=True,
 )
@@ -528,7 +528,7 @@ default_options.register_option(
     "optimize.stats_sufficient_ratio", 0.9, validator=is_float, serialize=True
 )
 default_options.register_option(
-    "optimize.default_disk_io_speed", 10 * 1024 ** 2, validator=is_integer
+    "optimize.default_disk_io_speed", 10 * 1024**2, validator=is_integer
 )
 default_options.register_option(
     "optimize.head_optimize_threshold", 1000, validator=is_integer

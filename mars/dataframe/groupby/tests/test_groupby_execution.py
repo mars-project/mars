@@ -1162,3 +1162,49 @@ def test_groupby_apply_with_arrow_dtype(setup):
     result.index = result.index.astype(np.int64)
     expected = series1.groupby(series1).apply(lambda s: s)
     pd.testing.assert_series_equal(arrow_array_to_objects(result), expected)
+
+
+def test_groupby_nunique(setup):
+    rs = np.random.RandomState(0)
+    data_size = 100
+    data_dict = {
+        "a": rs.randint(0, 10, size=(data_size,)),
+        "b": rs.choice(list("abcd"), size=(data_size,)),
+        "c": rs.choice(list("abcd"), size=(data_size,)),
+    }
+    df1 = pd.DataFrame(data_dict)
+
+    # one chunk
+    mdf = md.DataFrame(df1)
+    pd.testing.assert_frame_equal(
+        mdf.groupby("c").nunique().execute().fetch().sort_index(),
+        df1.groupby("c").nunique().sort_index(),
+    )
+
+    # multiple chunks
+    mdf = md.DataFrame(df1, chunk_size=13)
+    pd.testing.assert_frame_equal(
+        mdf.groupby("b").nunique().execute().fetch().sort_index(),
+        df1.groupby("b").nunique().sort_index(),
+    )
+
+    # getitem and nunique
+    mdf = md.DataFrame(df1, chunk_size=13)
+    pd.testing.assert_series_equal(
+        mdf.groupby("b")["a"].nunique().execute().fetch().sort_index(),
+        df1.groupby("b")["a"].nunique().sort_index(),
+    )
+
+    # test with as_index=False
+    mdf = md.DataFrame(df1, chunk_size=13)
+    if _agg_size_as_frame:
+        pd.testing.assert_frame_equal(
+            mdf.groupby("b", as_index=False)["a"]
+            .nunique()
+            .execute()
+            .fetch()
+            .sort_values(by="b", ignore_index=True),
+            df1.groupby("b", as_index=False)["a"]
+            .nunique()
+            .sort_values(by="b", ignore_index=True),
+        )

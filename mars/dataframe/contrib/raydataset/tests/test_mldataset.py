@@ -41,10 +41,10 @@ except ImportError:  # pragma: no cover
 async def create_cluster(request):
     client = await new_cluster(
         "test_cluster",
-        supervisor_mem=1 * 1024 ** 3,
+        supervisor_mem=1 * 1024**3,
         worker_num=4,
         worker_cpu=2,
-        worker_mem=1 * 1024 ** 3,
+        worker_mem=1 * 1024**3,
     )
     async with client:
         yield client

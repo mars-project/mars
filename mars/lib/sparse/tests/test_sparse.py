@@ -175,21 +175,21 @@ def test_sparse_power():
     s1 = SparseNDArray(s1_data)
     s2 = SparseNDArray(s2_data)
 
-    assertArrayEqual(s1 ** s2, s1.toarray() ** s2.toarray())
-    assertArrayEqual(s1 ** d1, s1.toarray() ** d1)
-    assertArrayEqual(d1 ** s1, d1 ** s1.toarray())
-    assertArrayEqual(s1 ** 2, s1_data.power(2))
-    assertArrayEqual(2 ** s1, 2 ** s1.toarray())
+    assertArrayEqual(s1**s2, s1.toarray() ** s2.toarray())
+    assertArrayEqual(s1**d1, s1.toarray() ** d1)
+    assertArrayEqual(d1**s1, d1 ** s1.toarray())
+    assertArrayEqual(s1**2, s1_data.power(2))
+    assertArrayEqual(2**s1, 2 ** s1.toarray())
 
     # test sparse vector
     v = SparseNDArray(v1, shape=(3,))
-    assertArrayEqual(v ** v, v1_data ** v1_data)
-    assertArrayEqual(v ** d1, v1_data ** d1)
-    assertArrayEqual(d1 ** v, d1 ** v1_data)
-    r = sps.csr_matrix(((v1.data ** 1), v1.indices, v1.indptr), v1.shape)
-    assertArrayEqual(v ** 1, r.toarray().reshape(3))
-    r = sps.csr_matrix(((1 ** v1.data), v1.indices, v1.indptr), v1.shape)
-    assertArrayEqual(1 ** v, r.toarray().reshape(3))
+    assertArrayEqual(v**v, v1_data**v1_data)
+    assertArrayEqual(v**d1, v1_data**d1)
+    assertArrayEqual(d1**v, d1**v1_data)
+    r = sps.csr_matrix(((v1.data**1), v1.indices, v1.indptr), v1.shape)
+    assertArrayEqual(v**1, r.toarray().reshape(3))
+    r = sps.csr_matrix(((1**v1.data), v1.indices, v1.indptr), v1.shape)
+    assertArrayEqual(1**v, r.toarray().reshape(3))
 
 
 def test_sparse_mod():

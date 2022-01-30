@@ -367,7 +367,7 @@ def test_frexp_execution(setup):
     frexp(arr1, o1, o2)
     res1, res2 = fetch(*execute(o1, o2))
 
-    res = res1 * 2 ** res2
+    res = res1 * 2**res2
     np.testing.assert_array_almost_equal(res, data1, decimal=3)
 
     data1 = sps.random(5, 9, density=0.1)

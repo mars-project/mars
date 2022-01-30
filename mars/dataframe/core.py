@@ -582,7 +582,7 @@ class _BatchedFetcher:
         else:
             # if batch_size is not specified, use first batch to estimate
             # batch_size.
-            default_batch_bytes = 50 * 1024 ** 2
+            default_batch_bytes = 50 * 1024**2
             first_batch = 1000
             size = self.shape[0]
 

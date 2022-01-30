@@ -38,12 +38,15 @@ Computations / descriptive stats
 
    GroupBy.all
    GroupBy.any
+   GroupBy.backfill
+   GroupBy.bfill
    GroupBy.count
    GroupBy.cumcount
    GroupBy.cummax
    GroupBy.cummin
    GroupBy.cumprod
    GroupBy.cumsum
+   GroupBy.ffill
    GroupBy.head
    GroupBy.kurt
    GroupBy.kurtosis
@@ -71,6 +74,8 @@ application to columns of a specific data type.
    DataFrameGroupBy.cummin
    DataFrameGroupBy.cumprod
    DataFrameGroupBy.cumsum
+   DataFrameGroupBy.fillna
+   DataFrameGroupBy.nunique
    DataFrameGroupBy.sample
 
 The following methods are available only for ``SeriesGroupBy`` objects.

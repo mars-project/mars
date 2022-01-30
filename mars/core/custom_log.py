@@ -131,7 +131,7 @@ class LogFetcher:
             offsets = self._chunk_op_key_to_offsets
 
         if sizes is None:
-            sizes = 1 * 1024 ** 2  # 1M each time
+            sizes = 1 * 1024**2  # 1M each time
 
         result: dict = self._session.fetch_tileable_op_logs(
             self._tileable_op_key, offsets=offsets, sizes=sizes

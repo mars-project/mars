@@ -376,7 +376,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                 with open(local_path, "wb") as out_f:
                     with fs.open(index_path, "rb") as in_f:
                         # 32M
-                        chunk_bytes = 32 * 1024 ** 2
+                        chunk_bytes = 32 * 1024**2
                         while True:
                             data = in_f.read(chunk_bytes)
                             if data:

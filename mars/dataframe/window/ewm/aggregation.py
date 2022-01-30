@@ -58,7 +58,7 @@ def _add_pred_results(
     new_locals = []
     combine_axis = pred_results[0].ndim - axis - 1
     weight = (1 - alpha) ** order
-    pred_coeff = weight ** pred_exponent
+    pred_coeff = weight**pred_exponent
     for idx, (pred_result, local_result) in enumerate(zip(pred_results, local_results)):
         local_result.fillna(df_filler, inplace=True)
         pred_result = pred_result.mul(pred_coeff).sum(axis=axis)
@@ -83,7 +83,7 @@ def _add_pred_results(
             weights_df.ffill(inplace=True)
             weights_df.fillna(0, inplace=True)
 
-            weights_df = weight ** weights_df
+            weights_df = weight**weights_df
             pred_df = weights_df.mul(pred_result, axis=combine_axis)
 
         new_locals.append(local_result.add(pred_df, axis=combine_axis))
@@ -143,7 +143,7 @@ def _combine_var(
         local_count2_data,
     ) = local_results
     if pred_results is None:
-        return (local_sum_square - local_sum_data ** 2 / local_count_data) / (
+        return (local_sum_square - local_sum_data**2 / local_count_data) / (
             local_count_data - local_count2_data / local_count_data
         )
 
@@ -170,7 +170,7 @@ def _combine_var(
         alpha_data=alpha_data,
     )
 
-    return (local_sum_square - local_sum_data ** 2 / local_count_data) / (
+    return (local_sum_square - local_sum_data**2 / local_count_data) / (
         local_count_data - local_count2_data / local_count_data
     )
 
@@ -357,7 +357,7 @@ class DataFrameEwmAgg(BaseDataFrameExpandingAgg):
 
         alpha_sum, _ = op._execute_cum_alpha_coeff(op, in_data, 1)
         cumsum, _ = op._execute_cumsum(op, in_data)
-        result = alpha_sum * data + cumsum ** 2 / alpha_sum
+        result = alpha_sum * data + cumsum**2 / alpha_sum
 
         if op.output_agg:
             summary = result.ffill()[-1:]

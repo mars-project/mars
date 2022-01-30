@@ -14,6 +14,7 @@
 
 import functools
 import itertools
+import typing
 import uuid
 from typing import List, Dict
 
@@ -116,6 +117,28 @@ def _patch_groupby_kurt():
 
 _patch_groupby_kurt()
 del _patch_groupby_kurt
+
+
+def build_mock_agg_result(
+    groupby: GROUPBY_TYPE,
+    groupby_params: typing.Dict,
+    raw_func: typing.Callable,
+    **raw_func_kw,
+):
+    try:
+        agg_result = groupby.op.build_mock_groupby().aggregate(raw_func, **raw_func_kw)
+    except ValueError:
+        if (
+            groupby_params.get("as_index") or _support_get_group_without_as_index
+        ):  # pragma: no cover
+            raise
+        agg_result = (
+            groupby.op.build_mock_groupby(as_index=True)
+            .aggregate(raw_func, **raw_func_kw)
+            .to_frame()
+        )
+        agg_result.index.names = [None] * agg_result.index.nlevels
+    return agg_result
 
 
 class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
@@ -259,8 +282,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return 1 if not isinstance(pd_index, pd.MultiIndex) else len(pd_index.levels)
 
     def _call_dataframe(self, groupby, input_df):
-        agg_df = groupby.op.build_mock_groupby().aggregate(
-            self.raw_func, **self.raw_func_kw
+        agg_df = build_mock_agg_result(
+            groupby, self.groupby_params, self.raw_func, **self.raw_func_kw
         )
 
         shape = (np.nan, agg_df.shape[1])
@@ -289,23 +312,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         )
 
     def _call_series(self, groupby, in_series):
-        try:
-            agg_result = groupby.op.build_mock_groupby().aggregate(
-                self.raw_func, **self.raw_func_kw
-            )
-        except ValueError:
-            if (
-                self._groupby_params.get("as_index")
-                or _support_get_group_without_as_index
-            ):  # pragma: no cover
-                raise
-            agg_result = (
-                groupby.op.build_mock_groupby(as_index=True)
-                .aggregate(self.raw_func, **self.raw_func_kw)
-                .to_frame()
-            )
-            agg_result.index.names = [None] * agg_result.index.nlevels
-
+        agg_result = build_mock_agg_result(
+            groupby, self.groupby_params, self.raw_func, **self.raw_func_kw
+        )
         index_value = parse_index(
             agg_result.index, groupby.key, groupby.index_value.key
         )
@@ -1083,7 +1092,22 @@ def agg(groupby, func=None, method="auto", *args, **kwargs):
         )
 
     if not is_funcs_aggregate(func, ndim=groupby.ndim):
-        return groupby.transform(func, *args, _call_agg=True, **kwargs)
+        # pass index to transform, otherwise it will lose name info for index
+        agg_result = build_mock_agg_result(
+            groupby, groupby.op.groupby_params, func, **kwargs
+        )
+        if isinstance(agg_result.index, pd.RangeIndex):
+            # set -1 to represent unknown size for RangeIndex
+            index_value = parse_index(
+                pd.RangeIndex(-1), groupby.key, groupby.index_value.key
+            )
+        else:
+            index_value = parse_index(
+                agg_result.index, groupby.key, groupby.index_value.key
+            )
+        return groupby.transform(
+            func, *args, _call_agg=True, index=index_value, **kwargs
+        )
 
     use_inf_as_na = kwargs.pop("_use_inf_as_na", options.dataframe.mode.use_inf_as_na)
     agg_op = DataFrameGroupByAgg(
