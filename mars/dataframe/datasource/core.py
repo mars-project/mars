@@ -16,13 +16,18 @@ import asyncio
 import uuid
 from typing import List, Optional, Union
 
+import numpy as np
+
 from ...core import recursive_tile
 from ...core.context import get_context, Context
+from ...config import options
 from ...oscar import ActorNotExist
 from ...serialization.serializables import Int64Field, StringField
 from ...typing import TileableType, OperandType
-from ..core import IndexValue
+from ...utils import parse_readable_size
+from ..core import IndexValue, OutputType
 from ..operands import DataFrameOperand, DataFrameOperandMixin
+from ..utils import merge_index_value
 
 
 class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
@@ -31,7 +36,7 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
     # First, it will try to trigger first_chunk.head() and raise TilesError,
     # When iterative tiling is triggered,
     # check if the first_chunk.head() meets requirements.
-    _nrows = Int64Field("nrows")
+    _nrows = Int64Field("nrows", default=None)
 
     @property
     def nrows(self):
@@ -137,14 +142,21 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
             and isinstance(results[0].index_value.value, IndexValue.RangeIndex)
         ):
             result = results[0]
+            chunks = []
             for chunk in result.chunks:
+                if not isinstance(chunk.op, cls):
+                    # some chunks are merged, get the inputs
+                    chunks.extend(chunk.inputs)
+                else:
+                    chunks.append(chunk)
+            for chunk in chunks:
                 chunk.op.priority = -chunk.index[0]
-            n_chunk = len(result.chunks)
+            n_chunk = len(chunks)
             ctx = get_context()
             if ctx:
                 name = str(uuid.uuid4())
                 ctx.create_remote_object(name, _IncrementalIndexRecorder, n_chunk)
-                for chunk in result.chunks:
+                for chunk in chunks:
                     chunk.op.incremental_index_recorder_name = name
 
     @classmethod
@@ -181,3 +193,55 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
                     ctx.destroy_remote_object(recorder_name)
                 except ActorNotExist:
                     pass
+
+
+def merge_small_files(
+    df: TileableType,
+    n_sample_file: int = 10,
+    merged_file_size: Union[int, float, str] = None,
+) -> TileableType:
+    from ..merge import DataFrameConcat
+
+    if len(df.chunks) < n_sample_file:
+        # if number of chunks is small(less than `n_sample_file`,
+        # skip this process
+        return df
+
+    if merged_file_size is not None:
+        merged_file_size = parse_readable_size(merged_file_size)[0]
+    else:
+        merged_file_size = options.chunk_store_limit
+    # sample files whose size equals `n_sample_file`
+    sampled_chunks = np.random.choice(df.chunks, n_sample_file)
+    max_chunk_size = 0
+    ctx = dict()
+    for sampled_chunk in sampled_chunks:
+        sampled_chunk.op.estimate_size(ctx, sampled_chunk.op)
+        size = ctx[sampled_chunk.key][0]
+        max_chunk_size = max(max_chunk_size, size)
+    to_merge_size = merged_file_size // max_chunk_size
+    if to_merge_size < 2:
+        return df
+    # merge files
+    n_new_chunks = np.ceil(len(df.chunks) / to_merge_size)
+    new_chunks = []
+    new_nsplit = []
+    for i, chunks in enumerate(np.array_split(df.chunks, n_new_chunks)):
+        chunk_size = sum(c.shape[0] for c in chunks)
+        kw = dict(
+            dtypes=chunks[0].dtypes,
+            index_value=merge_index_value({c.index: c.index_value for c in chunks}),
+            columns_value=chunks[0].columns_value,
+            shape=(chunk_size, chunks[0].shape[1]),
+            index=(i, 0),
+        )
+        new_chunk = DataFrameConcat(output_types=[OutputType.dataframe]).new_chunk(
+            chunks.tolist(), **kw
+        )
+        new_chunks.append(new_chunk)
+        new_nsplit.append(chunk_size)
+    new_op = df.op.copy()
+    params = df.params.copy()
+    params["chunks"] = new_chunks
+    params["nsplits"] = (tuple(new_nsplit), df.nsplits[1])
+    return new_op.new_dataframe(df.op.inputs, kws=[params])
