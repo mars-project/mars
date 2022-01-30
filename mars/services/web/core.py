@@ -23,7 +23,7 @@ from collections import defaultdict
 from typing import Callable, Dict, List, NamedTuple, Optional, Type, Union
 
 from tornado import httpclient, web
-from tornado.simple_httpclient import HTTPTimeoutError
+from tornado.simple_httpclient import HTTPRequest, HTTPTimeoutError
 
 from ...lib.aio import alru_cache
 from ...utils import serialize_serializable, deserialize_serializable
@@ -135,6 +135,9 @@ class MarsServiceWebAPIHandler(MarsRequestHandler):
             for api_def in web_api_defs:
                 cls._method_to_handlers[api_def.method.lower()][handle_func] = api_def
 
+    def prepare(self):
+        self.set_header("Content-Type", "application/octet-stream")
+
     @classmethod
     def get_root_pattern(cls):
         return cls._root_pattern + "(?:/(?P<sub_path>.*)$|$)"
@@ -200,6 +203,14 @@ class MarsWebAPIClientMixin:
             self._client_obj = httpclient.AsyncHTTPClient()
             return self._client_obj
 
+    @property
+    def request_rewriter(self) -> Callable:
+        return getattr(self, "_request_rewriter", None)
+
+    @request_rewriter.setter
+    def request_rewriter(self, value: Callable):
+        self._request_rewriter = value
+
     def __del__(self):
         if hasattr(self, "_client_obj"):
             self._client_obj.close()
@@ -220,9 +231,10 @@ class MarsWebAPIClientMixin:
             path += path_connector + url_params
 
         try:
-            res = await self._client.fetch(
-                path, method=method, raise_error=False, **kwargs
-            )
+            request = HTTPRequest(path, method=method, **kwargs)
+            if self.request_rewriter:
+                request = self.request_rewriter(request)
+            res = await self._client.fetch(request, raise_error=False)
         except HTTPTimeoutError as ex:
             raise TimeoutError(str(ex)) from None
 

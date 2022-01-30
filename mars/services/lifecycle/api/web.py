@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List
+from typing import Callable, Dict, List
 
 from ....utils import serialize_serializable, deserialize_serializable
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
@@ -45,9 +45,12 @@ web_handlers = {LifecycleWebAPIHandler.get_root_pattern(): LifecycleWebAPIHandle
 
 
 class WebLifecycleAPI(AbstractLifecycleAPI, MarsWebAPIClientMixin):
-    def __init__(self, session_id: str, address: str):
+    def __init__(
+        self, session_id: str, address: str, request_rewriter: Callable = None
+    ):
         self._session_id = session_id
         self._address = address.rstrip("/")
+        self.request_rewriter = request_rewriter
 
     async def decref_tileables(self, tileable_keys: List[str]):
         path = f"{self._address}/api/session/{self._session_id}/lifecycle"

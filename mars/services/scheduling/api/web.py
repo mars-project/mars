@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from ....lib.aio import alru_cache
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
@@ -71,9 +71,12 @@ web_handlers = {SchedulingWebAPIHandler.get_root_pattern(): SchedulingWebAPIHand
 
 
 class WebSchedulingAPI(AbstractSchedulingAPI, MarsWebAPIClientMixin):
-    def __init__(self, session_id: str, address: str):
+    def __init__(
+        self, session_id: str, address: str, request_rewriter: Callable = None
+    ):
         self._session_id = session_id
         self._address = address.rstrip("/")
+        self.request_rewriter = request_rewriter
 
     async def get_subtask_schedule_summaries(
         self, task_id: Optional[str] = None

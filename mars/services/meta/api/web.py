@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from .... import oscar as mo
 from ....utils import serialize_serializable, deserialize_serializable
@@ -53,9 +53,12 @@ web_handlers = {MetaWebAPIHandler.get_root_pattern(): MetaWebAPIHandler}
 
 
 class WebMetaAPI(AbstractMetaAPI, MarsWebAPIClientMixin):
-    def __init__(self, session_id: str, address: str):
+    def __init__(
+        self, session_id: str, address: str, request_rewriter: Callable = None
+    ):
         self._session_id = session_id
         self._address = address.rstrip("/")
+        self.request_rewriter = request_rewriter
 
     @mo.extensible
     async def get_chunk_meta(
