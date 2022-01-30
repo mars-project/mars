@@ -38,8 +38,8 @@ Computations / descriptive stats
 
    GroupBy.all
    GroupBy.any
-   GroupBy.bfill
    GroupBy.backfill
+   GroupBy.bfill
    GroupBy.count
    GroupBy.cumcount
    GroupBy.cummax
