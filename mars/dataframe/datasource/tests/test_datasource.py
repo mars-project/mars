@@ -23,7 +23,10 @@ import pytest
 
 from .... import tensor as mt
 from ....core import tile
+from ....tests.core import require_ray
+from ....utils import lazy_import
 from ...core import IndexValue, DatetimeIndex, Int64Index, Float64Index
+from ..core import merge_small_files
 from ..dataframe import from_pandas as from_pandas_df
 from ..date_range import date_range
 from ..from_records import from_records
@@ -37,8 +40,6 @@ from ..read_csv import read_csv, DataFrameReadCSV
 from ..read_sql import read_sql_table, read_sql_query, DataFrameReadSQL
 from ..read_raydataset import read_raydataset, DataFrameReadRayDataset
 from ..series import from_pandas as from_pandas_series
-from ....tests.core import require_ray
-from ....utils import lazy_import
 
 
 ray = lazy_import("ray")
@@ -573,3 +574,28 @@ def test_date_range():
         assert c.index_value.is_unique == ec.is_unique
         assert c.index_value.is_monotonic_increasing == ec.is_monotonic_increasing
         assert c.name == ec.name
+
+
+def test_merge_small_files():
+    raw = pd.DataFrame(np.random.rand(16, 4))
+    df = tile(from_pandas_df(raw, chunk_size=4))
+
+    chunk_size = 4 * 4 * 8
+    # number of chunks < 10
+    assert df is merge_small_files(df, n_sample_file=10)
+    # merged_chunk_size
+    assert df is merge_small_files(
+        df, n_sample_file=2, merged_file_size=chunk_size + 0.1
+    )
+
+    df2 = merge_small_files(df, n_sample_file=2, merged_file_size=2 * chunk_size)
+    assert len(df2.chunks) == 2
+    assert df2.chunks[0].shape == (8, 4)
+    pd.testing.assert_index_equal(
+        df2.chunks[0].index_value.to_pandas(), pd.RangeIndex(8)
+    )
+    assert df2.chunks[1].shape == (8, 4)
+    pd.testing.assert_index_equal(
+        df2.chunks[1].index_value.to_pandas(), pd.RangeIndex(8, 16)
+    )
+    assert df2.nsplits == ((8, 8), (4,))

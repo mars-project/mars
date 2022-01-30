@@ -546,19 +546,30 @@ def test_read_csv_execution(setup):
         pd.testing.assert_frame_equal(pdf, mdf2)
 
     # test multiple files
-    with tempfile.TemporaryDirectory() as tempdir:
-        df = pd.DataFrame(np.random.rand(300, 3), columns=["a", "b", "c"])
+    for merge_small_file_option in [{"n_sample_file": 1}, None]:
+        with tempfile.TemporaryDirectory() as tempdir:
+            df = pd.DataFrame(np.random.rand(300, 3), columns=["a", "b", "c"])
 
-        file_paths = [os.path.join(tempdir, f"test{i}.csv") for i in range(3)]
-        df[:100].to_csv(file_paths[0])
-        df[100:200].to_csv(file_paths[1])
-        df[200:].to_csv(file_paths[2])
+            file_paths = [os.path.join(tempdir, f"test{i}.csv") for i in range(3)]
+            df[:100].to_csv(file_paths[0])
+            df[100:200].to_csv(file_paths[1])
+            df[200:].to_csv(file_paths[2])
 
-        mdf = md.read_csv(file_paths, index_col=0).execute().fetch()
-        pd.testing.assert_frame_equal(df, mdf)
+            mdf = (
+                md.read_csv(
+                    file_paths,
+                    index_col=0,
+                    merge_small_file_options=merge_small_file_option,
+                )
+                .execute()
+                .fetch()
+            )
+            pd.testing.assert_frame_equal(df, mdf)
 
-        mdf2 = md.read_csv(file_paths, index_col=0, chunk_bytes=50).execute().fetch()
-        pd.testing.assert_frame_equal(df, mdf2)
+            mdf2 = (
+                md.read_csv(file_paths, index_col=0, chunk_bytes=50).execute().fetch()
+            )
+            pd.testing.assert_frame_equal(df, mdf2)
 
     # test wildcards in path
     with tempfile.TemporaryDirectory() as tempdir:
@@ -1020,27 +1031,32 @@ def test_read_parquet_arrow(setup):
         pd.testing.assert_frame_equal(arrow_array_to_objects(result), test_df)
 
     # test wildcards in path
-    with tempfile.TemporaryDirectory() as tempdir:
-        df = pd.DataFrame(
-            {
-                "a": np.arange(300).astype(np.int64, copy=False),
-                "b": [f"s{i}" for i in range(300)],
-                "c": np.random.rand(300),
-            }
-        )
+    for merge_small_file_option in [{"n_sample_file": 1}, None]:
+        with tempfile.TemporaryDirectory() as tempdir:
+            df = pd.DataFrame(
+                {
+                    "a": np.arange(300).astype(np.int64, copy=False),
+                    "b": [f"s{i}" for i in range(300)],
+                    "c": np.random.rand(300),
+                }
+            )
 
-        file_paths = [os.path.join(tempdir, f"test{i}.parquet") for i in range(3)]
-        df[:100].to_parquet(file_paths[0], row_group_size=50)
-        df[100:200].to_parquet(file_paths[1], row_group_size=30)
-        df[200:].to_parquet(file_paths[2])
+            file_paths = [os.path.join(tempdir, f"test{i}.parquet") for i in range(3)]
+            df[:100].to_parquet(file_paths[0], row_group_size=50)
+            df[100:200].to_parquet(file_paths[1], row_group_size=30)
+            df[200:].to_parquet(file_paths[2])
 
-        mdf = md.read_parquet(f"{tempdir}/*.parquet")
-        r = mdf.execute().fetch()
-        pd.testing.assert_frame_equal(df, r.sort_values("a").reset_index(drop=True))
+            mdf = md.read_parquet(f"{tempdir}/*.parquet")
+            r = mdf.execute().fetch()
+            pd.testing.assert_frame_equal(df, r.sort_values("a").reset_index(drop=True))
 
-        mdf = md.read_parquet(f"{tempdir}/*.parquet", groups_as_chunks=True)
-        r = mdf.execute().fetch()
-        pd.testing.assert_frame_equal(df, r.sort_values("a").reset_index(drop=True))
+            mdf = md.read_parquet(
+                f"{tempdir}/*.parquet",
+                groups_as_chunks=True,
+                merge_small_file_options=merge_small_file_option,
+            )
+            r = mdf.execute().fetch()
+            pd.testing.assert_frame_equal(df, r.sort_values("a").reset_index(drop=True))
 
 
 @pytest.mark.skipif(fastparquet is None, reason="fastparquet not installed")
