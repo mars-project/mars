@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .arithmetic_query import SeriesArithmeticToEval
 from .column_pruning import GroupByPruneDataSource, GetitemPruneDataSource
 from .core import optimize
 from .head import HeadPushDown

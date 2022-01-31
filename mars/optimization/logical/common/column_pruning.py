@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from abc import ABCMeta, abstractmethod
 from typing import Any, List
 
@@ -29,9 +28,16 @@ class PruneDataSource(OptimizationRule, metaclass=ABCMeta):
             rule_types = self._optimizer_cls.get_rule_types(type(succ.op))
             if rule_types is None:
                 return False
-            for rule_type in rule_types:
-                if not issubclass(rule_type, PruneDataSource):
-                    return False
+
+            prune_rule_types = [
+                rule_type
+                for rule_type in rule_types
+                if issubclass(rule_type, PruneDataSource)
+            ]
+            if not prune_rule_types:
+                return False
+
+            for rule_type in prune_rule_types:
                 rule = rule_type(self._graph, self._records, self._optimizer_cls)
                 if not rule._need_prune(succ.op):
                     return False
