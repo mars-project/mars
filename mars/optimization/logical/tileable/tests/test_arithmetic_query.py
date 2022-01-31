@@ -109,3 +109,20 @@ def test_bool_eval_to_query(setup):
 
     r_df2, _r_col_a = fetch(execute(df2, df1["A"]))
     pd.testing.assert_frame_equal(r_df2, raw[(raw["A"] > 0.5) & (raw["C"] < 0.5)] + 1)
+
+    raw = pd.DataFrame(
+        {
+            "a": np.arange(100),
+            "b": [pd.Timestamp("2022-1-1") + pd.Timedelta(days=i) for i in range(100)],
+        }
+    )
+    df1 = md.DataFrame(raw, chunk_size=10)
+    df2 = df1[df1.b < pd.Timestamp("2022-3-20")]
+    graph = TileableGraph([df2.data])
+    next(TileableGraphBuilder(graph).build())
+    records = optimize(graph)
+    opt_df2 = records.get_optimization_result(df2.data)
+    assert opt_df2.op.expr == "(`b`) < (Timestamp('2022-03-20 00:00:00'))"
+
+    r_df2 = fetch(execute(df2))
+    pd.testing.assert_frame_equal(r_df2, raw[raw.b < pd.Timestamp("2022-3-20")])
