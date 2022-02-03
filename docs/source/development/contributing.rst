@@ -45,7 +45,6 @@ development, use the following steps:
 .. code-block:: bash
 
     pip install --upgrade setuptools pip
-    pip install cython
     git clone https://github.com/mars-project/mars.git
     cd mars
     pip install -e ".[dev]"
