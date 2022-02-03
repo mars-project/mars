@@ -315,6 +315,13 @@ def test_groupby_getitem(setup):
         expected.sort_values(["c1", "c2"]).reset_index(drop=True),
     )
 
+    r = mdf.groupby(["c1", "c2"], as_index=False)["c3"].agg(["sum"])
+    expected = raw.groupby(["c1", "c2"], as_index=False)["c3"].agg(["sum"])
+    pd.testing.assert_frame_equal(
+        r.execute().fetch().sort_values(["c1", "c2"]),
+        expected.sort_values(["c1", "c2"]),
+    )
+
 
 def test_dataframe_groupby_agg(setup):
     agg_funs = [

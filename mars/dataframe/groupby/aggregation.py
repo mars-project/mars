@@ -281,6 +281,16 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             pd_index = mock_index
         return 1 if not isinstance(pd_index, pd.MultiIndex) else len(pd_index.levels)
 
+    def _fix_as_index(self, result_index: pd.Index):
+        # make sure if as_index=False takes effect
+        if isinstance(result_index, pd.MultiIndex):
+            # if MultiIndex, as_index=False definitely takes no effect
+            self.groupby_params["as_index"] = True
+        elif result_index.name is not None:
+            # if not MultiIndex and agg_df.index has a name
+            # means as_index=False takes no effect
+            self.groupby_params["as_index"] = True
+
     def _call_dataframe(self, groupby, input_df):
         agg_df = build_mock_agg_result(
             groupby, self.groupby_params, self.raw_func, **self.raw_func_kw
@@ -291,13 +301,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         index_value.value.should_be_monotonic = True
 
         # make sure if as_index=False takes effect
-        if isinstance(agg_df.index, pd.MultiIndex):
-            # if MultiIndex, as_index=False definitely takes no effect
-            self.groupby_params["as_index"] = True
-        elif agg_df.index.name is not None:
-            # if not MultiIndex and agg_df.index has a name
-            # means as_index=False takes no effect
-            self.groupby_params["as_index"] = True
+        self._fix_as_index(agg_df.index)
 
         # determine num of indices to group in intermediate steps
         self._index_levels = self._get_index_levels(groupby, agg_df.index)
@@ -315,6 +319,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         agg_result = build_mock_agg_result(
             groupby, self.groupby_params, self.raw_func, **self.raw_func_kw
         )
+
+        # make sure if as_index=False takes effect
+        self._fix_as_index(agg_result.index)
+
         index_value = parse_index(
             agg_result.index, groupby.key, groupby.index_value.key
         )
