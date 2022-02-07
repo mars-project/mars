@@ -28,6 +28,9 @@ def load_lineitem(data_folder: str) -> md.DataFrame:
     df = md.read_parquet(
         data_path,
     )
+    df["L_SHIPDATE"] = md.to_datetime(df.L_SHIPDATE, format="%Y-%m-%d")
+    df["L_RECEIPTDATE"] = md.to_datetime(df.L_RECEIPTDATE, format="%Y-%m-%d")
+    df["L_COMMITDATE"] = md.to_datetime(df.L_COMMITDATE, format="%Y-%m-%d")
     return df
 
 
@@ -44,6 +47,7 @@ def load_orders(data_folder: str) -> md.DataFrame:
     df = md.read_parquet(
         data_path,
     )
+    df["O_ORDERDATE"] = md.to_datetime(df.O_ORDERDATE, format="%Y-%m-%d")
     return df
 
 
@@ -346,12 +350,7 @@ def q07(lineitem, supplier, orders, customer, nation):
         (lineitem["L_SHIPDATE"] >= pd.Timestamp("1995-01-01"))
         & (lineitem["L_SHIPDATE"] < pd.Timestamp("1997-01-01"))
     ]
-    # lineitem_filtered["L_YEAR"] = lineitem_filtered["L_SHIPDATE"].apply(
-    #     lambda x: x.year)
-    # FIXME: move back to apply
-    lineitem_filtered["L_YEAR"] = lineitem_filtered["L_SHIPDATE"].map(
-        lambda x: x.year, dtype=np.int64
-    )
+    lineitem_filtered["L_YEAR"] = lineitem_filtered["L_SHIPDATE"].dt.year
     lineitem_filtered["VOLUME"] = lineitem_filtered["L_EXTENDEDPRICE"] * (
         1.0 - lineitem_filtered["L_DISCOUNT"]
     )
@@ -454,11 +453,7 @@ def q08(part, lineitem, supplier, orders, customer, nation, region):
         (orders["O_ORDERDATE"] >= pd.Timestamp("1995-01-01"))
         & (orders["O_ORDERDATE"] < pd.Timestamp("1997-01-01"))
     ]
-    # orders_filtered["O_YEAR"] = orders_filtered["O_ORDERDATE"].apply(lambda x: x.year)
-    # FIXME: move back to apply
-    orders_filtered["O_YEAR"] = orders_filtered["O_ORDERDATE"].map(
-        lambda x: x.year, dtype=np.int64
-    )
+    orders_filtered["O_YEAR"] = orders_filtered["O_ORDERDATE"].dt.year
     orders_filtered = orders_filtered.loc[:, ["O_ORDERKEY", "O_CUSTKEY", "O_YEAR"]]
     total = total.merge(
         orders_filtered, left_on="L_ORDERKEY", right_on="O_ORDERKEY", how="inner"
@@ -515,9 +510,7 @@ def q09(lineitem, orders, part, nation, partsupp, supplier):
     jn5["TMP"] = jn5.L_EXTENDEDPRICE * (1 - jn5.L_DISCOUNT) - (
         (1 * jn5.PS_SUPPLYCOST) * jn5.L_QUANTITY
     )
-    # jn5["O_YEAR"] = jn5.O_ORDERDATE.apply(lambda x: x.year)
-    # FIXME: move back to apply
-    jn5["O_YEAR"] = jn5.O_ORDERDATE.map(lambda x: x.year, dtype=np.int64)
+    jn5["O_YEAR"] = jn5.O_ORDERDATE.dt.year
     gb = jn5.groupby(["N_NAME", "O_YEAR"], as_index=False)["TMP"].sum()
     total = gb.sort_values(["N_NAME", "O_YEAR"], ascending=[True, False])
     print(total.execute())
