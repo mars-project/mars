@@ -19,7 +19,6 @@ import time
 
 import mars
 import mars.dataframe as md
-import numpy as np
 import pandas as pd
 
 
