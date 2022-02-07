@@ -245,6 +245,9 @@ def dataframe_sort_values(
     axis = validate_axis(axis, df)
     if axis != 0:
         raise NotImplementedError("Only support sort on axis 0")
+    if df.shape[axis] == 0:
+        # if the length is zero, return input directly
+        return df
     psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
     by = by if isinstance(by, (list, tuple)) else [by]
     op = DataFrameSortValues(
@@ -359,6 +362,9 @@ def series_sort_values(
     axis = validate_axis(axis, series)
     if axis != 0:
         raise NotImplementedError("Only support sort on axis 0")
+    if series.shape[axis] == 0:
+        # if the length is zero, return input directly
+        return series
     psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
     op = DataFrameSortValues(
         axis=axis,
