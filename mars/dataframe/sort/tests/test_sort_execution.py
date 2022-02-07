@@ -239,11 +239,11 @@ def test_sort_values_execution(setup, distinct_opt):
     )
 
     # test for empty input(#GH 2649)
-    pd_df = pd.DataFrame(np.random.rand(10, 3), columns=['col1', 'col2', 'col3'])
+    pd_df = pd.DataFrame(np.random.rand(10, 3), columns=["col1", "col2", "col3"])
     df = DataFrame(pd_df, chunk_size=4)
-    df = df[df['col2'] > 1].execute()
-    result = df.sort_values(by='col1').execute().fetch()
-    expected = pd_df[pd_df['col2'] > 1].sort_values(by='col1')
+    df = df[df["col2"] > 1].execute()
+    result = df.sort_values(by="col1").execute().fetch()
+    expected = pd_df[pd_df["col2"] > 1].sort_values(by="col1")
     pd.testing.assert_frame_equal(result, expected)
 
     pd_s = pd.Series(np.random.rand(10))
