@@ -47,10 +47,19 @@ class TensorFromZarr(TensorFromHDF5Like):
 def fromzarr(path, group=None, dataset=None, chunk_size=None):
     import zarr
 
+    try:
+        # since v2.11.0, zarr convert mutable mappings to KVStore
+        from zarr.storage import KVStore as zarr_kvstore
+    except ImportError:  # pragma: no cover
+        zarr_kvstore = None
+
     if isinstance(path, zarr.Array):
         arr = path
-        if isinstance(arr.store, FSMap):
+        if zarr_kvstore is None and isinstance(arr.store, FSMap):  # pragma: no cover
             root = arr.store.root
+            path, dataset = root.rsplit("/", 1)
+        elif zarr_kvstore and isinstance(arr.store, zarr_kvstore):
+            root = arr.store._mutable_mapping.root
             path, dataset = root.rsplit("/", 1)
         else:
             path = arr.store.path

@@ -94,7 +94,11 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
 
     @classmethod
     def _tile(cls, op):
-        if op.inputs[0].ndim == 2:
+        inp = op.inputs[0]
+        if inp.shape[op.axis] == 0:
+            # if the length is zero, return input directly
+            return inp
+        if inp.ndim == 2:
             return (yield from cls._tile_dataframe(op))
         else:
             return (yield from cls._tile_series(op))
