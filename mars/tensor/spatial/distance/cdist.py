@@ -532,6 +532,11 @@ def cdist(XA, XB, metric="euclidean", **kwargs):
             "3rd argument metric must be a string identifier " "or a function."
         )
 
+    # scipy remove "wminkowski" since v1.8.0, use "minkowski" with `w=`
+    # keyword-argument for the given weight.
+    if metric == "wminkowski":
+        metric = "minkowski"
+
     p = kwargs.pop("p", None)
     w = kwargs.pop("w", None)
     if w is not None:

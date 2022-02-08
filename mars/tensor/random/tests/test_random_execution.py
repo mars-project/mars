@@ -149,7 +149,7 @@ def test_sparse_randint_execution(setup):
     assert res.shape == (30, 50)
     np.testing.assert_array_less(res.data, 2)
     np.testing.assert_array_less(0, res.data)
-    assert pytest.approx((res >= 1).toarray().sum(), 30 * 50 * 0.1, abs=20)
+    assert (res >= 1).toarray().sum() == pytest.approx(30 * 50 * 0.1, abs=20)
 
 
 random_test_options = namedtuple("random_test_options", ["func_name", "args", "kwargs"])
