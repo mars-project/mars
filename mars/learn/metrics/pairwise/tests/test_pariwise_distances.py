@@ -47,7 +47,7 @@ def test_pairwise_distances_execution(setup):
     weight = np.random.rand(5)
     d = pairwise_distances(x, y, metric="wminkowski", p=3, w=weight)
     result = d.execute().fetch()
-    expected = sk_pairwise_distances(raw_x, raw_y, metric="wminkowski", p=3, w=weight)
+    expected = sk_pairwise_distances(raw_x, raw_y, metric="minkowski", p=3, w=weight)
     np.testing.assert_almost_equal(result, expected)
 
     # test pdist
