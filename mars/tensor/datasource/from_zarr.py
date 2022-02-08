@@ -50,12 +50,12 @@ def fromzarr(path, group=None, dataset=None, chunk_size=None):
     try:
         # since v2.11.0, zarr convert mutable mappings to KVStore
         from zarr.storage import KVStore as zarr_kvstore
-    except ImportError:
+    except ImportError:  # pragma: no cover
         zarr_kvstore = None
 
     if isinstance(path, zarr.Array):
         arr = path
-        if zarr_kvstore is None and isinstance(arr.store, FSMap):
+        if zarr_kvstore is None and isinstance(arr.store, FSMap):  # pragma: no cover
             root = arr.store.root
             path, dataset = root.rsplit("/", 1)
         elif zarr_kvstore and isinstance(arr.store, zarr_kvstore):
