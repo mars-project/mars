@@ -37,7 +37,7 @@ jobs:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
           CIBW_MANYLINUX_AARCH64_IMAGE: manylinux2014
 
-      - name: Build wheels(Python 3.10 x86_64)
+      - name: Build wheels (Python 3.10 x86_64)
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.arch == 'auto'}}
         uses: pypa/cibuildwheel@v2.3.1
         env:
@@ -46,10 +46,10 @@ jobs:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
 
       - name: Build source
-        if: ${{ matrix.os == 'windows-latest' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.arch == 'auto'}}
         run: |
-          pip install build
-          python -m build --sdist
+          pip install cython numpy
+          python setup.py sdist --formats=gztar --dist-dir=./wheelhouse
 
       - name: Release to pypi
         shell: bash
@@ -70,6 +70,7 @@ jobs:
           echo "password=$PYPI_PWD"     >> ~/.pypirc
           python -m pip install twine
           python -m twine upload -r pypi --skip-existing wheelhouse/*
+
       - name: Upload artifacts to github
         uses: actions/upload-artifact@v1
         with:
