@@ -312,6 +312,10 @@ def test_loc_getitem(setup):
     result = df.execute().fetch()
     expected = raw2.loc[:, "b"]
     pd.testing.assert_series_equal(result, expected)
+    df = df2.loc[:, ["b", "a"]]
+    result = df.execute().fetch()
+    expected = raw2.loc[:, ["b", "a"]]
+    pd.testing.assert_frame_equal(result, expected)
 
     # 'b' is non-unique
     df = df3.loc[:, "b"]
@@ -333,6 +337,11 @@ def test_loc_getitem(setup):
 
     # label-based fancy index
     df = df2.loc[[3, 0, 1], ["c", "a", "d"]]
+    result = df.execute().fetch()
+    expected = raw2.loc[[3, 0, 1], ["c", "a", "d"]]
+    pd.testing.assert_frame_equal(result, expected)
+    df = df2[df2["a"] < 10]
+    df = df.loc[[3, 0, 1], ["c", "a", "d"]]
     result = df.execute().fetch()
     expected = raw2.loc[[3, 0, 1], ["c", "a", "d"]]
     pd.testing.assert_frame_equal(result, expected)
