@@ -74,6 +74,22 @@ def test_arithmetic_query(setup):
     r_df2, _r_col_a = fetch(execute(df2, df1["A"]))
     pd.testing.assert_series_equal(r_df2, -raw["A"] + raw["B"] * 5 + 3 * raw["C"])
 
+    df1 = md.DataFrame(raw, chunk_size=10)
+    df2 = md.DataFrame(raw2, chunk_size=10)
+    df3 = df1.merge(df2, on="A", suffixes=("", "_"))
+    df3["K"] = df4 = df3["A"] * (1 - df3["B"])
+    graph = TileableGraph([df3.data])
+    next(TileableGraphBuilder(graph).build())
+    records = optimize(graph)
+    opt_df4 = records.get_optimization_result(df4.data)
+    assert opt_df4.op.expr == "(`A`) * ((1) - (`B`))"
+    assert len(graph) == 5
+    assert len([n for n in graph if isinstance(n.op, DataFrameEval)]) == 1
+
+    r_df3 = raw.merge(raw2, on="A", suffixes=("", "_"))
+    r_df3["K"] = r_df3["A"] * (1 - r_df3["B"])
+    pd.testing.assert_frame_equal(df3.execute().fetch(), r_df3)
+
 
 @enter_mode(build=True)
 def test_bool_eval_to_query(setup):

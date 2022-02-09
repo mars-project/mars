@@ -162,8 +162,12 @@ class OptimizationRule(ABC):
         node = self._records.get_optimization_result(node) or node
         preds_opt_to_remove = []
         for pred in self._graph.predecessors(node):
-            pred_original = self._records.get_original_chunk(pred) or pred
-            pred_opt = self._records.get_optimization_result(pred) or pred
+            pred_original = self._records.get_original_chunk(pred)
+            pred_original = pred_original if pred_original is not None else pred
+
+            pred_opt = self._records.get_optimization_result(pred)
+            pred_opt = pred_opt if pred_opt is not None else pred
+
             if pred_opt in self._graph.results or pred_original in self._graph.results:
                 continue
             affect_succ = self._preds_to_remove.get(pred_original) or []
