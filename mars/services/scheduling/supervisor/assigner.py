@@ -194,13 +194,13 @@ class AssignerActor(mo.Actor):
                     elif size == max_size:
                         bands.append(band)
             band = random.choice(bands)
-            if band in exclude_bands and exclude_bands_force:
+            if exclude_bands_force and band in exclude_bands:
                 raise NoAvailableBand(
                     f"No bands available for subtask {subtask.subtask_id} after "
                     f"excluded {exclude_bands}"
                 )
             if subtask.bands_specified and band not in subtask.expect_bands:
-                raise Exception(
+                raise NoAvailableBand(
                     f"No bands available for subtask {subtask.subtask_id} on bands {subtask.expect_bands} "
                     f"after excluded {exclude_bands}"
                 )

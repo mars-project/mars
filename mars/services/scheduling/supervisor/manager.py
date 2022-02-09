@@ -108,8 +108,7 @@ class SubtaskManagerActor(mo.Actor):
         await self._speculation_execution_scheduler.start()
 
     async def __pre_destroy__(self):
-        if self._subtask_speculation_enabled:
-            await self._speculation_execution_scheduler.stop()
+        await self._speculation_execution_scheduler.stop()
 
     @alru_cache
     async def _get_task_api(self):
@@ -446,17 +445,19 @@ class SpeculativeScheduler:
         self._speculation_execution_task = None
 
     async def start(self):
-        self._speculation_execution_task = create_task_with_ex_logged(
-            self._speculative_execution()
-        )
-        logger.info(
-            "Speculative execution started with config %s.", self._speculation_config
-        )
+        if self._subtask_speculation_enabled:
+            self._speculation_execution_task = create_task_with_ex_logged(
+                    self._speculative_execution()
+                )
+            logger.info(
+                "Speculative execution started with config %s.", self._speculation_config
+            )
 
     async def stop(self):
-        self._speculation_execution_task.cancel()
-        await self._speculation_execution_task
-        logger.info("Speculative execution stopped.")
+        if self._subtask_speculation_enabled:
+            self._speculation_execution_task.cancel()
+            await self._speculation_execution_task
+            logger.info("Speculative execution stopped.")
 
     def add_subtask(self, subtask_info: SubtaskScheduleInfo):
         # duplicate subtask add will be handled in `_speculative_execution`.

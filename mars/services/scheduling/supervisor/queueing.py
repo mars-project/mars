@@ -272,10 +272,7 @@ class SubtaskQueueingActor(mo.Actor):
         ):
             #  skip removed items (as they may be re-pushed into the queue)
             heapq.heappop(task_queue)
-        if task_queue:
-            return True
-        else:
-            return False
+        return bool(task_queue)
 
     @mo.extensible
     def update_subtask_priority(self, subtask_id: str, priority: Tuple):

@@ -856,10 +856,10 @@ class TaskProcessorActor(mo.Actor):
                 subtask_result,
                 prev_result,
             )
-            # For duplicate run of subtasks, if the progress or s
-            # For subtask canceled in task speculation, just do nothing.
+            # For duplicate run of subtasks, if the progress is smaller or the subtask has finished or canceled
+            # in task speculation, just do nothing.
             # TODO(chaokunyang) If duplicate run of subtasks failed, it may be the fault in worker node,
-            #  print the exception, and if multiple failures on the same node, strip the node from the cluster.
+            #  print the exception, and if multiple failures on the same node, remove the node from the cluster.
             return
         if subtask_result.bands:
             [band] = subtask_result.bands
