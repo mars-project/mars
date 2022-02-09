@@ -48,7 +48,7 @@ jobs:
       - name: Build source
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.arch == 'auto'}}
         run: |
-          pip install cython numpy
+          pip install -r ci/requirements-wheel.txt
           python setup.py sdist --formats=gztar --dist-dir=./wheelhouse
 
       - name: Release to pypi
