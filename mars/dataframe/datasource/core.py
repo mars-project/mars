@@ -210,7 +210,9 @@ def merge_small_files(
     if merged_file_size is not None:
         merged_file_size = parse_readable_size(merged_file_size)[0]
     else:
-        merged_file_size = options.chunk_store_limit
+        # Estimated size is relatively large than the real one,
+        # so we double the merged size
+        merged_file_size = options.chunk_store_limit * 2
     # sample files whose size equals `n_sample_file`
     sampled_chunks = np.random.choice(df.chunks, n_sample_file)
     max_chunk_size = 0

@@ -860,12 +860,12 @@ class ReductionCompiler:
             self._output_key_to_post_steps[step.output_key] = step
             self._update_col_dict(self._output_key_to_post_cols, step.output_key, cols)
 
-    @functools.lru_cache(100)
-    def _compile_expr_function(self, py_src):
+    def _compile_expr_function(self, py_src: str, local_consts: dict):
         from ... import tensor, dataframe
 
         result_store = dict()
-        global_vars = globals()
+        global_vars = globals().copy()
+        global_vars.update(local_consts)
         global_vars.update(dict(mt=tensor, md=dataframe, array=np.array, nan=np.nan))
         exec(
             py_src, global_vars, result_store
@@ -989,24 +989,24 @@ class ReductionCompiler:
                 assert len(initial_inputs) == 1
                 input_key = initial_inputs[0].key
 
-                func_str, _ = self._generate_function_str(t.inputs[0])
+                func_str, _, local_consts = self._generate_function_str(t.inputs[0])
                 pre_funcs.append(
                     ReductionPreStep(
                         input_key,
                         agg_input_key,
                         None,
-                        self._compile_expr_function(func_str),
+                        self._compile_expr_function(func_str, local_consts),
                     )
                 )
         # collect function output after agg
-        func_str, input_keys = self._generate_function_str(func_ret)
+        func_str, input_keys, local_consts = self._generate_function_str(func_ret)
         post_funcs.append(
             ReductionPostStep(
                 input_keys,
                 func_ret.key,
                 func_name,
                 None,
-                self._compile_expr_function(func_str),
+                self._compile_expr_function(func_str, local_consts),
             )
         )
         if len(_func_compile_cache) > 100:  # pragma: no cover
@@ -1034,6 +1034,7 @@ class ReductionCompiler:
 
         input_key_to_var = OrderedDict()
         local_key_to_var = dict()
+        local_consts_to_val = dict()
         ref_counts = dict()
         ref_visited = set()
         local_lines = []
@@ -1086,7 +1087,12 @@ class ReductionCompiler:
                     # get representation for variables
                     if hasattr(v, "key"):
                         return keys_to_vars[v.key]
-                    return v
+                    elif isinstance(v, (int, bool, str, bytes, np.integer, np.bool_)):
+                        return repr(v)
+                    else:
+                        const_name = f"_const_{len(local_consts_to_val)}"
+                        local_consts_to_val[const_name] = v
+                        return const_name
 
                 func_name = func_name_raw = getattr(t.op, "_func_name", None)
                 rfunc_name = getattr(t.op, "_rfunc_name", func_name)
@@ -1187,6 +1193,7 @@ class ReductionCompiler:
             f"    {lines_str}\n"
             f"    return {local_key_to_var[out_tileable.key]}",
             list(input_key_to_var.keys()),
+            local_consts_to_val,
         )
 
     def compile(self) -> ReductionSteps:

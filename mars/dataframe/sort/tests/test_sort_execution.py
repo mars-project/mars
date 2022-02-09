@@ -238,6 +238,21 @@ def test_sort_values_execution(setup, distinct_opt):
         result.reset_index(drop=True), expected.reset_index(drop=True)
     )
 
+    # test for empty input(#GH 2649)
+    pd_df = pd.DataFrame(np.random.rand(10, 3), columns=["col1", "col2", "col3"])
+    df = DataFrame(pd_df, chunk_size=4)
+    df = df[df["col2"] > 1].execute()
+    result = df.sort_values(by="col1").execute().fetch()
+    expected = pd_df[pd_df["col2"] > 1].sort_values(by="col1")
+    pd.testing.assert_frame_equal(result, expected)
+
+    pd_s = pd.Series(np.random.rand(10))
+    s = Series(pd_s, chunk_size=4)
+    s = s[s > 1].execute()
+    result = s.sort_values().execute().fetch()
+    expected = pd_s[pd_s > 1].sort_values()
+    pd.testing.assert_series_equal(result, expected)
+
 
 def test_sort_index_execution(setup):
     raw = pd.DataFrame(np.random.rand(100, 20), index=np.random.rand(100))

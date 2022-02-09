@@ -645,6 +645,12 @@ def test_dataframe_loc():
     for loc_chunk, chunk in zip(tiled_loc_df.chunks, tiled_df.chunks):
         assert loc_chunk.index_value.key == chunk.index_value.key
 
+    # test loc on filtered df
+    df2 = df[df["x"] < 1]
+    loc_df = df2.loc[:, ["y", "x"]]
+    tiled_loc_df = tile(loc_df)
+    assert len(tiled_loc_df.chunks) == 3
+
 
 def test_loc_use_iloc():
     raw = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]], columns=["x", "y", "z"])
