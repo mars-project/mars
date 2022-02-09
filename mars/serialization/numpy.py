@@ -61,7 +61,12 @@ class NDArraySerializer(Serializer):
         if header["pickle"]:
             return unpickle_buffers(buffers)
 
-        dtype = np.lib.format.descr_to_dtype(header["descr"])
+        try:
+            dtype = np.lib.format.descr_to_dtype(header["descr"])
+        except AttributeError:  # pragma: no cover
+            # for older numpy versions, descr_to_dtype is not implemented
+            dtype = np.dtype(header["descr"])
+
         dtype_new_order = header["dtype_new_order"]
         if dtype_new_order:
             dtype = dtype[dtype_new_order]
