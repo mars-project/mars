@@ -19,9 +19,8 @@ from ... import opcodes
 from ...config import options
 from ...core import OutputType, recursive_tile
 from ...core.custom_log import redirect_custom_log
-from ...lib.version import parse as parse_version
 from ...serialization.serializables import AnyField, BoolField, TupleField, DictField
-from ...utils import enter_current_session, quiet_stdio
+from ...utils import enter_current_session, quiet_stdio, pd_release_version
 from ..core import DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import (
@@ -32,6 +31,8 @@ from ..utils import (
     filter_dtypes_by_index,
     make_dtypes,
 )
+
+_with_convert_dtype = pd_release_version < (1, 2, 0)
 
 
 class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
@@ -236,7 +237,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
                     if self.call_agg:
                         infer_df = test_df.agg(self._func, args=self.args, **self.kwds)
                     else:
-                        if parse_version(pd.__version__) >= parse_version("1.2.0"):
+                        if not _with_convert_dtype:
                             infer_df = test_df.transform(
                                 self._func, *self.args, **self.kwds
                             )

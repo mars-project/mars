@@ -57,11 +57,19 @@ async def new_cluster_in_isolation(
     config: Union[str, Dict] = None,
     web: bool = True,
     timeout: float = None,
+    n_supervisor_process: int = 0,
 ) -> ClientType:
     if subprocess_start_method is None:
         subprocess_start_method = "spawn" if sys.platform == "win32" else "forkserver"
     cluster = LocalCluster(
-        address, n_worker, n_cpu, cuda_devices, subprocess_start_method, config, web
+        address,
+        n_worker,
+        n_cpu,
+        cuda_devices,
+        subprocess_start_method,
+        config,
+        web,
+        n_supervisor_process,
     )
     await cluster.start()
     return await LocalClient.create(cluster, backend, timeout)
@@ -77,6 +85,7 @@ async def new_cluster(
     web: bool = True,
     loop: asyncio.AbstractEventLoop = None,
     use_uvloop: Union[bool, str] = "auto",
+    n_supervisor_process: int = 0,
 ) -> ClientType:
     coro = new_cluster_in_isolation(
         address,
@@ -86,6 +95,7 @@ async def new_cluster(
         subprocess_start_method=subprocess_start_method,
         config=config,
         web=web,
+        n_supervisor_process=n_supervisor_process,
     )
     isolation = ensure_isolation_created(dict(loop=loop, use_uvloop=use_uvloop))
     fut = asyncio.run_coroutine_threadsafe(coro, isolation.loop)
@@ -111,6 +121,7 @@ class LocalCluster:
         config: Union[str, Dict] = None,
         web: Union[bool, str] = "auto",
         timeout: float = None,
+        n_supervisor_process: int = 0,
     ):
         # load third party extensions.
         init_extension_entrypoints()
@@ -121,6 +132,7 @@ class LocalCluster:
         self._subprocess_start_method = subprocess_start_method
         self._config = config
         self._n_cpu = cpu_count() if n_cpu == "auto" else n_cpu
+        self._n_supervisor_process = n_supervisor_process
         if cuda_devices == "auto":
             total = cuda_count()
             all_devices = np.arange(total)
@@ -188,7 +200,7 @@ class LocalCluster:
         )
         self._supervisor_pool = await create_supervisor_actor_pool(
             self._address,
-            n_process=0,
+            n_process=self._n_supervisor_process,
             modules=supervisor_modules,
             subprocess_start_method=self._subprocess_start_method,
         )

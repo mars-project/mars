@@ -16,7 +16,7 @@ fi
 
 CONDA_FILE="Miniconda3-latest-${CONDA_OS}-x86_64.${FILE_EXT}"
 
-TEST_PACKAGES="virtualenv psutil pyyaml"
+TEST_PACKAGES="virtualenv"
 
 if [[ "$FILE_EXT" == "sh" ]]; then
   curl -L -o "miniconda.${FILE_EXT}" https://repo.continuum.io/miniconda/$CONDA_FILE
@@ -28,9 +28,12 @@ else
   CONDA=$(echo "/$CONDA" | sed -e 's/\\/\//g' -e 's/://')
   echo "Using installed conda at $CONDA"
   CONDA_BIN_PATH=$CONDA/Scripts
-  export PATH="$CONDA/envs/test/Scripts:$CONDA/envs/test:$CONDA/Scripts:$CONDA:$PATH"
 fi
 $CONDA_BIN_PATH/conda create --quiet --yes -n test python=$PYTHON $TEST_PACKAGES
+
+if [[ "$CONDA_OS" == "Windows" ]]; then
+  source "$CONDA/Scripts/activate" test
+fi
 
 #check python version
 export PYTHON=$(python -c "import sys; print('.'.join(str(v) for v in sys.version_info[:3]))")

@@ -29,7 +29,7 @@ from ....dataframe import DataFrame
 from ....tensor import arange, tensor
 from ....tensor.random import rand
 from ....tests.core import require_cudf
-from ....utils import lazy_import
+from ....utils import lazy_import, pd_release_version
 from ... import eval as mars_eval, cut, qcut, get_dummies
 from ...datasource.dataframe import from_pandas as from_pandas_df
 from ...datasource.series import from_pandas as from_pandas_series
@@ -38,7 +38,11 @@ from .. import to_gpu, to_cpu
 from ..to_numeric import to_numeric
 from ..rebalance import DataFrameRebalance
 
+pytestmark = pytest.mark.pd_compat
+
 cudf = lazy_import("cudf", globals=globals())
+
+_explode_with_ignore_index = pd_release_version[:2] >= (1, 1)
 
 
 @require_cudf
@@ -303,7 +307,7 @@ def test_describe_execution(setup):
 
 def test_data_frame_apply_execute(setup):
     cols = [chr(ord("A") + i) for i in range(10)]
-    df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
+    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
 
     old_chunk_store_limit = options.chunk_store_limit
     try:
@@ -375,7 +379,7 @@ def test_data_frame_apply_execute(setup):
 
 def test_series_apply_execute(setup):
     idxes = [chr(ord("A") + i) for i in range(20)]
-    s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
+    s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
 
     series = from_pandas_series(s_raw, chunk_size=5)
 
@@ -437,10 +441,10 @@ def test_apply_with_arrow_dtype_execution(setup):
 
 def test_transform_execute(setup):
     cols = [chr(ord("A") + i) for i in range(10)]
-    df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
+    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
 
     idx_vals = [chr(ord("A") + i) for i in range(20)]
-    s_raw = pd.Series([i ** 2 for i in range(20)], index=idx_vals)
+    s_raw = pd.Series([i**2 for i in range(20)], index=idx_vals)
 
     def rename_fn(f, new_name):
         f.__name__ = new_name
@@ -561,21 +565,23 @@ def test_transform_execute(setup):
 
 @pytest.mark.skipif(pa is None, reason="pyarrow not installed")
 def test_transform_with_arrow_dtype_execution(setup):
-    df1 = pd.DataFrame({"a": [1, 2, 1], "b": ["a", "b", "a"]})
-    df = from_pandas_df(df1)
+    raw = pd.DataFrame({"a": [1, 2, 1], "b": ["a", "b", "a"]})
+    df = from_pandas_df(raw)
     df["b"] = df["b"].astype("Arrow[string]")
 
     r = df.transform({"b": lambda x: x + "_suffix"})
     result = r.execute().fetch()
-    expected = df1.transform({"b": lambda x: x + "_suffix"})
+    result["b"] = result["b"].to_numpy()
+    expected = raw.transform({"b": lambda x: x + "_suffix"})
     pd.testing.assert_frame_equal(result, expected)
 
-    s1 = df1["b"]
+    s1 = raw["b"]
     s = from_pandas_series(s1)
     s = s.astype("arrow_string")
 
     r = s.transform(lambda x: x + "_suffix")
     result = r.execute().fetch()
+    result = pd.Series(result.to_numpy(), name=result.name, index=result.index)
     expected = s1.transform(lambda x: x + "_suffix")
     pd.testing.assert_series_equal(result, expected)
 
@@ -1968,7 +1974,12 @@ def test_stack_execution(setup):
             assert_method(result, expected)
 
 
-def test_explode_execution(setup):
+@pytest.mark.parametrize(
+    "ignore_index", [False, True] if _explode_with_ignore_index else [False]
+)
+def test_explode_execution(setup, ignore_index):
+    explode_kw = {"ignore_index": True} if ignore_index else {}
+
     raw = pd.DataFrame(
         {
             "a": np.random.rand(10),
@@ -1978,20 +1989,12 @@ def test_explode_execution(setup):
         }
     )
     df = from_pandas_df(raw, chunk_size=(4, 2))
-
-    for ignore_index in [False, True]:
-        r = df.explode("b", ignore_index=ignore_index)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch(), raw.explode("b", ignore_index=ignore_index)
-        )
+    r = df.explode("b", ignore_index=ignore_index)
+    pd.testing.assert_frame_equal(r.execute().fetch(), raw.explode("b", **explode_kw))
 
     series = from_pandas_series(raw.b, chunk_size=4)
-
-    for ignore_index in [False, True]:
-        r = series.explode(ignore_index=ignore_index)
-        pd.testing.assert_series_equal(
-            r.execute().fetch(), raw.b.explode(ignore_index=ignore_index)
-        )
+    r = series.explode(ignore_index=ignore_index)
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.b.explode(**explode_kw))
 
 
 def test_eval_query_execution(setup):

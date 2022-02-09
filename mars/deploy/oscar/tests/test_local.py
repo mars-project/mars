@@ -339,7 +339,9 @@ async def test_web_session(create_cluster, config):
     client = create_cluster[0]
     session_id = str(uuid.uuid4())
     web_address = client.web_address
-    session = await AsyncSession.init(web_address, session_id)
+    session = await AsyncSession.init(
+        web_address, session_id, request_rewriter=lambda x: x
+    )
     assert await session.get_web_endpoint() == web_address
     session.as_default()
     assert isinstance(session._isolated_session, _IsolatedWebSession)
@@ -437,7 +439,7 @@ async def test_session_progress(create_cluster):
             break
         await asyncio.sleep(0.1)
     else:
-        raise Exception("progress test failed.")
+        raise Exception(f"progress test failed, actual value {info.progress()}.")
 
     await info
     assert info.result() is None

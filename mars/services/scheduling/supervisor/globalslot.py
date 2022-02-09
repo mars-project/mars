@@ -62,6 +62,7 @@ class GlobalSlotManagerActor(mo.Actor):
     async def refresh_bands(self):
         self._band_total_slots = await self._cluster_api.get_all_bands()
 
+    @mo.extensible
     async def apply_subtask_slots(
         self,
         band: BandType,

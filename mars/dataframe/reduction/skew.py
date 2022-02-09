@@ -44,13 +44,13 @@ class DataFrameSkew(DataFrameReductionOperand, DataFrameReductionMixin):
             cnt = x.count()
             mean = x.mean(skipna=skipna)
             divided = (
-                (x ** 3).mean(skipna=skipna)
-                - 3 * (x ** 2).mean(skipna=skipna) * mean
-                + 2 * mean ** 3
+                (x**3).mean(skipna=skipna)
+                - 3 * (x**2).mean(skipna=skipna) * mean
+                + 2 * mean**3
             )
             var = x.var(skipna=skipna, ddof=0)
             if isinstance(var, ENTITY_TYPE) or var > 0:
-                val = where_function(var > 0, divided / var ** 1.5, np.nan)
+                val = where_function(var > 0, divided / var**1.5, np.nan)
             else:
                 val = np.nan
             if not bias:
@@ -65,7 +65,7 @@ class DataFrameSkew(DataFrameReductionOperand, DataFrameReductionMixin):
 
 
 def skew_series(
-    df, axis=None, skipna=None, level=None, combine_size=None, bias=False, method=None
+    df, axis=None, skipna=True, level=None, combine_size=None, bias=False, method=None
 ):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameSkew(
@@ -84,7 +84,7 @@ def skew_series(
 def skew_dataframe(
     df,
     axis=None,
-    skipna=None,
+    skipna=True,
     level=None,
     numeric_only=None,
     combine_size=None,

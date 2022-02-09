@@ -9,7 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.6, 3.7, 3.8, 3.9, 3.8-cython]
+        python-version: [3.7, 3.8, 3.9, 3.8-cython]
         include:
           - { os: ubuntu-latest, python-version: 3.8-cython, no-common-tests: 1,
               no-deploy: 1, with-cython: 1 }
@@ -50,7 +50,6 @@ jobs:
 
         source ./ci/rewrite-cov-config.sh
 
-        pip install git+https://github.com/mars-project/pytest-asyncio.git
         pip install numpy scipy cython oss2
         pip install -e ".[dev,extra]"
         pip install virtualenv flaky

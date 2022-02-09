@@ -736,6 +736,7 @@ class _IsolatedSession(AbstractAsyncSession):
         web_api: Optional[OscarWebAPI],
         client: ClientType = None,
         timeout: float = None,
+        request_rewriter: Callable = None,
     ):
         super().__init__(address, session_id)
         self._session_api = session_api
@@ -747,6 +748,7 @@ class _IsolatedSession(AbstractAsyncSession):
         self._web_api = web_api
         self.client = client
         self.timeout = timeout
+        self._request_rewriter = request_rewriter
 
         self._tileable_to_fetch = WeakKeyDictionary()
         self._asyncio_task_timeout_detector_task = (
@@ -796,6 +798,7 @@ class _IsolatedSession(AbstractAsyncSession):
         **kwargs,
     ) -> "AbstractAsyncSession":
         init_local = kwargs.pop("init_local", False)
+        request_rewriter = kwargs.pop("request_rewriter", None)
         if init_local:
             from .local import new_cluster_in_isolation
 
@@ -811,10 +814,36 @@ class _IsolatedSession(AbstractAsyncSession):
 
         if urlparse(address).scheme == "http":
             return await _IsolatedWebSession._init(
-                address, session_id, new=new, timeout=timeout
+                address,
+                session_id,
+                new=new,
+                timeout=timeout,
+                request_rewriter=request_rewriter,
             )
         else:
             return await cls._init(address, session_id, new=new, timeout=timeout)
+
+    async def _update_progress(self, task_id: str, progress: Progress):
+        zero_acc_time = 0
+        delay = 0.5
+        while True:
+            try:
+                last_progress_value = progress.value
+                progress.value = await self._task_api.get_task_progress(task_id)
+                if abs(progress.value - last_progress_value) < 1e-4:
+                    # if percentage does not change, we add delay time by 0.5 seconds every time
+                    zero_acc_time = min(5, zero_acc_time + 0.5)
+                    delay = zero_acc_time
+                else:
+                    # percentage changes, we use percentage speed to calc progress time
+                    zero_acc_time = 0
+                    speed = abs(progress.value - last_progress_value) / delay
+                    # one percent for one second
+                    delay = 0.01 / speed
+                delay = max(0.5, min(delay, 5.0))
+                await asyncio.sleep(delay)
+            except asyncio.CancelledError:
+                break
 
     async def _run_in_background(
         self,
@@ -826,55 +855,52 @@ class _IsolatedSession(AbstractAsyncSession):
         with enter_mode(build=True, kernel=True):
             # wait for task to finish
             cancelled = False
+            progress_task = asyncio.create_task(
+                self._update_progress(task_id, progress)
+            )
             start_time = time.time()
-            while True:
-                try:
-                    if not cancelled:
-                        task_result: Union[TaskResult, None] = None
-                        try:
-                            task_result = await self._task_api.wait_task(
-                                task_id, timeout=0.5
-                            )
-                        finally:
-                            if task_result is None:
-                                # not finished, set progress
-                                progress.value = await self._task_api.get_task_progress(
-                                    task_id
-                                )
-                            else:
-                                progress.value = 1.0
-                        if task_result is not None:
-                            break
-                    else:
-                        # wait for task to finish
-                        task_result: TaskResult = await self._task_api.wait_task(
-                            task_id
-                        )
+            task_result: Optional[TaskResult] = None
+            try:
+                if self.timeout is None:
+                    check_interval = 30
+                else:
+                    elapsed = time.time() - start_time
+                    check_interval = min(self.timeout - elapsed, 30)
+
+                while True:
+                    task_result = await self._task_api.wait_task(
+                        task_id, timeout=check_interval
+                    )
+                    if task_result is not None:
                         break
-                except asyncio.CancelledError:
-                    # cancelled
-                    cancelled = True
-                    await self._task_api.cancel_task(task_id)
-                except TimeoutError:  # pragma: no cover
-                    # ignore timeout when waiting for subtask progresses
-                    pass
-                finally:
-                    if (
+                    elif (
                         self.timeout is not None
                         and time.time() - start_time > self.timeout
                     ):
                         raise TimeoutError(
                             f"Task({task_id}) running time > {self.timeout}"
                         )
-            profiling.result = task_result.profiling
-            if task_result.profiling:
-                logger.warning(
-                    "Profile task %s execution result:\n%s",
-                    task_id,
-                    json.dumps(task_result.profiling, indent=4),
-                )
-            if task_result.error:
-                raise task_result.error.with_traceback(task_result.traceback)
+            except asyncio.CancelledError:
+                # cancelled
+                cancelled = True
+                await self._task_api.cancel_task(task_id)
+            finally:
+                progress_task.cancel()
+                if task_result is not None:
+                    progress.value = 1.0
+                else:
+                    # not finished, set progress
+                    progress.value = await self._task_api.get_task_progress(task_id)
+            if task_result is not None:
+                profiling.result = task_result.profiling
+                if task_result.profiling:
+                    logger.warning(
+                        "Profile task %s execution result:\n%s",
+                        task_id,
+                        json.dumps(task_result.profiling, indent=4),
+                    )
+                if task_result.error:
+                    raise task_result.error.with_traceback(task_result.traceback)
             if cancelled:
                 return
             fetch_tileables = await self._task_api.get_fetch_tileables(task_id)
@@ -978,7 +1004,9 @@ class _IsolatedSession(AbstractAsyncSession):
         if urlparse(self.address).scheme == "http":
             from ...services.storage.api import WebStorageAPI
 
-            storage_api = WebStorageAPI(self._session_id, self.address, band[1])
+            storage_api = WebStorageAPI(
+                self._session_id, self.address, band[1], self._request_rewriter
+            )
         else:
             storage_api = await StorageAPI.create(self._session_id, band[0], band[1])
         return storage_api
@@ -1221,7 +1249,12 @@ class _IsolatedSession(AbstractAsyncSession):
 class _IsolatedWebSession(_IsolatedSession):
     @classmethod
     async def _init(
-        cls, address: str, session_id: str, new: bool = True, timeout: float = None
+        cls,
+        address: str,
+        session_id: str,
+        new: bool = True,
+        timeout: float = None,
+        request_rewriter: Callable = None,
     ):
         from ...services.session import WebSessionAPI
         from ...services.lifecycle import WebLifecycleAPI
@@ -1230,15 +1263,15 @@ class _IsolatedWebSession(_IsolatedSession):
         from ...services.mutable import WebMutableAPI
         from ...services.cluster import WebClusterAPI
 
-        session_api = WebSessionAPI(address)
+        session_api = WebSessionAPI(address, request_rewriter)
         if new:
             # create new session
             await session_api.create_session(session_id)
-        lifecycle_api = WebLifecycleAPI(session_id, address)
-        meta_api = WebMetaAPI(session_id, address)
-        task_api = WebTaskAPI(session_id, address)
-        mutable_api = WebMutableAPI(session_id, address)
-        cluster_api = WebClusterAPI(address)
+        lifecycle_api = WebLifecycleAPI(session_id, address, request_rewriter)
+        meta_api = WebMetaAPI(session_id, address, request_rewriter)
+        task_api = WebTaskAPI(session_id, address, request_rewriter)
+        mutable_api = WebMutableAPI(session_id, address, request_rewriter)
+        cluster_api = WebClusterAPI(address, request_rewriter)
 
         return cls(
             address,
@@ -1251,6 +1284,7 @@ class _IsolatedWebSession(_IsolatedSession):
             cluster_api,
             None,
             timeout=timeout,
+            request_rewriter=request_rewriter,
         )
 
     async def get_web_endpoint(self) -> Optional[str]:
@@ -1696,7 +1730,10 @@ async def _execute(
                         break
                     except asyncio.TimeoutError:
                         # timeout
-                        if not cancelled.is_set():
+                        if (
+                            not cancelled.is_set()
+                            and execution_info.progress() is not None
+                        ):
                             progress_bar.update(execution_info.progress() * 100)
                 if cancelled.is_set():
                     # cancel execution

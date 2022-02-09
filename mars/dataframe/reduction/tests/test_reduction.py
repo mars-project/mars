@@ -53,6 +53,8 @@ from .. import (
 from ..aggregation import where_function
 from ..core import ReductionCompiler
 
+pytestmark = pytest.mark.pd_compat
+
 
 class FunctionOptions(NamedTuple):
     has_skipna: bool = True
@@ -467,7 +469,7 @@ def test_compile_function():
     # test agg for all data
     for ndim in [1, 2]:
         compiler = ReductionCompiler(store_source=True)
-        compiler.add_function(lambda x: (x ** 2).count() + 1, ndim=ndim)
+        compiler.add_function(lambda x: (x**2).count() + 1, ndim=ndim)
         result = compiler.compile()
         # check pre_funcs
         assert len(result.pre_funcs) == 1
@@ -478,11 +480,11 @@ def test_compile_function():
         assert result.agg_funcs[0].agg_func_name == "sum"
         # check post_funcs
         assert len(result.post_funcs) == 1
-        assert result.post_funcs[0].func_name == "<lambda_0>"
+        assert result.post_funcs[0].func_name == "<lambda>"
         assert "add" in result.post_funcs[0].func.__source__
 
         compiler.add_function(
-            lambda x: -x.prod() ** 2 + (1 + (x ** 2).count()), ndim=ndim
+            lambda x: -x.prod() ** 2 + (1 + (x**2).count()), ndim=ndim
         )
         result = compiler.compile()
         # check pre_funcs
@@ -537,6 +539,18 @@ def test_compile_function():
             assert "np.where" not in result.post_funcs[0].func.__source__
             assert ".where" in result.post_funcs[0].func.__source__
 
+        # check boolean expressions
+        compiler = ReductionCompiler(store_source=True)
+        compiler.add_function(lambda x: (x == "1").sum(), ndim=ndim)
+        result = compiler.compile()
+        # check pre_funcs
+        assert len(result.pre_funcs) == 1
+        assert "eq" in result.pre_funcs[0].func.__source__
+        # check agg_funcs
+        assert len(result.agg_funcs) == 1
+        assert result.agg_funcs[0].map_func_name == "sum"
+        assert result.agg_funcs[0].agg_func_name == "sum"
+
     # test agg for specific columns
     compiler = ReductionCompiler(store_source=True)
     compiler.add_function(lambda x: 1 + x.sum(), ndim=2, cols=["a", "b"])
@@ -581,7 +595,7 @@ def test_custom_aggregation():
 
     class MockReduction2(CustomReduction):
         def pre(self, value):
-            return value + 1, value ** 2
+            return value + 1, value**2
 
         def agg(self, v1, v2):
             return v1.sum(), v2.prod()

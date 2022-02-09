@@ -31,7 +31,7 @@ from ...serialization.serializables import (
     BoolField,
 )
 from ...tensor import tensor as astensor
-from ...utils import lazy_import
+from ...utils import lazy_import, pd_release_version
 from ..core import Index as DataFrameIndexType, INDEX_TYPE
 from ..initializer import Index as asindex
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -40,6 +40,9 @@ from .index_lib import DataFrameReindexHandler
 
 
 cudf = lazy_import("cudf", globals=globals())
+
+# under pandas<1.1, SparseArray ignores zeros on creation
+_pd_sparse_miss_zero = pd_release_version[:2] < (1, 1)
 
 
 class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
@@ -268,15 +271,25 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
                             shape=(index_shape, 1),
                             dtype=inp[col].dtype,
                         )
-                        sparse_array = pd.arrays.SparseArray.from_spmatrix(spmatrix)
                         # convert to SparseDtype(xxx, np.nan)
                         # to ensure 0 in sparse_array not converted to np.nan
-                        sparse_array = pd.arrays.SparseArray(
-                            sparse_array.sp_values,
-                            sparse_index=sparse_array.sp_index,
-                            fill_value=np.nan,
-                            dtype=pd.SparseDtype(sparse_array.dtype, np.nan),
-                        )
+                        if not _pd_sparse_miss_zero:
+                            sparse_array = pd.arrays.SparseArray.from_spmatrix(spmatrix)
+                            sparse_array = pd.arrays.SparseArray(
+                                sparse_array.sp_values,
+                                sparse_index=sparse_array.sp_index,
+                                fill_value=np.nan,
+                                dtype=pd.SparseDtype(sparse_array.dtype, np.nan),
+                            )
+                        else:
+                            from pandas._libs.sparse import IntIndex
+
+                            sparse_array = pd.arrays.SparseArray(
+                                data,
+                                sparse_index=IntIndex(index_shape, ind),
+                                fill_value=np.nan,
+                                dtype=pd.SparseDtype(data.dtype, np.nan),
+                            )
                         series = pd.Series(sparse_array, index=index)
 
                         i_to_columns[i] = series
@@ -416,10 +429,13 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
                 else:
                     left = cls._convert_to_dense(inputs[j])
                     right = cls._convert_to_dense(inputs[j + 1])
-                if ((~left.isna()) & (~right.isna())).sum() > 0:
+
+                left_notna = left.notna()
+                right_notna = right.notna()
+                if (left_notna & right_notna).sum() > 0:
                     raise ValueError("cannot reindex from a duplicate axis")
-                curr.loc[~left.isna()] = left
-                curr.loc[~right.isna()] = right
+                curr.loc[left_notna] = left.loc[left_notna]
+                curr.loc[right_notna] = right.loc[right_notna]
             if ndim == 1:
                 result = curr
             else:

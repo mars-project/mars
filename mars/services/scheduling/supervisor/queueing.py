@@ -183,6 +183,10 @@ class SubtaskQueueingActor(mo.Actor):
         submit_aio_tasks = []
         manager_ref = await self._get_manager_ref()
 
+        apply_delays = []
+        submit_items_list = []
+        submitted_bands = []
+
         for band in bands:
             band_limit = limit or self._band_slot_nums[band]
             task_queue = self._band_queues[band]
@@ -197,17 +201,40 @@ class SubtaskQueueingActor(mo.Actor):
             subtask_ids = list(submit_items)
             if not subtask_ids:
                 continue
+
+            submitted_bands.append(band)
+            submit_items_list.append(submit_items)
+
             # todo it is possible to provide slot data with more accuracy
             subtask_slots = [1] * len(subtask_ids)
+
+            apply_delays.append(
+                self._slots_ref.apply_subtask_slots.delay(
+                    band, self._session_id, subtask_ids, subtask_slots
+                )
+            )
+
+        async with redirect_subtask_errors(
+            self,
+            [
+                item.subtask
+                for submit_items in submit_items_list
+                for item in submit_items.values()
+            ],
+        ):
+            submitted_ids_list = await self._slots_ref.apply_subtask_slots.batch(
+                *apply_delays
+            )
+
+        for band, submit_items, submitted_ids in zip(
+            submitted_bands, submit_items_list, submitted_ids_list
+        ):
+            subtask_ids = list(submit_items)
+            task_queue = self._band_queues[band]
 
             async with redirect_subtask_errors(
                 self, [item.subtask for item in submit_items.values()]
             ):
-                submitted_ids = set(
-                    await self._slots_ref.apply_subtask_slots(
-                        band, self._session_id, subtask_ids, subtask_slots
-                    )
-                )
                 non_submitted_ids = [k for k in submit_items if k not in submitted_ids]
                 if submitted_ids:
                     for stid in subtask_ids:

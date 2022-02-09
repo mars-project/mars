@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, List
+from collections import defaultdict
+from typing import Any, Callable, List
 
 from .... import oscar as mo
-from ....lib.aio import alru_cache
 from ....storage import StorageLevel
 from ....utils import serialize_serializable, deserialize_serializable
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
@@ -26,19 +26,10 @@ from .core import AbstractStorageAPI
 class StorageWebAPIHandler(MarsServiceWebAPIHandler):
     _root_pattern = "/api/session/(?P<session_id>[^/]+)/storage"
 
-    @alru_cache(cache_exceptions=False)
-    async def _get_cluster_api(self):
-        from ...cluster import ClusterAPI
-
-        return await ClusterAPI.create(self._supervisor_addr)
-
-    @alru_cache(cache_exceptions=False)
     async def _get_oscar_meta_api(self, session_id: str):
         from ...meta import MetaAPI
 
-        cluster_api = await self._get_cluster_api()
-        [address] = await cluster_api.get_supervisors_by_keys([session_id])
-        return await MetaAPI.create(session_id, address)
+        return await self._get_api_by_key(MetaAPI, session_id)
 
     async def _get_storage_api_by_object_id(self, session_id: str, object_id: str):
         from .oscar import StorageAPI
@@ -54,6 +45,25 @@ class StorageWebAPIHandler(MarsServiceWebAPIHandler):
         oscar_api = await self._get_storage_api_by_object_id(session_id, data_key)
         result = await oscar_api.get(data_key)
         self.write(serialize_serializable(result))
+
+    @web_api("batch/get", method="post")
+    async def get_batch_data(self, session_id: str):
+        body_args = deserialize_serializable(self.request.body)
+        storage_api_to_gets = defaultdict(list)
+        storage_api_to_idx = defaultdict(list)
+        results = [None] * len(body_args)
+        for i, (data_key, conditions, error) in enumerate(body_args):
+            oscar_api = await self._get_storage_api_by_object_id(session_id, data_key)
+            storage_api_to_idx[oscar_api].append(i)
+            storage_api_to_gets[oscar_api].append(
+                oscar_api.get.delay(data_key, conditions=conditions, error=error)
+            )
+        for api, fetches in storage_api_to_gets.items():
+            data_list = await api.get.batch(*fetches)
+            for idx, data in zip(storage_api_to_idx[api], data_list):
+                results[idx] = data
+        res_data = serialize_serializable(results)
+        self.write(res_data)
 
     @web_api("(?P<data_key>[^/]+)", method="post")
     async def get_data_by_post(self, session_id: str, data_key: str):
@@ -88,10 +98,17 @@ web_handlers = {StorageWebAPIHandler.get_root_pattern(): StorageWebAPIHandler}
 
 
 class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
-    def __init__(self, session_id: str, address: str, band_name: str):
+    def __init__(
+        self,
+        session_id: str,
+        address: str,
+        band_name: str,
+        request_rewriter: Callable = None,
+    ):
         self._session_id = session_id
         self._address = address.rstrip("/")
         self._band_name = band_name
+        self.request_rewriter = request_rewriter
 
     @mo.extensible
     async def get(
@@ -107,6 +124,21 @@ class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
             method="POST",
             headers={"Content-Type": "application/octet-stream"},
             data=body,
+        )
+        return deserialize_serializable(res.body)
+
+    @get.batch
+    async def get_batch(self, args_list, kwargs_list):
+        get_chunks = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            data_key, conditions, error = self.get.bind(*args, **kwargs)
+            get_chunks.append([data_key, conditions, error])
+
+        path = f"{self._address}/api/session/{self._session_id}/storage/batch/get"
+        res = await self._request_url(
+            path=path,
+            method="POST",
+            data=serialize_serializable(get_chunks),
         )
         return deserialize_serializable(res.body)
 

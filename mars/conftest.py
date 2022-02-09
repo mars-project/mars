@@ -19,6 +19,7 @@ import subprocess
 import pytest
 
 from mars.config import option_context
+from mars.core.mode import is_kernel_mode, is_build_mode
 from mars.lib.aio import stop_isolation
 from mars.oscar.backends.router import Router
 from mars.oscar.backends.ray.communication import RayServer
@@ -61,7 +62,7 @@ def ray_large_cluster(request):  # pragma: no cover
     remote_nodes = []
     for i in range(num_nodes):
         remote_nodes.append(
-            cluster.add_node(num_cpus=num_cpus, memory=num_cpus * 2 * 1024 ** 3)
+            cluster.add_node(num_cpus=num_cpus, memory=num_cpus * 2 * 1024**3)
         )
         if len(remote_nodes) == 1:
             sig = inspect.signature(ray.job_config.JobConfig)
@@ -101,10 +102,10 @@ async def ray_create_mars_cluster(request):
 
     ray_config = _load_config()
     param = getattr(request, "param", {})
-    supervisor_mem = param.get("supervisor_mem", 1 * 1024 ** 3)
+    supervisor_mem = param.get("supervisor_mem", 1 * 1024**3)
     worker_num = param.get("worker_num", 2)
     worker_cpu = param.get("worker_cpu", 2)
-    worker_mem = param.get("worker_mem", 256 * 1024 ** 2)
+    worker_mem = param.get("worker_mem", 256 * 1024**2)
     ray_config.update(param.get("config", {}))
     client = await new_cluster(
         "test_cluster",
@@ -179,6 +180,7 @@ def _new_gpu_test_session(_stop_isolation):  # pragma: no cover
 def setup(_new_test_session):
     _new_test_session.as_default()
     yield _new_test_session
+    assert not (is_build_mode() or is_kernel_mode())
 
 
 @pytest.fixture

@@ -20,11 +20,12 @@ import re
 import sys
 import urllib.parse
 from collections import defaultdict
-from typing import Callable, Dict, List, NamedTuple, Optional, Union
+from typing import Callable, Dict, List, NamedTuple, Optional, Type, Union
 
 from tornado import httpclient, web
-from tornado.simple_httpclient import HTTPTimeoutError
+from tornado.simple_httpclient import HTTPRequest, HTTPTimeoutError
 
+from ...lib.aio import alru_cache
 from ...utils import serialize_serializable, deserialize_serializable
 
 if sys.version_info[:2] == (3, 6):
@@ -81,6 +82,25 @@ def web_api(
     return wrapper
 
 
+@alru_cache(cache_exceptions=False)
+async def _get_cluster_api(address: str):
+    from ..cluster import ClusterAPI
+
+    return await ClusterAPI.create(address)
+
+
+@alru_cache(cache_exceptions=False)
+async def _get_api_by_key(
+    api_cls: Type, session_id: str, address: str, with_key_arg: bool = True
+):
+    cluster_api = await _get_cluster_api(address)
+    [address] = await cluster_api.get_supervisors_by_keys([session_id])
+    if with_key_arg:
+        return await api_cls.create(session_id, address)
+    else:
+        return await api_cls.create(address)
+
+
 class MarsServiceWebAPIHandler(MarsRequestHandler):
     _root_pattern = None
     _method_to_handlers = None
@@ -88,6 +108,16 @@ class MarsServiceWebAPIHandler(MarsRequestHandler):
     def __init__(self, *args, **kwargs):
         self._collect_services()
         super().__init__(*args, **kwargs)
+
+    def _get_api_by_key(
+        self, api_cls: Type, session_id: str, with_key_arg: bool = True
+    ):
+        return _get_api_by_key(
+            api_cls,
+            session_id,
+            address=self._supervisor_addr,
+            with_key_arg=with_key_arg,
+        )
 
     @classmethod
     def _collect_services(cls):
@@ -104,6 +134,9 @@ class MarsServiceWebAPIHandler(MarsRequestHandler):
             )  # type: List[_WebApiDef]
             for api_def in web_api_defs:
                 cls._method_to_handlers[api_def.method.lower()][handle_func] = api_def
+
+    def prepare(self):
+        self.set_header("Content-Type", "application/octet-stream")
 
     @classmethod
     def get_root_pattern(cls):
@@ -170,6 +203,14 @@ class MarsWebAPIClientMixin:
             self._client_obj = httpclient.AsyncHTTPClient()
             return self._client_obj
 
+    @property
+    def request_rewriter(self) -> Callable:
+        return getattr(self, "_request_rewriter", None)
+
+    @request_rewriter.setter
+    def request_rewriter(self, value: Callable):
+        self._request_rewriter = value
+
     def __del__(self):
         if hasattr(self, "_client_obj"):
             self._client_obj.close()
@@ -190,9 +231,10 @@ class MarsWebAPIClientMixin:
             path += path_connector + url_params
 
         try:
-            res = await self._client.fetch(
-                path, method=method, raise_error=False, **kwargs
-            )
+            request = HTTPRequest(path, method=method, **kwargs)
+            if self.request_rewriter:
+                request = self.request_rewriter(request)
+            res = await self._client.fetch(request, raise_error=False)
         except HTTPTimeoutError as ex:
             raise TimeoutError(str(ex)) from None
 

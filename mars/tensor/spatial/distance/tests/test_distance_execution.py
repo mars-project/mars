@@ -81,7 +81,7 @@ def test_pdist_execution(setup):
         w = tensor(weight, chunk_size=7)
         dist = distance.pdist(x, metric="wminkowski", p=3, w=w)
         result = dist.execute().fetch()
-        expected = sp_pdist(raw, metric="wminkowski", p=3, w=weight)
+        expected = sp_pdist(raw, metric="minkowski", p=3, w=weight)
         np.testing.assert_array_equal(result, expected)
 
         # test V
@@ -157,7 +157,7 @@ def test_cdist_execution(setup):
         w = tensor(weight, chunk_size=7)
         dist = distance.cdist(xa, xb, metric="wminkowski", p=3, w=w)
         result = dist.execute().fetch()
-        expected = sp_cdist(raw_a, raw_b, metric="wminkowski", p=3, w=weight)
+        expected = sp_cdist(raw_a, raw_b, metric="minkowski", p=3, w=weight)
         np.testing.assert_array_equal(result, expected)
 
         # test V

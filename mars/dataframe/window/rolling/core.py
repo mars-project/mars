@@ -14,9 +14,6 @@
 
 from collections import OrderedDict
 
-import pandas as pd
-
-from ....lib.version import parse as parse_version
 from ....serialization.serializables import (
     AnyField,
     Int64Field,
@@ -24,11 +21,12 @@ from ....serialization.serializables import (
     StringField,
     Int32Field,
 )
+from ....utils import pd_release_version
 from ...core import DATAFRAME_TYPE
 from ...utils import build_empty_df, build_empty_series, validate_axis
 from ..core import Window
 
-_window_has_method = parse_version(pd.__version__) >= parse_version("1.3.0")
+_window_has_method = pd_release_version >= (1, 3, 0)
 
 
 class Rolling(Window):

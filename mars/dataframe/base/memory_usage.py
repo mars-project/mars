@@ -171,7 +171,7 @@ class DataFrameMemoryUsage(DataFrameOperand, DataFrameOperandMixin):
 
         # produce map chunks
         # allocate matrix of chunks
-        chunks_to_reduce = np.empty(shape=df.chunk_shape, dtype=np.object)
+        chunks_to_reduce = np.empty(shape=df.chunk_shape, dtype=object)
         for c in df.chunks:
             new_op = op.copy().reset_key()
             new_op.stage = OperandStage.map
@@ -205,7 +205,7 @@ class DataFrameMemoryUsage(DataFrameOperand, DataFrameOperandMixin):
                     ceildiv(chunks_to_reduce.shape[0], combine_size),
                     chunks_to_reduce.shape[1],
                 ),
-                dtype=np.object,
+                dtype=object,
             )
             for idx in range(0, chunks_to_reduce.shape[0], combine_size):
                 for idx2 in range(chunks_to_reduce.shape[1]):

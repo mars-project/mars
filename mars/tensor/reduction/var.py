@@ -30,12 +30,12 @@ def reduce_var_square(var_square, avg_diff, count, op, axis, sum_func):
     kw = dict(axis=axis, dtype=dtype, keepdims=bool(op.keepdims))
 
     reduced_var_square = var_square[..., moment - 2].sum(**kw) + sum_func(
-        count * avg_diff ** moment, **kw
+        count * avg_diff**moment, **kw
     )
     for i in range(1, moment - 1):
         coeff = factorial(moment) / float(factorial(i) * factorial(moment - i))
         reduced_var_square += coeff * sum_func(
-            var_square[..., moment - i - 2] * avg_diff ** moment, **kw
+            var_square[..., moment - i - 2] * avg_diff**moment, **kw
         )
     return reduced_var_square
 

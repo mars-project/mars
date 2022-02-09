@@ -122,6 +122,7 @@ def test_iloc_getitem():
     df4 = tile(df4)
     assert isinstance(df4, DATAFRAME_TYPE)
     assert isinstance(df4.op, DataFrameIlocGetItem)
+    assert df4.index_value.key == df2.index_value.key
     assert df4.shape == (3, 1)
     assert df4.chunk_shape == (2, 1)
     assert df4.chunks[0].shape == (2, 1)
@@ -429,6 +430,18 @@ def test_iloc_setitem():
     ]
     assert series.chunks[1].op.value == 2
 
+    raw = pd.DataFrame(
+        np.random.rand(9, 2),
+        index=["a1", "a2", "a3"] * 3,
+        columns=["x", "y"],
+    )
+    df = md.DataFrame(raw, chunk_size=4)
+    iloc_df = df.iloc[:, 1:]
+    tiled_df, tiled_iloc_df = tile(df, iloc_df)
+    # for full slice, index_value should be same as input chunk
+    for loc_chunk, chunk in zip(tiled_iloc_df.chunks, tiled_df.chunks):
+        assert loc_chunk.index_value.key == chunk.index_value.key
+
     # fancy index
     series = md.Series(pd.Series(np.arange(10)), chunk_size=3)
     series.iloc[[2, 4, 9]] = 3
@@ -479,6 +492,7 @@ def test_dataframe_loc():
         df2.index_value.to_pandas(), df.index_value.to_pandas()
     )
     assert df2.name == "y"
+    assert df2.index_value.key == df.index_value.key
 
     df2 = tile(df2)
     assert len(df2.chunks) == 2
@@ -617,6 +631,25 @@ def test_dataframe_loc():
 
     with pytest.raises(KeyError):
         _ = df.loc[:, ["non_exist"]]
+
+    # test loc chunk's index_value
+    raw = pd.DataFrame(
+        np.random.rand(9, 2),
+        index=["a1", "a2", "a3"] * 3,
+        columns=["x", "y"],
+    )
+    df = md.DataFrame(raw, chunk_size=4)
+    loc_df = df.loc[:, ["x"]]
+    tiled_df, tiled_loc_df = tile(df, loc_df)
+    # for full slice, index_value should be same as input chunk
+    for loc_chunk, chunk in zip(tiled_loc_df.chunks, tiled_df.chunks):
+        assert loc_chunk.index_value.key == chunk.index_value.key
+
+    # test loc on filtered df
+    df2 = df[df["x"] < 1]
+    loc_df = df2.loc[:, ["y", "x"]]
+    tiled_loc_df = tile(loc_df)
+    assert len(tiled_loc_df.chunks) == 3
 
 
 def test_loc_use_iloc():

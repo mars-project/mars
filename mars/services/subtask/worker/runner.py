@@ -94,16 +94,24 @@ class SubtaskRunnerActor(mo.Actor):
         session_id = subtask.session_id
         supervisor_address = await self._get_supervisor_address(session_id)
         if session_id not in self._session_id_to_processors:
-            self._session_id_to_processors[session_id] = await mo.create_actor(
-                SubtaskProcessorActor,
-                session_id,
-                self._band,
-                supervisor_address,
-                self._worker_address,
-                self._subtask_processor_cls,
-                uid=SubtaskProcessorActor.gen_uid(session_id),
-                address=self.address,
-            )
+            try:
+                self._session_id_to_processors[session_id] = await mo.create_actor(
+                    SubtaskProcessorActor,
+                    session_id,
+                    self._band,
+                    supervisor_address,
+                    self._worker_address,
+                    self._subtask_processor_cls,
+                    uid=SubtaskProcessorActor.gen_uid(session_id),
+                    address=self.address,
+                )
+            except mo.ActorAlreadyExist:
+                # when recovering actor pools, the actor created in sub pools
+                # may be recovered already
+                self._session_id_to_processors[session_id] = await mo.actor_ref(
+                    uid=SubtaskProcessorActor.gen_uid(session_id),
+                    address=self.address,
+                )
         processor = self._session_id_to_processors[session_id]
         try:
             self._running_processor = self._last_processor = processor

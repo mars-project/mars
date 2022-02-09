@@ -27,7 +27,7 @@ class DataFrameMax(DataFrameReductionOperand, DataFrameReductionMixin):
         return True
 
 
-def max_series(df, axis=None, skipna=None, level=None, combine_size=None, method=None):
+def max_series(df, axis=None, skipna=True, level=None, combine_size=None, method=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameMax(
         axis=axis,
@@ -44,7 +44,7 @@ def max_series(df, axis=None, skipna=None, level=None, combine_size=None, method
 def max_dataframe(
     df,
     axis=None,
-    skipna=None,
+    skipna=True,
     level=None,
     numeric_only=None,
     combine_size=None,

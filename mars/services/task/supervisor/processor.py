@@ -215,8 +215,9 @@ class TaskProcessor:
             if error_or_cancelled:
                 # error or cancel, rollback incref for subtask results
                 for subtask in subtask_graph:
-                    if stage_processor.subtask_results.get(subtask):
+                    if subtask.subtask_id in stage_processor.decref_subtask:
                         continue
+                    stage_processor.decref_subtask.add(subtask.subtask_id)
                     # if subtask not executed, rollback incref of predecessors
                     for inp_subtask in subtask_graph.predecessors(subtask):
                         for result_chunk in inp_subtask.chunk_graph.results:
@@ -548,6 +549,8 @@ class TaskProcessorActor(mo.Actor):
         _, pending = yield asyncio.wait(fs, timeout=timeout)
         if not pending:
             raise mo.Return(self.result())
+        else:
+            [fut.cancel() for fut in pending]
 
     async def cancel(self):
         if self._cur_processor:
@@ -872,9 +875,12 @@ class TaskProcessorActor(mo.Actor):
                 # other `set_subtask_result` calls.
                 # If speculative execution enabled, concurrent subtasks may got error since input chunks may
                 # got deleted. But it's OK because the current subtask run has succeed.
-                yield self._decref_input_subtasks(
-                    subtask, stage_processor.subtask_graph
-                )
+                if subtask.subtask_id not in stage_processor.decref_subtask:
+                    stage_processor.decref_subtask.add(subtask.subtask_id)
+                    yield self._decref_input_subtasks(
+                        subtask, stage_processor.subtask_graph
+                    )
+
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
                 logger.debug(
                     "Decref input subtasks for subtask %s failed.", subtask.subtask_id

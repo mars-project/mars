@@ -357,8 +357,19 @@ class SubtaskProcessor:
         set_chunk_metas = []
         result_data_size = 0
         for chunk_key in stored_keys:
+            fields = None
             if isinstance(chunk_key, tuple):
                 result_chunk = key_to_result_chunk[chunk_key[0]]
+                fields = [
+                    "object_id",
+                    "name",
+                    "memory_size",
+                    "store_size",
+                    "index",
+                    "bands",
+                    "object_ref",
+                    "shape",
+                ]
             else:
                 result_chunk = key_to_result_chunk[chunk_key]
             store_size = data_key_to_store_size[chunk_key]
@@ -372,6 +383,7 @@ class SubtaskProcessor:
                     store_size=store_size,
                     bands=[self._band],
                     chunk_key=chunk_key,
+                    fields=fields,
                     object_ref=object_ref,
                 )
             )

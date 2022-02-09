@@ -116,7 +116,7 @@ def get_chunk_n_rows(row_bytes, max_n_rows=None, working_memory=None):
             working_memory = 1024
 
     if isinstance(working_memory, int):
-        working_memory *= 2 ** 20
+        working_memory *= 2**20
     else:
         working_memory = parse_readable_size(working_memory)[0]
 
@@ -127,7 +127,7 @@ def get_chunk_n_rows(row_bytes, max_n_rows=None, working_memory=None):
         warnings.warn(
             "Could not adhere to working_memory config. "
             "Currently %.0fMiB, %.0fMiB required."
-            % (working_memory, np.ceil(row_bytes * 2 ** -20))
+            % (working_memory, np.ceil(row_bytes * 2**-20))
         )
         chunk_n_rows = 1
     return chunk_n_rows

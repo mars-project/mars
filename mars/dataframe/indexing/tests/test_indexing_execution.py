@@ -30,9 +30,12 @@ except ImportError:  # pragma: no cover
 
 from .... import dataframe as md
 from .... import tensor as mt
+from ....utils import pd_release_version
 from ...datasource.read_csv import DataFrameReadCSV
 from ...datasource.read_sql import DataFrameReadSQL
 from ...datasource.read_parquet import DataFrameReadParquet
+
+_allow_set_missing_list = pd_release_version[:2] >= (1, 1)
 
 
 @pytest.mark.parametrize("chunk_size", [2, (2, 3)])
@@ -309,6 +312,10 @@ def test_loc_getitem(setup):
     result = df.execute().fetch()
     expected = raw2.loc[:, "b"]
     pd.testing.assert_series_equal(result, expected)
+    df = df2.loc[:, ["b", "a"]]
+    result = df.execute().fetch()
+    expected = raw2.loc[:, ["b", "a"]]
+    pd.testing.assert_frame_equal(result, expected)
 
     # 'b' is non-unique
     df = df3.loc[:, "b"]
@@ -330,6 +337,11 @@ def test_loc_getitem(setup):
 
     # label-based fancy index
     df = df2.loc[[3, 0, 1], ["c", "a", "d"]]
+    result = df.execute().fetch()
+    expected = raw2.loc[[3, 0, 1], ["c", "a", "d"]]
+    pd.testing.assert_frame_equal(result, expected)
+    df = df2[df2["a"] < 10]
+    df = df.loc[[3, 0, 1], ["c", "a", "d"]]
     result = df.execute().fetch()
     expected = raw2.loc[[3, 0, 1], ["c", "a", "d"]]
     pd.testing.assert_frame_equal(result, expected)
@@ -380,6 +392,7 @@ def test_loc_getitem(setup):
     pd.testing.assert_frame_equal(result, expected)
 
 
+@pytest.mark.pd_compat
 def test_dataframe_getitem(setup):
     data = pd.DataFrame(np.random.rand(10, 5), columns=["c1", "c2", "c3", "c4", "c5"])
     df = md.DataFrame(data, chunk_size=2)
@@ -631,6 +644,7 @@ def test_iat(setup):
     assert result == data.iloc[:, 2].iat[3]
 
 
+@pytest.mark.pd_compat
 def test_setitem(setup):
     data = pd.DataFrame(
         np.random.rand(10, 5),
@@ -663,7 +677,13 @@ def test_setitem(setup):
     df[["c11", "c12"]] = mt.tensor(data3, chunk_size=4)
 
     result = df.execute().fetch()
-    expected = data.copy()
+    if not _allow_set_missing_list:
+        expected = data.copy().reindex(
+            ["c" + str(i) for i in range(5)] + ["c10", "c11", "c12"],
+            axis=1,
+        )
+    else:
+        expected = data.copy()
     expected[["c0", "c2"]] = 1
     expected[["c1", "c10"]] = expected["c4"].mean()
     expected[["c11", "c12"]] = data3
@@ -859,8 +879,8 @@ def test_rename(setup):
     r = series.rename("new_series")
     pd.testing.assert_series_equal(r.execute().fetch(), raw.rename("new_series"))
 
-    r = series.rename(lambda x: 2 ** x)
-    pd.testing.assert_series_equal(r.execute().fetch(), raw.rename(lambda x: 2 ** x))
+    r = series.rename(lambda x: 2**x)
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.rename(lambda x: 2**x))
 
     with pytest.raises(TypeError):
         series.name = {1: 10, 2: 20}
@@ -999,6 +1019,7 @@ def _wrap_execute_data_source_mixed(limit, usecols, op_cls):
     return _execute_data_source
 
 
+@pytest.mark.pd_compat
 def test_optimization(setup):
     import sqlalchemy as sa
 

@@ -27,7 +27,7 @@ from pandas.core.dtypes.cast import find_common_type
 from ..core import Entity, ExecutableTuple
 from ..lib.mmh3 import hash as mmh_hash
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
-from ..utils import tokenize, sbytes, lazy_import, ModulePlaceholder
+from ..utils import tokenize, sbytes, lazy_import, ModulePlaceholder, is_full_slice
 
 try:
     import pyarrow as pa
@@ -632,7 +632,7 @@ def build_series(
         except AttributeError:
             series_index = series_obj.index[:0]
     else:
-        series_index = index[:0] if index else None
+        series_index = index[:0] if index is not None else None
 
     for size, fill_value in zip(sizes, fill_values):
         empty_series = build_empty_series(dtype, name=name, index=series_index)
@@ -804,9 +804,13 @@ def filter_index_value(index_value, min_max, store_data=False):
     return parse_index(pd_index[f], store_data=store_data)
 
 
-def indexing_index_value(index_value, indexes, store_data=False):
+def indexing_index_value(index_value, indexes, store_data=False, rechunk=False):
     pd_index = index_value.to_pandas()
-    if not index_value.has_value():
+    # when rechunk is True, the output index shall be treated
+    # different from the input one
+    if not rechunk and isinstance(indexes, slice) and is_full_slice(indexes):
+        return index_value
+    elif not index_value.has_value():
         new_index_value = parse_index(pd_index, indexes, store_data=store_data)
         new_index_value._index_value._min_val = index_value.min_val
         new_index_value._index_value._min_val_close = index_value.min_val_close
@@ -1252,10 +1256,7 @@ def make_dtypes(dtypes):
     if dtypes is None:
         return None
     if not isinstance(dtypes, pd.Series):
-        if isinstance(dtypes, dict):
-            dtypes = pd.Series(dtypes.values(), index=dtypes.keys())
-        else:
-            dtypes = pd.Series(dtypes)
+        dtypes = pd.Series(dtypes)
     return dtypes.apply(make_dtype)
 
 

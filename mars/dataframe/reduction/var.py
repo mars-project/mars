@@ -39,8 +39,8 @@ class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
         def var(x):
             cnt = x.count()
             if ddof == 0:
-                return (x ** 2).mean(skipna=skipna) - (x.mean(skipna=skipna)) ** 2
-            return ((x ** 2).sum(skipna=skipna) - x.sum(skipna=skipna) ** 2 / cnt) / (
+                return (x**2).mean(skipna=skipna) - (x.mean(skipna=skipna)) ** 2
+            return ((x**2).sum(skipna=skipna) - x.sum(skipna=skipna) ** 2 / cnt) / (
                 cnt - ddof
             )
 
@@ -48,7 +48,7 @@ class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
 
 
 def var_series(
-    series, axis=None, skipna=None, level=None, ddof=1, combine_size=None, method=None
+    series, axis=None, skipna=True, level=None, ddof=1, combine_size=None, method=None
 ):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameVar(
@@ -67,7 +67,7 @@ def var_series(
 def var_dataframe(
     df,
     axis=None,
-    skipna=None,
+    skipna=True,
     level=None,
     ddof=1,
     numeric_only=None,

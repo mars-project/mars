@@ -5,6 +5,8 @@ global-exclude *.c
 global-exclude *.cpp
 global-exclude */**/tests/*.yml
 global-exclude */**/node_modules/**/*
+include setup.cfg
+include pyproject.toml
 include mars/.git-branch
 include mars/lib/mmh3_src/*
 include mars/services/web/index.html

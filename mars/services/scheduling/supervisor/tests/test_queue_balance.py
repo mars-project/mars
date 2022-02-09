@@ -99,6 +99,7 @@ class FakeClusterAPI(ClusterAPI):
 
 
 class MockSlotsActor(mo.Actor):
+    @mo.extensible
     def apply_subtask_slots(
         self,
         band: Tuple,

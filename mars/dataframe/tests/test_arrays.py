@@ -463,6 +463,7 @@ def test_to_pandas():
 
     # test df method
     df4 = df2.groupby("b").sum()
+    df4.index = df4.index.astype(object)
     expected = df.groupby("b").sum()
     pd.testing.assert_frame_equal(df4, expected)
 

@@ -48,6 +48,8 @@ cdef class ActorRef:
     Reference of an Actor at user side
     """
     def __init__(self, str address, object uid):
+        if isinstance(uid, str):
+            uid = uid.encode()
         self.uid = uid
         self.address = address
         self._methods = dict()
@@ -212,9 +214,9 @@ cdef class _BaseActor:
         return create_actor_ref(self._address, self._uid)
 
     async def _handle_actor_result(self, result):
-        cdef int result_pos
+        cdef int idx
         cdef tuple res_tuple
-        cdef list tasks, values
+        cdef list tasks, coros, coro_poses, values
         cdef object coro
         cdef bint extract_tuple = False
         cdef bint cancelled = False
@@ -228,20 +230,32 @@ cdef class _BaseActor:
 
         if type(result) is tuple:
             res_tuple = result
-            tasks = []
+            coros = []
+            coro_poses = []
             values = []
-            for res_item in res_tuple:
+            for idx, res_item in enumerate(res_tuple):
                 if is_async_generator(res_item):
-                    value = asyncio.create_task(self._run_actor_async_generator(res_item))
-                    tasks.append(value)
+                    value = self._run_actor_async_generator(res_item)
+                    coros.append(value)
+                    coro_poses.append(idx)
                 elif inspect.isawaitable(res_item):
-                    value = asyncio.create_task(res_item)
-                    tasks.append(value)
+                    value = res_item
+                    coros.append(value)
+                    coro_poses.append(idx)
                 else:
                     value = res_item
                 values.append(value)
 
-            if len(tasks) > 0:
+            # when there is only one coroutine, we do not need to use
+            # asyncio.wait as it introduces much overhead
+            if len(coros) == 1:
+                task_result = await coros[0]
+                if extract_tuple:
+                    result = task_result
+                else:
+                    result = tuple(task_result if t is coros[0] else t for t in values)
+            elif len(coros) > 0:
+                tasks = [asyncio.create_task(t) for t in coros]
                 try:
                     dones, pending = await asyncio.wait(tasks)
                 except asyncio.CancelledError:
@@ -254,7 +268,10 @@ cdef class _BaseActor:
                 if extract_tuple:
                     result = list(dones)[0].result()
                 else:
-                    result = tuple(t.result() if t in dones else t for t in values)
+                    for pos in coro_poses:
+                        task = tasks[pos]
+                        values[pos] = task.result()
+                    result = tuple(values)
 
                 if cancelled:
                     # raise in case no CancelledError raised

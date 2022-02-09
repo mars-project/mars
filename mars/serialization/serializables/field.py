@@ -19,6 +19,7 @@ import os
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Any, Callable, Optional, Type, Union
 
+from ...utils import no_default
 from .field_type import (
     AbstractFieldType,
     FieldTypes,
@@ -28,7 +29,6 @@ from .field_type import (
     ReferenceType,
 )
 
-_notset = object()
 _is_ci = "CI" in os.environ
 
 
@@ -50,13 +50,15 @@ class Field(ABC):
     def __init__(
         self,
         tag: str,
-        default: Any = _notset,
+        default: Any = no_default,
         default_factory: Optional[Callable] = None,
         on_serialize: Callable[[Any], Any] = None,
         on_deserialize: Callable[[Any], Any] = None,
         attr_name: str = None,
     ):
-        if default is not _notset and default_factory is not None:  # pragma: no cover
+        if (
+            default is not no_default and default_factory is not None
+        ):  # pragma: no cover
             raise ValueError("default and default_factory can not be specified both")
 
         self._tag = tag
@@ -99,7 +101,7 @@ class Field(ABC):
         try:
             return tag_to_values[self._attr_name]
         except KeyError:
-            if self._default_value is not _notset:
+            if self._default_value is not no_default:
                 val = tag_to_values[self._attr_name] = self._default_value
                 return val
             elif self._default_factory is not None:
@@ -389,7 +391,7 @@ class _CollectionField(Field, metaclass=ABCMeta):
         self,
         tag: str,
         field_type: AbstractFieldType = None,
-        default: Any = _notset,
+        default: Any = no_default,
         default_factory: Optional[Callable] = None,
         on_serialize: Callable[[Any], Any] = None,
         on_deserialize: Callable[[Any], Any] = None,
@@ -447,7 +449,7 @@ class DictField(Field):
         tag: str,
         key_type: AbstractFieldType = None,
         value_type: AbstractFieldType = None,
-        default: Any = _notset,
+        default: Any = no_default,
         default_factory: Optional[Callable] = None,
         on_serialize: Callable[[Any], Any] = None,
         on_deserialize: Callable[[Any], Any] = None,
@@ -473,7 +475,7 @@ class ReferenceField(Field):
         self,
         tag: str,
         reference_type: Union[str, Type] = None,
-        default: Any = _notset,
+        default: Any = no_default,
         on_serialize: Callable[[Any], Any] = None,
         on_deserialize: Callable[[Any], Any] = None,
     ):
@@ -536,7 +538,7 @@ class OneOfField(Field):
     def __init__(
         self,
         tag: str,
-        default: Any = _notset,
+        default: Any = no_default,
         on_serialize: Callable[[Any], Any] = None,
         on_deserialize: Callable[[Any], Any] = None,
         attr_name: str = None,

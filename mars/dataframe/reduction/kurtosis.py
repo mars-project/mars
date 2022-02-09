@@ -49,20 +49,20 @@ class DataFrameKurtosis(DataFrameReductionOperand, DataFrameReductionMixin):
             cnt = x.count()
             mean = x.mean(skipna=skipna)
             divided = (
-                (x ** 4).mean(skipna=skipna)
-                - 4 * (x ** 3).mean(skipna=skipna) * mean
-                + 6 * (x ** 2).mean(skipna=skipna) * mean ** 2
-                - 3 * mean ** 4
+                (x**4).mean(skipna=skipna)
+                - 4 * (x**3).mean(skipna=skipna) * mean
+                + 6 * (x**2).mean(skipna=skipna) * mean**2
+                - 3 * mean**4
             )
             var = x.var(skipna=skipna, ddof=0)
             if isinstance(var, ENTITY_TYPE) or var > 0:
-                val = where_function(var > 0, divided / var ** 2, np.nan)
+                val = where_function(var > 0, divided / var**2, np.nan)
             else:
                 val = np.nan
             if not bias:
                 val = where_function(
                     (var > 0) & (cnt > 3),
-                    (val * (cnt ** 2 - 1) - 3 * (cnt - 1) ** 2) / (cnt - 2) / (cnt - 3),
+                    (val * (cnt**2 - 1) - 3 * (cnt - 1) ** 2) / (cnt - 2) / (cnt - 3),
                     np.nan,
                 )
             if not fisher:
@@ -75,7 +75,7 @@ class DataFrameKurtosis(DataFrameReductionOperand, DataFrameReductionMixin):
 def kurt_series(
     df,
     axis=None,
-    skipna=None,
+    skipna=True,
     level=None,
     combine_size=None,
     bias=False,
@@ -100,7 +100,7 @@ def kurt_series(
 def kurt_dataframe(
     df,
     axis=None,
-    skipna=None,
+    skipna=True,
     level=None,
     numeric_only=None,
     combine_size=None,

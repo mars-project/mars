@@ -26,19 +26,24 @@ except ImportError:  # pragma: no cover
 from .... import dataframe as md
 from ....config import option_context
 from ....deploy.oscar.session import get_default_session
-from ....lib.version import parse as parse_version
 from ....tests.core import require_cudf, require_cupy
-from ....utils import lazy_import
+from ....utils import lazy_import, pd_release_version
 from ... import CustomReduction, NamedAgg
 from ...base import to_gpu
 
+pytestmark = pytest.mark.pd_compat
+
 cp = lazy_import("cupy", rename="cp", globals=globals())
-_agg_size_as_series = parse_version(pd.__version__) >= parse_version("1.3.0")
+_agg_size_as_series = pd_release_version >= (1, 3)
+_support_kw_agg = pd_release_version >= (1, 1)
 
 
 @pytest.fixture
 def check_ref_counts():
     yield
+    import gc
+
+    gc.collect()
     sess = get_default_session()
     assert len(sess._get_ref_counts()) == 0
 
@@ -297,13 +302,13 @@ def test_dataframe_level_reduction(
 
     # behavior of 'skew', 'kurt' differs for cases with and without level
     skip_funcs = ("skew", "kurt")
-    if pd.__version__ == "1.2.0":
+    if pd_release_version <= (1, 2, 0):
         # fails under pandas 1.2. see pandas-dev/pandas#38774 for more details
         skip_funcs += ("sem",)
 
     if func_name not in skip_funcs:
         data_dict = dict((str(i), rs.rand(100)) for i in range(10))
-        data_dict["string"] = [str(i) for i in range(100)]
+        data_dict["string"] = ["O" + str(i) for i in range(100)]
         data_dict["bool"] = rs.choice([True, False], (100,))
         data = pd.DataFrame(data_dict, index=idx)
 
@@ -885,17 +890,14 @@ def test_dataframe_aggregate(setup, check_ref_counts):
         data.agg({0: ["sum", "min", "var"], 9: ["mean", "var", "std"]}),
     )
 
-    result = df.agg(
-        sum_0=NamedAgg(0, "sum"), min_0=NamedAgg(0, "min"), mean_9=NamedAgg(9, "mean")
-    )
-    pd.testing.assert_frame_equal(
-        result.execute().fetch(),
-        data.agg(
+    if _support_kw_agg:
+        agg_kw = dict(
             sum_0=NamedAgg(0, "sum"),
             min_0=NamedAgg(0, "min"),
             mean_9=NamedAgg(9, "mean"),
-        ),
-    )
+        )
+        result = df.agg(**agg_kw)
+        pd.testing.assert_frame_equal(result.execute().fetch(), data.agg(**agg_kw))
 
 
 def test_series_aggregate(setup, check_ref_counts):
@@ -937,10 +939,11 @@ def test_series_aggregate(setup, check_ref_counts):
         result.execute().fetch(), data.agg({"col_sum": "sum", "col_count": "count"})
     )
 
-    result = series.agg(col_var="var", col_skew="skew")
-    pd.testing.assert_series_equal(
-        result.execute().fetch(), data.agg(col_var="var", col_skew="skew")
-    )
+    if _support_kw_agg:
+        result = series.agg(col_var="var", col_skew="skew")
+        pd.testing.assert_series_equal(
+            result.execute().fetch(), data.agg(col_var="var", col_skew="skew")
+        )
 
 
 def test_aggregate_str_cat(setup, check_ref_counts):
@@ -974,7 +977,7 @@ class MockReduction1(CustomReduction):
 
 class MockReduction2(CustomReduction):
     def pre(self, value):
-        return value + 1, value ** 2
+        return value + 1, value**2
 
     def agg(self, v1, v2):
         return v1.sum(), v2.prod()
@@ -984,7 +987,8 @@ class MockReduction2(CustomReduction):
 
 
 def test_custom_dataframe_aggregate(setup, check_ref_counts):
-    data = pd.DataFrame(np.random.rand(30, 20))
+    rs = np.random.RandomState(0)
+    data = pd.DataFrame(rs.rand(30, 20))
 
     df = md.DataFrame(data)
     result = df.agg(MockReduction1())
@@ -1002,7 +1006,8 @@ def test_custom_dataframe_aggregate(setup, check_ref_counts):
 
 
 def test_custom_series_aggregate(setup, check_ref_counts):
-    data = pd.Series(np.random.rand(20))
+    rs = np.random.RandomState(0)
+    data = pd.Series(rs.rand(20))
 
     s = md.Series(data)
     result = s.agg(MockReduction1())

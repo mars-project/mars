@@ -33,6 +33,7 @@ class MockSlotsActor(mo.Actor):
     def set_capacity(self, capacity: int):
         self._capacity = capacity
 
+    @mo.extensible
     def apply_subtask_slots(
         self,
         band: Tuple,

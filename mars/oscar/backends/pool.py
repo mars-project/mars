@@ -14,12 +14,11 @@
 
 import asyncio
 import concurrent.futures as futures
-import contextlib
 import itertools
 import logging
+import multiprocessing
 import os
 import threading
-import multiprocessing
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
@@ -314,12 +313,10 @@ class AbstractActorPool(ABC):
 
         return processor.result
 
-    @contextlib.contextmanager
-    def _run_coro(self, message_id: bytes, coro: Coroutine):
-        future = asyncio.create_task(coro)
-        self._process_messages[message_id] = future
+    async def _run_coro(self, message_id: bytes, coro: Coroutine):
+        self._process_messages[message_id] = asyncio.tasks.current_task()
         try:
-            yield future
+            return await coro
         finally:
             self._process_messages.pop(message_id, None)
 
@@ -332,10 +329,9 @@ class AbstractActorPool(ABC):
                 message,
                 channel,
             ):
-                with self._run_coro(
+                processor.result = await self._run_coro(
                     message.message_id, handler(self, message)
-                ) as future:
-                    processor.result = await future
+                )
         try:
             await channel.send(processor.result)
         except (ChannelClosed, ConnectionResetError):
@@ -464,8 +460,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             actor.uid = actor_id
             actor.address = address = self.external_address
             self._actors[actor_id] = actor
-            with self._run_coro(message.message_id, actor.__post_create__()) as future:
-                await future
+            await self._run_coro(message.message_id, actor.__post_create__())
 
             result = ActorRef(address, actor_id)
             # ensemble result message
@@ -478,7 +473,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     async def has_actor(self, message: HasActorMessage) -> ResultMessage:
         result = ResultMessage(
             message.message_id,
-            to_binary(message.actor_ref.uid) in self._actors,
+            message.actor_ref.uid in self._actors,
             protocol=message.protocol,
         )
         return result
@@ -491,8 +486,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
                 actor = self._actors[actor_id]
             except KeyError:
                 raise ActorNotExist(f"Actor {actor_id} does not exist")
-            with self._run_coro(message.message_id, actor.__pre_destroy__()) as future:
-                await future
+            await self._run_coro(message.message_id, actor.__pre_destroy__())
             del self._actors[actor_id]
 
             processor.result = ResultMessage(
@@ -503,7 +497,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     @implements(AbstractActorPool.actor_ref)
     async def actor_ref(self, message: ActorRefMessage) -> result_message_type:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
-            actor_id = to_binary(message.actor_ref.uid)
+            actor_id = message.actor_ref.uid
             if actor_id not in self._actors:
                 raise ActorNotExist(f"Actor {actor_id} does not exist")
             result = ResultMessage(
@@ -523,8 +517,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             if actor_id not in self._actors:
                 raise ActorNotExist(f"Actor {actor_id} does not exist")
             coro = self._actors[actor_id].__on_receive__(message.content)
-            with self._run_coro(message.message_id, coro) as future:
-                result = await future
+            result = await self._run_coro(message.message_id, coro)
             processor.result = ResultMessage(
                 message.message_id,
                 result,
@@ -656,6 +649,22 @@ class SubActorPoolBase(ActorPoolBase):
     ):  # pragma: no cover
         await self.call(self._main_address, message)
 
+    async def notify_main_pool_to_create(self, message: CreateActorMessage):
+        reg_message = ControlMessage(
+            new_message_id(),
+            self.external_address,
+            ControlMessageType.add_sub_pool_actor,
+            (self.external_address, message.allocate_strategy, message),
+        )
+        await self.call(self._main_address, reg_message)
+
+    @implements(AbstractActorPool.create_actor)
+    async def create_actor(self, message: CreateActorMessage) -> result_message_type:
+        result = await super().create_actor(message)
+        if not message.from_main:
+            await self.notify_main_pool_to_create(message)
+        return result
+
     @implements(AbstractActorPool.actor_ref)
     async def actor_ref(self, message: ActorRefMessage) -> result_message_type:
         result = await super().actor_ref(message)
@@ -782,6 +791,7 @@ class MainActorPoolBase(ActorPoolBase):
                     message.args,
                     message.kwargs,
                     allocate_strategy=new_allocate_strategy,
+                    from_main=True,
                     protocol=message.protocol,
                     message_trace=message.message_trace,
                 )
@@ -959,6 +969,17 @@ class MainActorPoolBase(ActorPoolBase):
                 processor.result = ResultMessage(
                     message.message_id, True, protocol=message.protocol
                 )
+            elif message.control_message_type == ControlMessageType.add_sub_pool_actor:
+                address, allocate_strategy, create_message = message.content
+                create_message.from_main = True
+                ref = create_actor_ref(address, to_binary(create_message.actor_id))
+                self._allocated_actors[address][ref] = (
+                    allocate_strategy,
+                    create_message,
+                )
+                processor.result = ResultMessage(
+                    message.message_id, True, protocol=message.protocol
+                )
             else:
                 processor.result = await self.call(message.address, message)
         return processor.result
@@ -1121,9 +1142,8 @@ class MainActorPoolBase(ActorPoolBase):
     async def monitor_sub_pools(self):
         try:
             while not self._stopped.is_set():
-                for address in self.sub_processes:
+                for address, process in self.sub_processes.items():
                     try:
-                        process = self.sub_processes[address]
                         recover_events_discovered = address in self._recover_events
                         if not await self.is_sub_pool_alive(
                             process

@@ -114,6 +114,12 @@ class AssignerActor(mo.Actor):
         exclude_bands = exclude_bands or set()
         inp_keys = set()
         selected_bands = dict()
+
+        if not self._bands:
+            self._update_bands(
+                list(await self._cluster_api.get_all_bands(NodeRole.WORKER))
+            )
+
         for subtask in subtasks:
             is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
             if subtask.expect_bands:
@@ -136,10 +142,6 @@ class AssignerActor(mo.Actor):
                 if isinstance(indep_chunk.op, Fetch):
                     inp_keys.add(indep_chunk.key)
                 elif isinstance(indep_chunk.op, FetchShuffle):
-                    if not self._bands:
-                        self._update_bands(
-                            list(await self._cluster_api.get_all_bands(NodeRole.WORKER))
-                        )
                     selected_bands[subtask.subtask_id] = [
                         self._get_random_band(
                             is_gpu, exclude_bands, exclude_bands_force

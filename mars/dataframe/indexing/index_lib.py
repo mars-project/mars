@@ -44,7 +44,7 @@ from ...tensor.utils import (
     to_numpy,
     normalize_chunk_sizes,
 )
-from ...utils import classproperty, has_unknown_shape
+from ...utils import classproperty, has_unknown_shape, is_full_slice
 from ..core import SERIES_CHUNK_TYPE, SERIES_TYPE, IndexValue
 from ..utils import parse_index
 from .utils import convert_labels_into_positions
@@ -190,10 +190,13 @@ class SliceIndexHandler(SliceIndexHandlerBase):
             "dtypes": None,
         }
         if index_info.input_axis == 0:
-            index = chunk_input.index_value.to_pandas()
-            kw["index_value"] = parse_index(
-                index[slc], chunk_input, slc, store_data=False
-            )
+            if is_full_slice(slc):
+                kw["index_value"] = chunk_input.index_value
+            else:
+                index = chunk_input.index_value.to_pandas()
+                kw["index_value"] = parse_index(
+                    index[slc], chunk_input, slc, store_data=False
+                )
         else:
             assert index_info.input_axis == 1
             index = chunk_input.columns_value.to_pandas()
@@ -239,17 +242,12 @@ class LabelSliceIndexHandler(IndexHandler):
             index_value = [tileable.index_value, tileable.columns_value][input_axis]
 
         # check if chunks have unknown shape
-        check = False
-        if index_value.has_value():
-            # index_value has value,
-            check = True
-        elif self._slice_all(index_info.raw_index):
-            # if slice on all data
-            check = True
-
-        if check:
-            if any(np.isnan(ns) for ns in tileable.nsplits[input_axis]):
-                yield []
+        if (
+            not self._slice_all(index_info.raw_index)
+            and index_value.has_value()
+            and any(np.isnan(ns) for ns in tileable.nsplits[input_axis])
+        ):  # pragma: no cover
+            yield []
 
     def set_chunk_index_info(
         cls,
@@ -272,12 +270,17 @@ class LabelSliceIndexHandler(IndexHandler):
             "dtypes": None,
         }
         if index_info.input_axis == 0:
-            index = chunk_input.index_value.to_pandas()
-            start, stop = index.slice_locs(slc.start, slc.stop, slc.step, kind="loc")
-            pos_slc = slice(start, stop, slc.step)
-            kw["index_value"] = parse_index(
-                index[pos_slc], chunk_input, slc, store_data=False
-            )
+            if is_full_slice(index):
+                kw["index_value"] = chunk_input.index_value
+            else:
+                index = chunk_input.index_value.to_pandas()
+                start, stop = index.slice_locs(
+                    slc.start, slc.stop, slc.step, kind="loc"
+                )
+                pos_slc = slice(start, stop, slc.step)
+                kw["index_value"] = parse_index(
+                    index[pos_slc], chunk_input, slc, store_data=False
+                )
         else:
             assert index_info.input_axis == 1
             dtypes = chunk_input.dtypes
@@ -289,6 +292,27 @@ class LabelSliceIndexHandler(IndexHandler):
 
         chunk_index_info.set(ChunkIndexAxisInfo(**kw))
 
+    def _process_slice_all_index(
+        self,
+        tileable: Tileable,
+        index_info: IndexInfo,
+        input_axis: int,
+        context: IndexHandlerContext,
+    ) -> None:
+        index_to_info = context.chunk_index_to_info.copy()
+        for chunk_index, chunk_index_info in index_to_info.items():
+            i = chunk_index[input_axis]
+            size = tileable.nsplits[input_axis][i]
+            self.set_chunk_index_info(
+                context,
+                index_info,
+                chunk_index,
+                chunk_index_info,
+                i,
+                slice(None),
+                size,
+            )
+
     def _process_has_value_index(
         self,
         tileable: Tileable,
@@ -298,17 +322,14 @@ class LabelSliceIndexHandler(IndexHandler):
         context: IndexHandlerContext,
     ) -> None:
         pd_index = index_value.to_pandas()
-        if self._slice_all(index_info.raw_index):
-            slc = slice(None)
-        else:
-            # turn label-based slice into position-based slice
-            start, end = pd_index.slice_locs(
-                index_info.raw_index.start,
-                index_info.raw_index.stop,
-                index_info.raw_index.step,
-                kind="loc",
-            )
-            slc = slice(start, end, index_info.raw_index.step)
+        # turn label-based slice into position-based slice
+        start, end = pd_index.slice_locs(
+            index_info.raw_index.start,
+            index_info.raw_index.stop,
+            index_info.raw_index.step,
+            kind="loc",
+        )
+        slc = slice(start, end, index_info.raw_index.step)
 
         cum_nsplit = [0] + np.cumsum(tileable.nsplits[index_info.input_axis]).tolist()
         # split position-based slice into chunk slices
@@ -371,7 +392,9 @@ class LabelSliceIndexHandler(IndexHandler):
         else:
             index_value = [tileable.index_value, tileable.columns_value][input_axis]
 
-        if index_value.has_value() or self._slice_all(index_info.raw_index):
+        if self._slice_all(index_info.raw_index):
+            self._process_slice_all_index(tileable, index_info, input_axis, context)
+        elif index_value.has_value():
             self._process_has_value_index(
                 tileable, index_info, index_value, input_axis, context
             )
@@ -821,10 +844,13 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
     def preprocess(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         tileable = context.tileable
         op = context.op
-        if has_unknown_shape(tileable):
-            yield []
 
         input_axis = index_info.input_axis
+
+        # check unknown shape
+        if any(np.isnan(s) for s in tileable.nsplits[input_axis]):
+            yield []
+
         if tileable.ndim == 2:
             index_value = [tileable.index_value, tileable.columns_value][input_axis]
         else:

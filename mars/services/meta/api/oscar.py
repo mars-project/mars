@@ -103,6 +103,7 @@ class MetaAPI(AbstractMetaAPI):
         memory_size: int = None,
         store_size: int = None,
         bands: List[BandType] = None,
+        fields: List[str] = None,
         **extra
     ):
         if isinstance(chunk.op, Fuse):
@@ -128,6 +129,11 @@ class MetaAPI(AbstractMetaAPI):
             params.pop("dtypes", None)
             params.pop("key_dtypes", None)
         params.update(extra)
+
+        if fields is not None:
+            fields = set(fields)
+            params = {k: v for k, v in params.items() if k in fields}
+
         return get_meta_type(type(chunk))(
             object_id=chunk_key,
             **params,
@@ -144,6 +150,7 @@ class MetaAPI(AbstractMetaAPI):
         memory_size: int = None,
         store_size: int = None,
         bands: List[BandType] = None,
+        fields: List[str] = None,
         **extra
     ):
         """
@@ -164,7 +171,12 @@ class MetaAPI(AbstractMetaAPI):
 
         """
         meta = self._extract_chunk_meta(
-            chunk, memory_size=memory_size, store_size=store_size, bands=bands, **extra
+            chunk,
+            memory_size=memory_size,
+            store_size=store_size,
+            bands=bands,
+            fields=fields,
+            **extra
         )
         return await self._meta_store.set_meta(meta.object_id, meta)
 

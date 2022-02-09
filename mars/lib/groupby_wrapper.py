@@ -17,13 +17,11 @@ from collections.abc import Iterable
 
 import cloudpickle
 import numpy as np
-import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
 
-from ..utils import estimate_pandas_size
-from .version import parse as parse_version
+from ..utils import estimate_pandas_size, pd_release_version
 
-_HAS_SQUEEZE = parse_version(pd.__version__) < parse_version("1.1.0")
+_HAS_SQUEEZE = pd_release_version < (1, 1, 0)
 
 
 class GroupByWrapper:
@@ -261,4 +259,4 @@ def wrapped_groupby(
         groupby_kw.pop("squeeze")
 
     groupby_obj = obj.groupby(**groupby_kw)
-    return GroupByWrapper(obj, groupby_obj=groupby_obj)
+    return GroupByWrapper(obj, groupby_obj=groupby_obj, as_index=as_index)

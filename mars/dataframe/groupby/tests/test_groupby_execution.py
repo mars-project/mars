@@ -26,8 +26,12 @@ except ImportError:  # pragma: no cover
 from .... import dataframe as md
 from ....core.operand import OperandStage
 from ....tests.core import assert_groupby_equal, require_cudf
-from ....utils import arrow_array_to_objects
+from ....utils import arrow_array_to_objects, pd_release_version
 from ..aggregation import DataFrameGroupByAgg
+
+pytestmark = pytest.mark.pd_compat
+
+_agg_size_as_frame = pd_release_version[:2] > (1, 0)
 
 
 class MockReduction1(md.CustomReduction):
@@ -215,20 +219,32 @@ def test_groupby_getitem(setup):
         )
 
         r = mdf.groupby("b", as_index=False).b.count(method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch().sort_values("b", ignore_index=True),
-            raw.groupby("b", as_index=False)
-            .b.count()
-            .sort_values("b", ignore_index=True),
-        )
+        result = r.execute().fetch().sort_values("b", ignore_index=True)
+        try:
+            expected = (
+                raw.groupby("b", as_index=False)
+                .b.count()
+                .sort_values("b", ignore_index=True)
+            )
+        except ValueError:
+            expected = raw.groupby("b").b.count().to_frame()
+            expected.index.names = [None] * expected.index.nlevels
+            expected = expected.sort_values("b", ignore_index=True)
+        pd.testing.assert_frame_equal(result, expected)
 
         r = mdf.groupby("b", as_index=False).b.agg({"cnt": "count"}, method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch().sort_values("b", ignore_index=True),
-            raw.groupby("b", as_index=False)
-            .b.agg({"cnt": "count"})
-            .sort_values("b", ignore_index=True),
-        )
+        result = r.execute().fetch().sort_values("b", ignore_index=True)
+        try:
+            expected = (
+                raw.groupby("b", as_index=False)
+                .b.agg({"cnt": "count"})
+                .sort_values("b", ignore_index=True)
+            )
+        except ValueError:
+            expected = raw.groupby("b").b.agg({"cnt": "count"}).to_frame()
+            expected.index.names = [None] * expected.index.nlevels
+            expected = expected.sort_values("b", ignore_index=True)
+        pd.testing.assert_frame_equal(result, expected)
 
     r = mdf.groupby("b").a.apply(lambda x: x + 1)
     pd.testing.assert_series_equal(
@@ -255,6 +271,55 @@ def test_groupby_getitem(setup):
     pd.testing.assert_frame_equal(
         r.execute().fetch().sort_index(),
         raw.groupby(0, as_index=False)[0].agg({"cnt": "count"}),
+    )
+
+    # test groupby getitem then agg(#GH 2640)
+    rs = np.random.RandomState(0)
+    raw = pd.DataFrame(
+        {
+            "c1": rs.randint(0, 10, size=(100,)).astype(np.int64),
+            "c2": rs.choice(["a", "b", "c"], (100,)),
+            "c3": rs.rand(100),
+            "c4": rs.rand(100),
+        }
+    )
+    mdf = md.DataFrame(raw, chunk_size=20)
+
+    r = mdf.groupby(["c2"])[["c1", "c3"]].agg({"c1": "max", "c3": "min"}, method="tree")
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(),
+        raw.groupby(["c2"])[["c1", "c3"]].agg({"c1": "max", "c3": "min"}),
+    )
+
+    mdf = md.DataFrame(raw.copy(), chunk_size=30)
+    r = mdf.groupby(["c2"])[["c1", "c4"]].agg(
+        {"c1": "max", "c4": "mean"}, method="shuffle"
+    )
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(),
+        raw.groupby(["c2"])[["c1", "c4"]].agg({"c1": "max", "c4": "mean"}),
+    )
+
+    # test anonymous function lists
+    agg_funs = [lambda x: (x + 1).sum()]
+    r = mdf.groupby(["c2"])["c1"].agg(agg_funs)
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(), raw.groupby(["c2"])["c1"].agg(agg_funs)
+    )
+
+    # test group by multiple cols
+    r = mdf.groupby(["c1", "c2"], as_index=False)["c3"].sum()
+    expected = raw.groupby(["c1", "c2"], as_index=False)["c3"].sum()
+    pd.testing.assert_frame_equal(
+        r.execute().fetch().sort_values(["c1", "c2"]).reset_index(drop=True),
+        expected.sort_values(["c1", "c2"]).reset_index(drop=True),
+    )
+
+    r = mdf.groupby(["c1", "c2"], as_index=False)["c3"].agg(["sum"])
+    expected = raw.groupby(["c1", "c2"], as_index=False)["c3"].agg(["sum"])
+    pd.testing.assert_frame_equal(
+        r.execute().fetch().sort_values(["c1", "c2"]),
+        expected.sort_values(["c1", "c2"]),
     )
 
 
@@ -352,12 +417,18 @@ def test_dataframe_groupby_agg(setup):
     # test as_index=False
     for method in ["tree", "shuffle"]:
         r = mdf.groupby("c2", as_index=False).agg("size", method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch().sort_values("c2", ignore_index=True),
-            raw.groupby("c2", as_index=False)
-            .agg("size")
-            .sort_values("c2", ignore_index=True),
-        )
+        if _agg_size_as_frame:
+            result = r.execute().fetch().sort_values("c2", ignore_index=True)
+            expected = (
+                raw.groupby("c2", as_index=False)
+                .agg("size")
+                .sort_values("c2", ignore_index=True)
+            )
+            pd.testing.assert_frame_equal(result, expected)
+        else:
+            result = r.execute().fetch().sort_index()
+            expected = raw.groupby("c2", as_index=False).agg("size").sort_index()
+            pd.testing.assert_series_equal(result, expected)
 
         r = mdf.groupby("c2", as_index=False).agg("mean", method=method)
         pd.testing.assert_frame_equal(
@@ -788,6 +859,67 @@ def test_groupby_cum(setup):
         )
 
 
+def test_groupby_fill(setup):
+    df1 = pd.DataFrame(
+        [
+            [1, 1, 10],
+            [1, 1, np.nan],
+            [1, 1, np.nan],
+            [1, 2, np.nan],
+            [1, 2, 20],
+            [1, 2, np.nan],
+            [1, 3, np.nan],
+            [1, 3, np.nan],
+        ],
+        columns=["one", "two", "three"],
+    )
+    mdf = md.DataFrame(df1, chunk_size=3)
+    r1 = getattr(mdf.groupby(["one", "two"]), "ffill")()
+    pd.testing.assert_frame_equal(
+        r1.execute().fetch().sort_index(),
+        getattr(df1.groupby(["one", "two"]), "ffill")().sort_index(),
+    )
+
+    r2 = getattr(mdf.groupby("two"), "bfill")()
+    pd.testing.assert_frame_equal(
+        r2.execute().fetch().sort_index(),
+        getattr(df1.groupby("two"), "bfill")().sort_index(),
+    )
+
+    r3 = getattr(mdf.groupby("one"), "fillna")(5)
+    pd.testing.assert_frame_equal(
+        r3.execute().fetch().sort_index(),
+        getattr(df1.groupby("one"), "fillna")(5).sort_index(),
+    )
+
+    r4 = getattr(mdf.groupby("two"), "backfill")()
+    pd.testing.assert_frame_equal(
+        r4.execute().fetch().sort_index(),
+        getattr(df1.groupby("two"), "backfill")().sort_index(),
+    )
+
+    s1 = pd.Series([4, 3, 9, np.nan, np.nan, 7, 10, 8, 1, 6])
+    ms1 = md.Series(s1, chunk_size=3)
+
+    r1 = getattr(ms1.groupby(lambda x: x % 2), "ffill")()
+    pd.testing.assert_series_equal(
+        r1.execute().fetch().sort_index(),
+        getattr(s1.groupby(lambda x: x % 2), "ffill")().sort_index(),
+    )
+
+    r2 = getattr(ms1.groupby(lambda x: x % 2), "bfill")()
+    pd.testing.assert_series_equal(
+        r2.execute().fetch().sort_index(),
+        getattr(s1.groupby(lambda x: x % 2), "bfill")().sort_index(),
+    )
+
+    r4 = getattr(ms1.groupby(lambda x: x % 2), "backfill")()
+    pd.testing.assert_series_equal(
+        r4.execute().fetch().sort_index(),
+        getattr(s1.groupby(lambda x: x % 2), "backfill")().sort_index(),
+    )
+
+
 def test_groupby_head(setup):
     df1 = pd.DataFrame(
         {
@@ -819,6 +951,11 @@ def test_groupby_head(setup):
     r = mdf.groupby("b").head(1)
     pd.testing.assert_frame_equal(
         r.execute().fetch().sort_index(), df1.groupby("b").head(1)
+    )
+
+    r = mdf.groupby("b").head(-1)
+    pd.testing.assert_frame_equal(
+        r.execute().fetch().sort_index(), df1.groupby("b").head(-1)
     )
 
     # test head with selection
@@ -988,6 +1125,7 @@ def test_groupby_agg_with_arrow_dtype(setup):
 
     r = mdf.groupby("b").count()
     result = r.execute().fetch()
+    result.index = result.index.astype(object)
     expected = df1.groupby("b").count()
     pd.testing.assert_frame_equal(result, expected)
 
@@ -996,6 +1134,7 @@ def test_groupby_agg_with_arrow_dtype(setup):
 
     r = mseries.groupby(mseries).count()
     result = r.execute().fetch()
+    result.index = result.index.astype(object)
     expected = series1.groupby(series1).count()
     pd.testing.assert_series_equal(result, expected)
 
@@ -1005,6 +1144,7 @@ def test_groupby_agg_with_arrow_dtype(setup):
 
     r = mseries.groupby(mseries).count()
     result = r.execute().fetch()
+    result.index = result.index.astype(object)
     expected = series2.groupby(series2).count()
     pd.testing.assert_series_equal(result, expected)
 
@@ -1017,6 +1157,7 @@ def test_groupby_apply_with_arrow_dtype(setup):
 
     applied = mdf.groupby("b").apply(lambda df: df.a.sum())
     result = applied.execute().fetch()
+    result.index = result.index.astype(object)
     expected = df1.groupby("b").apply(lambda df: df.a.sum())
     pd.testing.assert_series_equal(result, expected)
 
@@ -1025,5 +1166,52 @@ def test_groupby_apply_with_arrow_dtype(setup):
 
     applied = mseries.groupby(mseries).apply(lambda s: s)
     result = applied.execute().fetch()
+    result.index = result.index.astype(np.int64)
     expected = series1.groupby(series1).apply(lambda s: s)
     pd.testing.assert_series_equal(arrow_array_to_objects(result), expected)
+
+
+def test_groupby_nunique(setup):
+    rs = np.random.RandomState(0)
+    data_size = 100
+    data_dict = {
+        "a": rs.randint(0, 10, size=(data_size,)),
+        "b": rs.choice(list("abcd"), size=(data_size,)),
+        "c": rs.choice(list("abcd"), size=(data_size,)),
+    }
+    df1 = pd.DataFrame(data_dict)
+
+    # one chunk
+    mdf = md.DataFrame(df1)
+    pd.testing.assert_frame_equal(
+        mdf.groupby("c").nunique().execute().fetch().sort_index(),
+        df1.groupby("c").nunique().sort_index(),
+    )
+
+    # multiple chunks
+    mdf = md.DataFrame(df1, chunk_size=13)
+    pd.testing.assert_frame_equal(
+        mdf.groupby("b").nunique().execute().fetch().sort_index(),
+        df1.groupby("b").nunique().sort_index(),
+    )
+
+    # getitem and nunique
+    mdf = md.DataFrame(df1, chunk_size=13)
+    pd.testing.assert_series_equal(
+        mdf.groupby("b")["a"].nunique().execute().fetch().sort_index(),
+        df1.groupby("b")["a"].nunique().sort_index(),
+    )
+
+    # test with as_index=False
+    mdf = md.DataFrame(df1, chunk_size=13)
+    if _agg_size_as_frame:
+        pd.testing.assert_frame_equal(
+            mdf.groupby("b", as_index=False)["a"]
+            .nunique()
+            .execute()
+            .fetch()
+            .sort_values(by="b", ignore_index=True),
+            df1.groupby("b", as_index=False)["a"]
+            .nunique()
+            .sort_values(by="b", ignore_index=True),
+        )

@@ -82,8 +82,6 @@ class ClusterAPI(AbstractClusterAPI):
         ----------
         keys
             key for a supervisor address
-        watch
-            if True, will watch changes of supervisor changes
 
         Returns
         -------

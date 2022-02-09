@@ -299,10 +299,10 @@ class ClusterStateActor(mo.StatelessActor):
 
 async def new_cluster(
     cluster_name: str = None,
-    supervisor_mem: int = 1 * 1024 ** 3,
+    supervisor_mem: int = 1 * 1024**3,
     worker_num: int = 1,
     worker_cpu: int = 2,
-    worker_mem: int = 2 * 1024 ** 3,
+    worker_mem: int = 2 * 1024**3,
     config: Union[str, Dict] = None,
     **kwargs,
 ):
@@ -314,8 +314,17 @@ async def new_cluster(
     ensure_isolation_created(kwargs)
     if kwargs:  # pragma: no cover
         raise TypeError(f"new_cluster got unexpected " f"arguments: {list(kwargs)}")
+    n_supervisor_process = kwargs.get(
+        "n_supervisor_process", DEFAULT_SUPERVISOR_SUB_POOL_NUM
+    )
     cluster = RayCluster(
-        cluster_name, supervisor_mem, worker_num, worker_cpu, worker_mem, config
+        cluster_name,
+        supervisor_mem,
+        worker_num,
+        worker_cpu,
+        worker_mem,
+        config,
+        n_supervisor_process=n_supervisor_process,
     )
     try:
         await cluster.start()
@@ -376,16 +385,18 @@ class RayCluster:
     def __init__(
         self,
         cluster_name: str,
-        supervisor_mem: int = 4 * 1024 ** 3,
+        supervisor_mem: int = 4 * 1024**3,
         worker_num: int = 1,
         worker_cpu: int = 16,
-        worker_mem: int = 32 * 1024 ** 3,
+        worker_mem: int = 32 * 1024**3,
         config: Union[str, Dict] = None,
+        n_supervisor_process: int = DEFAULT_SUPERVISOR_SUB_POOL_NUM,
     ):
         # load third party extensions.
         init_extension_entrypoints()
         self._cluster_name = cluster_name
         self._supervisor_mem = supervisor_mem
+        self._n_supervisor_process = n_supervisor_process
         self._worker_num = worker_num
         self._worker_cpu = worker_cpu
         self._worker_mem = worker_mem
@@ -416,7 +427,7 @@ class RayCluster:
             self._config.get("cluster", {})
             .get("ray", {})
             .get("supervisor", {})
-            .get("sub_pool_num", DEFAULT_SUPERVISOR_SUB_POOL_NUM)
+            .get("sub_pool_num", self._n_supervisor_process)
         )
         from ...storage.ray import support_specify_owner
 

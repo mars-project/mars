@@ -16,6 +16,7 @@
 
 import asyncio
 import dataclasses
+import enum
 import functools
 import importlib
 import io
@@ -55,10 +56,12 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     ceildiv,
     Timer,
 )
+from .lib.version import parse as parse_version
 from .typing import ChunkType, TileableType, EntityType, OperandType
 
 logger = logging.getLogger(__name__)
 random.seed(int(time.time()) * os.getpid())
+pd_release_version: Tuple[int] = parse_version(pd.__version__).release
 
 OBJECT_FIELD_OVERHEAD = 50
 
@@ -85,6 +88,19 @@ if sys.platform == "win32":  # pragma: no cover
     to_binary = _replace_default_encoding(to_binary)
     to_text = _replace_default_encoding(to_text)
     to_str = _replace_default_encoding(to_str)
+
+
+try:
+    from pandas._libs.lib import NoDefault, no_default
+except ImportError:  # pragma: no cover
+
+    class NoDefault(enum.Enum):
+        no_default = "NO_DEFAULT"
+
+        def __repr__(self) -> str:
+            return "<no_default>"
+
+    no_default = NoDefault.no_default
 
 
 class AttributeDict(dict):
@@ -170,17 +186,17 @@ def readable_size(size: int, trunc: bool = False) -> str:
     if size < 1024:
         ret_size = size
         size_unit = ""
-    elif 1024 <= size < 1024 ** 2:
+    elif 1024 <= size < 1024**2:
         ret_size = size * 1.0 / 1024
         size_unit = "K"
-    elif 1024 ** 2 <= size < 1024 ** 3:
-        ret_size = size * 1.0 / (1024 ** 2)
+    elif 1024**2 <= size < 1024**3:
+        ret_size = size * 1.0 / (1024**2)
         size_unit = "M"
-    elif 1024 ** 3 <= size < 1024 ** 4:
-        ret_size = size * 1.0 / (1024 ** 3)
+    elif 1024**3 <= size < 1024**4:
+        ret_size = size * 1.0 / (1024**3)
         size_unit = "G"
     else:
-        ret_size = size * 1.0 / (1024 ** 4)
+        ret_size = size * 1.0 / (1024**4)
         size_unit = "T"
 
     if not trunc:
@@ -1086,27 +1102,40 @@ def arrow_array_to_objects(
     return obj
 
 
+_enter_counter = 0
+_initial_session = None
+
+
 def enter_current_session(func: Callable):
     @functools.wraps(func)
     def wrapped(cls, ctx, op):
         from .deploy.oscar.session import AbstractSession, get_default_session
 
+        global _enter_counter, _initial_session
         # skip in some test cases
         if not hasattr(ctx, "get_current_session"):
             return func(cls, ctx, op)
 
-        session = ctx.get_current_session()
-        prev_default_session = get_default_session()
-        session.as_default()
+        with AbstractSession._lock:
+            if _enter_counter == 0:
+                # to handle nested call, only set initial session
+                # in first call
+                session = ctx.get_current_session()
+                _initial_session = get_default_session()
+                session.as_default()
+            _enter_counter += 1
 
         try:
             result = func(cls, ctx, op)
         finally:
-            if prev_default_session:
-                prev_default_session.as_default()
-            else:
-                AbstractSession.reset_default()
-
+            with AbstractSession._lock:
+                _enter_counter -= 1
+                if _enter_counter == 0:
+                    # set previous session when counter is 0
+                    if _initial_session:
+                        _initial_session.as_default()
+                    else:
+                        AbstractSession.reset_default()
         return result
 
     return wrapped
@@ -1491,3 +1520,13 @@ def flatten_dict_to_nested_dict(flatten_dict: Dict, sep=".") -> Dict:
                 else:
                     sub_nested_dict = sub_nested_dict[sub_key]
     return nested_dict
+
+
+def is_full_slice(slc: Any) -> bool:
+    """Check if the input is a full slice ((:) or (0:))"""
+    return (
+        isinstance(slc, slice)
+        and (slc.start == 0 or slc.start is None)
+        and slc.stop is None
+        and slc.step is None
+    )

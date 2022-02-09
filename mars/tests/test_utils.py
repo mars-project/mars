@@ -454,13 +454,10 @@ def test_merge_dict():
 
     assert merge_dict({}, {1: 2}) == {1: 2}
     assert merge_dict({1: 2}, {}) == {1: 2}
-    assert (
-        merge_dict(
-            {"a": {1: 2}, "b": {2: 3}, "c": {1: {2: 3}}},
-            {"a": {1: 3}, "b": {2: 3}, "c": {1: {2: 4}}},
-        )
-        == {"a": {1: 3}, "b": {2: 3}, "c": {1: {2: 4}}}
-    )
+    assert merge_dict(
+        {"a": {1: 2}, "b": {2: 3}, "c": {1: {2: 3}}},
+        {"a": {1: 3}, "b": {2: 3}, "c": {1: {2: 4}}},
+    ) == {"a": {1: 3}, "b": {2: 3}, "c": {1: {2: 4}}}
     with pytest.raises(ValueError):
         merge_dict({"a": {1: 2}, "b": {2: 3}}, {"a": {1: 3}}, overwrite=False)
 

@@ -51,7 +51,6 @@ jobs:
 
           source ./ci/rewrite-cov-config.sh
 
-          pip install git+https://github.com/mars-project/pytest-asyncio.git
           pip install numpy scipy cython
 
           pip install -e ".[dev,extra]"
@@ -109,6 +108,7 @@ jobs:
 
           if [ -n "$WITH_HADOOP" ]; then
             source $CONDA/bin/activate test
+            source ./ci/reload-env.sh
             pytest $PYTEST_CONFIG -m hadoop
             coverage report
           fi

@@ -15,20 +15,20 @@
 import math
 from collections import OrderedDict
 
-import pandas as pd
-
-from ....lib.version import parse as parse_version
 from ....serialization.serializables import (
     Int64Field,
     BoolField,
     Int32Field,
     Float64Field,
+    StringField,
 )
+from ....utils import pd_release_version
 from ...utils import validate_axis
 from ..core import Window
 
-_default_min_period_1 = parse_version(pd.__version__) >= parse_version("1.1.0")
-_pd_1_3_repr = parse_version(pd.__version__) >= parse_version("1.3.0")
+_default_min_period_1 = pd_release_version >= (1, 1, 0)
+_pd_1_3_repr = pd_release_version >= (1, 3, 0)
+_window_has_method = pd_release_version >= (1, 4, 0)
 
 
 class EWM(Window):
@@ -37,9 +37,17 @@ class EWM(Window):
     _adjust = BoolField("adjust")
     _ignore_na = BoolField("ignore_na")
     _axis = Int32Field("axis")
+    _method = StringField("method")
 
     def __init__(
-        self, alpha=None, min_periods=None, adjust=None, ignore_na=None, axis=None, **kw
+        self,
+        alpha=None,
+        min_periods=None,
+        adjust=None,
+        ignore_na=None,
+        axis=None,
+        method=None,
+        **kw
     ):
         super().__init__(
             _alpha=alpha,
@@ -47,6 +55,7 @@ class EWM(Window):
             _adjust=adjust,
             _ignore_na=ignore_na,
             _axis=axis,
+            _method=method or "single",
             **kw
         )
 
@@ -71,9 +80,19 @@ class EWM(Window):
         return self._axis
 
     @property
+    def method(self):
+        return self._method
+
+    @property
     def params(self):
         p = OrderedDict()
-        for k in ["alpha", "min_periods", "adjust", "ignore_na", "axis"]:
+
+        if not _window_has_method:  # pragma: no cover
+            args = ["alpha", "min_periods", "adjust", "ignore_na", "axis"]
+        else:
+            args = ["alpha", "min_periods", "adjust", "ignore_na", "axis", "method"]
+
+        for k in args:
             p[k] = getattr(self, k)
         return p
 

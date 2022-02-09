@@ -67,6 +67,9 @@ class TaskStageProcessor:
         self.subtask_results: Dict[Subtask, SubtaskResult] = dict()
         self._submitted_subtask_ids = set()
 
+        # All subtask IDs whose input chunk reference count is reduced.
+        self.decref_subtask = set()
+
         self._band_manager: Dict[BandType, mo.ActorRef] = dict()
 
         # result

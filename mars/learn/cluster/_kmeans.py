@@ -289,7 +289,7 @@ def _kmeans_single_elkan(
             inertia = _inertia(X, sample_weight, centers, labels)
             to_runs.append(inertia)
 
-        center_shift_tot = (center_shift ** 2).sum()
+        center_shift_tot = (center_shift**2).sum()
         to_runs.append(center_shift_tot)
 
         mt.ExecutableTuple(to_runs).execute(session=session, **(run_kwargs or dict()))
@@ -391,7 +391,7 @@ def _kmeans_single_lloyd(
             inertia = _inertia(X, sample_weight, centers, labels)
             to_runs.append(inertia)
 
-        center_shift_tot = (center_shift ** 2).sum()
+        center_shift_tot = (center_shift**2).sum()
         to_runs.append(center_shift_tot)
 
         mt.ExecutableTuple(to_runs).execute(session=session, **(run_kwargs or dict()))

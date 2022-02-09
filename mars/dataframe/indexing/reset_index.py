@@ -19,7 +19,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...serialization.serializables import BoolField, AnyField, StringField
+from ...serialization.serializables import AnyField, BoolField
+from ...utils import no_default
 from ..core import IndexValue
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE
 from ..utils import (
@@ -35,7 +36,7 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
 
     _level = AnyField("level")
     _drop = BoolField("drop")
-    _name = StringField("name")
+    _name = AnyField("name")
     _col_level = AnyField("col_level")
     _col_fill = AnyField("col_fill")
     _incremental_index = BoolField("incremental_index")
@@ -475,7 +476,12 @@ def df_reset_index(
 
 
 def series_reset_index(
-    series, level=None, drop=False, name=None, inplace=False, incremental_index=False
+    series,
+    level=None,
+    drop=False,
+    name=no_default,
+    inplace=False,
+    incremental_index=False,
 ):
     """
     Generate a new DataFrame or Series with the index reset.
@@ -594,6 +600,9 @@ def series_reset_index(
     2  baz  one    2
     3  baz  two    3
     """
+    if name is no_default:
+        name = series.name if series.name is not None else 0
+
     op = DataFrameResetIndex(
         level=level,
         drop=drop,

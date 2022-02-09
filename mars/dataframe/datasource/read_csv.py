@@ -45,13 +45,14 @@ from .core import (
     IncrementalIndexDatasource,
     ColumnPruneSupportedDataSourceMixin,
     IncrementalIndexDataSourceMixin,
+    merge_small_files,
 )
 
 
 cudf = lazy_import("cudf", globals=globals())
 
 
-def _find_delimiter(f, block_size=2 ** 16):
+def _find_delimiter(f, block_size=2**16):
     delimiter = b"\n"
     if f.tell() == 0:
         return 0
@@ -99,124 +100,36 @@ class DataFrameReadCSV(
 ):
     _op_type_ = OperandDef.READ_CSV
 
-    _path = AnyField("path")
-    _names = ListField("names")
-    _sep = StringField("sep")
-    _header = AnyField("header")
-    _index_col = Int32Field("index_col")
-    _compression = StringField("compression")
-    _usecols = AnyField("usecols")
-    _offset = Int64Field("offset")
-    _size = Int64Field("size")
-    _nrows = Int64Field("nrows")
-    _incremental_index = BoolField("incremental_index")
-    _use_arrow_dtype = BoolField("use_arrow_dtype")
-    _keep_usecols_order = BoolField("keep_usecols_order")
-    _storage_options = DictField("storage_options")
-
-    def __init__(
-        self,
-        path=None,
-        names=None,
-        sep=None,
-        header=None,
-        index_col=None,
-        compression=None,
-        usecols=None,
-        offset=None,
-        size=None,
-        nrows=None,
-        keep_usecols_order=None,
-        incremental_index=None,
-        use_arrow_dtype=None,
-        storage_options=None,
-        **kw,
-    ):
-        super().__init__(
-            _path=path,
-            _names=names,
-            _sep=sep,
-            _header=header,
-            _index_col=index_col,
-            _compression=compression,
-            _usecols=usecols,
-            _offset=offset,
-            _size=size,
-            _nrows=nrows,
-            _incremental_index=incremental_index,
-            _keep_usecols_order=keep_usecols_order,
-            _use_arrow_dtype=use_arrow_dtype,
-            _storage_options=storage_options,
-            _output_types=[OutputType.dataframe],
-            **kw,
-        )
-
-    @property
-    def path(self):
-        return self._path
-
-    @property
-    def names(self):
-        return self._names
-
-    @property
-    def sep(self):
-        return self._sep
-
-    @property
-    def header(self):
-        return self._header
-
-    @property
-    def index_col(self):
-        return self._index_col
-
-    @property
-    def compression(self):
-        return self._compression
-
-    @property
-    def usecols(self):
-        return self._usecols
-
-    @property
-    def offset(self):
-        return self._offset
-
-    @property
-    def size(self):
-        return self._size
-
-    @property
-    def incremental_index(self):
-        return self._incremental_index
-
-    @property
-    def use_arrow_dtype(self):
-        return self._use_arrow_dtype
-
-    @property
-    def keep_usecols_order(self):
-        return self._keep_usecols_order
-
-    @property
-    def storage_options(self):
-        return self._storage_options
+    path = AnyField("path")
+    names = ListField("names")
+    sep = StringField("sep")
+    header = AnyField("header")
+    index_col = Int32Field("index_col")
+    compression = StringField("compression")
+    usecols = AnyField("usecols")
+    offset = Int64Field("offset")
+    size = Int64Field("size")
+    incremental_index = BoolField("incremental_index")
+    use_arrow_dtype = BoolField("use_arrow_dtype")
+    keep_usecols_order = BoolField("keep_usecols_order", default=None)
+    storage_options = DictField("storage_options")
+    merge_small_files = BoolField("merge_small_files")
+    merge_small_file_options = DictField("merge_small_file_options")
 
     def get_columns(self):
-        return self._usecols
+        return self.usecols
 
     def set_pruned_columns(self, columns, *, keep_order=None):
-        self._usecols = columns
-        self._keep_usecols_order = keep_order
+        self.usecols = columns
+        self.keep_usecols_order = keep_order
 
     @classmethod
     def _tile_compressed(cls, op):
         # Compression does not support break into small parts
         df = op.outputs[0]
         chunk_op = op.copy().reset_key()
-        chunk_op._offset = 0
-        chunk_op._size = file_size(op.path)
+        chunk_op.offset = 0
+        chunk_op.size = file_size(op.path)
         shape = df.shape
         new_chunk = chunk_op.new_chunk(
             None,
@@ -239,7 +152,7 @@ class DataFrameReadCSV(
         )
 
     @classmethod
-    def _tile(cls, op):
+    def _tile(cls, op: "DataFrameReadCSV"):
         if op.compression:
             return cls._tile_compressed(op)
 
@@ -279,9 +192,9 @@ class DataFrameReadCSV(
             offset = 0
             for _ in range(int(np.ceil(total_bytes * 1.0 / chunk_bytes))):
                 chunk_op = op.copy().reset_key()
-                chunk_op._path = path
-                chunk_op._offset = offset
-                chunk_op._size = min(chunk_bytes, total_bytes - offset)
+                chunk_op.path = path
+                chunk_op.offset = offset
+                chunk_op.size = min(chunk_bytes, total_bytes - offset)
                 shape = (np.nan, len(dtypes))
                 index_value = parse_index(df.index_value.to_pandas(), path, index_num)
                 new_chunk = chunk_op.new_chunk(
@@ -298,7 +211,7 @@ class DataFrameReadCSV(
 
         new_op = op.copy()
         nsplits = ((np.nan,) * len(out_chunks), (df.shape[1],))
-        return new_op.new_dataframes(
+        df = new_op.new_dataframe(
             None,
             df.shape,
             dtypes=dtypes,
@@ -307,6 +220,9 @@ class DataFrameReadCSV(
             chunks=out_chunks,
             nsplits=nsplits,
         )
+        if op.merge_small_files:
+            df = merge_small_files(df, **(op.merge_small_file_options or dict()))
+        return [df]
 
     @classmethod
     def _pandas_read_csv(cls, f, op):
@@ -437,6 +353,7 @@ class DataFrameReadCSV(
     def __call__(
         self, index_value=None, columns_value=None, dtypes=None, chunk_bytes=None
     ):
+        self._output_types = [OutputType.dataframe]
         shape = (np.nan, len(dtypes))
         return self.new_dataframe(
             None,
@@ -451,7 +368,7 @@ class DataFrameReadCSV(
 def read_csv(
     path,
     names=None,
-    sep=",",
+    sep: str = ",",
     index_col=None,
     compression=None,
     header="infer",
@@ -462,10 +379,12 @@ def read_csv(
     gpu=None,
     head_bytes="100k",
     head_lines=None,
-    incremental_index=True,
-    use_arrow_dtype=None,
-    storage_options=None,
-    memory_scale=None,
+    incremental_index: bool = True,
+    use_arrow_dtype: bool = None,
+    storage_options: dict = None,
+    memory_scale: int = None,
+    merge_small_files: bool = True,
+    merge_small_file_options: dict = None,
     **kwargs,
 ):
     r"""
@@ -733,6 +652,10 @@ def read_csv(
         If True, use arrow dtype to store columns.
     storage_options: dict, optional
         Options for storage connection.
+    merge_small_files: bool, default True
+        Merge small files whose size is small.
+    merge_small_file_options: dict
+        Options for merging small files
 
     Returns
     -------
@@ -816,6 +739,8 @@ def read_csv(
         use_arrow_dtype=use_arrow_dtype,
         storage_options=storage_options,
         memory_scale=memory_scale,
+        merge_small_files=merge_small_files,
+        merge_small_file_options=merge_small_file_options,
         **kwargs,
     )
     chunk_bytes = chunk_bytes or options.chunk_store_limit

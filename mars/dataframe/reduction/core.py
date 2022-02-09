@@ -28,7 +28,6 @@ from ...core import (
     recursive_tile,
 )
 from ...core.operand import OperandStage
-from ...utils import tokenize
 from ...serialization.serializables import (
     BoolField,
     AnyField,
@@ -36,6 +35,7 @@ from ...serialization.serializables import (
     Int32Field,
     StringField,
 )
+from ...utils import pd_release_version, tokenize
 from ..core import SERIES_TYPE
 from ..utils import (
     parse_index,
@@ -46,6 +46,13 @@ from ..utils import (
     validate_axis,
 )
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE
+
+# in pandas<1.3, when aggregating with multiple levels and numeric_only is True,
+# object cols not ignored with min-max funcs
+_level_reduction_keep_object = pd_release_version[:2] < (1, 3)
+# in pandas>=1.3, when dataframes are reduced into series, mixture of float and bool
+# results in object.
+_reduce_bool_as_object = pd_release_version[:2] != (1, 2)
 
 
 class DataFrameReductionOperand(DataFrameOperand):
@@ -211,22 +218,22 @@ def _get_series_reduction_dtype(
     func_name,
     axis=None,
     bool_only=False,
-    skipna=False,
+    skipna=True,
     numeric_only=False,
 ):
-    empty_series = build_series(dtype=dtype, ensure_string=True)
+    test_series = build_series(dtype=dtype, ensure_string=True)
     if func_name == "count":
-        reduced = empty_series.count()
+        reduced = test_series.count()
     elif func_name == "nunique":
-        reduced = empty_series.nunique()
+        reduced = test_series.nunique()
     elif func_name in ("all", "any"):
-        reduced = getattr(empty_series, func_name)(axis=axis, bool_only=bool_only)
+        reduced = getattr(test_series, func_name)(axis=axis, bool_only=bool_only)
     elif func_name == "size":
-        reduced = empty_series.size
+        reduced = test_series.size
     elif func_name == "str_concat":
-        reduced = pd.Series([empty_series.str.cat()])
+        reduced = pd.Series([test_series.str.cat()])
     else:
-        reduced = getattr(empty_series, func_name)(
+        reduced = getattr(test_series, func_name)(
             axis=axis, skipna=skipna, numeric_only=numeric_only
         )
     return pd.Series(reduced).dtype
@@ -236,17 +243,17 @@ def _get_series_reduction_dtype(
 def _get_df_reduction_dtype(
     dtype, func_name, axis=None, bool_only=False, skipna=False, numeric_only=False
 ):
-    empty_df = build_series(dtype=dtype, ensure_string=True).to_frame()
+    test_df = build_series(dtype=dtype, ensure_string=True).to_frame()
     if func_name == "count":
-        reduced = getattr(empty_df, func_name)(axis=axis, numeric_only=numeric_only)
+        reduced = getattr(test_df, func_name)(axis=axis, numeric_only=numeric_only)
     elif func_name == "nunique":
-        reduced = getattr(empty_df, func_name)(axis=axis)
+        reduced = getattr(test_df, func_name)(axis=axis)
     elif func_name in ("all", "any"):
-        reduced = getattr(empty_df, func_name)(axis=axis, bool_only=bool_only)
+        reduced = getattr(test_df, func_name)(axis=axis, bool_only=bool_only)
     elif func_name == "str_concat":
-        reduced = empty_df.apply(lambda s: s.str.cat(), axis=axis)
+        reduced = test_df.apply(lambda s: s.str.cat(), axis=axis)
     else:
-        reduced = getattr(empty_df, func_name)(
+        reduced = getattr(test_df, func_name)(
             axis=axis, skipna=skipna, numeric_only=numeric_only
         )
     if len(reduced) == 0:
@@ -304,7 +311,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
     def _call_dataframe(self, df):
         axis = getattr(self, "axis", None) or 0
         level = getattr(self, "level", None)
-        skipna = getattr(self, "skipna", None)
+        skipna = getattr(self, "skipna", True)
         numeric_only = getattr(self, "numeric_only", None)
         bool_only = getattr(self, "bool_only", None)
         self._axis = axis = validate_axis(axis, df)
@@ -327,9 +334,9 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             reduced_dtype = reduced.dtype
         else:
             reduced_cols, dtypes = [], []
-            for col, dt in df.dtypes.items():
+            for col, src_dt in df.dtypes.items():
                 dt = _get_df_reduction_dtype(
-                    dt,
+                    src_dt,
                     func_name,
                     axis=axis,
                     bool_only=bool_only,
@@ -339,16 +346,32 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                 if dt is not None:
                     reduced_cols.append(col)
                     dtypes.append(dt)
+                elif (
+                    _level_reduction_keep_object
+                    and numeric_only
+                    and level is not None
+                    and func_name in ("min", "max")
+                    and src_dt == np.dtype(object)
+                ):  # pragma: no cover
+                    reduced_cols.append(col)
+                    dtypes.append(np.dtype(object))
             if len(dtypes) == 0:
                 reduced_dtype = np.dtype("O")
             elif all(dt == dtypes[0] for dt in dtypes):
                 reduced_dtype = dtypes[0]
-            elif not all(isinstance(dt, np.dtype) and dt != bool for dt in dtypes):
-                # todo currently we return mixed dtypes as np.dtype('O').
-                #  handle pandas Dtypes in the future more carefully.
-                reduced_dtype = np.dtype("O")
             else:
-                reduced_dtype = np.find_common_type(dtypes, [])
+                # as we already bypassed dtypes with same values,
+                # when has_mixed_bool is True, there are other dtypes
+                # other than bool.
+                has_mixed_bool = any(dt == np.dtype(bool) for dt in dtypes)
+                if _reduce_bool_as_object and has_mixed_bool:
+                    reduced_dtype = np.dtype("O")
+                elif not all(isinstance(dt, np.dtype) for dt in dtypes):
+                    # todo currently we return mixed dtypes as np.dtype('O').
+                    #  handle pandas Dtypes in the future more carefully.
+                    reduced_dtype = np.dtype("O")
+                else:
+                    reduced_dtype = np.find_common_type(dtypes, [])
 
         if level is not None:
             return self._call_groupby_level(df[reduced_cols], level)
@@ -370,7 +393,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
     def _call_series(self, series):
         level = getattr(self, "level", None)
         axis = getattr(self, "axis", None)
-        skipna = getattr(self, "skipna", None)
+        skipna = getattr(self, "skipna", True)
         numeric_only = getattr(self, "numeric_only", None)
         bool_only = getattr(self, "bool_only", None)
         self._axis = axis = validate_axis(axis or 0, series)
@@ -442,8 +465,8 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         n_rows, n_cols = in_df.chunk_shape
 
         # map to get individual results and summaries
-        src_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
-        summary_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
+        src_chunks = np.empty(in_df.chunk_shape, dtype=object)
+        summary_chunks = np.empty(in_df.chunk_shape, dtype=object)
         for c in in_df.chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op.stage = OperandStage.map
@@ -457,7 +480,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
             )
 
         # combine summaries into results
-        output_chunk_array = np.empty(in_df.chunk_shape, dtype=np.object)
+        output_chunk_array = np.empty(in_df.chunk_shape, dtype=object)
         if op.axis == 1:
             for row in range(n_rows):
                 row_src = src_chunks[row, :]
@@ -493,7 +516,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         series = op.outputs[0]
 
         # map to get individual results and summaries
-        summary_chunks = np.empty(in_series.chunk_shape, dtype=np.object)
+        summary_chunks = np.empty(in_series.chunk_shape, dtype=object)
         for c in in_series.chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op.stage = OperandStage.map
@@ -641,7 +664,7 @@ class CustomReduction:
         return self.name
 
     def __call__(self, value):
-        if is_build_mode():
+        if isinstance(value, ENTITY_TYPE):
             from .custom_reduction import build_custom_reduction_result
 
             return build_custom_reduction_result(value, self)
@@ -837,12 +860,12 @@ class ReductionCompiler:
             self._output_key_to_post_steps[step.output_key] = step
             self._update_col_dict(self._output_key_to_post_cols, step.output_key, cols)
 
-    @functools.lru_cache(100)
-    def _compile_expr_function(self, py_src):
+    def _compile_expr_function(self, py_src: str, local_consts: dict):
         from ... import tensor, dataframe
 
         result_store = dict()
-        global_vars = globals()
+        global_vars = globals().copy()
+        global_vars.update(local_consts)
         global_vars.update(dict(mt=tensor, md=dataframe, array=np.array, nan=np.nan))
         exec(
             py_src, global_vars, result_store
@@ -866,7 +889,7 @@ class ReductionCompiler:
             mock_obj = MarsDataFrame(mock_df)
 
         # calc target tileable to generate DAG
-        with enter_mode(kernel=True):
+        with enter_mode(kernel=True, build=False):
             return func(mock_obj)
 
     @enter_mode(build=True)
@@ -966,24 +989,24 @@ class ReductionCompiler:
                 assert len(initial_inputs) == 1
                 input_key = initial_inputs[0].key
 
-                func_str, _ = self._generate_function_str(t.inputs[0])
+                func_str, _, local_consts = self._generate_function_str(t.inputs[0])
                 pre_funcs.append(
                     ReductionPreStep(
                         input_key,
                         agg_input_key,
                         None,
-                        self._compile_expr_function(func_str),
+                        self._compile_expr_function(func_str, local_consts),
                     )
                 )
         # collect function output after agg
-        func_str, input_keys = self._generate_function_str(func_ret)
+        func_str, input_keys, local_consts = self._generate_function_str(func_ret)
         post_funcs.append(
             ReductionPostStep(
                 input_keys,
                 func_ret.key,
                 func_name,
                 None,
-                self._compile_expr_function(func_str),
+                self._compile_expr_function(func_str, local_consts),
             )
         )
         if len(_func_compile_cache) > 100:  # pragma: no cover
@@ -1011,6 +1034,7 @@ class ReductionCompiler:
 
         input_key_to_var = OrderedDict()
         local_key_to_var = dict()
+        local_consts_to_val = dict()
         ref_counts = dict()
         ref_visited = set()
         local_lines = []
@@ -1063,7 +1087,12 @@ class ReductionCompiler:
                     # get representation for variables
                     if hasattr(v, "key"):
                         return keys_to_vars[v.key]
-                    return v
+                    elif isinstance(v, (int, bool, str, bytes, np.integer, np.bool_)):
+                        return repr(v)
+                    else:
+                        const_name = f"_const_{len(local_consts_to_val)}"
+                        local_consts_to_val[const_name] = v
+                        return const_name
 
                 func_name = func_name_raw = getattr(t.op, "_func_name", None)
                 rfunc_name = getattr(t.op, "_rfunc_name", func_name)
@@ -1164,6 +1193,7 @@ class ReductionCompiler:
             f"    {lines_str}\n"
             f"    return {local_key_to_var[out_tileable.key]}",
             list(input_key_to_var.keys()),
+            local_consts_to_val,
         )
 
     def compile(self) -> ReductionSteps:
@@ -1187,11 +1217,17 @@ class ReductionCompiler:
             else:
                 post_cols = cols
 
+            func_name = step.func_name
+            if self._lambda_counter == 1 and step.func_name == "<lambda_0>":
+                func_name = "<lambda>"
+            if self._custom_counter == 1 and step.func_name == "<custom_0>":
+                func_name = "<custom>"
+
             post_funcs.append(
                 ReductionPostStep(
                     step.input_keys,
                     step.output_key,
-                    step.func_name,
+                    func_name,
                     post_cols,
                     step.func,
                 )
