@@ -555,7 +555,7 @@ def q11(partsupp, supplier, nation):
     ps_supp_merge = partsupp_filtered.merge(
         supplier_filtered, left_on="PS_SUPPKEY", right_on="S_SUPPKEY", how="inner"
     )
-    ps_supp_merge.loc[:, ["PS_PARTKEY", "S_NATIONKEY", "TOTAL_COST"]]
+    ps_supp_merge = ps_supp_merge.loc[:, ["PS_PARTKEY", "S_NATIONKEY", "TOTAL_COST"]]
     nation_filtered = nation[(nation["N_NAME"] == "GERMANY")]
     nation_filtered = nation_filtered.loc[:, ["N_NATIONKEY"]]
     ps_supp_n_merge = ps_supp_merge.merge(
@@ -564,7 +564,7 @@ def q11(partsupp, supplier, nation):
     ps_supp_n_merge = ps_supp_n_merge.loc[:, ["PS_PARTKEY", "TOTAL_COST"]]
     sum_val = ps_supp_n_merge["TOTAL_COST"].sum() * 0.0001
     total = ps_supp_n_merge.groupby(["PS_PARTKEY"], as_index=False).agg(
-        VALUE=pd.NamedAgg(column="TOTAL_COST", aggfunc="sum")
+        VALUE=md.NamedAgg(column="TOTAL_COST", aggfunc="sum")
     )
     total = total[total["VALUE"] > sum_val]
     total = total.sort_values("VALUE", ascending=False)
@@ -613,7 +613,7 @@ def q13(customer, orders):
     )
     c_o_merged = c_o_merged.loc[:, ["C_CUSTKEY", "O_ORDERKEY"]]
     count_df = c_o_merged.groupby(["C_CUSTKEY"], as_index=False).agg(
-        C_COUNT=pd.NamedAgg(column="O_ORDERKEY", aggfunc="count")
+        C_COUNT=md.NamedAgg(column="O_ORDERKEY", aggfunc="count")
     )
     total = count_df.groupby(["C_COUNT"], as_index=False).size()
     total.columns = ["C_COUNT", "CUSTDIST"]
@@ -974,7 +974,7 @@ def q22(customer, orders):
     agg1 = customer_selected.groupby(["CNTRYCODE"], as_index=False).size()
     agg1.columns = ["CNTRYCODE", "NUMCUST"]
     agg2 = customer_selected.groupby(["CNTRYCODE"], as_index=False).agg(
-        TOTACCTBAL=pd.NamedAgg(column="C_ACCTBAL", aggfunc="sum")
+        TOTACCTBAL=md.NamedAgg(column="C_ACCTBAL", aggfunc="sum")
     )
     total = agg1.merge(agg2, on="CNTRYCODE", how="inner")
     total = total.sort_values(by=["CNTRYCODE"], ascending=[True])
