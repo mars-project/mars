@@ -152,9 +152,26 @@ async def test_rerun_subtask_describe(ray_start_regular, fault_cluster, fault_co
 @pytest.mark.parametrize(
     "fault_cluster", [{"config": SUBTASK_RERUN_CONFIG}], indirect=True
 )
+@pytest.mark.parametrize(
+    "fault_config",
+    [
+        [
+            FaultType.UnhandledException,
+            {FaultPosition.ON_EXECUTE_OPERAND: 1},
+            pytest.raises(FaultInjectionUnhandledError),
+            ["_UnhandledException", "handle_fault"],
+        ],
+        [
+            FaultType.Exception,
+            {FaultPosition.ON_EXECUTE_OPERAND: 100},
+            pytest.raises(FaultInjectionError),
+            ["_ExceedMaxRerun", "handle_fault"],
+        ],
+    ],
+)
 @pytest.mark.asyncio
-async def test_rerun_subtask_unhandled(ray_start_regular, fault_cluster):
-    await test_fault_injection.test_rerun_subtask_unhandled(fault_cluster)
+async def test_rerun_subtask_fail(ray_start_regular, fault_cluster, fault_config):
+    await test_fault_injection.test_rerun_subtask_fail(fault_cluster, fault_config)
 
 
 @require_ray
@@ -167,12 +184,14 @@ async def test_rerun_subtask_unhandled(ray_start_regular, fault_cluster):
         [
             FaultType.Exception,
             {FaultPosition.ON_EXECUTE_OPERAND: 1},
-            pytest.raises(FaultInjectionError, match="Fault Injection"),
+            pytest.raises(FaultInjectionError, match="RemoteFunction"),
+            ["_UnretryableException", "handle_fault"],
         ],
         [
             FaultType.ProcessExit,
             {FaultPosition.ON_EXECUTE_OPERAND: 1},
             pytest.raises(ServerClosed),
+            ["_UnretryableException", "*"],
         ],
     ],
 )

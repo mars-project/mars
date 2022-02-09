@@ -16,6 +16,7 @@ import asyncio
 import functools
 import logging
 import operator
+import pprint
 import sys
 import time
 from collections import defaultdict
@@ -68,28 +69,45 @@ async def _retry_run(
         except (OSError, MarsError) as ex:
             if subtask_info.num_retries < subtask_info.max_retries:
                 logger.error(
-                    "Rerun the %s of subtask %s due to %s",
+                    "Rerun[%s/%s] the %s of subtask %s due to %s.",
+                    subtask_info.num_retries,
+                    subtask_info.max_retries,
                     target_async_func,
                     subtask.subtask_id,
                     ex,
                 )
                 subtask_info.num_retries += 1
                 continue
-            raise ex
+            if subtask_info.max_retries > 0:
+                message = (
+                    f"Exceed max rerun[{subtask_info.num_retries}/{subtask_info.max_retries}]:"
+                    f" {target_async_func} of subtask {subtask.subtask_id} due to {ex}."
+                )
+                logger.error(message)
+
+                class _ExceedMaxRerun(type(ex)):
+                    pass
+
+                raise _ExceedMaxRerun(message).with_traceback(ex.__traceback__)
+            else:
+                raise ex
         except asyncio.CancelledError:
             raise
         except Exception as ex:
-            if subtask_info.num_retries < subtask_info.max_retries:
-                logger.error(
-                    "Failed to rerun the %s of subtask %s, "
-                    "num_retries: %s, max_retries: %s, unhandled exception: %s",
-                    target_async_func,
-                    subtask.subtask_id,
-                    subtask_info.num_retries,
-                    subtask_info.max_retries,
-                    ex,
+            if subtask_info.max_retries > 0:
+                message = (
+                    f"Failed to rerun the {target_async_func} of subtask {subtask.subtask_id}, "
+                    f"num_retries: {subtask_info.num_retries}, max_retries: {subtask_info.max_retries} "
+                    f"due to unhandled exception: {ex}."
                 )
-            raise ex
+                logger.error(message)
+
+                class _UnhandledException(type(ex)):
+                    pass
+
+                raise _UnhandledException(message).with_traceback(ex.__traceback__)
+            else:
+                raise ex
 
 
 def _fill_subtask_result_with_exception(
@@ -416,7 +434,25 @@ class SubtaskExecutionActor(mo.StatelessActor):
         if subtask.retryable:
             return await _retry_run(subtask, subtask_info, _run_subtask_once)
         else:
-            return await _run_subtask_once()
+            try:
+                return await _run_subtask_once()
+            except Exception as e:
+                unretryable_op = [
+                    chunk.op
+                    for chunk in subtask.chunk_graph
+                    if not getattr(chunk.op, "retryable", True)
+                ]
+                message = (
+                    f"Run subtask failed due to {e}, the subtask {subtask.subtask_id} is "
+                    f"not retryable, it contains unretryable op: \n"
+                    f"{pprint.pformat(unretryable_op)}"
+                )
+                logger.error(message)
+
+                class _UnretryableException(type(e)):
+                    pass
+
+                raise _UnretryableException(message).with_traceback(e.__traceback__)
 
     async def run_subtask(
         self, subtask: Subtask, band_name: str, supervisor_address: str

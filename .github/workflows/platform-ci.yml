@@ -83,7 +83,7 @@ jobs:
             fi
             if [ -n "$WITH_RAY" ]; then
               pip install pip install ray[default]
-              pip install xgboost_ray
+              pip install xgboost_ray==0.1.5
               pip install --upgrade numpy
             fi
             if [ -n "$RUN_DASK" ]; then
