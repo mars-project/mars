@@ -1050,6 +1050,12 @@ def test_read_parquet_arrow(setup):
             r = mdf.execute().fetch()
             pd.testing.assert_frame_equal(df, r.sort_values("a").reset_index(drop=True))
 
+            # test `use_arrow_dtype=True`
+            mdf = md.read_parquet(f"{tempdir}/*.parquet", use_arrow_dtype=True)
+            result = mdf.execute().fetch()
+            assert isinstance(mdf.dtypes.iloc[1], md.ArrowStringDtype)
+            assert isinstance(result.dtypes.iloc[1], md.ArrowStringDtype)
+
             mdf = md.read_parquet(
                 f"{tempdir}/*.parquet",
                 groups_as_chunks=True,
@@ -1057,6 +1063,23 @@ def test_read_parquet_arrow(setup):
             )
             r = mdf.execute().fetch()
             pd.testing.assert_frame_equal(df, r.sort_values("a").reset_index(drop=True))
+
+    # test partitioned
+    with tempfile.TemporaryDirectory() as tempdir:
+        df = pd.DataFrame(
+            {
+                "a": np.random.rand(300),
+                "b": [f"s{i}" for i in range(300)],
+                "c": np.random.choice(["a", "b", "c"], (300,)),
+            }
+        )
+        df.to_parquet(tempdir, partition_cols=["c"])
+        mdf = md.read_parquet(tempdir)
+        r = mdf.execute().fetch().astype(df.dtypes)
+        pd.testing.assert_frame_equal(
+            df.sort_values("a").reset_index(drop=True),
+            r.sort_values("a").reset_index(drop=True),
+        )
 
 
 @pytest.mark.skipif(fastparquet is None, reason="fastparquet not installed")
