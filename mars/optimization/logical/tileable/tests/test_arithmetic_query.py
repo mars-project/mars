@@ -153,14 +153,25 @@ def test_eval_setitem_to_eval(setup):
     df2 = md.DataFrame(raw2, chunk_size=10)
     df3 = df1.merge(df2, on="A", suffixes=("", "_"))
     df3["K"] = df3["A"] * (1 - df3["B"])
+    df3["L"] = df3["K"] - df3["A"]
+    df3["M"] = df3["K"] + df3["L"]
+
     graph = TileableGraph([df3.data])
     next(TileableGraphBuilder(graph).build())
     records = optimize(graph)
     opt_df3 = records.get_optimization_result(df3.data)
-    assert opt_df3.op.expr == "`K` = (`A`) * ((1) - (`B`))"
+    assert opt_df3.op.expr == "\n".join(
+        [
+            "`K` = (`A`) * ((1) - (`B`))",
+            "`L` = (`K`) - (`A`)",
+            "`M` = (`K`) + (`L`)",
+        ]
+    )
     assert len(graph) == 4
     assert len([n for n in graph if isinstance(n.op, DataFrameEval)]) == 1
 
     r_df3 = raw.merge(raw2, on="A", suffixes=("", "_"))
     r_df3["K"] = r_df3["A"] * (1 - r_df3["B"])
+    r_df3["L"] = r_df3["K"] - r_df3["A"]
+    r_df3["M"] = r_df3["K"] + r_df3["L"]
     pd.testing.assert_frame_equal(df3.execute().fetch(), r_df3)
