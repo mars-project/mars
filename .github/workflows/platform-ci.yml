@@ -82,7 +82,8 @@ jobs:
               rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
             fi
             if [ -n "$WITH_RAY" ]; then
-              pip install pip install ray[default]
+              # relax version after refactoring ray dfataset integration useing ray dataset source api.
+              pip install "ray[default]<1.10.0"
               pip install xgboost_ray==0.1.5
               pip install --upgrade numpy
             fi
