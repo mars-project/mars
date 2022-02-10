@@ -580,12 +580,18 @@ def test_groupby_agg_auto_method(setup):
     ).fetch()
     pd.testing.assert_frame_equal(result.sort_index(), raw.groupby("c2").agg("sum"))
 
-    def _disallow_combine_and_agg(ctx, op):
-        assert op.stage not in (OperandStage.combine, OperandStage.agg)
-        op.execute(ctx, op)
+    rs = np.random.RandomState(0)
+    raw = pd.DataFrame(
+        {
+            "c1": list(range(4)) * 5,
+            "c2": rs.choice(["a", "b", "c"], (20,)),
+            "c3": rs.rand(20),
+        }
+    )
 
+    mdf = md.DataFrame(raw, chunk_size=5)
     r = mdf.groupby("c1").agg("sum")
-    operand_executors = {DataFrameGroupByAgg: _disallow_combine_and_agg}
+    operand_executors = {DataFrameGroupByAgg: _disallow_reduce}
     result = r.execute(
         extra_config={"operand_executors": operand_executors, "check_all": False}
     ).fetch()

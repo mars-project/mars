@@ -20,6 +20,7 @@ from typing import List, Dict
 
 import numpy as np
 import pandas as pd
+from scipy.stats import variation
 
 from ... import opcodes as OperandDef
 from ...config import options
@@ -59,12 +60,12 @@ _support_get_group_without_as_index = pd_release_version[:2] > (1, 0)
 
 class SizeRecorder:
     def __init__(self):
-        self._raw_records = 0
-        self._agg_records = 0
+        self._raw_records = []
+        self._agg_records = []
 
-    def record(self, raw_records: int, agg_records: int):
-        self._raw_records += raw_records
-        self._agg_records += agg_records
+    def record(self, raw_record: int, agg_record: int):
+        self._raw_records.append(raw_record)
+        self._agg_records.append(agg_record)
 
     def get(self):
         return self._raw_records, self._agg_records
@@ -659,15 +660,26 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         # yield to trigger execution
         yield chunks
 
-        raw_size, agg_size = size_recorder.get()
+        raw_sizes, agg_sizes = size_recorder.get()
         # destroy size recorder
         ctx.destroy_remote_object(size_recorder_name)
 
         left_chunks = in_df.chunks[combine_size:]
         left_chunks = cls._gen_map_chunks(op, left_chunks, out_df, func_infos)
-        if raw_size >= agg_size * len(chunks):
-            # aggregated size is less than 1 chunk
-            # use tree aggregation
+        # calculate the coefficient of variation of aggregation sizes,
+        # if the CV is less than 0.2 and the mean of agg_size/raw_size
+        # is less than 0.8, we suppose the single chunk's aggregation size
+        # almost equals to the tileable's, then use tree method
+        # as combine aggregation results won't lead to a rapid expansion.
+        ratios = [
+            agg_size / raw_size for agg_size, raw_size in zip(agg_sizes, raw_sizes)
+        ]
+        cv = variation(agg_sizes)
+        mean_ratio = np.mean(ratios)
+        if cv <= 0.2 and mean_ratio <= 0.8:
+            return cls._combine_tree(op, chunks + left_chunks, out_df, func_infos)
+        elif mean_ratio <= 0.25:
+            # if mean of ratio is less than 0.25, use tree
             return cls._combine_tree(op, chunks + left_chunks, out_df, func_infos)
         else:
             # otherwise, use shuffle
