@@ -48,7 +48,12 @@ from ...serialization.serializables import (
 from ...utils import is_object_dtype
 from ..arrays import ArrowStringDtype
 from ..operands import OutputType
-from ..utils import parse_index, to_arrow_dtypes, contain_arrow_dtype
+from ..utils import (
+    parse_index,
+    to_arrow_dtypes,
+    contain_arrow_dtype,
+    arrow_table_to_pandas_dataframe,
+)
 from .core import (
     IncrementalIndexDatasource,
     ColumnPruneSupportedDataSourceMixin,
@@ -351,7 +356,7 @@ class DataFrameReadParquet(
         table = piece.read(partitions=partitions)
         if op.nrows is not None:
             table = table.slice(0, op.nrows)
-        ctx[out.key] = table.to_pandas()
+        ctx[out.key] = arrow_table_to_pandas_dataframe(table, op.use_arrow_dtype)
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameReadParquet"):
@@ -500,10 +505,10 @@ def read_parquet(
         if columns:
             dtypes = dtypes[columns]
 
-        if use_arrow_dtype is None:
-            use_arrow_dtype = options.dataframe.use_arrow_dtype
-        if use_arrow_dtype:
-            dtypes = to_arrow_dtypes(dtypes)
+    if use_arrow_dtype is None:
+        use_arrow_dtype = options.dataframe.use_arrow_dtype
+    if use_arrow_dtype:
+        dtypes = to_arrow_dtypes(dtypes)
 
     index_value = parse_index(pd.RangeIndex(-1))
     columns_value = parse_index(dtypes.index, store_data=True)
