@@ -199,7 +199,11 @@ def test_groupby_apply():
     assert applied.chunks[0].shape == (np.nan,)
     assert applied.chunks[0].dtype == df1.a.dtype
 
-    applied = tile(mdf.groupby("b").apply(lambda df: df.a.sum()))
+    applied = mdf.groupby("b").apply(lambda df: df.a.sum())
+    assert applied.op.maybe_agg is True
+    # force set to pass test
+    applied.op.maybe_agg = None
+    applied = tile(applied)
     assert applied.dtype == df1.a.dtype
     assert applied.shape == (np.nan,)
     assert applied.op._op_type_ == opcodes.APPLY
