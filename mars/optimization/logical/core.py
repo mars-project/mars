@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Tuple, Type
+from typing import Dict, List, Optional, Tuple, Type
 
 from ...core import OperandType, ChunkType, EntityType, enter_mode
 from ...core.graph import EntityGraph
@@ -59,10 +59,12 @@ class OptimizationRecords:
         ):
             self._optimized_chunk_to_records[record.new_chunk] = record
 
-    def get_optimization_result(self, original_chunk: ChunkType) -> ChunkType:
+    def get_optimization_result(
+        self, original_chunk: ChunkType, default: Optional[ChunkType] = None
+    ) -> ChunkType:
         chunk = original_chunk
         if chunk not in self._original_chunk_to_records:
-            return
+            return default
         while chunk in self._original_chunk_to_records:
             record = self._original_chunk_to_records[chunk]
             if record.record_type == OptimizationRecordType.replace:
@@ -72,10 +74,12 @@ class OptimizationRecords:
                 return None
         return chunk
 
-    def get_original_chunk(self, optimized_chunk: ChunkType) -> ChunkType:
+    def get_original_chunk(
+        self, optimized_chunk: ChunkType, default: Optional[ChunkType] = None
+    ) -> ChunkType:
         chunk = optimized_chunk
         if chunk not in self._optimized_chunk_to_records:
-            return
+            return default
         while chunk in self._optimized_chunk_to_records:
             record = self._optimized_chunk_to_records[chunk]
             if record.record_type == OptimizationRecordType.replace:
@@ -151,28 +155,25 @@ class OptimizationRule(ABC):
         for succ in successors:
             self._graph.add_edge(new_node, succ)
 
-    @classmethod
-    def _add_collapsable_predecessor(cls, node: EntityType, predecessor: EntityType):
-        if predecessor not in cls._preds_to_remove:
-            cls._preds_to_remove[predecessor] = {node}
+    def _add_collapsable_predecessor(self, node: EntityType, predecessor: EntityType):
+        pred_original = self._records.get_original_chunk(predecessor, predecessor)
+        if predecessor not in self._preds_to_remove:
+            self._preds_to_remove[pred_original] = {node}
         else:
-            cls._preds_to_remove[predecessor].add(node)
+            self._preds_to_remove[pred_original].add(node)
 
     def _remove_collapsable_predecessors(self, node: EntityType):
         node = self._records.get_optimization_result(node) or node
         preds_opt_to_remove = []
         for pred in self._graph.predecessors(node):
-            pred_original = self._records.get_original_chunk(pred)
-            pred_original = pred_original if pred_original is not None else pred
-
-            pred_opt = self._records.get_optimization_result(pred)
-            pred_opt = pred_opt if pred_opt is not None else pred
+            pred_original = self._records.get_original_chunk(pred, pred)
+            pred_opt = self._records.get_optimization_result(pred, pred)
 
             if pred_opt in self._graph.results or pred_original in self._graph.results:
                 continue
             affect_succ = self._preds_to_remove.get(pred_original) or []
             affect_succ_opt = [
-                self._records.get_optimization_result(s) or s for s in affect_succ
+                self._records.get_optimization_result(s, s) for s in affect_succ
             ]
             if all(s in affect_succ_opt for s in self._graph.successors(pred)):
                 preds_opt_to_remove.append((pred_original, pred_opt))
