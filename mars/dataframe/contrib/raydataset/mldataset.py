@@ -83,26 +83,6 @@ def _rechunk_if_needed(df, num_shards: int = None):
         raise Exception(f"rechunk failed df.shape {df.shape}") from e
 
 
-if ray:
-
-    class _MLDataset(ml_dataset.MLDataset):
-        def __init__(self, mars_dataframe, actor_sets, name: str, parent_iterators):
-            super().__init__(actor_sets, name, parent_iterators, 0, False)
-            # Hold mars dataframe to avoid mars dataframe and ray object gc.
-            # TODO(mubai) Use a separate operator for rechunk and avoiding gc.
-            self._mars_dataframe = mars_dataframe
-
-        def __getstate__(self):
-            state = self.__dict__.copy()
-            state.pop("_mars_dataframe", None)
-            return state
-
-        # The default __setstate__ will update _MLDataset's __dict__;
-
-else:
-    _MLDataset = None
-
-
 def to_ray_mldataset(df, num_shards: int = None):
     """Create a MLDataset from Mars DataFrame
 
@@ -139,4 +119,14 @@ def to_ray_mldataset(df, num_shards: int = None):
     worker_cls = ray.remote(num_cpus=0)(parallel_it.ParallelIteratorWorker)
     actors = [worker_cls.remote(g, False) for g in record_batches]
     it = parallel_it.from_actors(actors, "from_mars")
-    return _MLDataset(df, it.actor_sets, it.name, it.parent_iterators)
+    dataset = ml_dataset.from_parallel_iter(it, need_convert=False, batch_size=0)
+    # Hold mars dataframe to avoid mars dataframe and ray object gc.
+    dataset.dataframe = df
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop("dataframe", None)
+        return state
+    # `dataframe` is not serializable by ray.
+    dataset.__getstate__ = __getstate__
+    return dataset
