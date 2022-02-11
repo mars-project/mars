@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
+
 import numpy as np
 import pandas as pd
 
@@ -20,6 +22,13 @@ from ..... import execute, fetch
 from .....core import enter_mode, TileableGraph, TileableGraphBuilder
 from .....dataframe.base.eval import DataFrameEval
 from .. import optimize
+
+
+_var_pattern = re.compile(r"@__eval_scalar_var\d+")
+
+
+def _norm_vars(var_str):
+    return _var_pattern.sub("@scalar", var_str)
 
 
 @enter_mode(build=True)
@@ -62,7 +71,6 @@ def test_arithmetic_query(setup):
 
     pd.testing.assert_series_equal(df2.execute().fetch(), -raw["A"] + raw["B"] * 5)
 
-    raw = pd.DataFrame(np.random.rand(100, 10), columns=list("ABCDEFGHIJ"))
     df1 = md.DataFrame(raw, chunk_size=10)
     df2 = -df1["A"] + df1["B"] * 5 + 3 * df1["C"]
     graph = TileableGraph([df1["A"].data, df2.data])
@@ -73,22 +81,6 @@ def test_arithmetic_query(setup):
 
     r_df2, _r_col_a = fetch(execute(df2, df1["A"]))
     pd.testing.assert_series_equal(r_df2, -raw["A"] + raw["B"] * 5 + 3 * raw["C"])
-
-    df1 = md.DataFrame(raw, chunk_size=10)
-    df2 = md.DataFrame(raw2, chunk_size=10)
-    df3 = df1.merge(df2, on="A", suffixes=("", "_"))
-    df3["K"] = df4 = df3["A"] * (1 - df3["B"])
-    graph = TileableGraph([df3.data])
-    next(TileableGraphBuilder(graph).build())
-    records = optimize(graph)
-    opt_df4 = records.get_optimization_result(df4.data)
-    assert opt_df4.op.expr == "(`A`) * ((1) - (`B`))"
-    assert len(graph) == 5
-    assert len([n for n in graph if isinstance(n.op, DataFrameEval)]) == 1
-
-    r_df3 = raw.merge(raw2, on="A", suffixes=("", "_"))
-    r_df3["K"] = r_df3["A"] * (1 - r_df3["B"])
-    pd.testing.assert_frame_equal(df3.execute().fetch(), r_df3)
 
 
 @enter_mode(build=True)
@@ -111,7 +103,7 @@ def test_bool_eval_to_query(setup):
     opt_df2 = records.get_optimization_result(df2.data)
     assert isinstance(opt_df2.op, DataFrameEval)
     assert opt_df2.op.is_query
-    assert opt_df2.op.expr == "((`A`) > (0.5)) & ((`C`) < (0.5))"
+    assert _norm_vars(opt_df2.op.expr) == "((`A`) > (@scalar)) & ((`C`) < (@scalar))"
 
     pd.testing.assert_frame_equal(
         df2.execute().fetch(), raw[(raw["A"] > 0.5) & (raw["C"] < 0.5)]
@@ -138,7 +130,37 @@ def test_bool_eval_to_query(setup):
     next(TileableGraphBuilder(graph).build())
     records = optimize(graph)
     opt_df2 = records.get_optimization_result(df2.data)
-    assert opt_df2.op.expr == "(`b`) < (Timestamp('2022-03-20 00:00:00'))"
+    assert _norm_vars(opt_df2.op.expr) == "(`b`) < (@scalar)"
 
     r_df2 = fetch(execute(df2))
     pd.testing.assert_frame_equal(r_df2, raw[raw.b < pd.Timestamp("2022-3-20")])
+
+
+@enter_mode(build=True)
+def test_eval_setitem_to_eval(setup):
+    raw = pd.DataFrame(np.random.rand(100, 10), columns=list("ABCDEFGHIJ"))
+    raw2 = pd.DataFrame(np.random.rand(100, 5), columns=list("ABCDE"))
+
+    # does not support non-eval value setting
+    df1 = md.DataFrame(raw, chunk_size=10)
+    df1["K"] = 345
+    graph = TileableGraph([df1.data])
+    next(TileableGraphBuilder(graph).build())
+    records = optimize(graph)
+    assert records.get_optimization_result(df1.data) is None
+
+    df1 = md.DataFrame(raw, chunk_size=10)
+    df2 = md.DataFrame(raw2, chunk_size=10)
+    df3 = df1.merge(df2, on="A", suffixes=("", "_"))
+    df3["K"] = df3["A"] * (1 - df3["B"])
+    graph = TileableGraph([df3.data])
+    next(TileableGraphBuilder(graph).build())
+    records = optimize(graph)
+    opt_df3 = records.get_optimization_result(df3.data)
+    assert opt_df3.op.expr == "`K` = (`A`) * ((1) - (`B`))"
+    assert len(graph) == 4
+    assert len([n for n in graph if isinstance(n.op, DataFrameEval)]) == 1
+
+    r_df3 = raw.merge(raw2, on="A", suffixes=("", "_"))
+    r_df3["K"] = r_df3["A"] * (1 - r_df3["B"])
+    pd.testing.assert_frame_equal(df3.execute().fetch(), r_df3)
