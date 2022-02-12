@@ -17,6 +17,7 @@ import itertools
 import operator
 from contextlib import contextmanager
 from numbers import Integral
+from typing import List, Union
 
 import numpy as np
 import pandas as pd
@@ -24,10 +25,20 @@ from pandas.api.types import is_string_dtype
 from pandas.api.extensions import ExtensionDtype
 from pandas.core.dtypes.cast import find_common_type
 
+from ..config import options
 from ..core import Entity, ExecutableTuple
+from ..core.context import Context
 from ..lib.mmh3 import hash as mmh_hash
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
-from ..utils import tokenize, sbytes, lazy_import, ModulePlaceholder, is_full_slice
+from ..typing import ChunkType, TileableType
+from ..utils import (
+    tokenize,
+    sbytes,
+    lazy_import,
+    ModulePlaceholder,
+    is_full_slice,
+    parse_readable_size,
+)
 
 try:
     import pyarrow as pa
@@ -1293,3 +1304,91 @@ def is_cudf(x):
         if isinstance(x, (cudf.DataFrame, cudf.Series, cudf.Index)):
             return True
     return False
+
+
+def auto_merge_chunks(
+    ctx: Context,
+    df_or_series: TileableType,
+    merged_file_size: Union[int, float, str] = None,
+) -> TileableType:
+    from .merge import DataFrameConcat
+
+    if df_or_series.ndim == 2 and df_or_series.chunk_shape[1] > 1:
+        # skip auto merge optimization for DataFrame
+        # that has more than 1 chunks on columns axis
+        return df_or_series
+
+    metas = ctx.get_chunks_meta(
+        [c.key for c in df_or_series.chunks], fields=["memory_size"], error="ignore"
+    )
+    memory_sizes = [meta["memory_size"] if meta is not None else None for meta in metas]
+    if any(size is None for size in memory_sizes):
+        # has not been executed before, cannot get accurate memory size, skip auto merge
+        return df_or_series
+
+    def _concat_chunks(merge_chunks: List[ChunkType], output_index: int):
+        chunk_size = sum(c.shape[0] for c in merge_chunks)
+        concat_op = DataFrameConcat(output_types=df_or_series.op.output_types)
+        if df_or_series.ndim == 1:
+            kw = dict(
+                dtype=df_or_series.dtype,
+                index_value=merge_index_value(
+                    {c.index: c.index_value for c in merge_chunks}
+                ),
+                shape=(chunk_size,),
+                index=(output_index,),
+                name=df_or_series.name,
+            )
+        else:
+            kw = dict(
+                dtypes=merge_chunks[0].dtypes,
+                index_value=merge_index_value(
+                    {c.index: c.index_value for c in merge_chunks}
+                ),
+                columns_value=merge_chunks[0].columns_value,
+                shape=(chunk_size, merge_chunks[0].shape[1]),
+                index=(output_index, 0),
+            )
+        return concat_op.new_chunk(merge_chunks, **kw)
+
+    to_merge_size = (
+        parse_readable_size(merged_file_size)[0]
+        if merged_file_size is not None
+        else options.chunk_store_limit
+    )
+    to_merge_chunks = []
+    acc_memory_size = 0
+    n_split = []
+    out_chunks = []
+    for chunk, chunk_memory_size in zip(df_or_series.chunks, memory_sizes):
+        if acc_memory_size + chunk_memory_size > to_merge_size:
+            # adding current chunk would exceed the maximum,
+            # concat previous chunks
+            merged_chunk = _concat_chunks(to_merge_chunks, len(n_split))
+            out_chunks.append(merged_chunk)
+            n_split.append(merged_chunk.shape[0])
+            # reset
+            acc_memory_size = 0
+            to_merge_chunks = []
+
+        to_merge_chunks.append(chunk)
+        acc_memory_size += chunk_memory_size
+    # process the last chunk
+    if len(to_merge_chunks) > 1:
+        merged_chunk = _concat_chunks(to_merge_chunks, len(n_split))
+        out_chunks.append(merged_chunk)
+        n_split.append(merged_chunk.shape[0])
+    else:
+        assert len(to_merge_chunks) == 1
+        last_chunk = to_merge_chunks[0]
+        out_chunks.append(last_chunk)
+        n_split.append(last_chunk.shape[0])
+
+    new_op = df_or_series.op.copy()
+    params = df_or_series.params.copy()
+    params["chunks"] = out_chunks
+    if df_or_series.ndim == 1:
+        params["nsplits"] = (tuple(n_split),)
+    else:
+        params["nsplits"] = (tuple(n_split), df_or_series.nsplits[1])
+    return new_op.new_tileable(df_or_series.op.inputs, kws=[params])

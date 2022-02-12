@@ -17,11 +17,18 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import OutputType
+from ...core.context import get_context
 from ...core.custom_log import redirect_custom_log
-from ...serialization.serializables import TupleField, DictField, FunctionField
+from ...serialization.serializables import (
+    BoolField,
+    TupleField,
+    DictField,
+    FunctionField,
+)
 from ...utils import enter_current_session, quiet_stdio
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import (
+    auto_merge_chunks,
     build_empty_df,
     build_empty_series,
     parse_index,
@@ -35,26 +42,13 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.APPLY
     _op_module_ = "dataframe.groupby"
 
-    _func = FunctionField("func")
-    _args = TupleField("args")
-    _kwds = DictField("kwds")
+    func = FunctionField("func")
+    args = TupleField("args", default_factory=tuple)
+    kwds = DictField("kwds", default_factory=dict)
+    maybe_agg = BoolField("maybe_agg", default=None)
 
-    def __init__(self, func=None, args=None, kwds=None, output_types=None, **kw):
-        super().__init__(
-            _func=func, _args=args, _kwds=kwds, _output_types=output_types, **kw
-        )
-
-    @property
-    def func(self):
-        return self._func
-
-    @property
-    def args(self):
-        return getattr(self, "_args", None) or ()
-
-    @property
-    def kwds(self):
-        return getattr(self, "_kwds", None) or dict()
+    def __init__(self, output_types=None, **kw):
+        super().__init__(_output_types=output_types, **kw)
 
     @classmethod
     @redirect_custom_log
@@ -135,7 +129,14 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             kw["nsplits"] = ((np.nan,) * len(chunks), (out_df.shape[1],))
         else:
             kw["nsplits"] = ((np.nan,) * len(chunks),)
-        return new_op.new_tileables([in_groupby], **kw)
+        ret = new_op.new_tileable([in_groupby], **kw)
+        if not op.maybe_agg:
+            return [ret]
+        else:
+            # auto merge small chunks if df.groupby().apply(func)
+            # may be an aggregation operation
+            yield ret.chunks  # trigger execution for chunks
+            return [auto_merge_chunks(get_context(), ret)]
 
     def _infer_df_func_returns(
         self, in_groupby, in_df, dtypes, dtype=None, name=None, index=None
@@ -146,6 +147,12 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             infer_df = in_groupby.op.build_mock_groupby().apply(
                 self.func, *self.args, **self.kwds
             )
+
+            if len(infer_df) <= 2:
+                # we create mock df with 4 rows, 2 groups
+                # if return df has 2 rows, we assume that
+                # it's an aggregation operation
+                self.maybe_agg = True
 
             # todo return proper index when sort=True is implemented
             index_value = parse_index(infer_df.index[:0], in_df.key, self.func)
