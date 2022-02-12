@@ -676,10 +676,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         ]
         cv = variation(agg_sizes)
         mean_ratio = np.mean(ratios)
-        if cv <= 0.2 and mean_ratio <= 0.8:
-            return cls._combine_tree(op, chunks + left_chunks, out_df, func_infos)
-        elif mean_ratio <= 0.25:
+        if mean_ratio <= 1 / len(chunks):
             # if mean of ratio is less than 0.25, use tree
+            return cls._combine_tree(op, chunks + left_chunks, out_df, func_infos)
+        elif cv <= 0.2 and mean_ratio <= 2 / 3:
+            # check CV and mean of ratio
             return cls._combine_tree(op, chunks + left_chunks, out_df, func_infos)
         else:
             # otherwise, use shuffle
@@ -697,7 +698,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         func_infos = cls._compile_funcs(op, in_df)
 
         if op.method == "auto":
-            if len(in_df.chunks) < op.combine_size:
+            if len(in_df.chunks) <= op.combine_size:
                 return cls._tile_with_tree(op, in_df, out_df, func_infos)
             else:
                 return (yield from cls._tile_auto(op, in_df, out_df, func_infos))
