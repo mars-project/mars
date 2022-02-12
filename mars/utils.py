@@ -423,10 +423,13 @@ def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
 
 
 def estimate_pandas_size(
-    df_obj, max_samples: int = 10, min_sample_rows: int = 100
+    pd_obj, max_samples: int = 10, min_sample_rows: int = 100
 ) -> int:
-    if len(df_obj) <= min_sample_rows or isinstance(df_obj, pd.RangeIndex):
-        return sys.getsizeof(df_obj)
+    if len(pd_obj) <= min_sample_rows or isinstance(pd_obj, pd.RangeIndex):
+        return sys.getsizeof(pd_obj)
+    if isinstance(pd_obj, pd.MultiIndex):
+        # MultiIndex's sample size can't be used to estimate
+        return sys.getsizeof(pd_obj)
 
     from .dataframe.arrays import ArrowDtype
 
@@ -437,14 +440,16 @@ def estimate_pandas_size(
             return isinstance(dtype, ArrowDtype)
 
     dtypes = []
-    if isinstance(df_obj, pd.DataFrame):
-        dtypes.extend(df_obj.dtypes)
-        index_obj = df_obj.index
-    elif isinstance(df_obj, pd.Series):
-        dtypes.append(df_obj.dtype)
-        index_obj = df_obj.index
+    is_series = False
+    if isinstance(pd_obj, pd.DataFrame):
+        dtypes.extend(pd_obj.dtypes)
+        index_obj = pd_obj.index
+    elif isinstance(pd_obj, pd.Series):
+        dtypes.append(pd_obj.dtype)
+        index_obj = pd_obj.index
+        is_series = True
     else:
-        index_obj = df_obj
+        index_obj = pd_obj
 
     # handling possible MultiIndex
     if hasattr(index_obj, "dtypes"):
@@ -453,12 +458,22 @@ def estimate_pandas_size(
         dtypes.append(index_obj.dtype)
 
     if all(_is_fast_dtype(dtype) for dtype in dtypes):
-        return sys.getsizeof(df_obj)
+        return sys.getsizeof(pd_obj)
 
-    indices = np.sort(np.random.choice(len(df_obj), size=max_samples, replace=False))
-    iloc = df_obj if isinstance(df_obj, pd.Index) else df_obj.iloc
-    sample_size = sys.getsizeof(iloc[indices])
-    return sample_size * len(df_obj) // max_samples
+    indices = np.sort(np.random.choice(len(pd_obj), size=max_samples, replace=False))
+    iloc = pd_obj if isinstance(pd_obj, pd.Index) else pd_obj.iloc
+    if isinstance(index_obj, pd.MultiIndex):
+        # MultiIndex's sample size is much greater than expected, thus we calculate
+        # the size separately.
+        index_size = sys.getsizeof(pd_obj.index)
+        if is_series:
+            sample_frame_size = iloc[indices].memory_usage(deep=True, index=False)
+        else:
+            sample_frame_size = iloc[indices].memory_usage(deep=True, index=False).sum()
+        return index_size + sample_frame_size * len(pd_obj) // max_samples
+    else:
+        sample_size = sys.getsizeof(iloc[indices])
+        return sample_size * len(pd_obj) // max_samples
 
 
 def build_fetch_chunk(

@@ -506,11 +506,52 @@ def test_estimate_pandas_size():
 
     s3 = pd.Series(np.random.choice(["abcd", "def", "gh"], size=(1000,)))
     assert utils.estimate_pandas_size(s3) != sys.getsizeof(s3)
+    assert (
+        pytest.approx(utils.estimate_pandas_size(s3) / sys.getsizeof(s3), abs=0.5) == 1
+    )
 
     idx1 = pd.MultiIndex.from_arrays(
         [np.arange(0, 1000), np.random.choice(["abcd", "def", "gh"], size=(1000,))]
     )
-    assert utils.estimate_pandas_size(idx1) != sys.getsizeof(idx1)
+    assert utils.estimate_pandas_size(idx1) == sys.getsizeof(idx1)
+
+    string_idx = pd.Index(np.random.choice(["a", "bb", "cc"], size=(1000,)))
+    assert utils.estimate_pandas_size(string_idx) != sys.getsizeof(string_idx)
+    assert (
+        pytest.approx(
+            utils.estimate_pandas_size(string_idx) / sys.getsizeof(string_idx), abs=0.5
+        )
+        == 1
+    )
+
+    # dataframe with multi index
+    idx2 = pd.MultiIndex.from_arrays(
+        [np.arange(0, 1000), np.random.choice(["abcd", "def", "gh"], size=(1000,))]
+    )
+    df4 = pd.DataFrame(
+        {
+            "A": np.random.choice(["abcd", "def", "gh"], size=(1000,)),
+            "B": np.random.rand(1000),
+            "C": np.random.rand(1000),
+        },
+        index=idx2,
+    )
+    assert utils.estimate_pandas_size(df4) != sys.getsizeof(df4)
+    assert (
+        pytest.approx(utils.estimate_pandas_size(df4) / sys.getsizeof(df4), abs=0.5)
+        == 1
+    )
+
+    # series with multi index
+    idx3 = pd.MultiIndex.from_arrays(
+        [
+            np.random.choice(["a1", "a2", "a3"], size=(1000,)),
+            np.random.choice(["abcd", "def", "gh"], size=(1000,)),
+        ]
+    )
+    s4 = pd.Series(np.arange(1000), index=idx3)
+
+    assert utils.estimate_pandas_size(s4) == sys.getsizeof(s4)
 
 
 @require_ray
