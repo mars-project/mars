@@ -131,7 +131,7 @@ class DataFrameReadRayDataset(
         )
 
 
-def read_raydataset(ds, columns=None, incremental_index=False, **kwargs):
+def read_ray_dataset(ds, columns=None, incremental_index=False, **kwargs):
     assert isinstance(ds, real_ray_dataset.Dataset)
     refs = ds.to_pandas_refs()
     dtypes = ds.schema().empty_table().to_pandas().dtypes
@@ -142,6 +142,10 @@ def read_raydataset(ds, columns=None, incremental_index=False, **kwargs):
         refs=refs, columns=columns, incremental_index=incremental_index
     )
     return op(index_value=index_value, columns_value=columns_value, dtypes=dtypes)
+
+
+# keep it for back compatibility
+read_raydataset = read_ray_dataset
 
 
 class DataFrameReadMLDataset(HeadOptimizedDataSource):

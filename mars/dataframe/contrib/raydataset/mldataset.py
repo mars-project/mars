@@ -127,6 +127,7 @@ def to_ray_mldataset(df, num_shards: int = None):
         state = self.__dict__.copy()
         state.pop("dataframe", None)
         return state
+
     # `dataframe` is not serializable by ray.
     dataset.__getstate__ = __getstate__
     return dataset
