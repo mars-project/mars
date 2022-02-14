@@ -93,3 +93,15 @@ async def test_profiling_options():
         assert options.debug_interval_seconds == 1.0
     finally:
         os.environ.pop(env_key)
+
+    # Test option value cache.
+    d = {"debug_interval_seconds": 1.0}
+    options = _ProfilingOptions(d)
+    assert options.debug_interval_seconds == 1.0
+    d["debug_interval_seconds"] = 2.0
+    assert options.debug_interval_seconds == 1.0
+    try:
+        os.environ[env_key] = "2"
+        assert options.debug_interval_seconds == 1.0
+    finally:
+        os.environ.pop(env_key)
