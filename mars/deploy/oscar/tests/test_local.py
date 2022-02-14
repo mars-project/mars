@@ -83,9 +83,9 @@ EXPECT_PROFILING_STRUCTURE = {
         },
         "serialization": {},
         "most_calls": DICT_NOT_EMPTY,
-        "slowest_calls": DICT_NOT_EMPTY,
+        "slow_calls": DICT_NOT_EMPTY,
         "band_subtasks": DICT_NOT_EMPTY,
-        "slowest_subtasks": DICT_NOT_EMPTY,
+        "slow_subtasks": DICT_NOT_EMPTY,
     }
 }
 
@@ -171,7 +171,15 @@ async def test_vineyard_operators(create_cluster):
 @pytest.mark.parametrize(
     "config",
     [
-        [{"enable_profiling": True}, EXPECT_PROFILING_STRUCTURE],
+        [
+            {
+                "enable_profiling": {
+                    "slow_calls_duration_threshold": 0,
+                    "slow_subtasks_duration_threshold": 0,
+                }
+            },
+            EXPECT_PROFILING_STRUCTURE,
+        ],
         [{}, {}],
     ],
 )

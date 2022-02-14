@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import os
 
 import pytest
-from ..profiling import ProfilingData, ProfilingDataOperator, DummyOperator
+from ..profiling import (
+    ProfilingData,
+    ProfilingDataOperator,
+    DummyOperator,
+    _ProfilingOptions,
+)
 from ...tests.core import check_dict_structure_same, mock
 
 
@@ -44,9 +50,9 @@ def test_profiling_data():
                 "general": {},
                 "serialization": {"a": 1, "b": 1, "c": {}},
                 "most_calls": {},
-                "slowest_calls": {},
+                "slow_calls": {},
                 "band_subtasks": {},
-                "slowest_subtasks": {},
+                "slow_subtasks": {},
             },
         )
 
@@ -54,7 +60,7 @@ def test_profiling_data():
 @pytest.mark.asyncio
 @mock.patch("mars.oscar.profiling.logger.warning")
 async def test_profiling_debug(fake_warning):
-    ProfilingData.init("abc", 0.1)
+    ProfilingData.init("abc", {"debug_interval_seconds": 0.1})
     assert len(ProfilingData._debug_task) == 1
     assert not ProfilingData._debug_task["abc"].done()
     await asyncio.sleep(0.5)
@@ -64,3 +70,26 @@ async def test_profiling_debug(fake_warning):
     assert len(ProfilingData._debug_task) == 0
     await asyncio.sleep(0.5)
     assert fake_warning.call_count == call_count
+
+
+@pytest.mark.asyncio
+async def test_profiling_options():
+    with pytest.raises(ValueError):
+        ProfilingData.init("abc", 1.2)
+    with pytest.raises(ValueError):
+        ProfilingData.init("abc", ["invalid"])
+    with pytest.raises(ValueError):
+        ProfilingData.init("abc", {"invalid": True})
+    with pytest.raises(ValueError):
+        ProfilingData.init("abc", {"debug_interval_seconds": "abc"})
+
+    # Test the priority, options first, then env var.
+    env_key = "MARS_PROFILING_DEBUG_INTERVAL_SECONDS"
+    try:
+        os.environ[env_key] = "2"
+        options = _ProfilingOptions(True)
+        assert options.debug_interval_seconds == 2.0
+        options = _ProfilingOptions({"debug_interval_seconds": 1.0})
+        assert options.debug_interval_seconds == 1.0
+    finally:
+        os.environ.pop(env_key)

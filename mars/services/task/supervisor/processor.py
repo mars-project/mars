@@ -36,7 +36,6 @@ from ....optimization.logical import OptimizationRecords
 from ....oscar.profiling import (
     ProfilingData,
     MARS_ENABLE_PROFILING,
-    MARS_DEBUG_PROFILING_INTERVAL,
 )
 from ....typing import TileableType, BandType
 from ....utils import build_fetch, Timer
@@ -91,15 +90,10 @@ class TaskProcessor:
         self._scheduling_api = scheduling_api
         self._meta_api = meta_api
 
-        if MARS_ENABLE_PROFILING or (
-            task.extra_config and task.extra_config.get("enable_profiling")
-        ):
-            interval = task.extra_config and task.extra_config.get(
-                "debug_profiling_interval", None
-            )
-            if interval is None:
-                interval = MARS_DEBUG_PROFILING_INTERVAL
-            ProfilingData.init(task.task_id, interval)
+        if MARS_ENABLE_PROFILING:
+            ProfilingData.init(task.task_id)
+        elif task.extra_config and task.extra_config.get("enable_profiling"):
+            ProfilingData.init(task.task_id, task.extra_config["enable_profiling"])
 
         self.result = TaskResult(
             task_id=task.task_id,
