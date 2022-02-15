@@ -341,7 +341,15 @@ async def _run_web_session_test(web_address):
 @pytest.mark.parametrize(
     "config",
     [
-        [{"enable_profiling": True}, EXPECT_PROFILING_STRUCTURE],
+        [
+            {
+                "enable_profiling": {
+                    "slow_calls_duration_threshold": 0,
+                    "slow_subtasks_duration_threshold": 0,
+                }
+            },
+            EXPECT_PROFILING_STRUCTURE,
+        ],
         [{}, {}],
     ],
 )
