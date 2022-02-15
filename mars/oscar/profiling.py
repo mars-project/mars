@@ -69,7 +69,7 @@ class _ProfilingOptions(metaclass=_ProfilingOptionsMeta):
             if invalid_keys:
                 raise ValueError(f"Invalid profiling options: {invalid_keys}")
             self._options = options
-        elif options in (True, False):
+        elif options in (True, False, None):
             self._options = {}
         else:
             raise ValueError(f"Invalid profiling options: {options}")
