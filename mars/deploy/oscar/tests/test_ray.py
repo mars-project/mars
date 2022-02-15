@@ -102,7 +102,15 @@ async def create_cluster(request):
 @pytest.mark.parametrize(
     "config",
     [
-        [{"enable_profiling": True}, EXPECT_PROFILING_STRUCTURE],
+        [
+            {
+                "enable_profiling": {
+                    "slow_calls_duration_threshold": 0,
+                    "slow_subtasks_duration_threshold": 0,
+                }
+            },
+            EXPECT_PROFILING_STRUCTURE,
+        ],
         [{}, {}],
     ],
 )
@@ -229,7 +237,15 @@ async def test_optional_supervisor_node(ray_large_cluster, test_option):
 @pytest.mark.parametrize(
     "config",
     [
-        [{"enable_profiling": True}, EXPECT_PROFILING_STRUCTURE],
+        [
+            {
+                "enable_profiling": {
+                    "slow_calls_duration_threshold": 0,
+                    "slow_subtasks_duration_threshold": 0,
+                }
+            },
+            EXPECT_PROFILING_STRUCTURE,
+        ],
         [{}, {}],
     ],
 )
