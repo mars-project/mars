@@ -159,7 +159,7 @@ class _CallStats:
         for duration, uid, address, content in sorted(
             self._slow_calls, key=operator.itemgetter(0), reverse=True
         ):
-            method_name, batch, args, kwargs = content
+            method_name, _batch, args, kwargs = content
             slow_calls[
                 f"[{address}]{uid.decode('utf-8')}.{method_name}(args={args}, kwargs={kwargs})"
             ] = duration
@@ -238,8 +238,8 @@ class _ProfilingData:
                         logger.info("Profiling debug log break.")
                         break
                     r = copy.copy(r)  # shadow copy is enough.
-                    r and r.update(self._call_stats.get(task_id).to_dict())
-                    r and r.update(self._subtask_stats.get(task_id).to_dict())
+                    r.update(self._call_stats.get(task_id).to_dict())
+                    r.update(self._subtask_stats.get(task_id).to_dict())
                     logger.warning("Profiling debug:\n%s", json.dumps(r, indent=4))
                 except Exception:
                     logger.exception("Profiling debug log failed.")
@@ -255,8 +255,9 @@ class _ProfilingData:
         if debug_task is not None:
             debug_task.cancel()
         r = self._data.pop(task_id, None)
-        r and r.update(self._call_stats.pop(task_id).to_dict())
-        r and r.update(self._subtask_stats.pop(task_id).to_dict())
+        if r is not None:
+            r.update(self._call_stats.pop(task_id).to_dict())
+            r.update(self._subtask_stats.pop(task_id).to_dict())
         return r
 
     def collect_actor_call(self, message, duration):
