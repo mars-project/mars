@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import functools
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -145,7 +146,13 @@ def read_ray_dataset(ds, columns=None, incremental_index=False, **kwargs):
 
 
 # keep it for back compatibility
-read_raydataset = read_ray_dataset
+@functools.wraps(read_ray_dataset)
+def read_raydataset(*args, **kwargs):
+    warnings.warn(
+        "read_raydataset has been renamed to read_ray_dataset",
+        DeprecationWarning,
+    )
+    return read_ray_dataset(*args, **kwargs)
 
 
 class DataFrameReadMLDataset(HeadOptimizedDataSource):
