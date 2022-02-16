@@ -98,7 +98,7 @@ class DummyServer(Server):
     scheme = "dummy"
 
     def __init__(
-        self, address: str, message_handler: Callable[[Any, Channel], Coroutine] = None
+        self, address: str, message_handler: Callable[[Any], Coroutine] = None
     ):
         super().__init__(address, None)
         self._closed = asyncio.Event()

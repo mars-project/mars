@@ -96,10 +96,16 @@ if ray:
 
 
 class RayChannelException(Exception):
-    def __init__(self, exc_type, exc_value: BaseException, exc_traceback):
+    def __init__(self, exc_type=None, exc_value: BaseException = None, exc_traceback = None):
         self.exc_type = exc_type
         self.exc_value = exc_value
         self.exc_traceback = exc_traceback
+
+    def raise_exception(self):
+        if self.exc_traceback:
+            raise self.exc_value.with_traceback(self.exc_traceback)
+        else:
+            raise self.exc_value
 
 
 class RayChannelBase(Channel, ABC):
@@ -173,112 +179,52 @@ class RayClientChannel(RayChannelBase):
     async def send(self, message: Any):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed("Channel already closed, cannot send message")
-        # Put ray object ref to queue
-        self._in_queue.put_nowait(
-            (
-                message,
-                self._peer_actor.__on_ray_recv__.remote(
-                    self.channel_id, _ArgWrapper(message)
-                ),
-            )
-        )
-
-    @implements(Channel.recv)
-    async def recv(self):
-        if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed("Channel already closed, cannot recv message")
         try:
-            # Wait on ray object ref
-            message, object_ref = await self._in_queue.get()
             with debug_async_timeout(
-                "ray_object_retrieval_timeout", "Client sent message is %s", message
+                    "ray_object_retrieval_timeout", "Client sent message is %s", message
             ):
-                result = await object_ref
-            if isinstance(result, RayChannelException):
-                raise result.exc_value.with_traceback(result.exc_traceback)
-            return result
+                result = await self._peer_actor.__on_ray_recv__.remote(
+                    self.channel_id, _ArgWrapper(message)
+                )
+                self._in_queue.put_nowait(result)
+                return result
         except ray.exceptions.RayActorError:
             if not self._closed.is_set():
+                ex = EOFError("Server may be closed")
+                self._in_queue.put_nowait(RayChannelException(exc_value=ex))
                 # raise a EOFError as the SocketChannel does
-                raise EOFError("Server may be closed")
+                raise ex
         except (RuntimeError, ServerClosed) as e:  # pragma: no cover
             if not self._closed.is_set():
+                self._in_queue.put_nowait(RayChannelException(exc_value=e))
                 raise e
-
-
-class RayServerChannel(RayChannelBase):
-    """
-    A channel from ray actor to ray driver/actor. Since ray actor can't call ray driver,
-    we use ray call reply for server channel send. Note that there can't be multiple
-    channel message sends for one received message, or else it will be taken as next
-    message's reply.
-    """
-
-    __slots__ = "_out_queue", "_msg_recv_counter", "_msg_sent_counter"
-
-    def __init__(
-        self,
-        local_address: str = None,
-        channel_index: int = None,
-        channel_id: ChannelID = None,
-        compression=None,
-    ):
-        super().__init__(local_address, None, channel_index, channel_id, compression)
-        self._out_queue = asyncio.Queue()
-        self._msg_recv_counter = 0
-        self._msg_sent_counter = 0
-
-    @implements(Channel.send)
-    async def send(self, message: Any):
-        if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed("Channel already closed, cannot send message")
-        # Current process is ray actor, we use ray call reply to send message to ray driver/actor.
-        # Not that we can only send once for every read message in channel, otherwise
-        # it will be taken as other message's reply.
-        await self._out_queue.put(message)
-        self._msg_sent_counter += 1
-        assert (
-            self._msg_sent_counter <= self._msg_recv_counter
-        ), "RayServerChannel channel doesn't support send multiple replies for one message."
 
     @implements(Channel.recv)
     async def recv(self):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed("Channel already closed, cannot write message")
         try:
-            return await self._in_queue.get()
-        except RuntimeError:  # pragma: no cover
-            if not self._closed.is_set():
-                raise
-
-    async def __on_ray_recv__(self, message):
-        """This method will be invoked when current process is a ray actor rather than a ray driver"""
-        self._msg_recv_counter += 1
-        await self._in_queue.put(message)
-        result_message = await self._out_queue.get()
-        if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed("Channel already closed")
-        return _ArgWrapper(result_message)
-
-    @implements(Channel.close)
-    async def close(self):
-        await super().close()
-        self._out_queue.put_nowait(None)
+            result = await self._in_queue.get()
+            if isinstance(result, RayChannelException):
+                raise result.raise_exception()
+            return result
+        except RuntimeError:
+            if self._closed.is_set():
+                pass
 
 
 @register_server
 class RayServer(Server):
-    __slots__ = "_closed", "_channels", "_tasks"
+    __slots__ = "_closed", "_message_handler"
 
     scheme = "ray"
     _server_instance = None
     _ray_actor_started = False
 
-    def __init__(self, address, channel_handler: Callable[[Channel], Coroutine] = None):
-        super().__init__(address, channel_handler)
+    def __init__(self, address, message_handler: Callable[[Any], Coroutine] = None):
+        super().__init__(address, None)
+        self._message_handler = message_handler
         self._closed = asyncio.Event()
-        self._channels: Dict[ChannelID, RayServerChannel] = dict()
-        self._tasks: Dict[ChannelID, asyncio.Task] = dict()
 
     @classproperty
     @implements(Server.client_type)
@@ -309,7 +255,7 @@ class RayServer(Server):
         assert RayServer._server_instance is None
         config = config.copy()
         address = config.pop("address")
-        handle_channel = config.pop("handle_channel")
+        message_handler = config.pop("message_handler")
         if urlparse(address).scheme != RayServer.scheme:  # pragma: no cover
             raise ValueError(
                 f"Address for RayServer "
@@ -320,7 +266,7 @@ class RayServer(Server):
             raise TypeError(
                 f"Creating RayServer got unexpected " f'arguments: {",".join(config)}'
             )
-        server = RayServer(address, handle_channel)
+        server = RayServer(address, message_handler)
         RayServer._server_instance = server
         return server
 
@@ -348,24 +294,14 @@ class RayServer(Server):
 
     @implements(Server.on_connected)
     async def on_connected(self, *args, **kwargs):
-        channel = args[0]
-        assert isinstance(channel, RayServerChannel)
-        if kwargs:  # pragma: no cover
-            raise TypeError(
-                f"{type(self).__name__} got unexpected "
-                f'arguments: {",".join(kwargs)}'
-            )
-        await self.channel_handler(channel)
+        if self._closed.is_set():  # pragma: no cover
+            raise ServerClosed("Dummy server already closed")
+        raise RuntimeError(f"RayServer.on_connected shouldn't be invoked, "
+                           f"but invoked with arguments: args {args} and kwargs {kwargs}")
 
     @implements(Server.stop)
     async def stop(self):
         self._closed.set()
-        for task in self._tasks.values():
-            task.cancel()
-        self._tasks = dict()
-        for channel in self._channels.values():
-            await channel.close()
-        self._channels = dict()
         self.clear()
 
     @property
@@ -379,15 +315,8 @@ class RayServer(Server):
                 f"Remote server {self.address} closed, but got message {message} "
                 f"from channel {channel_id}"
             )
-        channel = self._channels.get(channel_id)
-        if not channel:
-            _, _, peer_channel_index, peer_dest_address = channel_id
-            channel = RayServerChannel(
-                peer_dest_address, peer_channel_index, channel_id
-            )
-            self._channels[channel_id] = channel
-            self._tasks[channel_id] = asyncio.create_task(self.on_connected(channel))
-        return await channel.__on_ray_recv__(message)
+        result = await self._message_handler(message)
+        return _ArgWrapper(result)
 
 
 @register_client
@@ -412,6 +341,27 @@ class RayClient(Client):
         client_channel = RayClientChannel(dest_address)
         client = RayClient(local_address, dest_address, client_channel)
         return client
+
+    @implements(Channel.send)
+    async def send(self, message, wait_response: bool = False):
+        """
+
+        Parameters
+        ----------
+        message:
+            sent message
+        wait_response: bool
+            Whether wait message processed by the server
+        """
+        coro = self.channel.send(message)
+        if wait_response:
+            return await coro
+        else:
+            return asyncio.create_task(coro)
+
+    @implements(Channel.recv)
+    async def recv(self):
+        return await self.channel.recv()
 
     @implements(Client.close)
     async def close(self):

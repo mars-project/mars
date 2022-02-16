@@ -31,7 +31,7 @@ from ..debug import record_message_trace, debug_async_timeout
 from ..errors import ActorAlreadyExist, ActorNotExist, ServerClosed, CannotCancelTask
 from ..utils import create_actor_ref
 from .allocate_strategy import allocated_type, AddressSpecified
-from .communication import Channel, Server, get_server_type, gen_local_address, is_local_address
+from .communication import Channel, Server, get_server_type, gen_local_address, use_direct_call
 from .communication.errors import ChannelClosed
 from .config import ActorPoolConfig
 from .core import result_message_type, ActorCaller
@@ -603,7 +603,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
                 external_addresses + [internal_address, gen_local_address(process_index)]
         ):
             server_type = get_server_type(addr)
-            if is_local_address(addr):
+            if use_direct_call(addr):
                 def message_handler(message):
                     return pool._process_message(message)
                 create_server_coro = server_type.create(dict(address=addr, message_handler=message_handler))

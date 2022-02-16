@@ -374,7 +374,7 @@ async def test_mars_batch_method(actor_pool_context):
     assert all(r == 7 for r in batch_result)
 
     await ref1.add.batch(
-        ref1.add.delay(1), ref1.add.delay(2), ref1.add.delay(3), send=False
+        ref1.add.delay(1), ref1.add.delay(2), ref1.add.delay(3), send=True
     )
     assert await ref1.get_value() == 7
 

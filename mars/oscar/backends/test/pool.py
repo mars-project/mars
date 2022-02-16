@@ -17,7 +17,7 @@ import multiprocessing
 from typing import List, Dict
 
 from ..config import ActorPoolConfig
-from ..communication import gen_local_address, get_server_type, DummyServer, is_local_address
+from ..communication import gen_local_address, get_server_type, DummyServer, use_direct_call
 from ..mars.pool import MainActorPool, SubActorPool, SubpoolStatus
 from ..pool import ActorPoolType
 
@@ -94,7 +94,7 @@ class TestSubActorPool(SubActorPool):
         create_server_tasks = []
         for addr in set(external_addresses + [gen_local_address(process_index)]):
             server_type = get_server_type(addr)
-            if is_local_address(addr):
+            if use_direct_call(addr):
                 def message_handler(message):
                     return pool._process_message(message)
                 create_server_coro = server_type.create(dict(address=addr, message_handler=message_handler))

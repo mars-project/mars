@@ -48,20 +48,12 @@ class ServerActor:
 
     async def start(self):
         RayServer.set_ray_actor_started()
-        self.server = await RayServer.create(
-            {"address": self.address, "handle_channel": self.on_new_channel}
-        )
 
-    async def on_new_channel(self, channel: Channel):
-        while True:
-            try:
-                message = await channel.recv()
-                await channel.send(message)
-            except EOFError:
-                # no data to read, check channel
-                await channel.close()
-                return
-            await asyncio.sleep(0.1)
+        async def message_handler(msg):
+            return msg
+        self.server = await RayServer.create(
+            {"address": self.address, "message_handler": message_handler}
+        )
 
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
         """Method for communication based on ray actors"""
