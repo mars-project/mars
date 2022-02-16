@@ -24,7 +24,10 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
         super().__init__(*args, **kwargs)
 
         check_options = dict()
-        kwargs = self.subtask.extra_config or dict()
+        if self.subtask.extra_config:
+            kwargs = self.subtask.extra_config.copy()
+        else:
+            kwargs = dict()
         self._operand_executors = operand_executors = kwargs.pop(
             "operand_executors", dict()
         )
@@ -50,4 +53,7 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
     async def done(self):
         await super().done()
         for op in self._operand_executors:
-            op.unregister_executor()
+            try:
+                op.unregister_executor()
+            except KeyError:
+                pass
