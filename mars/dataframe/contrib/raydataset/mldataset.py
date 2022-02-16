@@ -123,8 +123,8 @@ def to_ray_mldataset(df, num_shards: int = None):
     # Hold mars dataframe to avoid mars dataframe and ray object gc.
     dataset.dataframe = df
 
-    def __getstate__(self):
-        state = self.__dict__.copy()
+    def __getstate__():
+        state = dataset.__dict__.copy()
         state.pop("dataframe", None)
         return state
 
