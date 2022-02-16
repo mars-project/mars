@@ -17,13 +17,13 @@ from collections import deque, defaultdict
 from typing import Dict, List, Tuple, Type, Union
 
 from ....core import ChunkGraph, ChunkType, enter_mode
-from ....core.operand import Fetch, Fuse, VirtualOperand
+from ....core.operand import Fetch, VirtualOperand
 from ....typing import BandType
 from ....utils import build_fetch
 from ...subtask import SubtaskGraph, Subtask
 from ..core import Task, new_task_id
 from .assigner import AbstractGraphAssigner, GraphAssigner
-from .fusion import Fusion, Coloring
+from .fusion import Coloring
 
 logger = logging.getLogger(__name__)
 
