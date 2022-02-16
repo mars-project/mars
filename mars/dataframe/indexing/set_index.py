@@ -116,7 +116,7 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
                     shape=new_shape,
                     dtypes=dtypes,
                     index=input_chunk.index,
-                    index_value=parse_index(pd.Int64Index([])),
+                    index_value=parse_index(pd.Index([], dtype=np.int64)),
                     columns_value=columns,
                 )
                 out_chunks.append(out_chunk)

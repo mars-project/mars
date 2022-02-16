@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import os
 import tempfile
 import time
@@ -41,7 +42,7 @@ from .... import tensor as mt
 from .... import dataframe as md
 from ....config import option_context
 from ....tests.core import require_cudf, require_ray
-from ....utils import arrow_array_to_objects, lazy_import
+from ....utils import arrow_array_to_objects, lazy_import, pd_release_version
 from ..dataframe import from_pandas as from_pandas_df
 from ..series import from_pandas as from_pandas_series
 from ..index import from_pandas as from_pandas_index, from_tileable
@@ -50,6 +51,7 @@ from ..from_records import from_records
 
 
 ray = lazy_import("ray")
+_date_range_use_inclusive = pd_release_version[:2] >= (1, 4)
 
 
 def test_from_pandas_dataframe_execution(setup):
@@ -908,45 +910,63 @@ def test_read_sql_use_arrow_dtype(setup):
         )
 
 
+@pytest.mark.pd_compat
 def test_date_range_execution(setup):
-    for closed in [None, "left", "right"]:
+    chunk_sizes = [None, 3]
+    inclusives = ["both", "neither", "left", "right"]
+
+    if _date_range_use_inclusive:
+        with pytest.warns(FutureWarning, match="closed"):
+            md.date_range("2020-1-1", periods=10, closed="right")
+
+    for chunk_size, inclusive in itertools.product(chunk_sizes, inclusives):
+        kw = dict()
+        if _date_range_use_inclusive:
+            kw["inclusive"] = inclusive
+        else:
+            if inclusive == "neither":
+                continue
+            elif inclusive == "both":
+                inclusive = None
+            kw["closed"] = inclusive
+
         # start, periods, freq
-        dr = md.date_range("2020-1-1", periods=10, chunk_size=3, closed=closed)
+        dr = md.date_range("2020-1-1", periods=10, chunk_size=chunk_size, **kw)
 
         result = dr.execute().fetch()
-        expected = pd.date_range("2020-1-1", periods=10, closed=closed)
+        expected = pd.date_range("2020-1-1", periods=10, **kw)
         pd.testing.assert_index_equal(result, expected)
 
         # end, periods, freq
-        dr = md.date_range(end="2020-1-10", periods=10, chunk_size=3, closed=closed)
+        dr = md.date_range(end="2020-1-10", periods=10, chunk_size=chunk_size, **kw)
 
         result = dr.execute().fetch()
-        expected = pd.date_range(end="2020-1-10", periods=10, closed=closed)
+        expected = pd.date_range(end="2020-1-10", periods=10, **kw)
         pd.testing.assert_index_equal(result, expected)
 
         # start, end, freq
-        dr = md.date_range("2020-1-1", "2020-1-10", chunk_size=3, closed=closed)
+        dr = md.date_range("2020-1-1", "2020-1-10", chunk_size=chunk_size, **kw)
 
         result = dr.execute().fetch()
-        expected = pd.date_range("2020-1-1", "2020-1-10", closed=closed)
+        expected = pd.date_range("2020-1-1", "2020-1-10", **kw)
         pd.testing.assert_index_equal(result, expected)
 
         # start, end and periods
         dr = md.date_range(
-            "2020-1-1", "2020-1-10", periods=19, chunk_size=3, closed=closed
+            "2020-1-1", "2020-1-10", periods=19, chunk_size=chunk_size, **kw
         )
 
         result = dr.execute().fetch()
-        expected = pd.date_range("2020-1-1", "2020-1-10", periods=19, closed=closed)
+        expected = pd.date_range("2020-1-1", "2020-1-10", periods=19, **kw)
         pd.testing.assert_index_equal(result, expected)
 
         # start, end and freq
         dr = md.date_range(
-            "2020-1-1", "2020-1-10", freq="12H", chunk_size=3, closed=closed
+            "2020-1-1", "2020-1-10", freq="12H", chunk_size=chunk_size, **kw
         )
 
         result = dr.execute().fetch()
-        expected = pd.date_range("2020-1-1", "2020-1-10", freq="12H", closed=closed)
+        expected = pd.date_range("2020-1-1", "2020-1-10", freq="12H", **kw)
         pd.testing.assert_index_equal(result, expected)
 
     # test timezone

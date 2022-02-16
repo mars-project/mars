@@ -118,7 +118,7 @@ class TensorBinCount(TensorMapReduceOperand, TensorOperandMixin):
                     dtype=out.dtype,
                     shape=(np.nan,),
                     index=a_chunk.index,
-                    index_value=parse_index(pd.Int64Index([0]), a_chunk.key),
+                    index_value=parse_index(pd.Index([0], dtype=np.int64), a_chunk.key),
                 )
             )
 

@@ -771,7 +771,9 @@ def infer_index_value(left_index_value, right_index_value):
     ):
         if left_index_value.value.slice == right_index_value.value.slice:
             return left_index_value
-        return parse_index(pd.Int64Index([]), left_index_value, right_index_value)
+        return parse_index(
+            pd.Index([], dtype=np.int64), left_index_value, right_index_value
+        )
 
     # when left index and right index is identical, and both of them are elements unique,
     # we can infer that the out index should be identical also
