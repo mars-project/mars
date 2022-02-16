@@ -138,7 +138,11 @@ class IndexValue(Serializable):
             kw = {k: v for k, v in kw.items() if v is not None}
             if kw.get("data") is None:
                 kw["data"] = []
-            return getattr(pd, type(self).__name__)(**kw)
+
+            pd_initializer = getattr(self, "_pd_initializer", None)
+            if pd_initializer is None:
+                pd_initializer = getattr(pd, type(self).__name__)
+            return pd_initializer(**kw)
 
     class Index(IndexBase):
         _name = AnyField("name")
@@ -240,6 +244,8 @@ class IndexValue(Serializable):
             return "period"
 
     class Int64Index(IndexBase):
+        _pd_initializer = pd.Index
+
         _name = AnyField("name")
         _data = NDArrayField("data")
         _dtype = DataTypeField("dtype")
@@ -249,6 +255,8 @@ class IndexValue(Serializable):
             return "integer"
 
     class UInt64Index(IndexBase):
+        _pd_initializer = pd.Index
+
         _name = AnyField("name")
         _data = NDArrayField("data")
         _dtype = DataTypeField("dtype")
@@ -258,6 +266,8 @@ class IndexValue(Serializable):
             return "integer"
 
     class Float64Index(IndexBase):
+        _pd_initializer = pd.Index
+
         _name = AnyField("name")
         _data = NDArrayField("data")
         _dtype = DataTypeField("dtype")

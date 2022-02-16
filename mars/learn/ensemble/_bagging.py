@@ -659,7 +659,7 @@ class BaggingSampleReindex(LearnOperand, LearnOperandMixin):
             inputs.append(feature_indices)
             params["shape"] = (data.shape[0], np.nan)
         if isinstance(data, DATAFRAME_TYPE):
-            params["index_value"] = parse_index(pd.Int64Index([]), data.key)
+            params["index_value"] = parse_index(pd.Index([], dtype=np.int64), data.key)
         return self.new_tileable(inputs, **params)
 
     @classmethod
@@ -707,7 +707,7 @@ class BaggingSampleReindex(LearnOperand, LearnOperandMixin):
                 params["index"] = (chunks[0].index[0], chunks[0].index[2])
                 if isinstance(t_data, DATAFRAME_TYPE):
                     params["index_value"] = parse_index(
-                        pd.Int64Index([]), chunks[0].key
+                        pd.Index([], dtype=np.int64), chunks[0].key
                     )
                 inputs = chunks.tolist()
                 return new_op.new_chunk(inputs, **params)

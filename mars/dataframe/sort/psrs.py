@@ -183,7 +183,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
                 **cls._collect_op_properties(op)
             )
             if isinstance(chunk_inputs[0].index_value.value, IndexValue.RangeIndex):
-                index_value = parse_index(pd.Int64Index([]))
+                index_value = parse_index(pd.Index([], dtype=np.int64))
             else:
                 index_value = chunk_inputs[0].index_value
             kw = dict(
