@@ -79,6 +79,7 @@ class VineyardFileObject(BufferWrappedFileObject):
 
     def _read_init(self):
         import vineyard.data.pickle
+
         self._reader = vineyard.data.pickle.PickledReader(
             self._client.get(self._object_id)
         )
@@ -86,6 +87,7 @@ class VineyardFileObject(BufferWrappedFileObject):
 
     def _write_init(self):
         import vineyard.data.pickle
+
         self._writer = vineyard.data.pickle.PickledWriter(self._size)
 
     @property
