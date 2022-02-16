@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import dataclasses
 import os
 
 import pytest
@@ -20,7 +21,10 @@ from ..profiling import (
     ProfilingDataOperator,
     DummyOperator,
     _ProfilingOptions,
+    _CallStats,
+    _SubtaskStats,
 )
+from ..backends.message import SendMessage
 from ...tests.core import check_dict_structure_same, mock
 
 
@@ -71,6 +75,16 @@ async def test_profiling_debug(fake_warning):
     await asyncio.sleep(0.5)
     assert fake_warning.call_count == call_count
 
+    ProfilingData.init("abc", {"debug_interval_seconds": 0.1})
+    assert len(ProfilingData._debug_task) == 1
+    await asyncio.sleep(0.5)
+    assert fake_warning.call_count > call_count
+    ProfilingData._data.clear()
+    call_count = fake_warning.call_count
+    await asyncio.sleep(0.5)
+    assert len(ProfilingData._debug_task) == 0
+    assert fake_warning.call_count == call_count
+
 
 @pytest.mark.asyncio
 async def test_profiling_options():
@@ -105,3 +119,58 @@ async def test_profiling_options():
         assert options.debug_interval_seconds == 1.0
     finally:
         os.environ.pop(env_key)
+
+
+def test_collect():
+    options = _ProfilingOptions(
+        {"slow_calls_duration_threshold": 0, "slow_subtasks_duration_threshold": 0}
+    )
+
+    @dataclasses.dataclass
+    class _FakeActorId:
+        uid: object
+        address: str
+
+    # Test collect message with incomparable arguments.
+    fake_actor_id = _FakeActorId(b"uid", "def")
+    fake_message1 = SendMessage(b"abc", fake_actor_id, ["name", {}])
+    fake_message2 = SendMessage(b"abc", fake_actor_id, ["name", 1])
+
+    cs = _CallStats(options)
+    cs.collect(fake_message1, 1.0)
+    cs.collect(fake_message2, 1.0)
+
+    @dataclasses.dataclass
+    class _FakeSubtask:
+        extra_config: dict
+
+    # Test collect subtask with incomparable arguments.
+    band = ("1.2.3.4", "numa-0")
+    subtask1 = _FakeSubtask({})
+    subtask2 = _FakeSubtask(None)
+    ss = _SubtaskStats(options)
+    ss.collect(subtask1, band, 1.0)
+    ss.collect(subtask2, band, 1.0)
+
+    # Test call stats order.
+    cs = _CallStats(options)
+    for i in range(20):
+        fake_message = SendMessage(f"{i}", fake_actor_id, ["name", True, (i,), {}])
+        cs.collect(fake_message, i)
+    d = cs.to_dict()
+    assert list(d["most_calls"].values())[0] == 20
+    assert list(d["slow_calls"].values()) == list(reversed(range(10, 20)))
+
+    # Test subtask stats order.
+    ss = _SubtaskStats(options)
+    counter = 0
+    for i in range(20):
+        for j in range(i):
+            fake_message = _FakeSubtask(counter)
+            ss.collect(fake_message, (str(j), "numa-0"), counter)
+            counter += 1
+    d = ss.to_dict()
+    assert list(d["band_subtasks"].values()) == [19, 18, 17, 16, 15, 5, 4, 3, 2, 1]
+    assert list(d["slow_subtasks"].values()) == list(
+        reversed(range(counter - 10, counter))
+    )

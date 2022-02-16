@@ -21,6 +21,7 @@ import logging
 import operator
 from collections import Counter
 from .backends.message import SendMessage, TellMessage
+from ..typing import BandType
 
 
 logger = logging.getLogger(__name__)
@@ -46,7 +47,7 @@ class _ProfilingOptionDescriptor:
         obj.__dict__[self._name] = v
         return v
 
-    def set_name(self, name):
+    def set_name(self, name: str):
         self._name = name
 
 
@@ -131,7 +132,7 @@ class _CallStats:
         self._call_counter = Counter()
         self._slow_calls = []
 
-    def collect(self, message, duration):
+    def collect(self, message, duration: float):
         if duration < self._options.slow_calls_duration_threshold:
             return
         key = (message.actor_ref.uid, message.content[0])
@@ -150,7 +151,7 @@ class _CallStats:
         except TypeError:
             pass
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         most_calls = {}
         for name_tuple, count in self._call_counter.most_common(10):
             uid, method_name = name_tuple
@@ -172,7 +173,7 @@ class _SubtaskStats:
         self._band_counter = Counter()
         self._slow_subtasks = []
 
-    def collect(self, subtask, band, duration):
+    def collect(self, subtask, band: BandType, duration: float):
         if duration < self._options.slow_subtasks_duration_threshold:
             return
         band_address = band[0]
@@ -186,7 +187,7 @@ class _SubtaskStats:
         except TypeError:
             pass
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         band_subtasks = {}
         key = operator.itemgetter(1)
         if len(self._band_counter) > 10:
@@ -243,11 +244,13 @@ class _ProfilingData:
                     logger.warning("Profiling debug:\n%s", json.dumps(r, indent=4))
                 except Exception:
                     logger.exception("Profiling debug log failed.")
-                finally:
-                    await asyncio.sleep(options.debug_interval_seconds)
+                await asyncio.sleep(options.debug_interval_seconds)
 
         if options.debug_interval_seconds is not None:
-            self._debug_task[task_id] = asyncio.create_task(_debug_profiling_log())
+            self._debug_task[task_id] = task = asyncio.create_task(
+                _debug_profiling_log()
+            )
+            task.add_done_callback(lambda _: self._debug_task.pop(task_id, None))
 
     def pop(self, task_id: str):
         logger.info("Pop profiling data of task %s.", task_id)
@@ -260,14 +263,14 @@ class _ProfilingData:
             r.update(self._subtask_stats.pop(task_id).to_dict())
         return r
 
-    def collect_actor_call(self, message, duration):
+    def collect_actor_call(self, message, duration: float):
         if self._call_stats:
             message_type = type(message)
             if message_type is SendMessage or message_type is TellMessage:
                 for stats in self._call_stats.values():
                     stats.collect(message, duration)
 
-    def collect_subtask(self, subtask, band, duration):
+    def collect_subtask(self, subtask, band: BandType, duration: float):
         if self._subtask_stats:
             stats = self._subtask_stats.get(subtask.task_id)
             if stats is not None:
