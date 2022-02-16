@@ -122,8 +122,6 @@ class Coloring:
     described in https://github.com/mars-project/mars/issues/2435
     """
 
-    _band_to_colors: Dict[BandType, int]
-
     def __init__(
         self,
         chunk_graph: ChunkGraph,
@@ -135,14 +133,14 @@ class Coloring:
         self.chunk_graph = chunk_graph
         self.all_bands = all_bands
         self.chunk_to_bands = chunk_to_bands
+        if initial_same_color_num is None:
+            initial_same_color_num = max(options.combine_size // 2, 1)
         self.initial_same_color_num = initial_same_color_num
         if successor_same_color_num is None:
             successor_same_color_num = options.combine_size * 2
         self.successor_same_color_num = successor_same_color_num
 
         self._coloring_iter = itertools.count()
-        # band to color
-        self._band_to_colors = {band: self._next_color() for band in self.all_bands}
 
     def _next_color(self) -> int:
         return next(self._coloring_iter)
@@ -150,35 +148,46 @@ class Coloring:
     @classmethod
     def _can_color_same(cls, chunk: ChunkType, predecessors: List[ChunkType]) -> bool:
         if (
+            # VirtualOperand cannot be fused
             any(isinstance(n.op, VirtualOperand) for n in [chunk] + predecessors)
+            # allocated on different bands
             or len({n.op.gpu for n in [chunk] + predecessors}) > 1
-            or chunk.op.scheduling_hint is not None
-            and not chunk.op.scheduling_hint.can_be_fused()
+            # expect worker changed
+            or len({n.op.expect_worker for n in [chunk] + predecessors}) > 1
+            # scheduling hint tells that cannot be fused
+            or (
+                chunk.op.scheduling_hint is not None
+                and not chunk.op.scheduling_hint.can_be_fused()
+            )
         ):
             return False
         return True
 
     def _color_init_nodes(self) -> Dict[OperandType, int]:
-        if self.initial_same_color_num is None:
-            return {
-                chunk.op: self._band_to_colors[band]
-                for chunk, band in self.chunk_to_bands.items()
-            }
-        else:
-            band_to_colors = defaultdict(list)
-            for band, color in self._band_to_colors.items():
-                band_to_colors[band].append(color)
-            color_to_size = defaultdict(lambda: 0)
-            op_to_colors = dict()
-            for chunk, band in self.chunk_to_bands.items():
-                color = band_to_colors[band][-1]
-                size = color_to_size[color]
-                if size >= self.initial_same_color_num:
-                    color = self._next_color()
-                    band_to_colors[band].append(color)
-                color_to_size[color] += 1
-                op_to_colors[chunk.op] = color
-            return op_to_colors
+        # for initial op with same band but different priority
+        # we color them w/ different colors,
+        # to prevent from wrong fusion.
+        band_priority_to_colors = dict()
+        for chunk, band in self.chunk_to_bands.items():
+            band_priority = (band, chunk.op.priority)
+            if band_priority not in band_priority_to_colors:
+                band_priority_to_colors[band_priority] = self._next_color()
+
+        band_priority_to_color_list = defaultdict(list)
+        for (band, priority), color in band_priority_to_colors.items():
+            band_priority_to_color_list[band, priority].append(color)
+        color_to_size = defaultdict(lambda: 0)
+        op_to_colors = dict()
+        for chunk, band in self.chunk_to_bands.items():
+            priority = chunk.op.priority
+            color = band_priority_to_color_list[band, priority][-1]
+            size = color_to_size[color]
+            if size >= self.initial_same_color_num:
+                color = self._next_color()
+                band_priority_to_color_list[band, priority].append(color)
+            color_to_size[color] += 1
+            op_to_colors[chunk.op] = color
+        return op_to_colors
 
     def color(self) -> Dict[ChunkType, int]:
         chunk_to_colors = dict()
