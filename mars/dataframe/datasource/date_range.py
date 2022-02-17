@@ -61,7 +61,7 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
     tz = AnyField("tz")
     normalize = BoolField("normalize")
     name = StringField("name")
-    inclusive = StringField("inclusive")
+    inclusive = StringField("closed")
 
     def __init__(
         self,
