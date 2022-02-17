@@ -50,10 +50,19 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
                     continue
                 self.assert_object_consistent(out, ctx[out.key])
 
-    async def done(self):
-        await super().done()
+    def _unregister_executors(self):
         for op in self._operand_executors:
             try:
                 op.unregister_executor()
             except KeyError:
                 pass
+
+    async def _release_scheduling(self):
+        # once the operand stops running, the slot may be reused immediately
+        # thus executors must be cleaned in time
+        self._unregister_executors()
+        await super()._release_scheduling()
+
+    async def done(self):
+        await super().done()
+        self._unregister_executors()

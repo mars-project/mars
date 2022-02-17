@@ -15,6 +15,9 @@
 import asyncio
 import contextlib
 import sys
+import time
+from collections import OrderedDict
+from typing import Dict, Mapping, Optional, TypeVar, Iterator
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
@@ -58,3 +61,63 @@ async def redirect_subtask_errors(actor: mo.Actor, subtasks):
             )
         await asyncio.wait(coros)
         raise
+
+
+ResultType = TypeVar("ResultType")
+
+
+class ResultCache(Mapping[str, ResultType]):
+    _cache: Dict[str, ResultType]
+    _cache_time: Dict[str, float]
+    _duration: float
+
+    def __init__(self, duration: float = 120):
+        self._cache = dict()
+        self._cache_time = OrderedDict()
+        self._duration = duration
+
+    def __getitem__(self, item: str):
+        self._del_expired_items()
+        return self._cache[item]
+
+    def get(
+        self, key: str, default: Optional[ResultType] = None
+    ) -> Optional[ResultType]:
+        self._del_expired_items()
+        return self._cache.get(key, default)
+
+    def _del_expired_items(self):
+        keys = []
+        expire_time = time.time() - self._duration
+        for key, store_time in self._cache_time.items():
+            if store_time < expire_time:
+                break
+            keys.append(key)
+        for key in keys:
+            self._delitem(key)
+
+    def __setitem__(self, key: str, value):
+        self._del_expired_items()
+        self._cache[key] = value
+        self._cache_time[key] = time.time()
+
+    def _delitem(self, key: str):
+        del self._cache[key]
+        self._cache_time.pop(key, None)
+
+    def __delitem__(self, key: str):
+        self._delitem(key)
+        self._del_expired_items()
+
+    def __contains__(self, item: str):
+        self._del_expired_items()
+        return item in self._cache
+
+    def __len__(self) -> int:
+        self._del_expired_items()
+        return len(self._cache)
+
+    def __iter__(self) -> Iterator[str]:
+        self._del_expired_items()
+        return iter(self._cache)
+

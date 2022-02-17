@@ -26,6 +26,7 @@ from .....oscar.errors import MarsError
 from ....cluster import ClusterAPI
 from ....core import ActorCallback
 from ....subtask import Subtask, SubtaskAPI, SubtaskResult, SubtaskStatus
+from ...utils import ResultCache
 from ..queues import SubtaskPrepareQueueActor, SubtaskExecutionQueueActor
 from ..quota import QuotaActor
 from ..slotmanager import SlotManagerActor
@@ -49,6 +50,7 @@ class SubtaskExecutionActor(mo.Actor):
 
     _subtask_api: SubtaskAPI
     _subtask_preparer: SubtaskPreparer
+    _subtask_result_cache: ResultCache[SubtaskResult]
 
     def __init__(
         self,
@@ -56,10 +58,12 @@ class SubtaskExecutionActor(mo.Actor):
         enable_kill_slot: bool = True,
     ):
         self._pred_key_mapping_dag = DAG()
-        self._subtask_caches = dict()
-        self._subtask_executions = dict()
         self._prepare_queue_ref = None
         self._execution_queue_ref = None
+
+        self._subtask_caches = dict()
+        self._subtask_executions = dict()
+        self._subtask_result_cache = ResultCache()
 
         self._subtask_max_retries = subtask_max_retries or DEFAULT_SUBTASK_MAX_RETRIES
         self._enable_kill_slot = enable_kill_slot
@@ -222,6 +226,7 @@ class SubtaskExecutionActor(mo.Actor):
         priorities: List[Tuple],
         supervisor_address: str,
         band_name: str,
+        reschedule: bool = False,
     ):
         assert len(subtasks) == len(priorities)
         logger.debug("%d subtasks submitted to SubtaskExecutionActor", len(subtasks))
@@ -230,12 +235,15 @@ class SubtaskExecutionActor(mo.Actor):
         for subtask, priority in zip(subtasks, priorities):
             if isinstance(subtask, str):
                 try:
-                    subtask = self._subtask_caches[subtask].subtask
-                except KeyError:
                     subtask = self._subtask_executions[subtask].subtask
+                except KeyError:
+                    subtask = self._subtask_caches[subtask].subtask
             try:
-                info = self._subtask_executions[subtask.subtask_id]
-                if info.result.status not in (
+                if subtask.subtask_id in self._subtask_executions:
+                    result = self._subtask_executions[subtask.subtask_id].result
+                else:
+                    result = self._subtask_result_cache[subtask.subtask_id]
+                if result.status not in (
                     SubtaskStatus.cancelled,
                     SubtaskStatus.errored,
                 ):
@@ -249,7 +257,6 @@ class SubtaskExecutionActor(mo.Actor):
                 supervisor_address=supervisor_address,
                 band_name=band_name,
             )
-            self._subtask_caches.pop(subtask.subtask_id, None)
             self._subtask_executions[subtask.subtask_id] = subtask_info
             put_delays.append(
                 self._prepare_queue_ref.put.delay(
@@ -322,7 +329,7 @@ class SubtaskExecutionActor(mo.Actor):
                 continue
             if not subtask_info.result.status.is_done:
                 self._fill_result_with_exc(subtask_info, exc_cls=asyncio.CancelledError)
-                infos_to_report.append(subtask_info)
+            infos_to_report.append(subtask_info)
         await self._report_subtask_results(infos_to_report)
 
     async def wait_subtasks(self, subtask_ids: List[str]):
@@ -488,6 +495,7 @@ class SubtaskExecutionActor(mo.Actor):
                 subtask_info,
                 max_retries=subtask_info.max_retries if subtask.retryable else 0,
             )
+            self._subtask_result_cache[subtask.subtask_id] = subtask_info.result
         except Exception as ex:  # noqa: E722  # nosec  # pylint: disable=bare-except
             if not subtask.retryable:
                 unretryable_op = [
@@ -654,6 +662,5 @@ class SubtaskExecutionActor(mo.Actor):
             await self._execution_queue_ref.put(
                 subtask_id, subtask_info.band_name, subtask_info.priority
             )
-            self.uncache_subtasks([subtask_id])
         except PrepareFastFailed:
             self._subtask_executions.pop(subtask_id, None)
