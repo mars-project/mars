@@ -107,12 +107,12 @@ def test_decide_series_chunks():
 
 
 def test_parse_index():
-    index = pd.Int64Index([])
+    index = pd.Index([], dtype=np.int64)
     parsed_index = parse_index(index)
     assert isinstance(parsed_index.value, IndexValue.Int64Index)
     pd.testing.assert_index_equal(index, parsed_index.to_pandas())
 
-    index = pd.Int64Index([1, 2])
+    index = pd.Index([1, 2], dtype=np.int64)
     parsed_index = parse_index(index)  # not parse data
     assert isinstance(parsed_index.value, IndexValue.Int64Index)
     with pytest.raises(AssertionError):
@@ -323,7 +323,7 @@ def test_filter_index_value():
         == pd_index[(pd_index > 2) & (pd_index < 10)].tolist()
     )
 
-    pd_index = pd.Int64Index([0, 3, 8])
+    pd_index = pd.Index([0, 3, 8], dtype=np.int64)
     index_value = parse_index(pd_index, store_data=True)
 
     min_max = (2, True, 8, False)
@@ -395,8 +395,8 @@ def test_infer_index_value():
     assert oival.key != ival2.key
 
     # same int64 index, all unique
-    index1 = pd.Int64Index([1, 2])
-    index2 = pd.Int64Index([1, 2])
+    index1 = pd.Index([1, 2], dtype=np.int64)
+    index2 = pd.Index([1, 2], dtype=np.int64)
 
     ival1 = parse_index(index1)
     ival2 = parse_index(index2)
@@ -407,8 +407,8 @@ def test_infer_index_value():
     assert oival.key == ival2.key
 
     # same int64 index, not all unique
-    index1 = pd.Int64Index([1, 2, 2])
-    index2 = pd.Int64Index([1, 2, 2])
+    index1 = pd.Index([1, 2, 2], dtype=np.int64)
+    index2 = pd.Index([1, 2, 2], dtype=np.int64)
 
     ival1 = parse_index(index1)
     ival2 = parse_index(index2)
@@ -419,8 +419,8 @@ def test_infer_index_value():
     assert oival.key != ival2.key
 
     # different int64 index
-    index1 = pd.Int64Index([1, 2])
-    index2 = pd.Int64Index([2, 3])
+    index1 = pd.Index([1, 2], dtype=np.int64)
+    index2 = pd.Index([2, 3], dtype=np.int64)
 
     ival1 = parse_index(index1)
     ival2 = parse_index(index2)
@@ -431,8 +431,8 @@ def test_infer_index_value():
     assert oival.key != ival2.key
 
     # different index type
-    index1 = pd.Int64Index([1, 2])
-    index2 = pd.Float64Index([2.0, 3.0])
+    index1 = pd.Index([1, 2], dtype=np.int64)
+    index2 = pd.Index([2.0, 3.0], dtype=np.float64)
 
     ival1 = parse_index(index1)
     ival2 = parse_index(index2)
@@ -444,7 +444,7 @@ def test_infer_index_value():
 
     # range index and other index
     index1 = pd.RangeIndex(1, 4)
-    index2 = pd.Float64Index([2, 3, 4])
+    index2 = pd.Index([2, 3, 4], dtype=np.float64)
 
     ival1 = parse_index(index1)
     ival2 = parse_index(index2)

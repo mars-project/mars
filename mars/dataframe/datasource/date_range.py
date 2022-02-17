@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 from datetime import datetime, date, time
 
 import numpy as np
@@ -25,6 +26,7 @@ from ...config import options
 from ...core import OutputType
 from ...serialization.serializables import AnyField, Int64Field, BoolField, StringField
 from ...tensor.utils import decide_chunk_sizes
+from ...utils import pd_release_version, NoDefault
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
@@ -46,116 +48,70 @@ except ImportError:  # pragma: no cover
             raise TypeError(f"Unrecognized type: {type(dt)}")
 
 
+_date_range_use_inclusive = pd_release_version[:2] >= (1, 4)
+
+
 class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATE_RANGE
 
-    _start = AnyField("start")
-    _end = AnyField("end")
-    _periods = Int64Field("periods")
-    _freq = AnyField("freq")
-    _tz = AnyField("tz")
-    _normalize = BoolField("normalize")
-    _name = StringField("name")
-    _closed = StringField("closed")
+    start = AnyField("start")
+    end = AnyField("end")
+    periods = Int64Field("periods")
+    freq = AnyField("freq")
+    tz = AnyField("tz")
+    normalize = BoolField("normalize")
+    name = StringField("name")
+    inclusive = StringField("closed")
 
     def __init__(
         self,
-        start=None,
-        end=None,
-        periods=None,
-        freq=None,
-        tz=None,
-        normalize=None,
-        name=None,
-        closed=None,
         output_types=None,
         **kw,
     ):
-        super().__init__(
-            _start=start,
-            _end=end,
-            _periods=periods,
-            _freq=freq,
-            _tz=tz,
-            _normalize=normalize,
-            _name=name,
-            _closed=closed,
-            _output_types=output_types,
-            **kw,
-        )
+        super().__init__(_output_types=output_types, **kw)
         if self.output_types is None:
             self.output_types = [OutputType.index]
-
-    @property
-    def start(self):
-        return self._start
-
-    @property
-    def end(self):
-        return self._end
-
-    @property
-    def periods(self):
-        return self._periods
-
-    @property
-    def freq(self):
-        return self._freq
-
-    @property
-    def tz(self):
-        return self._tz
-
-    @property
-    def normalize(self):
-        return self._normalize
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def closed(self):
-        return self._closed
+        if getattr(self, "inclusive", None) is None:
+            self.inclusive = "both"
 
     def __call__(self, shape, chunk_size=None):
-        dtype = pd.Index([self._start]).dtype
+        dtype = pd.Index([self.start]).dtype
         index_value = parse_index(
-            pd.Index([], dtype=dtype), self._start, self._end, self._periods, self._tz
+            pd.Index([], dtype=dtype), self.start, self.end, self.periods, self.tz
         )
         # gen index value info
-        index_value.value._min_val = self._start
+        index_value.value._min_val = self.start
         index_value.value._min_val_close = True
-        index_value.value._max_val = self._end
+        index_value.value._max_val = self.end
         index_value.value._max_val_close = True
         index_value.value._is_unique = True
         index_value.value._is_monotonic_increasing = True
-        index_value.value._freq = self._freq
+        index_value.value._freq = self.freq
         return self.new_index(
             None,
             shape=shape,
             dtype=dtype,
             index_value=index_value,
-            name=self._name,
+            name=self.name,
             raw_chunk_size=chunk_size,
-            freq=self._freq,
+            freq=self.freq,
         )
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "DataFrameDateRange"):
         out = op.outputs[0]
         start = op.start
         end = op.end
         freq = op.freq
         periods = op.periods
-        closed = op.closed
+        inclusive = op.inclusive
 
         chunk_length = out.extra_params.raw_chunk_size or options.chunk_size
         chunk_length = decide_chunk_sizes(out.shape, chunk_length, out.dtype.itemsize)[
             0
         ]
 
-        if closed == "right":
+        if inclusive in ("neither", "right"):
             # if left not close, add one more for the first chunk
             chunk_length = (chunk_length[0] + 1,) + chunk_length[1:]
 
@@ -169,15 +125,20 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
         cum_nsplit = [0] + np.cumsum(chunk_length).tolist()
         for i, chunk_size in enumerate(chunk_length):
             chunk_op = op.copy().reset_key()
-            chunk_op._periods = chunk_size
-            if closed != "right" or i > 0:
-                chunk_op._closed = None
+            chunk_op.periods = chunk_size
+
+            if i > 0 or inclusive not in ("neither", "right"):
+                # for chunks in the middle, all sides are inclusive
+                chunk_op.inclusive = "both"
+            elif 0 == i and inclusive == "neither":
+                chunk_op.inclusive = "right"
+
             chunk_i_start = cum_nsplit[i]
             if chunk_i_start > 0:
-                chunk_start = chunk_op._start = start + freq * chunk_i_start
+                chunk_start = chunk_op.start = start + freq * chunk_i_start
             else:
-                chunk_start = chunk_op._start = start
-            chunk_end = chunk_op._end = chunk_start + (chunk_size - 1) * freq
+                chunk_start = chunk_op.start = start
+            chunk_end = chunk_op.end = chunk_start + (chunk_size - 1) * freq
 
             # gen chunk index_value
             chunk_index_value = parse_index(out.index_value.to_pandas(), i, out)
@@ -188,7 +149,11 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
             chunk_index_value.value._is_unique = True
             chunk_index_value.value._is_monotonic_increasing = True
 
-            size = chunk_size - 1 if i == 0 and closed == "right" else chunk_size
+            size = (
+                chunk_size - 1
+                if i == 0 and inclusive in ("neither", "right")
+                else chunk_size
+            )
             out_chunk = chunk_op.new_chunk(
                 None,
                 shape=(size,),
@@ -206,12 +171,12 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_indexes(None, kws=[params])
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "DataFrameDateRange"):
         start, end, periods = op.start, op.end, op.periods
         freq = op.freq
         if freq is not None:
             end = None
-        ctx[op.outputs[0].key] = pd.date_range(
+        kw = dict(
             start=start,
             end=end,
             periods=periods,
@@ -219,8 +184,13 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
             tz=op.tz,
             normalize=op.normalize,
             name=op.name,
-            closed=op.closed,
+            inclusive=op.inclusive,
         )
+        if not _date_range_use_inclusive:
+            closed = kw.pop("inclusive")
+            assert closed != "neither"
+            kw["closed"] = None if closed == "both" else closed
+        ctx[op.outputs[0].key] = pd.date_range(**kw)
 
 
 _midnight = time(0, 0)
@@ -330,7 +300,8 @@ def date_range(
     tz=None,
     normalize=False,
     name=None,
-    closed=None,
+    closed=NoDefault.no_default,
+    inclusive=None,
     chunk_size=None,
     **kwargs,
 ):
@@ -357,9 +328,8 @@ def date_range(
         Normalize start/end dates to midnight before generating date range.
     name : str, default None
         Name of the resulting DatetimeIndex.
-    closed : {None, 'left', 'right'}, optional
-        Make the interval closed with respect to the given frequency to
-        the 'left', 'right', or both sides (None, the default).
+    inclusive : {“both”, “neither”, “left”, “right”}, default “both”
+        Include boundaries; Whether to set each bound as closed or open.
     **kwargs
         For compatibility. Has no effect on the result.
 
@@ -452,24 +422,29 @@ def date_range(
                    '2018-01-05 00:00:00+09:00'],
                   dtype='datetime64[ns, Asia/Tokyo]', freq='D')
 
-    `closed` controls whether to include `start` and `end` that are on the
-    boundary. The default includes boundary points on either end.
+    `inclusive` controls whether to include `start` and `end` that are on the
+    boundary. The default, "both", includes boundary points on either end.
 
-    >>> md.date_range(start='2017-01-01', end='2017-01-04', closed=None).execute()
+    >>> md.date_range(start='2017-01-01', end='2017-01-04', inclusive='both').execute()
     DatetimeIndex(['2017-01-01', '2017-01-02', '2017-01-03', '2017-01-04'],
                   dtype='datetime64[ns]', freq='D')
 
-    Use ``closed='left'`` to exclude `end` if it falls on the boundary.
+    Use ``inclusive='left'`` to exclude `end` if it falls on the boundary.
 
     >>> md.date_range(start='2017-01-01', end='2017-01-04', closed='left').execute()
     DatetimeIndex(['2017-01-01', '2017-01-02', '2017-01-03'],
                   dtype='datetime64[ns]', freq='D')
 
-    Use ``closed='right'`` to exclude `start` if it falls on the boundary.
+    Use ``inclusive='right'`` to exclude `start` if it falls on the boundary,
+    and similarly inclusive='neither' will exclude both `start` and `end`.
 
     >>> md.date_range(start='2017-01-01', end='2017-01-04', closed='right').execute()
     DatetimeIndex(['2017-01-02', '2017-01-03', '2017-01-04'],
                   dtype='datetime64[ns]', freq='D')
+
+    .. note::
+        Pandas 1.4.0 or later is required to use ``inclusive='neither'``.
+        Otherwise an error may be raised.
     """
     # validate periods
     if isinstance(periods, (float, np.floating)):
@@ -485,6 +460,16 @@ def date_range(
             "and freq, exactly three must be specified"
         )
     freq = to_offset(freq)
+
+    if _date_range_use_inclusive and closed is not NoDefault.no_default:
+        warnings.warn(
+            "Argument `closed` is deprecated in favor of `inclusive`.", FutureWarning
+        )
+    elif closed is NoDefault.no_default:
+        closed = None
+
+    if inclusive is None and closed is not NoDefault.no_default:
+        inclusive = closed
 
     if start is not None:
         start = pd.Timestamp(start)
@@ -502,33 +487,37 @@ def date_range(
         # start is None and end is not None
         # adjust end first
         end = pd.date_range(end=end, periods=1, freq=freq)[0]
+        if inclusive == "neither":
+            end -= freq
         size = periods
         start = end - (periods - 1) * freq
-        if closed == "left":
+        if inclusive in ("neither", "left"):
             size -= 1
-        elif closed == "right":
+        elif inclusive == "right":
             # when start is None, closed == 'left' would not take effect
             # thus just ignore
-            closed = None
+            inclusive = "both"
     elif end is None:
         # end is None
         # adjust start first
         start = pd.date_range(start=start, periods=1, freq=freq)[0]
         size = periods
         end = start + (periods - 1) * freq
-        if closed == "right":
+        if inclusive in ("neither", "right"):
             size -= 1
-        elif closed == "left":
+        elif inclusive == "left":
             # when end is None, closed == 'left' would not take effect
             # thus just ignore
-            closed = None
+            inclusive = "both"
     else:
         if periods is None:
             periods = size = int((end - start) / freq + 1)
         else:
             size = periods
-        if closed is not None:
+        if inclusive in ("left", "right"):
             size -= 1
+        elif inclusive == "neither":
+            size -= 2
 
     shape = (size,)
     op = DataFrameDateRange(
@@ -538,8 +527,8 @@ def date_range(
         freq=freq,
         tz=tz,
         normalize=normalize,
-        closed=closed,
         name=name,
+        inclusive=inclusive,
         **kwargs,
     )
     return op(shape, chunk_size=chunk_size)

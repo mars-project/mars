@@ -397,7 +397,7 @@ def test_estimate_size():
     from .....dataframe.fetch import DataFrameFetch
     from .....dataframe.utils import parse_index
 
-    index_value = parse_index(pd.Int64Index([10, 20, 30]))
+    index_value = parse_index(pd.Index([10, 20, 30], dtype=np.int64))
 
     input1 = DataFrameFetch(output_types=[OutputType.series],).new_chunk(
         [], _key="INPUT1", shape=(np.nan,), dtype=np.dtype("O"), index_value=index_value
