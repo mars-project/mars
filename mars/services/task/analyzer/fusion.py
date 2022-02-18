@@ -14,7 +14,7 @@
 
 import itertools
 from collections import defaultdict
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from ....config import options
 from ....core import ChunkGraph
@@ -34,7 +34,7 @@ class Coloring:
         all_bands: List[BandType],
         chunk_to_bands: Dict[ChunkType, BandType],
         initial_same_color_num: int = None,
-        successor_same_color_num: int = None,
+        as_broadcaster_successor_num: int = None,
     ):
         self.chunk_graph = chunk_graph
         self.all_bands = all_bands
@@ -42,9 +42,9 @@ class Coloring:
         if initial_same_color_num is None:
             initial_same_color_num = max(options.combine_size // 2, 1)
         self.initial_same_color_num = initial_same_color_num
-        if successor_same_color_num is None:
-            successor_same_color_num = options.combine_size * 2
-        self.successor_same_color_num = successor_same_color_num
+        if as_broadcaster_successor_num is None:
+            as_broadcaster_successor_num = options.combine_size * 2
+        self.successor_same_color_num = as_broadcaster_successor_num
 
         self._coloring_iter = itertools.count()
 
@@ -142,18 +142,35 @@ class Coloring:
                 op_to_colors[pred.op]
                 for pred in self.chunk_graph.iter_successors(chunk)
             }
-            prev_color = curr_color = chunk_to_colors[chunk]
-            if curr_color in pred_colors and len(pred_colors) > 1:
+            chunk_color = chunk_to_colors[chunk]
+            if chunk_color in pred_colors and len(pred_colors) > 1:
                 # conflict
-                curr_color = self._next_color()
+                # color the successors with new colors
+                stack = []
+                for succ in self.chunk_graph.iter_successors(chunk):
+                    if chunk_to_colors[succ] == chunk_color:
+                        chunk_to_colors[succ] = op_to_colors[
+                            succ.op
+                        ] = self._next_color()
+                        stack.extend(self.chunk_graph.successors(succ))
                 # color the descendants with same color to the new one
-                stack = list(self.chunk_graph.iter_successors(chunk))
                 while len(stack) > 0:
                     node = stack.pop()
                     node_color = chunk_to_colors[node]
-                    if node_color == prev_color:
+                    if node_color == chunk_color:
                         # same color, recolor to the new one
-                        chunk_to_colors[node] = op_to_colors[node.op] = curr_color
+                        node_pred_colors = list(
+                            {
+                                op_to_colors[inp.op]
+                                for inp in self.chunk_graph.iter_predecessors(node)
+                            }
+                        )
+                        node_input_same_color = len(node_pred_colors) == 1
+                        if node_input_same_color:
+                            node_new_color = node_pred_colors[0]
+                        else:
+                            node_new_color = self._next_color()
+                        chunk_to_colors[node] = op_to_colors[node.op] = node_new_color
                         stack.extend(self.chunk_graph.successors(node))
 
         return chunk_to_colors

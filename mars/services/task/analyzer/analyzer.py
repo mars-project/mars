@@ -16,6 +16,7 @@ import logging
 from collections import deque, defaultdict
 from typing import Dict, List, Tuple, Type, Union
 
+from ....config import Config
 from ....core import ChunkGraph, ChunkType, enter_mode
 from ....core.operand import Fetch, VirtualOperand
 from ....typing import BandType
@@ -34,11 +35,13 @@ class GraphAnalyzer:
         chunk_graph: ChunkGraph,
         band_slots: Dict[BandType, int],
         task: Task,
+        config: Config,
         graph_assigner_cls: Type[AbstractGraphAssigner] = None,
     ):
         self._chunk_graph = chunk_graph
         self._band_slots = band_slots
         self._task = task
+        self._config = config
         self._fuse_enabled = task.fuse_enabled
         self._extra_config = task.extra_config
         if graph_assigner_cls is None:
@@ -185,10 +188,12 @@ class GraphAnalyzer:
                 if chunk in final_result_chunks_set:
                     result_chunks.append(out_chunk)
                     result_chunks_set.add(out_chunk)
-                for c in inp_chunks:
-                    if c not in chunk_graph:
-                        chunk_graph.add_node(c)
-                    chunk_graph.add_edge(c, out_chunk)
+                if not is_virtual:
+                    # skip adding fetch chunk to chunk graph when op is virtual operand
+                    for c in inp_chunks:
+                        if c not in chunk_graph:
+                            chunk_graph.add_node(c)
+                        chunk_graph.add_edge(c, out_chunk)
         # add chunks with no successors into result chunks
         result_chunks.extend(
             c
@@ -197,7 +202,21 @@ class GraphAnalyzer:
         )
         # calculate priority
         if out_of_scope_chunks:
-            inp_subtasks = [chunk_to_subtask[chunk] for chunk in out_of_scope_chunks]
+            inp_subtasks = []
+            for out_of_scope_chunk in out_of_scope_chunks:
+                copied_out_of_scope_chunk = chunk_to_copied[out_of_scope_chunk]
+                inp_subtask = chunk_to_subtask[out_of_scope_chunk]
+                if (
+                    copied_out_of_scope_chunk
+                    not in inp_subtask.chunk_graph.result_chunks
+                ):
+                    # make sure the chunk that out of scope
+                    # is in the input subtask's results,
+                    # or the meta may be lost
+                    inp_subtask.chunk_graph.result_chunks.append(
+                        copied_out_of_scope_chunk
+                    )
+                inp_subtasks.append(inp_subtask)
             depth = max(st.priority[0] for st in inp_subtasks) + 1
         else:
             inp_subtasks = []
@@ -265,12 +284,24 @@ class GraphAnalyzer:
         # color nodes
         if self._fuse_enabled:
             logger.debug("Start to fuse chunks for task %s", self._task.task_id)
+            # sort start chunks in coloring as start_ops
+            op_key_to_chunks = defaultdict(list)
+            for chunk in self._chunk_graph:
+                op_key_to_chunks[chunk.op.key].append(chunk)
             init_chunk_to_bands = dict()
             for start_op in start_ops:
-                for start_chunk in start_op.outputs:
+                for start_chunk in op_key_to_chunks[start_op.key]:
                     init_chunk_to_bands[start_chunk] = chunk_to_bands[start_chunk]
             coloring = Coloring(
-                self._chunk_graph, list(self._band_slots), init_chunk_to_bands
+                self._chunk_graph,
+                list(self._band_slots),
+                init_chunk_to_bands,
+                initial_same_color_num=getattr(
+                    self._config, "initial_same_color_num", None
+                ),
+                as_broadcaster_successor_num=getattr(
+                    self._config, "as_broadcaster_successor_num", None
+                ),
             )
             chunk_to_colors = coloring.color()
         else:

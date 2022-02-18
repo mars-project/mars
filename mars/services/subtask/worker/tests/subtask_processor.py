@@ -33,12 +33,15 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
         for key in _check_args:
             check_options[key] = kwargs.get(key, True)
         self._check_options = check_options
+        self._check_keys = kwargs.get("check_keys")
 
     def _execute_operand(self, ctx: Dict[str, Any], op: OperandType):
         super()._execute_operand(ctx, op)
         if self._check_options.get("check_all", True):
             for out in op.outputs:
                 if out not in self._chunk_graph.result_chunks:
+                    continue
+                if self._check_keys and out.key not in self._check_keys:
                     continue
                 if out.key not in ctx and any(
                     k[0] == out.key for k in ctx if isinstance(k, tuple)

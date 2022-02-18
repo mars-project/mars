@@ -175,7 +175,9 @@ def test_coloring_broadcaster():
         == chunk_to_colors[chunks[1]]
         == chunk_to_colors[chunks[2]]
     )
-    coloring = Coloring(graph, all_bands, chunk_to_bands, successor_same_color_num=1)
+    coloring = Coloring(
+        graph, all_bands, chunk_to_bands, as_broadcaster_successor_num=1
+    )
     chunk_to_colors = coloring.color()
     assert len(set(chunk_to_colors.values())) == 3
     assert (
