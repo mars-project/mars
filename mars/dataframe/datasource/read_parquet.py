@@ -52,7 +52,6 @@ from ..utils import (
     parse_index,
     to_arrow_dtypes,
     contain_arrow_dtype,
-    arrow_table_to_pandas_dataframe,
 )
 from .core import (
     IncrementalIndexDatasource,
@@ -160,6 +159,15 @@ class ParquetEngine:
         for partition in partition_cols:
             dtypes[partition] = pd.CategoricalDtype()
         return dtypes
+
+
+def _parse_prefix(path):
+    path_prefix = ""
+    if isinstance(path, str):
+        parsed_path = urlparse(path)
+        if parsed_path.scheme:
+            path_prefix = f"{parsed_path.scheme}://{parsed_path.netloc}"
+    return path_prefix
 
 
 class ArrowEngine(ParquetEngine):
@@ -270,11 +278,7 @@ class DataFrameReadParquet(
         dtypes = cls._to_arrow_dtypes(out_df.dtypes, op)
         dataset = pq.ParquetDataset(op.path)
 
-        parsed_path = urlparse(op.path)
-        if not os.path.exists(op.path) and parsed_path.scheme:
-            path_prefix = f"{parsed_path.scheme}://{parsed_path.netloc}"
-        else:
-            path_prefix = ""
+        path_prefix = _parse_prefix(op.path)
 
         chunk_index = 0
         out_chunks = []
@@ -321,14 +325,20 @@ class DataFrameReadParquet(
         dtypes = cls._to_arrow_dtypes(out_df.dtypes, op)
         shape = (np.nan, out_df.shape[1])
 
-        paths = (
-            op.path
-            if isinstance(op.path, (tuple, list))
-            else glob(op.path, storage_options=op.storage_options)
-        )
+        path_prefix = ""
+        if isinstance(op.path, (tuple, list)):
+            paths = op.path
+        elif get_fs(op.path, op.storage_options).isdir(op.path):
+            parsed_path = urlparse(op.path)
+            if parsed_path.scheme.lower() == "hdfs":
+                path_prefix = f"{parsed_path.scheme}://{parsed_path.netloc}"
+            paths = get_fs(op.path, op.storage_options).ls(op.path)
+        else:
+            paths = glob(op.path, storage_options=op.storage_options)
 
         first_chunk_row_num, first_chunk_raw_bytes = None, None
         for i, pth in enumerate(paths):
+            pth = path_prefix + pth
             if i == 0:
                 with open_file(pth, storage_options=op.storage_options) as f:
                     first_chunk_row_num = get_engine(op.engine).get_row_num(f)
@@ -546,8 +556,7 @@ def read_parquet(
             dtypes = engine.read_partitioned_dtypes(fs, path, storage_options)
             is_partitioned = True
         else:
-            path = paths
-            with open_file(paths[0], storage_options=storage_options) as f:
+            with fs.open(paths[0], mode="rb") as f:
                 dtypes = engine.read_dtypes(f)
     else:
         if not isinstance(path, list):
