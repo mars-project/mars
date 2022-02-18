@@ -1140,7 +1140,7 @@ def test_read_raydataset(ray_start_regular, ray_create_mars_cluster):
     )
     df = pd.concat([test_df1, test_df2])
     ds = ray.data.from_pandas_refs([ray.put(test_df1), ray.put(test_df2)])
-    mdf = md.read_raydataset(ds)
+    mdf = md.read_ray_dataset(ds)
     assert df.equals(mdf.execute().fetch())
 
 

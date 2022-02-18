@@ -11,7 +11,7 @@ Install Ray locally:
 
 .. code-block:: bash
 
-    pip install ray>=1.7.0
+    pip install ray>=1.8.0
 
 Start a Ray cluster:
 

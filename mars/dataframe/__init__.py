@@ -31,7 +31,11 @@ from .datasource.from_vineyard import from_vineyard
 from .datasource.read_csv import read_csv
 from .datasource.read_sql import read_sql, read_sql_table, read_sql_query
 from .datasource.read_parquet import read_parquet
-from .datasource.read_raydataset import read_raydataset, read_ray_mldataset
+from .datasource.read_raydataset import (
+    read_raydataset,
+    read_ray_dataset,
+    read_ray_mldataset,
+)
 from .datasource.date_range import date_range
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 from .merge import concat, merge
