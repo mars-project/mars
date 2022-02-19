@@ -142,18 +142,20 @@ def test_shuffle_execution(setup):
     # tensor + dataframe + series
     raw5 = np.random.rand(10, 15, 20)
     t5 = mt.array(raw5, chunk_size=8)
+    t6 = mt.array(raw5[:, 0, 0], chunk_size=6)
     raw6 = pd.DataFrame(np.random.rand(10, 15))
     df = md.DataFrame(raw6, chunk_size=(8, 15))
     raw7 = pd.Series(np.random.rand(10))
     series = md.Series(raw7, chunk_size=8)
 
     for axes in [(0,), (1,), (0, 1), (1, 2), [0, 1, 2]]:
-        ret = shuffle(t5, df, series, axes=axes, random_state=0)
+        ret = shuffle(t5, df, series, t6, axes=axes, random_state=0)
         # skip check nsplits because it's updated
-        res5, res_df, res_series = ret.execute(
+        res5, res_df, res_series, res6 = ret.execute(
             extra_config={"check_nsplits": False}
         ).fetch(extra_config={"check_nsplits": False})
 
         assert res5.shape == raw5.shape
         assert res_df.shape == df.shape
         assert res_series.shape == series.shape
+        assert res6.shape == (raw5.shape[0],)
