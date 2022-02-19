@@ -13,12 +13,15 @@
 # limitations under the License.
 
 import enum
+import logging
 import os
 import uuid
 from abc import ABC, abstractmethod
 
 from ...core.base import MarsError
 from ..session import SessionAPI
+
+logger = logging.getLogger(__name__)
 
 
 class ExtraConfigKey:

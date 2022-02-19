@@ -32,6 +32,7 @@ from ....optimization.physical import optimize
 from ....typing import BandType
 from ....utils import get_chunk_key_to_data_keys
 from ...context import ThreadedServiceContext
+from ...core import ActorCallback
 from ...meta.api import MetaAPI
 from ...storage import StorageAPI
 from ...session import SessionAPI
@@ -60,6 +61,8 @@ class SubtaskProcessor:
         band: BandType,
         supervisor_address: str,
         engines: List[str] = None,
+        forward_successors: bool = False,
+        finish_callback: Optional[ActorCallback] = None,
     ):
         self.subtask = subtask
         self._session_id = self.subtask.session_id
@@ -74,6 +77,8 @@ class SubtaskProcessor:
         self._band = band
         self._supervisor_address = supervisor_address
         self._engines = engines if engines is not None else task_options.runtime_engines
+        self._forward_successors = forward_successors
+        self._finish_callback = finish_callback
 
         # result
         self.result = SubtaskResult(
@@ -84,6 +89,7 @@ class SubtaskProcessor:
             bands=[self._band],
             progress=0.0,
         )
+        self.is_released = False
         self.is_done = asyncio.Event()
 
         # status and intermediate states
@@ -389,7 +395,7 @@ class SubtaskProcessor:
             if chunk.key not in data_key_to_store_size:
                 # mapper, set meta, so that storage can make sure
                 # this operand is executed, some sub key is absent
-                # due to it's empty actually
+                # due to its empty actually
                 set_chunk_metas.append(
                     self._meta_api.set_chunk_meta.delay(
                         chunk, memory_size=0, store_size=0, bands=[self._band]
@@ -441,6 +447,11 @@ class SubtaskProcessor:
         self.result.progress = 1.0
         self.is_done.set()
 
+    async def _release_scheduling(self):
+        self.is_released = True
+        if self._finish_callback is not None:
+            await self._finish_callback()
+
     async def run(self):
         self.result.status = SubtaskStatus.running
         input_keys = None
@@ -459,6 +470,12 @@ class SubtaskProcessor:
                 # unpin inputs data
                 unpinned = True
                 await self._unpin_data(input_keys)
+
+            # if we need to forward successors of subtasks,
+            # data should be stored first
+            if not self._forward_successors:
+                await self._release_scheduling()
+
             # store results data
             (
                 stored_keys,
@@ -466,6 +483,10 @@ class SubtaskProcessor:
                 memory_sizes,
                 data_key_to_object_id,
             ) = await self._store_data(chunk_graph)
+
+            if self._forward_successors:
+                await self._release_scheduling()
+
             # store meta
             await self._store_meta(
                 chunk_graph,
@@ -519,7 +540,6 @@ class SubtaskProcessorActor(mo.Actor):
     _session_api: Optional[SessionAPI]
     _storage_api: Optional[StorageAPI]
     _meta_api: Optional[MetaAPI]
-    _processor: Optional[SubtaskProcessor]
     _last_processor: Optional[SubtaskProcessor]
     _running_aio_task: Optional[asyncio.Task]
 
@@ -538,9 +558,8 @@ class SubtaskProcessorActor(mo.Actor):
         self._subtask_processor_cls = subtask_processor_cls
 
         # current processor
-        self._processor = None
         self._last_processor = None
-        self._running_aio_task = None
+        self._running_aio_tasks = set()
 
         self._session_api = None
         self._storage_api = None
@@ -575,7 +594,12 @@ class SubtaskProcessorActor(mo.Actor):
         await context.init()
         set_context(context)
 
-    async def run(self, subtask: Subtask):
+    async def run(
+        self,
+        subtask: Subtask,
+        forward_successors: bool = False,
+        finish_callback: Optional[ActorCallback] = None,
+    ):
         logger.debug("Start to run subtask: %s", subtask.subtask_id)
 
         assert subtask.session_id == self._session_id
@@ -589,30 +613,33 @@ class SubtaskProcessorActor(mo.Actor):
             self._meta_api,
             self._band,
             self._supervisor_address,
+            forward_successors=forward_successors,
+            finish_callback=finish_callback,
         )
-        self._processor = self._last_processor = processor
-        self._running_aio_task = asyncio.create_task(processor.run())
+        self._last_processor = processor
+        aio_task = asyncio.create_task(processor.run())
+        self._running_aio_tasks.add(aio_task)
         try:
-            result = yield self._running_aio_task
+            result = yield aio_task
             raise mo.Return(result)
         finally:
-            self._processor = self._running_aio_task = None
+            self._running_aio_tasks.remove(aio_task)
 
     async def wait(self):
-        return self._processor.is_done.wait()
+        return self._last_processor.is_done.wait()
 
     async def result(self):
         return self._last_processor.result
 
     async def cancel(self):
-        logger.debug("Cancelling subtask: %s", self._processor.subtask_id)
+        logger.debug("Cancelling subtask: %s", self._last_processor.subtask_id)
 
-        aio_task = self._running_aio_task
-        aio_task.cancel()
+        for aio_task in self._running_aio_tasks:
+            aio_task.cancel()
 
         async def waiter():
             try:
-                await aio_task
+                await asyncio.wait(self._running_aio_tasks)
             except asyncio.CancelledError:
                 pass
 
@@ -620,7 +647,9 @@ class SubtaskProcessorActor(mo.Actor):
         return waiter()
 
     def get_running_subtask_id(self):
-        return self._processor.subtask_id
+        if self._last_processor.is_released:
+            return None
+        return self._last_processor.subtask_id
 
     def set_running_op_progress(self, op_key: str, progress: float):
-        self._processor.set_op_progress(op_key, progress)
+        self._last_processor.set_op_progress(op_key, progress)

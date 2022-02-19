@@ -20,12 +20,51 @@ import inspect
 import warnings
 from typing import Dict, Iterable, List, Union
 
+from .. import oscar as mo
+from ..lib.aio import alru_cache
+from ..serialization.serializables import (
+    Serializable,
+    BytesField,
+    StringField,
+    TupleField,
+    DictField,
+)
+
 _ModulesType = Union[List, str, None]
 
 
 class NodeRole(enum.Enum):
     SUPERVISOR = 0
     WORKER = 1
+
+
+class ActorCallback(Serializable):
+    actor_uid: bytes = BytesField("actor_uid")
+    actor_address: str = StringField("actor_address")
+    actor_method: str = StringField("actor_method")
+    args: tuple = TupleField("args")
+    kwargs: dict = DictField("kwargs")
+
+    def __init__(self, ref_method=None, **kw):
+        if ref_method is not None:
+            kw["actor_uid"] = ref_method.ref.uid
+            kw["actor_address"] = ref_method.ref.address
+            kw["actor_method"] = ref_method.method_name
+        kw["args"] = kw.get("args") or ()
+        kw["kwargs"] = kw.get("kwargs") or {}
+        super().__init__(**kw)
+
+    @classmethod
+    @alru_cache(cache_exceptions=False)
+    async def _get_ref(cls, actor_uid: bytes, actor_address: str):
+        return await mo.actor_ref(actor_uid, address=actor_address)
+
+    async def __call__(self, *args, **kwargs):
+        ref = await self._get_ref(self.actor_uid, self.actor_address)
+        args = self.args + args
+        kw = self.kwargs.copy()
+        kw.update(kwargs)
+        return await getattr(ref, self.actor_method)(*args, **kw)
 
 
 class AbstractService(abc.ABC):

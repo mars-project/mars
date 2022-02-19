@@ -32,7 +32,6 @@ from ...task import new_task_id
 from ...task.supervisor.manager import TaskManagerActor
 from ...web import WebActor
 from .. import SchedulingAPI
-from ..supervisor import GlobalSlotManagerActor
 
 
 class FakeTaskManager(TaskManagerActor):
@@ -41,6 +40,7 @@ class FakeTaskManager(TaskManagerActor):
         self._events = defaultdict(list)
         self._results = dict()
 
+    @mo.extensible
     def set_subtask_result(self, subtask_result: SubtaskResult):
         self._results[subtask_result.subtask_id] = subtask_result
         for event in self._events[subtask_result.subtask_id]:
@@ -160,9 +160,6 @@ async def _get_subtask_summaries_by_web(sv_pool_address, session_id, task_id=Non
 @pytest.mark.asyncio
 async def test_schedule_success(actor_pools):
     sv_pool, worker_pool, session_id, task_manager_ref = actor_pools
-    global_slot_ref = await mo.actor_ref(
-        GlobalSlotManagerActor.default_uid(), address=sv_pool.external_address
-    )
 
     scheduling_api = await SchedulingAPI.create(session_id, sv_pool.external_address)
     storage_api = await StorageAPI.create(session_id, worker_pool.external_address)
@@ -174,13 +171,10 @@ async def test_schedule_success(actor_pools):
     subtask.expect_bands = [(worker_pool.external_address, "numa-0")]
     await scheduling_api.add_subtasks([subtask], [(0,)])
     await task_manager_ref.wait_subtask_result(subtask.subtask_id)
-    await scheduling_api.finish_subtasks([subtask.subtask_id])
 
     result_key = next(subtask.chunk_graph.iter_indep(reverse=True)).key
     result = await storage_api.get(result_key)
     np.testing.assert_array_equal(np.ones((10, 10)) + 1, result)
-
-    assert (await global_slot_ref.get_used_slots())["numa-0"] == 0
 
     [summary] = await _get_subtask_summaries_by_web(
         sv_pool.external_address, session_id, subtask.task_id
@@ -192,9 +186,6 @@ async def test_schedule_success(actor_pools):
 @pytest.mark.asyncio
 async def test_schedule_queue(actor_pools):
     sv_pool, worker_pool, session_id, task_manager_ref = actor_pools
-    global_slot_ref = await mo.actor_ref(
-        GlobalSlotManagerActor.default_uid(), address=sv_pool.external_address
-    )
     scheduling_api = await SchedulingAPI.create(session_id, sv_pool.external_address)
 
     finish_ids, finish_time = [], []
@@ -205,7 +196,6 @@ async def test_schedule_queue(actor_pools):
 
     async def _waiter_fun(subtask_id):
         await task_manager_ref.wait_subtask_result(subtask_id)
-        await scheduling_api.finish_subtasks([subtask_id])
         finish_ids.append(subtask_id)
         finish_time.append(time.time())
 
@@ -224,15 +214,10 @@ async def test_schedule_queue(actor_pools):
     await scheduling_api.update_subtask_priority(subtasks[-1].subtask_id, (6,))
     await asyncio.gather(*wait_tasks)
 
-    assert (await global_slot_ref.get_used_slots())["numa-0"] == 0
-
 
 @pytest.mark.asyncio
 async def test_schedule_error(actor_pools):
     sv_pool, worker_pool, session_id, task_manager_ref = actor_pools
-    global_slot_ref = await mo.actor_ref(
-        GlobalSlotManagerActor.default_uid(), address=sv_pool.external_address
-    )
     scheduling_api = await SchedulingAPI.create(session_id, sv_pool.external_address)
 
     def _remote_fun():
@@ -246,15 +231,10 @@ async def test_schedule_error(actor_pools):
     with pytest.raises(ValueError):
         await task_manager_ref.wait_subtask_result(subtask.subtask_id)
 
-    assert (await global_slot_ref.get_used_slots())["numa-0"] == 0
-
 
 @pytest.mark.asyncio
 async def test_schedule_cancel(actor_pools):
     sv_pool, worker_pool, session_id, task_manager_ref = actor_pools
-    global_slot_ref = await mo.actor_ref(
-        GlobalSlotManagerActor.default_uid(), address=sv_pool.external_address
-    )
     scheduling_api = await SchedulingAPI.create(session_id, sv_pool.external_address)
 
     def _remote_fun(secs):
@@ -263,7 +243,6 @@ async def test_schedule_cancel(actor_pools):
 
     async def _waiter_fun(subtask_id):
         await task_manager_ref.wait_subtask_result(subtask_id)
-        await scheduling_api.finish_subtasks([subtask_id])
 
     subtasks = []
     wait_tasks = []
@@ -293,5 +272,3 @@ async def test_schedule_cancel(actor_pools):
     assert all(
         summary.is_finished and summary.is_cancelled for summary in summaries[2:]
     )
-
-    assert (await global_slot_ref.get_used_slots())["numa-0"] == 0

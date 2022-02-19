@@ -11,12 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from .execution import SubtaskExecutionActor
-from .queues import SubtaskExecutionQueueActor, SubtaskPrepareQueueActor
-from .quota import QuotaActor, MemQuotaActor, WorkerQuotaManagerActor
-from .service import SchedulingWorkerService
-from .slotmanager import SlotManagerActor
-
-_ = SubtaskExecutionActor
-del _

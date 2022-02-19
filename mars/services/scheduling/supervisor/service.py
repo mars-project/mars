@@ -42,14 +42,6 @@ class SchedulingSupervisorService(AbstractService):
     """
 
     async def start(self):
-        from .globalslot import GlobalSlotManagerActor
-
-        await mo.create_actor(
-            GlobalSlotManagerActor,
-            uid=GlobalSlotManagerActor.default_uid(),
-            address=self._address,
-        )
-
         autoscale_config = self._config.get("scheduling", {}).get("autoscale", {})
         await mo.create_actor(
             AutoscalerActor,
@@ -67,14 +59,6 @@ class SchedulingSupervisorService(AbstractService):
             )
         )
 
-        from .globalslot import GlobalSlotManagerActor
-
-        await mo.destroy_actor(
-            mo.create_actor_ref(
-                uid=GlobalSlotManagerActor.default_uid(), address=self._address
-            )
-        )
-
     async def create_session(self, session_id: str):
         service_config = self._config or dict()
         scheduling_config = service_config.get("scheduling", {})
@@ -84,24 +68,12 @@ class SchedulingSupervisorService(AbstractService):
 
         from .assigner import AssignerActor
 
-        assigner_coro = mo.create_actor(
+        await mo.create_actor(
             AssignerActor,
             session_id,
             address=self._address,
             uid=AssignerActor.gen_uid(session_id),
         )
-
-        from .queueing import SubtaskQueueingActor
-
-        queueing_coro = mo.create_actor(
-            SubtaskQueueingActor,
-            session_id,
-            scheduling_config.get("submit_period"),
-            address=self._address,
-            uid=SubtaskQueueingActor.gen_uid(session_id),
-        )
-
-        await asyncio.gather(assigner_coro, queueing_coro)
 
         from .manager import SubtaskManagerActor
 
@@ -113,15 +85,14 @@ class SchedulingSupervisorService(AbstractService):
             uid=SubtaskManagerActor.gen_uid(session_id),
         )
 
-        from .autoscale import AutoscalerActor
-
-        autoscaler_ref = await mo.actor_ref(
-            AutoscalerActor.default_uid(), address=self._address
-        )
-        await autoscaler_ref.register_session(session_id, self._address)
+        # from .autoscale import AutoscalerActor
+        #
+        # autoscaler_ref = await mo.actor_ref(
+        #     AutoscalerActor.default_uid(), address=self._address
+        # )
+        # await autoscaler_ref.register_session(session_id, self._address)
 
     async def destroy_session(self, session_id: str):
-        from .queueing import SubtaskQueueingActor
         from .manager import SubtaskManagerActor
         from .assigner import AssignerActor
         from .autoscale import AutoscalerActor
@@ -132,7 +103,7 @@ class SchedulingSupervisorService(AbstractService):
         await autoscaler_ref.unregister_session(session_id)
 
         destroy_tasks = []
-        for actor_cls in [SubtaskManagerActor, SubtaskQueueingActor, AssignerActor]:
+        for actor_cls in [SubtaskManagerActor, AssignerActor]:
             ref = await mo.actor_ref(
                 actor_cls.gen_uid(session_id), address=self._address
             )

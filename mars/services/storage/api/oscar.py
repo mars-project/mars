@@ -118,13 +118,16 @@ class StorageAPI(AbstractStorageAPI):
         return await self._storage_handler_ref.put.batch(*puts)
 
     @mo.extensible
-    async def get_infos(self, data_key: str) -> List[DataInfo]:
+    async def get_infos(self, data_key: str, error: str = "raise") -> List[DataInfo]:
         """
         Get data information items for specific data key
 
         Parameters
         ----------
         data_key
+            object key to obtain info
+        error: str
+            raise or ignore
 
         Returns
         -------
@@ -132,7 +135,7 @@ class StorageAPI(AbstractStorageAPI):
             List of information for specified key
         """
         return await self._data_manager_ref.get_data_infos(
-            self._session_id, data_key, self._band_name
+            self._session_id, data_key, self._band_name, error=error
         )
 
     @mo.extensible

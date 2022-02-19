@@ -211,7 +211,7 @@ class ClusterAPI(AbstractClusterAPI):
         node_info_ref = await self._get_node_info_ref()
         return await node_info_ref.get_mars_versions()
 
-    async def get_bands(self) -> Dict:
+    async def get_bands(self) -> Dict[BandType, int]:
         """
         Get bands that can be used for computation on current node.
 

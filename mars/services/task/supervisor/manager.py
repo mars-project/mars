@@ -296,6 +296,7 @@ class TaskManagerActor(mo.Actor):
 
         return await processor_ref.get_result_tileables()
 
+    @mo.extensible
     async def set_subtask_result(self, subtask_result: SubtaskResult):
         task_id = subtask_result.task_id
         try:

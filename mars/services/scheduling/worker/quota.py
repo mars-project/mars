@@ -23,6 +23,7 @@ from typing import Dict, Optional, Tuple, Union
 from .... import oscar as mo
 from .... import resource as mars_resource
 from ....typing import BandType
+from ....utils import dataslots
 from ...cluster import QuotaInfo
 
 logger = logging.getLogger(__name__)
@@ -30,12 +31,17 @@ logger = logging.getLogger(__name__)
 QuotaDumpType = namedtuple("QuotaDumpType", "allocations requests hold_sizes")
 
 
+@dataslots
 @dataclass
 class QuotaRequest:
     req_size: Tuple
     delta: int
     req_time: float
     event: asyncio.Event
+
+
+class QuotaInsufficientError(Exception):
+    pass
 
 
 class QuotaActor(mo.Actor):
@@ -89,11 +95,17 @@ class QuotaActor(mo.Actor):
                 self._cluster_api.set_band_quota_info(self._band_name, quota_info)
             )
 
-    async def request_batch_quota(self, batch: Dict):
+    async def request_batch_quota(self, batch: Dict, insufficient: str = "enqueue"):
         """
         Request for resources in a batch
-        :param batch: the request dict in form {request_key: request_size, ...}
-        :return: if request is returned immediately, return True, otherwise False
+
+        Parameters
+        ----------
+        batch
+            the request dict in form {request_key: request_size, ...}
+        insufficient
+            "enqueue" if quota is not sufficient, otherwise will raise
+            an QuotaInsufficientError
         """
         all_allocated = True
         # check if the request is already allocated
@@ -130,7 +142,7 @@ class QuotaActor(mo.Actor):
                 )
                 await self.alter_allocations(keys, quota_sizes, allocate=True)
                 return
-            else:
+            elif insufficient != "raise":
                 # current free space cannot satisfy the request, the request is queued
                 if not has_space:
                     self._log_allocate(
@@ -144,6 +156,8 @@ class QuotaActor(mo.Actor):
                 quota_request = QuotaRequest(quota_sizes, delta, time.time(), event)
                 if keys not in self._requests:
                     self._requests[keys] = quota_request
+            else:
+                raise QuotaInsufficientError
 
         async def waiter():
             try:
@@ -312,11 +326,12 @@ class MemQuotaActor(QuotaActor):
             delay=self._refresh_time
         )
 
-        from .workerslot import BandSlotManagerActor
+        from .queues import SubtaskExecutionQueueActor
 
         try:
-            self._slot_manager_ref = await mo.actor_ref(
-                uid=BandSlotManagerActor.gen_uid(self._band[1]), address=self.address
+            self._execution_queue_ref = await mo.actor_ref(
+                uid=SubtaskExecutionQueueActor.default_uid(),
+                address=self.address,
             )
         except mo.ActorNotExist:  # pragma: no cover
             pass
@@ -356,9 +371,9 @@ class MemQuotaActor(QuotaActor):
                 self._hard_limit,
             )
 
-            if self._enable_kill_slot and self._slot_manager_ref is not None:
+            if self._enable_kill_slot and self._execution_queue_ref is not None:
                 logger.info("Restarting free slots to obtain more memory")
-                await self._slot_manager_ref.restart_free_slots()
+                await self._execution_queue_ref.restart_free_slots(self._band_name)
             return False
         return await super()._has_space(delta)
 

@@ -21,6 +21,7 @@ from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....typing import BandType
 from ...cluster import ClusterAPI
+from ...core import ActorCallback
 from ..core import Subtask, SubtaskResult
 from ..errors import SlotOccupiedAlready
 from .processor import SubtaskProcessor, SubtaskProcessorActor
@@ -82,14 +83,20 @@ class SubtaskRunnerActor(mo.Actor):
         [address] = await self._cluster_api.get_supervisors_by_keys([session_id])
         return address
 
-    async def run_subtask(self, subtask: Subtask):
+    async def run_subtask(
+        self,
+        subtask: Subtask,
+        forward_successors: bool = False,
+        finish_callback: Optional[ActorCallback] = None,
+    ):
         if self._running_processor is not None:  # pragma: no cover
             running_subtask_id = await self._running_processor.get_running_subtask_id()
-            # current subtask is still running
-            raise SlotOccupiedAlready(
-                f"There is subtask(id: {running_subtask_id}) running in {self.uid} "
-                f"at {self.address}, cannot run subtask {subtask.subtask_id}"
-            )
+            if running_subtask_id is not None:
+                # current subtask is still running
+                raise SlotOccupiedAlready(
+                    f"There is subtask(id: {running_subtask_id}) running in {self.uid} "
+                    f"at {self.address}, cannot run subtask {subtask.subtask_id}"
+                )
 
         session_id = subtask.session_id
         supervisor_address = await self._get_supervisor_address(session_id)
@@ -115,7 +122,9 @@ class SubtaskRunnerActor(mo.Actor):
         processor = self._session_id_to_processors[session_id]
         self._running_processor = self._last_processor = processor
         try:
-            result = yield self._running_processor.run(subtask)
+            result = yield self._running_processor.run(
+                subtask, forward_successors, finish_callback
+            )
         finally:
             self._running_processor = None
         raise mo.Return(result)

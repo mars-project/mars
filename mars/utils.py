@@ -1262,14 +1262,12 @@ def dataslots(cls):
     # Need to create a new class, since we can't set __slots__
     #  after a class has been created.
 
-    # Make sure __slots__ isn't already set.
-    if "__slots__" in cls.__dict__:  # pragma: no cover
-        raise TypeError(f"{cls.__name__} already specifies __slots__")
+    slots = getattr(cls, "__slots__", None) or ()
 
     # Create a new dict for our new class.
     cls_dict = dict(cls.__dict__)
     field_names = tuple(f.name for f in dataclasses.fields(cls))
-    cls_dict["__slots__"] = field_names
+    cls_dict["__slots__"] = slots + field_names
     for field_name in field_names:
         # Remove our attributes, if present. They'll still be
         #  available in _MARKER.

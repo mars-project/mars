@@ -15,9 +15,10 @@
 from .... import oscar as mo
 from ....utils import calc_size_by_str
 from ...core import AbstractService
-from .workerslot import WorkerSlotManagerActor
+from .execution import SubtaskExecutionActor
+from .slotmanager import SlotManagerActor
+from .queues import SubtaskPrepareQueueActor, SubtaskExecutionQueueActor
 from .quota import WorkerQuotaManagerActor
-from .execution import SubtaskExecutionActor, DEFAULT_SUBTASK_MAX_RETRIES
 
 
 class SchedulingWorkerService(AbstractService):
@@ -50,13 +51,11 @@ class SchedulingWorkerService(AbstractService):
             scheduling_config.get("mem_hard_limit", "95%"), total_mem
         )
         enable_kill_slot = scheduling_config.get("enable_kill_slot", True)
-        subtask_max_retries = scheduling_config.get(
-            "subtask_max_retries", DEFAULT_SUBTASK_MAX_RETRIES
-        )
+        subtask_max_retries = scheduling_config.get("subtask_max_retries", None)
 
         await mo.create_actor(
-            WorkerSlotManagerActor,
-            uid=WorkerSlotManagerActor.default_uid(),
+            SlotManagerActor,
+            uid=SlotManagerActor.default_uid(),
             address=address,
         )
         await mo.create_actor(
@@ -67,6 +66,16 @@ class SchedulingWorkerService(AbstractService):
                 enable_kill_slot=enable_kill_slot,
             ),
             uid=WorkerQuotaManagerActor.default_uid(),
+            address=address,
+        )
+        await mo.create_actor(
+            SubtaskPrepareQueueActor,
+            uid=SubtaskPrepareQueueActor.default_uid(),
+            address=address,
+        )
+        await mo.create_actor(
+            SubtaskExecutionQueueActor,
+            uid=SubtaskExecutionQueueActor.default_uid(),
             address=address,
         )
         await mo.create_actor(
@@ -87,11 +96,19 @@ class SchedulingWorkerService(AbstractService):
         )
         await mo.destroy_actor(
             mo.create_actor_ref(
-                uid=WorkerQuotaManagerActor.default_uid(), address=address
+                uid=SubtaskExecutionQueueActor.default_uid(), address=address
             )
         )
         await mo.destroy_actor(
             mo.create_actor_ref(
-                uid=WorkerSlotManagerActor.default_uid(), address=address
+                uid=SubtaskPrepareQueueActor.default_uid(), address=address
             )
+        )
+        await mo.destroy_actor(
+            mo.create_actor_ref(
+                uid=WorkerQuotaManagerActor.default_uid(), address=address
+            )
+        )
+        await mo.destroy_actor(
+            mo.create_actor_ref(uid=SlotManagerActor.default_uid(), address=address)
         )

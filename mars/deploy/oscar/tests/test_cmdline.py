@@ -111,38 +111,6 @@ def _get_labelled_port(label=None, create=True):
 
 supervisor_cmd_start = [sys.executable, "-m", "mars.deploy.oscar.supervisor"]
 worker_cmd_start = [sys.executable, "-m", "mars.deploy.oscar.worker"]
-start_params = {
-    "bare_start": [
-        supervisor_cmd_start,
-        worker_cmd_start
-        + [
-            "--config-file",
-            os.path.join(os.path.dirname(__file__), "local_test_config.yml"),
-        ],
-        False,
-    ],
-    "with_supervisors": [
-        supervisor_cmd_start
-        + [
-            "-e",
-            lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
-            "-w",
-            lambda: str(_get_labelled_port("web")),
-            "--n-process",
-            "2",
-        ],
-        worker_cmd_start
-        + [
-            "-e",
-            lambda: f"127.0.0.1:{get_next_port(occupy=True)}",
-            "-s",
-            lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
-            "--config-file",
-            os.path.join(os.path.dirname(__file__), "local_test_config.yml"),
-        ],
-        True,
-    ],
-}
 
 
 def _reload_args(args):
@@ -159,8 +127,40 @@ _rerun_errors = (
 
 @pytest.mark.parametrize(
     "supervisor_args,worker_args,use_web_addr",
-    list(start_params.values()),
-    ids=list(start_params.keys()),
+    [
+        pytest.param(
+            supervisor_cmd_start,
+            worker_cmd_start
+            + [
+                "--config-file",
+                os.path.join(os.path.dirname(__file__), "local_test_config.yml"),
+            ],
+            False,
+            id="bare_start",
+        ),
+        pytest.param(
+            supervisor_cmd_start
+            + [
+                "-e",
+                lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
+                "-w",
+                lambda: str(_get_labelled_port("web")),
+                "--n-process",
+                "2",
+            ],
+            worker_cmd_start
+            + [
+                "-e",
+                lambda: f"127.0.0.1:{get_next_port(occupy=True)}",
+                "-s",
+                lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
+                "--config-file",
+                os.path.join(os.path.dirname(__file__), "local_test_config.yml"),
+            ],
+            True,
+            id="with_supervisors",
+        ),
+    ],
 )
 @flaky(max_runs=10, rerun_filter=lambda err, *_: issubclass(err[0], _rerun_errors))
 def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
