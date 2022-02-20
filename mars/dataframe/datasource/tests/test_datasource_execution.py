@@ -1005,8 +1005,18 @@ def test_date_range_execution(setup):
     pd.testing.assert_index_equal(result, expected)
 
 
-@pytest.mark.skipif(pa is None, reason="pyarrow not installed")
-def test_read_parquet_arrow(setup):
+parquet_engines = ["auto"]
+if pa is not None:
+    parquet_engines.append("pyarrow")
+if fastparquet is not None:
+    parquet_engines.append("fastparquet")
+
+
+@pytest.mark.skipif(
+    len(parquet_engines) == 1, reason="pyarrow and fastparquet are not installed"
+)
+@pytest.mark.parametrize("engine", parquet_engines)
+def test_read_parquet_arrow(setup, engine):
     test_df = pd.DataFrame(
         {
             "a": np.arange(10).astype(np.int64, copy=False),
@@ -1019,36 +1029,41 @@ def test_read_parquet_arrow(setup):
         file_path = os.path.join(tempdir, "test.csv")
         test_df.to_parquet(file_path)
 
-        df = md.read_parquet(file_path)
+        df = md.read_parquet(file_path, engine=engine)
         result = df.execute().fetch()
         pd.testing.assert_frame_equal(result, test_df)
         # size_res = self.executor.execute_dataframe(df, mock=True)
         # assert sum(s[0] for s in size_res) > test_df.memory_usage(deep=True).sum()
 
-    with tempfile.TemporaryDirectory() as tempdir:
-        file_path = os.path.join(tempdir, "test.parquet")
-        test_df.to_parquet(file_path, row_group_size=3)
+    if engine != "fastparquet":
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, "test.parquet")
+            test_df.to_parquet(file_path, row_group_size=3)
 
-        df = md.read_parquet(file_path, groups_as_chunks=True, columns=["a", "b"])
-        result = df.execute().fetch()
-        pd.testing.assert_frame_equal(
-            result.reset_index(drop=True), test_df[["a", "b"]]
-        )
+            df = md.read_parquet(
+                file_path, groups_as_chunks=True, columns=["a", "b"], engine=engine
+            )
+            result = df.execute().fetch()
+            pd.testing.assert_frame_equal(
+                result.reset_index(drop=True), test_df[["a", "b"]]
+            )
 
-    with tempfile.TemporaryDirectory() as tempdir:
-        file_path = os.path.join(tempdir, "test.parquet")
-        test_df.to_parquet(file_path, row_group_size=5)
+    if engine != "fastparquet":
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, "test.parquet")
+            test_df.to_parquet(file_path, row_group_size=5)
 
-        df = md.read_parquet(
-            file_path,
-            groups_as_chunks=True,
-            use_arrow_dtype=True,
-            incremental_index=True,
-        )
-        result = df.execute().fetch()
-        assert isinstance(df.dtypes.iloc[1], md.ArrowStringDtype)
-        assert isinstance(result.dtypes.iloc[1], md.ArrowStringDtype)
-        pd.testing.assert_frame_equal(arrow_array_to_objects(result), test_df)
+            df = md.read_parquet(
+                file_path,
+                groups_as_chunks=True,
+                use_arrow_dtype=True,
+                incremental_index=True,
+                engine=engine,
+            )
+            result = df.execute().fetch()
+            assert isinstance(df.dtypes.iloc[1], md.ArrowStringDtype)
+            assert isinstance(result.dtypes.iloc[1], md.ArrowStringDtype)
+            pd.testing.assert_frame_equal(arrow_array_to_objects(result), test_df)
 
     # test wildcards in path
     for merge_small_file_option in [{"n_sample_file": 1}, None]:
@@ -1066,23 +1081,38 @@ def test_read_parquet_arrow(setup):
             df[100:200].to_parquet(file_paths[1], row_group_size=30)
             df[200:].to_parquet(file_paths[2])
 
-            mdf = md.read_parquet(f"{tempdir}/*.parquet")
+            mdf = md.read_parquet(f"{tempdir}/*.parquet", engine=engine)
+            r = mdf.execute().fetch()
+            pd.testing.assert_frame_equal(df, r.sort_values("a").reset_index(drop=True))
+
+            mdf = md.read_parquet(f"{tempdir}", engine=engine)
+            r = mdf.execute().fetch()
+            pd.testing.assert_frame_equal(df, r.sort_values("a").reset_index(drop=True))
+
+            file_list = [os.path.join(tempdir, name) for name in os.listdir(tempdir)]
+            mdf = md.read_parquet(file_list, engine=engine)
             r = mdf.execute().fetch()
             pd.testing.assert_frame_equal(df, r.sort_values("a").reset_index(drop=True))
 
             # test `use_arrow_dtype=True`
-            mdf = md.read_parquet(f"{tempdir}/*.parquet", use_arrow_dtype=True)
+            mdf = md.read_parquet(
+                f"{tempdir}/*.parquet", engine=engine, use_arrow_dtype=True
+            )
             result = mdf.execute().fetch()
             assert isinstance(mdf.dtypes.iloc[1], md.ArrowStringDtype)
             assert isinstance(result.dtypes.iloc[1], md.ArrowStringDtype)
 
-            mdf = md.read_parquet(
-                f"{tempdir}/*.parquet",
-                groups_as_chunks=True,
-                merge_small_file_options=merge_small_file_option,
-            )
-            r = mdf.execute().fetch()
-            pd.testing.assert_frame_equal(df, r.sort_values("a").reset_index(drop=True))
+            if engine != "fastparquet":
+                mdf = md.read_parquet(
+                    f"{tempdir}/*.parquet",
+                    groups_as_chunks=True,
+                    engine=engine,
+                    merge_small_file_options=merge_small_file_option,
+                )
+                r = mdf.execute().fetch()
+                pd.testing.assert_frame_equal(
+                    df, r.sort_values("a").reset_index(drop=True)
+                )
 
     # test partitioned
     with tempfile.TemporaryDirectory() as tempdir:
@@ -1094,7 +1124,7 @@ def test_read_parquet_arrow(setup):
             }
         )
         df.to_parquet(tempdir, partition_cols=["c"])
-        mdf = md.read_parquet(tempdir)
+        mdf = md.read_parquet(tempdir, engine=engine)
         r = mdf.execute().fetch().astype(df.dtypes)
         pd.testing.assert_frame_equal(
             df.sort_values("a").reset_index(drop=True),
