@@ -16,6 +16,7 @@
 
 import os
 import pickle
+from typing import List, Tuple
 from urllib.parse import urlparse
 
 import numpy as np
@@ -114,8 +115,8 @@ class ParquetEngine:
     def read_partitioned_to_pandas(
         self,
         f,
-        partitions,
-        partition_keys,
+        partitions: pq.ParquetPartitions,
+        partition_keys: List[Tuple],
         columns=None,
         nrows=None,
         use_arrow_dtype=None,
@@ -150,7 +151,7 @@ class ParquetEngine:
                 current_path = os.path.join(current_path, files[0])
             else:  # pragma: no cover
                 raise ValueError(
-                    "Files and directories are mixed " "in an intermediate directory"
+                    "Files and directories are mixed in an intermediate directory"
                 )
 
         # current path is now a parquet file
