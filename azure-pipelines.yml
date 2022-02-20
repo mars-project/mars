@@ -57,11 +57,6 @@ jobs:
           conda install -n test --quiet --yes -c conda-forge python=$PYTHON numba
         fi
 
-        # todo remove this when fastparquet release new version
-        if [[ "$PYTHON" =~ "3.6" ]]; then
-          pip install numpy\<1.20.0
-        fi
-
         source ./ci/rewrite-cov-config.sh
 
         if [[ "$(mars.test.module)" == "learn" ]]; then
@@ -74,7 +69,7 @@ jobs:
 
         if [ -z "$NO_COMMON_TESTS" ]; then
           if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
-            pip install h5py zarr matplotlib fastparquet\<0.7.0
+            pip install h5py zarr matplotlib fastparquet
             conda install -n test --quiet --yes -c conda-forge python=$PYTHON \
               "tiledb-py>=0.4.3,<0.6.0" "tiledb<2.0.0" || true
           fi
@@ -97,14 +92,14 @@ jobs:
         mkdir -p build
         pytest $PYTEST_CONFIG mars/$(mars.test.module)
         mv .coverage build/.coverage.main.file
-        
+
         # do compatibility test for earliest supported pandas release
         if [[ "$(mars.test.module)" == "dataframe" ]]; then
           pip install pandas==1.0.5
           pytest $PYTEST_CONFIG -m pd_compat mars/dataframe
           mv .coverage build/.coverage.pd_compat.file
         fi
-        
+
         coverage combine build/ && coverage report
         coverage xml
       displayName: 'Run tests'
