@@ -73,6 +73,11 @@ class Coloring:
         # for initial op with same band but different priority
         # we color them w/ different colors,
         # to prevent from wrong fusion.
+        # e.g. md.read_csv ensure incremental index by generating
+        # chunks with ascending priorities (smaller one has higher priority),
+        # chunk 0 has higher priority than chunk 1,
+        # so that when chunk 1 executing, it would know chunk 0's shape
+        # TODO: make it general instead handle priority as a special case
         band_priority_to_colors = dict()
         for chunk, band in self.chunk_to_bands.items():
             band_priority = (band, chunk.op.priority)
@@ -104,11 +109,11 @@ class Coloring:
         # step2: Propagate color in the topological order,
         # if the input nodes have same color, color it with the same color;
         # otherwise, color with a new color.
-        chunk_to_is_broadcaster = dict()
+        broadcaster_chunk_set = set()
         for chunk in self.chunk_graph.topological_iter():
             if self.chunk_graph.count_successors(chunk) > self.successor_same_color_num:
                 # is broadcaster
-                chunk_to_is_broadcaster[chunk] = True
+                broadcaster_chunk_set.add(chunk)
 
             if chunk.op in op_to_colors:
                 # colored
@@ -117,7 +122,8 @@ class Coloring:
 
             predecessors = self.chunk_graph.predecessors(chunk)
             pred_colors = {op_to_colors[pred.op] for pred in predecessors}
-            if len(predecessors) == 1 and chunk_to_is_broadcaster.get(predecessors[0]):
+            if len(predecessors) == 1 and predecessors[0] in broadcaster_chunk_set:
+                # TODO: handle situation that chunks which specify reassign_workers
                 # predecessor is broadcaster, just allocate a new color
                 color = self._next_color()
             elif len(pred_colors) == 1:
@@ -154,6 +160,7 @@ class Coloring:
                         ] = self._next_color()
                         stack.extend(self.chunk_graph.successors(succ))
                 # color the descendants with same color to the new one
+                # the descendants will not be visited more than 2 times
                 while len(stack) > 0:
                     node = stack.pop()
                     node_color = chunk_to_colors[node]
