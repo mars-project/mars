@@ -167,7 +167,7 @@ class Operand(Base, metaclass=OperandMetaclass):
         fields = self._get_logic_key_token_values()
         try:
             return tokenize(*fields)
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             raise Exception(
                 f"Cannot generate logic key for operator {self} with fields {fields}"
             ) from e

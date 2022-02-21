@@ -53,7 +53,7 @@ async def speculative_cluster():
 
 
 @pytest.mark.parametrize("ray_large_cluster", [{"num_nodes": 2}], indirect=True)
-@pytest.mark.timeout(timeout=360)
+@pytest.mark.timeout(timeout=500)
 @require_ray
 @pytest.mark.asyncio
 async def test_task_speculation_execution(ray_large_cluster, speculative_cluster):

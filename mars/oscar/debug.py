@@ -180,7 +180,7 @@ def set_message_trace(message_trace):
 _create_task = asyncio.create_task
 
 
-async def task_with_ex_logged(coro, call_site=None):
+async def task_with_ex_logged(coro, call_site=None):  # pragma: no cover
     try:
         return await coro
     except asyncio.CancelledError:
@@ -195,7 +195,7 @@ async def task_with_ex_logged(coro, call_site=None):
         raise
 
 
-def create_task_with_ex_logged(coro, *args, **kwargs):
+def create_task_with_ex_logged(coro, *args, **kwargs):  # pragma: no cover
     frame = inspect.currentframe()
     if frame and frame.f_back:
         call_site = frame.f_back.f_code

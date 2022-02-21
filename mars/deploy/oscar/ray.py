@@ -168,7 +168,7 @@ class ClusterStateActor(mo.StatelessActor):
         create_pg_timeout = timeout or 60
         try:
             await asyncio.wait_for(pg.ready(), timeout=create_pg_timeout)
-        except asyncio.CancelledError:
+        except asyncio.CancelledError:  # pragma: no cover
             logger.warning(
                 "Request worker with placement group %s in %s seconds canceled.",
                 pg.bundle_specs,

@@ -206,7 +206,6 @@ class RayPoolBase(ABC):
         return super().__new__(cls, *args, **kwargs)
 
     def __init__(self):
-        # logging.basicConfig(format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO, force=True)
         self._actor_pool = None
         self._ray_server = None
         register_ray_serializers()

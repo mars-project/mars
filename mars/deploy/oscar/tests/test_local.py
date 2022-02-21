@@ -660,7 +660,7 @@ async def speculative_cluster():
         yield client
 
 
-@pytest.mark.timeout(timeout=360)
+@pytest.mark.timeout(timeout=500)
 @pytest.mark.asyncio
 async def test_task_speculation_execution(speculative_cluster):
     series_size = 10

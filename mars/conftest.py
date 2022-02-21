@@ -30,7 +30,7 @@ ray = lazy_import("ray")
 
 
 @pytest.fixture
-def ray_start_regular(request):
+def ray_start_regular(request):  # pragma: no cover
     param = getattr(request, "param", {})
     num_cpus = param.get("num_cpus", 16)
     if not param.get("enable", True):
