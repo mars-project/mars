@@ -1709,7 +1709,7 @@ async def _execute_show_progress(
 ):
     with progress_bar:
         while not cancelled.is_set():
-            done, pending = await asyncio.wait(
+            done, _pending = await asyncio.wait(
                 [execution_info.get_future()], timeout=progress_update_interval
             )
             if not done:
