@@ -402,37 +402,23 @@ class SubtaskProcessor:
             self.subtask.subtask_id,
         )
         if set_chunk_metas:
-            set_chunks_meta = asyncio.create_task(
-                self._meta_api.set_chunk_meta.batch(*set_chunk_metas)
-            )
-            try:
-                await set_chunks_meta
+            f = asyncio.get_running_loop().create_future()
+
+            async def set_chunks_meta():
+                await self._meta_api.set_chunk_meta.batch(*set_chunk_metas)
                 logger.debug(
                     "Finish store chunk metas for data keys: %s, " "subtask id: %s",
                     stored_keys,
                     self.subtask.subtask_id,
                 )
-            except asyncio.CancelledError:
-                logger.debug(
-                    "Cancelling store chunk metas for data keys: %s, " "subtask id: %s",
-                    stored_keys,
-                    self.subtask.subtask_id,
-                )
-                set_chunks_meta.cancel()
-                try:
-                    await set_chunks_meta
-                except asyncio.CancelledError:
-                    pass
+                f.set_result(None)
+
+            try:
                 # Since we don't delete chunk data on this worker, we need to ensure chunk meta are recorded
                 # in meta service, so that `processor.decref_stage` can delete the chunk data finally.
-                await self._meta_api.set_chunk_meta.batch(*set_chunk_metas)
-                self.result.status = SubtaskStatus.cancelled
-                logger.debug(
-                    "Cancelled store chunk metas for data keys: %s, " "subtask id: %s",
-                    stored_keys,
-                    self.subtask.subtask_id,
-                )
-                raise
+                await asyncio.shield(set_chunks_meta())
+            except asyncio.CancelledError:  # pragma: no cover
+                await f
         # set result data size
         self.result.data_size = result_data_size
 

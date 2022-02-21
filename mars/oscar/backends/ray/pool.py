@@ -128,7 +128,7 @@ class RayMainActorPool(MainActorPoolBase):
         done, _ = await asyncio.wait(
             [actor_handle.start.remote()], timeout=create_sub_pool_timeout
         )
-        if not done:
+        if not done:  # pragma: no cover
             msg = (
                 f"Can not start ray sub pool {external_address} in {create_sub_pool_timeout} seconds.",
             )

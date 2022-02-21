@@ -457,7 +457,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
     async def run_subtask(
         self, subtask: Subtask, band_name: str, supervisor_address: str
     ):
-        if subtask.subtask_id in self._subtask_info:
+        if subtask.subtask_id in self._subtask_info:  # pragma: no cover
             raise Exception(
                 f"Subtask {subtask.subtask_id} is already running on this band[{self.address}]."
             )

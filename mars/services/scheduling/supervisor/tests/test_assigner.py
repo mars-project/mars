@@ -29,7 +29,7 @@ from ....meta import MockMetaAPI
 from ....session import MockSessionAPI
 from ....subtask import Subtask
 from ...supervisor import AssignerActor
-from ...errors import NoMatchingSlots
+from ...errors import NoMatchingSlots, NoAvailableBand
 
 
 class MockNodeInfoCollectorActor(NodeInfoCollectorActor):
@@ -177,6 +177,26 @@ async def test_assign_cpu_tasks(actor_pool):
     subtask.expect_bands = [("address1", "numa-0")]
     [result] = await assigner_ref.assign_subtasks([subtask])
     assert result in (("address0", "numa-0"), ("address2", "numa-0"))
+
+    [result] = await assigner_ref.assign_subtasks(
+        [subtask], exclude_bands={("address0", "numa-0"), ("address2", "numa-0")}
+    )
+    assert result in (("address0", "numa-0"), ("address2", "numa-0"))
+    [result] = await assigner_ref.assign_subtasks(
+        [subtask], exclude_bands={("address0", "numa-0")}, exclude_bands_force=True
+    )
+    assert result == ("address2", "numa-0")
+    with pytest.raises(NoAvailableBand):
+        await assigner_ref.assign_subtasks(
+            [subtask],
+            exclude_bands={("address0", "numa-0"), ("address2", "numa-0")},
+            exclude_bands_force=True,
+        )
+    subtask.bands_specified = True
+    assert result == ("address2", "numa-0")
+    with pytest.raises(NoAvailableBand):
+        await assigner_ref.assign_subtasks([subtask])
+    subtask.bands_specified = False
 
     result_chunk.op.gpu = True
     subtask = Subtask("test_task", session_id, chunk_graph=chunk_graph)
