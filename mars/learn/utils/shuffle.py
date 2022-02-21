@@ -214,7 +214,8 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
         ax_nsplit = {ax: decide_unify_split(*ns) for ax, ns in axis_to_nsplits.items()}
         rechunked_inputs = []
         for inp in inputs:
-            inp = yield from cls._safe_rechunk(inp, ax_nsplit)
+            inp_ax_nsplit = {ax: ns for ax, ns in ax_nsplit.items() if ax < inp.ndim}
+            inp = yield from cls._safe_rechunk(inp, inp_ax_nsplit)
             rechunked_inputs.append(inp)
         inputs = rechunked_inputs
 

@@ -19,6 +19,8 @@ from ..errors import ServerClosed
 from .communication import Client
 from .message import _MessageBase, ResultMessage, ErrorMessage, DeserializeMessageFailed
 from .router import Router
+from ...oscar.profiling import ProfilingData
+from ...utils import Timer
 
 
 result_message_type = Union[ResultMessage, ErrorMessage]
@@ -87,20 +89,24 @@ class ActorCaller:
         wait_response = loop.create_future()
         self._client_to_message_futures[client][message.message_id] = wait_response
 
-        try:
-            await client.send(message)
-        except ConnectionError:
+        with Timer() as timer:
             try:
-                await client.close()
+                await client.send(message)
             except ConnectionError:
-                # close failed, ignore it
-                pass
-            raise ServerClosed(f"Remote server {client.dest_address} closed")
+                try:
+                    await client.close()
+                except ConnectionError:
+                    # close failed, ignore it
+                    pass
+                raise ServerClosed(f"Remote server {client.dest_address} closed")
 
-        if not wait:
-            return wait_response
-        else:
-            return await wait_response
+            if not wait:
+                r = wait_response
+            else:
+                r = await wait_response
+
+        ProfilingData.collect_actor_call(message, timer.duration)
+        return r
 
     async def stop(self):
         try:

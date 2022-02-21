@@ -37,7 +37,7 @@ from ....lib.aio import new_isolation
 from ....storage import StorageLevel
 from ....services.storage import StorageAPI
 from ....tensor.arithmetic.add import TensorAdd
-from ....tests.core import mock, check_dict_structure_same
+from ....tests.core import mock, check_dict_structure_same, DICT_NOT_EMPTY
 from ..local import new_cluster
 from ..service import load_config
 from ..session import (
@@ -79,14 +79,18 @@ EXPECT_PROFILING_STRUCTURE = {
             "optimize": 0.0005879402160644531,
             "incref_fetch_tileables": 0.0010840892791748047,
             "stage_*": {
-                "tile": 0.008243083953857422,
-                "gen_subtask_graph": 0.012202978134155273,
+                "tile(*)": 0.008243083953857422,
+                "gen_subtask_graph(*)": 0.012202978134155273,
                 "run": 0.27870702743530273,
                 "total": 0.30318617820739746,
             },
             "total": 0.30951380729675293,
         },
         "serialization": {},
+        "most_calls": DICT_NOT_EMPTY,
+        "slow_calls": DICT_NOT_EMPTY,
+        "band_subtasks": DICT_NOT_EMPTY,
+        "slow_subtasks": DICT_NOT_EMPTY,
     }
 }
 
@@ -172,7 +176,15 @@ async def test_vineyard_operators(create_cluster):
 @pytest.mark.parametrize(
     "config",
     [
-        [{"enable_profiling": True}, EXPECT_PROFILING_STRUCTURE],
+        [
+            {
+                "enable_profiling": {
+                    "slow_calls_duration_threshold": 0,
+                    "slow_subtasks_duration_threshold": 0,
+                }
+            },
+            EXPECT_PROFILING_STRUCTURE,
+        ],
         [{}, {}],
     ],
 )
@@ -334,7 +346,15 @@ async def _run_web_session_test(web_address):
 @pytest.mark.parametrize(
     "config",
     [
-        [{"enable_profiling": True}, EXPECT_PROFILING_STRUCTURE],
+        [
+            {
+                "enable_profiling": {
+                    "slow_calls_duration_threshold": 0,
+                    "slow_subtasks_duration_threshold": 0,
+                }
+            },
+            EXPECT_PROFILING_STRUCTURE,
+        ],
         [{}, {}],
     ],
 )

@@ -22,8 +22,9 @@ from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....oscar.backends.message import ProfilingContext
 from ....oscar.errors import MarsError
+from ....oscar.profiling import ProfilingData, MARS_ENABLE_PROFILING
 from ....typing import BandType
-from ....utils import dataslots
+from ....utils import dataslots, Timer
 from ...subtask import Subtask, SubtaskResult, SubtaskStatus
 from ...task import TaskAPI
 from ..core import SubtaskScheduleSummary
@@ -167,18 +168,25 @@ class SubtaskManagerActor(mo.Actor):
                 subtask_info = self._subtask_infos[subtask_id]
                 execution_ref = await self._get_execution_ref(band)
                 extra_config = subtask_info.subtask.extra_config
+                enable_profiling = MARS_ENABLE_PROFILING or (
+                    extra_config and extra_config.get("enable_profiling")
+                )
                 profiling_context = (
                     ProfilingContext(subtask_info.subtask.task_id)
-                    if extra_config and extra_config.get("enable_profiling")
+                    if enable_profiling
                     else None
                 )
-                task = asyncio.create_task(
-                    execution_ref.run_subtask.options(
-                        profiling_context=profiling_context
-                    ).send(subtask_info.subtask, band[1], self.address)
+                with Timer() as timer:
+                    task = asyncio.create_task(
+                        execution_ref.run_subtask.options(
+                            profiling_context=profiling_context
+                        ).send(subtask_info.subtask, band[1], self.address)
+                    )
+                    subtask_info.band_futures[band] = task
+                    result = yield task
+                ProfilingData.collect_subtask(
+                    subtask_info.subtask, band, timer.duration
                 )
-                subtask_info.band_futures[band] = task
-                result = yield task
                 task_api = await self._get_task_api()
                 await task_api.set_subtask_result(result)
             except (OSError, MarsError) as ex:
