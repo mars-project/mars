@@ -135,6 +135,10 @@ class ExecutionInfo:
         self._ensure_future()
         return self._future_local.aio_future.__await__()
 
+    def get_future(self):
+        self._ensure_future()
+        return self._future_local.aio_future
+
 
 warning_msg = """
 No session found, local session \
@@ -1697,6 +1701,27 @@ class SyncSession(AbstractSyncSession):
         self.close()
 
 
+async def _execute_with_progress(
+    execution_info: ExecutionInfo,
+    progress_bar: ProgressBar,
+    progress_update_interval: Union[int, float],
+    cancelled: asyncio.Event,
+):
+    with progress_bar:
+        while not cancelled.is_set():
+            done, _pending = await asyncio.wait(
+                [execution_info.get_future()], timeout=progress_update_interval
+            )
+            if not done:
+                if not cancelled.is_set() and execution_info.progress() is not None:
+                    progress_bar.update(execution_info.progress() * 100)
+            else:
+                # done
+                if not cancelled.is_set():
+                    progress_bar.update(100)
+                break
+
+
 async def _execute(
     *tileables: Tuple[TileableType],
     session: _IsolatedSession = None,
@@ -1718,39 +1743,20 @@ async def _execute(
     if wait:
         progress_bar = ProgressBar(show_progress)
         if progress_bar.show_progress:
-            with progress_bar:
-                while not cancelled.is_set():
-                    try:
-                        await asyncio.wait_for(
-                            asyncio.shield(execution_info), progress_update_interval
-                        )
-                        # done
-                        if not cancelled.is_set():
-                            progress_bar.update(100)
-                        break
-                    except asyncio.TimeoutError:
-                        # timeout
-                        if (
-                            not cancelled.is_set()
-                            and execution_info.progress() is not None
-                        ):
-                            progress_bar.update(execution_info.progress() * 100)
-                if cancelled.is_set():
-                    # cancel execution
-                    execution_info.cancel()
-                    execution_info.remove_done_callback(_attach_session)
-                    await execution_info
+            await _execute_with_progress(
+                execution_info, progress_bar, progress_update_interval, cancelled
+            )
         else:
             await asyncio.wait(
                 [execution_info, cancelled.wait()], return_when=asyncio.FIRST_COMPLETED
             )
-            if cancelled.is_set():
-                execution_info.remove_done_callback(_attach_session)
-                execution_info.cancel()
-            else:
-                # set cancelled to avoid wait task leak
-                cancelled.set()
-            await execution_info
+        if cancelled.is_set():
+            execution_info.remove_done_callback(_attach_session)
+            execution_info.cancel()
+        else:
+            # set cancelled to avoid wait task leak
+            cancelled.set()
+        await execution_info
     else:
         return execution_info
 
