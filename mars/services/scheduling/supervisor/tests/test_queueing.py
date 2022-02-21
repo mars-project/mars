@@ -18,6 +18,7 @@ from typing import Tuple, List
 from ..... import oscar as mo
 from ....cluster import MockClusterAPI
 from ....subtask import Subtask
+from .... import Resource
 from ...supervisor import (
     AssignerActor,
     SubtaskManagerActor,
@@ -34,12 +35,12 @@ class MockSlotsActor(mo.Actor):
         self._capacity = capacity
 
     @mo.extensible
-    def apply_subtask_slots(
+    def apply_subtask_resources(
         self,
         band: Tuple,
         session_id: str,
         subtask_ids: List[str],
-        subtask_slots: List[int],
+        subtask_resources: List[Resource],
     ):
         idx = (
             min(self._capacity, len(subtask_ids))

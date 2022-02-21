@@ -19,6 +19,7 @@ import pytest
 from ..... import oscar as mo
 from ....cluster import ClusterAPI, MockClusterAPI
 from ....session import MockSessionAPI
+from .... import Resource
 from ...supervisor import GlobalSlotManagerActor
 
 
@@ -54,14 +55,14 @@ async def test_global_slot(actor_pool):
     band_slots = bands[band]
 
     assert band in await global_slot_ref.get_idle_bands(0)
-    assert ["subtask0"] == await global_slot_ref.apply_subtask_slots(
-        band, session_id, ["subtask0"], [1]
+    assert ["subtask0"] == await global_slot_ref.apply_subtask_resources(
+        band, session_id, ["subtask0"], [Resource(num_cpus=1)]
     )
     assert band not in await global_slot_ref.get_idle_bands(0)
 
     await global_slot_ref.update_subtask_slots(band, session_id, "subtask0", band_slots)
-    assert [] == await global_slot_ref.apply_subtask_slots(
-        band, session_id, ["subtask1"], [1]
+    assert [] == await global_slot_ref.apply_subtask_resources(
+        band, session_id, ["subtask1"], [Resource(num_cpus=1)]
     )
 
     wait_coro = global_slot_ref.wait_band_idle(band)
@@ -71,6 +72,6 @@ async def test_global_slot(actor_pool):
     (done, pending) = await asyncio.wait([wait_coro], timeout=0.5)
     assert done
     assert band in await global_slot_ref.get_idle_bands(0)
-    assert ["subtask1"] == await global_slot_ref.apply_subtask_slots(
-        band, session_id, ["subtask1"], [1]
+    assert ["subtask1"] == await global_slot_ref.apply_subtask_resources(
+        band, session_id, ["subtask1"], [Resource(num_cpus=1)]
     )

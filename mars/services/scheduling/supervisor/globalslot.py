@@ -20,25 +20,24 @@ from typing import List, DefaultDict, Dict, Tuple
 
 from .... import oscar as mo
 from ....typing import BandType
+from ... import Resource, ZeroResource
 
 logger = logging.getLogger(__name__)
 
 
 class GlobalSlotManagerActor(mo.Actor):
     # {(address, resource_type): {(session_id, subtask_id): slot_id}}
-    _band_stid_slots: DefaultDict[BandType, Dict[Tuple[str, str], int]]
-    _band_used_slots: DefaultDict[BandType, int]
-    _band_total_slots: Dict[BandType, int]
+    _band_stid_resources: DefaultDict[BandType, Dict[Tuple[str, str], Resource]]
+    _band_used_resources: Dict[BandType, Resource]
+    _band_total_resources: Dict[BandType, Resource]
 
     def __init__(self):
-        self._band_stid_slots = defaultdict(dict)
-        self._band_used_slots = defaultdict(lambda: 0)
+        self._band_stid_resources = defaultdict(dict)
+        self._band_used_resources = defaultdict(lambda: ZeroResource)
         self._band_idle_start_time = dict()
         self._band_idle_events = dict()
-        self._band_total_slots = dict()
-
+        self._band_total_resources = dict()
         self._cluster_api = None
-
         self._band_watch_task = None
 
     async def __post_create__(self):
@@ -48,8 +47,11 @@ class GlobalSlotManagerActor(mo.Actor):
 
         async def watch_bands():
             async for bands in self._cluster_api.watch_all_bands():
-                old_bands = set(self._band_total_slots.keys())
-                self._band_total_slots = bands
+                old_bands = set(self._band_total_resources.keys())
+                # TODO add `num_mem_bytes` after supported report worker memory
+                self._band_total_resources = {
+                    band: Resource(num_cpus=slot) for band, slot in bands.items()
+                }
                 new_bands = set(bands.keys()) - old_bands
                 for band in new_bands:
                     self._update_slot_usage(band, 0)
@@ -60,34 +62,38 @@ class GlobalSlotManagerActor(mo.Actor):
         self._band_watch_task.cancel()
 
     async def refresh_bands(self):
-        self._band_total_slots = await self._cluster_api.get_all_bands()
+        bands = await self._cluster_api.get_all_bands()
+        # TODO add `num_mem_bytes` after supported report worker memory
+        self._band_total_resources = {
+            band: Resource(num_cpus=slot) for band, slot in bands.items()
+        }
 
     @mo.extensible
-    async def apply_subtask_slots(
+    async def apply_subtask_resources(
         self,
         band: BandType,
         session_id: str,
         subtask_ids: List[str],
-        subtask_slots: List[int],
+        subtask_resources: List[Resource],
     ) -> List[str]:
-        if not self._band_total_slots or band not in self._band_total_slots:
-            self._band_total_slots = await self._cluster_api.get_all_bands()
-
+        if not self._band_total_resources or band not in self._band_total_resources:
+            await self.refresh_bands()
         idx = 0
         # only ready bands will pass
-        if band in self._band_total_slots:
-            total_slots = self._band_total_slots[band]
-            for stid, slots in zip(subtask_ids, subtask_slots):
-                if self._band_used_slots[band] + slots > total_slots:
+        if band in self._band_total_resources:
+            total_resource = self._band_total_resources[band]
+            for stid, subtask_resource in zip(subtask_ids, subtask_resources):
+                band_used_resource = self._band_used_resources[band]
+                if band_used_resource + subtask_resource > total_resource:
                     break
-                self._band_stid_slots[band][(session_id, stid)] = slots
-                self._update_slot_usage(band, slots)
+                self._band_stid_resources[band][(session_id, stid)] = subtask_resource
+                self._update_band_usage(band, subtask_resource)
                 idx += 1
         if idx == 0:
             logger.debug(
                 "No slots available, status: %r, request: %r",
-                self._band_used_slots,
-                subtask_slots,
+                self._band_used_resources,
+                subtask_resources,
             )
         return subtask_ids[:idx]
 
@@ -95,42 +101,92 @@ class GlobalSlotManagerActor(mo.Actor):
     def update_subtask_slots(
         self, band: BandType, session_id: str, subtask_id: str, slots: int
     ):
-        session_subtask_id = (session_id, subtask_id)
-        subtask_slots = self._band_stid_slots[band]
+        self.update_subtask_resources(
+            band, session_id, subtask_id, Resource(num_cpus=slots)
+        )
 
-        if session_subtask_id not in subtask_slots:
+    @mo.extensible
+    def update_subtask_resources(
+        self, band: BandType, session_id: str, subtask_id: str, resource: Resource
+    ):
+        session_subtask_id = (session_id, subtask_id)
+        subtask_resources = self._band_stid_resources[band]
+        if session_subtask_id not in subtask_resources:
             return
 
-        slots_delta = slots - subtask_slots[session_subtask_id]
-        subtask_slots[session_subtask_id] = slots
-        self._update_slot_usage(band, slots_delta)
+        resource_delta = resource - subtask_resources[session_subtask_id]
+        subtask_resources[session_subtask_id] = resource
+        self._update_band_usage(band, resource_delta)
 
     @mo.extensible
     def release_subtask_slots(self, band: BandType, session_id: str, subtask_id: str):
+        self.release_subtask_resource(band, session_id, subtask_id)
+
+    @mo.extensible
+    def release_subtask_resource(
+        self, band: BandType, session_id: str, subtask_id: str
+    ):
         # todo ensure slots released when subtasks ends in all means
-        slots_delta = self._band_stid_slots[band].pop((session_id, subtask_id), 0)
-        self._update_slot_usage(band, -slots_delta)
+        resource_delta = self._band_stid_resources[band].pop(
+            (session_id, subtask_id), ZeroResource
+        )
+        self._update_band_usage(band, -resource_delta)
 
     def _update_slot_usage(self, band: BandType, slots_usage_delta: float):
-        self._band_used_slots[band] += slots_usage_delta
-        if self._band_used_slots[band] == 0:
-            self._band_used_slots.pop(band)
+        self._update_band_usage(band, Resource(num_cpus=slots_usage_delta))
+
+    def _update_band_usage(self, band: BandType, band_usage_delta: Resource):
+        self._band_used_resources[band] += band_usage_delta
+        # some code path doesn't call `apply_subtask_resources`
+        band_total_resource = self._band_total_resources.get(band)
+        if (
+            band_total_resource is not None
+            and self._band_used_resources[band] > band_total_resource
+        ):
+            raise Exception(
+                f"Resource exceed: band used resource {self._band_used_resources[band]} "
+                f"band total resource {self._band_total_resources[band]}"
+            )
+        if self._band_used_resources[band] <= ZeroResource:
+            self._band_used_resources.pop(band)
             self._band_idle_start_time[band] = time.time()
             if band in self._band_idle_events:
                 self._band_idle_events.pop(band).set()
         else:
             self._band_idle_start_time[band] = -1
 
-    def get_used_slots(self) -> Dict[BandType, int]:
-        return self._band_used_slots
+    def get_used_slots(self) -> Dict[BandType, float]:
+        return {
+            band: resource.num_cpus
+            for band, resource in self.get_used_resources().items()
+        }
+
+    def get_used_resources(self) -> Dict[BandType, Resource]:
+        return self._band_used_resources
+
+    def get_remaining_slots(self) -> Dict[BandType, float]:
+        return {
+            band: resource.num_cpus
+            for band, resource in self.get_remaining_resources().items()
+        }
+
+    def get_remaining_resources(self) -> Dict[BandType, Resource]:
+        resources = {}
+        for band, resource in self._band_total_resources.items():
+            used_resource = self.get_used_resources()[band]
+            resources[band] = resource - used_resource
+        return resources
 
     async def get_idle_bands(self, idle_duration: int):
         """Return a band list which all bands has been idle for at least `idle_duration` seconds."""
         now = time.time()
         idle_bands = []
-        for band in self._band_total_slots.keys():
-            idle_start_time = self._band_idle_start_time[band]
-            if idle_start_time > 0 and now >= idle_start_time + idle_duration:
+        for band in self._band_total_resources.keys():
+            idle_start_time = self._band_idle_start_time.get(band)
+            if idle_start_time is None:
+                # skip new requested band for this round scale in.
+                self._band_idle_start_time[band] = now
+            elif idle_start_time > 0 and now >= idle_start_time + idle_duration:
                 idle_bands.append(band)
         return idle_bands
 
