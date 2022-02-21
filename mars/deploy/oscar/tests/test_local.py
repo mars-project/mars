@@ -52,7 +52,6 @@ from ..session import (
     ExecutionInfo,
     Profiling,
     Progress,
-    ProgressBar,
     _IsolatedWebSession,
     _execute_show_progress,
 )
@@ -642,6 +641,19 @@ def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: 
 def test_show_progress_raise_exception(m_log):
     loop = asyncio.get_event_loop()
     event = asyncio.Event()
+
+    class ProgressBar:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            pass
+
+        def __exit__(self, *_):
+            pass
+
+        def update(self, progress: float):
+            pass
 
     async def _exec():
         progress = Progress()
