@@ -417,14 +417,14 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 # make sure allocated slots are traced
                 if slot_id is None:  # pragma: no cover
                     slot_id = await slot_manager_ref.get_subtask_slot_by_ts(timestamp)
-                logger.info(
+                logger.debug(
                     "Subtask %s running ended, slot_id=%r", subtask.subtask_id, slot_id
                 )
                 if slot_id is not None:
                     await slot_manager_ref.release_free_slot(
                         slot_id, (subtask.session_id, subtask.subtask_id)
                     )
-                    logger.info(
+                    logger.debug(
                         "Released slot %d for subtask %s", slot_id, subtask.subtask_id
                     )
                 await quota_ref.release_quotas(tuple(batch_quota_req.keys()))
@@ -461,7 +461,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
             raise Exception(
                 f"Subtask {subtask.subtask_id} is already running on this band[{self.address}]."
             )
-        logger.info(
+        logger.debug(
             "Start to schedule subtask %s on %s.", subtask.subtask_id, self.address
         )
         with mo.debug.no_message_trace():
@@ -482,7 +482,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
         )
         result = await task
         self._subtask_info.pop(subtask.subtask_id, None)
-        logger.info("Subtask %s finished with result %s", subtask.subtask_id, result)
+        logger.debug("Subtask %s finished with result %s", subtask.subtask_id, result)
         return result
 
     async def cancel_subtask(self, subtask_id: str, kill_timeout: Optional[int] = 5):

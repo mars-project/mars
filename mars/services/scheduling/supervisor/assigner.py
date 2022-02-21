@@ -14,7 +14,7 @@
 
 import asyncio
 import itertools
-import random
+import numpy as np
 from collections import defaultdict
 from typing import Dict, List, Set
 
@@ -98,12 +98,13 @@ class AssignerActor(mo.Actor):
                 if band not in exclude_bands
             ]
             if avail_bands:
-                return random.choice(avail_bands)
+                return avail_bands[np.random.choice(len(avail_bands))]
             elif exclude_bands_force:
                 raise NoAvailableBand(
                     f"No bands available after excluding bands {exclude_bands}"
                 )
-        return random.choice(self._get_device_bands(is_gpu))
+        bands = self._get_device_bands(is_gpu)
+        return bands[np.random.choice(len(bands))]
 
     async def assign_subtasks(
         self,
@@ -179,7 +180,7 @@ class AssignerActor(mo.Actor):
                                 and b not in exclude_bands
                             ]
                             if sel_bands:
-                                band = random.choice(sel_bands)
+                                band = sel_bands[np.random.choice(len(sel_bands))]
                         if band not in filtered_bands or band in exclude_bands:
                             band = self._get_random_band(
                                 is_gpu, exclude_bands, exclude_bands_force
@@ -193,7 +194,10 @@ class AssignerActor(mo.Actor):
                         max_size = size
                     elif size == max_size:
                         bands.append(band)
-            band = random.choice(bands)
+            try:
+                band = bands[np.random.choice(len(bands))]
+            except Exception as e:
+                raise Exception(f"bands {bands}") from e
             if exclude_bands_force and band in exclude_bands:
                 raise NoAvailableBand(
                     f"No bands available for subtask {subtask.subtask_id} after "

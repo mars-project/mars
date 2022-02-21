@@ -170,7 +170,7 @@ class BandSlotManagerActor(mo.Actor):
         self._session_stid_to_slots[session_stid].add(slot_id)
         self._slot_to_timestamp[slot_id] = timestamp
         self._timestamp_to_slot[timestamp] = slot_id
-        logger.info("Slot %d acquired for subtask %r", slot_id, session_stid)
+        logger.debug("Slot %d acquired for subtask %r", slot_id, session_stid)
         raise mo.Return(slot_id)
 
     def release_free_slot(self, slot_id: int, session_stid: Tuple[str, str]):

@@ -27,8 +27,7 @@ from ....oscar.backends.message import ProfilingContext
 from ....oscar.errors import MarsError
 from ....oscar.profiling import ProfilingData, MARS_ENABLE_PROFILING
 from ....typing import BandType
-from ....utils import dataslots, parse_readable_size
-from ....utils import dataslots, Timer
+from ....utils import dataslots, parse_readable_size, Timer
 from ...subtask import Subtask, SubtaskResult, SubtaskStatus
 from ...task import TaskAPI
 from ..core import SubtaskScheduleSummary
