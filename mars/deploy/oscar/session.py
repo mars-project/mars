@@ -1701,7 +1701,7 @@ class SyncSession(AbstractSyncSession):
         self.close()
 
 
-async def _execute_show_progress(
+async def _execute_with_progress(
     execution_info: ExecutionInfo,
     progress_bar: ProgressBar,
     progress_update_interval: Union[int, float],
@@ -1743,7 +1743,7 @@ async def _execute(
     if wait:
         progress_bar = ProgressBar(show_progress)
         if progress_bar.show_progress:
-            await _execute_show_progress(
+            await _execute_with_progress(
                 execution_info, progress_bar, progress_update_interval, cancelled
             )
         else:

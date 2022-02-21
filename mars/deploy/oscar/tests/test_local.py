@@ -53,7 +53,7 @@ from ..session import (
     Profiling,
     Progress,
     _IsolatedWebSession,
-    _execute_show_progress,
+    _execute_with_progress,
 )
 from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
@@ -664,7 +664,7 @@ def test_show_progress_raise_exception(m_log):
         progress_bar = ProgressBar(True)
         cancel_event = asyncio.Event()
         loop.call_later(2, cancel_event.set)
-        await _execute_show_progress(execution_info, progress_bar, 0.01, cancel_event)
+        await _execute_with_progress(execution_info, progress_bar, 0.01, cancel_event)
         execution_info.get_future().set_exception(Exception("Expect Exception!!!"))
 
     loop.run_until_complete(_exec())
