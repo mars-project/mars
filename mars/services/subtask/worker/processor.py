@@ -15,7 +15,6 @@
 import asyncio
 import logging
 import sys
-import time
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Type
 
@@ -444,7 +443,6 @@ class SubtaskProcessor:
         self.is_done.set()
 
     async def run(self):
-        start_time = time.time()
         self.result.status = SubtaskStatus.running
         input_keys = None
         unpinned = False

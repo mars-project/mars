@@ -70,7 +70,7 @@ def ray_large_cluster(request):  # pragma: no cover
                 ray.init(
                     address=cluster.address,
                     job_config=ray.job_config.JobConfig(
-                        total_memory_mb=num_nodes * 32 * 1024 ** 3
+                        total_memory_mb=num_nodes * 32 * 1024**3
                     ),
                 )
             else:

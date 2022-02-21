@@ -503,8 +503,8 @@ async def test_auto_scale_out(ray_large_cluster, init_workers: int):
         "test_cluster",
         worker_num=init_workers,
         worker_cpu=2,
-        worker_mem=200 * 1024 ** 2,
-        supervisor_mem=1 * 1024 ** 3,
+        worker_mem=200 * 1024**2,
+        supervisor_mem=1 * 1024**3,
         config={
             "scheduling.autoscale.enabled": True,
             "scheduling.autoscale.scheduler_backlog_timeout": 1,

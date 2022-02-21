@@ -456,10 +456,11 @@ class SpeculativeScheduler:
     async def start(self):
         if self._subtask_speculation_enabled:
             self._speculation_execution_task = create_task_with_ex_logged(
-                    self._speculative_execution()
-                )
+                self._speculative_execution()
+            )
             logger.info(
-                "Speculative execution started with config %s.", self._speculation_config
+                "Speculative execution started with config %s.",
+                self._speculation_config,
             )
 
     async def stop(self):

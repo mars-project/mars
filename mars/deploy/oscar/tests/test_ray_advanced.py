@@ -32,8 +32,8 @@ async def speculative_cluster():
         "test_cluster",
         worker_num=5,
         worker_cpu=2,
-        worker_mem=512 * 1024 ** 2,
-        supervisor_mem=100 * 1024 ** 2,
+        worker_mem=512 * 1024**2,
+        supervisor_mem=100 * 1024**2,
         config={
             "scheduling": {
                 "speculation": {

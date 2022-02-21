@@ -239,8 +239,11 @@ class GraphAnalyzer:
             )
             bands_specified = chunk.composed[0].op.expect_worker is not None
             expect_worker = chunk.composed[0].op.expect_worker
-        expect_bands = [expect_worker] if bands_specified else (
-            [band] if band is not None else None)
+        expect_bands = (
+            [expect_worker]
+            if bands_specified
+            else ([band] if band is not None else None)
+        )
         subtask = Subtask(
             subtask_id=new_task_id(),
             stage_id=self._stage_id,
