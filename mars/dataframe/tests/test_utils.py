@@ -15,6 +15,7 @@
 import operator
 from collections import OrderedDict
 from numbers import Integral
+from typing import List, Dict
 
 import numpy as np
 import pandas as pd
@@ -24,7 +25,7 @@ from ...config import option_context
 from ...core import tile
 from ...utils import Timer
 from ..core import IndexValue
-from ..initializer import DataFrame, Index
+from ..initializer import DataFrame, Series, Index
 from ..utils import (
     decide_dataframe_chunk_sizes,
     decide_series_chunk_size,
@@ -39,6 +40,7 @@ from ..utils import (
     make_dtypes,
     build_concatenated_rows_frame,
     merge_index_value,
+    auto_merge_chunks,
 )
 
 
@@ -107,12 +109,12 @@ def test_decide_series_chunks():
 
 
 def test_parse_index():
-    index = pd.Int64Index([])
+    index = pd.Index([], dtype=np.int64)
     parsed_index = parse_index(index)
     assert isinstance(parsed_index.value, IndexValue.Int64Index)
     pd.testing.assert_index_equal(index, parsed_index.to_pandas())
 
-    index = pd.Int64Index([1, 2])
+    index = pd.Index([1, 2], dtype=np.int64)
     parsed_index = parse_index(index)  # not parse data
     assert isinstance(parsed_index.value, IndexValue.Int64Index)
     with pytest.raises(AssertionError):
@@ -323,7 +325,7 @@ def test_filter_index_value():
         == pd_index[(pd_index > 2) & (pd_index < 10)].tolist()
     )
 
-    pd_index = pd.Int64Index([0, 3, 8])
+    pd_index = pd.Index([0, 3, 8], dtype=np.int64)
     index_value = parse_index(pd_index, store_data=True)
 
     min_max = (2, True, 8, False)
@@ -395,8 +397,8 @@ def test_infer_index_value():
     assert oival.key != ival2.key
 
     # same int64 index, all unique
-    index1 = pd.Int64Index([1, 2])
-    index2 = pd.Int64Index([1, 2])
+    index1 = pd.Index([1, 2], dtype=np.int64)
+    index2 = pd.Index([1, 2], dtype=np.int64)
 
     ival1 = parse_index(index1)
     ival2 = parse_index(index2)
@@ -407,8 +409,8 @@ def test_infer_index_value():
     assert oival.key == ival2.key
 
     # same int64 index, not all unique
-    index1 = pd.Int64Index([1, 2, 2])
-    index2 = pd.Int64Index([1, 2, 2])
+    index1 = pd.Index([1, 2, 2], dtype=np.int64)
+    index2 = pd.Index([1, 2, 2], dtype=np.int64)
 
     ival1 = parse_index(index1)
     ival2 = parse_index(index2)
@@ -419,8 +421,8 @@ def test_infer_index_value():
     assert oival.key != ival2.key
 
     # different int64 index
-    index1 = pd.Int64Index([1, 2])
-    index2 = pd.Int64Index([2, 3])
+    index1 = pd.Index([1, 2], dtype=np.int64)
+    index2 = pd.Index([2, 3], dtype=np.int64)
 
     ival1 = parse_index(index1)
     ival2 = parse_index(index2)
@@ -431,8 +433,8 @@ def test_infer_index_value():
     assert oival.key != ival2.key
 
     # different index type
-    index1 = pd.Int64Index([1, 2])
-    index2 = pd.Float64Index([2.0, 3.0])
+    index1 = pd.Index([1, 2], dtype=np.int64)
+    index2 = pd.Index([2.0, 3.0], dtype=np.float64)
 
     ival1 = parse_index(index1)
     ival2 = parse_index(index2)
@@ -444,7 +446,7 @@ def test_infer_index_value():
 
     # range index and other index
     index1 = pd.RangeIndex(1, 4)
-    index2 = pd.Float64Index([2, 3, 4])
+    index2 = pd.Index([2, 3, 4], dtype=np.float64)
 
     ival1 = parse_index(index1)
     ival2 = parse_index(index2)
@@ -582,3 +584,56 @@ def test_build_concatenated_rows_frame(setup, columns):
             concatenated.chunks[i].columns_value.to_pandas(), df.columns
         )
     pd.testing.assert_frame_equal(concatenated.execute().fetch(), df)
+
+
+def test_auto_merge_chunks():
+    from ..merge import DataFrameConcat
+
+    pdf = pd.DataFrame(np.random.rand(16, 4), columns=list("abcd"))
+    memory_size = pdf.iloc[:4].memory_usage().sum()
+
+    class FakeContext:
+        def __init__(self, retval=True):
+            self._retval = retval
+
+        def get_chunks_meta(self, data_keys: List[str], **_) -> List[Dict]:
+            if self._retval:
+                return [{"memory_size": memory_size}] * len(data_keys)
+            else:
+                return [None] * len(data_keys)
+
+    df = tile(DataFrame(pdf, chunk_size=4))
+    df2 = auto_merge_chunks(FakeContext(), df, 2 * memory_size)
+    assert len(df2.chunks) == 2
+    assert isinstance(df2.chunks[0].op, DataFrameConcat)
+    assert len(df2.chunks[0].op.inputs) == 2
+    assert isinstance(df2.chunks[1].op, DataFrameConcat)
+    assert len(df2.chunks[1].op.inputs) == 2
+
+    df2 = auto_merge_chunks(FakeContext(), df, 3 * memory_size)
+    assert len(df2.chunks) == 2
+    assert isinstance(df2.chunks[0].op, DataFrameConcat)
+    assert len(df2.chunks[0].op.inputs) == 3
+    assert df2.chunks[1] is df.chunks[-1]
+
+    # mock situation that df not executed
+    df2 = auto_merge_chunks(FakeContext(False), df, 3 * memory_size)
+    assert df2 is df
+
+    # number of chunks on columns > 1
+    df3 = tile(DataFrame(pdf, chunk_size=2))
+    df4 = auto_merge_chunks(FakeContext(), df3, 2 * memory_size)
+    assert df4 is df3
+
+    # test series
+    ps = pdf.loc[:, "a"]
+    memory_size = ps.iloc[:4].memory_usage()
+    s = tile(Series(ps, chunk_size=4))
+    s2 = auto_merge_chunks(FakeContext(), s, 2 * memory_size)
+    assert len(s2.chunks) == 2
+    assert isinstance(s2.chunks[0].op, DataFrameConcat)
+    assert s2.chunks[0].name == "a"
+    assert len(s2.chunks[0].op.inputs) == 2
+    assert isinstance(s2.chunks[1].op, DataFrameConcat)
+    assert s2.chunks[1].name == "a"
+    assert len(s2.chunks[1].op.inputs) == 2

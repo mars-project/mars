@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import weakref
-from typing import Optional, Tuple
+from typing import NamedTuple, Optional
 
+import numpy as np
 from pandas.api.types import is_scalar
 
 from .... import dataframe as md
@@ -22,11 +23,18 @@ from ....core import Tileable, get_output_types, ENTITY_TYPE
 from ....dataframe.arithmetic.core import DataFrameUnaryUfunc, DataFrameBinopUfunc
 from ....dataframe.base.eval import DataFrameEval
 from ....dataframe.indexing.getitem import DataFrameIndex
+from ....dataframe.indexing.setitem import DataFrameSetitem
 from ....typing import OperandType
 from ....utils import implements
 from ..core import OptimizationRecord, OptimizationRecordType
 from ..tileable.core import register_tileable_optimization_rule
 from .core import OptimizationRule
+
+
+class EvalExtractRecord(NamedTuple):
+    tileable: Optional[Tileable] = None
+    expr: Optional[str] = None
+    variables: Optional[dict] = None
 
 
 def _get_binop_builder(op_str: str):
@@ -60,9 +68,16 @@ _extract_result_cache = weakref.WeakKeyDictionary()
 
 @register_tileable_optimization_rule([DataFrameUnaryUfunc, DataFrameBinopUfunc])
 class SeriesArithmeticToEval(OptimizationRule):
+    _var_counter = 0
+
+    @classmethod
+    def _next_var_id(cls):
+        cls._var_counter += 1
+        return cls._var_counter
+
     @implements(OptimizationRule.match)
     def match(self, op: OperandType) -> bool:
-        _, expr = self._extract_eval_expression(op.outputs[0])
+        _, expr, _ = self._extract_eval_expression(op.outputs[0])
         return expr is not None
 
     @staticmethod
@@ -90,98 +105,107 @@ class SeriesArithmeticToEval(OptimizationRule):
             and index_op.mask is None
         )
 
-    @classmethod
-    def _extract_eval_expression(
-        cls, tileable
-    ) -> Tuple[Optional[Tileable], Optional[str]]:
+    def _extract_eval_expression(self, tileable) -> EvalExtractRecord:
         if is_scalar(tileable):
-            return None, repr(tileable)
+            if isinstance(tileable, (int, bool, str, bytes, np.integer, np.bool_)):
+                return EvalExtractRecord(expr=repr(tileable))
+            else:
+                var_name = f"__eval_scalar_var{self._next_var_id()}"
+                var_dict = {var_name: tileable}
+                return EvalExtractRecord(expr=f"@{var_name}", variables=var_dict)
 
         if not isinstance(tileable, ENTITY_TYPE):  # pragma: no cover
-            return None, None
+            return EvalExtractRecord()
 
         if tileable in _extract_result_cache:
             return _extract_result_cache[tileable]
 
-        if cls._is_select_dataframe_column(tileable):
-            result = cls._extract_column_select(tileable)
+        if self._is_select_dataframe_column(tileable):
+            result = self._extract_column_select(tileable)
         elif isinstance(tileable.op, DataFrameUnaryUfunc):
-            result = cls._extract_unary(tileable)
+            result = self._extract_unary(tileable)
         elif isinstance(tileable.op, DataFrameBinopUfunc):
             if tileable.op.fill_value is not None or tileable.op.level is not None:
-                result = None, None
+                result = EvalExtractRecord()
             else:
-                result = cls._extract_binary(tileable)
+                result = self._extract_binary(tileable)
         else:
-            result = None, None
+            result = EvalExtractRecord()
 
         _extract_result_cache[tileable] = result
         return result
 
     @classmethod
-    def _extract_column_select(
-        cls, tileable
-    ) -> Tuple[Optional[Tileable], Optional[str]]:
-        return tileable.inputs[0], f"`{tileable.op.col_names}`"
+    def _extract_column_select(cls, tileable) -> EvalExtractRecord:
+        return EvalExtractRecord(tileable.inputs[0], f"`{tileable.op.col_names}`")
 
-    @classmethod
-    def _extract_unary(cls, tileable) -> Tuple[Optional[Tileable], Optional[str]]:
+    def _extract_unary(self, tileable) -> EvalExtractRecord:
         op = tileable.op
         func_name = getattr(op, "_func_name") or getattr(op, "_bin_func_name")
         if func_name not in _func_name_to_builder:  # pragma: no cover
-            return None, None
+            return EvalExtractRecord()
 
-        in_tileable, expr = cls._extract_eval_expression(op.inputs[0])
+        in_tileable, expr, variables = self._extract_eval_expression(op.inputs[0])
         if in_tileable is None:
-            return None, None
+            return EvalExtractRecord()
 
-        cls._add_collapsable_predecessor(tileable, op.inputs[0])
-        return in_tileable, _func_name_to_builder[func_name](expr)
+        self._add_collapsable_predecessor(tileable, op.inputs[0])
+        return EvalExtractRecord(
+            in_tileable, _func_name_to_builder[func_name](expr), variables
+        )
 
-    @classmethod
-    def _extract_binary(cls, tileable) -> Tuple[Optional[Tileable], Optional[str]]:
+    def _extract_binary(self, tileable) -> EvalExtractRecord:
         op = tileable.op
         func_name = getattr(op, "_func_name", None) or getattr(op, "_bit_func_name")
         if func_name not in _func_name_to_builder:  # pragma: no cover
-            return None, None
+            return EvalExtractRecord()
 
-        lhs_tileable, lhs_expr = cls._extract_eval_expression(op.lhs)
+        lhs_tileable, lhs_expr, lhs_vars = self._extract_eval_expression(op.lhs)
         if lhs_tileable is not None:
-            cls._add_collapsable_predecessor(tileable, op.lhs)
-        rhs_tileable, rhs_expr = cls._extract_eval_expression(op.rhs)
+            self._add_collapsable_predecessor(tileable, op.lhs)
+        rhs_tileable, rhs_expr, rhs_vars = self._extract_eval_expression(op.rhs)
         if rhs_tileable is not None:
-            cls._add_collapsable_predecessor(tileable, op.rhs)
+            self._add_collapsable_predecessor(tileable, op.rhs)
 
         if lhs_expr is None or rhs_expr is None:
-            return None, None
+            return EvalExtractRecord()
         if (
             lhs_tileable is not None
             and rhs_tileable is not None
             and lhs_tileable.key != rhs_tileable.key
         ):
-            return None, None
+            return EvalExtractRecord()
+
+        variables = (lhs_vars or dict()).copy()
+        variables.update(rhs_vars or dict())
         in_tileable = next(t for t in [lhs_tileable, rhs_tileable] if t is not None)
-        return in_tileable, _func_name_to_builder[func_name](lhs_expr, rhs_expr)
+        return EvalExtractRecord(
+            in_tileable, _func_name_to_builder[func_name](lhs_expr, rhs_expr), variables
+        )
 
     @implements(OptimizationRule.apply)
     def apply(self, op: OperandType):
         node = op.outputs[0]
-        in_tileable, expr = self._extract_eval_expression(node)
+        in_tileable, expr, variables = self._extract_eval_expression(node)
+        opt_in_tileable = self._records.get_optimization_result(
+            in_tileable, in_tileable
+        )
 
         new_op = DataFrameEval(
             _key=node.op.key,
             _output_types=get_output_types(node),
             expr=expr,
+            variables=variables or dict(),
             parser="pandas",
             is_query=False,
         )
-        new_node = new_op.new_tileable([in_tileable], **node.params).data
-        new_node._key = node.key
-        new_node._id = node.id
+        new_node = new_op.new_tileable(
+            [opt_in_tileable], _key=node.key, _id=node.id, **node.params
+        ).data
 
         self._remove_collapsable_predecessors(node)
         self._replace_node(node, new_node)
-        self._graph.add_edge(in_tileable, new_node)
+        self._graph.add_edge(opt_in_tileable, new_node)
 
         self._records.append_record(
             OptimizationRecord(node, new_node, OptimizationRecordType.replace)
@@ -195,50 +219,147 @@ class SeriesArithmeticToEval(OptimizationRule):
             pass
 
 
+class _DataFrameEvalRewriteRule(OptimizationRule):
+    def match(self, op: OperandType) -> bool:
+        optimized_eval_op = self._get_optimized_eval_op(op)
+        if (
+            not isinstance(optimized_eval_op, DataFrameEval)
+            or optimized_eval_op.is_query
+            or optimized_eval_op.inputs[0].key != op.inputs[0].key
+        ):
+            return False
+        return True
+
+    def _build_new_eval_op(self, op: OperandType):
+        raise NotImplementedError
+
+    def _get_optimized_eval_op(self, op: OperandType) -> OperandType:
+        in_columnar_node = self._get_input_columnar_node(op)
+        optimized = self._records.get_optimization_result(in_columnar_node)
+        return optimized.op if optimized is not None else in_columnar_node.op
+
+    def _get_input_columnar_node(self, op: OperandType) -> ENTITY_TYPE:
+        raise NotImplementedError
+
+    def _update_op_node(self, old_node: ENTITY_TYPE, new_node: ENTITY_TYPE):
+        self._replace_node(old_node, new_node)
+        for in_tileable in new_node.inputs:
+            self._graph.add_edge(in_tileable, new_node)
+
+        original_node = self._records.get_original_chunk(old_node, old_node)
+        self._records.append_record(
+            OptimizationRecord(original_node, new_node, OptimizationRecordType.replace)
+        )
+
+        # check node if it's in result
+        try:
+            i = self._graph.results.index(old_node)
+            self._graph.results[i] = new_node
+        except ValueError:
+            pass
+
+    def apply(self, op: DataFrameIndex):
+        node = op.outputs[0]
+        in_tileable = op.inputs[0]
+        in_columnar_node = self._get_input_columnar_node(op)
+        opt_in_tileable = self._records.get_optimization_result(
+            in_tileable, in_tileable
+        )
+
+        new_op = self._build_new_eval_op(op)
+        new_node = new_op.new_tileable(
+            [opt_in_tileable], _key=node.key, _id=node.id, **node.params
+        ).data
+
+        self._add_collapsable_predecessor(node, in_columnar_node)
+        self._remove_collapsable_predecessors(node)
+        self._update_op_node(node, new_node)
+
+
 @register_tileable_optimization_rule([DataFrameIndex])
-class DataFrameBoolEvalToQuery(OptimizationRule):
-    def match(self, op: "DataFrameIndex") -> bool:
+class DataFrameBoolEvalToQuery(_DataFrameEvalRewriteRule):
+    def match(self, op: DataFrameIndex) -> bool:
         if (
             op.col_names is not None
             or not isinstance(op.mask, md.Series)
             or op.mask.dtype != bool
         ):
             return False
-        optimized = self._records.get_optimization_result(op.mask)
-        mask_op = optimized.op if optimized is not None else op.mask.op
-        if not isinstance(mask_op, DataFrameEval) or mask_op.is_query:
-            return False
-        return True
+        return super().match(op)
 
-    def apply(self, op: "DataFrameIndex"):
-        node = op.outputs[0]
-        in_tileable = op.inputs[0]
+    def _get_input_columnar_node(self, op: OperandType) -> ENTITY_TYPE:
+        return op.mask
 
-        optimized = self._records.get_optimization_result(op.mask)
-        mask_op = optimized.op if optimized is not None else op.mask.op
-        new_op = DataFrameEval(
-            _key=node.op.key,
-            _output_types=get_output_types(node),
-            expr=mask_op.expr,
+    def _build_new_eval_op(self, op: OperandType):
+        in_eval_op = self._get_optimized_eval_op(op)
+        return DataFrameEval(
+            _key=op.key,
+            _output_types=get_output_types(op.outputs[0]),
+            expr=in_eval_op.expr,
+            variables=in_eval_op.variables,
             parser="pandas",
             is_query=True,
         )
-        new_node = new_op.new_tileable([in_tileable], **node.params).data
-        new_node._key = node.key
-        new_node._id = node.id
 
-        self._add_collapsable_predecessor(node, op.mask)
-        self._remove_collapsable_predecessors(node)
 
-        self._replace_node(node, new_node)
-        self._graph.add_edge(in_tileable, new_node)
-        self._records.append_record(
-            OptimizationRecord(node, new_node, OptimizationRecordType.replace)
+@register_tileable_optimization_rule([DataFrameSetitem])
+class DataFrameEvalSetItemToEval(_DataFrameEvalRewriteRule):
+    def match(self, op: DataFrameSetitem):
+        if not isinstance(op.indexes, str) or not isinstance(op.value, md.Series):
+            return False
+        return super().match(op)
+
+    def _get_input_columnar_node(self, op: DataFrameSetitem) -> ENTITY_TYPE:
+        return op.value
+
+    def _build_new_eval_op(self, op: DataFrameSetitem):
+        in_eval_op = self._get_optimized_eval_op(op)
+        return DataFrameEval(
+            _key=op.key,
+            _output_types=get_output_types(op.outputs[0]),
+            expr=f"`{op.indexes}` = {in_eval_op.expr}",
+            variables=in_eval_op.variables,
+            parser="pandas",
+            is_query=False,
+            self_target=True,
         )
 
-        # check node if it's in result
-        try:
-            i = self._graph.results.index(node)
-            self._graph.results[i] = new_node
-        except ValueError:
-            pass
+    def apply(self, op: DataFrameIndex):
+        super().apply(op)
+
+        node = op.outputs[0]
+        opt_node = self._records.get_optimization_result(node, node)
+        if not isinstance(opt_node.op, DataFrameEval):  # pragma: no cover
+            return
+
+        # when encountering consecutive SetItems, expressions can be
+        # merged as a multiline expression
+        pred_opt_node = opt_node.inputs[0]
+        if (
+            isinstance(pred_opt_node.op, DataFrameEval)
+            and opt_node.op.parser == pred_opt_node.op.parser == "pandas"
+            and not opt_node.op.is_query
+            and not pred_opt_node.op.is_query
+            and opt_node.op.self_target
+            and pred_opt_node.op.self_target
+        ):
+            new_expr = pred_opt_node.op.expr + "\n" + opt_node.op.expr
+            new_variables = (pred_opt_node.op.variables or dict()).copy()
+            new_variables.update(opt_node.op.variables or dict())
+
+            new_op = DataFrameEval(
+                _key=op.key,
+                _output_types=get_output_types(op.outputs[0]),
+                expr=new_expr,
+                variables=new_variables,
+                parser="pandas",
+                is_query=False,
+                self_target=True,
+            )
+            new_node = new_op.new_tileable(
+                pred_opt_node.inputs, _key=node.key, _id=node.id, **node.params
+            ).data
+
+            self._add_collapsable_predecessor(opt_node, pred_opt_node)
+            self._remove_collapsable_predecessors(opt_node)
+            self._update_op_node(opt_node, new_node)

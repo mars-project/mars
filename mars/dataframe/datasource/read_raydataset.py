@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import functools
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -131,7 +132,7 @@ class DataFrameReadRayDataset(
         )
 
 
-def read_raydataset(ds, columns=None, incremental_index=False, **kwargs):
+def read_ray_dataset(ds, columns=None, incremental_index=False, **kwargs):
     assert isinstance(ds, real_ray_dataset.Dataset)
     refs = ds.to_pandas_refs()
     dtypes = ds.schema().empty_table().to_pandas().dtypes
@@ -142,6 +143,16 @@ def read_raydataset(ds, columns=None, incremental_index=False, **kwargs):
         refs=refs, columns=columns, incremental_index=incremental_index
     )
     return op(index_value=index_value, columns_value=columns_value, dtypes=dtypes)
+
+
+# keep it for back compatibility
+@functools.wraps(read_ray_dataset)
+def read_raydataset(*args, **kwargs):
+    warnings.warn(
+        "read_raydataset has been renamed to read_ray_dataset",
+        DeprecationWarning,
+    )
+    return read_ray_dataset(*args, **kwargs)
 
 
 class DataFrameReadMLDataset(HeadOptimizedDataSource):

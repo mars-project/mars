@@ -25,8 +25,10 @@ from ....lib.aio import alru_cache
 from ....oscar.debug import create_task_with_ex_logged
 from ....oscar.backends.message import ProfilingContext
 from ....oscar.errors import MarsError
+from ....oscar.profiling import ProfilingData, MARS_ENABLE_PROFILING
 from ....typing import BandType
 from ....utils import dataslots, parse_readable_size
+from ....utils import dataslots, Timer
 from ...subtask import Subtask, SubtaskResult, SubtaskStatus
 from ...task import TaskAPI
 from ..core import SubtaskScheduleSummary
@@ -227,21 +229,28 @@ class SubtaskManagerActor(mo.Actor):
                 subtask_info = self._subtask_infos[subtask_id]
                 execution_ref = await self._get_execution_ref(band)
                 extra_config = subtask_info.subtask.extra_config
+                enable_profiling = MARS_ENABLE_PROFILING or (
+                    extra_config and extra_config.get("enable_profiling")
+                )
                 profiling_context = (
                     ProfilingContext(subtask_info.subtask.task_id)
-                    if extra_config and extra_config.get("enable_profiling")
+                    if enable_profiling
                     else None
                 )
                 logger.debug("Start run subtask %s in band %s.", subtask_id, band)
-                task = asyncio.create_task(
-                    execution_ref.run_subtask.options(
-                        profiling_context=profiling_context
-                    ).send(subtask_info.subtask, band[1], self.address)
+                with Timer() as timer:
+                    task = asyncio.create_task(
+                        execution_ref.run_subtask.options(
+                            profiling_context=profiling_context
+                        ).send(subtask_info.subtask, band[1], self.address)
+                    )
+                    subtask_info.band_futures[band] = task
+                    subtask_info.start_time = time.time()
+                    self._speculation_execution_scheduler.add_subtask(subtask_info)
+                    result = yield task
+                ProfilingData.collect_subtask(
+                    subtask_info.subtask, band, timer.duration
                 )
-                subtask_info.band_futures[band] = task
-                subtask_info.start_time = time.time()
-                self._speculation_execution_scheduler.add_subtask(subtask_info)
-                result = yield task
                 task_api = await self._get_task_api()
                 logger.debug("Finished subtask %s with result %s.", subtask_id, result)
                 await task_api.set_subtask_result(result)

@@ -166,7 +166,7 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
             ]
             value_chunk_index_values = [v.index_value for v in value.chunks]
             is_identical = len(target_chunk_index_values) == len(
-                target_chunk_index_values
+                value_chunk_index_values
             ) and all(
                 c.key == v.key
                 for c, v in zip(target_chunk_index_values, value_chunk_index_values)

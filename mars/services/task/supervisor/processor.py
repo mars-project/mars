@@ -33,7 +33,10 @@ from ....core.operand import (
     OperandStage,
 )
 from ....optimization.logical import OptimizationRecords
-from ....oscar.profiling import ProfilingData
+from ....oscar.profiling import (
+    ProfilingData,
+    MARS_ENABLE_PROFILING,
+)
 from ....typing import TileableType, BandType
 from ....utils import build_fetch, Timer
 from ...cluster.api import ClusterAPI
@@ -87,8 +90,10 @@ class TaskProcessor:
         self._scheduling_api = scheduling_api
         self._meta_api = meta_api
 
-        if task.extra_config and task.extra_config.get("enable_profiling"):
+        if MARS_ENABLE_PROFILING:
             ProfilingData.init(task.task_id)
+        elif task.extra_config and task.extra_config.get("enable_profiling"):
+            ProfilingData.init(task.task_id, task.extra_config["enable_profiling"])
 
         self.result = TaskResult(
             task_id=task.task_id,
@@ -343,7 +348,7 @@ class TaskProcessor:
         stage_profiling = ProfilingData[self._task.task_id, "general"].nest(
             f"stage_{stage_id}"
         )
-        stage_profiling.set("tile", timer.duration)
+        stage_profiling.set(f"tile({len(chunk_graph)})", timer.duration)
 
         # gen subtask graph
         available_bands = await self._get_available_band_slots()
@@ -355,7 +360,7 @@ class TaskProcessor:
                 available_bands,
                 stage_id=stage_id,
             )
-        stage_profiling.set("gen_subtask_graph", timer.duration)
+        stage_profiling.set(f"gen_subtask_graph({len(subtask_graph)})", timer.duration)
 
         tileable_to_subtasks = await asyncio.to_thread(
             self._get_tileable_to_subtasks, subtask_graph
@@ -397,7 +402,9 @@ class TaskProcessor:
 
     def finish(self):
         self.done.set()
-        if self._task.extra_config and self._task.extra_config.get("enable_profiling"):
+        if MARS_ENABLE_PROFILING or (
+            self._task.extra_config and self._task.extra_config.get("enable_profiling")
+        ):
             ProfilingData[self._task.task_id, "general"].set(
                 "total", time.time() - self.result.start_time
             )

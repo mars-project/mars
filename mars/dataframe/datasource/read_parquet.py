@@ -16,6 +16,7 @@
 
 import os
 import pickle
+from typing import List, Tuple
 from urllib.parse import urlparse
 
 import numpy as np
@@ -34,7 +35,7 @@ except ImportError:
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...lib.filesystem import file_size, get_fs, glob, open_file
+from ...lib.filesystem import file_size, get_fs, glob, open_file, FileSystem
 from ...serialization.serializables import (
     AnyField,
     BoolField,
@@ -48,7 +49,11 @@ from ...serialization.serializables import (
 from ...utils import is_object_dtype
 from ..arrays import ArrowStringDtype
 from ..operands import OutputType
-from ..utils import parse_index, to_arrow_dtypes, contain_arrow_dtype
+from ..utils import (
+    parse_index,
+    to_arrow_dtypes,
+    contain_arrow_dtype,
+)
 from .core import (
     IncrementalIndexDatasource,
     ColumnPruneSupportedDataSourceMixin,
@@ -107,6 +112,64 @@ class ParquetEngine:
     ):
         raise NotImplementedError
 
+    def read_partitioned_to_pandas(
+        self,
+        f,
+        partitions: pq.ParquetPartitions,
+        partition_keys: List[Tuple],
+        columns=None,
+        nrows=None,
+        use_arrow_dtype=None,
+        **kwargs,
+    ):
+        raw_df = self.read_to_pandas(
+            f, columns=columns, nrows=nrows, use_arrow_dtype=use_arrow_dtype, **kwargs
+        )
+        for i, (name, index) in enumerate(partition_keys):
+            dictionary = partitions[i].dictionary
+            value = dictionary[index]
+            raw_df[name] = pd.Categorical(
+                np.full(raw_df.shape[0], value.as_py()), categories=dictionary.tolist()
+            )
+        return raw_df
+
+    def read_partitioned_dtypes(self, fs: FileSystem, directory, storage_options):
+        # As ParquetDataset will iterate all files,
+        # here we just find one file to infer dtypes
+        current_path = directory
+        partition_cols = []
+        while fs.isdir(current_path):
+            _, dirs, files = next(fs.walk(current_path))
+            dirs = [d for d in dirs if not d.startswith(".")]
+            files = [f for f in files if not f.startswith(".")]
+            if len(files) == 0:
+                # directory as partition
+                partition_cols.append(dirs[0].split("=", 1)[0])
+                current_path = os.path.join(current_path, dirs[0])
+            elif len(dirs) == 0:
+                # parquet files in deepest directory
+                current_path = os.path.join(current_path, files[0])
+            else:  # pragma: no cover
+                raise ValueError(
+                    "Files and directories are mixed in an intermediate directory"
+                )
+
+        # current path is now a parquet file
+        with open_file(current_path, storage_options=storage_options) as f:
+            dtypes = self.read_dtypes(f)
+        for partition in partition_cols:
+            dtypes[partition] = pd.CategoricalDtype()
+        return dtypes
+
+
+def _parse_prefix(path):
+    path_prefix = ""
+    if isinstance(path, str):
+        parsed_path = urlparse(path)
+        if parsed_path.scheme:
+            path_prefix = f"{parsed_path.scheme}://{parsed_path.netloc}"
+    return path_prefix
+
 
 class ArrowEngine(ParquetEngine):
     def get_row_num(self, f):
@@ -145,7 +208,7 @@ class ArrowEngine(ParquetEngine):
 class FastpaquetEngine(ParquetEngine):
     def get_row_num(self, f):
         file = fastparquet.ParquetFile(f)
-        return file.count
+        return file.count()
 
     def read_dtypes(self, f, **kwargs):
         file = fastparquet.ParquetFile(f)
@@ -156,12 +219,11 @@ class FastpaquetEngine(ParquetEngine):
         self, f, columns=None, nrows=None, use_arrow_dtype=None, **kwargs
     ):
         file = fastparquet.ParquetFile(f)
-        df = file.to_pandas(**kwargs)
+        df = file.to_pandas(columns, **kwargs)
         if nrows is not None:
             df = df.head(nrows)
         if use_arrow_dtype:
             df = df.astype(to_arrow_dtypes(df.dtypes).to_dict())
-
         return df
 
 
@@ -181,6 +243,7 @@ class DataFrameReadParquet(
     read_kwargs = DictField("read_kwargs")
     incremental_index = BoolField("incremental_index")
     storage_options = DictField("storage_options")
+    is_partitioned = BoolField("is_partitioned")
     merge_small_files = BoolField("merge_small_files")
     merge_small_file_options = DictField("merge_small_file_options")
     # for chunk
@@ -216,11 +279,7 @@ class DataFrameReadParquet(
         dtypes = cls._to_arrow_dtypes(out_df.dtypes, op)
         dataset = pq.ParquetDataset(op.path)
 
-        parsed_path = urlparse(op.path)
-        if not os.path.exists(op.path) and parsed_path.scheme:
-            path_prefix = f"{parsed_path.scheme}://{parsed_path.netloc}"
-        else:
-            path_prefix = ""
+        path_prefix = _parse_prefix(op.path)
 
         chunk_index = 0
         out_chunks = []
@@ -267,14 +326,20 @@ class DataFrameReadParquet(
         dtypes = cls._to_arrow_dtypes(out_df.dtypes, op)
         shape = (np.nan, out_df.shape[1])
 
-        paths = (
-            op.path
-            if isinstance(op.path, (tuple, list))
-            else glob(op.path, storage_options=op.storage_options)
-        )
+        path_prefix = ""
+        if isinstance(op.path, (tuple, list)):
+            paths = op.path
+        elif get_fs(op.path, op.storage_options).isdir(op.path):
+            parsed_path = urlparse(op.path)
+            if parsed_path.scheme.lower() == "hdfs":
+                path_prefix = f"{parsed_path.scheme}://{parsed_path.netloc}"
+            paths = get_fs(op.path, op.storage_options).ls(op.path)
+        else:
+            paths = glob(op.path, storage_options=op.storage_options)
 
         first_chunk_row_num, first_chunk_raw_bytes = None, None
         for i, pth in enumerate(paths):
+            pth = path_prefix + pth
             if i == 0:
                 with open_file(pth, storage_options=op.storage_options) as f:
                     first_chunk_row_num = get_engine(op.engine).get_row_num(f)
@@ -331,7 +396,7 @@ class DataFrameReadParquet(
 
     @classmethod
     def _tile(cls, op: "DataFrameReadParquet"):
-        if get_fs(op.path, op.storage_options).isdir(op.path):
+        if op.is_partitioned:
             tiled = cls._tile_partitioned(op)
         else:
             tiled = cls._tile_no_partitioned(op)
@@ -344,14 +409,18 @@ class DataFrameReadParquet(
     @classmethod
     def _execute_partitioned(cls, ctx, op: "DataFrameReadParquet"):
         out = op.outputs[0]
+        engine = get_engine(op.engine)
         partitions = pickle.loads(op.partitions)
-        piece = pq.ParquetDatasetPiece(
-            op.path, partition_keys=op.partition_keys, open_file_func=open_file
-        )
-        table = piece.read(partitions=partitions)
-        if op.nrows is not None:
-            table = table.slice(0, op.nrows)
-        ctx[out.key] = table.to_pandas()
+        with open_file(op.path, storage_options=op.storage_options) as f:
+            ctx[out.key] = engine.read_partitioned_to_pandas(
+                f,
+                partitions,
+                op.partition_keys,
+                columns=op.columns,
+                nrows=op.nrows,
+                use_arrow_dtype=op.use_arrow_dtype,
+                **op.read_kwargs or dict(),
+            )
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameReadParquet"):
@@ -478,16 +547,18 @@ def read_parquet(
     engine_type = check_engine(engine)
     engine = get_engine(engine_type)
 
-    if get_fs(path, storage_options).isdir(path):
-        # If path is a directory, we will read as a partitioned datasets.
-        if engine_type != "pyarrow":
-            raise TypeError(
-                "Only support pyarrow engine when reading from" "partitioned datasets."
-            )
-        dataset = pq.ParquetDataset(path)
-        dtypes = dataset.schema.to_arrow_schema().empty_table().to_pandas().dtypes
-        for partition in dataset.partitions:
-            dtypes[partition.name] = pd.CategoricalDtype()
+    single_path = path[0] if isinstance(path, list) else path
+    fs = get_fs(single_path, storage_options)
+    is_partitioned = False
+    if fs.isdir(single_path):
+        paths = fs.ls(path)
+        if all(fs.isdir(p) for p in paths):
+            # If all are directories, it is read as a partitioned dataset.
+            dtypes = engine.read_partitioned_dtypes(fs, path, storage_options)
+            is_partitioned = True
+        else:
+            with fs.open(paths[0], mode="rb") as f:
+                dtypes = engine.read_dtypes(f)
     else:
         if not isinstance(path, list):
             file_path = glob(path, storage_options=storage_options)[0]
@@ -497,13 +568,13 @@ def read_parquet(
         with open_file(file_path, storage_options=storage_options) as f:
             dtypes = engine.read_dtypes(f)
 
-        if columns:
-            dtypes = dtypes[columns]
+    if columns:
+        dtypes = dtypes[columns]
 
-        if use_arrow_dtype is None:
-            use_arrow_dtype = options.dataframe.use_arrow_dtype
-        if use_arrow_dtype:
-            dtypes = to_arrow_dtypes(dtypes)
+    if use_arrow_dtype is None:
+        use_arrow_dtype = options.dataframe.use_arrow_dtype
+    if use_arrow_dtype:
+        dtypes = to_arrow_dtypes(dtypes)
 
     index_value = parse_index(pd.RangeIndex(-1))
     columns_value = parse_index(dtypes.index, store_data=True)
@@ -516,6 +587,7 @@ def read_parquet(
         read_kwargs=kwargs,
         incremental_index=incremental_index,
         storage_options=storage_options,
+        is_partitioned=is_partitioned,
         memory_scale=memory_scale,
         merge_small_files=merge_small_files,
         merge_small_file_options=merge_small_file_options,

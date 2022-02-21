@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import os
 import tempfile
 import time
@@ -41,7 +42,7 @@ from .... import tensor as mt
 from .... import dataframe as md
 from ....config import option_context
 from ....tests.core import require_cudf, require_ray
-from ....utils import arrow_array_to_objects, lazy_import
+from ....utils import arrow_array_to_objects, lazy_import, pd_release_version
 from ..dataframe import from_pandas as from_pandas_df
 from ..series import from_pandas as from_pandas_series
 from ..index import from_pandas as from_pandas_index, from_tileable
@@ -50,6 +51,7 @@ from ..from_records import from_records
 
 
 ray = lazy_import("ray")
+_date_range_use_inclusive = pd_release_version[:2] >= (1, 4)
 
 
 def test_from_pandas_dataframe_execution(setup):
@@ -908,45 +910,63 @@ def test_read_sql_use_arrow_dtype(setup):
         )
 
 
+@pytest.mark.pd_compat
 def test_date_range_execution(setup):
-    for closed in [None, "left", "right"]:
+    chunk_sizes = [None, 3]
+    inclusives = ["both", "neither", "left", "right"]
+
+    if _date_range_use_inclusive:
+        with pytest.warns(FutureWarning, match="closed"):
+            md.date_range("2020-1-1", periods=10, closed="right")
+
+    for chunk_size, inclusive in itertools.product(chunk_sizes, inclusives):
+        kw = dict()
+        if _date_range_use_inclusive:
+            kw["inclusive"] = inclusive
+        else:
+            if inclusive == "neither":
+                continue
+            elif inclusive == "both":
+                inclusive = None
+            kw["closed"] = inclusive
+
         # start, periods, freq
-        dr = md.date_range("2020-1-1", periods=10, chunk_size=3, closed=closed)
+        dr = md.date_range("2020-1-1", periods=10, chunk_size=chunk_size, **kw)
 
         result = dr.execute().fetch()
-        expected = pd.date_range("2020-1-1", periods=10, closed=closed)
+        expected = pd.date_range("2020-1-1", periods=10, **kw)
         pd.testing.assert_index_equal(result, expected)
 
         # end, periods, freq
-        dr = md.date_range(end="2020-1-10", periods=10, chunk_size=3, closed=closed)
+        dr = md.date_range(end="2020-1-10", periods=10, chunk_size=chunk_size, **kw)
 
         result = dr.execute().fetch()
-        expected = pd.date_range(end="2020-1-10", periods=10, closed=closed)
+        expected = pd.date_range(end="2020-1-10", periods=10, **kw)
         pd.testing.assert_index_equal(result, expected)
 
         # start, end, freq
-        dr = md.date_range("2020-1-1", "2020-1-10", chunk_size=3, closed=closed)
+        dr = md.date_range("2020-1-1", "2020-1-10", chunk_size=chunk_size, **kw)
 
         result = dr.execute().fetch()
-        expected = pd.date_range("2020-1-1", "2020-1-10", closed=closed)
+        expected = pd.date_range("2020-1-1", "2020-1-10", **kw)
         pd.testing.assert_index_equal(result, expected)
 
         # start, end and periods
         dr = md.date_range(
-            "2020-1-1", "2020-1-10", periods=19, chunk_size=3, closed=closed
+            "2020-1-1", "2020-1-10", periods=19, chunk_size=chunk_size, **kw
         )
 
         result = dr.execute().fetch()
-        expected = pd.date_range("2020-1-1", "2020-1-10", periods=19, closed=closed)
+        expected = pd.date_range("2020-1-1", "2020-1-10", periods=19, **kw)
         pd.testing.assert_index_equal(result, expected)
 
         # start, end and freq
         dr = md.date_range(
-            "2020-1-1", "2020-1-10", freq="12H", chunk_size=3, closed=closed
+            "2020-1-1", "2020-1-10", freq="12H", chunk_size=chunk_size, **kw
         )
 
         result = dr.execute().fetch()
-        expected = pd.date_range("2020-1-1", "2020-1-10", freq="12H", closed=closed)
+        expected = pd.date_range("2020-1-1", "2020-1-10", freq="12H", **kw)
         pd.testing.assert_index_equal(result, expected)
 
     # test timezone
@@ -985,8 +1005,18 @@ def test_date_range_execution(setup):
     pd.testing.assert_index_equal(result, expected)
 
 
-@pytest.mark.skipif(pa is None, reason="pyarrow not installed")
-def test_read_parquet_arrow(setup):
+parquet_engines = ["auto"]
+if pa is not None:
+    parquet_engines.append("pyarrow")
+if fastparquet is not None:
+    parquet_engines.append("fastparquet")
+
+
+@pytest.mark.skipif(
+    len(parquet_engines) == 1, reason="pyarrow and fastparquet are not installed"
+)
+@pytest.mark.parametrize("engine", parquet_engines)
+def test_read_parquet_arrow(setup, engine):
     test_df = pd.DataFrame(
         {
             "a": np.arange(10).astype(np.int64, copy=False),
@@ -999,36 +1029,41 @@ def test_read_parquet_arrow(setup):
         file_path = os.path.join(tempdir, "test.csv")
         test_df.to_parquet(file_path)
 
-        df = md.read_parquet(file_path)
+        df = md.read_parquet(file_path, engine=engine)
         result = df.execute().fetch()
         pd.testing.assert_frame_equal(result, test_df)
         # size_res = self.executor.execute_dataframe(df, mock=True)
         # assert sum(s[0] for s in size_res) > test_df.memory_usage(deep=True).sum()
 
-    with tempfile.TemporaryDirectory() as tempdir:
-        file_path = os.path.join(tempdir, "test.parquet")
-        test_df.to_parquet(file_path, row_group_size=3)
+    if engine != "fastparquet":
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, "test.parquet")
+            test_df.to_parquet(file_path, row_group_size=3)
 
-        df = md.read_parquet(file_path, groups_as_chunks=True, columns=["a", "b"])
-        result = df.execute().fetch()
-        pd.testing.assert_frame_equal(
-            result.reset_index(drop=True), test_df[["a", "b"]]
-        )
+            df = md.read_parquet(
+                file_path, groups_as_chunks=True, columns=["a", "b"], engine=engine
+            )
+            result = df.execute().fetch()
+            pd.testing.assert_frame_equal(
+                result.reset_index(drop=True), test_df[["a", "b"]]
+            )
 
-    with tempfile.TemporaryDirectory() as tempdir:
-        file_path = os.path.join(tempdir, "test.parquet")
-        test_df.to_parquet(file_path, row_group_size=5)
+    if engine != "fastparquet":
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, "test.parquet")
+            test_df.to_parquet(file_path, row_group_size=5)
 
-        df = md.read_parquet(
-            file_path,
-            groups_as_chunks=True,
-            use_arrow_dtype=True,
-            incremental_index=True,
-        )
-        result = df.execute().fetch()
-        assert isinstance(df.dtypes.iloc[1], md.ArrowStringDtype)
-        assert isinstance(result.dtypes.iloc[1], md.ArrowStringDtype)
-        pd.testing.assert_frame_equal(arrow_array_to_objects(result), test_df)
+            df = md.read_parquet(
+                file_path,
+                groups_as_chunks=True,
+                use_arrow_dtype=True,
+                incremental_index=True,
+                engine=engine,
+            )
+            result = df.execute().fetch()
+            assert isinstance(df.dtypes.iloc[1], md.ArrowStringDtype)
+            assert isinstance(result.dtypes.iloc[1], md.ArrowStringDtype)
+            pd.testing.assert_frame_equal(arrow_array_to_objects(result), test_df)
 
     # test wildcards in path
     for merge_small_file_option in [{"n_sample_file": 1}, None]:
@@ -1046,17 +1081,55 @@ def test_read_parquet_arrow(setup):
             df[100:200].to_parquet(file_paths[1], row_group_size=30)
             df[200:].to_parquet(file_paths[2])
 
-            mdf = md.read_parquet(f"{tempdir}/*.parquet")
+            mdf = md.read_parquet(f"{tempdir}/*.parquet", engine=engine)
             r = mdf.execute().fetch()
             pd.testing.assert_frame_equal(df, r.sort_values("a").reset_index(drop=True))
 
-            mdf = md.read_parquet(
-                f"{tempdir}/*.parquet",
-                groups_as_chunks=True,
-                merge_small_file_options=merge_small_file_option,
-            )
+            mdf = md.read_parquet(f"{tempdir}", engine=engine)
             r = mdf.execute().fetch()
             pd.testing.assert_frame_equal(df, r.sort_values("a").reset_index(drop=True))
+
+            file_list = [os.path.join(tempdir, name) for name in os.listdir(tempdir)]
+            mdf = md.read_parquet(file_list, engine=engine)
+            r = mdf.execute().fetch()
+            pd.testing.assert_frame_equal(df, r.sort_values("a").reset_index(drop=True))
+
+            # test `use_arrow_dtype=True`
+            mdf = md.read_parquet(
+                f"{tempdir}/*.parquet", engine=engine, use_arrow_dtype=True
+            )
+            result = mdf.execute().fetch()
+            assert isinstance(mdf.dtypes.iloc[1], md.ArrowStringDtype)
+            assert isinstance(result.dtypes.iloc[1], md.ArrowStringDtype)
+
+            if engine != "fastparquet":
+                mdf = md.read_parquet(
+                    f"{tempdir}/*.parquet",
+                    groups_as_chunks=True,
+                    engine=engine,
+                    merge_small_file_options=merge_small_file_option,
+                )
+                r = mdf.execute().fetch()
+                pd.testing.assert_frame_equal(
+                    df, r.sort_values("a").reset_index(drop=True)
+                )
+
+    # test partitioned
+    with tempfile.TemporaryDirectory() as tempdir:
+        df = pd.DataFrame(
+            {
+                "a": np.random.rand(300),
+                "b": [f"s{i}" for i in range(300)],
+                "c": np.random.choice(["a", "b", "c"], (300,)),
+            }
+        )
+        df.to_parquet(tempdir, partition_cols=["c"])
+        mdf = md.read_parquet(tempdir, engine=engine)
+        r = mdf.execute().fetch().astype(df.dtypes)
+        pd.testing.assert_frame_equal(
+            df.sort_values("a").reset_index(drop=True),
+            r.sort_values("a").reset_index(drop=True),
+        )
 
 
 @pytest.mark.skipif(fastparquet is None, reason="fastparquet not installed")
@@ -1097,7 +1170,7 @@ def test_read_raydataset(ray_start_regular, ray_create_mars_cluster):
     )
     df = pd.concat([test_df1, test_df2])
     ds = ray.data.from_pandas_refs([ray.put(test_df1), ray.put(test_df2)])
-    mdf = md.read_raydataset(ds)
+    mdf = md.read_ray_dataset(ds)
     assert df.equals(mdf.execute().fetch())
 
 

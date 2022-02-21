@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
@@ -117,7 +118,7 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
             index_value = parse_index(pd.RangeIndex(a.shape[0]))
         else:
             if isinstance(a.index_value.value, IndexValue.RangeIndex):
-                index_value = parse_index(pd.Int64Index([]))
+                index_value = parse_index(pd.Index([], dtype=np.int64))
             else:
                 index_value = a.index_value
         if a.ndim == 2:
