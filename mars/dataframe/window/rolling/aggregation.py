@@ -401,9 +401,12 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
                     chunk_params["index_value"] = inp_chunk.index_value
                     chunk_params["columns_value"] = out.columns_value
                 else:
-                    out_shape = list(out.shape)
-                    out_shape[axis] = inp_chunk.shape[axis]
-                    chunk_params["shape"] = tuple(out_shape)
+                    if axis == 0:
+                        out_shape = list(out.shape)
+                        out_shape[axis] = inp_chunk.shape[axis]
+                        chunk_params["shape"] = tuple(out_shape)
+                    else:
+                        chunk_params["shape"] = inp_chunk.shape
                     chunk_params["index_value"] = (
                         inp_chunk.index_value if axis == 0 else out.index_value
                     )

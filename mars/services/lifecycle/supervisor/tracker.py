@@ -75,7 +75,7 @@ class LifecycleTrackerActor(mo.Actor):
         for chunk_key in chunk_keys:
             ref_count = self._chunk_ref_counts[chunk_key]
             ref_count -= 1
-            assert ref_count >= 0
+            assert ref_count >= 0, f"chunk key {chunk_key} will have negative ref count"
             self._chunk_ref_counts[chunk_key] = ref_count
             if ref_count == 0:
                 # remove
