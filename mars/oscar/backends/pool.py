@@ -60,8 +60,8 @@ ray = lazy_import("ray")
 
 class _ErrorProcessor:
     def __init__(self, address: str, message_id: bytes, protocol):
-        self._message_id = message_id
         self._address = address
+        self._message_id = message_id
         self._protocol = protocol
         self.result = None
 
