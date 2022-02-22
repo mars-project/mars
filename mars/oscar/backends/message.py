@@ -21,7 +21,7 @@ from typing import Any, Type, Tuple, Dict, List
 
 from ...lib.tblib import pickling_support
 from ...serialization.core import Serializer, pickle, buffered
-from ...utils import classproperty, dataslots, implements
+from ...utils import classproperty, dataslots, implements, wrap_exception
 from ..core import ActorRef
 
 try:
@@ -208,12 +208,16 @@ class ErrorMessage(_MessageBase):
         if issubclass(self.error_type, ErrorMessage.AsCauseBase):
             return self.error.with_traceback(self.traceback)
 
-        class _MarsError(ErrorMessage.AsCauseBase, type(self.error)):
-            pass
+        message = f"[address={self.address}, pid={self.pid}] {self.error}"
+        cause = self.error
 
-        return _MarsError(
-            f"[address={self.address}, pid={self.pid}] {self.error}"
-        ).with_traceback(self.traceback)
+        return wrap_exception(
+            "_MarsError",
+            (ErrorMessage.AsCauseBase, type(self.error)),
+            message,
+            cause,
+            self.traceback,
+        )
 
 
 class CreateActorMessage(_MessageBase):
