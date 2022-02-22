@@ -817,7 +817,7 @@ class TaskProcessorActor(mo.Actor):
         # but report progress will call set_subtask_result too,
         # so it have risk to duplicate decrease some subtask input object reference,
         # it will cause object reference count lower zero
-        # TODO(buniu): Pop asyncio.Event when current subtask `set_subtask_result`
+        # TODO(Catch-Bull): Pop asyncio.Event when current subtask `set_subtask_result`
         # will never be called
         self._subtask_decref_events[subtask.subtask_id].set()
 
