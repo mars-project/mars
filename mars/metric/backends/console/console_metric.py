@@ -27,7 +27,7 @@ class SimpleMetric:
         self._name = name
         self._description = description
         self._tag_keys = tag_keys
-        self._value = None
+        self._value = 0
 
     def update(self, value: float = 1.0, tags: Optional[Dict[str, str]] = None):
         self._value = value

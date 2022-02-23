@@ -22,7 +22,7 @@ _THRESHOLD = 2000
 _RECORDED_INTERVAL_SECS = 1
 
 
-class MutexValue(object):
+class _MutexValue(object):
     """A float protected by a mutex."""
 
     def __init__(self):
@@ -88,7 +88,7 @@ class Metric(ABC):
         pass
 
 
-class Counter(Metric, ABC):
+class Counter(Metric):
     """A counter records the counts of events."""
 
     _type = "counter"
@@ -97,14 +97,14 @@ class Counter(Metric, ABC):
         self, name: str, description: str = "", tag_keys: Optional[Tuple[str]] = None
     ):
         super().__init__(name, description, tag_keys)
-        self._count = MutexValue()
+        self._count = _MutexValue()
 
     def record(self, value=1, tags: Optional[Dict[str, str]] = None):
         self._count.inc(value)
         self._record(self._count.get(), tags)
 
 
-class Gauge(Metric, ABC):
+class Gauge(Metric):
     """A gauge represents a single numerical value that can be
     arbitrarily set.
     """
@@ -115,7 +115,7 @@ class Gauge(Metric, ABC):
         self._record(value, tags)
 
 
-class Meter(Metric, ABC):
+class Meter(Metric):
     """A meter measures the rate at which a set of events occur."""
 
     _type = "meter"
@@ -124,7 +124,7 @@ class Meter(Metric, ABC):
         self, name: str, description: str = "", tag_keys: Optional[Tuple[str]] = None
     ):
         super().__init__(name, description, tag_keys)
-        self._count = MutexValue()
+        self._count = _MutexValue()
         self._last_time = time.time()
 
     def record(self, value=1, tags: Optional[Dict[str, str]] = None):
@@ -138,7 +138,7 @@ class Meter(Metric, ABC):
             self._count.set(0)
 
 
-class Histogram(Metric, ABC):
+class Histogram(Metric):
     """A Histogram measures the distribution of values in a stream of data."""
 
     _type = "histogram"

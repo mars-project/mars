@@ -24,19 +24,12 @@ _backends_cls = {
 }
 
 
-def init_metrics(config: Dict[str, Any] = {}):
+def init_metrics(config: Dict[str, Any] = None):
     metric_config = config.get("metric", {}) if config else {}
     global _metric_backend
     _metric_backend = metric_config.get("backend", "console")
     if _metric_backend not in _backends_cls:
         raise NotImplementedError(f"Do not support metric backend {_metric_backend}")
-    if _metric_backend == "prometheus":
-        conf = metric_config.get("conf", {})
-        port = int(conf.get("port", 0))
-        from prometheus_client import start_http_server
-
-        start_http_server(port)
-        logger.info("Finished startup prometheus http server and port is %d", port)
     logger.info(
         "Finished initialize the metrics, config is %s, backend is %s",
         config,

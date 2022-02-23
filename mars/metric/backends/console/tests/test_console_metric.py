@@ -17,30 +17,47 @@ from ..console_metric import CounterImpl, GaugeImpl, MeterImpl, HistogramImpl
 
 def test_counter():
     c = CounterImpl("test_counter", "A test counter", ("service", "tenant"))
+    assert c.name == "test_counter"
+    assert c.description == "A test counter"
+    assert c.tag_keys == ("service", "tenant")
+    assert c.type == "counter"
     c.record(1, {"service": "mars", "tenant": "test"})
     c.record(2, {"service": "mars", "tenant": "test"})
-    assert c.name == "test_counter"
-    assert c.tag_keys == ("service", "tenant")
     assert c.value == 3
 
 
 def test_gauge():
     g = GaugeImpl("test_gauge", "A test gauge")
-    g.record(1)
     assert g.name == "test_gauge"
+    assert g.description == "A test gauge"
     assert g.tag_keys == ()
+    assert g.type == "gauge"
+    g.record(1)
     assert g.value == 1
+    g.record(2)
+    assert g.value == 2
 
 
 def test_meter():
     m = MeterImpl("test_meter")
-    m.record(1)
     assert m.name == "test_meter"
+    assert m.description == ""
     assert m.tag_keys == ()
+    assert m.type == "meter"
+    m.record(1)
+    assert m.value == 0
+    m.record(2001)
+    assert m.value > 0
 
 
 def test_histogram():
     h = HistogramImpl("test_histogram")
-    h.record(1)
     assert h.name == "test_histogram"
+    assert h.description == ""
     assert h.tag_keys == ()
+    assert h.type == "histogram"
+    h.record(1)
+    assert h.value == 0
+    for i in range(2002):
+        h.record(1)
+    assert h.value > 0
