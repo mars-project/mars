@@ -812,7 +812,14 @@ class TaskProcessorActor(mo.Actor):
                             decref_chunk_keys.extend([key[0] for key in data_keys])
                 decref_chunk_keys.append(result_chunk.key)
         await self._lifecycle_api.decref_chunks(decref_chunk_keys)
-        self._subtask_decref_events.pop(subtask.subtask_id).set()
+
+        # `set_subtask_result` will be called when subtask finished
+        # but report progress will call set_subtask_result too,
+        # so it have risk to duplicate decrease some subtask input object reference,
+        # it will cause object reference count lower zero
+        # TODO(Catch-Bull): Pop asyncio.Event when current subtask `set_subtask_result`
+        # will never be called
+        self._subtask_decref_events[subtask.subtask_id].set()
 
     async def set_subtask_result(self, subtask_result: SubtaskResult):
         stage_processor = self._cur_processor.cur_stage_processor
