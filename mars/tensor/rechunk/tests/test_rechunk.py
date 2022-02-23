@@ -14,80 +14,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....core import tile
-from ...datasource import ones
-from ...indexing.slice import TensorSlice
-from ..rechunk import compute_rechunk
+import numpy as np
+import pytest
+import scipy.sparse as sps
+
+from .... import tensor as mt
+
+# dense
+raw = np.random.RandomState(0).rand(12, 9)
+raw2 = raw.copy()
+raw2.ravel()[::2] = 0
+# dense, F-order
+raw3 = np.asfortranarray(raw)
+# sparse
+raw_s = sps.csr_matrix(raw2)
 
 
-def test_compute_rechunk():
-    tensor = ones((12, 8), chunk_size=((4, 4, 3, 1), (3, 3, 2)))
-    tensor = tile(tensor)
-    new_tensor = compute_rechunk(tensor, ((9, 2, 1), (2, 1, 4, 1)))
-
-    assert len(new_tensor.chunks) == 12
-    assert len(new_tensor.chunks[0].inputs) == 3
-    assert isinstance(new_tensor.chunks[0].inputs[0].op, TensorSlice)
-    assert new_tensor.chunks[0].inputs[0].inputs[0] is tensor.chunks[0].data
-    assert new_tensor.chunks[0].inputs[0].op.slices == [
-        slice(None, None, None),
-        slice(None, 2, None),
-    ]
-    assert new_tensor.chunks[0].inputs[1].inputs[0] is tensor.chunks[3].data
-    assert new_tensor.chunks[0].inputs[1].op.slices == [
-        slice(None, None, None),
-        slice(None, 2, None),
-    ]
-    assert new_tensor.chunks[0].inputs[2].inputs[0] is tensor.chunks[6].data
-    assert new_tensor.chunks[0].inputs[2].op.slices == [
-        slice(None, 1, None),
-        slice(None, 2, None),
-    ]
-    assert new_tensor.chunks[-1].inputs[0] is tensor.chunks[-1].data
-    assert new_tensor.chunks[-1].op.slices == [
-        slice(None, None, None),
-        slice(1, None, None),
-    ]
-
-
-def test_rechunk():
-    tensor = ones((12, 9), chunk_size=4)
-    new_tensor = tensor.rechunk(3)
-    t, new_tensor = tile(tensor, new_tensor)
-
-    assert len(new_tensor.chunks) == 12
-    assert new_tensor.chunks[0].inputs[0] == t.chunks[0].data
-    assert len(new_tensor.chunks[1].inputs) == 2
-    assert new_tensor.chunks[1].inputs[0].op.slices == [
-        slice(None, 3, None),
-        slice(3, None, None),
-    ]
-    assert new_tensor.chunks[1].inputs[1].op.slices == [
-        slice(None, 3, None),
-        slice(None, 2, None),
-    ]
-    assert len(new_tensor.chunks[-1].inputs) == 2
-    assert new_tensor.chunks[-1].inputs[0].op.slices == [
-        slice(1, None, None),
-        slice(2, None, None),
-    ]
-    assert new_tensor.chunks[-1].inputs[1].op.slices == [
-        slice(1, None, None),
-        slice(None, None, None),
-    ]
-
-
-def test_sparse():
-    tensor = ones((7, 12), chunk_size=4).tosparse()
-    new_tensor = tensor.rechunk(5)
-    new_tensor = tile(new_tensor)
-
-    assert new_tensor.issparse() is True
-    assert all(c.issparse() for c in new_tensor.chunks) is True
-
-
-def test_order():
-    tensor = ones((7, 12), chunk_size=4, order="F")
-    new_tensor = tensor.rechunk(5)
-
-    assert new_tensor.order.value
+@pytest.mark.parametrize("data", [raw, raw3, raw_s])
+@pytest.mark.parametrize("chunk_size", [3, (12, 9), (4, 8)])
+def test_rechunk_execute(setup, data, chunk_size):
+    tensor = mt.tensor(data, chunk_size=4)
+    new_tensor = tensor.rechunk(chunk_size)
+    result = new_tensor.execute().fetch()
+    if hasattr(result, "toarray"):
+        # sparse
+        result = result.toarray()
+        data = data.toarray()
+    assert result.flags["C_CONTIGUOUS"] == data.flags["C_CONTIGUOUS"]
+    np.testing.assert_allclose(result, data)
