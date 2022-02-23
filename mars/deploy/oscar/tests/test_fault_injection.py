@@ -87,6 +87,7 @@ async def create_fault_injection_manager(
             FaultType.Exception,
             {FaultPosition.ON_EXECUTE_OPERAND: 1},
             pytest.raises(FaultInjectionError, match="Fault Injection"),
+            True,
         ],
         [
             FaultType.UnhandledException,
@@ -94,22 +95,25 @@ async def create_fault_injection_manager(
             pytest.raises(
                 FaultInjectionUnhandledError, match="Fault Injection Unhandled"
             ),
+            True,
         ],
         [
             FaultType.ProcessExit,
             {FaultPosition.ON_EXECUTE_OPERAND: 1},
             pytest.raises(ServerClosed),
+            False,  # The ServerClosed raised from current process directly.
         ],
         [
             FaultType.Exception,
             {FaultPosition.ON_RUN_SUBTASK: 1},
             pytest.raises(FaultInjectionError, match="Fault Injection"),
+            True,
         ],
     ],
 )
 @pytest.mark.asyncio
 async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception):
-    fault_type, fault_count, first_run_raises = fault_and_exception
+    fault_type, fault_count, first_run_raises, check_error_prefix = fault_and_exception
     name = await create_fault_injection_manager(
         session_id=fault_cluster.session.session_id,
         address=fault_cluster.session.address,
@@ -122,8 +126,12 @@ async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception
     a = mt.tensor(raw, chunk_size=5)
     b = a + 1
 
-    with first_run_raises:
+    with first_run_raises as ex:
         b.execute(extra_config=extra_config)
+
+    if check_error_prefix:
+        assert str(ex.value).count("address") == 1
+        assert str(ex.value).count("pid") == 1
 
     # execute again may raise an ConnectionRefusedError if the
     # ProcessExit occurred.
