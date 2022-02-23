@@ -236,7 +236,7 @@ class SubtaskProcessor:
 
             self.set_op_progress(chunk.op.key, 1.0)
 
-            for inp in chunk.inputs:
+            for inp in chunk_graph.iter_predecessors(chunk):
                 ref_counts[inp.key] -= 1
                 if ref_counts[inp.key] == 0:
                     # ref count reaches 0, remove it

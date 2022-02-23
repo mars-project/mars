@@ -138,7 +138,6 @@ class SubtaskResult(Serializable):
 class SubtaskGraph(DAG, Iterable[Subtask]):
     def __init__(self):
         super().__init__()
-        self.logic_id_to_subtasks = defaultdict(list)
 
     """
     Subtask graph.
@@ -155,4 +154,3 @@ class SubtaskGraph(DAG, Iterable[Subtask]):
 
     def add_node(self, subtask: Subtask):
         super().add_node(subtask)
-        self.logic_id_to_subtasks[subtask.logic_id].append(subtask)

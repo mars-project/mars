@@ -171,11 +171,11 @@ class TaskPreprocessor:
         available_bands: Dict[BandType, int],
         stage_id: str = None,
     ) -> SubtaskGraph:
-        logger.info("Start to gen subtask graph for task %s", self._task.task_id)
+        logger.debug("Start to gen subtask graph for task %s", self._task.task_id)
         task = self._task
-        analyzer = GraphAnalyzer(chunk_graph, available_bands, task, stage_id=stage_id)
+        analyzer = GraphAnalyzer(chunk_graph, available_bands, task, self._config, stage_id=stage_id)
         graph = analyzer.gen_subtask_graph()
-        logger.info(
+        logger.debug(
             "Generated subtask graph of %s subtasks for task %s",
             len(graph),
             self._task.task_id,

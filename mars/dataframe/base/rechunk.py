@@ -206,7 +206,7 @@ def compute_rechunk(a, chunk_size):
             chunk_index, chunk_slice = zip(*index_slices)
             old_chunk = a.cix[chunk_index]
             merge_chunk_shape = tuple(
-                calc_sliced_size(s, chunk_slice[0]) for s in old_chunk.shape
+                calc_sliced_size(s, slc) for s, slc in zip(old_chunk.shape, chunk_slice)
             )
             new_index_value = indexing_index_value(
                 old_chunk.index_value, chunk_slice[0], rechunk=True

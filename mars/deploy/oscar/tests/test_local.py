@@ -38,7 +38,7 @@ from ....lib.aio import new_isolation
 from ....storage import StorageLevel
 from ....services.storage import StorageAPI
 from ....tensor.arithmetic.add import TensorAdd
-from ....tests.core import check_dict_structure_same, DICT_NOT_EMPTY
+from ....tests.core import mock, check_dict_structure_same, DICT_NOT_EMPTY
 from ..local import new_cluster
 from ..service import load_config
 from ..session import (
@@ -50,7 +50,11 @@ from ..session import (
     fetch_infos,
     stop_server,
     AsyncSession,
+    ExecutionInfo,
+    Profiling,
+    Progress,
     _IsolatedWebSession,
+    _execute_with_progress,
 )
 from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
@@ -632,6 +636,40 @@ def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: 
 
     session.stop_server()
     assert get_default_session() is None
+
+
+@mock.patch("asyncio.base_events.logger")
+def test_show_progress_raise_exception(m_log):
+    loop = asyncio.get_event_loop()
+    event = asyncio.Event()
+
+    class ProgressBar:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            pass
+
+        def __exit__(self, *_):
+            pass
+
+        def update(self, progress: float):
+            pass
+
+    async def _exec():
+        progress = Progress()
+        profiling = Profiling()
+        execution_info = ExecutionInfo(
+            asyncio.create_task(event.wait()), progress, profiling, loop
+        )
+        progress_bar = ProgressBar(True)
+        cancel_event = asyncio.Event()
+        loop.call_later(2, cancel_event.set)
+        await _execute_with_progress(execution_info, progress_bar, 0.01, cancel_event)
+        execution_info.get_future().set_exception(Exception("Expect Exception!!!"))
+
+    loop.run_until_complete(_exec())
+    assert len(m_log.mock_calls) < 3
 
 
 min_task_runtime = 2

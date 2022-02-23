@@ -14,82 +14,179 @@
 
 from .....core import ChunkGraph
 from .....tensor.arithmetic import TensorTreeAdd
-from ..fusion import Fusion
+from ..fusion import Coloring
 
 
-def test_fuse():
-    """
-    test compose in build graph and optimize
-    """
+def test_simple_coloring():
+    # graph: https://user-images.githubusercontent.com/357506/132340029-b595afcf-3cec-44cb-b1c3-aac379e2e607.png
+    chunks = [
+        TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data for n in range(8)
+    ]
+    graph = ChunkGraph([chunks[3], chunks[7]])
+    for c in chunks:
+        graph.add_node(c)
+    chunks[2].op._inputs = [chunks[0], chunks[1]]
+    graph.add_edge(chunks[0], chunks[2])
+    graph.add_edge(chunks[1], chunks[2])
+    chunks[3].op._inputs = [chunks[2]]
+    graph.add_edge(chunks[2], chunks[3])
+    chunks[6].op._inputs = [chunks[4], chunks[5]]
+    graph.add_edge(chunks[4], chunks[6])
+    graph.add_edge(chunks[5], chunks[6])
+    chunks[7].op._inputs = [chunks[6]]
+    graph.add_edge(chunks[6], chunks[7])
 
-    r"""
-    graph(@: node, #: composed_node):
+    all_bands = [("127.0.0.1", "0"), ("127.0.0.1", "1")]
+    chunk_to_bands = {
+        chunks[0]: all_bands[0],
+        chunks[1]: all_bands[0],
+        chunks[4]: all_bands[1],
+        chunks[5]: all_bands[1],
+    }
 
-    @ --> @ --> @   ========>    #
-    """
+    # allocate node 0, 1 with band 0, node 4, 5 with band 1
+    coloring = Coloring(graph, all_bands, chunk_to_bands)
+    chunk_to_colors = coloring.color()
+    assert len(set(chunk_to_colors.values())) == 2
+    assert (
+        chunk_to_colors[chunks[0]]
+        == chunk_to_colors[chunks[1]]
+        == chunk_to_colors[chunks[2]]
+        == chunk_to_colors[chunks[3]]
+    )
+    assert (
+        chunk_to_colors[chunks[4]]
+        == chunk_to_colors[chunks[5]]
+        == chunk_to_colors[chunks[6]]
+        == chunk_to_colors[chunks[7]]
+    )
+
+    # initial nodes all have different colors
+    coloring = Coloring(graph, all_bands, chunk_to_bands, initial_same_color_num=1)
+    chunk_to_colors = coloring.color()
+    assert len(set(chunk_to_colors.values())) == 6
+    assert (
+        len(
+            {
+                chunk_to_colors[chunks[0]],
+                chunk_to_colors[chunks[1]],
+                chunk_to_colors[chunks[2]],
+            }
+        )
+        == 3
+    )
+    assert chunk_to_colors[chunks[2]] == chunk_to_colors[chunks[3]]
+
+
+def test_complex_coloring():
+    # graph: https://user-images.githubusercontent.com/357506/132340055-f08106dd-b507-4e24-bc79-8364d6e1ef79.png
+    chunks = [
+        TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data
+        for n in range(13)
+    ]
+    graph = ChunkGraph([chunks[7], chunks[12]])
+    for c in chunks:
+        graph.add_node(c)
+    chunks[2].op._inputs = [chunks[0], chunks[1]]
+    graph.add_edge(chunks[0], chunks[2])
+    graph.add_edge(chunks[1], chunks[2])
+    chunks[10].op._inputs = [chunks[8], chunks[9]]
+    graph.add_edge(chunks[8], chunks[10])
+    graph.add_edge(chunks[9], chunks[10])
+    chunks[3].op._inputs = [chunks[2]]
+    graph.add_edge(chunks[2], chunks[3])
+    chunks[4].op._inputs = [chunks[3]]
+    graph.add_edge(chunks[3], chunks[4])
+    chunks[5].op._inputs = [chunks[2], chunks[10]]
+    graph.add_edge(chunks[2], chunks[5])
+    graph.add_edge(chunks[10], chunks[5])
+    chunks[6].op._inputs = [chunks[5]]
+    graph.add_edge(chunks[5], chunks[6])
+    chunks[7].op._inputs = [chunks[4], chunks[6]]
+    graph.add_edge(chunks[4], chunks[7])
+    graph.add_edge(chunks[6], chunks[7])
+    chunks[11].op._inputs = [chunks[10]]
+    graph.add_edge(chunks[10], chunks[11])
+    chunks[12].op._inputs = [chunks[6], chunks[11]]
+    graph.add_edge(chunks[6], chunks[12])
+    graph.add_edge(chunks[11], chunks[12])
+
+    all_bands = [("127.0.0.1", "0"), ("127.0.0.1", "1")]
+    chunk_to_bands = {
+        chunks[0]: all_bands[0],
+        chunks[1]: all_bands[0],
+        chunks[8]: all_bands[1],
+        chunks[9]: all_bands[1],
+    }
+    # allocate node 0, 1 with band 0, node 8, 9 with band 1
+    coloring = Coloring(graph, all_bands, chunk_to_bands)
+    chunk_to_colors = coloring.color()
+    assert len(set(chunk_to_colors.values())) == 7
+    assert (
+        chunk_to_colors[chunks[0]]
+        == chunk_to_colors[chunks[1]]
+        == chunk_to_colors[chunks[2]]
+    )
+    assert chunk_to_colors[chunks[3]] == chunk_to_colors[chunks[4]]
+    assert chunk_to_colors[chunks[5]] == chunk_to_colors[chunks[6]]
+    assert (
+        chunk_to_colors[chunks[8]]
+        == chunk_to_colors[chunks[9]]
+        == chunk_to_colors[chunks[10]]
+    )
+    assert (
+        len(
+            {
+                chunk_to_colors[chunks[0]],
+                chunk_to_colors[chunks[3]],
+                chunk_to_colors[chunks[5]],
+                chunk_to_colors[chunks[7]],
+                chunk_to_colors[chunks[8]],
+                chunk_to_colors[chunks[11]],
+                chunk_to_colors[chunks[12]],
+            }
+        )
+        == 7
+    )
+
+
+def test_coloring_broadcaster():
     chunks = [
         TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data for n in range(3)
     ]
-    graph = ChunkGraph([])
+    graph = ChunkGraph([chunks[2]])
     for c in chunks:
         graph.add_node(c)
+    chunks[1].op._inputs = [chunks[0]]
     graph.add_edge(chunks[0], chunks[1])
-    graph.add_edge(chunks[1], chunks[2])
-
-    graph2 = graph.copy()
-    graph2._result_chunks = [chunks[2]]
-    _, fused_nodes = Fusion(graph2).fuse()
-    assert fused_nodes[0].composed == chunks[:3]
-
-    # make the middle one as result chunk, thus the graph cannot be composed
-    graph3 = graph.copy()
-    graph3._result_chunks = [chunks[1]]
-    _, fused_nodes = Fusion(graph3).fuse()
-    assert fused_nodes[0].composed == chunks[:2]
-
-    r"""
-    graph(@: node, #: composed_node):
-
-    @             @              @       @
-      \         /                  \   /
-        @ --> @       ========>      #
-      /         \                  /   \
-    @             @              @       @
-    """
-    chunks = [
-        TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data for n in range(6)
-    ]
-    graph = ChunkGraph([chunks[4], chunks[5]])
-    for c in chunks:
-        graph.add_node(c)
-
-    chunks[2].op._inputs = [chunks[0], chunks[1]]
-    chunks[3].op._inputs = [chunks[2]]
-    chunks[4].op._inputs = [chunks[3]]
-    chunks[5].op._inputs = [chunks[3]]
-
+    chunks[2].op._inputs = [chunks[0]]
     graph.add_edge(chunks[0], chunks[2])
-    graph.add_edge(chunks[1], chunks[2])
-    graph.add_edge(chunks[2], chunks[3])
-    graph.add_edge(chunks[3], chunks[4])
-    graph.add_edge(chunks[3], chunks[5])
 
-    _, fused_nodes = Fusion(graph).fuse()
-    assert fused_nodes[0].composed == chunks[2:4]
+    all_bands = [("127.0.0.1", "0"), ("127.0.0.1", "1")]
+    chunk_to_bands = {
+        chunks[0]: all_bands[0],
+    }
 
-    # to make sure the predecessors and successors of compose are right
-    # 0 and 1's successors must be composed
-    assert fused_nodes[0] in graph.successors(chunks[0])
-    assert fused_nodes[0] in graph.successors(chunks[1])
-    # check composed's inputs
-    assert chunks[0] in fused_nodes[0].inputs
-    assert chunks[1] in fused_nodes[0].inputs
-    # check composed's predecessors
-    assert chunks[0] in graph.predecessors(fused_nodes[0])
-    assert chunks[1] in graph.predecessors(fused_nodes[0])
-    # check 4 and 5's inputs
-    assert fused_nodes[0] in graph.successors(fused_nodes[0])[0].inputs
-    assert fused_nodes[0] in graph.successors(fused_nodes[0])[0].inputs
-    # check 4 and 5's predecessors
-    assert fused_nodes[0] in graph.predecessors(chunks[4])
-    assert fused_nodes[0] in graph.predecessors(chunks[5])
+    coloring = Coloring(graph, all_bands, chunk_to_bands)
+    chunk_to_colors = coloring.color()
+    assert len(set(chunk_to_colors.values())) == 1
+    assert (
+        chunk_to_colors[chunks[0]]
+        == chunk_to_colors[chunks[1]]
+        == chunk_to_colors[chunks[2]]
+    )
+    coloring = Coloring(
+        graph, all_bands, chunk_to_bands, as_broadcaster_successor_num=1
+    )
+    chunk_to_colors = coloring.color()
+    assert len(set(chunk_to_colors.values())) == 3
+    assert (
+        len(
+            {
+                chunk_to_colors[chunks[0]],
+                chunk_to_colors[chunks[1]],
+                chunk_to_colors[chunks[2]],
+            }
+        )
+        == 3
+    )
