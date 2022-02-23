@@ -678,6 +678,9 @@ min_task_runtime = 2
 @pytest.fixture
 async def speculative_cluster():
     config = load_config()
+    # coloring based fusion will make subtask too heterogeneous such that the speculative scheduler can't
+    # get enough homogeneous subtasks to calculate statistics
+    config["task"]["default_config"]["fuse_enabled"] = False
     config["scheduling"]["speculation"]["enabled"] = True
     config["scheduling"]["speculation"]["interval"] = 0.5
     config["scheduling"]["speculation"]["threshold"] = 0.2

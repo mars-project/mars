@@ -18,6 +18,3 @@ from .config import options
 from .core.context import get_context
 from .session import new_session, execute, fetch, fetch_log, stop_server
 from .deploy.oscar import new_cluster_in_ray, new_ray_session
-import logging
-LOGGER_FORMAT = "%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s"
-logging.basicConfig(format=LOGGER_FORMAT, level=logging.DEBUG)
