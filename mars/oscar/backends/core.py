@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import copy
 from typing import Dict, Union
 
 from ..errors import ServerClosed
@@ -20,7 +21,7 @@ from .communication import Client
 from .message import _MessageBase, ResultMessage, ErrorMessage, DeserializeMessageFailed
 from .router import Router
 from ...oscar.profiling import ProfilingData
-from ...utils import Timer, wrap_exception
+from ...utils import Timer
 
 
 result_message_type = Union[ResultMessage, ErrorMessage]
@@ -67,11 +68,7 @@ class ActorCaller:
                 message_futures = self._client_to_message_futures.get(client)
                 self._client_to_message_futures[client] = dict()
                 for future in message_futures.values():
-                    future.set_exception(
-                        wrap_exception(
-                            type(e).__name__, (type(e),), str(e), e, e.__traceback__
-                        )
-                    )
+                    future.set_exception(copy.copy(e))
             finally:
                 await asyncio.sleep(0)
 
