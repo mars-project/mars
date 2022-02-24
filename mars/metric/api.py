@@ -66,16 +66,16 @@ class Metrics:
 
     @staticmethod
     def counter(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
-        return _backends_cls[_metric_backend].CounterImpl(name, description, tag_keys)
+        return _backends_cls[_metric_backend].Counter(name, description, tag_keys)
 
     @staticmethod
     def gauge(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
-        return _backends_cls[_metric_backend].GaugeImpl(name, description, tag_keys)
+        return _backends_cls[_metric_backend].Gauge(name, description, tag_keys)
 
     @staticmethod
     def meter(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
-        return _backends_cls[_metric_backend].MeterImpl(name, description, tag_keys)
+        return _backends_cls[_metric_backend].Meter(name, description, tag_keys)
 
     @staticmethod
     def histogram(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
-        return _backends_cls[_metric_backend].HistogramImpl(name, description, tag_keys)
+        return _backends_cls[_metric_backend].Histogram(name, description, tag_keys)

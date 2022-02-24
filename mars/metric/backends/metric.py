@@ -21,7 +21,7 @@ _THRESHOLD = 2000
 _RECORDED_INTERVAL_SECS = 1
 
 
-class Metric(ABC):
+class AbstractMetric(ABC):
     """Base class of metrics."""
 
     _type = None
@@ -67,7 +67,7 @@ class Metric(ABC):
         pass
 
 
-class Counter(Metric):
+class AbstractCounter(AbstractMetric):
     """A counter records the counts of events."""
 
     _type = "counter"
@@ -83,7 +83,7 @@ class Counter(Metric):
         self._record(self._count, tags)
 
 
-class Gauge(Metric):
+class AbstractGauge(AbstractMetric):
     """A gauge represents a single numerical value that can be
     arbitrarily set.
     """
@@ -94,7 +94,7 @@ class Gauge(Metric):
         self._record(value, tags)
 
 
-class Meter(Metric):
+class AbstractMeter(AbstractMetric):
     """A meter measures the rate at which a set of events occur."""
 
     _type = "meter"
@@ -117,8 +117,8 @@ class Meter(Metric):
             self._count = 0
 
 
-class Histogram(Metric):
-    """A Histogram measures the distribution of values in a stream of data."""
+class AbstractHistogram(AbstractMetric):
+    """A histogram measures the distribution of values in a stream of data."""
 
     _type = "histogram"
 

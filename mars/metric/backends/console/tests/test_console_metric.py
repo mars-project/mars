@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..console_metric import CounterImpl, GaugeImpl, MeterImpl, HistogramImpl
+from ..console_metric import Counter, Gauge, Meter, Histogram
 
 
 def test_counter():
-    c = CounterImpl("test_counter", "A test counter", ("service", "tenant"))
+    c = Counter("test_counter", "A test counter", ("service", "tenant"))
     assert c.name == "test_counter"
     assert c.description == "A test counter"
     assert c.tag_keys == ("service", "tenant")
@@ -27,7 +27,7 @@ def test_counter():
 
 
 def test_gauge():
-    g = GaugeImpl("test_gauge", "A test gauge")
+    g = Gauge("test_gauge", "A test gauge")
     assert g.name == "test_gauge"
     assert g.description == "A test gauge"
     assert g.tag_keys == ()
@@ -39,7 +39,7 @@ def test_gauge():
 
 
 def test_meter():
-    m = MeterImpl("test_meter")
+    m = Meter("test_meter")
     assert m.name == "test_meter"
     assert m.description == ""
     assert m.tag_keys == ()
@@ -51,7 +51,7 @@ def test_meter():
 
 
 def test_histogram():
-    h = HistogramImpl("test_histogram")
+    h = Histogram("test_histogram")
     assert h.name == "test_histogram"
     assert h.description == ""
     assert h.tag_keys == ()

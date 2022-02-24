@@ -15,7 +15,13 @@
 import logging
 from typing import Optional, Dict, Tuple
 
-from ..metric import Counter, Gauge, Histogram, Meter, Metric
+from ..metric import (
+    AbstractMetric,
+    AbstractCounter,
+    AbstractGauge,
+    AbstractHistogram,
+    AbstractMeter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +50,7 @@ class SimpleMetric:
         return self._value
 
 
-class ConsoleMetric(Metric):
+class ConsoleMetricMixin(AbstractMetric):
     @property
     def value(self):
         return self._metric.value
@@ -56,17 +62,17 @@ class ConsoleMetric(Metric):
         self._metric.update(value, tags)
 
 
-class CounterImpl(ConsoleMetric, Counter):
+class Counter(ConsoleMetricMixin, AbstractCounter):
     pass
 
 
-class GaugeImpl(ConsoleMetric, Gauge):
+class Gauge(ConsoleMetricMixin, AbstractGauge):
     pass
 
 
-class MeterImpl(ConsoleMetric, Meter):
+class Meter(ConsoleMetricMixin, AbstractMeter):
     pass
 
 
-class HistogramImpl(ConsoleMetric, Histogram):
+class Histogram(ConsoleMetricMixin, AbstractHistogram):
     pass

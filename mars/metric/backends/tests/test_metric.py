@@ -12,16 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..metric import Metric, Counter, Gauge, Meter, Histogram
+from ..metric import (
+    AbstractMetric,
+    AbstractCounter,
+    AbstractGauge,
+    AbstractMeter,
+    AbstractHistogram,
+)
 
 
 def test_dummy_metric():
-    class DummyMetric(Metric):
+    class DummyMetric(AbstractMetric):
         pass
 
     DummyMetric.__abstractmethods__ = set()
     m = DummyMetric("dummy_metric", "A test metric", ("service", "tenant"))
-    assert isinstance(m, Metric)
+    assert isinstance(m, AbstractMetric)
     assert m.name == "dummy_metric"
     assert m.description == "A test metric"
     assert m.tag_keys == ("service", "tenant")
@@ -32,7 +38,7 @@ def test_dummy_metric():
 
 
 def test_counter():
-    class DummyCounter(Counter):
+    class DummyCounter(AbstractCounter):
         pass
 
     DummyCounter.__abstractmethods__ = set()
@@ -45,7 +51,7 @@ def test_counter():
 
 
 def test_gauge():
-    class DummyGauge(Gauge):
+    class DummyGauge(AbstractGauge):
         pass
 
     DummyGauge.__abstractmethods__ = set()
@@ -58,7 +64,7 @@ def test_gauge():
 
 
 def test_meter():
-    class DummyMeter(Meter):
+    class DummyMeter(AbstractMeter):
         pass
 
     DummyMeter.__abstractmethods__ = set()
@@ -71,7 +77,7 @@ def test_meter():
 
 
 def test_histogram():
-    class DummyHistogram(Histogram):
+    class DummyHistogram(AbstractHistogram):
         pass
 
     DummyHistogram.__abstractmethods__ = set()
