@@ -387,6 +387,7 @@ async def test_mars_batch_method(actor_pool_context):
 @pytest.mark.asyncio
 async def test_gather_exception(actor_pool_context):
     try:
+        Router.get_instance_or_empty()._cache.clear()
         pool = actor_pool_context
         ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
         router = Router.get_instance_or_empty()
