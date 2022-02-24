@@ -43,6 +43,9 @@ class Metrics:
     """
     A factory to generate different types of metrics.
 
+    Note:
+        Counter, Meter and Histogram are not thread safe.
+
     Examples
     --------
     >>> c1 = counter('counter1', 'A counter')

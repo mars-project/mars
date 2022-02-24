@@ -15,31 +15,10 @@
 import time
 
 from abc import ABC, abstractmethod
-from threading import Lock
 from typing import Dict, Optional, Tuple
 
 _THRESHOLD = 2000
 _RECORDED_INTERVAL_SECS = 1
-
-
-class _MutexValue:
-    """A float protected by a mutex."""
-
-    def __init__(self):
-        self._value = 0.0
-        self._lock = Lock()
-
-    def inc(self, amount):
-        with self._lock:
-            self._value += amount
-
-    def set(self, value):
-        with self._lock:
-            self._value = value
-
-    def get(self):
-        with self._lock:
-            return self._value
 
 
 class Metric(ABC):
@@ -97,11 +76,11 @@ class Counter(Metric):
         self, name: str, description: str = "", tag_keys: Optional[Tuple[str]] = None
     ):
         super().__init__(name, description, tag_keys)
-        self._count = _MutexValue()
+        self._count = 0
 
     def record(self, value=1, tags: Optional[Dict[str, str]] = None):
-        self._count.inc(value)
-        self._record(self._count.get(), tags)
+        self._count += value
+        self._record(self._count, tags)
 
 
 class Gauge(Metric):
@@ -124,18 +103,18 @@ class Meter(Metric):
         self, name: str, description: str = "", tag_keys: Optional[Tuple[str]] = None
     ):
         super().__init__(name, description, tag_keys)
-        self._count = _MutexValue()
+        self._count = 0
         self._last_time = time.time()
 
     def record(self, value=1, tags: Optional[Dict[str, str]] = None):
-        self._count.inc(value)
+        self._count += value
         now = time.time()
         past = now - self._last_time
-        if self._count.get() >= _THRESHOLD or past >= _RECORDED_INTERVAL_SECS:
-            qps = self._count.get() / past
+        if self._count >= _THRESHOLD or past >= _RECORDED_INTERVAL_SECS:
+            qps = self._count / past
             self._record(qps, tags)
             self._last_time = now
-            self._count.set(0)
+            self._count = 0
 
 
 class Histogram(Metric):
