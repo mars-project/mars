@@ -16,11 +16,10 @@ from ..metric import Metric, Counter, Gauge, Meter, Histogram
 
 
 def test_dummy_metric():
-    Metric.__abstractmethods__ = set()
-
     class DummyMetric(Metric):
         pass
 
+    DummyMetric.__abstractmethods__ = set()
     m = DummyMetric("dummy_metric", "A test metric", ("service", "tenant"))
     assert isinstance(m, Metric)
     assert m.name == "dummy_metric"
@@ -33,8 +32,11 @@ def test_dummy_metric():
 
 
 def test_counter():
-    Counter.__abstractmethods__ = set()
-    c = Counter("test_counter", "A test counter", ("service", "tenant"))
+    class DummyCounter(Counter):
+        pass
+
+    DummyCounter.__abstractmethods__ = set()
+    c = DummyCounter("test_counter", "A test counter", ("service", "tenant"))
     assert c.name == "test_counter"
     assert c.description == "A test counter"
     assert c.tag_keys == ("service", "tenant")
@@ -43,8 +45,11 @@ def test_counter():
 
 
 def test_gauge():
-    Gauge.__abstractmethods__ = set()
-    g = Gauge("test_gauge", "A test gauge")
+    class DummyGauge(Gauge):
+        pass
+
+    DummyGauge.__abstractmethods__ = set()
+    g = DummyGauge("test_gauge", "A test gauge")
     assert g.name == "test_gauge"
     assert g.description == "A test gauge"
     assert g.tag_keys == ()
@@ -53,8 +58,11 @@ def test_gauge():
 
 
 def test_meter():
-    Meter.__abstractmethods__ = set()
-    m = Meter("test_meter")
+    class DummyMeter(Meter):
+        pass
+
+    DummyMeter.__abstractmethods__ = set()
+    m = DummyMeter("test_meter")
     assert m.name == "test_meter"
     assert m.description == ""
     assert m.tag_keys == ()
@@ -63,8 +71,11 @@ def test_meter():
 
 
 def test_histogram():
-    Histogram.__abstractmethods__ = set()
-    h = Histogram("test_histogram")
+    class DummyHistogram(Histogram):
+        pass
+
+    DummyHistogram.__abstractmethods__ = set()
+    h = DummyHistogram("test_histogram")
     assert h.name == "test_histogram"
     assert h.description == ""
     assert h.tag_keys == ()
