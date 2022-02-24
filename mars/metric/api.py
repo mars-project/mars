@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import logging
+
 from typing import Dict, Any, Optional, Tuple
+
 from .backends.console import console_metric
 
 logger = logging.getLogger(__name__)

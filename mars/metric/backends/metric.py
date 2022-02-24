@@ -22,7 +22,7 @@ _THRESHOLD = 2000
 _RECORDED_INTERVAL_SECS = 1
 
 
-class _MutexValue(object):
+class _MutexValue:
     """A float protected by a mutex."""
 
     def __init__(self):
