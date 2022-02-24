@@ -106,6 +106,7 @@ class RayChannelBase(Channel, ABC):
     """
     Channel for communications between ray processes.
     """
+
     __slots__ = "_channel_index", "_channel_id", "_closed"
 
     name = "ray"
@@ -170,16 +171,23 @@ class RayClientChannel(RayChannelBase):
         self._todo = set()
 
     def _submit_task(self, message: Any, object_ref: "ray.ObjectRef"):
-
         async def handle_task(message: Any, object_ref: "ray.ObjectRef"):
-            with debug_async_timeout('ray_object_retrieval_timeout',
-                                     'Message that client sent to actor %s is %s and object_ref is %s',
-                                     self.dest_address, message, object_ref):
+            with debug_async_timeout(
+                "ray_object_retrieval_timeout",
+                "Message that client sent to actor %s is %s and object_ref is %s",
+                self.dest_address,
+                message,
+                object_ref,
+            ):
                 try:
                     result = await object_ref
                 except Exception as e:
-                    logger.exception('Get object %s from %s failed, got exception %s.',
-                                     object_ref, self.dest_address, e)
+                    logger.exception(
+                        "Get object %s from %s failed, got exception %s.",
+                        object_ref,
+                        self.dest_address,
+                        e,
+                    )
                     raise
             if isinstance(result, RayChannelException):
                 raise result.exc_value.with_traceback(result.exc_traceback)
@@ -196,16 +204,18 @@ class RayClientChannel(RayChannelBase):
     @implements(Channel.send)
     async def send(self, message: Any):
         if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed('Channel already closed, cannot send message')
+            raise ChannelClosed("Channel already closed, cannot send message")
         # Put ray object ref to todo queue
-        task = self._peer_actor.__on_ray_recv__.remote(self.channel_id, serialize(message))
+        task = self._peer_actor.__on_ray_recv__.remote(
+            self.channel_id, serialize(message)
+        )
         self._submit_task(message, task)
         await asyncio.sleep(0)
 
     @implements(Channel.recv)
     async def recv(self):
         if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed('Channel already closed, cannot recv message')
+            raise ChannelClosed("Channel already closed, cannot recv message")
         try:
             # Wait first done.
             future = await self._done.get()
