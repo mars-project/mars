@@ -499,7 +499,7 @@ class ObjectCheckMixin:
             self.assert_categorical_consistent(expected, real)
 
 
-DICT_NOT_EMPTY = object()
+DICT_NOT_EMPTY = type("DICT_NOT_EMPTY", (object,), {})  # is check works for deepcopy
 
 
 def check_dict_structure_same(a, b, prefix=None):
