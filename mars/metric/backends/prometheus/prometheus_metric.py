@@ -13,7 +13,11 @@
 # limitations under the License.
 
 from typing import Optional, Dict
-from prometheus_client import Gauge as PGauge
+
+try:
+    from prometheus_client import Gauge as PGauge
+except ImportError:
+    PGauge = None
 
 from ..metric import (
     AbstractMetric,
@@ -24,28 +28,31 @@ from ..metric import (
 )
 
 
-class PrometheusMetric(AbstractMetric):
+class PrometheusMetricMixin(AbstractMetric):
     def _init(self):
-        self._metric = PGauge(self._name, self._description, self._tag_keys)
+        self._metric = (
+            PGauge(self._name, self._description, self._tag_keys) if PGauge else None
+        )
 
     def _record(self, value=1, tags: Optional[Dict[str, str]] = None):
-        if tags:
-            self._metric.labels(**tags).set(value)
-        else:
-            self._metric.set(value)
+        if self._metric:
+            if tags:
+                self._metric.labels(**tags).set(value)
+            else:
+                self._metric.set(value)
 
 
-class Counter(PrometheusMetric, AbstractCounter):
+class Counter(PrometheusMetricMixin, AbstractCounter):
     pass
 
 
-class Gauge(PrometheusMetric, AbstractGauge):
+class Gauge(PrometheusMetricMixin, AbstractGauge):
     pass
 
 
-class Meter(PrometheusMetric, AbstractMeter):
+class Meter(PrometheusMetricMixin, AbstractMeter):
     pass
 
 
-class Histogram(PrometheusMetric, AbstractHistogram):
+class Histogram(PrometheusMetricMixin, AbstractHistogram):
     pass

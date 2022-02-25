@@ -16,7 +16,10 @@ import pytest
 import requests
 import time
 
-from prometheus_client import start_http_server
+try:
+    from prometheus_client import start_http_server
+except ImportError:
+    start_http_server = None
 
 from .....utils import get_next_port
 from ..prometheus_metric import Counter, Gauge, Histogram, Meter
@@ -26,10 +29,13 @@ _PROMETHEUS_CLIENT_PORT = get_next_port()
 
 @pytest.fixture(scope="module")
 def start_prometheus_http_server():
-    start_http_server(_PROMETHEUS_CLIENT_PORT)
+    if start_http_server:
+        start_http_server(_PROMETHEUS_CLIENT_PORT)
 
 
 def verify_metric(name, value, delta=1e-6):
+    if start_http_server is None:
+        return
     resp = requests.get("http://127.0.0.1:{}".format(_PROMETHEUS_CLIENT_PORT)).text
     assert name in resp
     lines = resp.splitlines()

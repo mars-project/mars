@@ -37,11 +37,15 @@ def init_metrics(config: Dict[str, Any] = None):
     if _metric_backend == "prometheus":
         conf = metric_config.get("conf", {})
         port = int(conf.get("port", 0))
-        from prometheus_client import start_http_server
+        try:
+            from prometheus_client import start_http_server
 
-        start_http_server(port)
-        logger.info("Finished startup prometheus http server and port is %d",
-                    port)
+            start_http_server(port)
+            logger.info("Finished startup prometheus http server and port is %d", port)
+        except ImportError:
+            logger.info(
+                "Do not startup prometheus http server because there is no prometheus_client"
+            )
     logger.info(
         "Finished initialize the metrics, config is %s, backend is %s",
         config,
