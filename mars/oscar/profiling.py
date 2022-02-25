@@ -133,10 +133,10 @@ class _CallStats:
         self._slow_calls = []
 
     def collect(self, message, duration: float):
-        if duration < self._options.slow_calls_duration_threshold:
-            return
         key = (message.actor_ref.uid, message.content[0])
         self._call_counter[key] += 1
+        if duration < self._options.slow_calls_duration_threshold:
+            return
         key = (
             duration,
             message.actor_ref.uid,
@@ -174,10 +174,10 @@ class _SubtaskStats:
         self._slow_subtasks = []
 
     def collect(self, subtask, band: BandType, duration: float):
-        if duration < self._options.slow_subtasks_duration_threshold:
-            return
         band_address = band[0]
         self._band_counter[band_address] += 1
+        if duration < self._options.slow_subtasks_duration_threshold:
+            return
         key = (duration, band_address, subtask)
         try:
             if len(self._slow_subtasks) < 10:
