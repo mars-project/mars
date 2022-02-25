@@ -115,7 +115,7 @@ class ParquetEngine:
     def read_partitioned_to_pandas(
         self,
         f,
-        partitions: pq.ParquetPartitions,
+        partitions: "pyarrow.parquet.ParquetPartitions",
         partition_keys: List[Tuple],
         columns=None,
         nrows=None,
