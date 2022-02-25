@@ -32,7 +32,7 @@ RAY_GAUGE_SET_AVAILABLE = (
 )
 
 
-class RayMetric(AbstractMetric):
+class RayMetricMixin(AbstractMetric):
     def _init(self):
         if ray_metrics:
             self._metric = ray_metrics.Gauge(
@@ -46,17 +46,17 @@ class RayMetric(AbstractMetric):
             self._metric.record(value, tags)
 
 
-class Counter(RayMetric, AbstractCounter):
+class Counter(RayMetricMixin, AbstractCounter):
     pass
 
 
-class Gauge(RayMetric, AbstractGauge):
+class Gauge(RayMetricMixin, AbstractGauge):
     pass
 
 
-class Meter(RayMetric, AbstractMeter):
+class Meter(RayMetricMixin, AbstractMeter):
     pass
 
 
-class Histogram(RayMetric, AbstractHistogram):
+class Histogram(RayMetricMixin, AbstractHistogram):
     pass
