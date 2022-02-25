@@ -17,12 +17,14 @@ import logging
 from typing import Dict, Any, Optional, Tuple
 
 from .backends.console import console_metric
+from .backends.prometheus import prometheus_metric
 
 logger = logging.getLogger(__name__)
 
 _metric_backend = "console"
 _backends_cls = {
     "console": console_metric,
+    "prometheus": prometheus_metric,
 }
 
 
@@ -32,6 +34,14 @@ def init_metrics(config: Dict[str, Any] = None):
     _metric_backend = metric_config.get("backend", "console")
     if _metric_backend not in _backends_cls:
         raise NotImplementedError(f"Do not support metric backend {_metric_backend}")
+    if _metric_backend == "prometheus":
+        conf = metric_config.get("conf", {})
+        port = int(conf.get("port", 0))
+        from prometheus_client import start_http_server
+
+        start_http_server(port)
+        logger.info("Finished startup prometheus http server and port is %d",
+                    port)
     logger.info(
         "Finished initialize the metrics, config is %s, backend is %s",
         config,
