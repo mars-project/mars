@@ -212,7 +212,7 @@ class GraphAnalyzer:
             if c not in result_chunks_set
         )
         expect_bands = (
-            [expect_worker]
+            [self._to_band(expect_worker)]
             if bands_specified
             else ([band] if band is not None else None)
         )
