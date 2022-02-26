@@ -17,6 +17,7 @@ import logging
 import os
 import sys
 import time
+import traceback
 from collections import deque
 
 import pandas as pd
@@ -25,6 +26,7 @@ import pytest
 from ..... import oscar as mo
 from ....backends.allocate_strategy import RandomSubPool
 from ....debug import set_debug_options, DebugOptions
+from ...router import Router
 
 logger = logging.getLogger(__name__)
 
@@ -380,6 +382,44 @@ async def test_mars_batch_method(actor_pool_context):
 
     with pytest.raises(ValueError):
         await ref1.add_ret.batch(ref1.add_ret.delay(1), ref1.add.delay(2))
+
+
+@pytest.mark.asyncio
+async def test_gather_exception(actor_pool_context):
+    try:
+        Router.get_instance_or_empty()._cache.clear()
+        pool = actor_pool_context
+        ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+        router = Router.get_instance_or_empty()
+        client = next(iter(router._cache.values()))
+
+        future = asyncio.Future()
+        client_channel = client.channel
+
+        class FakeChannel(type(client_channel)):
+            def __init__(self):
+                pass
+
+            def __getattr__(self, item):
+                return getattr(client_channel, item)
+
+            async def recv(self):
+                return await future
+
+        client.channel = FakeChannel()
+
+        class MyException(Exception):
+            pass
+
+        await ref1.add(1)
+        tasks = [ref1.add(i) for i in range(200)]
+        future.set_exception(MyException("Test recv exception!!"))
+        with pytest.raises(MyException) as ex:
+            await asyncio.gather(*tasks)
+        s = traceback.format_tb(ex.tb)
+        assert 10 > "\n".join(s).count("send") > 0
+    finally:
+        Router.get_instance_or_empty()._cache.clear()
 
 
 @pytest.mark.asyncio

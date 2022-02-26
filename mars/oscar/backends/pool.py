@@ -59,7 +59,8 @@ ray = lazy_import("ray")
 
 
 class _ErrorProcessor:
-    def __init__(self, message_id: bytes, protocol):
+    def __init__(self, address: str, message_id: bytes, protocol):
+        self._address = address
         self._message_id = message_id
         self._protocol = protocol
         self.result = None
@@ -70,7 +71,13 @@ class _ErrorProcessor:
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.result is None:
             self.result = ErrorMessage(
-                self._message_id, exc_type, exc_val, exc_tb, protocol=self._protocol
+                self._message_id,
+                self._address,
+                os.getpid(),
+                exc_type,
+                exc_val,
+                exc_tb,
+                protocol=self._protocol,
             )
             return True
 
@@ -277,7 +284,7 @@ class AbstractActorPool(ABC):
             result or error message.
         """
         with _ErrorProcessor(
-            message.message_id, protocol=message.protocol
+            self.external_address, message.message_id, protocol=message.protocol
         ) as processor:
             content = True
             if message.control_message_type == ControlMessageType.stop:
@@ -322,7 +329,9 @@ class AbstractActorPool(ABC):
 
     async def process_message(self, message: _MessageBase, channel: Channel):
         handler = self._message_handler[message.message_type]
-        with _ErrorProcessor(message.message_id, message.protocol) as processor:
+        with _ErrorProcessor(
+            self.external_address, message.message_id, message.protocol
+        ) as processor:
             with debug_async_timeout(
                 "process_message_timeout",
                 "Process message %s of channel %s timeout.",
@@ -449,7 +458,9 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
 
     @implements(AbstractActorPool.create_actor)
     async def create_actor(self, message: CreateActorMessage) -> result_message_type:
-        with _ErrorProcessor(message.message_id, message.protocol) as processor:
+        with _ErrorProcessor(
+            self.external_address, message.message_id, message.protocol
+        ) as processor:
             actor_id = message.actor_id
             if actor_id in self._actors:
                 raise ActorAlreadyExist(
@@ -480,7 +491,9 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
 
     @implements(AbstractActorPool.destroy_actor)
     async def destroy_actor(self, message: DestroyActorMessage) -> result_message_type:
-        with _ErrorProcessor(message.message_id, message.protocol) as processor:
+        with _ErrorProcessor(
+            self.external_address, message.message_id, message.protocol
+        ) as processor:
             actor_id = message.actor_ref.uid
             try:
                 actor = self._actors[actor_id]
@@ -496,7 +509,9 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
 
     @implements(AbstractActorPool.actor_ref)
     async def actor_ref(self, message: ActorRefMessage) -> result_message_type:
-        with _ErrorProcessor(message.message_id, message.protocol) as processor:
+        with _ErrorProcessor(
+            self.external_address, message.message_id, message.protocol
+        ) as processor:
             actor_id = message.actor_ref.uid
             if actor_id not in self._actors:
                 raise ActorNotExist(f"Actor {actor_id} does not exist")
@@ -511,7 +526,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     @implements(AbstractActorPool.send)
     async def send(self, message: SendMessage) -> result_message_type:
         with _ErrorProcessor(
-            message.message_id, message.protocol
+            self.external_address, message.message_id, message.protocol
         ) as processor, record_message_trace(message):
             actor_id = message.actor_ref.uid
             if actor_id not in self._actors:
@@ -528,7 +543,9 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
 
     @implements(AbstractActorPool.tell)
     async def tell(self, message: TellMessage) -> result_message_type:
-        with _ErrorProcessor(message.message_id, message.protocol) as processor:
+        with _ErrorProcessor(
+            self.external_address, message.message_id, message.protocol
+        ) as processor:
             actor_id = message.actor_ref.uid
             if actor_id not in self._actors:  # pragma: no cover
                 raise ActorNotExist(f"Actor {actor_id} does not exist")
@@ -546,11 +563,13 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
 
     @implements(AbstractActorPool.cancel)
     async def cancel(self, message: CancelMessage) -> result_message_type:
-        with _ErrorProcessor(message.message_id, message.protocol) as processor:
+        with _ErrorProcessor(
+            self.external_address, message.message_id, message.protocol
+        ) as processor:
             future = self._process_messages.get(message.cancel_message_id)
             if future is None or future.done():  # pragma: no cover
                 raise CannotCancelTask(
-                    "Task not exists, maybe it is done " "or cancelled already"
+                    "Task not exists, maybe it is done or cancelled already"
                 )
             future.cancel()
             processor.result = ResultMessage(
@@ -761,7 +780,9 @@ class MainActorPoolBase(ActorPoolBase):
     @implements(AbstractActorPool.create_actor)
     async def create_actor(self, message: CreateActorMessage) -> result_message_type:
         with _ErrorProcessor(
-            message_id=message.message_id, protocol=message.protocol
+            address=self.external_address,
+            message_id=message.message_id,
+            protocol=message.protocol,
         ) as processor:
             allocate_strategy = message.allocate_strategy
             with self._allocation_lock:
@@ -902,7 +923,7 @@ class MainActorPoolBase(ActorPoolBase):
                 return ResultMessage(message.message_id, ref, protocol=message.protocol)
 
         with _ErrorProcessor(
-            message.message_id, protocol=message.protocol
+            self.external_address, message.message_id, protocol=message.protocol
         ) as processor:
             raise ActorNotExist(
                 f"Actor {actor_ref.uid} does not exist in {actor_ref.address}"
@@ -922,7 +943,9 @@ class MainActorPoolBase(ActorPoolBase):
     async def handle_control_command(
         self, message: ControlMessage
     ) -> result_message_type:
-        with _ErrorProcessor(message.message_id, message.protocol) as processor:
+        with _ErrorProcessor(
+            self.external_address, message.message_id, message.protocol
+        ) as processor:
             if message.address == self.external_address:
                 if message.control_message_type == ControlMessageType.sync_config:
                     # sync config, need to notify all sub pools
@@ -1098,7 +1121,7 @@ class MainActorPoolBase(ActorPoolBase):
             if timeout is None:
                 message = await self.call(address, stop_message)
                 if isinstance(message, ErrorMessage):  # pragma: no cover
-                    raise message.error.with_traceback(message.traceback)
+                    raise message.as_instanceof_cause()
             else:
                 call = asyncio.create_task(self.call(address, stop_message))
                 try:

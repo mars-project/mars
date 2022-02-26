@@ -368,7 +368,7 @@ cdef class _BaseActor:
         except Exception as ex:
             if _log_unhandled_errors:
                 from .debug import logger as debug_logger
-                debug_logger.exception('Got unhandled error when handling message %r'
+                debug_logger.exception('Got unhandled error when handling message %r '
                                        'in actor %s at %s', message, self.uid, self.address)
             raise ex
 

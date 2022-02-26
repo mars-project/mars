@@ -67,7 +67,7 @@ class MarsActorContext(BaseActorContext):
         if isinstance(message, ResultMessage):
             return message.result
         else:
-            raise message.error.with_traceback(message.traceback)
+            raise message.as_instanceof_cause()
 
     async def _wait(self, future: asyncio.Future, address: str, message: _MessageBase):
         try:

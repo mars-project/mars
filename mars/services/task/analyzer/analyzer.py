@@ -144,8 +144,12 @@ class GraphAnalyzer:
                 bands_specified = expect_worker is not None
             else:
                 assert (
-                    expect_worker == chunk.op.expect_worker
-                ), "expect_worker conflicts with chunks that have same color"
+                    chunk.op.expect_worker is None
+                    or expect_worker == chunk.op.expect_worker
+                ), (
+                    f"expect_worker {chunk.op.expect_worker} conflicts with chunks that have same color: "
+                    f"{expect_worker}"
+                )
             # process band
             chunk_band = chunk_to_bands.get(chunk)
             if chunk_band is not None:

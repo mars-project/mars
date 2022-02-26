@@ -29,7 +29,7 @@ from ....core.operand import Fetch, FetchShuffle
 from ....lib.aio import alru_cache
 from ....oscar.errors import MarsError
 from ....storage import StorageLevel
-from ....utils import dataslots, get_chunk_key_to_data_keys
+from ....utils import dataslots, get_chunk_key_to_data_keys, wrap_exception
 from ...cluster import ClusterAPI
 from ...meta import MetaAPI
 from ...storage import StorageAPI
@@ -85,10 +85,9 @@ async def _retry_run(
                 )
                 logger.error(message)
 
-                class _ExceedMaxRerun(type(ex)):
-                    pass
-
-                raise _ExceedMaxRerun(message).with_traceback(ex.__traceback__)
+                raise wrap_exception(
+                    "_ExceedMaxRerun", (type(ex),), message, ex, ex.__traceback__
+                )
             else:
                 raise ex
         except asyncio.CancelledError:
@@ -102,10 +101,9 @@ async def _retry_run(
                 )
                 logger.error(message)
 
-                class _UnhandledException(type(ex)):
-                    pass
-
-                raise _UnhandledException(message).with_traceback(ex.__traceback__)
+                raise wrap_exception(
+                    "_UnhandledException", (type(ex),), message, ex, ex.__traceback__
+                )
             else:
                 raise ex
 
@@ -449,10 +447,9 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 )
                 logger.error(message)
 
-                class _UnretryableException(type(e)):
-                    pass
-
-                raise _UnretryableException(message).with_traceback(e.__traceback__)
+                raise wrap_exception(
+                    "_UnretryableException", (type(e),), message, e, e.__traceback__
+                )
 
     async def run_subtask(
         self, subtask: Subtask, band_name: str, supervisor_address: str

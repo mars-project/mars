@@ -99,7 +99,7 @@ class TileableOperandMixin:
         return chunk_type(data)
 
     def _new_chunks(
-        self, inputs: List[ChunkType], kws: dict = None, **kw
+        self, inputs: List[ChunkType], kws: List[Dict] = None, **kw
     ) -> List[ChunkType]:
         output_limit = kw.pop("output_limit", None)
         if output_limit is None:
@@ -134,7 +134,7 @@ class TileableOperandMixin:
         return chunks
 
     def new_chunks(
-        self, inputs: List[ChunkType], kws: dict = None, **kwargs
+        self, inputs: List[ChunkType], kws: List[Dict] = None, **kwargs
     ) -> List[ChunkType]:
         """
         Create chunks.
@@ -164,7 +164,9 @@ class TileableOperandMixin:
         """
         return self._new_chunks(inputs, kws=kws, **kwargs)
 
-    def new_chunk(self, inputs: List[ChunkType], kws: dict = None, **kw) -> ChunkType:
+    def new_chunk(
+        self, inputs: List[ChunkType], kws: List[Dict] = None, **kw
+    ) -> ChunkType:
         if getattr(self, "output_limit") != 1:
             raise TypeError("cannot new chunk with more than 1 outputs")
 
@@ -276,7 +278,7 @@ class TileableOperandMixin:
         return tileables
 
     def new_tileable(
-        self, inputs: List[TileableType], kws: dict = None, **kw
+        self, inputs: List[TileableType], kws: List[Dict] = None, **kw
     ) -> TileableType:
         if getattr(self, "output_limit") != 1:
             raise TypeError("cannot new chunk with more than 1 outputs")

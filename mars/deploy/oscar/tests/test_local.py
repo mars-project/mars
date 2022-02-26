@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import copy
 import os
 import random
 import threading
@@ -93,6 +94,9 @@ EXPECT_PROFILING_STRUCTURE = {
         "slow_subtasks": DICT_NOT_EMPTY,
     }
 }
+EXPECT_PROFILING_STRUCTURE_NO_SLOW = copy.deepcopy(EXPECT_PROFILING_STRUCTURE)
+EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_calls"] = {}
+EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_subtasks"] = {}
 
 params = ["default"]
 if vineyard is not None:
@@ -184,6 +188,15 @@ async def test_vineyard_operators(create_cluster):
                 }
             },
             EXPECT_PROFILING_STRUCTURE,
+        ],
+        [
+            {
+                "enable_profiling": {
+                    "slow_calls_duration_threshold": 1000,
+                    "slow_subtasks_duration_threshold": 1000,
+                }
+            },
+            EXPECT_PROFILING_STRUCTURE_NO_SLOW,
         ],
         [{}, {}],
     ],
@@ -354,6 +367,15 @@ async def _run_web_session_test(web_address):
                 }
             },
             EXPECT_PROFILING_STRUCTURE,
+        ],
+        [
+            {
+                "enable_profiling": {
+                    "slow_calls_duration_threshold": 1000,
+                    "slow_subtasks_duration_threshold": 1000,
+                }
+            },
+            EXPECT_PROFILING_STRUCTURE_NO_SLOW,
         ],
         [{}, {}],
     ],

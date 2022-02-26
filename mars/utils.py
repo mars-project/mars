@@ -39,6 +39,7 @@ import zlib
 from abc import ABC
 from contextlib import contextmanager
 from typing import Any, List, Dict, Set, Tuple, Type, Union, Callable, Optional
+from types import TracebackType
 
 import numpy as np
 import pandas as pd
@@ -1545,3 +1546,28 @@ def is_full_slice(slc: Any) -> bool:
         and slc.stop is None
         and slc.step is None
     )
+
+
+def wrap_exception(
+    name: str,
+    bases: Tuple[Type],
+    message: str,
+    cause: BaseException,
+    traceback: Optional[TracebackType] = None,
+):
+    """Generate an exception wraps the cause exception."""
+
+    def __init__(self):
+        pass
+
+    def __getattr__(self, item):
+        return getattr(cause, item)
+
+    def __str__(self):
+        return message
+
+    return type(
+        name,
+        bases,
+        {"__init__": __init__, "__getattr__": __getattr__, "__str__": __str__},
+    )().with_traceback(traceback)

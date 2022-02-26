@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import asyncio
+import copy
+import os
 import time
 
-import os
 import numpy as np
 import pandas as pd
 import pytest
@@ -80,6 +81,9 @@ EXPECT_PROFILING_STRUCTURE = {
         "slow_subtasks": DICT_NOT_EMPTY,
     }
 }
+EXPECT_PROFILING_STRUCTURE_NO_SLOW = copy.deepcopy(EXPECT_PROFILING_STRUCTURE)
+EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_calls"] = {}
+EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_subtasks"] = {}
 
 
 @pytest.fixture
@@ -111,6 +115,15 @@ async def create_cluster(request):
                 }
             },
             EXPECT_PROFILING_STRUCTURE,
+        ],
+        [
+            {
+                "enable_profiling": {
+                    "slow_calls_duration_threshold": 1000,
+                    "slow_subtasks_duration_threshold": 1000,
+                }
+            },
+            EXPECT_PROFILING_STRUCTURE_NO_SLOW,
         ],
         [{}, {}],
     ],
@@ -247,6 +260,15 @@ async def test_optional_supervisor_node(ray_large_cluster, test_option):
                 }
             },
             EXPECT_PROFILING_STRUCTURE,
+        ],
+        [
+            {
+                "enable_profiling": {
+                    "slow_calls_duration_threshold": 1000,
+                    "slow_subtasks_duration_threshold": 1000,
+                }
+            },
+            EXPECT_PROFILING_STRUCTURE_NO_SLOW,
         ],
         [{}, {}],
     ],
