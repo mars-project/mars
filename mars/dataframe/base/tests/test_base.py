@@ -376,6 +376,12 @@ def test_series_apply():
     pd.testing.assert_series_equal(r.dtypes, dtypes)
     assert r.shape == (2, 3)
 
+    def apply_with_error(_):
+        raise ValueError
+
+    r = series.apply(apply_with_error, output_type="dataframe", dtypes=dtypes)
+    assert r.ndim == 2
+
     r = series.apply(
         pd.Series, output_type="dataframe", dtypes=dtypes, index=pd.RangeIndex(2)
     )
