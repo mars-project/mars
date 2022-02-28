@@ -17,6 +17,15 @@ from ..ray_metric import Counter, Gauge, Meter, Histogram
 
 
 @require_ray
+def test_record():
+    c = Counter("test_counter")
+    from .. import ray_metric
+
+    ray_metric.RAY_GAUGE_SET_AVAILABLE = False
+    assert c.record(1) is None
+
+
+@require_ray
 def test_counter():
     c = Counter("test_counter", "A test counter", ("service", "tenant"))
     assert c.name == "test_counter"
