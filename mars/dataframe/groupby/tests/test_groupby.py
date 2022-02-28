@@ -153,6 +153,9 @@ def test_groupby_apply():
         }
     )
 
+    def apply_call_with_err(_):
+        raise ValueError
+
     def apply_df(df):
         return df.sort_index()
 
@@ -164,6 +167,14 @@ def test_groupby_apply():
         return s.sort_index()
 
     mdf = md.DataFrame(df1, chunk_size=3)
+
+    # when dtype and output_type specified, apply function
+    # shall not be called
+    applied = mdf.groupby("b").apply(
+        apply_call_with_err, output_type="series", dtype=int
+    )
+    assert applied.dtype == int
+    assert applied.op.output_types[0] == OutputType.series
 
     with pytest.raises(TypeError):
         mdf.groupby("b").apply(apply_df_with_error)
