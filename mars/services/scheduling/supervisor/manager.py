@@ -491,7 +491,9 @@ class SpeculativeScheduler:
     async def _speculative_execution(self):
         while True:
             await asyncio.sleep(self._subtask_speculation_interval)
-            for logic_id, subtask_infos_dict in self._grouped_finished_subtasks.items():
+            for logic_id, subtask_infos_dict in dict(
+                self._grouped_finished_subtasks
+            ).items():
                 if subtask_infos_dict:
                     subtask_infos = subtask_infos_dict.values()
                     one_subtask = next(iter(subtask_infos)).subtask
