@@ -22,6 +22,14 @@ cdef class ActorRef:
     cdef __tell__(self, object message, object options)
 
 
+cdef class ActorProxy:
+    cdef object __weakref__
+    cdef public str address
+    cdef public object uid
+    cdef _BaseActor _actor
+    cdef dict _methods
+
+
 cdef class _BaseActor:
     cdef object __weakref__
     cdef str _address

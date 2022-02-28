@@ -178,6 +178,63 @@ cdef class ActorRefMethod:
         return asyncio.create_task(delay_fun())
 
 
+async def _actor_method_wrapper(_BaseActor actor, method, args, kwargs):
+    result = method(*args, **kwargs)
+    if asyncio.iscoroutine(result):
+        result = await result
+    return await actor._handle_actor_result(result)
+
+
+cdef class ActorProxyMethod:
+    cdef _BaseActor _actor
+    cdef object _method
+
+    def __init__(self, actor, method):
+        self._actor = actor
+        self._method = method
+
+    def __call__(self, *args, **kwargs):
+        return _actor_method_wrapper(self._actor, self._method, args, kwargs)
+
+    def options(self, **options):
+        return self
+
+    def send(self, *args, **kwargs):
+        return _actor_method_wrapper(self._actor, self._method, args, kwargs)
+
+    def tell(self, *args, **kwargs):
+        coro = _actor_method_wrapper(self._actor, self._method, args, kwargs)
+        asyncio.create_task(coro)
+        return asyncio.sleep(0)
+
+    def delay(self, *args, **kwargs):
+        return self._method.delay(*args, **kwargs)
+
+    def batch(self, *delays, send=True):
+        coro = _actor_method_wrapper(self._actor, self._method.batch, delays, dict())
+        if send:
+            return coro
+        else:
+            asyncio.create_task(coro)
+            return asyncio.sleep(0)
+
+
+cdef class ActorProxy:
+    def __init__(self, actor_ref, actor):
+        self.address = actor_ref.address
+        self.uid = actor_ref.uid
+        self._actor = actor
+        self._methods = {}
+
+    def __getattr__(self, item):
+        try:
+            return self._methods[item]
+        except KeyError:
+            r = getattr(self._actor, item)
+            method = self._methods[item] = ActorProxyMethod(self._actor, r)
+            return method
+
+
 cdef class _BaseActor:
     """
     Base Mars actor class, user methods implemented as methods

@@ -17,7 +17,7 @@ from typing import Tuple, Union, Type
 
 from ...utils import to_binary
 from ..api import Actor
-from ..core import ActorRef
+from ..core import ActorRef, ActorProxy
 from ..context import BaseActorContext
 from ..debug import debug_async_timeout, detect_cycle_send
 from ..errors import CannotCancelTask
@@ -41,6 +41,7 @@ from .message import (
     ProfilingContext,
 )
 from .router import Router
+from .pool import get_local_actor
 
 
 class MarsActorContext(BaseActorContext):
@@ -150,6 +151,9 @@ class MarsActorContext(BaseActorContext):
 
     async def actor_ref(self, *args, **kwargs):
         actor_ref = create_actor_ref(*args, **kwargs)
+        actor = get_local_actor(actor_ref)
+        if actor is not None:
+            return ActorProxy(actor_ref, actor)
         message = ActorRefMessage(
             new_message_id(), actor_ref, protocol=DEFAULT_PROTOCOL
         )

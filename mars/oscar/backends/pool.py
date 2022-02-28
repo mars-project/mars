@@ -19,6 +19,7 @@ import logging
 import multiprocessing
 import os
 import threading
+import weakref
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
@@ -98,6 +99,16 @@ def _register_message_handler(pool_type: Type["AbstractActorPool"]):
     return pool_type
 
 
+_pool_manager = weakref.WeakValueDictionary()
+
+
+def get_local_actor(actor_ref):
+    pool = _pool_manager.get(actor_ref.address)
+    if pool is not None:
+        return pool._actors.get(actor_ref.uid)
+    return None
+
+
 class AbstractActorPool(ABC):
     __slots__ = (
         "process_index",
@@ -150,6 +161,7 @@ class AbstractActorPool(ABC):
         )
         # load third party extensions.
         init_extension_entrypoints()
+        _pool_manager[external_address] = self
 
     @property
     def router(self):
