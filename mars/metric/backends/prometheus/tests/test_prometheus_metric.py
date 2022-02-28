@@ -13,8 +13,12 @@
 # limitations under the License.
 
 import pytest
-import requests
 import time
+
+try:
+    import requests
+except ImportError:
+    requests = None
 
 try:
     from prometheus_client import start_http_server
@@ -34,7 +38,7 @@ def start_prometheus_http_server():
 
 
 def verify_metric(name, value, delta=1e-6):
-    if start_http_server is None:
+    if start_http_server is None or requests is None:
         return
     resp = requests.get("http://127.0.0.1:{}".format(_PROMETHEUS_CLIENT_PORT)).text
     assert name in resp
