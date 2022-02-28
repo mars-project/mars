@@ -32,6 +32,7 @@ from ....core.operand import (
     ShuffleProxy,
     OperandStage,
 )
+from ....metric import Metrics
 from ....optimization.logical import OptimizationRecords
 from ....oscar.profiling import (
     ProfilingData,
@@ -109,6 +110,23 @@ class TaskProcessor:
         self._chunk_graph_iter = None
         self._raw_tile_context = preprocessor.tile_context.copy()
         self._lifecycle_processed_tileables = set()
+
+        # add metrics
+        self._chunk_graph_gen_time = Metrics.gauge(
+            "mars.chunk_graph_gen_time_secs",
+            "Time consuming in seconds to generate a chunk graph",
+            ("session_id", "task_id"),
+        )
+        self._subtask_graph_gen_time = Metrics.gauge(
+            "mars.subtask_graph_gen_time_secs",
+            "Time consuming in seconds to generate a subtask graph",
+            ("session_id", "task_id", "stage_id"),
+        )
+        self._task_execution_time = Metrics.gauge(
+            "mars.task_execution_time_secs",
+            "Time consuming in seconds to execute a task",
+            ("session_id", "task_id"),
+        )
 
     @property
     def task_id(self):
@@ -343,7 +361,16 @@ class TaskProcessor:
                 # tile finished
                 self._preprocessor.done = True
                 return
-
+        logger.info(
+            "Time consuming to gen a chunk graph is %ss with session id %s, task id %s",
+            timer.duration,
+            self._task.session_id,
+            self._task.task_id,
+        )
+        self._chunk_graph_gen_time.record(
+            timer.duration,
+            {"session_id": self._task.session_id, "task_id": self._task.task_id},
+        )
         stage_id = new_task_id()
         stage_profiling = ProfilingData[self._task.task_id, "general"].nest(
             f"stage_{stage_id}"
@@ -359,6 +386,21 @@ class TaskProcessor:
                 chunk_graph,
                 available_bands,
             )
+        logger.info(
+            "Time consuming to gen a subtask graph is %ss with session id %s, task id %s, stage id %s",
+            timer.duration,
+            self._task.session_id,
+            self._task.task_id,
+            stage_id,
+        )
+        self._subtask_graph_gen_time.record(
+            timer.duration,
+            {
+                "session_id": self._task.session_id,
+                "task_id": self._task.task_id,
+                "stage_id": stage_id,
+            },
+        )
         stage_profiling.set(f"gen_subtask_graph({len(subtask_graph)})", timer.duration)
 
         tileable_to_subtasks = await asyncio.to_thread(
@@ -398,6 +440,17 @@ class TaskProcessor:
             _, err, tb = self._err_infos[-1]
             self.result.error = err
             self.result.traceback = tb
+        cost_time_secs = self.result.end_time - self.result.start_time
+        logger.info(
+            "Time consuming to execute a task is %ss with session id %s, task id %s",
+            cost_time_secs,
+            self._task.session_id,
+            self._task.task_id,
+        )
+        self._task_execution_time.record(
+            cost_time_secs,
+            {"session_id": self._task.session_id, "task_id": self._task.task_id},
+        )
 
     def finish(self):
         self.done.set()

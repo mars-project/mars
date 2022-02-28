@@ -14,3 +14,6 @@ scheduling:
     enabled: false
     scheduler_backlog_timeout: 20
     worker_idle_timeout: 40
+global_config:
+  metric:
+    backend: ray

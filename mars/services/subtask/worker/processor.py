@@ -15,6 +15,7 @@
 import asyncio
 import logging
 import sys
+import time
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Type
 
@@ -28,6 +29,7 @@ from ....core.operand import (
     VirtualOperand,
     execute,
 )
+from ....metric import Metrics
 from ....optimization.physical import optimize
 from ....typing import BandType
 from ....utils import get_chunk_key_to_data_keys
@@ -98,6 +100,13 @@ class SubtaskProcessor:
         self._session_api = session_api
         self._storage_api = storage_api
         self._meta_api = meta_api
+
+        # add metrics
+        self._subtask_execution_time = Metrics.gauge(
+            "mars.subtask_execution_time_secs",
+            "Time consuming in seconds to execute a subtask",
+            ("session_id", "subtask_id"),
+        )
 
     @property
     def status(self):
@@ -489,6 +498,20 @@ class SubtaskProcessor:
                 await self._unpin_data(input_keys)
 
         await self.done()
+        if self.result.status == SubtaskStatus.succeeded:
+            cost_time_secs = (
+                self.result.execution_end_time - self.result.execution_start_time
+            )
+            logger.info(
+                "Time consuming to execute a subtask is %ss with session_id %s, subtask_id %s",
+                cost_time_secs,
+                self._session_id,
+                self.subtask.subtask_id,
+            )
+            self._subtask_execution_time.record(
+                cost_time_secs,
+                {"session_id": self._session_id, "subtask_id": self.subtask.subtask_id},
+            )
         report_progress.cancel()
         try:
             await report_progress

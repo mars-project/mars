@@ -203,6 +203,7 @@ class LocalCluster:
             n_process=self._n_supervisor_process,
             modules=supervisor_modules,
             subprocess_start_method=self._subprocess_start_method,
+            _global_config=self._config.get("global_config", {}),
         )
         self.supervisor_address = self._supervisor_pool.external_address
 
@@ -216,6 +217,7 @@ class LocalCluster:
                 band_to_slot,
                 modules=worker_modules,
                 subprocess_start_method=self._subprocess_start_method,
+                _global_config=self._config.get("global_config", {}),
             )
             self._worker_pools.append(worker_pool)
 

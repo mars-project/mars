@@ -36,3 +36,6 @@ scheduling:
     max_workers: 100
     scheduler_backlog_timeout: 60
     worker_idle_timeout: 120
+global_config:
+  metric:
+    backend: console

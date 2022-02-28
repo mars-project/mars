@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Any
 
 
 class ActorPoolConfig:
@@ -26,6 +26,8 @@ class ActorPoolConfig:
             self._conf["pools"] = dict()
         if "mapping" not in self._conf:
             self._conf["mapping"] = dict()
+        if "global_config" not in self._conf:
+            self._conf["global_config"] = dict()
 
     @property
     def n_pool(self):
@@ -95,3 +97,10 @@ class ActorPoolConfig:
 
     def as_dict(self):
         return self._conf
+
+    def add_global_config(self, global_config: Dict[str, Any]):
+        if global_config:
+            self._conf["global_config"].update(global_config)
+
+    def get_global_config(self):
+        return self._conf["global_config"]
