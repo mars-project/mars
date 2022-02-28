@@ -21,8 +21,10 @@ def test_record():
     c = Counter("test_counter")
     from .. import ray_metric
 
+    original_value = ray_metric.RAY_GAUGE_SET_AVAILABLE
     ray_metric.RAY_GAUGE_SET_AVAILABLE = False
     assert c.record(1) is None
+    ray_metric.RAY_GAUGE_SET_AVAILABLE = original_value
 
 
 @require_ray
