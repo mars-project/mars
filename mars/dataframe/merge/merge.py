@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+
 import numpy as np
 import pandas as pd
 
@@ -54,7 +55,7 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
             _index_shuffle_size=index_shuffle_size,
             _shuffle_on=shuffle_on,
             _output_types=[OutputType.dataframe],
-            **kw
+            **kw,
         )
 
     @property
@@ -119,96 +120,24 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
             cls.execute_reduce(ctx, op)
 
 
-class _DataFrameMergeBase(DataFrameOperand, DataFrameOperandMixin):
-    _how = StringField("how")
-    _on = AnyField("on")
-    _left_on = AnyField("left_on")
-    _right_on = AnyField("right_on")
-    _left_index = BoolField("left_index")
-    _right_index = BoolField("right_index")
-    _sort = BoolField("sort")
-    _suffixes = TupleField("suffixes")
-    _copy = BoolField("copy")
-    _indicator = BoolField("indicator")
-    _validate = AnyField("validate")
+class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = OperandDef.DATAFRAME_MERGE
 
-    def __init__(
-        self,
-        how=None,
-        on=None,
-        left_on=None,
-        right_on=None,
-        left_index=False,
-        right_index=False,
-        sort=False,
-        suffixes=("_x", "_y"),
-        copy=True,
-        indicator=False,
-        validate=None,
-        sparse=False,
-        output_types=None,
-        **kw
-    ):
-        super().__init__(
-            _how=how,
-            _on=on,
-            _left_on=left_on,
-            _right_on=right_on,
-            _left_index=left_index,
-            _right_index=right_index,
-            _sort=sort,
-            _suffixes=suffixes,
-            _copy=copy,
-            _indicator=indicator,
-            _validate=validate,
-            _output_types=output_types,
-            sparse=sparse,
-            **kw
-        )
+    how = StringField("how")
+    on = AnyField("on")
+    left_on = AnyField("left_on")
+    right_on = AnyField("right_on")
+    left_index = BoolField("left_index")
+    right_index = BoolField("right_index")
+    sort = BoolField("sort")
+    suffixes = TupleField("suffixes")
+    copy_ = BoolField("copy_")
+    indicator = BoolField("indicator")
+    validate = AnyField("validate")
+    strategy = StringField("strategy")
 
-    @property
-    def how(self):
-        return self._how
-
-    @property
-    def on(self):
-        return self._on
-
-    @property
-    def left_on(self):
-        return self._left_on
-
-    @property
-    def right_on(self):
-        return self._right_on
-
-    @property
-    def left_index(self):
-        return self._left_index
-
-    @property
-    def right_index(self):
-        return self._right_index
-
-    @property
-    def sort(self):
-        return self._sort
-
-    @property
-    def suffixes(self):
-        return self._suffixes
-
-    @property
-    def copy_(self):
-        return self._copy
-
-    @property
-    def indicator(self):
-        return self._indicator
-
-    @property
-    def validate(self):
-        return self._validate
+    def __init__(self, copy=None, **kwargs):
+        super().__init__(copy_=copy, **kwargs)
 
     def __call__(self, left, right):
         empty_left, empty_right = build_df(left), build_df(right)
@@ -246,15 +175,8 @@ class _DataFrameMergeBase(DataFrameOperand, DataFrameOperandMixin):
             columns_value=parse_index(merged.columns, store_data=True),
         )
 
-
-class DataFrameShuffleMerge(_DataFrameMergeBase):
-    _op_type_ = OperandDef.DATAFRAME_SHUFFLE_MERGE
-
-    def __init__(self, **kw):
-        super().__init__(**kw)
-
     @classmethod
-    def _gen_shuffle_chunks(cls, op, out_shape, shuffle_on, df):
+    def _gen_shuffle_chunks(cls, out_shape, shuffle_on, df):
         # gen map chunks
         map_chunks = []
         for chunk in df.chunks:
@@ -365,16 +287,8 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
         )
 
     @classmethod
-    def tile(cls, op):
+    def _tile_shuffle(cls, op, left, right):
         df = op.outputs[0]
-        left = build_concatenated_rows_frame(op.inputs[0])
-        right = build_concatenated_rows_frame(op.inputs[1])
-
-        if (len(left.chunks) == 1 and op.how in ["right", "inner"]) or (
-            len(right.chunks) == 1 and op.how in ["left", "inner"]
-        ):
-            return cls._tile_one_chunk(op, left, right)
-
         left_row_chunk_size = left.chunk_shape[0]
         right_row_chunk_size = right.chunk_shape[0]
         out_row_chunk_size = max(left_row_chunk_size, right_row_chunk_size)
@@ -386,8 +300,8 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
         right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
 
         # do shuffle
-        left_chunks = cls._gen_shuffle_chunks(op, out_chunk_shape, left_on, left)
-        right_chunks = cls._gen_shuffle_chunks(op, out_chunk_shape, right_on, right)
+        left_chunks = cls._gen_shuffle_chunks(out_chunk_shape, left_on, left)
+        right_chunks = cls._gen_shuffle_chunks(out_chunk_shape, right_on, right)
 
         out_chunks = []
         for left_chunk, right_chunk in zip(left_chunks, right_chunks):
@@ -416,6 +330,118 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
         )
 
     @classmethod
+    def _tile_broadcast(cls, op, left, right):
+        from .concat import DataFrameConcat
+
+        out_df = op.outputs[0]
+        out_chunks = []
+        if left.chunk_shape[0] < right.chunk_shape[0]:
+            # broadcast left
+            left_on = _prepare_shuffle_on(op.left_index, op.left_on, op.on)
+            left_chunks = cls._gen_shuffle_chunks(left.chunk_shape, left_on, left)
+            right_chunks = right.chunks
+            for right_chunk in right_chunks:
+                merged_chunks = []
+                # concat all merged results
+                for j, left_chunk in enumerate(left_chunks):
+                    merge_op = op.copy().reset_key()
+                    merged_chunks.append(
+                        merge_op.new_chunk(
+                            [left_chunk, right_chunk],
+                            index=(j, 0),
+                            shape=(np.nan, out_df.shape[1]),
+                            columns_value=out_df.columns_value,
+                        )
+                    )
+                concat_op = DataFrameConcat(output_types=[OutputType.dataframe])
+                out_chunks.append(
+                    concat_op.new_chunk(
+                        merged_chunks,
+                        shape=(np.nan, out_df.shape[1]),
+                        dtypes=merged_chunks[0].dtypes,
+                        index=right_chunk.index,
+                        index_value=infer_index_value(
+                            left_chunks[0].index_value, right_chunk.index_value
+                        ),
+                        columns_value=out_df.columns_value,
+                    )
+                )
+            nsplits = ((np.nan,) * len(right.chunks), (out_df.shape[1],))
+        else:
+            # broadcast right
+            right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
+            right_chunks = cls._gen_shuffle_chunks(right.chunk_shape, right_on, right)
+            left_chunks = left.chunks
+            for left_chunk in left_chunks:
+                merged_chunks = []
+                # concat all merged results
+                for j, right_chunk in enumerate(right_chunks):
+                    merge_op = op.copy().reset_key()
+                    merged_chunks.append(
+                        merge_op.new_chunk(
+                            [left_chunk, right_chunk],
+                            shape=(np.nan, out_df.shape[1]),
+                            index=(j, 0),
+                            columns_value=out_df.columns_value,
+                        )
+                    )
+                concat_op = DataFrameConcat(output_types=[OutputType.dataframe])
+                out_chunks.append(
+                    concat_op.new_chunk(
+                        merged_chunks,
+                        shape=(np.nan, out_df.shape[1]),
+                        dtypes=merged_chunks[0].dtypes,
+                        index=left_chunk.index,
+                        index_value=infer_index_value(
+                            left_chunk.index_value, right_chunks[0].index_value
+                        ),
+                        columns_value=out_df.columns_value,
+                    )
+                )
+            nsplits = ((np.nan,) * len(left.chunks), (out_df.shape[1],))
+
+        new_op = op.copy()
+        return new_op.new_dataframes(
+            op.inputs,
+            out_df.shape,
+            nsplits=tuple(tuple(ns) for ns in nsplits),
+            chunks=out_chunks,
+            dtypes=out_df.dtypes,
+            index_value=out_df.index_value,
+            columns_value=out_df.columns_value,
+        )
+
+    @classmethod
+    def tile(cls, op):
+        left = build_concatenated_rows_frame(op.inputs[0])
+        right = build_concatenated_rows_frame(op.inputs[1])
+        how = op.how
+        left_row_chunk_size = left.chunk_shape[0]
+        right_row_chunk_size = right.chunk_shape[0]
+        if left_row_chunk_size > right_row_chunk_size:
+            big_side = "left"
+            big_chunk_size = left_row_chunk_size
+            small_chunk_size = right_row_chunk_size
+        else:
+            big_side = "right"
+            big_chunk_size = right_row_chunk_size
+            small_chunk_size = left_row_chunk_size
+
+        if op.strategy != "shuffle" and (
+                (len(left.chunks) == 1
+            and op.how in ["right", "inner"])
+            or (len(right.chunks) == 1
+            and op.how in ["left", "inner"])
+        ):
+            return cls._tile_one_chunk(op, left, right)
+        elif op.strategy == "broadcast" or (
+            how in [big_side, "inner"] and np.log2(big_chunk_size) > small_chunk_size
+        ):
+            return cls._tile_broadcast(op, left, right)
+        else:
+            return cls._tile_shuffle(op, left, right)
+
+    @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         left, right = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
@@ -438,7 +464,7 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
                 right_index=op.right_index,
                 sort=op.sort,
                 suffixes=op.suffixes,
-                **kwargs
+                **kwargs,
             )
 
         # workaround for: https://github.com/pandas-dev/pandas/issues/27943
@@ -482,9 +508,12 @@ def merge(
     strategy=None,
     validate=None,
 ):
-    if strategy is not None and strategy != "shuffle":
-        raise NotImplementedError("Only shuffle merge is supported")
-    op = DataFrameShuffleMerge(
+    if strategy is not None and strategy not in [
+        "shuffle",
+        "broadcast",
+    ]:  # pragma: no cover
+        raise NotImplementedError(f"{strategy} merge is not supported")
+    op = DataFrameMerge(
         how=how,
         on=on,
         left_on=left_on,
@@ -496,6 +525,7 @@ def merge(
         copy=copy,
         indicator=indicator,
         validate=validate,
+        strategy=strategy,
         output_types=[OutputType.dataframe],
     )
     return op(df, right)

@@ -15,10 +15,11 @@
 import numpy as np
 import pandas as pd
 
+from ....core import tile
 from ...datasource.dataframe import from_pandas
 from ...datasource.series import from_pandas as series_from_pandas
 from ...utils import sort_dataframe_inplace
-from .. import concat
+from .. import concat, DataFrameConcat
 
 
 def test_merge(setup):
@@ -341,7 +342,7 @@ def test_merge_one_chunk(setup):
     )
 
     # left have one chunk and how="left", then one chunk tile
-    # will results in wrong results, see #GH 2107
+    # will result in wrong results, see #GH 2107
     mdf1 = from_pandas(df1, chunk_size=2)
     mdf2 = from_pandas(df2)
 
@@ -352,6 +353,62 @@ def test_merge_one_chunk(setup):
     pd.testing.assert_frame_equal(
         expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
         result.sort_values(by=result.columns[1]).reset_index(drop=True),
+    )
+
+
+def test_broadcast_merge(setup):
+    ns = np.random.RandomState(0)
+    # small dataframe
+    raw1 = pd.DataFrame(
+        {
+            "key": ns.randint(0, 10, size=10),
+            "value": np.arange(10),
+        },
+        index=[f"a{i}" for i in range(10)],
+    )
+    # big dataframe
+    raw2 = pd.DataFrame(
+        {
+            "key": ns.randint(0, 100, size=100),
+            "value": np.arange(100, 200),
+        },
+        index=[f"a{i}" for i in range(100)],
+    )
+
+    # test broadcast right
+    df1 = from_pandas(raw1, chunk_size=5)
+    df2 = from_pandas(raw2, chunk_size=10)
+    r = df2.merge(df1, on="key")
+    # make sure it selects broadcast merge, for broadcast, there must be
+    # merge chunks
+    tiled = tile(r)
+    assert any(isinstance(c.op, DataFrameConcat) for c in tiled.chunks)
+
+    result = r.execute().fetch()
+    expected = raw2.merge(raw1, on="key")
+
+    expected.set_index("key", inplace=True)
+    result.set_index("key", inplace=True)
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected, 0), sort_dataframe_inplace(result, 0)
+    )
+
+    # test broadcast left
+    df1 = from_pandas(raw1, chunk_size=5)
+    df2 = from_pandas(raw2, chunk_size=10)
+    r = df1.merge(df2, on="key")
+    # make sure it selects broadcast merge, for broadcast, there must be
+    # merge chunks
+    tiled = tile(r)
+    assert any(isinstance(c.op, DataFrameConcat) for c in tiled.chunks)
+
+    result = r.execute().fetch()
+    expected = raw1.merge(raw2, on="key")
+
+    expected.set_index("key", inplace=True)
+    result.set_index("key", inplace=True)
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected, 0), sort_dataframe_inplace(result, 0)
     )
 
 
