@@ -15,7 +15,6 @@
 import asyncio
 import copy
 import os
-import random
 import threading
 import tempfile
 import time
@@ -748,38 +747,3 @@ async def test_task_speculation_execution(speculative_cluster):
         .fetch()
         == pd.Series(list(range(series_size))).apply(lambda x: x * x).sum()
     )
-
-    def time_consuming2(x):
-        index = x.index[0]
-        print(f"dataframe group_by_apply subtask index {index}")
-        if index >= series_size - 1 and random.random() > 0.7:
-            print(f"dataframe group_by_apply subtask {index} starts to hang.")
-            time.sleep(100000)
-        return x
-
-    df = md.DataFrame(
-        {
-            f"col{i}": md.Series(list(range(series_size)), chunk_size=1).apply(
-                partial(time_consuming, time.time())
-            )
-            for i in range(1)
-        }
-    )
-    df = (
-        df.rechunk(chunk_size=2)
-        .groupby(["col0"])
-        .apply(time_consuming2)
-        .sort_index()
-        .execute()
-    )
-    pd_df = (
-        pd.DataFrame(
-            {
-                f"col{i}": pd.Series(list(range(series_size))).apply(lambda x: x * x)
-                for i in range(1)
-            }
-        )
-        .groupby(["col0"])
-        .apply(lambda x: x)
-    )
-    pd.testing.assert_frame_equal(df.to_pandas(), pd_df)

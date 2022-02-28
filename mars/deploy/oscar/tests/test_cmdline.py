@@ -157,6 +157,7 @@ _rerun_errors = (
 )
 
 
+@pytest.mark.timeout(timeout=500)
 @pytest.mark.parametrize(
     "supervisor_args,worker_args,use_web_addr",
     list(start_params.values()),
