@@ -21,6 +21,7 @@ from typing import Union, Dict, List, Optional, AsyncGenerator
 
 from ... import oscar as mo
 from ...core.entrypoints import init_extension_entrypoints
+from ...metric import init_metrics
 from ...oscar.backends.ray.driver import RayActorDriver
 from ...oscar.backends.ray.utils import (
     process_placement_to_address,
@@ -406,9 +407,6 @@ class RayCluster:
 
     async def start(self):
         # init metrics to guarantee metrics use in driver
-
-        from mars.metric import init_metrics
-
         init_metrics(self._config.get("global_config", {}))
         address_to_resources = dict()
         supervisor_standalone = (
