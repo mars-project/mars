@@ -154,8 +154,7 @@ def test_ones():
     assert len(list(tensor)) == 2
 
     tensor2 = ones((2, 3, 4), chunk_size=1)
-    # tensor's op key must be equal to tensor2
-    assert tensor.op.key == tensor2.op.key
+    assert tensor.op.key != tensor2.op.key
     assert tensor.key != tensor2.key
 
     tensor3 = ones((2, 3, 3))
@@ -183,7 +182,7 @@ def test_zeros():
 
     tensor2 = zeros((2, 3, 4), chunk_size=1)
     # tensor's op key must be equal to tensor2
-    assert tensor.op.key == tensor2.op.key
+    assert tensor.op.key != tensor2.op.key
     assert tensor.key != tensor2.key
 
     tensor3 = zeros((2, 3, 3))
