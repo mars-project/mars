@@ -32,6 +32,8 @@ def test_init_metrics():
     assert api._metric_backend == "console"
     init_metrics({"metric": {"backend": "prometheus"}})
     assert api._metric_backend == "prometheus"
+    init_metrics({"metric": {"backend": "ray"}})
+    assert api._metric_backend == "ray"
     with pytest.raises(NotImplementedError):
         init_metrics({"metric": {"backend": "not_exist"}})
 
