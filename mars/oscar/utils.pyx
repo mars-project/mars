@@ -17,6 +17,7 @@ from typing import AsyncGenerator
 import numpy as np
 
 from .._utils cimport to_str
+from .core cimport ActorRef, ActorProxy
 
 
 cpdef bytes new_actor_id():
@@ -31,7 +32,6 @@ def create_actor_ref(*args, **kwargs):
     -------
     ActorRef
     """
-    from .core import ActorRef
 
     cdef str address
     cdef object uid
@@ -47,11 +47,13 @@ def create_actor_ref(*args, **kwargs):
             raise ValueError('address has been specified')
         address = to_str(args[0])
         uid = args[1]
-    elif len(args) == 1 and isinstance(args[0], ActorRef):
-        uid = args[0].uid
-        address = to_str(address or args[0].address)
     elif len(args) == 1:
-        uid = args[0]
+        tp0 = type(args[0])
+        if tp0 is ActorRef or tp0 is ActorProxy:
+            uid = args[0].uid
+            address = to_str(address or args[0].address)
+        else:
+            uid = args[0]
 
     if uid is None:
         raise ValueError('Actor uid should be provided')
