@@ -22,6 +22,8 @@ def test_record():
     from .. import ray_metric
 
     original_value = ray_metric.RAY_GAUGE_SET_AVAILABLE
+    ray_metric.RAY_GAUGE_SET_AVAILABLE = True
+    assert c.record(1) is None
     ray_metric.RAY_GAUGE_SET_AVAILABLE = False
     assert c.record(1) is None
     ray_metric.RAY_GAUGE_SET_AVAILABLE = original_value
