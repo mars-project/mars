@@ -206,6 +206,10 @@ def test_new_cluster_in_ray(stop_ray):
 
 @require_ray
 def test_new_ray_session(stop_ray):
+    new_ray_session_test()
+
+
+def new_ray_session_test():
     session = new_ray_session(session_id="abc", worker_num=2)
     mt.random.RandomState(0).rand(100, 5).sum().execute()
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
@@ -213,6 +217,19 @@ def test_new_ray_session(stop_ray):
     session = new_ray_session(session_id="abcd", worker_num=2, default=True)
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
+
+
+@require_ray
+def test_ray_client(ray_large_cluster):
+    import subprocess
+    try:
+        subprocess.check_call("ray start --head --redis-password=123456 --ray-client-server-port 11111")
+        subprocess.check_call("ray start --address='127.0.0.1:6379' --redis-password=123456 --num-cpus=16")
+        subprocess.check_call("ray start --address='127.0.0.1:6379' --redis-password=123456 --num-cpus=16")
+        ray.init(address='ray://127.0.0.1:11111')
+        new_ray_session_test()
+    finally:
+        subprocess.check_call("ray stop --force")
 
 
 @require_ray

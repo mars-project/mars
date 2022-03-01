@@ -23,7 +23,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional
 
-from .communication import ChannelID, RayServer, RayChannelException
+from .communication import ChannelID, RayServer, RayChannelException, _ArgWrapper
 from .utils import (
     process_address_to_placement,
     process_placement_to_address,
@@ -41,6 +41,7 @@ from ..pool import (
 )
 from ..router import Router
 from ... import ServerClosed
+from ....serialization import serialize, deserialize
 from ....serialization.ray import register_ray_serializers
 from ....utils import lazy_import
 
@@ -302,3 +303,11 @@ class RaySubPool(RayPoolBase):
 
     def mark_service_ready(self):
         self._state = RayPoolState.SERVICE_READY
+
+
+if ray:
+    # When using ray client to connect to a ray cluster, ray server will act as mars driver. All mars call from mars
+    # client will go to ray server first, then the ray server will ray call to other actors. So the ray server need to
+    # register ray serializers.
+    # TODO Need a way to check whether current process is a ray server.
+    register_ray_serializers()

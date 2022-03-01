@@ -40,9 +40,19 @@ ChannelID = namedtuple(
 )
 
 
+def _argwrapper_unpickler(serialized_message):
+    return _ArgWrapper(deserialize(*serialized_message))
+
+
 @dataclass
 class _ArgWrapper:
     message: Any = None
+
+    def __init__(self, message):
+        self.message = message
+
+    def __reduce__(self):
+        return _argwrapper_unpickler, (serialize(self.message))
 
 
 if ray:
