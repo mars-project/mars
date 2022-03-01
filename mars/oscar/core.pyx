@@ -16,6 +16,7 @@ import asyncio
 import inspect
 import logging
 import sys
+import weakref
 cimport cython
 from typing import AsyncGenerator
 
@@ -178,6 +179,23 @@ cdef class ActorRefMethod:
         return asyncio.create_task(delay_fun())
 
 
+cdef object _local_pool_map = weakref.WeakValueDictionary()
+
+
+cpdef get_local_actor(address, uid):
+    pool = _local_pool_map.get(address)
+    if pool is not None:
+        actor = pool._actors.get(uid)
+        if actor is not None:
+            return ActorProxy(actor)
+    return None
+
+
+cdef class ActorPool:
+    def __init__(self, address):
+        _local_pool_map[address] = self
+
+
 async def _actor_method_wrapper(_BaseActor actor, method, args, kwargs):
     result = method(*args, **kwargs)
     if asyncio.iscoroutine(result):
@@ -189,7 +207,7 @@ cdef class ActorProxyMethod:
     cdef _BaseActor _actor
     cdef object _method
 
-    def __init__(self, actor, method):
+    def __init__(self, _BaseActor actor, method):
         self._actor = actor
         self._method = method
 
@@ -219,10 +237,14 @@ cdef class ActorProxyMethod:
             return asyncio.sleep(0)
 
 
+def __pyx_unpickle_ActorProxy(address, uid):
+    return get_local_actor(address, uid) or ActorRef(address, uid)
+
+
 cdef class ActorProxy:
-    def __init__(self, actor_ref, actor):
-        self.address = actor_ref.address
-        self.uid = actor_ref.uid
+    def __init__(self, _BaseActor actor):
+        self.address = actor._address
+        self.uid = actor._uid
         self._actor = actor
         self._methods = {}
 
@@ -233,6 +255,9 @@ cdef class ActorProxy:
             r = getattr(self._actor, item)
             method = self._methods[item] = ActorProxyMethod(self._actor, r)
             return method
+
+    def __reduce__(self):
+        return __pyx_unpickle_ActorProxy, (self.address, self.uid)
 
 
 cdef class _BaseActor:
