@@ -19,7 +19,6 @@ import logging
 import multiprocessing
 import os
 import threading
-import weakref
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
