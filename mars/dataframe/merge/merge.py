@@ -358,7 +358,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                     concat_op.new_chunk(
                         merged_chunks,
                         shape=(np.nan, out_df.shape[1]),
-                        dtypes=merged_chunks[0].dtypes,
+                        dtypes=out_df.dtypes,
                         index=right_chunk.index,
                         index_value=infer_index_value(
                             left_chunks[0].index_value, right_chunk.index_value
@@ -390,7 +390,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                     concat_op.new_chunk(
                         merged_chunks,
                         shape=(np.nan, out_df.shape[1]),
-                        dtypes=merged_chunks[0].dtypes,
+                        dtypes=out_df.dtypes,
                         index=left_chunk.index,
                         index_value=infer_index_value(
                             left_chunk.index_value, right_chunks[0].index_value
