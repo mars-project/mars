@@ -60,7 +60,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
                     self.func.__class__.__module__,
                     self.func.__class__.__name__,
                 ]
-        else:
+        else:  # pragma: no cover
             return super()._get_logic_key_token_values()
 
     @classmethod

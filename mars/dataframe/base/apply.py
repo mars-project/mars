@@ -100,7 +100,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
                     self.func.__class__.__module__,
                     self.func.__class__.__name__,
                 ]
-        else:
+        else:  # pragma: no cover
             return token_values
 
     @property

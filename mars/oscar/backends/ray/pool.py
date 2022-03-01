@@ -102,7 +102,7 @@ class RayMainActorPool(MainActorPoolBase):
             f"in external_address {external_address}"
         )
         pg = get_placement_group(pg_name) if pg_name else None
-        if not pg:
+        if not pg:  # pragma: no cover
             bundle_index = -1
         # Hold actor_handle to avoid actor being freed.
         num_cpus = config["kwargs"].get("sub_pool_cpus", 0)

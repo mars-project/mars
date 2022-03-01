@@ -195,7 +195,7 @@ class AssignerActor(mo.Actor):
                     elif size == max_size:
                         bands.append(band)
             band = bands[np.random.choice(len(bands))]
-            if exclude_bands_force and band in exclude_bands:
+            if exclude_bands_force and band in exclude_bands:  # pragma: no cover
                 raise NoAvailableBand(
                     f"No bands available for subtask {subtask.subtask_id} after "
                     f"excluded {exclude_bands}"

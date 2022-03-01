@@ -135,9 +135,6 @@ class SubtaskResult(Serializable):
 
 
 class SubtaskGraph(DAG, Iterable[Subtask]):
-    def __init__(self):
-        super().__init__()
-
     """
     Subtask graph.
     """
@@ -150,6 +147,3 @@ class SubtaskGraph(DAG, Iterable[Subtask]):
             if isinstance(node.op, (Fetch, FetchShuffle)):
                 continue
             yield node.op
-
-    def add_node(self, subtask: Subtask):
-        super().add_node(subtask)
