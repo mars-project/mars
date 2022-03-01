@@ -164,12 +164,16 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
                 if i < j:
                     chunk_shape = (in_tensor.nsplits[0][i], in_tensor.nsplits[1][j])
                     p_chunk = TensorZeros(
-                        sparse=op.sparse, order=out_tensor.order.value
+                        sparse=op.sparse,
+                        order=out_tensor.order.value,
+                        shape=chunk_shape,
                     ).new_chunk(
                         None, shape=chunk_shape, index=(i, j), order=out_tensor.order
                     )
                     lower_chunk = TensorZeros(
-                        sparse=op.sparse, order=out_tensor.order.value
+                        sparse=op.sparse,
+                        order=out_tensor.order.value,
+                        shape=chunk_shape,
                     ).new_chunk(
                         None, shape=chunk_shape, index=(i, j), order=out_tensor.order
                     )
@@ -298,12 +302,16 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
                 else:
                     chunk_shape = (in_tensor.nsplits[0][i], in_tensor.nsplits[1][j])
                     p_chunk = TensorZeros(
-                        sparse=op.sparse, order=out_tensor.order.value
+                        sparse=op.sparse,
+                        order=out_tensor.order.value,
+                        shape=chunk_shape,
                     ).new_chunk(
                         None, shape=chunk_shape, index=(i, j), order=out_tensor.order
                     )
                     upper_chunk = TensorZeros(
-                        sparse=op.sparse, order=out_tensor.order.value
+                        sparse=op.sparse,
+                        order=out_tensor.order.value,
+                        shape=chunk_shape,
                     ).new_chunk(
                         None, shape=chunk_shape, index=(i, j), order=out_tensor.order
                     )
