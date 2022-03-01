@@ -40,9 +40,9 @@ class RayMetricMixin(AbstractMetric):
             )
 
     def _record(self, value=1, tags: Optional[Dict[str, str]] = None):
-        if RAY_GAUGE_SET_AVAILABLE:  # pragma: no branch
+        if RAY_GAUGE_SET_AVAILABLE:
             self._metric.set(value, tags)
-        elif ray_metrics is not None:
+        elif ray_metrics is not None:  # pragma: no branch
             self._metric.record(value, tags)
 
 
