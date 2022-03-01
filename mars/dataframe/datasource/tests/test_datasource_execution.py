@@ -361,6 +361,11 @@ def test_from_tensor_execution(setup):
     )
     pd.testing.assert_frame_equal(result, pdf_expected)
 
+    df12 = dataframe_from_1d_tileables({"a": [md.Series([1, 2, 3]).sum() + 1]})
+    result = df12.execute().fetch()
+    pdf_expected = pd.DataFrame({"a": [pd.Series([1, 2, 3]).sum() + 1]})
+    pd.testing.assert_frame_equal(result, pdf_expected)
+
 
 def test_from_records_execution(setup):
     dtype = np.dtype([("x", "int"), ("y", "double"), ("z", "<U16")])
