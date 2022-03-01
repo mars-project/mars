@@ -163,6 +163,7 @@ class AbstractSession(ABC):
     def __init__(self, address: str, session_id: str):
         self._address = address
         self._session_id = session_id
+        self._closed = False
 
     @property
     def address(self):
@@ -227,6 +228,7 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         Destroy a session.
         """
         self.reset_default()
+        self._closed = True
 
     @abstractmethod
     async def execute(self, *tileables, **kwargs) -> ExecutionInfo:
@@ -916,6 +918,8 @@ class _IsolatedSession(AbstractAsyncSession):
                 tileable.params = fetch_tileable.params
 
     async def execute(self, *tileables, **kwargs) -> ExecutionInfo:
+        if self._closed:
+            raise RuntimeError("Session closed already")
         fuse_enabled: bool = kwargs.pop("fuse_enabled", True)
         task_name: str = kwargs.pop("task_name", None)
         extra_config: dict = kwargs.pop("extra_config", None)
