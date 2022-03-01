@@ -119,14 +119,16 @@ def q01(lineitem: md.DataFrame):
         * (1 + lineitem_filtered.L_TAX)
     )
     gb = lineitem_filtered.groupby(["L_RETURNFLAG", "L_LINESTATUS"], as_index=False)[
-        "L_QUANTITY",
-        "L_EXTENDEDPRICE",
-        "DISC_PRICE",
-        "CHARGE",
-        "AVG_QTY",
-        "AVG_PRICE",
-        "L_DISCOUNT",
-        "L_ORDERKEY",
+        [
+            "L_QUANTITY",
+            "L_EXTENDEDPRICE",
+            "DISC_PRICE",
+            "CHARGE",
+            "AVG_QTY",
+            "AVG_PRICE",
+            "L_DISCOUNT",
+            "L_ORDERKEY",
+        ]
     ]
     total = gb.agg(
         {
