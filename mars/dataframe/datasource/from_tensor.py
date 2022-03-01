@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, recursive_tile
+from ...core import ENTITY_TYPE, OutputType, recursive_tile
 from ...core.context import Context
 from ...serialization.serializables import KeyField, AnyField
 from ...tensor.core import Tensor
@@ -44,6 +44,10 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
     input = AnyField("input")
     index = AnyField("index")
     columns = AnyField("columns")
+
+    def __init__(self, *args, **kwargs):
+        kwargs["_output_types"] = [OutputType.dataframe]
+        super().__init__(*args, **kwargs)
 
     def _set_inputs(self, inputs: List[EntityType]):
         super()._set_inputs(inputs)
@@ -616,7 +620,7 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op: "SeriesFromTensor"):
-        if op.index is None:
+        if op.index is None or not hasattr(op.index, "key"):
             # check all inputs to make sure no unknown chunk shape
             if has_unknown_shape(*op.inputs):
                 yield

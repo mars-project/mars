@@ -223,7 +223,11 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 else:
                     index = (c.index[0], cum_index)
                     shape = (c.shape[0], 1)
-                    to_frame_op = DataFrameFromTensor(input_=c)
+                    to_frame_op = DataFrameFromTensor(
+                        input=c,
+                        index=None,
+                        columns=None,
+                    )
                     if c.name:
                         dtypes = pd.Series([c.dtype], index=[c.name])
                     else:
