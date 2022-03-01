@@ -106,12 +106,27 @@ class SubtaskResult(Serializable):
     bands: List[BandType] = ListField("band", FieldTypes.tuple)
     error = AnyField("error", default=None)
     traceback = AnyField("traceback", default=None)
+    # The following is the execution information of the sub task
+    execution_start_time: float = Float64Field("execution_start_time")
+    execution_end_time: float = Float64Field("execution_end_time")
 
     def merge_bands(self, result: Optional["SubtaskResult"]):
         if result and result.bands:
             bands = self.bands or []
             self.bands = sorted(set(bands + result.bands))
+            self._update_result(result)
         return self
+
+    def _update_result(self, result: Optional["SubtaskResult"]):
+        """Update result to save the latest successful execution result."""
+        if (
+            self.status != SubtaskStatus.succeeded
+            and result.status == SubtaskStatus.succeeded
+        ):
+            self.status = SubtaskStatus.succeeded
+            self.progress = result.progress
+            self.execution_start_time = result.execution_start_time
+            self.execution_end_time = result.execution_end_time
 
 
 class SubtaskGraph(DAG, Iterable[Subtask]):

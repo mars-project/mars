@@ -15,6 +15,7 @@
 import asyncio
 import logging
 import sys
+import time
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Type
 
@@ -84,6 +85,7 @@ class SubtaskProcessor:
             status=SubtaskStatus.pending,
             bands=[self._band],
             progress=0.0,
+            execution_start_time=time.time(),
         )
         self.is_done = asyncio.Event()
 
@@ -446,6 +448,8 @@ class SubtaskProcessor:
     async def done(self):
         if self.result.status == SubtaskStatus.running:
             self.result.status = SubtaskStatus.succeeded
+            # Only update end time when subtask succeeded
+            self.result.execution_end_time = time.time()
         self.result.progress = 1.0
         self.is_done.set()
 
