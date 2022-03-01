@@ -269,19 +269,21 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
 
     def _infer_df_func_returns(self, df, dtypes, dtype=None, name=None, index=None):
         if isinstance(self._func, np.ufunc):
-            output_type, new_dtypes, index_value, new_elementwise = (
-                OutputType.dataframe,
-                None,
-                "inherit",
-                True,
-            )
+            output_type = OutputType.dataframe
+            new_dtypes = None
+            index_value = "inherit"
+            new_elementwise = True
         else:
-            output_type, new_dtypes, index_value, new_elementwise = (
-                None,
-                None,
-                None,
-                False,
-            )
+            if self.output_types is not None and (
+                dtypes is not None or dtype is not None
+            ):
+                ret_dtypes = dtypes if dtypes is not None else (dtype, name)
+                ret_index_value = parse_index(index) if index is not None else None
+                self._elementwise = False
+                return ret_dtypes, ret_index_value
+
+            output_type = new_dtypes = index_value = None
+            new_elementwise = False
 
         try:
             empty_df = build_df(df, size=2)
@@ -374,14 +376,19 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         # for backward compatibility
         dtype = dtype if dtype is not None else dtypes
         if self._convert_dtype:
-            test_series = build_series(series, size=2, name=series.name)
-            try:
-                with np.errstate(all="ignore"), quiet_stdio():
-                    infer_series = test_series.apply(
-                        self._func, args=self.args, **self.kwds
-                    )
-            except:  # noqa: E722  # nosec  # pylint: disable=bare-except
-                infer_series = None
+            if self.output_types is not None and (
+                dtypes is not None or dtype is not None
+            ):
+                infer_series = test_series = None
+            else:
+                test_series = build_series(series, size=2, name=series.name)
+                try:
+                    with np.errstate(all="ignore"), quiet_stdio():
+                        infer_series = test_series.apply(
+                            self._func, args=self.args, **self.kwds
+                        )
+                except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                    infer_series = None
 
             output_type = self._output_types[0]
 

@@ -1566,7 +1566,12 @@ def wrap_exception(
         return message
 
     return type(
-        name,
+        bases[-1].__name__,
         bases,
-        {"__init__": __init__, "__getattr__": __getattr__, "__str__": __str__},
+        {
+            "__init__": __init__,
+            "__getattr__": __getattr__,
+            "__str__": __str__,
+            "__basename__": name,
+        },
     )().with_traceback(traceback)

@@ -14,7 +14,8 @@
 
 import pytest
 
-from ..api import init_metrics, Metrics, _metric_backend
+from .. import api
+from ..api import init_metrics, Metrics
 
 
 @pytest.fixture
@@ -24,11 +25,15 @@ def init():
 
 def test_init_metrics():
     init_metrics()
-    assert _metric_backend == "console"
+    assert api._metric_backend == "console"
     init_metrics({"metric": {}})
-    assert _metric_backend == "console"
+    assert api._metric_backend == "console"
     init_metrics({"metric": {"backend": "console"}})
-    assert _metric_backend == "console"
+    assert api._metric_backend == "console"
+    init_metrics({"metric": {"backend": "prometheus"}})
+    assert api._metric_backend == "prometheus"
+    init_metrics({"metric": {"backend": "ray"}})
+    assert api._metric_backend == "ray"
     with pytest.raises(NotImplementedError):
         init_metrics({"metric": {"backend": "not_exist"}})
 
