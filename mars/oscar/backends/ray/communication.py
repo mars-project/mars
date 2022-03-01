@@ -207,7 +207,7 @@ class RayClientChannel(RayChannelBase):
             raise ChannelClosed("Channel already closed, cannot send message")
         # Put ray object ref to todo queue
         task = self._peer_actor.__on_ray_recv__.remote(
-            self.channel_id, serialize(message)
+            self.channel_id, _ArgWrapper(message)
         )
         self._submit_task(message, task)
         await asyncio.sleep(0)
