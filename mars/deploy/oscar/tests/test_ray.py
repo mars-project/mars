@@ -227,41 +227,13 @@ def new_ray_session_test():
     print(df2.head(5).execute())
 
 
-@pytest.mark.timeout(timeout=300)
 @require_ray
-def test_ray_client():
-    import subprocess
+def test_ray_client(stop_ray):
+    from ray.util.client.ray_client_helpers import ray_start_client_server
+    from ray._private.client_mode_hook import enable_client_mode
 
-    try:
-        subprocess.check_call(
-            [
-                "ray",
-                "start",
-                "--head",
-                "--address=127.0.0.1",
-                "--redis-password=123456",
-                "--ray-client-server-port",
-                "11111",
-            ]
-        )
-        print("ray head started")
-        for _ in range(2):
-            subprocess.check_call(
-                [
-                    "ray",
-                    "start",
-                    "--address=127.0.0.1:6379",
-                    "--redis-password=123456",
-                    "--num-cpus=16",
-                ]
-            )
-
-        print("ray nodes started")
-        ray.init(address="ray://127.0.0.1:11111")
-        print("connected to ray server")
+    with ray_start_client_server(), enable_client_mode():
         new_ray_session_test()
-    finally:
-        subprocess.check_call(["ray", "stop", "--force"])
 
 
 @require_ray
