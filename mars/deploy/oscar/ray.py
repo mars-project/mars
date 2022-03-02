@@ -202,7 +202,7 @@ class ClusterStateActor(mo.StatelessActor):
             worker_address,
             self._band_to_slot,
             modules=self._worker_modules,
-            _global_config=self._config.get("global_config", {}),
+            metrics=self._config.get("metrics", {}),
         )
         logger.info(
             "Create worker node %s succeeds in %.4f seconds.",
@@ -407,7 +407,8 @@ class RayCluster:
 
     async def start(self):
         # init metrics to guarantee metrics use in driver
-        init_metrics(self._config.get("global_config", {}))
+        metric_configs = self._config.get("metrics", {})
+        init_metrics(metric_configs.get("backend"), port=metric_configs.get("port"))
         address_to_resources = dict()
         supervisor_standalone = (
             self._config.get("cluster", {})
@@ -481,7 +482,7 @@ class RayCluster:
             main_pool_cpus=0,
             sub_pool_cpus=0,
             modules=supervisor_modules,
-            _global_config=self._config.get("global_config", {}),
+            metrics=self._config.get("metrics", {}),
         )
         logger.info("Create supervisor on node %s succeeds.", self.supervisor_address)
         self._cluster_backend = await RayClusterBackend.create(

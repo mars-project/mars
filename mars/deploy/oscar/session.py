@@ -34,7 +34,7 @@ from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, 
 import numpy as np
 
 from ... import oscar as mo
-from ..._utils import Timer
+from ...utils import Timer
 from ...config import options
 from ...core import ChunkType, TileableType, TileableGraph, enter_mode
 from ...core.entrypoints import init_extension_entrypoints

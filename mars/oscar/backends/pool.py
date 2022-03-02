@@ -152,7 +152,8 @@ class AbstractActorPool(ABC):
         # load third party extensions.
         init_extension_entrypoints()
         # init metrics
-        init_metrics(self._config.get_global_config())
+        metric_configs = self._config.get_metric_configs()
+        init_metrics(metric_configs.get("backend"), port=metric_configs.get("port"))
 
     @property
     def router(self):
@@ -1257,7 +1258,7 @@ async def create_actor_pool(
         address, n_process=n_process, ports=ports
     )
     actor_pool_config = ActorPoolConfig()
-    actor_pool_config.add_global_config(kwargs.get("_global_config", {}))
+    actor_pool_config.add_metric_configs(kwargs.get("metrics", {}))
     # add main config
     process_index_gen = pool_cls.process_index_gen(address)
     main_process_index = next(process_index_gen)

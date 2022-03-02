@@ -50,7 +50,7 @@ if ray:
     # with ray backend.
     from ....metric import init_metrics
 
-    init_metrics({"metric": {"backend": "ray"}})
+    init_metrics("ray")
     _ray_serialize = ray.serialization.SerializationContext.serialize
     _ray_deserialize_object = ray.serialization.SerializationContext._deserialize_object
 
