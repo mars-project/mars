@@ -154,19 +154,18 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(out, TENSOR_TYPE):
             pass
         elif ret.ndim == 1:
-            ret = series_from_tensor(ret)
+            index = None
             if isinstance(lhs, DATAFRAME_TYPE):
-                # lhs DataFrame
-                ret._index_value = lhs.index_value
+                index = lhs.index
             elif isinstance(rhs, DATAFRAME_TYPE):
-                # lhs Series, rhs DataFrame
-                ret._index_value = rhs.columns_value
+                index = rhs.dtypes.index
+            ret = series_from_tensor(ret, index=index)
         elif ret.ndim == 2:
-            ret = dataframe_from_tensor(ret)
-            ret._index_value = lhs.index_value
+            index = lhs.index
+            columns = None
             if isinstance(rhs, DATAFRAME_TYPE):
-                ret._columns_value = rhs.columns_value
-                ret._dtypes = rhs.dtypes
+                columns = rhs.dtypes.index
+            ret = dataframe_from_tensor(ret, index=index, columns=columns)
 
         tiled = yield from recursive_tile(ret)
         return [tiled]

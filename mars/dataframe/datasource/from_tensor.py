@@ -15,20 +15,19 @@
 # limitations under the License.
 
 from collections import OrderedDict
+from typing import Any, Dict, List, Union
 
 import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, OutputType, recursive_tile
-from ...serialization.serializables import (
-    KeyField,
-    SeriesField,
-    DataTypeField,
-    AnyField,
-)
+from ...core.context import Context
+from ...serialization.serializables import KeyField, AnyField
+from ...tensor.core import Tensor
 from ...tensor.datasource import tensor as astensor
 from ...tensor.utils import unify_chunks
+from ...typing import EntityType, TileableType
 from ...utils import has_unknown_shape
 from ..core import INDEX_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -42,70 +41,55 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
     _op_type_ = OperandDef.DATAFRAME_FROM_TENSOR
 
-    _input = AnyField("input")
-    _index = KeyField("index")
-    _dtypes = SeriesField("dtypes")
+    input = AnyField("input")
+    index = AnyField("index")
+    columns = AnyField("columns")
 
-    def __init__(
-        self, input_=None, index=None, dtypes=None, gpu=None, sparse=None, **kw
-    ):
-        super().__init__(
-            _input=input_,
-            _index=index,
-            _dtypes=dtypes,
-            gpu=gpu,
-            sparse=sparse,
-            _output_types=[OutputType.dataframe],
-            **kw,
-        )
+    def __init__(self, *args, **kwargs):
+        kwargs["_output_types"] = [OutputType.dataframe]
+        super().__init__(*args, **kwargs)
 
-    @property
-    def dtypes(self):
-        return self._dtypes
-
-    @property
-    def input(self):
-        return self._input
-
-    @property
-    def index(self):
-        return self._index
-
-    def _set_inputs(self, inputs):
+    def _set_inputs(self, inputs: List[EntityType]):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
-        if self._input is not None:
-            if not isinstance(self._input, dict):
-                self._input = next(inputs_iter)
+        if self.input is not None:
+            if not isinstance(self.input, dict):
+                self.input = next(inputs_iter)
             else:
                 # check each value for input
                 new_input = OrderedDict()
-                for k, v in self._input.items():
+                for k, v in self.input.items():
                     if isinstance(v, ENTITY_TYPE):
                         new_input[k] = next(inputs_iter)
                     else:
                         new_input[k] = v
-                self._input = new_input
+                self.input = new_input
 
-        if self._index is not None:
-            self._index = next(inputs_iter)
+        if isinstance(self.index, ENTITY_TYPE):
+            self.index = next(inputs_iter)
 
-    def __call__(self, input_tensor, index, columns):
+    def __call__(
+        self,
+        input_tensor: Tensor,
+        index: Union[TileableType, pd.Index],
+        columns: pd.Index,
+        dtypes: pd.Series,
+    ):
         if isinstance(input_tensor, dict):
-            return self._call_input_1d_tileables(input_tensor, index, columns)
+            return self._call_input_1d_tileables(input_tensor, index, columns, dtypes)
         elif input_tensor is not None:
-            return self._call_input_tensor(input_tensor, index, columns)
+            return self._call_input_tensor(input_tensor, index, columns, dtypes)
         else:
-            return self._call_tensor_none(index, columns)
+            return self._call_tensor_none(index, columns, dtypes)
 
-    def _process_index(self, index, inputs):
+    def _process_index(
+        self, index: Union[TileableType, pd.Index], inputs: List[EntityType]
+    ):
         if not isinstance(index, pd.Index):
             if isinstance(index, INDEX_TYPE):
-                self._index = index
                 index_value = index.index_value
                 inputs.append(index)
             elif isinstance(index, ENTITY_TYPE):
-                self._index = index
                 index = astensor(index)
                 if index.ndim != 1:
                     raise ValueError(f"index should be 1-d, got {index.ndim}-d")
@@ -115,12 +99,18 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 inputs.append(index)
             else:
                 index = pd.Index(index)
-                index_value = parse_index(index, store_data=True)
+                index_value = parse_index(index)
         else:
-            index_value = parse_index(index, store_data=True)
+            index_value = parse_index(index)
         return index_value
 
-    def _call_input_1d_tileables(self, input_1d_tileables, index, columns):
+    def _call_input_1d_tileables(
+        self,
+        input_1d_tileables: Dict[Any, TileableType],
+        index: Union[TileableType, pd.Index],
+        columns: pd.Index,
+        dtypes: pd.Series,
+    ):
         tileables = []
         shape = None
         for tileable in input_1d_tileables.values():
@@ -151,7 +141,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 )
             index_value = self._process_index(index, tileables)
         else:
-            index_value = parse_index(pd.RangeIndex(0, tileables[0].shape[0]))
+            self.index = index = pd.RangeIndex(0, tileables[0].shape[0])
+            index_value = parse_index(index)
 
         if columns is not None:
             if len(input_1d_tileables) != len(columns):
@@ -172,12 +163,18 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         return self.new_dataframe(
             tileables,
             shape,
-            dtypes=self.dtypes,
+            dtypes=dtypes,
             index_value=index_value,
             columns_value=columns_value,
         )
 
-    def _call_input_tensor(self, input_tensor, index, columns):
+    def _call_input_tensor(
+        self,
+        input_tensor: Tensor,
+        index: Union[TileableType, pd.Index],
+        columns: pd.Index,
+        dtypes: pd.Series,
+    ):
         if input_tensor.ndim not in {1, 2}:
             raise ValueError("Must pass 1-d or 2-d input")
         inputs = [input_tensor]
@@ -193,7 +190,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         else:
             stop = input_tensor.shape[0]
             stop = -1 if np.isnan(stop) else stop
-            index_value = parse_index(pd.RangeIndex(start=0, stop=stop))
+            index = self.index = pd.RangeIndex(start=0, stop=stop)
+            index_value = parse_index(index)
 
         if columns is not None:
             if not (
@@ -228,19 +226,22 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         return self.new_dataframe(
             inputs,
             shape,
-            dtypes=self.dtypes,
+            dtypes=dtypes,
             index_value=index_value,
             columns_value=columns_value,
         )
 
-    def _call_tensor_none(self, index, columns):
+    def _call_tensor_none(
+        self, index: Union[TileableType, pd.Index], columns: pd.Index, dtypes: pd.Series
+    ):
         inputs = []
         shape = []
         if index is not None:
             index_value = self._process_index(index, inputs)
             shape.append(index.shape[0])
         else:
-            index_value = parse_index(pd.Index([], dtype=object))
+            index = self.index = pd.Index([], dtype=object)
+            index_value = parse_index(index)
             shape.append(0)
 
         if columns is not None:
@@ -257,13 +258,13 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         return self.new_dataframe(
             inputs,
             shape=tuple(shape),
-            dtypes=self.dtypes,
+            dtypes=dtypes,
             index_value=index_value,
             columns_value=columns_value,
         )
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "DataFrameFromTensor"):
         if isinstance(op.input, dict):
             return (yield from cls._tile_input_1d_tileables(op))
         elif op.input is not None:
@@ -272,7 +273,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             return cls._tile_tensor_none(op)
 
     @classmethod
-    def _tile_input_1d_tileables(cls, op):
+    def _tile_input_1d_tileables(cls, op: "DataFrameFromTensor"):
         # make sure all tensor have known chunk shapes
         if has_unknown_shape(*op.inputs):
             yield
@@ -298,16 +299,14 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                     # do not need to do slice,
                     # will be done in set_inputs
                     new_input[k] = v
-            chunk_op._input = new_input
+            chunk_op.input = new_input
             columns_value = out_df.columns_value
             dtypes = out_df.dtypes
             chunk_index = (i, 0)
             if isinstance(op.index, INDEX_TYPE):
                 index_value = in_tensors[-1].chunks[i].index_value
-            elif out_df.index_value.has_value():
-                pd_index = out_df.index_value.to_pandas()[
-                    cum_sizes[i] : cum_sizes[i + 1]
-                ]
+            elif isinstance(op.index, pd.Index):
+                chunk_op.index = pd_index = op.index[cum_sizes[i] : cum_sizes[i + 1]]
                 index_value = parse_index(pd_index, store_data=True)
             else:
                 assert op.index is not None
@@ -343,7 +342,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         )
 
     @classmethod
-    def _tile_input_tensor(cls, op):
+    def _tile_input_tensor(cls, op: "DataFrameFromTensor"):
         out_df = op.outputs[0]
         in_tensor = op.input
         out_chunks = []
@@ -352,7 +351,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
         nsplits = in_tensor.nsplits
 
-        if op.index is not None:
+        if op.index is not None and hasattr(op.index, "key"):
             # rechunk index if it's a tensor
             if has_unknown_shape(*op.inputs):
                 yield
@@ -361,7 +360,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             index_tensor = None
 
         cum_size = [np.cumsum(s) for s in nsplits]
-        for in_chunk in in_tensor.chunks:
+        for i, in_chunk in enumerate(in_tensor.chunks):
             out_op = op.copy().reset_key()
             chunk_inputs = [in_chunk]
             if in_chunk.ndim == 1:
@@ -384,6 +383,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 ]
                 columns_value = parse_index(chunk_pd_columns, store_data=True)
                 chunk_shape = in_chunk.shape
+            out_op.columns = columns_value.to_pandas()
 
             index_stop = cum_size[0][i]
             if isinstance(op.index, INDEX_TYPE):
@@ -392,23 +392,28 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 chunk_inputs.append(index_chunk)
             elif isinstance(in_chunk, SERIES_CHUNK_TYPE):
                 index_value = in_chunk.index_value
-            elif out_df.index_value.has_value():
-                pd_index = out_df.index_value.to_pandas()
-                chunk_pd_index = pd_index[index_stop - in_chunk.shape[0] : index_stop]
-                index_value = parse_index(chunk_pd_index, store_data=True)
-            elif op.index is None:
-                # input tensor has unknown shape
-                index_value = parse_index(pd.RangeIndex(-1), in_chunk)
             else:
-                index_chunk = index_tensor.cix[
-                    in_chunk.index[0],
-                ]
-                chunk_inputs.append(index_chunk)
-                index_value = parse_index(
-                    pd.Index([], dtype=index_tensor.dtype),
-                    index_chunk,
-                    type(out_op).__name__,
-                )
+                if isinstance(op.index, pd.Index):
+                    if op.index.size > 0:
+                        out_op.index = index = op.index[
+                            index_stop - in_chunk.shape[0] : index_stop
+                        ]
+                        index_value = parse_index(index, store_data=True)
+                    else:
+                        # input tensor has unknown shape
+                        index_value = parse_index(
+                            pd.RangeIndex(-1), in_tensor, in_chunk.index[0]
+                        )
+                else:
+                    index_chunk = index_tensor.cix[
+                        in_chunk.index[0],
+                    ]
+                    chunk_inputs.append(index_chunk)
+                    index_value = parse_index(
+                        pd.Index([], dtype=index_tensor.dtype),
+                        index_chunk,
+                        type(out_op).__name__,
+                    )
 
             out_op.extra_params["index_stop"] = index_stop
             out_op.extra_params["column_stop"] = column_stop
@@ -469,7 +474,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_dataframes(out_df.inputs, kws=[params])
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx: Union[dict, Context], op: "DataFrameFromTensor"):
         chunk = op.outputs[0]
 
         if isinstance(op.input, dict):
@@ -479,38 +484,40 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                     d[k] = ctx[v.key]
                 else:
                     d[k] = v
-            if op.index is not None:
+            if op.index is not None and hasattr(op.index, "key"):
                 index_data = ctx[op.index.key]
             else:
-                index_data = chunk.index_value.to_pandas()
-            ctx[chunk.key] = pd.DataFrame(
-                d, index=index_data, columns=chunk.columns_value.to_pandas()
-            )
+                index_data = op.index
+            ctx[chunk.key] = pd.DataFrame(d, index=index_data, columns=op.columns)
         elif op.input is not None:
             tensor_data = ctx[op.inputs[0].key]
             if isinstance(tensor_data, pd.Series):
                 ctx[chunk.key] = tensor_data.to_frame(name=chunk.dtypes.index[0])
             else:
-                if op.index is not None:
+                if op.index is not None and hasattr(op.index, "key"):
                     # index is a tensor
                     index_data = ctx[op.inputs[1].key]
                 else:
-                    index_data = chunk.index_value.to_pandas()
+                    index_data = op.index
                     if isinstance(index_data, pd.RangeIndex) and len(index_data) == 0:
                         index_data = None
                 ctx[chunk.key] = pd.DataFrame(
                     tensor_data,
                     index=index_data,
-                    columns=chunk.columns_value.to_pandas(),
+                    columns=op.columns,
                 )
         else:
             index_data = ctx[op.index.key]
-            ctx[chunk.key] = pd.DataFrame(
-                index=index_data, columns=chunk.columns_value.to_pandas()
-            )
+            ctx[chunk.key] = pd.DataFrame(index=index_data, columns=op.columns)
 
 
-def dataframe_from_tensor(tensor, index=None, columns=None, gpu=None, sparse=False):
+def dataframe_from_tensor(
+    tensor: Tensor,
+    index: Union[TileableType, pd.Index] = None,
+    columns: Union[pd.Index, list] = None,
+    gpu: bool = None,
+    sparse: bool = False,
+):
     if tensor is not None:
         if tensor.ndim > 2 or tensor.ndim <= 0:
             raise TypeError(
@@ -528,11 +535,30 @@ def dataframe_from_tensor(tensor, index=None, columns=None, gpu=None, sparse=Fal
             dtypes = pd.Series([], index=columns)
         else:
             dtypes = pd.Series([], index=pd.Index([], dtype=object))
-    op = DataFrameFromTensor(input_=tensor, dtypes=dtypes, gpu=gpu, sparse=sparse)
-    return op(tensor, index, columns)
+    if index is not None and not isinstance(index, ENTITY_TYPE):
+        index = pd.Index(index)
+    op = DataFrameFromTensor(
+        input=tensor, index=index, columns=columns, gpu=gpu, sparse=sparse
+    )
+    return op(tensor, index, columns, dtypes)
 
 
-def dataframe_from_1d_tileables(d, index=None, columns=None, gpu=None, sparse=False):
+def dataframe_from_1d_tileables(
+    d: Dict[Any, TileableType],
+    index: Union[TileableType, pd.Index, list] = None,
+    columns: Union[pd.Index, list] = None,
+    gpu: bool = None,
+    sparse: bool = False,
+):
+    data = dict()
+    for k, v in d.items():
+        if isinstance(v, (list, tuple)) and any(
+            isinstance(sv, ENTITY_TYPE) for sv in v
+        ):
+            data[k] = astensor(v)
+        else:
+            data[k] = v
+    d = data
     if columns is not None:
         tileables = [d.get(c) for c in columns]
     else:
@@ -548,52 +574,30 @@ def dataframe_from_1d_tileables(d, index=None, columns=None, gpu=None, sparse=Fa
         [t.dtype if hasattr(t, "dtype") else pd.Series(t).dtype for t in tileables],
         index=columns,
     )
-    op = DataFrameFromTensor(input_=d, dtypes=dtypes, gpu=gpu, sparse=sparse)
-    return op(d, index, columns)
+    if index is not None and not isinstance(index, ENTITY_TYPE):
+        index = pd.Index(index)
+    op = DataFrameFromTensor(
+        input=d, index=index, columns=columns, gpu=gpu, sparse=sparse
+    )
+    return op(d, index, columns, dtypes)
 
 
 class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.SERIES_FROM_TENSOR
 
-    _input = KeyField("input")
-    _index = KeyField("index")
-    _dtype = DataTypeField("dtype")
+    input = KeyField("input")
+    index = AnyField("index")
 
-    def __init__(
-        self, input_=None, index=None, dtype=None, gpu=None, sparse=None, **kw
-    ):
-        super().__init__(
-            _input=input_,
-            _index=index,
-            _dtype=dtype,
-            gpu=gpu,
-            sparse=sparse,
-            _output_types=[OutputType.series],
-            **kw,
-        )
-
-    @property
-    def input(self):
-        return self._input
-
-    @property
-    def index(self):
-        return self._index
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    def _set_inputs(self, inputs):
+    def _set_inputs(self, inputs: List[EntityType]):
         super()._set_inputs(inputs)
-        if self._input is not None:
-            self._input = self._inputs[0]
-        if self._index is not None:
-            self._index = self._inputs[-1]
+        if self.input is not None:
+            self.input = self.inputs[0]
+        if self.index is not None and hasattr(self.index, "key"):
+            self.index = self.inputs[-1]
 
     @classmethod
-    def tile(cls, op):
-        if op.index is None:
+    def tile(cls, op: "SeriesFromTensor"):
+        if op.index is None or not hasattr(op.index, "key"):
             # check all inputs to make sure no unknown chunk shape
             if has_unknown_shape(*op.inputs):
                 yield
@@ -605,14 +609,15 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
         in_tensor = op.inputs[0]
         nsplits = in_tensor.nsplits
 
+        index_tensor = series_index = None
         if op.index is not None:
-            index_tensor = yield from recursive_tile(op.index.rechunk([nsplits[0]]))
-        else:
-            index_tensor = None
+            if hasattr(op.index, "key"):
+                index_tensor = yield from recursive_tile(op.index.rechunk([nsplits[0]]))
+            else:
+                series_index = op.index
 
         index_start = 0
         out_chunks = []
-        series_index = out_series.index_value.to_pandas()
         for in_chunk in in_tensor.chunks:
             new_op = op.copy().reset_key()
             new_op.extra_params["index_start"] = index_start
@@ -632,7 +637,8 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 chunk_pd_index = series_index[
                     index_start : index_start + in_chunk.shape[0]
                 ]
-                index_value = parse_index(chunk_pd_index, store_data=True)
+                index_value = parse_index(chunk_pd_index)
+                new_op.index = chunk_pd_index
             index_start += in_chunk.shape[0]
             out_chunk = new_op.new_chunk(
                 chunk_inputs,
@@ -686,17 +692,17 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_tileables(out_series.inputs, kws=[params])
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx: Union[dict, Context], op: "SeriesFromTensor"):
         chunk = op.outputs[0]
         if op.input is not None:
             tensor_data = ctx[op.input.key]
         else:
             tensor_data = None
 
-        if op.index is not None:
+        if op.index is not None and hasattr(op.index, "key"):
             index_data = ctx[op.index.key]
         else:
-            index_data = chunk.index_value.to_pandas()
+            index_data = op.index
             if (
                 tensor_data is not None
                 and isinstance(index_data, pd.RangeIndex)
@@ -709,16 +715,22 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
             tensor_data, index=index_data, name=chunk.name, dtype=chunk.dtype
         )
 
-    def __call__(self, input_tensor, index, name):
+    def __call__(
+        self,
+        input_tensor: Tensor,
+        index: Union[TileableType, pd.Index],
+        dtype: np.dtype,
+        name: Any,
+    ):
         inputs = [input_tensor] if input_tensor is not None else []
         if index is not None:
             if not isinstance(index, pd.Index):
                 if isinstance(index, INDEX_TYPE):
-                    self._index = index
+                    self.index = index
                     index_value = index.index_value
                     inputs.append(index)
                 elif isinstance(index, ENTITY_TYPE):
-                    self._index = index
+                    self.index = index
                     index = astensor(index)
                     if index.ndim != 1:
                         raise ValueError(f"index should be 1-d, got {index.ndim}-d")
@@ -727,18 +739,21 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
                     )
                     inputs.append(index)
                 else:
-                    index = pd.Index(index)
-                    index_value = parse_index(index, store_data=True)
+                    self.index = index = pd.Index(index)
+                    index_value = parse_index(index)
             else:
-                index_value = parse_index(index, store_data=True)
+                self.index = index
+                index_value = parse_index(index)
         elif input_tensor is not None:
             if pd.isna(input_tensor.shape[0]):
-                pd_index_value = pd.RangeIndex(-1)
+                pd_index = pd.RangeIndex(-1)
             else:
-                pd_index_value = pd.RangeIndex(start=0, stop=input_tensor.shape[0])
-            index_value = parse_index(pd_index_value)
+                pd_index = pd.RangeIndex(start=0, stop=input_tensor.shape[0])
+            index_value = parse_index(pd_index)
+            self.index = pd_index
         else:
-            index_value = parse_index(pd.Index([], dtype=object))
+            self.index = index = pd.Index([], dtype=object)
+            index_value = parse_index(index)
 
         if input_tensor is not None:
             shape = input_tensor.shape
@@ -748,12 +763,17 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
             shape = (0,)
 
         return self.new_series(
-            inputs, shape=shape, dtype=self.dtype, index_value=index_value, name=name
+            inputs, shape=shape, dtype=dtype, index_value=index_value, name=name
         )
 
 
 def series_from_tensor(
-    tensor, index=None, name=None, dtype=None, gpu=None, sparse=False
+    tensor: Tensor,
+    index: Union[TileableType, pd.Index, list] = None,
+    name: Any = None,
+    dtype: np.dtype = None,
+    gpu: bool = None,
+    sparse: bool = False,
 ):
     if tensor is not None:
         if tensor.ndim > 1 or tensor.ndim <= 0:
@@ -763,5 +783,5 @@ def series_from_tensor(
     else:
         gpu = None
         dtype = dtype or np.dtype(float)
-    op = SeriesFromTensor(input_=tensor, dtype=dtype, gpu=gpu, sparse=sparse)
-    return op(tensor, index, name)
+    op = SeriesFromTensor(input=tensor, gpu=gpu, sparse=sparse)
+    return op(tensor, index, dtype, name)
