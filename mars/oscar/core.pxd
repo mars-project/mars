@@ -18,16 +18,10 @@ cdef class ActorRef:
     cdef public str address
     cdef public object uid
     cdef dict _methods
-    cdef __send__(self, object message, object options)
-    cdef __tell__(self, object message, object options)
 
 
-cdef class ActorProxy:
-    cdef object __weakref__
-    cdef public str address
-    cdef public object uid
+cdef class ActorProxy(ActorRef):
     cdef _BaseActor _actor
-    cdef dict _methods
 
 
 cdef class _BaseActor:

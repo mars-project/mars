@@ -20,6 +20,7 @@ import weakref
 cimport cython
 from typing import AsyncGenerator
 
+from .context cimport get_context
 from .errors import Return
 from .utils cimport is_async_generator
 from .utils import create_actor_ref
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 cdef:
     bint _log_unhandled_errors = False
     bint _log_cycle_send = False
+    object _local_pool_map = weakref.WeakValueDictionary()
 
 
 def set_debug_options(options):
@@ -42,6 +44,24 @@ def set_debug_options(options):
     else:
         _log_unhandled_errors = options.log_unhandled_errors
         _log_cycle_send = options.log_cycle_send
+
+
+cpdef get_local_actor(address, uid):
+    pool = _local_pool_map.get(address)
+    if pool is not None:
+        actor = pool._actors.get(uid)
+        if actor is not None:
+            return ActorProxy(actor)
+    return None
+
+
+cdef class ActorPool:
+    def __init__(self, address):
+        _local_pool_map[address] = self
+
+
+def __pyx_unpickle_ActorRef(address, uid):
+    return get_local_actor(address, uid) or ActorRef(address, uid)
 
 
 cdef class ActorRef:
@@ -55,29 +75,12 @@ cdef class ActorRef:
         self.address = address
         self._methods = dict()
 
-    cdef __send__(self, object message, object options):
-        from .context import get_context
-        ctx = get_context()
-        return ctx.send(self, message, **options)
-
-    cdef __tell__(self, object message, object options):
-        from .context import get_context
-        ctx = get_context()
-        return ctx.send(self, message, wait_response=False, **options)
-
     def destroy(self, object callback=None):
-        from .context import get_context
         ctx = get_context()
         return ctx.destroy_actor(self)
 
-    def __getstate__(self):
-        return self.address, self.uid
-
-    def __setstate__(self, state):
-        self.address, self.uid = state
-
     def __reduce__(self):
-        return self.__class__, self.__getstate__()
+        return __pyx_unpickle_ActorRef, (self.address, self.uid)
 
     def __getattr__(self, str item):
         if item.startswith('_'):
@@ -90,12 +93,13 @@ cdef class ActorRef:
             return method
 
     def __hash__(self):
-        return hash((type(self), self.address, self.uid))
+        return hash((self.address, self.uid))
 
     def __eq__(self, other):
-        return isinstance(other, ActorRef) and \
-               other.address == self.address and \
-               other.uid == self.uid
+        other_type = type(other)
+        if other_type is ActorRef or other_type is ActorProxy:
+            return self.address == other.address and self.uid == other.uid
+        return False
 
     def __repr__(self):
         return 'ActorRef(uid={!r}, address={!r})'.format(self.uid, self.address)
@@ -129,11 +133,11 @@ cdef class ActorRefMethod:
 
     def send(self, *args, **kwargs):
         arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
-        return self.ref.__send__(arg_tuple, self._options)
+        return get_context().send(self.ref, arg_tuple, **self._options)
 
     def tell(self, *args, **kwargs):
         arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
-        return self.ref.__tell__(arg_tuple, self._options)
+        return get_context().send(self.ref, arg_tuple, wait_response=False, **self._options)
 
     def delay(self, *args, **kwargs):
         arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
@@ -156,18 +160,15 @@ cdef class ActorRefMethod:
         if last_method is None:
             last_method = self.method_name
 
-        if send:
-            return self.ref.__send__((last_method, CALL_METHOD_BATCH,
-                                      (args_list, kwargs_list), {}), self._options)
-        else:
-            return self.ref.__tell__((last_method, CALL_METHOD_BATCH,
-                                      (args_list, kwargs_list), {}), self._options)
+        message = (last_method, CALL_METHOD_BATCH, (args_list, kwargs_list), {})
+        return get_context().send(self.ref, message, wait_response=send, **self._options)
 
     def tell_delay(self, *args, delay=None, ignore_conn_fail=True, **kwargs):
         async def delay_fun():
             try:
                 await asyncio.sleep(delay)
-                await self.ref.__tell__((self.method_name, CALL_METHOD_DEFAULT, args, kwargs), self._options)
+                message = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
+                await get_context().send(self.ref, message, wait_response=False, **self._options)
             except Exception as ex:
                 if ignore_conn_fail and isinstance(ex, ConnectionRefusedError):
                     return
@@ -179,21 +180,21 @@ cdef class ActorRefMethod:
         return asyncio.create_task(delay_fun())
 
 
-cdef object _local_pool_map = weakref.WeakValueDictionary()
+cdef class ActorProxy(ActorRef):
+    def __init__(self, _BaseActor actor):
+        super().__init__(actor._address, actor._uid)
+        self._actor = actor
 
+    def __getattr__(self, item):
+        try:
+            return self._methods[item]
+        except KeyError:
+            r = getattr(self._actor, item)
+            method = self._methods[item] = ActorProxyMethod(self._actor, r)
+            return method
 
-cpdef get_local_actor(address, uid):
-    pool = _local_pool_map.get(address)
-    if pool is not None:
-        actor = pool._actors.get(uid)
-        if actor is not None:
-            return ActorProxy(actor)
-    return None
-
-
-cdef class ActorPool:
-    def __init__(self, address):
-        _local_pool_map[address] = self
+    def __repr__(self):
+        return 'ActorProxy(uid={!r}, address={!r})'.format(self.uid, self.address)
 
 
 async def _actor_method_wrapper(_BaseActor actor, method, args, kwargs):
@@ -236,28 +237,12 @@ cdef class ActorProxyMethod:
             asyncio.create_task(coro)
             return asyncio.sleep(0)
 
+    def tell_delay(self, *args, delay=None, ignore_conn_fail=True, **kwargs):
+        async def delay_fun():
+            await asyncio.sleep(delay)
+            await self.tell(*args, **kwargs)
 
-def __pyx_unpickle_ActorProxy(address, uid):
-    return get_local_actor(address, uid) or ActorRef(address, uid)
-
-
-cdef class ActorProxy:
-    def __init__(self, _BaseActor actor):
-        self.address = actor._address
-        self.uid = actor._uid
-        self._actor = actor
-        self._methods = {}
-
-    def __getattr__(self, item):
-        try:
-            return self._methods[item]
-        except KeyError:
-            r = getattr(self._actor, item)
-            method = self._methods[item] = ActorProxyMethod(self._actor, r)
-            return method
-
-    def __reduce__(self):
-        return __pyx_unpickle_ActorProxy, (self.address, self.uid)
+        return asyncio.create_task(delay_fun())
 
 
 cdef class _BaseActor:
@@ -277,7 +262,7 @@ cdef class _BaseActor:
     @uid.setter
     def uid(self, uid):
         self._uid = uid
-        
+
     def _set_uid(self, uid):
         self._uid = uid
 

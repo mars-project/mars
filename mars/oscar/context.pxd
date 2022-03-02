@@ -15,3 +15,6 @@
 
 cdef class BaseActorContext:
     pass
+
+
+cpdef get_context()

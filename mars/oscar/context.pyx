@@ -207,7 +207,7 @@ def register_backend_context(scheme, cls):
     _backend_context_cls[scheme] = cls
 
 
-def get_context():
+cpdef get_context():
     """
     Get an actor context. If not in an actor environment,
     ClientActorContext will be used
