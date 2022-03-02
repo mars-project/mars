@@ -180,7 +180,7 @@ async def test_schedule_success(actor_pools):
     result = await storage_api.get(result_key)
     np.testing.assert_array_equal(np.ones((10, 10)) + 1, result)
 
-    assert (await global_slot_ref.get_used_slots())["numa-0"] == 0
+    assert (await global_slot_ref.get_used_slots()).get((worker_pool.external_address, "numa-0"), 0) == 0
 
     [summary] = await _get_subtask_summaries_by_web(
         sv_pool.external_address, session_id, subtask.task_id
@@ -224,7 +224,7 @@ async def test_schedule_queue(actor_pools):
     await scheduling_api.update_subtask_priority(subtasks[-1].subtask_id, (6,))
     await asyncio.gather(*wait_tasks)
 
-    assert (await global_slot_ref.get_used_slots())["numa-0"] == 0
+    assert (await global_slot_ref.get_used_slots()).get((worker_pool.external_address, "numa-0"), 0) == 0
 
 
 @pytest.mark.asyncio
@@ -246,7 +246,7 @@ async def test_schedule_error(actor_pools):
     with pytest.raises(ValueError):
         await task_manager_ref.wait_subtask_result(subtask.subtask_id)
 
-    assert (await global_slot_ref.get_used_slots())["numa-0"] == 0
+    assert (await global_slot_ref.get_used_slots()).get((worker_pool.external_address, "numa-0"), 0) == 0
 
 
 @pytest.mark.asyncio
@@ -293,5 +293,4 @@ async def test_schedule_cancel(actor_pools):
     assert all(
         summary.is_finished and summary.is_cancelled for summary in summaries[2:]
     )
-
-    assert (await global_slot_ref.get_used_slots())["numa-0"] == 0
+    assert (await global_slot_ref.get_used_slots()).get((worker_pool.external_address, "numa-0"), 0) == 0
