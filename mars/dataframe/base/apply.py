@@ -95,7 +95,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         if self.func:
             if hasattr(self.func, "__code__"):
                 return token_values + [self.func.__code__]
-            else:
+            else:  # pragma: no cover
                 return token_values + [
                     self.func.__class__.__module__,
                     self.func.__class__.__name__,
