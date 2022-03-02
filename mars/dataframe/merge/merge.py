@@ -529,7 +529,7 @@ def merge(
     allowed.
 
     Parameters
-    ----------%s
+    ----------
     right : DataFrame or named Series
         Object to merge with.
     how : {'left', 'right', 'outer', 'inner'}, default 'inner'
@@ -594,7 +594,7 @@ def merge(
           dataset.
         * "many_to_many" or "m:m": allowed, but does not result in checks.
     strategy : {"shuffle", "broadcast"}, default None
-        "broadcast" is recommanded when one DataFrame is much smaller than the other,
+        "broadcast" is recommended when one DataFrame is much smaller than the other,
         otherwise, "shuffle" will be a better choice. By default, we choose strategy
         according to actual data size.
     auto_merge_threshold : int, default 8
@@ -755,7 +755,7 @@ def join(
         Order result DataFrame lexicographically by the join key. If False,
         the order of the join key depends on the join type (how keyword).
     strategy : {"shuffle", "broadcast"}, default None
-        "broadcast" is recommanded when one DataFrame is much smaller than the other,
+        "broadcast" is recommended when one DataFrame is much smaller than the other,
         otherwise, "shuffle" will be a better choice. By default, we choose strategy
         according to actual data size.
     auto_merge_threshold : int, default 8
