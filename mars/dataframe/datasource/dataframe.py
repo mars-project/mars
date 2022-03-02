@@ -33,10 +33,6 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
     data = DataFrameField("data")
     dtypes = SeriesField("dtypes")
 
-    def _tokenize_output(self, output_idx: int, **kw):
-        # make sure all necessary arguments tokenized
-        return None
-
     def __init__(self, data=None, dtypes=None, gpu=None, **kw):
         if dtypes is None and data is not None:
             dtypes = data.dtypes

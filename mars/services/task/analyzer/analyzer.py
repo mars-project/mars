@@ -174,7 +174,7 @@ class GraphAnalyzer:
             for i, fetch_chunk in zip(build_fetch_index_to_chunks, fetch_chunks):
                 inp_chunks[i] = fetch_chunk
             copied_op = chunk.op.copy()
-            copied_op._key = chunk.key
+            copied_op._key = chunk.op.key
             out_chunks = [
                 c.data
                 for c in copied_op.new_chunks(
