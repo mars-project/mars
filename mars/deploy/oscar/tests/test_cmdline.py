@@ -130,6 +130,8 @@ start_params = {
             lambda: str(_get_labelled_port("web")),
             "--n-process",
             "2",
+            "--log-level",
+            "DEBUG",
         ],
         worker_cmd_start
         + [
@@ -139,6 +141,8 @@ start_params = {
             lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
             "--config-file",
             os.path.join(os.path.dirname(__file__), "local_test_config.yml"),
+            "--log-level",
+            "DEBUG",
         ],
         True,
     ],
