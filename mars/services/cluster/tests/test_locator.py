@@ -27,7 +27,11 @@ from ..supervisor.node_info import NodeInfoCollectorActor
 from ..tests import backend
 from ..worker.locator import WorkerSupervisorLocatorActor
 
-del backend
+
+class TestWorkerSupervisorLocatorActor(WorkerSupervisorLocatorActor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._load_backend = backend.TestClusterBackend
 
 
 class MockNodeInfoCollectorActor(mo.Actor):
@@ -159,10 +163,10 @@ async def test_worker_supervisor_locator(actor_pool, temp_address_file):
     locator_address = next(iter(actor_pool.sub_processes.keys()))
 
     locator_ref = await mo.create_actor(
-        WorkerSupervisorLocatorActor,
+        TestWorkerSupervisorLocatorActor,
         "test",
         temp_address_file,
-        uid=WorkerSupervisorLocatorActor.default_uid(),
+        uid=TestWorkerSupervisorLocatorActor.default_uid(),
         address=locator_address,
     )
 
