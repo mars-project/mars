@@ -378,9 +378,9 @@ def test_broadcast_merge(setup):
     # test broadcast right
     df1 = from_pandas(raw1, chunk_size=5)
     df2 = from_pandas(raw2, chunk_size=10)
-    r = df2.merge(df1, on="key")
+    r = df2.merge(df1, on="key", auto_merge_threshold=100)
     # make sure it selects broadcast merge, for broadcast, there must be
-    # merge chunks
+    # DataFrameConcat operands
     tiled = tile(r)
     assert any(isinstance(c.op, DataFrameConcat) for c in tiled.chunks)
 
@@ -396,7 +396,7 @@ def test_broadcast_merge(setup):
     # test broadcast left
     df1 = from_pandas(raw1, chunk_size=5)
     df2 = from_pandas(raw2, chunk_size=10)
-    r = df1.merge(df2, on="key")
+    r = df1.merge(df2, on="key", auto_merge_threshold=100)
     # make sure it selects broadcast merge, for broadcast, there must be
     # merge chunks
     tiled = tile(r)

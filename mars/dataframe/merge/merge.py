@@ -19,6 +19,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
+from ...core.context import get_context
 from ...core.operand import OperandStage, MapReduceOperand
 from ...serialization.serializables import (
     AnyField,
@@ -30,6 +31,7 @@ from ...serialization.serializables import (
 )
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
 from ..utils import (
+    auto_merge_chunks,
     build_concatenated_rows_frame,
     build_df,
     parse_index,
@@ -135,6 +137,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
     indicator = BoolField("indicator")
     validate = AnyField("validate")
     strategy = StringField("strategy")
+    auto_merge_threshold = Int32Field("auto_merge_threshold")
 
     def __init__(self, copy=None, **kwargs):
         super().__init__(copy_=copy, **kwargs)
@@ -428,18 +431,23 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             small_chunk_size = left_row_chunk_size
 
         if op.strategy != "shuffle" and (
-                (len(left.chunks) == 1
-            and op.how in ["right", "inner"])
-            or (len(right.chunks) == 1
-            and op.how in ["left", "inner"])
+            (len(left.chunks) == 1 and op.how in ["right", "inner"])
+            or (len(right.chunks) == 1 and op.how in ["left", "inner"])
         ):
-            return cls._tile_one_chunk(op, left, right)
+            ret = cls._tile_one_chunk(op, left, right)
         elif op.strategy == "broadcast" or (
             how in [big_side, "inner"] and np.log2(big_chunk_size) > small_chunk_size
         ):
-            return cls._tile_broadcast(op, left, right)
+            ret = cls._tile_broadcast(op, left, right)
         else:
-            return cls._tile_shuffle(op, left, right)
+            ret = cls._tile_shuffle(op, left, right)
+        if op.how == "inner" and len(ret[0].chunks) > op.auto_merge_threshold:
+            # if how=="inner", output data size will reduce greatly with high probability，
+            # use auto_merge_chunks to combine small chunks.
+            yield ret[0].chunks  # trigger execution for chunks
+            return [auto_merge_chunks(get_context(), ret[0])]
+        else:
+            return ret
 
     @classmethod
     def execute(cls, ctx, op):
@@ -505,9 +513,174 @@ def merge(
     suffixes=("_x", "_y"),
     copy=True,
     indicator=False,
-    strategy=None,
     validate=None,
+    strategy=None,
+    auto_merge_threshold=8,
 ):
+    """
+    Merge DataFrame or named Series objects with a database-style join.
+
+    A named Series object is treated as a DataFrame with a single named column.
+
+    The join is done on columns or indexes. If joining columns on
+    columns, the DataFrame indexes *will be ignored*. Otherwise if joining indexes
+    on indexes or indexes on a column or columns, the index will be passed on.
+    When performing a cross merge, no column specifications to merge on are
+    allowed.
+
+    Parameters
+    ----------%s
+    right : DataFrame or named Series
+        Object to merge with.
+    how : {'left', 'right', 'outer', 'inner'}, default 'inner'
+        Type of merge to be performed.
+
+        * left: use only keys from left frame, similar to a SQL left outer join;
+          preserve key order.
+        * right: use only keys from right frame, similar to a SQL right outer join;
+          preserve key order.
+        * outer: use union of keys from both frames, similar to a SQL full outer
+          join; sort keys lexicographically.
+        * inner: use intersection of keys from both frames, similar to a SQL inner
+          join; preserve the order of the left keys.
+
+    on : label or list
+        Column or index level names to join on. These must be found in both
+        DataFrames. If `on` is None and not merging on indexes then this defaults
+        to the intersection of the columns in both DataFrames.
+    left_on : label or list, or array-like
+        Column or index level names to join on in the left DataFrame. Can also
+        be an array or list of arrays of the length of the left DataFrame.
+        These arrays are treated as if they are columns.
+    right_on : label or list, or array-like
+        Column or index level names to join on in the right DataFrame. Can also
+        be an array or list of arrays of the length of the right DataFrame.
+        These arrays are treated as if they are columns.
+    left_index : bool, default False
+        Use the index from the left DataFrame as the join key(s). If it is a
+        MultiIndex, the number of keys in the other DataFrame (either the index
+        or a number of columns) must match the number of levels.
+    right_index : bool, default False
+        Use the index from the right DataFrame as the join key. Same caveats as
+        left_index.
+    sort : bool, default False
+        Sort the join keys lexicographically in the result DataFrame. If False,
+        the order of the join keys depends on the join type (how keyword).
+    suffixes : list-like, default is ("_x", "_y")
+        A length-2 sequence where each element is optionally a string
+        indicating the suffix to add to overlapping column names in
+        `left` and `right` respectively. Pass a value of `None` instead
+        of a string to indicate that the column name from `left` or
+        `right` should be left as-is, with no suffix. At least one of the
+        values must not be None.
+    copy : bool, default True
+        If False, avoid copy if possible.
+    indicator : bool or str, default False
+        If True, adds a column to the output DataFrame called "_merge" with
+        information on the source of each row. The column can be given a different
+        name by providing a string argument. The column will have a Categorical
+        type with the value of "left_only" for observations whose merge key only
+        appears in the left DataFrame, "right_only" for observations
+        whose merge key only appears in the right DataFrame, and "both"
+        if the observation's merge key is found in both DataFrames.
+    validate : str, optional
+        If specified, checks if merge is of specified type.
+
+        * "one_to_one" or "1:1": check if merge keys are unique in both
+          left and right datasets.
+        * "one_to_many" or "1:m": check if merge keys are unique in left
+          dataset.
+        * "many_to_one" or "m:1": check if merge keys are unique in right
+          dataset.
+        * "many_to_many" or "m:m": allowed, but does not result in checks.
+    strategy : {"shuffle", "broadcast"}, default None
+        "broadcast" is recommanded when one DataFrame is much smaller than the other,
+        otherwise, "shuffle" will be a better choice. By default, we choose strategy
+        according to actual data size.
+    auto_merge_threshold : int, default 8
+        When how is "inner", merged result could be much smaller than original DataFrame,
+        if the number of chunks is greater than the threshold,
+        it will merge small chunks automatically.
+
+    Returns
+    -------
+    DataFrame
+        A DataFrame of the two merged objects.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> df1 = md.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
+    ...                     'value': [1, 2, 3, 5]})
+    >>> df2 = md.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
+    ...                     'value': [5, 6, 7, 8]})
+    >>> df1.execute()
+        lkey value
+    0   foo      1
+    1   bar      2
+    2   baz      3
+    3   foo      5
+    >>> df2.execute()
+        rkey value
+    0   foo      5
+    1   bar      6
+    2   baz      7
+    3   foo      8
+
+    Merge df1 and df2 on the lkey and rkey columns. The value columns have
+    the default suffixes, _x and _y, appended.
+
+    >>> df1.merge(df2, left_on='lkey', right_on='rkey').execute()
+      lkey  value_x rkey  value_y
+    0  foo        1  foo        5
+    1  foo        1  foo        8
+    2  foo        5  foo        5
+    3  foo        5  foo        8
+    4  bar        2  bar        6
+    5  baz        3  baz        7
+
+    Merge DataFrames df1 and df2 with specified left and right suffixes
+    appended to any overlapping columns.
+
+    >>> df1.merge(df2, left_on='lkey', right_on='rkey',
+    ...           suffixes=('_left', '_right')).execute()
+      lkey  value_left rkey  value_right
+    0  foo           1  foo            5
+    1  foo           1  foo            8
+    2  foo           5  foo            5
+    3  foo           5  foo            8
+    4  bar           2  bar            6
+    5  baz           3  baz            7
+
+    Merge DataFrames df1 and df2, but raise an exception if the DataFrames have
+    any overlapping columns.
+
+    >>> df1.merge(df2, left_on='lkey', right_on='rkey', suffixes=(False, False)).execute()
+    Traceback (most recent call last):
+    ...
+    ValueError: columns overlap but no suffix specified:
+        Index(['value'], dtype='object')
+
+    >>> df1 = md.DataFrame({'a': ['foo', 'bar'], 'b': [1, 2]})
+    >>> df2 = md.DataFrame({'a': ['foo', 'baz'], 'c': [3, 4]})
+    >>> df1.execute()
+          a  b
+    0   foo  1
+    1   bar  2
+    >>> df2.execute()
+          a  c
+    0   foo  3
+    1   baz  4
+
+    >>> df1.merge(df2, how='inner', on='a').execute()
+          a  b  c
+    0   foo  1  3
+
+    >>> df1.merge(df2, how='left', on='a').execute()
+          a  b  c
+    0   foo  1  3.0
+    1   bar  2  NaN
+    """
     if strategy is not None and strategy not in [
         "shuffle",
         "broadcast",
@@ -526,14 +699,165 @@ def merge(
         indicator=indicator,
         validate=validate,
         strategy=strategy,
+        auto_merge_threshold=auto_merge_threshold,
         output_types=[OutputType.dataframe],
     )
     return op(df, right)
 
 
 def join(
-    df, other, on=None, how="left", lsuffix="", rsuffix="", sort=False, strategy=None
+    df,
+    other,
+    on=None,
+    how="left",
+    lsuffix="",
+    rsuffix="",
+    sort=False,
+    strategy=None,
+    auto_merge_threshold=8,
 ):
+    """
+    Join columns of another DataFrame.
+
+    Join columns with `other` DataFrame either on index or on a key
+    column. Efficiently join multiple DataFrame objects by index at once by
+    passing a list.
+
+    Parameters
+    ----------
+    other : DataFrame, Series, or list of DataFrame
+        Index should be similar to one of the columns in this one. If a
+        Series is passed, its name attribute must be set, and that will be
+        used as the column name in the resulting joined DataFrame.
+    on : str, list of str, or array-like, optional
+        Column or index level name(s) in the caller to join on the index
+        in `other`, otherwise joins index-on-index. If multiple
+        values given, the `other` DataFrame must have a MultiIndex. Can
+        pass an array as the join key if it is not already contained in
+        the calling DataFrame. Like an Excel VLOOKUP operation.
+    how : {'left', 'right', 'outer', 'inner'}, default 'left'
+        How to handle the operation of the two objects.
+
+        * left: use calling frame's index (or column if on is specified)
+        * right: use `other`'s index.
+        * outer: form union of calling frame's index (or column if on is
+          specified) with `other`'s index, and sort it.
+          lexicographically.
+        * inner: form intersection of calling frame's index (or column if
+          on is specified) with `other`'s index, preserving the order
+          of the calling's one.
+
+    lsuffix : str, default ''
+        Suffix to use from left frame's overlapping columns.
+    rsuffix : str, default ''
+        Suffix to use from right frame's overlapping columns.
+    sort : bool, default False
+        Order result DataFrame lexicographically by the join key. If False,
+        the order of the join key depends on the join type (how keyword).
+    strategy : {"shuffle", "broadcast"}, default None
+        "broadcast" is recommanded when one DataFrame is much smaller than the other,
+        otherwise, "shuffle" will be a better choice. By default, we choose strategy
+        according to actual data size.
+    auto_merge_threshold : int, default 8
+        When how is "inner", merged result could be much smaller than original DataFrame,
+        if the number of chunks is greater than the threshold,
+        it will merge small chunks automatically.
+
+    Returns
+    -------
+    DataFrame
+        A dataframe containing columns from both the caller and `other`.
+
+    See Also
+    --------
+    DataFrame.merge : For column(s)-on-column(s) operations.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame({'key': ['K0', 'K1', 'K2', 'K3', 'K4', 'K5'],
+    ...                    'A': ['A0', 'A1', 'A2', 'A3', 'A4', 'A5']})
+
+    >>> df.execute()
+      key   A
+    0  K0  A0
+    1  K1  A1
+    2  K2  A2
+    3  K3  A3
+    4  K4  A4
+    5  K5  A5
+
+    >>> other = md.DataFrame({'key': ['K0', 'K1', 'K2'],
+    ...                       'B': ['B0', 'B1', 'B2']})
+
+    >>> other.execute()
+      key   B
+    0  K0  B0
+    1  K1  B1
+    2  K2  B2
+
+    Join DataFrames using their indexes.
+
+    >>> df.join(other, lsuffix='_caller', rsuffix='_other').execute()
+      key_caller   A key_other    B
+    0         K0  A0        K0   B0
+    1         K1  A1        K1   B1
+    2         K2  A2        K2   B2
+    3         K3  A3       NaN  NaN
+    4         K4  A4       NaN  NaN
+    5         K5  A5       NaN  NaN
+
+    If we want to join using the key columns, we need to set key to be
+    the index in both `df` and `other`. The joined DataFrame will have
+    key as its index.
+
+    >>> df.set_index('key').join(other.set_index('key')).execute()
+          A    B
+    key
+    K0   A0   B0
+    K1   A1   B1
+    K2   A2   B2
+    K3   A3  NaN
+    K4   A4  NaN
+    K5   A5  NaN
+
+    Another option to join using the key columns is to use the `on`
+    parameter. DataFrame.join always uses `other`'s index but we can use
+    any column in `df`. This method preserves the original DataFrame's
+    index in the result.
+
+    >>> df.join(other.set_index('key'), on='key').execute()
+      key   A    B
+    0  K0  A0   B0
+    1  K1  A1   B1
+    2  K2  A2   B2
+    3  K3  A3  NaN
+    4  K4  A4  NaN
+    5  K5  A5  NaN
+
+    Using non-unique key values shows how they are matched.
+
+    >>> df = md.DataFrame({'key': ['K0', 'K1', 'K1', 'K3', 'K0', 'K1'],
+    ...                    'A': ['A0', 'A1', 'A2', 'A3', 'A4', 'A5']})
+
+    >>> df.execute()
+      key   A
+    0  K0  A0
+    1  K1  A1
+    2  K1  A2
+    3  K3  A3
+    4  K0  A4
+    5  K1  A5
+
+    >>> df.join(other.set_index('key'), on='key').execute()
+      key   A    B
+    0  K0  A0   B0
+    1  K1  A1   B1
+    2  K1  A2   B1
+    3  K3  A3  NaN
+    4  K0  A4   B0
+    5  K1  A5   B1
+    """
     return merge(
         df,
         other,
@@ -544,4 +868,5 @@ def join(
         suffixes=(lsuffix, rsuffix),
         sort=sort,
         strategy=strategy,
+        auto_merge_threshold=auto_merge_threshold,
     )
