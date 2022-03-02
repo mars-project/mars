@@ -24,8 +24,9 @@ import pandas as pd
 import pytest
 
 from ..... import oscar as mo
+from .....oscar.core import ActorRef, ActorProxy
 from ....backends.allocate_strategy import RandomSubPool
-from ....debug import set_debug_options, DebugOptions
+from ....debug import set_debug_options, get_debug_options, DebugOptions
 from ...router import Router
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,8 @@ class DummyActor(mo.Actor):
 
     async def send(self, uid, method, *args):
         actor_ref = await mo.actor_ref(uid, address=self.address)
+        tp = ActorProxy if actor_ref.address == self.address and get_debug_options() is None else ActorRef
+        assert type(actor_ref) is tp, f"Expect type of actor ref is {tp}, but got {actor_ref} instead."
         return await getattr(actor_ref, method)(*args)
 
     async def tell(self, uid, method, *args):
@@ -239,7 +242,7 @@ async def actor_pool_context(request):
     )
 
     try:
-        if request:
+        if request.param:
             set_debug_options(DebugOptions())
 
         await pool.start()

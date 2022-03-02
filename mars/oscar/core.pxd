@@ -29,6 +29,7 @@ cdef class _BaseActor:
     cdef str _address
     cdef object _lock
     cdef object _uid
+    cdef object _handle_actor_result_ref
 
     cpdef ActorRef ref(self)
 

@@ -53,7 +53,7 @@ class MockNodeInfoCollectorActor(mo.Actor):
 
 @pytest.fixture
 async def actor_pool():
-    pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
+    pool = await mo.create_actor_pool("127.0.0.1", n_process=1)
     await pool.start()
 
     await mo.create_actor(
@@ -156,12 +156,14 @@ async def test_worker_supervisor_locator(actor_pool, temp_address_file):
     with open(temp_address_file, "w") as file_obj:
         file_obj.write("\n".join(addresses))
 
+    locator_address = next(iter(actor_pool.sub_processes.keys()))
+
     locator_ref = await mo.create_actor(
         WorkerSupervisorLocatorActor,
         "test",
         temp_address_file,
         uid=WorkerSupervisorLocatorActor.default_uid(),
-        address=actor_pool.external_address,
+        address=locator_address,
     )
 
     info_ref = await mo.actor_ref(

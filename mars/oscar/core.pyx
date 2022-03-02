@@ -35,6 +35,7 @@ cdef:
     bint _log_unhandled_errors = False
     bint _log_cycle_send = False
     object _local_pool_map = weakref.WeakValueDictionary()
+    object _actor_method_wrapper
 
 
 def set_debug_options(options):
@@ -47,6 +48,10 @@ def set_debug_options(options):
 
 
 cpdef get_local_actor(address, uid):
+    # The cycle send detection relies on send message, so we
+    # disabled the local actor proxy if the debug option is on.
+    if _log_cycle_send:
+        return None
     pool = _local_pool_map.get(address)
     if pool is not None:
         actor = pool._actors.get(uid)
@@ -197,11 +202,15 @@ cdef class ActorProxy(ActorRef):
         return 'ActorProxy(uid={!r}, address={!r})'.format(self.uid, self.address)
 
 
-async def _actor_method_wrapper(_BaseActor actor, method, args, kwargs):
-    result = method(*args, **kwargs)
-    if asyncio.iscoroutine(result):
-        result = await result
-    return await actor._handle_actor_result(result)
+async def __pyx_actor_method_wrapper(method, result_handler, lock, args, kwargs):
+    async with lock:
+        result = method(*args, **kwargs)
+        if asyncio.iscoroutine(result):
+            result = await result
+    return await result_handler(result)
+
+# Avoid global lookup.
+_actor_method_wrapper = __pyx_actor_method_wrapper
 
 
 cdef class ActorProxyMethod:
@@ -213,16 +222,19 @@ cdef class ActorProxyMethod:
         self._method = method
 
     def __call__(self, *args, **kwargs):
-        return _actor_method_wrapper(self._actor, self._method, args, kwargs)
+        return _actor_method_wrapper(
+            self._method, self._actor._handle_actor_result_ref, self._actor._lock, args, kwargs)
 
     def options(self, **options):
         return self
 
     def send(self, *args, **kwargs):
-        return _actor_method_wrapper(self._actor, self._method, args, kwargs)
+        return _actor_method_wrapper(
+            self._method, self._actor._handle_actor_result_ref, self._actor._lock, args, kwargs)
 
     def tell(self, *args, **kwargs):
-        coro = _actor_method_wrapper(self._actor, self._method, args, kwargs)
+        coro = _actor_method_wrapper(
+            self._method, self._actor._handle_actor_result_ref, self._actor._lock, args, kwargs)
         asyncio.create_task(coro)
         return asyncio.sleep(0)
 
@@ -230,7 +242,8 @@ cdef class ActorProxyMethod:
         return self._method.delay(*args, **kwargs)
 
     def batch(self, *delays, send=True):
-        coro = _actor_method_wrapper(self._actor, self._method.batch, delays, dict())
+        coro = _actor_method_wrapper(
+            self._method.batch, self._actor._handle_actor_result_ref, self._actor._lock, delays, dict())
         if send:
             return coro
         else:
@@ -251,6 +264,8 @@ cdef class _BaseActor:
     """
     def __cinit__(self, *args, **kwargs):
         self._lock = self._create_lock()
+        # Avoid attribute lookup.
+        self._handle_actor_result_ref = self._handle_actor_result
 
     def _create_lock(self):
         raise NotImplementedError
