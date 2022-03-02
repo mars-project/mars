@@ -19,9 +19,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialization.serializables import (
-    FieldTypes,
     AnyField,
-    TupleField,
     KeyField,
     StringField,
 )
@@ -37,7 +35,7 @@ class TensorZeros(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_ZEROS
 
     order = StringField("order")
-    shape = TupleField("shape", FieldTypes.int64)
+    shape = AnyField("shape")
     chunk_size = AnyField("chunk_size")
 
     def to_chunk_op(self, *args):

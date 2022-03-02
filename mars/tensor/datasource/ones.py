@@ -20,9 +20,7 @@ from ... import opcodes as OperandDef
 from ...lib.sparse import SparseNDArray
 from ...lib.sparse.core import get_sparse_module, get_array_module, naked
 from ...serialization.serializables import (
-    FieldTypes,
     AnyField,
-    TupleField,
     KeyField,
     StringField,
 )
@@ -36,7 +34,7 @@ class TensorOnes(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_ONES
 
     order = StringField("order")
-    shape = TupleField("shape", FieldTypes.int64)
+    shape = AnyField("shape")
     chunk_size = AnyField("chunk_size")
 
     def to_chunk_op(self, *args):
