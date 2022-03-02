@@ -227,6 +227,7 @@ def new_ray_session_test():
     print(df2.head(5).execute())
 
 
+@pytest.mark.timeout(timeout=300)
 @require_ray
 def test_ray_client():
     import subprocess

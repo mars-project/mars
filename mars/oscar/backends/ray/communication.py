@@ -201,10 +201,10 @@ class RayClientChannel(RayChannelBase):
             with debug_async_timeout(
                 "ray_object_retrieval_timeout", "Client sent message is %s", message
             ):
-                result = (await object_ref).message
+                result = await object_ref
             if isinstance(result, RayChannelException):
                 raise result.exc_value.with_traceback(result.exc_traceback)
-            return result
+            return result.message
         except ray.exceptions.RayActorError:
             if not self._closed.is_set():
                 # raise a EOFError as the SocketChannel does
