@@ -370,7 +370,9 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
         left = build_concatenated_rows_frame(op.inputs[0])
         right = build_concatenated_rows_frame(op.inputs[1])
 
-        if len(left.chunks) == 1 or len(right.chunks) == 1:
+        if (len(left.chunks) == 1 and op.how in ["right", "inner"]) or (
+            len(right.chunks) == 1 and op.how in ["left", "inner"]
+        ):
             return cls._tile_one_chunk(op, left, right)
 
         left_row_chunk_size = left.chunk_shape[0]
