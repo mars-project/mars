@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+from typing import Optional, Union, Tuple
 
 import numpy as np
 import pandas as pd
@@ -29,6 +30,7 @@ from ...serialization.serializables import (
     KeyField,
     Int32Field,
 )
+from ..core import DataFrame, Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
 from ..utils import (
     auto_merge_chunks,
@@ -501,22 +503,22 @@ def _prepare_shuffle_on(use_index, side_on, on):
 
 
 def merge(
-    df,
-    right,
-    how="inner",
-    on=None,
-    left_on=None,
-    right_on=None,
-    left_index=False,
-    right_index=False,
-    sort=False,
-    suffixes=("_x", "_y"),
-    copy=True,
-    indicator=False,
-    validate=None,
-    strategy=None,
-    auto_merge_threshold=8,
-):
+    df: Union[DataFrame, Series],
+    right: Union[DataFrame, Series],
+    how: str = "inner",
+    on: str = None,
+    left_on: str = None,
+    right_on: str = None,
+    left_index: bool = False,
+    right_index: bool = False,
+    sort: bool = False,
+    suffixes: Tuple[Optional[str], Optional[str]] = ("_x", "_y"),
+    copy: bool = True,
+    indicator: bool = False,
+    validate: str = None,
+    strategy: str = None,
+    auto_merge_threshold: int = 8,
+) -> DataFrame:
     """
     Merge DataFrame or named Series objects with a database-style join.
 
@@ -706,16 +708,16 @@ def merge(
 
 
 def join(
-    df,
-    other,
-    on=None,
-    how="left",
-    lsuffix="",
-    rsuffix="",
-    sort=False,
-    strategy=None,
-    auto_merge_threshold=8,
-):
+    df: Union[DataFrame, Series],
+    other: Union[DataFrame, Series],
+    on: str = None,
+    how: str = "left",
+    lsuffix: str = "",
+    rsuffix: str = "",
+    sort: bool = False,
+    strategy: str = None,
+    auto_merge_threshold: int = 8,
+) -> DataFrame:
     """
     Join columns of another DataFrame.
 
