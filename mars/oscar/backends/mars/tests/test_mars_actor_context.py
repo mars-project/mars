@@ -85,8 +85,14 @@ class DummyActor(mo.Actor):
 
     async def send(self, uid, method, *args):
         actor_ref = await mo.actor_ref(uid, address=self.address)
-        tp = ActorProxy if actor_ref.address == self.address and get_debug_options() is None else ActorRef
-        assert type(actor_ref) is tp, f"Expect type of actor ref is {tp}, but got {actor_ref} instead."
+        tp = (
+            ActorProxy
+            if actor_ref.address == self.address and get_debug_options() is None
+            else ActorRef
+        )
+        assert (
+            type(actor_ref) is tp
+        ), f"Expect type of actor ref is {tp}, but got {actor_ref} instead."
         return await getattr(actor_ref, method)(*args)
 
     async def tell(self, uid, method, *args):
