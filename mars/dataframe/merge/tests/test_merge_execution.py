@@ -340,6 +340,20 @@ def test_merge_one_chunk(setup):
         result.sort_values(by=result.columns[1]).reset_index(drop=True),
     )
 
+    # left have one chunk and how="left", then one chunk tile
+    # will results in wrong results, see #GH 2107
+    mdf1 = from_pandas(df1, chunk_size=2)
+    mdf2 = from_pandas(df2)
+
+    expected = df2.merge(df1, left_on="rkey", right_on="lkey", how="left")
+    jdf = mdf2.merge(mdf1, left_on="rkey", right_on="lkey", how="left")
+    result = jdf.execute().fetch()
+
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
+        result.sort_values(by=result.columns[1]).reset_index(drop=True),
+    )
+
 
 def test_merge_on_duplicate_columns(setup):
     raw1 = pd.DataFrame(
