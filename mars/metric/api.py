@@ -31,6 +31,7 @@ _backends_cls = {
 
 
 def init_metrics(backend="console", port=0):
+    backend = backend or "console"
     if backend not in _backends_cls:
         raise NotImplementedError(f"Do not support metric backend {backend}")
     global _metric_backend
