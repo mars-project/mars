@@ -217,19 +217,50 @@ def new_ray_session_test():
     session = new_ray_session(session_id="abcd", worker_num=2, default=True)
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
+    df = md.DataFrame(mt.random.rand(100, 4), columns=list("abcd"))
+    # Convert mars dataframe to ray dataset
+    ds = md.to_ray_dataset(df)
+    print(ds.schema(), ds.count())
+    ds.filter(lambda row: row["a"] > 0.5).show(5)
+    # Convert ray dataset to mars dataframe
+    df2 = md.read_ray_dataset(ds)
+    print(df2.head(5).execute())
 
 
 @require_ray
-def test_ray_client(ray_large_cluster):
+def test_ray_client():
     import subprocess
+
     try:
-        subprocess.check_call("ray start --head --redis-password=123456 --ray-client-server-port 11111")
-        subprocess.check_call("ray start --address='127.0.0.1:6379' --redis-password=123456 --num-cpus=16")
-        subprocess.check_call("ray start --address='127.0.0.1:6379' --redis-password=123456 --num-cpus=16")
-        ray.init(address='ray://127.0.0.1:11111')
+        subprocess.check_call(
+            [
+                "ray",
+                "start",
+                "--head",
+                "--address=127.0.0.1",
+                "--redis-password=123456",
+                "--ray-client-server-port",
+                "11111",
+            ]
+        )
+        print("ray head started")
+        for _ in range(2):
+            subprocess.check_call(
+                [
+                    "ray",
+                    "start",
+                    "--address=127.0.0.1:6379",
+                    "--redis-password=123456",
+                    "--num-cpus=16",
+                ]
+            )
+
+        print("ray nodes started")
+        ray.init(address="ray://127.0.0.1:11111")
+        print("connected to ray server")
         new_ray_session_test()
     finally:
-        subprocess.check_call("ray stop --force")
+        subprocess.check_call(["ray", "stop", "--force"])
 
 
 @require_ray

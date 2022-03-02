@@ -52,7 +52,7 @@ class _ArgWrapper:
         self.message = message
 
     def __reduce__(self):
-        return _argwrapper_unpickler, (serialize(self.message))
+        return _argwrapper_unpickler, (serialize(self.message),)
 
 
 if ray:
@@ -61,9 +61,8 @@ if ray:
 
     def _serialize(self, value):
         if type(value) is _ArgWrapper:  # pylint: disable=unidiomatic-typecheck
+            message = value.message
             with Timer() as timer:
-                message = value.message
-                value.message = serialize(message)
                 serialized_object = _ray_serialize(self, value)
             try:
                 if message.profiling_context is not None:
@@ -85,7 +84,7 @@ if ray:
         start_time = time.time()
         value = _ray_deserialize_object(self, data, metadata, object_ref)
         if type(value) is _ArgWrapper:  # pylint: disable=unidiomatic-typecheck
-            message = deserialize(*value.message)
+            message = value.message
             try:
                 if message.profiling_context is not None:
                     task_id = message.profiling_context.task_id
@@ -98,7 +97,6 @@ if ray:
                     "message %s may not be an instance of message",
                     type(message),
                 )
-            value = message
         return value
 
     ray.serialization.SerializationContext.serialize = _serialize
@@ -203,7 +201,7 @@ class RayClientChannel(RayChannelBase):
             with debug_async_timeout(
                 "ray_object_retrieval_timeout", "Client sent message is %s", message
             ):
-                result = await object_ref
+                result = (await object_ref).message
             if isinstance(result, RayChannelException):
                 raise result.exc_value.with_traceback(result.exc_traceback)
             return result
@@ -261,10 +259,10 @@ class RayServerChannel(RayChannelBase):
             if not self._closed.is_set():
                 raise
 
-    async def __on_ray_recv__(self, message):
+    async def __on_ray_recv__(self, message_wrapper):
         """This method will be invoked when current process is a ray actor rather than a ray driver"""
         self._msg_recv_counter += 1
-        await self._in_queue.put(message)
+        await self._in_queue.put(message_wrapper.message)
         result_message = await self._out_queue.get()
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed("Channel already closed")
