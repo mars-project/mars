@@ -14,7 +14,7 @@
 
 import logging
 
-from typing import Dict, Any, Optional, Tuple
+from typing import Optional, Tuple
 
 from .backends.console import console_metric
 from .backends.prometheus import prometheus_metric
