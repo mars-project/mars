@@ -17,7 +17,13 @@ import inspect
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
 from ..oscar.debug import debug_async_timeout
-from ..utils import lazy_import, implements, register_ray_serializer, Percentile, cost_time_percentile_record
+from ..utils import (
+    lazy_import,
+    implements,
+    register_ray_serializer,
+    Percentile,
+    cost_time_percentile_record,
+)
 from ..metric import Metrics
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
@@ -124,7 +130,7 @@ class RayStorage(StorageBackend):
             Percentile.PercentileType.P99,
             Metrics.gauge(
                 "mars.storage.ray.get_cost_time_p99_seconds",
-                "P99 time consuming in seconds to get object, every 1000 times report once."
+                "P99 time consuming in seconds to get object, every 1000 times report once.",
             ).record,
             1000,
         ),
@@ -132,7 +138,7 @@ class RayStorage(StorageBackend):
             Percentile.PercentileType.P95,
             Metrics.gauge(
                 "mars.storage.ray.get_cost_time_p95_seconds",
-                "P95 time consuming in seconds to get object, every 1000 times report once."
+                "P95 time consuming in seconds to get object, every 1000 times report once.",
             ).record,
             1000,
         ),
@@ -140,7 +146,7 @@ class RayStorage(StorageBackend):
             Percentile.PercentileType.P90,
             Metrics.gauge(
                 "mars.storage.ray.get_cost_time_p90_seconds",
-                "P90 time consuming in seconds to get object, every 1000 times report once."
+                "P90 time consuming in seconds to get object, every 1000 times report once.",
             ).record,
             1000,
         ),
@@ -151,7 +157,7 @@ class RayStorage(StorageBackend):
             Percentile.PercentileType.P99,
             Metrics.gauge(
                 "mars.storage.ray.put_cost_time_p99_seconds",
-                "P99 time consuming in seconds to put object, every 1000 times report once."
+                "P99 time consuming in seconds to put object, every 1000 times report once.",
             ).record,
             1000,
         ),
@@ -159,7 +165,7 @@ class RayStorage(StorageBackend):
             Percentile.PercentileType.P95,
             Metrics.gauge(
                 "mars.storage.ray.put_cost_time_p95_seconds",
-                "P95 time consuming in seconds to put object, every 1000 times report once."
+                "P95 time consuming in seconds to put object, every 1000 times report once.",
             ).record,
             1000,
         ),
@@ -167,7 +173,7 @@ class RayStorage(StorageBackend):
             Percentile.PercentileType.P90,
             Metrics.gauge(
                 "mars.storage.ray.put_cost_time_p90_seconds",
-                "P90 time consuming in seconds to put object, every 1000 times report once."
+                "P90 time consuming in seconds to put object, every 1000 times report once.",
             ).record,
             1000,
         ),
@@ -202,7 +208,7 @@ class RayStorage(StorageBackend):
         with debug_async_timeout(
             "ray_object_retrieval_timeout",
             "Storage get object timeout, ObjectRef: %s",
-            object_id
+            object_id,
         ):
             with cost_time_percentile_record(self._storage_get_metrics):
                 return await object_id

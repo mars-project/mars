@@ -561,11 +561,14 @@ def test_web_serialize_lambda():
     f = utils.deserialize_serializable(s)
     assert isinstance(f, TileableGraph)
 
+
 def test_percentile_report():
     from ..utils import _percentile_builder, Percentile
+
     def gen_callback(data):
         def callback(value):
             data.append(value)
+
         return callback
 
     data90 = []
@@ -573,14 +576,15 @@ def test_percentile_report():
     data99 = []
 
     all_data = []
-    percentile_args= [
-                (Percentile.PercentileType.P90, gen_callback(data90), 100),
-                (Percentile.PercentileType.P95, gen_callback(data95), 100),
-                (Percentile.PercentileType.P99, gen_callback(data99), 100),
+    percentile_args = [
+        (Percentile.PercentileType.P90, gen_callback(data90), 100),
+        (Percentile.PercentileType.P95, gen_callback(data95), 100),
+        (Percentile.PercentileType.P99, gen_callback(data99), 100),
     ]
     percentile_list = [
         _percentile_builder[percentile_type](callback, window)
-        for percentile_type, callback, window in percentile_args]
+        for percentile_type, callback, window in percentile_args
+    ]
     for _ in range(199):
         data = random()
         all_data.append(data)
