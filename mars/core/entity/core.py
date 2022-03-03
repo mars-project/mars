@@ -76,6 +76,11 @@ class EntityData(Base):
 
         return Source(dot)
 
+    def _need_be_executed(self):  # pylint: disable=no-self-use
+        # some tileable may generate unknown meta,
+        # they need to be executed first
+        return False
+
 
 class Entity(Serializable):
     _allow_data_type_ = ()
@@ -139,6 +144,9 @@ class Entity(Serializable):
             object.__setattr__(self, key, value)
         except AttributeError:
             return setattr(self._data, key, value)
+
+    def _need_be_executed(self):
+        return self._data._need_be_executed()
 
 
 ENTITY_TYPE = (Entity, EntityData)

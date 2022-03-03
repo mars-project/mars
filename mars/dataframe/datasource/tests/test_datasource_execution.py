@@ -294,7 +294,7 @@ def test_from_tensor_execution(setup):
     tensor5 = mt.ones((10, 10), chunk_size=3)
     df5 = dataframe_from_tensor(tensor5, index=np.arange(0, 20, 2))
     result5 = df5.execute().fetch()
-    pdf_expected = pd.DataFrame(tensor5.execute().fetch(), index=np.arange(0, 20, 2))
+    pdf_expected = pd.DataFrame(np.ones((10, 10)), index=np.arange(0, 20, 2))
     pd.testing.assert_frame_equal(pdf_expected, result5)
 
     # from tensor with given index that is a tensor

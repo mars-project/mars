@@ -19,7 +19,7 @@ import operator
 import weakref
 from collections.abc import Iterable
 from io import StringIO
-from typing import Union, Dict, Any
+from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -320,14 +320,11 @@ class IndexValue(Serializable):
 
     def __mars_tokenize__(self):
         # return object for tokenize
-        # todo fix this when index support is fixed
-        if hasattr(self, "_key"):
-            return self._key
-        try:
-            v = self._index_value
-        except AttributeError:
-            return None
-        return [type(v).__name__] + [getattr(v, f, None) for f in v.__slots__]
+        v = self._index_value
+        if v._key is not None:
+            return v._key
+        v._key = key = [type(v).__name__] + list(v._FIELD_VALUES.values())
+        return key
 
     @property
     def value(self):
@@ -1630,8 +1627,123 @@ class Series(HasShapeTileable, _ToPandasMixin):
             )
 
 
-class BaseDataFrameChunkData(ChunkData):
-    __slots__ = ("_dtypes_value",)
+_chunk_index_property = "_chunk_index"
+_tileable_dtypes_property = "_tileable_dtypes"
+_tileable_index_value_property = "_tileable_index_value"
+_tileable_columns_value_property = "_tileable_columns_value"
+_nsplits_property = "_tileable_nsplits"
+_lazy_chunk_meta_properties = (
+    _chunk_index_property,
+    _tileable_dtypes_property,
+    _tileable_index_value_property,
+    _tileable_columns_value_property,
+    _nsplits_property,
+)
+
+
+class LazyMetaChunkData(ChunkData):
+    __slots__ = ()
+
+
+def _calc_axis_slice(
+    nsplits: Tuple[Tuple[int]], axis: int, chunk_index: Tuple[int, ...]
+) -> slice:
+    nsplit = nsplits[axis]
+    i = chunk_index[axis]
+    cum_nsplit = [0] + np.cumsum(nsplit).tolist()
+    return slice(cum_nsplit[i], cum_nsplit[i + 1])
+
+
+class ChunkDtypesField(SeriesField):
+    def __get__(self, instance, owner):
+        if not issubclass(owner, LazyMetaChunkData):
+            return super().__get__(instance, owner)
+
+        values = instance._FIELD_VALUES
+        if "_dtypes" in values:
+            # been set before
+            return values["_dtypes"]
+
+        # get dtypes lazily
+        chunk_index = getattr(instance, _chunk_index_property)
+        # dtypes of tileable
+        tileable_dtypes = getattr(instance, _tileable_dtypes_property)
+        # nsplits of tileable
+        nsplits = getattr(instance, _nsplits_property)
+        # calc slice
+        slc = _calc_axis_slice(nsplits, 1, chunk_index)
+        dtypes = tileable_dtypes.iloc[slc]
+        # cache dtypes
+        values["_dtypes"] = dtypes
+        return dtypes
+
+
+class ChunkIndexValueField(ReferenceField):
+    def __get__(self, instance, owner):
+        if not issubclass(owner, LazyMetaChunkData):
+            return super().__get__(instance, owner)
+
+        values = instance._FIELD_VALUES
+        if "_index_value" in values:
+            # been set before
+            return values["_index_value"]
+
+        # get index_value lazily
+        chunk_index = getattr(instance, _chunk_index_property)
+        # index_value of tileable
+        tileable_index_value = getattr(instance, _tileable_index_value_property)
+        # nsplits of tileable
+        nsplits = getattr(instance, _nsplits_property)
+        # calc slice
+        slc = _calc_axis_slice(nsplits, 0, chunk_index)
+        pd_index = tileable_index_value.to_pandas()
+        if np.isnan(slc.stop - slc.start):
+            chunk_pd_index = pd_index.iloc[:0]
+        else:
+            chunk_pd_index = pd_index.iloc[slc]
+        index_value = parse_index(
+            chunk_pd_index, key=f"{tileable_index_value.key}_index_{chunk_index[0]}"
+        )
+        # cache index_value
+        values["_index_value"] = index_value
+        return index_value
+
+
+class ChunkColumnsValueField(ReferenceField):
+    def __get__(self, instance, owner):
+        if not issubclass(owner, LazyMetaChunkData):
+            return super().__get__(instance, owner)
+
+        values = instance._FIELD_VALUES
+        if "_columns_value" in values:
+            # been set before
+            return values["_columns_value"]
+
+        # get columns_value lazily
+        chunk_index = getattr(instance, _chunk_index_property)
+        # columns_value of tileable
+        tileable_columns_value = getattr(instance, _tileable_columns_value_property)
+        # nsplits of tileable
+        nsplits = getattr(instance, _nsplits_property)
+        # calc slice
+        slc = _calc_axis_slice(nsplits, 1, chunk_index)
+        pd_index = tileable_columns_value.to_pandas()
+        if np.isnan(slc.stop - slc.start):
+            chunk_pd_index = pd_index.iloc[:0]
+        else:
+            chunk_pd_index = pd_index.iloc[slc]
+        columns_value = parse_index(
+            chunk_pd_index,
+            store_data=True,
+            key=f"{tileable_columns_value.key}_columns_{chunk_index[1]}",
+        )
+        # cache columns_value
+        values["_columns_value"] = columns_value
+        return columns_value
+
+
+class BaseDataFrameChunkData(LazyMetaChunkData):
+    __slots__ = ("_dtypes_value",) + _lazy_chunk_meta_properties
     _no_copy_attrs_ = ChunkData._no_copy_attrs_ | {"_dtypes"}
 
     # required fields
@@ -1642,11 +1754,11 @@ class BaseDataFrameChunkData(ChunkData):
         on_deserialize=on_deserialize_shape,
     )
     # optional fields
-    _dtypes = SeriesField("dtypes")
-    _index_value = ReferenceField(
+    _dtypes = ChunkDtypesField("dtypes")
+    _index_value = ChunkIndexValueField(
         "index_value", IndexValue, on_deserialize=_on_deserialize_index_value
     )
-    _columns_value = ReferenceField("columns_value", IndexValue)
+    _columns_value = ChunkColumnsValueField("columns_value", IndexValue)
 
     def __init__(
         self,
@@ -2028,6 +2140,11 @@ class DataFrameData(_BatchedFetcher, BaseDataFrameData):
     def itertuples(self, index=True, name="Pandas", batch_size=1000, session=None):
         for batch_data in self.iterbatch(batch_size=batch_size, session=session):
             yield from getattr(batch_data, "itertuples")(index=index, name=name)
+
+    def _need_be_executed(self):
+        if self._dtypes is None:
+            return True
+        return False
 
 
 class DataFrame(HasShapeTileable, _ToPandasMixin):

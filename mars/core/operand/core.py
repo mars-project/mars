@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
     UFuncTypeError = None
 
 from ...typing import TileableType, ChunkType, OperandType
-from ...utils import calc_data_size, tokenize
+from ...utils import calc_data_size
 from ..context import Context
 from ..mode import is_eager_mode
 from ..entity import (
@@ -46,16 +46,12 @@ class TileableOperandMixin:
         if not inputs:
             return
 
-        from ...dataframe.core import DATAFRAME_TYPE
-
         for inp in inputs:
-            if isinstance(inp, DATAFRAME_TYPE):
-                dtypes = getattr(inp, "dtypes", None)
-                if dtypes is None:
-                    raise ValueError(
-                        f"{inp} has unknown dtypes, "
-                        f"it must be executed first before {str(type(self))}"
-                    )
+            if inp is not None and inp._need_be_executed():
+                raise ValueError(
+                    f"{inp} has unknown dtypes, "
+                    f"it must be executed first before {str(type(self))}"
+                )
 
     @classmethod
     def _check_if_gpu(cls, inputs: List[TileableType]):
@@ -74,7 +70,7 @@ class TileableOperandMixin:
         return None
 
     def _tokenize_output(self, output_idx: int, **kw):
-        return tokenize(self._key, output_idx)
+        return f"{self._key}_{output_idx}"
 
     def _create_chunk(self, output_idx: int, index: Tuple[int], **kw) -> ChunkType:
         output_type = kw.pop("output_type", None) or self._get_output_type(output_idx)
@@ -103,18 +99,18 @@ class TileableOperandMixin:
     ) -> List[ChunkType]:
         output_limit = kw.pop("output_limit", None)
         if output_limit is None:
-            output_limit = getattr(self, "output_limit")
-
-        self.check_inputs(inputs)
-        getattr(self, "_set_inputs")(inputs)
-        if getattr(self, "gpu", None) is None:
-            self.gpu = self._check_if_gpu(self._inputs)
-        if getattr(self, "_key", None) is None:
-            getattr(self, "_update_key")()
-
-        chunks = []
+            output_limit = self.output_limit
         if isinstance(output_limit, float) and kws:
             output_limit = len(kws)
+
+        self.check_inputs(inputs)
+        self._set_inputs(inputs)
+        if self.gpu is None:
+            self.gpu = self._check_if_gpu(self._inputs)
+        if self._key is None:
+            self._update_key()
+
+        chunks = []
         for j in range(output_limit):
             create_chunk_kw = kw.copy()
             if kws:
@@ -123,7 +119,7 @@ class TileableOperandMixin:
             chunk = self._create_chunk(j, index, **create_chunk_kw)
             chunks.append(chunk)
 
-        setattr(self, "outputs", chunks)
+        self.outputs = chunks
         if len(chunks) > 1:
             # for each output chunk, hold the reference to the other outputs
             # so that either no one or everyone are gc collected
