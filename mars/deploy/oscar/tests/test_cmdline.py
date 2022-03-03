@@ -16,6 +16,7 @@ import argparse
 import asyncio
 import glob
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -25,6 +26,7 @@ from concurrent import futures
 from typing import List
 
 import numpy as np
+import psutil
 import pytest
 
 from .... import tensor as mt
@@ -33,10 +35,13 @@ from ....services import NodeRole
 from ....services.cluster import ClusterAPI
 from ....session import new_session
 from ....tests import flaky
-from ....utils import get_next_port, kill_process_tree
+from ....utils import get_next_port
 from ..cmdline import OscarCommandRunner
 from ..worker import WorkerCommandRunner
 from ..supervisor import SupervisorCommandRunner
+
+
+logger = logging.getLogger(__name__)
 
 
 class _ProcessExitedException(Exception):
@@ -65,7 +70,7 @@ def _wait_supervisor_ready(supervisor_proc: subprocess.Popen, timeout=120):
 
 
 def _wait_worker_ready(
-    supervisor_addr, worker_procs: List[subprocess.Popen], n_supervisors=1, timeout=120
+    supervisor_addr, worker_procs: List[subprocess.Popen], n_supervisors=1, timeout=30
 ):
     async def wait_for_workers():
         start_time = time.time()
@@ -85,15 +90,22 @@ def _wait_worker_ready(
                     worker_procs
                 ):
                     break
+
+                logger.info(
+                    "Cluster not satisfied. sv_num=%s worker_num=%s",
+                    len(sv_info),
+                    len(worker_info),
+                )
             except:  # noqa: E722  # pylint: disable=bare-except
+                logger.exception("Error when waiting for workers to start")
                 if time.time() - start_time > timeout:
                     raise
                 pass
             finally:
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.5)
 
     isolation = get_isolation()
-    asyncio.run_coroutine_threadsafe(wait_for_workers(), isolation.loop).result(120)
+    asyncio.run_coroutine_threadsafe(wait_for_workers(), isolation.loop).result(timeout)
 
 
 _test_port_cache = dict()
@@ -109,44 +121,30 @@ def _get_labelled_port(label=None, create=True):
     return _test_port_cache[(test_name, label)]
 
 
+def _stop_processes(procs: List[subprocess.Popen]):
+    sub_ps_procs = []
+    for proc in procs:
+        if not proc:
+            continue
+
+        sub_ps_procs.extend(psutil.Process(proc.pid).children(recursive=True))
+        proc.terminate()
+
+    for proc in procs:
+        try:
+            proc.wait(10)
+        except subprocess.TimeoutExpired:
+            pass
+
+    for ps_proc in sub_ps_procs + procs:
+        try:
+            ps_proc.kill()
+        except psutil.NoSuchProcess:
+            pass
+
+
 supervisor_cmd_start = [sys.executable, "-m", "mars.deploy.oscar.supervisor"]
 worker_cmd_start = [sys.executable, "-m", "mars.deploy.oscar.worker"]
-start_params = {
-    "bare_start": [
-        supervisor_cmd_start,
-        worker_cmd_start
-        + [
-            "--config-file",
-            os.path.join(os.path.dirname(__file__), "local_test_config.yml"),
-        ],
-        False,
-    ],
-    "with_supervisors": [
-        supervisor_cmd_start
-        + [
-            "-e",
-            lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
-            "-w",
-            lambda: str(_get_labelled_port("web")),
-            "--n-process",
-            "2",
-            "--log-level",
-            "DEBUG",
-        ],
-        worker_cmd_start
-        + [
-            "-e",
-            lambda: f"127.0.0.1:{get_next_port(occupy=True)}",
-            "-s",
-            lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
-            "--config-file",
-            os.path.join(os.path.dirname(__file__), "local_test_config.yml"),
-            "--log-level",
-            "DEBUG",
-        ],
-        True,
-    ],
-}
 
 
 def _reload_args(args):
@@ -157,16 +155,53 @@ _rerun_errors = (
     _ProcessExitedException,
     asyncio.TimeoutError,
     futures.TimeoutError,
+    OSError,
     TimeoutError,
 )
 
 
+@flaky(max_runs=10, rerun_filter=lambda err, *_: issubclass(err[0], _rerun_errors))
 @pytest.mark.parametrize(
     "supervisor_args,worker_args,use_web_addr",
-    list(start_params.values()),
-    ids=list(start_params.keys()),
+    [
+        pytest.param(
+            supervisor_cmd_start,
+            worker_cmd_start
+            + [
+                "--config-file",
+                os.path.join(os.path.dirname(__file__), "local_test_config.yml"),
+            ],
+            False,
+            id="bare_start",
+        ),
+        pytest.param(
+            supervisor_cmd_start
+            + [
+                "-e",
+                lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
+                "-w",
+                lambda: str(_get_labelled_port("web")),
+                "--n-process",
+                "2",
+                "--log-level",
+                "DEBUG",
+            ],
+            worker_cmd_start
+            + [
+                "-e",
+                lambda: f"127.0.0.1:{get_next_port(occupy=True)}",
+                "-s",
+                lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
+                "--config-file",
+                os.path.join(os.path.dirname(__file__), "local_test_config.yml"),
+                "--log-level",
+                "DEBUG",
+            ],
+            True,
+            id="with_supervisors",
+        ),
+    ],
 )
-@flaky(max_runs=10, rerun_filter=lambda err, *_: issubclass(err[0], _rerun_errors))
 def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
     new_isolation()
     sv_proc = w_procs = None
@@ -174,56 +209,59 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
         env = os.environ.copy()
         env["MARS_CPU_TOTAL"] = "2"
 
-        sv_args = _reload_args(supervisor_args)
-        sv_proc = subprocess.Popen(sv_args, env=env)
+        for trial in range(3):
+            _test_port_cache.clear()
+            sv_args = _reload_args(supervisor_args)
+            sv_proc = subprocess.Popen(sv_args, env=env, text=True)
 
-        oscar_port = _get_labelled_port("supervisor", create=False)
-        if not oscar_port:
-            oscar_ep = _wait_supervisor_ready(sv_proc)
-        else:
-            oscar_ep = f"127.0.0.1:{oscar_port}"
+            oscar_port = _get_labelled_port("supervisor", create=False)
+            if not oscar_port:
+                oscar_ep = _wait_supervisor_ready(sv_proc)
+            else:
+                oscar_ep = f"127.0.0.1:{oscar_port}"
 
-        if use_web_addr:
-            host = oscar_ep.rsplit(":", 1)[0]
-            api_ep = f'http://{host}:{_get_labelled_port("web", create=False)}'
-        else:
-            api_ep = oscar_ep
+            if use_web_addr:
+                host = oscar_ep.rsplit(":", 1)[0]
+                api_ep = f'http://{host}:{_get_labelled_port("web", create=False)}'
+            else:
+                api_ep = oscar_ep
 
-        w_procs = []
-        for idx in range(2):
-            w_procs.append(subprocess.Popen(_reload_args(worker_args), env=env))
-            # make sure worker ports does not collide
-            time.sleep(2)
-        _wait_worker_ready(oscar_ep, w_procs)
+            w_procs = []
+            for idx in range(2):
+                proc = subprocess.Popen(_reload_args(worker_args), env=env, text=True)
+                w_procs.append(proc)
+                # make sure worker ports does not collide
+                time.sleep(2)
+
+            try:
+                _wait_worker_ready(oscar_ep, w_procs)
+                break
+            except (asyncio.TimeoutError, futures.TimeoutError, TimeoutError):
+                if trial == 2:
+                    raise
+                else:
+                    _stop_processes(w_procs + [sv_proc])
 
         new_session(api_ep)
         data = np.random.rand(10, 10)
         res = mt.tensor(data, chunk_size=5).sum().execute().fetch()
         np.testing.assert_almost_equal(res, data.sum())
     finally:
+        stop_isolation()
+
         ep_file_name = OscarCommandRunner._build_endpoint_file_path(pid=sv_proc.pid)
         try:
             os.unlink(ep_file_name)
         except OSError:
             pass
 
-        w_procs = w_procs or []
-        for proc in w_procs + [sv_proc]:
-            if not proc:
-                continue
-            proc.terminate()
-            try:
-                proc.wait(3)
-            except subprocess.TimeoutExpired:
-                kill_process_tree(proc.pid)
+        _stop_processes((w_procs or []) + [sv_proc])
 
         port_prefix = os.path.join(
             tempfile.gettempdir(), OscarCommandRunner._port_file_prefix
         )
         for fn in glob.glob(port_prefix + "*"):
             os.unlink(fn)
-
-        stop_isolation()
 
 
 def test_parse_args():

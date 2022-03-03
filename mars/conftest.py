@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import concurrent.futures
 import os
 import subprocess
 
+import psutil
 import pytest
 
 from mars.config import option_context
@@ -139,7 +141,18 @@ def _new_integrated_test_session(_stop_isolation):
         try:
             yield sess
         finally:
-            sess.stop_server(isolation=False)
+            try:
+                sess.stop_server(isolation=False)
+            except concurrent.futures.TimeoutError:
+                subprocesses = psutil.Process().children(recursive=True)
+                for proc in subprocesses:
+                    proc.terminate()
+                for proc in subprocesses:
+                    try:
+                        proc.wait(1)
+                        proc.kill()
+                    except psutil.NoSuchProcess:
+                        pass
 
 
 @pytest.fixture(scope="module")

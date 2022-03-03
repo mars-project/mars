@@ -823,6 +823,7 @@ async def test_parallel_allocate_idle_label():
             )
         },
         {"level": logging.DEBUG},
+        {"level": logging.DEBUG, "format": "%(asctime)s %(message)s"},
     ],
 )
 async def test_logging_config(logging_conf):

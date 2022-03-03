@@ -103,11 +103,12 @@ class OscarCommandRunner:
         else:
             log_level = self.args.log_level
             level = getattr(logging, log_level.upper()) if log_level else logging.INFO
+            logging.getLogger("__main__").setLevel(level)
             logging.getLogger("mars").setLevel(level)
-            logging.basicConfig(format=self.args.log_format)
-            self.logging_conf.update(
-                {"level": log_level, "format": self.args.log_format}
-            )
+            self.logging_conf["level"] = level
+            if self.args.log_format:
+                logging.basicConfig(format=self.args.log_format)
+                self.logging_conf["format"] = self.args.log_format
 
     @classmethod
     def _build_endpoint_file_path(cls, pid: int = None, asterisk: bool = False):
