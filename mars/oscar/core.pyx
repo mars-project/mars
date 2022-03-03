@@ -23,7 +23,6 @@ from typing import AsyncGenerator
 from .context cimport get_context
 from .errors import Return, ActorNotExist
 from .utils cimport is_async_generator
-from .utils import create_actor_ref
 
 
 CALL_METHOD_DEFAULT = 0
@@ -65,7 +64,7 @@ cdef class ActorPool:
         _local_pool_map[address] = self
 
 
-def __pyx_unpickle_ActorRef(address, uid):
+cpdef __pyx_unpickle_ActorRef(address, uid):
     actor = get_local_actor(address, uid)
     return ActorRef(address, uid) if actor is None else ActorLocalRef(actor)
 
@@ -317,7 +316,7 @@ cdef class _BaseActor:
         self._address = addr
 
     cpdef ActorRef ref(self):
-        return create_actor_ref(self._address, self._uid)
+        return __pyx_unpickle_ActorRef(self._address, self._uid)
 
     async def _handle_actor_result(self, result):
         cdef int idx

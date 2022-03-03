@@ -117,7 +117,12 @@ class DummyActor(mo.Actor):
         return self.value
 
     def get_ref(self):
-        return self.ref()
+        ref = self.ref()
+        tp = ActorLocalRef if get_debug_options() is None else ActorRef
+        assert (
+            type(ref) is tp
+        ), f"Expect type of actor ref is {tp}, but got {ref} instead."
+        return ref
 
 
 class RecordActor(mo.Actor):
@@ -451,12 +456,19 @@ async def test_mars_destroy_has_actor(actor_pool_context):
     # there will be memory leak if the actor create and destroy multiple times.
     DummyActor.__dict__["add"].__get__.__func__.cache_clear()
 
+    if isinstance(ref2, ActorLocalRef):
+        assert "weakref" in str(ref2)
+        assert "dead" in str(ref2)
+
     # error needed when illegal uids are passed
     with pytest.raises(ValueError):
         await mo.has_actor(await mo.actor_ref(set()))
 
     with pytest.raises(mo.ActorNotExist):
         await ref2.add(1)
+
+    with pytest.raises(mo.ActorNotExist):
+        await ref2_add_method(1)
 
     ref1 = await mo.create_actor(
         DummyActor, 1, uid=ref1.uid, address=pool.external_address
