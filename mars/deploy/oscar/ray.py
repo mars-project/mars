@@ -554,6 +554,8 @@ class RayClient:
         self._cluster = cluster
         self._address = cluster.supervisor_address
         self._session = session
+        # hold ray cluster by client to avoid actor handle out-of-scope
+        session._ray_client = self
 
     @classmethod
     async def create(cls, cluster: RayCluster) -> "RayClient":
