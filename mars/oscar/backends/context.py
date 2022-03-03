@@ -17,7 +17,7 @@ from typing import Tuple, Union, Type
 
 from ...utils import to_binary
 from ..api import Actor
-from ..core import ActorRef, ActorLocalRef, create_actor_local_ref
+from ..core import ActorRef, create_actor_local_ref
 from ..context import BaseActorContext
 from ..debug import debug_async_timeout, detect_cycle_send
 from ..errors import CannotCancelTask
