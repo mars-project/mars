@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+from collections import namedtuple
 from typing import Optional, Union, Tuple
 
 import numpy as np
@@ -29,6 +30,7 @@ from ...serialization.serializables import (
     TupleField,
     KeyField,
     Int32Field,
+    NamedTupleField,
 )
 from ..core import DataFrame, Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
@@ -124,6 +126,9 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
             cls.execute_reduce(ctx, op)
 
 
+MergeSplitInfo = namedtuple("MergeSplitInfo", "split_side, split_index, nsplits")
+
+
 class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_MERGE
 
@@ -140,6 +145,9 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
     validate = AnyField("validate")
     strategy = StringField("strategy")
     auto_merge_threshold = Int32Field("auto_merge_threshold")
+
+    # only for broadcast merge
+    split_info = NamedTupleField("split_info")
 
     def __init__(self, copy=None, **kwargs):
         super().__init__(copy_=copy, **kwargs)
@@ -342,14 +350,23 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         if left.chunk_shape[0] < right.chunk_shape[0]:
             # broadcast left
-            left_on = _prepare_shuffle_on(op.left_index, op.left_on, op.on)
-            left_chunks = cls._gen_shuffle_chunks(left.chunk_shape, left_on, left)
+            if op.how == "inner":
+                left_chunks = left.chunks
+                need_split = False
+            else:
+                left_on = _prepare_shuffle_on(op.left_index, op.left_on, op.on)
+                left_chunks = cls._gen_shuffle_chunks(left.chunk_shape, left_on, left)
+                need_split = True
             right_chunks = right.chunks
             for right_chunk in right_chunks:
                 merged_chunks = []
                 # concat all merged results
                 for j, left_chunk in enumerate(left_chunks):
                     merge_op = op.copy().reset_key()
+                    if need_split:
+                        merge_op.split_info = MergeSplitInfo(
+                            "right", j, len(left_chunks)
+                        )
                     merged_chunks.append(
                         merge_op.new_chunk(
                             [left_chunk, right_chunk],
@@ -374,14 +391,25 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             nsplits = ((np.nan,) * len(right.chunks), (out_df.shape[1],))
         else:
             # broadcast right
-            right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
-            right_chunks = cls._gen_shuffle_chunks(right.chunk_shape, right_on, right)
+            if op.how == "inner":
+                need_split = False
+                right_chunks = right.chunks
+            else:
+                need_split = True
+                right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
+                right_chunks = cls._gen_shuffle_chunks(
+                    right.chunk_shape, right_on, right
+                )
             left_chunks = left.chunks
             for left_chunk in left_chunks:
                 merged_chunks = []
                 # concat all merged results
                 for j, right_chunk in enumerate(right_chunks):
                     merge_op = op.copy().reset_key()
+                    if need_split:
+                        merge_op.split_info = MergeSplitInfo(
+                            "left", j, len(right_chunks)
+                        )
                     merged_chunks.append(
                         merge_op.new_chunk(
                             [left_chunk, right_chunk],
@@ -455,6 +483,19 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         left, right = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
+
+        if getattr(op, "split_info", None) is not None:
+            split_info = op.split_info
+            if split_info.split_side == "left":
+                index = hash_dataframe_on(left, on=op.on, size=split_info.nsplits)[
+                    split_info.split_index
+                ]
+                left = left.iloc[index]
+            else:
+                index = hash_dataframe_on(right, on=op.on, size=split_info.nsplits)[
+                    split_info.split_index
+                ]
+                right = right.iloc[index]
 
         def execute_merge(x, y):
             if not op.gpu:
