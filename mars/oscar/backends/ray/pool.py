@@ -135,7 +135,8 @@ class RayMainActorPool(MainActorPoolBase):
         create_sub_pool_timeout = 120
         actor_handle = config["kwargs"]["sub_pool_handles"][external_address]
         done, _ = await asyncio.wait(
-            [actor_handle.set_actor_pool_config.remote(actor_pool_config)], timeout=create_sub_pool_timeout
+            [actor_handle.set_actor_pool_config.remote(actor_pool_config)],
+            timeout=create_sub_pool_timeout,
         )
         if not done:
             msg = (
@@ -289,8 +290,11 @@ class RayMainPool(RayPoolBase):
             self._state == RayPoolState.INIT
         ), f"The pool {address} is already started, current state is {self._state}"
         self._actor_pool = await create_actor_pool(
-            address, n_process=n_process, pool_cls=RayMainActorPool,
-            sub_pool_handles=sub_pool_handles, **self._kwargs
+            address,
+            n_process=n_process,
+            pool_cls=RayMainActorPool,
+            sub_pool_handles=sub_pool_handles,
+            **self._kwargs,
         )
         self._set_ray_server(self._actor_pool)
         self._state = RayPoolState.POOL_READY
@@ -328,7 +332,9 @@ class RaySubPool(RayPoolBase):
         # ray can't get the creation exception.
         main_pool_address, process_index = self._args
         main_pool = ray.get_actor(main_pool_address)
-        self._check_alive_task = asyncio.create_task(self.check_main_pool_alive(main_pool))
+        self._check_alive_task = asyncio.create_task(
+            self.check_main_pool_alive(main_pool)
+        )
         if self._actor_pool_config is None:
             self._actor_pool_config = await main_pool.actor_pool.remote("_config")
         pool_config = self._actor_pool_config.get_pool_config(process_index)
@@ -339,7 +345,10 @@ class RaySubPool(RayPoolBase):
         if env:
             os.environ.update(env)
         self._actor_pool = await RaySubActorPool.create(
-            {"actor_pool_config": self._actor_pool_config, "process_index": process_index}
+            {
+                "actor_pool_config": self._actor_pool_config,
+                "process_index": process_index,
+            }
         )
         self._set_ray_server(self._actor_pool)
         await self._actor_pool.start()
@@ -355,9 +364,14 @@ class RaySubPool(RayPoolBase):
             if self._main_pool_start_timestamp is None:
                 self._main_pool_start_timestamp = main_pool_start_timestamp
             if main_pool_start_timestamp != self._main_pool_start_timestamp:
-                logger.error("Main pool has restarted at %s, exit current sub pool now.",
-                             datetime.datetime.fromtimestamp(main_pool_start_timestamp / 1e9), main_pool)
+                logger.error(
+                    "Main pool has restarted at %s, exit current sub pool now.",
+                    datetime.datetime.fromtimestamp(main_pool_start_timestamp / 1e9),
+                    main_pool,
+                )
                 os._exit(0)
         except:
-            logger.exception("Main pool %s has exited, exit current sub pool now.", main_pool)
+            logger.exception(
+                "Main pool %s has exited, exit current sub pool now.", main_pool
+            )
             os._exit(0)

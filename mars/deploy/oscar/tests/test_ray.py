@@ -216,6 +216,7 @@ def test_new_ray_session(stop_ray):
     # Test ray cluster exists after session got gc.
     del session
     import gc
+
     gc.collect()
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
 
@@ -596,7 +597,7 @@ async def test_auto_scale_in(ray_large_cluster):
         assert await autoscaler_ref.get_dynamic_worker_nums() == 2
 
 
-@pytest.mark.timeout(timeout=120)
+@pytest.mark.timeout(timeout=300)
 @pytest.mark.parametrize("ray_large_cluster", [{"num_nodes": 4}], indirect=True)
 @require_ray
 @pytest.mark.asyncio

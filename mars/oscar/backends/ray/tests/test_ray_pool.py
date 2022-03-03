@@ -57,8 +57,10 @@ async def test_main_pool(ray_start_regular):
 
     pool_handle = await RayActorBackend._create_ray_pools(address, n_process)
     main_actor_pool = await create_actor_pool(
-        address, n_process=n_process, pool_cls=RayMainActorPool,
-        sub_pool_handles=pool_handle.sub_pools
+        address,
+        n_process=n_process,
+        pool_cls=RayMainActorPool,
+        sub_pool_handles=pool_handle.sub_pools,
     )
     async with main_actor_pool:
         sub_processes = list(main_actor_pool.sub_processes.values())

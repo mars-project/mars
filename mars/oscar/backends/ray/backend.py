@@ -56,8 +56,9 @@ class RayActorBackend(BaseActorBackend):
             bundle_index = -1
         num_cpus = kwargs.get("main_pool_cpus", 0)
         sub_pools = {
-            sub_pool_address:
-            RayMainActorPool.create_sub_pool(address, sub_pool_address)
+            sub_pool_address: RayMainActorPool.create_sub_pool(
+                address, sub_pool_address
+            )
             for sub_pool_address in pool_addresses[1:]
         }
         actor_handle = (
@@ -80,10 +81,18 @@ class RayActorBackend(BaseActorBackend):
     async def create_actor_pool(cls, *args, **kwargs):
         with Timer() as timer:
             pool_handle = await cls._create_ray_pools(*args, **kwargs)
-        logger.info("Submit create actor pool %s took %s seconds.", pool_handle.main_pool, timer.duration)
+        logger.info(
+            "Submit create actor pool %s took %s seconds.",
+            pool_handle.main_pool,
+            timer.duration,
+        )
         with Timer() as timer:
             await pool_handle.main_pool.start.remote()
-        logger.info("Start actor pool %s took %s seconds.", pool_handle.main_pool, timer.duration)
+        logger.info(
+            "Start actor pool %s took %s seconds.",
+            pool_handle.main_pool,
+            timer.duration,
+        )
         return pool_handle
 
 
