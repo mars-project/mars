@@ -114,19 +114,9 @@ class SubtaskResult(Serializable):
         if result and result.bands:
             bands = self.bands or []
             self.bands = sorted(set(bands + result.bands))
-            self._update_result(result)
-        return self
-
-    def _update_result(self, result: Optional["SubtaskResult"]):
-        """Update result to save the latest successful execution result."""
-        if (
-            self.status != SubtaskStatus.succeeded
-            and result.status == SubtaskStatus.succeeded
-        ):
-            self.status = SubtaskStatus.succeeded
-            self.progress = result.progress
             self.execution_start_time = result.execution_start_time
             self.execution_end_time = result.execution_end_time
+        return self
 
 
 class SubtaskGraph(DAG, Iterable[Subtask]):

@@ -257,7 +257,5 @@ def test_update_subtask_result():
         execution_end_time=1646125104.448726,
     )
     subtask_result.merge_bands(new_result)
-    assert subtask_result.status == new_result.status
-    assert subtask_result.progress == new_result.progress
     assert subtask_result.execution_start_time == new_result.execution_start_time
     assert subtask_result.execution_end_time == new_result.execution_end_time
