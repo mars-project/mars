@@ -365,13 +365,19 @@ def new_ray_session(
     new_cluster_kwargs:
         See `new_cluster` arguments.
     """
+    client = None
     if not address:
         client = new_cluster_in_ray(**new_cluster_kwargs)
         session_id = session_id or client.session.session_id
         address = client.address
-    return new_session(
+    session = new_session(
         address=address, session_id=session_id, backend="oscar", default=default
     )
+    session._ray_client = client
+    if default:
+        # SyncSession set isolated_session as default session instead.
+        AbstractSession.default._ray_client = client
+    return session
 
 
 class RayCluster:
@@ -552,7 +558,9 @@ class RayClient:
     @classmethod
     async def create(cls, cluster: RayCluster) -> "RayClient":
         session = await _new_session(cluster.supervisor_address, default=True)
-        return RayClient(cluster, session)
+        client = RayClient(cluster, session)
+        AbstractSession.default._ray_client = client
+        return client
 
     @property
     def address(self):
@@ -579,3 +587,4 @@ class RayClient:
 
     async def _stop(self):
         await self._cluster.stop()
+        AbstractSession.reset_default()

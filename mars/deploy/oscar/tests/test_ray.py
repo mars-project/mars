@@ -213,6 +213,11 @@ def test_new_ray_session(stop_ray):
     session = new_ray_session(session_id="abcd", worker_num=2, default=True)
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
+    # Test ray cluster exists after session got gc.
+    del session
+    import gc
+    gc.collect()
+    mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
 
 
 @require_ray

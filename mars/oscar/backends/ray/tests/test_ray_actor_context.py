@@ -20,6 +20,7 @@ from .....utils import lazy_import
 from .....tests.core import require_ray
 from ...mars.tests import test_mars_actor_context
 from ...router import Router
+from ..backend import RayActorBackend
 from ..communication import RayServer
 from ..pool import RayMainPool
 from ..utils import process_placement_to_address
@@ -30,7 +31,7 @@ pg_name, n_process = "ray_cluster", 2
 
 
 @pytest.fixture
-def actor_pool_context():
+async def actor_pool_context():
     from .....serialization.ray import (
         register_ray_serializers,
         unregister_ray_serializers,
@@ -47,14 +48,8 @@ def actor_pool_context():
         pg, bundle_index = ray.util.get_placement_group(pg_name), 0
     else:
         pg, bundle_index = None, -1
-    actor_handle = (
-        ray.remote(RayMainPool)
-        .options(
-            name=address, placement_group=pg, placement_group_bundle_index=bundle_index
-        )
-        .remote(address, n_process)
-    )
-    ray.get(actor_handle.start.remote())
+    pool_handle = await RayActorBackend._create_ray_pools(address, n_process)
+    await pool_handle.start.remote()
 
     class ProxyPool:
         def __init__(self, ray_pool_actor_handle):
@@ -76,7 +71,7 @@ def actor_pool_context():
 
             return ray.get(self.ray_pool_actor_handle.actor_pool.remote(item))
 
-    yield ProxyPool(actor_handle)
+    yield ProxyPool(pool_handle)
     for addr in [
         process_placement_to_address(pg_name, 0, process_index=i)
         for i in range(n_process)

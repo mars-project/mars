@@ -99,7 +99,6 @@ class RayMainActorPool(MainActorPoolBase):
             .options(
                 num_cpus=0,
                 name=sub_pool_address,
-                memory=50 * 1024**2,
                 max_concurrency=10000000,  # By default, 1000 tasks can be running concurrently.
                 max_restarts=-1,  # Auto restarts by ray
                 placement_group=pg,
@@ -132,7 +131,7 @@ class RayMainActorPool(MainActorPoolBase):
         )
         logger.info("Start to start ray sub pool %s.", external_address)
         create_sub_pool_timeout = 120
-        actor_handle = config["sub_pool_handles"][external_address]
+        actor_handle = config["kwargs"]["sub_pool_handles"][external_address]
         done, _ = await asyncio.wait(
             [actor_handle.set_actor_pool_config.remote(actor_pool_config)], timeout=create_sub_pool_timeout
         )
@@ -351,4 +350,4 @@ class RaySubPool(RayPoolBase):
             await main_pool.alive.remote()
         except:
             logger.exception("Main pool %s has exited, exit current sub pool now.", main_pool)
-            os._exit()
+            os._exit(0)

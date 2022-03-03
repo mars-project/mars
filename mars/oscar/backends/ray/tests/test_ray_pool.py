@@ -23,7 +23,8 @@ from .....utils import lazy_import
 from ....context import get_context
 from ....errors import ServerClosed
 from ...allocate_strategy import ProcessIndex, MainPool
-from ..pool import RayMainPool, RayMainActorPool, create_actor_pool, RayPoolState
+from ..backend import RayActorBackend
+from ..pool import RayMainActorPool, create_actor_pool, RayPoolState
 from ..utils import process_placement_to_address, kill_and_wait
 
 ray = lazy_import("ray")
@@ -42,7 +43,7 @@ class TestActor(mo.Actor):
 @require_ray
 @pytest.mark.asyncio
 async def test_main_pool(ray_start_regular):
-    pg_name, n_process = "ray_cluster", 3
+    pg, bundle_index, pg_name, n_process = None, -1, "ray_cluster", 3
     if hasattr(ray.util, "get_placement_group"):
         pg = ray.util.placement_group(name=pg_name, bundles=[{"CPU": n_process}])
         ray.get(pg.ready())
@@ -54,8 +55,10 @@ async def test_main_pool(ray_start_regular):
     ]
     assert RayMainActorPool.gen_internal_address(0, address) == address
 
+    pool_handle = await RayActorBackend._create_ray_pools(address, n_process)
     main_actor_pool = await create_actor_pool(
-        address, n_process=n_process, pool_cls=RayMainActorPool
+        address, n_process=n_process, pool_cls=RayMainActorPool,
+        sub_pool_handles=pool_handle.sub_pools
     )
     async with main_actor_pool:
         sub_processes = list(main_actor_pool.sub_processes.values())
@@ -81,13 +84,8 @@ async def test_shutdown_sub_pool(ray_start_regular):
     else:
         pg, bundle_index = None, -1
     address = process_placement_to_address(pg_name, 0, process_index=0)
-    actor_handle = (
-        ray.remote(RayMainPool)
-        .options(
-            name=address, placement_group=pg, placement_group_bundle_index=bundle_index
-        )
-        .remote(address, n_process, auto_recover=False)
-    )
+    pool_handle = await RayActorBackend._create_ray_pools(address, n_process)
+    actor_handle = pool_handle.main_pool
     await actor_handle.start.remote()
     sub_pool_address1 = process_placement_to_address(pg_name, 0, process_index=1)
     sub_pool_handle1 = ray.get_actor(sub_pool_address1)
