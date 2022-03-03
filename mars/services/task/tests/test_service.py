@@ -468,7 +468,8 @@ async def test_get_tileable_subtasks(start_test_service, with_input_output):
                 ]
                 if tileable_inputs:
                     assert any(
-                        detail["nodeType"] == "Input" for detail in subtask_details.values()
+                        detail["nodeType"] == "Input"
+                        for detail in subtask_details.values()
                     )
                 if tileable_outputs:
                     assert any(
