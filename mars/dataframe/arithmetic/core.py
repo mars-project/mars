@@ -18,7 +18,7 @@ import copy
 import numpy as np
 import pandas as pd
 
-from ...core import ENTITY_TYPE, recursive_tile
+from ...core import ENTITY_TYPE, CHUNK_TYPE, recursive_tile
 from ...serialization.serializables import AnyField
 from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, ChunkData, Chunk
 from ...tensor.datasource import tensor as astensor
@@ -205,14 +205,18 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         out_chunks = []
         for chunk in tileable.chunks:
             out_op = op.copy().reset_key()
-            if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
+            if chunk.ndim == 2:
                 out_chunk = out_op.new_chunk(
                     [chunk],
                     shape=chunk.shape,
                     index=chunk.index,
-                    dtypes=chunk.dtypes,
-                    index_value=chunk.index_value,
-                    columns_value=getattr(chunk, "columns_value"),
+                )
+                out_chunk._set_tileable_meta(
+                    tileable_key=df.key,
+                    nsplits=tileable.nsplits,
+                    index_value=df.index_value,
+                    columns_value=df.columns_value,
+                    dtypes=df.dtypes,
                 )
             else:
                 out_chunk = out_op.new_chunk(
@@ -220,33 +224,20 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     shape=chunk.shape,
                     index=chunk.index,
                     dtype=chunk.dtype,
-                    index_value=chunk.index_value,
                     name=getattr(chunk, "name"),
+                )
+                out_chunk._set_tileable_meta(
+                    tileable_key=df.key,
+                    nsplits=tileable.nsplits,
+                    index_value=df.index_value,
                 )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        out = op.outputs[0]
-        if isinstance(df, SERIES_TYPE):
-            return new_op.new_seriess(
-                op.inputs,
-                df.shape,
-                nsplits=tileable.nsplits,
-                dtype=out.dtype,
-                index_value=df.index_value,
-                name=df.name,
-                chunks=out_chunks,
-            )
-        else:
-            return new_op.new_dataframes(
-                op.inputs,
-                df.shape,
-                nsplits=tileable.nsplits,
-                dtypes=out.dtypes,
-                index_value=df.index_value,
-                columns_value=df.columns_value,
-                chunks=out_chunks,
-            )
+        params = df.params.copy()
+        params["chunks"] = out_chunks
+        params["nsplits"] = tileable.nsplits
+        return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
     def _tile_with_tensor(cls, op):
@@ -404,28 +395,33 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def _calc_properties(cls, x1, x2=None, axis="columns"):
+        is_chunk = isinstance(x1, CHUNK_TYPE)
+
         if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and (
             x2 is None
             or pd.api.types.is_scalar(x2)
             or isinstance(x2, (TENSOR_TYPE, TENSOR_CHUNK_TYPE))
         ):
-            if x2 is None:
-                dtypes = x1.dtypes
-            elif pd.api.types.is_scalar(x2):
-                dtypes = cls._operator(build_empty_df(x1.dtypes), x2).dtypes
-            elif x1.dtypes is not None and isinstance(x2, TENSOR_TYPE):
-                dtypes = pd.Series(
-                    [infer_dtype(dt, x2.dtype, cls._operator) for dt in x1.dtypes],
-                    index=x1.dtypes.index,
-                )
+            if not is_chunk:
+                if x2 is None:
+                    dtypes = x1.dtypes
+                elif pd.api.types.is_scalar(x2):
+                    dtypes = cls._operator(build_empty_df(x1.dtypes), x2).dtypes
+                elif x1.dtypes is not None and isinstance(x2, TENSOR_TYPE):
+                    dtypes = pd.Series(
+                        [infer_dtype(dt, x2.dtype, cls._operator) for dt in x1.dtypes],
+                        index=x1.dtypes.index,
+                    )
+                else:
+                    dtypes = x1.dtypes
+                return {
+                    "shape": x1.shape,
+                    "dtypes": dtypes,
+                    "columns_value": x1.columns_value,
+                    "index_value": x1.index_value,
+                }
             else:
-                dtypes = x1.dtypes
-            return {
-                "shape": x1.shape,
-                "dtypes": dtypes,
-                "columns_value": x1.columns_value,
-                "index_value": x1.index_value,
-            }
+                return {"shape": x1.shape}
 
         if isinstance(x1, (SERIES_TYPE, SERIES_CHUNK_TYPE)) and (
             x2 is None
@@ -438,11 +434,13 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 dtype = cls.return_dtype
             else:
                 dtype = infer_dtype(x1.dtype, x2_dtype, cls._operator)
-            ret = {"shape": x1.shape, "dtype": dtype, "index_value": x1.index_value}
+            ret = {"shape": x1.shape, "dtype": dtype}
             if pd.api.types.is_scalar(x2) or (
                 hasattr(x2, "ndim") and (x2.ndim == 0 or x2.ndim == 1)
             ):
                 ret["name"] = x1.name
+            if not is_chunk:
+                ret["index_value"] = x1.index_value
             return ret
 
         if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and isinstance(

@@ -357,11 +357,20 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(op.mask, (SERIES_TYPE, DATAFRAME_TYPE, TENSOR_TYPE)):
             mask = op.inputs[1]
 
-            if isinstance(op.mask, SERIES_TYPE):
+            if (
+                hasattr(mask, "index_value")
+                and mask.ndim == 1
+                and in_df.index_value.key == mask.index_value.key
+            ):
+                nsplits = ((np.nan,) * in_df.chunk_shape[0], in_df.nsplits[1])
+                out_shape = in_df.chunk_shape
+                df_chunks = in_df.chunks
+                mask_chunks = mask.chunks
+            elif isinstance(mask, SERIES_TYPE):
                 nsplits, out_shape, df_chunks, mask_chunks = align_dataframe_series(
                     in_df, mask, axis="index"
                 )
-            elif isinstance(op.mask, DATAFRAME_TYPE):
+            elif isinstance(mask, DATAFRAME_TYPE):
                 nsplits, out_shape, df_chunks, mask_chunks = align_dataframe_dataframe(
                     in_df, mask
                 )
@@ -382,7 +391,6 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                     mask_chunk = mask_chunks[df_chunk.index[0]]
                 else:
                     mask_chunk = mask_chunks[i]
-                index_value = parse_index(out_df.index_value.to_pandas(), df_chunk)
                 out_chunk = (
                     op.copy()
                     .reset_key()
@@ -390,10 +398,14 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                         [df_chunk, mask_chunk],
                         index=idx,
                         shape=(np.nan, df_chunk.shape[1]),
-                        dtypes=df_chunk.dtypes,
-                        index_value=index_value,
-                        columns_value=df_chunk.columns_value,
                     )
+                )
+                out_chunk._set_tileable_meta(
+                    tileable_key=out_df.key,
+                    nsplits=nsplits,
+                    index_value=out_df.index_value,
+                    columns_value=out_df.columns_value,
+                    dtypes=out_df.dtypes,
                 )
                 out_chunks.append(out_chunk)
         else:
@@ -442,29 +454,28 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             column_index = calc_columns_index(col_names, in_df)[0]
             out_chunks = []
             dtype = in_df.dtypes[col_names]
+            out_nsplits = (in_df.nsplits[0],)
             for i in range(in_df.chunk_shape[0]):
                 c = in_df.cix[(i, column_index)]
                 chunk_op = DataFrameIndex(col_names=col_names)
-                out_chunks.append(
-                    chunk_op.new_chunk(
-                        [c],
-                        shape=(c.shape[0],),
-                        index=(i,),
-                        dtype=dtype,
-                        index_value=c.index_value,
-                        name=col_names,
-                    )
+                out_chunk = chunk_op.new_chunk(
+                    [c],
+                    shape=(c.shape[0],),
+                    index=(i,),
+                    dtype=dtype,
+                    name=col_names,
                 )
+                out_chunk._set_tileable_meta(
+                    tileable_key=out_df.key,
+                    nsplits=out_nsplits,
+                    index_value=out_df.index_value,
+                )
+                out_chunks.append(out_chunk)
             new_op = op.copy()
-            return new_op.new_seriess(
-                op.inputs,
-                shape=out_df.shape,
-                dtype=out_df.dtype,
-                index_value=out_df.index_value,
-                name=out_df.name,
-                nsplits=(in_df.nsplits[0],),
-                chunks=out_chunks,
-            )
+            params = out_df.params.copy()
+            params["chunks"] = out_chunks
+            params["nsplits"] = out_nsplits
+            return new_op.new_seriess(op.inputs, kws=[params])
         else:
             # combine columns into one chunk and keep the columns order at the same time.
             # When chunk columns are ['c1', 'c2', 'c3'], ['c4', 'c5'],
