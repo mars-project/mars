@@ -20,7 +20,7 @@ from typing import Dict, List
 from .... import oscar as mo
 from ....core import ChunkGraph
 from ....core.operand import Fuse
-from ....metric import Metrics
+from ....metrics import Metrics
 from ....optimization.logical import OptimizationRecords
 from ....typing import BandType, TileableType
 from ....utils import get_params_fields

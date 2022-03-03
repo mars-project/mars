@@ -32,7 +32,7 @@ from ....core.operand import (
     ShuffleProxy,
     OperandStage,
 )
-from ....metric import Metrics
+from ....metrics import Metrics
 from ....optimization.logical import OptimizationRecords
 from ....oscar.profiling import (
     ProfilingData,

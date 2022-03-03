@@ -29,7 +29,7 @@ from ....core.operand import (
     VirtualOperand,
     execute,
 )
-from ....metric import Metrics
+from ....metrics import Metrics
 from ....optimization.physical import optimize
 from ....typing import BandType
 from ....utils import get_chunk_key_to_data_keys

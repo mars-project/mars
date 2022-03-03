@@ -23,7 +23,7 @@ from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
 from ...core.entrypoints import init_extension_entrypoints
-from ...metric import init_metrics
+from ...metrics import init_metrics
 from ...utils import implements, to_binary
 from ...utils import lazy_import, register_asyncio_task_timeout_detector
 from ..api import Actor

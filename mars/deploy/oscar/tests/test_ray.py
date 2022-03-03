@@ -642,7 +642,7 @@ async def test_ownership_when_scale_in(ray_large_cluster):
 def test_init_metrics_on_ray(ray_large_cluster, create_cluster):
     client = create_cluster[0]
     assert client.session
-    from ....metric import api
+    from ....metrics import api
 
     assert api._metric_backend == "ray"
 

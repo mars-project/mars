@@ -21,7 +21,7 @@ from typing import Union, Dict, List, Optional, AsyncGenerator
 
 from ... import oscar as mo
 from ...core.entrypoints import init_extension_entrypoints
-from ...metric import init_metrics
+from ...metrics import init_metrics
 from ...oscar.backends.ray.driver import RayActorDriver
 from ...oscar.backends.ray.utils import (
     process_placement_to_address,

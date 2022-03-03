@@ -46,7 +46,7 @@ from ...lib.aio import (
     new_isolation,
     stop_isolation,
 )
-from ...metric import Metrics
+from ...metrics import Metrics
 from ...services.cluster import AbstractClusterAPI, ClusterAPI
 from ...services.lifecycle import AbstractLifecycleAPI, LifecycleAPI
 from ...services.meta import MetaAPI, AbstractMetaAPI
