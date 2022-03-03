@@ -27,11 +27,7 @@ from ..supervisor.node_info import NodeInfoCollectorActor
 from ..tests import backend
 from ..worker.locator import WorkerSupervisorLocatorActor
 
-
-class TestWorkerSupervisorLocatorActor(WorkerSupervisorLocatorActor):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._load_backend = backend.TestClusterBackend
+del backend
 
 
 class MockNodeInfoCollectorActor(mo.Actor):
@@ -57,7 +53,7 @@ class MockNodeInfoCollectorActor(mo.Actor):
 
 @pytest.fixture
 async def actor_pool():
-    pool = await mo.create_actor_pool("127.0.0.1", n_process=1)
+    pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
     await pool.start()
 
     await mo.create_actor(
@@ -160,14 +156,12 @@ async def test_worker_supervisor_locator(actor_pool, temp_address_file):
     with open(temp_address_file, "w") as file_obj:
         file_obj.write("\n".join(addresses))
 
-    locator_address = next(iter(actor_pool.sub_processes.keys()))
-
     locator_ref = await mo.create_actor(
-        TestWorkerSupervisorLocatorActor,
+        WorkerSupervisorLocatorActor,
         "test",
         temp_address_file,
-        uid=TestWorkerSupervisorLocatorActor.default_uid(),
-        address=locator_address,
+        uid=WorkerSupervisorLocatorActor.default_uid(),
+        address=actor_pool.external_address,
     )
 
     info_ref = await mo.actor_ref(

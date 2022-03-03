@@ -20,8 +20,9 @@ cdef class ActorRef:
     cdef dict _methods
 
 
-cdef class ActorProxy(ActorRef):
-    cdef _BaseActor _actor
+cdef class ActorLocalRef(ActorRef):
+    cdef object _actor_weakref
+    cdef _weakref_local_actor(self)
 
 
 cdef class _BaseActor:
@@ -29,7 +30,6 @@ cdef class _BaseActor:
     cdef str _address
     cdef object _lock
     cdef object _uid
-    cdef object _handle_actor_result_ref
 
     cpdef ActorRef ref(self)
 

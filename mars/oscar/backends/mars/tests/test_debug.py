@@ -98,6 +98,7 @@ async def debug_logger():
     finally:
         mo.set_debug_options(None)
         logger.removeHandler(log_handler)
+        assert mo.get_debug_options() is None
 
 
 @contextmanager

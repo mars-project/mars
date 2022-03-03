@@ -24,7 +24,7 @@ import pandas as pd
 import pytest
 
 from ..... import oscar as mo
-from .....oscar.core import ActorRef, ActorProxy
+from .....oscar.core import ActorRef, ActorLocalRef
 from ....backends.allocate_strategy import RandomSubPool
 from ....debug import set_debug_options, get_debug_options, DebugOptions
 from ...router import Router
@@ -86,7 +86,7 @@ class DummyActor(mo.Actor):
     async def send(self, uid, method, *args):
         actor_ref = await mo.actor_ref(uid, address=self.address)
         tp = (
-            ActorProxy
+            ActorLocalRef
             if actor_ref.address == self.address and get_debug_options() is None
             else ActorRef
         )
@@ -250,6 +250,8 @@ async def actor_pool_context(request):
     try:
         if request.param:
             set_debug_options(DebugOptions())
+        else:
+            set_debug_options(None)
 
         await pool.start()
         yield pool
@@ -435,18 +437,41 @@ async def test_gather_exception(actor_pool_context):
 async def test_mars_destroy_has_actor(actor_pool_context):
     pool = actor_pool_context
     ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
-    assert await mo.has_actor(ref1)
-
-    await mo.destroy_actor(ref1)
+    ref2 = await mo.actor_ref(ref1)
+    ref2_add_method = ref2.add
+    assert isinstance(ref1, ActorRef)
+    assert await mo.has_actor(ref2)
+    await mo.destroy_actor(ref2)
     assert not await mo.has_actor(ref1)
+    assert not await mo.has_actor(ref2)
+
+    # the lru_cache on _ExtensibleAccessor.__get__ will reference all the
+    # decorated actors, so we have to clear the cache here.
+    #
+    # there will be memory leak if the actor create and destroy multiple times.
+    DummyActor.__dict__["add"].__get__.__func__.cache_clear()
 
     # error needed when illegal uids are passed
     with pytest.raises(ValueError):
         await mo.has_actor(await mo.actor_ref(set()))
 
-    ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+    with pytest.raises(mo.ActorNotExist):
+        await ref2.add(1)
+
+    ref1 = await mo.create_actor(
+        DummyActor, 1, uid=ref1.uid, address=pool.external_address
+    )
+
+    # the ref2 should be works after actor is recreated.
+    assert await ref2.add(1) == 2
+    # the ref2 method should be works after actor is recreated.
+    assert await ref2_add_method(1) == 3
+
+    assert isinstance(ref2, ActorRef)
+    assert await mo.has_actor(ref1)
     await mo.destroy_actor(ref1)
     assert not await mo.has_actor(ref1)
+    assert not await mo.has_actor(ref2)
 
     ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
     ref2 = await ref1.create(DummyActor, 2, address=pool.external_address)

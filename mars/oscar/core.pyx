@@ -21,7 +21,7 @@ cimport cython
 from typing import AsyncGenerator
 
 from .context cimport get_context
-from .errors import Return
+from .errors import Return, ActorNotExist
 from .utils cimport is_async_generator
 from .utils import create_actor_ref
 
@@ -56,7 +56,7 @@ cpdef get_local_actor(address, uid):
     if pool is not None:
         actor = pool._actors.get(uid)
         if actor is not None:
-            return ActorProxy(actor)
+            return actor
     return None
 
 
@@ -66,7 +66,8 @@ cdef class ActorPool:
 
 
 def __pyx_unpickle_ActorRef(address, uid):
-    return get_local_actor(address, uid) or ActorRef(address, uid)
+    actor = get_local_actor(address, uid)
+    return ActorRef(address, uid) if actor is None else ActorLocalRef(actor)
 
 
 cdef class ActorRef:
@@ -102,7 +103,7 @@ cdef class ActorRef:
 
     def __eq__(self, other):
         other_type = type(other)
-        if other_type is ActorRef or other_type is ActorProxy:
+        if other_type is ActorRef or other_type is ActorLocalRef:
             return self.address == other.address and self.uid == other.uid
         return False
 
@@ -185,21 +186,34 @@ cdef class ActorRefMethod:
         return asyncio.create_task(delay_fun())
 
 
-cdef class ActorProxy(ActorRef):
+cdef class ActorLocalRef(ActorRef):
     def __init__(self, _BaseActor actor):
+        # Make sure the input actor is an instance of _BaseActor.
         super().__init__(actor._address, actor._uid)
-        self._actor = actor
+        self._actor_weakref = weakref.ref(actor, lambda _: self._methods.clear())
+
+    cdef _weakref_local_actor(self):
+        actor = get_local_actor(self.address, self.uid)
+        # Make sure the input actor is an instance of _BaseActor.
+        if actor is not None and isinstance(actor, _BaseActor):
+            self._actor_weakref = weakref.ref(actor, lambda _: self._methods.clear())
+            return actor
+        return None
 
     def __getattr__(self, item):
         try:
             return self._methods[item]
         except KeyError:
-            r = getattr(self._actor, item)
-            method = self._methods[item] = ActorProxyMethod(self._actor, r)
+            actor = self._actor_weakref() or self._weakref_local_actor()
+            if actor is None:
+                raise ActorNotExist(f"Actor {self.uid} does not exist") from None
+            getattr(actor, item)
+            method = self._methods[item] = ActorLocalRefMethod(self, item)
             return method
 
     def __repr__(self):
-        return 'ActorProxy(uid={!r}, address={!r})'.format(self.uid, self.address)
+        return 'ActorLocalRef(uid={!r}, address={!r}), actor_weakref={!r}'.format(
+            self.uid, self.address, self._actor_weakref)
 
 
 async def __pyx_actor_method_wrapper(method, result_handler, lock, args, kwargs):
@@ -213,37 +227,49 @@ async def __pyx_actor_method_wrapper(method, result_handler, lock, args, kwargs)
 _actor_method_wrapper = __pyx_actor_method_wrapper
 
 
-cdef class ActorProxyMethod:
-    cdef _BaseActor _actor
-    cdef object _method
+cdef class ActorLocalRefMethod:
+    cdef ActorLocalRef _actor_local_ref
+    cdef object _method_name
 
-    def __init__(self, _BaseActor actor, method):
-        self._actor = actor
-        self._method = method
+    def __init__(self, ActorLocalRef actor_local_ref, method_name):
+        self._actor_local_ref = actor_local_ref
+        self._method_name = method_name
+
+    cdef _get_referent(self):
+        actor = self._actor_local_ref._actor_weakref() or self._actor_local_ref._weakref_local_actor()
+        if actor is None:
+            raise ActorNotExist(f"Actor {self._actor_local_ref.uid} does not exist.")
+        method = getattr(actor, self._method_name)
+        return actor, method
 
     def __call__(self, *args, **kwargs):
+        actor, method = self._get_referent()
         return _actor_method_wrapper(
-            self._method, self._actor._handle_actor_result_ref, self._actor._lock, args, kwargs)
+            method, actor._handle_actor_result, (<_BaseActor>actor)._lock, args, kwargs)
 
     def options(self, **options):
         return self
 
     def send(self, *args, **kwargs):
+        actor, method = self._get_referent()
         return _actor_method_wrapper(
-            self._method, self._actor._handle_actor_result_ref, self._actor._lock, args, kwargs)
+            method, actor._handle_actor_result, (<_BaseActor>actor)._lock, args, kwargs)
 
     def tell(self, *args, **kwargs):
+        actor, method = self._get_referent()
         coro = _actor_method_wrapper(
-            self._method, self._actor._handle_actor_result_ref, self._actor._lock, args, kwargs)
+            method, actor._handle_actor_result, (<_BaseActor>actor)._lock, args, kwargs)
         asyncio.create_task(coro)
         return asyncio.sleep(0)
 
     def delay(self, *args, **kwargs):
-        return self._method.delay(*args, **kwargs)
+        actor, method = self._get_referent()
+        return method.delay(*args, **kwargs)
 
     def batch(self, *delays, send=True):
+        actor, method = self._get_referent()
         coro = _actor_method_wrapper(
-            self._method.batch, self._actor._handle_actor_result_ref, self._actor._lock, delays, dict())
+            method.batch, actor._handle_actor_result, (<_BaseActor>actor)._lock, delays, dict())
         if send:
             return coro
         else:
@@ -264,8 +290,6 @@ cdef class _BaseActor:
     """
     def __cinit__(self, *args, **kwargs):
         self._lock = self._create_lock()
-        # Avoid attribute lookup.
-        self._handle_actor_result_ref = self._handle_actor_result
 
     def _create_lock(self):
         raise NotImplementedError
