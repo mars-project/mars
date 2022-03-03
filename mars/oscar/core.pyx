@@ -47,6 +47,9 @@ def set_debug_options(options):
 
 
 cdef _get_local_actor(address, uid):
+    # Do not expose this method to Python to avoid actor being
+    # referenced everywhere.
+    #
     # The cycle send detection relies on send message, so we
     # disabled the local actor proxy if the debug option is on.
     if _log_cycle_send:
@@ -62,6 +65,20 @@ cdef _get_local_actor(address, uid):
 cdef class ActorPool:
     def __init__(self, address):
         _local_pool_map[address] = self
+
+
+cpdef create_actor_local_ref(address, uid):
+    """
+    Create an actor local reference.
+
+    Returns
+    -------
+    ActorLocalRef or None
+    """
+    actor = _get_local_actor(address, uid)
+    if actor is not None:
+        return ActorLocalRef(actor)
+    return None
 
 
 cpdef create_actor_ref(address, uid):
