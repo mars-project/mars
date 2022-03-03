@@ -19,7 +19,7 @@ import operator
 import weakref
 from collections.abc import Iterable
 from io import StringIO
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -1627,13 +1627,13 @@ class Series(HasShapeTileable, _ToPandasMixin):
             )
 
 
-_chunk_index_property = "_chunk_index"
+_tileable_key_property = "_tileable_key"
 _tileable_dtypes_property = "_tileable_dtypes"
 _tileable_index_value_property = "_tileable_index_value"
 _tileable_columns_value_property = "_tileable_columns_value"
 _nsplits_property = "_tileable_nsplits"
 _lazy_chunk_meta_properties = (
-    _chunk_index_property,
+    _tileable_key_property,
     _tileable_dtypes_property,
     _tileable_index_value_property,
     _tileable_columns_value_property,
@@ -1642,101 +1642,169 @@ _lazy_chunk_meta_properties = (
 
 
 class LazyMetaChunkData(ChunkData):
-    __slots__ = ()
+    __slots__ = _lazy_chunk_meta_properties
+
+    def _set_tileable_meta(
+        self,
+        tileable_key: str = None,
+        nsplits: Tuple[Tuple[int, ...]] = None,
+        index_value: IndexValue = None,
+        columns_value: IndexValue = None,
+        dtypes: pd.Series = None,
+    ):
+        setattr(self, _tileable_key_property, tileable_key)
+        setattr(self, _nsplits_property, nsplits)
+        setattr(self, _tileable_index_value_property, index_value)
+        setattr(self, _tileable_columns_value_property, columns_value)
+        setattr(self, _tileable_dtypes_property, dtypes)
 
 
-def _calc_axis_slice(
-    nsplits: Tuple[Tuple[int]], axis: int, chunk_index: Tuple[int, ...]
-) -> slice:
-    nsplit = nsplits[axis]
-    i = chunk_index[axis]
-    cum_nsplit = [0] + np.cumsum(nsplit).tolist()
-    return slice(cum_nsplit[i], cum_nsplit[i + 1])
+@functools.lru_cache
+def _get_cum_nsplit(nsplit: Tuple[int]) -> List[int]:
+    return [0] + np.cumsum(nsplit).tolist()
+
+
+def _calc_axis_slice(nsplit: Tuple[int], index: int) -> slice:
+    cum_nsplit = _get_cum_nsplit(nsplit)
+    return slice(cum_nsplit[index], cum_nsplit[index + 1])
 
 
 class ChunkDtypesField(SeriesField):
+    _tileable_key_index_to_dtypes = dict()
+
+    @staticmethod
+    def _gen_chunk_dtypes(instance: Tileable, index: int) -> Optional[pd.Series]:
+        # dtypes of tileable
+        try:
+            tileable_key = getattr(instance, _tileable_key_property)
+        except AttributeError:
+            return
+        cache = ChunkDtypesField._tileable_key_index_to_dtypes
+        try:
+            return cache[tileable_key, index]
+        except KeyError:
+            tileable_dtypes = getattr(instance, _tileable_dtypes_property)
+            # nsplits of tileable
+            nsplits = getattr(instance, _nsplits_property)[1]
+            # calc slice
+            slc = _calc_axis_slice(nsplits, index)
+            dtypes = tileable_dtypes.iloc[slc]
+            cache[tileable_key, index] = dtypes
+            return dtypes
+
     def __get__(self, instance, owner):
         if not issubclass(owner, LazyMetaChunkData):
             return super().__get__(instance, owner)
 
         values = instance._FIELD_VALUES
-        if "_dtypes" in values:
+        dtypes = values.get("_dtypes", None)
+        if dtypes is not None:
             # been set before
-            return values["_dtypes"]
+            return dtypes
 
         # get dtypes lazily
-        chunk_index = getattr(instance, _chunk_index_property)
-        # dtypes of tileable
-        tileable_dtypes = getattr(instance, _tileable_dtypes_property)
-        # nsplits of tileable
-        nsplits = getattr(instance, _nsplits_property)
-        # calc slice
-        slc = _calc_axis_slice(nsplits, 1, chunk_index)
-        dtypes = tileable_dtypes.iloc[slc]
+        index = instance.index[1]
+        dtypes = self._gen_chunk_dtypes(instance, index)
         # cache dtypes
         values["_dtypes"] = dtypes
         return dtypes
 
 
 class ChunkIndexValueField(ReferenceField):
+    _tileable_key_index_to_index_value = dict()
+
+    @staticmethod
+    def _gen_chunk_index_value(instance: Tileable, index: int) -> Optional[IndexValue]:
+        # index_value of tileable
+        try:
+            tileable_key = getattr(instance, _tileable_key_property)
+        except AttributeError:
+            return
+        cache = ChunkIndexValueField._tileable_key_index_to_index_value
+        try:
+            return cache[tileable_key, index]
+        except KeyError:
+            tileable_index_value = getattr(instance, _tileable_index_value_property)
+            # nsplits of tileable
+            nsplit = getattr(instance, _nsplits_property)[0]
+            # calc slice
+            slc = _calc_axis_slice(nsplit, index)
+            pd_index = tileable_index_value.to_pandas()
+            if np.isnan(slc.stop - slc.start):
+                chunk_pd_index = pd_index[:0]
+            else:
+                chunk_pd_index = pd_index[slc]
+            index_value = parse_index(
+                chunk_pd_index, key=f"{tileable_index_value.key}_index_{index}"
+            )
+            cache[tileable_key, index] = index_value
+            return index_value
+
     def __get__(self, instance, owner):
         if not issubclass(owner, LazyMetaChunkData):
             return super().__get__(instance, owner)
 
         values = instance._FIELD_VALUES
-        if "_index_value" in values:
+        index_value = values.get("_index_value", None)
+        if index_value is not None:
             # been set before
-            return values["_index_value"]
+            return index_value
 
         # get index_value lazily
-        chunk_index = getattr(instance, _chunk_index_property)
-        # index_value of tileable
-        tileable_index_value = getattr(instance, _tileable_index_value_property)
-        # nsplits of tileable
-        nsplits = getattr(instance, _nsplits_property)
-        # calc slice
-        slc = _calc_axis_slice(nsplits, 0, chunk_index)
-        pd_index = tileable_index_value.to_pandas()
-        if np.isnan(slc.stop - slc.start):
-            chunk_pd_index = pd_index.iloc[:0]
-        else:
-            chunk_pd_index = pd_index.iloc[slc]
-        index_value = parse_index(
-            chunk_pd_index, key=f"{tileable_index_value.key}_index_{chunk_index[0]}"
-        )
+        index = instance.index[0]
+        index_value = self._gen_chunk_index_value(instance, index)
         # cache index_value
         values["_index_value"] = index_value
         return index_value
 
 
 class ChunkColumnsValueField(ReferenceField):
+    _tileable_key_index_to_index_value = dict()
+
+    @staticmethod
+    def _gen_chunk_columns_value(
+        instance: Tileable, index: int
+    ) -> Optional[IndexValue]:
+        # columns_value of tileable
+        try:
+            tileable_key = getattr(instance, _tileable_key_property)
+        except AttributeError:
+            return
+        cache = ChunkColumnsValueField._tileable_key_index_to_index_value
+        try:
+            return cache[tileable_key, index]
+        except KeyError:
+            tileable_columns_value = getattr(instance, _tileable_columns_value_property)
+            # nsplits of tileable
+            nsplit = getattr(instance, _nsplits_property)[1]
+            # calc slice
+            slc = _calc_axis_slice(nsplit, index)
+            pd_index = tileable_columns_value.to_pandas()
+            if np.isnan(slc.stop - slc.start):
+                chunk_pd_index = pd_index[:0]
+            else:
+                chunk_pd_index = pd_index[slc]
+            columns_value = parse_index(
+                chunk_pd_index,
+                store_data=True,
+                key=f"{tileable_columns_value.key}_columns_{index}",
+            )
+            cache[tileable_key, index] = columns_value
+            return columns_value
+
     def __get__(self, instance, owner):
         if not issubclass(owner, LazyMetaChunkData):
             return super().__get__(instance, owner)
 
         values = instance._FIELD_VALUES
-        if "_columns_value" in values:
+        columns_value = values.get("_columns_value", None)
+        if columns_value is not None:
             # been set before
-            return values["_columns_value"]
+            return columns_value
 
         # get columns_value lazily
-        chunk_index = getattr(instance, _chunk_index_property)
-        # columns_value of tileable
-        tileable_columns_value = getattr(instance, _tileable_columns_value_property)
-        # nsplits of tileable
-        nsplits = getattr(instance, _nsplits_property)
-        # calc slice
-        slc = _calc_axis_slice(nsplits, 1, chunk_index)
-        pd_index = tileable_columns_value.to_pandas()
-        if np.isnan(slc.stop - slc.start):
-            chunk_pd_index = pd_index.iloc[:0]
-        else:
-            chunk_pd_index = pd_index.iloc[slc]
-        columns_value = parse_index(
-            chunk_pd_index,
-            store_data=True,
-            key=f"{tileable_columns_value.key}_columns_{chunk_index[1]}",
-        )
+        index = instance.index[1]
+        columns_value = self._gen_chunk_columns_value(instance, index)
         # cache columns_value
         values["_columns_value"] = columns_value
         return columns_value
