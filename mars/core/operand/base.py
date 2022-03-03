@@ -159,7 +159,7 @@ class Operand(Base, metaclass=OperandMetaclass):
 
     def _update_key(self):
         super()._update_key()
-        if not hasattr(self, "logic_key") or not self.logic_key:
+        if not getattr(self, "logic_key", None):  # pragma: no cover
             self._obj_set("logic_key", self._get_logic_key())
 
     def _get_logic_key(self):

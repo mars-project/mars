@@ -91,19 +91,15 @@ class AssignerActor(mo.Actor):
         exclude_bands: Set[BandType] = None,
         exclude_bands_force: bool = False,
     ):
+        bands = self._get_device_bands(is_gpu)
         if exclude_bands:
-            avail_bands = [
-                band
-                for band in self._get_device_bands(is_gpu)
-                if band not in exclude_bands
-            ]
+            avail_bands = [band for band in bands if band not in exclude_bands]
             if avail_bands:
                 return avail_bands[np.random.choice(len(avail_bands))]
             elif exclude_bands_force:
                 raise NoAvailableBand(
                     f"No bands available after excluding bands {exclude_bands}"
                 )
-        bands = self._get_device_bands(is_gpu)
         return bands[np.random.choice(len(bands))]
 
     async def assign_subtasks(

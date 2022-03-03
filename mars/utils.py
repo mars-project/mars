@@ -34,6 +34,7 @@ import struct
 import sys
 import threading
 import time
+import types
 import warnings
 import zlib
 from abc import ABC
@@ -1571,3 +1572,24 @@ def wrap_exception(
         bases,
         {"__init__": __init__, "__getattr__": __getattr__, "__str__": __str__},
     )().with_traceback(traceback)
+
+
+def get_func_token_values(func):
+    if hasattr(func, "__code__"):
+        tokens = [func.__code__.co_code]
+        if func.__closure__ is not None:
+            cvars = tuple([x.cell_contents for x in func.__closure__])
+            tokens.append(cvars)
+        return tokens
+    else:
+        tokens = []
+        while isinstance(func, functools.partial):
+            tokens.extend([func.args, func.keywords])
+            func = func.func
+        if hasattr(func, "__code__"):
+            tokens.extend(get_func_token_values(func))
+        elif isinstance(func, types.BuiltinFunctionType):
+            tokens.extend([func.__module__, func.__name__])
+        else:
+            tokens.append(func)
+        return tokens

@@ -29,7 +29,7 @@ from ...serialization.serializables import (
     DictField,
     FunctionField,
 )
-from ...utils import enter_current_session, quiet_stdio
+from ...utils import enter_current_session, quiet_stdio, get_func_token_values
 from ..arrays import ArrowArray
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import (
@@ -93,13 +93,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
             self._elementwise,
         ]
         if self.func:
-            if hasattr(self.func, "__code__"):
-                return token_values + [self.func.__code__]
-            else:  # pragma: no cover
-                return token_values + [
-                    self.func.__class__.__module__,
-                    self.func.__class__.__name__,
-                ]
+            return token_values + get_func_token_values(self.func)
         else:  # pragma: no cover
             return token_values
 
