@@ -437,7 +437,8 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
         col_names = op.col_names
-        if not isinstance(out_df, DATAFRAME_TYPE):
+        if out_df.ndim < 2:
+            # Series
             column_index = calc_columns_index(col_names, in_df)[0]
             out_chunks = []
             dtype = in_df.dtypes[col_names]
@@ -478,7 +479,8 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             column_indexes = np.split(selected_index, condition)
 
             out_chunks = [[] for _ in range(in_df.chunk_shape[0])]
-            column_nsplits = []
+            nsplits = [in_df.nsplits[0], []]
+            column_nsplits = nsplits[1]
             for i, (columns, column_idx) in enumerate(
                 zip(column_splits, column_indexes)
             ):
@@ -493,28 +495,22 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                         col_names=list(columns), output_types=[OutputType.dataframe]
                     )
                     out_chunk = index_op.new_chunk(
-                        [c],
-                        shape=(c.shape[0], len(dtypes)),
-                        index=(j, i),
-                        dtypes=dtypes,
-                        index_value=c.index_value,
-                        columns_value=parse_index(
-                            pd.Index(dtypes.index), store_data=True
-                        ),
+                        [c], shape=(c.shape[0], len(dtypes)), index=(j, i)
+                    )
+                    out_chunk._set_tileable_meta(
+                        tileable_key=out_df.key,
+                        nsplits=nsplits,
+                        index_value=out_df.index_value,
+                        columns_value=out_df.columns_value,
+                        dtypes=out_df.dtypes,
                     )
                     out_chunks[j].append(out_chunk)
             out_chunks = [item for cl in out_chunks for item in cl]
             new_op = op.copy()
-            nsplits = (in_df.nsplits[0], tuple(column_nsplits))
-            return new_op.new_dataframes(
-                op.inputs,
-                shape=out_df.shape,
-                dtypes=out_df.dtypes,
-                index_value=out_df.index_value,
-                columns_value=out_df.columns_value,
-                chunks=out_chunks,
-                nsplits=nsplits,
-            )
+            params = out_df.params.copy()
+            params["chunks"] = out_chunks
+            params["nsplits"] = nsplits
+            return new_op.new_dataframes(op.inputs, kws=[params])
 
     @classmethod
     def execute(cls, ctx, op):

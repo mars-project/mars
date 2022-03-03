@@ -1673,7 +1673,7 @@ class ChunkDtypesField(SeriesField):
     _tileable_key_index_to_dtypes = dict()
 
     @staticmethod
-    def _gen_chunk_dtypes(instance: Tileable, index: int) -> Optional[pd.Series]:
+    def _gen_chunk_dtypes(instance: Chunk, index: int) -> Optional[pd.Series]:
         # dtypes of tileable
         try:
             tileable_key = getattr(instance, _tileable_key_property)
@@ -1714,7 +1714,7 @@ class ChunkIndexValueField(ReferenceField):
     _tileable_key_index_to_index_value = dict()
 
     @staticmethod
-    def _gen_chunk_index_value(instance: Tileable, index: int) -> Optional[IndexValue]:
+    def _gen_chunk_index_value(instance: Chunk, index: int) -> Optional[IndexValue]:
         # index_value of tileable
         try:
             tileable_key = getattr(instance, _tileable_key_property)
@@ -1735,7 +1735,8 @@ class ChunkIndexValueField(ReferenceField):
             else:
                 chunk_pd_index = pd_index[slc]
             index_value = parse_index(
-                chunk_pd_index, key=f"{tileable_index_value.key}_index_{index}"
+                chunk_pd_index,
+                key=f"{tileable_index_value.key}_index_{index}_{slc.start}_{slc.stop}",
             )
             cache[tileable_key, index] = index_value
             return index_value
@@ -1762,9 +1763,7 @@ class ChunkColumnsValueField(ReferenceField):
     _tileable_key_index_to_index_value = dict()
 
     @staticmethod
-    def _gen_chunk_columns_value(
-        instance: Tileable, index: int
-    ) -> Optional[IndexValue]:
+    def _gen_chunk_columns_value(instance: Chunk, index: int) -> Optional[IndexValue]:
         # columns_value of tileable
         try:
             tileable_key = getattr(instance, _tileable_key_property)
@@ -1784,11 +1783,7 @@ class ChunkColumnsValueField(ReferenceField):
                 chunk_pd_index = pd_index[:0]
             else:
                 chunk_pd_index = pd_index[slc]
-            columns_value = parse_index(
-                chunk_pd_index,
-                store_data=True,
-                key=f"{tileable_columns_value.key}_columns_{index}",
-            )
+            columns_value = parse_index(chunk_pd_index, store_data=True)
             cache[tileable_key, index] = columns_value
             return columns_value
 
