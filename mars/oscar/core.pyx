@@ -46,7 +46,7 @@ def set_debug_options(options):
         _log_cycle_send = options.log_cycle_send
 
 
-cpdef get_local_actor(address, uid):
+cdef _get_local_actor(address, uid):
     # The cycle send detection relies on send message, so we
     # disabled the local actor proxy if the debug option is on.
     if _log_cycle_send:
@@ -64,8 +64,16 @@ cdef class ActorPool:
         _local_pool_map[address] = self
 
 
-cpdef __pyx_unpickle_ActorRef(address, uid):
-    actor = get_local_actor(address, uid)
+cpdef create_actor_ref(address, uid):
+    """
+    Create an actor reference.
+    TODO(fyrestone): Remove the create_actor_ref in utils.pyx
+
+    Returns
+    -------
+    ActorRef or ActorLocalRef
+    """
+    actor = _get_local_actor(address, uid)
     return ActorRef(address, uid) if actor is None else ActorLocalRef(actor)
 
 
@@ -85,9 +93,9 @@ cdef class ActorRef:
         return ctx.destroy_actor(self)
 
     def __reduce__(self):
-        return __pyx_unpickle_ActorRef, (self.address, self.uid)
+        return create_actor_ref, (self.address, self.uid)
 
-    def __getattr__(self, str item):
+    def __getattr__(self, item):
         if item.startswith('_'):
             return object.__getattribute__(self, item)
 
@@ -192,7 +200,7 @@ cdef class ActorLocalRef(ActorRef):
         self._actor_weakref = weakref.ref(actor, lambda _: self._methods.clear())
 
     cdef _weakref_local_actor(self):
-        actor = get_local_actor(self.address, self.uid)
+        actor = _get_local_actor(self.address, self.uid)
         # Make sure the input actor is an instance of _BaseActor.
         if actor is not None and isinstance(actor, _BaseActor):
             self._actor_weakref = weakref.ref(actor, lambda _: self._methods.clear())
@@ -316,7 +324,7 @@ cdef class _BaseActor:
         self._address = addr
 
     cpdef ActorRef ref(self):
-        return __pyx_unpickle_ActorRef(self._address, self._uid)
+        return create_actor_ref(self._address, self._uid)
 
     async def _handle_actor_result(self, result):
         cdef int idx

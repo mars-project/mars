@@ -107,7 +107,7 @@ async def create_fault_injection_manager(
             FaultType.Exception,
             {FaultPosition.ON_RUN_SUBTASK: 1},
             pytest.raises(FaultInjectionError, match="Fault Injection"),
-            True,
+            False,
         ],
     ],
 )
