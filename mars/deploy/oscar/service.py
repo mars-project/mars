@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 from typing import List, Dict, Union
 
 from ...services import start_services, stop_services, NodeRole
 from ..utils import load_service_config_file
+
+logger = logging.getLogger(__name__)
 
 
 def load_config(filename=None):
@@ -34,6 +37,7 @@ async def start_supervisor(
     config: Dict = None,
     web: Union[str, bool] = "auto",
 ):
+    logger.debug("Starting Mars supervisor at %s", address)
     if not config or isinstance(config, str):
         config = load_config(config)
     lookup_address = lookup_address or address
@@ -47,12 +51,14 @@ async def start_supervisor(
         config["modules"] = modules
     try:
         await start_services(NodeRole.SUPERVISOR, config, address=address)
+        logger.debug("Mars supervisor started at %s", address)
     except ImportError:
         if web == "auto":
             config["services"] = [
                 service for service in config["services"] if service != "web"
             ]
             await start_services(NodeRole.SUPERVISOR, config, address=address)
+            logger.debug("Mars supervisor started at %s", address)
             return False
         else:  # pragma: no cover
             raise
@@ -74,6 +80,7 @@ async def start_worker(
     config: Dict = None,
     mark_ready: bool = True,
 ):
+    logger.debug("Starting Mars worker at %s", address)
     if not config or isinstance(config, str):
         config = load_config(config)
     backend = config["cluster"].get("backend", "fixed")
@@ -91,6 +98,7 @@ async def start_worker(
     await start_services(
         NodeRole.WORKER, config, address=address, mark_ready=mark_ready
     )
+    logger.debug("Mars worker started at %s", address)
 
 
 async def stop_worker(address: str, config: Dict = None):
