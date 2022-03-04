@@ -14,7 +14,7 @@
 
 import itertools
 from collections import namedtuple
-from typing import Optional, Union, Tuple
+from typing import List, Optional, Union, Tuple
 
 import numpy as np
 import pandas as pd
@@ -143,7 +143,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
     copy_ = BoolField("copy_")
     indicator = BoolField("indicator")
     validate = AnyField("validate")
-    strategy = StringField("strategy")
+    method = StringField("method")
     auto_merge_threshold = Int32Field("auto_merge_threshold")
 
     # only for broadcast merge
@@ -189,7 +189,12 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         )
 
     @classmethod
-    def _gen_shuffle_chunks(cls, out_shape, shuffle_on, df):
+    def _gen_shuffle_chunks(
+        cls,
+        out_shape: Tuple,
+        shuffle_on: Union[List, str],
+        df: Union[DataFrame, Series],
+    ):
         # gen map chunks
         map_chunks = []
         for chunk in df.chunks:
@@ -239,7 +244,12 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         return reduce_chunks
 
     @classmethod
-    def _tile_one_chunk(cls, op, left, right):
+    def _tile_one_chunk(
+        cls,
+        op: "DataFrameMerge",
+        left: Union[DataFrame, Series],
+        right: Union[DataFrame, Series],
+    ):
         df = op.outputs[0]
         if len(left.chunks) == 1 and len(right.chunks) == 1:
             merge_op = op.copy().reset_key()
@@ -300,7 +310,12 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         )
 
     @classmethod
-    def _tile_shuffle(cls, op, left, right):
+    def _tile_shuffle(
+        cls,
+        op: "DataFrameMerge",
+        left: Union[DataFrame, Series],
+        right: Union[DataFrame, Series],
+    ):
         df = op.outputs[0]
         left_row_chunk_size = left.chunk_shape[0]
         right_row_chunk_size = right.chunk_shape[0]
@@ -343,7 +358,12 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         )
 
     @classmethod
-    def _tile_broadcast(cls, op, left, right):
+    def _tile_broadcast(
+        cls,
+        op: "DataFrameMerge",
+        left: Union[DataFrame, Series],
+        right: Union[DataFrame, Series],
+    ):
         from .concat import DataFrameConcat
 
         out_df = op.outputs[0]
@@ -445,7 +465,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         )
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "DataFrameMerge"):
         left = build_concatenated_rows_frame(op.inputs[0])
         right = build_concatenated_rows_frame(op.inputs[1])
         how = op.how
@@ -460,12 +480,12 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             big_chunk_size = right_row_chunk_size
             small_chunk_size = left_row_chunk_size
 
-        if op.strategy != "shuffle" and (
+        if op.method != "shuffle" and (
             (len(left.chunks) == 1 and op.how in ["right", "inner"])
             or (len(right.chunks) == 1 and op.how in ["left", "inner"])
         ):
             ret = cls._tile_one_chunk(op, left, right)
-        elif op.strategy == "broadcast" or (
+        elif op.method == "broadcast" or (
             how in [big_side, "inner"] and np.log2(big_chunk_size) > small_chunk_size
         ):
             ret = cls._tile_broadcast(op, left, right)
@@ -557,7 +577,7 @@ def merge(
     copy: bool = True,
     indicator: bool = False,
     validate: str = None,
-    strategy: str = None,
+    method: str = None,
     auto_merge_threshold: int = 8,
 ) -> DataFrame:
     """
@@ -636,9 +656,9 @@ def merge(
         * "many_to_one" or "m:1": check if merge keys are unique in right
           dataset.
         * "many_to_many" or "m:m": allowed, but does not result in checks.
-    strategy : {"shuffle", "broadcast"}, default None
+    method : {"shuffle", "broadcast"}, default None
         "broadcast" is recommended when one DataFrame is much smaller than the other,
-        otherwise, "shuffle" will be a better choice. By default, we choose strategy
+        otherwise, "shuffle" will be a better choice. By default, we choose method
         according to actual data size.
     auto_merge_threshold : int, default 8
         When how is "inner", merged result could be much smaller than original DataFrame,
@@ -724,11 +744,11 @@ def merge(
     0   foo  1  3.0
     1   bar  2  NaN
     """
-    if strategy is not None and strategy not in [
+    if method is not None and method not in [
         "shuffle",
         "broadcast",
     ]:  # pragma: no cover
-        raise NotImplementedError(f"{strategy} merge is not supported")
+        raise NotImplementedError(f"{method} merge is not supported")
     op = DataFrameMerge(
         how=how,
         on=on,
@@ -741,7 +761,7 @@ def merge(
         copy=copy,
         indicator=indicator,
         validate=validate,
-        strategy=strategy,
+        method=method,
         auto_merge_threshold=auto_merge_threshold,
         output_types=[OutputType.dataframe],
     )
@@ -756,7 +776,7 @@ def join(
     lsuffix: str = "",
     rsuffix: str = "",
     sort: bool = False,
-    strategy: str = None,
+    method: str = None,
     auto_merge_threshold: int = 8,
 ) -> DataFrame:
     """
@@ -797,9 +817,9 @@ def join(
     sort : bool, default False
         Order result DataFrame lexicographically by the join key. If False,
         the order of the join key depends on the join type (how keyword).
-    strategy : {"shuffle", "broadcast"}, default None
+    method : {"shuffle", "broadcast"}, default None
         "broadcast" is recommended when one DataFrame is much smaller than the other,
-        otherwise, "shuffle" will be a better choice. By default, we choose strategy
+        otherwise, "shuffle" will be a better choice. By default, we choose method
         according to actual data size.
     auto_merge_threshold : int, default 8
         When how is "inner", merged result could be much smaller than original DataFrame,
@@ -910,6 +930,6 @@ def join(
         right_index=True,
         suffixes=(lsuffix, rsuffix),
         sort=sort,
-        strategy=strategy,
+        method=method,
         auto_merge_threshold=auto_merge_threshold,
     )
