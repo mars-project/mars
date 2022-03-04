@@ -181,10 +181,8 @@ _rerun_errors = (
                 lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
                 "-w",
                 lambda: str(_get_labelled_port("web")),
-                "--n-process",
-                "2",
-                "--log-level",
-                "DEBUG",
+                "--n-process=2",
+                "--log-level=DEBUG",
             ],
             worker_cmd_start
             + [
@@ -194,8 +192,9 @@ _rerun_errors = (
                 lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
                 "--config-file",
                 os.path.join(os.path.dirname(__file__), "local_test_config.yml"),
-                "--log-level",
-                "DEBUG",
+                "--log-level=DEBUG",
+                "--log-format=%(asctime)s %(message)s",
+                "--use-uvloop=no",
             ],
             True,
             id="with_supervisors",
@@ -205,12 +204,17 @@ _rerun_errors = (
 def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
     new_isolation()
     sv_proc = w_procs = None
+    restart_trial = 5
     try:
         env = os.environ.copy()
         env["MARS_CPU_TOTAL"] = "2"
 
-        for trial in range(3):
+        for trial in range(restart_trial):
+            logger.warning(
+                "Cluster start attempt %d / %d", restart_trial + 1, restart_trial
+            )
             _test_port_cache.clear()
+
             sv_args = _reload_args(supervisor_args)
             sv_proc = subprocess.Popen(sv_args, env=env, text=True)
 
@@ -237,7 +241,7 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
                 _wait_worker_ready(oscar_ep, w_procs)
                 break
             except (asyncio.TimeoutError, futures.TimeoutError, TimeoutError):
-                if trial == 2:
+                if trial == restart_trial - 1:
                     raise
                 else:
                     _stop_processes(w_procs + [sv_proc])

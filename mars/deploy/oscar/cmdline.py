@@ -81,7 +81,9 @@ class OscarCommandRunner:
             "--log-conf", help="log config file, logging.conf by default"
         )
         parser.add_argument("--load-modules", nargs="*", help="modules to import")
-        parser.add_argument("--use-uvloop", help="use uvloop, auto by default")
+        parser.add_argument(
+            "--use-uvloop", help="use uvloop, 'auto' by default. Use 'no' to disable"
+        )
 
     def config_logging(self):
         import logging.config
@@ -220,8 +222,8 @@ class OscarCommandRunner:
         raise NotImplementedError
 
     def create_loop(self):
-        use_uvloop = self.args.use_uvloop
-        if not use_uvloop:
+        use_uvloop = self.args.use_uvloop.strip()
+        if use_uvloop in ("0", "no"):
             loop = asyncio.get_event_loop()
         else:
             try:
