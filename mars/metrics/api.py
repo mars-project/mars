@@ -14,7 +14,7 @@
 
 import logging
 
-from typing import Dict, Any, Optional, Tuple
+from typing import Optional, Tuple
 
 from .backends.console import console_metric
 from .backends.prometheus import prometheus_metric
@@ -30,15 +30,13 @@ _backends_cls = {
 }
 
 
-def init_metrics(config: Dict[str, Any] = None):
-    metric_config = config.get("metric", {}) if config else {}
+def init_metrics(backend="console", port=0):
+    backend = backend or "console"
+    if backend not in _backends_cls:
+        raise NotImplementedError(f"Do not support metric backend {backend}")
     global _metric_backend
-    _metric_backend = metric_config.get("backend", "console")
-    if _metric_backend not in _backends_cls:
-        raise NotImplementedError(f"Do not support metric backend {_metric_backend}")
+    _metric_backend = backend
     if _metric_backend == "prometheus":
-        conf = metric_config.get("conf", {})
-        port = int(conf.get("port", 0))
         try:
             from prometheus_client import start_http_server
 
@@ -48,11 +46,7 @@ def init_metrics(config: Dict[str, Any] = None):
             logger.warning(
                 "Failed to start prometheus http server because there is no prometheus_client"
             )
-    logger.info(
-        "Finished initialize the metrics, config is %s, backend is %s",
-        config,
-        _metric_backend,
-    )
+    logger.info("Finished initialize the metrics with backend %s", _metric_backend)
 
 
 class Metrics:

@@ -36,3 +36,6 @@ scheduling:
     max_workers: 100
     scheduler_backlog_timeout: 60
     worker_idle_timeout: 120
+metrics:
+  backend: console
+  port: 0  # Need to assign a port argument when using prometheus

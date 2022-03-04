@@ -635,3 +635,15 @@ async def test_ownership_when_scale_in(ray_large_cluster):
         assert (
             groupby_sum_df.to_pandas().to_dict() == pd_df.groupby("a").sum().to_dict()
         )
+
+
+@require_ray
+@pytest.mark.asyncio
+def test_init_metrics_on_ray(ray_large_cluster, create_cluster):
+    client = create_cluster[0]
+    assert client.session
+    from ....metrics import api
+
+    assert api._metric_backend == "ray"
+
+    client.session.stop_server()

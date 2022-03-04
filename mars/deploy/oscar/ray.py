@@ -21,6 +21,7 @@ from typing import Union, Dict, List, Optional, AsyncGenerator
 
 from ... import oscar as mo
 from ...core.entrypoints import init_extension_entrypoints
+from ...metrics import init_metrics
 from ...oscar.backends.ray.driver import RayActorDriver
 from ...oscar.backends.ray.utils import (
     process_placement_to_address,
@@ -198,7 +199,10 @@ class ClusterStateActor(mo.StatelessActor):
         start_time = time.time()
         band_to_slot = band_to_slot or self._band_to_slot
         worker_pool = await create_worker_actor_pool(
-            worker_address, self._band_to_slot, modules=self._worker_modules
+            worker_address,
+            self._band_to_slot,
+            modules=self._worker_modules,
+            metrics=self._config.get("metrics", {}),
         )
         logger.info(
             "Create worker node %s succeeds in %.4f seconds.",
@@ -402,6 +406,9 @@ class RayCluster:
         self.web_address = None
 
     async def start(self):
+        # init metrics to guarantee metrics use in driver
+        metric_configs = self._config.get("metrics", {})
+        init_metrics(metric_configs.get("backend"), port=metric_configs.get("port"))
         address_to_resources = dict()
         supervisor_standalone = (
             self._config.get("cluster", {})
@@ -475,6 +482,7 @@ class RayCluster:
             main_pool_cpus=0,
             sub_pool_cpus=0,
             modules=supervisor_modules,
+            metrics=self._config.get("metrics", {}),
         )
         logger.info("Create supervisor on node %s succeeds.", self.supervisor_address)
         self._cluster_backend = await RayClusterBackend.create(
