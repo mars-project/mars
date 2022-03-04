@@ -16,7 +16,7 @@ import functools
 import itertools
 import typing
 import uuid
-from typing import List, Dict
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -30,6 +30,7 @@ from ...core.context import get_context
 from ...core.operand import OperandStage
 from ...serialization.serializables import (
     Int32Field,
+    Int64Field,
     AnyField,
     BoolField,
     StringField,
@@ -37,16 +38,19 @@ from ...serialization.serializables import (
     DictField,
 )
 from ...typing import ChunkType, TileableType
-from ...utils import enter_current_session, lazy_import, pd_release_version
+from ...utils import (
+    enter_current_session,
+    lazy_import,
+    pd_release_version,
+    estimate_pandas_size,
+)
 from ..core import GROUPBY_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
 from ..reduction.core import (
     ReductionCompiler,
     ReductionSteps,
-    ReductionPreStep,
     ReductionAggStep,
-    ReductionPostStep,
 )
 from ..reduction.aggregation import is_funcs_aggregate, normalize_reduction_funcs
 from ..utils import parse_index, build_concatenated_rows_frame, is_cudf
@@ -145,123 +149,40 @@ def build_mock_agg_result(
 class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_AGG
 
-    _raw_func = AnyField("raw_func")
-    _raw_func_kw = DictField("raw_func_kw")
-    _func = AnyField("func")
-    _func_rename = ListField("func_rename")
+    raw_func = AnyField("raw_func")
+    raw_func_kw = DictField("raw_func_kw")
+    func = AnyField("func")
+    func_rename = ListField("func_rename")
 
-    _groupby_params = DictField("groupby_params")
+    groupby_params = DictField("groupby_params")
 
-    _method = StringField("method")
-    _use_inf_as_na = BoolField("use_inf_as_na")
+    method = StringField("method")
+    use_inf_as_na = BoolField("use_inf_as_na")
 
     # for chunk
-    _combine_size = Int32Field("combine_size")
-    _pre_funcs = ListField("pre_funcs")
-    _agg_funcs = ListField("agg_funcs")
-    _post_funcs = ListField("post_funcs")
-    _index_levels = Int32Field("index_levels")
-    _size_recorder_name = StringField("size_recorder_name")
-
-    def __init__(
-        self,
-        raw_func=None,
-        raw_func_kw=None,
-        func=None,
-        func_rename=None,
-        method=None,
-        groupby_params=None,
-        use_inf_as_na=None,
-        combine_size=None,
-        pre_funcs=None,
-        agg_funcs=None,
-        post_funcs=None,
-        index_levels=None,
-        size_recorder_name=None,
-        output_types=None,
-        **kw,
-    ):
-        super().__init__(
-            _raw_func=raw_func,
-            _raw_func_kw=raw_func_kw,
-            _func=func,
-            _func_rename=func_rename,
-            _method=method,
-            _groupby_params=groupby_params,
-            _combine_size=combine_size,
-            _use_inf_as_na=use_inf_as_na,
-            _pre_funcs=pre_funcs,
-            _agg_funcs=agg_funcs,
-            _post_funcs=post_funcs,
-            _index_levels=index_levels,
-            _size_recorder_name=size_recorder_name,
-            _output_types=output_types,
-            **kw,
-        )
-
-    @property
-    def raw_func(self):
-        return self._raw_func
-
-    @property
-    def raw_func_kw(self) -> Dict:
-        return self._raw_func_kw
-
-    @property
-    def func(self):
-        return self._func
-
-    @property
-    def func_rename(self) -> List:
-        return self._func_rename
-
-    @property
-    def groupby_params(self) -> dict:
-        return self._groupby_params
-
-    @property
-    def method(self):
-        return self._method
-
-    @property
-    def use_inf_as_na(self):
-        return self._use_inf_as_na
-
-    @property
-    def combine_size(self) -> int:
-        return self._combine_size
-
-    @property
-    def pre_funcs(self) -> List[ReductionPreStep]:
-        return self._pre_funcs
-
-    @property
-    def agg_funcs(self) -> List[ReductionAggStep]:
-        return self._agg_funcs
-
-    @property
-    def post_funcs(self) -> List[ReductionPostStep]:
-        return self._post_funcs
-
-    @property
-    def index_levels(self) -> int:
-        return self._index_levels
+    combine_size = Int32Field("combine_size")
+    chunk_store_limit = Int64Field("chunk_store_limit")
+    pre_funcs = ListField("pre_funcs")
+    agg_funcs = ListField("agg_funcs")
+    post_funcs = ListField("post_funcs")
+    index_levels = Int32Field("index_levels")
+    size_recorder_name = StringField("size_recorder_name")
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
         if len(self._inputs) > 1:
             by = []
-            for v in self._groupby_params["by"]:
+            for v in self.groupby_params["by"]:
                 if isinstance(v, ENTITY_TYPE):
                     by.append(next(inputs_iter))
                 else:
                     by.append(v)
-            self._groupby_params["by"] = by
+            self.groupby_params["by"] = by
 
     def _get_inputs(self, inputs):
-        if isinstance(self._groupby_params["by"], list):
-            for v in self._groupby_params["by"]:
+        if isinstance(self.groupby_params["by"], list):
+            for v in self.groupby_params["by"]:
                 if isinstance(v, ENTITY_TYPE):
                     inputs.append(v)
         return inputs
@@ -274,7 +195,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 ).aggregate(self.raw_func, **self.raw_func_kw)
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                 # handling cases like mdf.groupby("b", as_index=False).b.agg({"c": "count"})
-                if isinstance(self._groupby_params["by"], list):
+                if isinstance(self.groupby_params["by"], list):
                     return len(self.groupby_params["by"])
                 raise  # pragma: no cover
             pd_index = as_index_agg_df.index
@@ -305,7 +226,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         self._fix_as_index(agg_df.index)
 
         # determine num of indices to group in intermediate steps
-        self._index_levels = self._get_index_levels(groupby, agg_df.index)
+        self.index_levels = self._get_index_levels(groupby, agg_df.index)
 
         inputs = self._get_inputs([input_df])
         return self.new_dataframe(
@@ -332,7 +253,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         inputs = self._get_inputs([in_series])
 
         # determine num of indices to group in intermediate steps
-        self._index_levels = self._get_index_levels(groupby, agg_result.index)
+        self.index_levels = self._get_index_levels(groupby, agg_result.index)
 
         # update value type
         if isinstance(agg_result, pd.DataFrame):
@@ -429,11 +350,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             map_op = op.copy().reset_key()
             # force as_index=True for map phase
             map_op.output_types = [OutputType.dataframe]
-            map_op._groupby_params = map_op.groupby_params.copy()
-            map_op._groupby_params["as_index"] = True
-            if isinstance(map_op._groupby_params["by"], list):
+            map_op.groupby_params = map_op.groupby_params.copy()
+            map_op.groupby_params["as_index"] = True
+            if isinstance(map_op.groupby_params["by"], list):
                 by = []
-                for v in map_op._groupby_params["by"]:
+                for v in map_op.groupby_params["by"]:
                     if isinstance(v, ENTITY_TYPE):
                         by_chunk = v.cix[
                             chunk.index[0],
@@ -442,10 +363,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                         by.append(by_chunk)
                     else:
                         by.append(v)
-                map_op._groupby_params["by"] = by
+                map_op.groupby_params["by"] = by
             map_op.stage = OperandStage.map
-            map_op._pre_funcs = func_infos.pre_funcs
-            map_op._agg_funcs = func_infos.agg_funcs
+            map_op.pre_funcs = func_infos.pre_funcs
+            map_op.agg_funcs = func_infos.agg_funcs
             new_index = chunk.index if len(chunk.index) == 2 else (chunk.index[0], 0)
             if op.output_types[0] == OutputType.dataframe:
                 map_chunk = map_op.new_chunk(
@@ -474,7 +395,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             func_iter = ((col, f) for col, funcs in op.func.items() for f in funcs)
 
         func_renames = (
-            op.func_rename if op.func_rename is not None else itertools.repeat(None)
+            op.func_rename
+            if getattr(op, "func_rename", None) is not None
+            else itertools.repeat(None)
         )
         for func_rename, (col, f) in zip(func_renames, func_iter):
             func_name = None
@@ -518,14 +441,14 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         for chunk in reduce_chunks:
             agg_op = op.copy().reset_key()
             agg_op.tileable_op_key = op.key
-            agg_op._groupby_params = agg_op.groupby_params.copy()
-            agg_op._groupby_params.pop("selection", None)
+            agg_op.groupby_params = agg_op.groupby_params.copy()
+            agg_op.groupby_params.pop("selection", None)
             # use levels instead of by for reducer
-            agg_op._groupby_params.pop("by", None)
-            agg_op._groupby_params["level"] = list(range(op.index_levels))
+            agg_op.groupby_params.pop("by", None)
+            agg_op.groupby_params["level"] = list(range(op.index_levels))
             agg_op.stage = OperandStage.agg
-            agg_op._agg_funcs = func_infos.agg_funcs
-            agg_op._post_funcs = func_infos.post_funcs
+            agg_op.agg_funcs = func_infos.agg_funcs
+            agg_op.post_funcs = func_infos.post_funcs
             if op.output_types[0] == OutputType.dataframe:
                 agg_chunk = agg_op.new_chunk(
                     [chunk],
@@ -591,12 +514,12 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op.tileable_op_key = None
                 chunk_op.output_types = [OutputType.dataframe]
                 chunk_op.stage = OperandStage.combine
-                chunk_op._groupby_params = chunk_op.groupby_params.copy()
-                chunk_op._groupby_params.pop("selection", None)
+                chunk_op.groupby_params = chunk_op.groupby_params.copy()
+                chunk_op.groupby_params.pop("selection", None)
                 # use levels instead of by for agg
-                chunk_op._groupby_params.pop("by", None)
-                chunk_op._groupby_params["level"] = list(range(op.index_levels))
-                chunk_op._agg_funcs = func_infos.agg_funcs
+                chunk_op.groupby_params.pop("by", None)
+                chunk_op.groupby_params["level"] = list(range(op.index_levels))
+                chunk_op.agg_funcs = func_infos.agg_funcs
 
                 new_shape = (
                     (np.nan, out_df.shape[1]) if len(out_df.shape) == 2 else (np.nan,)
@@ -618,13 +541,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         chunk_op = op.copy().reset_key()
         chunk_op.tileable_op_key = op.key
         chunk_op.stage = OperandStage.agg
-        chunk_op._groupby_params = chunk_op.groupby_params.copy()
-        chunk_op._groupby_params.pop("selection", None)
+        chunk_op.groupby_params = chunk_op.groupby_params.copy()
+        chunk_op.groupby_params.pop("selection", None)
         # use levels instead of by for agg
-        chunk_op._groupby_params.pop("by", None)
-        chunk_op._groupby_params["level"] = list(range(op.index_levels))
-        chunk_op._agg_funcs = func_infos.agg_funcs
-        chunk_op._post_funcs = func_infos.post_funcs
+        chunk_op.groupby_params.pop("by", None)
+        chunk_op.groupby_params["level"] = list(range(op.index_levels))
+        chunk_op.agg_funcs = func_infos.agg_funcs
+        chunk_op.post_funcs = func_infos.post_funcs
         kw = out_df.params.copy()
         kw["index"] = (0, 0) if op.output_types[0] == OutputType.dataframe else (0,)
         chunk = chunk_op.new_chunk([chk], **kw)
@@ -637,6 +560,31 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         kw = out_df.params.copy()
         kw.update(dict(chunks=[chunk], nsplits=nsplits))
         return new_op.new_tileables(op.inputs, **kw)
+
+    @classmethod
+    def _choose_tree_method(
+        cls, raw_sizes, agg_sizes, sample_count, total_count, chunk_store_limit
+    ):
+        # calculate the coefficient of variation of aggregation sizes,
+        # if the CV is less than 0.2 and the mean of agg_size/raw_size
+        # is less than 0.8, we suppose the single chunk's aggregation size
+        # almost equals to the tileable's, then use tree method
+        # as combine aggregation results won't lead to a rapid expansion.
+        ratios = [
+            agg_size / raw_size for agg_size, raw_size in zip(agg_sizes, raw_sizes)
+        ]
+        cv = variation(agg_sizes)
+        mean_ratio = np.mean(ratios)
+        if mean_ratio <= 1 / sample_count:
+            # if mean of ratio is less than 0.25, use tree
+            return True
+        if cv <= 0.2 and mean_ratio <= 2 / 3:
+            # check CV and mean of ratio
+            return True
+        elif sum(agg_sizes) / sample_count * total_count <= chunk_store_limit:
+            # if estimated size less than `chunk_store_limit`, use tree.
+            return True
+        return False
 
     @classmethod
     def _tile_auto(
@@ -656,7 +604,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         chunks = in_df.chunks[:combine_size]
         chunks = cls._gen_map_chunks(op, chunks, out_df, func_infos)
         for chunk in chunks:
-            chunk.op._size_recorder_name = size_recorder_name
+            chunk.op.size_recorder_name = size_recorder_name
         # yield to trigger execution
         yield chunks
 
@@ -666,21 +614,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
         left_chunks = in_df.chunks[combine_size:]
         left_chunks = cls._gen_map_chunks(op, left_chunks, out_df, func_infos)
-        # calculate the coefficient of variation of aggregation sizes,
-        # if the CV is less than 0.2 and the mean of agg_size/raw_size
-        # is less than 0.8, we suppose the single chunk's aggregation size
-        # almost equals to the tileable's, then use tree method
-        # as combine aggregation results won't lead to a rapid expansion.
-        ratios = [
-            agg_size / raw_size for agg_size, raw_size in zip(agg_sizes, raw_sizes)
-        ]
-        cv = variation(agg_sizes)
-        mean_ratio = np.mean(ratios)
-        if mean_ratio <= 1 / len(chunks):
-            # if mean of ratio is less than 0.25, use tree
-            return cls._combine_tree(op, chunks + left_chunks, out_df, func_infos)
-        elif cv <= 0.2 and mean_ratio <= 2 / 3:
-            # check CV and mean of ratio
+        if cls._choose_tree_method(
+            raw_sizes, agg_sizes, len(chunks), len(in_df.chunks), op.chunk_store_limit
+        ):
             return cls._combine_tree(op, chunks + left_chunks, out_df, func_infos)
         else:
             # otherwise, use shuffle
@@ -915,11 +851,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                     )
                 )
 
-        if op._size_recorder_name is not None:
+        if getattr(op, "size_recorder_name", None) is not None:
             # record_size
-            raw_size = len(in_data)
-            agg_size = len(agg_dfs[0])
-            size_recorder = ctx.get_remote_object(op._size_recorder_name)
+            raw_size = estimate_pandas_size(in_data)
+            agg_size = estimate_pandas_size(agg_dfs[0])
+            size_recorder = ctx.get_remote_object(op.size_recorder_name)
             size_recorder.record(raw_size, agg_size)
 
         ctx[op.outputs[0].key] = tuple(agg_dfs)
@@ -1079,7 +1015,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             pd.reset_option("mode.use_inf_as_na")
 
 
-def agg(groupby, func=None, method="auto", *args, **kwargs):
+def agg(groupby, func=None, method="auto", combine_size=None, *args, **kwargs):
     """
     Aggregate using one or more operations on grouped data.
 
@@ -1093,6 +1029,9 @@ def agg(groupby, func=None, method="auto", *args, **kwargs):
         'tree' method provide a better performance, 'shuffle' is recommended
         if aggregated result is very large, 'auto' will use 'shuffle' method
         in distributed mode and use 'tree' in local mode.
+    combine_size : int
+        The number of chunks to combine when method is 'tree'
+
 
     Returns
     -------
@@ -1136,7 +1075,8 @@ def agg(groupby, func=None, method="auto", *args, **kwargs):
         raw_func_kw=kwargs,
         method=method,
         groupby_params=groupby.op.groupby_params,
-        combine_size=options.combine_size,
+        combine_size=combine_size or options.combine_size,
+        chunk_store_limit=options.chunk_store_limit,
         use_inf_as_na=use_inf_as_na,
     )
     return agg_op(groupby)
