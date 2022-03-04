@@ -176,8 +176,6 @@ class TreeQueryBase(LearnOperand, LearnOperandMixin):
             else:
                 values.append(value)
         self._obj_set("_key", tokenize(type(self).__name__, *values))
-        if not getattr(self, "logic_key", None):  # pragma: no cover
-            self._obj_set("logic_key", self._get_logic_key())
         return self
 
     def __call__(self, x):

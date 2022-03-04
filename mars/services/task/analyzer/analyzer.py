@@ -18,7 +18,7 @@ from typing import Dict, List, Tuple, Type, Union
 
 from ....config import Config
 from ....core import ChunkGraph, ChunkType, enter_mode
-from ....core.operand import Fetch, VirtualOperand
+from ....core.operand import Fetch, VirtualOperand, LogicKeyGenerator
 from ....typing import BandType
 from ....utils import build_fetch, tokenize
 from ...subtask import SubtaskGraph, Subtask
@@ -50,6 +50,7 @@ class GraphAnalyzer:
             graph_assigner_cls = GraphAssigner
         self._graph_assigner_cls = graph_assigner_cls
         self._chunk_to_copied = dict()
+        self._logic_key_generator = LogicKeyGenerator()
 
     @classmethod
     def _iter_start_ops(cls, chunk_graph: ChunkGraph):
@@ -259,9 +260,10 @@ class GraphAnalyzer:
         )
         return subtask, inp_subtasks
 
-    @staticmethod
-    def _gen_logic_key(chunks: List[ChunkType]):
-        return tokenize(*[chunk.op.logic_key for chunk in chunks])
+    def _gen_logic_key(self, chunks: List[ChunkType]):
+        return tokenize(
+            *[self._logic_key_generator.get_logic_key(chunk.op) for chunk in chunks]
+        )
 
     @enter_mode(build=True)
     def gen_subtask_graph(self) -> SubtaskGraph:

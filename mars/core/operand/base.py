@@ -113,8 +113,47 @@ def _install_scheduling_hint_properties(cls: Type["Operand"]):
     return cls
 
 
+class OperatorLogicKeyGeneratorMixin:
+    """
+    This generator will generate an unique and deterministic key for operator compute logic. It should be same
+    for different run if the compute logic doesn't change. This id will be used in subtask speculative
+    execution and hbo scheduling and so on.
+    """
+
+    def get_logic_key(self, key_generator: "LogicKeyGenerator"):
+        """The subclass may need to override this method to ensure unique and deterministic."""
+        fields = self._get_logic_key_token_values()
+        for input_chunk in self.inputs or ():
+            if input_chunk is not None:
+                fields.append(input_chunk.op.get_logic_key(key_generator))
+        try:
+            return tokenize(*fields)
+        except Exception as e:  # pragma: no cover
+            raise Exception(
+                f"Cannot generate logic key for operator {self} with fields {fields}"
+            ) from e
+
+    def _get_logic_key_token_values(self):
+        token_values = [type(self).__module__, type(self).__name__]
+        if self.stage is not None:
+            token_values.append(self.stage.name)
+        return token_values
+
+
+class LogicKeyGenerator:
+    def __init__(self):
+        self.operator_id_to_logic_id = {}
+
+    def get_logic_key(self, op: "Operand"):
+        assert isinstance(op, Operand)
+        logic_id = self.operator_id_to_logic_id.get(op.id)
+        if logic_id is None:
+            logic_id = self.operator_id_to_logic_id[op.id] = op.get_logic_key(self)
+        return logic_id
+
+
 @_install_scheduling_hint_properties
-class Operand(Base, metaclass=OperandMetaclass):
+class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
     """
     Operand base class. All operands should have a type, which can be Add, Subtract etc.
     `sparse` indicates that if the operand is applied on a sparse tensor/chunk.
@@ -143,10 +182,6 @@ class Operand(Base, metaclass=OperandMetaclass):
     _inputs = ListField("inputs", FieldTypes.reference(EntityData))
     _outputs = ListField("outputs")
     _output_types = ListField("output_type", FieldTypes.reference(OutputType))
-    # An unique and deterministic key for subtask compute logic. It should be even the same
-    # for different run if the compute logic doesn't change. This id will be used in subtask speculative
-    # execution and hbo scheduling and so on.
-    logic_key = StringField("logic_key")
 
     def __init__(self: OperandType, *args, **kwargs):
         extra_names = (
@@ -159,27 +194,6 @@ class Operand(Base, metaclass=OperandMetaclass):
 
     def _update_key(self):
         super()._update_key()
-        if not getattr(self, "logic_key", None):  # pragma: no cover
-            self._obj_set("logic_key", self._get_logic_key())
-
-    def _get_logic_key(self):
-        """The subclass may need to override this method to ensure unique and deterministic."""
-        fields = self._get_logic_key_token_values()
-        try:
-            return tokenize(*fields)
-        except Exception as e:  # pragma: no cover
-            raise Exception(
-                f"Cannot generate logic key for operator {self} with fields {fields}"
-            ) from e
-
-    def _get_logic_key_token_values(self):
-        token_values = [type(self).__module__, type(self).__name__]
-        if self.stage is not None:
-            token_values.append(self.stage.name)
-        for input_chunk in self.inputs or ():
-            if input_chunk is not None:
-                token_values.append(input_chunk.op.logic_key)
-        return token_values
 
     @classmethod
     def _extract_scheduling_hint(cls, kwargs: Dict[str, Any]):

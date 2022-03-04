@@ -25,6 +25,7 @@ from ...serialization.serializables import (
     DictField,
     FunctionField,
 )
+from ...core.operand import OperatorLogicKeyGeneratorMixin
 from ...utils import enter_current_session, quiet_stdio, get_func_token_values
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import (
@@ -38,7 +39,18 @@ from ..utils import (
 )
 
 
-class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
+class GroupByApplyLogicKetGeneratorMixin(OperatorLogicKeyGeneratorMixin):
+    def _get_logic_key_token_values(self):
+        token_values = super()._get_logic_key_token_values()
+        if self.func:
+            return token_values + get_func_token_values(self.func)
+        else:  # pragma: no cover
+            return token_values
+
+
+class GroupByApply(
+    DataFrameOperand, DataFrameOperandMixin, GroupByApplyLogicKetGeneratorMixin
+):
     _op_type_ = opcodes.APPLY
     _op_module_ = "dataframe.groupby"
 
@@ -49,13 +61,6 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, output_types=None, **kw):
         super().__init__(_output_types=output_types, **kw)
-
-    def _get_logic_key_token_values(self):
-        token_values = super()._get_logic_key_token_values()
-        if self.func:
-            return token_values + get_func_token_values(self.func)
-        else:  # pragma: no cover
-            return super()._get_logic_key_token_values()
 
     @classmethod
     @redirect_custom_log

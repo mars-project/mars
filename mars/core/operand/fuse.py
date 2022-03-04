@@ -25,11 +25,6 @@ class Fuse(Operand):
 
     fuse_graph = ReferenceField("fuse_graph", ChunkGraph)
 
-    def _get_logic_key_token_values(self):
-        return super()._get_logic_key_token_values() + [
-            chunk.op.logic_key for chunk in self.fuse_graph.topological_iter()
-        ]
-
 
 class FuseChunkMixin:
     __slots__ = ()

@@ -111,8 +111,6 @@ class TileableOperandMixin:
             self.gpu = self._check_if_gpu(self._inputs)
         if getattr(self, "_key", None) is None:
             getattr(self, "_update_key")()
-        if getattr(self, "logic_key", None) is None:
-            self.logic_key = self._get_logic_key()
 
         chunks = []
         if isinstance(output_limit, float) and kws:
