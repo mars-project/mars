@@ -365,12 +365,12 @@ class RaySubPool(RayPoolBase):
                 self._main_pool_start_timestamp = main_pool_start_timestamp
             if main_pool_start_timestamp != self._main_pool_start_timestamp:
                 logger.error(
-                    "Main pool has restarted at %s, exit current sub pool now.",
+                    "Main pool %s has restarted at %s, exit current sub pool now.",
                     datetime.datetime.fromtimestamp(main_pool_start_timestamp / 1e9),
                     main_pool,
                 )
                 os._exit(0)
-        except:
+        except:  # noqa: E722  # pylint: disable=bare-except  # pragma: no cover
             logger.exception(
                 "Main pool %s has exited, exit current sub pool now.", main_pool
             )

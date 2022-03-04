@@ -43,7 +43,7 @@ class TestActor(mo.Actor):
 @require_ray
 @pytest.mark.asyncio
 async def test_main_pool(ray_start_regular):
-    pg, bundle_index, pg_name, n_process = None, -1, "ray_cluster", 3
+    pg, pg_name, n_process = None, "ray_cluster", 3
     if hasattr(ray.util, "get_placement_group"):
         pg = ray.util.placement_group(name=pg_name, bundles=[{"CPU": n_process}])
         ray.get(pg.ready())
@@ -78,13 +78,10 @@ async def test_shutdown_sub_pool(ray_start_regular):
 
     pg_name, n_process = "ray_cluster", 2
     if hasattr(ray.util, "get_placement_group"):
-        pg, bundle_index = (
-            ray.util.placement_group(name=pg_name, bundles=[{"CPU": n_process}]),
-            0,
-        )
+        pg = ray.util.placement_group(name=pg_name, bundles=[{"CPU": n_process}])
         ray.get(pg.ready())
     else:
-        pg, bundle_index = None, -1
+        pg = None
     address = process_placement_to_address(pg_name, 0, process_index=0)
     pool_handle = await RayActorBackend._create_ray_pools(address, n_process)
     actor_handle = pool_handle.main_pool

@@ -78,9 +78,9 @@ class RayActorBackend(BaseActorBackend):
         return pool_handle
 
     @classmethod
-    async def create_actor_pool(cls, *args, **kwargs):
+    async def create_actor_pool(cls, address: str, n_process: int = None, **kwargs):
         with Timer() as timer:
-            pool_handle = await cls._create_ray_pools(*args, **kwargs)
+            pool_handle = await cls._create_ray_pools(address, n_process, **kwargs)
         logger.info(
             "Submit create actor pool %s took %s seconds.",
             pool_handle.main_pool,
