@@ -150,6 +150,9 @@ def _new_integrated_test_session(_stop_isolation):
                 for proc in subprocesses:
                     try:
                         proc.wait(1)
+                    except (psutil.TimeoutExpired, psutil.NoSuchProcess):
+                        pass
+                    try:
                         proc.kill()
                     except psutil.NoSuchProcess:
                         pass
