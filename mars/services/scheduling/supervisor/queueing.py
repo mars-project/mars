@@ -172,7 +172,6 @@ class SubtaskQueueingActor(mo.Actor):
         bands = [band] if band is not None else list(self._band_slot_nums.keys())
         submit_aio_tasks = []
         manager_ref = await self._get_manager_ref()
-
         apply_delays = []
         submit_items_list = []
         submitted_bands = []
@@ -191,41 +190,51 @@ class SubtaskQueueingActor(mo.Actor):
             subtask_ids = list(submit_items)
             if not subtask_ids:
                 continue
-
             submitted_bands.append(band)
             submit_items_list.append(submit_items)
-
-            # todo it is possible to provide slot data with more accuracy
-            subtask_slots = [1] * len(subtask_ids)
-
+            subtask_resources = [
+                Resource(
+                    num_cpus=item.subtask.num_cpus,
+                    num_mem_bytes=item.subtask.num_mem_bytes if self._hbo_enabled else 0,
+                )
+                for item in submit_items.values()
+            ]
             apply_delays.append(
-                self._slots_ref.apply_subtask_slots.delay(
-                    band, self._session_id, subtask_ids, subtask_slots
+                self._slots_ref.apply_subtask_resources.delay(
+                    band, self._session_id, subtask_ids, subtask_resources
                 )
             )
 
         async with redirect_subtask_errors(
-            self,
-            [
-                item.subtask
-                for submit_items in submit_items_list
-                for item in submit_items.values()
-            ],
+                self,
+                [
+                    item.subtask
+                    for submit_items in submit_items_list
+                    for item in submit_items.values()
+                ],
         ):
-            submitted_ids_list = await self._slots_ref.apply_subtask_slots.batch(
+            submitted_ids_list = await self._slots_ref.apply_subtask_resources.batch(
                 *apply_delays
             )
-
         for band, submit_items, submitted_ids in zip(
-            submitted_bands, submit_items_list, submitted_ids_list
+                submitted_bands, submit_items_list, submitted_ids_list
         ):
             subtask_ids = list(submit_items)
             task_queue = self._band_queues[band]
-
             async with redirect_subtask_errors(
                 self, [item.subtask for item in submit_items.values()]
             ):
                 non_submitted_ids = [k for k in submit_items if k not in submitted_ids]
+                metrics_options = {
+                    "session_id": self._session_id,
+                    "band": band[0] if band else "",
+                }
+                self._submitted_subtask_count.record(
+                    len(submitted_ids), metrics_options
+                )
+                self._unsubmitted_subtask_count.record(
+                    len(non_submitted_ids), metrics_options
+                )
                 if submitted_ids:
                     for stid in subtask_ids:
                         if stid not in submitted_ids:
@@ -261,6 +270,8 @@ class SubtaskQueueingActor(mo.Actor):
 
         if submit_aio_tasks:
             yield asyncio.gather(*submit_aio_tasks)
+        else:
+            logger.debug("No subtasks to submit, perhaps because of the lack of resources.")
 
     def _ensure_top_item_valid(self, task_queue):
         """Clean invalid subtask item from the queue to ensure that when the queue is not empty,
@@ -270,10 +281,7 @@ class SubtaskQueueingActor(mo.Actor):
         ):
             #  skip removed items (as they may be re-pushed into the queue)
             heapq.heappop(task_queue)
-        if task_queue:
-            return True
-        else:
-            return False
+        return bool(task_queue)
 
     @mo.extensible
     def update_subtask_priority(self, subtask_id: str, priority: Tuple):
@@ -303,17 +311,18 @@ class SubtaskQueueingActor(mo.Actor):
         return {q: len(subtasks) for q, subtasks in self._band_queues.items()}
 
     async def balance_queued_subtasks(self):
-        used_slots = await self._slots_ref.get_used_slots()
+        used_slots = {band: slots for band, slots in (await self._slots_ref.get_used_slots()).items() if slots > 0}
         remaining_slots = await self._slots_ref.get_remaining_slots()
         # record length of band queues
-        band_num_queued_subtasks = {
-            band: len([item for item in queue if item.subtask.subtask_id in self._stid_to_items])
-            for band, queue in self._band_queues.items()
-        }
+        band_num_queued_subtasks = {}
+        for band, queue in self._band_queues.items():
+            queue_size = len([item for item in queue if item.subtask.subtask_id in self._stid_to_items])
+            if queue_size > 0:
+                band_num_queued_subtasks[band] = queue_size
         logger.info("Start to balance subtasks:\n"
                     "used_slots %s\n remaining_slots %s\n queue size %s\n band_num_queued_subtasks %s",
                     used_slots, remaining_slots,
-                    {band: len(queue) for band, queue in self._band_queues.items()},
+                    {band: len(queue) for band, queue in self._band_queues.items() if len(queue) > 0},
                     band_num_queued_subtasks)
         if sum(band_num_queued_subtasks.values()) == 0:
             logger.info("No subtasks in queue, skip balance.")
@@ -325,7 +334,10 @@ class SubtaskQueueingActor(mo.Actor):
         # rewrite band queues according to feedbacks from assigner
         for band, move in move_queued_subtasks.items():
             task_queue = self._band_queues[band]
-            assert move + len(task_queue) >= 0, f"move {move} queue length {len(task_queue)}"
+            queue_size = len([item for item in task_queue if item.subtask.subtask_id in self._stid_to_items])
+            assert queue_size + move >= 0, f"move {move} from {band, task_queue} " \
+                                           f"move_queued_subtasks {move_queued_subtasks} " \
+                                           f"band_num_queued_subtasks {band_num_queued_subtasks}"
             for _ in range(abs(move)):
                 if move < 0:
                     # TODO: pop item of low priority
@@ -349,9 +361,10 @@ class SubtaskQueueingActor(mo.Actor):
                         heapq.heappush(task_queue, item)
             if len(task_queue) == 0:
                 self._band_queues.pop(band)
-        balanced_num_queued_subtasks = {
-            band: len([item for item in queue if item.subtask.subtask_id in self._stid_to_items])
-            for band, queue in self._band_queues.items()
-        }
+        balanced_num_queued_subtasks = {}
+        for band, queue in self._band_queues.items():
+            band_length = len([item for item in queue if item.subtask.subtask_id in self._stid_to_items])
+            if band_length > 0:
+                balanced_num_queued_subtasks[band] = band_length
         logger.info("Balance subtasks succeed:\n move_queued_subtasks %s\n "
                     "balanced_num_queued_subtasks %s", move_queued_subtasks, balanced_num_queued_subtasks)

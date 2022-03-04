@@ -46,7 +46,7 @@ class MockNodeInfoCollectorActor(NodeInfoCollectorActor):
         self.all_bands = self.ready_bands.copy()
 
     async def update_node_info(
-        self, address, role, env=None, resource=None, detail=None, status=None
+            self, address, role, env=None, resource=None, detail=None, status=None
     ):
         if "address" in address and status == NodeStatus.STOPPING:
             del self.ready_bands[(address, "numa-0")]
@@ -163,19 +163,19 @@ async def test_assign_cpu_tasks(actor_pool):
     )
 
     subtask = Subtask("test_task", session_id, chunk_graph=chunk_graph)
-    [result] = await assigner_ref.assign_subtasks([subtask])
+    [[result]] = await assigner_ref.assign_subtasks([subtask])
     assert result in (("address0", "numa-0"), ("address2", "numa-0"))
 
     subtask.expect_bands = [("address0", "numa-0")]
-    [result] = await assigner_ref.assign_subtasks([subtask])
+    [[result]] = await assigner_ref.assign_subtasks([subtask])
     assert result == ("address0", "numa-0")
 
     subtask.expect_bands = [("address0", "numa-0"), ("address1", "numa-0")]
-    [result] = await assigner_ref.assign_subtasks([subtask])
+    [[result]] = await assigner_ref.assign_subtasks([subtask])
     assert result == ("address0", "numa-0")
 
     subtask.expect_bands = [("address1", "numa-0")]
-    [result] = await assigner_ref.assign_subtasks([subtask])
+    [[result]] = await assigner_ref.assign_subtasks([subtask])
     assert result in (("address0", "numa-0"), ("address2", "numa-0"))
 
     result_chunk.op.gpu = True
@@ -211,7 +211,7 @@ async def test_assign_gpu_tasks(actor_pool):
     )
 
     subtask = Subtask("test_task", session_id, chunk_graph=chunk_graph)
-    [result] = await assigner_ref.assign_subtasks([subtask])
+    [[result]] = await assigner_ref.assign_subtasks([subtask])
     assert result[1].startswith("gpu")
 
 
@@ -229,23 +229,11 @@ async def test_reassign_subtasks(actor_pool):
     move_queued_subtasks = await assigner_ref.reassign_subtasks(
         band_num_queued_subtasks
     )
-    assert move_queued_subtasks in (
-        {
-            ("address1", "numa-0"): -1,
-            ("address0", "numa-0"): -1,
-            ("address2", "numa-0"): 2,
-        },
-        {
-            ("address1", "numa-0"): -2,
-            ("address0", "numa-0"): 0,
-            ("address2", "numa-0"): 2,
-        },
-        {
-            ("address1", "numa-0"): -2,
-            ("address0", "numa-0"): -1,
-            ("address2", "numa-0"): 3,
-        },
-    )
+    assert move_queued_subtasks == {
+        ("address1", "numa-0"): -2,
+        ("address0", "numa-0"): 0,
+        ("address2", "numa-0"): 2,
+    }
 
     # ('address0', 'numa-0'), ('address2', 'numa-0') are ready
     await cluster_api.set_node_status(
@@ -260,18 +248,11 @@ async def test_reassign_subtasks(actor_pool):
     move_queued_subtasks = await assigner_ref.reassign_subtasks(
         band_num_queued_subtasks
     )
-    assert move_queued_subtasks in (
-        {
-            ("address1", "numa-0"): -7,
-            ("address0", "numa-0"): 3,
-            ("address2", "numa-0"): 4,
-        },
-        {
-            ("address1", "numa-0"): -7,
-            ("address0", "numa-0"): 4,
-            ("address2", "numa-0"): 3,
-        },
-    )
+    assert move_queued_subtasks == {
+        ('address1', 'numa-0'): -7,
+        ('address0', 'numa-0'): -1,
+        ('address2', 'numa-0'): 8
+    }
 
     band_num_queued_subtasks = {("address0", "numa-0"): 9, ("address1", "numa-0"): 7}
     move_queued_subtasks = await assigner_ref.reassign_subtasks(
