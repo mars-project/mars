@@ -268,43 +268,45 @@ async def test_get_tileable_graph(start_test_service):
     next(TileableGraphBuilder(graph).build())
 
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
+    try:
+        with pytest.raises(TaskNotExist):
+            await task_api.get_tileable_graph_as_json("non_exist")
 
-    with pytest.raises(TaskNotExist):
-        await task_api.get_tileable_graph_as_json("non_exist")
+        tileable_detail = await task_api.get_tileable_graph_as_json(task_id)
 
-    tileable_detail = await task_api.get_tileable_graph_as_json(task_id)
+        num_tileable = len(tileable_detail.get("tileables"))
+        num_dependencies = len(tileable_detail.get("dependencies"))
+        assert num_tileable > 0
+        assert num_dependencies <= (num_tileable / 2) * (num_tileable / 2)
 
-    num_tileable = len(tileable_detail.get("tileables"))
-    num_dependencies = len(tileable_detail.get("dependencies"))
-    assert num_tileable > 0
-    assert num_dependencies <= (num_tileable / 2) * (num_tileable / 2)
+        assert (num_tileable == 1 and num_dependencies == 0) or (
+            num_tileable > 1 and num_dependencies > 0
+        )
 
-    assert (num_tileable == 1 and num_dependencies == 0) or (
-        num_tileable > 1 and num_dependencies > 0
-    )
+        graph_nodes = []
+        graph_dependencies = []
+        for node in graph.iter_nodes():
+            graph_nodes.append(node.key)
 
-    graph_nodes = []
-    graph_dependencies = []
-    for node in graph.iter_nodes():
-        graph_nodes.append(node.key)
+            for node_successor in graph.iter_successors(node):
+                graph_dependencies.append(
+                    {
+                        "fromTileableId": node.key,
+                        "toTileableId": node_successor.key,
+                        "linkType": 0,
+                    }
+                )
 
-        for node_successor in graph.iter_successors(node):
-            graph_dependencies.append(
-                {
-                    "fromTileableId": node.key,
-                    "toTileableId": node_successor.key,
-                    "linkType": 0,
-                }
-            )
+        for tileable in tileable_detail.get("tileables"):
+            graph_nodes.remove(tileable.get("tileableId"))
 
-    for tileable in tileable_detail.get("tileables"):
-        graph_nodes.remove(tileable.get("tileableId"))
+        assert len(graph_nodes) == 0
 
-    assert len(graph_nodes) == 0
-
-    for i in range(num_dependencies):
-        dependency = tileable_detail.get("dependencies")[i]
-        assert graph_dependencies[i] == dependency
+        for i in range(num_dependencies):
+            dependency = tileable_detail.get("dependencies")[i]
+            assert graph_dependencies[i] == dependency
+    finally:
+        await task_api.wait_task(task_id, timeout=120)
 
 
 @pytest.mark.asyncio
@@ -434,40 +436,45 @@ async def test_get_tileable_subtasks(start_test_service, with_input_output):
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
 
     await asyncio.sleep(1)
-    tileable_graph_json = await task_api.get_tileable_graph_as_json(task_id)
-    for tileable_json in tileable_graph_json["tileables"]:
-        tileable_id = tileable_json["tileableId"]
-        subtask_details = await task_api.get_tileable_subtasks(
-            task_id, tileable_id, True
-        )
 
-        subtask_deps = []
-        for subtask_id, subtask_detail in subtask_details.items():
-            for from_subtask_id in subtask_detail.get("fromSubtaskIds", ()):
-                subtask_deps.append((from_subtask_id, subtask_id))
-        assert len(subtask_details) > 0
+    try:
+        tileable_graph_json = await task_api.get_tileable_graph_as_json(task_id)
+        for tileable_json in tileable_graph_json["tileables"]:
+            tileable_id = tileable_json["tileableId"]
+            subtask_details = await task_api.get_tileable_subtasks(
+                task_id, tileable_id, True
+            )
 
-        for from_id, to_id in subtask_deps:
-            assert from_id in subtask_details
-            assert to_id in subtask_details
+            subtask_deps = []
+            for subtask_id, subtask_detail in subtask_details.items():
+                for from_subtask_id in subtask_detail.get("fromSubtaskIds", ()):
+                    subtask_deps.append((from_subtask_id, subtask_id))
+            assert len(subtask_details) > 0
 
-        if with_input_output:
-            tileable_inputs = [
-                dep["fromTileableId"]
-                for dep in tileable_graph_json["dependencies"]
-                if dep["toTileableId"] == tileable_id
-            ]
-            tileable_outputs = [
-                dep["toTileableId"]
-                for dep in tileable_graph_json["dependencies"]
-                if dep["fromTileableId"] == tileable_id
-            ]
-            if tileable_inputs:
-                assert any(
-                    detail["nodeType"] == "Input" for detail in subtask_details.values()
-                )
-            if tileable_outputs:
-                assert any(
-                    detail["nodeType"] == "Output"
-                    for detail in subtask_details.values()
-                )
+            for from_id, to_id in subtask_deps:
+                assert from_id in subtask_details
+                assert to_id in subtask_details
+
+            if with_input_output:
+                tileable_inputs = [
+                    dep["fromTileableId"]
+                    for dep in tileable_graph_json["dependencies"]
+                    if dep["toTileableId"] == tileable_id
+                ]
+                tileable_outputs = [
+                    dep["toTileableId"]
+                    for dep in tileable_graph_json["dependencies"]
+                    if dep["fromTileableId"] == tileable_id
+                ]
+                if tileable_inputs:
+                    assert any(
+                        detail["nodeType"] == "Input"
+                        for detail in subtask_details.values()
+                    )
+                if tileable_outputs:
+                    assert any(
+                        detail["nodeType"] == "Output"
+                        for detail in subtask_details.values()
+                    )
+    finally:
+        await task_api.wait_task(task_id, timeout=120)
