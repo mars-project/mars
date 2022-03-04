@@ -323,7 +323,6 @@ from numpy import (
 # noinspection PyUnresolvedReferences
 from numpy import (
     dtype,
-    object,
     number,
     inexact,
     floating,
@@ -334,9 +333,7 @@ from numpy import (
     character,
     generic,
     flexible,
-    int,
     int_,
-    bool,
     bool_,
     float_,
     cfloat,
@@ -355,7 +352,6 @@ from numpy import (
     uint32,
     uint64,
     uint,
-    float,
     float16,
     float32,
     float64,
@@ -373,6 +369,19 @@ from numpy import finfo
 from .fuse import TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk
 from .fetch import TensorFetch, TensorFetchShuffle
 from . import ufunc
+
+try:
+    import warnings
+
+    # suppress numpy warnings on types
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        # noinspection PyUnresolvedReferences
+        from numpy import object, int, bool, float
+except ImportError:  # pragma: no cover
+    pass
+finally:
+    del warnings
 
 del (
     TensorFuseChunk,

@@ -256,6 +256,6 @@ def test_update_subtask_result():
         execution_start_time=1646125099.622051,
         execution_end_time=1646125104.448726,
     )
-    subtask_result.merge_bands(new_result)
+    subtask_result.update(new_result)
     assert subtask_result.execution_start_time == new_result.execution_start_time
     assert subtask_result.execution_end_time == new_result.execution_end_time
