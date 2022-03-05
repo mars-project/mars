@@ -107,7 +107,7 @@ class SubtaskResult(Serializable):
     error = AnyField("error", default=None)
     traceback = AnyField("traceback", default=None)
 
-    def merge_bands(self, result: Optional["SubtaskResult"]):
+    def update(self, result: Optional["SubtaskResult"]):
         if result and result.bands:
             bands = self.bands or []
             self.bands = sorted(set(bands + result.bands))
