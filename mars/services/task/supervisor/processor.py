@@ -766,7 +766,7 @@ class TaskProcessorActor(mo.Actor):
             # set before
             return
 
-        stage_processor.subtask_snapshots[subtask] = subtask_result.merge_bands(
+        stage_processor.subtask_snapshots[subtask] = subtask_result.update(
             stage_processor.subtask_snapshots.get(subtask)
         )
         if subtask_result.status.is_done:
