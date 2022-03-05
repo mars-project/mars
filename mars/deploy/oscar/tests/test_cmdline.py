@@ -210,13 +210,11 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
         env["MARS_CPU_TOTAL"] = "2"
 
         for trial in range(restart_trial):
-            logger.warning(
-                "Cluster start attempt %d / %d", restart_trial + 1, restart_trial
-            )
+            logger.warning("Cluster start attempt %d / %d", trial + 1, restart_trial)
             _test_port_cache.clear()
 
             sv_args = _reload_args(supervisor_args)
-            sv_proc = subprocess.Popen(sv_args, env=env, text=True)
+            sv_proc = subprocess.Popen(sv_args, env=env)
 
             oscar_port = _get_labelled_port("supervisor", create=False)
             if not oscar_port:
@@ -232,7 +230,7 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
 
             w_procs = []
             for idx in range(2):
-                proc = subprocess.Popen(_reload_args(worker_args), env=env, text=True)
+                proc = subprocess.Popen(_reload_args(worker_args), env=env)
                 w_procs.append(proc)
                 # make sure worker ports does not collide
                 time.sleep(2)

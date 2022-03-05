@@ -1533,5 +1533,6 @@ def wrap_exception(
             "__getattr__": __getattr__,
             "__str__": __str__,
             "__basename__": name,
+            "__module__": bases[-1].__module__,
         },
     )().with_traceback(traceback)

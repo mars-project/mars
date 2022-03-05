@@ -110,7 +110,7 @@ class SubtaskResult(Serializable):
     execution_start_time: float = Float64Field("execution_start_time")
     execution_end_time: float = Float64Field("execution_end_time")
 
-    def merge_bands(self, result: Optional["SubtaskResult"]):
+    def update(self, result: Optional["SubtaskResult"]):
         if result and result.bands:
             bands = self.bands or []
             self.bands = sorted(set(bands + result.bands))
