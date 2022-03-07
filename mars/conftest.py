@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import concurrent.futures
 import os
 import subprocess
 
-import psutil
 import pytest
 
 from mars.config import option_context
@@ -30,8 +28,17 @@ from mars.utils import lazy_import
 ray = lazy_import("ray")
 
 
+@pytest.fixture(scope="module")
+def ray_start_regular_shared(request):
+    yield from _ray_start_regular(request)
+
+
 @pytest.fixture
 def ray_start_regular(request):
+    yield from _ray_start_regular(request)
+
+
+def _ray_start_regular(request):
     param = getattr(request, "param", {})
     if not param.get("enable", True):
         yield
@@ -49,8 +56,17 @@ def ray_start_regular(request):
                 subprocess.check_call(["ray", "stop", "--force"])
 
 
+@pytest.fixture(scope="module")
+def ray_large_cluster_shared(request):
+    yield from _ray_large_cluster(request)
+
+
 @pytest.fixture
 def ray_large_cluster(request):  # pragma: no cover
+    yield from _ray_large_cluster(request)
+
+
+def _ray_large_cluster(request):  # pragma: no cover
     param = getattr(request, "param", {})
     num_nodes = param.get("num_nodes", 3)
     num_cpus = param.get("num_cpus", 16)
@@ -141,21 +157,7 @@ def _new_integrated_test_session(_stop_isolation):
         try:
             yield sess
         finally:
-            try:
-                sess.stop_server(isolation=False)
-            except concurrent.futures.TimeoutError:
-                subprocesses = psutil.Process().children(recursive=True)
-                for proc in subprocesses:
-                    proc.terminate()
-                for proc in subprocesses:
-                    try:
-                        proc.wait(1)
-                    except (psutil.TimeoutExpired, psutil.NoSuchProcess):
-                        pass
-                    try:
-                        proc.kill()
-                    except psutil.NoSuchProcess:
-                        pass
+            sess.stop_server(isolation=False)
 
 
 @pytest.fixture(scope="module")
