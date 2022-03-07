@@ -40,14 +40,11 @@ async def actor_pool_context():
     register_ray_serializers()
     address = process_placement_to_address(pg_name, 0, process_index=0)
     # Hold actor_handle to avoid actor being freed.
-    if hasattr(ray.util, "get_placement_group"):
-        pg = ray.util.placement_group(
-            name=pg_name, bundles=[{"CPU": n_process}], strategy="SPREAD"
-        )
-        ray.get(pg.ready())
-        pg, bundle_index = ray.util.get_placement_group(pg_name), 0
-    else:
-        pg, bundle_index = None, -1
+    pg = ray.util.placement_group(
+        name=pg_name, bundles=[{"CPU": n_process}], strategy="SPREAD"
+    )
+    ray.get(pg.ready())
+    pg, _ = ray.util.get_placement_group(pg_name), 0
     pool_handle = await RayActorBackend._create_ray_pools(address, n_process)
     await pool_handle.start.remote()
 
