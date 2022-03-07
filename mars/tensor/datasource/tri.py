@@ -68,7 +68,13 @@ class TensorTri(TensorHasInput):
                 not is_triu and ld_fx < 0 and ru_fx < 0
             ):
                 # does not cross, fill with zeros
-                chunk_op = TensorZeros(dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
+                chunk_op = TensorZeros(
+                    dtype=op.dtype,
+                    gpu=op.gpu,
+                    sparse=op.sparse,
+                    shape=chunk_shape,
+                    order=tensor.order.value,
+                )
                 out_chunk = chunk_op.new_chunk(
                     None, shape=chunk_shape, index=out_idx, order=tensor.order
                 )

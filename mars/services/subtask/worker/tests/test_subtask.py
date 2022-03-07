@@ -239,3 +239,23 @@ async def test_subtask_op_progress(actor_pool):
 
     result = await subtask_runner.get_subtask_result()
     assert result.progress == 1.0
+
+
+def test_update_subtask_result():
+    subtask_result = SubtaskResult(
+        subtask_id="test_subtask_abc",
+        status=SubtaskStatus.pending,
+        progress=0.0,
+        bands=[("127.0.0.1", "numa-0")],
+    )
+    new_result = SubtaskResult(
+        subtask_id="test_subtask_abc",
+        status=SubtaskStatus.succeeded,
+        progress=1.0,
+        bands=[("127.0.0.1", "numa-0")],
+        execution_start_time=1646125099.622051,
+        execution_end_time=1646125104.448726,
+    )
+    subtask_result.update(new_result)
+    assert subtask_result.execution_start_time == new_result.execution_start_time
+    assert subtask_result.execution_end_time == new_result.execution_end_time

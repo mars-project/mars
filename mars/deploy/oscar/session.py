@@ -34,6 +34,7 @@ from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, 
 import numpy as np
 
 from ... import oscar as mo
+from ...utils import Timer
 from ...config import options
 from ...core import ChunkType, TileableType, TileableGraph, enter_mode
 from ...core.entrypoints import init_extension_entrypoints
@@ -45,6 +46,7 @@ from ...lib.aio import (
     new_isolation,
     stop_isolation,
 )
+from ...metrics import Metrics
 from ...services.cluster import AbstractClusterAPI, ClusterAPI
 from ...services.lifecycle import AbstractLifecycleAPI, LifecycleAPI
 from ...services.meta import MetaAPI, AbstractMetaAPI
@@ -759,6 +761,13 @@ class _IsolatedSession(AbstractAsyncSession):
             register_asyncio_task_timeout_detector()
         )
 
+        # add metrics
+        self._tileable_graph_gen_time = Metrics.gauge(
+            "mars.tileable_graph_gen_time_secs",
+            "Time consuming in seconds to generate a tileable graph",
+            ("address", "session_id"),
+        )
+
     @classmethod
     async def _init(
         cls, address: str, session_id: str, new: bool = True, timeout: float = None
@@ -928,7 +937,18 @@ class _IsolatedSession(AbstractAsyncSession):
         ]
 
         # build tileable graph
-        tileable_graph = gen_submit_tileable_graph(self, tileables)
+        with Timer() as timer:
+            tileable_graph = gen_submit_tileable_graph(self, tileables)
+
+        logger.info(
+            "Time consuming to generate a tileable graph is %ss with address %s, session id %s",
+            timer.duration,
+            self.address,
+            self._session_id,
+        )
+        self._tileable_graph_gen_time.record(
+            timer.duration, {"address": self.address, "session_id": self._session_id}
+        )
 
         # submit task
         task_id = await self._task_api.submit_tileable_graph(

@@ -99,6 +99,7 @@ class WorkerCommandRunner(OscarCommandRunner):
             logging_conf=self.logging_conf,
             cuda_devices=self.cuda_devices,
             subprocess_start_method="forkserver" if os.name != "nt" else "spawn",
+            metrics=self.config.get("metrics", {}),
         )
 
     async def start_services(self):

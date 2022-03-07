@@ -68,15 +68,21 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
         for i in range(in_tensor.chunk_shape[0]):
             for j in range(in_tensor.chunk_shape[1]):
                 if i < j:
-                    lower_chunk = TensorZeros(dtype=tensor.dtype).new_chunk(
+                    lower_shape = (in_tensor.nsplits[0][i], in_tensor.nsplits[1][j])
+                    lower_chunk = TensorZeros(
+                        dtype=tensor.dtype, shape=lower_shape, order=tensor.order.value
+                    ).new_chunk(
                         None,
-                        shape=(in_tensor.nsplits[0][i], in_tensor.nsplits[1][j]),
+                        shape=lower_shape,
                         index=(i, j),
                         order=tensor.order,
                     )
-                    upper_chunk = TensorZeros(dtype=tensor.dtype).new_chunk(
+                    upper_shape = (in_tensor.nsplits[1][j], in_tensor.nsplits[0][i])
+                    upper_chunk = TensorZeros(
+                        dtype=tensor.dtype, shape=upper_shape, order=tensor.order.value
+                    ).new_chunk(
                         None,
-                        shape=(in_tensor.nsplits[1][j], in_tensor.nsplits[0][i]),
+                        shape=upper_shape,
                         index=(j, i),
                         order=tensor.order,
                     )

@@ -53,3 +53,6 @@ scheduling:
     # Max number of concurrent speculative run for a subtask.
     max_concurrent_run: 3
   subtask_cancel_timeout: 5
+metrics:
+  backend: console
+  port: 0  # Need to assign a port argument when using prometheus

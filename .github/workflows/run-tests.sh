@@ -18,7 +18,7 @@ if [ -n "$WITH_CYTHON" ]; then
 fi
 if [ -z "$NO_COMMON_TESTS" ]; then
   mkdir -p build
-  pytest $PYTEST_CONFIG mars/remote mars/storage mars/lib mars/metric
+  pytest $PYTEST_CONFIG mars/remote mars/storage mars/lib mars/metrics
   mv .coverage build/.coverage.tileable.file
 
   pytest $PYTEST_CONFIG --forked --ignore mars/tensor --ignore mars/dataframe \

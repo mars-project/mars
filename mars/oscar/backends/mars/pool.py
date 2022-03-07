@@ -181,9 +181,10 @@ class MainActorPool(MainActorPoolBase):
         if logging_conf.get("file"):
             logging.config.fileConfig(logging_conf["file"])
         elif logging_conf.get("level"):
-            logging.basicConfig(
-                level=logging_conf["level"], format=logging_conf.get("format")
-            )
+            logging.getLogger("__main__").setLevel(logging_conf["level"])
+            logging.getLogger("mars").setLevel(logging_conf["level"])
+            if logging_conf.get("format"):
+                logging.basicConfig(format=logging_conf["format"])
 
         use_uvloop = conf["use_uvloop"]
         if use_uvloop:

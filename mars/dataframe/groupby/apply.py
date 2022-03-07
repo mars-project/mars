@@ -151,9 +151,14 @@ class GroupByApply(
             return [auto_merge_chunks(get_context(), ret)]
 
     def _infer_df_func_returns(
-        self, in_groupby, in_df, dtypes, dtype=None, name=None, index=None
+        self, in_groupby, in_df, dtypes=None, dtype=None, name=None, index=None
     ):
         index_value, output_type, new_dtypes = None, None, None
+
+        if self.output_types is not None and (dtypes is not None or dtype is not None):
+            ret_dtypes = dtypes if dtypes is not None else (dtype, name)
+            ret_index_value = parse_index(index) if index is not None else None
+            return ret_dtypes, ret_index_value
 
         try:
             infer_df = in_groupby.op.build_mock_groupby().apply(

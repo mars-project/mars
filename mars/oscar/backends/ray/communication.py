@@ -46,6 +46,11 @@ class _ArgWrapper:
 
 
 if ray:
+    # Note: Must init metrics before using and here initializing metrics
+    # with ray backend.
+    from ....metrics import init_metrics
+
+    init_metrics("ray")
     _ray_serialize = ray.serialization.SerializationContext.serialize
     _ray_deserialize_object = ray.serialization.SerializationContext._deserialize_object
 
