@@ -154,7 +154,7 @@ class AssignerActor(mo.Actor):
                                 if b[1].startswith(band_prefix)
                             ]
                             if sel_bands:
-                                band = (band[0], random.choice(sel_bands))
+                                band = (band[0], random.choice(sel_bands)[1])
                         if band not in filtered_bands:
                             band = self._get_random_band(is_gpu)
                         band_sizes[band] += meta["store_size"]
