@@ -731,10 +731,10 @@ def q17(lineitem, part):
         lineitem_avg, left_on="P_PARTKEY", right_on="L_PARTKEY", how="inner"
     )
     total = total[total["L_QUANTITY"] < total["avg"]]
-    total = pd.DataFrame(
-        {"avg_yearly": [(total["L_EXTENDEDPRICE"].sum() / 7.0).execute().fetch()]}
+    total = md.DataFrame(
+        {"avg_yearly": [total["L_EXTENDEDPRICE"].sum() / 7.0]}
     )
-    print(total)
+    print(total.execute())
     print("Q17 Execution time (s): ", time.time() - t1)
 
 
