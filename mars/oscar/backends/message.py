@@ -212,7 +212,7 @@ class ErrorMessage(_MessageBase):
         cause = self.error
 
         return wrap_exception(
-            "_MarsError",
+            type(self.error).__name__,
             (ErrorMessage.AsCauseBase, type(self.error)),
             message,
             cause,

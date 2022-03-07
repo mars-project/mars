@@ -420,7 +420,7 @@ cdef class Timer:
         self._start = time.time()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, *_):
         self.duration = time.time() - self._start
 
 

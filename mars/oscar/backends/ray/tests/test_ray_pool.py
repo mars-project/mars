@@ -31,6 +31,8 @@ ray = lazy_import("ray")
 
 
 class TestActor(mo.Actor):
+    __test__ = False
+
     async def kill(self, address, uid):
         actor_ref = await mo.actor_ref(address, uid)
         task = asyncio.create_task(actor_ref.crash())

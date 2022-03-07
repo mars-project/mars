@@ -17,7 +17,7 @@ import functools
 import itertools
 from collections import OrderedDict
 from collections.abc import Iterable
-from typing import List, Dict, Union
+from typing import List, Dict
 
 import numpy as np
 import pandas as pd
@@ -43,9 +43,7 @@ from .core import (
     CustomReduction,
     ReductionCompiler,
     ReductionSteps,
-    ReductionPreStep,
     ReductionAggStep,
-    ReductionPostStep,
 )
 
 cp = lazy_import("cupy", globals=globals(), rename="cp")
@@ -86,103 +84,19 @@ _agg_functions = {
 class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.AGGREGATE
 
-    _raw_func = AnyField("raw_func")
-    _raw_func_kw = DictField("raw_func_kw")
-    _func = AnyField("func")
-    _func_rename = ListField("func_rename")
-    _axis = AnyField("axis")
-    _numeric_only = BoolField("numeric_only")
-    _bool_only = BoolField("bool_only")
-    _use_inf_as_na = BoolField("use_inf_as_na")
+    raw_func = AnyField("raw_func")
+    raw_func_kw = DictField("raw_func_kw")
+    func = AnyField("func")
+    func_rename = ListField("func_rename")
+    axis = AnyField("axis")
+    numeric_only = BoolField("numeric_only")
+    bool_only = BoolField("bool_only")
+    use_inf_as_na = BoolField("use_inf_as_na")
 
-    _combine_size = Int32Field("combine_size")
-    _pre_funcs = ListField("pre_funcs")
-    _agg_funcs = ListField("agg_funcs")
-    _post_funcs = ListField("post_funcs")
-
-    def __init__(
-        self,
-        raw_func=None,
-        raw_func_kw=None,
-        func=None,
-        func_rename=None,
-        axis=None,
-        use_inf_as_na=None,
-        numeric_only=None,
-        bool_only=None,
-        combine_size=None,
-        pre_funcs=None,
-        agg_funcs=None,
-        post_funcs=None,
-        output_types=None,
-        stage=None,
-        **kw,
-    ):
-        super().__init__(
-            _raw_func=raw_func,
-            _raw_func_kw=raw_func_kw,
-            _func=func,
-            _func_rename=func_rename,
-            _axis=axis,
-            _use_inf_as_na=use_inf_as_na,
-            _numeric_only=numeric_only,
-            _bool_only=bool_only,
-            _combine_size=combine_size,
-            _pre_funcs=pre_funcs,
-            _agg_funcs=agg_funcs,
-            _post_funcs=post_funcs,
-            _output_types=output_types,
-            stage=stage,
-            **kw,
-        )
-
-    @property
-    def raw_func(self):
-        return self._raw_func
-
-    @property
-    def raw_func_kw(self) -> Dict:
-        return self._raw_func_kw
-
-    @property
-    def func(self) -> Union[List, Dict[str, List]]:
-        return self._func
-
-    @property
-    def func_rename(self) -> List:
-        return self._func_rename
-
-    @property
-    def axis(self) -> int:
-        return self._axis
-
-    @property
-    def numeric_only(self) -> bool:
-        return self._numeric_only
-
-    @property
-    def bool_only(self) -> bool:
-        return self._bool_only
-
-    @property
-    def use_inf_as_na(self) -> int:
-        return self._use_inf_as_na
-
-    @property
-    def combine_size(self) -> int:
-        return self._combine_size
-
-    @property
-    def pre_funcs(self) -> List[ReductionPreStep]:
-        return self._pre_funcs
-
-    @property
-    def agg_funcs(self) -> List[ReductionAggStep]:
-        return self._agg_funcs
-
-    @property
-    def post_funcs(self) -> List[ReductionPostStep]:
-        return self._post_funcs
+    combine_size = Int32Field("combine_size")
+    pre_funcs = ListField("pre_funcs")
+    agg_funcs = ListField("agg_funcs")
+    post_funcs = ListField("post_funcs")
 
     @staticmethod
     def _filter_dtypes(op: "DataFrameAggregate", dtypes):
@@ -195,9 +109,9 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
     def _calc_result_shape(self, df):
         if df.ndim == 2:
-            if self._numeric_only:
+            if self.numeric_only:
                 df = df.select_dtypes([np.number, np.bool_])
-            elif self._bool_only:
+            elif self.bool_only:
                 df = df.select_dtypes([np.bool_])
 
         if self.output_types[0] == OutputType.dataframe:
@@ -220,6 +134,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             return np.array(result_df).dtype, None
 
     def __call__(self, df, output_type=None, dtypes=None, index=None):
+        self._output_types = df.op.output_types
         normalize_reduction_funcs(self, ndim=df.ndim)
         if output_type is None or dtypes is None:
             with enter_mode(kernel=False, build=False):
@@ -304,8 +219,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 [OutputType.dataframe] if chunk.ndim == 2 else [OutputType.series]
             )
             map_op.stage = OperandStage.map
-            map_op._pre_funcs = func_info.pre_funcs
-            map_op._agg_funcs = func_info.agg_funcs
+            map_op.pre_funcs = func_info.pre_funcs
+            map_op.agg_funcs = func_info.agg_funcs
 
             if axis == 0:
                 new_index = (
@@ -443,7 +358,9 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             func_iter = ((col, f) for col, funcs in op.func.items() for f in funcs)
 
         func_renames = (
-            op.func_rename if op.func_rename is not None else itertools.repeat(None)
+            op.func_rename
+            if getattr(op, "func_rename", None) is not None
+            else itertools.repeat(None)
         )
         for func_rename, (col, f) in zip(func_renames, func_iter):
             if cols_set is not None and col is not None and col not in cols_set:
@@ -541,7 +458,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                     chunk_op = op.copy().reset_key()
                     chunk_op.output_types = [OutputType.dataframe]
                     chunk_op.stage = OperandStage.combine
-                    chunk_op._agg_funcs = func_info.agg_funcs
+                    chunk_op.agg_funcs = func_info.agg_funcs
 
                     if axis == 0:
                         new_chunks[chunk_index] = chunk_op.new_chunk(
@@ -582,8 +499,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             )
             chunk_op = op.copy().reset_key()
             chunk_op.stage = OperandStage.agg
-            chunk_op._agg_funcs = func_info.agg_funcs
-            chunk_op._post_funcs = func_info.post_funcs
+            chunk_op.agg_funcs = func_info.agg_funcs
+            chunk_op.post_funcs = func_info.post_funcs
 
             kw = out_df.params.copy()
             if op.output_types[0] == OutputType.dataframe:
@@ -1044,14 +961,14 @@ def normalize_reduction_funcs(op, ndim=None):
                         new_func[k] = [v]
                     else:
                         new_func[k] = v
-                op._func = new_func
+                op.func = new_func
             else:
-                op._func = list(raw_func.values())
-                op._func_rename = list(raw_func.keys())
+                op.func = list(raw_func.values())
+                op.func_rename = list(raw_func.keys())
         elif isinstance(raw_func, Iterable) and not isinstance(raw_func, str):
-            op._func = list(raw_func)
+            op.func = list(raw_func)
         else:
-            op._func = [raw_func]
+            op.func = [raw_func]
     else:
         new_func = OrderedDict()
         new_func_names = OrderedDict()
@@ -1064,16 +981,16 @@ def normalize_reduction_funcs(op, ndim=None):
                 col_func_names = new_func_names[v[0]] = []
             col_funcs.append(v[1])
             col_func_names.append(k)
-        op._func = new_func
-        op._func_rename = functools.reduce(
+        op.func = new_func
+        op.func_rename = functools.reduce(
             lambda a, b: a + b, new_func_names.values(), []
         )
 
     custom_idx = 0
-    if isinstance(op._func, list):
-        custom_iter = (f for f in op._func if isinstance(f, CustomReduction))
+    if isinstance(op.func, list):
+        custom_iter = (f for f in op.func if isinstance(f, CustomReduction))
     else:
-        custom_iter = (f for f in op._func.values() if isinstance(f, CustomReduction))
+        custom_iter = (f for f in op.func.values() if isinstance(f, CustomReduction))
     for r in custom_iter:
         if r.name == "<custom>":
             r.name = f"<custom_{custom_idx}>"
@@ -1106,7 +1023,6 @@ def aggregate(df, func=None, axis=0, **kw):
         raw_func=copy.deepcopy(func),
         raw_func_kw=copy.deepcopy(kw),
         axis=axis,
-        output_types=df.op.output_types,
         combine_size=combine_size,
         numeric_only=numeric_only,
         bool_only=bool_only,

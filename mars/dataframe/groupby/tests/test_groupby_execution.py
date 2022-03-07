@@ -24,6 +24,7 @@ except ImportError:  # pragma: no cover
     pa = None
 
 from .... import dataframe as md
+from ....config import option_context
 from ....core.operand import OperandStage
 from ....tests.core import assert_groupby_equal, require_cudf
 from ....utils import arrow_array_to_objects, pd_release_version
@@ -580,16 +581,34 @@ def test_groupby_agg_auto_method(setup):
     ).fetch()
     pd.testing.assert_frame_equal(result.sort_index(), raw.groupby("c2").agg("sum"))
 
+    r = mdf.groupby("c3").agg("min")
+    operand_executors = {DataFrameGroupByAgg: _disallow_reduce}
+    result = r.execute(
+        extra_config={"operand_executors": operand_executors, "check_all": False}
+    ).fetch()
+    pd.testing.assert_frame_equal(result.sort_index(), raw.groupby("c3").agg("min"))
+
     def _disallow_combine_and_agg(ctx, op):
         assert op.stage != OperandStage.combine
         op.execute(ctx, op)
 
-    r = mdf.groupby("c3").agg("sum")
-    operand_executors = {DataFrameGroupByAgg: _disallow_combine_and_agg}
-    result = r.execute(
-        extra_config={"operand_executors": operand_executors, "check_all": False}
-    ).fetch()
-    pd.testing.assert_frame_equal(result.sort_index(), raw.groupby("c3").agg("sum"))
+    with option_context({"chunk_store_limit": 1}):
+        raw2 = pd.DataFrame(
+            {
+                "c1": rs.randint(20, size=100),
+                "c2": rs.rand(100),
+                "c3": rs.rand(100),
+            }
+        )
+        mdf = md.DataFrame(raw2, chunk_size=20)
+        r = mdf.groupby("c3").agg("min")
+        operand_executors = {DataFrameGroupByAgg: _disallow_combine_and_agg}
+        result = r.execute(
+            extra_config={"operand_executors": operand_executors, "check_all": False}
+        ).fetch()
+        pd.testing.assert_frame_equal(
+            result.sort_index(), raw2.groupby("c3").agg("min")
+        )
 
     rs = np.random.RandomState(0)
     raw = pd.DataFrame(

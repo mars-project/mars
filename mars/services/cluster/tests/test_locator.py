@@ -21,6 +21,7 @@ import pytest
 
 from .... import oscar as mo
 from ....utils import Timer
+from ....tests.core import flaky
 from ..core import NodeRole, NodeStatus
 from ..supervisor.locator import SupervisorPeerLocatorActor
 from ..supervisor.node_info import NodeInfoCollectorActor
@@ -95,6 +96,7 @@ def temp_address_file():
         yield os.path.join(dir_name, "addresses")
 
 
+@flaky(max_runs=3)
 @pytest.mark.asyncio
 async def test_supervisor_peer_locator(actor_pool, temp_address_file):
     addresses = ["1.2.3.4:1234", "1.2.3.4:1235", "1.2.3.4:1236", "1.2.3.4:1237"]
@@ -116,14 +118,18 @@ async def test_supervisor_peer_locator(actor_pool, temp_address_file):
     assert set(await info_ref.get_nodes_info()) == set(addresses)
 
     # test watch nodes changes
-    version, result = await locator_ref.watch_supervisors_by_keys(["mock_name"])
+    version, result = await asyncio.wait_for(
+        locator_ref.watch_supervisors_by_keys(["mock_name"]),
+        timeout=30,
+    )
     assert result[0] in addresses
 
     with open(temp_address_file, "w") as file_obj:
         file_obj.write("\n".join(addresses[2:]))
 
-    version, result = await locator_ref.watch_supervisors_by_keys(
-        ["mock_name"], version=version
+    version, result = await asyncio.wait_for(
+        locator_ref.watch_supervisors_by_keys(["mock_name"], version=version),
+        timeout=30,
     )
     assert result[0] in addresses[2:]
 
@@ -137,19 +143,20 @@ async def test_supervisor_peer_locator(actor_pool, temp_address_file):
             file_obj.write(
                 "\n".join(f"{a},{(idx + 1) % 2}" for idx, a in enumerate(addresses))
             )
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.5)
         with open(temp_address_file, "w") as file_obj:
             file_obj.write("\n".join(addresses))
 
     asyncio.create_task(delay_read_fun())
 
     with Timer() as timer:
-        await locator_ref.wait_all_supervisors_ready()
+        await asyncio.wait_for(locator_ref.wait_all_supervisors_ready(), timeout=30)
     assert timer.duration > 0.4
 
     await mo.destroy_actor(locator_ref)
 
 
+@flaky(max_runs=3)
 @pytest.mark.asyncio
 async def test_worker_supervisor_locator(actor_pool, temp_address_file):
     addresses = [actor_pool.external_address]
@@ -172,7 +179,10 @@ async def test_worker_supervisor_locator(actor_pool, temp_address_file):
     # test watch nodes changes
     supervisors = await locator_ref.get_supervisors(filter_ready=False)
     assert supervisors == addresses
-    version, result = await locator_ref.watch_supervisors_by_keys(["mock_name"])
+    version, result = await asyncio.wait_for(
+        locator_ref.watch_supervisors_by_keys(["mock_name"]),
+        timeout=30,
+    )
     assert result[0] in addresses
 
     # test watch without NodeInfoCollectorActor
@@ -181,8 +191,9 @@ async def test_worker_supervisor_locator(actor_pool, temp_address_file):
     addresses = ["localhost:1234", "localhost:1235"]
     with open(temp_address_file, "w") as file_obj:
         file_obj.write("\n".join(addresses))
-    version, result = await locator_ref.watch_supervisors_by_keys(
-        ["mock_name"], version=version
+    version, result = await asyncio.wait_for(
+        locator_ref.watch_supervisors_by_keys(["mock_name"], version=version),
+        timeout=30,
     )
     assert result[0] in addresses
 
@@ -198,7 +209,8 @@ async def test_worker_supervisor_locator(actor_pool, temp_address_file):
     with open(temp_address_file, "w") as file_obj:
         file_obj.write("\n".join(addresses))
 
-    version, result = await locator_ref.watch_supervisors_by_keys(
-        ["mock_name"], version=version
+    version, result = await asyncio.wait_for(
+        locator_ref.watch_supervisors_by_keys(["mock_name"], version=version),
+        timeout=30,
     )
     assert result[0] in addresses
