@@ -293,4 +293,7 @@ async def test_schedule_cancel(actor_pools):
     assert all(
         summary.is_finished and summary.is_cancelled for summary in summaries[2:]
     )
+    # `cancel_subtask` will invoke `task_api.set_subtask_result` which is async, wait 1 second so that slot can be
+    # released.
+    await asyncio.sleep(1)
     assert (await global_slot_ref.get_used_slots()).get((worker_pool.external_address, "numa-0"), 0) == 0
