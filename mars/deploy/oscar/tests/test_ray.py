@@ -228,7 +228,7 @@ def new_ray_session_test():
 
 
 @require_ray
-def test_ray_client(stop_ray):
+def test_ray_client(ray_large_cluster):
     from ray.util.client.ray_client_helpers import ray_start_client_server
     from ray._private.client_mode_hook import enable_client_mode
 
