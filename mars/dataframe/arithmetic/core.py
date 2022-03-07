@@ -28,7 +28,13 @@ from ..align import (
     align_dataframe_series,
     align_dataframe_dataframe,
 )
-from ..core import DATAFRAME_TYPE, SERIES_TYPE, DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
+from ..core import (
+    DATAFRAME_TYPE,
+    SERIES_TYPE,
+    DATAFRAME_CHUNK_TYPE,
+    SERIES_CHUNK_TYPE,
+    is_chunk_meta_lazy,
+)
 from ..initializer import Series, DataFrame
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..ufunc.tensor import TensorUfuncMixin
@@ -203,34 +209,55 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         tileable = op.rhs if pd.api.types.is_scalar(op.lhs) else op.lhs
         df = op.outputs[0]
         out_chunks = []
+        lazy_chunk_meta = is_chunk_meta_lazy(tileable.chunks[0])
         for chunk in tileable.chunks:
             out_op = op.copy().reset_key()
             if chunk.ndim == 2:
-                out_chunk = out_op.new_chunk(
-                    [chunk],
-                    shape=chunk.shape,
-                    index=chunk.index,
-                )
-                out_chunk._set_tileable_meta(
-                    tileable_key=df.key,
-                    nsplits=tileable.nsplits,
-                    index_value=df.index_value,
-                    columns_value=df.columns_value,
-                    dtypes=df.dtypes,
-                )
+                if lazy_chunk_meta:
+                    out_chunk = out_op.new_chunk(
+                        [chunk],
+                        shape=chunk.shape,
+                        index=chunk.index,
+                    )
+                    out_chunk._set_tileable_meta(
+                        tileable_key=df.key,
+                        nsplits=tileable.nsplits,
+                        index_value=df.index_value,
+                        columns_value=df.columns_value,
+                        dtypes=df.dtypes,
+                    )
+                else:
+                    out_chunk = out_op.new_chunk(
+                        [chunk],
+                        shape=chunk.shape,
+                        index=chunk.index,
+                        dtypes=chunk.dtypes,
+                        index_value=chunk.index_value,
+                        columns_value=getattr(chunk, "columns_value"),
+                    )
             else:
-                out_chunk = out_op.new_chunk(
-                    [chunk],
-                    shape=chunk.shape,
-                    index=chunk.index,
-                    dtype=chunk.dtype,
-                    name=getattr(chunk, "name"),
-                )
-                out_chunk._set_tileable_meta(
-                    tileable_key=df.key,
-                    nsplits=tileable.nsplits,
-                    index_value=df.index_value,
-                )
+                if lazy_chunk_meta:
+                    out_chunk = out_op.new_chunk(
+                        [chunk],
+                        shape=chunk.shape,
+                        index=chunk.index,
+                        dtype=chunk.dtype,
+                        name=getattr(chunk, "name"),
+                    )
+                    out_chunk._set_tileable_meta(
+                        tileable_key=df.key,
+                        nsplits=tileable.nsplits,
+                        index_value=df.index_value,
+                    )
+                else:
+                    out_chunk = out_op.new_chunk(
+                        [chunk],
+                        shape=chunk.shape,
+                        index=chunk.index,
+                        dtype=chunk.dtype,
+                        index_value=chunk.index_value,
+                        name=getattr(chunk, "name"),
+                    )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
@@ -403,16 +430,14 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             or isinstance(x2, (TENSOR_TYPE, TENSOR_CHUNK_TYPE))
         ):
             if not is_chunk:
-                if x2 is None:
-                    dtypes = x1.dtypes
-                elif pd.api.types.is_scalar(x2):
+                if pd.api.types.is_scalar(x2):
                     dtypes = cls._operator(build_empty_df(x1.dtypes), x2).dtypes
                 elif x1.dtypes is not None and isinstance(x2, TENSOR_TYPE):
                     dtypes = pd.Series(
                         [infer_dtype(dt, x2.dtype, cls._operator) for dt in x1.dtypes],
                         index=x1.dtypes.index,
                     )
-                else:
+                else:  # pragma: no cover
                     dtypes = x1.dtypes
                 return {
                     "shape": x1.shape,

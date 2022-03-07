@@ -321,10 +321,7 @@ class IndexValue(Serializable):
     def __mars_tokenize__(self):
         # return object for tokenize
         v = self._index_value
-        if v._key is not None:
-            return v._key
-        v._key = key = [type(v).__name__] + list(v._FIELD_VALUES.values())
-        return key
+        return v._key
 
     @property
     def value(self):
@@ -483,12 +480,21 @@ class LazyMetaChunkData(ChunkData):
         setattr(self, _tileable_dtypes_property, dtypes)
 
 
-@functools.lru_cache
+def is_chunk_meta_lazy(chunk: ChunkData) -> bool:
+    chunk = chunk.data if hasattr(chunk, "data") else chunk
+    return isinstance(chunk, LazyMetaChunkData) and hasattr(
+        chunk, _tileable_key_property
+    )
+
+
+@functools.lru_cache(maxsize=128)
 def _get_cum_nsplit(nsplit: Tuple[int]) -> List[int]:
     return [0] + np.cumsum(nsplit).tolist()
 
 
 def _calc_axis_slice(nsplit: Tuple[int], index: int) -> slice:
+    if not isinstance(nsplit, tuple):
+        nsplit = tuple(nsplit)
     cum_nsplit = _get_cum_nsplit(nsplit)
     return slice(cum_nsplit[index], cum_nsplit[index + 1])
 
@@ -517,7 +523,7 @@ class ChunkDtypesField(SeriesField):
             return dtypes
 
     def __get__(self, instance, owner):
-        if not issubclass(owner, LazyMetaChunkData):
+        if not issubclass(owner, LazyMetaChunkData):  # pragma: no cover
             return super().__get__(instance, owner)
 
         values = instance._FIELD_VALUES
@@ -525,6 +531,9 @@ class ChunkDtypesField(SeriesField):
         if dtypes is not None:
             # been set before
             return dtypes
+
+        if instance.index is None:
+            return super().__get__(instance, owner)
 
         # get dtypes lazily
         index = instance.index[1]
@@ -566,7 +575,7 @@ class ChunkIndexValueField(ReferenceField):
             return index_value
 
     def __get__(self, instance, owner):
-        if not issubclass(owner, LazyMetaChunkData):
+        if not issubclass(owner, LazyMetaChunkData):  # pragma: no cover
             return super().__get__(instance, owner)
 
         values = instance._FIELD_VALUES
@@ -574,6 +583,9 @@ class ChunkIndexValueField(ReferenceField):
         if index_value is not None:
             # been set before
             return index_value
+
+        if instance.index is None:
+            return super().__get__(instance, owner)
 
         # get index_value lazily
         index = instance.index[0]
@@ -603,16 +615,15 @@ class ChunkColumnsValueField(ReferenceField):
             # calc slice
             slc = _calc_axis_slice(nsplit, index)
             pd_index = tileable_columns_value.to_pandas()
-            if np.isnan(slc.stop - slc.start):
-                chunk_pd_index = pd_index[:0]
-            else:
-                chunk_pd_index = pd_index[slc]
+            chunk_pd_index = (
+                pd_index[:0] if np.isnan(slc.stop - slc.start) else pd_index[slc]
+            )
             columns_value = parse_index(chunk_pd_index, store_data=True)
             cache[tileable_key, index] = columns_value
             return columns_value
 
     def __get__(self, instance, owner):
-        if not issubclass(owner, LazyMetaChunkData):
+        if not issubclass(owner, LazyMetaChunkData):  # pragma: no cover
             return super().__get__(instance, owner)
 
         values = instance._FIELD_VALUES
@@ -620,6 +631,9 @@ class ChunkColumnsValueField(ReferenceField):
         if columns_value is not None:
             # been set before
             return columns_value
+
+        if instance.index is None:
+            return super().__get__(instance, owner)
 
         # get columns_value lazily
         index = instance.index[1]

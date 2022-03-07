@@ -26,7 +26,13 @@ from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...tensor.datasource import tensor as astensor
 from ...utils import has_unknown_shape
 from ..align import align_dataframe_series, align_dataframe_dataframe
-from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE, DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
+from ..core import (
+    SERIES_TYPE,
+    SERIES_CHUNK_TYPE,
+    DATAFRAME_TYPE,
+    DATAFRAME_CHUNK_TYPE,
+    is_chunk_meta_lazy,
+)
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, in_range_index
@@ -449,6 +455,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
         col_names = op.col_names
+        chunk_meta_lazy = is_chunk_meta_lazy(in_df.chunks[0])
         if out_df.ndim < 2:
             # Series
             column_index = calc_columns_index(col_names, in_df)[0]
@@ -458,18 +465,28 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             for i in range(in_df.chunk_shape[0]):
                 c = in_df.cix[(i, column_index)]
                 chunk_op = DataFrameIndex(col_names=col_names)
-                out_chunk = chunk_op.new_chunk(
-                    [c],
-                    shape=(c.shape[0],),
-                    index=(i,),
-                    dtype=dtype,
-                    name=col_names,
-                )
-                out_chunk._set_tileable_meta(
-                    tileable_key=out_df.key,
-                    nsplits=out_nsplits,
-                    index_value=out_df.index_value,
-                )
+                if chunk_meta_lazy:
+                    out_chunk = chunk_op.new_chunk(
+                        [c],
+                        shape=(c.shape[0],),
+                        index=(i,),
+                        dtype=dtype,
+                        name=col_names,
+                    )
+                    out_chunk._set_tileable_meta(
+                        tileable_key=out_df.key,
+                        nsplits=out_nsplits,
+                        index_value=out_df.index_value,
+                    )
+                else:
+                    out_chunk = chunk_op.new_chunk(
+                        [c],
+                        shape=(c.shape[0],),
+                        index=(i,),
+                        dtype=dtype,
+                        index_value=c.index_value,
+                        name=col_names,
+                    )
                 out_chunks.append(out_chunk)
             new_op = op.copy()
             params = out_df.params.copy()
@@ -505,16 +522,28 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                     index_op = DataFrameIndex(
                         col_names=list(columns), output_types=[OutputType.dataframe]
                     )
-                    out_chunk = index_op.new_chunk(
-                        [c], shape=(c.shape[0], len(dtypes)), index=(j, i)
-                    )
-                    out_chunk._set_tileable_meta(
-                        tileable_key=out_df.key,
-                        nsplits=nsplits,
-                        index_value=out_df.index_value,
-                        columns_value=out_df.columns_value,
-                        dtypes=out_df.dtypes,
-                    )
+                    if chunk_meta_lazy:
+                        out_chunk = index_op.new_chunk(
+                            [c], shape=(c.shape[0], len(dtypes)), index=(j, i)
+                        )
+                        out_chunk._set_tileable_meta(
+                            tileable_key=out_df.key,
+                            nsplits=nsplits,
+                            index_value=out_df.index_value,
+                            columns_value=out_df.columns_value,
+                            dtypes=out_df.dtypes,
+                        )
+                    else:
+                        out_chunk = index_op.new_chunk(
+                            [c],
+                            shape=(c.shape[0], len(dtypes)),
+                            index=(j, i),
+                            dtypes=dtypes,
+                            index_value=c.index_value,
+                            columns_value=parse_index(
+                                pd.Index(dtypes.index), store_data=True
+                            ),
+                        )
                     out_chunks[j].append(out_chunk)
             out_chunks = [item for cl in out_chunks for item in cl]
             new_op = op.copy()

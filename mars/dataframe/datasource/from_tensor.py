@@ -378,7 +378,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 chunk_index = in_chunk.index
                 chunk_shape = in_chunk.shape
 
-            if op.columns:
+            if op.columns is not None:
                 column_nsplit = cum_nsplits[1]
                 j = chunk_index[1]
                 out_op.columns = op.columns[column_nsplit[j] : column_nsplit[j + 1]]
@@ -390,7 +390,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 index_nsplit = cum_nsplits[0]
                 if op.index.size > 0:
                     out_op.index = op.index[index_nsplit[i] : index_nsplit[i + 1]]
-            else:
+            elif index_tensor is not None:
                 index_chunk = index_tensor.cix[i]
                 chunk_inputs.append(index_chunk)
 
@@ -498,6 +498,8 @@ def dataframe_from_tensor(
             col_num = 1
         gpu = tensor.op.gpu if gpu is None else gpu
         dtypes = pd.Series([tensor.dtype] * col_num, index=columns)
+        if columns is None:
+            columns = dtypes.index
     else:
         gpu = None
         if columns is not None:
