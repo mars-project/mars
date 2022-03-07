@@ -233,6 +233,7 @@ cdef class LocalActorRef(ActorRef):
             actor = self._actor_weakref() or self._weakref_local_actor()
             if actor is None:
                 raise ActorNotExist(f"Actor {self.uid} does not exist") from None
+            # For detecting the attribute error.
             getattr(actor, item)
             method = self._methods[item] = LocalActorRefMethod(self, item)
             return method

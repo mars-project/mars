@@ -126,6 +126,9 @@ class AbstractActorPool(ABC):
         config: ActorPoolConfig,
         servers: List[Server],
     ):
+        # register local pool for local actor lookup.
+        # The pool is weakrefed, so we don't need to unregister it.
+        register_local_pool(external_address, self)
         self.process_index = process_index
         self.label = label
         self.external_address = external_address
@@ -150,8 +153,6 @@ class AbstractActorPool(ABC):
         )
         # load third party extensions.
         init_extension_entrypoints()
-        # register local pool for local actor lookup.
-        register_local_pool(external_address, self)
 
     @property
     def router(self):
