@@ -73,7 +73,9 @@ async def test_dataset_related_classes(ray_large_cluster_shared):
 @require_ray
 @pytest.mark.asyncio
 @pytest.mark.parametrize("test_option", [[5, 5], [5, 4], [None, None]])
-async def test_convert_to_ray_mldataset(ray_large_cluster_shared, create_cluster, test_option):
+async def test_convert_to_ray_mldataset(
+    ray_large_cluster_shared, create_cluster, test_option
+):
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend="oscar", default=True)
     with session:

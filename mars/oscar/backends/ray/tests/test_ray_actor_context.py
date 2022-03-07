@@ -101,7 +101,9 @@ async def test_simple_local_actor_pool(ray_start_regular_shared, actor_pool_cont
 
 @require_ray
 @pytest.mark.asyncio
-async def test_mars_post_create_pre_destroy(ray_start_regular_shared, actor_pool_context):
+async def test_mars_post_create_pre_destroy(
+    ray_start_regular_shared, actor_pool_context
+):
     await test_mars_actor_context.test_mars_post_create_pre_destroy(actor_pool_context)
 
 
