@@ -132,7 +132,7 @@ jobs:
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG --forked --durations=0 --timeout=300 -m ray
+            pytest $PYTEST_CONFIG --forked --durations=0 --timeout=300 -v -s -m ray
             coverage report
           fi
           if [ -n "$RUN_DASK" ]; then
