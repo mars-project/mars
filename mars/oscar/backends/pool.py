@@ -27,7 +27,7 @@ from ...metrics import init_metrics
 from ...utils import implements, to_binary
 from ...utils import lazy_import, register_asyncio_task_timeout_detector
 from ..api import Actor
-from ..core import ActorRef
+from ..core import ActorRef, register_local_pool
 from ..debug import record_message_trace, debug_async_timeout
 from ..errors import ActorAlreadyExist, ActorNotExist, ServerClosed, CannotCancelTask
 from ..utils import create_actor_ref
@@ -127,6 +127,9 @@ class AbstractActorPool(ABC):
         config: ActorPoolConfig,
         servers: List[Server],
     ):
+        # register local pool for local actor lookup.
+        # The pool is weakrefed, so we don't need to unregister it.
+        register_local_pool(external_address, self)
         self.process_index = process_index
         self.label = label
         self.external_address = external_address
