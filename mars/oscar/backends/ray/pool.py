@@ -93,8 +93,6 @@ class RayMainActorPool(MainActorPoolBase):
             sub_pool_address
         )
         pg = get_placement_group(pg_name) if pg_name else None
-        if not pg:
-            bundle_index = -1
         # Hold actor_handle to avoid actor being freed.
         actor_handle = (
             ray.remote(RaySubPool)
@@ -138,7 +136,7 @@ class RayMainActorPool(MainActorPoolBase):
             [actor_handle.set_actor_pool_config.remote(actor_pool_config)],
             timeout=create_sub_pool_timeout,
         )
-        if not done:
+        if not done:  # pragma: no cover
             msg = (
                 f"Can not start ray sub pool {external_address} in {create_sub_pool_timeout} seconds.",
             )
@@ -342,7 +340,7 @@ class RaySubPool(RayPoolBase):
             self._state == RayPoolState.INIT
         ), f"The pool {pool_config['external_address']} is already started, current state is {self._state}"
         env = pool_config["env"]
-        if env:
+        if env:  # pragma: no cover
             os.environ.update(env)
         self._actor_pool = await RaySubActorPool.create(
             {
@@ -363,7 +361,9 @@ class RaySubPool(RayPoolBase):
             main_pool_start_timestamp = await main_pool.alive.remote()
             if self._main_pool_start_timestamp is None:
                 self._main_pool_start_timestamp = main_pool_start_timestamp
-            if main_pool_start_timestamp != self._main_pool_start_timestamp:
+            if (
+                main_pool_start_timestamp != self._main_pool_start_timestamp
+            ):  # pragma: no cover
                 logger.error(
                     "Main pool %s has restarted at %s, exit current sub pool now.",
                     datetime.datetime.fromtimestamp(main_pool_start_timestamp / 1e9),

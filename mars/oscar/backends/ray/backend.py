@@ -52,8 +52,6 @@ class RayActorBackend(BaseActorBackend):
         pool_addresses = RayMainActorPool.get_external_addresses(address, n_process)
         assert pool_addresses[0] == address
         pg = get_placement_group(pg_name) if pg_name else None
-        if not pg:
-            bundle_index = -1
         num_cpus = kwargs.get("main_pool_cpus", 0)
         sub_pools = {
             sub_pool_address: RayMainActorPool.create_sub_pool(
@@ -107,6 +105,6 @@ class RayPoolHandle:
         self.sub_pools = sub_pools
 
     def __getattr__(self, item):
-        if item in ("main_pool", "sub_pools"):
+        if item in ("main_pool", "sub_pools"):  # pragma: no cover
             return object.__getattribute__(self, item)
         return getattr(self.main_pool, item)
