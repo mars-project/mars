@@ -18,6 +18,7 @@ import itertools
 import logging
 import os
 import sys
+import threading
 import types
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -176,7 +177,10 @@ class RayPoolBase(ABC):
     def __new__(cls, *args, **kwargs):
         if not _is_windows:
             try:
-                if "COV_CORE_SOURCE" in os.environ:  # pragma: no branch
+                if (
+                    "COV_CORE_SOURCE" in os.environ
+                    and threading.current_thread() is threading.main_thread()
+                ):  # pragma: no branch
                     # register coverage hooks on SIGTERM
                     from pytest_cov.embed import cleanup_on_sigterm
 
