@@ -62,22 +62,24 @@ cdef _get_local_actor(address, uid):
     return None
 
 
-cdef class ActorPool:
-    def __init__(self, address):
-        _local_pool_map[address] = self
-
-
-cpdef create_actor_local_ref(address, uid):
+def register_local_pool(address, pool):
     """
-    Create an actor local reference.
+    Register local actor pool for local actor lookup.
+    """
+    _local_pool_map[address] = pool
+
+
+cpdef create_local_actor_ref(address, uid):
+    """
+    Create a reference to local actor.
 
     Returns
     -------
-    ActorLocalRef or None
+    LocalActorRef or None
     """
     actor = _get_local_actor(address, uid)
     if actor is not None:
-        return ActorLocalRef(actor)
+        return LocalActorRef(actor)
     return None
 
 
@@ -88,10 +90,10 @@ cpdef create_actor_ref(address, uid):
 
     Returns
     -------
-    ActorRef or ActorLocalRef
+    ActorRef or LocalActorRef
     """
     actor = _get_local_actor(address, uid)
-    return ActorRef(address, uid) if actor is None else ActorLocalRef(actor)
+    return ActorRef(address, uid) if actor is None else LocalActorRef(actor)
 
 
 cdef class ActorRef:
@@ -127,7 +129,7 @@ cdef class ActorRef:
 
     def __eq__(self, other):
         other_type = type(other)
-        if other_type is ActorRef or other_type is ActorLocalRef:
+        if other_type is ActorRef or other_type is LocalActorRef:
             return self.address == other.address and self.uid == other.uid
         return False
 
@@ -210,7 +212,7 @@ cdef class ActorRefMethod:
         return asyncio.create_task(delay_fun())
 
 
-cdef class ActorLocalRef(ActorRef):
+cdef class LocalActorRef(ActorRef):
     def __init__(self, _BaseActor actor):
         # Make sure the input actor is an instance of _BaseActor.
         super().__init__(actor._address, actor._uid)
@@ -232,11 +234,11 @@ cdef class ActorLocalRef(ActorRef):
             if actor is None:
                 raise ActorNotExist(f"Actor {self.uid} does not exist") from None
             getattr(actor, item)
-            method = self._methods[item] = ActorLocalRefMethod(self, item)
+            method = self._methods[item] = LocalActorRefMethod(self, item)
             return method
 
     def __repr__(self):
-        return 'ActorLocalRef(uid={!r}, address={!r}), actor_weakref={!r}'.format(
+        return 'LocalActorRef(uid={!r}, address={!r}), actor_weakref={!r}'.format(
             self.uid, self.address, self._actor_weakref)
 
 
@@ -251,18 +253,18 @@ async def __pyx_actor_method_wrapper(method, result_handler, lock, args, kwargs)
 _actor_method_wrapper = __pyx_actor_method_wrapper
 
 
-cdef class ActorLocalRefMethod:
-    cdef ActorLocalRef _actor_local_ref
+cdef class LocalActorRefMethod:
+    cdef LocalActorRef _local_actor_ref
     cdef object _method_name
 
-    def __init__(self, ActorLocalRef actor_local_ref, method_name):
-        self._actor_local_ref = actor_local_ref
+    def __init__(self, LocalActorRef local_actor_ref, method_name):
+        self._local_actor_ref = local_actor_ref
         self._method_name = method_name
 
-    cdef _get_referent(self):
-        actor = self._actor_local_ref._actor_weakref() or self._actor_local_ref._weakref_local_actor()
+    cdef tuple _get_referent(self):
+        actor = self._local_actor_ref._actor_weakref() or self._local_actor_ref._weakref_local_actor()
         if actor is None:
-            raise ActorNotExist(f"Actor {self._actor_local_ref.uid} does not exist.")
+            raise ActorNotExist(f"Actor {self._local_actor_ref.uid} does not exist.")
         method = getattr(actor, self._method_name)
         return actor, method
 

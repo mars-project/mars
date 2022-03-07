@@ -17,7 +17,7 @@ from typing import AsyncGenerator
 import numpy as np
 
 from .._utils cimport to_str
-from .core cimport ActorRef, ActorLocalRef
+from .core cimport ActorRef, LocalActorRef
 
 
 cpdef bytes new_actor_id():
@@ -49,7 +49,7 @@ def create_actor_ref(*args, **kwargs):
         uid = args[1]
     elif len(args) == 1:
         tp0 = type(args[0])
-        if tp0 is ActorRef or tp0 is ActorLocalRef:
+        if tp0 is ActorRef or tp0 is LocalActorRef:
             uid = args[0].uid
             address = to_str(address or args[0].address)
         else:

@@ -26,7 +26,7 @@ from ...core.entrypoints import init_extension_entrypoints
 from ...utils import implements, to_binary
 from ...utils import lazy_import, register_asyncio_task_timeout_detector
 from ..api import Actor
-from ..core import ActorRef, ActorPool
+from ..core import ActorRef, register_local_pool
 from ..debug import record_message_trace, debug_async_timeout
 from ..errors import ActorAlreadyExist, ActorNotExist, ServerClosed, CannotCancelTask
 from ..utils import create_actor_ref
@@ -98,7 +98,7 @@ def _register_message_handler(pool_type: Type["AbstractActorPool"]):
     return pool_type
 
 
-class AbstractActorPool(ABC, ActorPool):
+class AbstractActorPool(ABC):
     __slots__ = (
         "process_index",
         "label",
@@ -126,7 +126,6 @@ class AbstractActorPool(ABC, ActorPool):
         config: ActorPoolConfig,
         servers: List[Server],
     ):
-        super().__init__(external_address)
         self.process_index = process_index
         self.label = label
         self.external_address = external_address
@@ -151,6 +150,8 @@ class AbstractActorPool(ABC, ActorPool):
         )
         # load third party extensions.
         init_extension_entrypoints()
+        # register local pool for local actor lookup.
+        register_local_pool(external_address, self)
 
     @property
     def router(self):

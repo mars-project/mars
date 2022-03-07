@@ -24,7 +24,7 @@ import pandas as pd
 import pytest
 
 from ..... import oscar as mo
-from .....oscar.core import ActorRef, ActorLocalRef
+from .....oscar.core import ActorRef, LocalActorRef
 from ....backends.allocate_strategy import RandomSubPool
 from ....debug import set_debug_options, get_debug_options, DebugOptions
 from ...router import Router
@@ -86,7 +86,7 @@ class DummyActor(mo.Actor):
     async def send(self, uid, method, *args):
         actor_ref = await mo.actor_ref(uid, address=self.address)
         tp = (
-            ActorLocalRef
+            LocalActorRef
             if actor_ref.address == self.address and get_debug_options() is None
             else ActorRef
         )
@@ -118,7 +118,7 @@ class DummyActor(mo.Actor):
 
     def get_ref(self):
         ref = self.ref()
-        tp = ActorLocalRef if get_debug_options() is None else ActorRef
+        tp = LocalActorRef if get_debug_options() is None else ActorRef
         assert (
             type(ref) is tp
         ), f"Expect type of actor ref is {tp}, but got {ref} instead."
@@ -456,7 +456,7 @@ async def test_mars_destroy_has_actor(actor_pool_context):
     # there will be memory leak if the actor create and destroy multiple times.
     DummyActor.__dict__["add"].__get__.__func__.cache_clear()
 
-    if isinstance(ref2, ActorLocalRef):
+    if isinstance(ref2, LocalActorRef):
         assert "weakref" in str(ref2)
         assert "dead" in str(ref2)
 

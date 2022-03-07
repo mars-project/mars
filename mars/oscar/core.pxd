@@ -20,7 +20,7 @@ cdef class ActorRef:
     cdef dict _methods
 
 
-cdef class ActorLocalRef(ActorRef):
+cdef class LocalActorRef(ActorRef):
     cdef object _actor_weakref
     cdef _weakref_local_actor(self)
 
