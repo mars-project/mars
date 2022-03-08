@@ -12,3 +12,4 @@ exclude_paths:
   - 'misc'
   - '*.min.js'
   - '**/tests/**'
+  - 'asv_bench/**'

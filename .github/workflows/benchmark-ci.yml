@@ -1,0 +1,69 @@
+name: Mars Continuous Benchmark
+
+on:
+  pull_request:
+    branches:
+      - master
+      - main
+
+jobs:
+  asv-benchmarks:
+    name: ASV Benchmarks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    concurrency:
+      # https://github.community/t/concurrecy-not-work-for-push/183068/7
+      group: ${{ github.event_name == 'push' && github.run_number || github.ref }}-asv-benchmarks
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Cache conda
+        uses: actions/cache@v2
+        with:
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-conda-${{ hashFiles('${{ env.ENV_FILE }}') }}
+
+      - name: Set up conda 3.8
+        env:
+          PYTHON: 3.8
+        shell: bash
+        run: |
+          source ./ci/install-conda.sh
+          python -m pip install --upgrade pip setuptools wheel coverage;
+
+      - name: Build Mars
+        id: build
+        run: |
+          source ./ci/reload-env.sh
+          export DEFAULT_VENV=$VIRTUAL_ENV
+          pip install numpy scipy cython oss2 asv
+          pip install -e ".[dev,extra]"
+
+      - name: Run ASV benchmarks
+        run: |
+          source ./ci/reload-env.sh
+          cd asv_bench
+          asv check -E existing
+          git remote add upstream https://github.com/mars-project/mars.git
+          git fetch upstream
+          asv machine --yes
+          asv continuous -f 1.1 upstream/master HEAD | sed "/failed$/ s/^/##[error]/" | tee benchmarks.log
+          if grep "failed" benchmarks.log > /dev/null ; then
+              exit 1
+          fi
+        if: ${{ steps.build.outcome == 'success' }}
+
+      - name: Publish benchmarks artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: Benchmarks log
+          path: asv_bench/benchmarks.log
+        if: failure()
