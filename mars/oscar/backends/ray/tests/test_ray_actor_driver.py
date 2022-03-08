@@ -152,10 +152,7 @@ async def test_get_placement_group(ray_large_cluster):
     pg = ray.util.placement_group(name=pg_name, bundles=[{"CPU": 1}], strategy="SPREAD")
     ray.get(pg.ready())
     pg2 = get_placement_group(pg_name)
-    if hasattr(ray.util, "get_placement_group"):
-        assert pg2.bundle_specs == pg.bundle_specs
-    else:
-        assert not pg2
+    assert pg2.bundle_specs == pg.bundle_specs
 
 
 def test_address_to_placement():

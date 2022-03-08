@@ -23,8 +23,8 @@ class TestActorBackend(MarsActorBackend):
     def name():
         return "test"
 
-    @staticmethod
-    async def create_actor_pool(address: str, n_process: int = None, **kwargs):
+    @classmethod
+    async def create_actor_pool(cls, address: str, n_process: int = None, **kwargs):
         from ..pool import create_actor_pool
 
         n_process, kwargs = build_pool_kwargs(n_process, kwargs)
