@@ -109,10 +109,10 @@ class SubtaskQueueingActor(mo.Actor):
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
-        from .globalslot import GlobalSlotManagerActor
+        from .globalresource import GlobalResourceManagerActor
 
         [self._slots_ref] = await self._cluster_api.get_supervisor_refs(
-            [GlobalSlotManagerActor.default_uid()]
+            [GlobalResourceManagerActor.default_uid()]
         )
         from .assigner import AssignerActor
 

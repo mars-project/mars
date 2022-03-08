@@ -27,7 +27,7 @@ from .....oscar import ServerClosed
 from .....oscar.errors import NoFreeSlot, SlotStateError
 from .....oscar.backends.allocate_strategy import IdleLabel
 from .....utils import get_next_port
-from ...supervisor import GlobalSlotManagerActor
+from ...supervisor import GlobalResourceManagerActor
 from ...worker import BandSlotManagerActor, BandSlotControlActor
 
 
@@ -63,7 +63,7 @@ async def actor_pool(request):
     async with pool:
         global_slots_ref = await mo.create_actor(
             MockGlobalSlotManagerActor,
-            uid=GlobalSlotManagerActor.default_uid(),
+            uid=GlobalResourceManagerActor.default_uid(),
             address=pool.external_address,
         )
         slot_manager_ref = await mo.create_actor(
@@ -265,7 +265,7 @@ async def test_report_usage(actor_pool: ActorPoolType):
     await asyncio.sleep(1.3)
 
     global_slot_ref = await mo.actor_ref(
-        uid=GlobalSlotManagerActor.default_uid(), address=pool.external_address
+        uid=GlobalResourceManagerActor.default_uid(), address=pool.external_address
     )
     _band, session_id, subtask_id, slots = await global_slot_ref.get_result()
     assert slots == pytest.approx(1.0)

@@ -20,7 +20,7 @@ from ..... import oscar as mo
 from ....cluster import ClusterAPI, MockClusterAPI
 from ....session import MockSessionAPI
 from .... import Resource
-from ...supervisor import GlobalSlotManagerActor
+from ...supervisor import GlobalResourceManagerActor
 
 
 @pytest.fixture
@@ -33,8 +33,8 @@ async def actor_pool():
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
 
         global_slot_ref = await mo.create_actor(
-            GlobalSlotManagerActor,
-            uid=GlobalSlotManagerActor.default_uid(),
+            GlobalResourceManagerActor,
+            uid=GlobalResourceManagerActor.default_uid(),
             address=pool.external_address,
         )
 
@@ -46,7 +46,7 @@ async def actor_pool():
 
 
 @pytest.mark.asyncio
-async def test_global_slot(actor_pool):
+async def test_global_resource(actor_pool):
     pool, session_id, global_slot_ref = actor_pool
 
     cluster_api = await ClusterAPI.create(pool.external_address)
@@ -77,4 +77,6 @@ async def test_global_slot(actor_pool):
         band, session_id, ["subtask1"], [Resource(num_cpus=1)]
     )
     assert (await global_slot_ref.get_remaining_slots())[band] == 11.0
-    assert (await global_slot_ref.get_remaining_resources())[band] == Resource(num_cpus=11.0)
+    assert (await global_slot_ref.get_remaining_resources())[band] == Resource(
+        num_cpus=11.0
+    )

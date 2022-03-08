@@ -42,11 +42,11 @@ class SchedulingSupervisorService(AbstractService):
     """
 
     async def start(self):
-        from .globalslot import GlobalSlotManagerActor
+        from .globalresource import GlobalResourceManagerActor
 
         await mo.create_actor(
-            GlobalSlotManagerActor,
-            uid=GlobalSlotManagerActor.default_uid(),
+            GlobalResourceManagerActor,
+            uid=GlobalResourceManagerActor.default_uid(),
             address=self._address,
         )
 
@@ -67,11 +67,11 @@ class SchedulingSupervisorService(AbstractService):
             )
         )
 
-        from .globalslot import GlobalSlotManagerActor
+        from .globalresource import GlobalResourceManagerActor
 
         await mo.destroy_actor(
             mo.create_actor_ref(
-                uid=GlobalSlotManagerActor.default_uid(), address=self._address
+                uid=GlobalResourceManagerActor.default_uid(), address=self._address
             )
         )
 

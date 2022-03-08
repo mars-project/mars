@@ -28,7 +28,7 @@ from ...supervisor import (
     AssignerActor,
     SubtaskManagerActor,
     SubtaskQueueingActor,
-    GlobalSlotManagerActor,
+    GlobalResourceManagerActor,
 )
 
 
@@ -171,7 +171,7 @@ async def actor_pool():
         # create slots actor
         slots_ref = await mo.create_actor(
             MockSlotsActor,
-            uid=GlobalSlotManagerActor.default_uid(),
+            uid=GlobalResourceManagerActor.default_uid(),
             address=pool.external_address,
         )
         # create queueing actor

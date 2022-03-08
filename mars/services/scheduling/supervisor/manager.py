@@ -82,10 +82,10 @@ class SubtaskManagerActor(mo.Actor):
         self._queueing_ref = await mo.actor_ref(
             SubtaskQueueingActor.gen_uid(self._session_id), address=self.address
         )
-        from ..supervisor import GlobalSlotManagerActor
+        from ..supervisor import GlobalResourceManagerActor
 
         self._global_slot_ref = await mo.actor_ref(
-            GlobalSlotManagerActor.default_uid(), address=self.address
+            GlobalResourceManagerActor.default_uid(), address=self.address
         )
 
     @alru_cache
