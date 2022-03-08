@@ -25,8 +25,8 @@ from ... import Resource, ZeroResource
 logger = logging.getLogger(__name__)
 
 
-class GlobalSlotManagerActor(mo.Actor):
-    # {(address, resource_type): {(session_id, subtask_id): slot_id}}
+class GlobalResourceManagerActor(mo.Actor):
+    # {(address, resource_type): {(session_id, subtask_id): Resource(...)}}
     _band_stid_resources: DefaultDict[BandType, Dict[Tuple[str, str], Resource]]
     _band_used_resources: Dict[BandType, Resource]
     _band_total_resources: Dict[BandType, Resource]
@@ -93,7 +93,7 @@ class GlobalSlotManagerActor(mo.Actor):
                 idx += 1
         if idx == 0:
             logger.debug(
-                "No slots available, status: %r, request: %r",
+                "No resources available, status: %r, request: %r",
                 self._band_used_resources,
                 subtask_resources,
             )

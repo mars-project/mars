@@ -128,10 +128,10 @@ class BandSlotManagerActor(mo.Actor):
         if self._global_slots_ref is not None:
             return self._global_slots_ref
 
-        from ..supervisor import GlobalSlotManagerActor
+        from ..supervisor import GlobalResourceManagerActor
 
         [self._global_slots_ref] = await self._cluster_api.get_supervisor_refs(
-            [GlobalSlotManagerActor.default_uid()]
+            [GlobalResourceManagerActor.default_uid()]
         )
         return self._global_slots_ref
 

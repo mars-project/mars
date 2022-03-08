@@ -32,7 +32,7 @@ from ...task import new_task_id
 from ...task.supervisor.manager import TaskManagerActor
 from ...web import WebActor
 from .. import SchedulingAPI
-from ..supervisor import GlobalSlotManagerActor
+from ..supervisor import GlobalResourceManagerActor
 
 
 class FakeTaskManager(TaskManagerActor):
@@ -161,7 +161,7 @@ async def _get_subtask_summaries_by_web(sv_pool_address, session_id, task_id=Non
 async def test_schedule_success(actor_pools):
     sv_pool, worker_pool, session_id, task_manager_ref = actor_pools
     global_slot_ref = await mo.actor_ref(
-        GlobalSlotManagerActor.default_uid(), address=sv_pool.external_address
+        GlobalResourceManagerActor.default_uid(), address=sv_pool.external_address
     )
 
     scheduling_api = await SchedulingAPI.create(session_id, sv_pool.external_address)
@@ -195,7 +195,7 @@ async def test_schedule_success(actor_pools):
 async def test_schedule_queue(actor_pools):
     sv_pool, worker_pool, session_id, task_manager_ref = actor_pools
     global_slot_ref = await mo.actor_ref(
-        GlobalSlotManagerActor.default_uid(), address=sv_pool.external_address
+        GlobalResourceManagerActor.default_uid(), address=sv_pool.external_address
     )
     scheduling_api = await SchedulingAPI.create(session_id, sv_pool.external_address)
 
@@ -235,7 +235,7 @@ async def test_schedule_queue(actor_pools):
 async def test_schedule_error(actor_pools):
     sv_pool, worker_pool, session_id, task_manager_ref = actor_pools
     global_slot_ref = await mo.actor_ref(
-        GlobalSlotManagerActor.default_uid(), address=sv_pool.external_address
+        GlobalResourceManagerActor.default_uid(), address=sv_pool.external_address
     )
     scheduling_api = await SchedulingAPI.create(session_id, sv_pool.external_address)
 
@@ -259,7 +259,7 @@ async def test_schedule_error(actor_pools):
 async def test_schedule_cancel(actor_pools):
     sv_pool, worker_pool, session_id, task_manager_ref = actor_pools
     global_slot_ref = await mo.actor_ref(
-        GlobalSlotManagerActor.default_uid(), address=sv_pool.external_address
+        GlobalResourceManagerActor.default_uid(), address=sv_pool.external_address
     )
     scheduling_api = await SchedulingAPI.create(session_id, sv_pool.external_address)
 

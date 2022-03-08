@@ -46,10 +46,10 @@ class AutoscalerActor(mo.Actor):
             strategy_cls = getattr(importlib.import_module(module), name)
         else:
             strategy_cls = PendingTaskBacklogStrategy
-        from ..supervisor import GlobalSlotManagerActor
+        from ..supervisor import GlobalResourceManagerActor
 
         self.global_slot_ref = await mo.actor_ref(
-            GlobalSlotManagerActor.default_uid(), address=self.address
+            GlobalResourceManagerActor.default_uid(), address=self.address
         )
         self._cluster_api = await ClusterAPI.create(self.address)
         self._strategy = await strategy_cls.create(self._autoscale_conf, self)

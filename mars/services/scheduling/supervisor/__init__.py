@@ -14,7 +14,7 @@
 
 from .assigner import AssignerActor
 from .autoscale import AutoscalerActor
-from .globalslot import GlobalSlotManagerActor
+from .globalresource import GlobalResourceManagerActor
 from .manager import SubtaskManagerActor
 from .queueing import SubtaskQueueingActor
 from .service import SchedulingSupervisorService

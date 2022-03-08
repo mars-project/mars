@@ -46,7 +46,7 @@ from ....storage.handler import StorageHandlerActor
 from ....subtask import MockSubtaskAPI, Subtask, SubtaskStatus
 from ....task.supervisor.manager import TaskManagerActor
 from ....mutable import MockMutableAPI
-from ...supervisor import GlobalSlotManagerActor
+from ...supervisor import GlobalResourceManagerActor
 from ...worker import SubtaskExecutionActor, QuotaActor, BandSlotManagerActor
 
 
@@ -117,7 +117,7 @@ class MockBandSlotManagerActor(BandSlotManagerActor, CancelDetectActorMixin):
         self._delay_function = name
 
 
-class MockGlobalSlotManagerActor(GlobalSlotManagerActor, CancelDetectActorMixin):
+class MockGlobalSlotManagerActor(GlobalResourceManagerActor, CancelDetectActorMixin):
     async def __post_create__(self):
         pass
 
@@ -192,7 +192,7 @@ async def actor_pool(request):
         # create global slot manager actor
         global_slot_ref = await mo.create_actor(
             MockGlobalSlotManagerActor,
-            uid=GlobalSlotManagerActor.default_uid(),
+            uid=GlobalResourceManagerActor.default_uid(),
             address=pool.external_address,
         )
 
