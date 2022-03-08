@@ -225,6 +225,12 @@ def new_ray_session_test():
     # Convert ray dataset to mars dataframe
     df2 = md.read_ray_dataset(ds)
     print(df2.head(5).execute())
+    # Test ray cluster exists after session got gc.
+    del session
+    import gc
+
+    gc.collect()
+    mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
 
 
 @require_ray
@@ -612,7 +618,7 @@ async def test_auto_scale_in(ray_large_cluster):
         assert await autoscaler_ref.get_dynamic_worker_nums() == 2
 
 
-@pytest.mark.timeout(timeout=120)
+@pytest.mark.timeout(timeout=300)
 @pytest.mark.parametrize("ray_large_cluster", [{"num_nodes": 4}], indirect=True)
 @require_ray
 @pytest.mark.asyncio
@@ -656,3 +662,15 @@ async def test_ownership_when_scale_in(ray_large_cluster):
         assert (
             groupby_sum_df.to_pandas().to_dict() == pd_df.groupby("a").sum().to_dict()
         )
+
+
+@require_ray
+@pytest.mark.asyncio
+def test_init_metrics_on_ray(ray_large_cluster, create_cluster):
+    client = create_cluster[0]
+    assert client.session
+    from ....metrics import api
+
+    assert api._metric_backend == "ray"
+
+    client.session.stop_server()

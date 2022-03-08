@@ -28,7 +28,6 @@ import os
 import cloudpickle as pickle
 import pkgutil
 import random
-import shutil
 import socket
 import struct
 import sys
@@ -739,45 +738,6 @@ def sbytes(x: Any) -> bytes:
         return bytes(x, encoding="utf-8")
     else:
         return bytes(x)
-
-
-def kill_process_tree(pid: int, include_parent: bool = True):
-    try:
-        import psutil
-    except ImportError:  # pragma: no cover
-        return
-    try:
-        proc = psutil.Process(pid)
-    except psutil.NoSuchProcess:
-        return
-
-    plasma_sock_dir = None
-    try:
-        children = proc.children(recursive=True)
-    except psutil.NoSuchProcess:  # pragma: no cover
-        return
-
-    if include_parent:
-        children.append(proc)
-    for p in children:
-        try:
-            if "plasma" in p.name():
-                try:
-                    plasma_sock_dir = next(
-                        (
-                            conn.laddr
-                            for conn in p.connections("unix")
-                            if "plasma" in conn.laddr
-                        ),
-                        None,
-                    )
-                except psutil.AccessDenied:
-                    pass
-            p.kill()
-        except psutil.NoSuchProcess:  # pragma: no cover
-            pass
-    if plasma_sock_dir:
-        shutil.rmtree(plasma_sock_dir, ignore_errors=True)
 
 
 def copy_tileables(tileables: List[TileableType], **kwargs):
@@ -1573,5 +1533,6 @@ def wrap_exception(
             "__getattr__": __getattr__,
             "__str__": __str__,
             "__basename__": name,
+            "__module__": bases[-1].__module__,
         },
     )().with_traceback(traceback)

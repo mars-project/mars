@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import logging
 import os
 from numbers import Number
@@ -32,6 +32,10 @@ class RayActorDriver(BaseActorDriver):
     @classmethod
     def setup_cluster(cls, address_to_resources: Dict[str, Dict[str, Number]]):
         logger.info("Setup cluster with %s", address_to_resources)
+        # Note: Deep copy the dict to keep the origin values, because `bundles`
+        # returned by `addresses_to_placement_group_info()` will be modified
+        # by `ray.util.placement_group()`
+        original_address_to_resources = copy.deepcopy(address_to_resources)
         pg_name, bundles = addresses_to_placement_group_info(address_to_resources)
         logger.info("Creating placement group %s with bundles %s.", pg_name, bundles)
         pg = ray.util.placement_group(name=pg_name, bundles=bundles, strategy="SPREAD")
@@ -42,6 +46,7 @@ class RayActorDriver(BaseActorDriver):
                 f"""Can't create placement group {pg.bundle_specs} in {create_pg_timeout} seconds"""
             )
         cluster_info = {
+            "original_address_to_resources": original_address_to_resources,
             "address_to_resources": address_to_resources,
             "pg_name": pg_name,
             "pg_group": pg,
