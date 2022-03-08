@@ -247,7 +247,7 @@ class GraphAnalyzer:
         subtask = Subtask(
             subtask_id=new_task_id(),
             stage_id=self._stage_id,
-            logic_id=self._gen_logic_key(chunks),
+            logic_key=self._gen_logic_key(chunks),
             session_id=self._task.session_id,
             task_id=self._task.task_id,
             chunk_graph=chunk_graph,
@@ -365,7 +365,7 @@ class GraphAnalyzer:
                 chunk_to_fetch_chunk,
             )
             subtask_graph.add_node(subtask)
-            logic_id_to_subtasks[subtask.logic_id].append(subtask)
+            logic_id_to_subtasks[subtask.logic_key].append(subtask)
             for inp_subtask in inp_subtasks:
                 subtask_graph.add_edge(inp_subtask, subtask)
 
@@ -376,5 +376,5 @@ class GraphAnalyzer:
         for subtasks in logic_id_to_subtasks.values():
             for index, subtask in enumerate(subtasks):
                 subtask.index = index
-                subtask.parallelism = len(subtasks)
+                subtask.logic_parallelism = len(subtasks)
         return subtask_graph

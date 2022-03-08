@@ -429,6 +429,7 @@ class SubtaskProcessor:
                 await asyncio.shield(set_chunks_meta())
             except asyncio.CancelledError:  # pragma: no cover
                 await f
+                raise
         # set result data size
         self.result.data_size = result_data_size
 

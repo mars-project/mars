@@ -15,7 +15,6 @@
 import asyncio.tasks
 import contextvars
 import json
-import inspect
 import logging
 import os
 import sys
@@ -175,33 +174,6 @@ def pop_message_trace():
 
 def set_message_trace(message_trace):
     _message_trace_var.set(message_trace)
-
-
-_create_task = asyncio.create_task
-
-
-async def task_with_ex_logged(coro, call_site=None):  # pragma: no cover
-    try:
-        return await coro
-    except asyncio.CancelledError:
-        raise
-    except Exception as e:
-        logger.exception(
-            "Coroutine %r at call_site %s execution got exception %s.",
-            coro,
-            call_site,
-            e,
-        )
-        raise
-
-
-def create_task_with_ex_logged(coro, *args, **kwargs):  # pragma: no cover
-    frame = inspect.currentframe()
-    if frame and frame.f_back:
-        call_site = frame.f_back.f_code
-    else:
-        call_site = None
-    return _create_task(task_with_ex_logged(coro, call_site), *args, **kwargs)
 
 
 reload_debug_opts_from_env()

@@ -19,6 +19,7 @@ import dataclasses
 import enum
 import functools
 import importlib
+import inspect
 import io
 import itertools
 import logging
@@ -72,6 +73,7 @@ tokenize = tokenize
 register_tokenizer = register_tokenizer
 insert_reversed_tuple = insert_reversed_tuple
 ceildiv = ceildiv
+_create_task = asyncio.create_task
 
 
 # fix encoding conversion problem under windows
@@ -1558,3 +1560,27 @@ def get_func_token_values(func):
         else:
             tokens.append(func)
         return tokens
+
+
+async def task_with_ex_logged(coro, call_site=None):  # pragma: no cover
+    try:
+        return await coro
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.exception(
+            "Coroutine %r at call_site %s execution got exception %s.",
+            coro,
+            call_site,
+            e,
+        )
+        raise
+
+
+def create_task_with_error_log(coro, *args, **kwargs):  # pragma: no cover
+    frame = inspect.currentframe()
+    if frame and frame.f_back:
+        call_site = frame.f_back.f_code
+    else:
+        call_site = None
+    return _create_task(task_with_ex_logged(coro, call_site), *args, **kwargs)

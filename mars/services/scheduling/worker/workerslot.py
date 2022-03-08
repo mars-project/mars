@@ -273,7 +273,7 @@ class BandSlotManagerActor(mo.Actor):
             except psutil.NoSuchProcess:  # pragma: no cover
                 continue
             except psutil.AccessDenied as e:  # pragma: no cover
-                logger.warning("NO permission to get cpu percent: %s", e)
+                logger.warning("Access denied when getting cpu percent: %s", e)
                 usage = 0.0
 
             slot_infos.append(

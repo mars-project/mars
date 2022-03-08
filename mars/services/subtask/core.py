@@ -63,11 +63,11 @@ class Subtask(Serializable):
     extra_config: dict = DictField("extra_config")
     stage_id: str = StringField("stage_id")
     # An unique and deterministic key for subtask compute logic. See logic_key in operator.py.
-    logic_id: str = StringField("logic_id")
+    logic_key: str = StringField("logic_key")
     # index for subtask with same compute logic.
     index: int = Int32Field("index")
     # parallelism for subtask with same compute logic.
-    parallelism: int = Int32Field("parallelism")
+    logic_parallelism: int = Int32Field("logic_parallelism")
     # subtask can only run in specified bands in `expect_bands`
     bands_specified: bool = BoolField("bands_specified")
 
@@ -85,9 +85,9 @@ class Subtask(Serializable):
         rerun_time: int = 0,
         extra_config: dict = None,
         stage_id: str = None,
-        logic_id: str = None,
+        logic_key: str = None,
         index: int = None,
-        parallelism: int = None,
+        logic_parallelism: int = None,
         bands_specified: bool = False,
     ):
         super().__init__(
@@ -103,9 +103,9 @@ class Subtask(Serializable):
             rerun_time=rerun_time,
             extra_config=extra_config,
             stage_id=stage_id,
-            logic_id=logic_id,
+            logic_key=logic_key,
             index=index,
-            parallelism=parallelism,
+            logic_parallelism=logic_parallelism,
             bands_specified=bands_specified,
         )
 

@@ -64,6 +64,7 @@ jobs:
           conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
         fi
         conda list -n test
+
     - name: Test with pytest
       env:
         WITH_HADOOP: ${{ matrix.with-hadoop }}

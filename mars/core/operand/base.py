@@ -129,7 +129,7 @@ class OperatorLogicKeyGeneratorMixin:
         try:
             return tokenize(*fields)
         except Exception as e:  # pragma: no cover
-            raise Exception(
+            raise ValueError(
                 f"Cannot generate logic key for operator {self} with fields {fields}"
             ) from e
 
@@ -191,9 +191,6 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
         kwargs["extra_params"] = kwargs.pop("extra_params", extras)
         self._extract_scheduling_hint(kwargs)
         super().__init__(*args, **kwargs)
-
-    def _update_key(self):
-        super()._update_key()
 
     @classmethod
     def _extract_scheduling_hint(cls, kwargs: Dict[str, Any]):

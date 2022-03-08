@@ -39,7 +39,7 @@ from ..utils import (
 )
 
 
-class GroupByApplyLogicKetGeneratorMixin(OperatorLogicKeyGeneratorMixin):
+class GroupByApplyLogicKeyGeneratorMixin(OperatorLogicKeyGeneratorMixin):
     def _get_logic_key_token_values(self):
         token_values = super()._get_logic_key_token_values()
         if self.func:
@@ -49,7 +49,7 @@ class GroupByApplyLogicKetGeneratorMixin(OperatorLogicKeyGeneratorMixin):
 
 
 class GroupByApply(
-    DataFrameOperand, DataFrameOperandMixin, GroupByApplyLogicKetGeneratorMixin
+    DataFrameOperand, DataFrameOperandMixin, GroupByApplyLogicKeyGeneratorMixin
 ):
     _op_type_ = opcodes.APPLY
     _op_module_ = "dataframe.groupby"
