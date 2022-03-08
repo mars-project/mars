@@ -26,14 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_placement_group(pg_name):  # pragma: no cover
-    if hasattr(ray.util, "get_placement_group"):
-        return ray.util.get_placement_group(pg_name)
-    else:
-        logger.warning(
-            "Current installed ray version doesn't support named placement group. "
-            "Actor will be created on arbitrary node randomly."
-        )
-        return None
+    return ray.util.get_placement_group(pg_name)
 
 
 def process_address_to_placement(address):
