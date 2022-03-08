@@ -54,6 +54,7 @@ async def test_global_slot(actor_pool):
     band = (pool.external_address, "numa-0")
     band_slots = bands[band]
 
+    print(await global_slot_ref.get_idle_bands(0))
     assert band in await global_slot_ref.get_idle_bands(0)
     assert ["subtask0"] == await global_slot_ref.apply_subtask_resources(
         band, session_id, ["subtask0"], [Resource(num_cpus=1)]
@@ -75,3 +76,5 @@ async def test_global_slot(actor_pool):
     assert ["subtask1"] == await global_slot_ref.apply_subtask_resources(
         band, session_id, ["subtask1"], [Resource(num_cpus=1)]
     )
+    assert (await global_slot_ref.get_remaining_slots())[band] == 11.0
+    assert (await global_slot_ref.get_remaining_resources())[band] == Resource(num_cpus=11.0)

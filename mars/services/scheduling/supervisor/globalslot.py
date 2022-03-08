@@ -76,7 +76,9 @@ class GlobalSlotManagerActor(mo.Actor):
         subtask_ids: List[str],
         subtask_resources: List[Resource],
     ) -> List[str]:
-        if not self._band_total_resources or band not in self._band_total_resources:
+        if (
+            not self._band_total_resources or band not in self._band_total_resources
+        ):  # pragma: no cover
             await self.refresh_bands()
         idx = 0
         # only ready bands will pass
@@ -142,7 +144,7 @@ class GlobalSlotManagerActor(mo.Actor):
         if (
             band_total_resource is not None
             and self._band_used_resources[band] > band_total_resource
-        ):
+        ):  # pragma: no cover
             raise Exception(
                 f"Resource exceed: band used resource {self._band_used_resources[band]} "
                 f"band total resource {self._band_total_resources[band]}"
@@ -183,7 +185,7 @@ class GlobalSlotManagerActor(mo.Actor):
         idle_bands = []
         for band in self._band_total_resources.keys():
             idle_start_time = self._band_idle_start_time.get(band)
-            if idle_start_time is None:
+            if idle_start_time is None:  # pragma: no cover
                 # skip new requested band for this round scale in.
                 self._band_idle_start_time[band] = now
             elif idle_start_time > 0 and now >= idle_start_time + idle_duration:

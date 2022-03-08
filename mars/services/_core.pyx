@@ -23,10 +23,16 @@ cdef class Resource:
         self.num_gpus = num_gpus
         self.num_mem_bytes = num_mem_bytes
 
+    def __eq__(self, Resource other):
+        return self.num_mem_bytes == other.num_mem_bytes and \
+               self.num_gpus == other.num_gpus and \
+               self.num_cpus == other.num_cpus
+
     def __gt__(self, Resource other):
         return not self.__le__(other)
 
     def __le__(self, Resource other):
+        # memory first, then gpu, cpu last
         return self.num_mem_bytes <= other.num_mem_bytes and \
                self.num_gpus <= other.num_gpus and \
                self.num_cpus <= other.num_cpus
@@ -43,6 +49,6 @@ cdef class Resource:
         return Resource(num_cpus=-self.num_cpus, num_gpus=-self.num_gpus, num_mem_bytes=-self.num_mem_bytes)
 
     def __repr__(self):
-        return f"Resource(num_mem_bytes={self.num_mem_bytes}, num_gpus={self.num_gpus}, num_cpus={self.num_cpus})"
+        return f"Resource(num_cpus={self.num_cpus})"
 
 ZeroResource = Resource(num_cpus=0, num_gpus=0, num_mem_bytes=0)
