@@ -51,7 +51,7 @@ async def create_cluster(request):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_dataset_related_classes(ray_large_cluster_shared):
+async def test_dataset_related_classes(ray_start_regular_shared):
     from ..mldataset import ChunkRefBatch
 
     # in order to pass checks
@@ -73,7 +73,7 @@ async def test_dataset_related_classes(ray_large_cluster_shared):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("test_option", [[5, 5], [5, 4], [None, None]])
 async def test_convert_to_ray_mldataset(
-    ray_large_cluster_shared, create_cluster, test_option
+    ray_start_regular_shared, create_cluster, test_option
 ):
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend="oscar", default=True)
@@ -90,7 +90,7 @@ async def test_convert_to_ray_mldataset(
 @require_ray
 @pytest.mark.asyncio
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
-async def test_mars_with_xgboost(ray_large_cluster_shared, create_cluster):
+async def test_mars_with_xgboost(ray_start_regular_shared, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, train, predict
     from sklearn.datasets import load_breast_cancer
 
