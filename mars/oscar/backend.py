@@ -33,8 +33,8 @@ class BaseActorBackend(ABC):
     def get_context_cls():
         pass
 
-    @staticmethod
-    async def create_actor_pool(address: str, n_process: int = None, **kwargs):
+    @classmethod
+    async def create_actor_pool(cls, address: str, n_process: int = None, **kwargs):
         pass
 
     @staticmethod
