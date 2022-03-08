@@ -84,13 +84,13 @@ jobs:
             if [ -n "$WITH_RAY" ]; then
               pip install ray[default]==1.9.2
               pip install xgboost_ray==0.1.5
-              pip install --upgrade numpy
             fi
             if [ -n "$RUN_DASK" ]; then
               pip install dask[complete] mimesis sklearn
             fi
           fi
           conda list -n test
+
       - name: Test with pytest
         env:
           WITH_HADOOP: ${{ matrix.with-hadoop }}
@@ -131,7 +131,7 @@ jobs:
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG --timeout=600 -m ray
+            pytest $PYTEST_CONFIG --durations=0 --timeout=600 -v -s -m ray
             coverage report
           fi
           if [ -n "$RUN_DASK" ]; then

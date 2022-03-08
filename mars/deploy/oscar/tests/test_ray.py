@@ -207,6 +207,10 @@ def test_new_cluster_in_ray(stop_ray):
 
 @require_ray
 def test_new_ray_session(stop_ray):
+    new_ray_session_test()
+
+
+def new_ray_session_test():
     session = new_ray_session(session_id="abc", worker_num=2)
     mt.random.RandomState(0).rand(100, 5).sum().execute()
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
@@ -214,12 +218,29 @@ def test_new_ray_session(stop_ray):
     session = new_ray_session(session_id="abcd", worker_num=2, default=True)
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
+    df = md.DataFrame(mt.random.rand(100, 4), columns=list("abcd"))
+    # Convert mars dataframe to ray dataset
+    ds = md.to_ray_dataset(df)
+    print(ds.schema(), ds.count())
+    ds.filter(lambda row: row["a"] > 0.5).show(5)
+    # Convert ray dataset to mars dataframe
+    df2 = md.read_ray_dataset(ds)
+    print(df2.head(5).execute())
     # Test ray cluster exists after session got gc.
     del session
     import gc
 
     gc.collect()
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
+
+
+@require_ray
+def test_ray_client(ray_large_cluster):
+    from ray.util.client.ray_client_helpers import ray_start_client_server
+    from ray._private.client_mode_hook import enable_client_mode
+
+    with ray_start_client_server(), enable_client_mode():
+        new_ray_session_test()
 
 
 @require_ray

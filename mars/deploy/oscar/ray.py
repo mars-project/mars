@@ -166,7 +166,7 @@ class ClusterStateActor(mo.StatelessActor):
         # TODO rescale ray placement group instead of creating new placement group
         pg_name = f"{self._pg_name}_{next(self._pg_counter)}"
         pg = ray.util.placement_group(name=pg_name, bundles=[bundle], strategy="SPREAD")
-        create_pg_timeout = timeout or 60
+        create_pg_timeout = timeout or 120
         try:
             await asyncio.wait_for(pg.ready(), timeout=create_pg_timeout)
         except asyncio.CancelledError:  # pragma: no cover

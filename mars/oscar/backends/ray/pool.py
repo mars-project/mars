@@ -20,6 +20,7 @@ import logging
 import os
 import sys
 import time
+import threading
 import types
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -205,7 +206,10 @@ class RayPoolBase(ABC):
     def __new__(cls, *args, **kwargs):
         if not _is_windows:
             try:
-                if "COV_CORE_SOURCE" in os.environ:  # pragma: no branch
+                if (
+                    "COV_CORE_SOURCE" in os.environ
+                    and threading.current_thread() is threading.main_thread()
+                ):  # pragma: no branch
                     # register coverage hooks on SIGTERM
                     from pytest_cov.embed import cleanup_on_sigterm
 
@@ -375,3 +379,11 @@ class RaySubPool(RayPoolBase):
                 "Main pool %s has exited, exit current sub pool now.", main_pool
             )
             os._exit(0)
+
+
+if ray and ray.is_initialized():
+    # When using ray client to connect to a ray cluster, ray server will act as mars driver. All mars call from mars
+    # client will go to ray server first, then the ray server will ray call to other actors. So the ray server need to
+    # register ray serializers.
+    # TODO Need a way to check whether current process is a ray server.
+    register_ray_serializers()
