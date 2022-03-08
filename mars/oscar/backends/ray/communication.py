@@ -194,10 +194,10 @@ class RayServerChannel(RayChannelBase):
             if not self._closed.is_set():
                 raise
 
-    async def __on_ray_recv__(self, message):
+    async def __on_ray_recv__(self, message_wrapper):
         """This method will be invoked when current process is a ray actor rather than a ray driver"""
         self._msg_recv_counter += 1
-        await self._in_queue.put(message)
+        await self._in_queue.put(message_wrapper.message)
         result_message = await self._out_queue.get()
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed("Channel already closed")
