@@ -92,7 +92,6 @@ async def create_cluster(request):
     ray_config = _load_config(CONFIG_FILE)
     ray_config.update(param.get("config", {}))
     client = await new_cluster(
-        "test_cluster",
         worker_num=2,
         worker_cpu=2,
         worker_mem=1 * 1024**3,
@@ -194,7 +193,7 @@ def _sync_web_session_test(web_address):
 
 @require_ray
 def test_new_cluster_in_ray(stop_ray):
-    cluster = new_cluster_in_ray(cluster_name="test_cluster", worker_num=2)
+    cluster = new_cluster_in_ray(worker_num=2)
     mt.random.RandomState(0).rand(100, 5).sum().execute()
     cluster.session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
@@ -262,7 +261,6 @@ async def test_optional_supervisor_node(ray_large_cluster_shared, test_option):
     config["cluster"]["ray"]["supervisor"]["standalone"] = supervisor_standalone
     config["cluster"]["ray"]["supervisor"]["sub_pool_num"] = supervisor_sub_pool_num
     client = await new_cluster(
-        "test_cluster",
         worker_num=2,
         worker_cpu=2,
         worker_mem=1 * 1024**3,
@@ -330,7 +328,6 @@ async def test_load_third_party_modules(ray_large_cluster_shared, config_excepti
     config["third_party_modules"] = third_party_modules_config
     with expected_exception:
         await new_cluster(
-            "test_cluster",
             worker_num=2,
             worker_cpu=2,
             worker_mem=1 * 1024**3,
@@ -375,7 +372,6 @@ async def test_load_third_party_modules_from_config(
     ray_large_cluster_shared, cleanup_third_party_modules_output  # noqa: F811
 ):
     client = await new_cluster(
-        "test_cluster",
         worker_num=2,
         worker_cpu=2,
         worker_mem=1 * 1024**3,
@@ -413,7 +409,7 @@ def test_load_config():
 async def test_request_worker(ray_large_cluster):
     worker_cpu, worker_mem = 1, 100 * 1024**2
     client = await new_cluster(
-        "test_cluster", worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem
+        worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem
     )
     async with client:
         cluster_state_ref = client._cluster._cluster_backend.get_cluster_state_ref()
@@ -443,7 +439,7 @@ async def test_request_worker(ray_large_cluster):
 async def test_reconstruct_worker(ray_large_cluster):
     worker_cpu, worker_mem = 1, 100 * 1024**2
     client = await new_cluster(
-        "test_cluster", worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem
+        worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem
     )
     async with client:
         cluster_api = await ClusterAPI.create(client._cluster.supervisor_address)
@@ -546,7 +542,6 @@ async def test_release_worker_during_reconstructing_worker(
 @pytest.mark.asyncio
 async def test_auto_scale_out(ray_large_cluster, init_workers: int):
     client = await new_cluster(
-        "test_cluster",
         worker_num=init_workers,
         worker_cpu=2,
         worker_mem=100 * 1024**2,
@@ -590,7 +585,6 @@ async def test_auto_scale_in(ray_large_cluster):
     config["scheduling"]["autoscale"]["max_workers"] = 4
     config["scheduling"]["autoscale"]["min_workers"] = 2
     client = await new_cluster(
-        "test_cluster",
         worker_num=0,
         worker_cpu=2,
         worker_mem=100 * 1024**2,
@@ -624,7 +618,6 @@ async def test_auto_scale_in(ray_large_cluster):
 @pytest.mark.asyncio
 async def test_ownership_when_scale_in(ray_large_cluster):
     client = await new_cluster(
-        "test_cluster",
         worker_num=0,
         worker_cpu=2,
         worker_mem=100 * 1024**2,

@@ -29,23 +29,29 @@ ray = lazy_import("ray")
 
 
 @pytest.fixture(scope="module")
-def ray_start_regular_shared(request):
+def ray_start_regular_shared(request):  # pragma: no cover
     yield from _ray_start_regular(request)
 
 
 @pytest.fixture
-def ray_start_regular(request):
+def ray_start_regular(request):  # pragma: no cover
     yield from _ray_start_regular(request)
 
 
-def _ray_start_regular(request):
+def _ray_start_regular(request):  # pragma: no cover
     param = getattr(request, "param", {})
     if not param.get("enable", True):
         yield
     else:
-        register_ray_serializers()
+        num_cpus = param.get("num_cpus", 64)
+        total_memory_mb = num_cpus * 2 * 1024**2
         try:
-            yield ray.init(num_cpus=20)
+            register_ray_serializers()
+            try:
+                job_config = ray.job_config.JobConfig(total_memory_mb=total_memory_mb)
+            except TypeError:
+                job_config = None
+            yield ray.init(num_cpus=num_cpus, job_config=job_config)
         finally:
             ray.shutdown()
             unregister_ray_serializers()
@@ -57,7 +63,7 @@ def _ray_start_regular(request):
 
 
 @pytest.fixture(scope="module")
-def ray_large_cluster_shared(request):
+def ray_large_cluster_shared(request):  # pragma: no cover
     yield from _ray_large_cluster(request)
 
 
