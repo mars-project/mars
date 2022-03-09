@@ -127,31 +127,31 @@ async def create_cluster(request):
     ],
 )
 @pytest.mark.asyncio
-async def test_execute(ray_large_cluster_shared, create_cluster, config):
+async def test_execute(ray_large_cluster, create_cluster, config):
     await test_local.test_execute(create_cluster, config)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_iterative_tiling(ray_large_cluster_shared, create_cluster):
+async def test_iterative_tiling(ray_large_cluster, create_cluster):
     await test_local.test_iterative_tiling(create_cluster)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_execute_describe(ray_large_cluster_shared, create_cluster):
+async def test_execute_describe(ray_large_cluster, create_cluster):
     await test_local.test_execute_describe(create_cluster)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_fetch_infos(ray_large_cluster_shared, create_cluster):
+async def test_fetch_infos(ray_large_cluster, create_cluster):
     await test_local.test_fetch_infos(create_cluster)
 
 
 @require_ray
 @pytest.mark.asyncio
-def test_sync_execute(ray_large_cluster_shared, create_cluster):
+def test_sync_execute(ray_large_cluster, create_cluster):
     client = create_cluster[0]
     assert client.session
     session = new_session(address=client.address, backend="oscar")
@@ -298,7 +298,7 @@ async def test_optional_supervisor_node(ray_large_cluster, test_option):
     ],
 )
 @pytest.mark.asyncio
-async def test_web_session(ray_large_cluster_shared, create_cluster, config):
+async def test_web_session(ray_large_cluster, create_cluster, config):
     client = create_cluster[0]
     await test_local.test_web_session(create_cluster, config)
     web_address = client.web_address
@@ -322,7 +322,7 @@ async def test_web_session(ray_large_cluster_shared, create_cluster, config):
     ],
 )
 @pytest.mark.asyncio
-async def test_load_third_party_modules(ray_large_cluster_shared, config_exception):
+async def test_load_third_party_modules(ray_large_cluster, config_exception):
     third_party_modules_config, expected_exception = config_exception
     config = _load_config()
 
@@ -351,7 +351,7 @@ async def test_load_third_party_modules(ray_large_cluster_shared, config_excepti
     indirect=True,
 )
 @pytest.mark.asyncio
-def test_load_third_party_modules2(ray_large_cluster_shared, create_cluster):
+def test_load_third_party_modules2(ray_large_cluster, create_cluster):
     client = create_cluster[0]
     assert client.session
     session = new_session(address=client.address, backend="oscar")
@@ -370,7 +370,7 @@ def test_load_third_party_modules2(ray_large_cluster_shared, create_cluster):
 @require_ray
 @pytest.mark.asyncio
 async def test_load_third_party_modules_from_config(
-    ray_large_cluster_shared, cleanup_third_party_modules_output  # noqa: F811
+    ray_large_cluster, cleanup_third_party_modules_output  # noqa: F811
 ):
     client = await new_cluster(
         worker_num=2,

@@ -111,13 +111,10 @@ async def test_mars_with_xgboost(ray_start_regular_shared, create_cluster):
 
 
 @require_ray
-@pytest.mark.parametrize(
-    "ray_large_cluster_shared", [{"num_nodes": 3, "num_cpus": 16}], indirect=True
-)
 @pytest.mark.asyncio
 @pytest.mark.skipif(sklearn is None, reason="sklearn not installed")
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
-async def test_mars_with_xgboost_sklearn_clf(ray_large_cluster_shared, create_cluster):
+async def test_mars_with_xgboost_sklearn_clf(ray_start_regular_shared, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, RayXGBClassifier
     from sklearn.datasets import load_breast_cancer
 
@@ -156,13 +153,10 @@ async def test_mars_with_xgboost_sklearn_clf(ray_large_cluster_shared, create_cl
 
 
 @require_ray
-@pytest.mark.parametrize(
-    "ray_large_cluster_shared", [{"num_nodes": 3, "num_cpus": 16}], indirect=True
-)
 @pytest.mark.asyncio
 @pytest.mark.skipif(sklearn is None, reason="sklearn not installed")
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
-async def test_mars_with_xgboost_sklearn_reg(ray_large_cluster_shared, create_cluster):
+async def test_mars_with_xgboost_sklearn_reg(ray_start_regular_shared, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, RayXGBRegressor
     from sklearn.datasets import make_regression
 
