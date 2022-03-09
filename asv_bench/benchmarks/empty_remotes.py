@@ -11,3 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import mars.remote as mr
+from mars import new_session, execute
+
+
+class EmptyRemotesExecutionSuite:
+    """
+    Benchmark that times running a number of empty subtasks
+    """
+
+    def setup(self):
+        self.session = new_session(default=True)
+
+    def teardown(self):
+        self.session.stop_server()
+
+    def time_remotes(self):
+        def empty_fun(_i):
+            pass
+
+        remotes = [mr.spawn(empty_fun, args=(i,)) for i in range(1000)]
+        execute(*remotes, session=self.session)
