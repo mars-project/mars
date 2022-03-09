@@ -18,7 +18,6 @@ import logging
 import operator
 import pprint
 import sys
-import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Union
@@ -359,13 +358,12 @@ class SubtaskExecutionActor(mo.StatelessActor):
         async def _run_subtask_once():
             aiotask = None
             slot_id = None
-            timestamp = int(time.time() * 1e6)
             try:
                 await quota_ref.request_batch_quota(batch_quota_req)
                 self._check_cancelling(subtask_info)
 
                 slot_id = await slot_manager_ref.acquire_free_slot(
-                    (subtask.session_id, subtask.subtask_id), timestamp=timestamp
+                    (subtask.session_id, subtask.subtask_id)
                 )
                 subtask_info.slot_id = slot_id
                 self._check_cancelling(subtask_info)
@@ -414,7 +412,9 @@ class SubtaskExecutionActor(mo.StatelessActor):
             finally:
                 # make sure allocated slots are traced
                 if slot_id is None:  # pragma: no cover
-                    slot_id = await slot_manager_ref.get_subtask_slot_by_ts(timestamp)
+                    slot_id = await slot_manager_ref.get_subtask_slot(
+                        (subtask.session_id, subtask.subtask_id)
+                    )
                 logger.debug(
                     "Subtask %s running ended, slot_id=%r", subtask.subtask_id, slot_id
                 )
@@ -474,6 +474,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
         )
         if subtask_max_retries is None:
             subtask_max_retries = self._subtask_max_retries
+
         self._subtask_info[subtask.subtask_id] = SubtaskExecutionInfo(
             task, band_name, supervisor_address, max_retries=subtask_max_retries
         )
