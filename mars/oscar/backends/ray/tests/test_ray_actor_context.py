@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import inspect
+import time
 
 import pytest
 
@@ -27,11 +28,10 @@ from ..utils import process_placement_to_address
 
 ray = lazy_import("ray")
 
-pg_name, n_process = "ray_cluster", 2
-
 
 @pytest.fixture
 async def actor_pool_context():
+    pg_name, n_process = f"ray_cluster_{time.time_ns()}", 2
     from .....serialization.ray import (
         register_ray_serializers,
         unregister_ray_serializers,
@@ -78,8 +78,7 @@ async def actor_pool_context():
             ray.kill(ray.get_actor(addr))
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
             pass
-    if hasattr(ray.util, "get_placement_group"):
-        ray.util.remove_placement_group(pg)
+    ray.util.remove_placement_group(pg)
     Router.set_instance(None)
     unregister_ray_serializers()
     RayServer.clear()

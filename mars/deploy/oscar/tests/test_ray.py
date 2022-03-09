@@ -252,7 +252,7 @@ def test_ray_client(ray_large_cluster):
     ],
 )
 @pytest.mark.asyncio
-async def test_optional_supervisor_node(ray_large_cluster_shared, test_option):
+async def test_optional_supervisor_node(ray_large_cluster, test_option):
     import logging
 
     logging.basicConfig(level=logging.INFO)
@@ -261,6 +261,7 @@ async def test_optional_supervisor_node(ray_large_cluster_shared, test_option):
     config["cluster"]["ray"]["supervisor"]["standalone"] = supervisor_standalone
     config["cluster"]["ray"]["supervisor"]["sub_pool_num"] = supervisor_sub_pool_num
     client = await new_cluster(
+        "test_cluster",
         worker_num=2,
         worker_cpu=2,
         worker_mem=1 * 1024**3,
