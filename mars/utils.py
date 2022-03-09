@@ -52,7 +52,6 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     tokenize,
     tokenize_int,
     register_tokenizer,
-    insert_reversed_tuple,
     ceildiv,
     Timer,
 )
@@ -69,7 +68,6 @@ OBJECT_FIELD_OVERHEAD = 50
 TypeDispatcher = TypeDispatcher
 tokenize = tokenize
 register_tokenizer = register_tokenizer
-insert_reversed_tuple = insert_reversed_tuple
 ceildiv = ceildiv
 
 
