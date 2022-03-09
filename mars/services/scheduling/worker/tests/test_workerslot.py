@@ -26,6 +26,7 @@ from ..... import oscar as mo
 from .....oscar import ServerClosed
 from .....oscar.errors import NoFreeSlot, SlotStateError
 from .....oscar.backends.allocate_strategy import IdleLabel
+from .....tests.test_utils import wait_for_condition
 from .....utils import get_next_port
 from ...supervisor import GlobalSlotManagerActor
 from ...worker import BandSlotManagerActor, BandSlotControlActor
@@ -204,7 +205,12 @@ async def test_slot_kill(actor_pool: ActorPoolType):
     assert await mo.actor_ref(
         BandSlotControlActor.gen_uid("numa-0", 0), address=pool.external_address
     )
-    assert await mo.actor_ref(task_ref)
+
+    async def check_alive():
+        assert await mo.actor_ref(task_ref)
+        return True
+
+    await wait_for_condition(check_alive)
 
 
 @pytest.mark.asyncio

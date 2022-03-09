@@ -15,6 +15,7 @@
 
 import asyncio
 import copy
+import inspect
 import logging
 import multiprocessing
 import os
@@ -567,3 +568,34 @@ def test_web_serialize_lambda():
     s = utils.serialize_serializable(graph)
     f = utils.deserialize_serializable(s)
     assert isinstance(f, TileableGraph)
+
+
+async def wait_for_condition(
+    condition_predictor, timeout=10, retry_interval_ms=100, **kwargs
+):  # pragma: no cover
+    """Wait until a condition is met or time out with an exception.
+
+    Args:
+        condition_predictor: A function that predicts the condition.
+        timeout: Maximum timeout in seconds.
+        retry_interval_ms: Retry interval in milliseconds.
+
+    Raises:
+        RuntimeError: If the condition is not met before the timeout expires.
+    """
+    start = time.time()
+    last_ex = None
+    while time.time() - start <= timeout:
+        try:
+            pred = condition_predictor(**kwargs)
+            if inspect.isawaitable(pred):
+                pred = await pred
+            if pred:
+                return
+        except Exception as ex:
+            last_ex = ex
+        time.sleep(retry_interval_ms / 1000.0)
+    message = "The condition wasn't met before the timeout expired."
+    if last_ex is not None:
+        message += f" Last exception: {last_ex}"
+    raise RuntimeError(message)
