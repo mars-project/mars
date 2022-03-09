@@ -76,7 +76,7 @@ async def test_global_resource(actor_pool):
     assert ["subtask1"] == await global_slot_ref.apply_subtask_resources(
         band, session_id, ["subtask1"], [Resource(num_cpus=1)]
     )
-    assert (await global_slot_ref.get_remaining_slots())[band] == 11.0
+    assert (await global_slot_ref.get_remaining_slots())[band] == band_slots - 1
     assert (await global_slot_ref.get_remaining_resources())[band] == Resource(
-        num_cpus=11.0
+        num_cpus=band_slots - 1
     )
