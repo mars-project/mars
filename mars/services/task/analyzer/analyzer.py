@@ -348,7 +348,7 @@ class GraphAnalyzer:
         chunk_to_subtask = dict()
         # states
         visited = set()
-        logic_id_to_subtasks = defaultdict(list)
+        logic_key_to_subtasks = defaultdict(list)
         for chunk in self._chunk_graph.topological_iter():
             if chunk in visited:
                 continue
@@ -365,7 +365,7 @@ class GraphAnalyzer:
                 chunk_to_fetch_chunk,
             )
             subtask_graph.add_node(subtask)
-            logic_id_to_subtasks[subtask.logic_key].append(subtask)
+            logic_key_to_subtasks[subtask.logic_key].append(subtask)
             for inp_subtask in inp_subtasks:
                 subtask_graph.add_edge(inp_subtask, subtask)
 
@@ -373,7 +373,7 @@ class GraphAnalyzer:
                 chunk_to_subtask[c] = subtask
             visited.update(same_color_chunks)
 
-        for subtasks in logic_id_to_subtasks.values():
+        for subtasks in logic_key_to_subtasks.values():
             for logic_index, subtask in enumerate(subtasks):
                 subtask.logic_index = logic_index
                 subtask.logic_parallelism = len(subtasks)

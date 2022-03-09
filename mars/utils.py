@@ -1562,7 +1562,7 @@ def get_func_token_values(func):
         return tokens
 
 
-async def task_with_ex_logged(coro, call_site=None):  # pragma: no cover
+async def _run_task_with_error_log(coro, call_site=None):  # pragma: no cover
     try:
         return await coro
     except asyncio.CancelledError:
@@ -1583,4 +1583,4 @@ def create_task_with_error_log(coro, *args, **kwargs):  # pragma: no cover
         call_site = frame.f_back.f_code
     else:
         call_site = None
-    return _create_task(task_with_ex_logged(coro, call_site), *args, **kwargs)
+    return _create_task(_run_task_with_error_log(coro, call_site), *args, **kwargs)

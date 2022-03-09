@@ -142,14 +142,14 @@ class OperatorLogicKeyGeneratorMixin:
 
 class LogicKeyGenerator:
     def __init__(self):
-        self.operator_id_to_logic_id = {}
+        self.operator_id_to_logic_key = {}
 
     def get_logic_key(self, op: "Operand"):
         assert isinstance(op, Operand)
-        logic_id = self.operator_id_to_logic_id.get(op.id)
-        if logic_id is None:
-            logic_id = self.operator_id_to_logic_id[op.id] = op.get_logic_key(self)
-        return logic_id
+        logic_key = self.operator_id_to_logic_key.get(op.id)
+        if logic_key is None:
+            logic_key = self.operator_id_to_logic_key[op.id] = op.get_logic_key(self)
+        return logic_key
 
 
 @_install_scheduling_hint_properties

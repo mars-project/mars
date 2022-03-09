@@ -36,10 +36,10 @@ DEFAULT_SUBTASK_MAX_CONCURRENT_RUN = 3
 class SpeculativeScheduler:
     _grouped_unfinished_subtasks: Dict[
         str, Dict[str, SubtaskScheduleInfo]
-    ]  # key is subtask logic id
+    ]  # key is subtask logic key
     _grouped_finished_subtasks: Dict[
         str, Dict[str, SubtaskScheduleInfo]
-    ]  # key is subtask logic id
+    ]  # key is subtask logic key
     _speculation_execution_scheduler: Optional["SpeculativeScheduler"]
 
     def __init__(
@@ -107,7 +107,7 @@ class SpeculativeScheduler:
             self._grouped_finished_subtasks.pop(subtask.logic_key)
             self._grouped_unfinished_subtasks.pop(subtask.logic_key, None)
             logger.info(
-                "Subtask group with logic id %s parallelism %s finished.",
+                "Subtask group with logic key %s parallelism %s finished.",
                 subtask.logic_key,
                 subtask.logic_parallelism,
             )
@@ -118,87 +118,88 @@ class SpeculativeScheduler:
             # finished in a considerably longer duration, then those subtasks maybe slow/hang subtasks, try resubmit
             # it to other bands too.
             await asyncio.sleep(self._subtask_speculation_interval)
-            for logic_id, subtask_infos_dict in dict(
+            for logic_key, subtask_infos_dict in dict(
                 self._grouped_finished_subtasks
             ).items():
-                if subtask_infos_dict:
-                    subtask_infos = subtask_infos_dict.values()
-                    one_subtask = next(iter(subtask_infos)).subtask
-                    parallelism = one_subtask.logic_parallelism
-                    spec_threshold = max(
-                        1, int(self._subtask_speculation_threshold * parallelism)
+                if not subtask_infos_dict:
+                    continue
+                subtask_infos = subtask_infos_dict.values()
+                one_subtask = next(iter(subtask_infos)).subtask
+                parallelism = one_subtask.logic_parallelism
+                spec_threshold = max(
+                    1, int(self._subtask_speculation_threshold * parallelism)
+                )
+                # if finished subtasks reached the spec_threshold, try to find slow/hang unfinished subtasks
+                if parallelism > len(subtask_infos) >= spec_threshold:
+                    unfinished_subtask_infos = self._grouped_unfinished_subtasks[
+                        logic_key
+                    ].values()
+                    # sort finished subtasks by running time
+                    duration_array = np.sort(
+                        np.array(
+                            [info.end_time - info.start_time for info in subtask_infos]
+                        )
                     )
-                    if parallelism > len(subtask_infos) >= spec_threshold:
-                        unfinished_subtask_infos = self._grouped_unfinished_subtasks[
-                            logic_id
-                        ].values()
-                        duration_array = np.sort(
-                            np.array(
-                                [
-                                    info.end_time - info.start_time
-                                    for info in subtask_infos
-                                ]
-                            )
-                        )
-                        median = np.percentile(duration_array, 50)
-                        duration_threshold = max(
-                            median * self._subtask_speculation_multiplier,
-                            self._subtask_speculation_min_task_runtime,
-                        )
-                        now = time.time()
-                        unfinished_subtask_infos = [
-                            info
-                            for info in unfinished_subtask_infos
-                            if info not in subtask_infos
-                            and now - info.start_time > duration_threshold
-                        ]
-                        if unfinished_subtask_infos:
-                            exclude_bands = set()
-                            for info in unfinished_subtask_infos:
-                                for band in info.band_futures.keys():
-                                    exclude_bands.add(band)
-                            remaining_resources = (
-                                await self._global_slot_ref.get_remaining_slots()
-                            )
+                    median = np.percentile(duration_array, 50)
+                    duration_threshold = max(
+                        median * self._subtask_speculation_multiplier,
+                        self._subtask_speculation_min_task_runtime,
+                    )
+                    now = time.time()
+                    # find subtasks whose duration is large enough so that can be took as slow/hang subtasks
+                    unfinished_subtask_infos = [
+                        info
+                        for info in unfinished_subtask_infos
+                        if info not in subtask_infos
+                        and now - info.start_time > duration_threshold
+                    ]
+                    if not unfinished_subtask_infos:
+                        continue
+                    exclude_bands = set()
+                    for info in unfinished_subtask_infos:
+                        exclude_bands.update(info.band_futures.keys())
+                    remaining_resources = (
+                        await self._global_slot_ref.get_remaining_slots()
+                    )
+                    logger.warning(
+                        "%s subtasks in %s for group %s has not been finished in %s seconds on bands %s, "
+                        "median duration is %s, average duration for %s finished subtasks "
+                        "is %s. trying speculative running. "
+                        "Current cluster remaining resources %s",
+                        len(unfinished_subtask_infos),
+                        parallelism,
+                        logic_key,
+                        duration_threshold,
+                        exclude_bands,
+                        median,
+                        len(subtask_infos),
+                        duration_array.mean(),
+                        remaining_resources,
+                    )
+                    # TODO(chaokunyang) If too many subtasks got stale on same node, mark the node as slow node.
+                    for subtask_info in unfinished_subtask_infos:
+                        subtask = subtask_info.subtask
+                        if subtask.retryable:
                             logger.warning(
-                                "%s subtasks in %s for group %s has not been finished in %s seconds on bands %s, "
-                                "median duration is %s, average duration for %s finished subtasks "
-                                "is %s. trying speculative running. "
-                                "Current cluster remaining resources %s",
-                                len(unfinished_subtask_infos),
-                                parallelism,
-                                logic_id,
-                                duration_threshold,
-                                exclude_bands,
-                                median,
-                                len(subtask_infos),
-                                duration_array.mean(),
-                                remaining_resources,
+                                "Subtask %s has not been finished in %s seconds on bands %s, "
+                                "trying speculative running.",
+                                subtask.subtask_id,
+                                now - subtask_info.start_time,
+                                list(subtask_info.band_futures.keys()),
                             )
-                            # TODO(chaokunyang) If too many subtasks got stale on same node, mark the node as slow node.
-                            for subtask_info in unfinished_subtask_infos:
-                                subtask = subtask_info.subtask
-                                if subtask.retryable:
-                                    logger.warning(
-                                        "Subtask %s has not been finished in %s seconds on bands %s, "
-                                        "trying speculative running.",
-                                        subtask.subtask_id,
-                                        now - subtask_info.start_time,
-                                        list(subtask_info.band_futures.keys()),
-                                    )
-                                    await self._submit_speculative_subtask(
-                                        subtask_info, exclude_bands
-                                    )
-                                else:
-                                    logger.warning(
-                                        "Unretryable subtask %s has not been finished in %s seconds "
-                                        "on bands %s, median duration is %s, it may hang.",
-                                        subtask.subtask_id,
-                                        (now - subtask_info.start_time),
-                                        list(subtask_info.band_futures.keys()),
-                                        median,
-                                    )
-                            await self._queueing_ref.submit_subtasks.tell()
+                            await self._submit_speculative_subtask(
+                                subtask_info, exclude_bands
+                            )
+                        else:
+                            logger.warning(
+                                "Unretryable subtask %s has not been finished in %s seconds "
+                                "on bands %s, median duration is %s, it may hang.",
+                                subtask.subtask_id,
+                                (now - subtask_info.start_time),
+                                list(subtask_info.band_futures.keys()),
+                                median,
+                            )
+                    await self._queueing_ref.submit_subtasks.tell()
 
     async def _submit_speculative_subtask(self, subtask_info, exclude_bands):
         subtask = subtask_info.subtask
@@ -212,56 +213,56 @@ class SpeculativeScheduler:
                 subtask.subtask_id,
                 self._subtask_speculation_max_concurrent_run,
             )
-        else:
-            if not self._subtask_speculation_dry:
+            return
+        if not self._subtask_speculation_dry:
+            if (
+                len(subtask_info.band_futures)
+                < subtask_info.num_speculative_concurrent_run + 1
+            ):
+                # ensure same subtask won't be submitted to same worker.
+                logger.info(
+                    "Speculative execution for subtask %s has not been submitted to worker,"
+                    "waiting for being submitted to worker."
+                    "Cluster resources may be not enough after excluded %s",
+                    subtask.subtask_id,
+                    exclude_bands,
+                )
+                return
+            try:
+                await self._queueing_ref.add_subtasks(
+                    [subtask],
+                    [subtask.priority or tuple()],
+                    exclude_bands=exclude_bands,
+                    random_when_unavailable=False,
+                )
+                logger.info(
+                    "Added subtask %s to queue excluded from %s.",
+                    subtask.subtask_id,
+                    exclude_bands,
+                )
+                subtask_info.num_speculative_concurrent_run += 1
                 if (
-                    len(subtask_info.band_futures)
-                    < subtask_info.num_speculative_concurrent_run + 1
+                    subtask_info.num_speculative_concurrent_run
+                    == self._subtask_speculation_max_concurrent_run
                 ):
-                    # ensure same subtask won't be submitted to same worker.
                     logger.info(
-                        "Speculative execution for subtask %s has not been submitted to worker,"
-                        "waiting for being submitted to worker."
-                        "Cluster resources may be not enough after excluded %s",
+                        "Subtask %s reached max speculative execution: %s",
                         subtask.subtask_id,
-                        exclude_bands,
+                        self._subtask_speculation_max_concurrent_run,
                     )
-                else:
-                    try:
-                        await self._queueing_ref.add_subtasks(
-                            [subtask],
-                            [subtask.priority or tuple()],
-                            exclude_bands=exclude_bands,
-                            random_when_unavailable=False,
-                        )
-                        logger.info(
-                            "Added subtask %s to queue excluded from %s.",
-                            subtask.subtask_id,
-                            exclude_bands,
-                        )
-                        subtask_info.num_speculative_concurrent_run += 1
-                        if (
-                            subtask_info.num_speculative_concurrent_run
-                            == self._subtask_speculation_max_concurrent_run
-                        ):
-                            logger.info(
-                                "Subtask %s reached max speculative execution: %s",
-                                subtask.subtask_id,
-                                self._subtask_speculation_max_concurrent_run,
-                            )
-                    except NoAvailableBand:
-                        logger.warning(
-                            "No bands available for subtask %s after excluded bands %s, "
-                            "try resubmit later.",
-                            subtask.subtask_id,
-                            exclude_bands,
-                        )
-                    except KeyError as e:
-                        # if the subtask happen to be finished, it's input chunk may got gc, if assigning to band
-                        # needs to know input meta, we'll get KeyError or something else, just ignore it.
-                        logger.warning(
-                            "Subtask %s may happen to be finished just now, cannot add it to"
-                            "subtask queue, got error %s, just ignore it.",
-                            subtask.subtask_id,
-                            e,
-                        )
+            except NoAvailableBand:
+                logger.warning(
+                    "No bands available for subtask %s after excluded bands %s, "
+                    "try resubmit later.",
+                    subtask.subtask_id,
+                    exclude_bands,
+                )
+            except KeyError as e:
+                # if the subtask happen to be finished, it's input chunk may got gc, if assigning to band
+                # needs to know input meta, we'll get KeyError or something else, just ignore it.
+                logger.warning(
+                    "Subtask %s may happen to be finished just now, cannot add it to "
+                    "subtask queue, got error %s, just ignore it.",
+                    subtask.subtask_id,
+                    e,
+                )
