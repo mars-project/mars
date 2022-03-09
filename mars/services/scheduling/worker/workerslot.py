@@ -249,7 +249,7 @@ class BandSlotManagerActor(mo.Actor):
 
             try:
                 usage = proc.cpu_percent(interval=None) / 100.0
-            except psutil.NoSuchProcess:  # pragma: no cover
+            except (psutil.NoSuchProcess, psutil.AccessDenied):  # pragma: no cover
                 continue
 
             slot_infos.append(
