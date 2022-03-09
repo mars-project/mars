@@ -232,7 +232,7 @@ class SpeculativeScheduler:
                             [subtask],
                             [subtask.priority or tuple()],
                             exclude_bands=exclude_bands,
-                            exclude_bands_force=True,
+                            random_when_unavailable=False,
                         )
                         logger.info(
                             "Added subtask %s to queue excluded from %s.",

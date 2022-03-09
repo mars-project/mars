@@ -374,7 +374,7 @@ class GraphAnalyzer:
             visited.update(same_color_chunks)
 
         for subtasks in logic_id_to_subtasks.values():
-            for index, subtask in enumerate(subtasks):
-                subtask.index = index
+            for logic_index, subtask in enumerate(subtasks):
+                subtask.logic_index = logic_index
                 subtask.logic_parallelism = len(subtasks)
         return subtask_graph

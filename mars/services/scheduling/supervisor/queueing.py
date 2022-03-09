@@ -152,10 +152,10 @@ class SubtaskQueueingActor(mo.Actor):
         subtasks: List[Subtask],
         priorities: List[Tuple],
         exclude_bands: Set[Tuple] = None,
-        exclude_bands_force: bool = False,
+        random_when_unavailable: bool = True,
     ):
         bands = await self._assigner_ref.assign_subtasks(
-            subtasks, exclude_bands, exclude_bands_force
+            subtasks, exclude_bands, random_when_unavailable
         )
         for subtask, band, priority in zip(subtasks, bands, priorities):
             assert band is not None

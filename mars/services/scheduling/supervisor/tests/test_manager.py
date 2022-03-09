@@ -52,7 +52,7 @@ class MockSubtaskQueueingActor(mo.Actor):
         subtasks: List[Subtask],
         priorities: List[Tuple],
         exclude_bands: Set[Tuple] = None,
-        exclude_bands_force: bool = False,
+        random_when_unavailable: bool = True,
     ):
         if self._error is not None:
             raise self._error

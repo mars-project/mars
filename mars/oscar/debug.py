@@ -177,4 +177,3 @@ def set_message_trace(message_trace):
 
 
 reload_debug_opts_from_env()
-sys.setrecursionlimit(100000)

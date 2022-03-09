@@ -183,14 +183,14 @@ async def test_assign_cpu_tasks(actor_pool):
     )
     assert result in (("address0", "numa-0"), ("address2", "numa-0"))
     [result] = await assigner_ref.assign_subtasks(
-        [subtask], exclude_bands={("address0", "numa-0")}, exclude_bands_force=True
+        [subtask], exclude_bands={("address0", "numa-0")}, random_when_unavailable=True
     )
     assert result == ("address2", "numa-0")
     with pytest.raises(NoAvailableBand):
         await assigner_ref.assign_subtasks(
             [subtask],
             exclude_bands={("address0", "numa-0"), ("address2", "numa-0")},
-            exclude_bands_force=True,
+            random_when_unavailable=True,
         )
     subtask.bands_specified = True
     assert result == ("address2", "numa-0")
