@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 export UNAME="$(uname | awk '{print tolower($0)}')"
 export PYTEST_CONFIG_WITHOUT_COV="--log-level=DEBUG --timeout=1500 -W ignore::PendingDeprecationWarning"
 export PYTEST_CONFIG="$PYTEST_CONFIG_WITHOUT_COV --cov-config=setup.cfg --cov-report= --cov=mars"
