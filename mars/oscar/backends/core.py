@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import copy
 from typing import Dict, Union
 
 from ..errors import ServerClosed
@@ -67,7 +68,7 @@ class ActorCaller:
                 message_futures = self._client_to_message_futures.get(client)
                 self._client_to_message_futures[client] = dict()
                 for future in message_futures.values():
-                    future.set_exception(e)
+                    future.set_exception(copy.copy(e))
             finally:
                 await asyncio.sleep(0)
 
@@ -75,7 +76,7 @@ class ActorCaller:
         self._client_to_message_futures[client] = dict()
         error = ServerClosed(f"Remote server {client.dest_address} closed")
         for future in message_futures.values():
-            future.set_exception(error)
+            future.set_exception(copy.copy(error))
 
     async def call(
         self,

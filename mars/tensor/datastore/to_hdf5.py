@@ -154,7 +154,7 @@ class TensorHDF5DataStore(TensorDataStore):
                 chunks=[out_chunk],
             )
 
-        container_name = f"{op.key}_{int(time.time())}"
+        container_name = f"{op.key}_{int(time.time() * 1000)}"
 
         out_chunks = []
         acc = [[0] + np.cumsum(ns).tolist() for ns in in_tensor.nsplits]

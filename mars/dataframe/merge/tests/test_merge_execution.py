@@ -15,10 +15,11 @@
 import numpy as np
 import pandas as pd
 
+from ....core.graph.builder.utils import build_graph
 from ...datasource.dataframe import from_pandas
 from ...datasource.series import from_pandas as series_from_pandas
 from ...utils import sort_dataframe_inplace
-from .. import concat
+from .. import concat, DataFrameConcat, DataFrameMergeAlign
 
 
 def test_merge(setup):
@@ -338,6 +339,122 @@ def test_merge_one_chunk(setup):
     pd.testing.assert_frame_equal(
         expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
         result.sort_values(by=result.columns[1]).reset_index(drop=True),
+    )
+
+    # left have one chunk and how="left", then one chunk tile
+    # will result in wrong results, see #GH 2107
+    mdf1 = from_pandas(df1, chunk_size=2)
+    mdf2 = from_pandas(df2)
+
+    expected = df2.merge(df1, left_on="rkey", right_on="lkey", how="left")
+    jdf = mdf2.merge(mdf1, left_on="rkey", right_on="lkey", how="left")
+    result = jdf.execute().fetch()
+
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
+        result.sort_values(by=result.columns[1]).reset_index(drop=True),
+    )
+
+
+def test_broadcast_merge(setup):
+    ns = np.random.RandomState(0)
+    # small dataframe
+    raw1 = pd.DataFrame(
+        {
+            "key": ns.randint(0, 10, size=10),
+            "value": np.arange(10),
+        },
+        index=[f"a{i}" for i in range(10)],
+    )
+    # big dataframe
+    raw2 = pd.DataFrame(
+        {
+            "key": ns.randint(0, 100, size=100),
+            "value": np.arange(100, 200),
+        },
+        index=[f"a{i}" for i in range(100)],
+    )
+
+    # test broadcast right and how="inner"
+    df1 = from_pandas(raw1, chunk_size=5)
+    df2 = from_pandas(raw2, chunk_size=10)
+    r = df2.merge(df1, on="key", auto_merge_threshold=100)
+    # make sure it selects broadcast merge, for broadcast, there must be
+    # DataFrameConcat operands
+    graph = build_graph([r], tile=True)
+    assert any(isinstance(c.op, DataFrameConcat) for c in graph)
+    # inner join doesn't need shuffle
+    assert all(not isinstance(c.op, DataFrameMergeAlign) for c in graph)
+
+    result = r.execute().fetch()
+    expected = raw2.merge(raw1, on="key")
+
+    expected.set_index("key", inplace=True)
+    result.set_index("key", inplace=True)
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected, 0), sort_dataframe_inplace(result, 0)
+    )
+
+    # test broadcast right and how="left"
+    df1 = from_pandas(raw1, chunk_size=5)
+    df2 = from_pandas(raw2, chunk_size=10)
+    r = df2.merge(df1, on="key", how="left", auto_merge_threshold=100)
+    # make sure it selects broadcast merge, for broadcast, there must be
+    # DataFrameConcat operands
+    graph = build_graph([r], tile=True)
+    assert any(isinstance(c.op, DataFrameConcat) for c in graph)
+    # left join need shuffle
+    assert any(isinstance(c.op, DataFrameMergeAlign) for c in graph)
+
+    result = r.execute().fetch()
+    expected = raw2.merge(raw1, on="key", how="left")
+
+    expected.set_index("key", inplace=True)
+    result.set_index("key", inplace=True)
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=["key", "value_x"]),
+        result.sort_values(by=["key", "value_x"]),
+    )
+
+    # test broadcast left
+    df1 = from_pandas(raw1, chunk_size=5)
+    df2 = from_pandas(raw2, chunk_size=10)
+    r = df1.merge(df2, on="key", auto_merge_threshold=100)
+    # make sure it selects broadcast merge, for broadcast, there must be
+    # DataFrameConcat operands
+    graph = build_graph([r], tile=True)
+    assert any(isinstance(c.op, DataFrameConcat) for c in graph)
+    # inner join doesn't need shuffle
+    assert all(not isinstance(c.op, DataFrameMergeAlign) for c in graph)
+
+    result = r.execute().fetch()
+    expected = raw1.merge(raw2, on="key")
+
+    expected.set_index("key", inplace=True)
+    result.set_index("key", inplace=True)
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected, 0), sort_dataframe_inplace(result, 0)
+    )
+
+    # test broadcast left and how="right"
+    df1 = from_pandas(raw1, chunk_size=5)
+    df2 = from_pandas(raw2, chunk_size=10)
+    r = df1.merge(df2, on="key", how="right", auto_merge_threshold=100)
+    # make sure it selects broadcast merge, for broadcast, there must be
+    # DataFrameConcat operands
+    graph = build_graph([r], tile=True)
+    assert any(isinstance(c.op, DataFrameConcat) for c in graph)
+    # right join need shuffle
+    assert any(isinstance(c.op, DataFrameMergeAlign) for c in graph)
+
+    result = r.execute().fetch()
+    expected = raw1.merge(raw2, on="key", how="right")
+
+    expected.set_index("key", inplace=True)
+    result.set_index("key", inplace=True)
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=["key", "value_x"]),
+        result.sort_values(by=["key", "value_x"]),
     )
 
 

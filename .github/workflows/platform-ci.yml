@@ -82,9 +82,8 @@ jobs:
               rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
             fi
             if [ -n "$WITH_RAY" ]; then
-              pip install ray[default]
+              pip install ray[default]==1.9.2
               pip install xgboost_ray==0.1.5
-              pip install --upgrade numpy
             fi
             if [ -n "$RUN_DASK" ]; then
               pip install dask[complete] mimesis sklearn
@@ -132,7 +131,7 @@ jobs:
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG --timeout=300 -m ray
+            pytest $PYTEST_CONFIG --durations=0 --timeout=300 -v -s -m ray
             coverage report
           fi
           if [ -n "$RUN_DASK" ]; then

@@ -17,7 +17,6 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...core.operand.base import SchedulingHint
 from ...serialization.serializables import FieldTypes, StringField, TupleField
 from ...tensor.datastore.to_vineyard import resolve_vineyard_socket
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -73,11 +72,9 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op):
         out_chunks = []
-        scheduling_hint = SchedulingHint(fuseable=False)
         dtypes = pd.Series([np.dtype("O")], index=pd.Index([0]))
         for idx, chunk in enumerate(op.inputs[0].chunks):
             chunk_op = op.copy().reset_key()
-            chunk_op.scheduling_hint = scheduling_hint
             chunk_op.operator_index = chunk.index
             out_chunk = chunk_op.new_chunk(
                 [chunk],

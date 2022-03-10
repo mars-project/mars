@@ -77,7 +77,7 @@ class SchedulingHint(Serializable):
     # indexes of previous ones
     # `gpu` indicates that if the operand should be executed on the GPU.
     gpu = BoolField("gpu", default=None)
-    priority = Int32Field("priority", default=0)
+    priority = Int32Field("priority", default=None)
 
     @classproperty
     def all_hint_names(cls):

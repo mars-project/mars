@@ -28,7 +28,6 @@ import os
 import cloudpickle as pickle
 import pkgutil
 import random
-import shutil
 import socket
 import struct
 import sys
@@ -39,6 +38,7 @@ import zlib
 from abc import ABC
 from contextlib import contextmanager
 from typing import Any, List, Dict, Set, Tuple, Type, Union, Callable, Optional
+from types import TracebackType
 
 import numpy as np
 import pandas as pd
@@ -738,45 +738,6 @@ def sbytes(x: Any) -> bytes:
         return bytes(x, encoding="utf-8")
     else:
         return bytes(x)
-
-
-def kill_process_tree(pid: int, include_parent: bool = True):
-    try:
-        import psutil
-    except ImportError:  # pragma: no cover
-        return
-    try:
-        proc = psutil.Process(pid)
-    except psutil.NoSuchProcess:
-        return
-
-    plasma_sock_dir = None
-    try:
-        children = proc.children(recursive=True)
-    except psutil.NoSuchProcess:  # pragma: no cover
-        return
-
-    if include_parent:
-        children.append(proc)
-    for p in children:
-        try:
-            if "plasma" in p.name():
-                try:
-                    plasma_sock_dir = next(
-                        (
-                            conn.laddr
-                            for conn in p.connections("unix")
-                            if "plasma" in conn.laddr
-                        ),
-                        None,
-                    )
-                except psutil.AccessDenied:
-                    pass
-            p.kill()
-        except psutil.NoSuchProcess:  # pragma: no cover
-            pass
-    if plasma_sock_dir:
-        shutil.rmtree(plasma_sock_dir, ignore_errors=True)
 
 
 def copy_tileables(tileables: List[TileableType], **kwargs):
@@ -1544,3 +1505,34 @@ def is_full_slice(slc: Any) -> bool:
         and slc.stop is None
         and slc.step is None
     )
+
+
+def wrap_exception(
+    name: str,
+    bases: Tuple[Type],
+    message: str,
+    cause: BaseException,
+    traceback: Optional[TracebackType] = None,
+):
+    """Generate an exception wraps the cause exception."""
+
+    def __init__(self):
+        pass
+
+    def __getattr__(self, item):
+        return getattr(cause, item)
+
+    def __str__(self):
+        return message
+
+    return type(
+        bases[-1].__name__,
+        bases,
+        {
+            "__init__": __init__,
+            "__getattr__": __getattr__,
+            "__str__": __str__,
+            "__basename__": name,
+            "__module__": bases[-1].__module__,
+        },
+    )().with_traceback(traceback)

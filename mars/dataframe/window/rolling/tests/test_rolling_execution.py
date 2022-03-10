@@ -77,7 +77,9 @@ def test_rolling_agg_execution(setup):
     # test axis=1
     df2 = dfs[1].rolling(3, axis=1).agg("sum")
 
-    result = df2.execute(extra_config=dict(check_nsplits=False)).fetch()
+    result = df2.execute(
+        extra_config=dict(check_all=False, check_nsplits=False)
+    ).fetch()
     expected = raw.rolling(3, axis=1).agg("sum")
     pd.testing.assert_frame_equal(result, expected)
 

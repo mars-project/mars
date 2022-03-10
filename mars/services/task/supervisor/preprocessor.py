@@ -170,7 +170,7 @@ class TaskPreprocessor:
     ) -> SubtaskGraph:
         logger.debug("Start to gen subtask graph for task %s", self._task.task_id)
         task = self._task
-        analyzer = GraphAnalyzer(chunk_graph, available_bands, task)
+        analyzer = GraphAnalyzer(chunk_graph, available_bands, task, self._config)
         graph = analyzer.gen_subtask_graph()
         logger.debug(
             "Generated subtask graph of %s subtasks for task %s",

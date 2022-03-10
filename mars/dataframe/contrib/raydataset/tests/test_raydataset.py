@@ -42,11 +42,10 @@ except ImportError:  # pragma: no cover
 @pytest.fixture
 async def create_cluster(request):
     client = await new_cluster(
-        "test_cluster",
-        supervisor_mem=1 * 1024**3,
-        worker_num=4,
-        worker_cpu=2,
-        worker_mem=1 * 1024**3,
+        supervisor_mem=256 * 1024**2,
+        worker_num=2,
+        worker_cpu=1,
+        worker_mem=256 * 1024**2,
     )
     async with client:
         yield client
@@ -55,7 +54,9 @@ async def create_cluster(request):
 @require_ray
 @pytest.mark.asyncio
 @pytest.mark.parametrize("test_option", [[3, 3], [3, 2], [None, None]])
-async def test_convert_to_ray_dataset(ray_large_cluster, create_cluster, test_option):
+async def test_convert_to_ray_dataset(
+    ray_start_regular_shared, create_cluster, test_option
+):
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend="oscar", default=True)
     with session:
@@ -71,7 +72,7 @@ async def test_convert_to_ray_dataset(ray_large_cluster, create_cluster, test_op
 @require_ray
 @pytest.mark.asyncio
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
-async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
+async def test_mars_with_xgboost(ray_start_regular_shared, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, train
     from sklearn.datasets import load_breast_cancer
 
@@ -110,13 +111,10 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
 
 
 @require_ray
-@pytest.mark.parametrize(
-    "ray_large_cluster", [{"num_nodes": 3, "num_cpus": 16}], indirect=True
-)
 @pytest.mark.asyncio
 @pytest.mark.skipif(sklearn is None, reason="sklearn not installed")
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
-async def test_mars_with_xgboost_sklearn_clf(ray_large_cluster, create_cluster):
+async def test_mars_with_xgboost_sklearn_clf(ray_start_regular_shared, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, RayXGBClassifier
     from sklearn.datasets import load_breast_cancer
 
@@ -155,13 +153,10 @@ async def test_mars_with_xgboost_sklearn_clf(ray_large_cluster, create_cluster):
 
 
 @require_ray
-@pytest.mark.parametrize(
-    "ray_large_cluster", [{"num_nodes": 3, "num_cpus": 16}], indirect=True
-)
 @pytest.mark.asyncio
 @pytest.mark.skipif(sklearn is None, reason="sklearn not installed")
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
-async def test_mars_with_xgboost_sklearn_reg(ray_large_cluster, create_cluster):
+async def test_mars_with_xgboost_sklearn_reg(ray_start_regular_shared, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, RayXGBRegressor
     from sklearn.datasets import make_regression
 

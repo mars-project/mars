@@ -27,6 +27,8 @@ task:
     optimize_tileable_graph: yes
     optimize_chunk_graph: yes
     fuse_enabled: yes
+    initial_same_color_num: null
+    as_broadcaster_successor_num: null
 scheduling:
   autoscale:
     enabled: false
@@ -34,3 +36,6 @@ scheduling:
     max_workers: 100
     scheduler_backlog_timeout: 60
     worker_idle_timeout: 120
+metrics:
+  backend: console
+  port: 0  # Need to assign a port argument when using prometheus

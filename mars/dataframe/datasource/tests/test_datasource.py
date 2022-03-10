@@ -238,7 +238,7 @@ def test_from_tensor():
     tensor = mt.random.rand(10, 10, chunk_size=5)
     df = dataframe_from_tensor(tensor)
     assert isinstance(df.index_value._index_value, IndexValue.RangeIndex)
-    assert df.op.dtypes[0] == tensor.dtype
+    assert df.dtypes[0] == tensor.dtype
 
     df = tile(df)
     assert len(df.chunks) == 4
@@ -353,14 +353,12 @@ def test_from_tensor():
     pd.testing.assert_index_equal(series.index_value.to_pandas(), pd.RangeIndex(4))
 
     series = series_from_tensor(mt.random.rand(4), index=[1, 2, 3])
-    pd.testing.assert_index_equal(series.index_value.to_pandas(), pd.Index([1, 2, 3]))
+    pd.testing.assert_index_equal(series.op.index, pd.Index([1, 2, 3]))
 
     series = series_from_tensor(
         mt.random.rand(4), index=pd.Index([1, 2, 3], name="my_index")
     )
-    pd.testing.assert_index_equal(
-        series.index_value.to_pandas(), pd.Index([1, 2, 3], name="my_index")
-    )
+    pd.testing.assert_index_equal(series.op.index, pd.Index([1, 2, 3], name="my_index"))
     assert series.index_value.name == "my_index"
 
     with pytest.raises(TypeError):

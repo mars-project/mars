@@ -34,6 +34,7 @@ from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, 
 import numpy as np
 
 from ... import oscar as mo
+from ...utils import Timer
 from ...config import options
 from ...core import ChunkType, TileableType, TileableGraph, enter_mode
 from ...core.entrypoints import init_extension_entrypoints
@@ -45,6 +46,7 @@ from ...lib.aio import (
     new_isolation,
     stop_isolation,
 )
+from ...metrics import Metrics
 from ...services.cluster import AbstractClusterAPI, ClusterAPI
 from ...services.lifecycle import AbstractLifecycleAPI, LifecycleAPI
 from ...services.meta import MetaAPI, AbstractMetaAPI
@@ -135,6 +137,10 @@ class ExecutionInfo:
         self._ensure_future()
         return self._future_local.aio_future.__await__()
 
+    def get_future(self):
+        self._ensure_future()
+        return self._future_local.aio_future
+
 
 warning_msg = """
 No session found, local session \
@@ -159,6 +165,7 @@ class AbstractSession(ABC):
     def __init__(self, address: str, session_id: str):
         self._address = address
         self._session_id = session_id
+        self._closed = False
 
     @property
     def address(self):
@@ -223,6 +230,7 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         Destroy a session.
         """
         self.reset_default()
+        self._closed = True
 
     @abstractmethod
     async def execute(self, *tileables, **kwargs) -> ExecutionInfo:
@@ -755,6 +763,13 @@ class _IsolatedSession(AbstractAsyncSession):
             register_asyncio_task_timeout_detector()
         )
 
+        # add metrics
+        self._tileable_graph_gen_time = Metrics.gauge(
+            "mars.tileable_graph_gen_time_secs",
+            "Time consuming in seconds to generate a tileable graph",
+            ("address", "session_id"),
+        )
+
     @classmethod
     async def _init(
         cls, address: str, session_id: str, new: bool = True, timeout: float = None
@@ -912,6 +927,8 @@ class _IsolatedSession(AbstractAsyncSession):
                 tileable.params = fetch_tileable.params
 
     async def execute(self, *tileables, **kwargs) -> ExecutionInfo:
+        if self._closed:
+            raise RuntimeError("Session closed already")
         fuse_enabled: bool = kwargs.pop("fuse_enabled", True)
         task_name: str = kwargs.pop("task_name", None)
         extra_config: dict = kwargs.pop("extra_config", None)
@@ -924,7 +941,18 @@ class _IsolatedSession(AbstractAsyncSession):
         ]
 
         # build tileable graph
-        tileable_graph = gen_submit_tileable_graph(self, tileables)
+        with Timer() as timer:
+            tileable_graph = gen_submit_tileable_graph(self, tileables)
+
+        logger.info(
+            "Time consuming to generate a tileable graph is %ss with address %s, session id %s",
+            timer.duration,
+            self.address,
+            self._session_id,
+        )
+        self._tileable_graph_gen_time.record(
+            timer.duration, {"address": self.address, "session_id": self._session_id}
+        )
 
         # submit task
         task_id = await self._task_api.submit_tileable_graph(
@@ -1697,6 +1725,27 @@ class SyncSession(AbstractSyncSession):
         self.close()
 
 
+async def _execute_with_progress(
+    execution_info: ExecutionInfo,
+    progress_bar: ProgressBar,
+    progress_update_interval: Union[int, float],
+    cancelled: asyncio.Event,
+):
+    with progress_bar:
+        while not cancelled.is_set():
+            done, _pending = await asyncio.wait(
+                [execution_info.get_future()], timeout=progress_update_interval
+            )
+            if not done:
+                if not cancelled.is_set() and execution_info.progress() is not None:
+                    progress_bar.update(execution_info.progress() * 100)
+            else:
+                # done
+                if not cancelled.is_set():
+                    progress_bar.update(100)
+                break
+
+
 async def _execute(
     *tileables: Tuple[TileableType],
     session: _IsolatedSession = None,
@@ -1718,39 +1767,20 @@ async def _execute(
     if wait:
         progress_bar = ProgressBar(show_progress)
         if progress_bar.show_progress:
-            with progress_bar:
-                while not cancelled.is_set():
-                    try:
-                        await asyncio.wait_for(
-                            asyncio.shield(execution_info), progress_update_interval
-                        )
-                        # done
-                        if not cancelled.is_set():
-                            progress_bar.update(100)
-                        break
-                    except asyncio.TimeoutError:
-                        # timeout
-                        if (
-                            not cancelled.is_set()
-                            and execution_info.progress() is not None
-                        ):
-                            progress_bar.update(execution_info.progress() * 100)
-                if cancelled.is_set():
-                    # cancel execution
-                    execution_info.cancel()
-                    execution_info.remove_done_callback(_attach_session)
-                    await execution_info
+            await _execute_with_progress(
+                execution_info, progress_bar, progress_update_interval, cancelled
+            )
         else:
             await asyncio.wait(
                 [execution_info, cancelled.wait()], return_when=asyncio.FIRST_COMPLETED
             )
-            if cancelled.is_set():
-                execution_info.remove_done_callback(_attach_session)
-                execution_info.cancel()
-            else:
-                # set cancelled to avoid wait task leak
-                cancelled.set()
-            await execution_info
+        if cancelled.is_set():
+            execution_info.remove_done_callback(_attach_session)
+            execution_info.cancel()
+        else:
+            # set cancelled to avoid wait task leak
+            cancelled.set()
+        await execution_info
     else:
         return execution_info
 

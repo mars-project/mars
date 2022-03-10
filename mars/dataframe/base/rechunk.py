@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
+from typing import Tuple
 
+import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...serialization.serializables import KeyField, AnyField, Int32Field, Int64Field
-from ...tensor.rechunk.core import get_nsplits, plan_rechunks, compute_rechunk_slices
-from ...tensor.utils import calc_sliced_size
+from ...serialization.serializables import AnyField
+from ...tensor.rechunk.core import get_nsplits, gen_rechunk_infos, chunk_size_type
+from ...typing import TileableType
 from ...utils import has_unknown_shape
-from ..initializer import DataFrame as asdataframe, Series as asseries
+from ..initializer import DataFrame as asdataframe, Series as asseries, Index as asindex
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DATAFRAME_TYPE
 from ..utils import indexing_index_value, merge_index_value
 
@@ -30,46 +31,7 @@ from ..utils import indexing_index_value, merge_index_value
 class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.RECHUNK
 
-    _input = KeyField("input")
-    _chunk_size = AnyField("chunk_size")
-    _threshold = Int32Field("threshold")
-    _chunk_size_limit = Int64Field("chunk_size_limit")
-
-    def __init__(
-        self,
-        chunk_size=None,
-        threshold=None,
-        chunk_size_limit=None,
-        output_types=None,
-        **kw
-    ):
-        super().__init__(
-            _chunk_size=chunk_size,
-            _threshold=threshold,
-            _chunk_size_limit=chunk_size_limit,
-            _output_types=output_types,
-            **kw
-        )
-
-    @property
-    def input(self):
-        return self._input
-
-    @property
-    def chunk_size(self):
-        return self._chunk_size
-
-    @property
-    def threshold(self):
-        return self._threshold
-
-    @property
-    def chunk_size_limit(self):
-        return self._chunk_size_limit
-
-    def _set_inputs(self, inputs):
-        super()._set_inputs(inputs)
-        self._input = self._inputs[0]
+    chunk_size = AnyField("chunk_size")
 
     def __call__(self, x):
         if isinstance(x, DATAFRAME_TYPE):
@@ -96,40 +58,124 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
             )
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "DataFrameRechunk"):
+        from ..indexing.iloc import (
+            DataFrameIlocGetItem,
+            SeriesIlocGetItem,
+            IndexIlocGetItem,
+        )
+        from ..merge.concat import DataFrameConcat
+
         if has_unknown_shape(*op.inputs):
             yield
 
-        a = op.input
-        a = asdataframe(a) if a.ndim == 2 else asseries(a)
-        chunk_size = _get_chunk_size(a, op.chunk_size)
-        if chunk_size == a.nsplits:
-            return [a]
-
         out = op.outputs[0]
-        new_chunk_size = tuple(tuple(s for s in cs if s != 0) for cs in chunk_size)
-        if isinstance(out, DATAFRAME_TYPE):
-            itemsize = max(getattr(dt, "itemsize", 8) for dt in out.dtypes)
+        inp = op.inputs[0]
+        if inp.ndim == 2:
+            inp = asdataframe(inp)
+        elif inp.op.output_types[0] == OutputType.series:
+            inp = asseries(inp)
         else:
-            itemsize = out.dtype.itemsize
-        steps = plan_rechunks(
-            op.inputs[0],
-            new_chunk_size,
-            itemsize,
-            threshold=op.threshold,
-            chunk_size_limit=op.chunk_size_limit,
-        )
-        for c in steps:
-            out = compute_rechunk(out.inputs[0], c)
+            inp = asindex(inp)
+        chunk_size = _get_chunk_size(inp, op.chunk_size)
+        if chunk_size == inp.nsplits:
+            return [inp]
+
+        rechunk_infos = gen_rechunk_infos(inp, chunk_size)
+        out_chunks = []
+        for rechunk_info in rechunk_infos:
+            chunk_index = rechunk_info.out_index
+            shape = rechunk_info.shape
+            inp_chunks = rechunk_info.input_chunks
+            inp_chunk_slices = rechunk_info.input_slices
+            inp_slice_chunks = []
+            for inp_chunk, inp_chunk_slice in zip(inp_chunks, inp_chunk_slices):
+                if all(slc == slice(None) for slc in inp_chunk_slice):
+                    inp_slice_chunks.append(inp_chunk)
+                else:
+                    index_value = indexing_index_value(
+                        inp_chunk.index_value, inp_chunk_slice[0], rechunk=True
+                    )
+                    if inp_chunk.ndim == 1:
+                        # Series or Index
+                        slc_chunk_op_type = (
+                            SeriesIlocGetItem
+                            if op.output_types[0] == OutputType.series
+                            else IndexIlocGetItem
+                        )
+                        slc_chunk = slc_chunk_op_type(
+                            indexes=inp_chunk_slice,
+                            output_types=op.output_types,
+                            sparse=inp_chunk.op.sparse,
+                        ).new_chunk(
+                            [inp_chunk],
+                            index_value=index_value,
+                            dtype=inp_chunk.dtype,
+                            name=inp_chunk.name,
+                            index=inp_chunk.index,
+                        )
+                    else:
+                        # DataFrame
+                        columns_value = indexing_index_value(
+                            inp_chunk.columns_value,
+                            inp_chunk_slice[1],
+                            store_data=True,
+                            rechunk=True,
+                        )
+                        dtypes = inp_chunk.dtypes.iloc[inp_chunk_slice[1]]
+                        slc_chunk = DataFrameIlocGetItem(
+                            indexes=inp_chunk_slice,
+                            output_types=[OutputType.dataframe],
+                            sparse=inp_chunk.op.sparse,
+                        ).new_chunk(
+                            [inp_chunk],
+                            index_value=index_value,
+                            columns_value=columns_value,
+                            dtypes=dtypes,
+                            index=inp_chunk.index,
+                        )
+                    inp_slice_chunks.append(slc_chunk)
+
+            chunk_shape = rechunk_info.input_chunk_shape
+            inp_chunks_arr = np.empty(chunk_shape, dtype=object)
+            inp_chunks_arr.ravel()[:] = inp_slice_chunks
+            params = dict(index=chunk_index, shape=shape)
+            if inp_chunks_arr.ndim == 1:
+                params["index_value"] = merge_index_value(
+                    {i: c.index_value for i, c in enumerate(inp_chunks_arr)}
+                )
+                params["dtype"] = inp_slice_chunks[0].dtype
+                params["name"] = inp_slice_chunks[0].name
+            else:
+                params["index_value"] = merge_index_value(
+                    {i: c.index_value for i, c in enumerate(inp_chunks_arr[:, 0])}
+                )
+                params["columns_value"] = merge_index_value(
+                    {i: c.columns_value for i, c in enumerate(inp_chunks_arr[0])},
+                    store_data=True,
+                )
+                params["dtypes"] = pd.concat([c.dtypes for c in inp_chunks_arr[0]])
+            out_chunk = DataFrameConcat(
+                output_types=[out.op.output_types[0]]
+            ).new_chunk(inp_slice_chunks, kws=[params])
+            out_chunks.append(out_chunk)
+
+        new_op = op.copy()
+        params = out.params
+        params["nsplits"] = chunk_size
+        params["chunks"] = out_chunks
+        df_or_series = new_op.new_tileable(op.inputs, kws=[params])
 
         if op.reassign_worker:
-            for c in out.chunks:
+            for c in df_or_series.chunks:
                 c.op.reassign_worker = True
 
-        return [out]
+        return [df_or_series]
 
 
-def _get_chunk_size(a, chunk_size):
+def _get_chunk_size(
+    a: TileableType, chunk_size: chunk_size_type
+) -> Tuple[Tuple[int], ...]:
     if isinstance(a, DATAFRAME_TYPE):
         itemsize = max(getattr(dt, "itemsize", 8) for dt in a.dtypes)
     else:
@@ -137,9 +183,7 @@ def _get_chunk_size(a, chunk_size):
     return get_nsplits(a, chunk_size, itemsize)
 
 
-def rechunk(
-    a, chunk_size, threshold=None, chunk_size_limit=None, reassign_worker=False
-):
+def rechunk(a: TileableType, chunk_size: chunk_size_type, reassign_worker=False):
     if not any(pd.isna(s) for s in a.shape) and not a.is_coarse():
         if not has_unknown_shape(a):
             # do client check only when no unknown shape,
@@ -150,171 +194,6 @@ def rechunk(
 
     op = DataFrameRechunk(
         chunk_size=chunk_size,
-        threshold=threshold,
-        chunk_size_limit=chunk_size_limit,
         reassign_worker=reassign_worker,
     )
     return op(a)
-
-
-def _concat_dataframe_meta(to_concat_chunks):
-    if to_concat_chunks[0].index_value.to_pandas().empty:
-        index_value = to_concat_chunks[0].index_value
-    else:
-        idx_to_index_value = dict(
-            (c.index[0], c.index_value) for c in to_concat_chunks if c.index[1] == 0
-        )
-        index_value = merge_index_value(idx_to_index_value)
-
-    idx_to_columns_value = dict(
-        (c.index[1], c.columns_value) for c in to_concat_chunks if c.index[0] == 0
-    )
-    columns_value = merge_index_value(idx_to_columns_value, store_data=True)
-
-    idx_to_dtypes = dict(
-        (c.index[1], c.dtypes) for c in to_concat_chunks if c.index[0] == 0
-    )
-    dtypes = pd.concat([v[1] for v in list(sorted(idx_to_dtypes.items()))])
-    return index_value, columns_value, dtypes
-
-
-def _concat_series_index(to_concat_chunks):
-    if to_concat_chunks[0].index_value.to_pandas().empty:
-        index_value = to_concat_chunks[0].index_value
-    else:
-        idx_to_index_value = dict((c.index[0], c.index_value) for c in to_concat_chunks)
-        index_value = merge_index_value(idx_to_index_value)
-    return index_value
-
-
-def compute_rechunk(a, chunk_size):
-    from ..indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
-    from ..merge.concat import DataFrameConcat
-
-    result_slices = compute_rechunk_slices(a, chunk_size)
-    result_chunks = []
-    idxes = itertools.product(*[range(len(c)) for c in chunk_size])
-    chunk_slices = itertools.product(*result_slices)
-    chunk_shapes = itertools.product(*chunk_size)
-    is_dataframe = isinstance(a, DATAFRAME_TYPE)
-    for idx, chunk_slice, chunk_shape in zip(idxes, chunk_slices, chunk_shapes):
-        to_merge = []
-        merge_idxes = itertools.product(*[range(len(i)) for i in chunk_slice])
-        for merge_idx, index_slices in zip(
-            merge_idxes, itertools.product(*chunk_slice)
-        ):
-            chunk_index, chunk_slice = zip(*index_slices)
-            old_chunk = a.cix[chunk_index]
-            merge_chunk_shape = tuple(
-                calc_sliced_size(s, chunk_slice[0]) for s in old_chunk.shape
-            )
-            new_index_value = indexing_index_value(
-                old_chunk.index_value, chunk_slice[0], rechunk=True
-            )
-            if is_dataframe:
-                new_columns_value = indexing_index_value(
-                    old_chunk.columns_value,
-                    chunk_slice[1],
-                    store_data=True,
-                    rechunk=True,
-                )
-                merge_chunk_op = DataFrameIlocGetItem(
-                    list(chunk_slice),
-                    sparse=old_chunk.op.sparse,
-                    output_types=[OutputType.dataframe],
-                )
-                merge_chunk = merge_chunk_op.new_chunk(
-                    [old_chunk],
-                    shape=merge_chunk_shape,
-                    index=merge_idx,
-                    index_value=new_index_value,
-                    columns_value=new_columns_value,
-                    dtypes=old_chunk.dtypes.iloc[chunk_slice[1]],
-                )
-            else:
-                merge_chunk_op = SeriesIlocGetItem(
-                    list(chunk_slice),
-                    sparse=old_chunk.op.sparse,
-                    output_types=a.op.output_types,
-                )
-                merge_chunk = merge_chunk_op.new_chunk(
-                    [old_chunk],
-                    shape=merge_chunk_shape,
-                    index=merge_idx,
-                    index_value=new_index_value,
-                    dtype=old_chunk.dtype,
-                    name=old_chunk.name,
-                )
-            to_merge.append(merge_chunk)
-        if len(to_merge) == 1:
-            chunk_op = to_merge[0].op.copy()
-            if is_dataframe:
-                out_chunk = chunk_op.new_chunk(
-                    to_merge[0].op.inputs,
-                    shape=chunk_shape,
-                    index=idx,
-                    index_value=to_merge[0].index_value,
-                    columns_value=to_merge[0].columns_value,
-                    dtypes=to_merge[0].dtypes,
-                )
-            else:
-                out_chunk = chunk_op.new_chunk(
-                    to_merge[0].op.inputs,
-                    shape=chunk_shape,
-                    index=idx,
-                    index_value=to_merge[0].index_value,
-                    name=to_merge[0].name,
-                    dtype=to_merge[0].dtype,
-                )
-            result_chunks.append(out_chunk)
-        else:
-            if is_dataframe:
-                chunk_op = DataFrameConcat(output_types=[OutputType.dataframe])
-                index_value, columns_value, dtypes = _concat_dataframe_meta(to_merge)
-                out_chunk = chunk_op.new_chunk(
-                    to_merge,
-                    shape=chunk_shape,
-                    index=idx,
-                    index_value=index_value,
-                    columns_value=columns_value,
-                    dtypes=dtypes,
-                )
-            else:
-                chunk_op = DataFrameConcat(output_types=a.op.output_types)
-                index_value = _concat_series_index(to_merge)
-                out_chunk = chunk_op.new_chunk(
-                    to_merge,
-                    shape=chunk_shape,
-                    index=idx,
-                    index_value=index_value,
-                    dtype=to_merge[0].dtype,
-                    name=to_merge[0].name,
-                )
-            result_chunks.append(out_chunk)
-
-    if is_dataframe:
-        op = DataFrameRechunk(chunk_size, output_types=[OutputType.dataframe])
-        return op.new_dataframe(
-            [a],
-            a.shape,
-            dtypes=a.dtypes,
-            columns_value=a.columns_value,
-            index_value=a.index_value,
-            nsplits=chunk_size,
-            chunks=result_chunks,
-        )
-    else:
-        op = DataFrameRechunk(chunk_size, output_types=a.op.output_types)
-        if a.op.output_types[0] == OutputType.index:
-            f = op.new_index
-        else:
-            f = op.new_series
-        return f(
-            [a],
-            a.shape,
-            dtype=a.dtype,
-            index_value=a.index_value,
-            nsplits=chunk_size,
-            chunks=result_chunks,
-            name=a.name,
-        )

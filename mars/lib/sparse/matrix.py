@@ -16,6 +16,7 @@
 
 import numpy as np
 from collections.abc import Iterable
+from typing import List
 
 from .core import (
     issparse,
@@ -125,6 +126,13 @@ def solve_triangular_sparse_matrix(a, b, lower=False, sparse=True):
         return SparseNDArray(spx, shape=x.shape)
     else:
         return x
+
+
+def block(arrs: List[List[SparseArray]]) -> SparseArray:
+    mats = []
+    for dim_arrs in arrs:
+        mats.append([naked(a) for a in dim_arrs])
+    return SparseNDArray(sps.bmat(mats, format="csr"))
 
 
 class SparseMatrix(SparseArray):

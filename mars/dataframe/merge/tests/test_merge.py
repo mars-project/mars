@@ -20,7 +20,7 @@ from ....core.operand import OperandStage
 from ...core import IndexValue
 from ...base.standardize_range_index import ChunkStandardizeRangeIndex
 from ...datasource.dataframe import from_pandas
-from .. import DataFrameMergeAlign, DataFrameShuffleMerge, concat
+from .. import DataFrameMergeAlign, DataFrameMerge, concat
 
 
 def test_merge():
@@ -48,7 +48,7 @@ def test_merge():
 
         assert df.chunk_shape == (2, 1)
         for chunk in df.chunks:
-            assert isinstance(chunk.op, DataFrameShuffleMerge)
+            assert isinstance(chunk.op, DataFrameMerge)
             assert chunk.op.how == kw.get("how", "inner")
             left, right = chunk.op.inputs
             assert isinstance(left.op, DataFrameMergeAlign)
@@ -98,7 +98,7 @@ def test_join():
 
         assert df.chunk_shape == (3, 1)
         for chunk in df.chunks:
-            assert isinstance(chunk.op, DataFrameShuffleMerge)
+            assert isinstance(chunk.op, DataFrameMerge)
             assert chunk.op.how == kw.get("how", "left")
             left, right = chunk.op.inputs
             assert isinstance(left.op, DataFrameMergeAlign)
@@ -146,7 +146,7 @@ def test_join_on():
 
         assert df.chunk_shape == (3, 1)
         for chunk in df.chunks:
-            assert isinstance(chunk.op, DataFrameShuffleMerge)
+            assert isinstance(chunk.op, DataFrameMerge)
             assert chunk.op.how == kw.get("how", "left")
             left, right = chunk.op.inputs
             assert isinstance(left.op, DataFrameMergeAlign)

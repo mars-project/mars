@@ -330,7 +330,7 @@ def replace_ellipsis(index, ndim):
     )
 
 
-def calc_sliced_size(size, sliceobj):
+def calc_sliced_size(size: int, sliceobj: slice) -> int:
     if np.isnan(size):
         return np.nan
 

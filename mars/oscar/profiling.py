@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import collections
+
 import os
 import asyncio
 import copy
@@ -20,6 +20,7 @@ import heapq
 import logging
 import operator
 from collections import Counter
+from collections.abc import Mapping
 from .backends.message import SendMessage, TellMessage
 from ..typing import BandType
 
@@ -65,7 +66,7 @@ class _ProfilingOptions(metaclass=_ProfilingOptionsMeta):
     slow_subtasks_duration_threshold = _ProfilingOptionDescriptor(int, default=10)
 
     def __init__(self, options):
-        if isinstance(options, collections.Mapping):
+        if isinstance(options, Mapping):
             invalid_keys = options.keys() - type(self).__dict__.keys()
             if invalid_keys:
                 raise ValueError(f"Invalid profiling options: {invalid_keys}")
@@ -133,10 +134,10 @@ class _CallStats:
         self._slow_calls = []
 
     def collect(self, message, duration: float):
-        if duration < self._options.slow_calls_duration_threshold:
-            return
         key = (message.actor_ref.uid, message.content[0])
         self._call_counter[key] += 1
+        if duration < self._options.slow_calls_duration_threshold:
+            return
         key = (
             duration,
             message.actor_ref.uid,
@@ -174,10 +175,10 @@ class _SubtaskStats:
         self._slow_subtasks = []
 
     def collect(self, subtask, band: BandType, duration: float):
-        if duration < self._options.slow_subtasks_duration_threshold:
-            return
         band_address = band[0]
         self._band_counter[band_address] += 1
+        if duration < self._options.slow_subtasks_duration_threshold:
+            return
         key = (duration, band_address, subtask)
         try:
             if len(self._slow_subtasks) < 10:

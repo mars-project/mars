@@ -205,7 +205,6 @@ class SubtaskManagerActor(mo.Actor):
                         [subtask_info.subtask],
                         [subtask_info.subtask.priority or tuple()],
                     )
-                    await self._queueing_ref.submit_subtasks.tell()
                 else:
                     raise ex
             except asyncio.CancelledError:
@@ -236,6 +235,12 @@ class SubtaskManagerActor(mo.Actor):
                     band,
                     subtask_info.subtask.subtask_id,
                 )
+                # We should call submit_subtasks after the slot is released.
+                # If submit_subtasks runs before release_subtask_slots
+                # then the rescheduled subtask may not be submitted due to
+                # no available slots. The mars will hangs.
+                if subtask_info.num_reschedules > 0:
+                    await self._queueing_ref.submit_subtasks.tell()
 
     async def cancel_subtasks(
         self, subtask_ids: List[str], kill_timeout: Union[float, int] = 5
