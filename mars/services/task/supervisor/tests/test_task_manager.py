@@ -445,7 +445,8 @@ async def test_dump_subtask_graph(actor_pool):
     file_path = os.path.join(tempfile.gettempdir(), f"mars-{task_id}")
     with open(file_path) as f:
         text = f.read()
-        assert "style=dotted" in text
+        assert "style=bold" in text
+        assert 'color="/spectral9/' in text
         for c in result_tileable.chunks:
             assert c.key[:5] in text
     os.remove(file_path)

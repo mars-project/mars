@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 from io import StringIO
 from typing import Dict, List
 
@@ -34,13 +35,24 @@ class GraphVisualizer:
         sio.write("graph [compound=true];\n")
         subgraph_index = 0
         current_stage = 0
-        result_chunk_to_subtask = {}
+        result_chunk_to_subtask = dict()
+        line_colors = dict()
+        color_iter = iter(itertools.cycle(range(1, 9)))
+        for stage_line in itertools.combinations(
+            range(len(self.task_processor.stage_processors))[::-1], 2
+        ):
+            line_colors[stage_line] = f'"/spectral9/{next(color_iter)}"'
+
         for stage_processor in self.task_processor.stage_processors:
             for subtask in stage_processor.subtask_graph.topological_iter():
                 current_cluster = f"cluster_{subgraph_index}"
                 sio.write(
                     self._export_subtask_to_dot(
-                        subtask, current_cluster, current_stage, result_chunk_to_subtask
+                        subtask,
+                        current_cluster,
+                        current_stage,
+                        line_colors,
+                        result_chunk_to_subtask,
                     )
                 )
                 for c in subtask.chunk_graph.results:
@@ -56,6 +68,7 @@ class GraphVisualizer:
         subtask: Subtask,
         subgraph_name: str,
         current_stage: int,
+        line_colors: Dict,
         chunk_key_to_subtask: Dict[str, List],
         trunc_key: int = 5,
     ):
@@ -95,7 +108,9 @@ class GraphVisualizer:
                     if stage == current_stage:
                         line_style = "style=bold"
                     else:
-                        line_style = "style=dotted"
+                        line_style = (
+                            f"style=bold color={line_colors[(current_stage, stage)]}"
+                        )
                     sio.write(
                         f'"Chunk:{input_chunk.key[:trunc_key]}" -> "{op_name}:{op.key[:trunc_key]}" '
                         f"[lhead={subgraph_name} ltail={tail_cluster} {line_style}];\n"
