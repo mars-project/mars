@@ -272,14 +272,6 @@ def test_chunks_indexer():
     assert chunk_keys == expected
 
 
-def test_insert_reversed_tuple():
-    assert utils.insert_reversed_tuple((), 9) == (9,)
-    assert utils.insert_reversed_tuple((7, 4, 3, 1), 9) == (9, 7, 4, 3, 1)
-    assert utils.insert_reversed_tuple((7, 4, 3, 1), 6) == (7, 6, 4, 3, 1)
-    assert utils.insert_reversed_tuple((7, 4, 3, 1), 4) == (7, 4, 3, 1)
-    assert utils.insert_reversed_tuple((7, 4, 3, 1), 0) == (7, 4, 3, 1, 0)
-
-
 def test_require_not_none():
     @utils.require_not_none(1)
     def should_exist():

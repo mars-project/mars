@@ -51,7 +51,6 @@ from ._utils import (
     tokenize,
     tokenize_int,
     register_tokenizer,
-    insert_reversed_tuple,
     ceildiv,
 )
 from .lib.version import parse as parse_version
@@ -67,7 +66,6 @@ OBJECT_FIELD_OVERHEAD = 50
 TypeDispatcher = TypeDispatcher
 tokenize = tokenize
 register_tokenizer = register_tokenizer
-insert_reversed_tuple = insert_reversed_tuple
 ceildiv = ceildiv
 
 
