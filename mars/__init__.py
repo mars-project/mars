@@ -14,8 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._version import __version__
 from .config import options
 from .core.context import get_context
 from .session import new_session, execute, fetch, fetch_log, stop_server
 from .deploy.oscar import new_cluster_in_ray, new_ray_session
+
+from . import _version
+
+__version__ = _version.get_versions()["version"]

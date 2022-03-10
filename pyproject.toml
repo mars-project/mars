@@ -7,3 +7,8 @@ requires = [
     "scipy>=1.0.0",
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.black]
+extend-exclude = '''
+^/mars/_version.py
+'''
