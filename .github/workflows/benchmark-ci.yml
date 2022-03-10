@@ -25,12 +25,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Cache conda
-        uses: actions/cache@v2
-        with:
-          path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-${{ hashFiles('${{ env.ENV_FILE }}') }}
-
       - name: Set up conda 3.8
         env:
           PYTHON: 3.8
@@ -39,7 +33,7 @@ jobs:
           source ./ci/install-conda.sh
           python -m pip install --upgrade pip setuptools wheel coverage;
 
-      - name: Build Mars
+      - name: Install dependencies
         id: build
         run: |
           source ./ci/reload-env.sh
@@ -55,10 +49,7 @@ jobs:
           git remote add upstream https://github.com/mars-project/mars.git
           git fetch upstream
           asv machine --yes
-          asv continuous -f 1.1 upstream/master HEAD | sed "/failed$/ s/^/##[error]/" | tee benchmarks.log
-          if grep "failed" benchmarks.log > /dev/null ; then
-              exit 1
-          fi
+          asv continuous -f 1.1 upstream/master HEAD
         if: ${{ steps.build.outcome == 'success' }}
 
       - name: Publish benchmarks artifact

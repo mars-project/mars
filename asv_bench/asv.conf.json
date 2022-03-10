@@ -4,7 +4,7 @@
     "version": 1,
 
     // The name of the project being benchmarked
-    "project": "mars",
+    "project": "pymars",
 
     // The project's homepage
     "project_url": "https://docs.pymars.org/",
