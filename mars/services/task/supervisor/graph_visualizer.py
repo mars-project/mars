@@ -90,7 +90,9 @@ class GraphVisualizer:
             if op.key in visited:
                 continue
             for input_chunk in op.inputs or []:
-                if input_chunk.key not in visited:
+                if input_chunk.key not in visited and not isinstance(
+                    input_chunk.op, (Fetch, FetchShuffle)
+                ):
                     node_name = f'"Chunk:{input_chunk.key[:trunc_key]}"'
                     sio.write(f"{node_name} {chunk_style}\n")
                     all_nodes.append(node_name)
