@@ -7,8 +7,9 @@ global-exclude */**/tests/*.yml
 global-exclude */**/node_modules/**/*
 include setup.cfg
 include pyproject.toml
-include mars/.git-branch
 include mars/lib/mmh3_src/*
 include mars/services/web/index.html
 include mars/services/web/static/*
 global-exclude .DS_Store
+include versioneer.py
+include mars/_version.py
