@@ -49,6 +49,6 @@ cdef class Resource:
         return Resource(num_cpus=-self.num_cpus, num_gpus=-self.num_gpus, num_mem_bytes=-self.num_mem_bytes)
 
     def __repr__(self):
-        return f"Resource(num_cpus={self.num_cpus})"
+        return f"Resource(num_cpus={self.num_cpus}, num_gpus={self.num_gpus}, num_mem_bytes={self.num_mem_bytes})"
 
 ZeroResource = Resource(num_cpus=0, num_gpus=0, num_mem_bytes=0)
