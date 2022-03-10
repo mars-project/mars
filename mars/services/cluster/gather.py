@@ -142,7 +142,7 @@ def gather_node_resource(band_to_resource: Dict[str, Resource]=None, use_gpu=Tru
         if band_to_resource is None
         else band_to_resource.get("numa-0", ZeroResource).num_cpus
     )
-    num_mem_bytes = 0 if band_to_resource is None else band_to_resource.get("numa-0", ZeroResource).num_mem_bytes
+    num_mem_bytes = mem_info.total if band_to_resource is None else band_to_resource.get("numa-0", ZeroResource).num_mem_bytes
     if num_cpu:  # pragma: no branch
         res["numa-0"] = {
             "cpu_avail": mars_resource.cpu_count()
