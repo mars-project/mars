@@ -17,7 +17,6 @@ import asyncio
 import pytest
 
 from .... import oscar as mo
-from ...._version import __version__ as mars_version
 from ....utils import get_next_port
 from ... import NodeRole
 from ...web.supervisor import WebSupervisorService
@@ -123,6 +122,8 @@ async def test_web_api(actor_pool):
         )
         > 0
     )
+
+    from .... import __version__ as mars_version
 
     assert await web_api.get_mars_versions() == [mars_version]
 

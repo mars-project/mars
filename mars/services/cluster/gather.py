@@ -44,7 +44,7 @@ _is_initial = True
 def gather_node_env():
     from ...lib.mkl_interface import mkl_get_version
     from ...lib.nvutils import NVError
-    from ..._version import __version__ as mars_version
+    from ... import __version__ as mars_version
 
     global _is_initial
     if _is_initial:
