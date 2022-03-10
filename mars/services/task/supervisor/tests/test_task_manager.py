@@ -407,3 +407,49 @@ async def test_optimization(actor_pool):
                 [c.key for c in result_tileables[1].chunks]
             )
         ) == [1] * len(result_tileables[1].chunks)
+
+
+@pytest.mark.asyncio
+async def test_dump_subtask_graph(actor_pool):
+    pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
+
+    rs = np.random.RandomState(0)
+    raw = pd.DataFrame(
+        {
+            "c1": rs.randint(20, size=100),
+            "c2": rs.choice(["a", "b", "c"], (100,)),
+            "c3": rs.rand(100),
+        }
+    )
+    mdf = md.DataFrame(raw, chunk_size=20)
+    # groupby will generate multiple tasks
+    r = mdf.groupby("c2").agg("sum")
+    graph = TileableGraph([r.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await manager.submit_tileable_graph(
+        graph,
+        task_name="my_task",
+        fuse_enabled=True,
+        extra_config={"dump_subtask_graph": True},
+    )
+    assert isinstance(task_id, str)
+
+    await manager.wait_task(task_id)
+
+    result_tileable = (await manager.get_task_result_tileables(task_id))[0]
+    result = await _merge_data(result_tileable, storage_api)
+    pd.testing.assert_frame_equal(result.sort_index(), raw.groupby("c2").agg("sum"))
+
+    # read dot file
+    file_path = os.path.join(tempfile.gettempdir(), f"mars-{task_id}")
+    with open(file_path) as f:
+        text = f.read()
+        assert "style=dotted" in text
+        for c in result_tileable.chunks:
+            assert c.key[:5] in text
+    os.remove(file_path)
+
+    pdf_path = os.path.join(tempfile.gettempdir(), f"mars-{task_id}.pdf")
+    if os.path.exists(pdf_path):
+        os.remove(pdf_path)

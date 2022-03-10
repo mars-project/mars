@@ -16,7 +16,9 @@ import asyncio
 import itertools
 import logging
 import operator
+import os
 import sys
+import tempfile
 import time
 from collections import defaultdict
 from functools import reduce, wraps
@@ -50,6 +52,8 @@ from .preprocessor import TaskPreprocessor
 from .stage import TaskStageProcessor
 
 logger = logging.getLogger(__name__)
+
+MARS_ENABLE_DUMPING_SUBTASK_GRAPH = bool(os.environ.get("MARS_DUMP_SUBTASK_GRAPH", 0))
 
 
 def _record_error(func: Union[Callable, Coroutine] = None, log_when_error=True):
@@ -95,6 +99,12 @@ class TaskProcessor:
             ProfilingData.init(task.task_id)
         elif task.extra_config and task.extra_config.get("enable_profiling"):
             ProfilingData.init(task.task_id, task.extra_config["enable_profiling"])
+
+        self._dump_subtask_graph = False
+        if MARS_ENABLE_DUMPING_SUBTASK_GRAPH or (
+            task.extra_config and task.extra_config.get("dump_subtask_graph")
+        ):
+            self._dump_subtask_graph = True
 
         self.result = TaskResult(
             task_id=task.task_id,
@@ -452,8 +462,31 @@ class TaskProcessor:
             {"session_id": self._task.session_id, "task_id": self._task.task_id},
         )
 
+    def dump_subtask_graph(self):
+        from .graph_visualizer import GraphVisualizer
+
+        try:  # pragma: no cover
+            import graphviz
+        except ImportError:
+            graphviz = None
+
+        dot = GraphVisualizer(self).to_dot()
+        directory = tempfile.gettempdir()
+        file_name = f"mars-{self.task_id}"
+        logger.debug(
+            "subtask graph is stored in %s", os.path.join(directory, file_name)
+        )
+        if graphviz is not None:  # pragma: no cover
+            g = graphviz.Source(dot)
+            g.view(file_name, directory=directory)
+        else:
+            with open(os.path.join(directory, file_name), "w") as f:
+                f.write(dot)
+
     def finish(self):
         self.done.set()
+        if self._dump_subtask_graph:
+            self.dump_subtask_graph()
         if MARS_ENABLE_PROFILING or (
             self._task.extra_config and self._task.extra_config.get("enable_profiling")
         ):

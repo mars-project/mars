@@ -724,7 +724,7 @@ def build_concatenated_rows_frame(df):
     return DataFrameConcat(axis=1, output_types=[OutputType.dataframe]).new_dataframe(
         [df],
         chunks=out_chunks,
-        nsplits=((chunk.shape[0] for chunk in out_chunks), (df.shape[1],)),
+        nsplits=(tuple(chunk.shape[0] for chunk in out_chunks), (df.shape[1],)),
         shape=df.shape,
         dtypes=df.dtypes,
         index_value=df.index_value,
