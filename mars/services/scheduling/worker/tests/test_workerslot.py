@@ -26,7 +26,7 @@ from ..... import oscar as mo
 from .....oscar import ServerClosed
 from .....oscar.errors import NoFreeSlot, SlotStateError
 from .....oscar.backends.allocate_strategy import IdleLabel
-from .....tests.test_utils import wait_for_condition
+from .....tests.core import wait_for_condition
 from .....utils import get_next_port
 from ...supervisor import GlobalSlotManagerActor
 from ...worker import BandSlotManagerActor, BandSlotControlActor
