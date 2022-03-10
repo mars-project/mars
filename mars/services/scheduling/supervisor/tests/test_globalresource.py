@@ -52,7 +52,7 @@ async def test_global_resource(actor_pool):
     cluster_api = await ClusterAPI.create(pool.external_address)
     bands = await cluster_api.get_all_bands()
     band = (pool.external_address, "numa-0")
-    band_slots = bands[band]
+    band_slots = bands[band].num_cpus
 
     print(await global_slot_ref.get_idle_bands(0))
     assert band in await global_slot_ref.get_idle_bands(0)

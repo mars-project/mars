@@ -31,8 +31,8 @@ class ClusterWorkerService(AbstractService):
             "lookup_address": "<address of master>",
             "node_check_interval": check interval seconds for nodes,
             "resource": {
-                "numa-0": 8,
-                "gpu-0": 1
+                "numa-0": Resource(num_cpus=8, num_mem_bytes=1073741824),
+                "gpu-0": Resource(num_gpus=1)
             }
         }
     }
@@ -53,11 +53,13 @@ class ClusterWorkerService(AbstractService):
             uid=WorkerSupervisorLocatorActor.default_uid(),
             address=address,
         )
+        print(">>> Cluster worker service with self._config: ", self._config)
+        print(">>>     band_to_resource: ", svc_config.get("resource"))
         await mo.create_actor(
             NodeInfoUploaderActor,
             role=NodeRole.WORKER,
             interval=svc_config.get("node_check_interval"),
-            band_to_slots=svc_config.get("resource"),
+            band_to_resource=svc_config.get("resource"),
             uid=NodeInfoUploaderActor.default_uid(),
             address=address,
         )

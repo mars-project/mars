@@ -16,6 +16,7 @@ import asyncio
 import logging
 from typing import List, Dict, Optional, Set, Type, TypeVar
 
+from ... import Resource
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....typing import BandType
@@ -188,7 +189,7 @@ class ClusterAPI(AbstractClusterAPI):
         role: NodeRole = None,
         statuses: Set[NodeStatus] = None,
         exclude_statuses: Set[NodeStatus] = None,
-    ) -> Dict[BandType, int]:
+    ) -> Dict[BandType, Resource]:
         statuses = self._calc_statuses(statuses, exclude_statuses)
         node_info_ref = await self._get_node_info_ref()
         return await node_info_ref.get_all_bands(role, statuses=statuses)
@@ -217,8 +218,8 @@ class ClusterAPI(AbstractClusterAPI):
 
         Returns
         -------
-        band_to_slots : dict
-            Band to n_slot.
+        band_to_resource : dict
+            Band to resource.
         """
         return await self._uploader_ref.get_bands()
 
@@ -319,7 +320,7 @@ class MockClusterAPI(ClusterAPI):
                     NodeInfoUploaderActor,
                     NodeRole.WORKER,
                     interval=kw.get("upload_interval"),
-                    band_to_slots=kw.get("band_to_slots"),
+                    band_to_resource=kw.get("band_to_resource"),
                     use_gpu=kw.get("use_gpu", False),
                     uid=NodeInfoUploaderActor.default_uid(),
                     address=address,

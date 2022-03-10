@@ -15,6 +15,7 @@
 from enum import Enum
 from typing import Iterable, List, Optional, Tuple
 
+from .. import Resource
 from ...core import ChunkGraph, DAG
 from ...serialization.serializables import (
     Serializable,
@@ -61,6 +62,7 @@ class Subtask(Serializable):
     priority: Tuple[int, int] = TupleField("priority", FieldTypes.int32)
     rerun_time: int = Int32Field("rerun_time")
     extra_config: dict = DictField("extra_config")
+    required_resource: Resource = ReferenceField("required_resource", Resource)
 
     def __init__(
         self,

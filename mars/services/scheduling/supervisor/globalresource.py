@@ -49,9 +49,7 @@ class GlobalResourceManagerActor(mo.Actor):
             async for bands in self._cluster_api.watch_all_bands():
                 old_bands = set(self._band_total_resources.keys())
                 # TODO add `num_mem_bytes` after supported report worker memory
-                self._band_total_resources = {
-                    band: Resource(num_cpus=slot) for band, slot in bands.items()
-                }
+                self._band_total_resources = bands
                 new_bands = set(bands.keys()) - old_bands
                 for band in new_bands:
                     self._update_slot_usage(band, 0)
@@ -62,11 +60,7 @@ class GlobalResourceManagerActor(mo.Actor):
         self._band_watch_task.cancel()
 
     async def refresh_bands(self):
-        bands = await self._cluster_api.get_all_bands()
-        # TODO add `num_mem_bytes` after supported report worker memory
-        self._band_total_resources = {
-            band: Resource(num_cpus=slot) for band, slot in bands.items()
-        }
+        self._band_total_resources = await self._cluster_api.get_all_bands()
 
     @mo.extensible
     async def apply_subtask_resources(
@@ -103,8 +97,12 @@ class GlobalResourceManagerActor(mo.Actor):
     def update_subtask_slots(
         self, band: BandType, session_id: str, subtask_id: str, slots: int
     ):
+        if band[1].startswith("numa"):
+            resource = Resource(num_cpus=slots)
+        elif band[1].startswith("gpu"):
+            resource = Resource(num_gpus=slots)
         self.update_subtask_resources(
-            band, session_id, subtask_id, Resource(num_cpus=slots)
+            band, session_id, subtask_id, resource
         )
 
     @mo.extensible
@@ -135,7 +133,11 @@ class GlobalResourceManagerActor(mo.Actor):
         self._update_band_usage(band, -resource_delta)
 
     def _update_slot_usage(self, band: BandType, slots_usage_delta: float):
-        self._update_band_usage(band, Resource(num_cpus=slots_usage_delta))
+        if band[1].startswith("numa"):
+            resource = Resource(num_cpus=slots_usage_delta)
+        elif band[1].startswith("gpu"):
+            resource = Resource(num_gpus=slots_usage_delta)
+        self._update_band_usage(band, resource)
 
     def _update_band_usage(self, band: BandType, band_usage_delta: Resource):
         self._band_used_resources[band] += band_usage_delta
@@ -159,7 +161,7 @@ class GlobalResourceManagerActor(mo.Actor):
 
     def get_used_slots(self) -> Dict[BandType, float]:
         return {
-            band: resource.num_cpus
+            band: resource.num_cpus or resource.num_gpus
             for band, resource in self.get_used_resources().items()
         }
 
@@ -168,7 +170,7 @@ class GlobalResourceManagerActor(mo.Actor):
 
     def get_remaining_slots(self) -> Dict[BandType, float]:
         return {
-            band: resource.num_cpus
+            band: resource.num_cpus or resource.num_gpus
             for band, resource in self.get_remaining_resources().items()
         }
 

@@ -14,8 +14,8 @@
 
 import os
 
-from ...resource import cpu_count, cuda_count
-from ...services import NodeRole
+from ...resource import cpu_count, cuda_count, mem_total
+from ...services import NodeRole, Resource
 from ...utils import get_next_port
 from .cmdline import OscarCommandRunner
 from .local import start_worker, stop_worker
@@ -28,7 +28,7 @@ class WorkerCommandRunner(OscarCommandRunner):
 
     def __init__(self):
         super().__init__()
-        self.band_to_slot = dict()
+        self.band_to_resource = dict()
         self.cuda_devices = []
         self.n_io_process = 1
 
@@ -58,6 +58,7 @@ class WorkerCommandRunner(OscarCommandRunner):
         self.n_io_process = int(args.n_io_process)
 
         n_cpu = cpu_count() if args.n_cpu == "auto" else int(args.n_cpu)
+        n_mem_bytes = mem_total() if args.n_mem_bytes == "auto" else int(args.n_mem_bytes)
 
         if "CUDA_VISIBLE_DEVICES" in os.environ:  # pragma: no cover
             args.cuda_devices = os.environ["CUDA_VISIBLE_DEVICES"].strip()
@@ -70,10 +71,10 @@ class WorkerCommandRunner(OscarCommandRunner):
         else:  # pragma: no cover
             self.cuda_devices = [int(i) for i in args.cuda_devices.split(",")]
 
-        self.band_to_slot = band_to_slot = dict()
-        band_to_slot["numa-0"] = n_cpu
+        self.band_to_resource = band_to_resource = dict()
+        band_to_resource["numa-0"] = Resource(num_cpus=n_cpu, num_mem_bytes=n_mem_bytes)
         for i in self.cuda_devices:  # pragma: no cover
-            band_to_slot[f"gpu-{i}"] = 1
+            band_to_resource[f"gpu-{i}"] = Resource(num_gpus=1)
 
         storage_config = self.config["storage"] = self.config.get("storage", {})
         backends = storage_config["backends"] = storage_config.get("backends", [])
@@ -92,7 +93,7 @@ class WorkerCommandRunner(OscarCommandRunner):
     async def create_actor_pool(self):
         return await create_worker_actor_pool(
             self.args.endpoint,
-            self.band_to_slot,
+            self.band_to_resource,
             ports=self.ports,
             n_io_process=self.n_io_process,
             modules=list(self.args.load_modules),
@@ -106,7 +107,7 @@ class WorkerCommandRunner(OscarCommandRunner):
         return await start_worker(
             self.pool.external_address,
             self.args.supervisors,
-            self.band_to_slot,
+            self.band_to_resource,
             list(self.args.load_modules),
             self.config,
         )

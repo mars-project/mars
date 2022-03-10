@@ -17,6 +17,7 @@ from typing import Dict, List
 
 from ... import oscar as mo
 from ...resource import cuda_count
+from ...services import Resource
 
 try:
     from IPython import get_ipython
@@ -46,7 +47,7 @@ async def create_supervisor_actor_pool(
 
 async def create_worker_actor_pool(
     address: str,
-    band_to_slots: Dict[str, int],
+    band_to_resource: Dict[str, Resource],
     n_io_process: int = 1,
     modules: List[str] = None,
     ports: List[int] = None,
@@ -55,7 +56,7 @@ async def create_worker_actor_pool(
     **kwargs,
 ):
     # TODO: support NUMA when ready
-    n_process = sum(slot for slot in band_to_slots.values())
+    n_process = sum(resource.num_cpus or resource.num_gpus for resource in band_to_resource.values())
     envs = []
     labels = ["main"]
 
@@ -67,15 +68,15 @@ async def create_worker_actor_pool(
             cuda_devices = [int(i) for i in env_devices.split(",")]
 
     i_gpu = iter(sorted(cuda_devices))
-    for band, slot in band_to_slots.items():
+    for band, resource in band_to_resource.items():
         if band.startswith("gpu"):  # pragma: no cover
             idx = str(next(i_gpu))
             envs.append({"CUDA_VISIBLE_DEVICES": idx})
             labels.append(f"gpu-{idx}")
         else:
             assert band.startswith("numa")
-            envs.extend([dict() for _ in range(slot)])
-            labels.extend([band] * slot)
+            envs.extend([dict() for _ in range(resource.num_cpus)])
+            labels.extend([band] * resource.num_cpus)
 
     suspend_sigint = get_ipython is not None and get_ipython() is not None
     return await mo.create_actor_pool(
