@@ -28,6 +28,7 @@ from ...core import (
     DataFrame,
     DATAFRAME_CHUNK_TYPE,
 )
+from ...datasource.from_tensor import dataframe_from_tensor
 from ..iloc import (
     DataFrameIlocGetItem,
     DataFrameIlocSetItem,
@@ -931,3 +932,24 @@ def test_reindex():
 
     with pytest.raises(ValueError):
         df.reindex([1, 2], fill_value=mt.tensor([1, 2]))
+
+
+def test_getitem_lazy_chunk_meta():
+    df = dataframe_from_tensor(mt.random.rand(10, 3, chunk_size=3))
+    df2 = df[[0, 2]]
+    df2 = tile(df2)
+
+    chunk = df2.chunks[0].data
+    assert chunk._FIELD_VALUES.get("_dtypes") is None
+    pd.testing.assert_series_equal(chunk.dtypes, df.dtypes[[0, 2]])
+    assert chunk._FIELD_VALUES.get("_index_value") is None
+    pd.testing.assert_index_equal(chunk.index_value.to_pandas(), pd.RangeIndex(3))
+    assert chunk._FIELD_VALUES.get("_columns_value") is None
+    pd.testing.assert_index_equal(chunk.columns_value.to_pandas(), pd.Index([0, 2]))
+
+    df2 = df[2]
+    df2 = tile(df2)
+
+    chunk = df2.chunks[0].data
+    assert chunk._FIELD_VALUES.get("_index_value") is None
+    pd.testing.assert_index_equal(chunk.index_value.to_pandas(), pd.RangeIndex(3))
