@@ -76,7 +76,7 @@ class EntityData(Base):
 
         return Source(dot)
 
-    def _need_be_executed(self):  # pylint: disable=no-self-use
+    def _need_execution(self):  # pylint: disable=no-self-use
         # some tileable may generate unknown meta,
         # they need to be executed first
         return False
@@ -145,8 +145,8 @@ class Entity(Serializable):
         except AttributeError:
             return setattr(self._data, key, value)
 
-    def _need_be_executed(self):
-        return self._data._need_be_executed()
+    def _need_execution(self):
+        return self._data._need_execution()
 
 
 ENTITY_TYPE = (Entity, EntityData)

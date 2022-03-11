@@ -2218,7 +2218,7 @@ class DataFrameData(_BatchedFetcher, BaseDataFrameData):
         for batch_data in self.iterbatch(batch_size=batch_size, session=session):
             yield from getattr(batch_data, "itertuples")(index=index, name=name)
 
-    def _need_be_executed(self):
+    def _need_execution(self):
         if self._dtypes is None:
             return True
         return False

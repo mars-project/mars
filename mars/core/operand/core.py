@@ -47,7 +47,7 @@ class TileableOperandMixin:
             return
 
         for inp in inputs:
-            if inp is not None and inp._need_be_executed():
+            if inp is not None and inp._need_execution():
                 raise ValueError(
                     f"{inp} has unknown dtypes, "
                     f"it must be executed first before {str(type(self))}"
