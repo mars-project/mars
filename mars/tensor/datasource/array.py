@@ -178,8 +178,6 @@ def tensor(
         if gpu is None:
             if cp is not None and m is cp:
                 gpu = True
-            elif m is np:
-                gpu = False
 
     if is_array(data):
         if data.ndim == 0:

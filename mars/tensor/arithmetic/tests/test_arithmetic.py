@@ -51,7 +51,7 @@ def test_add():
     t2 = ones(4, chunk_size=2)
     t3 = t1 + t2
     k1 = t3.key
-    assert t3.op.gpu is False
+    assert t3.op.gpu is None
     t1, t2, t3 = tile(t1, t2, t3)
     assert t3.key != k1
     assert t3.shape == (3, 4)

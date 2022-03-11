@@ -178,7 +178,7 @@ def test_ones():
 def test_zeros():
     tensor = zeros((2, 3, 4))
     assert len(list(tensor)) == 2
-    assert tensor.op.gpu is False
+    assert tensor.op.gpu is None
 
     tensor2 = zeros((2, 3, 4), chunk_size=1)
     # tensor's op key must be equal to tensor2
@@ -208,7 +208,7 @@ def test_data_source():
 
     data = np.random.random((10, 3))
     t = tensor(data, chunk_size=2)
-    assert t.op.gpu is False
+    assert t.op.gpu is None
     t = tile(t)
     assert (t.chunks[0].op.data == data[:2, :2]).all()
     assert (t.chunks[1].op.data == data[:2, 2:3]).all()
@@ -226,7 +226,7 @@ def test_data_source():
     assert t.chunks[0].op.gpu is True
 
     t = full((2, 2), 2, dtype="f4")
-    assert t.op.gpu is False
+    assert t.op.gpu is None
     assert t.shape == (2, 2)
     assert t.dtype == np.float32
 
