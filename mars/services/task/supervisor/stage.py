@@ -172,7 +172,7 @@ class TaskStageProcessor:
                                 result.traceback,
                             ),
                         )
-                    if result.status == SubtaskStatus.cancelled:
+                    if result.status == SubtaskStatus.cancelled:  # pragma: no cover
                         logger.warning(
                             "Subtask %s from band %s canceled.",
                             subtask.subtask_id,

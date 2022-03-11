@@ -125,7 +125,7 @@ class SubtaskManagerActor(mo.Actor):
                 )
                 if subtask_max_reschedules is None:
                     subtask_max_reschedules = self._subtask_max_reschedules
-                if subtask.subtask_id in self._subtask_infos:
+                if subtask.subtask_id in self._subtask_infos:  # pragma: no cover
                     raise KeyError(f"Subtask {subtask.subtask_id} already added.")
                 self._subtask_infos[subtask.subtask_id] = SubtaskScheduleInfo(
                     subtask, max_reschedules=subtask_max_reschedules
@@ -214,7 +214,7 @@ class SubtaskManagerActor(mo.Actor):
         return subtasks
 
     async def submit_subtask_to_band(self, subtask_id: str, band: BandType):
-        if subtask_id not in self._subtask_infos:
+        if subtask_id not in self._subtask_infos:  # pragma: no cover
             logger.info(
                 "Subtask %s is not in added subtasks set, it may be finished or canceled, skip it.",
                 subtask_id,

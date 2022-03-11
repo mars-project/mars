@@ -143,7 +143,7 @@ class GraphAnalyzer:
             if expect_worker is None:
                 expect_worker = chunk.op.expect_worker
                 bands_specified = expect_worker is not None
-            else:
+            else:  # pragma: no cover
                 assert (
                     chunk.op.expect_worker is None
                     or expect_worker == chunk.op.expect_worker
