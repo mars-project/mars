@@ -54,7 +54,7 @@ class Scalar(TensorNoInput):
         ctx[chunk.key] = create_array(op)("asarray", op.data)
 
 
-def scalar(data, dtype=None, gpu=False):
+def scalar(data, dtype=None, gpu=None):
     try:
         arr = np.array(data, dtype=dtype)
         op = Scalar(arr, dtype=arr.dtype, gpu=gpu)

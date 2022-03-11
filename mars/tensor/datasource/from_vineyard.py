@@ -185,10 +185,10 @@ def fromvineyard(tensor, vineyard_socket=None):
         vineyard_socket=vineyard_socket,
         object_id=object_id,
         dtype=np.dtype("byte"),
-        gpu=False,
+        gpu=None,
     )
     meta = metaop(shape=(np.nan,), chunk_size=(np.nan,))
     op = TensorFromVineyardChunk(
-        vineyard_socket=vineyard_socket, object_id=object_id, gpu=False
+        vineyard_socket=vineyard_socket, object_id=object_id, gpu=None
     )
     return op(meta)
