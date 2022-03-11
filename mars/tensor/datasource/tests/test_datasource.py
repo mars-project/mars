@@ -286,7 +286,7 @@ def test_diag():
     t = diag(v)
 
     assert t.shape == (4,)
-    assert t.op.gpu is False
+    assert t.op.gpu is None
     t = tile(t)
     assert t.nsplits == ((2, 2),)
 
@@ -382,7 +382,7 @@ def test_triu_tril():
 
     t = triu(a)
 
-    assert t.op.gpu is False
+    assert t.op.gpu is None
 
     t = tile(t)
     assert len(t.chunks) == 4
@@ -420,7 +420,7 @@ def test_triu_tril():
 
     t = tril(a)
 
-    assert t.op.gpu is False
+    assert t.op.gpu is None
 
     t = tile(t)
     assert len(t.chunks) == 4
@@ -528,7 +528,7 @@ def test_ones_like():
     assert isinstance(t, SparseTensor)
     assert isinstance(t.op, TensorOnesLike)
     assert t.issparse() is True
-    assert t.op.gpu is False
+    assert t.op.gpu is None
 
     t = tile(t)
     assert t.chunks[0].index == (0, 0)

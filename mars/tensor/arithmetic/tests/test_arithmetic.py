@@ -96,7 +96,7 @@ def test_add():
     t1 = tensor([[0, 1, 0], [1, 0, 0]], chunk_size=2).tosparse()
 
     t = t1 + 1
-    assert t.op.gpu is False
+    assert t.op.gpu is None
     assert t.issparse() is True
     assert type(t) is SparseTensor
 
@@ -416,7 +416,7 @@ def test_negative():
     t1 = tensor([[0, 1, 0], [1, 0, 0]], chunk_size=2).tosparse()
 
     t = negative(t1)
-    assert t.op.gpu is False
+    assert t.op.gpu is None
     assert t.issparse() is True
     assert type(t) is SparseTensor
 
