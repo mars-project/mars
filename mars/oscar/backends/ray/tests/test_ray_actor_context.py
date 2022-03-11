@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import inspect
+import time
 
 import pytest
 
@@ -27,11 +28,10 @@ from ..utils import process_placement_to_address
 
 ray = lazy_import("ray")
 
-pg_name, n_process = "ray_cluster", 2
-
 
 @pytest.fixture
 async def actor_pool_context():
+    pg_name, n_process = f"ray_cluster_{time.time_ns()}", 2
     from .....serialization.ray import (
         register_ray_serializers,
         unregister_ray_serializers,
@@ -78,8 +78,7 @@ async def actor_pool_context():
             ray.kill(ray.get_actor(addr))
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
             pass
-    if hasattr(ray.util, "get_placement_group"):
-        ray.util.remove_placement_group(pg)
+    ray.util.remove_placement_group(pg)
     Router.set_instance(None)
     unregister_ray_serializers()
     RayServer.clear()
@@ -87,65 +86,67 @@ async def actor_pool_context():
 
 @require_ray
 @pytest.mark.asyncio
-async def test_simple_local_actor_pool(ray_start_regular, actor_pool_context):
+async def test_simple_local_actor_pool(ray_start_regular_shared, actor_pool_context):
     await test_mars_actor_context.test_simple_local_actor_pool(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_mars_post_create_pre_destroy(ray_start_regular, actor_pool_context):
+async def test_mars_post_create_pre_destroy(
+    ray_start_regular_shared, actor_pool_context
+):
     await test_mars_actor_context.test_mars_post_create_pre_destroy(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_mars_create_actor(ray_start_regular, actor_pool_context):
+async def test_mars_create_actor(ray_start_regular_shared, actor_pool_context):
     await test_mars_actor_context.test_mars_create_actor(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_mars_create_actor_error(ray_start_regular, actor_pool_context):
+async def test_mars_create_actor_error(ray_start_regular_shared, actor_pool_context):
     await test_mars_actor_context.test_mars_create_actor_error(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_mars_send(ray_start_regular, actor_pool_context):
+async def test_mars_send(ray_start_regular_shared, actor_pool_context):
     await test_mars_actor_context.test_mars_send(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_mars_send_error(ray_start_regular, actor_pool_context):
+async def test_mars_send_error(ray_start_regular_shared, actor_pool_context):
     await test_mars_actor_context.test_mars_send_error(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_mars_tell(ray_start_regular, actor_pool_context):
+async def test_mars_tell(ray_start_regular_shared, actor_pool_context):
     await test_mars_actor_context.test_mars_tell(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_mars_batch_method(ray_start_regular, actor_pool_context):
+async def test_mars_batch_method(ray_start_regular_shared, actor_pool_context):
     await test_mars_actor_context.test_mars_batch_method(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_mars_destroy_has_actor(ray_start_regular, actor_pool_context):
+async def test_mars_destroy_has_actor(ray_start_regular_shared, actor_pool_context):
     await test_mars_actor_context.test_mars_destroy_has_actor(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_mars_resource_lock(ray_start_regular, actor_pool_context):
+async def test_mars_resource_lock(ray_start_regular_shared, actor_pool_context):
     await test_mars_actor_context.test_mars_resource_lock(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_promise_chain(ray_start_regular, actor_pool_context):
+async def test_promise_chain(ray_start_regular_shared, actor_pool_context):
     await test_mars_actor_context.test_promise_chain(actor_pool_context)
