@@ -139,6 +139,7 @@ class GraphVisualizer:
         # write subgraph info
         sio.write(f"subgraph {subgraph_name} {{\n")
         nodes_str = " ".join(all_nodes)
-        sio.write(f"{nodes_str};\n}}")
+        sio.write(f"{nodes_str};\n")
+        sio.write(f'label="{subtask.subtask_id}";\n}}')
         sio.write("\n")
         return sio.getvalue()

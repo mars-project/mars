@@ -53,7 +53,7 @@ from .stage import TaskStageProcessor
 
 logger = logging.getLogger(__name__)
 
-MARS_ENABLE_DUMPING_SUBTASK_GRAPH = bool(os.environ.get("MARS_DUMP_SUBTASK_GRAPH", 0))
+MARS_ENABLE_DUMPING_SUBTASK_GRAPH = int(os.environ.get("MARS_DUMP_SUBTASK_GRAPH", 0))
 
 
 def _record_error(func: Union[Callable, Coroutine] = None, log_when_error=True):
