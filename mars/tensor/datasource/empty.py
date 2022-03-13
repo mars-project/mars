@@ -66,7 +66,7 @@ class TensorEmpty(TensorEmptyBase, TensorNoInput):
         )
 
 
-def empty(shape, dtype=None, chunk_size=None, gpu=False, order="C"):
+def empty(shape, dtype=None, chunk_size=None, gpu=None, order="C"):
     """
     Return a new tensor of given shape and type, without initializing entries.
 

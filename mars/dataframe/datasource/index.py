@@ -248,7 +248,7 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
                 ctx[out.key] = pd.Index(inp, dtype=dtype, name=out.name)
 
 
-def from_pandas(data, chunk_size=None, gpu=False, sparse=False, store_data=False):
+def from_pandas(data, chunk_size=None, gpu=None, sparse=False, store_data=False):
     op = IndexDataSource(
         data=data, gpu=gpu, sparse=sparse, dtype=data.dtype, store_data=store_data
     )
