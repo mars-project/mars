@@ -57,7 +57,7 @@ class TensorFull(TensorNoInput):
         )
 
 
-def full(shape, fill_value, dtype=None, chunk_size=None, gpu=False, order="C"):
+def full(shape, fill_value, dtype=None, chunk_size=None, gpu=None, order="C"):
     """
     Return a new tensor of given shape and type, filled with `fill_value`.
 

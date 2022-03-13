@@ -57,7 +57,7 @@ class TensorOnes(TensorNoInput):
             ctx[chunk.key] = convert_order(x, op.order)
 
 
-def ones(shape, dtype=None, chunk_size=None, gpu=False, order="C"):
+def ones(shape, dtype=None, chunk_size=None, gpu=None, order="C"):
     """
     Return a new tensor of given shape and type, filled with ones.
 

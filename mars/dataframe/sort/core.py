@@ -52,7 +52,7 @@ class DataFrameSortOperand(DataFrameOperand):
         parallel_kind=None,
         psrs_kinds=None,
         nrows=None,
-        gpu=False,
+        gpu=None,
         **kw
     ):
         super().__init__(
