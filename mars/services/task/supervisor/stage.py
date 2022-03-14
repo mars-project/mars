@@ -88,6 +88,11 @@ class TaskStageProcessor:
         return self._cancelled.is_set()
 
     async def _schedule_subtasks(self, subtasks: List[Subtask]):
+        subtasks = [
+            subtask
+            for subtask in subtasks
+            if subtask.subtask_id not in self._submitted_subtask_ids
+        ]
         if not subtasks:
             return
         self._submitted_subtask_ids.update(subtask.subtask_id for subtask in subtasks)
@@ -117,7 +122,7 @@ class TaskStageProcessor:
 
     async def set_subtask_result(self, result: SubtaskResult):
         subtask = self.subtask_id_to_subtask[result.subtask_id]
-        self.subtask_results[subtask] = result.update(self.subtask_results.get(subtask))
+        #  update subtask_results in `TaskProcessorActor.set_subtask_result`
         self._submitted_subtask_ids.difference_update([result.subtask_id])
 
         all_done = len(self.subtask_results) == len(self.subtask_graph)
