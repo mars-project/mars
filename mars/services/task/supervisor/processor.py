@@ -16,7 +16,9 @@ import asyncio
 import itertools
 import logging
 import operator
+import os
 import sys
+import tempfile
 import time
 from collections import defaultdict
 from functools import reduce, wraps
@@ -45,6 +47,8 @@ from .preprocessor import TaskPreprocessor
 from .stage import TaskStageProcessor
 
 logger = logging.getLogger(__name__)
+
+MARS_ENABLE_DUMPING_SUBTASK_GRAPH = int(os.environ.get("MARS_DUMP_SUBTASK_GRAPH", 0))
 
 
 def _record_error(func: Union[Callable, Coroutine] = None, log_when_error=True):
@@ -86,6 +90,12 @@ class TaskProcessor:
         self._scheduling_api = scheduling_api
         self._meta_api = meta_api
 
+        self._dump_subtask_graph = False
+        if MARS_ENABLE_DUMPING_SUBTASK_GRAPH or (
+            task.extra_config and task.extra_config.get("dump_subtask_graph")
+        ):
+            self._dump_subtask_graph = True
+
         self.result = TaskResult(
             task_id=task.task_id,
             session_id=task.session_id,
@@ -100,6 +110,10 @@ class TaskProcessor:
         self._chunk_graph_iter = None
         self._raw_tile_context = preprocessor.tile_context.copy()
         self._lifecycle_processed_tileables = set()
+
+    @property
+    def task_id(self):
+        return self._task.task_id
 
     @property
     def preprocessor(self):
@@ -373,8 +387,31 @@ class TaskProcessor:
             self.result.error = err
             self.result.traceback = tb
 
+    def dump_subtask_graph(self):
+        from .graph_visualizer import GraphVisualizer
+
+        try:  # pragma: no cover
+            import graphviz
+        except ImportError:
+            graphviz = None
+
+        dot = GraphVisualizer(self).to_dot()
+        directory = tempfile.gettempdir()
+        file_name = f"mars-{self.task_id}"
+        logger.debug(
+            "subtask graph is stored in %s", os.path.join(directory, file_name)
+        )
+        if graphviz is not None:  # pragma: no cover
+            g = graphviz.Source(dot)
+            g.view(file_name, directory=directory)
+        else:
+            with open(os.path.join(directory, file_name), "w") as f:
+                f.write(dot)
+
     def finish(self):
         self.done.set()
+        if self._dump_subtask_graph:
+            self.dump_subtask_graph()
 
     def is_done(self) -> bool:
         return self.done.is_set()
