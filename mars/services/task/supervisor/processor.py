@@ -112,6 +112,10 @@ class TaskProcessor:
         self._lifecycle_processed_tileables = set()
 
     @property
+    def task_id(self):
+        return self._task.task_id
+
+    @property
     def preprocessor(self):
         return self._preprocessor
 
