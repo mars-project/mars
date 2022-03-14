@@ -109,7 +109,7 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
                 needs_put = True
         if needs_put:
             tensor_id = client.put(
-                ctx[op.inputs[0].key], partition_index=op.inputs[0].index
+                np.asarray(ctx[op.inputs[0].key]), partition_index=op.inputs[0].index
             )
         else:  # pragma: no cover
             meta = client.get_meta(tensor_id)
