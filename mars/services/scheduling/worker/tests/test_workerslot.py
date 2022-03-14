@@ -270,10 +270,10 @@ async def test_report_usage(actor_pool: ActorPoolType):
     await slot_manager_ref.acquire_free_slot(("session_id", "subtask_id"))
     await asyncio.sleep(1.3)
 
-    global_slot_ref = await mo.actor_ref(
+    global_resource_ref = await mo.actor_ref(
         uid=GlobalResourceManagerActor.default_uid(), address=pool.external_address
     )
-    _band, session_id, subtask_id, slots = await global_slot_ref.get_result()
+    _band, session_id, subtask_id, slots = await global_resource_ref.get_result()
     assert slots == pytest.approx(1.0)
     assert session_id == "session_id"
     assert subtask_id == "subtask_id"

@@ -74,7 +74,7 @@ class SubtaskManagerActor(mo.Actor):
         self._subtask_max_reschedules = subtask_max_reschedules
 
         self._queueing_ref = None
-        self._global_slot_ref = None
+        self._global_resource_ref = None
 
     async def __post_create__(self):
         from .queueing import SubtaskQueueingActor
@@ -84,7 +84,7 @@ class SubtaskManagerActor(mo.Actor):
         )
         from ..supervisor import GlobalResourceManagerActor
 
-        self._global_slot_ref = await mo.actor_ref(
+        self._global_resource_ref = await mo.actor_ref(
             GlobalResourceManagerActor.default_uid(), address=self.address
         )
 
@@ -225,7 +225,7 @@ class SubtaskManagerActor(mo.Actor):
                 raise ex
             finally:
                 # make sure slot is released before marking tasks as finished
-                await self._global_slot_ref.release_subtask_slots(
+                await self._global_resource_ref.release_subtask_slots(
                     band,
                     subtask_info.subtask.session_id,
                     subtask_info.subtask.subtask_id,

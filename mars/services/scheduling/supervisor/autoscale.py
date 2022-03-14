@@ -36,7 +36,7 @@ class AutoscalerActor(mo.Actor):
         self._autoscale_conf = autoscale_conf
         self._cluster_api = None
         self.queueing_refs = dict()
-        self.global_slot_ref = None
+        self.global_resource_ref = None
         self._dynamic_workers: Set[str] = set()
 
     async def __post_create__(self):
@@ -48,7 +48,7 @@ class AutoscalerActor(mo.Actor):
             strategy_cls = PendingTaskBacklogStrategy
         from ..supervisor import GlobalResourceManagerActor
 
-        self.global_slot_ref = await mo.actor_ref(
+        self.global_resource_ref = await mo.actor_ref(
             GlobalResourceManagerActor.default_uid(), address=self.address
         )
         self._cluster_api = await ClusterAPI.create(self.address)
@@ -114,14 +114,14 @@ class AutoscalerActor(mo.Actor):
             )
         # Ensure global_slot_manager get latest bands timely, so that we can invoke `wait_band_idle`
         # to ensure there won't be new tasks scheduled to the stopping worker.
-        await self.global_slot_ref.refresh_bands()
+        await self.global_resource_ref.refresh_bands()
         excluded_bands = set(b for bands in workers_bands.values() for b in bands)
 
         async def release_worker(address):
             logger.info("Start to release worker %s.", address)
             worker_bands = workers_bands[address]
             await asyncio.gather(
-                *[self.global_slot_ref.wait_band_idle(band) for band in worker_bands]
+                *[self.global_resource_ref.wait_band_idle(band) for band in worker_bands]
             )
             await self._migrate_data_of_bands(worker_bands, excluded_bands)
             await self._cluster_api.release_worker(address)
@@ -353,7 +353,7 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
 
     async def _scale_in(self):
         idle_bands = set(
-            await self._autoscaler.global_slot_ref.get_idle_bands(
+            await self._autoscaler.global_resource_ref.get_idle_bands(
                 self._worker_idle_timeout
             )
         )

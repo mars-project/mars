@@ -190,7 +190,7 @@ async def actor_pool(request):
         )
 
         # create global slot manager actor
-        global_slot_ref = await mo.create_actor(
+        global_resource_ref = await mo.create_actor(
             MockGlobalSlotManagerActor,
             uid=GlobalResourceManagerActor.default_uid(),
             address=pool.external_address,
@@ -208,7 +208,7 @@ async def actor_pool(request):
         finally:
             await mo.destroy_actor(task_manager_ref)
             await mo.destroy_actor(band_slot_ref)
-            await mo.destroy_actor(global_slot_ref)
+            await mo.destroy_actor(global_resource_ref)
             await mo.destroy_actor(quota_ref)
             await mo.destroy_actor(execution_ref)
             await MockStorageAPI.cleanup(pool.external_address)

@@ -124,7 +124,7 @@ class BandSlotManagerActor(mo.Actor):
     async def __pre_destroy__(self):
         self._usage_upload_task.cancel()
 
-    async def _get_global_slot_ref(self):
+    async def _get_global_resource_ref(self):
         if self._global_slots_ref is not None:
             return self._global_slots_ref
 
@@ -243,7 +243,7 @@ class BandSlotManagerActor(mo.Actor):
     async def upload_slot_usages(self, periodical: bool = False):
         delays = []
         slot_infos = []
-        global_slots_ref = await self._get_global_slot_ref()
+        global_slots_ref = await self._get_global_resource_ref()
         for slot_id, proc in self._slot_to_proc.items():
             if slot_id not in self._slot_to_session_stid:
                 continue
