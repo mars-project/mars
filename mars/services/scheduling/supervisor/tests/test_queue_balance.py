@@ -17,13 +17,13 @@ import pytest
 from collections import defaultdict
 from typing import Tuple, List
 from ..... import oscar as mo
+from .....resource import Resource
 from ....cluster import ClusterAPI
 from ....cluster.core import NodeRole, NodeStatus
 from ....cluster.uploader import NodeInfoUploaderActor
 from ....cluster.supervisor.locator import SupervisorPeerLocatorActor
 from ....cluster.supervisor.node_info import NodeInfoCollectorActor
 from ....subtask import Subtask
-from .... import Resource
 from ...supervisor import (
     AssignerActor,
     SubtaskManagerActor,

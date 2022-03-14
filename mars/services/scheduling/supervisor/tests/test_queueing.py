@@ -16,9 +16,9 @@ import pytest
 from typing import Tuple, List
 
 from ..... import oscar as mo
+from .....resource import Resource
 from ....cluster import MockClusterAPI
 from ....subtask import Subtask
-from .... import Resource
 from ...supervisor import (
     AssignerActor,
     SubtaskManagerActor,

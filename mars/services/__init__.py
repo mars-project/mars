@@ -19,4 +19,3 @@ from .core import (
     create_service_session,
     destroy_service_session,
 )
-from ._core import Resource, ZeroResource
