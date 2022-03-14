@@ -887,6 +887,11 @@ class TaskProcessorActor(mo.Actor):
             stage_processor.subtask_snapshots.get(subtask)
         )
         if subtask_result.status.is_done:
+            # update stage_processor.subtask_results to avoid concurrent set_subtask_result
+            # since we release lock when `_decref_input_subtasks`.
+            stage_processor.subtask_results[subtask] = subtask_result.update(
+                stage_processor.subtask_results.get(subtask)
+            )
             try:
                 # Since every worker will call supervisor to set subtask result,
                 # we need to release actor lock to make `decref_chunks` parallel to avoid blocking
