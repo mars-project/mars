@@ -17,9 +17,9 @@ import asyncio
 import pytest
 
 from ..... import oscar as mo
+from .....resource import Resource
 from ....cluster import ClusterAPI, MockClusterAPI
 from ....session import MockSessionAPI
-from .... import Resource
 from ...supervisor import GlobalResourceManagerActor
 
 

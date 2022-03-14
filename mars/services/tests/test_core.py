@@ -15,6 +15,7 @@
 import pytest
 from tornado import httpclient
 
+from .....resource import Resource
 from ... import oscar as mo
 from ...utils import get_next_port
 from .. import (
@@ -24,7 +25,6 @@ from .. import (
     create_service_session,
     destroy_service_session,
 )
-from .._core import Resource, ZeroResource
 
 
 @pytest.fixture

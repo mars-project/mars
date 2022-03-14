@@ -19,8 +19,8 @@ from collections import defaultdict
 from typing import List, DefaultDict, Dict, Tuple
 
 from .... import oscar as mo
+from ....resource import Resource
 from ....typing import BandType
-from ... import Resource, ZeroResource
 
 logger = logging.getLogger(__name__)
 

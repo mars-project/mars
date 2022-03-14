@@ -25,7 +25,11 @@ from typing import List, Optional
 import psutil
 
 from .lib import nvutils
+from ._resource import Resource, ZeroResource
 from .utils import get_bool_environ
+
+Resource = Resource
+ZeroResource = ZeroResource
 
 logger = logging.getLogger(__name__)
 
