@@ -96,6 +96,11 @@ class TaskStageProcessor:
         return self._cancelled.is_set()
 
     async def _schedule_subtasks(self, subtasks: List[Subtask]):
+        subtasks = [
+            subtask
+            for subtask in subtasks
+            if subtask.subtask_id not in self._submitted_subtask_ids
+        ]
         if not subtasks:
             return
         self._submitted_subtask_ids.update(subtask.subtask_id for subtask in subtasks)
