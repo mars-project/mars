@@ -93,8 +93,8 @@ class DataFrameDuplicated(DuplicateOperand):
     def _gen_intermediate_chunk_params(cls, op: "DataFrameDuplicated", input_chunk):
         inp = op.input
         chunk_params = dict()
-        chunk_params["index"] = input_chunk.index[:1] + (0,) * (inp.ndim - 1)
         chunk_params["shape"] = shape = cls._get_intermediate_shape(input_chunk.shape)
+        chunk_params["index"] = input_chunk.index[:1] + (0,) * (len(shape) - 1)
         chunk_params["index_value"] = gen_unknown_index_value(
             input_chunk.index_value, input_chunk
         )

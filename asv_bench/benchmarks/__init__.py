@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# Copyright 1999-2021 Alibaba Group Holding Ltd.
+# Copyright 1999-2022 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,12 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from .config import options
-from .core.context import get_context
-from .session import new_session, execute, fetch, fetch_log, stop_server
-from .deploy.oscar import new_cluster_in_ray, new_ray_session
-
-from . import _version
-
-__version__ = _version.get_versions()["version"]

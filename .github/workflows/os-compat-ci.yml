@@ -1,6 +1,11 @@
 name: Mars CI for OS compatibility
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    types: ['opened', 'reopened', 'synchronize']
 
 jobs:
   build:

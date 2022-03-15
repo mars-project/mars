@@ -166,7 +166,9 @@ class BandSlotManagerActor(mo.Actor):
                 f"the releasing session_stid: {session_stid}"
             )
         acquired_slot_id = self._session_stid_to_slot.pop(acquired_session_stid)
-        assert acquired_slot_id == slot_id
+        assert (
+            acquired_slot_id == slot_id
+        ), f"{acquired_session_stid}: acquired_slot_id {acquired_slot_id} != slot_id {slot_id}"
 
         logger.debug("Slot %d released", slot_id)
 

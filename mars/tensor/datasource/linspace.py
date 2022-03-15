@@ -123,7 +123,7 @@ def linspace(
     endpoint=True,
     retstep=False,
     dtype=None,
-    gpu=False,
+    gpu=None,
     chunk_size=None,
 ):
     """

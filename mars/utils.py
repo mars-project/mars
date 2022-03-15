@@ -37,7 +37,18 @@ import warnings
 import zlib
 from abc import ABC
 from contextlib import contextmanager
-from typing import Any, List, Dict, Set, Tuple, Type, Union, Callable, Optional
+from typing import (
+    Any,
+    List,
+    Dict,
+    NamedTuple,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    Callable,
+    Optional,
+)
 from types import TracebackType
 
 import numpy as np
@@ -52,7 +63,6 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     tokenize,
     tokenize_int,
     register_tokenizer,
-    insert_reversed_tuple,
     ceildiv,
     Timer,
 )
@@ -69,7 +79,6 @@ OBJECT_FIELD_OVERHEAD = 50
 TypeDispatcher = TypeDispatcher
 tokenize = tokenize
 register_tokenizer = register_tokenizer
-insert_reversed_tuple = insert_reversed_tuple
 ceildiv = ceildiv
 
 
@@ -208,23 +217,22 @@ def readable_size(size: int, trunc: bool = False) -> str:
 _git_info = None
 
 
+class GitInfo(NamedTuple):
+    commit_hash: str
+    commit_ref: str
+
+
 def git_info():
-    from ._version import get_git_info
+    from ._version import get_versions
 
     global _git_info
-    if _git_info is not None:
-        if _git_info == ":INVALID:":
-            return None
-        else:
-            return _git_info
 
-    git_tuple = get_git_info()
-    if git_tuple is None:
-        _git_info = ":INVALID:"
-        return None
-    else:
-        _git_info = git_tuple
-        return git_tuple
+    if _git_info is not None:
+        return _git_info
+
+    versions = get_versions()
+    _git_info = GitInfo(versions["full-revisionid"], versions["version"])
+    return _git_info
 
 
 LOW_PORT_BOUND = 10000

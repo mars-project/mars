@@ -70,7 +70,7 @@ class TensorRFFTFreq(TensorOperand, TensorOperandMixin):
         )
 
 
-def rfftfreq(n, d=1.0, gpu=False, chunk_size=None):
+def rfftfreq(n, d=1.0, gpu=None, chunk_size=None):
     """
     Return the Discrete Fourier Transform sample frequencies
     (for usage with rfft, irfft).

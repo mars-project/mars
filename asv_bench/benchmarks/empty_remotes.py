@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# Copyright 1999-2021 Alibaba Group Holding Ltd.
+# Copyright 1999-2022 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,11 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .config import options
-from .core.context import get_context
-from .session import new_session, execute, fetch, fetch_log, stop_server
-from .deploy.oscar import new_cluster_in_ray, new_ray_session
+import mars.remote as mr
+from mars import new_session, execute
 
-from . import _version
 
-__version__ = _version.get_versions()["version"]
+class EmptyRemotesExecutionSuite:
+    """
+    Benchmark that times running a number of empty subtasks
+    """
+
+    def setup(self):
+        self.session = new_session(default=True)
+
+    def teardown(self):
+        self.session.stop_server()
+
+    def time_remotes(self):
+        def empty_fun(_i):
+            pass
+
+        remotes = [mr.spawn(empty_fun, args=(i,)) for i in range(1000)]
+        execute(*remotes, session=self.session)

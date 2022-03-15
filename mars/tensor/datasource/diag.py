@@ -214,7 +214,7 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
             ctx[chunk.key] = create_array(op)("diag", ctx[op.inputs[0].key], k=op.k)
 
 
-def diag(v, k=0, sparse=None, gpu=False, chunk_size=None):
+def diag(v, k=0, sparse=None, gpu=None, chunk_size=None):
     """
     Extract a diagonal or construct a diagonal tensor.
 

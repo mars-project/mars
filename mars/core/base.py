@@ -24,7 +24,7 @@ class Base(Serializable):
     _no_copy_attrs_ = {"_id"}
     _init_update_key_ = True
 
-    _key = StringField("key")
+    _key = StringField("key", default=None)
     _id = StringField("id")
 
     def __init__(self, *args, **kwargs):
@@ -89,19 +89,20 @@ class Base(Serializable):
     def copy(self):
         return self.copy_to(type(self)(_key=self.key))
 
-    def copy_to(self, target):
-        for attr in self._FIELDS:
-            if (
-                attr.startswith("__") and attr.endswith("__")
-            ) or attr in self._no_copy_attrs_:
-                # we don't copy id to identify that the copied one is new
+    def copy_to(self, target: "Base"):
+        new_values = dict()
+        values = self._FIELD_VALUES
+        for k in self._FIELDS:
+            if k in self._no_copy_attrs_:
                 continue
-            try:
-                attr_val = getattr(self, attr)
-            except AttributeError:
-                continue
-            setattr(target, attr, attr_val)
-
+            if k in values:
+                new_values[k] = values[k]
+            else:
+                try:
+                    new_values[k] = getattr(self, k)
+                except AttributeError:
+                    continue
+        target._FIELD_VALUES.update(new_values)
         return target
 
     def copy_from(self, obj):

@@ -654,7 +654,7 @@ class CustomReduction:
     # set to True when pre() already performs aggregation
     pre_with_agg = False
 
-    def __init__(self, name=None, is_gpu=False):
+    def __init__(self, name=None, is_gpu=None):
         self.name = name or "<custom>"
         self.output_limit = 1
         self._is_gpu = is_gpu
@@ -1189,7 +1189,7 @@ class ReductionCompiler:
         args_str = ", ".join(input_key_to_var.values())
         lines_str = "\n    ".join(local_lines)
         return (
-            f"def expr_function({args_str}, gpu=False):\n"
+            f"def expr_function({args_str}, gpu=None):\n"
             f"    {lines_str}\n"
             f"    return {local_key_to_var[out_tileable.key]}",
             list(input_key_to_var.keys()),
