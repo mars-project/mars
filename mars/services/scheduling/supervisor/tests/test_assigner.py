@@ -81,7 +81,7 @@ class FakeClusterAPI(ClusterAPI):
                     NodeInfoUploaderActor,
                     NodeRole.WORKER,
                     interval=kw.get("upload_interval"),
-                    band_to_slots=kw.get("band_to_slots"),
+                    band_to_resource=kw.get("band_to_resource"),
                     use_gpu=kw.get("use_gpu", False),
                     uid=NodeInfoUploaderActor.default_uid(),
                     address=address,

@@ -20,6 +20,7 @@ import pandas as pd
 import pytest
 
 from .... import oscar as mo
+from ....resource import Resource
 from ....serialization import AioDeserializer, AioSerializer
 from ....storage import StorageLevel
 from ....tests.core import require_cudf, require_cupy
@@ -169,7 +170,10 @@ async def test_storage_service_with_cuda(actor_pools_with_gpu):
 
     await MockClusterAPI.create(
         worker_pool.external_address,
-        band_to_slots={"numa-0": 1, "gpu-0": 1},
+        band_to_resource={
+            "numa-0": Resource(num_cpus=1),
+            "gpu-0": Resource(num_gpus=1),
+        },
         use_gpu=True,
     )
     await start_services(NodeRole.WORKER, config, address=worker_pool.external_address)

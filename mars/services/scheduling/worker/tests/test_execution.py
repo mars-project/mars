@@ -34,6 +34,7 @@ from .....core import (
     OutputType,
 )
 from .....remote.core import RemoteFunction
+from .....resource import Resource
 from .....tensor.fetch import TensorFetch
 from .....tensor.arithmetic import TensorTreeAdd
 from .....utils import Timer
@@ -151,7 +152,8 @@ async def actor_pool(request):
     async with pool:
         session_id = "test_session"
         await MockClusterAPI.create(
-            pool.external_address, band_to_slots={"numa-0": n_slots}
+            pool.external_address,
+            band_to_resource={"numa-0": Resource(num_cpus=n_slots)},
         )
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)

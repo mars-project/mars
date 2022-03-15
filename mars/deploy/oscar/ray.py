@@ -148,7 +148,11 @@ class ClusterStateActor(mo.StatelessActor):
             config,
         )
         # TODO(chaokunyang) Support gpu
-        self._band_to_resource = {"numa-0": Resource(num_cpus=self._worker_cpu, num_mem_bytes=self._worker_mem)}
+        self._band_to_resource = {
+            "numa-0": Resource(
+                num_cpus=self._worker_cpu, num_mem_bytes=self._worker_mem
+            )
+        }
         self._worker_modules = get_third_party_modules_from_config(
             self._config, NodeRole.WORKER
         )
@@ -161,7 +165,9 @@ class ClusterStateActor(mo.StatelessActor):
             "CPU": worker_cpu,
             # 'memory': worker_mem or self._worker_mem
         }
-        band_to_resource = {"numa-0": Resource(num_cpus=worker_cpu, num_mem_bytes=worker_mem)}
+        band_to_resource = {
+            "numa-0": Resource(num_cpus=worker_cpu, num_mem_bytes=worker_mem)
+        }
         start_time = time.time()
         logger.info("Start to request worker with resource %s.", bundle)
         # TODO rescale ray placement group instead of creating new placement group
@@ -503,7 +509,11 @@ class RayCluster:
             asyncio.create_task(
                 create_worker_actor_pool(
                     addr,
-                    {"numa-0": self._worker_cpu},
+                    {
+                        "numa-0": Resource(
+                            num_cpus=self._worker_cpu, num_mem_bytes=self._worker_mem
+                        )
+                    },
                     modules=get_third_party_modules_from_config(
                         self._config, NodeRole.WORKER
                     ),

@@ -35,6 +35,9 @@ class WorkerCommandRunner(OscarCommandRunner):
     def config_args(self, parser):
         super().config_args(parser)
         parser.add_argument("--n-cpu", help="num of CPU to use", default="auto")
+        parser.add_argument(
+            "--n-mem-bytes", help="num in bytes of memory to use", default="auto"
+        )
         parser.add_argument("--n-io-process", help="num of IO processes", default="1")
         parser.add_argument(
             "--cuda-devices",

@@ -77,6 +77,7 @@ class Subtask(Serializable):
         retryable: bool = True,
         rerun_time: int = 0,
         extra_config: dict = None,
+        required_resource: Resource = None,
     ):
         super().__init__(
             subtask_id=subtask_id,
@@ -90,6 +91,7 @@ class Subtask(Serializable):
             retryable=retryable,
             rerun_time=rerun_time,
             extra_config=extra_config,
+            required_resource=required_resource,
         )
 
     @property
