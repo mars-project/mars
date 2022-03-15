@@ -80,8 +80,6 @@ async def start_worker(
     config: Dict = None,
     mark_ready: bool = True,
 ):
-    print(">>> Start worker with config: ", config)
-    print(">>>              with band_to_resource: ", band_to_resource)
     logger.debug("Starting Mars worker at %s", address)
     if not config or isinstance(config, str):
         config = load_config(config)

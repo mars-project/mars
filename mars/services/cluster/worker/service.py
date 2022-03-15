@@ -53,8 +53,6 @@ class ClusterWorkerService(AbstractService):
             uid=WorkerSupervisorLocatorActor.default_uid(),
             address=address,
         )
-        print(">>> Cluster worker service with self._config: ", self._config)
-        print(">>>     band_to_resource: ", svc_config.get("resource"))
         await mo.create_actor(
             NodeInfoUploaderActor,
             role=NodeRole.WORKER,

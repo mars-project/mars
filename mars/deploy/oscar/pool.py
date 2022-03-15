@@ -56,7 +56,7 @@ async def create_worker_actor_pool(
     **kwargs,
 ):
     # TODO: support NUMA when ready
-    n_process = sum(resource.num_cpus or resource.num_gpus for resource in band_to_resource.values())
+    n_process = sum(int(resource.num_cpus) or int(resource.num_gpus) for resource in band_to_resource.values())
     envs = []
     labels = ["main"]
 
@@ -75,8 +75,9 @@ async def create_worker_actor_pool(
             labels.append(f"gpu-{idx}")
         else:
             assert band.startswith("numa")
-            envs.extend([dict() for _ in range(resource.num_cpus)])
-            labels.extend([band] * resource.num_cpus)
+            num_cpus = int(resource.num_cpus)
+            envs.extend([dict() for _ in range(num_cpus)])
+            labels.extend([band] * num_cpus)
 
     suspend_sigint = get_ipython is not None and get_ipython() is not None
     return await mo.create_actor_pool(

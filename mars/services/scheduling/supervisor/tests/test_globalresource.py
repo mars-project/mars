@@ -21,6 +21,7 @@ from ....cluster import ClusterAPI, MockClusterAPI
 from ....session import MockSessionAPI
 from .... import Resource
 from ...supervisor import GlobalResourceManagerActor
+from .....resource import mem_total
 
 
 @pytest.fixture
@@ -78,5 +79,5 @@ async def test_global_resource(actor_pool):
     )
     assert (await global_slot_ref.get_remaining_slots())[band] == band_slots - 1
     assert (await global_slot_ref.get_remaining_resources())[band] == Resource(
-        num_cpus=band_slots - 1
+        num_cpus=band_slots - 1, num_mem_bytes=mem_total()
     )
