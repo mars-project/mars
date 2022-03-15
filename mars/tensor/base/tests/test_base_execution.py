@@ -1957,3 +1957,23 @@ def test_in1d_execute(setup, chunk_size, invert):
     result = ar.execute().fetch()
     expected = np.in1d(raw1, raw2, invert=invert)
     np.testing.assert_array_equal(result, expected)
+
+
+@pytest.mark.parametrize("chunk_size", [3, 5])
+def test_setdiff1d_execute(setup, chunk_size):
+    rs = np.random.RandomState(0)
+    raw1 = rs.randint(10, size=10)
+    ar1 = mt.tensor(raw1, chunk_size=5)
+    raw2 = np.arange(5)
+    ar2 = mt.tensor(raw2, chunk_size=chunk_size)
+    ar = mt.setdiff1d(ar1, ar2)
+    result = ar.execute().fetch()
+    expected = np.setdiff1d(raw1, raw2)
+    np.testing.assert_array_equal(result, expected)
+
+    raw3 = rs.shuffle(rs.choice(np.arange(100), 10))
+    ar3 = mt.tensor(raw3, chunk_size=5)
+    ar = mt.setdiff1d(ar3, ar2, assume_unique=True)
+    result = ar.execute().fetch()
+    expected = np.setdiff1d(raw3, raw2, assume_unique=True)
+    np.testing.assert_array_equal(result, expected)
