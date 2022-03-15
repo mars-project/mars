@@ -15,7 +15,6 @@
 import pytest
 from tornado import httpclient
 
-from .....resource import Resource
 from ... import oscar as mo
 from ...utils import get_next_port
 from .. import (
@@ -101,29 +100,3 @@ async def test_start_service(actor_pool_context):
     assert not await mo.has_actor(
         mo.create_actor_ref("TestActor2", address=pool.external_address)
     )
-
-
-def test_resource():
-    assert Resource(num_cpus=1) + Resource(num_cpus=1) == Resource(num_cpus=2)
-    assert Resource(num_cpus=1) + Resource(num_gpus=1) + Resource(
-        num_mem_bytes=1024**3
-    ) == Resource(num_cpus=1, num_gpus=1, num_mem_bytes=1024**3)
-    assert -Resource(num_cpus=1, num_gpus=1, num_mem_bytes=1024**3) == Resource(
-        num_cpus=-1, num_gpus=-1, num_mem_bytes=-(1024**3)
-    )
-    assert Resource(num_cpus=-1) < ZeroResource
-    assert Resource(num_gpus=-1) < ZeroResource
-    assert Resource(num_mem_bytes=-1) < ZeroResource
-    assert Resource(num_cpus=1, num_gpus=1, num_mem_bytes=-(1024**3)) < ZeroResource
-    assert Resource(num_cpus=1, num_gpus=1, num_mem_bytes=1024**3) > Resource(
-        num_cpus=10, num_gpus=1, num_mem_bytes=1024
-    )
-    assert Resource(num_cpus=1, num_gpus=10, num_mem_bytes=1024**3) > Resource(
-        num_cpus=10, num_gpus=1, num_mem_bytes=1024**3
-    )
-    assert Resource(num_cpus=100, num_gpus=10, num_mem_bytes=1024**3) > Resource(
-        num_cpus=10, num_gpus=10, num_mem_bytes=1024**3
-    )
-    assert Resource(num_cpus=100, num_gpus=10, num_mem_bytes=1024) - Resource(
-        num_cpus=10, num_gpus=20, num_mem_bytes=512
-    ) == Resource(num_cpus=90, num_gpus=-10, num_mem_bytes=512)
