@@ -41,6 +41,7 @@ except ImportError:
     vineyard = None
 
 from .... import dataframe as md
+from ....tests.core import flaky
 from ... import DataFrame
 
 
@@ -165,6 +166,7 @@ def test_to_sql():
 
 
 @pytest.mark.skipif(pa is None, reason="pyarrow not installed")
+@flaky(max_runs=3)
 def test_to_parquet_arrow_execution(setup):
     raw = pd.DataFrame(
         {
