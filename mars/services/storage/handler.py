@@ -39,10 +39,10 @@ cudf = lazy_import("cudf", globals=globals())
 logger = logging.getLogger(__name__)
 
 
-class StorageHandlerActor(mo.StatelessActor):
+class StorageHandlerActor(mo.Actor):
     """
     Storage handler actor, provide methods like `get`, `put`, etc.
-    This actor is stateless and created on worker's sub pools.
+    This actor is stateful and created on worker's sub pools.
     """
 
     def __init__(

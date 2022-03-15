@@ -249,6 +249,11 @@ class TaskProcessor:
     @_record_error
     async def decref_stage(self, stage_processor: "TaskStageProcessor"):
         decref_chunk_keys = self._get_decref_stage_chunk_keys(stage_processor)
+        logger.debug(
+            "Decref chunks %s when stage %s finish",
+            decref_chunk_keys,
+            stage_processor.stage_id,
+        )
         await self._lifecycle_api.decref_chunks(decref_chunk_keys)
 
     @decref_stage.batch
@@ -257,6 +262,7 @@ class TaskProcessor:
         decref_chunk_keys = []
         for args, kwargs in zip(args_list, kwargs_list):
             decref_chunk_keys.extend(self._get_decref_stage_chunk_keys(*args, **kwargs))
+        logger.debug("Decref chunks %s when stage finish", decref_chunk_keys)
         await self._lifecycle_api.decref_chunks(decref_chunk_keys)
 
     async def _get_next_chunk_graph(
@@ -791,6 +797,11 @@ class TaskProcessorActor(mo.Actor):
                             # decref main key as well
                             decref_chunk_keys.extend([key[0] for key in data_keys])
                 decref_chunk_keys.append(result_chunk.key)
+        logger.debug(
+            "Decref chunks %s when subtask %s finish",
+            decref_chunk_keys,
+            subtask.subtask_id,
+        )
         await self._lifecycle_api.decref_chunks(decref_chunk_keys)
 
         # `set_subtask_result` will be called when subtask finished
