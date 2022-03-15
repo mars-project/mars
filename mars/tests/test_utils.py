@@ -42,6 +42,7 @@ from .. import tensor as mt
 from .. import utils
 from ..core import tile, TileableGraph
 from ..serialization.ray import register_ray_serializers
+from ..utils import _percentile_builder, Percentile, cost_time_percentile_record
 from .core import require_ray
 
 
@@ -563,8 +564,6 @@ def test_web_serialize_lambda():
 
 
 def test_percentile_report():
-    from ..utils import _percentile_builder, Percentile
-
     def gen_callback(data):
         def callback(value):
             data.append(value)
@@ -595,3 +594,15 @@ def test_percentile_report():
     assert len(data90) == 1 and sub_data[10 - 1] == data90[0]
     assert len(data95) == 1 and sub_data[5 - 1] == data95[0]
     assert len(data99) == 1 and sub_data[1 - 1] == data99[0]
+
+
+def test_invaild_percentile_report():
+    with pytest.raises(ValueError):
+        Percentile(-1, 10, lambda x: ...)
+
+    with pytest.raises(ValueError):
+        Percentile(1, -1, lambda x: ...)
+
+    with pytest.raises(ValueError):
+        with cost_time_percentile_record([]):
+            raise ValueError

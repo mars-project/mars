@@ -24,7 +24,7 @@ from ..utils import (
     Percentile,
     cost_time_percentile_record,
 )
-from ..metric import Metrics
+from ..metrics import Metrics
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
