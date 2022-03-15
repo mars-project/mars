@@ -159,10 +159,14 @@ class NodeInfoUploaderActor(mo.Actor):
         for resource_type, info in self._info.resource.items():
             if resource_type.startswith("numa"):
                 # cpu
-                band_resource[(self.address, resource_type)] = Resource(num_cpus=info["cpu_total"], num_mem_bytes=info["memory_total"])
+                band_resource[(self.address, resource_type)] = Resource(
+                    num_cpus=info["cpu_total"], num_mem_bytes=info["memory_total"]
+                )
             else:  # pragma: no cover
                 assert resource_type.startswith("gpu")
-                band_resource[(self.address, resource_type)] = Resource(num_gpus=info["gpu_total"])
+                band_resource[(self.address, resource_type)] = Resource(
+                    num_gpus=info["gpu_total"]
+                )
         return band_resource
 
     def set_node_disk_info(self, node_disk_info: List[DiskInfo]):

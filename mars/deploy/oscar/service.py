@@ -90,7 +90,7 @@ async def start_worker(
     if config["cluster"].get("resource") is None:
         config["cluster"]["resource"] = band_to_resource
     if any(
-            band_name.startswith("gpu-") for band_name in band_to_resource
+        band_name.startswith("gpu-") for band_name in band_to_resource
     ):  # pragma: no cover
         if "cuda" not in config["storage"]["backends"]:
             config["storage"]["backends"].append("cuda")

@@ -55,7 +55,10 @@ async def create_worker_actor_pool(
     **kwargs,
 ):
     # TODO: support NUMA when ready
-    n_process = sum(int(resource.num_cpus) or int(resource.num_gpus) for resource in band_to_resource.values())
+    n_process = sum(
+        int(resource.num_cpus) or int(resource.num_gpus)
+        for resource in band_to_resource.values()
+    )
     envs = []
     labels = ["main"]
 

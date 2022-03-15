@@ -164,7 +164,9 @@ class LocalCluster:
         worker_mem_bytes = self._n_mem_bytes // n_worker
         for _, devices in zip(range(n_worker), devices_list):
             worker_band_to_resource = dict()
-            worker_band_to_resource["numa-0"] = Resource(num_cpus=worker_cpus, num_mem_bytes=worker_mem_bytes)
+            worker_band_to_resource["numa-0"] = Resource(
+                num_cpus=worker_cpus, num_mem_bytes=worker_mem_bytes
+            )
             for i in devices:  # pragma: no cover
                 worker_band_to_resource[f"gpu-{i}"] = Resource(num_gpus=1)
             bands_to_resource.append(worker_band_to_resource)
@@ -232,7 +234,9 @@ class LocalCluster:
         self._web = await start_supervisor(
             self.supervisor_address, config=self._config, web=self._web
         )
-        for worker_pool, band_to_resource in zip(self._worker_pools, self._bands_to_resource):
+        for worker_pool, band_to_resource in zip(
+            self._worker_pools, self._bands_to_resource
+        ):
             await start_worker(
                 worker_pool.external_address,
                 self.supervisor_address,

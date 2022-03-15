@@ -36,7 +36,9 @@ class SubtaskRunnerManagerActor(mo.Actor):
 
         band_to_resource = await self._cluster_api.get_bands()
         for band, resource in band_to_resource.items():
-            await self._create_band_runner_actors(band[1], int(resource.num_cpus or resource.num_gpus))
+            await self._create_band_runner_actors(
+                band[1], int(resource.num_cpus or resource.num_gpus)
+            )
 
     async def _create_band_runner_actors(self, band_name: str, n_slots: int):
         strategy = IdleLabel(band_name, "subtask_runner")

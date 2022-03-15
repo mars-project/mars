@@ -88,7 +88,9 @@ def _init_subtask_required_resource(subtask_graph: SubtaskGraph):
     """
     for subtask in subtask_graph.iter_nodes():
         is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
-        subtask.required_resource = Resource(num_gpus=1) if is_gpu else Resource(num_cpus=1)
+        subtask.required_resource = (
+            Resource(num_gpus=1) if is_gpu else Resource(num_cpus=1)
+        )
 
 
 class TaskProcessor:

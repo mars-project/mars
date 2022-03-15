@@ -58,7 +58,9 @@ class WorkerCommandRunner(OscarCommandRunner):
         self.n_io_process = int(args.n_io_process)
 
         n_cpu = cpu_count() if args.n_cpu == "auto" else int(args.n_cpu)
-        n_mem_bytes = mem_total() if args.n_mem_bytes == "auto" else int(args.n_mem_bytes)
+        n_mem_bytes = (
+            mem_total() if args.n_mem_bytes == "auto" else int(args.n_mem_bytes)
+        )
 
         if "CUDA_VISIBLE_DEVICES" in os.environ:  # pragma: no cover
             args.cuda_devices = os.environ["CUDA_VISIBLE_DEVICES"].strip()

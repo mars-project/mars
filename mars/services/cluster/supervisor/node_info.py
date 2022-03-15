@@ -148,10 +148,14 @@ class NodeInfoCollectorActor(mo.Actor):
             for resource_type, info in node_resource.items():
                 if resource_type.startswith("numa"):
                     # cpu
-                    band_resource[(node, resource_type)] = Resource(num_cpus=info["cpu_total"], num_mem_bytes=info["memory_total"])
+                    band_resource[(node, resource_type)] = Resource(
+                        num_cpus=info["cpu_total"], num_mem_bytes=info["memory_total"]
+                    )
                 else:  # pragma: no cover
                     assert resource_type.startswith("gpu")
-                    band_resource[(node, resource_type)] = Resource(num_gpus=info["gpu_total"])
+                    band_resource[(node, resource_type)] = Resource(
+                        num_gpus=info["gpu_total"]
+                    )
         return band_resource
 
     def get_mars_versions(self) -> List[str]:

@@ -177,7 +177,10 @@ class SubtaskQueueingActor(mo.Actor):
         submitted_bands = []
 
         for band in bands:
-            band_limit = limit or (self._band_to_resource[band].num_cpus or self._band_to_resource[band].num_gpus)
+            band_limit = limit or (
+                self._band_to_resource[band].num_cpus
+                or self._band_to_resource[band].num_gpus
+            )
             task_queue = self._band_queues[band]
             submit_items = dict()
             while task_queue and len(submit_items) < band_limit:
@@ -196,7 +199,9 @@ class SubtaskQueueingActor(mo.Actor):
             # there is a slot idle. But now we have memory requirements, so the subtask may apply resource
             # from supervisor failed. In such cases, those subtasks will never got scheduled.
             # TODO We can use `_periodical_submit_task` to submit those subtasks.
-            subtask_resources = [item.subtask.required_resource for item in submit_items.values()]
+            subtask_resources = [
+                item.subtask.required_resource for item in submit_items.values()
+            ]
             apply_delays.append(
                 self._slots_ref.apply_subtask_resources.delay(
                     band, self._session_id, subtask_ids, subtask_resources

@@ -133,7 +133,7 @@ def gather_node_env():
     return node_info
 
 
-def gather_node_resource(band_to_resource: Dict[str, Resource]=None, use_gpu=True):
+def gather_node_resource(band_to_resource: Dict[str, Resource] = None, use_gpu=True):
     # todo numa can be supported by adding more bands
     res = dict()
     mem_info = mars_resource.virtual_memory()
@@ -142,7 +142,11 @@ def gather_node_resource(band_to_resource: Dict[str, Resource]=None, use_gpu=Tru
         if band_to_resource is None
         else band_to_resource.get("numa-0", ZeroResource).num_cpus
     )
-    num_mem_bytes = mem_info.total if band_to_resource is None else band_to_resource.get("numa-0", ZeroResource).num_mem_bytes
+    num_mem_bytes = (
+        mem_info.total
+        if band_to_resource is None
+        else band_to_resource.get("numa-0", ZeroResource).num_mem_bytes
+    )
     if num_cpu:  # pragma: no branch
         res["numa-0"] = {
             "cpu_avail": mars_resource.cpu_count()
@@ -156,7 +160,11 @@ def gather_node_resource(band_to_resource: Dict[str, Resource]=None, use_gpu=Tru
         for idx, gpu_card_stat in enumerate(
             mars_resource.cuda_card_stats()
         ):  # pragma: no cover
-            num_gpu = 1 if band_to_resource is None else band_to_resource.get(f"gpu-{idx}", ZeroResource).num_gpus
+            num_gpu = (
+                1
+                if band_to_resource is None
+                else band_to_resource.get(f"gpu-{idx}", ZeroResource).num_gpus
+            )
             if not num_gpu:
                 continue
             res[f"gpu-{idx}"] = {
