@@ -19,7 +19,7 @@ from collections import defaultdict
 from typing import List, DefaultDict, Dict, Tuple
 
 from .... import oscar as mo
-from ....resource import Resource
+from ....resource import Resource, ZeroResource
 from ....typing import BandType
 
 logger = logging.getLogger(__name__)

@@ -121,7 +121,10 @@ class AutoscalerActor(mo.Actor):
             logger.info("Start to release worker %s.", address)
             worker_bands = workers_bands[address]
             await asyncio.gather(
-                *[self.global_resource_ref.wait_band_idle(band) for band in worker_bands]
+                *[
+                    self.global_resource_ref.wait_band_idle(band)
+                    for band in worker_bands
+                ]
             )
             await self._migrate_data_of_bands(worker_bands, excluded_bands)
             await self._cluster_api.release_worker(address)
