@@ -24,8 +24,8 @@ import numpy as np
 from ... import oscar as mo
 from ...core.entrypoints import init_extension_entrypoints
 from ...lib.aio import get_isolation, stop_isolation
-from ...resource import cpu_count, cuda_count, mem_total
-from ...services import NodeRole, Resource
+from ...resource import cpu_count, cuda_count, mem_total, Resource
+from ...services import NodeRole
 from ...typing import ClusterType, ClientType
 from ..utils import get_third_party_modules_from_config
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool

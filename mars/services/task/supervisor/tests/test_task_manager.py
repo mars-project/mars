@@ -23,13 +23,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from .... import Resource
 from ..... import dataframe as md
 from ..... import oscar as mo
 from ..... import remote as mr
 from ..... import tensor as mt
 from .....core import Tileable, TileableGraph, TileableGraphBuilder
 from .....oscar.backends.allocate_strategy import MainPool
+from .....resource import Resource
 from .....storage import StorageLevel
 from .....utils import Timer, merge_chunks
 from ....cluster import MockClusterAPI

@@ -22,7 +22,7 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 
-from .. import ZeroResource, Resource
+from ...resource import Resource, ZeroResource
 
 try:
     import scipy

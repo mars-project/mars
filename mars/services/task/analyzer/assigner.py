@@ -19,9 +19,9 @@ from typing import List, Dict, Set
 
 import numpy as np
 
-from ... import Resource
 from ....core import ChunkGraph, ChunkData
 from ....core.operand import Operand
+from ....resource import Resource
 from ....typing import BandType
 from ....utils import implements
 

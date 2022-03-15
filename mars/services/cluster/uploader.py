@@ -17,9 +17,9 @@ import logging
 from collections import defaultdict
 from typing import Dict, List
 
-from .. import Resource
 from ... import oscar as mo
 from ...lib.aio import alru_cache
+from ...resource import Resource
 from ...storage import StorageLevel
 from ...typing import BandType
 from .core import NodeInfo, NodeStatus, WorkerSlotInfo, QuotaInfo, DiskInfo, StorageInfo

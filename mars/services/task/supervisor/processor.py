@@ -25,7 +25,6 @@ from functools import reduce, wraps
 from typing import Callable, Coroutine, Dict, Iterator, List, Optional, Set, Type, Union
 
 
-from ... import Resource
 from .... import oscar as mo
 from ....config import Config
 from ....core import ChunkGraph, TileableGraph
@@ -42,6 +41,7 @@ from ....oscar.profiling import (
     ProfilingData,
     MARS_ENABLE_PROFILING,
 )
+from ....resource import Resource
 from ....typing import TileableType, BandType
 from ....utils import build_fetch, Timer
 from ...cluster.api import ClusterAPI

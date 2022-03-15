@@ -22,7 +22,7 @@ from typing import DefaultDict, Dict, List, Optional, Tuple, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ....resource import Resource, ZeroResource
+from ....resource import ZeroResource
 from ....utils import dataslots
 from ...subtask import Subtask
 from ...task import TaskAPI

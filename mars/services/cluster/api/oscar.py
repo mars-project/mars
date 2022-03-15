@@ -16,9 +16,9 @@ import asyncio
 import logging
 from typing import List, Dict, Optional, Set, Type, TypeVar
 
-from ... import Resource
 from .... import oscar as mo
 from ....lib.aio import alru_cache
+from ....resource import Resource
 from ....typing import BandType
 from ...core import NodeRole
 from ..core import (

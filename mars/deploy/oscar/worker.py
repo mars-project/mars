@@ -14,8 +14,8 @@
 
 import os
 
-from ...resource import cpu_count, cuda_count, mem_total
-from ...services import NodeRole, Resource
+from ...resource import cpu_count, cuda_count, mem_total, Resource
+from ...services import NodeRole
 from ...utils import get_next_port
 from .cmdline import OscarCommandRunner
 from .local import start_worker, stop_worker

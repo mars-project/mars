@@ -16,7 +16,8 @@ import logging
 import os
 from typing import List, Dict, Union
 
-from ...services import start_services, stop_services, NodeRole, Resource
+from ...resource import Resource
+from ...services import start_services, stop_services, NodeRole
 from ..utils import load_service_config_file
 
 logger = logging.getLogger(__name__)

@@ -30,11 +30,12 @@ from ...oscar.backends.ray.utils import (
 )
 from ...oscar.backends.ray.pool import RayPoolState
 from ...oscar.errors import ReconstructWorkerError
+from ...resource import Resource
 from ...services.cluster.backends.base import (
     register_cluster_backend,
     AbstractClusterBackend,
 )
-from ...services import NodeRole, Resource
+from ...services import NodeRole
 from ...utils import merge_dict, flatten_dict_to_nested_dict
 from ...utils import lazy_import
 from ..utils import load_service_config_file, get_third_party_modules_from_config

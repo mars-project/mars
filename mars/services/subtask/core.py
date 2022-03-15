@@ -15,8 +15,8 @@
 from enum import Enum
 from typing import Iterable, List, Optional, Tuple
 
-from .. import Resource
 from ...core import ChunkGraph, DAG
+from ...resource import Resource
 from ...serialization.serializables import (
     Serializable,
     StringField,

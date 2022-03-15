@@ -15,8 +15,8 @@
 import json
 from typing import Callable, Dict, List, Optional, Set
 
-from ... import Resource
 from ....lib.aio import alru_cache
+from ....resource import Resource
 from ....typing import BandType
 from ....utils import serialize_serializable, deserialize_serializable
 from ...core import NodeRole

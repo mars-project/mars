@@ -16,8 +16,7 @@ import os
 from typing import Dict, List
 
 from ... import oscar as mo
-from ...resource import cuda_count
-from ...services import Resource
+from ...resource import cuda_count, Resource
 
 try:
     from IPython import get_ipython
