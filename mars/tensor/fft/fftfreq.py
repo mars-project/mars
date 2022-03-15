@@ -115,7 +115,7 @@ class TensorFFTFreqChunk(TensorHasInput, TensorOperandMixin):
         ctx[op.outputs[0].key] = x
 
 
-def fftfreq(n, d=1.0, gpu=False, chunk_size=None):
+def fftfreq(n, d=1.0, gpu=None, chunk_size=None):
     """
     Return the Discrete Fourier Transform sample frequencies.
 

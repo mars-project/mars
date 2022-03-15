@@ -156,7 +156,7 @@ def from_records(
     columns=None,
     coerce_float=False,
     nrows=None,
-    gpu=False,
+    gpu=None,
     sparse=False,
     **kw
 ):

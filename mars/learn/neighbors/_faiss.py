@@ -477,7 +477,7 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
 
 
 def _gen_index_string_and_sample_count(
-    shape, n_sample, accuracy, memory_require, gpu=False, **kw
+    shape, n_sample, accuracy, memory_require, gpu=None, **kw
 ):
     """
     Generate index string and sample count according to guidance of faiss:

@@ -77,9 +77,7 @@ class TensorEye(TensorNoInput, TensorDiagBase):
             )
 
 
-def eye(
-    N, M=None, k=0, dtype=None, sparse=False, gpu=False, chunk_size=None, order="C"
-):
+def eye(N, M=None, k=0, dtype=None, sparse=False, gpu=None, chunk_size=None, order="C"):
     """
     Return a 2-D tensor with ones on the diagonal and zeros elsewhere.
 
