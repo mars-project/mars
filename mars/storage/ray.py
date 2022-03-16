@@ -21,10 +21,8 @@ from ..utils import (
     lazy_import,
     implements,
     register_ray_serializer,
-    Percentile,
-    record_time_cost_percentile,
 )
-from ..metrics import Metrics
+from ..metrics import Metrics, Percentile, record_time_cost_percentile
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 

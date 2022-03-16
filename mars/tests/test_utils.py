@@ -42,7 +42,7 @@ from .. import tensor as mt
 from .. import utils
 from ..core import tile, TileableGraph
 from ..serialization.ray import register_ray_serializers
-from ..utils import _percentile_builder, Percentile, record_time_cost_percentile
+from ..metrics.api import _percentile_builder, Percentile, record_time_cost_percentile
 from .core import require_ray
 
 
@@ -588,8 +588,8 @@ def test_get_func_token_values():
 
     func = Func()
     assert get_func_token_values(func) == [func]
-	
-	
+
+
 def test_percentile_report():
     def gen_callback(data):
         def callback(value):

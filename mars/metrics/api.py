@@ -14,7 +14,11 @@
 
 import logging
 
-from typing import Optional, Tuple
+from contextlib import contextmanager
+from enum import Enum
+from queue import PriorityQueue
+import time
+from typing import Optional, Tuple, NamedTuple, Callable, List
 
 from .backends.console import console_metric
 from .backends.prometheus import prometheus_metric
@@ -89,3 +93,81 @@ class Metrics:
     @staticmethod
     def histogram(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
         return _backends_cls[_metric_backend].Histogram(name, description, tag_keys)
+
+
+class Percentile:
+    class PercentileType(Enum):
+        P99 = 1
+        P95 = 2
+        P90 = 3
+
+    def __init__(self, capacity: int, window: int, callback: Callable[[float], None]):
+        self._capacity = capacity
+        self._window = window
+        self._callback = callback
+        self._min_heap = PriorityQueue()
+        self._cur_num = 0
+
+        if capacity <= 0 or window <= 0:
+            raise ValueError(
+                f"capacity or window expect to get a positive integer,"
+                f"but capacity got: {capacity} and window got: {window}"
+            )
+
+    def record_data(self, value):
+        store_value = -1 * value
+        if self._min_heap.qsize() < self._capacity:
+            self._min_heap.put(store_value)
+        else:
+            top_value = self._min_heap.get_nowait()
+            store_value = store_value if top_value < store_value else top_value
+            self._min_heap.put(store_value)
+
+        self._cur_num += 1
+        if self._cur_num % self._window == 0:
+            self._callback(-1 * self._min_heap.get_nowait())
+            self._cur_num = 0
+            self._min_heap = PriorityQueue()
+
+    @classmethod
+    def build_p99(cls, callback: Callable[[float], None], window: int):
+        return cls(int(window * 0.01), window, callback)
+
+    @classmethod
+    def build_p95(cls, callback: Callable[[float], None], window: int):
+        return cls(int(window * 0.05), window, callback)
+
+    @classmethod
+    def build_p90(cls, callback: Callable[[float], None], window: int):
+        return cls(int(window * 0.1), window, callback)
+
+
+_percentile_builder = {
+    Percentile.PercentileType.P99: Percentile.build_p99,
+    Percentile.PercentileType.P95: Percentile.build_p95,
+    Percentile.PercentileType.P90: Percentile.build_p90,
+}
+
+PercentileArg = NamedTuple(
+    "PercentileArg",
+    [
+        ("percentile_type", Percentile.PercentileType),
+        ("callback", Callable[[float], None]),
+        ("window", int),
+    ],
+)
+
+
+@contextmanager
+def record_time_cost_percentile(percentile_args: List[PercentileArg]):
+    percentile_list = [
+        _percentile_builder[percentile_type](callback, window)
+        for percentile_type, callback, window in percentile_args
+    ]
+    st_time = time.time()
+
+    yield
+
+    cost_time = time.time() - st_time
+    for percentile in percentile_list:
+        percentile.record_data(cost_time)
