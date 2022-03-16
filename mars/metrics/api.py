@@ -148,14 +148,11 @@ _percentile_builder = {
     Percentile.PercentileType.P90: Percentile.build_p90,
 }
 
-PercentileArg = NamedTuple(
-    "PercentileArg",
-    [
-        ("percentile_type", Percentile.PercentileType),
-        ("callback", Callable[[float], None]),
-        ("window", int),
-    ],
-)
+
+class PercentileArg(NamedTuple):
+    percentile_type: Percentile.PercentileType
+    callback: Callable[[float], None]
+    window: int
 
 
 @contextmanager
