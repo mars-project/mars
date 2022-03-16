@@ -20,9 +20,9 @@ from typing import List, Dict
 from .. import oscar as mo
 from ..lib.aio import new_isolation
 from ..core.context import Context
-from ..typing import BandType, SessionType
 from ..storage.base import StorageLevel
-from ..utils import implements
+from ..typing import BandType, SessionType
+from ..utils import implements, is_ray_address
 from .cluster import ClusterAPI, NodeRole
 from .session import SessionAPI
 from .storage import StorageAPI
@@ -41,7 +41,7 @@ class ThreadedServiceContext(Context):
         session_id: str,
         supervisor_address: str,
         worker_address: str,
-        current_address: str,
+        local_address: str,
         loop: asyncio.AbstractEventLoop,
         band: BandType = None,
     ):
@@ -49,7 +49,7 @@ class ThreadedServiceContext(Context):
             session_id=session_id,
             supervisor_address=supervisor_address,
             worker_address=worker_address,
-            current_address=current_address,
+            local_address=local_address,
             band=band,
         )
         self._loop = loop
@@ -72,7 +72,7 @@ class ThreadedServiceContext(Context):
         self._session_api = await SessionAPI.create(self.supervisor_address)
         self._meta_api = await MetaAPI.create(self.session_id, self.supervisor_address)
         try:
-            self._subtask_api = await SubtaskAPI.create(self.current_address)
+            self._subtask_api = await SubtaskAPI.create(self.local_address)
         except mo.ActorNotExist:
             pass
 
@@ -87,6 +87,16 @@ class ThreadedServiceContext(Context):
         return new_session(
             self.supervisor_address, self.session_id, new=False, default=False
         )
+
+    @implements(Context.get_local_host_ip)
+    def get_local_host_ip(self) -> str:
+        local_address = self.local_address
+        if is_ray_address(local_address):
+            import ray
+
+            return ray.util.get_node_ip_address()
+        else:
+            return local_address.split(":", 1)[0]
 
     @implements(Context.get_supervisor_addresses)
     def get_supervisor_addresses(self) -> List[str]:
@@ -198,7 +208,7 @@ class ThreadedServiceContext(Context):
     @lru_cache(50)
     def new_custom_log_dir(self) -> str:
         return self._call(
-            self._session_api.new_custom_log_dir(self.current_address, self.session_id)
+            self._session_api.new_custom_log_dir(self.local_address, self.session_id)
         )
 
     def set_running_operand_key(self, session_id: str, op_key: str):
@@ -214,7 +224,7 @@ class ThreadedServiceContext(Context):
             self._subtask_api.set_running_operand_progress(
                 session_id=self._running_session_id,
                 op_key=self._running_op_key,
-                slot_address=self.current_address,
+                slot_address=self.local_address,
                 progress=progress,
             )
         )
