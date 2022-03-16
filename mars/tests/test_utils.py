@@ -42,7 +42,7 @@ from .. import tensor as mt
 from .. import utils
 from ..core import tile, TileableGraph
 from ..serialization.ray import register_ray_serializers
-from ..utils import _percentile_builder, Percentile, cost_time_percentile_record
+from ..utils import _percentile_builder, Percentile, record_time_cost_percentile
 from .core import require_ray
 
 
@@ -604,5 +604,5 @@ def test_invaild_percentile_report():
         Percentile(1, -1, lambda x: ...)
 
     with pytest.raises(ValueError):
-        with cost_time_percentile_record([]):
+        with record_time_cost_percentile([]):
             raise ValueError

@@ -22,7 +22,7 @@ from ..utils import (
     implements,
     register_ray_serializer,
     Percentile,
-    cost_time_percentile_record,
+    record_time_cost_percentile,
 )
 from ..metrics import Metrics
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
@@ -210,12 +210,12 @@ class RayStorage(StorageBackend):
             "Storage get object timeout, ObjectRef: %s",
             object_id,
         ):
-            with cost_time_percentile_record(self._storage_get_metrics):
+            with record_time_cost_percentile(self._storage_get_metrics):
                 return await object_id
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
-        with cost_time_percentile_record(self._storage_put_metrics):
+        with record_time_cost_percentile(self._storage_put_metrics):
             if support_specify_owner() and self._owner_address:
                 if not self._owner:
                     self._owner = ray.get_actor(self._owner_address)

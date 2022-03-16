@@ -1601,24 +1601,26 @@ _percentile_builder = {
     Percentile.PercentileType.P90: Percentile.build_p90,
 }
 
+PercentileArg = NamedTuple(
+    "PercentileArg",
+    [
+        ("percentile_type", Percentile.PercentileType),
+        ("callback", Callable[[float], None]),
+        ("window", int),
+    ],
+)
+
 
 @contextmanager
-def cost_time_percentile_record(
-    percentile_args: List[
-        Tuple[Percentile.PercentileType, Callable[[float], None], int]
-    ]
-):
+def record_time_cost_percentile(percentile_args: List[PercentileArg]):
     percentile_list = [
         _percentile_builder[percentile_type](callback, window)
         for percentile_type, callback, window in percentile_args
     ]
     st_time = time.time()
 
-    try:
-        yield
-    except Exception as error:
-        raise error
-    else:
-        cost_time = time.time() - st_time
-        for percentile in percentile_list:
-            percentile.record_data(cost_time)
+    yield
+
+    cost_time = time.time() - st_time
+    for percentile in percentile_list:
+        percentile.record_data(cost_time)
