@@ -59,7 +59,7 @@ class RayActorDriver(BaseActorDriver):
     @classmethod
     def stop_cluster(cls):
         logger.info("Stopping cluster %s.", cls._cluster_info)
-        if not cls._cluster_info:
+        if not cls._cluster_info:  # pragma: no cover
             return
         pg_name = cls._cluster_info["pg_name"]
         pg = cls._cluster_info["pg_group"]

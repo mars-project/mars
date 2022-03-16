@@ -62,7 +62,6 @@ class GlobalResourceManagerActor(mo.Actor):
         async def watch_bands():
             async for bands in self._cluster_api.watch_all_bands():
                 old_bands = set(self._band_total_resources.keys())
-                # TODO add `num_mem_bytes` after supported report worker memory
                 self._band_total_resources = bands
                 new_bands = set(bands.keys()) - old_bands
                 for band in new_bands:

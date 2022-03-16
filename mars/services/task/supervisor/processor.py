@@ -297,6 +297,11 @@ class TaskProcessor:
     @_record_error
     async def decref_stage(self, stage_processor: "TaskStageProcessor"):
         decref_chunk_keys = self._get_decref_stage_chunk_keys(stage_processor)
+        logger.debug(
+            "Decref chunks %s when stage %s finish",
+            decref_chunk_keys,
+            stage_processor.stage_id,
+        )
         await self._lifecycle_api.decref_chunks(decref_chunk_keys)
 
     @decref_stage.batch
@@ -305,6 +310,7 @@ class TaskProcessor:
         decref_chunk_keys = []
         for args, kwargs in zip(args_list, kwargs_list):
             decref_chunk_keys.extend(self._get_decref_stage_chunk_keys(*args, **kwargs))
+        logger.debug("Decref chunks %s when stage finish", decref_chunk_keys)
         await self._lifecycle_api.decref_chunks(decref_chunk_keys)
 
     async def _get_next_chunk_graph(
@@ -416,6 +422,7 @@ class TaskProcessor:
                 self._preprocessor.analyze,
                 chunk_graph,
                 available_bands,
+                stage_id=stage_id,
             )
         logger.info(
             "Time consuming to gen a subtask graph is %ss with session id %s, task id %s, stage id %s",
@@ -628,6 +635,7 @@ class TaskProcessorActor(mo.Actor):
                     # schedule stage
                     processor.stage_processors.append(stage_processor)
                     processor.cur_stage_processor = stage_processor
+                    logger.info("Start new stage with id %s.", stage_processor.stage_id)
                     with Timer() as timer:
                         yield processor.schedule(stage_processor)
                     stage_profiling.set("run", timer.duration)
@@ -770,7 +778,6 @@ class TaskProcessorActor(mo.Actor):
     def get_tileable_details(self):
         tileable_to_subtasks = dict()
         subtask_results = dict()
-        default_result = SubtaskResult(progress=0.0, status=SubtaskStatus.pending)
 
         for processor in self._task_id_to_processor.values():
             for stage in processor.stage_processors:
@@ -786,7 +793,14 @@ class TaskProcessorActor(mo.Actor):
         tileable_infos = dict()
         for tileable, subtasks in tileable_to_subtasks.items():
             results = [
-                subtask_results.get(subtask.subtask_id, default_result)
+                subtask_results.get(
+                    subtask.subtask_id,
+                    SubtaskResult(
+                        progress=0.0,
+                        status=SubtaskStatus.pending,
+                        stage_id=subtask.stage_id,
+                    ),
+                )
                 for subtask in subtasks
             ]
 
@@ -834,8 +848,6 @@ class TaskProcessorActor(mo.Actor):
         subtask_id_to_types = dict()
 
         subtask_details = dict()
-        default_result = SubtaskResult(progress=0.0, status=SubtaskStatus.pending)
-
         subtask_graph = subtask_results = subtask_snapshots = None
         for processor in self._task_id_to_processor.values():
             for stage in processor.stage_processors:
@@ -870,7 +882,15 @@ class TaskProcessorActor(mo.Actor):
 
         for subtask in returned_subtasks.values():
             subtask_result = subtask_results.get(
-                subtask, subtask_snapshots.get(subtask, default_result)
+                subtask,
+                subtask_snapshots.get(
+                    subtask,
+                    SubtaskResult(
+                        progress=0.0,
+                        status=SubtaskStatus.pending,
+                        stage_id=subtask.stage_id,
+                    ),
+                ),
             )
             subtask_details[subtask.subtask_id] = {
                 "name": subtask.subtask_name,
@@ -921,6 +941,11 @@ class TaskProcessorActor(mo.Actor):
                             # decref main key as well
                             decref_chunk_keys.extend([key[0] for key in data_keys])
                 decref_chunk_keys.append(result_chunk.key)
+        logger.debug(
+            "Decref chunks %s when subtask %s finish",
+            decref_chunk_keys,
+            subtask.subtask_id,
+        )
         await self._lifecycle_api.decref_chunks(decref_chunk_keys)
 
         # `set_subtask_result` will be called when subtask finished
@@ -932,14 +957,49 @@ class TaskProcessorActor(mo.Actor):
         self._subtask_decref_events[subtask.subtask_id].set()
 
     async def set_subtask_result(self, subtask_result: SubtaskResult):
+        logger.debug(
+            "Set subtask %s with result %s.", subtask_result.subtask_id, subtask_result
+        )
+        if (
+            self._cur_processor is None
+            or self._cur_processor.cur_stage_processor is None
+            or (
+                subtask_result.stage_id
+                and self._cur_processor.cur_stage_processor.stage_id
+                != subtask_result.stage_id
+            )
+        ):
+            logger.warning(
+                "Stage %s for subtask %s not exists, got stale subtask result %s which may be "
+                "speculative execution from previous stages, just ignore it.",
+                subtask_result.stage_id,
+                subtask_result.subtask_id,
+                subtask_result,
+            )
+            return
         stage_processor = self._cur_processor.cur_stage_processor
         subtask = stage_processor.subtask_id_to_subtask[subtask_result.subtask_id]
 
         prev_result = stage_processor.subtask_results.get(subtask)
-        if prev_result:
-            # set before
+        if prev_result and (
+            prev_result.status == SubtaskStatus.succeeded
+            or prev_result.progress > subtask_result.progress
+        ):
+            logger.info(
+                "Skip set subtask %s with result %s, previous result is %s.",
+                subtask.subtask_id,
+                subtask_result,
+                prev_result,
+            )
+            # For duplicate run of subtasks, if the progress is smaller or the subtask has finished or canceled
+            # in task speculation, just do nothing.
+            # TODO(chaokunyang) If duplicate run of subtasks failed, it may be the fault in worker node,
+            #  print the exception, and if multiple failures on the same node, remove the node from the cluster.
             return
-
+        if subtask_result.bands:
+            [band] = subtask_result.bands
+        else:
+            band = None
         stage_processor.subtask_snapshots[subtask] = subtask_result.update(
             stage_processor.subtask_snapshots.get(subtask)
         )
@@ -953,6 +1013,8 @@ class TaskProcessorActor(mo.Actor):
                 # Since every worker will call supervisor to set subtask result,
                 # we need to release actor lock to make `decref_chunks` parallel to avoid blocking
                 # other `set_subtask_result` calls.
+                # If speculative execution enabled, concurrent subtasks may got error since input chunks may
+                # got deleted. But it's OK because the current subtask run has succeed.
                 if subtask.subtask_id not in stage_processor.decref_subtask:
                     stage_processor.decref_subtask.add(subtask.subtask_id)
                     yield self._decref_input_subtasks(
@@ -960,6 +1022,9 @@ class TaskProcessorActor(mo.Actor):
                     )
 
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+                logger.debug(
+                    "Decref input subtasks for subtask %s failed.", subtask.subtask_id
+                )
                 _, err, tb = sys.exc_info()
                 if subtask_result.status not in (
                     SubtaskStatus.errored,
@@ -968,7 +1033,7 @@ class TaskProcessorActor(mo.Actor):
                     subtask_result.status = SubtaskStatus.errored
                     subtask_result.error = err
                     subtask_result.traceback = tb
-            await stage_processor.set_subtask_result(subtask_result)
+            await stage_processor.set_subtask_result(subtask_result, band=band)
 
     def is_done(self) -> bool:
         for processor in self._task_id_to_processor.values():

@@ -17,6 +17,7 @@ import cloudpickle
 
 from ... import opcodes
 from ...core import recursive_tile
+from ...core.operand import OperatorLogicKeyGeneratorMixin
 from ...serialization.serializables import (
     StringField,
     AnyField,
@@ -34,7 +35,27 @@ from ..utils import (
 )
 
 
-class DataFrameToSQLTable(DataFrameOperand, DataFrameOperandMixin):
+class DataFrameToSQLTableLogicKeyGeneratorMixin(OperatorLogicKeyGeneratorMixin):
+    def _get_logic_key_token_values(self):
+        fields_to_tokenize = [
+            getattr(self, k, None)
+            for k in [
+                "_table_name",
+                "_schema",
+                "_if_exists",
+                "_index",
+                "_index_label",
+                "_chunksize",
+                "_dtype",
+                "_method",
+            ]
+        ]
+        return super()._get_logic_key_token_values() + fields_to_tokenize
+
+
+class DataFrameToSQLTable(
+    DataFrameOperand, DataFrameOperandMixin, DataFrameToSQLTableLogicKeyGeneratorMixin
+):
     _op_type_ = opcodes.TO_SQL
 
     _table_name = StringField("table_name")

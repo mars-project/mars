@@ -32,7 +32,7 @@ from ...supervisor import GlobalResourceManagerActor
 from ...worker import BandSlotManagerActor, BandSlotControlActor
 
 
-class MockGlobalSlotManagerActor(mo.Actor):
+class MockGlobalResourceManagerActor(mo.Actor):
     def __init__(self):
         self._result = None
 
@@ -63,7 +63,7 @@ async def actor_pool(request):
 
     async with pool:
         global_slots_ref = await mo.create_actor(
-            MockGlobalSlotManagerActor,
+            MockGlobalResourceManagerActor,
             uid=GlobalResourceManagerActor.default_uid(),
             address=pool.external_address,
         )

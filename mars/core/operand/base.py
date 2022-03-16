@@ -34,7 +34,7 @@ from ...serialization.core import Placeholder
 from ...serialization.serializables import Serializable
 from ...serialization.serializables.core import SerializableSerializer
 from ...typing import OperandType
-from ...utils import AttributeDict, classproperty
+from ...utils import AttributeDict, classproperty, tokenize
 from ..base import Base
 from ..entity.core import Entity, EntityData
 from ..entity.chunks import Chunk
@@ -115,8 +115,44 @@ def _install_scheduling_hint_properties(cls: Type["Operand"]):
     return cls
 
 
+class OperatorLogicKeyGeneratorMixin:
+    """
+    This generator will generate an unique and deterministic key for operator compute logic. It should be same
+    for different run if the compute logic doesn't change. This id will be used in subtask speculative
+    execution and hbo scheduling and so on.
+    """
+
+    def get_logic_key(self):
+        """The subclass may need to override this method to ensure unique and deterministic."""
+        fields = self._get_logic_key_token_values()
+        try:
+            return tokenize(*fields)
+        except Exception as e:  # pragma: no cover
+            raise ValueError(
+                f"Cannot generate logic key for operator {self} with fields {fields}"
+            ) from e
+
+    def _get_logic_key_token_values(self):
+        token_values = [type(self).__module__, type(self).__name__]
+        if self.stage is not None:
+            token_values.append(self.stage.name)
+        return token_values
+
+
+class LogicKeyGenerator:
+    def __init__(self):
+        self.operator_id_to_logic_key = {}
+
+    def get_logic_key(self, op: "Operand"):
+        assert isinstance(op, Operand)
+        logic_key = self.operator_id_to_logic_key.get(op.id)
+        if logic_key is None:
+            logic_key = self.operator_id_to_logic_key[op.id] = op.get_logic_key()
+        return logic_key
+
+
 @_install_scheduling_hint_properties
-class Operand(Base, metaclass=OperandMetaclass):
+class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
     """
     Operand base class. All operands should have a type, which can be Add, Subtract etc.
     `sparse` indicates that if the operand is applied on a sparse tensor/chunk.

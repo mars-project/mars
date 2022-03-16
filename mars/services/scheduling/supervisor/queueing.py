@@ -18,7 +18,7 @@ import heapq
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import DefaultDict, Dict, List, Optional, Tuple, Union
+from typing import DefaultDict, Dict, List, Optional, Tuple, Union, Set
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
@@ -150,8 +150,16 @@ class SubtaskQueueingActor(mo.Actor):
             SubtaskManagerActor.gen_uid(self._session_id), address=self.address
         )
 
-    async def add_subtasks(self, subtasks: List[Subtask], priorities: List[Tuple]):
-        bands = await self._assigner_ref.assign_subtasks(subtasks)
+    async def add_subtasks(
+        self,
+        subtasks: List[Subtask],
+        priorities: List[Tuple],
+        exclude_bands: Set[Tuple] = None,
+        random_when_unavailable: bool = True,
+    ):
+        bands = await self._assigner_ref.assign_subtasks(
+            subtasks, exclude_bands, random_when_unavailable
+        )
         for subtask, band, priority in zip(subtasks, bands, priorities):
             assert band is not None
             self._stid_to_bands[subtask.subtask_id].append(band)
@@ -160,6 +168,12 @@ class SubtaskQueueingActor(mo.Actor):
             )
             self._max_enqueue_id += 1
             heapq.heappush(self._band_queues[band], heap_item)
+            logger.debug(
+                "Subtask %s enqueued to band %s excluded from %s.",
+                subtask.subtask_id,
+                band,
+                exclude_bands,
+            )
         logger.debug("%d subtasks enqueued", len(subtasks))
 
     async def submit_subtasks(self, band: Tuple = None, limit: Optional[int] = None):
@@ -183,8 +197,10 @@ class SubtaskQueueingActor(mo.Actor):
             )
             task_queue = self._band_queues[band]
             submit_items = dict()
-            while task_queue and len(submit_items) < band_limit:
+            while (
                 self._ensure_top_item_valid(task_queue)
+                and len(submit_items) < band_limit
+            ):
                 item = heapq.heappop(task_queue)
                 submit_items[item.subtask.subtask_id] = item
 
@@ -261,12 +277,14 @@ class SubtaskQueueingActor(mo.Actor):
             yield asyncio.gather(*submit_aio_tasks)
 
     def _ensure_top_item_valid(self, task_queue):
-        """Clean invalid subtask item from queue to ensure that"""
+        """Clean invalid subtask item from the queue to ensure that when the queue is not empty,
+        there is always some subtasks waiting being scheduled."""
         while (
             task_queue and task_queue[0].subtask.subtask_id not in self._stid_to_items
         ):
             #  skip removed items (as they may be re-pushed into the queue)
             heapq.heappop(task_queue)
+        return bool(task_queue)
 
     @mo.extensible
     def update_subtask_priority(self, subtask_id: str, priority: Tuple):

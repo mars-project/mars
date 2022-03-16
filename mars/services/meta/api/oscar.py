@@ -111,6 +111,11 @@ class MetaAPI(AbstractMetaAPI):
             chunk = chunk.chunk
         params = chunk.params.copy()
         chunk_key = extra.pop("chunk_key", chunk.key)
+        object_ref = extra.pop("object_ref", None)
+        if object_ref:
+            object_refs = [object_ref]
+        else:
+            object_refs = []
         if isinstance(
             chunk,
             (
@@ -134,7 +139,8 @@ class MetaAPI(AbstractMetaAPI):
             **params,
             bands=bands,
             memory_size=memory_size,
-            store_size=store_size
+            store_size=store_size,
+            object_refs=object_refs
         )
 
     @mo.extensible
@@ -147,6 +153,23 @@ class MetaAPI(AbstractMetaAPI):
         fields: List[str] = None,
         **extra
     ):
+        """
+        Parameters
+        ----------
+        chunk: ChunkType
+            chunk to set meta
+        memory_size: int
+            memory size for chunk data
+        store_size: int
+            serialized size for chunk data
+        bands:
+            chunk data bands
+        extra
+
+        Returns
+        -------
+
+        """
         meta = self._extract_chunk_meta(
             chunk,
             memory_size=memory_size,
@@ -182,6 +205,12 @@ class MetaAPI(AbstractMetaAPI):
 
     @mo.extensible
     async def del_chunk_meta(self, object_id: str):
+        """
+        Parameters
+        ----------
+        object_id: str
+            chunk id
+        """
         return await self._meta_store.del_meta(object_id)
 
     @del_chunk_meta.batch

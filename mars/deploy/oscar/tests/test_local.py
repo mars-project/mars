@@ -691,3 +691,59 @@ def test_show_progress_raise_exception(m_log):
 
     loop.run_until_complete(_exec())
     assert len(m_log.mock_calls) < 3
+
+
+min_task_runtime = 2
+
+
+@pytest.fixture
+async def speculative_cluster():
+    config = load_config()
+    # coloring based fusion will make subtask too heterogeneous such that the speculative scheduler can't
+    # get enough homogeneous subtasks to calculate statistics
+    config["task"]["default_config"]["fuse_enabled"] = False
+    config["scheduling"]["speculation"]["enabled"] = True
+    config["scheduling"]["speculation"]["interval"] = 0.5
+    config["scheduling"]["speculation"]["threshold"] = 0.2
+    config["scheduling"]["speculation"]["min_task_runtime"] = min_task_runtime
+    config["scheduling"]["speculation"]["multiplier"] = 2
+    config["scheduling"]["speculation"]["max_concurrent_run"] = 10
+    config["scheduling"]["subtask_cancel_timeout"] = 0.1
+    config["scheduling"]["enable_kill_slot"] = True
+    config["storage"]["backends"] = ["plasma"]
+    config["storage"]["plasma"]["store_memory"] = 10 * 1024 * 1024
+    client = await new_cluster(
+        config=config,
+        n_worker=5,
+        n_cpu=10,
+        use_uvloop=False,
+    )
+    async with client:
+        yield client
+
+
+@pytest.mark.timeout(timeout=500)
+@pytest.mark.asyncio
+async def test_task_speculation_execution(speculative_cluster):
+    series_size = 10
+
+    def time_consuming(start, x):
+        print(f"subtask index {x}")
+        if (
+            x >= series_size - 1
+        ):  # leave some workers not excluded from speculative submit.
+            if time.time() - start < min_task_runtime:
+                print(f"subtask with index {x} starts to hang.")
+                time.sleep(1000000)
+        return x * x
+
+    from functools import partial
+
+    assert (
+        md.Series(list(range(series_size)), chunk_size=1)
+        .apply(partial(time_consuming, time.time()))
+        .sum()
+        .execute()
+        .fetch()
+        == pd.Series(list(range(series_size))).apply(lambda x: x * x).sum()
+    )
