@@ -49,6 +49,7 @@ from typing import (
     Type,
     Union,
 )
+from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -1521,3 +1522,12 @@ def is_full_slice(slc: Any) -> bool:
         and slc.stop is None
         and slc.step is None
     )
+
+
+def is_ray_address(address: str) -> bool:
+    from .oscar.backends.ray.communication import RayServer
+
+    if urlparse(address).scheme == RayServer.scheme:
+        return True
+    else:
+        return False

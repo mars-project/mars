@@ -15,6 +15,7 @@
 import pytest
 
 from .... import tensor as mt
+from ....tests.core import flaky
 from .. import DAG, GraphContainsCycleError
 
 
@@ -94,6 +95,7 @@ def test_dag():
         )
 
 
+@flaky(max_runs=3)
 def test_to_dot():
     arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
     arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
