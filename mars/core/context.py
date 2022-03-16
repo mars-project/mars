@@ -34,7 +34,7 @@ class Context(ABC):
         session_id: str = None,
         supervisor_address: str = None,
         worker_address: str = None,
-        current_address: str = None,
+        local_address: str = None,
         band: BandType = None,
     ):
         if session_id is None:
@@ -53,7 +53,7 @@ class Context(ABC):
         self.session_id = session_id
         self.supervisor_address = supervisor_address
         self.worker_address = worker_address
-        self.current_address = current_address
+        self.local_address = local_address
         self.band = band
 
     @abstractmethod
@@ -64,6 +64,16 @@ class Context(ABC):
         Returns
         -------
         session
+        """
+
+    @abstractmethod
+    def get_local_host_ip(self) -> str:
+        """
+        Get local worker's host ip
+
+        Returns
+        -------
+        host_ip : str
         """
 
     @abstractmethod
