@@ -22,7 +22,9 @@ from collections import defaultdict
 from typing import List, Set, Dict, Optional, Any
 
 from .... import oscar as mo
+from ....metrics import Metrics
 from ....typing import BandType
+from ....utils import report_event
 from ....lib.aio import alru_cache
 from ...cluster.api import ClusterAPI
 from ...cluster.core import NodeRole, NodeStatus
@@ -38,6 +40,16 @@ class AutoscalerActor(mo.Actor):
         self.queueing_refs = dict()
         self.global_slot_ref = None
         self._dynamic_workers: Set[str] = set()
+        self._max_workers = autoscale_conf.get("max_workers", 100)
+        self._initial_request_worker_timeout = autoscale_conf.get("initial_request_worker_timeout", 30)
+        self._request_worker_time_secs = Metrics.gauge(
+            "mars.scheduling.request_worker_time_sec",
+            "Time consuming in seconds to request a worker",
+        )
+        self._offline_worker_time_secs = Metrics.gauge(
+            "mars.scheduling.offline_worker_time_sec",
+            "Time consuming in seconds to offline a worker",
+        )
 
     async def __post_create__(self):
         strategy = self._autoscale_conf.get("strategy")
@@ -54,8 +66,8 @@ class AutoscalerActor(mo.Actor):
         self._cluster_api = await ClusterAPI.create(self.address)
         self._strategy = await strategy_cls.create(self._autoscale_conf, self)
         if self._enabled:
-            logger.info(f"Auto scale strategy %s started", self._strategy)
             await self._strategy.start()
+            logger.info(f"Autoscaler started with conf %s and strategy %s", self._autoscale_conf, self._strategy)
 
     async def __pre_destroy__(self):
         if self._enabled:
@@ -75,24 +87,28 @@ class AutoscalerActor(mo.Actor):
         self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None
     ) -> str:
         start_time = time.time()
+        timeout = timeout or self._initial_request_worker_timeout
         worker_address = await self._cluster_api.request_worker(
             worker_cpu, worker_mem, timeout
         )
         if worker_address:
             self._dynamic_workers.add(worker_address)
-            logger.info(
-                "Requested new worker %s in %.4f seconds, current dynamic worker nums is %s",
+            duration = time.time() - start_time
+            msg = "Requested new worker {} in {} seconds, current dynamic worker nums is {}".format(
                 worker_address,
-                time.time() - start_time,
+                duration,
                 self.get_dynamic_worker_nums(),
-            )
+                )
+            logger.info(msg)
+            report_event("WARNING", "AUTO_SCALING_OUT", msg)
             return worker_address
         else:
             logger.warning(
-                "Request worker with resource %s failed in %.4f seconds.",
-                dict(worker_cpu=worker_cpu, worker_mem=worker_mem),
+                "Request worker with resource %s and timeout %s failed in %.4f seconds.",
+                dict(worker_cpu=worker_cpu, worker_mem=worker_mem), timeout,
                 time.time() - start_time,
             )
+            self._initial_request_worker_timeout *= 2
 
     async def release_workers(self, addresses: List[str]):
         """
@@ -119,14 +135,19 @@ class AutoscalerActor(mo.Actor):
 
         async def release_worker(address):
             logger.info("Start to release worker %s.", address)
+            start = time.time()
             worker_bands = workers_bands[address]
             await asyncio.gather(
                 *[self.global_slot_ref.wait_band_idle(band) for band in worker_bands]
             )
             await self._migrate_data_of_bands(worker_bands, excluded_bands)
             await self._cluster_api.release_worker(address)
+            duration = time.time() - start
+            self._offline_worker_time_secs.record(duration)
             self._dynamic_workers.remove(address)
-            logger.info("Released worker %s.", address)
+            msg = f"Released worker {address}."
+            logger.info(msg)
+            report_event("WARNING", "AUTO_SCALING_IN", msg)
 
         await asyncio.gather(*[release_worker(address) for address in addresses])
 
@@ -256,11 +277,19 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
         self._sustained_scheduler_backlog_timeout = autoscale_conf.get(
             "sustained_scheduler_backlog_timeout", self._scheduler_backlog_timeout
         )
+        self._scheduler_scale_out_enabled = autoscale_conf.get(
+            "scheduler_scale_out_enabled", True
+        )
         # Make worker_idle_timeout greater than scheduler_backlog_timeout to
         # avoid cluster fluctuate back and forth。
         self._worker_idle_timeout = autoscale_conf.get(
             "worker_idle_timeout", 2 * self._scheduler_backlog_timeout
         )
+        self._initial_round_scale_out_workers = autoscale_conf.get("initial_round_scale_out_workers", 2)
+        if self._initial_round_scale_out_workers < 2:
+            logger.warning("Initial round scale_out workers %s is less than 2, set it to 2.",
+                self._initial_round_scale_out_workers)
+            self._initial_round_scale_out_workers = 2
         self._min_workers = autoscale_conf.get("min_workers", 1)
         assert self._min_workers >= 1, "Mars need at least 1 worker."
         self._max_workers = autoscale_conf.get("max_workers", 100)
@@ -297,14 +326,20 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
             logger.info("Canceled pending task backlog strategy.")
         except Exception as e:  # pragma: no cover
             logger.exception("Exception occurred when try to auto scale")
-            raise e
+            pass
 
     async def _run_round(self):
         queueing_refs = list(self._autoscaler.queueing_refs.values())
-        if any([await queueing_ref.all_bands_busy() for queueing_ref in queueing_refs]):
+        if self._scheduler_scale_out_enabled and await self.all_bands_busy(queueing_refs):
             await self._scale_out(queueing_refs)
         else:
             await self._scale_in()
+
+    @staticmethod
+    async def all_bands_busy(queueing_refs):
+        return any(
+            [await queueing_ref.all_bands_busy() for queueing_ref in queueing_refs]
+        )
 
     async def _scale_out(self, queueing_refs):
         logger.info(
@@ -312,18 +347,9 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
             self._autoscaler.get_dynamic_worker_nums(),
         )
         start_time = time.time()
-        while not await self._autoscaler.request_worker():
-            logger.warning(
-                "Request worker failed, wait %s seconds and retry.",
-                self._scheduler_check_interval,
-            )
-            await asyncio.sleep(self._scheduler_check_interval)
-        await asyncio.sleep(self._scheduler_backlog_timeout)
         rnd = 1
-        while any(
-            [await queueing_ref.all_bands_busy() for queueing_ref in queueing_refs]
-        ):
-            worker_num = 2**rnd
+        while await self.all_bands_busy(queueing_refs):
+            worker_num = self._initial_round_scale_out_workers ** rnd
             if (
                 self._autoscaler.get_dynamic_worker_nums() + worker_num
                 > self._max_workers
@@ -331,18 +357,23 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
                 worker_num = (
                     self._max_workers - self._autoscaler.get_dynamic_worker_nums()
                 )
-            while set(
-                await asyncio.gather(
-                    *[self._autoscaler.request_worker() for _ in range(worker_num)]
-                )
-            ) == {None}:
+                if worker_num == 0:
+                    break
+            requested_workers = set(await asyncio.gather(
+                *[self._autoscaler.request_worker() for _ in range(worker_num)]
+            ))
+            while len(requested_workers) == 0 and await self.all_bands_busy(queueing_refs):
                 logger.warning(
                     "Request %s workers all failed, wait %s seconds and retry.",
                     worker_num,
                     self._scheduler_check_interval,
                 )
                 await asyncio.sleep(self._scheduler_check_interval)
+                requested_workers.update(await asyncio.gather(
+                    *[self._autoscaler.request_worker() for _ in range(worker_num)]
+                ))
             rnd += 1
+            logger.info("Requested %s workers.", len(requested_workers))
             await asyncio.sleep(self._sustained_scheduler_backlog_timeout)
         logger.info(
             "Scale out finished in %s round, took %s seconds, current dynamic workers %s",
@@ -368,12 +399,6 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
         }
         worker_addresses = set(band[0] for band in idle_bands)
         if worker_addresses:
-            logger.debug(
-                "Bands %s of workers % has been idle for as least %s seconds.",
-                idle_bands,
-                worker_addresses,
-                self._worker_idle_timeout,
-            )
             while (
                 worker_addresses
                 and self._autoscaler.get_dynamic_worker_nums() - len(worker_addresses)
@@ -390,6 +415,13 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
                 idle_bands.difference_update(
                     set(await self._autoscaler.get_worker_bands(worker_address))
                 )
+        if worker_addresses:
+            logger.info(
+                "Bands %s of workers % has been idle for as least %s seconds.",
+                idle_bands,
+                worker_addresses,
+                self._worker_idle_timeout,
+            )
         if worker_addresses:
             start_time = time.time()
             logger.info(

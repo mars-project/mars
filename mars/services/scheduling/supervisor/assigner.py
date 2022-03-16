@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import heapq
 import itertools
 import numpy as np
 from collections import defaultdict
@@ -111,12 +112,10 @@ class AssignerActor(mo.Actor):
         exclude_bands = exclude_bands or set()
         inp_keys = set()
         selected_bands = dict()
-
         if not self._bands:
             self._update_bands(
                 list(await self._cluster_api.get_all_bands(NodeRole.WORKER))
             )
-
         for subtask in subtasks:
             is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
             if subtask.expect_bands:
@@ -207,58 +206,45 @@ class AssignerActor(mo.Actor):
         return assigns
 
     async def reassign_subtasks(
-        self, band_to_queued_num: Dict[BandType, int]
+        self, band_to_queued_num: Dict[BandType, int], used_slots: Dict[BandType, int] = None
     ) -> Dict[BandType, int]:
+        used_slots = used_slots or {}
         move_queued_subtasks = {}
         for is_gpu in (False, True):
             band_name_prefix = "numa" if not is_gpu else "gpu"
-
-            filtered_bands = [
+            device_bands = [
                 band for band in self._bands if band[1].startswith(band_name_prefix)
             ]
-            filtered_band_to_queued_num = {
+            if not device_bands:
+                continue
+            device_bands_set = set(device_bands)
+            device_band_to_queued_num = {
                 k: v
                 for k, v in band_to_queued_num.items()
                 if k[1].startswith(band_name_prefix)
             }
-
-            if not filtered_bands:
-                continue
-
-            num_used_bands = len(filtered_band_to_queued_num.keys())
+            used_bands = device_band_to_queued_num.keys()
+            num_used_bands = len(used_bands)
             if num_used_bands == 1:
-                [(band, length)] = filtered_band_to_queued_num.items()
+                [(band, length)] = device_band_to_queued_num.items()
                 if length == 0:
                     move_queued_subtasks.update({band: 0})
                     continue
                 # no need to balance when there's only one band initially
-                if len(filtered_bands) == 1 and band == filtered_bands[0]:
+                if len(device_bands) == 1 and band == device_bands[0]:
                     move_queued_subtasks.update({band: 0})
                     continue
-            # unready bands recorded in band_num_queued_subtasks, some of them may hold 0 subtasks
-            unready_bands = list(
-                set(filtered_band_to_queued_num.keys()) - set(filtered_bands)
-            )
-            # ready bands not recorded in band_num_queued_subtasks, all of them hold 0 subtasks
-            new_ready_bands = list(
-                set(filtered_bands) - set(filtered_band_to_queued_num.keys())
-            )
-            # when there are new ready bands, make all bands hold same amount of subtasks
-            # when there are no new ready bands now, move out subtasks left on them
-            if not new_ready_bands and unready_bands:
-                filtered_band_to_queued_num = {
-                    k: filtered_band_to_queued_num[k] for k in unready_bands
-                }
             # approximate total of subtasks moving to each ready band
-            num_all_subtasks = sum(filtered_band_to_queued_num.values())
-            mean = int(num_all_subtasks / len(filtered_bands))
+            num_all_subtasks = sum(device_band_to_queued_num.values()) + sum(used_slots.values())
+            # If the remainder is not 0, move in and out may be unequal.
+            mean = int(num_all_subtasks / len(device_bands))
             # all_bands (namely) includes:
             # a. ready bands recorded in band_num_queued_subtasks
             # b. ready bands not recorded in band_num_queued_subtasks
             # c. unready bands recorded in band_num_queued_subtasks
             # a. + b. = self._bands, a. + c. = bands in band_num_queued_subtasks
             all_bands = list(
-                set(filtered_bands) | set(filtered_band_to_queued_num.keys())
+                device_bands_set | set(device_band_to_queued_num.keys())
             )
             # calculate the differential steps of moving subtasks
             # move < 0 means subtasks should move out and vice versa
@@ -266,19 +252,37 @@ class AssignerActor(mo.Actor):
             # assuming bands not recorded in band_num_queued_subtasks hold 0 subtasks
             band_move_nums = {}
             for band in all_bands:
-                if band in filtered_bands:
-                    band_move_nums[band] = mean - filtered_band_to_queued_num.get(
-                        band, 0
-                    )
+                existing_subtask_nums = device_band_to_queued_num.get(band, 0)
+                if band in device_bands:
+                    band_move_num = mean - existing_subtask_nums - used_slots.get(band, 0)
+                    # If slot of band already has some subtasks running, band_move_num may be greater than
+                    # existing_subtask_nums.
+                    if band_move_num + existing_subtask_nums < 0:
+                        band_move_num = -existing_subtask_nums
                 else:
-                    band_move_nums[band] = -filtered_band_to_queued_num.get(band, 0)
-            # ensure the balance of moving in and out
-            total_move = sum(band_move_nums.values())
-            # int() is going to be closer to zero, so `mean` is no more than actual mean value
-            # total_move = mean * len(self._bands) - num_all_subtasks
-            #            <= actual_mean * len(self._bands) - num_all_subtasks = 0
-            assert total_move <= 0
-            if total_move != 0:
-                band_move_nums[self._get_random_band(False)] -= total_move
+                    band_move_num = -existing_subtask_nums
+                band_move_nums[band] = band_move_num
+            self._balance_move_out_subtasks(band_move_nums)
+            assert sum(band_move_nums.values()) == 0, f"band_move_nums {band_move_nums}"
             move_queued_subtasks.update(band_move_nums)
         return dict(sorted(move_queued_subtasks.items(), key=lambda item: item[1]))
+
+    def _balance_move_out_subtasks(self, band_move_nums: Dict[BandType, int]):
+        # ensure the balance of moving in and out
+        total_move = sum(band_move_nums.values())
+        if total_move != 0:
+            unit = (total_move > 0) - (total_move < 0)
+
+            class BandHeapItem:
+                def __init__(self, band_):
+                    self.band = band_
+
+                def __lt__(self, other: "BandHeapItem"):
+                    return (band_move_nums.get(self.band, 0) > band_move_nums.get(other.band, 0)) * unit
+            bands_queue = [BandHeapItem(band) for band, move_nums in band_move_nums.items() if move_nums * unit > 0]
+            heapq.heapify(bands_queue)
+            while total_move != 0:
+                item = heapq.heappop(bands_queue)
+                band_move_nums[item.band] -= unit
+                total_move -= unit
+                heapq.heappush(bands_queue, item)

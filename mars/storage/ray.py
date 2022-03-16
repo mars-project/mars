@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import logging
 import inspect
 
 from typing import Any, Dict, List, Tuple
@@ -22,6 +22,7 @@ from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_bac
 from .core import BufferWrappedFileObject, StorageFileObject
 
 ray = lazy_import("ray")
+logger = logging.getLogger(__name__)
 
 
 # TODO(fyrestone): make the SparseMatrix pickleable.
@@ -145,18 +146,24 @@ class RayStorage(StorageBackend):
         if kwargs:  # pragma: no cover
             raise NotImplementedError(f'Got unsupported args: {",".join(kwargs)}')
         with debug_async_timeout(
-            "ray_object_retrieval_timeout", "Storage get object timeout"
+            "ray_object_retrieval_timeout",
+            "Storage get object timeout, ObjectRef: %s",
+            object_id
         ):
             return await object_id
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
-        if support_specify_owner() and self._owner_address:
-            if not self._owner:
-                self._owner = ray.get_actor(self._owner_address)
-            object_id = ray.put(obj, _owner=self._owner)
-        else:
-            object_id = ray.put(obj)
+        try:
+            if support_specify_owner() and self._owner_address:
+                if not self._owner:
+                    self._owner = ray.get_actor(self._owner_address)
+                object_id = ray.put(obj, _owner=self._owner)
+            else:
+                object_id = ray.put(obj)
+        except Exception as e:
+            logger.exception("ray.put error %s", e)
+            raise
         # We can't get the serialized bytes length from ray.put
         return ObjectInfo(object_id=object_id)
 

@@ -55,6 +55,10 @@ from types import TracebackType
 
 import numpy as np
 import pandas as pd
+try:
+    import ray
+except ImportError:
+    ray = None
 from sklearn.base import BaseEstimator
 
 from ._utils import (  # noqa: F401 # pylint: disable=unused-import
@@ -1592,3 +1596,9 @@ def create_task_with_error_log(coro, *args, **kwargs):  # pragma: no cover
     else:
         call_site = None
     return _create_task(_run_task_with_error_log(coro, call_site), *args, **kwargs)
+
+
+def report_event(severity, label, message):
+    if ray and ray.is_initialized():
+        severity = getattr(ray.EventSeverity, severity) if isinstance(severity, str) else severity
+        ray.report_event(severity, label, message)
