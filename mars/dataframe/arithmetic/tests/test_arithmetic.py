@@ -21,12 +21,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from .... import tensor as mt
 from ....core import OutputType, OperandType, tile
 from ....core.operand import OperandStage
 from ....utils import dataslots
 from ...align import DataFrameIndexAlign, DataFrameShuffleProxy
 from ...core import IndexValue
 from ...datasource.dataframe import from_pandas, DataFrameDataSource
+from ...datasource.from_tensor import dataframe_from_tensor
 from ...datasource.series import from_pandas as from_pandas_series, SeriesDataSource
 from ...utils import hash_dtypes
 from ...utils import (
@@ -1534,3 +1536,17 @@ def test_not():
         pd.testing.assert_index_equal(
             c2.index_value.to_pandas(), c1.index_value.to_pandas()
         )
+
+
+def test_arithmetic_lazy_chunk_meta():
+    df = dataframe_from_tensor(mt.random.rand(10, 3, chunk_size=3))
+    df2 = df + 1
+    df2 = tile(df2)
+
+    chunk = df2.chunks[0].data
+    assert chunk._FIELD_VALUES.get("_dtypes") is None
+    pd.testing.assert_series_equal(chunk.dtypes, df.dtypes)
+    assert chunk._FIELD_VALUES.get("_index_value") is None
+    pd.testing.assert_index_equal(chunk.index_value.to_pandas(), pd.RangeIndex(3))
+    assert chunk._FIELD_VALUES.get("_columns_value") is None
+    pd.testing.assert_index_equal(chunk.columns_value.to_pandas(), pd.RangeIndex(3))

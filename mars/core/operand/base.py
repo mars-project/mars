@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import weakref
 from copy import deepcopy
 from enum import Enum
@@ -80,6 +81,7 @@ class SchedulingHint(Serializable):
     priority = Int32Field("priority", default=None)
 
     @classproperty
+    @functools.lru_cache(1)
     def all_hint_names(cls):
         return list(cls._FIELDS)
 
@@ -179,30 +181,31 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
     # scheduling hint
     scheduling_hint = ReferenceField("scheduling_hint", default=None)
 
-    _inputs = ListField("inputs", FieldTypes.reference(EntityData))
-    _outputs = ListField("outputs")
-    _output_types = ListField("output_type", FieldTypes.reference(OutputType))
+    _inputs = ListField(
+        "inputs", FieldTypes.reference(EntityData), default_factory=list
+    )
+    _outputs = ListField("outputs", default=None)
+    _output_types = ListField(
+        "output_type", FieldTypes.reference(OutputType), default=None
+    )
 
     def __init__(self: OperandType, *args, **kwargs):
-        extra_names = (
-            set(kwargs) - set(self._FIELDS) - set(SchedulingHint.all_hint_names)
-        )
-        extras = AttributeDict((k, kwargs.pop(k)) for k in extra_names)
-        kwargs["extra_params"] = kwargs.pop("extra_params", extras)
-        self._extract_scheduling_hint(kwargs)
+        self._parse_kwargs(kwargs)
         super().__init__(*args, **kwargs)
 
     @classmethod
-    def _extract_scheduling_hint(cls, kwargs: Dict[str, Any]):
-        if "scheduling_hint" in kwargs:
-            return
-
-        scheduling_hint_kwargs = dict()
-        for hint_name in SchedulingHint.all_hint_names:
-            if hint_name in kwargs:
-                scheduling_hint_kwargs[hint_name] = kwargs.pop(hint_name)
-        if scheduling_hint_kwargs:
-            kwargs["scheduling_hint"] = SchedulingHint(**scheduling_hint_kwargs)
+    def _parse_kwargs(cls, kwargs: Dict[str, Any]):
+        kwargs["extra_params"] = extras = AttributeDict()
+        kwargs["scheduling_hint"] = scheduling_hint = kwargs.get(
+            "scheduling_hint", SchedulingHint()
+        )
+        for k in set(kwargs):
+            if k in cls._FIELDS:
+                continue
+            elif k in SchedulingHint.all_hint_names:
+                setattr(scheduling_hint, k, kwargs.pop(k))
+            else:
+                extras[k] = kwargs.pop(k)
 
     def __repr__(self):
         if self.stage is None:
@@ -229,9 +232,9 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
 
     @property
     def inputs(self) -> List[Union[Chunk, Tileable]]:
-        inputs = getattr(self, "_inputs", None)
-        if not inputs:
-            return list()
+        inputs = self._inputs
+        if inputs is None:
+            inputs = self._inputs = []
         return inputs
 
     @inputs.setter
@@ -244,14 +247,14 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
 
     @property
     def pure_depends(self):
-        val = getattr(self, "_pure_depends", None)
+        val = self._pure_depends  # pylint: disable=access-member-before-definition
         if not val:
-            return [False] * len(self.inputs or ())
+            val = self._pure_depends = [False] * len(self.inputs or ())
         return val
 
     @property
     def output_types(self):
-        return getattr(self, "_output_types", None)
+        return self._output_types
 
     @output_types.setter
     def output_types(self, value):
@@ -268,7 +271,7 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
 
     @property
     def outputs(self) -> List[Union[Chunk, Tileable]]:
-        outputs = getattr(self, "_outputs", None)
+        outputs = self._outputs
         if outputs:
             return [ref() for ref in outputs]
 
@@ -304,13 +307,10 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
         new_op = super().copy()
         new_op.outputs = []
         # copy scheduling_hint
-        new_op.scheduling_hint = SchedulingHint(
-            **{
-                field: getattr(self.scheduling_hint, field)
-                for field in SchedulingHint.all_hint_names
-            }
-        )
-        new_op.extra_params = deepcopy(self.extra_params)
+        new_op.scheduling_hint = self.scheduling_hint.copy()
+        extra_params = self.extra_params
+        if extra_params:
+            new_op.extra_params = deepcopy(extra_params)
         return new_op
 
     def on_output_modify(self, new_output):

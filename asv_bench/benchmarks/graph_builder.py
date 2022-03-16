@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# Copyright 1999-2021 Alibaba Group Holding Ltd.
+# Copyright 1999-2022 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,11 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .config import options
-from .core.context import get_context
-from .session import new_session, execute, fetch, fetch_log, stop_server
-from .deploy.oscar import new_cluster_in_ray, new_ray_session
+import mars.tensor as mt
+import mars.dataframe as md
+from mars.core.graph.builder.utils import build_graph
 
-from . import _version
 
-__version__ = _version.get_versions()["version"]
+class ChunkGraphBuilderSuite:
+    """
+    Benchmark that times performance of chunk graph builder
+    """
+
+    def setup(self):
+        self.df = md.DataFrame(
+            mt.random.rand(1000, 10, chunk_size=(1, 10)), columns=list("abcdefghij")
+        )
+
+    def time_filter(self):
+        df = self.df[self.df["a"] < 0.8]
+        build_graph([df], tile=True)

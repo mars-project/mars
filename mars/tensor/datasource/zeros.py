@@ -57,7 +57,7 @@ class TensorZeros(TensorNoInput):
             )
 
 
-def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False, order="C"):
+def zeros(shape, dtype=None, chunk_size=None, gpu=None, sparse=False, order="C"):
     """
     Return a new tensor of given shape and type, filled with zeros.
 

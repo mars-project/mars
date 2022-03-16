@@ -16,3 +16,4 @@
 *.json text
 *.yaml text
 *.yml text
+mars/_version.py export-subst

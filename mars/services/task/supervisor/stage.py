@@ -131,7 +131,7 @@ class TaskStageProcessor:
     async def set_subtask_result(self, result: SubtaskResult, band: BandType = None):
         assert result.status.is_done
         subtask = self.subtask_id_to_subtask[result.subtask_id]
-        self.subtask_results[subtask] = result.update(self.subtask_results.get(subtask))
+        #  update subtask_results in `TaskProcessorActor.set_subtask_result`
         self._submitted_subtask_ids.difference_update([result.subtask_id])
 
         all_done = len(self.subtask_results) == len(self.subtask_graph)

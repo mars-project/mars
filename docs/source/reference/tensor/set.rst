@@ -10,4 +10,5 @@ Boolean operations
 
    mars.tensor.in1d
    mars.tensor.isin
+   mars.tensor.setdiff1d
    mars.tensor.union1d
