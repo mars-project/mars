@@ -117,7 +117,7 @@ class MockBandSlotManagerActor(BandSlotManagerActor, CancelDetectActorMixin):
         self._delay_function = name
 
 
-class MockGlobalSlotManagerActor(GlobalResourceManagerActor, CancelDetectActorMixin):
+class MockGlobalResourceManagerActor(GlobalResourceManagerActor, CancelDetectActorMixin):
     async def __post_create__(self):
         pass
 
@@ -191,7 +191,7 @@ async def actor_pool(request):
 
         # create global slot manager actor
         global_resource_ref = await mo.create_actor(
-            MockGlobalSlotManagerActor,
+            MockGlobalResourceManagerActor,
             uid=GlobalResourceManagerActor.default_uid(),
             address=pool.external_address,
         )

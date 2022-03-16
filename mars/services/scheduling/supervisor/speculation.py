@@ -42,12 +42,12 @@ class SpeculativeScheduler:
     ]  # key is subtask logic key
 
     def __init__(
-        self, queueing_ref, global_slot_ref, speculation_config: Dict[str, any]
+        self, queueing_ref, global_resource_ref, speculation_config: Dict[str, any]
     ):
         self._grouped_unfinished_subtasks = defaultdict(dict)
         self._grouped_finished_subtasks = defaultdict(dict)
         self._queueing_ref = queueing_ref
-        self._global_slot_ref = global_slot_ref
+        self._global_resource_ref = global_resource_ref
         self._speculation_config = speculation_config
         self._subtask_speculation_enabled = speculation_config.get("enabled", False)
         assert self._subtask_speculation_enabled in (True, False)
@@ -166,7 +166,7 @@ class SpeculativeScheduler:
                 exclude_bands = set()
                 for info in unfinished_subtask_infos:
                     exclude_bands.update(info.band_futures.keys())
-                remaining_resources = await self._global_slot_ref.get_remaining_slots()
+                remaining_resources = await self._global_resource_ref.get_remaining_slots()
                 logger.warning(
                     "%s subtasks in %s for group %s has not been finished in %s seconds on bands %s, "
                     "median duration is %s, average duration for %s finished subtasks "

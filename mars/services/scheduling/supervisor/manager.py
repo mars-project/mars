@@ -103,7 +103,7 @@ class SubtaskManagerActor(mo.Actor):
         from .speculation import SpeculativeScheduler
 
         self._speculation_execution_scheduler = SpeculativeScheduler(
-            self._queueing_ref, self._global_slot_ref, self._speculation_config
+            self._queueing_ref, self._global_resource_ref, self._speculation_config
         )
         await self._speculation_execution_scheduler.start()
 

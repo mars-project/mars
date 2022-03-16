@@ -21,7 +21,7 @@ from ..... import oscar as mo
 from ....cluster import MockClusterAPI
 from ....subtask import Subtask
 from ...errors import NoAvailableBand
-from ...supervisor import GlobalSlotManagerActor
+from ...supervisor import GlobalResourceManagerActor
 from ..manager import SubtaskScheduleInfo
 from ..speculation import SpeculativeScheduler
 
@@ -62,8 +62,8 @@ async def actor_pool():
         session_id = "test_session"
         cluster_api = await MockClusterAPI.create(pool.external_address)
         slots_ref = await mo.create_actor(
-            GlobalSlotManagerActor,
-            uid=GlobalSlotManagerActor.default_uid(),
+            GlobalResourceManagerActor,
+            uid=GlobalResourceManagerActor.default_uid(),
             address=pool.external_address,
         )
         queue_ref = await mo.create_actor(
