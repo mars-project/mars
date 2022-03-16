@@ -25,6 +25,7 @@ import cloudpickle
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core.context import Context
+from ...core.operand import OperatorLogicKeyGeneratorMixin
 from ...serialization.serializables import (
     StringField,
     AnyField,
@@ -46,10 +47,30 @@ from .core import (
 )
 
 
+class DataFrameReadSQLLogicKeyGenerator(OperatorLogicKeyGeneratorMixin):
+    def _get_logic_key_token_values(self):
+        fields_to_tokenize = [
+            getattr(self, k, None)
+            for k in [
+                "_table_or_sql",
+                "_schema",
+                "_coerce_float",
+                "_parse_dates",
+                "_columns",
+                "_method",
+                "_incremental_index",
+                "_use_arrow_dtype",
+                "_partition_col",
+            ]
+        ]
+        return super()._get_logic_key_token_values() + fields_to_tokenize
+
+
 class DataFrameReadSQL(
     IncrementalIndexDatasource,
     ColumnPruneSupportedDataSourceMixin,
     IncrementalIndexDataSourceMixin,
+    DataFrameReadSQLLogicKeyGenerator,
 ):
     _op_type_ = OperandDef.READ_SQL
 

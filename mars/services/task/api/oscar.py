@@ -60,7 +60,7 @@ class TaskAPI(AbstractTaskAPI):
         self,
         graph: TileableGraph,
         task_name: str = None,
-        fuse_enabled: bool = True,
+        fuse_enabled: bool = None,
         extra_config: dict = None,
     ) -> str:
         try:

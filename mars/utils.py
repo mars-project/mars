@@ -19,6 +19,7 @@ import dataclasses
 import enum
 import functools
 import importlib
+import inspect
 import io
 import itertools
 import logging
@@ -33,6 +34,7 @@ import struct
 import sys
 import threading
 import time
+import types
 import warnings
 import zlib
 from abc import ABC
@@ -82,6 +84,7 @@ TypeDispatcher = TypeDispatcher
 tokenize = tokenize
 register_tokenizer = register_tokenizer
 ceildiv = ceildiv
+_create_task = asyncio.create_task
 
 
 # fix encoding conversion problem under windows
@@ -1548,6 +1551,51 @@ def wrap_exception(
     )().with_traceback(traceback)
 
 
+def get_func_token_values(func):
+    if hasattr(func, "__code__"):
+        tokens = [func.__code__.co_code]
+        if func.__closure__ is not None:
+            cvars = tuple([x.cell_contents for x in func.__closure__])
+            tokens.append(cvars)
+        return tokens
+    else:
+        tokens = []
+        while isinstance(func, functools.partial):
+            tokens.extend([func.args, func.keywords])
+            func = func.func
+        if hasattr(func, "__code__"):
+            tokens.extend(get_func_token_values(func))
+        elif isinstance(func, types.BuiltinFunctionType):
+            tokens.extend([func.__module__, func.__name__])
+        else:
+            tokens.append(func)
+        return tokens
+
+
+async def _run_task_with_error_log(coro, call_site=None):  # pragma: no cover
+    try:
+        return await coro
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.exception(
+            "Coroutine %r at call_site %s execution got exception %s.",
+            coro,
+            call_site,
+            e,
+        )
+        raise
+
+
+def create_task_with_error_log(coro, *args, **kwargs):  # pragma: no cover
+    frame = inspect.currentframe()
+    if frame and frame.f_back:
+        call_site = frame.f_back.f_code
+    else:
+        call_site = None
+    return _create_task(_run_task_with_error_log(coro, call_site), *args, **kwargs)
+	
+	
 class Percentile:
     class PercentileType(Enum):
         P99 = 1

@@ -89,7 +89,13 @@ def _ray_large_cluster(request):  # pragma: no cover
             cluster.add_node(num_cpus=num_cpus, memory=num_cpus * 2 * 1024**3)
         )
         if len(remote_nodes) == 1:
-            ray.init(address=cluster.address)
+            try:
+                job_config = ray.job_config.JobConfig(
+                    total_memory_mb=num_nodes * 32 * 1024**3
+                )
+            except TypeError:
+                job_config = None
+            ray.init(address=cluster.address, job_config=job_config)
     register_ray_serializers()
     try:
         yield
