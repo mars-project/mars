@@ -122,12 +122,9 @@ class OperatorLogicKeyGeneratorMixin:
     execution and hbo scheduling and so on.
     """
 
-    def get_logic_key(self, key_generator: "LogicKeyGenerator"):
+    def get_logic_key(self):
         """The subclass may need to override this method to ensure unique and deterministic."""
         fields = self._get_logic_key_token_values()
-        for input_chunk in self.inputs or ():
-            if input_chunk is not None:
-                fields.append(input_chunk.op.get_logic_key(key_generator))
         try:
             return tokenize(*fields)
         except Exception as e:  # pragma: no cover
@@ -150,7 +147,7 @@ class LogicKeyGenerator:
         assert isinstance(op, Operand)
         logic_key = self.operator_id_to_logic_key.get(op.id)
         if logic_key is None:
-            logic_key = self.operator_id_to_logic_key[op.id] = op.get_logic_key(self)
+            logic_key = self.operator_id_to_logic_key[op.id] = op.get_logic_key()
         return logic_key
 
 
