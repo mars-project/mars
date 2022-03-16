@@ -117,7 +117,9 @@ class MockBandSlotManagerActor(BandSlotManagerActor, CancelDetectActorMixin):
         self._delay_function = name
 
 
-class MockGlobalResourceManagerActor(GlobalResourceManagerActor, CancelDetectActorMixin):
+class MockGlobalResourceManagerActor(
+    GlobalResourceManagerActor, CancelDetectActorMixin
+):
     async def __post_create__(self):
         pass
 
