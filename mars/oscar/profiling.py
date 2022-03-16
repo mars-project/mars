@@ -27,7 +27,7 @@ from ..typing import BandType
 
 logger = logging.getLogger(__name__)
 
-MARS_ENABLE_PROFILING = bool(os.environ.get("MARS_ENABLE_PROFILING", 0))
+MARS_ENABLE_PROFILING = int(os.environ.get("MARS_ENABLE_PROFILING", 0))
 
 
 class _ProfilingOptionDescriptor:

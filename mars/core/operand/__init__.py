@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .base import Operand, OperandStage, HasInput, VirtualOperand
+from .base import (
+    Operand,
+    OperandStage,
+    HasInput,
+    VirtualOperand,
+    OperatorLogicKeyGeneratorMixin,
+    LogicKeyGenerator,
+)
 from .core import TileableOperandMixin, execute, estimate_size
 from .fetch import Fetch, FetchMixin, FetchShuffle
 from .fuse import Fuse, FuseChunkMixin

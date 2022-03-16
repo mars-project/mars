@@ -115,7 +115,7 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
     _input = KeyField("input")
     _indexes = ListField("indexes")
 
-    def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
+    def __init__(self, indexes=None, gpu=None, sparse=False, output_types=None, **kw):
         super().__init__(
             _indexes=indexes, gpu=gpu, sparse=sparse, _output_types=output_types, **kw
         )

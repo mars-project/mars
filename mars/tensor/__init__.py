@@ -106,6 +106,7 @@ from .base import (
     insert,
     delete,
     in1d,
+    setdiff1d,
 )
 from .arithmetic import (
     add,

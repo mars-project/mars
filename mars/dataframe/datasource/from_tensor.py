@@ -29,7 +29,7 @@ from ...tensor.datasource import tensor as astensor
 from ...tensor.utils import unify_chunks
 from ...typing import EntityType, TileableType
 from ...utils import has_unknown_shape
-from ..core import INDEX_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE
+from ..core import INDEX_TYPE, SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
@@ -359,112 +359,58 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         else:
             index_tensor = None
 
-        # build column attrs for all chunks
+        # nsplits
         if in_tensor.ndim == 1:
-            columns_value_list = [
-                parse_index(out_df.columns_value.to_pandas()[0:1], store_data=True)
-            ]
-            dtypes_list = [out_df.dtypes]
+            out_nsplits = in_tensor.nsplits + ((1,),)
         else:
-            columns_value_list = [None] * in_tensor.chunk_shape[1]
-            dtypes_list = [None] * in_tensor.chunk_shape[1]
-            cum_cols = np.cumsum((0,) + in_tensor.nsplits[1])
-            for idx in range(in_tensor.chunk_shape[1]):
-                dtypes_list[idx] = out_df.dtypes[cum_cols[idx] : cum_cols[idx + 1]]
-                pd_columns = out_df.columns_value.to_pandas()
-                chunk_pd_columns = pd_columns[cum_cols[idx] : cum_cols[idx + 1]]
-                columns_value_list[idx] = parse_index(chunk_pd_columns, store_data=True)
+            out_nsplits = in_tensor.nsplits
 
-        cum_size = [np.cumsum(s) for s in nsplits]
-        index_value_list = [None] * in_tensor.chunk_shape[0]
-        for i, in_chunk in enumerate(in_tensor.chunks):
+        cum_nsplits = [[0] + np.cumsum(ns).tolist() for ns in out_nsplits]
+        for in_chunk in in_tensor.chunks:
             out_op = op.copy().reset_key()
             chunk_inputs = [in_chunk]
             if in_chunk.ndim == 1:
-                (i,) = in_chunk.index
-                column_stop = 1
-                chunk_index = (in_chunk.index[0], 0)
-                dtypes = dtypes_list[0]
-                columns_value = columns_value_list[0]
+                i = in_chunk.index[0]
+                chunk_index = (i, 0)
                 chunk_shape = (in_chunk.shape[0], 1)
             else:
                 i, j = in_chunk.index
-                column_stop = cum_size[1][j]
                 chunk_index = in_chunk.index
-                dtypes = dtypes_list[in_chunk.index[1]]
-                columns_value = columns_value_list[in_chunk.index[1]]
                 chunk_shape = in_chunk.shape
-            out_op.columns = columns_value.to_pandas()
 
-            index_stop = cum_size[0][i]
+            if op.columns is not None:
+                column_nsplit = cum_nsplits[1]
+                j = chunk_index[1]
+                out_op.columns = op.columns[column_nsplit[j] : column_nsplit[j + 1]]
+
             if isinstance(op.index, INDEX_TYPE):
                 index_chunk = index_tensor.chunks[i]
-                index_value = index_chunk.index_value
                 chunk_inputs.append(index_chunk)
-            elif isinstance(in_chunk, SERIES_CHUNK_TYPE):
-                index_value = in_chunk.index_value
-            elif index_value_list[in_chunk.index[0]] is not None:
-                # value already cached
-                index_value, index = index_value_list[in_chunk.index[0]]
-                if index is not None:
-                    out_op.index = index
-                if index_tensor is not None:
-                    index_chunk = index_tensor.cix[
-                        in_chunk.index[0],
-                    ]
-                    chunk_inputs.append(index_chunk)
-            else:
-                index = None
-                if isinstance(op.index, pd.Index):
-                    if op.index.size > 0:
-                        out_op.index = index = op.index[
-                            index_stop - in_chunk.shape[0] : index_stop
-                        ]
-                        index_value = parse_index(index, store_data=True)
-                    else:
-                        # input tensor has unknown shape
-                        index_value = parse_index(
-                            pd.RangeIndex(-1), in_tensor, in_chunk.index[0]
-                        )
-                else:
-                    index_chunk = index_tensor.cix[
-                        in_chunk.index[0],
-                    ]
-                    chunk_inputs.append(index_chunk)
-                    index_value = parse_index(
-                        pd.Index([], dtype=index_tensor.dtype),
-                        index_chunk,
-                        type(out_op).__name__,
-                    )
-                index_value_list[in_chunk.index[0]] = index_value, index
+            elif isinstance(op.index, pd.Index):
+                index_nsplit = cum_nsplits[0]
+                if op.index.size > 0:
+                    out_op.index = op.index[index_nsplit[i] : index_nsplit[i + 1]]
+            elif index_tensor is not None:
+                index_chunk = index_tensor.cix[i]
+                chunk_inputs.append(index_chunk)
 
-            out_op.extra_params["index_stop"] = index_stop
-            out_op.extra_params["column_stop"] = column_stop
             out_chunk = out_op.new_chunk(
-                chunk_inputs,
-                shape=chunk_shape,
-                index=chunk_index,
-                dtypes=dtypes,
-                index_value=index_value,
-                columns_value=columns_value,
+                chunk_inputs, shape=chunk_shape, index=chunk_index
+            )
+            out_chunk._set_tileable_meta(
+                tileable_key=out_df.key,
+                nsplits=out_nsplits,
+                index_value=out_df.index_value,
+                columns_value=out_df.columns_value,
+                dtypes=out_df.dtypes,
             )
             out_chunks.append(out_chunk)
 
-        if in_tensor.ndim == 1:
-            nsplits = in_tensor.nsplits + ((1,),)
-        else:
-            nsplits = in_tensor.nsplits
-
         new_op = op.copy()
-        return new_op.new_dataframes(
-            out_df.inputs,
-            out_df.shape,
-            dtypes=out_df.dtypes,
-            index_value=out_df.index_value,
-            columns_value=out_df.columns_value,
-            chunks=out_chunks,
-            nsplits=nsplits,
-        )
+        params = out_df.params.copy()
+        params["chunks"] = out_chunks
+        params["nsplits"] = out_nsplits
+        return new_op.new_dataframes(out_df.inputs, kws=[params])
 
     @classmethod
     def _tile_tensor_none(cls, op: "DataFrameFromTensor"):
@@ -552,6 +498,8 @@ def dataframe_from_tensor(
             col_num = 1
         gpu = tensor.op.gpu if gpu is None else gpu
         dtypes = pd.Series([tensor.dtype] * col_num, index=columns)
+        if columns is None:
+            columns = dtypes.index
     else:
         gpu = None
         if columns is not None:

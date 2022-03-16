@@ -163,7 +163,6 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
             sampled_chunks,
             shape=concat_pivot_shape,
             index=concat_pivot_index,
-            output_type=output_types[0],
         )
         return concat_pivot_chunk
 
@@ -253,7 +252,11 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
 
         # stage 2: gather and merge samples, choose and broadcast p-1 pivots
         concat_pivot_chunk = cls.concat_and_pivot(
-            op, axis_chunk_shape, (), sorted_chunks, sampled_chunks
+            op,
+            axis_chunk_shape,
+            (0,) if in_df.ndim == 2 else (),
+            sorted_chunks,
+            sampled_chunks,
         )
 
         # stage 3: Local data is partitioned

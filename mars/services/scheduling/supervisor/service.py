@@ -81,6 +81,8 @@ class SchedulingSupervisorService(AbstractService):
         subtask_max_reschedules = scheduling_config.get(
             "subtask_max_reschedules", DEFAULT_SUBTASK_MAX_RESCHEDULES
         )
+        subtask_cancel_timeout = scheduling_config.get("subtask_cancel_timeout", 5)
+        speculation_config = scheduling_config.get("speculation", {})
 
         from .assigner import AssignerActor
 
@@ -109,6 +111,8 @@ class SchedulingSupervisorService(AbstractService):
             SubtaskManagerActor,
             session_id,
             subtask_max_reschedules,
+            subtask_cancel_timeout,
+            speculation_config,
             address=self._address,
             uid=SubtaskManagerActor.gen_uid(session_id),
         )

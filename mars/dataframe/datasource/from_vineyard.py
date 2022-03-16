@@ -251,7 +251,7 @@ def from_vineyard(df, vineyard_socket=None):
         vineyard_socket=vineyard_socket,
         object_id=object_id,
         dtype=np.dtype("byte"),
-        gpu=False,
+        gpu=None,
     )
     meta = metaop(
         shape=(np.nan,),
@@ -260,6 +260,6 @@ def from_vineyard(df, vineyard_socket=None):
         columns_value=parse_index(pd.Index([])),
     )
     op = DataFrameFromVineyardChunk(
-        vineyard_socket=vineyard_socket, object_id=object_id, gpu=False
+        vineyard_socket=vineyard_socket, object_id=object_id, gpu=None
     )
     return op(meta)

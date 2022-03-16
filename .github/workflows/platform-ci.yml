@@ -1,6 +1,11 @@
 name: Mars CI on Platforms
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    types: ['opened', 'reopened', 'synchronize']
 
 jobs:
   build:
@@ -131,7 +136,7 @@ jobs:
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG --durations=0 --timeout=300 -v -s -m ray
+            pytest $PYTEST_CONFIG --durations=0 --timeout=600 -v -s -m ray
             coverage report
           fi
           if [ -n "$RUN_DASK" ]; then

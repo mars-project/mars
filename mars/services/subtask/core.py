@@ -61,6 +61,15 @@ class Subtask(Serializable):
     priority: Tuple[int, int] = TupleField("priority", FieldTypes.int32)
     rerun_time: int = Int32Field("rerun_time")
     extra_config: dict = DictField("extra_config")
+    stage_id: str = StringField("stage_id")
+    # An unique and deterministic key for subtask compute logic. See logic_key in operator.py.
+    logic_key: str = StringField("logic_key")
+    # index for subtask with same compute logic.
+    logic_index: int = Int32Field("logic_index")
+    # parallelism for subtask with same compute logic.
+    logic_parallelism: int = Int32Field("logic_parallelism")
+    # subtask can only run in specified bands in `expect_bands`
+    bands_specified: bool = BoolField("bands_specified")
 
     def __init__(
         self,
@@ -75,6 +84,11 @@ class Subtask(Serializable):
         retryable: bool = True,
         rerun_time: int = 0,
         extra_config: dict = None,
+        stage_id: str = None,
+        logic_key: str = None,
+        logic_index: int = None,
+        logic_parallelism: int = None,
+        bands_specified: bool = False,
     ):
         super().__init__(
             subtask_id=subtask_id,
@@ -88,6 +102,11 @@ class Subtask(Serializable):
             retryable=retryable,
             rerun_time=rerun_time,
             extra_config=extra_config,
+            stage_id=stage_id,
+            logic_key=logic_key,
+            logic_index=logic_index,
+            logic_parallelism=logic_parallelism,
+            bands_specified=bands_specified,
         )
 
     @property
@@ -100,10 +119,11 @@ class SubtaskResult(Serializable):
     subtask_id: str = StringField("subtask_id")
     session_id: str = StringField("session_id")
     task_id: str = StringField("task_id")
+    stage_id: str = StringField("stage_id")
     status: SubtaskStatus = ReferenceField("status", SubtaskStatus)
     progress: float = Float64Field("progress", default=0.0)
     data_size: int = Int64Field("data_size", default=None)
-    bands: List[BandType] = ListField("band", FieldTypes.tuple)
+    bands: List[BandType] = ListField("band", FieldTypes.tuple, default=None)
     error = AnyField("error", default=None)
     traceback = AnyField("traceback", default=None)
     # The following is the execution information of the sub task

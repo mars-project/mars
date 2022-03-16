@@ -14,7 +14,6 @@
 
 import os
 import platform
-import re
 import shutil
 import subprocess
 import sys
@@ -58,32 +57,6 @@ if sys.platform == "darwin":
 
 repo_root = os.path.dirname(os.path.abspath(__file__))
 
-
-def execfile(fname, globs, locs=None):
-    locs = locs or globs
-    exec(compile(open(fname).read(), fname, "exec"), globs, locs)
-
-
-version_file_path = os.path.join(repo_root, "mars", "_version.py")
-version_ns = {"__file__": version_file_path}
-execfile(version_file_path, version_ns)
-version = version_ns["__version__"]
-# check version vs tag
-if (
-    os.environ.get("GIT_TAG")
-    and re.search(r"v\d", os.environ["GIT_TAG"])
-    and os.environ["GIT_TAG"] != "v" + version
-):
-    raise ValueError(
-        "Tag %r does not match source version %r" % (os.environ["GIT_TAG"], version)
-    )
-
-
-if os.path.exists(os.path.join(repo_root, ".git")):
-    git_info = version_ns["get_git_info"]()
-    if git_info:
-        with open(os.path.join(repo_root, "mars", ".git-branch"), "w") as git_file:
-            git_file.write(" ".join(git_info))
 
 cythonize_kw = dict(language_level=sys.version_info[0])
 cy_extension_kw = dict()
@@ -201,14 +174,21 @@ CustomDevelop.register_pre_command("build_web")
 CustomSDist.register_pre_command("build_web")
 
 
+# Resolve path issue of versioneer
+sys.path.append(repo_root)
+versioneer = __import__("versioneer")
+
+
 setup_options = dict(
-    version=version,
+    version=versioneer.get_version(),
     ext_modules=extensions,
-    cmdclass={
-        "build_web": BuildWeb,
-        "install": CustomInstall,
-        "develop": CustomDevelop,
-        "sdist": CustomSDist,
-    },
+    cmdclass=versioneer.get_cmdclass(
+        {
+            "build_web": BuildWeb,
+            "install": CustomInstall,
+            "develop": CustomDevelop,
+            "sdist": CustomSDist,
+        }
+    ),
 )
 setup(**setup_options)

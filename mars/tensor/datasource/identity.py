@@ -17,7 +17,7 @@
 from .eye import eye
 
 
-def identity(n, dtype=None, sparse=False, gpu=False, chunk_size=None):
+def identity(n, dtype=None, sparse=False, gpu=None, chunk_size=None):
     """
     Return the identity tensor.
 
