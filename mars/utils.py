@@ -1620,4 +1620,5 @@ def cost_time_percentile_record(
         raise error
     else:
         cost_time = time.time() - st_time
-        [percentile.record_data(cost_time) for percentile in percentile_list]
+        for percentile in percentile_list:
+            percentile.record_data(cost_time)
