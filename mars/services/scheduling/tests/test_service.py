@@ -33,6 +33,7 @@ from ...task.supervisor.manager import TaskManagerActor
 from ...web import WebActor
 from .. import SchedulingAPI
 from ..supervisor import GlobalResourceManagerActor
+from ....resource import Resource
 
 
 class FakeTaskManager(TaskManagerActor):
@@ -111,7 +112,7 @@ async def actor_pools():
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,
-            "resource": {"numa-0": 2},
+            "resource": {"numa-0": Resource(num_cpus=2)},
         },
         "meta": {"store": "dict"},
         "scheduling": {},

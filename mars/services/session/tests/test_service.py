@@ -20,6 +20,7 @@ import numpy as np
 from .... import oscar as mo
 from .... import remote as mr
 from ....core import TileableGraph, TileableGraphBuilder
+from ....resource import Resource
 from ....utils import get_next_port
 from ... import start_services, stop_services, NodeRole
 from ...task.api import TaskAPI
@@ -88,7 +89,7 @@ async def test_get_last_idle_time():
             "cluster": {
                 "backend": "fixed",
                 "lookup_address": sv_pool.external_address,
-                "resource": {"numa-0": 2},
+                "resource": {"numa-0": Resource(num_cpus=2)},
             },
             "meta": {"store": "dict"},
         }
