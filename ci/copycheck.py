@@ -24,6 +24,7 @@ _MATCH_FILES = [
 _IGNORES = [
     'mars/learn/**/*.pyx',
     'mars/lib/**/*.py',
+    'mars/_version.py',
 ]
 
 

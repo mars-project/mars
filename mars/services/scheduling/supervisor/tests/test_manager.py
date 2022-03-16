@@ -14,7 +14,7 @@
 
 import asyncio
 from collections import defaultdict
-from typing import List, Tuple
+from typing import List, Tuple, Set
 
 import pytest
 
@@ -47,7 +47,13 @@ class MockSubtaskQueueingActor(mo.Actor):
         self._subtasks = dict()
         self._error = None
 
-    def add_subtasks(self, subtasks: List[Subtask], priorities: List[Tuple]):
+    def add_subtasks(
+        self,
+        subtasks: List[Subtask],
+        priorities: List[Tuple],
+        exclude_bands: Set[Tuple] = None,
+        random_when_unavailable: bool = True,
+    ):
         if self._error is not None:
             raise self._error
         for subtask, priority in zip(subtasks, priorities):

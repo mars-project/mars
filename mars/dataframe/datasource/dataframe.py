@@ -33,10 +33,6 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
     data = DataFrameField("data")
     dtypes = SeriesField("dtypes")
 
-    def _tokenize_output(self, output_idx: int, **kw):
-        # make sure all necessary arguments tokenized
-        return None
-
     def __init__(self, data=None, dtypes=None, gpu=None, **kw):
         if dtypes is None and data is not None:
             dtypes = data.dtypes
@@ -122,6 +118,6 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = op.data
 
 
-def from_pandas(data, chunk_size=None, gpu=False, sparse=False):
+def from_pandas(data, chunk_size=None, gpu=None, sparse=False):
     op = DataFrameDataSource(data=data, gpu=gpu, sparse=sparse)
     return op(data.shape, chunk_size=chunk_size)

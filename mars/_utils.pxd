@@ -16,5 +16,3 @@ cpdef str to_str(s, encoding=*)
 cpdef bytes to_binary(s, encoding=*)
 cpdef unicode to_text(s, encoding=*)
 cpdef register_tokenizer(cls, handler)
-cpdef tuple insert_reversed_tuple(tuple a, object x)
-

@@ -56,6 +56,10 @@ def test_dataframe_initializer(setup):
     result = r.execute().fetch()
     pd.testing.assert_frame_equal(result, pd.DataFrame(raw_dict, columns=list("ABC")))
 
+    r = md.DataFrame({"a": [mt.tensor([1, 2, 3]).sum() + 1]})
+    result = r.execute().fetch()
+    pd.testing.assert_frame_equal(result, pd.DataFrame({"a": [7]}))
+
     # from tileable list
     raw_list = [
         np.random.choice(["u", "v", "w"], size=(3,)),

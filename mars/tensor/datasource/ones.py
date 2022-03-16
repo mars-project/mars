@@ -19,7 +19,13 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...lib.sparse import SparseNDArray
 from ...lib.sparse.core import get_sparse_module, get_array_module, naked
-from ...serialization.serializables import KeyField, StringField
+from ...serialization.serializables import (
+    FieldTypes,
+    AnyField,
+    TupleField,
+    KeyField,
+    StringField,
+)
 from ..array_utils import create_array, convert_order
 from ..utils import get_order
 from .core import TensorNoInput, TensorLike
@@ -29,29 +35,29 @@ from .array import tensor
 class TensorOnes(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_ONES
 
-    _order = StringField("order")
+    order = StringField("order")
+    shape = TupleField("shape", FieldTypes.int64)
+    chunk_size = AnyField("chunk_size")
 
-    def __init__(self, dtype=None, order=None, **kw):
-        dtype = np.dtype(dtype or "f8")
-        super().__init__(dtype=dtype, _order=order, **kw)
-
-    @property
-    def order(self):
-        return self._order
+    def to_chunk_op(self, *args):
+        chunk_op = super().to_chunk_op(*args)
+        chunk_op.shape = args[0]
+        chunk_op.chunk_size = None
+        return chunk_op
 
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         try:
             ctx[chunk.key] = create_array(op)(
-                "ones", chunk.shape, dtype=op.dtype, order=op.order
+                "ones", op.shape, dtype=op.dtype, order=op.order
             )
         except TypeError:  # in case that cp.ones does not have arg ``order``
-            x = create_array(op)("ones", chunk.shape, dtype=op.dtype)
+            x = create_array(op)("ones", op.shape, dtype=op.dtype)
             ctx[chunk.key] = convert_order(x, op.order)
 
 
-def ones(shape, dtype=None, chunk_size=None, gpu=False, order="C"):
+def ones(shape, dtype=None, chunk_size=None, gpu=None, order="C"):
     """
     Return a new tensor of given shape and type, filled with ones.
 
@@ -106,7 +112,10 @@ def ones(shape, dtype=None, chunk_size=None, gpu=False, order="C"):
         available_options="CF",
         err_msg="only 'C' or 'F' order is permitted",
     )
-    op = TensorOnes(dtype=dtype, gpu=gpu, order=order)
+    dtype = np.dtype(dtype or "f8")
+    op = TensorOnes(
+        dtype=dtype, shape=shape, chunk_size=chunk_size, gpu=gpu, order=order
+    )
     return op(shape, chunk_size=chunk_size, order=tensor_order)
 
 

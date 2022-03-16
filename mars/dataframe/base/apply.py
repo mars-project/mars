@@ -21,6 +21,7 @@ from ... import opcodes
 from ...config import options
 from ...core import OutputType, recursive_tile
 from ...core.custom_log import redirect_custom_log
+from ...core.operand import OperatorLogicKeyGeneratorMixin
 from ...serialization.serializables import (
     StringField,
     AnyField,
@@ -29,7 +30,7 @@ from ...serialization.serializables import (
     DictField,
     FunctionField,
 )
-from ...utils import enter_current_session, quiet_stdio
+from ...utils import enter_current_session, quiet_stdio, get_func_token_values
 from ..arrays import ArrowArray
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import (
@@ -45,7 +46,24 @@ from ..utils import (
 )
 
 
-class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
+class ApplyOperandLogicKeyGeneratorMixin(OperatorLogicKeyGeneratorMixin):
+    def _get_logic_key_token_values(self):
+        token_values = super()._get_logic_key_token_values() + [
+            self._axis,
+            self._convert_dtype,
+            self._raw,
+            self._result_type,
+            self._elementwise,
+        ]
+        if self.func:
+            return token_values + get_func_token_values(self.func)
+        else:  # pragma: no cover
+            return token_values
+
+
+class ApplyOperand(
+    DataFrameOperand, DataFrameOperandMixin, ApplyOperandLogicKeyGeneratorMixin
+):
     _op_type_ = opcodes.APPLY
 
     _func = FunctionField("func")

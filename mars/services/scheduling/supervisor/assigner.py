@@ -15,7 +15,7 @@
 import asyncio
 import heapq
 import itertools
-import random
+import numpy as np
 from collections import defaultdict
 from typing import Dict, List, Set
 
@@ -90,27 +90,24 @@ class AssignerActor(mo.Actor):
         self,
         is_gpu: bool,
         exclude_bands: Set[BandType] = None,
-        exclude_bands_force: bool = False,
+        random_when_unavailable: bool = True,
     ):
+        bands = self._get_device_bands(is_gpu)
         if exclude_bands:
-            avail_bands = [
-                band
-                for band in self._get_device_bands(is_gpu)
-                if band not in exclude_bands
-            ]
+            avail_bands = [band for band in bands if band not in exclude_bands]
             if avail_bands:
-                return random.choice(avail_bands)
-            elif exclude_bands_force:
+                return avail_bands[np.random.choice(len(avail_bands))]
+            elif not random_when_unavailable:
                 raise NoAvailableBand(
                     f"No bands available after excluding bands {exclude_bands}"
                 )
-        return random.choice(self._get_device_bands(is_gpu))
+        return bands[np.random.choice(len(bands))]
 
     async def assign_subtasks(
         self,
         subtasks: List[Subtask],
         exclude_bands: Set[BandType] = None,
-        exclude_bands_force: bool = False,
+        random_when_unavailable: bool = True,
     ):
         exclude_bands = exclude_bands or set()
         inp_keys = set()
@@ -132,7 +129,7 @@ class AssignerActor(mo.Actor):
                 if not expect_available_bands:
                     expect_available_bands = [
                         self._get_random_band(
-                            is_gpu, exclude_bands, exclude_bands_force
+                            is_gpu, exclude_bands, random_when_unavailable
                         )
                     ]
                 selected_bands[subtask.subtask_id] = expect_available_bands
@@ -143,7 +140,7 @@ class AssignerActor(mo.Actor):
                 elif isinstance(indep_chunk.op, FetchShuffle):
                     selected_bands[subtask.subtask_id] = [
                         self._get_random_band(
-                            is_gpu, exclude_bands, exclude_bands_force
+                            is_gpu, exclude_bands, random_when_unavailable
                         )
                     ]
                     break
@@ -178,10 +175,10 @@ class AssignerActor(mo.Actor):
                                 and b not in exclude_bands
                             ]
                             if sel_bands:
-                                band = random.choice(sel_bands)
+                                band = sel_bands[np.random.choice(len(sel_bands))]
                         if band not in filtered_bands or band in exclude_bands:
                             band = self._get_random_band(
-                                is_gpu, exclude_bands, exclude_bands_force
+                                is_gpu, exclude_bands, random_when_unavailable
                             )
                         band_sizes[band] += meta["store_size"]
                 bands = []
@@ -192,14 +189,16 @@ class AssignerActor(mo.Actor):
                         max_size = size
                     elif size == max_size:
                         bands.append(band)
-            band = random.choice(bands)
-            if band in exclude_bands and exclude_bands_force:
+            band = bands[np.random.choice(len(bands))]
+            if (
+                not random_when_unavailable and band in exclude_bands
+            ):  # pragma: no cover
                 raise NoAvailableBand(
                     f"No bands available for subtask {subtask.subtask_id} after "
                     f"excluded {exclude_bands}"
                 )
             if subtask.bands_specified and band not in subtask.expect_bands:
-                raise Exception(
+                raise NoAvailableBand(
                     f"No bands available for subtask {subtask.subtask_id} on bands {subtask.expect_bands} "
                     f"after excluded {exclude_bands}"
                 )

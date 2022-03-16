@@ -18,9 +18,9 @@ from typing import Dict, List, Tuple, Type, Union
 
 from ....config import Config
 from ....core import ChunkGraph, ChunkType, enter_mode
-from ....core.operand import Fetch, VirtualOperand
+from ....core.operand import Fetch, VirtualOperand, LogicKeyGenerator
 from ....typing import BandType
-from ....utils import build_fetch
+from ....utils import build_fetch, tokenize
 from ...subtask import SubtaskGraph, Subtask
 from ..core import Task, new_task_id
 from .assigner import AbstractGraphAssigner, GraphAssigner
@@ -37,10 +37,12 @@ class GraphAnalyzer:
         task: Task,
         config: Config,
         graph_assigner_cls: Type[AbstractGraphAssigner] = None,
+        stage_id: str = None,
     ):
         self._chunk_graph = chunk_graph
         self._band_slots = band_slots
         self._task = task
+        self._stage_id = stage_id
         self._config = config
         self._fuse_enabled = task.fuse_enabled
         self._extra_config = task.extra_config
@@ -48,6 +50,7 @@ class GraphAnalyzer:
             graph_assigner_cls = GraphAssigner
         self._graph_assigner_cls = graph_assigner_cls
         self._chunk_to_copied = dict()
+        self._logic_key_generator = LogicKeyGenerator()
 
     @classmethod
     def _iter_start_ops(cls, chunk_graph: ChunkGraph):
@@ -134,7 +137,20 @@ class GraphAnalyzer:
         is_virtual = None
         retryable = True
         chunk_priority = None
+        expect_worker = None
+        bands_specified = None
         for chunk in chunks:
+            if expect_worker is None:
+                expect_worker = chunk.op.expect_worker
+                bands_specified = expect_worker is not None
+            else:  # pragma: no cover
+                assert (
+                    chunk.op.expect_worker is None
+                    or expect_worker == chunk.op.expect_worker
+                ), (
+                    f"expect_worker {chunk.op.expect_worker} conflicts with chunks that have same color: "
+                    f"{expect_worker}"
+                )
             # process band
             chunk_band = chunk_to_bands.get(chunk)
             if chunk_band is not None:
@@ -174,7 +190,7 @@ class GraphAnalyzer:
             for i, fetch_chunk in zip(build_fetch_index_to_chunks, fetch_chunks):
                 inp_chunks[i] = fetch_chunk
             copied_op = chunk.op.copy()
-            copied_op._key = chunk.key
+            copied_op._key = chunk.op.key
             out_chunks = [
                 c.data
                 for c in copied_op.new_chunks(
@@ -199,6 +215,11 @@ class GraphAnalyzer:
             c
             for c in chunk_graph.iter_indep(reverse=True)
             if c not in result_chunks_set
+        )
+        expect_bands = (
+            [self._to_band(expect_worker)]
+            if bands_specified
+            else ([band] if band is not None else None)
         )
         # calculate priority
         if out_of_scope_chunks:
@@ -225,16 +246,24 @@ class GraphAnalyzer:
 
         subtask = Subtask(
             subtask_id=new_task_id(),
+            stage_id=self._stage_id,
+            logic_key=self._gen_logic_key(chunks),
             session_id=self._task.session_id,
             task_id=self._task.task_id,
             chunk_graph=chunk_graph,
-            expect_bands=[band] if band is not None else None,
+            expect_bands=expect_bands,
+            bands_specified=bands_specified,
             virtual=is_virtual,
             priority=priority,
             retryable=retryable,
             extra_config=self._extra_config,
         )
         return subtask, inp_subtasks
+
+    def _gen_logic_key(self, chunks: List[ChunkType]):
+        return tokenize(
+            *[self._logic_key_generator.get_logic_key(chunk.op) for chunk in chunks]
+        )
 
     @enter_mode(build=True)
     def gen_subtask_graph(self) -> SubtaskGraph:
@@ -319,6 +348,7 @@ class GraphAnalyzer:
         chunk_to_subtask = dict()
         # states
         visited = set()
+        logic_key_to_subtasks = defaultdict(list)
         for chunk in self._chunk_graph.topological_iter():
             if chunk in visited:
                 continue
@@ -335,6 +365,7 @@ class GraphAnalyzer:
                 chunk_to_fetch_chunk,
             )
             subtask_graph.add_node(subtask)
+            logic_key_to_subtasks[subtask.logic_key].append(subtask)
             for inp_subtask in inp_subtasks:
                 subtask_graph.add_edge(inp_subtask, subtask)
 
@@ -342,4 +373,8 @@ class GraphAnalyzer:
                 chunk_to_subtask[c] = subtask
             visited.update(same_color_chunks)
 
+        for subtasks in logic_key_to_subtasks.values():
+            for logic_index, subtask in enumerate(subtasks):
+                subtask.logic_index = logic_index
+                subtask.logic_parallelism = len(subtasks)
         return subtask_graph

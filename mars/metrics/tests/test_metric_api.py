@@ -26,16 +26,18 @@ def init():
 def test_init_metrics():
     init_metrics()
     assert api._metric_backend == "console"
-    init_metrics({"metric": {}})
+    init_metrics("console")
     assert api._metric_backend == "console"
-    init_metrics({"metric": {"backend": "console"}})
+    init_metrics(backend="console")
     assert api._metric_backend == "console"
-    init_metrics({"metric": {"backend": "prometheus"}})
+    init_metrics("prometheus")
     assert api._metric_backend == "prometheus"
-    init_metrics({"metric": {"backend": "ray"}})
+    init_metrics(backend="prometheus", port=0)
+    assert api._metric_backend == "prometheus"
+    init_metrics("ray")
     assert api._metric_backend == "ray"
     with pytest.raises(NotImplementedError):
-        init_metrics({"metric": {"backend": "not_exist"}})
+        init_metrics("not_exist")
 
 
 def test_counter(init):

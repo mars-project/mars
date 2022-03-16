@@ -18,13 +18,11 @@ import heapq
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import DefaultDict, Dict, List, Optional, Tuple, Union
+from typing import DefaultDict, Dict, List, Optional, Tuple, Union, Set
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ....metric import Metrics
-from ....oscar.debug import create_task_with_ex_logged
-from ....utils import dataslots
+from ....utils import dataslots, create_task_with_error_log
 from ...subtask import Subtask
 from ...task import TaskAPI
 from ..utils import redirect_subtask_errors
@@ -77,8 +75,6 @@ class SubtaskQueueingActor(mo.Actor):
 
         self._cluster_api = await ClusterAPI.create(self.address)
         self._band_slot_nums = {}
-        cluster_info = await self._cluster_api.get_cluster_info()
-        self._config = cluster_info.get('config', {})
         from .globalslot import GlobalSlotManagerActor
 
         [self._slots_ref] = await self._cluster_api.get_supervisor_refs(
@@ -121,7 +117,7 @@ class SubtaskQueueingActor(mo.Actor):
                     # successfully.
                     await self.ref().submit_subtasks()
 
-        self._band_watch_task = create_task_with_ex_logged(watch_bands())
+        self._band_watch_task = create_task_with_error_log(watch_bands())
 
         if self._submit_period > 0:
             self._periodical_submit_task = self.ref().periodical_submit.tell_delay(
@@ -151,8 +147,16 @@ class SubtaskQueueingActor(mo.Actor):
             SubtaskManagerActor.gen_uid(self._session_id), address=self.address
         )
 
-    async def add_subtasks(self, subtasks: List[Subtask], priorities: List[Tuple]):
-        bands = await self._assigner_ref.assign_subtasks(subtasks)
+    async def add_subtasks(
+        self,
+        subtasks: List[Subtask],
+        priorities: List[Tuple],
+        exclude_bands: Set[Tuple] = None,
+        random_when_unavailable: bool = True,
+    ):
+        bands = await self._assigner_ref.assign_subtasks(
+            subtasks, exclude_bands, random_when_unavailable
+        )
         for subtask, band, priority in zip(subtasks, bands, priorities):
             assert band is not None
             self._stid_to_bands[subtask.subtask_id].append(band)
@@ -161,6 +165,12 @@ class SubtaskQueueingActor(mo.Actor):
             )
             self._max_enqueue_id += 1
             heapq.heappush(self._band_queues[band], heap_item)
+            logger.debug(
+                "Subtask %s enqueued to band %s excluded from %s.",
+                subtask.subtask_id,
+                band,
+                exclude_bands,
+            )
         logger.debug("%d subtasks enqueued", len(subtasks))
 
     async def submit_subtasks(self, band: Tuple = None, limit: Optional[int] = None):

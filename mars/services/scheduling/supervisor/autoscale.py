@@ -22,7 +22,7 @@ from collections import defaultdict
 from typing import List, Set, Dict, Optional, Any
 
 from .... import oscar as mo
-from ....metric import Metrics
+from ....metrics import Metrics
 from ....typing import BandType
 from ....utils import report_event
 from ....lib.aio import alru_cache

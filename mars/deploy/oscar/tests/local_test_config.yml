@@ -3,3 +3,5 @@ session:
   custom_log_dir: auto
   plasma:
     store_memory: 32M
+scheduling:
+  mem_hard_limit: 0

@@ -81,9 +81,7 @@ class DataFrame(_Frame, metaclass=InitializerMeta):
             else:
                 df = data
             need_repart = num_partitions is not None
-        elif isinstance(data, dict) and any(
-            isinstance(v, ENTITY_TYPE) for v in data.values()
-        ):
+        elif isinstance(data, dict) and self._can_process_by_1d_tileables(data):
             # data is a dict and some value is tensor
             df = dataframe_from_1d_tileables(
                 data, index=index, columns=columns, gpu=gpu, sparse=sparse
@@ -125,6 +123,17 @@ class DataFrame(_Frame, metaclass=InitializerMeta):
         if need_repart:
             df = df.rebalance(num_partitions=num_partitions)
         super().__init__(df.data)
+
+    @classmethod
+    def _can_process_by_1d_tileables(cls, data: dict):
+        for value in data.values():
+            if isinstance(value, ENTITY_TYPE):
+                return True
+            elif isinstance(value, (list, tuple)) and any(
+                isinstance(v, ENTITY_TYPE) for v in value
+            ):
+                return True
+        return False
 
 
 class Series(_Series, metaclass=InitializerMeta):

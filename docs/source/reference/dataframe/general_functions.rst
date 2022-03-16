@@ -11,10 +11,11 @@ Data manipulations
    :toctree: generated/
 
    cut
-   qcut
    concat
+   get_dummies
    melt
    merge
+   qcut
 
 Top-level missing data
 ~~~~~~~~~~~~~~~~~~~~~~

@@ -383,29 +383,6 @@ cpdef register_tokenizer(cls, handler):
     tokenize_handler.register(cls, handler)
 
 
-cpdef tuple insert_reversed_tuple(tuple a, object x):
-    cdef int mid, lo = 0, hi = len(a), len_a = hi
-    cdef object el
-
-    if len_a == 0:
-        return x,
-
-    while lo < hi:
-        mid = (lo + hi) // 2
-        if a[mid] > x: lo = mid + 1
-        else: hi = mid
-
-    if lo == len_a:
-        return a + (x,)
-    el = a[lo]
-    if el == x:
-        return a
-    elif lo == 0 and el < x:
-        return (x,) + a
-    else:
-        return a[:lo] + (x,) + a[lo:]
-
-
 @cython.nonecheck(False)
 @cython.cdivision(True)
 cpdef long long ceildiv(long long x, long long y) nogil:
@@ -420,7 +397,7 @@ cdef class Timer:
         self._start = time.time()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, *_):
         self.duration = time.time() - self._start
 
 

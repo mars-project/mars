@@ -71,6 +71,11 @@ class Serializable(metaclass=SerializableMeta):
         )
         return "{}({})".format(self.__class__.__name__, values)
 
+    def copy(self) -> "Serializable":
+        copied = type(self)()
+        copied._FIELD_VALUES = self._FIELD_VALUES.copy()
+        return copied
+
 
 class SerializableSerializer(Serializer):
     """

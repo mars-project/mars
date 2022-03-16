@@ -20,7 +20,7 @@ from typing import Dict, List
 from .... import oscar as mo
 from ....core import ChunkGraph
 from ....core.operand import Fuse
-from ....metric import Metrics
+from ....metrics import Metrics
 from ....optimization.logical import OptimizationRecords
 from ....typing import BandType, TileableType
 from ....utils import get_params_fields
@@ -85,24 +85,24 @@ class TaskStageProcessor:
         self._done = asyncio.Event()
         self._cancelled = asyncio.Event()
 
-        # metrics
+        # add metrics
         self._stage_execution_time = Metrics.gauge(
-            'mars.stage_execution_time_secs',
-            'Time consuming in seconds to execute a stage',
-            ('session_id', 'task_id', 'stage_id'))
+            "mars.stage_execution_time_secs",
+            "Time consuming in seconds to execute a stage",
+            ("session_id", "task_id", "stage_id"),
+        )
 
     def is_cancelled(self):
         return self._cancelled.is_set()
 
     async def _schedule_subtasks(self, subtasks: List[Subtask]):
-        """Submitted subtasks won't be resubmitted again."""
-        if not subtasks:
-            return
         subtasks = [
             subtask
             for subtask in subtasks
             if subtask.subtask_id not in self._submitted_subtask_ids
         ]
+        if not subtasks:
+            return
         self._submitted_subtask_ids.update(subtask.subtask_id for subtask in subtasks)
         return await self._scheduling_api.add_subtasks(
             subtasks, [subtask.priority for subtask in subtasks]
@@ -172,7 +172,7 @@ class TaskStageProcessor:
                                 result.traceback,
                             ),
                         )
-                    if result.status == SubtaskStatus.cancelled:
+                    if result.status == SubtaskStatus.cancelled:  # pragma: no cover
                         logger.warning(
                             "Subtask %s from band %s canceled.",
                             subtask.subtask_id,
@@ -188,14 +188,21 @@ class TaskStageProcessor:
                 self._schedule_done()
                 cost_time_secs = self.result.end_time - self.result.start_time
                 logger.info(
-                    'Time consuming to execute a stage is %ss with '
-                    'session id %s, task id %s, stage id %s',
-                    cost_time_secs, self.result.session_id, self.result.task_id,
-                    self.result.stage_id)
-                self._stage_execution_time.record(cost_time_secs, {
-                    'session_id': self.result.session_id,
-                    'task_id': self.result.task_id,
-                    'stage_id': self.result.stage_id})
+                    "Time consuming to execute a stage is %ss with "
+                    "session id %s, task id %s, stage id %s",
+                    cost_time_secs,
+                    self.result.session_id,
+                    self.result.task_id,
+                    self.result.stage_id,
+                )
+                self._stage_execution_time.record(
+                    cost_time_secs,
+                    {
+                        "session_id": self.result.session_id,
+                        "task_id": self.result.task_id,
+                        "stage_id": self.result.stage_id,
+                    },
+                )
         else:
             # not terminated, push success subtasks to queue if they are ready
             to_schedule_subtasks = []
@@ -210,7 +217,9 @@ class TaskStageProcessor:
                     # all predecessors finished
                     to_schedule_subtasks.append(succ_subtask)
             await self._schedule_subtasks(to_schedule_subtasks)
-            await self._scheduling_api.finish_subtasks([result.subtask_id])
+            await self._scheduling_api.finish_subtasks(
+                [result.subtask_id], bands=[band]
+            )
 
     async def run(self):
         if len(self.subtask_graph) == 0:
@@ -227,7 +236,7 @@ class TaskStageProcessor:
         await self._done.wait()
 
     async def cancel(self):
-        logger.debug("Start to cancel stage %s of task %s.", self.stage_id, self.task)
+        logger.info("Start to cancel stage %s of task %s.", self.stage_id, self.task)
         if self._done.is_set():  # pragma: no cover
             # already finished, ignore cancel
             return

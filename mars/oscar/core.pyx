@@ -16,12 +16,13 @@ import asyncio
 import inspect
 import logging
 import sys
+import weakref
 cimport cython
 from typing import AsyncGenerator
 
-from .errors import Return
+from .context cimport get_context
+from .errors import Return, ActorNotExist
 from .utils cimport is_async_generator
-from .utils import create_actor_ref
 
 
 CALL_METHOD_DEFAULT = 0
@@ -32,6 +33,8 @@ logger = logging.getLogger(__name__)
 cdef:
     bint _log_unhandled_errors = False
     bint _log_cycle_send = False
+    object _local_pool_map = weakref.WeakValueDictionary()
+    object _actor_method_wrapper
 
 
 def set_debug_options(options):
@@ -41,6 +44,56 @@ def set_debug_options(options):
     else:
         _log_unhandled_errors = options.log_unhandled_errors
         _log_cycle_send = options.log_cycle_send
+
+
+cdef _get_local_actor(address, uid):
+    # Do not expose this method to Python to avoid actor being
+    # referenced everywhere.
+    #
+    # The cycle send detection relies on send message, so we
+    # disabled the local actor proxy if the debug option is on.
+    if _log_cycle_send:
+        return None
+    pool = _local_pool_map.get(address)
+    if pool is not None:
+        actor = pool._actors.get(uid)
+        if actor is not None:
+            return actor
+    return None
+
+
+def register_local_pool(address, pool):
+    """
+    Register local actor pool for local actor lookup.
+    """
+    _local_pool_map[address] = pool
+
+
+cpdef create_local_actor_ref(address, uid):
+    """
+    Create a reference to local actor.
+
+    Returns
+    -------
+    LocalActorRef or None
+    """
+    actor = _get_local_actor(address, uid)
+    if actor is not None:
+        return LocalActorRef(actor)
+    return None
+
+
+cpdef create_actor_ref(address, uid):
+    """
+    Create an actor reference.
+    TODO(fyrestone): Remove the create_actor_ref in utils.pyx
+
+    Returns
+    -------
+    ActorRef or LocalActorRef
+    """
+    actor = _get_local_actor(address, uid)
+    return ActorRef(address, uid) if actor is None else LocalActorRef(actor)
 
 
 cdef class ActorRef:
@@ -54,31 +107,14 @@ cdef class ActorRef:
         self.address = address
         self._methods = dict()
 
-    cdef __send__(self, object message, object options):
-        from .context import get_context
-        ctx = get_context()
-        return ctx.send(self, message, **options)
-
-    cdef __tell__(self, object message, object options):
-        from .context import get_context
-        ctx = get_context()
-        return ctx.send(self, message, wait_response=False, **options)
-
     def destroy(self, object callback=None):
-        from .context import get_context
         ctx = get_context()
         return ctx.destroy_actor(self)
 
-    def __getstate__(self):
-        return self.address, self.uid
-
-    def __setstate__(self, state):
-        self.address, self.uid = state
-
     def __reduce__(self):
-        return self.__class__, self.__getstate__()
+        return create_actor_ref, (self.address, self.uid)
 
-    def __getattr__(self, str item):
+    def __getattr__(self, item):
         if item.startswith('_'):
             return object.__getattribute__(self, item)
 
@@ -89,12 +125,13 @@ cdef class ActorRef:
             return method
 
     def __hash__(self):
-        return hash((type(self), self.address, self.uid))
+        return hash((self.address, self.uid))
 
     def __eq__(self, other):
-        return isinstance(other, ActorRef) and \
-               other.address == self.address and \
-               other.uid == self.uid
+        other_type = type(other)
+        if other_type is ActorRef or other_type is LocalActorRef:
+            return self.address == other.address and self.uid == other.uid
+        return False
 
     def __repr__(self):
         return 'ActorRef(uid={!r}, address={!r})'.format(self.uid, self.address)
@@ -128,11 +165,11 @@ cdef class ActorRefMethod:
 
     def send(self, *args, **kwargs):
         arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
-        return self.ref.__send__(arg_tuple, self._options)
+        return get_context().send(self.ref, arg_tuple, **self._options)
 
     def tell(self, *args, **kwargs):
         arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
-        return self.ref.__tell__(arg_tuple, self._options)
+        return get_context().send(self.ref, arg_tuple, wait_response=False, **self._options)
 
     def delay(self, *args, **kwargs):
         arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
@@ -155,18 +192,15 @@ cdef class ActorRefMethod:
         if last_method is None:
             last_method = self.method_name
 
-        if send:
-            return self.ref.__send__((last_method, CALL_METHOD_BATCH,
-                                      (args_list, kwargs_list), {}), self._options)
-        else:
-            return self.ref.__tell__((last_method, CALL_METHOD_BATCH,
-                                      (args_list, kwargs_list), {}), self._options)
+        message = (last_method, CALL_METHOD_BATCH, (args_list, kwargs_list), {})
+        return get_context().send(self.ref, message, wait_response=send, **self._options)
 
     def tell_delay(self, *args, delay=None, ignore_conn_fail=True, **kwargs):
         async def delay_fun():
             try:
                 await asyncio.sleep(delay)
-                await self.ref.__tell__((self.method_name, CALL_METHOD_DEFAULT, args, kwargs), self._options)
+                message = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
+                await get_context().send(self.ref, message, wait_response=False, **self._options)
             except Exception as ex:
                 if ignore_conn_fail and isinstance(ex, ConnectionRefusedError):
                     return
@@ -174,6 +208,105 @@ cdef class ActorRefMethod:
                 logger.error(f'Error {type(ex)} occurred when calling {self.method_name} '
                              f'on {self.ref.uid} at {self.ref.address} with tell_delay')
                 raise
+
+        return asyncio.create_task(delay_fun())
+
+
+cdef class LocalActorRef(ActorRef):
+    def __init__(self, _BaseActor actor):
+        # Make sure the input actor is an instance of _BaseActor.
+        super().__init__(actor._address, actor._uid)
+        self._actor_weakref = weakref.ref(actor, lambda _: self._methods.clear())
+
+    cdef _weakref_local_actor(self):
+        actor = _get_local_actor(self.address, self.uid)
+        # Make sure the input actor is an instance of _BaseActor.
+        if actor is not None and isinstance(actor, _BaseActor):
+            self._actor_weakref = weakref.ref(actor, lambda _: self._methods.clear())
+            return actor
+        return None
+
+    def __getattr__(self, item):
+        try:
+            return self._methods[item]
+        except KeyError:
+            actor = self._actor_weakref() or self._weakref_local_actor()
+            if actor is None:
+                raise ActorNotExist(f"Actor {self.uid} does not exist") from None
+            # For detecting the attribute error.
+            getattr(actor, item)
+            method = self._methods[item] = LocalActorRefMethod(self, item)
+            return method
+
+    def __repr__(self):
+        return 'LocalActorRef(uid={!r}, address={!r}), actor_weakref={!r}'.format(
+            self.uid, self.address, self._actor_weakref)
+
+
+async def __pyx_actor_method_wrapper(method, result_handler, lock, args, kwargs):
+    async with lock:
+        result = method(*args, **kwargs)
+        if asyncio.iscoroutine(result):
+            result = await result
+    return await result_handler(result)
+
+# Avoid global lookup.
+_actor_method_wrapper = __pyx_actor_method_wrapper
+
+
+cdef class LocalActorRefMethod:
+    cdef LocalActorRef _local_actor_ref
+    cdef object _method_name
+
+    def __init__(self, LocalActorRef local_actor_ref, method_name):
+        self._local_actor_ref = local_actor_ref
+        self._method_name = method_name
+
+    cdef tuple _get_referent(self):
+        actor = self._local_actor_ref._actor_weakref() or self._local_actor_ref._weakref_local_actor()
+        if actor is None:
+            raise ActorNotExist(f"Actor {self._local_actor_ref.uid} does not exist.")
+        method = getattr(actor, self._method_name)
+        return actor, method
+
+    def __call__(self, *args, **kwargs):
+        actor, method = self._get_referent()
+        return _actor_method_wrapper(
+            method, actor._handle_actor_result, (<_BaseActor>actor)._lock, args, kwargs)
+
+    def options(self, **options):
+        return self
+
+    def send(self, *args, **kwargs):
+        actor, method = self._get_referent()
+        return _actor_method_wrapper(
+            method, actor._handle_actor_result, (<_BaseActor>actor)._lock, args, kwargs)
+
+    def tell(self, *args, **kwargs):
+        actor, method = self._get_referent()
+        coro = _actor_method_wrapper(
+            method, actor._handle_actor_result, (<_BaseActor>actor)._lock, args, kwargs)
+        asyncio.create_task(coro)
+        return asyncio.sleep(0)
+
+    def delay(self, *args, **kwargs):
+        actor, method = self._get_referent()
+        return method.delay(*args, **kwargs)
+
+    def batch(self, *delays, send=True):
+        actor, method = self._get_referent()
+        coro = _actor_method_wrapper(
+            method.batch, actor._handle_actor_result, (<_BaseActor>actor)._lock, delays, dict())
+        if send:
+            return coro
+        else:
+            asyncio.create_task(coro)
+            return asyncio.sleep(0)
+
+    def tell_delay(self, *args, delay=None, ignore_conn_fail=True, **kwargs):
+        async def delay_fun():
+            await asyncio.sleep(delay)
+            await self.tell(*args, **kwargs)
 
         return asyncio.create_task(delay_fun())
 
@@ -195,7 +328,7 @@ cdef class _BaseActor:
     @uid.setter
     def uid(self, uid):
         self._uid = uid
-        
+
     def _set_uid(self, uid):
         self._uid = uid
 
@@ -292,9 +425,9 @@ cdef class _BaseActor:
         try:
             res = None
             while True:
-                with debug_async_timeout('actor_lock_timeout',
-                                         'async_generator %r hold lock timeout', gen):
-                    async with self._lock:
+                async with self._lock:
+                    with debug_async_timeout('actor_lock_timeout',
+                                             'async_generator %r hold lock timeout', gen):
                         if not is_exception:
                             res = await gen.asend(res)
                         else:
@@ -342,19 +475,19 @@ cdef class _BaseActor:
             method, call_method, args, kwargs = message
             if call_method == CALL_METHOD_DEFAULT:
                 func = getattr(self, method)
-                with debug_async_timeout('actor_lock_timeout',
-                                         "Method %s of actor %s hold lock timeout.",
-                                         method, self.uid):
-                    async with self._lock:
+                async with self._lock:
+                    with debug_async_timeout('actor_lock_timeout',
+                                             "Method %s of actor %s hold lock timeout.",
+                                             method, self.uid):
                         result = func(*args, **kwargs)
                         if asyncio.iscoroutine(result):
                             result = await result
             elif call_method == CALL_METHOD_BATCH:
                 func = getattr(self, method)
-                with debug_async_timeout('actor_lock_timeout',
-                                         "Batch method %s of actor %s hold lock timeout, batch size %s.",
-                                         method, self.uid, len(args)):
-                    async with self._lock:
+                async with self._lock:
+                    with debug_async_timeout('actor_lock_timeout',
+                                             "Batch method %s of actor %s hold lock timeout, batch size %s.",
+                                             method, self.uid, len(args)):
                         delays = []
                         for s_args, s_kwargs in zip(*args):
                             delays.append(func.delay(*s_args, **s_kwargs))

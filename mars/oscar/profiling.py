@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import collections
+
 import os
 import asyncio
 import copy
@@ -20,13 +20,14 @@ import heapq
 import logging
 import operator
 from collections import Counter
+from collections.abc import Mapping
 from .backends.message import SendMessage, TellMessage
 from ..typing import BandType
 
 
 logger = logging.getLogger(__name__)
 
-MARS_ENABLE_PROFILING = bool(os.environ.get("MARS_ENABLE_PROFILING", 0))
+MARS_ENABLE_PROFILING = int(os.environ.get("MARS_ENABLE_PROFILING", 0))
 
 
 class _ProfilingOptionDescriptor:
@@ -65,7 +66,7 @@ class _ProfilingOptions(metaclass=_ProfilingOptionsMeta):
     slow_subtasks_duration_threshold = _ProfilingOptionDescriptor(int, default=10)
 
     def __init__(self, options):
-        if isinstance(options, collections.Mapping):
+        if isinstance(options, Mapping):
             invalid_keys = options.keys() - type(self).__dict__.keys()
             if invalid_keys:
                 raise ValueError(f"Invalid profiling options: {invalid_keys}")
