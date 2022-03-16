@@ -128,7 +128,8 @@ class TaskStageProcessor:
     def _schedule_done(self):
         self._done.set()
 
-    async def set_subtask_result(self, result: SubtaskResult):
+    async def set_subtask_result(self, result: SubtaskResult, band: BandType = None):
+        assert result.status.is_done
         subtask = self.subtask_id_to_subtask[result.subtask_id]
         #  update subtask_results in `TaskProcessorActor.set_subtask_result`
         self._submitted_subtask_ids.difference_update([result.subtask_id])
@@ -147,7 +148,7 @@ class TaskStageProcessor:
 
             # tell scheduling to finish subtasks
             await self._scheduling_api.finish_subtasks(
-                [result.subtask_id], schedule_next=not error_or_cancelled
+                [result.subtask_id], bands=[band], schedule_next=not error_or_cancelled
             )
             if self.result.status != TaskStatus.terminated:
                 self.result = TaskResult(
@@ -171,6 +172,15 @@ class TaskStageProcessor:
                                 result.traceback,
                             ),
                         )
+                    if result.status == SubtaskStatus.cancelled:  # pragma: no cover
+                        logger.warning(
+                            "Subtask %s from band %s canceled.",
+                            subtask.subtask_id,
+                            band,
+                        )
+                    logger.info(
+                        "Start to cancel stage %s of task %s.", self.stage_id, self.task
+                    )
                     # if error or cancel, cancel all submitted subtasks
                     await self._scheduling_api.cancel_subtasks(
                         list(self._submitted_subtask_ids)
@@ -207,7 +217,9 @@ class TaskStageProcessor:
                     # all predecessors finished
                     to_schedule_subtasks.append(succ_subtask)
             await self._schedule_subtasks(to_schedule_subtasks)
-            await self._scheduling_api.finish_subtasks([result.subtask_id])
+            await self._scheduling_api.finish_subtasks(
+                [result.subtask_id], bands=[band]
+            )
 
     async def run(self):
         if len(self.subtask_graph) == 0:
@@ -224,6 +236,7 @@ class TaskStageProcessor:
         await self._done.wait()
 
     async def cancel(self):
+        logger.info("Start to cancel stage %s of task %s.", self.stage_id, self.task)
         if self._done.is_set():  # pragma: no cover
             # already finished, ignore cancel
             return

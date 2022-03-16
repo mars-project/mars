@@ -123,7 +123,10 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
 
     @enter_mode(build=True)
     def analyze(
-        self, chunk_graph: ChunkGraph, available_bands: Dict[BandType, int]
+        self,
+        chunk_graph: ChunkGraph,
+        available_bands: Dict[BandType, int],
+        stage_id: str,
     ) -> SubtaskGraph:
         # record shapes generated in tile
         for n in chunk_graph:

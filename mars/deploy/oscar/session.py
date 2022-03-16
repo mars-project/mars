@@ -929,7 +929,7 @@ class _IsolatedSession(AbstractAsyncSession):
     async def execute(self, *tileables, **kwargs) -> ExecutionInfo:
         if self._closed:
             raise RuntimeError("Session closed already")
-        fuse_enabled: bool = kwargs.pop("fuse_enabled", True)
+        fuse_enabled: bool = kwargs.pop("fuse_enabled", None)
         task_name: str = kwargs.pop("task_name", None)
         extra_config: dict = kwargs.pop("extra_config", None)
         if kwargs:  # pragma: no cover

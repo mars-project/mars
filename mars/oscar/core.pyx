@@ -425,9 +425,9 @@ cdef class _BaseActor:
         try:
             res = None
             while True:
-                with debug_async_timeout('actor_lock_timeout',
-                                         'async_generator %r hold lock timeout', gen):
-                    async with self._lock:
+                async with self._lock:
+                    with debug_async_timeout('actor_lock_timeout',
+                                             'async_generator %r hold lock timeout', gen):
                         if not is_exception:
                             res = await gen.asend(res)
                         else:
@@ -475,19 +475,19 @@ cdef class _BaseActor:
             method, call_method, args, kwargs = message
             if call_method == CALL_METHOD_DEFAULT:
                 func = getattr(self, method)
-                with debug_async_timeout('actor_lock_timeout',
-                                         "Method %s of actor %s hold lock timeout.",
-                                         method, self.uid):
-                    async with self._lock:
+                async with self._lock:
+                    with debug_async_timeout('actor_lock_timeout',
+                                             "Method %s of actor %s hold lock timeout.",
+                                             method, self.uid):
                         result = func(*args, **kwargs)
                         if asyncio.iscoroutine(result):
                             result = await result
             elif call_method == CALL_METHOD_BATCH:
                 func = getattr(self, method)
-                with debug_async_timeout('actor_lock_timeout',
-                                         "Batch method %s of actor %s hold lock timeout, batch size %s.",
-                                         method, self.uid, len(args)):
-                    async with self._lock:
+                async with self._lock:
+                    with debug_async_timeout('actor_lock_timeout',
+                                             "Batch method %s of actor %s hold lock timeout, batch size %s.",
+                                             method, self.uid, len(args)):
                         delays = []
                         for s_args, s_kwargs in zip(*args):
                             delays.append(func.delay(*s_args, **s_kwargs))
