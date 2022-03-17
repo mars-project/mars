@@ -29,11 +29,11 @@ def _average_binary_score(
     run_kwargs=None,
 ):
     average_options = (None, "micro", "macro", "weighted", "samples")
-    if average not in average_options:
+    if average not in average_options:  # pragma: no cover
         raise ValueError("average has to be one of {0}".format(average_options))
 
     y_type = type_of_target(y_true).to_numpy(session=session, **(run_kwargs or dict()))
-    if y_type not in ("binary", "multilabel-indicator"):
+    if y_type not in ("binary", "multilabel-indicator"):  # pragma: no cover
         raise ValueError("{0} format is not supported".format(y_type))
 
     if y_type == "binary":
@@ -50,13 +50,13 @@ def _average_binary_score(
     average_weight = None
 
     if average == "micro":
-        if score_weight is not None:
+        if score_weight is not None:  # pragma: no cover
             score_weight = mt.repeat(score_weight, y_true.shape[1])
         y_true = y_true.ravel()
         y_score = y_score.ravel()
 
     elif average == "weighted":
-        if score_weight is not None:
+        if score_weight is not None:  # pragma: no cover
             average_weight = mt.sum(
                 mt.multiply(y_true, mt.reshape(score_weight, (-1, 1))), axis=0
             )

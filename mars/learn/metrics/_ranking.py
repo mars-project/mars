@@ -454,9 +454,7 @@ def roc_auc_score(
             if e.isscalar():
                 e = e.fetch(session=session)
             result[i] = e
-        if len(result) == 1:
-            return result[0]
-        return result
+        return result[0] if len(result) == 1 else result
 
     if y_type == "multiclass" or (
         y_type == "binary" and y_score.ndim == 2 and y_score.shape[1] > 2
@@ -513,7 +511,7 @@ def _multiclass_roc_auc_score(
     # validation of the input y_score
     if not mt.allclose(1, y_score.sum(axis=1)).to_numpy(
         session=session, **(run_kwargs or dict())
-    ):
+    ):  # pragma: no cover
         raise ValueError(
             "Target scores need to be probabilities for multiclass "
             "roc_auc, i.e. they should sum up to 1.0 over classes"
