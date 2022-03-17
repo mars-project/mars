@@ -16,3 +16,4 @@ from .arithmetic_query import SeriesArithmeticToEval
 from .column_pruning import GroupByPruneDataSource, GetitemPruneDataSource
 from .core import optimize
 from .head import HeadPushDown
+from .loc_elimination import LocElimination

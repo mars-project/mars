@@ -14,7 +14,7 @@
 
 import itertools
 from collections import namedtuple
-from typing import List, Optional, Union, Tuple
+from typing import Callable, List, Optional, Union, Tuple
 
 import numpy as np
 import pandas as pd
@@ -30,6 +30,7 @@ from ...serialization.serializables import (
     TupleField,
     KeyField,
     Int32Field,
+    ListField,
     NamedTupleField,
 )
 from ..core import DataFrame, Series
@@ -51,26 +52,16 @@ logger = logging.getLogger(__name__)
 class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_SHUFFLE_MERGE_ALIGN
 
-    _index_shuffle_size = Int32Field("index_shuffle_size")
-    _shuffle_on = AnyField("shuffle_on")
+    index_shuffle_size = Int32Field("index_shuffle_size")
+    shuffle_on = AnyField("shuffle_on")
+
+    # only available when match LocElimination's rule
+    index_functions = ListField("index_functions", default=None)
 
     _input = KeyField("input")
 
-    def __init__(self, index_shuffle_size=None, shuffle_on=None, **kw):
-        super().__init__(
-            _index_shuffle_size=index_shuffle_size,
-            _shuffle_on=shuffle_on,
-            _output_types=[OutputType.dataframe],
-            **kw,
-        )
-
-    @property
-    def index_shuffle_size(self):
-        return self._index_shuffle_size
-
-    @property
-    def shuffle_on(self):
-        return self._shuffle_on
+    def __init__(self, **kw):
+        super().__init__(_output_types=[OutputType.dataframe], **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -81,6 +72,10 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
         chunk = op.outputs[0]
         df = ctx[op.inputs[0].key]
         shuffle_on = op.shuffle_on
+
+        if op.index_functions:
+            for func in op.index_functions:
+                df = func(df)
 
         if shuffle_on is not None:
             # shuffle on field may be resident in index
@@ -149,6 +144,9 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
     # only for broadcast merge
     split_info = NamedTupleField("split_info")
 
+    # only available when match LocElimination's rule
+    index_functions = ListField("index_functions", default=None)
+
     def __init__(self, copy=None, **kwargs):
         super().__init__(copy_=copy, **kwargs)
 
@@ -194,6 +192,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         out_shape: Tuple,
         shuffle_on: Union[List, str],
         df: Union[DataFrame, Series],
+        index_functions: List[Callable],
     ):
         # gen map chunks
         map_chunks = []
@@ -201,6 +200,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             map_op = DataFrameMergeAlign(
                 stage=OperandStage.map,
                 shuffle_on=shuffle_on,
+                index_functions=index_functions,
                 sparse=chunk.issparse(),
                 index_shuffle_size=out_shape[0],
             )
@@ -327,9 +327,14 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         left_on = _prepare_shuffle_on(op.left_index, op.left_on, op.on)
         right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
 
+        left_index_functions, right_index_functions = cls._get_index_functions(op)
         # do shuffle
-        left_chunks = cls._gen_shuffle_chunks(out_chunk_shape, left_on, left)
-        right_chunks = cls._gen_shuffle_chunks(out_chunk_shape, right_on, right)
+        left_chunks = cls._gen_shuffle_chunks(
+            out_chunk_shape, left_on, left, left_index_functions
+        )
+        right_chunks = cls._gen_shuffle_chunks(
+            out_chunk_shape, right_on, right, right_index_functions
+        )
 
         out_chunks = []
         for left_chunk, right_chunk in zip(left_chunks, right_chunks):
@@ -368,6 +373,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
 
         out_df = op.outputs[0]
         out_chunks = []
+        left_index_functions, right_index_functions = cls._get_index_functions(op)
         if left.chunk_shape[0] < right.chunk_shape[0]:
             # broadcast left
             if op.how == "inner":
@@ -375,7 +381,9 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                 need_split = False
             else:
                 left_on = _prepare_shuffle_on(op.left_index, op.left_on, op.on)
-                left_chunks = cls._gen_shuffle_chunks(left.chunk_shape, left_on, left)
+                left_chunks = cls._gen_shuffle_chunks(
+                    left.chunk_shape, left_on, left, left_index_functions
+                )
                 need_split = True
             right_chunks = right.chunks
             for right_chunk in right_chunks:
@@ -418,7 +426,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                 need_split = True
                 right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
                 right_chunks = cls._gen_shuffle_chunks(
-                    right.chunk_shape, right_on, right
+                    right.chunk_shape, right_on, right, right_index_functions
                 )
             left_chunks = left.chunks
             for left_chunk in left_chunks:
@@ -500,9 +508,23 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             return ret
 
     @classmethod
-    def execute(cls, ctx, op):
+    def _get_index_functions(cls, op):
+        if op.index_functions is not None:
+            left_index_functions, right_index_functions = op.index_functions
+        else:
+            left_index_functions, right_index_functions = None, None
+        return left_index_functions, right_index_functions
+
+    @classmethod
+    def execute(cls, ctx, op: "DataFrameMerge"):
         chunk = op.outputs[0]
         left, right = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
+        if op.index_functions is not None:
+            left_index_functions, right_index_functions = cls._get_index_functions(op)
+            for func in left_index_functions:
+                left = func(left)
+            for func in right_index_functions:
+                right = func(right)
 
         if getattr(op, "split_info", None) is not None:
             split_info = op.split_info
