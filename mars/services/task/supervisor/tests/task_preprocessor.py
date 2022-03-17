@@ -135,17 +135,15 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
         analyzer = GraphAnalyzer(chunk_graph, available_bands, task, self._config)
         subtask_graph = analyzer.gen_subtask_graph()
         results = set(
-            analyzer._chunk_to_copied[c]
-            for c in chunk_graph.results
-            if not isinstance(c.op, Fetch)
+            key for key, c in chunk_graph.results.items() if not isinstance(c.op, Fetch)
         )
         for subtask in subtask_graph:
             if subtask.extra_config is None:
                 subtask.extra_config = dict()
-            if all(c not in results for c in subtask.chunk_graph.results):
+            if all(key not in results for key in subtask.chunk_graph.results):
                 subtask.extra_config["check_all"] = False
             else:
                 subtask.extra_config["check_keys"] = [
-                    c.key for c in subtask.chunk_graph.results if c in results
+                    key for key in subtask.chunk_graph.results if key in results
                 ]
         return subtask_graph

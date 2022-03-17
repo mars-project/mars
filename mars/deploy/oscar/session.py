@@ -674,7 +674,7 @@ def gen_submit_tileable_graph(
     session: "AbstractSession", result_tileables: List[TileableType]
 ):
     tileable_to_copied = dict()
-    result = [None] * len(result_tileables)
+    result = {}
     graph = TileableGraph(result)
 
     q = list(result_tileables)
@@ -682,7 +682,7 @@ def gen_submit_tileable_graph(
         tileable = q.pop()
         if tileable in tileable_to_copied:
             if tileable in result_tileables:
-                result[result_tileables.index(tileable)] = tileable_to_copied[tileable]
+                result[tileable.key] = tileable_to_copied[tileable]
             continue
         outputs = tileable.op.outputs
         inputs = tileable.inputs if session not in tileable._executed_sessions else []
@@ -719,7 +719,8 @@ def gen_submit_tileable_graph(
             for out, new_out in zip(outputs, new_outputs):
                 tileable_to_copied[out] = new_out
                 if out in result_tileables:
-                    result[result_tileables.index(out)] = new_out
+                    result.pop(out.key, None)
+                    result[new_out.key] = new_out
                 graph.add_node(new_out)
                 for new_inp in new_inputs:
                     graph.add_edge(new_inp, new_out)

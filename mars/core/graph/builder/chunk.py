@@ -111,19 +111,20 @@ class Tiler:
     ):
         try:
             need_process = next(tile_handler)
-            chunks = []
+            chunks = {}
             if need_process is not None:
                 for t in need_process:
                     if isinstance(t, CHUNK_TYPE):
-                        chunks.append(self._get_data(t))
+                        c = self._get_data(t)
+                        chunks[c.key] = c
                     elif isinstance(t, TILEABLE_TYPE):
                         to_update_tileables.append(self._get_data(t))
             # not finished yet
-            self._add_nodes(chunk_graph, chunks.copy(), visited)
+            self._add_nodes(chunk_graph, list(chunks.values()), visited)
             next_tileable_handlers.append((tileable, tile_handler))
             # add intermediate chunks into result chunks
             # to prevent them being pruned
-            chunk_graph.result_chunks.extend(chunks)
+            chunk_graph.result_chunks.update(chunks)
         except StopIteration as e:
             # tile done
             tiled_tileables = e.value
@@ -146,14 +147,11 @@ class Tiler:
         result_chunks = chunk_graph.result_chunks
         tileable_graph = self._tileable_graph
         # generate result chunks
-        result_chunk_set = set()
         if next_tileable_handlers:
             # add all chunks that have no successors to result chunks
             for chunk in chunk_graph:
                 if chunk_graph.count_successors(chunk) == 0:
-                    if chunk not in result_chunk_set:
-                        result_chunks.append(chunk)
-                        result_chunk_set.add(chunk)
+                    result_chunks[chunk.key] = chunk
             for tileable, _ in next_tileable_handlers:
                 # tileable that tile not completed,
                 # scan inputs to make sure their chunks in result
@@ -161,16 +159,14 @@ class Tiler:
                     if inp_tileable in self._tile_context:
                         for chunk in self._tile_context[inp_tileable].chunks:
                             chunk = self._get_data(chunk)
-                            if chunk in chunk_graph and chunk not in result_chunk_set:
-                                result_chunks.append(chunk)
-                                result_chunk_set.add(chunk)
-        for tileable in tileable_graph.result_tileables:
+                            if chunk in chunk_graph:
+                                result_chunks[chunk.key] = chunk
+        for tileable in tileable_graph.result_tileables.values():
             if tileable in self._tile_context:
                 for chunk in self._tile_context[tileable].chunks:
                     chunk = self._get_data(chunk)
-                    if chunk in chunk_graph and chunk not in result_chunk_set:
-                        result_chunks.append(chunk)
-                        result_chunk_set.add(chunk)
+                    if chunk in chunk_graph:
+                        result_chunks[chunk.key] = chunk
 
     def _iter(self):
         chunk_graph = self._cur_chunk_graph
@@ -187,8 +183,7 @@ class Tiler:
             ]
             self._processed_chunks.update(processed_chunks)
 
-        result_chunks = []
-        chunk_graph = self._cur_chunk_graph = ChunkGraph(result_chunks)
+        chunk_graph = self._cur_chunk_graph = ChunkGraph({})
 
         next_tileable_handlers = []
         # tile

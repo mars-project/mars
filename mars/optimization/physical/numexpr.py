@@ -106,7 +106,7 @@ class NumexprRuntimeOptimizer(RuntimeOptimizer):
             if node.op.gpu or node.op.sparse:
                 # break
                 return [], []
-            if type(node.op) not in SUPPORT_OP or node in graph.results:
+            if type(node.op) not in SUPPORT_OP or node.key in graph.results:
                 continue
             if node in explored or type(node.op) in REDUCTION_OP:
                 # TODO: check logic here
@@ -122,7 +122,7 @@ class NumexprRuntimeOptimizer(RuntimeOptimizer):
                 if (
                     graph.count_successors(cur_node) != 1
                     or type(cur_node.op) in REDUCTION_OP
-                    or cur_node in graph.results
+                    or cur_node.key in graph.results
                 ):
                     break
                 else:

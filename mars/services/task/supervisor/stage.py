@@ -110,7 +110,7 @@ class TaskStageProcessor:
 
     async def _update_chunks_meta(self, chunk_graph: ChunkGraph):
         get_meta = []
-        chunks = chunk_graph.result_chunks
+        chunks = chunk_graph.result_chunks.values()
         for chunk in chunks:
             if isinstance(chunk.op, Fuse):
                 chunk = chunk.chunk

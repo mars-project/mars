@@ -42,7 +42,7 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
         super()._execute_operand(ctx, op)
         if self._check_options.get("check_all", True):
             for out in op.outputs:
-                if out not in self._chunk_graph.result_chunks:
+                if out.key not in self._chunk_graph.result_chunks:
                     continue
                 if self._check_keys and out.key not in self._check_keys:
                     continue

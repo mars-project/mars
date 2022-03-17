@@ -125,7 +125,7 @@ async def test_subtask_success(actor_pool):
 
     # check storage
     expected = np.ones((10, 10)) + 1
-    result_key = subtask.chunk_graph.results[0].key
+    result_key = next(iter(subtask.chunk_graph.results))
     result = await storage_api.get(result_key)
     np.testing.assert_array_equal(expected, result)
 

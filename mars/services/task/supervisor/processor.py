@@ -187,12 +187,12 @@ class TaskProcessor:
         processed = self._lifecycle_processed_tileables
         # track and incref result tileables if tiled
         tracks = [], []
-        for result_tileable in self.tileable_graph.result_tileables:
+        for key, result_tileable in self.tileable_graph.result_tileables.items():
             if result_tileable in processed:  # pragma: no cover
                 continue
             try:
                 tiled_tileable = self._preprocessor.get_tiled(result_tileable)
-                tracks[0].append(result_tileable.key)
+                tracks[0].append(key)
                 tracks[1].append(
                     self._lifecycle_api.track.delay(
                         result_tileable.key, [c.key for c in tiled_tileable.chunks]
@@ -219,8 +219,8 @@ class TaskProcessor:
         for subtask in subtask_graph:
             # for subtask has successors, incref number of successors
             n = subtask_graph.count_successors(subtask)
-            for c in subtask.chunk_graph.results:
-                incref_chunk_keys.extend([c.key] * n)
+            for key in subtask.chunk_graph.results.keys():
+                incref_chunk_keys.extend([key] * n)
             # process reducer, since mapper will generate sub keys
             # we incref (main_key, sub_key) for reducer
             for chunk in subtask.chunk_graph:
@@ -233,8 +233,7 @@ class TaskProcessor:
                     incref_chunk_keys.extend(data_keys)
                     # main key incref as well, to ensure existence of meta
                     incref_chunk_keys.extend([key[0] for key in data_keys])
-        result_chunks = stage_processor.chunk_graph.result_chunks
-        incref_chunk_keys.extend([c.key for c in result_chunks])
+        incref_chunk_keys.extend(stage_processor.chunk_graph.result_chunks.keys())
         logger.debug("Incref chunks %s for stage", incref_chunk_keys)
         await self._lifecycle_api.incref_chunks(incref_chunk_keys)
 
@@ -254,7 +253,7 @@ class TaskProcessor:
                     stage_processor.decref_subtask.add(subtask.subtask_id)
                     # if subtask not executed, rollback incref of predecessors
                     for inp_subtask in subtask_graph.predecessors(subtask):
-                        for result_chunk in inp_subtask.chunk_graph.results:
+                        for result_chunk in inp_subtask.chunk_graph.results.values():
                             # for reducer chunk, decref mapper chunks
                             if isinstance(result_chunk.op, ShuffleProxy):
                                 for chunk in subtask.chunk_graph:
@@ -265,11 +264,11 @@ class TaskProcessor:
                                             [key[0] for key in data_keys]
                                         )
                         decref_chunk_keys.extend(
-                            [c.key for c in inp_subtask.chunk_graph.results]
+                            [key for key in inp_subtask.chunk_graph.results]
                         )
             # decref result of chunk graphs
             decref_chunk_keys.extend(
-                [c.key for c in stage_processor.chunk_graph.results]
+                [key for key in stage_processor.chunk_graph.results]
             )
         return decref_chunk_keys
 
@@ -716,7 +715,7 @@ class TaskProcessorActor(mo.Actor):
         processor = list(self._task_id_to_processor.values())[-1]
         tileable_graph = processor.tileable_graph
         result = []
-        for result_tileable in tileable_graph.result_tileables:
+        for result_tileable in tileable_graph.result_tileables.values():
             tiled = processor.get_tiled(result_tileable)
             result.append(build_fetch(tiled))
         return result
@@ -887,8 +886,8 @@ class TaskProcessorActor(mo.Actor):
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]
         tileable_graph = processor.tileable_graph
-        for result_tileable in tileable_graph.result_tileables:
-            if result_tileable.key == tileable_key:
+        for key, result_tileable in tileable_graph.result_tileables.items():
+            if key == tileable_key:
                 tiled = processor.get_tiled(result_tileable)
                 return build_fetch(tiled)
         raise KeyError(f"Tileable {tileable_key} does not exist")  # pragma: no cover
@@ -905,7 +904,7 @@ class TaskProcessorActor(mo.Actor):
 
         decref_chunk_keys = []
         for in_subtask in subtask_graph.iter_predecessors(subtask):
-            for result_chunk in in_subtask.chunk_graph.results:
+            for chunk_key, result_chunk in in_subtask.chunk_graph.results.items():
                 # for reducer chunk, decref mapper chunks
                 if isinstance(result_chunk.op, ShuffleProxy):
                     for chunk in subtask.chunk_graph:
@@ -917,7 +916,7 @@ class TaskProcessorActor(mo.Actor):
                             decref_chunk_keys.extend(data_keys)
                             # decref main key as well
                             decref_chunk_keys.extend([key[0] for key in data_keys])
-                decref_chunk_keys.append(result_chunk.key)
+                decref_chunk_keys.append(chunk_key)
         logger.debug(
             "Decref chunks %s when subtask %s finish",
             decref_chunk_keys,

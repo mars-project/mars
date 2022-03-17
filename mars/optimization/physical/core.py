@@ -65,12 +65,9 @@ class RuntimeOptimizer(ABC):
                 graph.remove_node(node)
             fused_nodes.append(fused_chunk)
 
-            try:
-                # check tail node if it's in results
-                i = graph.results.index(tail_node)
-                graph.results[i] = fused_chunk
-            except ValueError:
-                pass
+            # check tail node if it's in results
+            graph.results.pop(tail_node.key, None)
+            graph.results[fused_chunk.key] = fused_chunk
 
         return fuses, fused_nodes
 

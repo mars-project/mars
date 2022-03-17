@@ -27,7 +27,7 @@ class TileableGraphBuilder(AbstractGraphBuilder):
 
     @enter_mode(build=True, kernel=True)
     def _build(self) -> Union[TileableGraph, ChunkGraph]:
-        self._add_nodes(self._graph, list(self._graph.result_tileables), set())
+        self._add_nodes(self._graph, list(self._graph.result_tileables.values()), set())
         return self._graph
 
     def build(self) -> Generator[Union[TileableGraph, ChunkGraph], None, None]:

@@ -208,11 +208,8 @@ class PruneDataSource(OptimizationRule, metaclass=ABCMeta):
 
         for out, new_out in zip(op.outputs, new_outputs):
             # check out if it's in result
-            try:
-                i = self._graph.results.index(out)
-                self._graph.results[i] = new_out
-            except ValueError:
-                pass
+            self._graph.results.pop(out.key, None)
+            self._graph.results[new_out.key] = new_out
 
 
 class GetitemPruneDataSource(PruneDataSource):
@@ -223,7 +220,7 @@ class GetitemPruneDataSource(PruneDataSource):
         )
         if (
             input_can_be_pruned
-            and data_source_node not in self._graph.results
+            and data_source_node.key not in self._graph.results
             and op.col_names is not None
         ):
             selected_columns = self._get_selected_columns(op)

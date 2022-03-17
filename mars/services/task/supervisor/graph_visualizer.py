@@ -55,8 +55,8 @@ class GraphVisualizer:
                         result_chunk_to_subtask,
                     )
                 )
-                for c in subtask.chunk_graph.results:
-                    result_chunk_to_subtask[c.key] = [current_stage, current_cluster]
+                for key in subtask.chunk_graph.results:
+                    result_chunk_to_subtask[key] = [current_stage, current_cluster]
                 subgraph_index += 1
             current_stage += 1
         sio.write("}")

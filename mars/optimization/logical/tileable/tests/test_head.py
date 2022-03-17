@@ -66,7 +66,7 @@ def test_read_csv_head(prepare_data, setup):
     opt_df2 = records.get_optimization_result(df2.data)
     assert opt_df2.op.nrows == 5
     assert len(graph) == 1
-    assert opt_df2 in graph.results
+    assert opt_df2 in graph.results.values()
 
     result = df2.execute(
         extra_config={"operand_executors": _iloc_operand_executors}
@@ -122,7 +122,7 @@ def test_read_parquet_head(prepare_data, setup):
     opt_df2 = records.get_optimization_result(df2.data)
     assert opt_df2.op.nrows == 5
     assert len(graph) == 1
-    assert opt_df2 in graph.results
+    assert opt_df2 in graph.results.values()
 
     result = df2.execute(
         extra_config={"operand_executors": _iloc_operand_executors}
@@ -145,7 +145,7 @@ def test_sort_head(prepare_data, setup):
     opt_df2 = records.get_optimization_result(df2.data)
     assert opt_df2.op.nrows == 10
     assert len(graph) == 2
-    assert opt_df2 in graph.results
+    assert opt_df2 in graph.results.values()
 
     result = df2.execute(
         extra_config={"operand_executors": _iloc_operand_executors}
@@ -165,7 +165,7 @@ def test_sort_head(prepare_data, setup):
     opt_df2 = records.get_optimization_result(df2.data)
     assert opt_df2.op.nrows == 10
     assert len(graph) == 2
-    assert opt_df2 in graph.results
+    assert opt_df2 in graph.results.values()
 
     result = df2.execute(
         extra_config={"operand_executors": _iloc_operand_executors}
@@ -189,7 +189,7 @@ def test_value_counts_head(prepare_data, setup, chunk_size):
     opt_df2 = records.get_optimization_result(df2.data)
     assert opt_df2.op.nrows == 3
     assert len(graph) == 3
-    assert opt_df2 in graph.results
+    assert opt_df2 in graph.results.values()
 
     result = df2.execute(
         extra_config={"operand_executors": _iloc_operand_executors}

@@ -59,4 +59,4 @@ def test_read_csv_head(gen_data1):
     opt_chunk2 = records.get_optimization_result(chunk2)
     assert opt_chunk2.op.nrows == 5
     assert len(chunk_graph) == 1
-    assert opt_chunk2 in chunk_graph.results
+    assert opt_chunk2 in chunk_graph.results.values()

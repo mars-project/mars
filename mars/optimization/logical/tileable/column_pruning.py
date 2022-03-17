@@ -29,7 +29,7 @@ class GroupByPruneDataSource(PruneDataSource):
         input_can_be_pruned = isinstance(
             data_source_node.op, ColumnPruneSupportedDataSourceMixin
         )
-        if input_can_be_pruned and data_source_node not in self._graph.results:
+        if input_can_be_pruned and data_source_node.key not in self._graph.results:
             selected_columns = self._get_selected_columns(op)
             if not selected_columns:
                 # no columns selected, skip

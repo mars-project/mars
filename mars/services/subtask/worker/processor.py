@@ -167,8 +167,8 @@ class SubtaskProcessor:
         chunk_graph = self._chunk_graph
         ref_counts = defaultdict(lambda: 0)
         # set 1 for result chunks
-        for result_chunk in chunk_graph.result_chunks:
-            ref_counts[result_chunk.key] += 1
+        for key in chunk_graph.result_chunks:
+            ref_counts[key] += 1
         # iter graph to set ref counts
         for chunk in chunk_graph:
             ref_counts[chunk.key] += chunk_graph.count_successors(chunk)
@@ -280,7 +280,9 @@ class SubtaskProcessor:
     async def _store_data(self, chunk_graph: ChunkGraph):
         # skip virtual operands for result chunks
         result_chunks = [
-            c for c in chunk_graph.result_chunks if not isinstance(c.op, VirtualOperand)
+            c
+            for c in chunk_graph.result_chunks.values()
+            if not isinstance(c.op, VirtualOperand)
         ]
 
         # store data into storage
@@ -364,7 +366,7 @@ class SubtaskProcessor:
         data_key_to_memory_size: Dict,
         data_key_to_object_id: Dict,
     ):
-        key_to_result_chunk = {c.key: c for c in chunk_graph.result_chunks}
+        key_to_result_chunk = chunk_graph.result_chunks.copy()
         # store meta
         set_chunk_metas = []
         result_data_size = 0
@@ -399,8 +401,8 @@ class SubtaskProcessor:
                     object_ref=object_ref,
                 )
             )
-        for chunk in chunk_graph.result_chunks:
-            if chunk.key not in data_key_to_store_size:
+        for key, chunk in chunk_graph.result_chunks.items():
+            if key not in data_key_to_store_size:
                 # mapper, set meta, so that storage can make sure
                 # this operand is executed, some sub key is absent
                 # due to it's empty actually

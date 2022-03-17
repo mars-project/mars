@@ -186,9 +186,9 @@ class TaskManagerActor(mo.Actor):
             task, tiled_context, self._config, self._task_preprocessor_cls
         )
 
-        for tileable in graph.result_tileables:
+        for key, tileable in graph.result_tileables.items():
             info = ResultTileableInfo(tileable=tileable, processor_ref=processor_ref)
-            self._tileable_key_to_info[tileable.key].append(info)
+            self._tileable_key_to_info[key].append(info)
 
         return task_id
 

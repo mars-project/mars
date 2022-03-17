@@ -169,7 +169,10 @@ class OptimizationRule(ABC):
             pred_original = self._records.get_original_entity(pred, pred)
             pred_opt = self._records.get_optimization_result(pred, pred)
 
-            if pred_opt in self._graph.results or pred_original in self._graph.results:
+            if (
+                pred_opt.key in self._graph.results
+                or pred_original.key in self._graph.results
+            ):
                 continue
             affect_succ = self._preds_to_remove.get(pred_original) or []
             affect_succ_opt = [

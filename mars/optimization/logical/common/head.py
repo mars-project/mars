@@ -62,7 +62,7 @@ class HeadPushDown(OptimizationRule):
             len(input_nodes) == 1
             and op.can_be_optimized()
             and isinstance(input_nodes[0].op, accept_types)
-            and input_nodes[0] not in self._graph.results
+            and input_nodes[0].key not in self._graph.results
         ):
             return True
         return False
@@ -137,8 +137,5 @@ class HeadPushDown(OptimizationRule):
             )
 
         # check node if it's in result
-        try:
-            i = self._graph.results.index(node)
-            self._graph.results[i] = new_node
-        except ValueError:
-            pass
+        self._graph.results.pop(node.key, None)
+        self._graph.results[new_node.key] = new_node

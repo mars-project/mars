@@ -127,8 +127,7 @@ class GraphAnalyzer:
         final_result_chunks_set = set(self._chunk_graph.result_chunks)
         chunks_set = set(chunks)
 
-        result_chunks = []
-        result_chunks_set = set()
+        result_chunks = {}
         chunk_graph = ChunkGraph(result_chunks)
         out_of_scope_chunks = []
         chunk_to_copied = self._chunk_to_copied
@@ -201,9 +200,8 @@ class GraphAnalyzer:
                 out_chunk._key = src_chunk.key
                 chunk_graph.add_node(out_chunk)
                 chunk_to_copied[src_chunk] = out_chunk
-                if chunk in final_result_chunks_set:
-                    result_chunks.append(out_chunk)
-                    result_chunks_set.add(out_chunk)
+                if chunk.key in final_result_chunks_set:
+                    result_chunks[out_chunk.key] = out_chunk
                 if not is_virtual:
                     # skip adding fetch chunk to chunk graph when op is virtual operand
                     for c in inp_chunks:
@@ -211,11 +209,8 @@ class GraphAnalyzer:
                             chunk_graph.add_node(c)
                         chunk_graph.add_edge(c, out_chunk)
         # add chunks with no successors into result chunks
-        result_chunks.extend(
-            c
-            for c in chunk_graph.iter_indep(reverse=True)
-            if c not in result_chunks_set
-        )
+        for c in chunk_graph.iter_indep(reverse=True):
+            result_chunks[c.key] = c
         expect_bands = (
             [self._to_band(expect_worker)]
             if bands_specified
@@ -227,16 +222,12 @@ class GraphAnalyzer:
             for out_of_scope_chunk in out_of_scope_chunks:
                 copied_out_of_scope_chunk = chunk_to_copied[out_of_scope_chunk]
                 inp_subtask = chunk_to_subtask[out_of_scope_chunk]
-                if (
-                    copied_out_of_scope_chunk
-                    not in inp_subtask.chunk_graph.result_chunks
-                ):
-                    # make sure the chunk that out of scope
-                    # is in the input subtask's results,
-                    # or the meta may be lost
-                    inp_subtask.chunk_graph.result_chunks.append(
-                        copied_out_of_scope_chunk
-                    )
+                # make sure the chunk that out of scope
+                # is in the input subtask's results,
+                # or the meta may be lost
+                inp_subtask.chunk_graph.result_chunks[
+                    copied_out_of_scope_chunk.key
+                ] = copied_out_of_scope_chunk
                 inp_subtasks.append(inp_subtask)
             depth = max(st.priority[0] for st in inp_subtasks) + 1
         else:

@@ -50,7 +50,7 @@ class CupyRuntimeOptimizer(RuntimeOptimizer):
                 continue
             if graph.count_predecessors(node) != 1:
                 continue
-            if node in graph.results:
+            if node.key in graph.results:
                 continue
 
             selected = [node]
@@ -60,7 +60,10 @@ class CupyRuntimeOptimizer(RuntimeOptimizer):
                 graph.count_predecessors(cur_node) == 1 and type(cur_node.op) in CP_OP
             ):
                 selected.append(cur_node)
-                if graph.count_successors(cur_node) != 1 or cur_node in graph.results:
+                if (
+                    graph.count_successors(cur_node) != 1
+                    or cur_node.key in graph.results
+                ):
                     break
                 else:
                     cur_node = graph.successors(cur_node)[0]

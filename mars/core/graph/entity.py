@@ -14,6 +14,7 @@
 
 from abc import ABCMeta, abstractmethod
 from typing import List, Dict, Union, Iterable
+from collections import Sequence
 
 from ...core import Tileable, Chunk
 from ...serialization.core import buffered
@@ -56,10 +57,14 @@ class EntityGraph(DAG, metaclass=ABCMeta):
 
 
 class TileableGraph(EntityGraph, Iterable[Tileable]):
-    _result_tileables: List[Tileable]
+    _result_tileables: Dict[str, Tileable]
 
-    def __init__(self, result_tileables: List[Tileable] = None):
+    def __init__(
+        self, result_tileables: Union[Dict[str, Tileable], List[Tileable]] = None
+    ):
         super().__init__()
+        if isinstance(result_tileables, Sequence):
+            result_tileables = {tileable.key: tileable for tileable in result_tileables}
         self._result_tileables = result_tileables
 
     @property
@@ -70,16 +75,14 @@ class TileableGraph(EntityGraph, Iterable[Tileable]):
     def results(self):
         return self._result_tileables
 
-    @results.setter
-    def results(self, new_results):
-        self._result_tileables = new_results
-
 
 class ChunkGraph(EntityGraph, Iterable[Chunk]):
-    _result_chunks: List[Chunk]
+    _result_chunks: Dict[str, Chunk]
 
-    def __init__(self, result_chunks: List[Chunk] = None):
+    def __init__(self, result_chunks: Union[Dict[str, Chunk], List[Chunk]] = None):
         super().__init__()
+        if isinstance(result_chunks, Sequence):
+            result_chunks = {chunk.key: chunk for chunk in result_chunks}
         self._result_chunks = result_chunks
 
     @property
@@ -89,10 +92,6 @@ class ChunkGraph(EntityGraph, Iterable[Chunk]):
     @property
     def results(self):
         return self._result_chunks
-
-    @results.setter
-    def results(self, new_results):
-        self._result_chunks = new_results
 
 
 class SerializableGraph(Serializable):
