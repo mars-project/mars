@@ -148,7 +148,7 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
         nsplits = inp.nsplits[: out.ndim]
         if not op.elementwise:
             nsplits = tuple((np.nan,) * len(sp) for sp in nsplits)
-        return new_op.new_tileables([inp], chunks=chunks, nsplits=nsplits, **params)
+        return new_op.new_tileables(op.inputs, chunks=chunks, nsplits=nsplits, **params)
 
     @classmethod
     @redirect_custom_log

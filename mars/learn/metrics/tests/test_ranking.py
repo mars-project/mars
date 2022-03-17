@@ -13,50 +13,73 @@
 # limitations under the License.
 
 import re
+import warnings
 
 import numpy as np
 import pandas as pd
-
-try:
-    import sklearn
-    from sklearn.metrics import roc_auc_score
-    from sklearn.metrics import (
-        roc_curve as sklearn_roc_curve,
-        auc as sklearn_auc,
-        accuracy_score as sklearn_accuracy_score,
-    )
-    from sklearn.metrics.tests.test_ranking import make_prediction, _auc
-    from sklearn.exceptions import UndefinedMetricWarning
-    from sklearn.utils import check_random_state
-    from sklearn.utils._testing import assert_warns
-    from sklearn.metrics._ranking import (
-        _binary_roc_auc_score as sk_binary_roc_auc_score,
-    )
-except ImportError:  # pragma: no cover
-    sklearn = None
 import pytest
-
+from sklearn.metrics import (
+    roc_curve as sklearn_roc_curve,
+    auc as sklearn_auc,
+    accuracy_score as sklearn_accuracy_score,
+)
+from sklearn.metrics.tests.test_ranking import make_prediction, _auc
+from sklearn.exceptions import UndefinedMetricWarning
+from sklearn.utils import check_random_state
+from sklearn.utils._testing import (
+    assert_warns,
+    assert_almost_equal,
+    assert_array_almost_equal,
+)
 
 from .... import dataframe as md
 from .... import tensor as mt
-from .. import roc_curve, auc, accuracy_score
-from .._ranking import _binary_roc_auc_score
+from ...utils.extmath import softmax
+from .. import roc_curve, auc, accuracy_score, roc_auc_score
 
 
-def test_roc_curve(setup):
-    for drop in [True, False]:
-        # Test Area under Receiver Operating Characteristic (ROC) curve
-        y_true, _, probas_pred = make_prediction(binary=True)
-        expected_auc = _auc(y_true, probas_pred)
+def _partial_roc_auc_score(y_true, y_predict, max_fpr):
+    """Alternative implementation to check for correctness of `roc_auc_score`
+    with `max_fpr` set.
+    """
 
-        fpr, tpr, thresholds = (
-            roc_curve(y_true, probas_pred, drop_intermediate=drop).execute().fetch()
-        )
-        roc_auc = auc(fpr, tpr).to_numpy()
-        np.testing.assert_array_almost_equal(roc_auc, expected_auc, decimal=2)
-        np.testing.assert_almost_equal(roc_auc, roc_auc_score(y_true, probas_pred))
-        assert fpr.shape == tpr.shape
-        assert fpr.shape == thresholds.shape
+    def _partial_roc(y_true, y_predict, max_fpr):
+        fpr, tpr, _ = sklearn_roc_curve(y_true, y_predict)
+        new_fpr = fpr[fpr <= max_fpr]
+        new_fpr = np.append(new_fpr, max_fpr)
+        new_tpr = tpr[fpr <= max_fpr]
+        idx_out = np.argmax(fpr > max_fpr)
+        idx_in = idx_out - 1
+        x_interp = [fpr[idx_in], fpr[idx_out]]
+        y_interp = [tpr[idx_in], tpr[idx_out]]
+        new_tpr = np.append(new_tpr, np.interp(max_fpr, x_interp, y_interp))
+        return (new_fpr, new_tpr)
+
+    new_fpr, new_tpr = _partial_roc(y_true, y_predict, max_fpr)
+    partial_auc = sklearn_auc(new_fpr, new_tpr)
+
+    # Formula (5) from McClish 1989
+    fpr1 = 0
+    fpr2 = max_fpr
+    min_area = 0.5 * (fpr2 - fpr1) * (fpr2 + fpr1)
+    max_area = fpr2 - fpr1
+    return 0.5 * (1 + (partial_auc - min_area) / (max_area - min_area))
+
+
+@pytest.mark.parametrize("drop", [True, False])
+def test_roc_curve(setup, drop):
+    # Test Area under Receiver Operating Characteristic (ROC) curve
+    y_true, _, probas_pred = make_prediction(binary=True)
+    expected_auc = _auc(y_true, probas_pred)
+
+    fpr, tpr, thresholds = (
+        roc_curve(y_true, probas_pred, drop_intermediate=drop).execute().fetch()
+    )
+    roc_auc = auc(fpr, tpr).to_numpy()
+    np.testing.assert_array_almost_equal(roc_auc, expected_auc, decimal=2)
+    np.testing.assert_almost_equal(roc_auc, roc_auc_score(y_true, probas_pred))
+    assert fpr.shape == tpr.shape
+    assert fpr.shape == thresholds.shape
 
 
 def test_roc_curve_end_points(setup):
@@ -157,28 +180,108 @@ def test_roc_curve_one_label(setup):
     assert fpr.shape == thresholds.shape
 
 
-def test_binary_roc_auc_score(setup):
-    # Test the area is equal under binary roc_auc_score
-    rs = np.random.RandomState(0)
-    raw_X = rs.randint(0, 2, size=10)
-    raw_Y = rs.rand(10).astype("float32")
+def test_roc_curve_toydata(setup):
+    # Binary classification
+    y_true = [0, 1]
+    y_score = [0, 1]
+    tpr, fpr, _ = roc_curve(y_true, y_score)
+    roc_auc = roc_auc_score(y_true, y_score)
+    assert_array_almost_equal(tpr, [0, 0, 1])
+    assert_array_almost_equal(fpr, [0, 1, 1])
+    assert_almost_equal(roc_auc, 1.0)
 
-    X = mt.tensor(raw_X)
-    Y = mt.tensor(raw_Y)
+    y_true = [0, 1]
+    y_score = [1, 0]
+    tpr, fpr, _ = roc_curve(y_true, y_score)
+    roc_auc = roc_auc_score(y_true, y_score)
+    assert_array_almost_equal(tpr, [0, 1, 1])
+    assert_array_almost_equal(fpr, [0, 0, 1])
+    assert_almost_equal(roc_auc, 0.0)
 
-    for max_fpr in (np.random.rand(), None):
-        # Calculate the score using both frameworks
-        score = _binary_roc_auc_score(X, Y, max_fpr=max_fpr)
-        expected_score = sk_binary_roc_auc_score(raw_X, raw_Y, max_fpr=max_fpr)
+    y_true = [1, 0]
+    y_score = [1, 1]
+    tpr, fpr, _ = roc_curve(y_true, y_score)
+    roc_auc = roc_auc_score(y_true, y_score)
+    assert_array_almost_equal(tpr, [0, 1])
+    assert_array_almost_equal(fpr, [0, 1])
+    assert_almost_equal(roc_auc, 0.5)
 
-        # Both the scores should be equal
-        np.testing.assert_almost_equal(score, expected_score, decimal=6)
+    y_true = [1, 0]
+    y_score = [1, 0]
+    tpr, fpr, _ = roc_curve(y_true, y_score)
+    roc_auc = roc_auc_score(y_true, y_score)
+    assert_array_almost_equal(tpr, [0, 0, 1])
+    assert_array_almost_equal(fpr, [0, 1, 1])
+    assert_almost_equal(roc_auc, 1.0)
+
+    y_true = [1, 0]
+    y_score = [0.5, 0.5]
+    tpr, fpr, _ = roc_curve(y_true, y_score)
+    roc_auc = roc_auc_score(y_true, y_score)
+    assert_array_almost_equal(tpr, [0, 1])
+    assert_array_almost_equal(fpr, [0, 1])
+    assert_almost_equal(roc_auc, 0.5)
+
+    y_true = [0, 0]
+    y_score = [0.25, 0.75]
+    # assert UndefinedMetricWarning because of no positive sample in y_true
+    expected_message = (
+        "No positive samples in y_true, true positive value should be meaningless"
+    )
+    with pytest.warns(UndefinedMetricWarning, match=expected_message):
+        tpr, fpr, _ = roc_curve(y_true, y_score)
 
     with pytest.raises(ValueError):
-        _binary_roc_auc_score(mt.tensor([0]), Y)
+        roc_auc_score(y_true, y_score)
+    assert_array_almost_equal(tpr, [0.0, 0.5, 1.0])
+    assert_array_almost_equal(fpr, [np.nan, np.nan, np.nan])
+
+    y_true = [1, 1]
+    y_score = [0.25, 0.75]
+    # assert UndefinedMetricWarning because of no negative sample in y_true
+    expected_message = (
+        "No negative samples in y_true, false positive value should be meaningless"
+    )
+    with pytest.warns(UndefinedMetricWarning, match=expected_message):
+        tpr, fpr, _ = roc_curve(y_true, y_score)
 
     with pytest.raises(ValueError):
-        _binary_roc_auc_score(X, Y, max_fpr=0)
+        roc_auc_score(y_true, y_score)
+    assert_array_almost_equal(tpr, [np.nan, np.nan, np.nan])
+    assert_array_almost_equal(fpr, [0.0, 0.5, 1.0])
+
+    # Multi-label classification task
+    y_true = np.array([[0, 1], [0, 1]])
+    y_score = np.array([[0, 1], [0, 1]])
+    with pytest.raises(ValueError):
+        roc_auc_score(y_true, y_score, average="macro")
+    with pytest.raises(ValueError):
+        roc_auc_score(y_true, y_score, average="weighted")
+    assert_almost_equal(roc_auc_score(y_true, y_score, average="samples"), 1.0)
+    assert_almost_equal(roc_auc_score(y_true, y_score, average="micro"), 1.0)
+
+    y_true = np.array([[0, 1], [0, 1]])
+    y_score = np.array([[0, 1], [1, 0]])
+    with pytest.raises(ValueError):
+        roc_auc_score(y_true, y_score, average="macro")
+    with pytest.raises(ValueError):
+        roc_auc_score(y_true, y_score, average="weighted")
+    assert_almost_equal(roc_auc_score(y_true, y_score, average="samples"), 0.5)
+    assert_almost_equal(roc_auc_score(y_true, y_score, average="micro"), 0.5)
+
+    y_true = np.array([[1, 0], [0, 1]])
+    y_score = np.array([[0, 1], [1, 0]])
+    assert_almost_equal(roc_auc_score(y_true, y_score, average="macro"), 0)
+    assert_almost_equal(roc_auc_score(y_true, y_score, average="weighted"), 0)
+    assert_almost_equal(roc_auc_score(y_true, y_score, average="samples"), 0)
+    assert_almost_equal(roc_auc_score(y_true, y_score, average="micro"), 0)
+
+    y_true = np.array([[1, 0], [0, 1]])
+    y_score = np.array([[0.5, 0.5], [0.5, 0.5]])
+    assert_almost_equal(roc_auc_score(y_true, y_score, average="macro"), 0.5)
+    assert_almost_equal(roc_auc_score(y_true, y_score, average="weighted"), 0.5)
+    assert_almost_equal(roc_auc_score(y_true, y_score, average="samples"), 0.5)
+    assert_almost_equal(roc_auc_score(y_true, y_score, average="micro"), 0.5)
 
 
 def test_roc_curve_drop_intermediate(setup):
@@ -245,6 +348,291 @@ def test_auc_errors(setup):
         auc(x, y)
 
 
+@pytest.mark.parametrize(
+    "y_true, labels",
+    [
+        (np.array([0, 1, 0, 2]), [0, 1, 2]),
+        (np.array([0, 1, 0, 2]), None),
+        (["a", "b", "a", "c"], ["a", "b", "c"]),
+        (["a", "b", "a", "c"], None),
+    ],
+)
+def test_multiclass_ovo_roc_auc_toydata(setup, y_true, labels):
+    # Tests the one-vs-one multiclass ROC AUC algorithm
+    # on a small example, representative of an expected use case.
+    y_scores = np.array(
+        [[0.1, 0.8, 0.1], [0.3, 0.4, 0.3], [0.35, 0.5, 0.15], [0, 0.2, 0.8]]
+    )
+
+    # Used to compute the expected output.
+    # Consider labels 0 and 1:
+    # positive label is 0, negative label is 1
+    score_01 = roc_auc_score([1, 0, 1], [0.1, 0.3, 0.35])
+    # positive label is 1, negative label is 0
+    score_10 = roc_auc_score([0, 1, 0], [0.8, 0.4, 0.5])
+    average_score_01 = (score_01 + score_10) / 2
+
+    # Consider labels 0 and 2:
+    score_02 = roc_auc_score([1, 1, 0], [0.1, 0.35, 0])
+    score_20 = roc_auc_score([0, 0, 1], [0.1, 0.15, 0.8])
+    average_score_02 = (score_02 + score_20) / 2
+
+    # Consider labels 1 and 2:
+    score_12 = roc_auc_score([1, 0], [0.4, 0.2])
+    score_21 = roc_auc_score([0, 1], [0.3, 0.8])
+    average_score_12 = (score_12 + score_21) / 2
+
+    # Unweighted, one-vs-one multiclass ROC AUC algorithm
+    ovo_unweighted_score = (average_score_01 + average_score_02 + average_score_12) / 3
+    assert_almost_equal(
+        roc_auc_score(y_true, y_scores, labels=labels, multi_class="ovo"),
+        ovo_unweighted_score,
+    )
+
+    # Weighted, one-vs-one multiclass ROC AUC algorithm
+    # Each term is weighted by the prevalence for the positive label.
+    pair_scores = [average_score_01, average_score_02, average_score_12]
+    prevalence = [0.75, 0.75, 0.50]
+    ovo_weighted_score = np.average(pair_scores, weights=prevalence)
+    assert_almost_equal(
+        roc_auc_score(
+            y_true, y_scores, labels=labels, multi_class="ovo", average="weighted"
+        ),
+        ovo_weighted_score,
+    )
+
+
+@pytest.mark.parametrize(
+    "y_true, labels",
+    [
+        (np.array([0, 2, 0, 2]), [0, 1, 2]),
+        (np.array(["a", "d", "a", "d"]), ["a", "b", "d"]),
+    ],
+)
+def test_multiclass_ovo_roc_auc_toydata_binary(setup, y_true, labels):
+    # Tests the one-vs-one multiclass ROC AUC algorithm for binary y_true
+    #
+    # on a small example, representative of an expected use case.
+    y_scores = np.array(
+        [[0.2, 0.0, 0.8], [0.6, 0.0, 0.4], [0.55, 0.0, 0.45], [0.4, 0.0, 0.6]]
+    )
+
+    # Used to compute the expected output.
+    # Consider labels 0 and 1:
+    # positive label is 0, negative label is 1
+    score_01 = roc_auc_score([1, 0, 1, 0], [0.2, 0.6, 0.55, 0.4])
+    # positive label is 1, negative label is 0
+    score_10 = roc_auc_score([0, 1, 0, 1], [0.8, 0.4, 0.45, 0.6])
+    ovo_score = (score_01 + score_10) / 2
+
+    assert_almost_equal(
+        roc_auc_score(y_true, y_scores, labels=labels, multi_class="ovo"), ovo_score
+    )
+
+    # Weighted, one-vs-one multiclass ROC AUC algorithm
+    assert_almost_equal(
+        roc_auc_score(
+            y_true, y_scores, labels=labels, multi_class="ovo", average="weighted"
+        ),
+        ovo_score,
+    )
+
+
+@pytest.mark.parametrize(
+    "y_true, labels",
+    [
+        (np.array([0, 1, 2, 2]), None),
+        (["a", "b", "c", "c"], None),
+        ([0, 1, 2, 2], [0, 1, 2]),
+        (["a", "b", "c", "c"], ["a", "b", "c"]),
+    ],
+)
+def test_multiclass_ovr_roc_auc_toydata(setup, y_true, labels):
+    # Tests the unweighted, one-vs-rest multiclass ROC AUC algorithm
+    # on a small example, representative of an expected use case.
+    y_scores = np.array(
+        [[1.0, 0.0, 0.0], [0.1, 0.5, 0.4], [0.1, 0.1, 0.8], [0.3, 0.3, 0.4]]
+    )
+    # Compute the expected result by individually computing the 'one-vs-rest'
+    # ROC AUC scores for classes 0, 1, and 2.
+    out_0 = roc_auc_score([1, 0, 0, 0], y_scores[:, 0])
+    out_1 = roc_auc_score([0, 1, 0, 0], y_scores[:, 1])
+    out_2 = roc_auc_score([0, 0, 1, 1], y_scores[:, 2])
+    result_unweighted = (out_0 + out_1 + out_2) / 3.0
+
+    assert_almost_equal(
+        roc_auc_score(y_true, y_scores, multi_class="ovr", labels=labels),
+        result_unweighted,
+    )
+
+    # Tests the weighted, one-vs-rest multiclass ROC AUC algorithm
+    # on the same input (Provost & Domingos, 2000)
+    result_weighted = out_0 * 0.25 + out_1 * 0.25 + out_2 * 0.5
+    assert_almost_equal(
+        roc_auc_score(
+            y_true, y_scores, multi_class="ovr", labels=labels, average="weighted"
+        ),
+        result_weighted,
+    )
+
+
+@pytest.mark.parametrize(
+    "msg, y_true, labels",
+    [
+        ("Parameter 'labels' must be unique", np.array([0, 1, 2, 2]), [0, 2, 0]),
+        (
+            "Parameter 'labels' must be unique",
+            np.array(["a", "b", "c", "c"]),
+            ["a", "a", "b"],
+        ),
+        (
+            "Number of classes in y_true not equal to the number of columns "
+            "in 'y_score'",
+            np.array([0, 2, 0, 2]),
+            None,
+        ),
+        (
+            "Parameter 'labels' must be ordered",
+            np.array(["a", "b", "c", "c"]),
+            ["a", "c", "b"],
+        ),
+        (
+            "Number of given labels, 2, not equal to the number of columns in "
+            "'y_score', 3",
+            np.array([0, 1, 2, 2]),
+            [0, 1],
+        ),
+        (
+            "Number of given labels, 2, not equal to the number of columns in "
+            "'y_score', 3",
+            np.array(["a", "b", "c", "c"]),
+            ["a", "b"],
+        ),
+        (
+            "Number of given labels, 4, not equal to the number of columns in "
+            "'y_score', 3",
+            np.array([0, 1, 2, 2]),
+            [0, 1, 2, 3],
+        ),
+        (
+            "Number of given labels, 4, not equal to the number of columns in "
+            "'y_score', 3",
+            np.array(["a", "b", "c", "c"]),
+            ["a", "b", "c", "d"],
+        ),
+        (
+            "'y_true' contains labels not in parameter 'labels'",
+            np.array(["a", "b", "c", "e"]),
+            ["a", "b", "c"],
+        ),
+        (
+            "'y_true' contains labels not in parameter 'labels'",
+            np.array(["a", "b", "c", "d"]),
+            ["a", "b", "c"],
+        ),
+        (
+            "'y_true' contains labels not in parameter 'labels'",
+            np.array([0, 1, 2, 3]),
+            [0, 1, 2],
+        ),
+    ],
+)
+@pytest.mark.parametrize("multi_class", ["ovo", "ovr"])
+def test_roc_auc_score_multiclass_labels_error(setup, msg, y_true, labels, multi_class):
+    y_scores = np.array(
+        [[0.1, 0.8, 0.1], [0.3, 0.4, 0.3], [0.35, 0.5, 0.15], [0, 0.2, 0.8]]
+    )
+
+    with pytest.raises(ValueError, match=msg):
+        roc_auc_score(y_true, y_scores, labels=labels, multi_class=multi_class)
+
+
+@pytest.mark.parametrize(
+    "msg, kwargs",
+    [
+        (
+            (
+                r"average must be one of \('macro', 'weighted'\) for "
+                r"multiclass problems"
+            ),
+            {"average": "samples", "multi_class": "ovo"},
+        ),
+        (
+            (
+                r"average must be one of \('macro', 'weighted'\) for "
+                r"multiclass problems"
+            ),
+            {"average": "micro", "multi_class": "ovr"},
+        ),
+        (
+            (
+                r"sample_weight is not supported for multiclass one-vs-one "
+                r"ROC AUC, 'sample_weight' must be None in this case"
+            ),
+            {"multi_class": "ovo", "sample_weight": []},
+        ),
+        (
+            (
+                r"Partial AUC computation not available in multiclass setting, "
+                r"'max_fpr' must be set to `None`, received `max_fpr=0.5` "
+                r"instead"
+            ),
+            {"multi_class": "ovo", "max_fpr": 0.5},
+        ),
+        (
+            (
+                r"multi_class='ovp' is not supported for multiclass ROC AUC, "
+                r"multi_class must be in \('ovo', 'ovr'\)"
+            ),
+            {"multi_class": "ovp"},
+        ),
+        (r"multi_class must be in \('ovo', 'ovr'\)", {}),
+    ],
+)
+def test_roc_auc_score_multiclass_error(setup, msg, kwargs):
+    # Test that roc_auc_score function returns an error when trying
+    # to compute multiclass AUC for parameters where an output
+    # is not defined.
+    rng = check_random_state(404)
+    y_score = rng.rand(20, 3)
+    y_prob = softmax(y_score)
+    y_true = rng.randint(0, 3, size=20)
+    with pytest.raises(ValueError, match=msg):
+        roc_auc_score(y_true, y_prob, **kwargs)
+
+
+def test_auc_score_non_binary_class(setup):
+    # Test that roc_auc_score function returns an error when trying
+    # to compute AUC for non-binary class values.
+    rng = check_random_state(404)
+    y_pred = rng.rand(10)
+    # y_true contains only one class value
+    y_true = np.zeros(10, dtype="int")
+    err_msg = "ROC AUC score is not defined"
+    with pytest.raises(ValueError, match=err_msg):
+        roc_auc_score(y_true, y_pred)
+    y_true = np.ones(10, dtype="int")
+    with pytest.raises(ValueError, match=err_msg):
+        roc_auc_score(y_true, y_pred)
+    y_true = np.full(10, -1, dtype="int")
+    with pytest.raises(ValueError, match=err_msg):
+        roc_auc_score(y_true, y_pred)
+
+    with warnings.catch_warnings(record=True):
+        rng = check_random_state(404)
+        y_pred = rng.rand(10)
+        # y_true contains only one class value
+        y_true = np.zeros(10, dtype="int")
+        with pytest.raises(ValueError, match=err_msg):
+            roc_auc_score(y_true, y_pred)
+        y_true = np.ones(10, dtype="int")
+        with pytest.raises(ValueError, match=err_msg):
+            roc_auc_score(y_true, y_pred)
+        y_true = np.full(10, -1, dtype="int")
+        with pytest.raises(ValueError, match=err_msg):
+            roc_auc_score(y_true, y_pred)
+
+
 def test_binary_clf_curve_multiclass_error(setup):
     rng = check_random_state(404)
     y_true = rng.randint(0, 3, size=10)
@@ -287,3 +675,29 @@ def test_dataframe_accuracy_score(setup):
         raw["a"].to_numpy().astype("int"), raw["b"].to_numpy().astype("int")
     )
     assert pytest.approx(score.fetch()) == expect
+
+
+def test_partial_roc_auc_score(setup):
+    # Check `roc_auc_score` for max_fpr != `None`
+    y_true = np.array([0, 0, 1, 1])
+    assert roc_auc_score(y_true, y_true, max_fpr=1) == 1
+    assert roc_auc_score(y_true, y_true, max_fpr=0.001) == 1
+    with pytest.raises(ValueError):
+        assert roc_auc_score(y_true, y_true, max_fpr=-0.1)
+    with pytest.raises(ValueError):
+        assert roc_auc_score(y_true, y_true, max_fpr=1.1)
+    with pytest.raises(ValueError):
+        assert roc_auc_score(y_true, y_true, max_fpr=0)
+
+    y_scores = np.array([0.1, 0, 0.1, 0.01])
+    roc_auc_with_max_fpr_one = roc_auc_score(y_true, y_scores, max_fpr=1)
+    unconstrained_roc_auc = roc_auc_score(y_true, y_scores)
+    assert roc_auc_with_max_fpr_one == unconstrained_roc_auc
+    assert roc_auc_score(y_true, y_scores, max_fpr=0.3) == 0.5
+
+    y_true, y_pred, _ = make_prediction(binary=True)
+    for max_fpr in np.linspace(1e-4, 1, 5):
+        assert_almost_equal(
+            roc_auc_score(y_true, y_pred, max_fpr=max_fpr),
+            _partial_roc_auc_score(y_true, y_pred, max_fpr),
+        )

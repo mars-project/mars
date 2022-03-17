@@ -472,8 +472,15 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
             inputs.append(classes)
         self.sparse = self.sparse_output
         self.output_types = [OutputType.tensor]
+        if len(classes) == 2:
+            n_dim1 = 1
+        else:
+            n_dim1 = len(classes)
         return self.new_tileable(
-            inputs, shape=(np.nan,), dtype=np.dtype(int), order=TensorOrder.C_ORDER
+            inputs,
+            shape=(np.nan, n_dim1),
+            dtype=np.dtype(int),
+            order=TensorOrder.C_ORDER,
         )
 
     def _set_inputs(self, inputs):
