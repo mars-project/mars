@@ -13,13 +13,18 @@
 # limitations under the License.
 
 import warnings
+from functools import partial
 
 import numpy as np
 
+from ... import execute as _execute
 from ... import tensor as mt
+from ..preprocessing import label_binarize
+from ..utils._encode import _encode, _unique
 from ..utils.checks import assert_all_finite
 from ..utils.multiclass import type_of_target
-from ..utils.validation import check_consistent_length, column_or_1d
+from ..utils.validation import check_array, check_consistent_length, column_or_1d
+from ._base import _average_binary_score, _average_multiclass_ovo_score
 
 
 def auc(x, y, session=None, run_kwargs=None):
@@ -127,7 +132,9 @@ def _binary_clf_curve(
     if not (y_type == "binary" or (y_type == "multiclass" and pos_label is not None)):
         raise ValueError(f"{y_type} format is not supported")
 
-    check_consistent_length(y_true, y_score, sample_weight)
+    check_consistent_length(
+        y_true, y_score, sample_weight, session=session, **(run_kwargs or dict())
+    )
     y_true = column_or_1d(y_true)
     y_score = column_or_1d(y_score)
     y_true = assert_all_finite(y_true, check_only=False)
@@ -243,6 +250,175 @@ def _binary_roc_auc_score(
     return 0.5 * (
         1 + (partial_auc.fetch(session=session) - min_area) / (max_area - min_area)
     )
+
+
+def roc_auc_score(
+    y_true,
+    y_score,
+    *,
+    average="macro",
+    sample_weight=None,
+    max_fpr=None,
+    multi_class="raise",
+    labels=None,
+    session=None,
+    run_kwargs=None,
+):
+    y_type = type_of_target(y_true).to_numpy(session=session, **(run_kwargs or dict()))
+    y_true = check_array(y_true, ensure_2d=False, dtype=None)
+    y_score = check_array(y_score, ensure_2d=False)
+
+    def execute(*args):
+        result = [None] * len(args)
+        to_execute = dict()
+        for i, arg in enumerate(args):
+            if hasattr(arg, "op"):
+                to_execute[i] = arg
+            else:
+                result[i] = arg
+        if to_execute:
+            _execute(*to_execute.values(), session=session, **(run_kwargs or dict()))
+        for i, e in to_execute.items():
+            if e.isscalar():
+                e = e.fetch(session=session)
+            result[i] = e
+        if len(result) == 1:
+            return result[0]
+        return result
+
+    if y_type == "multiclass" or (
+        y_type == "binary" and y_score.ndim == 2 and y_score.shape[1] > 2
+    ):
+        # do not support partial ROC computation for multiclass
+        if max_fpr is not None and max_fpr != 1.0:
+            raise ValueError(
+                "Partial AUC computation not available in "
+                "multiclass setting, 'max_fpr' must be"
+                " set to `None`, received `max_fpr={0}` "
+                "instead".format(max_fpr)
+            )
+        if multi_class == "raise":
+            raise ValueError("multi_class must be in ('ovo', 'ovr')")
+        return execute(
+            _multiclass_roc_auc_score(
+                y_true, y_score, labels, multi_class, average, sample_weight
+            )
+        )
+    elif y_type == "binary":
+        labels = mt.unique(y_true).execute(session=session, **(run_kwargs or dict()))
+        y_true = label_binarize(y_true, classes=labels, execute=False)[:, 0]
+        return execute(
+            _average_binary_score(
+                partial(_binary_roc_auc_score, max_fpr=max_fpr),
+                y_true,
+                y_score,
+                average,
+                sample_weight=sample_weight,
+            )
+        )
+    else:  # multilabel-indicator
+        return execute(
+            _average_binary_score(
+                partial(_binary_roc_auc_score, max_fpr=max_fpr),
+                y_true,
+                y_score,
+                average,
+                sample_weight=sample_weight,
+            )
+        )
+
+
+def _multiclass_roc_auc_score(
+    y_true,
+    y_score,
+    labels,
+    multi_class,
+    average,
+    sample_weight,
+    session=None,
+    run_kwargs=None,
+):
+    # validation of the input y_score
+    if not mt.allclose(1, y_score.sum(axis=1)).to_numpy(
+        session=session, **(run_kwargs or dict())
+    ):
+        raise ValueError(
+            "Target scores need to be probabilities for multiclass "
+            "roc_auc, i.e. they should sum up to 1.0 over classes"
+        )
+
+    # validation for multiclass parameter specifications
+    average_options = ("macro", "weighted")
+    if average not in average_options:
+        raise ValueError(
+            "average must be one of {0} for multiclass problems".format(average_options)
+        )
+
+    multiclass_options = ("ovo", "ovr")
+    if multi_class not in multiclass_options:
+        raise ValueError(
+            "multi_class='{0}' is not supported "
+            "for multiclass ROC AUC, multi_class must be "
+            "in {1}".format(multi_class, multiclass_options)
+        )
+
+    if labels is not None:
+        labels = column_or_1d(labels).to_numpy(
+            session=session, **(run_kwargs or dict())
+        )
+        classes = _unique(labels).to_numpy(session=session, **(run_kwargs or dict()))
+        if len(classes) != len(labels):
+            raise ValueError("Parameter 'labels' must be unique")
+        if not np.array_equal(classes, labels):
+            raise ValueError("Parameter 'labels' must be ordered")
+        if len(classes) != y_score.shape[1]:
+            raise ValueError(
+                "Number of given labels, {0}, not equal to the number "
+                "of columns in 'y_score', {1}".format(len(classes), y_score.shape[1])
+            )
+        if len(
+            mt.setdiff1d(y_true, classes).execute(
+                session=session, **(run_kwargs or dict())
+            )
+        ):
+            raise ValueError("'y_true' contains labels not in parameter 'labels'")
+    else:
+        classes = _unique(y_true).execute(session=session, **(run_kwargs or dict()))
+        if len(classes) != y_score.shape[1]:
+            raise ValueError(
+                "Number of classes in y_true not equal to the number of "
+                "columns in 'y_score'"
+            )
+
+    if multi_class == "ovo":
+        if sample_weight is not None:
+            raise ValueError(
+                "sample_weight is not supported "
+                "for multiclass one-vs-one ROC AUC, "
+                "'sample_weight' must be None in this case."
+            )
+        y_true_encoded = _encode(y_true, uniques=classes)
+        # Hand & Till (2001) implementation (ovo)
+        return _average_multiclass_ovo_score(
+            _binary_roc_auc_score,
+            y_true_encoded,
+            y_score,
+            average=average,
+            session=session,
+            run_kwargs=run_kwargs,
+        )
+    else:
+        # ovr is same as multi-label
+        y_true_multilabel = label_binarize(y_true, classes=classes, execute=False)
+        return _average_binary_score(
+            _binary_roc_auc_score,
+            y_true_multilabel,
+            y_score,
+            average,
+            sample_weight=sample_weight,
+            session=session,
+            run_kwargs=run_kwargs,
+        )
 
 
 def roc_curve(
