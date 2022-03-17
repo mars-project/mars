@@ -161,6 +161,7 @@ class ClusterStateActor(mo.StatelessActor):
         self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None
     ) -> Optional[str]:
         worker_cpu = worker_cpu or self._worker_cpu
+        worker_mem = worker_mem or self._worker_mem
         bundle = {
             "CPU": worker_cpu,
             # "memory": worker_mem or self._worker_mem
