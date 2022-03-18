@@ -481,3 +481,13 @@ def test_align_series(setup):
     r = df[0] != df.sort_index()[0].shift(-1)
     expected = pdf[0] != pdf.sort_index()[0].shift(-1)
     pd.testing.assert_series_equal(r.execute().fetch(), expected)
+
+
+def test_cache_tileable(setup):
+    raw = np.random.rand(10, 3)
+    t = mt.tensor(raw)
+    t.cache = True
+    t2 = t + 1
+    result = t2.execute().fetch()
+    np.testing.assert_array_equal(result, raw + 1)
+    np.testing.assert_array_equal(t.fetch(), raw)

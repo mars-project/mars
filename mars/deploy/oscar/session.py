@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from functools import wraps
 from numbers import Integral
 from urllib.parse import urlparse
-from weakref import WeakKeyDictionary
+from weakref import WeakKeyDictionary, ref
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
@@ -87,11 +87,13 @@ class ExecutionInfo:
         progress: Progress,
         profiling: Profiling,
         loop: asyncio.AbstractEventLoop,
+        to_execute_tileables: List[TileableType],
     ):
         self._aio_task = aio_task
         self._progress = progress
         self._profiling = profiling
         self._loop = loop
+        self._to_execute_tileables = [ref(t) for t in to_execute_tileables]
 
         self._future_local = threading.local()
 
@@ -118,6 +120,10 @@ class ExecutionInfo:
 
     def progress(self) -> float:
         return self._progress.value
+
+    @property
+    def to_execute_tileables(self) -> List[TileableType]:
+        return [t() for t in self._to_execute_tileables]
 
     def profiling_result(self) -> dict:
         return self._profiling.result
@@ -671,19 +677,23 @@ class ChunkFetchInfo:
 
 @enter_mode(build=True, kernel=True)
 def gen_submit_tileable_graph(
-    session: "AbstractSession", result_tileables: List[TileableType]
-):
+    session: "AbstractSession",
+    result_tileables: List[TileableType],
+) -> Tuple[TileableGraph, List[TileableType]]:
     tileable_to_copied = dict()
-    result = [None] * len(result_tileables)
+    indexer = itertools.count()
+    result_to_index = {t: next(indexer) for t in result_tileables}
+    result = list()
+    to_execute_tileables = list()
     graph = TileableGraph(result)
 
     q = list(result_tileables)
     while q:
         tileable = q.pop()
         if tileable in tileable_to_copied:
-            if tileable in result_tileables:
-                result[result_tileables.index(tileable)] = tileable_to_copied[tileable]
             continue
+        if tileable.cache:
+            result_to_index[tileable] = next(indexer)
         outputs = tileable.op.outputs
         inputs = tileable.inputs if session not in tileable._executed_sessions else []
         new_inputs = []
@@ -718,13 +728,17 @@ def gen_submit_tileable_graph(
                 ]
             for out, new_out in zip(outputs, new_outputs):
                 tileable_to_copied[out] = new_out
-                if out in result_tileables:
-                    result[result_tileables.index(out)] = new_out
                 graph.add_node(new_out)
                 for new_inp in new_inputs:
                     graph.add_edge(new_inp, new_out)
 
-    return graph
+    # process results
+    result.extend([None] * len(result_to_index))
+    for t, i in result_to_index.items():
+        result[i] = tileable_to_copied[t]
+        to_execute_tileables.append(t)
+
+    return graph, to_execute_tileables
 
 
 @register_session_cls
@@ -942,7 +956,9 @@ class _IsolatedSession(AbstractAsyncSession):
 
         # build tileable graph
         with Timer() as timer:
-            tileable_graph = gen_submit_tileable_graph(self, tileables)
+            tileable_graph, to_execute_tileables = gen_submit_tileable_graph(
+                self, tileables
+            )
 
         logger.info(
             "Time consuming to generate a tileable graph is %ss with address %s, session id %s",
@@ -966,9 +982,15 @@ class _IsolatedSession(AbstractAsyncSession):
         profiling = Profiling()
         # create asyncio.Task
         aio_task = asyncio.create_task(
-            self._run_in_background(tileables, task_id, progress, profiling)
+            self._run_in_background(to_execute_tileables, task_id, progress, profiling)
         )
-        return ExecutionInfo(aio_task, progress, profiling, asyncio.get_running_loop())
+        return ExecutionInfo(
+            aio_task,
+            progress,
+            profiling,
+            asyncio.get_running_loop(),
+            to_execute_tileables,
+        )
 
     def _get_to_fetch_tileable(
         self, tileable: TileableType
@@ -1755,12 +1777,13 @@ async def _execute(
     cancelled: asyncio.Event = None,
     **kwargs,
 ):
+    execution_info = await session.execute(*tileables, **kwargs)
+
     def _attach_session(future: asyncio.Future):
         if future.exception() is None:
-            for t in tileables:
+            for t in execution_info.to_execute_tileables:
                 t._attach_session(session)
 
-    execution_info = await session.execute(*tileables, **kwargs)
     execution_info.add_done_callback(_attach_session)
     cancelled = cancelled or asyncio.Event()
 
