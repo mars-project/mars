@@ -289,7 +289,7 @@ class SubtaskManagerActor(mo.Actor):
                 raise ex
             finally:
                 # make sure slot is released before marking tasks as finished
-                await self._global_resource_ref.release_subtask_slots(
+                await self._global_resource_ref.release_subtask_resource(
                     band,
                     subtask_info.subtask.session_id,
                     subtask_info.subtask.subtask_id,
@@ -299,10 +299,10 @@ class SubtaskManagerActor(mo.Actor):
                     band,
                     subtask_info.subtask.subtask_id,
                 )
-                # We should call submit_subtasks after the slot is released.
-                # If submit_subtasks runs before release_subtask_slots
+                # We should call submit_subtasks after the resource is released.
+                # If submit_subtasks runs before release_subtask_resource
                 # then the rescheduled subtask may not be submitted due to
-                # no available slots. The mars will hangs.
+                # no available resource. The mars will hangs.
                 if subtask_info.num_reschedules > 0:
                     await self._queueing_ref.submit_subtasks.tell()
 

@@ -121,10 +121,6 @@ class GlobalResourceManagerActor(mo.Actor):
         self._update_band_usage(band, resource_delta)
 
     @mo.extensible
-    def release_subtask_slots(self, band: BandType, session_id: str, subtask_id: str):
-        self.release_subtask_resource(band, session_id, subtask_id)
-
-    @mo.extensible
     def release_subtask_resource(
         self, band: BandType, session_id: str, subtask_id: str
     ):
@@ -165,12 +161,6 @@ class GlobalResourceManagerActor(mo.Actor):
 
     def get_used_resources(self) -> Dict[BandType, Resource]:
         return self._band_used_resources
-
-    def get_remaining_slots(self) -> Dict[BandType, float]:
-        return {
-            band: resource.num_cpus
-            for band, resource in self.get_remaining_resources().items()
-        }
 
     def get_remaining_resources(self) -> Dict[BandType, Resource]:
         resources = {}

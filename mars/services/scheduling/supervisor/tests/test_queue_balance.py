@@ -116,9 +116,6 @@ class MockSlotsActor(mo.Actor):
     def get_used_slots(self):
         return {}
 
-    def get_remaining_slots(self):
-        return {}
-
 
 class MockAssignerActor(mo.Actor):
     def assign_subtasks(
