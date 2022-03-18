@@ -82,7 +82,26 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         return self.new_tensor(filter_inputs([a] + list(index)), shape, order=order)
 
     @classmethod
+    def _tile_one_chunk(cls, op: "TensorIndex"):
+        inp = op.inputs[0]
+        out = op.outputs[0]
+        chunk_op = op.copy().reset_key()
+        chunk_params = out.params.copy()
+        chunk_params["shape"] = calc_shape(inp.shape, op.indexes)
+        chunk_params["index"] = (0,) * out.ndim
+        chunk = chunk_op.new_chunk(
+            [inp.chunks[0] for inp in op.inputs], kws=[chunk_params]
+        )
+        params = out.params.copy()
+        params["chunks"] = [chunk]
+        params["nsplits"] = tuple((s,) for s in out.shape)
+        return op.copy().new_tensors(op.inputs, kws=[params])
+
+    @classmethod
     def tile(cls, op):
+        if all(len(inp.chunks) == 1 for inp in op.inputs):
+            return cls._tile_one_chunk(op)
+
         handler = TensorIndexesHandler()
         return [(yield from handler.handle(op))]
 

@@ -17,7 +17,7 @@ from functools import partial
 
 import numpy as np
 
-from ... import execute as _execute
+from ... import execute as _execute, fetch as _fetch
 from ... import tensor as mt
 from ...utils import cache_tileables
 from ..preprocessing import label_binarize
@@ -199,7 +199,7 @@ def _binary_clf_curve(
         fps = ((1 - y_true) * weight).cumsum()[threshold_idxs]
     else:
         fps = 1 + threshold_idxs - tps
-    return mars.execute(
+    return _execute(
         [fps, tps, y_score[threshold_idxs]], session=session, **(run_kwargs or dict())
     )
 
@@ -440,9 +440,13 @@ def roc_auc_score(
     array([0.81..., 0.84... , 0.93..., 0.87..., 0.94...])
     """
 
-    y_type = type_of_target(y_true).to_numpy(session=session, **(run_kwargs or dict()))
+    cache_tileables(y_true, y_score)
+
+    y_type = type_of_target(y_true)
     y_true = check_array(y_true, ensure_2d=False, dtype=None)
     y_score = check_array(y_score, ensure_2d=False)
+    _execute([y_type, y_true, y_score], session=session, **(run_kwargs or dict()))
+    y_type = y_type.fetch(session=session)
 
     def execute(*args):
         result = [None] * len(args)
@@ -481,6 +485,7 @@ def roc_auc_score(
     elif y_type == "binary":
         labels = mt.unique(y_true).execute(session=session, **(run_kwargs or dict()))
         y_true = label_binarize(y_true, classes=labels, execute=False)[:, 0]
+        cache_tileables(y_true)
         return execute(
             _average_binary_score(
                 partial(_binary_roc_auc_score, max_fpr=max_fpr),
@@ -724,12 +729,12 @@ def roc_curve(
 
     last_fps = fps[-1]
     last_tps = tps[-1]
-    mars.execute(
+    _execute(
         [tps, fps, last_fps, last_tps, thresholds],
         session=session,
         **(run_kwargs or dict()),
     )
-    last_fps, last_tps = mars.fetch([last_fps, last_tps], session=session)
+    last_fps, last_tps = _fetch([last_fps, last_tps], session=session)
 
     if last_fps <= 0:
         warnings.warn(
@@ -751,6 +756,4 @@ def roc_curve(
     else:
         tpr = tps / last_tps
 
-    return mars.execute(
-        [fpr, tpr, thresholds], session=session, **(run_kwargs or dict())
-    )
+    return _execute([fpr, tpr, thresholds], session=session, **(run_kwargs or dict()))
