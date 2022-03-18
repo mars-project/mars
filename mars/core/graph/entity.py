@@ -34,6 +34,21 @@ class EntityGraph(DAG, metaclass=ABCMeta):
         results
         """
 
+    @results.setter
+    @abstractmethod
+    def results(self, new_results):
+        """
+        Set result tileables or chunks.
+
+        Parameters
+        ----------
+        new_results
+
+        Returns
+        -------
+
+        """
+
     def copy(self) -> "EntityGraph":
         graph = super().copy()
         graph.results = self.results.copy()

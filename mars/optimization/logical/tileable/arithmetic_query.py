@@ -246,17 +246,10 @@ class _DataFrameEvalRewriteRule(OptimizationRule):
         for in_tileable in new_node.inputs:
             self._graph.add_edge(in_tileable, new_node)
 
-        original_node = self._records.get_original_chunk(old_node, old_node)
+        original_node = self._records.get_original_entity(old_node, old_node)
         self._records.append_record(
             OptimizationRecord(original_node, new_node, OptimizationRecordType.replace)
         )
-
-        # check node if it's in result
-        try:
-            i = self._graph.results.index(old_node)
-            self._graph.results[i] = new_node
-        except ValueError:
-            pass
 
     def apply(self, op: DataFrameIndex):
         node = op.outputs[0]
