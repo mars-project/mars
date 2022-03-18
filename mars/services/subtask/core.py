@@ -50,6 +50,8 @@ class SubtaskStatus(Enum):
 
 
 class Subtask(Serializable):
+    __slots__ = ("_repr",)
+
     subtask_id: str = StringField("subtask_id")
     subtask_name: str = StringField("subtask_name")
     session_id: str = StringField("session_id")
@@ -108,11 +110,28 @@ class Subtask(Serializable):
             logic_parallelism=logic_parallelism,
             bands_specified=bands_specified,
         )
+        self._repr = None
 
     @property
     def expect_band(self):
         if self.expect_bands:
             return self.expect_bands[0]
+
+    def __repr__(self):
+        if self._repr is not None:
+            return self._repr
+
+        if self.chunk_graph:
+            result_chunk_repr = " ".join(
+                [
+                    f"{type(chunk.op).__name__}({chunk.key})"
+                    for chunk in self.chunk_graph.result_chunks
+                ]
+            )
+        else:  # pragma: no cover
+            result_chunk_repr = None
+        self._repr = f"<Subtask id={self.subtask_id} results=[{result_chunk_repr}]>"
+        return self._repr
 
 
 class SubtaskResult(Serializable):
