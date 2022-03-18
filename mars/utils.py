@@ -1602,3 +1602,13 @@ def is_ray_address(address: str) -> bool:
         return True
     else:
         return False
+
+
+def cache_tileables(*tileables):
+    from .core import ENTITY_TYPE
+
+    if len(tileables) == 1 and isinstance(tileables[0], (tuple, list)):
+        tileables = tileables[0]
+    for t in tileables:
+        if isinstance(t, ENTITY_TYPE):
+            t.cache = True

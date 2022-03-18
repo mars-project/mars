@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from functools import wraps
 from numbers import Integral
 from urllib.parse import urlparse
-from weakref import WeakKeyDictionary, ref
+from weakref import ref, WeakKeyDictionary, WeakSet
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
@@ -675,6 +675,9 @@ class ChunkFetchInfo:
     data: Any = None
 
 
+_submitted_tileables = WeakSet()
+
+
 @enter_mode(build=True, kernel=True)
 def gen_submit_tileable_graph(
     session: "AbstractSession",
@@ -692,7 +695,7 @@ def gen_submit_tileable_graph(
         tileable = q.pop()
         if tileable in tileable_to_copied:
             continue
-        if tileable.cache:
+        if tileable.cache and tileable not in result_to_index:
             result_to_index[tileable] = next(indexer)
         outputs = tileable.op.outputs
         inputs = tileable.inputs if session not in tileable._executed_sessions else []
@@ -737,6 +740,15 @@ def gen_submit_tileable_graph(
     for t, i in result_to_index.items():
         result[i] = tileable_to_copied[t]
         to_execute_tileables.append(t)
+
+    if options.warn_duplicated_execution:
+        for n, c in tileable_to_copied.items():
+            if not isinstance(c.op, Fetch) and n in _submitted_tileables:
+                warnings.warn(f"Tileable {repr(n)} has been submitted before")
+        # add all nodes into submitted tileables
+        _submitted_tileables.update(
+            n for n, c in tileable_to_copied.items() if not isinstance(c.op, Fetch)
+        )
 
     return graph, to_execute_tileables
 

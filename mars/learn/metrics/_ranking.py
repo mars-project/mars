@@ -19,6 +19,7 @@ import numpy as np
 
 from ... import execute as _execute
 from ... import tensor as mt
+from ...utils import cache_tileables
 from ..preprocessing import label_binarize
 from ..utils._encode import _encode, _unique
 from ..utils.checks import assert_all_finite
@@ -140,6 +141,8 @@ def _binary_clf_curve(
     y_true = assert_all_finite(y_true, check_only=False)
     y_score = assert_all_finite(y_score, check_only=False)
 
+    cache_tileables(y_true, y_score)
+
     if sample_weight is not None:
         sample_weight = column_or_1d(sample_weight)
 
@@ -196,8 +199,9 @@ def _binary_clf_curve(
         fps = ((1 - y_true) * weight).cumsum()[threshold_idxs]
     else:
         fps = 1 + threshold_idxs - tps
-    ret = mt.ExecutableTuple([fps, tps, y_score[threshold_idxs]])
-    return ret.execute(session=session, **(run_kwargs or dict()))
+    return mars.execute(
+        [fps, tps, y_score[threshold_idxs]], session=session, **(run_kwargs or dict())
+    )
 
 
 def _binary_roc_auc_score(
@@ -684,6 +688,8 @@ def roc_curve(
     """
     from sklearn.exceptions import UndefinedMetricWarning
 
+    cache_tileables(y_true, y_score)
+
     fps, tps, thresholds = _binary_clf_curve(
         y_true,
         y_score,
@@ -718,10 +724,12 @@ def roc_curve(
 
     last_fps = fps[-1]
     last_tps = tps[-1]
-    mt.ExecutableTuple([tps, fps, last_fps, last_tps]).execute(
-        session=session, **(run_kwargs or dict())
+    mars.execute(
+        [tps, fps, last_fps, last_tps, thresholds],
+        session=session,
+        **(run_kwargs or dict()),
     )
-    last_fps, last_tps = mt.ExecutableTuple([last_fps, last_tps]).fetch(session=session)
+    last_fps, last_tps = mars.fetch([last_fps, last_tps], session=session)
 
     if last_fps <= 0:
         warnings.warn(
@@ -743,7 +751,6 @@ def roc_curve(
     else:
         tpr = tps / last_tps
 
-    ret = mt.ExecutableTuple([fpr, tpr, thresholds]).execute(
-        session=session, **(run_kwargs or dict())
+    return mars.execute(
+        [fpr, tpr, thresholds], session=session, **(run_kwargs or dict())
     )
-    return ret

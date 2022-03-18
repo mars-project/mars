@@ -32,7 +32,7 @@ except ImportError:  # pragma: no cover
 from .. import tensor as mt
 from .. import dataframe as md
 from .. import remote as mr
-from ..config import option_context
+from ..config import option_context, options
 from ..deploy.utils import load_service_config_file
 from ..session import execute, fetch, fetch_log
 
@@ -491,3 +491,8 @@ def test_cache_tileable(setup):
     result = t2.execute().fetch()
     np.testing.assert_array_equal(result, raw + 1)
     np.testing.assert_array_equal(t.fetch(), raw)
+
+    t = mt.tensor(raw)
+    with pytest.warns(Warning, match=f"Tileable {repr(t)} has been submitted before"):
+        (t + 1).execute()
+        (t + 2).execute()
