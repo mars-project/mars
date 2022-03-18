@@ -208,8 +208,9 @@ class PruneDataSource(OptimizationRule, metaclass=ABCMeta):
 
         for out, new_out in zip(op.outputs, new_outputs):
             # check out if it's in result
-            self._graph.results.pop(out.key, None)
-            self._graph.results[new_out.key] = new_out
+            c = self._graph.results.pop(out.key, None)
+            if c is not None:
+                self._graph.results[new_out.key] = new_out
 
 
 class GetitemPruneDataSource(PruneDataSource):

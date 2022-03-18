@@ -66,8 +66,9 @@ class RuntimeOptimizer(ABC):
             fused_nodes.append(fused_chunk)
 
             # check tail node if it's in results
-            graph.results.pop(tail_node.key, None)
-            graph.results[fused_chunk.key] = fused_chunk
+            c = graph.results.pop(tail_node.key, None)
+            if c is not None:
+                graph.results[fused_chunk.key] = fused_chunk
 
         return fuses, fused_nodes
 

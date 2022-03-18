@@ -212,8 +212,9 @@ class SeriesArithmeticToEval(OptimizationRule):
         )
 
         # check node if it's in result
-        self._graph.results.pop(node.key, None)
-        self._graph.results[new_node.key] = new_node
+        c = self._graph.results.pop(node.key, None)
+        if c is not None:
+            self._graph.results[new_node.key] = new_node
 
 
 class _DataFrameEvalRewriteRule(OptimizationRule):
