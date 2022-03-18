@@ -121,7 +121,7 @@ class HeadPushDown(OptimizationRule):
             new_entity = (
                 new_op.new_tileable
                 if not isinstance(node, CHUNK_TYPE)
-                else new_op.new_entity
+                else new_op.new_chunk
             )
             new_node = new_entity([new_input_node], kws=[params]).data
             self._replace_node(node, new_node)
