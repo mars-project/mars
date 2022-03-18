@@ -64,7 +64,11 @@ class OSSFileSystem(FileSystem):
                 if obj.key.endswith("/"):
                     continue
                 obj_path = rf"oss://{bucket}/{obj.key}"
-                file_list.append(obj_path)
+                file_list.append(
+                    build_oss_path(
+                        obj_path, access_key_id, access_key_secret, end_point
+                    )
+                )
         return file_list
 
     @implements(FileSystem.delete)
