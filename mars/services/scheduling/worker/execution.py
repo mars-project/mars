@@ -167,15 +167,10 @@ class SubtaskExecutionActor(mo.StatelessActor):
         storage_api = await StorageAPI.create(
             subtask.session_id, address=self.address, band_name=band_name
         )
-        pure_dep_keys = set()
         chunk_key_to_data_keys = get_chunk_key_to_data_keys(subtask.chunk_graph)
-        for n in subtask.chunk_graph:
-            pure_dep_keys.update(
-                inp.key
-                for inp, pure_dep in zip(n.inputs, n.op.pure_depends)
-                if pure_dep
-            )
         for chunk in subtask.chunk_graph:
+            if chunk.key in subtask.pure_depend_keys:
+                continue
             if chunk.op.gpu:  # pragma: no cover
                 to_fetch_band = band_name
             else:
@@ -205,7 +200,11 @@ class SubtaskExecutionActor(mo.StatelessActor):
         sizes = dict()
 
         fetch_keys = list(
-            set(n.key for n in graph.iter_indep() if isinstance(n.op, Fetch))
+            set(
+                n.key
+                for n in graph.iter_indep()
+                if isinstance(n.op, Fetch) and n.key not in subtask.pure_depend_keys
+            )
         )
         if not fetch_keys:
             return sizes
@@ -251,6 +250,8 @@ class SubtaskExecutionActor(mo.StatelessActor):
         # condense op key graph
         op_key_graph = DAG()
         for n in graph.topological_iter():
+            if n.key in subtask.pure_depend_keys:
+                continue
             if n.op.key not in op_key_graph:
                 op_key_graph.add_node(n.op.key)
             for succ in graph.iter_successors(n):

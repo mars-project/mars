@@ -391,6 +391,35 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     )
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("actor_pool", [(1, True)], indirect=True)
+async def test_execute_with_pure_deps(actor_pool):
+    pool, session_id, meta_api, storage_api, execution_ref = actor_pool
+
+    dep = TensorFetch(key="input1", dtype=np.dtype(int)).new_chunk([])
+
+    def main_fun():
+        return session_id
+
+    remote_result = RemoteFunction(
+        function=main_fun, function_args=[], function_kwargs={}
+    ).new_chunk([dep])
+    # mark `dep` as pure dependency
+    remote_result.op._pure_depends = [True]
+    chunk_graph = ChunkGraph([remote_result])
+    chunk_graph.add_node(dep)
+    chunk_graph.add_node(remote_result)
+    chunk_graph.add_edge(dep, remote_result)
+
+    subtask = Subtask(
+        f"test_subtask_{uuid.uuid4()}", session_id=session_id, chunk_graph=chunk_graph
+    )
+    # subtask shall run well without data of `dep` available
+    await execution_ref.run_subtask(subtask, "numa-0", pool.external_address)
+    res = await storage_api.get(remote_result.key)
+    assert res == session_id
+
+
 def test_estimate_size():
     from ..execution import SubtaskExecutionActor
     from .....dataframe.arithmetic import DataFrameAdd

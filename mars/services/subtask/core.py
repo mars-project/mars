@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from enum import Enum
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Set, Tuple
 
 from ...core import ChunkGraph, DAG
 from ...serialization.serializables import (
@@ -50,7 +50,7 @@ class SubtaskStatus(Enum):
 
 
 class Subtask(Serializable):
-    __slots__ = ("_repr",)
+    __slots__ = ("_repr", "_pure_depend_keys")
 
     subtask_id: str = StringField("subtask_id")
     subtask_name: str = StringField("subtask_name")
@@ -110,12 +110,27 @@ class Subtask(Serializable):
             logic_parallelism=logic_parallelism,
             bands_specified=bands_specified,
         )
+        self._pure_depend_keys = None
         self._repr = None
 
     @property
     def expect_band(self):
         if self.expect_bands:
             return self.expect_bands[0]
+
+    @property
+    def pure_depend_keys(self) -> Set[str]:
+        if self._pure_depend_keys is not None:
+            return self._pure_depend_keys
+        pure_dep_keys = set()
+        for n in self.chunk_graph:
+            pure_dep_keys.update(
+                inp.key
+                for inp, pure_dep in zip(n.inputs, n.op.pure_depends)
+                if pure_dep
+            )
+        self._pure_depend_keys = pure_dep_keys
+        return pure_dep_keys
 
     def __repr__(self):
         if self._repr is not None:
@@ -145,7 +160,7 @@ class SubtaskResult(Serializable):
     bands: List[BandType] = ListField("band", FieldTypes.tuple, default=None)
     error = AnyField("error", default=None)
     traceback = AnyField("traceback", default=None)
-    # The following is the execution information of the sub task
+    # The following is the execution information of the subtask
     execution_start_time: float = Float64Field("execution_start_time")
     execution_end_time: float = Float64Field("execution_end_time")
 
