@@ -121,7 +121,10 @@ class SubtaskProcessor:
     async def _load_input_data(self):
         keys, gets, accept_nones = [], [], []
         for chunk in self._chunk_graph.iter_indep():
-            if isinstance(chunk.op, Fetch):
+            if (
+                isinstance(chunk.op, Fetch)
+                and chunk.key not in self.subtask.pure_depend_keys
+            ):
                 keys.append(chunk.key)
                 gets.append(self._storage_api.get.delay(chunk.key))
                 accept_nones.append(True)
