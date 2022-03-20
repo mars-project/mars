@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Type
 
-from ...core import OperandType, ChunkType, EntityType, enter_mode
+from ...core import OperandType, EntityType, enter_mode
 from ...core.graph import EntityGraph
 from ...core.operand import Operand
 
@@ -32,19 +32,19 @@ class OptimizationRecordType(Enum):
 
 @dataclass
 class OptimizationRecord:
-    original_chunk: ChunkType = None
-    new_chunk: ChunkType = None
+    original_entity: EntityType = None
+    new_entity: EntityType = None
     record_type: OptimizationRecordType = None
 
 
 class OptimizationRecords:
     _records: List[OptimizationRecord]
-    _original_chunk_to_records: Dict[ChunkType, OptimizationRecord]
+    _original_entity_to_records: Dict[EntityType, OptimizationRecord]
 
     def __init__(self):
         self._records = list()
-        self._original_chunk_to_records = dict()
-        self._optimized_chunk_to_records = dict()
+        self._original_entity_to_records = dict()
+        self._optimized_entity_to_records = dict()
 
     def append_record(self, record: OptimizationRecord):
         self._records.append(record)
@@ -52,42 +52,42 @@ class OptimizationRecords:
             OptimizationRecordType.replace,
             OptimizationRecordType.delete,
         ):
-            self._original_chunk_to_records[record.original_chunk] = record
+            self._original_entity_to_records[record.original_entity] = record
         if record.record_type in (
             OptimizationRecordType.new,
             OptimizationRecordType.replace,
         ):
-            self._optimized_chunk_to_records[record.new_chunk] = record
+            self._optimized_entity_to_records[record.new_entity] = record
 
     def get_optimization_result(
-        self, original_chunk: ChunkType, default: Optional[ChunkType] = None
-    ) -> ChunkType:
-        chunk = original_chunk
-        if chunk not in self._original_chunk_to_records:
+        self, original_entity: EntityType, default: Optional[EntityType] = None
+    ) -> EntityType:
+        entity = original_entity
+        if entity not in self._original_entity_to_records:
             return default
-        while chunk in self._original_chunk_to_records:
-            record = self._original_chunk_to_records[chunk]
+        while entity in self._original_entity_to_records:
+            record = self._original_entity_to_records[entity]
             if record.record_type == OptimizationRecordType.replace:
-                chunk = record.new_chunk
+                entity = record.new_entity
             else:
                 assert record.record_type == OptimizationRecordType.delete
                 return None
-        return chunk
+        return entity
 
-    def get_original_chunk(
-        self, optimized_chunk: ChunkType, default: Optional[ChunkType] = None
-    ) -> ChunkType:
-        chunk = optimized_chunk
-        if chunk not in self._optimized_chunk_to_records:
+    def get_original_entity(
+        self, optimized_entity: EntityType, default: Optional[EntityType] = None
+    ) -> EntityType:
+        entity = optimized_entity
+        if entity not in self._optimized_entity_to_records:
             return default
-        while chunk in self._optimized_chunk_to_records:
-            record = self._optimized_chunk_to_records[chunk]
+        while entity in self._optimized_entity_to_records:
+            record = self._optimized_entity_to_records[entity]
             if record.record_type == OptimizationRecordType.replace:
-                chunk = record.original_chunk
+                entity = record.original_entity
             else:
                 assert record.record_type == OptimizationRecordType.new
                 return None
-        return chunk
+        return entity
 
 
 class OptimizationRule(ABC):
@@ -156,7 +156,7 @@ class OptimizationRule(ABC):
             self._graph.add_edge(new_node, succ)
 
     def _add_collapsable_predecessor(self, node: EntityType, predecessor: EntityType):
-        pred_original = self._records.get_original_chunk(predecessor, predecessor)
+        pred_original = self._records.get_original_entity(predecessor, predecessor)
         if predecessor not in self._preds_to_remove:
             self._preds_to_remove[pred_original] = {node}
         else:
@@ -166,7 +166,7 @@ class OptimizationRule(ABC):
         node = self._records.get_optimization_result(node) or node
         preds_opt_to_remove = []
         for pred in self._graph.predecessors(node):
-            pred_original = self._records.get_original_chunk(pred, pred)
+            pred_original = self._records.get_original_entity(pred, pred)
             pred_opt = self._records.get_optimization_result(pred, pred)
 
             if pred_opt in self._graph.results or pred_original in self._graph.results:
@@ -272,4 +272,10 @@ class Optimizer(ABC):
                     rule.apply(op)
         if optimized:
             cls._replace_inputs(graph, records)
+            new_results = []
+            for result in graph.results:
+                new_results.append(
+                    records.get_optimization_result(result, default=result)
+                )
+            graph.results = new_results
         return records

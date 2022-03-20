@@ -117,6 +117,7 @@ async def test_subtask_service(actor_pools):
     b = a + 1
 
     subtask = _gen_subtask(b, session_id)
+    assert "TensorAdd" in repr(subtask)
     await subtask_api.run_subtask_in_slot("numa-0", 0, subtask)
 
     # check storage

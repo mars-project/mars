@@ -576,7 +576,7 @@ class SubtaskProcessorActor(mo.Actor):
         set_context(context)
 
     async def run(self, subtask: Subtask):
-        logger.debug("Start to run subtask: %s", subtask.subtask_id)
+        logger.info("Start to run subtask: %r on %s.", subtask, self.address)
 
         assert subtask.session_id == self._session_id
 

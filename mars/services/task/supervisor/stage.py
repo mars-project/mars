@@ -113,7 +113,7 @@ class TaskStageProcessor:
         metas = await self._meta_api.get_chunk_meta.batch(*get_meta)
         for chunk, meta in zip(chunks, metas):
             chunk.params = meta
-            original_chunk = self._optimization_records.get_original_chunk(chunk)
+            original_chunk = self._optimization_records.get_original_entity(chunk)
             if original_chunk is not None:
                 original_chunk.params = chunk.params
 

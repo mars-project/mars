@@ -120,11 +120,13 @@ class SubtaskExecutionActor(mo.StatelessActor):
         self,
         subtask_max_retries: int = DEFAULT_SUBTASK_MAX_RETRIES,
         enable_kill_slot: bool = True,
+        data_prepare_timeout: int = 600,
     ):
         self._cluster_api = None
         self._global_slot_ref = None
         self._subtask_max_retries = subtask_max_retries
         self._enable_kill_slot = enable_kill_slot
+        self._data_prepare_timeout = data_prepare_timeout
 
         self._subtask_info = dict()
 
@@ -299,8 +301,14 @@ class SubtaskExecutionActor(mo.StatelessActor):
             status=SubtaskStatus.pending,
         )
         try:
-            await _retry_run(
-                subtask, subtask_info, self._prepare_input_data, subtask, band_name
+            logger.debug("Preparing data for subtask %s", subtask.subtask_id)
+            prepare_data_task = asyncio.create_task(
+                _retry_run(
+                    subtask, subtask_info, self._prepare_input_data, subtask, band_name
+                )
+            )
+            await asyncio.wait_for(
+                prepare_data_task, timeout=self._data_prepare_timeout
             )
 
             input_sizes = await self._collect_input_sizes(
@@ -312,6 +320,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
             self._check_cancelling(subtask_info)
 
             batch_quota_req = {(subtask.session_id, subtask.subtask_id): calc_size}
+            logger.debug("Start actual running of subtask %s", subtask.subtask_id)
             subtask_info.result = await self._retry_run_subtask(
                 subtask, band_name, subtask_api, batch_quota_req
             )
@@ -413,6 +422,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 self.ref().internal_run_subtask(subtask, band_name)
             )
 
+        logger.debug("Subtask %r accepted in worker %s", subtask, self.address)
         # the extra_config may be None. the extra config overwrites the default value.
         subtask_max_retries = (
             subtask.extra_config.get("subtask_max_retries")
