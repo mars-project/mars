@@ -208,6 +208,7 @@ class TaskProcessor:
                     incref_chunk_keys.extend([key[0] for key in data_keys])
         result_chunks = stage_processor.chunk_graph.result_chunks
         incref_chunk_keys.extend([c.key for c in result_chunks])
+        logger.debug("Incref chunks %s for stage", incref_chunk_keys)
         await self._lifecycle_api.incref_chunks(incref_chunk_keys)
 
     @classmethod

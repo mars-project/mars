@@ -184,6 +184,11 @@ class IsMultilabel(LearnOperand, LearnOperandMixin):
             inputs, shape=(), dtype=np.dtype(bool), order=TensorOrder.C_ORDER
         )
 
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        if self._inputs:
+            self.y = self._inputs[0]
+
     @classmethod
     def _tile(cls, op: "IsMultilabel"):
         y = op.y
@@ -275,6 +280,11 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
         return self.new_tileable(
             inputs, shape=(), order=TensorOrder.C_ORDER, dtype=np.dtype(object)
         )
+
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        if self._inputs:
+            self.y = self._inputs[0]
 
     @classmethod
     def _tile(cls, op: "TypeOfTarget"):
