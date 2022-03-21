@@ -26,6 +26,7 @@ from ..... import oscar as mo
 from .....oscar import ServerClosed
 from .....oscar.errors import NoFreeSlot, SlotStateError
 from .....oscar.backends.allocate_strategy import IdleLabel
+from .....resource import Resource
 from .....tests.core import wait_for_condition
 from .....utils import get_next_port
 from ...supervisor import GlobalResourceManagerActor
@@ -37,10 +38,10 @@ class MockGlobalResourceManagerActor(mo.Actor):
         self._result = None
 
     @mo.extensible
-    def update_subtask_slots(
-        self, band: Tuple, session_id: str, subtask_id: str, slots: int
+    def update_subtask_resources(
+        self, band: Tuple, session_id: str, subtask_id: str, resources: Resource
     ):
-        self._result = (band, session_id, subtask_id, slots)
+        self._result = (band, session_id, subtask_id, resources)
 
     def get_result(self):
         return self._result
@@ -62,7 +63,7 @@ async def actor_pool(request):
     )
 
     async with pool:
-        global_slots_ref = await mo.create_actor(
+        global_resource_ref = await mo.create_actor(
             MockGlobalResourceManagerActor,
             uid=GlobalResourceManagerActor.default_uid(),
             address=pool.external_address,
@@ -71,7 +72,7 @@ async def actor_pool(request):
             BandSlotManagerActor,
             (pool.external_address, "numa-0"),
             n_slots,
-            global_slots_ref,
+            global_resource_ref,
             uid=BandSlotManagerActor.gen_uid("numa-0"),
             address=pool.external_address,
         )
@@ -273,8 +274,8 @@ async def test_report_usage(actor_pool: ActorPoolType):
     global_resource_ref = await mo.actor_ref(
         uid=GlobalResourceManagerActor.default_uid(), address=pool.external_address
     )
-    _band, session_id, subtask_id, slots = await global_resource_ref.get_result()
-    assert slots == pytest.approx(1.0)
+    _band, session_id, subtask_id, resources = await global_resource_ref.get_result()
+    assert resources.num_cpus == pytest.approx(1.0)
     assert session_id == "session_id"
     assert subtask_id == "subtask_id"
 

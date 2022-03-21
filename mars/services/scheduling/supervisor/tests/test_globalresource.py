@@ -61,8 +61,8 @@ async def test_global_resource(actor_pool):
     )
     assert band not in await global_resource_ref.get_idle_bands(0)
 
-    await global_resource_ref.update_subtask_slots(
-        band, session_id, "subtask0", band_slots
+    await global_resource_ref.update_subtask_resources(
+        band, session_id, "subtask0", Resource(num_cpus=band_slots)
     )
     assert [] == await global_resource_ref.apply_subtask_resources(
         band, session_id, ["subtask1"], [Resource(num_cpus=1)]

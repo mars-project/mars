@@ -34,6 +34,7 @@ from .....core import (
     OutputType,
 )
 from .....remote.core import RemoteFunction
+from .....resource import Resource
 from .....tensor.fetch import TensorFetch
 from .....tensor.arithmetic import TensorTreeAdd
 from .....utils import Timer
@@ -126,8 +127,8 @@ class MockGlobalResourceManagerActor(
     async def __pre_destroy__(self):
         pass
 
-    async def update_subtask_slots(
-        self, band, session_id: str, subtask_id: str, slots: int
+    async def update_subtask_resources(
+        self, band, session_id: str, subtask_id: str, resources: Resource
     ):
         pass
 

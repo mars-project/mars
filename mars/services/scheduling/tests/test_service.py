@@ -24,6 +24,7 @@ from .... import oscar as mo
 from .... import remote as mr
 from .... import tensor as mt
 from ....core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from ....resource import Resource
 from ... import start_services, stop_services, NodeRole
 from ...session import SessionAPI
 from ...storage import StorageAPI, MockStorageAPI
@@ -180,9 +181,9 @@ async def test_schedule_success(actor_pools):
     result = await storage_api.get(result_key)
     np.testing.assert_array_equal(np.ones((10, 10)) + 1, result)
 
-    assert (await global_resource_ref.get_used_slots()).get(
-        (worker_pool.external_address, "numa-0"), 0
-    ) == 0
+    assert (await global_resource_ref.get_used_resources()).get(
+        (worker_pool.external_address, "numa-0"), Resource()
+    ) == Resource()
 
     [summary] = await _get_subtask_summaries_by_web(
         sv_pool.external_address, session_id, subtask.task_id
@@ -226,9 +227,9 @@ async def test_schedule_queue(actor_pools):
     await scheduling_api.update_subtask_priority(subtasks[-1].subtask_id, (6,))
     await asyncio.gather(*wait_tasks)
 
-    assert (await global_resource_ref.get_used_slots()).get(
-        (worker_pool.external_address, "numa-0"), 0
-    ) == 0
+    assert (await global_resource_ref.get_used_resources()).get(
+        (worker_pool.external_address, "numa-0"), Resource()
+    ) == Resource()
 
 
 @pytest.mark.asyncio
@@ -250,9 +251,9 @@ async def test_schedule_error(actor_pools):
     with pytest.raises(ValueError):
         await task_manager_ref.wait_subtask_result(subtask.subtask_id)
 
-    assert (await global_resource_ref.get_used_slots()).get(
-        (worker_pool.external_address, "numa-0"), 0
-    ) == 0
+    assert (await global_resource_ref.get_used_resources()).get(
+        (worker_pool.external_address, "numa-0"), Resource()
+    ) == Resource()
 
 
 @pytest.mark.asyncio
@@ -302,6 +303,6 @@ async def test_schedule_cancel(actor_pools):
     # `cancel_subtask` will invoke `task_api.set_subtask_result` which is async, wait 1 second so that slot can be
     # released.
     await asyncio.sleep(1)
-    assert (await global_resource_ref.get_used_slots()).get(
-        (worker_pool.external_address, "numa-0"), 0
-    ) == 0
+    assert (await global_resource_ref.get_used_resources()).get(
+        (worker_pool.external_address, "numa-0"), Resource()
+    ) == Resource()
