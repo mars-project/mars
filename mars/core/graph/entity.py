@@ -77,7 +77,7 @@ class TileableGraph(EntityGraph, Iterable[Tileable]):
 
     @results.setter
     def results(self, new_results):
-        assert type(new_results) is dict
+        assert isinstance(new_results, Dict)
         self._result_tileables = new_results
 
 
@@ -100,7 +100,7 @@ class ChunkGraph(EntityGraph, Iterable[Chunk]):
 
     @results.setter
     def results(self, new_results):
-        assert type(new_results) is dict
+        assert isinstance(new_results, Dict)
         self._result_chunks = new_results
 
 

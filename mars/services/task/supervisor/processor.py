@@ -717,7 +717,9 @@ class TaskProcessorActor(mo.Actor):
         result = []
         for result_tileable in tileable_graph.result_tileables.values():
             tiled = processor.get_tiled(result_tileable)
-            result.append(build_fetch(tiled))
+            fetch_tileable = build_fetch(tiled)
+            fetch_tileable._key = result_tileable.key
+            result.append(fetch_tileable)
         return result
 
     def get_tileable_graph_as_dict(self):

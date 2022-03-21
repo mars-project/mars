@@ -724,6 +724,10 @@ def gen_submit_tileable_graph(
                 for new_inp in new_inputs:
                     graph.add_edge(new_inp, new_out)
     result_tileables = graph.result_tileables
+    # keep the tileable order for multiple outputs.
+    # Changed in version 3.7: Dictionaries did not preserve insertion order in versions
+    # of Python before 3.6. In CPython 3.6, insertion order was preserved, but it was
+    # considered an implementation detail at that time rather than a language guarantee.
     for tileable in result:
         result_tileables[tileable.key] = tileable
     return graph
@@ -920,13 +924,20 @@ class _IsolatedSession(AbstractAsyncSession):
                     raise task_result.error.with_traceback(task_result.traceback)
             if cancelled:
                 return
-            fetch_tileables = await self._task_api.get_fetch_tileables(task_id)
-            assert len(tileables) == len(fetch_tileables)
 
-            for tileable, fetch_tileable in zip(tileables, fetch_tileables):
-                self._tileable_to_fetch[tileable] = fetch_tileable
-                # update meta, e.g. unknown shape
-                tileable.params = fetch_tileable.params
+            key_to_tileables = defaultdict(list)
+            for tileable in tileables:
+                key_to_tileables[tileable.key].append(tileable)
+            fetch_tileables = await self._task_api.get_fetch_tileables(task_id)
+            assert len(key_to_tileables) == len(fetch_tileables)
+
+            for fetch_tileable in fetch_tileables:
+                tileables = key_to_tileables[fetch_tileable.key]
+                assert len(tileables) > 0
+                for tileable in tileables:
+                    self._tileable_to_fetch[tileable] = fetch_tileable
+                    # update meta, e.g. unknown shape
+                    tileable.params = fetch_tileable.params
 
     async def execute(self, *tileables, **kwargs) -> ExecutionInfo:
         if self._closed:
