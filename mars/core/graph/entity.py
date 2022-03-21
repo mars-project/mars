@@ -75,6 +75,11 @@ class TileableGraph(EntityGraph, Iterable[Tileable]):
     def results(self):
         return self._result_tileables
 
+    @results.setter
+    def results(self, new_results):
+        assert type(new_results) is dict
+        self._result_tileables = new_results
+
 
 class ChunkGraph(EntityGraph, Iterable[Chunk]):
     _result_chunks: Dict[str, Chunk]
@@ -92,6 +97,11 @@ class ChunkGraph(EntityGraph, Iterable[Chunk]):
     @property
     def results(self):
         return self._result_chunks
+
+    @results.setter
+    def results(self, new_results):
+        assert type(new_results) is dict
+        self._result_chunks = new_results
 
 
 class SerializableGraph(Serializable):

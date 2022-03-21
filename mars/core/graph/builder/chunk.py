@@ -201,7 +201,6 @@ class Tiler:
         self._tileable_handlers = next_tileable_handlers
         # gen result chunks
         self._gen_result_chunks(chunk_graph, next_tileable_handlers)
-        print(">>>>>>", chunk_graph, chunk_graph.result_chunks)
 
         return to_update_tileables
 
@@ -236,12 +235,10 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
         )
 
     def _select_inputs(self, inputs: List[ChunkType]):
-        print("_select_inputs0", inputs, self._processed_chunks)
         new_inputs = []
         for inp in inputs:
             if inp in self._processed_chunks:
                 # gen fetch
-                print("_select_inputs", self._chunk_to_fetch)
                 if inp not in self._chunk_to_fetch:
                     fetch_chunk = build_fetch(inp).data
                     self._chunk_to_fetch[inp] = fetch_chunk

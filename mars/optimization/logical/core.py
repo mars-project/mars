@@ -275,10 +275,9 @@ class Optimizer(ABC):
                     rule.apply(op)
         if optimized:
             cls._replace_inputs(graph, records)
-            new_results = []
-            for result in graph.results:
-                new_results.append(
-                    records.get_optimization_result(result, default=result)
-                )
+            new_results = {}
+            for result in graph.results.values():
+                entity = records.get_optimization_result(result, default=result)
+                new_results[entity.key] = entity
             graph.results = new_results
         return records
