@@ -31,6 +31,7 @@ class SchedulingWorkerService(AbstractService):
             "mem_quota_size": "80%",
             "mem_hard_limit": "95%",
             "enable_kill_slot": true,
+            "data_prepare_timeout": 600,
             "subtask_max_retries": 1
         }
     }
@@ -53,6 +54,7 @@ class SchedulingWorkerService(AbstractService):
         subtask_max_retries = scheduling_config.get(
             "subtask_max_retries", DEFAULT_SUBTASK_MAX_RETRIES
         )
+        data_prepare_timeout = scheduling_config.get("data_prepare_timeout", 600)
 
         await mo.create_actor(
             WorkerSlotManagerActor,
@@ -73,6 +75,7 @@ class SchedulingWorkerService(AbstractService):
             SubtaskExecutionActor,
             subtask_max_retries=subtask_max_retries,
             enable_kill_slot=enable_kill_slot,
+            data_prepare_timeout=data_prepare_timeout,
             uid=SubtaskExecutionActor.default_uid(),
             address=address,
         )

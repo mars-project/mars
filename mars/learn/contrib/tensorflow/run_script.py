@@ -152,7 +152,7 @@ class RunTensorFlow(RunScript):
         if op.merge:
             return super().execute(ctx, op)
 
-        assert ctx.current_address.split(":")[0] == op.expect_worker.split(":")[0]
+        assert ctx.local_address.split(":")[0] == op.expect_worker.split(":")[0]
 
         super().execute(ctx, op)
 

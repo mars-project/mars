@@ -17,7 +17,12 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...lib.sparse.core import issparse, get_array_module, cp, cps, sps
 from ...lib.sparse import SparseNDArray
-from ...serialization.serializables import FieldTypes, NDArrayField, TupleField
+from ...serialization.serializables import (
+    FieldTypes,
+    AnyField,
+    NDArrayField,
+    TupleField,
+)
 from ...utils import on_serialize_shape, on_deserialize_shape
 from ..core import TENSOR_TYPE, TensorOrder, TensorData, Tensor
 from ..utils import get_chunk_slices
@@ -34,6 +39,7 @@ class ArrayDataSource(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_DATA_SOURCE
 
     data = NDArrayField("data")
+    chunk_size = AnyField("chunk_size")
 
     def __init__(self, data=None, dtype=None, gpu=None, **kw):
         if dtype is not None:
@@ -52,6 +58,7 @@ class ArrayDataSource(TensorNoInput):
         chunk_op.data = self.data[get_chunk_slices(chunk_size, idx)].astype(
             chunk_op.dtype, order=self.outputs[0].order.value, copy=False
         )
+        chunk_op.chunk_size = None
 
         return chunk_op
 
@@ -76,6 +83,7 @@ class CSRMatrixDataSource(TensorNoInput):
         on_serialize=on_serialize_shape,
         on_deserialize=on_deserialize_shape,
     )
+    chunk_size = AnyField("chunk_size")
 
     def __init__(self, data=None, **kw):
         kw["sparse"] = True
@@ -130,6 +138,7 @@ def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
         shape=spmatrix.shape,
         dtype=spmatrix.dtype,
         gpu=gpu,
+        chunk_size=chunk_size,
     )
     return op(spmatrix.shape, chunk_size=chunk_size)
 
@@ -169,8 +178,6 @@ def tensor(
         if gpu is None:
             if cp is not None and m is cp:
                 gpu = True
-            elif m is np:
-                gpu = False
 
     if is_array(data):
         if data.ndim == 0:
@@ -178,7 +185,7 @@ def tensor(
         tensor_order = (
             TensorOrder.C_ORDER if data.flags["C_CONTIGUOUS"] else TensorOrder.F_ORDER
         )
-        op = ArrayDataSource(data, dtype=dtype, gpu=gpu)
+        op = ArrayDataSource(data, dtype=dtype, gpu=gpu, chunk_size=chunk_size)
         t = op(data.shape, chunk_size=chunk_size, order=tensor_order)
         if sparse and not t.issparse():
             return t.tosparse()

@@ -625,6 +625,10 @@ def test_auto_merge_chunks():
     df4 = auto_merge_chunks(FakeContext(), df3, 2 * memory_size)
     assert df4 is df3
 
+    # each chunk's size is greater than limit
+    df5 = auto_merge_chunks(FakeContext(), df, memory_size / 5)
+    assert all((c1.shape == c2.shape) for c1, c2 in zip(df.chunks, df5.chunks))
+
     # test series
     ps = pdf.loc[:, "a"]
     memory_size = ps.iloc[:4].memory_usage()

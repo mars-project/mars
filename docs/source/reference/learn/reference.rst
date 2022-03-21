@@ -138,6 +138,7 @@ Classification metrics
    metrics.precision_score
    metrics.precision_recall_fscore_support
    metrics.recall_score
+   metrics.roc_auc_score
    metrics.roc_curve
 
 Regression metrics

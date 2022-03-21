@@ -166,7 +166,9 @@ class BandSlotManagerActor(mo.Actor):
                 f"the releasing session_stid: {session_stid}"
             )
         acquired_slot_id = self._session_stid_to_slot.pop(acquired_session_stid)
-        assert acquired_slot_id == slot_id
+        assert (
+            acquired_slot_id == slot_id
+        ), f"{acquired_session_stid}: acquired_slot_id {acquired_slot_id} != slot_id {slot_id}"
 
         logger.debug("Slot %d released", slot_id)
 
@@ -249,8 +251,11 @@ class BandSlotManagerActor(mo.Actor):
 
             try:
                 usage = proc.cpu_percent(interval=None) / 100.0
-            except psutil.NoSuchProcess:  # pragma: no cover
+            except (psutil.NoSuchProcess, psutil.AccessDenied):  # pragma: no cover
                 continue
+            except psutil.AccessDenied as e:  # pragma: no cover
+                logger.warning("Access denied when getting cpu percent: %s", e)
+                usage = 0.0
 
             slot_infos.append(
                 WorkerSlotInfo(

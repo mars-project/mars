@@ -23,6 +23,6 @@ from ._classification import (
     f1_score,
     fbeta_score,
 )
-from ._ranking import roc_curve, auc
+from ._ranking import roc_curve, auc, roc_auc_score
 from ._regresssion import r2_score
 from ._scorer import get_scorer

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from enum import Enum
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Set, Tuple
 
 from ...core import ChunkGraph, DAG
 from ...serialization.serializables import (
@@ -50,6 +50,8 @@ class SubtaskStatus(Enum):
 
 
 class Subtask(Serializable):
+    __slots__ = ("_repr", "_pure_depend_keys")
+
     subtask_id: str = StringField("subtask_id")
     subtask_name: str = StringField("subtask_name")
     session_id: str = StringField("session_id")
@@ -61,6 +63,15 @@ class Subtask(Serializable):
     priority: Tuple[int, int] = TupleField("priority", FieldTypes.int32)
     rerun_time: int = Int32Field("rerun_time")
     extra_config: dict = DictField("extra_config")
+    stage_id: str = StringField("stage_id")
+    # An unique and deterministic key for subtask compute logic. See logic_key in operator.py.
+    logic_key: str = StringField("logic_key")
+    # index for subtask with same compute logic.
+    logic_index: int = Int32Field("logic_index")
+    # parallelism for subtask with same compute logic.
+    logic_parallelism: int = Int32Field("logic_parallelism")
+    # subtask can only run in specified bands in `expect_bands`
+    bands_specified: bool = BoolField("bands_specified")
 
     def __init__(
         self,
@@ -75,6 +86,11 @@ class Subtask(Serializable):
         retryable: bool = True,
         rerun_time: int = 0,
         extra_config: dict = None,
+        stage_id: str = None,
+        logic_key: str = None,
+        logic_index: int = None,
+        logic_parallelism: int = None,
+        bands_specified: bool = False,
     ):
         super().__init__(
             subtask_id=subtask_id,
@@ -88,29 +104,73 @@ class Subtask(Serializable):
             retryable=retryable,
             rerun_time=rerun_time,
             extra_config=extra_config,
+            stage_id=stage_id,
+            logic_key=logic_key,
+            logic_index=logic_index,
+            logic_parallelism=logic_parallelism,
+            bands_specified=bands_specified,
         )
+        self._pure_depend_keys = None
+        self._repr = None
 
     @property
     def expect_band(self):
         if self.expect_bands:
             return self.expect_bands[0]
 
+    @property
+    def pure_depend_keys(self) -> Set[str]:
+        if self._pure_depend_keys is not None:
+            return self._pure_depend_keys
+        pure_dep_keys = set()
+        for n in self.chunk_graph:
+            pure_dep_keys.update(
+                inp.key
+                for inp, pure_dep in zip(n.inputs, n.op.pure_depends)
+                if pure_dep
+            )
+        self._pure_depend_keys = pure_dep_keys
+        return pure_dep_keys
+
+    def __repr__(self):
+        if self._repr is not None:
+            return self._repr
+
+        if self.chunk_graph:
+            result_chunk_repr = " ".join(
+                [
+                    f"{type(chunk.op).__name__}({chunk.key})"
+                    for chunk in self.chunk_graph.result_chunks
+                ]
+            )
+        else:  # pragma: no cover
+            result_chunk_repr = None
+        self._repr = f"<Subtask id={self.subtask_id} results=[{result_chunk_repr}]>"
+        return self._repr
+
 
 class SubtaskResult(Serializable):
     subtask_id: str = StringField("subtask_id")
     session_id: str = StringField("session_id")
     task_id: str = StringField("task_id")
+    stage_id: str = StringField("stage_id")
     status: SubtaskStatus = ReferenceField("status", SubtaskStatus)
     progress: float = Float64Field("progress", default=0.0)
     data_size: int = Int64Field("data_size", default=None)
-    bands: List[BandType] = ListField("band", FieldTypes.tuple)
+    bands: List[BandType] = ListField("band", FieldTypes.tuple, default=None)
     error = AnyField("error", default=None)
     traceback = AnyField("traceback", default=None)
+    # The following is the execution information of the subtask
+    execution_start_time: float = Float64Field("execution_start_time")
+    execution_end_time: float = Float64Field("execution_end_time")
 
-    def merge_bands(self, result: Optional["SubtaskResult"]):
+    def update(self, result: Optional["SubtaskResult"]):
         if result and result.bands:
             bands = self.bands or []
             self.bands = sorted(set(bands + result.bands))
+            self.execution_start_time = result.execution_start_time
+            if hasattr(result, "execution_end_time"):
+                self.execution_end_time = result.execution_end_time
         return self
 
 

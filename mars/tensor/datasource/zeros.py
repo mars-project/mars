@@ -18,7 +18,13 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialization.serializables import KeyField, StringField
+from ...serialization.serializables import (
+    FieldTypes,
+    AnyField,
+    TupleField,
+    KeyField,
+    StringField,
+)
 from ...lib import sparse
 from ...lib.sparse.core import get_sparse_module, get_array_module, naked
 from ..array_utils import create_array
@@ -30,28 +36,28 @@ from .array import tensor
 class TensorZeros(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_ZEROS
 
-    _order = StringField("order")
+    order = StringField("order")
+    shape = TupleField("shape", FieldTypes.int64)
+    chunk_size = AnyField("chunk_size")
 
-    def __init__(self, dtype=None, order=None, **kw):
-        dtype = np.dtype(dtype or "f8")
-        super().__init__(dtype=dtype, _order=order, **kw)
-
-    @property
-    def order(self):
-        return self._order
+    def to_chunk_op(self, *args):
+        chunk_op = super().to_chunk_op(*args)
+        chunk_op.shape = args[0]
+        chunk_op.chunk_size = None
+        return chunk_op
 
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         if op.sparse:
-            ctx[chunk.key] = sparse.zeros(chunk.shape, dtype=op.dtype, gpu=op.gpu)
+            ctx[chunk.key] = sparse.zeros(op.shape, dtype=op.dtype, gpu=op.gpu)
         else:
             ctx[chunk.key] = create_array(op)(
-                "zeros", chunk.shape, dtype=op.dtype, order=op.order
+                "zeros", op.shape, dtype=op.dtype, order=op.order
             )
 
 
-def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False, order="C"):
+def zeros(shape, dtype=None, chunk_size=None, gpu=None, sparse=False, order="C"):
     """
     Return a new tensor of given shape and type, filled with zeros.
 
@@ -114,7 +120,15 @@ def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False, order="C"
         available_options="CF",
         err_msg="only 'C' or 'F' order is permitted",
     )
-    op = TensorZeros(dtype=dtype, gpu=gpu, sparse=sparse, order=order)
+    dtype = np.dtype(dtype or "f8")
+    op = TensorZeros(
+        dtype=dtype,
+        shape=shape,
+        chunk_size=chunk_size,
+        gpu=gpu,
+        sparse=sparse,
+        order=order,
+    )
     return op(shape, chunk_size=chunk_size, order=tensor_order)
 
 

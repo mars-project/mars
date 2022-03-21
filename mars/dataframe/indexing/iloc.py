@@ -253,7 +253,7 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
     _input = KeyField("input")
     _indexes = ListField("indexes")
 
-    def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
+    def __init__(self, indexes=None, gpu=None, sparse=False, output_types=None, **kw):
         super().__init__(
             _indexes=indexes, gpu=gpu, sparse=sparse, _output_types=output_types, **kw
         )
@@ -406,7 +406,7 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _value = AnyField("value")
 
     def __init__(
-        self, indexes=None, value=None, gpu=False, sparse=False, output_types=None, **kw
+        self, indexes=None, value=None, gpu=None, sparse=False, output_types=None, **kw
     ):
         super().__init__(
             _indexes=indexes,
@@ -502,7 +502,7 @@ class SeriesIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
     _input = KeyField("input")
     _indexes = ListField("indexes")
 
-    def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
+    def __init__(self, indexes=None, gpu=None, sparse=False, output_types=None, **kw):
         super().__init__(
             _indexes=indexes, gpu=gpu, sparse=sparse, _output_types=output_types, **kw
         )
@@ -582,7 +582,7 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _indexes = ListField("indexes")
     _value = AnyField("value")
 
-    def __init__(self, indexes=None, value=None, gpu=False, sparse=False, **kw):
+    def __init__(self, indexes=None, value=None, gpu=None, sparse=False, **kw):
         super().__init__(
             _indexes=indexes,
             _value=value,
@@ -666,7 +666,7 @@ class IndexIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     _input = KeyField("input")
     _indexes = ListField("indexes")
 
-    def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
+    def __init__(self, indexes=None, gpu=None, sparse=False, output_types=None, **kw):
         super().__init__(
             _indexes=indexes, gpu=gpu, sparse=sparse, _output_types=output_types, **kw
         )

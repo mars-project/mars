@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import asyncio
+import copy
+import os
 import time
 
-import os
 import numpy as np
 import pandas as pd
 import pytest
@@ -80,6 +81,9 @@ EXPECT_PROFILING_STRUCTURE = {
         "slow_subtasks": DICT_NOT_EMPTY,
     }
 }
+EXPECT_PROFILING_STRUCTURE_NO_SLOW = copy.deepcopy(EXPECT_PROFILING_STRUCTURE)
+EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_calls"] = {}
+EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_subtasks"] = {}
 
 
 @pytest.fixture
@@ -89,6 +93,7 @@ async def create_cluster(request):
     ray_config.update(param.get("config", {}))
     client = await new_cluster(
         "test_cluster",
+        supervisor_mem=1 * 1024**3,
         worker_num=2,
         worker_cpu=2,
         worker_mem=1 * 1024**3,
@@ -111,35 +116,44 @@ async def create_cluster(request):
             },
             EXPECT_PROFILING_STRUCTURE,
         ],
+        [
+            {
+                "enable_profiling": {
+                    "slow_calls_duration_threshold": 1000,
+                    "slow_subtasks_duration_threshold": 1000,
+                }
+            },
+            EXPECT_PROFILING_STRUCTURE_NO_SLOW,
+        ],
         [{}, {}],
     ],
 )
 @pytest.mark.asyncio
-async def test_execute(ray_large_cluster, create_cluster, config):
+async def test_execute(ray_start_regular, create_cluster, config):
     await test_local.test_execute(create_cluster, config)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_iterative_tiling(ray_large_cluster, create_cluster):
+async def test_iterative_tiling(ray_start_regular, create_cluster):
     await test_local.test_iterative_tiling(create_cluster)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_execute_describe(ray_large_cluster, create_cluster):
+async def test_execute_describe(ray_start_regular, create_cluster):
     await test_local.test_execute_describe(create_cluster)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_fetch_infos(ray_large_cluster, create_cluster):
+async def test_fetch_infos(ray_start_regular, create_cluster):
     await test_local.test_fetch_infos(create_cluster)
 
 
 @require_ray
 @pytest.mark.asyncio
-def test_sync_execute(ray_large_cluster, create_cluster):
+def test_sync_execute(ray_start_regular, create_cluster):
     client = create_cluster[0]
     assert client.session
     session = new_session(address=client.address, backend="oscar")
@@ -181,7 +195,7 @@ def _sync_web_session_test(web_address):
 
 @require_ray
 def test_new_cluster_in_ray(stop_ray):
-    cluster = new_cluster_in_ray(cluster_name="test_cluster", worker_num=2)
+    cluster = new_cluster_in_ray(worker_num=2)
     mt.random.RandomState(0).rand(100, 5).sum().execute()
     cluster.session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
@@ -193,6 +207,10 @@ def test_new_cluster_in_ray(stop_ray):
 
 @require_ray
 def test_new_ray_session(stop_ray):
+    new_ray_session_test()
+
+
+def new_ray_session_test():
     session = new_ray_session(session_id="abc", worker_num=2)
     mt.random.RandomState(0).rand(100, 5).sum().execute()
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
@@ -200,6 +218,29 @@ def test_new_ray_session(stop_ray):
     session = new_ray_session(session_id="abcd", worker_num=2, default=True)
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
+    df = md.DataFrame(mt.random.rand(100, 4), columns=list("abcd"))
+    # Convert mars dataframe to ray dataset
+    ds = md.to_ray_dataset(df)
+    print(ds.schema(), ds.count())
+    ds.filter(lambda row: row["a"] > 0.5).show(5)
+    # Convert ray dataset to mars dataframe
+    df2 = md.read_ray_dataset(ds)
+    print(df2.head(5).execute())
+    # Test ray cluster exists after session got gc.
+    del session
+    import gc
+
+    gc.collect()
+    mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
+
+
+@require_ray
+def test_ray_client(ray_start_regular):
+    from ray.util.client.ray_client_helpers import ray_start_client_server
+    from ray._private.client_mode_hook import enable_client_mode
+
+    with ray_start_client_server(), enable_client_mode():
+        new_ray_session_test()
 
 
 @require_ray
@@ -213,7 +254,7 @@ def test_new_ray_session(stop_ray):
     ],
 )
 @pytest.mark.asyncio
-async def test_optional_supervisor_node(ray_large_cluster, test_option):
+async def test_optional_supervisor_node(ray_start_regular, test_option):
     import logging
 
     logging.basicConfig(level=logging.INFO)
@@ -223,6 +264,7 @@ async def test_optional_supervisor_node(ray_large_cluster, test_option):
     config["cluster"]["ray"]["supervisor"]["sub_pool_num"] = supervisor_sub_pool_num
     client = await new_cluster(
         "test_cluster",
+        supervisor_mem=1 * 1024**3,
         worker_num=2,
         worker_cpu=2,
         worker_mem=1 * 1024**3,
@@ -246,11 +288,20 @@ async def test_optional_supervisor_node(ray_large_cluster, test_option):
             },
             EXPECT_PROFILING_STRUCTURE,
         ],
+        [
+            {
+                "enable_profiling": {
+                    "slow_calls_duration_threshold": 1000,
+                    "slow_subtasks_duration_threshold": 1000,
+                }
+            },
+            EXPECT_PROFILING_STRUCTURE_NO_SLOW,
+        ],
         [{}, {}],
     ],
 )
 @pytest.mark.asyncio
-async def test_web_session(ray_large_cluster, create_cluster, config):
+async def test_web_session(ray_start_regular, create_cluster, config):
     client = create_cluster[0]
     await test_local.test_web_session(create_cluster, config)
     web_address = client.web_address
@@ -274,14 +325,13 @@ async def test_web_session(ray_large_cluster, create_cluster, config):
     ],
 )
 @pytest.mark.asyncio
-async def test_load_third_party_modules(ray_large_cluster, config_exception):
+async def test_load_third_party_modules(ray_start_regular, config_exception):
     third_party_modules_config, expected_exception = config_exception
     config = _load_config()
 
     config["third_party_modules"] = third_party_modules_config
     with expected_exception:
         await new_cluster(
-            "test_cluster",
             worker_num=2,
             worker_cpu=2,
             worker_mem=1 * 1024**3,
@@ -304,7 +354,7 @@ async def test_load_third_party_modules(ray_large_cluster, config_exception):
     indirect=True,
 )
 @pytest.mark.asyncio
-def test_load_third_party_modules2(ray_large_cluster, create_cluster):
+def test_load_third_party_modules2(ray_start_regular, create_cluster):
     client = create_cluster[0]
     assert client.session
     session = new_session(address=client.address, backend="oscar")
@@ -323,10 +373,10 @@ def test_load_third_party_modules2(ray_large_cluster, create_cluster):
 @require_ray
 @pytest.mark.asyncio
 async def test_load_third_party_modules_from_config(
-    ray_large_cluster, cleanup_third_party_modules_output  # noqa: F811
+    ray_start_regular, cleanup_third_party_modules_output  # noqa: F811
 ):
     client = await new_cluster(
-        "test_cluster",
+        supervisor_mem=1 * 1024**3,
         worker_num=2,
         worker_cpu=2,
         worker_mem=1 * 1024**3,
@@ -357,14 +407,14 @@ def test_load_config():
 
 
 @pytest.mark.parametrize(
-    "ray_large_cluster", [{"num_nodes": 3, "num_cpus": 1}], indirect=True
+    "ray_large_cluster", [{"num_nodes": 1, "num_cpus": 3}], indirect=True
 )
 @require_ray
 @pytest.mark.asyncio
 async def test_request_worker(ray_large_cluster):
     worker_cpu, worker_mem = 1, 100 * 1024**2
     client = await new_cluster(
-        "test_cluster", worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem
+        worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem
     )
     async with client:
         cluster_state_ref = client._cluster._cluster_backend.get_cluster_state_ref()
@@ -387,14 +437,14 @@ async def test_request_worker(ray_large_cluster):
 
 
 @pytest.mark.parametrize(
-    "ray_large_cluster", [{"num_nodes": 3, "num_cpus": 1}], indirect=True
+    "ray_large_cluster", [{"num_nodes": 1, "num_cpus": 3}], indirect=True
 )
 @require_ray
 @pytest.mark.asyncio
 async def test_reconstruct_worker(ray_large_cluster):
     worker_cpu, worker_mem = 1, 100 * 1024**2
     client = await new_cluster(
-        "test_cluster", worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem
+        worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem
     )
     async with client:
         cluster_api = await ClusterAPI.create(client._cluster.supervisor_address)
@@ -490,17 +540,17 @@ async def test_release_worker_during_reconstructing_worker(
 
 
 @pytest.mark.parametrize(
-    "ray_large_cluster", [{"num_nodes": 4, "num_cpus": 2}], indirect=True
+    "ray_large_cluster", [{"num_nodes": 2, "num_cpus": 4}], indirect=True
 )
 @pytest.mark.parametrize("init_workers", [0, 1])
 @require_ray
 @pytest.mark.asyncio
 async def test_auto_scale_out(ray_large_cluster, init_workers: int):
     client = await new_cluster(
-        "test_cluster",
         worker_num=init_workers,
         worker_cpu=2,
-        worker_mem=100 * 1024**2,
+        worker_mem=200 * 1024**2,
+        supervisor_mem=1 * 1024**3,
         config={
             "scheduling.autoscale.enabled": True,
             "scheduling.autoscale.scheduler_backlog_timeout": 1,
@@ -530,8 +580,10 @@ async def test_auto_scale_out(ray_large_cluster, init_workers: int):
         assert await autoscaler_ref.get_dynamic_worker_nums() > 0
 
 
-@pytest.mark.timeout(timeout=120)
-@pytest.mark.parametrize("ray_large_cluster", [{"num_nodes": 4}], indirect=True)
+@pytest.mark.timeout(timeout=600)
+@pytest.mark.parametrize(
+    "ray_large_cluster", [{"num_nodes": 2, "num_cpus": 4}], indirect=True
+)
 @require_ray
 @pytest.mark.asyncio
 async def test_auto_scale_in(ray_large_cluster):
@@ -541,10 +593,10 @@ async def test_auto_scale_in(ray_large_cluster):
     config["scheduling"]["autoscale"]["max_workers"] = 4
     config["scheduling"]["autoscale"]["min_workers"] = 2
     client = await new_cluster(
-        "test_cluster",
         worker_num=0,
         worker_cpu=2,
-        worker_mem=100 * 1024**2,
+        worker_mem=200 * 102**2,
+        supervisor_mem=1 * 1024**3,
         config=config,
     )
     async with client:
@@ -569,16 +621,16 @@ async def test_auto_scale_in(ray_large_cluster):
         assert await autoscaler_ref.get_dynamic_worker_nums() == 2
 
 
-@pytest.mark.timeout(timeout=120)
+@pytest.mark.timeout(timeout=1000)
 @pytest.mark.parametrize("ray_large_cluster", [{"num_nodes": 4}], indirect=True)
 @require_ray
 @pytest.mark.asyncio
 async def test_ownership_when_scale_in(ray_large_cluster):
     client = await new_cluster(
-        "test_cluster",
         worker_num=0,
         worker_cpu=2,
-        worker_mem=100 * 1024**2,
+        worker_mem=200 * 1024**2,
+        supervisor_mem=200 * 1024**2,
         config={
             "scheduling.autoscale.enabled": True,
             "scheduling.autoscale.scheduler_check_interval": 1,
@@ -613,3 +665,15 @@ async def test_ownership_when_scale_in(ray_large_cluster):
         assert (
             groupby_sum_df.to_pandas().to_dict() == pd_df.groupby("a").sum().to_dict()
         )
+
+
+@require_ray
+@pytest.mark.asyncio
+def test_init_metrics_on_ray(ray_start_regular, create_cluster):
+    client = create_cluster[0]
+    assert client.session
+    from ....metrics import api
+
+    assert api._metric_backend == "ray"
+
+    client.session.stop_server()

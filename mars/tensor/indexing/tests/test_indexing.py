@@ -313,7 +313,7 @@ def test_setitem_structured():
     t[1:3] = np.arange(5)
     tt = tile(t)
     slices_op = tt.cix[0, 0].op.value.op
-    assert slices_op.slices == [slice(None, None, None), slice(None, 3, None)]
+    assert slices_op.slices == [slice(None, None, None), slice(0, 3, None)]
     broadcast_op = slices_op.inputs[0].op.inputs[0].op
     assert isinstance(broadcast_op, TensorBroadcastTo)
     assert broadcast_op.shape == (2, 5)
@@ -323,7 +323,7 @@ def test_setitem_structured():
     t[2:4] = np.arange(10).reshape(2, 5)
     tt = tile(t)
     slices_op = tt.cix[0, 0].op.value.op
-    assert slices_op.slices == [slice(None, 1, None), slice(None, 3, None)]
+    assert slices_op.slices == [slice(0, 1, None), slice(0, 3, None)]
     np.testing.assert_array_equal(
         slices_op.inputs[0].op.inputs[0].op.data, np.arange(10).reshape(2, 5)
     )

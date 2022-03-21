@@ -25,7 +25,8 @@ from ...serialization.serializables import (
     DictField,
     FunctionField,
 )
-from ...utils import enter_current_session, quiet_stdio
+from ...core.operand import OperatorLogicKeyGeneratorMixin
+from ...utils import enter_current_session, quiet_stdio, get_func_token_values
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import (
     auto_merge_chunks,
@@ -38,7 +39,18 @@ from ..utils import (
 )
 
 
-class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
+class GroupByApplyLogicKeyGeneratorMixin(OperatorLogicKeyGeneratorMixin):
+    def _get_logic_key_token_values(self):
+        token_values = super()._get_logic_key_token_values()
+        if self.func:
+            return token_values + get_func_token_values(self.func)
+        else:  # pragma: no cover
+            return token_values
+
+
+class GroupByApply(
+    DataFrameOperand, DataFrameOperandMixin, GroupByApplyLogicKeyGeneratorMixin
+):
     _op_type_ = opcodes.APPLY
     _op_module_ = "dataframe.groupby"
 
@@ -139,9 +151,14 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             return [auto_merge_chunks(get_context(), ret)]
 
     def _infer_df_func_returns(
-        self, in_groupby, in_df, dtypes, dtype=None, name=None, index=None
+        self, in_groupby, in_df, dtypes=None, dtype=None, name=None, index=None
     ):
         index_value, output_type, new_dtypes = None, None, None
+
+        if self.output_types is not None and (dtypes is not None or dtype is not None):
+            ret_dtypes = dtypes if dtypes is not None else (dtype, name)
+            ret_index_value = parse_index(index) if index is not None else None
+            return ret_dtypes, ret_index_value
 
         try:
             infer_df = in_groupby.op.build_mock_groupby().apply(

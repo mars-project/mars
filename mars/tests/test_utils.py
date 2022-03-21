@@ -274,14 +274,6 @@ def test_chunks_indexer():
     assert chunk_keys == expected
 
 
-def test_insert_reversed_tuple():
-    assert utils.insert_reversed_tuple((), 9) == (9,)
-    assert utils.insert_reversed_tuple((7, 4, 3, 1), 9) == (9, 7, 4, 3, 1)
-    assert utils.insert_reversed_tuple((7, 4, 3, 1), 6) == (7, 6, 4, 3, 1)
-    assert utils.insert_reversed_tuple((7, 4, 3, 1), 4) == (7, 4, 3, 1)
-    assert utils.insert_reversed_tuple((7, 4, 3, 1), 0) == (7, 4, 3, 1, 0)
-
-
 def test_require_not_none():
     @utils.require_not_none(1)
     def should_exist():
@@ -567,3 +559,30 @@ def test_web_serialize_lambda():
     s = utils.serialize_serializable(graph)
     f = utils.deserialize_serializable(s)
     assert isinstance(f, TileableGraph)
+
+
+def test_get_func_token_values():
+    from ..utils import get_func_token_values
+
+    assert get_func_token_values(test_get_func_token_values) == [
+        test_get_func_token_values.__code__.co_code
+    ]
+    captured_vars = [1, 2, 3]
+
+    def closure_func(a, b):
+        return captured_vars
+
+    assert get_func_token_values(closure_func)[1][0] == captured_vars
+    assert get_func_token_values(partial(closure_func, 1))[0][0] == 1
+    assert get_func_token_values(partial(closure_func, 1))[-1][0] == captured_vars
+
+    from .._utils import ceildiv
+
+    assert get_func_token_values(ceildiv) == [ceildiv.__module__, ceildiv.__name__]
+
+    class Func:
+        def __call__(self, *args, **kwargs):
+            pass
+
+    func = Func()
+    assert get_func_token_values(func) == [func]

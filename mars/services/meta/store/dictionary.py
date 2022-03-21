@@ -48,10 +48,13 @@ class DictMetaStore(AbstractMetaStore):
         return dict()
 
     def _set_meta(self, object_id: str, meta: _CommonMeta):
-        self._store[object_id] = meta
         if isinstance(meta, _ChunkMeta):
             for band in meta.bands:
                 self._band_chunks[band].add(object_id)
+        prev_meta = self._store.get(object_id)
+        if prev_meta:
+            meta = meta.merge_from(prev_meta)
+        self._store[object_id] = meta
 
     @implements(AbstractMetaStore.set_meta)
     @mo.extensible

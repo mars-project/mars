@@ -19,6 +19,7 @@ import dataclasses
 import enum
 import functools
 import importlib
+import inspect
 import io
 import itertools
 import logging
@@ -28,17 +29,30 @@ import os
 import cloudpickle as pickle
 import pkgutil
 import random
-import shutil
 import socket
 import struct
 import sys
 import threading
 import time
+import types
 import warnings
 import zlib
 from abc import ABC
 from contextlib import contextmanager
-from typing import Any, List, Dict, Set, Tuple, Type, Union, Callable, Optional
+from typing import (
+    Any,
+    List,
+    Dict,
+    NamedTuple,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    Callable,
+    Optional,
+)
+from types import TracebackType
+from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -52,7 +66,6 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     tokenize,
     tokenize_int,
     register_tokenizer,
-    insert_reversed_tuple,
     ceildiv,
     Timer,
 )
@@ -69,8 +82,8 @@ OBJECT_FIELD_OVERHEAD = 50
 TypeDispatcher = TypeDispatcher
 tokenize = tokenize
 register_tokenizer = register_tokenizer
-insert_reversed_tuple = insert_reversed_tuple
 ceildiv = ceildiv
+_create_task = asyncio.create_task
 
 
 # fix encoding conversion problem under windows
@@ -208,23 +221,22 @@ def readable_size(size: int, trunc: bool = False) -> str:
 _git_info = None
 
 
+class GitInfo(NamedTuple):
+    commit_hash: str
+    commit_ref: str
+
+
 def git_info():
-    from ._version import get_git_info
+    from ._version import get_versions
 
     global _git_info
-    if _git_info is not None:
-        if _git_info == ":INVALID:":
-            return None
-        else:
-            return _git_info
 
-    git_tuple = get_git_info()
-    if git_tuple is None:
-        _git_info = ":INVALID:"
-        return None
-    else:
-        _git_info = git_tuple
-        return git_tuple
+    if _git_info is not None:
+        return _git_info
+
+    versions = get_versions()
+    _git_info = GitInfo(versions["full-revisionid"], versions["version"])
+    return _git_info
 
 
 LOW_PORT_BOUND = 10000
@@ -738,45 +750,6 @@ def sbytes(x: Any) -> bytes:
         return bytes(x, encoding="utf-8")
     else:
         return bytes(x)
-
-
-def kill_process_tree(pid: int, include_parent: bool = True):
-    try:
-        import psutil
-    except ImportError:  # pragma: no cover
-        return
-    try:
-        proc = psutil.Process(pid)
-    except psutil.NoSuchProcess:
-        return
-
-    plasma_sock_dir = None
-    try:
-        children = proc.children(recursive=True)
-    except psutil.NoSuchProcess:  # pragma: no cover
-        return
-
-    if include_parent:
-        children.append(proc)
-    for p in children:
-        try:
-            if "plasma" in p.name():
-                try:
-                    plasma_sock_dir = next(
-                        (
-                            conn.laddr
-                            for conn in p.connections("unix")
-                            if "plasma" in conn.laddr
-                        ),
-                        None,
-                    )
-                except psutil.AccessDenied:
-                    pass
-            p.kill()
-        except psutil.NoSuchProcess:  # pragma: no cover
-            pass
-    if plasma_sock_dir:
-        shutil.rmtree(plasma_sock_dir, ignore_errors=True)
 
 
 def copy_tileables(tileables: List[TileableType], **kwargs):
@@ -1544,3 +1517,88 @@ def is_full_slice(slc: Any) -> bool:
         and slc.stop is None
         and slc.step is None
     )
+
+
+def wrap_exception(
+    name: str,
+    bases: Tuple[Type],
+    message: str,
+    cause: BaseException,
+    traceback: Optional[TracebackType] = None,
+):
+    """Generate an exception wraps the cause exception."""
+
+    def __init__(self):
+        pass
+
+    def __getattr__(self, item):
+        return getattr(cause, item)
+
+    def __str__(self):
+        return message
+
+    return type(
+        bases[-1].__name__,
+        bases,
+        {
+            "__init__": __init__,
+            "__getattr__": __getattr__,
+            "__str__": __str__,
+            "__basename__": name,
+            "__module__": bases[-1].__module__,
+        },
+    )().with_traceback(traceback)
+
+
+def get_func_token_values(func):
+    if hasattr(func, "__code__"):
+        tokens = [func.__code__.co_code]
+        if func.__closure__ is not None:
+            cvars = tuple([x.cell_contents for x in func.__closure__])
+            tokens.append(cvars)
+        return tokens
+    else:
+        tokens = []
+        while isinstance(func, functools.partial):
+            tokens.extend([func.args, func.keywords])
+            func = func.func
+        if hasattr(func, "__code__"):
+            tokens.extend(get_func_token_values(func))
+        elif isinstance(func, types.BuiltinFunctionType):
+            tokens.extend([func.__module__, func.__name__])
+        else:
+            tokens.append(func)
+        return tokens
+
+
+async def _run_task_with_error_log(coro, call_site=None):  # pragma: no cover
+    try:
+        return await coro
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.exception(
+            "Coroutine %r at call_site %s execution got exception %s.",
+            coro,
+            call_site,
+            e,
+        )
+        raise
+
+
+def create_task_with_error_log(coro, *args, **kwargs):  # pragma: no cover
+    frame = inspect.currentframe()
+    if frame and frame.f_back:
+        call_site = frame.f_back.f_code
+    else:
+        call_site = None
+    return _create_task(_run_task_with_error_log(coro, call_site), *args, **kwargs)
+
+
+def is_ray_address(address: str) -> bool:
+    from .oscar.backends.ray.communication import RayServer
+
+    if urlparse(address).scheme == RayServer.scheme:
+        return True
+    else:
+        return False

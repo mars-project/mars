@@ -70,6 +70,7 @@ async def fault_cluster(request):
             FaultType.Exception,
             {FaultPosition.ON_EXECUTE_OPERAND: 1},
             pytest.raises(FaultInjectionError, match="Fault Injection"),
+            True,
         ],
         [
             FaultType.UnhandledException,
@@ -77,16 +78,19 @@ async def fault_cluster(request):
             pytest.raises(
                 FaultInjectionUnhandledError, match="Fault Injection Unhandled"
             ),
+            True,
         ],
         [
             FaultType.ProcessExit,
             {FaultPosition.ON_EXECUTE_OPERAND: 1},
             pytest.raises(ServerClosed),
+            False,  # The ServerClosed raised from current process directly.
         ],
         [
             FaultType.Exception,
             {FaultPosition.ON_RUN_SUBTASK: 1},
             pytest.raises(FaultInjectionError, match="Fault Injection"),
+            True,
         ],
     ],
 )

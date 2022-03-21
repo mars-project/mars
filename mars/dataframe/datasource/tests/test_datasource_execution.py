@@ -294,7 +294,7 @@ def test_from_tensor_execution(setup):
     tensor5 = mt.ones((10, 10), chunk_size=3)
     df5 = dataframe_from_tensor(tensor5, index=np.arange(0, 20, 2))
     result5 = df5.execute().fetch()
-    pdf_expected = pd.DataFrame(tensor5.execute().fetch(), index=np.arange(0, 20, 2))
+    pdf_expected = pd.DataFrame(np.ones((10, 10)), index=np.arange(0, 20, 2))
     pd.testing.assert_frame_equal(pdf_expected, result5)
 
     # from tensor with given index that is a tensor
@@ -359,6 +359,11 @@ def test_from_tensor_execution(setup):
     pdf_expected = pd.DataFrame(
         OrderedDict(raws8), index=pd.date_range("2020-1-1", periods=8)
     )
+    pd.testing.assert_frame_equal(result, pdf_expected)
+
+    df12 = dataframe_from_1d_tileables({"a": [md.Series([1, 2, 3]).sum() + 1]})
+    result = df12.execute().fetch()
+    pdf_expected = pd.DataFrame({"a": [pd.Series([1, 2, 3]).sum() + 1]})
     pd.testing.assert_frame_equal(result, pdf_expected)
 
 

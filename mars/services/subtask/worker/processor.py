@@ -15,6 +15,7 @@
 import asyncio
 import logging
 import sys
+import time
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Type
 
@@ -28,6 +29,7 @@ from ....core.operand import (
     VirtualOperand,
     execute,
 )
+from ....metrics import Metrics
 from ....optimization.physical import optimize
 from ....typing import BandType
 from ....utils import get_chunk_key_to_data_keys
@@ -80,9 +82,11 @@ class SubtaskProcessor:
             subtask_id=subtask.subtask_id,
             session_id=subtask.session_id,
             task_id=subtask.task_id,
+            stage_id=subtask.stage_id,
             status=SubtaskStatus.pending,
             bands=[self._band],
             progress=0.0,
+            execution_start_time=time.time(),
         )
         self.is_done = asyncio.Event()
 
@@ -99,6 +103,13 @@ class SubtaskProcessor:
         self._storage_api = storage_api
         self._meta_api = meta_api
 
+        # add metrics
+        self._subtask_execution_time = Metrics.gauge(
+            "mars.subtask_execution_time_secs",
+            "Time consuming in seconds to execute a subtask",
+            ("session_id", "subtask_id"),
+        )
+
     @property
     def status(self):
         return self.result.status
@@ -110,7 +121,10 @@ class SubtaskProcessor:
     async def _load_input_data(self):
         keys, gets, accept_nones = [], [], []
         for chunk in self._chunk_graph.iter_indep():
-            if isinstance(chunk.op, Fetch):
+            if (
+                isinstance(chunk.op, Fetch)
+                and chunk.key not in self.subtask.pure_depend_keys
+            ):
                 keys.append(chunk.key)
                 gets.append(self._storage_api.get.delay(chunk.key))
                 accept_nones.append(True)
@@ -401,36 +415,23 @@ class SubtaskProcessor:
             self.subtask.subtask_id,
         )
         if set_chunk_metas:
-            set_chunks_meta = asyncio.create_task(
-                self._meta_api.set_chunk_meta.batch(*set_chunk_metas)
-            )
-            try:
-                await set_chunks_meta
+            f = asyncio.get_running_loop().create_future()
+
+            async def set_chunks_meta():
+                await self._meta_api.set_chunk_meta.batch(*set_chunk_metas)
                 logger.debug(
                     "Finish store chunk metas for data keys: %s, " "subtask id: %s",
                     stored_keys,
                     self.subtask.subtask_id,
                 )
-            except asyncio.CancelledError:
-                logger.debug(
-                    "Cancelling store chunk metas for data keys: %s, " "subtask id: %s",
-                    stored_keys,
-                    self.subtask.subtask_id,
-                )
-                set_chunks_meta.cancel()
+                f.set_result(None)
 
-                # remote stored data
-                deletes = []
-                for data_key in stored_keys:
-                    deletes.append(self._storage_api.delete.delay(data_key))
-                await self._storage_api.delete.batch(*deletes)
-
-                self.result.status = SubtaskStatus.cancelled
-                logger.debug(
-                    "Cancelled store chunk metas for data keys: %s, " "subtask id: %s",
-                    stored_keys,
-                    self.subtask.subtask_id,
-                )
+            try:
+                # Since we don't delete chunk data on this worker, we need to ensure chunk meta are recorded
+                # in meta service, so that `processor.decref_stage` can delete the chunk data finally.
+                await asyncio.shield(set_chunks_meta())
+            except asyncio.CancelledError:  # pragma: no cover
+                await f
                 raise
         # set result data size
         self.result.data_size = result_data_size
@@ -438,6 +439,8 @@ class SubtaskProcessor:
     async def done(self):
         if self.result.status == SubtaskStatus.running:
             self.result.status = SubtaskStatus.succeeded
+            # Only update end time when subtask succeeded
+            self.result.execution_end_time = time.time()
         self.result.progress = 1.0
         self.is_done.set()
 
@@ -489,6 +492,20 @@ class SubtaskProcessor:
                 await self._unpin_data(input_keys)
 
         await self.done()
+        if self.result.status == SubtaskStatus.succeeded:
+            cost_time_secs = (
+                self.result.execution_end_time - self.result.execution_start_time
+            )
+            logger.info(
+                "Time consuming to execute a subtask is %ss with session_id %s, subtask_id %s",
+                cost_time_secs,
+                self._session_id,
+                self.subtask.subtask_id,
+            )
+            self._subtask_execution_time.record(
+                cost_time_secs,
+                {"session_id": self._session_id, "subtask_id": self.subtask.subtask_id},
+            )
         report_progress.cancel()
         try:
             await report_progress
@@ -576,7 +593,7 @@ class SubtaskProcessorActor(mo.Actor):
         set_context(context)
 
     async def run(self, subtask: Subtask):
-        logger.debug("Start to run subtask: %s", subtask.subtask_id)
+        logger.info("Start to run subtask: %r on %s.", subtask, self.address)
 
         assert subtask.session_id == self._session_id
 
@@ -594,6 +611,7 @@ class SubtaskProcessorActor(mo.Actor):
         self._running_aio_task = asyncio.create_task(processor.run())
         try:
             result = yield self._running_aio_task
+            logger.info("Finished subtask: %s", subtask.subtask_id)
             raise mo.Return(result)
         finally:
             self._processor = self._running_aio_task = None
@@ -605,7 +623,7 @@ class SubtaskProcessorActor(mo.Actor):
         return self._last_processor.result
 
     async def cancel(self):
-        logger.debug("Cancelling subtask: %s", self._processor.subtask_id)
+        logger.info("Cancelling subtask: %s", self._processor.subtask_id)
 
         aio_task = self._running_aio_task
         aio_task.cancel()

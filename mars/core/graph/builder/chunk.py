@@ -242,9 +242,6 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
     def _select_inputs(self, inputs: List[ChunkType]):
         new_inputs = []
         for inp in inputs:
-            # TODO: remove it when fuse chunk is deprecated
-            if isinstance(inp, FUSE_CHUNK_TYPE):
-                inp = inp.chunk
             if inp in self._processed_chunks:
                 # gen fetch
                 if inp not in self._chunk_to_fetch:

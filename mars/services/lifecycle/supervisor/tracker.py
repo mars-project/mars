@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import logging
 
 from collections import defaultdict
 from typing import Dict, List, Optional
@@ -21,6 +22,8 @@ from .... import oscar as mo
 from ...meta.api import MetaAPI
 from ...storage.api import StorageAPI
 from ..errors import TileableNotTracked
+
+logger = logging.getLogger(__name__)
 
 
 class LifecycleTrackerActor(mo.Actor):
@@ -67,6 +70,7 @@ class LifecycleTrackerActor(mo.Actor):
             self.incref_chunks(incref_chunk_keys)
 
     def incref_chunks(self, chunk_keys: List[str]):
+        logger.debug("Increase reference count for chunks %s", chunk_keys)
         for chunk_key in chunk_keys:
             self._chunk_ref_counts[chunk_key] += 1
 
@@ -83,6 +87,10 @@ class LifecycleTrackerActor(mo.Actor):
         return to_remove_chunk_keys
 
     async def decref_chunks(self, chunk_keys: List[str]):
+        logger.debug(
+            "Decrease reference count for chunks %s",
+            {ck: self._chunk_ref_counts[ck] for ck in chunk_keys},
+        )
         to_remove_chunk_keys = self._get_remove_chunk_keys(chunk_keys)
         # make _remove_chunks release actor lock so that multiple `decref_chunks` can run concurrently.
         yield self._remove_chunks(to_remove_chunk_keys)
@@ -91,6 +99,7 @@ class LifecycleTrackerActor(mo.Actor):
         if not to_remove_chunk_keys:
             return
         # get meta
+        logger.debug("Remove chunks %s with a refcount of zero", to_remove_chunk_keys)
         get_metas = []
         for to_remove_chunk_key in to_remove_chunk_keys:
             get_metas.append(
@@ -158,8 +167,14 @@ class LifecycleTrackerActor(mo.Actor):
                     f"tileable {tileable_key} " f"not tracked before"
                 )
             self._tileable_ref_counts[tileable_key] += 1
+            incref_chunk_keys = self._tileable_key_to_chunk_keys[tileable_key]
             # incref chunks for this tileable
-            self.incref_chunks(self._tileable_key_to_chunk_keys[tileable_key])
+            logger.debug(
+                "Incref chunks %s while increfing tileable %s",
+                incref_chunk_keys,
+                tileable_key,
+            )
+            self.incref_chunks(incref_chunk_keys)
 
     async def decref_tileables(self, tileable_keys: List[str]):
         decref_chunk_keys = []
@@ -171,6 +186,11 @@ class LifecycleTrackerActor(mo.Actor):
             self._tileable_ref_counts[tileable_key] -= 1
 
             decref_chunk_keys.extend(self._tileable_key_to_chunk_keys[tileable_key])
+        logger.debug(
+            "Decref chunks %s while decrefing tileables %s",
+            decref_chunk_keys,
+            tileable_keys,
+        )
         yield self.decref_chunks(decref_chunk_keys)
 
     def get_tileable_ref_counts(self, tileable_keys: List[str]) -> List[int]:

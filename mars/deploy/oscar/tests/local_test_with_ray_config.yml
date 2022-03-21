@@ -1,3 +1,6 @@
 "@inherits": '@mars/deploy/oscar/rayconfig.yml'
 session:
   custom_log_dir: auto
+scheduling:
+  subtask_max_retries: 0
+  subtask_max_reschedules: 0

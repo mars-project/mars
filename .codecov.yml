@@ -17,7 +17,9 @@ comment: off
 
 # Matches 'omit:' in setup.cfg:coverage:run
 ignore:
+  - "mars/_version.py"
   - "mars/compat.py"
+  - "mars/conftest.py"
   - "mars/lib/aio/_runners.py"
   - "mars/lib/aio/lru.py"
   - "mars/lib/functools32"

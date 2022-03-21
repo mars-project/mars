@@ -14,6 +14,7 @@
 
 import asyncio
 import importlib
+import logging
 import time
 from collections import defaultdict
 from dataclasses import dataclass
@@ -34,6 +35,8 @@ from ..core import Task, new_task_id, TaskStatus
 from ..errors import TaskNotExist
 from .preprocessor import TaskPreprocessor
 from .processor import TaskProcessorActor
+
+logger = logging.getLogger(__name__)
 
 
 class TaskConfigurationActor(mo.Actor):
@@ -301,7 +304,14 @@ class TaskManagerActor(mo.Actor):
         try:
             processor_ref = self._task_id_to_processor_ref[task_id]
         except KeyError:  # pragma: no cover
-            raise TaskNotExist(f"Task {task_id} does not exist")
+            # raise TaskNotExist(f'Task {task_id} does not exist')
+            logger.warning(
+                "Current task is finished, got stale result %s  for subtask %s "
+                "which may be speculative execution from previous tasks, just ignore it.",
+                subtask_result.subtask_id,
+                subtask_result,
+            )
+            return
 
         yield processor_ref.set_subtask_result(subtask_result)
 

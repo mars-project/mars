@@ -816,3 +816,15 @@ def solve_triangular(a, b, lower=False, sparse=True):
     from .matrix import solve_triangular_sparse_matrix
 
     return solve_triangular_sparse_matrix(a, b, lower=lower, sparse=sparse)
+
+
+def block(arrs):
+    arr = arrs[0]
+    while isinstance(arr, list):
+        arr = arr[0]
+    if arr.ndim != 2:  # pragma: no cover
+        raise NotImplementedError
+
+    from .matrix import block
+
+    return block(arrs)

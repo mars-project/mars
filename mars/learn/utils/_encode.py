@@ -64,7 +64,7 @@ def _unique(values, *, return_inverse=False):
         lambda c, idx: c[: idx + 1],
         args=(nan_idx,),
         dtype=uniques.dtype,
-        shape=((np.nan,),) * uniques.ndim,
+        shape=(np.nan,) * uniques.ndim,
     )
     if return_inverse:
 

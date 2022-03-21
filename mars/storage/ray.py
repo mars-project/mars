@@ -17,7 +17,12 @@ import inspect
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
 from ..oscar.debug import debug_async_timeout
-from ..utils import lazy_import, implements, register_ray_serializer
+from ..utils import (
+    lazy_import,
+    implements,
+    register_ray_serializer,
+)
+from ..metrics import Metrics, Percentile, record_time_cost_percentile
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
@@ -118,6 +123,60 @@ def support_specify_owner():
 class RayStorage(StorageBackend):
     name = "ray"
 
+    _storage_get_metrics = [
+        (
+            Percentile.PercentileType.P99,
+            Metrics.gauge(
+                "mars.storage.ray.get_cost_time_p99_seconds",
+                "P99 time consuming in seconds to get object, every 1000 times report once.",
+            ).record,
+            1000,
+        ),
+        (
+            Percentile.PercentileType.P95,
+            Metrics.gauge(
+                "mars.storage.ray.get_cost_time_p95_seconds",
+                "P95 time consuming in seconds to get object, every 1000 times report once.",
+            ).record,
+            1000,
+        ),
+        (
+            Percentile.PercentileType.P90,
+            Metrics.gauge(
+                "mars.storage.ray.get_cost_time_p90_seconds",
+                "P90 time consuming in seconds to get object, every 1000 times report once.",
+            ).record,
+            1000,
+        ),
+    ]
+
+    _storage_put_metrics = [
+        (
+            Percentile.PercentileType.P99,
+            Metrics.gauge(
+                "mars.storage.ray.put_cost_time_p99_seconds",
+                "P99 time consuming in seconds to put object, every 1000 times report once.",
+            ).record,
+            1000,
+        ),
+        (
+            Percentile.PercentileType.P95,
+            Metrics.gauge(
+                "mars.storage.ray.put_cost_time_p95_seconds",
+                "P95 time consuming in seconds to put object, every 1000 times report once.",
+            ).record,
+            1000,
+        ),
+        (
+            Percentile.PercentileType.P90,
+            Metrics.gauge(
+                "mars.storage.ray.put_cost_time_p90_seconds",
+                "P90 time consuming in seconds to put object, every 1000 times report once.",
+            ).record,
+            1000,
+        ),
+    ]
+
     def __init__(self, *args, **kwargs):
         self._owner_address = kwargs.get("owner")
         self._owner = None  # A ray actor which will own the objects put by workers.
@@ -145,18 +204,22 @@ class RayStorage(StorageBackend):
         if kwargs:  # pragma: no cover
             raise NotImplementedError(f'Got unsupported args: {",".join(kwargs)}')
         with debug_async_timeout(
-            "ray_object_retrieval_timeout", "Storage get object timeout"
+            "ray_object_retrieval_timeout",
+            "Storage get object timeout, ObjectRef: %s",
+            object_id,
         ):
-            return await object_id
+            with record_time_cost_percentile(self._storage_get_metrics):
+                return await object_id
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
-        if support_specify_owner() and self._owner_address:
-            if not self._owner:
-                self._owner = ray.get_actor(self._owner_address)
-            object_id = ray.put(obj, _owner=self._owner)
-        else:
-            object_id = ray.put(obj)
+        with record_time_cost_percentile(self._storage_put_metrics):
+            if support_specify_owner() and self._owner_address:
+                if not self._owner:
+                    self._owner = ray.get_actor(self._owner_address)
+                object_id = ray.put(obj, _owner=self._owner)
+            else:
+                object_id = ray.put(obj)
         # We can't get the serialized bytes length from ray.put
         return ObjectInfo(object_id=object_id)
 

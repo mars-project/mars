@@ -91,7 +91,7 @@ class FileSystemStorage(StorageBackend):
     @implements(StorageBackend.get)
     async def get(self, object_id, **kwargs) -> object:
         if kwargs:  # pragma: no cover
-            raise NotImplementedError('Got unsupported args: {",".join(kwargs)}')
+            raise NotImplementedError(f'Got unsupported args: {",".join(kwargs)}')
 
         file = await self._fs.open(object_id, "rb")
         async with file as f:

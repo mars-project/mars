@@ -78,7 +78,7 @@ class PruneDataSource(OptimizationRule, metaclass=ABCMeta):
 
     def _merge_selected_columns(self, selected_columns: List[Any], op: OperandType):
         input_node = self._graph.predecessors(op.outputs[0])[0]
-        original_node = self._records.get_original_chunk(input_node)
+        original_node = self._records.get_original_entity(input_node)
         if original_node is None:
             # not pruned before
             original_all_columns = input_node.dtypes.index.tolist()
@@ -150,7 +150,7 @@ class PruneDataSource(OptimizationRule, metaclass=ABCMeta):
             new_outputs = [new_data_source_node]
         else:
             selected_columns: List[Any] = self._get_selected_columns(op)
-            original_node = self._records.get_original_chunk(data_source_node)
+            original_node = self._records.get_original_entity(data_source_node)
             if original_node is not None:
                 # pruned before
                 dtypes = original_node.dtypes
