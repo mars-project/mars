@@ -16,6 +16,7 @@
 
 import io
 import os
+import re
 import sys
 import tempfile
 from collections import namedtuple
@@ -32,7 +33,7 @@ except ImportError:  # pragma: no cover
 from .. import tensor as mt
 from .. import dataframe as md
 from .. import remote as mr
-from ..config import option_context, options
+from ..config import option_context
 from ..deploy.utils import load_service_config_file
 from ..session import execute, fetch, fetch_log
 
@@ -493,6 +494,10 @@ def test_cache_tileable(setup):
     np.testing.assert_array_equal(t.fetch(), raw)
 
     t = mt.tensor(raw)
-    with pytest.warns(Warning, match=f"Tileable {repr(t)} has been submitted before"):
-        (t + 1).execute()
-        (t + 2).execute()
+    with option_context({"warn_duplicated_execution": True}):
+        with pytest.warns(
+            RuntimeWarning,
+            match=re.escape(f"Tileable {repr(t)} has been submitted before"),
+        ):
+            (t + 1).execute()
+            (t + 2).execute()

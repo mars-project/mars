@@ -391,6 +391,11 @@ default_options.register_option("optimize_tileable_graph", True, validator=is_bo
 # eager mode
 default_options.register_option("eager_mode", False, validator=is_bool)
 
+# optimization
+default_options.register_option(
+    "optimize.head_optimize_threshold", 1000, validator=is_integer
+)
+
 # debug
 default_options.register_option("warn_duplicated_execution", False, validator=is_bool)
 

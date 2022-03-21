@@ -87,14 +87,14 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         out = op.outputs[0]
         chunk_op = op.copy().reset_key()
         chunk_params = out.params.copy()
-        chunk_params["shape"] = calc_shape(inp.shape, op.indexes)
+        chunk_params["shape"] = shape = tuple(calc_shape(inp.shape, op.indexes))
         chunk_params["index"] = (0,) * out.ndim
         chunk = chunk_op.new_chunk(
             [inp.chunks[0] for inp in op.inputs], kws=[chunk_params]
         )
         params = out.params.copy()
         params["chunks"] = [chunk]
-        params["nsplits"] = tuple((s,) for s in out.shape)
+        params["nsplits"] = tuple((s,) for s in shape)
         return op.copy().new_tensors(op.inputs, kws=[params])
 
     @classmethod
@@ -121,8 +121,11 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     def estimate_size(cls, ctx, op):
         chunk = op.outputs[0]
         shape = chunk.shape
-        new_indexes = [index for index in op._indexes if index is not None]
 
+        if any(np.isnan(s) for s in shape):
+            return super().estimate_size(ctx, op)
+
+        new_indexes = [index for index in op._indexes if index is not None]
         new_shape = []
         first_fancy_index = False
         for index in new_indexes:

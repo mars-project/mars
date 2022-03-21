@@ -756,4 +756,7 @@ def roc_curve(
     else:
         tpr = tps / last_tps
 
-    return _execute([fpr, tpr, thresholds], session=session, **(run_kwargs or dict()))
+    ret = mt.ExecutableTuple([fpr, tpr, thresholds]).execute(
+        session=session, **(run_kwargs or dict())
+    )
+    return ret
