@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+import logging
 import pickle
 from collections import OrderedDict, defaultdict
 
@@ -24,8 +25,10 @@ from ....core.context import get_context
 from ....core.operand import MergeDictOperand
 from ....serialization.serializables import FieldTypes, DictField, KeyField, ListField
 from ....utils import ensure_own_data
-from .start_tracker import StartTracker
 from .dmatrix import ToDMatrix, to_dmatrix
+from .start_tracker import StartTracker
+
+logger = logging.getLogger(__name__)
 
 
 def _on_serialize_evals(evals_val):
@@ -37,72 +40,35 @@ def _on_serialize_evals(evals_val):
 class XGBTrain(MergeDictOperand):
     _op_type_ = OperandDef.XGBOOST_TRAIN
 
-    _params = DictField("params", key_type=FieldTypes.string)
-    _dtrain = KeyField("dtrain")
-    _evals = ListField("evals", on_serialize=_on_serialize_evals)
-    _kwargs = DictField("kwargs", key_type=FieldTypes.string)
-    _tracker = KeyField("tracker")
+    params = DictField("params", key_type=FieldTypes.string, default=None)
+    dtrain = KeyField("dtrain", default=None)
+    evals = ListField("evals", on_serialize=_on_serialize_evals, default=None)
+    kwargs = DictField("kwargs", key_type=FieldTypes.string, default=None)
+    tracker = KeyField("tracker", default=None)
 
-    def __init__(
-        self,
-        params=None,
-        dtrain=None,
-        evals=None,
-        kwargs=None,
-        tracker=None,
-        gpu=None,
-        **kw
-    ):
-        super().__init__(
-            _params=params,
-            _dtrain=dtrain,
-            _evals=evals,
-            _kwargs=kwargs,
-            _tracker=tracker,
-            gpu=gpu,
-            **kw
-        )
+    def __init__(self, gpu=None, **kw):
+        super().__init__(gpu=gpu, **kw)
         if self.output_types is None:
             self.output_types = [OutputType.object]
 
-    @property
-    def params(self):
-        return self._params
-
-    @property
-    def dtrain(self):
-        return self._dtrain
-
-    @property
-    def evals(self):
-        return self._evals
-
-    @property
-    def kwargs(self):
-        return self._kwargs
-
-    @property
-    def tracker(self):
-        return self._tracker
-
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        self._dtrain = self._inputs[0]
+        self.dtrain = self._inputs[0]
         rest = self._inputs[1:]
-        if self._tracker is not None:
-            self._tracker = self._inputs[-1]
+        if self.tracker is not None:
+            self.tracker = self._inputs[-1]
             rest = rest[:-1]
-        if self._evals is not None:
-            evals_dict = OrderedDict(self._evals)
+        if self.evals is not None:
+            evals_dict = OrderedDict(self.evals)
             new_evals_dict = OrderedDict()
             for new_key, val in zip(rest, evals_dict.values()):
                 new_evals_dict[new_key] = val
-            self._evals = list(new_evals_dict.items())
+            self.evals = list(new_evals_dict.items())
 
     def __call__(self):
-        inputs = [self._dtrain]
-        if self._evals is not None:
-            inputs.extend(e[0] for e in self._evals)
+        inputs = [self.dtrain]
+        if self.evals is not None:
+            inputs.extend(e[0] for e in self.evals)
         return self.new_tileable(inputs)
 
     @staticmethod
@@ -114,7 +80,7 @@ class XGBTrain(MergeDictOperand):
         return [m["bands"][0][0] for m in metas]
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "XGBTrain"):
         ctx = get_context()
 
         inp = op.inputs[0]
@@ -140,7 +106,7 @@ class XGBTrain(MergeDictOperand):
         for worker in all_workers:
             chunk_op = op.copy().reset_key()
             chunk_op.expect_worker = worker
-            chunk_op._tracker = tracker_chunk
+            chunk_op.tracker = tracker_chunk
             if worker in worker_to_in_chunks:
                 in_chunk = worker_to_in_chunks[worker]
             else:
@@ -159,7 +125,7 @@ class XGBTrain(MergeDictOperand):
                 params["shape"] = (0, inp.shape[1])
                 in_chunk = in_chunk_op.new_chunk(None, kws=[params])
             chunk_evals = list(worker_to_evals.get(worker, list()))
-            chunk_op._evals = chunk_evals
+            chunk_op.evals = chunk_evals
             input_chunks = (
                 [in_chunk] + [pair[0] for pair in chunk_evals] + [tracker_chunk]
             )
@@ -174,21 +140,47 @@ class XGBTrain(MergeDictOperand):
         )
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "XGBTrain"):
         if op.merge:
             return super().execute(ctx, op)
 
         from xgboost import train, rabit
 
-        dtrain = ToDMatrix.get_xgb_dmatrix(ensure_own_data(ctx[op.dtrain.key]))
+        params = op.params.copy()
+
+        n_threads = 0
+        if op.tracker is None:
+            # non distributed
+            ctx_n_threads = -1
+        else:
+            # distributed
+            ctx_n_threads = ctx.get_slots()
+
+        # fix parallelism on nodes
+        for p in ["nthread", "n_jobs"]:
+            if (
+                params.get(p, None) is not None
+                and params.get(p, ctx_n_threads) != ctx_n_threads
+            ):  # pragma: no cover
+                logger.info("Overriding `nthreads` defined in Mars worker.")
+                n_threads = params[p]
+                break
+        if n_threads == 0 or n_threads is None:  # pragma: no branch
+            n_threads = ctx_n_threads
+        params.update({"nthread": n_threads, "n_jobs": n_threads})
+
+        dtrain = ToDMatrix.get_xgb_dmatrix(
+            ensure_own_data(ctx[op.dtrain.key]), nthread=n_threads
+        )
         evals = tuple()
         if op.evals is not None:
             eval_dmatrices = [
-                ToDMatrix.get_xgb_dmatrix(ensure_own_data(ctx[t[0].key]))
+                ToDMatrix.get_xgb_dmatrix(
+                    ensure_own_data(ctx[t[0].key]), nthread=n_threads
+                )
                 for t in op.evals
             ]
             evals = tuple((m, ev[1]) for m, ev in zip(eval_dmatrices, op.evals))
-        params = op.params
 
         if op.tracker is None:
             # non distributed
@@ -203,6 +195,8 @@ class XGBTrain(MergeDictOperand):
             }
         else:
             # distributed
+            logger.debug("Distributed train params: %r", params)
+
             rabit_args = ctx[op.tracker.key]
             rabit.init(
                 [

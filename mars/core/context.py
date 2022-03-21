@@ -107,6 +107,16 @@ class Context(ABC):
         """
 
     @abstractmethod
+    def get_slots(self) -> int:
+        """
+        Get num of slots of current band
+
+        Returns
+        -------
+        number_of_bands: int
+        """
+
+    @abstractmethod
     def get_chunks_result(self, data_keys: List[str]) -> List:
         """
         Get result of chunks.
