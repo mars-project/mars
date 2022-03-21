@@ -140,7 +140,7 @@ class Subtask(Serializable):
             result_chunk_repr = " ".join(
                 [
                     f"{type(chunk.op).__name__}({chunk.key})"
-                    for chunk in self.chunk_graph.result_chunks
+                    for chunk in self.chunk_graph.result_chunks.values()
                 ]
             )
         else:  # pragma: no cover
