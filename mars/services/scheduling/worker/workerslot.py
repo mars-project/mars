@@ -249,23 +249,26 @@ class BandSlotManagerActor(mo.Actor):
             if slot_id not in self._slot_to_session_stid:
                 continue
             session_id, subtask_id = self._slot_to_session_stid[slot_id]
+            cpu_usage, gpu_usage, processor_usage = 0, 0, 0
             if self._band_name.startswith("gpu"):
-                usage = 1
+                processor_usage = gpu_usage = 1
             else:
                 try:
-                    usage = proc.cpu_percent(interval=None) / 100.0
+                    processor_usage = cpu_usage = (
+                        proc.cpu_percent(interval=None) / 100.0
+                    )
                 except psutil.NoSuchProcess:  # pragma: no cover
                     continue
                 except psutil.AccessDenied as e:  # pragma: no cover
                     logger.warning("Access denied when getting cpu percent: %s", e)
-                    usage = 0.0
+                    processor_usage = cpu_usage = 0.0
 
             slot_infos.append(
                 WorkerSlotInfo(
                     slot_id=slot_id,
                     session_id=session_id,
                     subtask_id=subtask_id,
-                    processor_usage=usage,
+                    processor_usage=processor_usage,
                 )
             )
 
@@ -276,7 +279,9 @@ class BandSlotManagerActor(mo.Actor):
                         self._band[1],
                         session_id,
                         subtask_id,
-                        Resource(num_cpus=max(1.0, usage)),
+                        Resource(
+                            num_cpus=max(1.0, cpu_usage), num_gpus=max(1.0, gpu_usage)
+                        ),
                     )
                 )
 
