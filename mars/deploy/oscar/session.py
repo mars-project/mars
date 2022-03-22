@@ -936,8 +936,8 @@ class _IsolatedSession(AbstractAsyncSession):
 
         # build tileable graph
         tileable_graph, to_execute_tileables = gen_submit_tileable_graph(
-                self, tileables, warn_duplicated_execution=warn_duplicated_execution
-            )
+            self, tileables, warn_duplicated_execution=warn_duplicated_execution
+        )
 
         # submit task
         task_id = await self._task_api.submit_tileable_graph(
@@ -952,7 +952,9 @@ class _IsolatedSession(AbstractAsyncSession):
         aio_task = asyncio.create_task(
             self._run_in_background(to_execute_tileables, task_id, progress)
         )
-        return ExecutionInfo(aio_task, progress,
+        return ExecutionInfo(
+            aio_task,
+            progress,
             asyncio.get_running_loop(),
             to_execute_tileables,
         )
