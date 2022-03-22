@@ -256,7 +256,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
         return new_op.new_tileables(op.inputs, kws=[kw])
 
     @staticmethod
-    def get_xgb_dmatrix(tup):
+    def get_xgb_dmatrix(tup, nthread: int = -1):
         from xgboost import DMatrix
 
         data, label, weight, base_margin, missing, feature_names, feature_types = tup
@@ -269,7 +269,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
             base_margin=base_margin,
             feature_names=feature_names,
             feature_types=feature_types,
-            nthread=-1,
+            nthread=nthread,
         )
 
     @staticmethod
