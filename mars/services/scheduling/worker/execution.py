@@ -227,8 +227,10 @@ class SubtaskExecutionActor(mo.StatelessActor):
         graph = subtask.chunk_graph
 
         key_to_ops = defaultdict(set)
+        chunk_key_to_sizes = defaultdict(lambda: 0)
         for n in graph:
             key_to_ops[n.op.key].add(n.op)
+            chunk_key_to_sizes[n.key] += 1
         key_to_ops = {k: list(v) for k, v in key_to_ops.items()}
 
         # condense op key graph
@@ -278,12 +280,23 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 succ_ref_count[pred_op_key] -= 1
                 if succ_ref_count[pred_op_key] == 0:
                     pred_op = key_to_ops[pred_op_key][0]
+                    outs = key_to_ops[pred_op_key][0].outputs
+                    for out in outs:
+                        chunk_key_to_sizes[out.key] -= 1
                     # when clearing fetches, subtract memory size, otherwise subtract store size
                     account_idx = 1 if isinstance(pred_op, Fetch) else 0
-                    pop_result_cost = sum(
-                        size_context.pop(out.key, (0, 0))[account_idx]
-                        for out in key_to_ops[pred_op_key][0].outputs
-                    )
+                    pop_result_cost = 0
+                    for out in outs:
+                        # corner case exist when a fetch op and another op has same chunk key
+                        # but their op keys are different
+                        if chunk_key_to_sizes[out.key] == 0:
+                            pop_result_cost += size_context.pop(out.key, (0, 0))[
+                                account_idx
+                            ]
+                        else:
+                            pop_result_cost += size_context.get(out.key, (0, 0))[
+                                account_idx
+                            ]
                     total_memory_cost -= pop_result_cost
         return sum(t[0] for t in size_context.values()), max_memory_cost
 

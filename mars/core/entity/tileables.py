@@ -21,7 +21,7 @@ from weakref import WeakSet, WeakKeyDictionary
 
 import numpy as np
 
-from ...serialization.serializables import FieldTypes, TupleField
+from ...serialization.serializables import FieldTypes, BoolField, TupleField
 from ...typing import OperandType, TileableType, ChunkType
 from ...utils import on_serialize_shape, on_deserialize_shape, on_serialize_nsplits
 from ..base import Base
@@ -273,6 +273,8 @@ class TileableData(EntityData, _ExecutableMixin):
         FieldTypes.tuple(FieldTypes.uint64),
         on_serialize=on_serialize_nsplits,
     )
+    # cache tileable data, if true, this data will be materialized
+    cache = BoolField("cache", default=False)
 
     def __init__(self: TileableType, *args, **kwargs):
         if kwargs.get("_nsplits", None) is not None:
