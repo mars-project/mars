@@ -18,17 +18,13 @@ import logging
 import time
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Dict, List, Type, Union, Optional
+from typing import Any, Dict, List, Type, Union
 
 from .... import oscar as mo
 from ....core import TileableGraph, TileableType, enter_mode
 from ....core.context import set_context
 from ....core.operand import Fetch
-from ...cluster.api import ClusterAPI
 from ...context import ThreadedServiceContext
-from ...lifecycle.api import LifecycleAPI
-from ...meta import MetaAPI
-from ...scheduling import SchedulingAPI
 from ...subtask import SubtaskResult, SubtaskGraph
 from ..config import task_options
 from ..core import Task, new_task_id, TaskStatus
@@ -43,17 +39,20 @@ class TaskConfigurationActor(mo.Actor):
     def __init__(
         self,
         task_conf: Dict[str, Any],
+        task_executor_config: Dict[str, Any],
         task_processor_cls: Type[TaskProcessor] = None,
         task_preprocessor_cls: Type[TaskPreprocessor] = None,
     ):
         for name, value in task_conf.items():
             setattr(task_options, name, value)
+        self._task_executor_config = task_executor_config
         self._task_processor_cls = task_processor_cls
         self._task_preprocessor_cls = task_preprocessor_cls
 
     def get_config(self):
         return {
             "task_options": task_options,
+            "task_executor_config": self._task_executor_config,
             "task_processor_cls": self._task_processor_cls,
             "task_preprocessor_cls": self._task_preprocessor_cls,
         }
@@ -72,14 +71,11 @@ class TaskManagerActor(mo.Actor):
     _task_id_to_processor_ref: Dict[str, Union[TaskProcessorActor, mo.ActorRef]]
     _tileable_key_to_info: Dict[str, List[ResultTileableInfo]]
 
-    _cluster_api: Optional[ClusterAPI]
-    _meta_api: Optional[MetaAPI]
-    _lifecycle_api: Optional[LifecycleAPI]
-
     def __init__(self, session_id: str):
         self._session_id = session_id
 
         self._config = None
+        self._task_executor_config = None
         self._task_processor_cls = None
         self._task_preprocessor_cls = None
         self._last_idle_time = None
@@ -90,28 +86,17 @@ class TaskManagerActor(mo.Actor):
         self._task_id_to_processor_ref = dict()
         self._tileable_key_to_info = defaultdict(list)
 
-        self._cluster_api = None
-        self._meta_api = None
-        self._lifecycle_api = None
-        self._scheduling_api = None
-
     async def __post_create__(self):
-        self._cluster_api = await ClusterAPI.create(self.address)
-        self._scheduling_api = await SchedulingAPI.create(
-            self._session_id, self.address
-        )
-        self._meta_api = await MetaAPI.create(self._session_id, self.address)
-        self._lifecycle_api = await LifecycleAPI.create(self._session_id, self.address)
-
         # get config
         configuration_ref = await mo.actor_ref(
             TaskConfigurationActor.default_uid(), address=self.address
         )
         task_conf = await configuration_ref.get_config()
-        self._config, self._task_preprocessor_cls, self._task_processor_cls = (
+        self._config, self._task_executor_config, self._task_processor_cls, self._task_preprocessor_cls, = (
             task_conf["task_options"],
-            task_conf["task_preprocessor_cls"],
+            task_conf["task_executor_config"],
             task_conf["task_processor_cls"],
+            task_conf["task_preprocessor_cls"],
         )
         self._task_preprocessor_cls = self._get_task_preprocessor_cls()
 
@@ -189,7 +174,11 @@ class TaskManagerActor(mo.Actor):
         # gen task processor
         tiled_context = await self._gen_tiled_context(graph)
         await processor_ref.add_task(
-            task, tiled_context, self._config, self._task_preprocessor_cls
+            task,
+            tiled_context,
+            self._config,
+            self._task_executor_config,
+            self._task_preprocessor_cls,
         )
 
         for tileable in graph.result_tileables:
