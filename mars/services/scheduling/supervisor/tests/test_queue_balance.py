@@ -14,9 +14,10 @@
 
 import asyncio
 import pytest
+from collections import defaultdict
 from typing import Tuple, List
-
 from ..... import oscar as mo
+from .....resource import Resource
 from ....cluster import ClusterAPI
 from ....cluster.core import NodeRole, NodeStatus
 from ....cluster.uploader import NodeInfoUploaderActor
@@ -27,7 +28,7 @@ from ...supervisor import (
     AssignerActor,
     SubtaskManagerActor,
     SubtaskQueueingActor,
-    GlobalSlotManagerActor,
+    GlobalResourceManagerActor,
 )
 
 
@@ -100,14 +101,20 @@ class FakeClusterAPI(ClusterAPI):
 
 class MockSlotsActor(mo.Actor):
     @mo.extensible
-    def apply_subtask_slots(
+    def apply_subtask_resources(
         self,
         band: Tuple,
         session_id: str,
         subtask_ids: List[str],
-        subtask_slots: List[int],
+        subtask_slots: List[Resource],
     ):
         return subtask_ids
+
+    def refresh_bands(self):
+        pass
+
+    def get_used_resources(self):
+        return {}
 
 
 class MockAssignerActor(mo.Actor):
@@ -129,15 +136,15 @@ class MockAssignerActor(mo.Actor):
 
 class MockSubtaskManagerActor(mo.Actor):
     def __init__(self):
-        self._subtask_ids, self._bands = [], []
+        self._submitted_subtask_ids = defaultdict(list)
 
     @mo.extensible
     def submit_subtask_to_band(self, subtask_id: str, band: Tuple):
-        self._subtask_ids.append(subtask_id)
-        self._bands.append(band)
+        print(f"submit subtask {subtask_id} to band {band}")
+        self._submitted_subtask_ids[band].append(subtask_id)
 
     def dump_data(self):
-        return self._subtask_ids, self._bands
+        return self._submitted_subtask_ids
 
 
 @pytest.fixture
@@ -163,7 +170,7 @@ async def actor_pool():
         # create slots actor
         slots_ref = await mo.create_actor(
             MockSlotsActor,
-            uid=GlobalSlotManagerActor.default_uid(),
+            uid=GlobalResourceManagerActor.default_uid(),
             address=pool.external_address,
         )
         # create queueing actor
@@ -209,15 +216,19 @@ async def test_subtask_queueing(actor_pool):
 
     # 9 subtasks on ('address0', 'numa-0')
     await queueing_ref.submit_subtasks(band=("address0", "numa-0"), limit=10)
-    commited_subtask_ids, _commited_bands = await manager_ref.dump_data()
-    assert len(commited_subtask_ids) == 9
+    commited_subtask_ids = (await manager_ref.dump_data())[("address0", "numa-0")]
+    assert (
+        len(commited_subtask_ids) == 9
+    ), f"commited_subtask_ids {commited_subtask_ids}"
 
     # 0 subtasks on ('address1', 'numa-0')
     await queueing_ref.submit_subtasks(band=("address1", "numa-0"), limit=10)
-    commited_subtask_ids, _commited_bands = await manager_ref.dump_data()
-    assert len(commited_subtask_ids) == 9
+    commited_subtask_ids = (await manager_ref.dump_data())[("address0", "numa-0")]
+    assert (
+        len(commited_subtask_ids) == 9
+    ), f"commited_subtask_ids {commited_subtask_ids}"
 
     # 9 subtasks on ('address2', 'numa-0')
     await queueing_ref.submit_subtasks(band=("address2", "numa-0"), limit=10)
-    commited_subtask_ids, _commited_bands = await manager_ref.dump_data()
-    assert len(commited_subtask_ids) == 18
+    submitted_subtask_ids = await manager_ref.dump_data()
+    assert sum(len(v) for v in submitted_subtask_ids.values()) == 18

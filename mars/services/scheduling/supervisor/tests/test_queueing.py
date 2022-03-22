@@ -16,13 +16,14 @@ import pytest
 from typing import Tuple, List
 
 from ..... import oscar as mo
+from .....resource import Resource
 from ....cluster import MockClusterAPI
 from ....subtask import Subtask
 from ...supervisor import (
     AssignerActor,
     SubtaskManagerActor,
     SubtaskQueueingActor,
-    GlobalSlotManagerActor,
+    GlobalResourceManagerActor,
 )
 
 
@@ -34,12 +35,12 @@ class MockSlotsActor(mo.Actor):
         self._capacity = capacity
 
     @mo.extensible
-    def apply_subtask_slots(
+    def apply_subtask_resources(
         self,
         band: Tuple,
         session_id: str,
         subtask_ids: List[str],
-        subtask_slots: List[int],
+        subtask_resources: List[Resource],
     ):
         idx = (
             min(self._capacity, len(subtask_ids))
@@ -92,7 +93,7 @@ async def actor_pool():
         # create slots actor
         slots_ref = await mo.create_actor(
             MockSlotsActor,
-            uid=GlobalSlotManagerActor.default_uid(),
+            uid=GlobalResourceManagerActor.default_uid(),
             address=pool.external_address,
         )
         # create queueing actor

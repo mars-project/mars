@@ -22,6 +22,7 @@ from typing import DefaultDict, Dict, List, Optional, Tuple, Union, Set
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
+from ....resource import Resource
 from ....utils import dataslots
 from ...subtask import Subtask
 from ...task import TaskAPI
@@ -108,10 +109,10 @@ class SubtaskQueueingActor(mo.Actor):
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
-        from .globalslot import GlobalSlotManagerActor
+        from .globalresource import GlobalResourceManagerActor
 
         [self._slots_ref] = await self._cluster_api.get_supervisor_refs(
-            [GlobalSlotManagerActor.default_uid()]
+            [GlobalResourceManagerActor.default_uid()]
         )
         from .assigner import AssignerActor
 
@@ -205,12 +206,14 @@ class SubtaskQueueingActor(mo.Actor):
             submitted_bands.append(band)
             submit_items_list.append(submit_items)
 
-            # todo it is possible to provide slot data with more accuracy
-            subtask_slots = [1] * len(subtask_ids)
-
+            # Before hbo, when a manager finish a subtask, it will schedule one subtask successfully because
+            # there is a slot idle. But now we have memory requirements, so the subtask may apply resource
+            # from supervisor failed. In such cases, those subtasks will never got scheduled.
+            # TODO We can use `_periodical_submit_task` to submit those subtasks.
+            subtask_resources = [Resource(num_cpus=1) for _ in submit_items.values()]
             apply_delays.append(
-                self._slots_ref.apply_subtask_slots.delay(
-                    band, self._session_id, subtask_ids, subtask_slots
+                self._slots_ref.apply_subtask_resources.delay(
+                    band, self._session_id, subtask_ids, subtask_resources
                 )
             )
 
@@ -222,7 +225,7 @@ class SubtaskQueueingActor(mo.Actor):
                 for item in submit_items.values()
             ],
         ):
-            submitted_ids_list = await self._slots_ref.apply_subtask_slots.batch(
+            submitted_ids_list = await self._slots_ref.apply_subtask_resources.batch(
                 *apply_delays
             )
 
@@ -255,6 +258,8 @@ class SubtaskQueueingActor(mo.Actor):
                     logger.debug("No slots available")
 
             for stid in non_submitted_ids:
+                # TODO if subtasks submit failed due to lacking memory/cpu/gpu resources, lower the priority so that
+                # other subtasks can be submitted.
                 heapq.heappush(task_queue, submit_items[stid])
 
         if submit_aio_tasks:

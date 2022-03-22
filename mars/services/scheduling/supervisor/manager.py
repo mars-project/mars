@@ -81,7 +81,7 @@ class SubtaskManagerActor(mo.Actor):
         self._subtask_cancel_timeout = subtask_cancel_timeout
         self._speculation_config = speculation_config or {}
         self._queueing_ref = None
-        self._global_slot_ref = None
+        self._global_resource_ref = None
         logger.info(
             "Created SubtaskManager with subtask_max_reschedules %s, "
             "speculation_config %s",
@@ -95,15 +95,15 @@ class SubtaskManagerActor(mo.Actor):
         self._queueing_ref = await mo.actor_ref(
             SubtaskQueueingActor.gen_uid(self._session_id), address=self.address
         )
-        from ..supervisor import GlobalSlotManagerActor
+        from ..supervisor import GlobalResourceManagerActor
 
-        self._global_slot_ref = await mo.actor_ref(
-            GlobalSlotManagerActor.default_uid(), address=self.address
+        self._global_resource_ref = await mo.actor_ref(
+            GlobalResourceManagerActor.default_uid(), address=self.address
         )
         from .speculation import SpeculativeScheduler
 
         self._speculation_execution_scheduler = SpeculativeScheduler(
-            self._queueing_ref, self._global_slot_ref, self._speculation_config
+            self._queueing_ref, self._global_resource_ref, self._speculation_config
         )
         await self._speculation_execution_scheduler.start()
 
@@ -289,7 +289,7 @@ class SubtaskManagerActor(mo.Actor):
                 raise ex
             finally:
                 # make sure slot is released before marking tasks as finished
-                await self._global_slot_ref.release_subtask_slots(
+                await self._global_resource_ref.release_subtask_resource(
                     band,
                     subtask_info.subtask.session_id,
                     subtask_info.subtask.subtask_id,
@@ -299,10 +299,10 @@ class SubtaskManagerActor(mo.Actor):
                     band,
                     subtask_info.subtask.subtask_id,
                 )
-                # We should call submit_subtasks after the slot is released.
-                # If submit_subtasks runs before release_subtask_slots
+                # We should call submit_subtasks after the resource is released.
+                # If submit_subtasks runs before release_subtask_resource
                 # then the rescheduled subtask may not be submitted due to
-                # no available slots. The mars will hangs.
+                # no available resource. The mars will hangs.
                 if subtask_info.num_reschedules > 0:
                     await self._queueing_ref.submit_subtasks.tell()
 

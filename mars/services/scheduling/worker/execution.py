@@ -139,7 +139,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
         data_prepare_timeout: int = 600,
     ):
         self._cluster_api = None
-        self._global_slot_ref = None
+        self._global_resource_ref = None
         self._subtask_max_retries = subtask_max_retries
         self._enable_kill_slot = enable_kill_slot
         self._data_prepare_timeout = data_prepare_timeout
