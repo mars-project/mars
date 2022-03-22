@@ -493,11 +493,20 @@ def test_cache_tileable(setup):
     np.testing.assert_array_equal(result, raw + 1)
     np.testing.assert_array_equal(t.fetch(), raw)
 
-    t = mt.tensor(raw)
     with option_context({"warn_duplicated_execution": True}):
+        t = mt.tensor(raw)
         with pytest.warns(
             RuntimeWarning,
             match=re.escape(f"Tileable {repr(t)} has been submitted before"),
         ):
             (t + 1).execute()
             (t + 2).execute()
+
+        # should have no warning
+        t = mt.tensor(raw)
+        with pytest.raises(BaseException, match="DID NOT WARN"):
+            with pytest.warns(
+                RuntimeWarning,
+                match=re.escape(f"Tileable {repr(t)} has been submitted before"),
+            ):
+                (t + 1).execute()

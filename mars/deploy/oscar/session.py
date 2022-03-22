@@ -686,7 +686,7 @@ def gen_submit_tileable_graph(
 ) -> Tuple[TileableGraph, List[TileableType]]:
     tileable_to_copied = dict()
     indexer = itertools.count()
-    result_to_index = {t: next(indexer) for t in result_tileables}
+    result_to_index = {t: i for t, i in zip(result_tileables, indexer)}
     result = list()
     to_execute_tileables = list()
     graph = TileableGraph(result)
