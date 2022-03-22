@@ -54,10 +54,10 @@ def flatten(a, order="C"):
 
     from ..reshape.reshape import TensorReshape, calc_shape
 
-    if np.isnan(sum(a.shape)):
-        raise ValueError(f"tensor shape is unknown, {a.shape}")
+    if a.ndim == 1:
+        return a
 
-    new_shape = calc_shape(a.size, -1)
+    new_shape = np.nan if any(np.isnan(s) for s in a.shape) else calc_shape(a.size, -1)
     tensor_order = get_order(order, a.order)
     op = TensorReshape(new_shape, dtype=a.dtype, create_view=False)
     return op(a, order=tensor_order, out_shape=new_shape)
