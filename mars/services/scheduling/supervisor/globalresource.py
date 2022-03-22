@@ -16,27 +16,13 @@ import asyncio
 import logging
 import time
 from collections import defaultdict
-from typing import List, DefaultDict, Dict, Tuple, Union
+from typing import List, DefaultDict, Dict, Tuple
 
 from .... import oscar as mo
 from ....resource import Resource, ZeroResource
 from ....typing import BandType
 
 logger = logging.getLogger(__name__)
-
-
-def _gen_resource(band: Union[BandType, str], slots: int):
-    if isinstance(band, str):
-        band_resource_type = band
-    else:
-        band_resource_type = band[1]
-    if band_resource_type.startswith("numa"):
-        resource = Resource(num_cpus=slots)
-    elif band_resource_type.startswith("gpu"):
-        resource = Resource(num_gpus=slots)
-    else:
-        raise ValueError(f"band name {band} format error")
-    return resource
 
 
 class GlobalResourceManagerActor(mo.Actor):
@@ -105,14 +91,6 @@ class GlobalResourceManagerActor(mo.Actor):
                 subtask_resources,
             )
         return subtask_ids[:idx]
-
-    @mo.extensible
-    def update_subtask_slots(
-        self, band: BandType, session_id: str, subtask_id: str, slots: int
-    ):
-        self.update_subtask_resources(
-            band, session_id, subtask_id, _gen_resource(band, slots)
-        )
 
     @mo.extensible
     def update_subtask_resources(
