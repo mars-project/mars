@@ -23,6 +23,7 @@ from ...utils import cache_tileables
 from ..preprocessing import label_binarize
 from ..utils._encode import _encode, _unique
 from ..utils.checks import assert_all_finite
+from ..utils.core import sort_by
 from ..utils.multiclass import type_of_target
 from ..utils.validation import check_array, check_consistent_length, column_or_1d
 from ._base import _average_binary_score, _average_multiclass_ovo_score
@@ -177,11 +178,24 @@ def _binary_clf_curve(
     y_true = y_true == pos_label
 
     # sort scores and corresponding truth values
-    desc_score_indices = mt.argsort(y_score, kind="mergesort")[::-1]
-    y_score = y_score[desc_score_indices]
-    y_true = y_true[desc_score_indices]
+    # original implementation adopted from sklearn:
+    # """
+    # desc_score_indices = mt.argsort(y_score, kind="mergesort")[::-1]
+    # y_score = y_score[desc_score_indices]
+    # y_true = y_true[desc_score_indices]
+    # if sample_weight is not None:
+    #     weight = sample_weight[desc_score_indices]
+    # else:
+    #     weight = 1.0
+    # """
+    # since fancy indexing is a heavy operation, we try to use DataFrame to sort
+    to_sort = [y_score, y_true]
     if sample_weight is not None:
-        weight = sample_weight[desc_score_indices]
+        to_sort.append(sample_weight)
+    to_sort = sort_by(to_sort, y_score, ascending=False)
+    y_score, y_true = to_sort[:2]
+    if sample_weight is not None:
+        weight = to_sort[-1]
     else:
         weight = 1.0
 
@@ -192,16 +206,23 @@ def _binary_clf_curve(
     threshold_idxs = mt.r_[distinct_value_indices, y_true.size - 1]
 
     # accumulate the true positives with decreasing threshold
-    tps = (y_true * weight).cumsum()[threshold_idxs]
+    # raw tps from sklearn implementation
+    # we try to perform only one fancy index
+    # tps = (y_true * weight).cumsum()[threshold_idxs]
+    temp_tps = (y_true * weight).cumsum()
     if sample_weight is not None:
         # express fps as a cumsum to ensure fps is increasing even in
         # the presence of floating point errors
-        fps = ((1 - y_true) * weight).cumsum()[threshold_idxs]
+        # fps = ((1 - y_true) * weight).cumsum()[threshold_idxs]
+        temp_fps = ((1 - y_true) * weight).cumsum()
+        tps, fps, thresholds = mt.stack([temp_tps, temp_fps, y_score])[
+            :, threshold_idxs
+        ]
+
     else:
+        tps, thresholds = mt.stack([temp_tps, y_score])[:, threshold_idxs]
         fps = 1 + threshold_idxs - tps
-    return _execute(
-        [fps, tps, y_score[threshold_idxs]], session=session, **(run_kwargs or dict())
-    )
+    return _execute([fps, tps, thresholds], session=session, **(run_kwargs or dict()))
 
 
 def _binary_roc_auc_score(
@@ -717,9 +738,16 @@ def roc_curve(
         optimal_idxs = mt.where(
             mt.r_[True, mt.logical_or(mt.diff(fps, 2), mt.diff(tps, 2)), True]
         )[0]
-        fps = fps[optimal_idxs]
-        tps = tps[optimal_idxs]
-        thresholds = thresholds[optimal_idxs]
+        # original implementation of sklearn:
+        # """
+        # fps = fps[optimal_idxs]
+        # tps = tps[optimal_idxs]
+        # thresholds = thresholds[optimal_idxs]
+        # """
+        # however, it's really a heavy operation to perform fancy index,
+        # thus we put them together
+        stacked = mt.stack([fps, tps, thresholds])
+        fps, tps, thresholds = stacked[:, optimal_idxs]
 
     # Add an extra threshold position
     # to make sure that the curve starts at (0, 0)
