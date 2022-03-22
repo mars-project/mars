@@ -153,6 +153,10 @@ def cpu_count():
     return _cpu_total
 
 
+def mem_total():
+    return virtual_memory().total
+
+
 _last_cgroup_cpu_measure = None
 _last_proc_cpu_measure = None
 _last_psutil_measure = None

@@ -16,13 +16,27 @@ import asyncio
 import logging
 import time
 from collections import defaultdict
-from typing import List, DefaultDict, Dict, Tuple
+from typing import List, DefaultDict, Dict, Tuple, Union
 
 from .... import oscar as mo
 from ....resource import Resource, ZeroResource
 from ....typing import BandType
 
 logger = logging.getLogger(__name__)
+
+
+def _gen_resource(band: Union[BandType, str], slots: int):
+    if isinstance(band, str):
+        band_resource_type = band
+    else:
+        band_resource_type = band[1]
+    if band_resource_type.startswith("numa"):
+        resource = Resource(num_cpus=slots)
+    elif band_resource_type.startswith("gpu"):
+        resource = Resource(num_gpus=slots)
+    else:
+        raise ValueError(f"band name {band} format error")
+    return resource
 
 
 class GlobalResourceManagerActor(mo.Actor):
@@ -48,10 +62,10 @@ class GlobalResourceManagerActor(mo.Actor):
         async def watch_bands():
             async for bands in self._cluster_api.watch_all_bands():
                 old_bands = set(self._band_total_resources.keys())
-                await self._refresh_bands(bands)
+                self._band_total_resources = bands
                 new_bands = set(bands.keys()) - old_bands
                 for band in new_bands:
-                    self._update_band_usage(band, ZeroResource)
+                    self._update_slot_usage(band, 0)
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
@@ -59,20 +73,7 @@ class GlobalResourceManagerActor(mo.Actor):
         self._band_watch_task.cancel()
 
     async def refresh_bands(self):
-        bands = await self._cluster_api.get_all_bands()
-        await self._refresh_bands(bands)
-
-    async def _refresh_bands(self, bands):
-        # TODO add `num_mem_bytes` after supported report worker memory
-        band_total_resources = {}
-        for band, slot in bands.items():
-            if band[1].startswith("gpu"):
-                band_total_resources[band] = Resource(num_gpus=slot)
-            elif band[1].startswith("numa"):
-                band_total_resources[band] = Resource(num_cpus=slot)
-            else:
-                raise NotImplementedError(f"Unsupported band type {band}")
-        self._band_total_resources = band_total_resources
+        self._band_total_resources = await self._cluster_api.get_all_bands()
 
     @mo.extensible
     async def apply_subtask_resources(
@@ -106,6 +107,14 @@ class GlobalResourceManagerActor(mo.Actor):
         return subtask_ids[:idx]
 
     @mo.extensible
+    def update_subtask_slots(
+        self, band: BandType, session_id: str, subtask_id: str, slots: int
+    ):
+        self.update_subtask_resources(
+            band, session_id, subtask_id, _gen_resource(band, slots)
+        )
+
+    @mo.extensible
     def update_subtask_resources(
         self, band: BandType, session_id: str, subtask_id: str, resource: Resource
     ):
@@ -119,6 +128,10 @@ class GlobalResourceManagerActor(mo.Actor):
         self._update_band_usage(band, resource_delta)
 
     @mo.extensible
+    def release_subtask_slots(self, band: BandType, session_id: str, subtask_id: str):
+        self.release_subtask_resource(band, session_id, subtask_id)
+
+    @mo.extensible
     def release_subtask_resource(
         self, band: BandType, session_id: str, subtask_id: str
     ):
@@ -127,6 +140,9 @@ class GlobalResourceManagerActor(mo.Actor):
             (session_id, subtask_id), ZeroResource
         )
         self._update_band_usage(band, -resource_delta)
+
+    def _update_slot_usage(self, band: BandType, slots_usage_delta: float):
+        self._update_band_usage(band, _gen_resource(band, slots_usage_delta))
 
     def _update_band_usage(self, band: BandType, band_usage_delta: Resource):
         self._band_used_resources[band] += band_usage_delta
@@ -148,8 +164,20 @@ class GlobalResourceManagerActor(mo.Actor):
         else:
             self._band_idle_start_time[band] = -1
 
+    def get_used_slots(self) -> Dict[BandType, float]:
+        return {
+            band: resource.num_cpus or resource.num_gpus
+            for band, resource in self.get_used_resources().items()
+        }
+
     def get_used_resources(self) -> Dict[BandType, Resource]:
         return self._band_used_resources
+
+    def get_remaining_slots(self) -> Dict[BandType, float]:
+        return {
+            band: resource.num_cpus or resource.num_gpus
+            for band, resource in self.get_remaining_resources().items()
+        }
 
     def get_remaining_resources(self) -> Dict[BandType, Resource]:
         resources = {}

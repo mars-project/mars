@@ -407,8 +407,8 @@ class WorkerQuotaManagerActor(mo.Actor):
 
         self._cluster_api = await ClusterAPI.create(self.address)
 
-        band_to_slots = await self._cluster_api.get_bands()
-        for band in band_to_slots.keys():
+        band_to_resource = await self._cluster_api.get_bands()
+        for band in band_to_resource.keys():
             band_config = self._band_configs.get(band[1], self._default_config)
             hard_limit = band_config.get("hard_limit")
             actor_cls = MemQuotaActor if hard_limit else QuotaActor

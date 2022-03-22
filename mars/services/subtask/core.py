@@ -16,6 +16,7 @@ from enum import Enum
 from typing import Iterable, List, Optional, Set, Tuple
 
 from ...core import ChunkGraph, DAG
+from ...resource import Resource
 from ...serialization.serializables import (
     Serializable,
     StringField,
@@ -72,6 +73,7 @@ class Subtask(Serializable):
     logic_parallelism: int = Int32Field("logic_parallelism")
     # subtask can only run in specified bands in `expect_bands`
     bands_specified: bool = BoolField("bands_specified")
+    required_resource: Resource = ReferenceField("required_resource", Resource)
 
     def __init__(
         self,
@@ -91,6 +93,7 @@ class Subtask(Serializable):
         logic_index: int = None,
         logic_parallelism: int = None,
         bands_specified: bool = False,
+        required_resource: Resource = None,
     ):
         super().__init__(
             subtask_id=subtask_id,
@@ -109,6 +112,7 @@ class Subtask(Serializable):
             logic_index=logic_index,
             logic_parallelism=logic_parallelism,
             bands_specified=bands_specified,
+            required_resource=required_resource,
         )
         self._pure_depend_keys = None
         self._repr = None

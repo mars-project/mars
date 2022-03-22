@@ -47,13 +47,13 @@ class WorkerSlotManagerActor(mo.Actor):
     async def __post_create__(self):
         self._cluster_api = await ClusterAPI.create(self.address)
 
-        band_to_slots = await self._cluster_api.get_bands()
-        for band, n_slot in band_to_slots.items():
+        band_to_resource = await self._cluster_api.get_bands()
+        for band, resource in band_to_resource.items():
             self._band_slot_managers[band] = await mo.create_actor(
                 BandSlotManagerActor,
                 band,
-                n_slot,
-                self._global_resource_ref,
+                resource.num_cpus or resource.num_gpus,
+                self._global_slots_ref,
                 uid=BandSlotManagerActor.gen_uid(band[1]),
                 address=self.address,
             )
@@ -80,8 +80,8 @@ class BandSlotManagerActor(mo.Actor):
 
         self._band = band
         self._band_name = band[1]
-        self._global_resource_ref = global_resource_ref
-        self._n_slots = n_slots
+        self._global_slots_ref = global_slots_ref
+        self._n_slots = int(n_slots)
 
         self._semaphore = asyncio.Semaphore(0)
         self._slot_control_refs = dict()
@@ -244,7 +244,7 @@ class BandSlotManagerActor(mo.Actor):
     async def upload_slot_usages(self, periodical: bool = False):
         delays = []
         slot_infos = []
-        global_resource_ref = await self._get_global_resource_ref()
+        global_slots_ref = await self._get_global_resource_ref()
         for slot_id, proc in self._slot_to_proc.items():
             if slot_id not in self._slot_to_session_stid:
                 continue

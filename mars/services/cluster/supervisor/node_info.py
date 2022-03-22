@@ -17,6 +17,7 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Set
 
 from .... import oscar as mo
+from ....resource import Resource
 from ....typing import BandType
 from ...core import NodeRole
 from ..core import NodeInfo, WatchNotifier, NodeStatus
@@ -135,11 +136,11 @@ class NodeInfoCollectorActor(mo.Actor):
 
     def get_all_bands(
         self, role: NodeRole = None, statuses: Set[NodeStatus] = None
-    ) -> Dict[BandType, int]:
+    ) -> Dict[BandType, Resource]:
         statuses = statuses or {NodeStatus.READY}
         role = role or NodeRole.WORKER
         nodes = self._role_to_nodes.get(role, [])
-        band_slots = dict()
+        band_resource = dict()
         for node in nodes:
             if self._node_infos[node].status not in statuses:
                 continue
@@ -147,11 +148,15 @@ class NodeInfoCollectorActor(mo.Actor):
             for resource_type, info in node_resource.items():
                 if resource_type.startswith("numa"):
                     # cpu
-                    band_slots[(node, resource_type)] = info["cpu_total"]
+                    band_resource[(node, resource_type)] = Resource(
+                        num_cpus=info["cpu_total"], num_mem_bytes=info["memory_total"]
+                    )
                 else:  # pragma: no cover
                     assert resource_type.startswith("gpu")
-                    band_slots[(node, resource_type)] = info["gpu_total"]
-        return band_slots
+                    band_resource[(node, resource_type)] = Resource(
+                        num_gpus=info["gpu_total"]
+                    )
+        return band_resource
 
     def get_mars_versions(self) -> List[str]:
         versions = set(info.env["mars_version"] for info in self._node_infos.values())

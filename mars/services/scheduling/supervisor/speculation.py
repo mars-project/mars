@@ -167,7 +167,7 @@ class SpeculativeScheduler:
                 for info in unfinished_subtask_infos:
                     exclude_bands.update(info.band_futures.keys())
                 remaining_resources = (
-                    await self._global_resource_ref.get_remaining_resources()
+                    await self._global_resource_ref.get_remaining_slots()
                 )
                 logger.warning(
                     "%s subtasks in %s for group %s has not been finished in %s seconds on bands %s, "

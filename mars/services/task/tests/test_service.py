@@ -23,6 +23,7 @@ from .... import oscar as mo
 from .... import remote as mr
 from ....core import TileableGraph, TileableGraphBuilder
 from ....core.context import get_context
+from ....resource import Resource
 from ....utils import Timer
 from ... import start_services, stop_services, NodeRole
 from ...session import SessionAPI
@@ -75,7 +76,7 @@ async def start_test_service(actor_pools, request):
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,
-            "resource": {"numa-0": 2},
+            "resource": {"numa-0": Resource(num_cpus=2)},
         },
         "meta": {"store": "dict"},
         "scheduling": {},

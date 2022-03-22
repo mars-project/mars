@@ -1218,10 +1218,10 @@ class _IsolatedSession(AbstractAsyncSession):
     async def get_total_n_cpu(self):
         all_bands = await self._cluster_api.get_all_bands()
         n_cpu = 0
-        for band, size in all_bands.items():
+        for band, resource in all_bands.items():
             _, band_name = band
             if band_name.startswith("numa-"):
-                n_cpu += size
+                n_cpu += resource.num_cpus
         return n_cpu
 
     async def get_cluster_versions(self) -> List[str]:

@@ -30,6 +30,7 @@ from ...oscar.backends.ray.utils import (
 )
 from ...oscar.backends.ray.pool import RayPoolState
 from ...oscar.errors import ReconstructWorkerError
+from ...resource import Resource
 from ...services.cluster.backends.base import (
     register_cluster_backend,
     AbstractClusterBackend,
@@ -130,7 +131,7 @@ class RayClusterBackend(AbstractClusterBackend):
 class ClusterStateActor(mo.StatelessActor):
     def __init__(self):
         self._worker_cpu, self._worker_mem, self._config = None, None, None
-        self._pg_name, self._band_to_slot, self._worker_modules = None, None, None
+        self._pg_name, self._band_to_resource, self._worker_modules = None, None, None
         self._pg_counter = itertools.count()
         self._worker_count = 0
         self._workers = {}
@@ -147,7 +148,11 @@ class ClusterStateActor(mo.StatelessActor):
             config,
         )
         # TODO(chaokunyang) Support gpu
-        self._band_to_slot = {"numa-0": self._worker_cpu}
+        self._band_to_resource = {
+            "numa-0": Resource(
+                num_cpus=self._worker_cpu, num_mem_bytes=self._worker_mem
+            )
+        }
         self._worker_modules = get_third_party_modules_from_config(
             self._config, NodeRole.WORKER
         )
@@ -156,11 +161,14 @@ class ClusterStateActor(mo.StatelessActor):
         self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None
     ) -> Optional[str]:
         worker_cpu = worker_cpu or self._worker_cpu
+        worker_mem = worker_mem or self._worker_mem
         bundle = {
             "CPU": worker_cpu,
             # "memory": worker_mem or self._worker_mem
         }
-        band_to_slot = {"numa-0": worker_cpu}
+        band_to_resource = {
+            "numa-0": Resource(num_cpus=worker_cpu, num_mem_bytes=worker_mem)
+        }
         start_time = time.time()
         logger.info("Start to request worker with resource %s.", bundle)
         # TODO rescale ray placement group instead of creating new placement group
@@ -193,7 +201,7 @@ class ClusterStateActor(mo.StatelessActor):
         )
         worker_address = process_placement_to_address(pg_name, 0, 0)
         worker_pool = await self.create_worker(worker_address)
-        await self.start_worker(worker_address, band_to_slot=band_to_slot)
+        await self.start_worker(worker_address, band_to_resource=band_to_resource)
         logger.info(
             "Request worker %s succeeds in %.4f seconds",
             worker_address,
@@ -206,7 +214,7 @@ class ClusterStateActor(mo.StatelessActor):
         start_time = time.time()
         worker_pool = await create_worker_actor_pool(
             worker_address,
-            self._band_to_slot,
+            self._band_to_resource,
             modules=self._worker_modules,
             metrics=self._config.get("metrics", {}),
         )
@@ -217,12 +225,12 @@ class ClusterStateActor(mo.StatelessActor):
         )
         return worker_pool
 
-    async def start_worker(self, worker_address, band_to_slot=None):
+    async def start_worker(self, worker_address, band_to_resource=None):
         self._worker_count += 1
         start_time = time.time()
-        band_to_slot = band_to_slot or self._band_to_slot
+        band_to_resource = band_to_resource or self._band_to_resource
         await start_worker(
-            worker_address, self.address, band_to_slot, config=self._config
+            worker_address, self.address, band_to_resource, config=self._config
         )
         worker_pool = ray.get_actor(worker_address)
         await worker_pool.mark_service_ready.remote()
@@ -290,7 +298,7 @@ class ClusterStateActor(mo.StatelessActor):
 
             start_time = time.time()
             await start_worker(
-                address, self.address, self._band_to_slot, config=self._config
+                address, self.address, self._band_to_resource, config=self._config
             )
             await actor.mark_service_ready.remote()
             logger.info(
@@ -514,7 +522,11 @@ class RayCluster:
             asyncio.create_task(
                 create_worker_actor_pool(
                     addr,
-                    {"numa-0": self._worker_cpu},
+                    {
+                        "numa-0": Resource(
+                            num_cpus=self._worker_cpu, num_mem_bytes=self._worker_mem
+                        )
+                    },
                     modules=get_third_party_modules_from_config(
                         self._config, NodeRole.WORKER
                     ),
