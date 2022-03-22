@@ -136,11 +136,13 @@ class SubtaskExecutionActor(mo.StatelessActor):
         self,
         subtask_max_retries: int = DEFAULT_SUBTASK_MAX_RETRIES,
         enable_kill_slot: bool = True,
+        data_prepare_timeout: int = 600,
     ):
         self._cluster_api = None
         self._global_resource_ref = None
         self._subtask_max_retries = subtask_max_retries
         self._enable_kill_slot = enable_kill_slot
+        self._data_prepare_timeout = data_prepare_timeout
 
         self._subtask_info = dict()
 
@@ -165,15 +167,10 @@ class SubtaskExecutionActor(mo.StatelessActor):
         storage_api = await StorageAPI.create(
             subtask.session_id, address=self.address, band_name=band_name
         )
-        pure_dep_keys = set()
         chunk_key_to_data_keys = get_chunk_key_to_data_keys(subtask.chunk_graph)
-        for n in subtask.chunk_graph:
-            pure_dep_keys.update(
-                inp.key
-                for inp, pure_dep in zip(n.inputs, n.op.pure_depends)
-                if pure_dep
-            )
         for chunk in subtask.chunk_graph:
+            if chunk.key in subtask.pure_depend_keys:
+                continue
             if chunk.op.gpu:  # pragma: no cover
                 to_fetch_band = band_name
             else:
@@ -203,7 +200,11 @@ class SubtaskExecutionActor(mo.StatelessActor):
         sizes = dict()
 
         fetch_keys = list(
-            set(n.key for n in graph.iter_indep() if isinstance(n.op, Fetch))
+            set(
+                n.key
+                for n in graph.iter_indep()
+                if isinstance(n.op, Fetch) and n.key not in subtask.pure_depend_keys
+            )
         )
         if not fetch_keys:
             return sizes
@@ -249,6 +250,8 @@ class SubtaskExecutionActor(mo.StatelessActor):
         # condense op key graph
         op_key_graph = DAG()
         for n in graph.topological_iter():
+            if n.key in subtask.pure_depend_keys:
+                continue
             if n.op.key not in op_key_graph:
                 op_key_graph.add_node(n.op.key)
             for succ in graph.iter_successors(n):
@@ -316,8 +319,14 @@ class SubtaskExecutionActor(mo.StatelessActor):
             status=SubtaskStatus.pending,
         )
         try:
-            await _retry_run(
-                subtask, subtask_info, self._prepare_input_data, subtask, band_name
+            logger.debug("Preparing data for subtask %s", subtask.subtask_id)
+            prepare_data_task = asyncio.create_task(
+                _retry_run(
+                    subtask, subtask_info, self._prepare_input_data, subtask, band_name
+                )
+            )
+            await asyncio.wait_for(
+                prepare_data_task, timeout=self._data_prepare_timeout
             )
 
             input_sizes = await self._collect_input_sizes(
@@ -329,6 +338,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
             self._check_cancelling(subtask_info)
 
             batch_quota_req = {(subtask.session_id, subtask.subtask_id): calc_size}
+            logger.debug("Start actual running of subtask %s", subtask.subtask_id)
             subtask_info.result = await self._retry_run_subtask(
                 subtask, band_name, subtask_api, batch_quota_req
             )
@@ -466,6 +476,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 self.ref().internal_run_subtask(subtask, band_name)
             )
 
+        logger.debug("Subtask %r accepted in worker %s", subtask, self.address)
         # the extra_config may be None. the extra config overwrites the default value.
         subtask_max_retries = (
             subtask.extra_config.get("subtask_max_retries")

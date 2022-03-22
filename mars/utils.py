@@ -52,6 +52,7 @@ from typing import (
     Optional,
 )
 from types import TracebackType
+from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -1592,3 +1593,12 @@ def create_task_with_error_log(coro, *args, **kwargs):  # pragma: no cover
     else:
         call_site = None
     return _create_task(_run_task_with_error_log(coro, call_site), *args, **kwargs)
+
+
+def is_ray_address(address: str) -> bool:
+    from .oscar.backends.ray.communication import RayServer
+
+    if urlparse(address).scheme == RayServer.scheme:
+        return True
+    else:
+        return False

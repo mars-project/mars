@@ -95,7 +95,7 @@ class RunPyTorch(RunScript):
 
     @classmethod
     def execute(cls, ctx, op):
-        assert ctx.current_address.split(":")[0] == op.expect_worker.split(":")[0]
+        assert ctx.local_address.split(":")[0] == op.expect_worker.split(":")[0]
 
         super().execute(ctx, op)
 

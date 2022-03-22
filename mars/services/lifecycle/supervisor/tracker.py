@@ -170,7 +170,7 @@ class LifecycleTrackerActor(mo.Actor):
             incref_chunk_keys = self._tileable_key_to_chunk_keys[tileable_key]
             # incref chunks for this tileable
             logger.debug(
-                "Incref chunks %s while decrefing tileable %s",
+                "Incref chunks %s while increfing tileable %s",
                 incref_chunk_keys,
                 tileable_key,
             )
