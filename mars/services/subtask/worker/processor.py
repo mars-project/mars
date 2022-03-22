@@ -312,6 +312,7 @@ class SubtaskProcessor:
                     put = self._storage_api.put.delay(key, result_data)
                     data_key_to_puts[key] = put
         stored_keys = list(data_key_to_puts.keys())
+        puts = data_key_to_puts.values()
         logger.debug(
             "Start putting data keys: %s, subtask id: %s",
             stored_keys,
@@ -320,10 +321,8 @@ class SubtaskProcessor:
         data_key_to_store_size = dict()
         data_key_to_memory_size = dict()
         data_key_to_object_id = dict()
-        if data_key_to_puts:
-            put_infos = asyncio.create_task(
-                self._storage_api.put.batch(*data_key_to_puts.values())
-            )
+        if puts:
+            put_infos = asyncio.create_task(self._storage_api.put.batch(*puts))
             try:
                 store_infos = await put_infos
                 for store_key, store_info in zip(stored_keys, store_infos):
