@@ -19,6 +19,33 @@ from .....tests.core import _check_args, ObjectCheckMixin
 from ...worker.processor import SubtaskProcessor
 
 
+class CheckStorageAPI:
+    def __init__(self, storage_api):
+        self._storage_api = storage_api
+        self._put_data_keys = set()
+
+    def __getattr__(self, item):
+        return getattr(self._storage_api, item)
+
+    @property
+    def put(self):
+        owner = self
+        put = self._storage_api.put
+
+        class _PutWrapper:
+            def delay(self, data_key: str, obj: object, level=None):
+                if data_key in owner._put_data_keys:
+                    raise Exception(f"Duplicate data put: {data_key}, obj: {obj}")
+                else:
+                    owner._put_data_keys.add(data_key)
+                    return put.delay(data_key, obj, level)
+
+            def __getattr__(self, item):
+                return getattr(put, item)
+
+        return _PutWrapper()
+
+
 class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -37,6 +64,7 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
             check_options[key] = kwargs.get(key, True)
         self._check_options = check_options
         self._check_keys = kwargs.get("check_keys")
+        self._storage_api = CheckStorageAPI(self._storage_api)
 
     def _execute_operand(self, ctx: Dict[str, Any], op: OperandType):
         super()._execute_operand(ctx, op)
