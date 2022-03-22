@@ -113,10 +113,7 @@ class MockSlotsActor(mo.Actor):
     def refresh_bands(self):
         pass
 
-    def get_used_slots(self):
-        return {}
-
-    def get_remaining_slots(self):
+    def get_used_resources(self):
         return {}
 
 

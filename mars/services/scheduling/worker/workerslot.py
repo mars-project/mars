@@ -53,7 +53,7 @@ class WorkerSlotManagerActor(mo.Actor):
                 BandSlotManagerActor,
                 band,
                 resource.num_cpus or resource.num_gpus,
-                self._global_slots_ref,
+                self._global_resource_ref,
                 uid=BandSlotManagerActor.gen_uid(band[1]),
                 address=self.address,
             )
@@ -80,7 +80,7 @@ class BandSlotManagerActor(mo.Actor):
 
         self._band = band
         self._band_name = band[1]
-        self._global_slots_ref = global_slots_ref
+        self._global_resource_ref = global_resource_ref
         self._n_slots = int(n_slots)
 
         self._semaphore = asyncio.Semaphore(0)
@@ -244,7 +244,6 @@ class BandSlotManagerActor(mo.Actor):
     async def upload_slot_usages(self, periodical: bool = False):
         delays = []
         slot_infos = []
-        global_slots_ref = await self._get_global_resource_ref()
         for slot_id, proc in self._slot_to_proc.items():
             if slot_id not in self._slot_to_session_stid:
                 continue

@@ -274,8 +274,8 @@ async def test_report_usage(actor_pool: ActorPoolType):
     global_resource_ref = await mo.actor_ref(
         uid=GlobalResourceManagerActor.default_uid(), address=pool.external_address
     )
-    _band, session_id, subtask_id, slots = await global_resource_ref.get_result()
-    assert slots == pytest.approx(1.0)
+    _band, session_id, subtask_id, resources = await global_resource_ref.get_result()
+    assert resources.num_cpus == pytest.approx(1.0)
     assert session_id == "session_id"
     assert subtask_id == "subtask_id"
 

@@ -34,7 +34,6 @@ from ...task.supervisor.manager import TaskManagerActor
 from ...web import WebActor
 from .. import SchedulingAPI
 from ..supervisor import GlobalResourceManagerActor
-from ....resource import Resource
 
 
 class FakeTaskManager(TaskManagerActor):
@@ -79,18 +78,6 @@ def _gen_subtask(t, session_id):
     subtask = Subtask(new_task_id(), session_id, new_task_id(), chunk_graph)
 
     return subtask
-
-
-async def _assert_used_slots(global_resource_ref, worker_pool):
-    assert (
-        pytest.approx(
-            (await global_resource_ref.get_used_slots()).get(
-                (worker_pool.external_address, "numa-0"), 0
-            ),
-            rel=1e-10,
-        )
-        == 0
-    )
 
 
 @pytest.fixture
@@ -194,7 +181,9 @@ async def test_schedule_success(actor_pools):
     result = await storage_api.get(result_key)
     np.testing.assert_array_equal(np.ones((10, 10)) + 1, result)
 
-    await _assert_used_slots(global_resource_ref, worker_pool)
+    assert (await global_resource_ref.get_used_resources()).get(
+        (worker_pool.external_address, "numa-0"), Resource()
+    ) == Resource()
 
     [summary] = await _get_subtask_summaries_by_web(
         sv_pool.external_address, session_id, subtask.task_id
@@ -238,7 +227,9 @@ async def test_schedule_queue(actor_pools):
     await scheduling_api.update_subtask_priority(subtasks[-1].subtask_id, (6,))
     await asyncio.gather(*wait_tasks)
 
-    await _assert_used_slots(global_resource_ref, worker_pool)
+    assert (await global_resource_ref.get_used_resources()).get(
+        (worker_pool.external_address, "numa-0"), Resource()
+    ) == Resource()
 
 
 @pytest.mark.asyncio
@@ -260,7 +251,9 @@ async def test_schedule_error(actor_pools):
     with pytest.raises(ValueError):
         await task_manager_ref.wait_subtask_result(subtask.subtask_id)
 
-    await _assert_used_slots(global_resource_ref, worker_pool)
+    assert (await global_resource_ref.get_used_resources()).get(
+        (worker_pool.external_address, "numa-0"), Resource()
+    ) == Resource()
 
 
 @pytest.mark.asyncio
@@ -310,4 +303,6 @@ async def test_schedule_cancel(actor_pools):
     # `cancel_subtask` will invoke `task_api.set_subtask_result` which is async, wait 1 second so that slot can be
     # released.
     await asyncio.sleep(1)
-    await _assert_used_slots(global_resource_ref, worker_pool)
+    assert (await global_resource_ref.get_used_resources()).get(
+        (worker_pool.external_address, "numa-0"), Resource()
+    ) == Resource()

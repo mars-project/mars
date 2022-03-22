@@ -65,7 +65,7 @@ class GlobalResourceManagerActor(mo.Actor):
                 self._band_total_resources = bands
                 new_bands = set(bands.keys()) - old_bands
                 for band in new_bands:
-                    self._update_slot_usage(band, 0)
+                    self._update_band_usage(band, ZeroResource)
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
@@ -128,10 +128,6 @@ class GlobalResourceManagerActor(mo.Actor):
         self._update_band_usage(band, resource_delta)
 
     @mo.extensible
-    def release_subtask_slots(self, band: BandType, session_id: str, subtask_id: str):
-        self.release_subtask_resource(band, session_id, subtask_id)
-
-    @mo.extensible
     def release_subtask_resource(
         self, band: BandType, session_id: str, subtask_id: str
     ):
@@ -140,9 +136,6 @@ class GlobalResourceManagerActor(mo.Actor):
             (session_id, subtask_id), ZeroResource
         )
         self._update_band_usage(band, -resource_delta)
-
-    def _update_slot_usage(self, band: BandType, slots_usage_delta: float):
-        self._update_band_usage(band, _gen_resource(band, slots_usage_delta))
 
     def _update_band_usage(self, band: BandType, band_usage_delta: Resource):
         self._band_used_resources[band] += band_usage_delta
@@ -164,20 +157,8 @@ class GlobalResourceManagerActor(mo.Actor):
         else:
             self._band_idle_start_time[band] = -1
 
-    def get_used_slots(self) -> Dict[BandType, float]:
-        return {
-            band: resource.num_cpus or resource.num_gpus
-            for band, resource in self.get_used_resources().items()
-        }
-
     def get_used_resources(self) -> Dict[BandType, Resource]:
         return self._band_used_resources
-
-    def get_remaining_slots(self) -> Dict[BandType, float]:
-        return {
-            band: resource.num_cpus or resource.num_gpus
-            for band, resource in self.get_remaining_resources().items()
-        }
 
     def get_remaining_resources(self) -> Dict[BandType, Resource]:
         resources = {}

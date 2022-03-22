@@ -289,7 +289,7 @@ class SubtaskManagerActor(mo.Actor):
                 raise ex
             finally:
                 # make sure slot is released before marking tasks as finished
-                await self._global_resource_ref.release_subtask_slots(
+                await self._global_resource_ref.release_subtask_resource(
                     band,
                     subtask_info.subtask.session_id,
                     subtask_info.subtask.subtask_id,
