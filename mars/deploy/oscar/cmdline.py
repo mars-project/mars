@@ -18,6 +18,7 @@ import faulthandler
 import glob
 import importlib
 import json
+import logging.config
 import os
 import sys
 import tempfile
@@ -26,6 +27,8 @@ from typing import List
 import psutil
 
 from ..utils import load_service_config_file, get_third_party_modules_from_config
+
+logger = logging.getLogger(__name__)
 
 _is_windows: bool = sys.platform.startswith("win")
 
@@ -85,22 +88,23 @@ class OscarCommandRunner:
             "--use-uvloop", help="use uvloop, 'auto' by default. Use 'no' to disable"
         )
 
-    def config_logging(self):
-        import logging.config
+    def _get_logging_config_paths(self):
         import mars
 
         log_conf = self.args.log_conf or "logging.conf"
 
-        conf_file_paths = [
-            "",
-            os.path.abspath("."),
-            os.path.dirname(os.path.dirname(mars.__file__)),
+        return [
+            log_conf,
+            os.path.join(os.path.abspath("."), log_conf),
+            os.path.join(os.path.dirname(os.path.dirname(mars.__file__)), log_conf),
         ]
-        for path in conf_file_paths:
-            conf_path = os.path.join(path, log_conf) if path else log_conf
+
+    def config_logging(self):
+        for conf_path in self._get_logging_config_paths():
             if os.path.exists(conf_path):
                 self.logging_conf["file"] = conf_path
                 logging.config.fileConfig(conf_path, disable_existing_loggers=False)
+                logger.debug("Use logging config file at %s", conf_path)
                 break
         else:
             log_level = self.args.log_level

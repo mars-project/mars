@@ -25,6 +25,8 @@ import time
 import logging
 from threading import Thread
 
+logger = logging.getLogger(__name__)
+
 
 class ExSocket(object):
     """
@@ -174,7 +176,7 @@ class RabitTracker(object):
         self.start_time = None
         self.end_time = None
         self.nslave = nslave
-        logging.info("start listen on %s:%d", hostIP, self.port)
+        logger.info("start listen on %s:%d", hostIP, self.port)
 
     def __del__(self):
         self.sock.close()
@@ -284,13 +286,13 @@ class RabitTracker(object):
             s = SlaveEntry(fd, s_addr)
             if s.cmd == "print":
                 msg = s.sock.recvstr()
-                logging.info(msg.strip())
+                logger.info(msg.strip())
                 continue
             if s.cmd == "shutdown":
                 assert s.rank >= 0 and s.rank not in shutdown
                 assert s.rank not in wait_conn
                 shutdown[s.rank] = s
-                logging.debug("Receive %s signal from %d", s.cmd, s.rank)
+                logger.debug("Receive %s signal from %d", s.cmd, s.rank)
                 continue
             assert s.cmd == "start" or s.cmd == "recover"
             # lazily initialize the slaves
@@ -320,23 +322,23 @@ class RabitTracker(object):
                         s.assign_rank(rank, wait_conn, tree_map, parent_map, ring_map)
                         if s.wait_accept > 0:
                             wait_conn[rank] = s
-                        logging.debug(
+                        logger.debug(
                             "Receive %s signal from %s; assign rank %d",
                             s.cmd,
                             s.host,
                             s.rank,
                         )
                 if not todo_nodes:
-                    logging.info("@tracker All of %d nodes getting started", nslave)
+                    logger.info("@tracker All of %d nodes getting started", nslave)
                     self.start_time = time.time()
             else:
                 s.assign_rank(rank, wait_conn, tree_map, parent_map, ring_map)
-                logging.debug("Receive %s signal from %d", s.cmd, s.rank)
+                logger.debug("Receive %s signal from %d", s.cmd, s.rank)
                 if s.wait_accept > 0:
                     wait_conn[rank] = s
-        logging.info("@tracker All nodes finishes job")
+        logger.info("@tracker All nodes finishes job")
         self.end_time = time.time()
-        logging.info(
+        logger.info(
             "@tracker %s secs between node start and job finish",
             str(self.end_time - self.start_time),
         )
