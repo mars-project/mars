@@ -26,7 +26,7 @@ from .shift import DataFrameShift
 
 
 class DataFrameDiff(DataFrameOperandMixin, DataFrameOperand):
-    _op_type_ = opcodes.DATAFRAME_DIFF
+    _op_type_ = opcodes.DIFF
 
     _periods = Int64Field("periods")
     _axis = Int8Field("axis")

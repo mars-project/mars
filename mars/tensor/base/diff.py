@@ -14,8 +14,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...serialization.serializables import Int64Field, Int32Field
+from ...core import recursive_tile
+from ..operands import TensorOperand, TensorOperandMixin
 from ..utils import validate_axis
 from ..datasource import tensor as astensor
+
+
+class TensorDiff(TensorOperand, TensorOperandMixin):
+    n = Int64Field("n")
+    axis = Int32Field("axis")
+
+    def __call__(self, a):
+        shape = list(a.shape)
+        shape[self.axis] -= self.n
+        shape = tuple(shape)
+        return self.new_tensor([a], shape, dtype=a.dtype, order=a.order)
+
+    @classmethod
+    def tile(cls, op: "TensorDiff"):
+        axis = op.axis
+        n = op.n
+        a = astensor(op.inputs[0])
+
+        slc1 = (slice(None),) * axis + (slice(1, None),)
+        slc2 = (slice(None),) * axis + (slice(-1),)
+
+        for _ in range(n):
+            l = yield from recursive_tile(a[slc1])
+            r = (yield from recursive_tile(a[slc2])).rechunk(l.nsplits)
+            a = yield from recursive_tile(l - r)
+
+        return [a]
 
 
 def diff(a, n=1, axis=-1):
@@ -100,10 +130,5 @@ def diff(a, n=1, axis=-1):
     n = int(n)
 
     axis = validate_axis(a.ndim, axis)
-    slc1 = (slice(None),) * axis + (slice(1, None),)
-    slc2 = (slice(None),) * axis + (slice(-1),)
-
-    for _ in range(n):
-        a = a[slc1] - a[slc2]
-
-    return a
+    op = TensorDiff(axis=axis, n=n)
+    return op(a)

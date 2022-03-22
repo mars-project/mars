@@ -141,7 +141,14 @@ class LearnCountNonzero(LearnOperand, LearnOperandMixin):
                 res = np.bincount(X.indices, minlength=X.shape[1], weights=weights)
         if np.isscalar(res):
             res = np.array([res])
-        ctx[op.outputs[0].key] = res.reshape(op.outputs[0].shape)
+        out_shape = op.outputs[0].shape
+        if any(np.isnan(s) for s in out_shape):
+            new_shape = list(out_shape)
+            for i, s in enumerate(out_shape):
+                if np.isnan(s):
+                    new_shape[i] = -1
+            out_shape = tuple(new_shape)
+        ctx[op.outputs[0].key] = res.reshape(out_shape)
 
 
 def count_nonzero(X, axis: Optional[int] = None, sample_weight=None):

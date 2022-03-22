@@ -16,6 +16,7 @@
 
 import io
 import os
+import re
 import sys
 import tempfile
 from collections import namedtuple
@@ -481,3 +482,31 @@ def test_align_series(setup):
     r = df[0] != df.sort_index()[0].shift(-1)
     expected = pdf[0] != pdf.sort_index()[0].shift(-1)
     pd.testing.assert_series_equal(r.execute().fetch(), expected)
+
+
+def test_cache_tileable(setup):
+    raw = np.random.rand(10, 3)
+    t = mt.tensor(raw)
+    t.cache = True
+    t2 = t + 1
+    result = t2.execute().fetch()
+    np.testing.assert_array_equal(result, raw + 1)
+    np.testing.assert_array_equal(t.fetch(), raw)
+
+    with option_context({"warn_duplicated_execution": True}):
+        t = mt.tensor(raw)
+        with pytest.warns(
+            RuntimeWarning,
+            match=re.escape(f"Tileable {repr(t)} has been submitted before"),
+        ):
+            (t + 1).execute()
+            (t + 2).execute()
+
+        # should have no warning
+        t = mt.tensor(raw)
+        with pytest.raises(BaseException, match="DID NOT WARN"):
+            with pytest.warns(
+                RuntimeWarning,
+                match=re.escape(f"Tileable {repr(t)} has been submitted before"),
+            ):
+                (t + 1).execute()
