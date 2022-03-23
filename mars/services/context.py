@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import logging
 from collections import defaultdict
 from functools import lru_cache
 from typing import List, Dict
@@ -28,6 +29,8 @@ from .session import SessionAPI
 from .storage import StorageAPI
 from .subtask import SubtaskAPI
 from .meta import MetaAPI
+
+logger = logging.getLogger(__name__)
 
 
 class ThreadedServiceContext(Context):
@@ -115,6 +118,15 @@ class ThreadedServiceContext(Context):
             if band_name.startswith("numa-"):
                 n_cpu += resource.num_cpus
         return n_cpu
+
+    @implements(Context.get_slots)
+    def get_slots(self) -> int:
+        worker_bands = self._call(self._get_worker_bands())
+        return worker_bands[self.band]
+
+    async def _get_worker_bands(self):
+        worker_cluster_api = await ClusterAPI.create(self.worker_address)
+        return await worker_cluster_api.get_bands()
 
     async def _get_chunks_meta(
         self, data_keys: List[str], fields: List[str] = None, error: str = "raise"

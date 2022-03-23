@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from functools import wraps
 from numbers import Integral
 from urllib.parse import urlparse
-from weakref import WeakKeyDictionary
+from weakref import ref, WeakKeyDictionary, WeakSet
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
@@ -87,11 +87,13 @@ class ExecutionInfo:
         progress: Progress,
         profiling: Profiling,
         loop: asyncio.AbstractEventLoop,
+        to_execute_tileables: List[TileableType],
     ):
         self._aio_task = aio_task
         self._progress = progress
         self._profiling = profiling
         self._loop = loop
+        self._to_execute_tileables = [ref(t) for t in to_execute_tileables]
 
         self._future_local = threading.local()
 
@@ -118,6 +120,10 @@ class ExecutionInfo:
 
     def progress(self) -> float:
         return self._progress.value
+
+    @property
+    def to_execute_tileables(self) -> List[TileableType]:
+        return [t() for t in self._to_execute_tileables]
 
     def profiling_result(self) -> dict:
         return self._profiling.result
@@ -669,21 +675,29 @@ class ChunkFetchInfo:
     data: Any = None
 
 
+_submitted_tileables = WeakSet()
+
+
 @enter_mode(build=True, kernel=True)
 def gen_submit_tileable_graph(
-    session: "AbstractSession", result_tileables: List[TileableType]
-):
+    session: "AbstractSession",
+    result_tileables: List[TileableType],
+    warn_duplicated_execution: bool = False,
+) -> Tuple[TileableGraph, List[TileableType]]:
     tileable_to_copied = dict()
-    result = [None] * len(result_tileables)
+    indexer = itertools.count()
+    result_to_index = {t: i for t, i in zip(result_tileables, indexer)}
+    result = list()
+    to_execute_tileables = list()
     graph = TileableGraph(result)
 
     q = list(result_tileables)
     while q:
         tileable = q.pop()
         if tileable in tileable_to_copied:
-            if tileable in result_tileables:
-                result[result_tileables.index(tileable)] = tileable_to_copied[tileable]
             continue
+        if tileable.cache and tileable not in result_to_index:
+            result_to_index[tileable] = next(indexer)
         outputs = tileable.op.outputs
         inputs = tileable.inputs if session not in tileable._executed_sessions else []
         new_inputs = []
@@ -718,13 +732,28 @@ def gen_submit_tileable_graph(
                 ]
             for out, new_out in zip(outputs, new_outputs):
                 tileable_to_copied[out] = new_out
-                if out in result_tileables:
-                    result[result_tileables.index(out)] = new_out
                 graph.add_node(new_out)
                 for new_inp in new_inputs:
                     graph.add_edge(new_inp, new_out)
 
-    return graph
+    # process results
+    result.extend([None] * len(result_to_index))
+    for t, i in result_to_index.items():
+        result[i] = tileable_to_copied[t]
+        to_execute_tileables.append(t)
+
+    if warn_duplicated_execution:
+        for n, c in tileable_to_copied.items():
+            if not isinstance(c.op, Fetch) and n in _submitted_tileables:
+                warnings.warn(
+                    f"Tileable {repr(n)} has been submitted before", RuntimeWarning
+                )
+        # add all nodes into submitted tileables
+        _submitted_tileables.update(
+            n for n, c in tileable_to_copied.items() if not isinstance(c.op, Fetch)
+        )
+
+    return graph, to_execute_tileables
 
 
 @register_session_cls
@@ -932,6 +961,7 @@ class _IsolatedSession(AbstractAsyncSession):
         fuse_enabled: bool = kwargs.pop("fuse_enabled", None)
         task_name: str = kwargs.pop("task_name", None)
         extra_config: dict = kwargs.pop("extra_config", None)
+        warn_duplicated_execution: bool = kwargs.pop("warn_duplicated_execution", False)
         if kwargs:  # pragma: no cover
             raise TypeError(f"run got unexpected key arguments {list(kwargs)!r}")
 
@@ -942,7 +972,9 @@ class _IsolatedSession(AbstractAsyncSession):
 
         # build tileable graph
         with Timer() as timer:
-            tileable_graph = gen_submit_tileable_graph(self, tileables)
+            tileable_graph, to_execute_tileables = gen_submit_tileable_graph(
+                self, tileables, warn_duplicated_execution=warn_duplicated_execution
+            )
 
         logger.info(
             "Time consuming to generate a tileable graph is %ss with address %s, session id %s",
@@ -966,9 +998,15 @@ class _IsolatedSession(AbstractAsyncSession):
         profiling = Profiling()
         # create asyncio.Task
         aio_task = asyncio.create_task(
-            self._run_in_background(tileables, task_id, progress, profiling)
+            self._run_in_background(to_execute_tileables, task_id, progress, profiling)
         )
-        return ExecutionInfo(aio_task, progress, profiling, asyncio.get_running_loop())
+        return ExecutionInfo(
+            aio_task,
+            progress,
+            profiling,
+            asyncio.get_running_loop(),
+            to_execute_tileables,
+        )
 
     def _get_to_fetch_tileable(
         self, tileable: TileableType
@@ -1577,11 +1615,18 @@ class SyncSession(AbstractSyncSession):
 
     @implements(AbstractSyncSession.execute)
     def execute(
-        self, tileable, *tileables, show_progress: Union[bool, str] = None, **kwargs
+        self,
+        tileable,
+        *tileables,
+        show_progress: Union[bool, str] = None,
+        warn_duplicated_execution: bool = None,
+        **kwargs,
     ) -> Union[List[TileableType], TileableType, ExecutionInfo]:
         wait = kwargs.get("wait", True)
         if show_progress is None:
             show_progress = options.show_progress
+        if warn_duplicated_execution is None:
+            warn_duplicated_execution = options.warn_duplicated_execution
         to_execute_tileables = []
         for t in (tileable,) + tileables:
             to_execute_tileables.extend(t.op.outputs)
@@ -1594,6 +1639,7 @@ class SyncSession(AbstractSyncSession):
             *set(to_execute_tileables),
             session=self._isolated_session,
             show_progress=show_progress,
+            warn_duplicated_execution=warn_duplicated_execution,
             **kwargs,
         )
         fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
@@ -1627,6 +1673,7 @@ class SyncSession(AbstractSyncSession):
                 execution_info._progress,
                 execution_info._profiling,
                 execution_info.loop,
+                to_execute_tileables,
             )
             return new_execution_info
 
@@ -1755,12 +1802,13 @@ async def _execute(
     cancelled: asyncio.Event = None,
     **kwargs,
 ):
+    execution_info = await session.execute(*tileables, **kwargs)
+
     def _attach_session(future: asyncio.Future):
         if future.exception() is None:
-            for t in tileables:
+            for t in execution_info.to_execute_tileables:
                 t._attach_session(session)
 
-    execution_info = await session.execute(*tileables, **kwargs)
     execution_info.add_done_callback(_attach_session)
     cancelled = cancelled or asyncio.Event()
 
