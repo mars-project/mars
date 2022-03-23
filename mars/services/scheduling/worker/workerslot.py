@@ -52,7 +52,7 @@ class WorkerSlotManagerActor(mo.Actor):
             self._band_slot_managers[band] = await mo.create_actor(
                 BandSlotManagerActor,
                 band,
-                resource.num_cpus or resource.num_gpus,
+                int(resource.num_cpus or resource.num_gpus),
                 self._global_resource_ref,
                 uid=BandSlotManagerActor.gen_uid(band[1]),
                 address=self.address,
@@ -81,7 +81,7 @@ class BandSlotManagerActor(mo.Actor):
         self._band = band
         self._band_name = band[1]
         self._global_resource_ref = global_resource_ref
-        self._n_slots = int(n_slots)
+        self._n_slots = n_slots
 
         self._semaphore = asyncio.Semaphore(0)
         self._slot_control_refs = dict()
