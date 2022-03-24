@@ -76,6 +76,7 @@ def _gen_subtask(t, session_id):
 
     chunk_graph = next(ChunkGraphBuilder(graph, fuse_enabled=False).build())
     subtask = Subtask(new_task_id(), session_id, new_task_id(), chunk_graph)
+    subtask.required_resource = Resource(num_cpus=1)
 
     return subtask
 
