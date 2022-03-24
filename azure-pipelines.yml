@@ -23,7 +23,7 @@ jobs:
         mars.test.module: 'tensor'
 
   variables:
-    PYTHON: '3.8'
+    PYTHON: '3.9'
 
   steps:
     - powershell: |
@@ -120,7 +120,7 @@ jobs:
     vmImage: 'ubuntu-latest'
 
   variables:
-    PYTHON: '3.8'
+    PYTHON: '3.9'
 
   steps:
     - bash: |
