@@ -89,12 +89,12 @@ class XGBTrain(MergeDictOperand):
         worker_to_in_chunks = dict(zip(workers, in_chunks))
         n_chunk = len(in_chunks)
         out_chunks = []
-        worker_to_evals = defaultdict(list)
+        worker_to_evals = defaultdict(dict)
         if op.evals is not None:
             for dm, ev in op.evals:
                 ev_workers = cls._get_dmatrix_chunks_workers(ctx, dm)
                 for ev_worker, ev_chunk in zip(ev_workers, dm.chunks):
-                    worker_to_evals[ev_worker].append((ev_chunk, ev))
+                    worker_to_evals[ev_worker][ev] = ev_chunk
 
         all_workers = set(workers)
         all_workers.update(worker_to_evals)
@@ -121,10 +121,30 @@ class XGBTrain(MergeDictOperand):
                     _output_types=inp.op.output_types,
                 )
                 params = inp.params.copy()
-                params["index"] = (next(i),)
+                params["index"] = (next(i), 0)
                 params["shape"] = (0, inp.shape[1])
                 in_chunk = in_chunk_op.new_chunk(None, kws=[params])
-            chunk_evals = list(worker_to_evals.get(worker, list()))
+            chunk_evals = []
+            for dm, ev in op.evals:
+                try:
+                    chunk_evals.append((worker_to_evals[worker][ev], ev))
+                except KeyError:
+                    # create a new eval chunk
+                    eval_chunk_op = ToDMatrix(
+                        data=None,
+                        label=None,
+                        weight=None,
+                        base_margin=None,
+                        missing=dm.op.missing,
+                        feature_names=dm.op.feature_names,
+                        feature_types=dm.op.feature_types,
+                        _output_types=dm.op.output_types,
+                    )
+                    params = dm.params.copy()
+                    params["index"] = (0, 0)
+                    params["shape"] = (0, dm.shape[1])
+                    eval_chunk = eval_chunk_op.new_chunk(None, kws=[params])
+                    chunk_evals.append((eval_chunk, ev))
             chunk_op.evals = chunk_evals
             input_chunks = (
                 [in_chunk] + [pair[0] for pair in chunk_evals] + [tracker_chunk]
@@ -205,6 +225,11 @@ class XGBTrain(MergeDictOperand):
                 ]
             )
             try:
+                logger.debug(
+                    "Start to train data, train size: %s, evals sizes: %s",
+                    dtrain.num_row(),
+                    [ev[0].num_row() for ev in evals],
+                )
                 local_history = dict()
                 bst = train(
                     params, dtrain, evals=evals, evals_result=local_history, **op.kwargs

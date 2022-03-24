@@ -60,7 +60,8 @@ def test_local_train_dataframe(setup):
 
 
 @pytest.mark.skipif(xgboost is None, reason="XGBoost not installed")
-def test_train_evals(setup_cluster):
+@pytest.mark.parametrize("chunk_size", [n_rows // 5, n_rows])
+def test_train_evals(setup_cluster, chunk_size):
     rs = mt.random.RandomState(0)
     # keep 1 chunk for X and y
     X = rs.rand(n_rows, n_columns, chunk_size=(n_rows, n_columns // 2))
@@ -68,8 +69,8 @@ def test_train_evals(setup_cluster):
     base_margin = rs.rand(n_rows, chunk_size=n_rows)
     dtrain = MarsDMatrix(X, y, base_margin=base_margin)
     eval_x = MarsDMatrix(
-        rs.rand(n_rows, n_columns, chunk_size=n_rows // 5),
-        rs.rand(n_rows, chunk_size=n_rows // 5),
+        rs.rand(n_rows, n_columns, chunk_size=chunk_size),
+        rs.rand(n_rows, chunk_size=chunk_size),
     )
     evals = [(eval_x, "eval_x")]
     eval_result = dict()
