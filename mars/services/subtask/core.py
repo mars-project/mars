@@ -73,7 +73,7 @@ class Subtask(Serializable):
     logic_parallelism: int = Int32Field("logic_parallelism")
     # subtask can only run in specified bands in `expect_bands`
     bands_specified: bool = BoolField("bands_specified")
-    required_resource: Resource = ReferenceField("required_resource", Resource)
+    required_resource: Resource = AnyField("required_resource", Resource)
 
     def __init__(
         self,

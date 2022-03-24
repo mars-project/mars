@@ -142,7 +142,7 @@ def gather_node_resource(band_to_resource: Dict[str, Resource] = None, use_gpu=T
         if band_to_resource is None
         else band_to_resource.get("numa-0", ZeroResource).num_cpus
     )
-    num_mem_bytes = (
+    mem_bytes = (
         mem_info.total
         if band_to_resource is None
         else band_to_resource.get("numa-0", ZeroResource).num_mem_bytes
@@ -153,7 +153,7 @@ def gather_node_resource(band_to_resource: Dict[str, Resource] = None, use_gpu=T
             - mars_resource.cpu_percent() / 100.0,
             "cpu_total": num_cpu,
             "memory_avail": mem_info.available,
-            "memory_total": min(mem_info.total, num_mem_bytes),
+            "memory_total": min(mem_info.total, mem_bytes),
         }
 
     if use_gpu:

@@ -51,7 +51,7 @@ async def new_cluster_in_isolation(
     address: str = "0.0.0.0",
     n_worker: int = 1,
     n_cpu: Union[int, str] = "auto",
-    n_mem_bytes: Union[int, str] = "auto",
+    mem_bytes: Union[int, str] = "auto",
     cuda_devices: Union[List[int], str] = "auto",
     subprocess_start_method: str = None,
     backend: str = None,
@@ -66,7 +66,7 @@ async def new_cluster_in_isolation(
         address,
         n_worker,
         n_cpu,
-        n_mem_bytes,
+        mem_bytes,
         cuda_devices,
         subprocess_start_method,
         config,
@@ -81,7 +81,7 @@ async def new_cluster(
     address: str = "0.0.0.0",
     n_worker: int = 1,
     n_cpu: Union[int, str] = "auto",
-    n_mem_bytes: Union[int, str] = "auto",
+    mem_bytes: Union[int, str] = "auto",
     cuda_devices: Union[List[int], str] = "auto",
     subprocess_start_method: str = None,
     config: Union[str, Dict] = None,
@@ -94,7 +94,7 @@ async def new_cluster(
         address,
         n_worker=n_worker,
         n_cpu=n_cpu,
-        n_mem_bytes=n_mem_bytes,
+        mem_bytes=mem_bytes,
         cuda_devices=cuda_devices,
         subprocess_start_method=subprocess_start_method,
         config=config,
@@ -120,7 +120,7 @@ class LocalCluster:
         address: str = "0.0.0.0",
         n_worker: int = 1,
         n_cpu: Union[int, str] = "auto",
-        n_mem_bytes: Union[int, str] = "auto",
+        mem_bytes: Union[int, str] = "auto",
         cuda_devices: Union[List[int], List[List[int]], str] = "auto",
         subprocess_start_method: str = None,
         config: Union[str, Dict] = None,
@@ -137,7 +137,7 @@ class LocalCluster:
         self._subprocess_start_method = subprocess_start_method
         self._config = config
         self._n_cpu = cpu_count() if n_cpu == "auto" else n_cpu
-        self._n_mem_bytes = mem_total() if n_mem_bytes == "auto" else n_mem_bytes
+        self._mem_bytes = mem_total() if mem_bytes == "auto" else mem_bytes
         self._n_supervisor_process = n_supervisor_process
         if cuda_devices == "auto":
             total = cuda_count()
@@ -161,11 +161,11 @@ class LocalCluster:
                 f"{self._n_cpu} cpus are not enough "
                 f"for {n_worker}, try to decrease workers."
             )
-        worker_mem_bytes = self._n_mem_bytes // n_worker
+        mem_bytes = self._mem_bytes // n_worker
         for _, devices in zip(range(n_worker), devices_list):
             worker_band_to_resource = dict()
             worker_band_to_resource["numa-0"] = Resource(
-                num_cpus=worker_cpus, num_mem_bytes=worker_mem_bytes
+                num_cpus=worker_cpus, num_mem_bytes=mem_bytes
             )
             for i in devices:  # pragma: no cover
                 worker_band_to_resource[f"gpu-{i}"] = Resource(num_gpus=1)

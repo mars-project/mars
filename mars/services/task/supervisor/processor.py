@@ -24,7 +24,6 @@ from collections import defaultdict
 from functools import reduce, wraps
 from typing import Callable, Coroutine, Dict, Iterator, List, Optional, Set, Type, Union
 
-
 from .... import oscar as mo
 from ....config import Config
 from ....core import ChunkGraph, TileableGraph
