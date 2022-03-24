@@ -1617,3 +1617,30 @@ def cache_tileables(*tileables):
     for t in tileables:
         if isinstance(t, ENTITY_TYPE):
             t.cache = True
+
+
+class TreeReductionBuilder:
+    def __init__(self, combine_size=None):
+        from .config import options
+
+        self._combine_size = combine_size or options.combine_size
+
+    def _build_reduction(self, inputs, final=False):
+        raise NotImplementedError
+
+    def build(self, inputs):
+        combine_size = self._combine_size
+        while len(inputs) > self._combine_size:
+            new_inputs = []
+            for i in range(0, len(inputs), combine_size):
+                objs = inputs[i : i + combine_size]
+                if len(objs) == 1:
+                    obj = objs[0]
+                else:
+                    obj = self._build_reduction(objs, final=False)
+                new_inputs.append(obj)
+            inputs = new_inputs
+
+        if len(inputs) == 1:
+            return inputs[0]
+        return self._build_reduction(inputs, final=True)

@@ -228,6 +228,7 @@ SQUAREFORM = 233
 # tree operand
 TREE_ADD = 251
 TREE_MULTIPLY = 252
+TREE_OR = 253
 
 # reduction
 CUMSUM = 301

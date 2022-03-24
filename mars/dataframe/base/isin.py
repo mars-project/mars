@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like
@@ -28,42 +30,31 @@ from ..operands import DataFrameOperand, DataFrameOperandMixin
 class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.ISIN
 
-    _input = KeyField("input")
-    _values = AnyField("values")
-
-    def __init__(self, values=None, output_types=None, **kw):
-        super().__init__(_values=values, _output_types=output_types, **kw)
-
-    @property
-    def input(self):
-        return self._input
-
-    @property
-    def values(self):
-        return self._values
+    input = KeyField("input")
+    values = AnyField("values")
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
-        self._input = next(inputs_iter)
+        self.input = next(inputs_iter)
         if len(self._inputs) > 1:
-            if isinstance(self._values, dict):
+            if isinstance(self.values, dict):
                 new_values = dict()
-                for k, v in self._values.items():
+                for k, v in self.values.items():
                     if isinstance(v, ENTITY_TYPE):
                         new_values[k] = next(inputs_iter)
                     else:
                         new_values[k] = v
-                self._values = new_values
+                self.values = new_values
             else:
-                self._values = self._inputs[1]
+                self.values = self._inputs[1]
 
     def __call__(self, elements):
         inputs = [elements]
-        if isinstance(self._values, ENTITY_TYPE):
-            inputs.append(self._values)
-        elif isinstance(self._values, dict):
-            for v in self._values.values():
+        if isinstance(self.values, ENTITY_TYPE):
+            inputs.append(self.values)
+        elif isinstance(self.values, dict):
+            for v in self.values.values():
                 if isinstance(v, ENTITY_TYPE):
                     inputs.append(v)
 
@@ -88,46 +79,23 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
             )
 
     @classmethod
-    def tile(cls, op):
+    def _tile_entity_values(cls, op):
+        from ..arithmetic.bitwise_or import tree_dataframe_or
+
         in_elements = op.input
         out_elements = op.outputs[0]
-
-        values_inputs = []
-        if len(op.inputs) > 1:
-            for value in op.inputs[1:]:
-                # make sure arg has known shape when it's a md.Series
-                if has_unknown_shape(value):
-                    yield
-                value = yield from recursive_tile(value.rechunk(value.shape))
-                values_inputs.append(value)
+        # values contains mars objects
+        chunks_list = []
+        for value in op.inputs[1:]:
+            chunks_list.append(value.chunks)
 
         out_chunks = []
-        for chunk in in_elements.chunks:
-            chunk_op = op.copy().reset_key()
-            chunk_inputs = [chunk]
-            if len(op.inputs) > 1:
-                chunk_inputs.extend(v.chunks[0] for v in values_inputs)
-            if out_elements.ndim == 1:
-                out_chunk = chunk_op.new_chunk(
-                    chunk_inputs,
-                    shape=chunk.shape,
-                    dtype=out_elements.dtype,
-                    index_value=chunk.index_value,
-                    name=out_elements.name,
-                    index=chunk.index,
-                )
-            else:
-                chunk_dtypes = pd.Series(
-                    [np.dtype(bool) for _ in chunk.dtypes], index=chunk.dtypes.index
-                )
-                out_chunk = chunk_op.new_chunk(
-                    chunk_inputs,
-                    shape=chunk.shape,
-                    index_value=chunk.index_value,
-                    columns_value=chunk.columns_value,
-                    dtypes=chunk_dtypes,
-                    index=chunk.index,
-                )
+        for in_chunk in op.input.chunks:
+            isin_chunks = []
+            for value_chunks in itertools.product(*chunks_list):
+                input_chunks = [in_chunk] + list(value_chunks)
+                isin_chunks.append(cls._new_chunk(op, in_chunk, input_chunks))
+            out_chunk = tree_dataframe_or(*isin_chunks, index=in_chunk.index)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
@@ -135,6 +103,52 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
         params["nsplits"] = in_elements.nsplits
         params["chunks"] = out_chunks
         return new_op.new_tileables(op.inputs, kws=[params])
+
+    @classmethod
+    def tile(cls, op):
+        in_elements = op.input
+        out_elements = op.outputs[0]
+
+        if len(op.inputs) > 1:
+            return cls._tile_entity_values(op)
+
+        out_chunks = []
+        for chunk in in_elements.chunks:
+            out_chunk = cls._new_chunk(op, chunk, [chunk])
+            out_chunks.append(out_chunk)
+
+        new_op = op.copy()
+        params = out_elements.params
+        params["nsplits"] = in_elements.nsplits
+        params["chunks"] = out_chunks
+        return new_op.new_tileables(op.inputs, kws=[params])
+
+    @classmethod
+    def _new_chunk(cls, op, chunk, input_chunks):
+        out_elements = op.outputs[0]
+        chunk_op = op.copy().reset_key()
+        if out_elements.ndim == 1:
+            out_chunk = chunk_op.new_chunk(
+                input_chunks,
+                shape=chunk.shape,
+                dtype=out_elements.dtype,
+                index_value=chunk.index_value,
+                name=out_elements.name,
+                index=chunk.index,
+            )
+        else:
+            chunk_dtypes = pd.Series(
+                [np.dtype(bool) for _ in chunk.dtypes], index=chunk.dtypes.index
+            )
+            out_chunk = chunk_op.new_chunk(
+                input_chunks,
+                shape=chunk.shape,
+                index_value=chunk.index_value,
+                columns_value=chunk.columns_value,
+                dtypes=chunk_dtypes,
+                index=chunk.index,
+            )
+        return out_chunk
 
     @classmethod
     def execute(cls, ctx, op):
@@ -222,7 +236,7 @@ def series_isin(elements, values):
             "only list-like objects are allowed to be passed to isin(), "
             f"you passed a [{type(values)}]"
         )
-    op = DataFrameIsin(values)
+    op = DataFrameIsin(values=values)
     return op(elements)
 
 
@@ -298,5 +312,5 @@ def df_isin(df, values):
             "only list-like objects or dict are allowed to be passed to isin(), "
             f"you passed a [{type(values)}]"
         )
-    op = DataFrameIsin(values)
+    op = DataFrameIsin(values=values)
     return op(df)
