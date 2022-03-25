@@ -81,6 +81,8 @@ def gen_rechunk_infos(
                 if slice_start == 0 and slice_end == inp_end - inp_start:
                     # slice all
                     slc = slice(None)
+                elif slice_start == slice_end:
+                    continue
                 else:
                     slc = slice(slice_start, slice_end)
                 inp_chunk_slices[dim].append(slc)

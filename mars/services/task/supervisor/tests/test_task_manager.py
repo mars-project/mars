@@ -28,6 +28,7 @@ from ..... import oscar as mo
 from ..... import remote as mr
 from ..... import tensor as mt
 from .....core import Tileable, TileableGraph, TileableGraphBuilder
+from .....core.operand import Fetch
 from .....oscar.backends.allocate_strategy import MainPool
 from .....resource import Resource
 from .....storage import StorageLevel
@@ -300,6 +301,73 @@ async def test_prune_in_iterative_tiling(actor_pool):
 
     # the first subtask graph should have only 2 subtasks after pruning
     assert len(subtask_graphs[0]) == 2
+    nodes = [
+        n
+        for st in subtask_graphs[0]
+        for n in st.chunk_graph
+        if not isinstance(n.op, Fetch)
+    ]
+    assert len(nodes) == 8
+    result_nodes = [n for st in subtask_graphs[0] for n in st.chunk_graph.results]
+    assert len(result_nodes) == 4
+    assert all("GroupByAgg" in str(n.op) for n in result_nodes)
+
+    # second subtask graph
+    assert len(subtask_graphs[1]) == 6
+    all_nodes = nodes + [
+        n
+        for st in subtask_graphs[1]
+        for n in st.chunk_graph
+        if not isinstance(n.op, Fetch)
+    ]
+    assert len(all_nodes) == 28
+    assert len({n.key for n in all_nodes}) == 28
+
+    df3 = df[df[0] < 1].rechunk(200)
+
+    graph = TileableGraph([df3.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await manager.submit_tileable_graph(graph, fuse_enabled=True)
+    assert isinstance(task_id, str)
+
+    await manager.wait_task(task_id)
+    task_result: TaskResult = await manager.get_task_result(task_id)
+
+    assert task_result.status == TaskStatus.terminated
+    if task_result.error is not None:
+        raise task_result.error.with_traceback(task_result.traceback)
+    assert await manager.get_task_progress(task_id) == 1.0
+
+    result_tileable = (await manager.get_task_result_tileables(task_id))[0]
+    result = await _merge_data(result_tileable, storage_api)
+    pd.testing.assert_frame_equal(raw, result)
+
+    subtask_graphs = await manager.get_subtask_graphs(task_id)
+    assert len(subtask_graphs) == 2
+
+    # the first subtask graph
+    assert len(subtask_graphs[0]) == 5
+    nodes = [
+        n
+        for st in subtask_graphs[0]
+        for n in st.chunk_graph
+        if not isinstance(n.op, Fetch)
+    ]
+    assert len(nodes) == 40
+    result_nodes = [n for st in subtask_graphs[0] for n in st.chunk_graph.results]
+    assert len(result_nodes) == 10
+
+    # second subtask graph
+    assert len(subtask_graphs[1]) == 5
+    all_nodes = nodes + [
+        n
+        for st in subtask_graphs[1]
+        for n in st.chunk_graph
+        if not isinstance(n.op, Fetch)
+    ]
+    assert len(all_nodes) == 45
+    assert len({n.key for n in all_nodes}) == 45
 
 
 @pytest.mark.asyncio
