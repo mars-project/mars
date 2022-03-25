@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.resource import Resource
-from mars.services.task.supervisor.stage import TaskStageProcessor
+from ....resource import Resource
+from .stage import TaskStageProcessor
 
 
 class ResourceEvaluator:
