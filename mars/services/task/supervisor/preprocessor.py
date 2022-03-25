@@ -16,11 +16,11 @@
 import asyncio
 import logging
 from functools import partial
-from typing import Callable, Dict, List, Iterable, Set, Tuple
+from typing import Callable, Dict, List, Iterable, Set
 
 from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder
-from ....core.graph.builder.chunk import Tiler, tile_gen_type, _TileableHandler
+from ....core.graph.builder.chunk import Tiler, _TileableHandler
 from ....core.operand import Fetch
 from ....resource import Resource
 from ....typing import TileableType, ChunkType
