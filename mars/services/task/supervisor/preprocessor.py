@@ -20,7 +20,7 @@ from typing import Callable, Dict, List, Iterable, Set, Tuple
 
 from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder
-from ....core.graph.builder.chunk import Tiler, tile_gen_type
+from ....core.graph.builder.chunk import Tiler, tile_gen_type, _TileableHandler
 from ....core.operand import Fetch
 from ....resource import Resource
 from ....typing import TileableType, ChunkType
@@ -50,21 +50,17 @@ class CancellableTiler(Tiler):
     def cancelled(self):
         return self._cancelled.is_set()
 
-    def _gen_tileable_handlers(
-        self, next_tileable_handlers: List[Tuple[TileableType, tile_gen_type]]
-    ):
-        for tileable, tile_handler in super()._gen_tileable_handlers(
-            next_tileable_handlers
-        ):
+    def _gen_tileable_handlers(self, next_tileable_handlers: List[_TileableHandler]):
+        for tile_handler in super()._gen_tileable_handlers(next_tileable_handlers):
             if not self.cancelled:
-                yield tileable, tile_handler
+                yield tile_handler
             else:
                 break
 
     def _gen_result_chunks(
         self,
         chunk_graph: ChunkGraph,
-        next_tileable_handlers: List[Tuple[TileableType, tile_gen_type]],
+        next_tileable_handlers: List[_TileableHandler],
     ):
         if not self.cancelled:
             return super()._gen_result_chunks(chunk_graph, next_tileable_handlers)
