@@ -25,6 +25,7 @@ import Title from '../Title';
 import { useStyles } from '../Style';
 import NodeEnvTab from './NodeEnvTab';
 import NodeResourceTab from './NodeResourceTab';
+import NodeStackTab from './NodeStackTab';
 
 
 export default function SupervisorDetailPage(props) {
@@ -46,12 +47,16 @@ export default function SupervisorDetailPage(props) {
           <Tabs value={value} onChange={handleChange}>
             <Tab label="Environment" />
             <Tab label="Resources" />
+            <Tab label="Stacks" />
           </Tabs>
           <TabPanel value={value} index={0}>
             <NodeEnvTab endpoint={props.endpoint} />
           </TabPanel>
           <TabPanel value={value} index={1}>
             <NodeResourceTab endpoint={props.endpoint} />
+          </TabPanel>
+          <TabPanel value={value} index={2}>
+            <NodeStackTab endpoint={props.endpoint} />
           </TabPanel>
         </Paper>
       </Grid>
