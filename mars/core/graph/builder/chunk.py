@@ -163,11 +163,16 @@ class Tiler:
         if next_tileable_handlers:
             for tileable_handler in next_tileable_handlers:
                 tileable = tileable_handler.tileable
-                # tileable that tile not completed,
-                # if nothing yielded inside its tile
-                # scan inputs to make sure their chunks in result
-                if tileable_handler.last_need_processes is None:
-                    for inp_tileable in tileable_graph.predecessors(tileable):
+                # tileable that tile not completed, scan their inputs
+                for inp_tileable in tileable_graph.iter_predecessors(tileable):
+                    if (
+                        tileable_handler.last_need_processes is None
+                        or tileable_graph.count_successors(inp_tileable) > 1
+                    ):
+                        # if nothing yielded inside its tile,
+                        # or the input has more than 1 successors,
+                        # make sure their chunks in result,
+                        # so that they will not be executed repeatedly
                         if inp_tileable in self._tile_context:
                             for chunk in self._tile_context[inp_tileable].chunks:
                                 chunk = self._get_data(chunk)
