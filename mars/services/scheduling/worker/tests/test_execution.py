@@ -127,6 +127,7 @@ class MockGlobalResourceManagerActor(
     async def __pre_destroy__(self):
         pass
 
+    @mo.extensible
     async def update_subtask_resources(
         self, band, session_id: str, subtask_id: str, resources: Resource
     ):

@@ -14,6 +14,7 @@
 
 import asyncio
 import functools
+import time
 from typing import Dict, List, Optional
 
 from .... import oscar as mo
@@ -28,9 +29,11 @@ class SessionManagerActor(mo.Actor):
         self._session_refs: Dict[str, mo.ActorRef] = dict()
         self._cluster_api: Optional[ClusterAPI] = None
         self._service_config = service_config or dict()
+        self._stored_last_idle_time = None
 
     async def __post_create__(self):
         self._cluster_api = await ClusterAPI.create(self.address)
+        self._stored_last_idle_time = time.time()
 
     async def __pre_destroy__(self):
         await asyncio.gather(
@@ -124,7 +127,10 @@ class SessionManagerActor(mo.Actor):
             if any(last_idle_time is None for last_idle_time in all_last_idle_time):
                 raise mo.Return(None)
             else:
-                raise mo.Return(max(all_last_idle_time))
+                self._stored_last_idle_time = max(
+                    [self._stored_last_idle_time] + all_last_idle_time
+                )
+                raise mo.Return(self._stored_last_idle_time)
 
 
 class SessionActor(mo.Actor):
