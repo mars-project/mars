@@ -501,7 +501,8 @@ cdef class _BaseActor:
         except Exception as ex:
             if _log_unhandled_errors:
                 from .debug import logger as debug_logger
-                debug_logger.exception('Got unhandled error when handling message %r '
+                # use `%.500` to avoid print too long messages
+                debug_logger.exception('Got unhandled error when handling message %.500r '
                                        'in actor %s at %s', message, self.uid, self.address)
             raise ex
 
