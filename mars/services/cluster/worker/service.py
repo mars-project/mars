@@ -31,7 +31,7 @@ class ClusterWorkerService(AbstractService):
             "lookup_address": "<address of master>",
             "node_check_interval": check interval seconds for nodes,
             "resource": {
-                "numa-0": Resource(num_cpus=8, num_mem_bytes=1073741824),
+                "numa-0": Resource(num_cpus=8, mem_bytes=1073741824),
                 "gpu-0": Resource(num_gpus=1)
             }
         }

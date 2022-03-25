@@ -75,7 +75,7 @@ class WorkerCommandRunner(OscarCommandRunner):
             self.cuda_devices = [int(i) for i in args.cuda_devices.split(",")]
 
         self.band_to_resource = band_to_resource = dict()
-        band_to_resource["numa-0"] = Resource(num_cpus=n_cpu, num_mem_bytes=mem_bytes)
+        band_to_resource["numa-0"] = Resource(num_cpus=n_cpu, mem_bytes=mem_bytes)
         for i in self.cuda_devices:  # pragma: no cover
             band_to_resource[f"gpu-{i}"] = Resource(num_gpus=1)
 

@@ -165,7 +165,7 @@ class LocalCluster:
         for _, devices in zip(range(n_worker), devices_list):
             worker_band_to_resource = dict()
             worker_band_to_resource["numa-0"] = Resource(
-                num_cpus=worker_cpus, num_mem_bytes=mem_bytes
+                num_cpus=worker_cpus, mem_bytes=mem_bytes
             )
             for i in devices:  # pragma: no cover
                 worker_band_to_resource[f"gpu-{i}"] = Resource(num_gpus=1)

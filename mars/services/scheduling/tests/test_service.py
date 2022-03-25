@@ -85,7 +85,7 @@ def _approx_resource(actual, expect):
     return (
         pytest.approx(actual.num_cpus) == expect.num_cpus
         and pytest.approx(actual.num_gpus) == expect.num_cpus
-        and pytest.approx(actual.num_mem_bytes) == expect.num_mem_bytes
+        and pytest.approx(actual.mem_bytes) == expect.mem_bytes
     )
 
 

@@ -149,7 +149,7 @@ class NodeInfoCollectorActor(mo.Actor):
                 if resource_type.startswith("numa"):
                     # cpu
                     band_resource[(node, resource_type)] = Resource(
-                        num_cpus=info["cpu_total"], num_mem_bytes=info["memory_total"]
+                        num_cpus=info["cpu_total"], mem_bytes=info["memory_total"]
                     )
                 else:  # pragma: no cover
                     assert resource_type.startswith("gpu")

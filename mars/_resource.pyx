@@ -16,15 +16,15 @@ cdef class Resource:
     cdef readonly:
         float num_cpus
         float num_gpus
-        float num_mem_bytes
+        float mem_bytes
 
-    def __init__(self, float num_cpus=0, float num_gpus=0, float num_mem_bytes=0):
+    def __init__(self, float num_cpus=0, float num_gpus=0, float mem_bytes=0):
         self.num_cpus = num_cpus
         self.num_gpus = num_gpus
-        self.num_mem_bytes = num_mem_bytes
+        self.mem_bytes = mem_bytes
 
     def __eq__(self, Resource other):
-        return self.num_mem_bytes == other.num_mem_bytes and \
+        return self.mem_bytes == other.mem_bytes and \
                self.num_gpus == other.num_gpus and \
                self.num_cpus == other.num_cpus
 
@@ -33,22 +33,22 @@ cdef class Resource:
 
     def __le__(self, Resource other):
         # memory first, then gpu, cpu last
-        return self.num_mem_bytes <= other.num_mem_bytes and \
+        return self.mem_bytes <= other.mem_bytes and \
                self.num_gpus <= other.num_gpus and \
                self.num_cpus <= other.num_cpus
 
     def __add__(self, Resource other):
         return Resource(num_cpus=self.num_cpus + other.num_cpus,
                         num_gpus=self.num_gpus + other.num_gpus,
-                        num_mem_bytes=self.num_mem_bytes + other.num_mem_bytes)
+                        mem_bytes=self.mem_bytes + other.mem_bytes)
     def __sub__(self, Resource other):
         return Resource(num_cpus=self.num_cpus - other.num_cpus,
                         num_gpus=self.num_gpus - other.num_gpus,
-                        num_mem_bytes=self.num_mem_bytes - other.num_mem_bytes)
+                        mem_bytes=self.mem_bytes - other.mem_bytes)
     def __neg__(self):
-        return Resource(num_cpus=-self.num_cpus, num_gpus=-self.num_gpus, num_mem_bytes=-self.num_mem_bytes)
+        return Resource(num_cpus=-self.num_cpus, num_gpus=-self.num_gpus, mem_bytes=-self.mem_bytes)
 
     def __repr__(self):
-        return f"Resource(num_cpus={self.num_cpus}, num_gpus={self.num_gpus}, num_mem_bytes={self.num_mem_bytes})"
+        return f"Resource(num_cpus={self.num_cpus}, num_gpus={self.num_gpus}, mem_bytes={self.mem_bytes})"
 
-ZeroResource = Resource(num_cpus=0, num_gpus=0, num_mem_bytes=0)
+ZeroResource = Resource(num_cpus=0, num_gpus=0, mem_bytes=0)

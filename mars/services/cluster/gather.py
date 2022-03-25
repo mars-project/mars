@@ -145,7 +145,7 @@ def gather_node_resource(band_to_resource: Dict[str, Resource] = None, use_gpu=T
     mem_bytes = (
         mem_info.total
         if band_to_resource is None
-        else band_to_resource.get("numa-0", ZeroResource).num_mem_bytes
+        else band_to_resource.get("numa-0", ZeroResource).mem_bytes
     )
     if num_cpu:  # pragma: no branch
         res["numa-0"] = {
