@@ -120,13 +120,34 @@ def _build_docker_images(use_test_docker_file=True):
 
 
 def _remove_docker_image(image_name, raises=True):
+    if "CI" not in os.environ:
+        # delete image iff in CI environment
+        return
     proc = subprocess.Popen(["docker", "rmi", "-f", image_name])
     if proc.wait() != 0 and raises:
         raise SystemError("Executing docker rmi failed.")
 
 
+def _load_docker_env():
+    if os.path.exists("/var/run/docker.sock") or not shutil.which("minikube"):
+        return
+
+    proc = subprocess.Popen(["minikube", "docker-env"], stdout=subprocess.PIPE)
+    proc.wait(30)
+    for line in proc.stdout:
+        line = line.decode().split("#", 1)[0]
+        line = line.strip()  # type: str | bytes
+        export_pos = line.find("export")
+        if export_pos < 0:
+            continue
+        line = line[export_pos + 6 :].strip()
+        var, value = line.split("=", 1)
+        os.environ[var] = value.strip('"')
+
+
 @contextmanager
 def _start_kube_cluster(use_test_docker_file=True, **kwargs):
+    _load_docker_env()
     image_name = _build_docker_images(use_test_docker_file=use_test_docker_file)
 
     temp_spill_dir = tempfile.mkdtemp(prefix="test-mars-k8s-")
@@ -208,7 +229,7 @@ def _start_kube_cluster(use_test_docker_file=True, **kwargs):
         _remove_docker_image(image_name, False)
 
 
-@pytest.mark.parametrize("use_test_docker_file", [False, True])
+@pytest.mark.parametrize("use_test_docker_file", [True, False])
 @pytest.mark.skipif(not kube_available, reason="Cannot run without kubernetes")
 def test_run_in_kubernetes(use_test_docker_file):
     with _start_kube_cluster(
@@ -240,6 +261,7 @@ def test_run_in_kubernetes(use_test_docker_file):
     new=lambda *_, **__: None,
 )
 def test_create_timeout():
+    _load_docker_env()
     api_client = k8s_config.new_client_from_config()
 
     cluster = None

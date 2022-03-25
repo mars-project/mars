@@ -124,6 +124,7 @@ class MockGlobalSlotManagerActor(GlobalSlotManagerActor, CancelDetectActorMixin)
     async def __pre_destroy__(self):
         pass
 
+    @mo.extensible
     async def update_subtask_slots(
         self, band, session_id: str, subtask_id: str, slots: int
     ):

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import AsyncGenerator, List, Optional
+from typing import AsyncGenerator, List, Optional, Union
 
 from ..core import NodeRole
 from .base import AbstractClusterBackend, register_cluster_backend
@@ -22,8 +22,10 @@ from .base import AbstractClusterBackend, register_cluster_backend
 class FixedClusterBackend(AbstractClusterBackend):
     name = "fixed"
 
-    def __init__(self, lookup_address: str):
-        self._supervisors = [n.strip() for n in lookup_address.split(",")]
+    def __init__(self, lookup_address: Union[List[str], str]):
+        if isinstance(lookup_address, str):
+            lookup_address = lookup_address.split(",")
+        self._supervisors = [n.strip() for n in lookup_address]
 
     @classmethod
     async def create(
