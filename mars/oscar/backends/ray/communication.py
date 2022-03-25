@@ -163,8 +163,9 @@ class RayClientChannel(RayChannelBase):
         try:
             # Wait on ray object ref
             message, object_ref = await self._in_queue.get()
+            # use `%.500` to avoid print too long messages
             with debug_async_timeout(
-                "ray_object_retrieval_timeout", "Client sent message is %s", message
+                "ray_object_retrieval_timeout", "Client sent message is %.500s", message
             ):
                 result = await object_ref
             if isinstance(result, RayChannelException):

@@ -323,9 +323,10 @@ class AbstractActorPool(ABC):
     async def process_message(self, message: _MessageBase, channel: Channel):
         handler = self._message_handler[message.message_type]
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
+            # use `%.500` to avoid print too long messages
             with debug_async_timeout(
                 "process_message_timeout",
-                "Process message %s of channel %s timeout.",
+                "Process message %.500s of channel %s timeout.",
                 message,
                 channel,
             ):
