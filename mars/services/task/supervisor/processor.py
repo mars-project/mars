@@ -40,7 +40,6 @@ from ....oscar.profiling import (
     ProfilingData,
     MARS_ENABLE_PROFILING,
 )
-from ....resource import Resource
 from ....typing import TileableType, BandType
 from ....utils import build_fetch, Timer
 from ...cluster.api import ClusterAPI
@@ -49,6 +48,7 @@ from ...meta.api import MetaAPI
 from ...scheduling import SchedulingAPI
 from ...subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
 from ..core import Task, TaskResult, TaskStatus, new_task_id
+from .resource import ResourceEvaluator
 from .preprocessor import TaskPreprocessor
 from .stage import TaskStageProcessor
 
@@ -71,25 +71,6 @@ def _record_error(func: Union[Callable, Coroutine] = None, log_when_error=True):
             raise
 
     return inner
-
-
-def _init_subtask_required_resource(subtask_graph: SubtaskGraph):
-    """
-    Initialize the required resource of subtasks by default values or
-    configurations or external system maybe called HBO service which
-    could recommend resource for subtasks.
-
-    Parameters
-    ----------
-    subtask_graph: SubtaskGraph
-        a subtask graph
-
-    """
-    for subtask in subtask_graph.iter_nodes():
-        is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
-        subtask.required_resource = (
-            Resource(num_gpus=1) if is_gpu else Resource(num_cpus=1)
-        )
 
 
 class TaskProcessor:
@@ -441,9 +422,6 @@ class TaskProcessor:
         )
         stage_profiling.set(f"gen_subtask_graph({len(subtask_graph)})", timer.duration)
 
-        # Initialize subtasks required resource by configurations
-        _init_subtask_required_resource(subtask_graph)
-
         tileable_to_subtasks = await asyncio.to_thread(
             self._get_tileable_to_subtasks, subtask_graph
         )
@@ -462,6 +440,9 @@ class TaskProcessor:
             self._scheduling_api,
             self._meta_api,
         )
+        # Evaluate and initialize subtasks required resource.
+        resource_evaluator = ResourceEvaluator(stage_processor)
+        resource_evaluator.evaluate()
         return stage_processor
 
     @_record_error
