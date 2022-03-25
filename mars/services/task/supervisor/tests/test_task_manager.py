@@ -269,6 +269,40 @@ async def test_iterative_tiling(actor_pool):
 
 
 @pytest.mark.asyncio
+async def test_prune_in_iterative_tiling(actor_pool):
+    pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
+
+    raw = pd.DataFrame(np.random.RandomState(0).rand(1000, 10))
+    df = md.DataFrame(raw, chunk_size=100)
+    df2 = df.groupby(0).agg("sum")
+
+    graph = TileableGraph([df2.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await manager.submit_tileable_graph(graph, fuse_enabled=True)
+    assert isinstance(task_id, str)
+
+    await manager.wait_task(task_id)
+    task_result: TaskResult = await manager.get_task_result(task_id)
+
+    assert task_result.status == TaskStatus.terminated
+    if task_result.error is not None:
+        raise task_result.error.with_traceback(task_result.traceback)
+    assert await manager.get_task_progress(task_id) == 1.0
+
+    expect = raw.groupby(0).agg("sum")
+    result_tileable = (await manager.get_task_result_tileables(task_id))[0]
+    result = await _merge_data(result_tileable, storage_api)
+    pd.testing.assert_frame_equal(expect, result)
+
+    subtask_graphs = await manager.get_subtask_graphs(task_id)
+    assert len(subtask_graphs) == 2
+
+    # the first subtask graph should have only 2 subtasks after pruning
+    assert len(subtask_graphs[0]) == 2
+
+
+@pytest.mark.asyncio
 async def test_shuffle(actor_pool):
     pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
 

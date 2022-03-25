@@ -93,7 +93,7 @@ class LifecycleTrackerActor(mo.Actor):
         )
         to_remove_chunk_keys = self._get_remove_chunk_keys(chunk_keys)
         # make _remove_chunks release actor lock so that multiple `decref_chunks` can run concurrently.
-        yield self._remove_chunks(to_remove_chunk_keys)
+        yield asyncio.to_thread(self._remove_chunks, to_remove_chunk_keys)
 
     async def _remove_chunks(self, to_remove_chunk_keys: List[str]):
         if not to_remove_chunk_keys:
