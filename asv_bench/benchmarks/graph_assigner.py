@@ -15,6 +15,7 @@
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from mars.resource import Resource
 from mars.services.task.analyzer import GraphAnalyzer
 from mars.services.task.analyzer.assigner import GraphAssigner
 
@@ -39,8 +40,10 @@ class ChunkGraphAssignerSuite:
 
     def time_assigner(self):
         start_ops = list(GraphAnalyzer._iter_start_ops(self.chunk_graph))
-        band_slots = {(f"worker-{i}", "numa-0"): 16 for i in range(50)}
+        band_resource = {
+            (f"worker-{i}", "numa-0"): Resource(num_cpus=16) for i in range(50)
+        }
         current_assign = {}
-        assigner = GraphAssigner(self.chunk_graph, start_ops, band_slots)
+        assigner = GraphAssigner(self.chunk_graph, start_ops, band_resource)
         assigned_result = assigner.assign(current_assign)
         assert len(assigned_result) == len(start_ops)
