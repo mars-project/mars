@@ -115,6 +115,10 @@ class ClusterAPI(AbstractClusterAPI):
             references of the actors
         """
         addrs = await self.get_supervisors_by_keys(uids)
+        if any(addr is None for addr in addrs):
+            none_uid = next(uid for addr, uid in zip(addrs, uids) if addr is None)
+            raise mo.ActorNotExist(f"Actor {none_uid} not exist as no supervisors")
+
         return await asyncio.gather(
             *[mo.actor_ref(uid, address=addr) for addr, uid in zip(addrs, uids)]
         )
@@ -156,7 +160,7 @@ class ClusterAPI(AbstractClusterAPI):
         detail: bool = False,
         statuses: Set[NodeStatus] = None,
         exclude_statuses: Set[NodeStatus] = None,
-    ):
+    ) -> Dict[str, Dict]:
         statuses = self._calc_statuses(statuses, exclude_statuses)
         node_info_ref = await self._get_node_info_ref()
         return await node_info_ref.get_nodes_info(

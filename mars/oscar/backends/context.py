@@ -175,9 +175,10 @@ class MarsActorContext(BaseActorContext):
             profiling_context=profiling_context,
         )
 
+        # use `%.500` to avoid print too long messages
         with debug_async_timeout(
             "actor_call_timeout",
-            "Calling %r on %s at %s timed out",
+            "Calling %.500r on %s at %s timed out",
             message.content,
             actor_ref.uid,
             actor_ref.address,

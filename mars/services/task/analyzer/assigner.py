@@ -15,7 +15,7 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from operator import itemgetter
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Union
 
 import numpy as np
 
@@ -131,7 +131,7 @@ class GraphAssigner(AbstractGraphAssigner):
         initial_sizes: Dict[BandType, int],
         spread_limits: Dict[BandType, float],
         key_to_assign: Set[str],
-        assigned_record: Dict[str, int],
+        assigned_record: Dict[str, Union[str, BandType]],
     ):
         """
         Assign initial nodes using breath-first search given initial sizes and
@@ -152,9 +152,10 @@ class GraphAssigner(AbstractGraphAssigner):
             if op_key in assigned_record:
                 continue
             spread_range += 1
+            # `op_key` may not be in `key_to_assign`, but we need to record it to avoid iterate the node repeatedly.
+            assigned_record[op_key] = band
             if op_key not in key_to_assign:
                 continue
-            assigned_record[op_key] = band
             assigned += 1
             if spread_range >= spread_limits[band] or assigned >= initial_sizes[band]:
                 break

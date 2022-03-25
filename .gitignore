@@ -68,6 +68,9 @@ test*.ipynb
 *.log
 *.swp
 
+# nfs temp file
+.nfs*
+
 # docs
 *.mo
 docs/**/generated

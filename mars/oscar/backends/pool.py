@@ -339,9 +339,10 @@ class AbstractActorPool(ABC):
         with _ErrorProcessor(
             self.external_address, message.message_id, message.protocol
         ) as processor:
+            # use `%.500` to avoid print too long messages
             with debug_async_timeout(
                 "process_message_timeout",
-                "Process message %s of channel %s timeout.",
+                "Process message %.500s of channel %s timeout.",
                 message,
                 channel,
             ):
