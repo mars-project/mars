@@ -20,7 +20,7 @@ from .... import oscar as mo
 from ....utils import get_next_port
 from ... import NodeRole
 from ...web.supervisor import WebSupervisorService
-from ..api import MockClusterAPI, WebClusterAPI
+from ..api import ClusterAPI, MockClusterAPI, WebClusterAPI
 from ..api.web import web_handlers
 from ..core import NodeStatus
 
@@ -137,3 +137,31 @@ async def test_web_api(actor_pool):
         await asyncio.wait_for(wait_async_gen(web_api.watch_all_bands()), timeout=0.1)
 
     await MockClusterAPI.cleanup(pool_addr)
+
+
+@pytest.mark.asyncio
+async def test_no_supervisor(actor_pool):
+    pool_addr = actor_pool.external_address
+
+    from ..supervisor.locator import SupervisorPeerLocatorActor
+    from ..uploader import NodeInfoUploaderActor
+
+    await mo.create_actor(
+        SupervisorPeerLocatorActor,
+        "fixed",
+        [],
+        uid=SupervisorPeerLocatorActor.default_uid(),
+        address=pool_addr,
+    )
+    await mo.create_actor(
+        NodeInfoUploaderActor,
+        NodeRole.WORKER,
+        interval=1,
+        band_to_slots=None,
+        use_gpu=False,
+        uid=NodeInfoUploaderActor.default_uid(),
+        address=pool_addr,
+    )
+    api = await ClusterAPI.create(address=pool_addr)
+    with pytest.raises(mo.ActorNotExist):
+        await api.get_supervisor_refs(["KEY"])
