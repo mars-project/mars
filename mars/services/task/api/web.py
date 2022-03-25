@@ -14,7 +14,11 @@
 
 import base64
 import json
+from datetime import timedelta
 from typing import Callable, List, Optional, Union
+
+from tornado import gen
+from tornado.util import TimeoutError
 
 from ....core import TileableGraph, Tileable
 from ....utils import serialize_serializable, deserialize_serializable
@@ -152,8 +156,17 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         timeout = self.get_argument("timeout", None) or None
         timeout = float(timeout) if timeout is not None else None
         oscar_api = await self._get_oscar_task_api(session_id)
-        res = await oscar_api.wait_task(task_id, timeout)
-        self.write(json.dumps(_json_serial_task_result(res)))
+        if timeout:
+            try:
+                res = await gen.with_timeout(
+                    timedelta(seconds=timeout), oscar_api.wait_task(task_id, timeout)
+                )
+                self.write(json.dumps(_json_serial_task_result(res)))
+            except TimeoutError:
+                self.write(json.dumps({}))
+        else:
+            res = await oscar_api.wait_task(task_id, timeout)
+            self.write(json.dumps(_json_serial_task_result(res)))
 
     @web_api("(?P<task_id>[^/]+)", method="delete")
     async def cancel_task(self, session_id: str, task_id: str):
@@ -237,7 +250,7 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
     async def wait_task(self, task_id: str, timeout: float = None):
         path = f"{self._address}/api/session/{self._session_id}/task/{task_id}"
         # client timeout should be longer than server timeout.
-        server_timeout = "" if timeout is None else str(max(timeout / 2.0, timeout - 1))
+        server_timeout = "" if timeout is None else str(int(timeout / 2.0))
         params = {"action": "wait", "timeout": server_timeout}
         res = await self._request_url(
             "GET", path, params=params, request_timeout=timeout or 0
