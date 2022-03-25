@@ -162,20 +162,18 @@ class Tiler:
                 result_chunk_set.add(chunk)
 
         if next_tileable_handlers:
-            # add all chunks that have no successors to result chunks
-            for chunk in chunk_graph:
-                if chunk_graph.count_successors(chunk) == 0:
-                    _add_result_chunk(chunk)
             for tileable_handler in next_tileable_handlers:
                 tileable = tileable_handler.tileable
                 # tileable that tile not completed,
+                # if nothing yielded inside its tile
                 # scan inputs to make sure their chunks in result
-                for inp_tileable in tileable_graph.predecessors(tileable):
-                    if inp_tileable in self._tile_context:
-                        for chunk in self._tile_context[inp_tileable].chunks:
-                            chunk = self._get_data(chunk)
-                            if chunk in chunk_graph:
-                                _add_result_chunk(chunk)
+                if tileable_handler.last_need_processes is None:
+                    for inp_tileable in tileable_graph.predecessors(tileable):
+                        if inp_tileable in self._tile_context:
+                            for chunk in self._tile_context[inp_tileable].chunks:
+                                chunk = self._get_data(chunk)
+                                if chunk in chunk_graph:
+                                    _add_result_chunk(chunk)
         for tileable in tileable_graph.result_tileables:
             if tileable in self._tile_context:
                 for chunk in self._tile_context[tileable].chunks:
@@ -215,6 +213,8 @@ class Tiler:
         self._tileable_handlers = next_tileable_handlers
         # gen result chunks
         self._gen_result_chunks(chunk_graph, next_tileable_handlers)
+        # prune unused chunks
+        prune_chunk_graph(chunk_graph, visited)
 
         return to_update_tileables
 
@@ -224,6 +224,22 @@ class Tiler:
             yield self._cur_chunk_graph
             for t in to_update_tileables:
                 t.refresh_params()
+
+
+def prune_chunk_graph(chunk_graph: ChunkGraph, visited: Set[EntityType]):
+    stack = list(chunk_graph.result_chunks)
+    used = set()
+    while stack:
+        n = stack.pop()
+        if n in used:
+            continue
+        used.add(n)
+        stack.extend(chunk_graph.predecessors(n))
+
+    unused = {n for n in chunk_graph if n not in used}
+    for n in unused:
+        chunk_graph.remove_node(n)
+        visited.discard(n)
 
 
 class ChunkGraphBuilder(AbstractGraphBuilder):
