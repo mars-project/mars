@@ -40,10 +40,13 @@ class CancellableTiler(Tiler):
         tileable_graph: TileableGraph,
         tile_context: Dict[TileableType, TileableType],
         processed_chunks: Set[ChunkType],
+        chunk_to_fetch: Dict[ChunkType, ChunkType],
         add_nodes: Callable,
         cancelled: asyncio.Event = None,
     ):
-        super().__init__(tileable_graph, tile_context, processed_chunks, add_nodes)
+        super().__init__(
+            tileable_graph, tile_context, processed_chunks, chunk_to_fetch, add_nodes
+        )
         self._cancelled = cancelled
 
     @property

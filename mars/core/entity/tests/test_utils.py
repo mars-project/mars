@@ -25,6 +25,8 @@ class _TestOperand(TensorOperand, TensorOperandMixin):
 
         data1 = mt.sort(data1)
         data2 = mt.sort(data2)
+        data1, data2 = yield from recursive_tile(data1, data2)
+        yield data1.chunks + data2.chunks + [data1, data2]
         data_all = mt.concatenate([data1, data2])
         s1 = mt.searchsorted(data1, data_all)
         s2 = mt.searchsorted(data2, data_all)

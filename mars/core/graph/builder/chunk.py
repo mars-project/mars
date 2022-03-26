@@ -53,11 +53,13 @@ class Tiler:
         tileable_graph: TileableGraph,
         tile_context: Dict[TileableType, TileableType],
         processed_chunks: Set[ChunkType],
+        chunk_to_fetch: Dict[ChunkType, ChunkType],
         add_nodes: Callable,
     ):
         self._tileable_graph = tileable_graph
         self._tile_context = tile_context
         self._processed_chunks = processed_chunks
+        self._chunk_to_fetch = chunk_to_fetch
         self._add_nodes = add_nodes
         self._cur_chunk_graph = None
         self._tileable_handlers = (
@@ -157,8 +159,8 @@ class Tiler:
 
         def _add_result_chunk(c):
             if c not in result_chunk_set:
-                result_chunks.append(chunk)
-                result_chunk_set.add(chunk)
+                result_chunks.append(c)
+                result_chunk_set.add(c)
 
         if next_tileable_handlers:
             for tileable_handler in next_tileable_handlers:
@@ -184,6 +186,11 @@ class Tiler:
                     chunk = self._get_data(chunk)
                     if chunk in chunk_graph:
                         _add_result_chunk(chunk)
+                    if (
+                        chunk in self._chunk_to_fetch
+                        and self._chunk_to_fetch[chunk] in chunk_graph
+                    ):
+                        _add_result_chunk(self._chunk_to_fetch[chunk])
 
     def _iter(self):
         chunk_graph = self._cur_chunk_graph
@@ -218,7 +225,7 @@ class Tiler:
         # gen result chunks
         self._gen_result_chunks(chunk_graph, next_tileable_handlers)
         # prune unused chunks
-        prune_chunk_graph(chunk_graph, visited)
+        prune_chunk_graph(chunk_graph)
 
         return to_update_tileables
 
@@ -230,7 +237,7 @@ class Tiler:
                 t.refresh_params()
 
 
-def prune_chunk_graph(chunk_graph: ChunkGraph, visited: Set[EntityType]):
+def prune_chunk_graph(chunk_graph: ChunkGraph):
     stack = list(chunk_graph.result_chunks)
     used = set()
     while stack:
@@ -243,7 +250,6 @@ def prune_chunk_graph(chunk_graph: ChunkGraph, visited: Set[EntityType]):
     unused = {n for n in chunk_graph if n not in used}
     for n in unused:
         chunk_graph.remove_node(n)
-        visited.discard(n)
 
 
 class ChunkGraphBuilder(AbstractGraphBuilder):
@@ -265,8 +271,21 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
 
         tiler_cls = Tiler if tiler_cls is None else tiler_cls
         self.tiler = tiler_cls(
-            self._graph, self.tile_context, self._processed_chunks, self._add_nodes
+            self._graph,
+            self.tile_context,
+            self._processed_chunks,
+            self._chunk_to_fetch,
+            self._add_nodes,
         )
+
+    def _process_node(self, entity: EntityType):
+        if entity in self._processed_chunks:
+            if entity not in self._chunk_to_fetch:
+                # gen fetch
+                fetch_chunk = build_fetch(entity).data
+                self._chunk_to_fetch[entity] = fetch_chunk
+            return self._chunk_to_fetch[entity]
+        return entity
 
     def _select_inputs(self, inputs: List[ChunkType]):
         new_inputs = []
