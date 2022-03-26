@@ -16,6 +16,7 @@
 
 import asyncio
 import dataclasses
+import datetime
 import enum
 import functools
 import importlib
@@ -1033,6 +1034,10 @@ def is_object_dtype(dtype: np.dtype) -> bool:
 def get_dtype(dtype: Union[np.dtype, pd.api.extensions.ExtensionDtype]):
     if pd.api.types.is_extension_array_dtype(dtype):
         return dtype
+    elif dtype is pd.Timestamp or dtype is datetime.datetime:
+        return np.dtype("datetime64[ns]")
+    elif dtype is pd.Timedelta or dtype is datetime.timedelta:
+        return np.dtype("timedelta64[ns]")
     else:
         return np.dtype(dtype)
 
