@@ -133,6 +133,9 @@ class TaskPreprocessor:
                 t._chunks = tiled.chunks
                 t._nsplits = tiled.nsplits
 
+    def _get_tiler_cls(self) -> Callable:
+        return partial(CancellableTiler, cancelled=self._cancelled)
+
     def tile(self, tileable_graph: TileableGraph) -> Iterable[ChunkGraph]:
         """
         Generate chunk graphs
@@ -148,7 +151,7 @@ class TaskPreprocessor:
             tileable_graph,
             fuse_enabled=self._task.fuse_enabled,
             tile_context=self.tile_context,
-            tiler_cls=partial(CancellableTiler, cancelled=self._cancelled),
+            tiler_cls=self._get_tiler_cls(),
         )
         optimize = self._config.optimize_chunk_graph
         meta_updated = set()

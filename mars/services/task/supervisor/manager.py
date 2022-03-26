@@ -195,7 +195,7 @@ class TaskManagerActor(mo.Actor):
     async def get_subtask_graphs(self, task_id: str) -> List[SubtaskGraph]:
         try:
             processor_ref = self._task_id_to_processor_ref[task_id]
-        except KeyError:
+        except KeyError:  # pragma: no cover
             raise TaskNotExist(f"Task {task_id} does not exist")
 
         return processor_ref.get_subtask_graphs(task_id)

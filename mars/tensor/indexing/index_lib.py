@@ -356,7 +356,7 @@ class IntegralIndexHandler(IndexHandler):
         return info
 
     def preprocess(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
-        if has_unknown_shape(context.tileable):
+        if has_unknown_shape(context.tileable):  # pragma: no cover
             yield
 
     def process(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
@@ -415,7 +415,7 @@ class NDArrayBoolIndexHandler(_BoolIndexHandler):
         return isinstance(raw_index, np.ndarray) and raw_index.dtype == np.bool_
 
     def preprocess(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
-        if has_unknown_shape(context.tileable):
+        if has_unknown_shape(context.tileable):  # pragma: no cover
             yield
 
     def process(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
@@ -467,7 +467,7 @@ class TensorBoolIndexHandler(_BoolIndexHandler):
         # check both input tileable and index object itself
         if has_unknown_shape(context.tileable):
             yield
-        if has_unknown_shape(index_info.raw_index):
+        if has_unknown_shape(index_info.raw_index):  # pragma: no cover
             yield
 
     def process(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
@@ -555,7 +555,7 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
 
         # check if all ndarrays
         super().preprocess(index_info, context)
-        if has_unknown_shape(context.tileable):
+        if has_unknown_shape(context.tileable):  # pragma: no cover
             yield
 
         fancy_index_infos = context.get_indexes(index_info.index_type)

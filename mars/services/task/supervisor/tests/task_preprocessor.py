@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import itertools
-from typing import Dict
+from functools import partial
+from typing import Callable, Dict
 
 import numpy as np
 
@@ -31,7 +32,22 @@ from .....tests.core import _check_args, ObjectCheckMixin
 from .....typing import BandType
 from ....subtask import SubtaskGraph
 from ...analyzer import GraphAnalyzer
-from ..preprocessor import TaskPreprocessor
+from ..preprocessor import CancellableTiler, TaskPreprocessor
+
+
+class CheckedCancellableTiler(CancellableTiler):
+    def __iter__(self):
+        chunk_set = set()
+        for chunk_graph in super().__iter__():
+            chunks = []
+            for chunk in chunk_graph:
+                if isinstance(chunk.op, Fetch):
+                    continue
+                if chunk in chunk_set:  # pragma: no cover
+                    raise RuntimeError(f"chunk {chunk} submitted repeatedly")
+                chunks.append(chunk)
+            chunk_set.update(chunks)
+            yield chunk_graph
 
 
 class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
@@ -121,6 +137,9 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
             self._check_nsplits(tiled)
             self._tileable_checked[tileable.key] = True
         return super()._update_tileable_params(tileable, tiled)
+
+    def _get_tiler_cls(self) -> Callable:
+        return partial(CheckedCancellableTiler, cancelled=self._cancelled)
 
     @enter_mode(build=True)
     def analyze(

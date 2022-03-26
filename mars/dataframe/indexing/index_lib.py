@@ -466,7 +466,9 @@ class LabelIndexHandler(IndexHandler):
         else:
             index_value = [tileable.index_value, tileable.columns_value][input_axis]
         if index_value.has_value():
-            if any(np.isnan(ns) for ns in tileable.nsplits[input_axis]):
+            if any(
+                np.isnan(ns) for ns in tileable.nsplits[input_axis]
+            ):  # pragma: no cover
                 yield
 
     def process(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
@@ -653,7 +655,7 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
 
     def preprocess(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         tileable = context.tileable
-        if has_unknown_shape(tileable):
+        if has_unknown_shape(tileable):  # pragma: no cover
             yield
 
         # split raw index into chunks on the given axis
