@@ -17,11 +17,11 @@ from collections.abc import Sequence
 from typing import List
 
 import numpy as np
-
-try:
-    from scipy.sparse.base import spmatrix
-except ImportError:  # pragma: no cover
-    spmatrix = None
+from scipy.sparse.base import spmatrix
+from sklearn.utils.multiclass import (
+    is_multilabel as sklearn_is_multilabel,
+    type_of_target as sklearn_type_of_target,
+)
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
@@ -30,6 +30,7 @@ from ...core.context import get_context
 from ...serialization.serializables import AnyField, ListField
 from ...tensor.core import TensorOrder
 from ...typing import TileableType
+from ...utils import has_unknown_shape
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ..utils import assert_all_finite
 from .validation import check_array
@@ -192,11 +193,14 @@ class IsMultilabel(LearnOperand, LearnOperandMixin):
     @classmethod
     def _tile(cls, op: "IsMultilabel"):
         y = op.y
+
+        if not isinstance(y, ENTITY_TYPE):
+            return sklearn_is_multilabel(y)
+
         ctx = get_context()
 
-        y = yield from recursive_tile(mt.tensor(y))
-        if any(np.isnan(s) for s in y.shape):
-            yield y.chunks + [y]
+        if has_unknown_shape(y):
+            yield
 
         if not (hasattr(y, "shape") and y.ndim == 2 and y.shape[1] > 1):
             return False
@@ -258,10 +262,7 @@ def is_multilabel(y):
     if not isinstance(y, ENTITY_TYPE):
         if hasattr(y, "__array__") or isinstance(y, Sequence):
             y = np.asarray(y)
-        if hasattr(y, "shape"):
-            yt = y = mt.asarray(y)
-        else:
-            yt = None
+        yt = None
     else:
         yt = y = mt.tensor(y)
 
@@ -289,6 +290,14 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
     @classmethod
     def _tile(cls, op: "TypeOfTarget"):
         y = op.y
+
+        # y is ndarray
+        if not isinstance(y, ENTITY_TYPE):
+            return sklearn_type_of_target(y)
+        else:
+            # make sure y executed
+            yield
+
         ctx = get_context()
 
         multilabel = yield from recursive_tile(is_multilabel(y))
@@ -297,24 +306,12 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
         if multilabel:
             return "multilabel-indicator"
 
-        y = yield from recursive_tile(mt.tensor(y))
-        executed = False
-        if any(np.isnan(s) for s in y.shape):
-            # trigger execution
-            yield y.chunks + [y]
-            executed = True
-
         # Invalid inputs
         if y.ndim > 2:
             return "unknown"
         if y.dtype == object and len(y):
             # [[[1, 2]]] or [obj_1] and not ["label_1"]
-            if isinstance(y, ENTITY_TYPE):
-                if not executed:
-                    yield y.chunks + [y]
-                first_val = ctx.get_chunks_result([y.chunks[0].key])[0].flat[0]
-            else:
-                first_val = y.flat[0]
+            first_val = ctx.get_chunks_result([y.chunks[0].key])[0].flat[0]
             if not isinstance(first_val, str):
                 return "unknown"
 
