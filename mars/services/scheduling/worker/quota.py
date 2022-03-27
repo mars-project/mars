@@ -334,7 +334,9 @@ class MemQuotaActor(QuotaActor):
             await self._process_requests()
         self._last_memory_available = cur_mem_available
         self._report_quota_info()
-        self.ref().update_mem_stats.tell_delay(delay=self._refresh_time)
+        self._stat_refresh_task = self.ref().update_mem_stats.tell_delay(
+            delay=self._refresh_time
+        )
 
     async def _has_space(self, delta: int):
         if self._hard_limit is None:
