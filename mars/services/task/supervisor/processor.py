@@ -307,7 +307,7 @@ class TaskProcessor:
         chunk_graph = await fut
         return chunk_graph
 
-    async def _get_available_band_slots(self) -> Dict[BandType, int]:
+    async def _get_available_band_resource(self) -> Dict[BandType, int]:
         async for bands in self._cluster_api.watch_all_bands():
             if bands:
                 return bands
@@ -396,7 +396,7 @@ class TaskProcessor:
         stage_profiling.set(f"tile({len(chunk_graph)})", timer.duration)
 
         # gen subtask graph
-        available_bands = await self._get_available_band_slots()
+        available_bands = await self._get_available_band_resource()
 
         with Timer() as timer:
             subtask_graph = await asyncio.to_thread(

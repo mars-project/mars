@@ -22,6 +22,7 @@ from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder
 from ....core.graph.builder.chunk import Tiler, tile_gen_type
 from ....core.operand import Fetch
+from ....resource import Resource
 from ....typing import TileableType, ChunkType
 from ....optimization.logical.chunk import optimize as optimize_chunk_graph
 from ....optimization.logical.tileable import optimize as optimize_tileable_graph
@@ -168,7 +169,7 @@ class TaskPreprocessor:
     def analyze(
         self,
         chunk_graph: ChunkGraph,
-        available_bands: Dict[BandType, int],
+        available_bands: Dict[BandType, Resource],
         stage_id: str = None,
     ) -> SubtaskGraph:
         logger.debug("Start to gen subtask graph for task %s", self._task.task_id)
