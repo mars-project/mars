@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import pytest
 
 from .... import tensor as mt
@@ -103,4 +104,17 @@ def test_to_dot():
     graph = arr2.build_graph(fuse_enabled=False, tile=True)
 
     dot = str(graph.to_dot(trunc_key=5))
-    assert all(str(n.op.key)[5] in dot for n in graph) is True
+    try:
+        assert all(str(n.op.key)[5] in dot for n in graph) is True
+    except AssertionError:
+        graph_reprs = []
+        for n in graph:
+            graph_reprs.append(
+                f"{n.op.key} -> {[succ.op.key for succ in graph.successors(n)]}"
+            )
+        logging.error(
+            "Unexpected error in test_to_dot.\ndot = %r\ngraph_repr: %r",
+            dot,
+            "\n".join(graph_reprs),
+        )
+        raise

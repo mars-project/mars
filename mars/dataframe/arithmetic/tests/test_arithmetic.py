@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import itertools
 import operator
 from dataclasses import dataclass
@@ -1534,3 +1535,19 @@ def test_not():
         pd.testing.assert_index_equal(
             c2.index_value.to_pandas(), c1.index_value.to_pandas()
         )
+
+
+def test_datetime_arithmetic():
+    data1 = (
+        pd.Series([pd.Timedelta(days=d) for d in range(10)]) + datetime.datetime.now()
+    )
+    s1 = from_pandas_series(data1)
+
+    assert (s1 + pd.Timedelta(days=10)).dtype == (data1 + pd.Timedelta(days=10)).dtype
+    assert (s1 + datetime.timedelta(days=10)).dtype == (
+        data1 + datetime.timedelta(days=10)
+    ).dtype
+    assert (s1 - pd.Timestamp.now()).dtype == (data1 - pd.Timestamp.now()).dtype
+    assert (s1 - datetime.datetime.now()).dtype == (
+        data1 - datetime.datetime.now()
+    ).dtype
