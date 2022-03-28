@@ -14,6 +14,7 @@
 
 from .... import oscar as mo
 from ...core import NodeRole, AbstractService
+from ..procinfo import ProcessInfoManagerActor
 from ..uploader import NodeInfoUploaderActor
 from .locator import WorkerSupervisorLocatorActor
 
@@ -59,6 +60,11 @@ class ClusterWorkerService(AbstractService):
             interval=svc_config.get("node_check_interval"),
             band_to_resource=svc_config.get("resource"),
             uid=NodeInfoUploaderActor.default_uid(),
+            address=address,
+        )
+        await mo.create_actor(
+            ProcessInfoManagerActor,
+            uid=ProcessInfoManagerActor.default_uid(),
             address=address,
         )
 

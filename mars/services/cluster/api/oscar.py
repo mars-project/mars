@@ -290,14 +290,32 @@ class ClusterAPI(AbstractClusterAPI):
         )
         return node_allocator_ref
 
+    async def _get_process_info_manager_ref(self, address: str = None):
+        from ..procinfo import ProcessInfoManagerActor
+
+        return await mo.actor_ref(
+            ProcessInfoManagerActor.default_uid(), address=address or self._address
+        )
+
+    async def get_node_pool_configs(self, address: str = None) -> List[Dict]:
+        ref = await self._get_process_info_manager_ref(address)
+        return await ref.get_pool_configs()
+
+    async def get_node_thread_stacks(
+        self, address: str = None
+    ) -> List[Dict[int, List[str]]]:
+        ref = await self._get_process_info_manager_ref(address)
+        return await ref.get_thread_stacks()
+
 
 class MockClusterAPI(ClusterAPI):
     @classmethod
     async def create(cls: Type[APIType], address: str, **kw) -> APIType:
+        from ..procinfo import ProcessInfoManagerActor
         from ..supervisor.locator import SupervisorPeerLocatorActor
-        from ..uploader import NodeInfoUploaderActor
         from ..supervisor.node_allocator import NodeAllocatorActor
         from ..supervisor.node_info import NodeInfoCollectorActor
+        from ..uploader import NodeInfoUploaderActor
 
         dones, _ = await asyncio.wait(
             [
@@ -327,6 +345,11 @@ class MockClusterAPI(ClusterAPI):
                     band_to_resource=kw.get("band_to_resource"),
                     use_gpu=kw.get("use_gpu", False),
                     uid=NodeInfoUploaderActor.default_uid(),
+                    address=address,
+                ),
+                mo.create_actor(
+                    ProcessInfoManagerActor,
+                    uid=ProcessInfoManagerActor.default_uid(),
                     address=address,
                 ),
             ]

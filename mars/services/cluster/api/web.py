@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import time
 from typing import Callable, Dict, List, Optional, Set
 
 from ....lib.aio import alru_cache
@@ -138,6 +139,27 @@ class ClusterWebAPIHandler(MarsServiceWebAPIHandler):
     async def get_mars_versions(self):
         cluster_api = await self._get_cluster_api()
         self.write(json.dumps(list(await cluster_api.get_mars_versions())))
+
+    @web_api("pools", method="get")
+    async def get_node_pool_configs(self):
+        cluster_api = await self._get_cluster_api()
+        address = self.get_argument("address", "") or None
+        pools = list(await cluster_api.get_node_pool_configs(address))
+        self.write(json.dumps({"pools": pools}))
+
+    @web_api("stacks", method="get")
+    async def get_node_thread_stacks(self):
+        cluster_api = await self._get_cluster_api()
+        address = self.get_argument("address", "") or None
+        stacks = list(await cluster_api.get_node_thread_stacks(address))
+        self.write(
+            json.dumps(
+                {
+                    "generate_time": time.time(),
+                    "stacks": stacks,
+                }
+            )
+        )
 
 
 web_handlers = {ClusterWebAPIHandler.get_root_pattern(): ClusterWebAPIHandler}
@@ -301,3 +323,13 @@ class WebClusterAPI(AbstractClusterAPI, MarsWebAPIClientMixin):
         path = f"{self._address}/api/cluster/versions"
         res = await self._request_url("GET", path)
         return list(json.loads(res.body))
+
+    async def get_node_pool_configs(self, address: str) -> List[Dict]:
+        path = f"{self._address}/api/cluster/pools?address={address}"
+        res = await self._request_url("GET", path)
+        return list(json.loads(res.body)["pools"])
+
+    async def get_node_thread_stacks(self, address: str) -> List[Dict]:
+        path = f"{self._address}/api/cluster/stacks?address={address}"
+        res = await self._request_url("GET", path)
+        return list(json.loads(res.body)["stacks"])

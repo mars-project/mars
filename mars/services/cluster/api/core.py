@@ -149,3 +149,27 @@ class AbstractClusterAPI:
         version_list : list
             List of versions
         """
+
+    @abstractmethod
+    async def get_node_pool_configs(self, address: str) -> List[Dict]:
+        """
+        Get pool configs of a Mars node
+
+        Returns
+        -------
+        config_list : List[Dict]
+            List of configs for all pool processes
+        """
+
+    async def get_node_thread_stacks(self, address: str) -> List[Dict[int, List[str]]]:
+        """
+        Get current thread pool stacks of a Mars node
+
+        Parameters
+        ----------
+        address
+
+        Returns
+        -------
+
+        """
