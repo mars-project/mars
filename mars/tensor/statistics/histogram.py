@@ -508,11 +508,9 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
         range_ = op.range
         bins = op.bins
 
-        a_executed = False
         if isinstance(bins, str):
             if has_unknown_shape(a):
                 yield
-                a_executed = True
         if (
             (a.size > 0 or np.isnan(a.size))
             and (isinstance(bins, str) or mt.ndim(bins) == 0)
@@ -522,10 +520,7 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
             input_max = a.max(keepdims=True)
             input_min, input_max = yield from recursive_tile(input_min, input_max)
             chunks = [input_min.chunks[0], input_max.chunks[0]]
-            if a_executed:
-                yield chunks
-            else:
-                yield chunks + a.chunks
+            yield chunks + a.chunks
             range_results = ctx.get_chunks_result([c.key for c in chunks])
             # make sure returned bounds are valid
             if all(x.size > 0 for x in range_results):

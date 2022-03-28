@@ -28,7 +28,7 @@ from ... import tensor as mt
 from ...core import ENTITY_TYPE, TILEABLE_TYPE, recursive_tile
 from ...core.context import get_context
 from ...serialization.serializables import AnyField, ListField
-from ...tensor.core import TensorOrder
+from ...tensor.core import TensorOrder, TENSOR_TYPE
 from ...typing import TileableType
 from ...utils import has_unknown_shape
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
@@ -414,6 +414,9 @@ def type_of_target(y):
     >>> type_of_target(mt.array([[0, 1], [1, 1]])).execute()
     'multilabel-indicator'
     """
+    if isinstance(y, TENSOR_TYPE):
+        y = mt.tensor(y)
+
     valid_types = (Sequence, spmatrix) if spmatrix is not None else (Sequence,)
     valid = (
         isinstance(y, valid_types)

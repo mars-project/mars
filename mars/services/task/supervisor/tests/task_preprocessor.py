@@ -38,7 +38,9 @@ from ..preprocessor import CancellableTiler, TaskPreprocessor
 class CheckedCancellableTiler(CancellableTiler):
     def __iter__(self):
         chunk_set = set()
+        chunk_graphs = []
         for chunk_graph in super().__iter__():
+            chunk_graphs.append(chunk_graph)
             chunks = []
             for chunk in chunk_graph:
                 if isinstance(chunk.op, Fetch):

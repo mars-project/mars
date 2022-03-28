@@ -159,6 +159,8 @@ class TaskPreprocessor:
         optimize = self._config.optimize_chunk_graph
         meta_updated = set()
         for chunk_graph in chunk_graph_builder.build():
+            if len(chunk_graph) == 0:
+                continue
             # optimize chunk graph
             if optimize:
                 self.chunk_optimization_records_list.append(

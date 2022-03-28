@@ -133,7 +133,7 @@ class Tiler:
             )
             # add intermediate chunks into result chunks
             # to prevent them being pruned
-            chunk_graph.result_chunks.extend(chunks)
+            chunk_graph.result_chunks.extend(c for c in chunks if c in chunk_graph)
         except StopIteration as e:
             # tile done
             tiled_tileables = e.value

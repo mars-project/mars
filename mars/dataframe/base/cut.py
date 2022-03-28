@@ -232,12 +232,10 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        inputs_executed = False
         if isinstance(op.bins, ENTITY_TYPE):
             # check op.bins chunk shapes
             if has_unknown_shape(op.bins):
                 yield
-                inputs_executed = True
             bins = yield from recursive_tile(op.bins.rechunk(op.bins.shape))
         else:
             bins = op.bins
@@ -246,7 +244,6 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             # check op.labels chunk shapes
             if has_unknown_shape(op.labels):
                 yield
-                inputs_executed = True
             labels = yield from recursive_tile(op.labels.rechunk(op.labels.shape))
         else:
             labels = op.labels
@@ -260,10 +257,7 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
 
             # let input min and max execute first
             min_max_chunks = [input_min_chunk, input_max_chunk]
-            if inputs_executed:
-                yield min_max_chunks
-            else:
-                yield min_max_chunks + [c for inp in op.inputs for c in inp.chunks]
+            yield min_max_chunks + [c for inp in op.inputs for c in inp.chunks]
 
             ctx = get_context()
             keys = [input_min_chunk.key, input_max_chunk.key]
