@@ -14,6 +14,7 @@
 
 from .... import oscar as mo
 from ...core import NodeRole, AbstractService
+from ..procinfo import ProcessInfoManagerActor
 from ..uploader import NodeInfoUploaderActor
 from .locator import SupervisorPeerLocatorActor
 from .node_allocator import NodeAllocatorActor
@@ -70,6 +71,11 @@ class ClusterSupervisorService(AbstractService):
             backend_name=backend,
             lookup_address=lookup_address,
             uid=NodeAllocatorActor.default_uid(),
+            address=address,
+        )
+        await mo.create_actor(
+            ProcessInfoManagerActor,
+            uid=ProcessInfoManagerActor.default_uid(),
             address=address,
         )
 

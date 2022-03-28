@@ -143,6 +143,21 @@ cdef class BaseActorContext:
         """
         raise NotImplementedError
 
+    async def get_pool_config(self, str address):
+        """
+        Get config of actor pool with given address
+
+        Parameters
+        ----------
+        address
+            address of the actor pool
+
+        Returns
+        -------
+
+        """
+        raise NotImplementedError
+
 
 cdef class ClientActorContext(BaseActorContext):
     """
@@ -198,6 +213,10 @@ cdef class ClientActorContext(BaseActorContext):
     def wait_actor_pool_recovered(self, str address, str main_address = None):
         context = self._get_backend_context(address)
         return context.wait_actor_pool_recovered(address, main_address)
+
+    def get_pool_config(self, str address):
+        context = self._get_backend_context(address)
+        return context.get_pool_config(address)
 
 
 def register_backend_context(scheme, cls):

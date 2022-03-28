@@ -212,3 +212,13 @@ class MarsActorContext(BaseActorContext):
             protocol=DEFAULT_PROTOCOL,
         )
         self._process_result_message(await self._call(main_address, control_message))
+
+    async def get_pool_config(self, address: str):
+        control_message = ControlMessage(
+            new_message_id(),
+            address,
+            ControlMessageType.get_config,
+            None,
+            protocol=DEFAULT_PROTOCOL,
+        )
+        return self._process_result_message(await self._call(address, control_message))

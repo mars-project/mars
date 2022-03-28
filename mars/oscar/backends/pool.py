@@ -34,7 +34,7 @@ from .allocate_strategy import allocated_type, AddressSpecified
 from .communication import Channel, Server, get_server_type, gen_local_address
 from .communication.errors import ChannelClosed
 from .config import ActorPoolConfig
-from .core import result_message_type, ActorCaller
+from .core import ResultMessageType, ActorCaller
 from .message import (
     _MessageBase,
     new_message_id,
@@ -149,7 +149,7 @@ class AbstractActorPool(ABC):
         return self._router
 
     @abstractmethod
-    async def create_actor(self, message: CreateActorMessage) -> result_message_type:
+    async def create_actor(self, message: CreateActorMessage) -> ResultMessageType:
         """
         Create an actor.
 
@@ -181,7 +181,7 @@ class AbstractActorPool(ABC):
         """
 
     @abstractmethod
-    async def destroy_actor(self, message: DestroyActorMessage) -> result_message_type:
+    async def destroy_actor(self, message: DestroyActorMessage) -> ResultMessageType:
         """
         Destroy an actor.
 
@@ -197,7 +197,7 @@ class AbstractActorPool(ABC):
         """
 
     @abstractmethod
-    async def actor_ref(self, message: ActorRefMessage) -> result_message_type:
+    async def actor_ref(self, message: ActorRefMessage) -> ResultMessageType:
         """
         Get an actor's ref.
 
@@ -213,7 +213,7 @@ class AbstractActorPool(ABC):
         """
 
     @abstractmethod
-    async def send(self, message: SendMessage) -> result_message_type:
+    async def send(self, message: SendMessage) -> ResultMessageType:
         """
         Send a message to some actor.
 
@@ -229,7 +229,7 @@ class AbstractActorPool(ABC):
         """
 
     @abstractmethod
-    async def tell(self, message: TellMessage) -> result_message_type:
+    async def tell(self, message: TellMessage) -> ResultMessageType:
         """
         Tell message to some actor.
 
@@ -245,7 +245,7 @@ class AbstractActorPool(ABC):
         """
 
     @abstractmethod
-    async def cancel(self, message: CancelMessage) -> result_message_type:
+    async def cancel(self, message: CancelMessage) -> ResultMessageType:
         """
         Cancel message that sent
 
@@ -262,7 +262,7 @@ class AbstractActorPool(ABC):
 
     async def handle_control_command(
         self, message: ControlMessage
-    ) -> result_message_type:
+    ) -> ResultMessageType:
         """
         Handle control command.
 
@@ -339,9 +339,7 @@ class AbstractActorPool(ABC):
             if not self._stopped.is_set():
                 raise
 
-    async def call(
-        self, dest_address: str, message: _MessageBase
-    ) -> result_message_type:
+    async def call(self, dest_address: str, message: _MessageBase) -> ResultMessageType:
         return await self._caller.call(self._router, dest_address, message)
 
     @staticmethod
@@ -449,7 +447,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     __slots__ = ()
 
     @implements(AbstractActorPool.create_actor)
-    async def create_actor(self, message: CreateActorMessage) -> result_message_type:
+    async def create_actor(self, message: CreateActorMessage) -> ResultMessageType:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
             actor_id = message.actor_id
             if actor_id in self._actors:
@@ -480,7 +478,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         return result
 
     @implements(AbstractActorPool.destroy_actor)
-    async def destroy_actor(self, message: DestroyActorMessage) -> result_message_type:
+    async def destroy_actor(self, message: DestroyActorMessage) -> ResultMessageType:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
             actor_id = message.actor_ref.uid
             try:
@@ -496,7 +494,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         return processor.result
 
     @implements(AbstractActorPool.actor_ref)
-    async def actor_ref(self, message: ActorRefMessage) -> result_message_type:
+    async def actor_ref(self, message: ActorRefMessage) -> ResultMessageType:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
             actor_id = message.actor_ref.uid
             if actor_id not in self._actors:
@@ -510,7 +508,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         return processor.result
 
     @implements(AbstractActorPool.send)
-    async def send(self, message: SendMessage) -> result_message_type:
+    async def send(self, message: SendMessage) -> ResultMessageType:
         with _ErrorProcessor(
             message.message_id, message.protocol
         ) as processor, record_message_trace(message):
@@ -525,7 +523,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         return processor.result
 
     @implements(AbstractActorPool.tell)
-    async def tell(self, message: TellMessage) -> result_message_type:
+    async def tell(self, message: TellMessage) -> ResultMessageType:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
             actor_id = message.actor_ref.uid
             if actor_id not in self._actors:  # pragma: no cover
@@ -540,7 +538,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         return processor.result
 
     @implements(AbstractActorPool.cancel)
-    async def cancel(self, message: CancelMessage) -> result_message_type:
+    async def cancel(self, message: CancelMessage) -> ResultMessageType:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
             future = self._process_messages.get(message.cancel_message_id)
             if future is None or future.done():  # pragma: no cover
@@ -654,14 +652,14 @@ class SubActorPoolBase(ActorPoolBase):
         await self.call(self._main_address, reg_message)
 
     @implements(AbstractActorPool.create_actor)
-    async def create_actor(self, message: CreateActorMessage) -> result_message_type:
+    async def create_actor(self, message: CreateActorMessage) -> ResultMessageType:
         result = await super().create_actor(message)
         if not message.from_main:
             await self.notify_main_pool_to_create(message)
         return result
 
     @implements(AbstractActorPool.actor_ref)
-    async def actor_ref(self, message: ActorRefMessage) -> result_message_type:
+    async def actor_ref(self, message: ActorRefMessage) -> ResultMessageType:
         result = await super().actor_ref(message)
         if isinstance(result, ErrorMessage):
             message.actor_ref.address = self._main_address
@@ -669,7 +667,7 @@ class SubActorPoolBase(ActorPoolBase):
         return result
 
     @implements(AbstractActorPool.destroy_actor)
-    async def destroy_actor(self, message: DestroyActorMessage) -> result_message_type:
+    async def destroy_actor(self, message: DestroyActorMessage) -> ResultMessageType:
         result = await super().destroy_actor(message)
         if isinstance(result, ResultMessage) and not message.from_main:
             # sync back to main actor pool
@@ -754,7 +752,7 @@ class MainActorPoolBase(ActorPoolBase):
         return self.sub_processes
 
     @implements(AbstractActorPool.create_actor)
-    async def create_actor(self, message: CreateActorMessage) -> result_message_type:
+    async def create_actor(self, message: CreateActorMessage) -> ResultMessageType:
         with _ErrorProcessor(
             message_id=message.message_id, protocol=message.protocol
         ) as processor:
@@ -817,7 +815,7 @@ class MainActorPoolBase(ActorPoolBase):
         return ResultMessage(message.message_id, False, protocol=message.protocol)
 
     @implements(AbstractActorPool.destroy_actor)
-    async def destroy_actor(self, message: DestroyActorMessage) -> result_message_type:
+    async def destroy_actor(self, message: DestroyActorMessage) -> ResultMessageType:
         actor_ref_message = ActorRefMessage(
             message.message_id, message.actor_ref, protocol=message.protocol
         )
@@ -842,7 +840,7 @@ class MainActorPoolBase(ActorPoolBase):
         return await self.call(real_actor_ref.address, new_destroy_message)
 
     @implements(AbstractActorPool.send)
-    async def send(self, message: SendMessage) -> result_message_type:
+    async def send(self, message: SendMessage) -> ResultMessageType:
         if message.actor_ref.uid in self._actors:
             return await super().send(message)
         actor_ref_message = ActorRefMessage(
@@ -862,7 +860,7 @@ class MainActorPoolBase(ActorPoolBase):
         return await self.call(actor_ref.address, new_send_message)
 
     @implements(AbstractActorPool.tell)
-    async def tell(self, message: TellMessage) -> result_message_type:
+    async def tell(self, message: TellMessage) -> ResultMessageType:
         if message.actor_ref.uid in self._actors:
             return await super().tell(message)
         actor_ref_message = ActorRefMessage(
@@ -882,7 +880,7 @@ class MainActorPoolBase(ActorPoolBase):
         return await self.call(actor_ref.address, new_tell_message)
 
     @implements(AbstractActorPool.actor_ref)
-    async def actor_ref(self, message: ActorRefMessage) -> result_message_type:
+    async def actor_ref(self, message: ActorRefMessage) -> ResultMessageType:
         actor_ref = message.actor_ref
         actor_ref.uid = to_binary(actor_ref.uid)
         if actor_ref.address == self.external_address and actor_ref.uid in self._actors:
@@ -906,7 +904,7 @@ class MainActorPoolBase(ActorPoolBase):
         return processor.result
 
     @implements(AbstractActorPool.cancel)
-    async def cancel(self, message: CancelMessage) -> result_message_type:
+    async def cancel(self, message: CancelMessage) -> ResultMessageType:
         if message.address == self.external_address:
             # local message
             return await super().cancel(message)
@@ -916,7 +914,7 @@ class MainActorPoolBase(ActorPoolBase):
     @implements(AbstractActorPool.handle_control_command)
     async def handle_control_command(
         self, message: ControlMessage
-    ) -> result_message_type:
+    ) -> ResultMessageType:
         with _ErrorProcessor(message.message_id, message.protocol) as processor:
             if message.address == self.external_address:
                 if message.control_message_type == ControlMessageType.sync_config:

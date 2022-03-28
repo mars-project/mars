@@ -22,7 +22,7 @@ from .message import _MessageBase, ResultMessage, ErrorMessage, DeserializeMessa
 from .router import Router
 
 
-result_message_type = Union[ResultMessage, ErrorMessage]
+ResultMessageType = Union[ResultMessage, ErrorMessage]
 
 
 class ActorCaller:
