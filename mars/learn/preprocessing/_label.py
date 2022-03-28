@@ -512,7 +512,7 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
             # no entity input
             r = sklearn_label_binarize(
                 op.y,
-                op.classes,
+                classes=op.classes,
                 neg_label=neg_label,
                 pos_label=pos_label,
                 sparse_output=sparse_output,
