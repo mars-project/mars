@@ -157,7 +157,7 @@ async def test_no_supervisor(actor_pool):
         NodeInfoUploaderActor,
         NodeRole.WORKER,
         interval=1,
-        band_to_slots=None,
+        band_to_resource=None,
         use_gpu=False,
         uid=NodeInfoUploaderActor.default_uid(),
         address=pool_addr,

@@ -352,8 +352,8 @@ class StorageManagerActor(mo.StatelessActor):
 
         try:
             self._cluster_api = cluster_api = await ClusterAPI.create(self.address)
-            band_to_slots = await cluster_api.get_bands()
-            self._all_bands = [band[1] for band in band_to_slots]
+            band_to_resource = await cluster_api.get_bands()
+            self._all_bands = [band[1] for band in band_to_resource]
         except mo.ActorNotExist:
             # in some test cases, cluster service is not available
             self._all_bands = ["numa-0"]

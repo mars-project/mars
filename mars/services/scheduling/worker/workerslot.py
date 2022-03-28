@@ -47,12 +47,12 @@ class WorkerSlotManagerActor(mo.Actor):
     async def __post_create__(self):
         self._cluster_api = await ClusterAPI.create(self.address)
 
-        band_to_slots = await self._cluster_api.get_bands()
-        for band, n_slot in band_to_slots.items():
+        band_to_resource = await self._cluster_api.get_bands()
+        for band, resource in band_to_resource.items():
             self._band_slot_managers[band] = await mo.create_actor(
                 BandSlotManagerActor,
                 band,
-                n_slot,
+                int(resource.num_cpus or resource.num_gpus),
                 self._global_resource_ref,
                 uid=BandSlotManagerActor.gen_uid(band[1]),
                 address=self.address,

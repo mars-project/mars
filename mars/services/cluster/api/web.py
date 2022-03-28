@@ -16,6 +16,7 @@ import json
 from typing import Callable, Dict, List, Optional, Set
 
 from ....lib.aio import alru_cache
+from ....resource import Resource
 from ....typing import BandType
 from ....utils import serialize_serializable, deserialize_serializable
 from ...core import NodeRole
@@ -259,7 +260,7 @@ class WebClusterAPI(AbstractClusterAPI, MarsWebAPIClientMixin):
         role: NodeRole = None,
         statuses: Set[NodeStatus] = None,
         exclude_statuses: Set[NodeStatus] = None,
-    ) -> Dict[BandType, int]:
+    ) -> Dict[BandType, Resource]:
         statuses = self._calc_statuses(statuses, exclude_statuses)
         statuses_str = (
             ",".join(str(status.value) for status in statuses) if statuses else ""

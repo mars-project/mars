@@ -48,6 +48,7 @@ from ...meta.api import MetaAPI
 from ...scheduling import SchedulingAPI
 from ...subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
 from ..core import Task, TaskResult, TaskStatus, new_task_id
+from .resource import ResourceEvaluator
 from .preprocessor import TaskPreprocessor
 from .stage import TaskStageProcessor
 
@@ -306,7 +307,7 @@ class TaskProcessor:
         chunk_graph = await fut
         return chunk_graph
 
-    async def _get_available_band_slots(self) -> Dict[BandType, int]:
+    async def _get_available_band_resource(self) -> Dict[BandType, int]:
         async for bands in self._cluster_api.watch_all_bands():
             if bands:
                 return bands
@@ -395,7 +396,7 @@ class TaskProcessor:
         stage_profiling.set(f"tile({len(chunk_graph)})", timer.duration)
 
         # gen subtask graph
-        available_bands = await self._get_available_band_slots()
+        available_bands = await self._get_available_band_resource()
 
         with Timer() as timer:
             subtask_graph = await asyncio.to_thread(
@@ -439,6 +440,9 @@ class TaskProcessor:
             self._scheduling_api,
             self._meta_api,
         )
+        # Evaluate and initialize subtasks required resource.
+        resource_evaluator = ResourceEvaluator(stage_processor)
+        resource_evaluator.evaluate()
         return stage_processor
 
     @_record_error

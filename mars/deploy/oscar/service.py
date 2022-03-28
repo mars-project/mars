@@ -16,6 +16,7 @@ import logging
 import os
 from typing import List, Dict, Union
 
+from ...resource import Resource
 from ...services import start_services, stop_services, NodeRole
 from ..utils import load_service_config_file
 
@@ -75,7 +76,7 @@ async def stop_supervisor(address: str, config: Dict = None):
 async def start_worker(
     address: str,
     lookup_address: str,
-    band_to_slots: Dict[str, int],
+    band_to_resource: Dict[str, Resource],
     modules: Union[List, str, None] = None,
     config: Dict = None,
     mark_ready: bool = True,
@@ -87,9 +88,9 @@ async def start_worker(
     if backend == "fixed" and config["cluster"].get("lookup_address") is None:
         config["cluster"]["lookup_address"] = lookup_address
     if config["cluster"].get("resource") is None:
-        config["cluster"]["resource"] = band_to_slots
+        config["cluster"]["resource"] = band_to_resource
     if any(
-        band_name.startswith("gpu-") for band_name in band_to_slots
+        band_name.startswith("gpu-") for band_name in band_to_resource
     ):  # pragma: no cover
         if "cuda" not in config["storage"]["backends"]:
             config["storage"]["backends"].append("cuda")

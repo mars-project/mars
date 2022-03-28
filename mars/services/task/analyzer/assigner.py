@@ -21,6 +21,7 @@ import numpy as np
 
 from ....core import ChunkGraph, ChunkData
 from ....core.operand import Operand
+from ....resource import Resource
 from ....typing import BandType
 from ....utils import implements
 
@@ -34,11 +35,11 @@ class AbstractGraphAssigner(ABC):
         self,
         chunk_graph: ChunkGraph,
         start_ops: List[Operand],
-        band_slots: Dict[BandType, int],
+        band_resource: Dict[BandType, Resource],
     ):
         self._chunk_graph = chunk_graph
         self._start_ops = start_ops
-        self._band_slots = band_slots
+        self._band_resource = band_resource
 
     @abstractmethod
     def assign(self, cur_assigns: Dict[str, str] = None) -> Dict[ChunkData, BandType]:
@@ -62,8 +63,8 @@ class AbstractGraphAssigner(ABC):
         else:
             band_prefix = "numa"
         return {
-            band: slots
-            for band, slots in self._band_slots.items()
+            band: resource.num_cpus or resource.num_gpus
+            for band, resource in self._band_resource.items()
             if band[1].startswith(band_prefix)
         }
 
@@ -73,9 +74,9 @@ class GraphAssigner(AbstractGraphAssigner):
         self,
         chunk_graph: ChunkGraph,
         start_ops: List[Operand],
-        band_slots: Dict[BandType, int],
+        band_resource: Dict[BandType, Resource],
     ):
-        super().__init__(chunk_graph, start_ops, band_slots)
+        super().__init__(chunk_graph, start_ops, band_resource)
         self._undirected_chunk_graph = None
         self._op_keys: Set[str] = {start_op.key for start_op in start_ops}
 

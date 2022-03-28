@@ -19,6 +19,7 @@ from typing import Dict, List, Tuple, Type, Union
 from ....config import Config
 from ....core import ChunkGraph, ChunkType, enter_mode
 from ....core.operand import Fetch, VirtualOperand, LogicKeyGenerator
+from ....resource import Resource
 from ....typing import BandType
 from ....utils import build_fetch, tokenize
 from ...subtask import SubtaskGraph, Subtask
@@ -33,14 +34,14 @@ class GraphAnalyzer:
     def __init__(
         self,
         chunk_graph: ChunkGraph,
-        band_slots: Dict[BandType, int],
+        band_resource: Dict[BandType, Resource],
         task: Task,
         config: Config,
         graph_assigner_cls: Type[AbstractGraphAssigner] = None,
         stage_id: str = None,
     ):
         self._chunk_graph = chunk_graph
-        self._band_slots = band_slots
+        self._band_resource = band_resource
         self._task = task
         self._stage_id = stage_id
         self._config = config
@@ -287,7 +288,7 @@ class GraphAnalyzer:
         # assign start chunks
         to_assign_ops = start_ops + reassign_worker_ops
         assigner = self._graph_assigner_cls(
-            self._chunk_graph, to_assign_ops, self._band_slots
+            self._chunk_graph, to_assign_ops, self._band_resource
         )
         # assign expect workers
         cur_assigns = {
@@ -323,7 +324,7 @@ class GraphAnalyzer:
                     init_chunk_to_bands[start_chunk] = chunk_to_bands[start_chunk]
             coloring = Coloring(
                 self._chunk_graph,
-                list(self._band_slots),
+                list(self._band_resource),
                 init_chunk_to_bands,
                 initial_same_color_num=getattr(
                     self._config, "initial_same_color_num", None

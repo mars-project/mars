@@ -113,16 +113,17 @@ class ThreadedServiceContext(Context):
     def get_total_n_cpu(self) -> int:
         all_bands = self._call(self._cluster_api.get_all_bands())
         n_cpu = 0
-        for band, size in all_bands.items():
+        for band, resource in all_bands.items():
             _, band_name = band
             if band_name.startswith("numa-"):
-                n_cpu += size
+                n_cpu += resource.num_cpus
         return n_cpu
 
     @implements(Context.get_slots)
     def get_slots(self) -> int:
         worker_bands = self._call(self._get_worker_bands())
-        return worker_bands[self.band]
+        resource = worker_bands[self.band]
+        return int(resource.num_cpus or resource.num_gpus)
 
     async def _get_worker_bands(self):
         worker_cluster_api = await ClusterAPI.create(self.worker_address)

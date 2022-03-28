@@ -26,6 +26,7 @@ from .....core import (
     unregister,
 )
 from .....core.operand import Fetch
+from .....resource import Resource
 from .....tests.core import _check_args, ObjectCheckMixin
 from .....typing import BandType
 from ....subtask import SubtaskGraph
@@ -125,7 +126,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
     def analyze(
         self,
         chunk_graph: ChunkGraph,
-        available_bands: Dict[BandType, int],
+        available_bands: Dict[BandType, Resource],
         stage_id: str,
     ) -> SubtaskGraph:
         # record shapes generated in tile
