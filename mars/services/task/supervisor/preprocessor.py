@@ -43,11 +43,13 @@ class CancellableTiler(Tiler):
         chunk_to_fetch: Dict[ChunkType, ChunkType],
         add_nodes: Callable,
         cancelled: asyncio.Event = None,
+        check_duplicated_submission: bool = False,
     ):
         super().__init__(
             tileable_graph, tile_context, processed_chunks, chunk_to_fetch, add_nodes
         )
         self._cancelled = cancelled
+        self._check_duplicated_submission = check_duplicated_submission
 
     @property
     def cancelled(self):
@@ -70,7 +72,7 @@ class CancellableTiler(Tiler):
         else:
             return
 
-    def __iter__(self):
+    def _iter_without_check(self):
         while self._tileable_handlers:
             to_update_tileables = self._iter()
             if not self.cancelled:
@@ -80,6 +82,27 @@ class CancellableTiler(Tiler):
                     t.refresh_params()
             else:
                 break
+
+    def _iter_with_check(self):
+        chunk_set = set()
+        chunk_graphs = []
+        for chunk_graph in self._iter_without_check():
+            chunk_graphs.append(chunk_graph)
+            chunks = []
+            for chunk in chunk_graph:
+                if isinstance(chunk.op, Fetch):
+                    continue
+                if chunk in chunk_set:
+                    raise RuntimeError(f"chunk {chunk} submitted repeatedly")
+                chunks.append(chunk)
+            chunk_set.update(chunks)
+            yield chunk_graph
+
+    def __iter__(self):
+        if not self._check_duplicated_submission:
+            return self._iter_without_check()
+        else:
+            return self._iter_with_check()
 
 
 class TaskPreprocessor:
@@ -137,7 +160,15 @@ class TaskPreprocessor:
                 t._nsplits = tiled.nsplits
 
     def _get_tiler_cls(self) -> Callable:
-        return partial(CancellableTiler, cancelled=self._cancelled)
+        extra_config = self._task.extra_config or dict()
+        check_duplicated_submission = extra_config.get(
+            "check_duplicated_submission", False
+        )
+        return partial(
+            CancellableTiler,
+            cancelled=self._cancelled,
+            check_duplicated_submission=check_duplicated_submission,
+        )
 
     def tile(self, tileable_graph: TileableGraph) -> Iterable[ChunkGraph]:
         """

@@ -35,23 +35,6 @@ from ...analyzer import GraphAnalyzer
 from ..preprocessor import CancellableTiler, TaskPreprocessor
 
 
-class CheckedCancellableTiler(CancellableTiler):
-    def __iter__(self):
-        chunk_set = set()
-        chunk_graphs = []
-        for chunk_graph in super().__iter__():
-            chunk_graphs.append(chunk_graph)
-            chunks = []
-            for chunk in chunk_graph:
-                if isinstance(chunk.op, Fetch):
-                    continue
-                if chunk in chunk_set:  # pragma: no cover
-                    raise RuntimeError(f"chunk {chunk} submitted repeatedly")
-                chunks.append(chunk)
-            chunk_set.update(chunks)
-            yield chunk_graph
-
-
 class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -141,7 +124,15 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
         return super()._update_tileable_params(tileable, tiled)
 
     def _get_tiler_cls(self) -> Callable:
-        return partial(CheckedCancellableTiler, cancelled=self._cancelled)
+        extra_config = self._task.extra_config or dict()
+        check_duplicated_submission = extra_config.get(
+            "check_duplicated_submission", True
+        )
+        return partial(
+            CancellableTiler,
+            cancelled=self._cancelled,
+            check_duplicated_submission=check_duplicated_submission,
+        )
 
     @enter_mode(build=True)
     def analyze(
