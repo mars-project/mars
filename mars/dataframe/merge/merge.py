@@ -534,9 +534,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         elif method == "broadcast":
             if cls._can_merge_with_one_chunk(left, right, how):
                 ret = cls._tile_one_chunk(op, left, right)
-            elif cls._can_merge_with_broadcast(
-                big_chunk_size, small_chunk_size, big_side, how
-            ):
+            elif how in [big_side, "inner"]:
                 ret = cls._tile_broadcast(op, left, right)
             else:  # pragma: no cover
                 raise ValueError("Cannot specify merge method `broadcast`")
