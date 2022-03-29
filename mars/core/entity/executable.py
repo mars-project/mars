@@ -31,7 +31,9 @@ class DecrefRunner:
         self._queue = queue.Queue()
 
     def start(self):
-        self._decref_thread = threading.Thread(target=self._thread_body)
+        self._decref_thread = threading.Thread(
+            target=self._thread_body, name="DecrefThread"
+        )
         self._decref_thread.daemon = True
         self._decref_thread.start()
 
@@ -62,7 +64,7 @@ class DecrefRunner:
             self._queue.put_nowait((None, None, None))
             self._decref_thread.join(1)
 
-    def put(self, key, session_ref):
+    def put(self, key: str, session_ref: ref):
         if self._decref_thread is None:
             self.start()
 
