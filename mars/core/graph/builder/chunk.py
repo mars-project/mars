@@ -238,6 +238,9 @@ class Tiler:
 
 
 def prune_chunk_graph(chunk_graph: ChunkGraph):
+    from ....core.operand import Fetch, MapReduceOperand, VirtualOperand, OperandStage
+
+    result_set = set(chunk_graph.result_chunks)
     stack = list(chunk_graph.result_chunks)
     used = set()
     while stack:
@@ -249,6 +252,24 @@ def prune_chunk_graph(chunk_graph: ChunkGraph):
 
     unused = {n for n in chunk_graph if n not in used}
     for n in unused:
+        if isinstance(n.op, MapReduceOperand) and n.op.stage == OperandStage.reduce:
+            # cannot prune reduce chunks, we just keep them and add them into results
+            if n not in result_set:
+                chunk_graph.result_chunks.append(n)
+                result_set.add(n)
+            continue
+        # for pruned chunks, we assume we will use them later,
+        # so we add the inputs of them into result chunks,
+        # to prevent from duplicated submission
+        for inp in chunk_graph.iter_predecessors(n):
+            if (
+                inp in used
+                and inp not in result_set
+                and not isinstance(inp.op, (Fetch, VirtualOperand))
+            ):
+                chunk_graph.result_chunks.append(inp)
+                result_set.add(inp)
+        # prune chunk
         chunk_graph.remove_node(n)
 
 
