@@ -38,7 +38,6 @@ from ...serialization.serializables import (
 from ...tensor.utils import normalize_chunk_sizes
 from ...typing import OperandType, TileableType
 from ..arrays import ArrowStringDtype
-from ..operands import OutputType
 from ..utils import parse_index, create_sa_connection, to_arrow_dtypes
 from .core import (
     IncrementalIndexDatasource,
@@ -74,180 +73,41 @@ class DataFrameReadSQL(
 ):
     _op_type_ = OperandDef.READ_SQL
 
-    _table_or_sql = AnyField("table_or_sql")
-    _selectable = BytesField(
+    table_or_sql = AnyField("table_or_sql")
+    selectable = BytesField(
         "selectable", on_serialize=pickle.dumps, on_deserialize=pickle.loads
     )
-    _con = AnyField("con")
-    _schema = StringField("schema")
-    _index_col = AnyField("index_col")
-    _coerce_float = BoolField("coerce_float")
-    _parse_dates = AnyField("parse_dates")
-    _columns = ListField("columns")
-    _engine_kwargs = BytesField(
+    con = AnyField("con")
+    schema = StringField("schema")
+    index_col = AnyField("index_col")
+    coerce_float = BoolField("coerce_float")
+    parse_dates = AnyField("parse_dates")
+    columns = ListField("columns")
+    engine_kwargs = BytesField(
         "engine_kwargs",
         on_serialize=cloudpickle.dumps,
         on_deserialize=cloudpickle.loads,
     )
-    _row_memory_usage = Float64Field("row_memory_usage")
-    _method = StringField("method")
-    _incremental_index = BoolField("incremental_index")
-    _use_arrow_dtype = BoolField("use_arrow_dtype")
+    row_memory_usage = Float64Field("row_memory_usage")
+    method = StringField("method")
+    incremental_index = BoolField("incremental_index")
+    use_arrow_dtype = BoolField("use_arrow_dtype")
+    chunk_size = AnyField("chunk_size")
     # for chunks
-    _offset = Int64Field("offset")
-    _partition_col = StringField("partition_col")
-    _num_partitions = Int64Field("num_partitions")
-    _low_limit = AnyField("low_limit")
-    _high_limit = AnyField("high_limit")
-    _left_end = BoolField("left_end")
-    _right_end = BoolField("right_end")
-    _nrows = Int64Field("nrows")
-
-    def __init__(
-        self,
-        table_or_sql=None,
-        selectable=None,
-        con=None,
-        schema=None,
-        index_col=None,
-        coerce_float=None,
-        parse_dates=None,
-        columns=None,
-        engine_kwargs=None,
-        row_memory_usage=None,
-        method=None,
-        incremental_index=None,
-        use_arrow_dtype=None,
-        offset=None,
-        partition_col=None,
-        num_partitions=None,
-        low_limit=None,
-        high_limit=None,
-        left_end=None,
-        right_end=None,
-        nrows=None,
-        output_types=None,
-        gpu=None,
-        **kw,
-    ):
-        super().__init__(
-            _table_or_sql=table_or_sql,
-            _selectable=selectable,
-            _con=con,
-            _schema=schema,
-            _index_col=index_col,
-            _coerce_float=coerce_float,
-            _parse_dates=parse_dates,
-            _columns=columns,
-            _engine_kwargs=engine_kwargs,
-            _row_memory_usage=row_memory_usage,
-            _method=method,
-            _incremental_index=incremental_index,
-            _use_arrow_dtype=use_arrow_dtype,
-            _offset=offset,
-            _partition_col=partition_col,
-            _num_partitions=num_partitions,
-            _low_limit=low_limit,
-            _left_end=left_end,
-            _right_end=right_end,
-            _high_limit=high_limit,
-            _nrows=nrows,
-            _output_types=output_types,
-            gpu=gpu,
-            **kw,
-        )
-        if not self.output_types:
-            self._output_types = [OutputType.dataframe]
-
-    @property
-    def table_or_sql(self):
-        return self._table_or_sql
-
-    @property
-    def selectable(self):
-        return self._selectable
-
-    @property
-    def con(self):
-        return self._con
-
-    @property
-    def schema(self):
-        return self._schema
-
-    @property
-    def index_col(self):
-        return self._index_col
-
-    @property
-    def coerce_float(self):
-        return self._coerce_float
-
-    @property
-    def parse_dates(self):
-        return self._parse_dates
-
-    @property
-    def columns(self):
-        return self._columns
-
-    @property
-    def engine_kwargs(self):
-        return self._engine_kwargs
-
-    @property
-    def row_memory_usage(self):
-        return self._row_memory_usage
-
-    @property
-    def method(self):
-        return self._method
-
-    @property
-    def incremental_index(self):
-        return self._incremental_index
-
-    @property
-    def use_arrow_dtype(self):
-        return self._use_arrow_dtype
-
-    @property
-    def offset(self):
-        return self._offset
-
-    @property
-    def partition_col(self):
-        return self._partition_col
-
-    @property
-    def num_partitions(self):
-        return self._num_partitions
-
-    @property
-    def low_limit(self):
-        return self._low_limit
-
-    @property
-    def high_limit(self):
-        return self._high_limit
-
-    @property
-    def left_end(self):
-        return self._left_end
-
-    @property
-    def right_end(self):
-        return self._right_end
-
-    @property
-    def nrows(self):
-        return self._nrows
+    offset = Int64Field("offset")
+    partition_col = StringField("partition_col")
+    num_partitions = Int64Field("num_partitions")
+    low_limit = AnyField("low_limit")
+    high_limit = AnyField("high_limit")
+    left_end = BoolField("left_end")
+    right_end = BoolField("right_end")
+    nrows = Int64Field("nrows", default=None)
 
     def get_columns(self):
         return self._columns
 
     def set_pruned_columns(self, columns, *, keep_order=None):
-        self._columns = columns
+        self.columns = columns
 
     def _get_selectable(self, engine_or_conn, columns=None):
         import sqlalchemy as sa
@@ -255,28 +115,28 @@ class DataFrameReadSQL(
         from sqlalchemy.exc import SQLAlchemyError
 
         # process table_name
-        if self._selectable is not None:
-            selectable = self._selectable
+        if self.selectable is not None:
+            selectable = self.selectable
         else:
-            if isinstance(self._table_or_sql, sa.Table):
-                selectable = self._table_or_sql
-                self._table_or_sql = selectable.name
+            if isinstance(self.table_or_sql, sa.Table):
+                selectable = self.table_or_sql
+                self.table_or_sql = selectable.name
             else:
                 m = sa.MetaData()
                 try:
                     selectable = sa.Table(
-                        self._table_or_sql,
+                        self.table_or_sql,
                         m,
                         autoload=True,
                         autoload_with=engine_or_conn,
-                        schema=self._schema,
+                        schema=self.schema,
                     )
                 except SQLAlchemyError:
                     temp_name_1 = "t1_" + binascii.b2a_hex(uuid.uuid4().bytes).decode()
                     temp_name_2 = "t2_" + binascii.b2a_hex(uuid.uuid4().bytes).decode()
                     if columns:
                         selectable = (
-                            sql.text(self._table_or_sql)
+                            sql.text(self.table_or_sql)
                             .columns(*[sql.column(c) for c in columns])
                             .alias(temp_name_2)
                         )
@@ -284,10 +144,10 @@ class DataFrameReadSQL(
                         selectable = sql.select(
                             "*",
                             from_obj=sql.text(
-                                f"({self._table_or_sql}) AS {temp_name_1}"
+                                f"({self.table_or_sql}) AS {temp_name_1}"
                             ),
                         ).alias(temp_name_2)
-                    self._selectable = selectable
+                    self.selectable = selectable
         return selectable
 
     def _collect_info(self, engine_or_conn, selectable, columns, test_rows):
@@ -303,18 +163,18 @@ class DataFrameReadSQL(
         test_df = pd.read_sql(
             query,
             engine_or_conn,
-            index_col=self._index_col,
-            coerce_float=self._coerce_float,
-            parse_dates=self._parse_dates,
+            index_col=self.index_col,
+            coerce_float=self.coerce_float,
+            parse_dates=self.parse_dates,
         )
         if len(test_df) == 0:
-            self._row_memory_usage = None
+            self.row_memory_usage = None
         else:
-            self._row_memory_usage = test_df.memory_usage(
+            self.row_memory_usage = test_df.memory_usage(
                 deep=True, index=True
             ).sum() / len(test_df)
 
-        if self._method == "offset":
+        if self.method == "offset":
             # fetch size
             size = list(
                 engine_or_conn.execute(
@@ -331,12 +191,12 @@ class DataFrameReadSQL(
         import sqlalchemy as sa
         from sqlalchemy.sql import elements
 
-        with create_sa_connection(self._con, **(self._engine_kwargs or dict())) as con:
-            self._con = str(con.engine.url)
+        with create_sa_connection(self.con, **(self.engine_kwargs or dict())) as con:
+            self.con = str(con.engine.url)
             selectable = self._get_selectable(con)
 
             # process index_col
-            index_col = self._index_col
+            index_col = self.index_col
             if index_col is not None:
                 if not isinstance(index_col, (list, tuple)):
                     index_col = (index_col,)
@@ -348,20 +208,20 @@ class DataFrameReadSQL(
                         new_index_col.append(col)
                     elif col is not None:
                         raise TypeError(f"unknown index_col type: {type(col)}")
-                self._index_col = new_index_col
+                self.index_col = new_index_col
 
             # process columns
-            columns = self._columns or []
+            columns = self.columns or []
             new_columns = []
             for col in columns:
                 if isinstance(col, str):
                     new_columns.append(col)
                 else:
                     new_columns.append(col.name)
-            self._columns = new_columns
+            self.columns = new_columns
 
-            if self._columns:
-                collect_cols = self._columns + (self._index_col or [])
+            if self.columns:
+                collect_cols = self.columns + (self.index_col or [])
             else:
                 collect_cols = []
             test_df, shape = self._collect_info(
@@ -370,11 +230,11 @@ class DataFrameReadSQL(
 
             # reconstruct selectable using known column names
             if not collect_cols:
-                self._columns = list(test_df.columns)
-                if self._selectable is not None:
-                    self._selectable = None
+                self.columns = list(test_df.columns)
+                if self.selectable is not None:
+                    self.selectable = None
                     self._get_selectable(
-                        con, columns=self._columns + (self._index_col or [])
+                        con, columns=self.columns + (self.index_col or [])
                     )
 
             if self.method == "partition":
@@ -396,7 +256,7 @@ class DataFrameReadSQL(
                 index_value = parse_index(
                     pd.RangeIndex(shape[0] if not np.isnan(shape[0]) else -1),
                     str(selectable),
-                    self._con,
+                    self.con,
                 )
             else:
                 index_value = parse_index(test_df.index)
@@ -404,7 +264,7 @@ class DataFrameReadSQL(
             columns_value = parse_index(test_df.columns, store_data=True)
 
             dtypes = test_df.dtypes
-            use_arrow_dtype = self._use_arrow_dtype
+            use_arrow_dtype = self.use_arrow_dtype
             if use_arrow_dtype is None:
                 use_arrow_dtype = options.dataframe.use_arrow_dtype
             if use_arrow_dtype:
@@ -441,7 +301,7 @@ class DataFrameReadSQL(
         for i, row_size in enumerate(row_chunk_sizes):
             chunk_op = op.copy().reset_key()
             chunk_op._row_memory_usage = None  # no need for chunk
-            offset = chunk_op._offset = offsets[i]
+            offset = chunk_op.offset = offsets[i]
             if df.index_value.has_value():
                 # range index
                 index_value = parse_index(
@@ -484,7 +344,7 @@ class DataFrameReadSQL(
 
         selectable = op._get_selectable(None)
 
-        if op._low_limit is None or op._high_limit is None:
+        if op.low_limit is None or op.high_limit is None:
             import sqlalchemy as sa
             from sqlalchemy import sql
 
@@ -495,29 +355,29 @@ class DataFrameReadSQL(
                     sql.select([sql.func.min(part_col), sql.func.max(part_col)])
                 )
 
-                op._low_limit, op._high_limit = next(range_results)
+                op.low_limit, op.high_limit = next(range_results)
                 if op.parse_dates and op.partition_col in op.parse_dates:
-                    op._low_limit = op._parse_datetime(op._low_limit)
-                    op._high_limit = op._parse_datetime(op._high_limit)
+                    op.low_limit = op._parse_datetime(op.low_limit)
+                    op.high_limit = op._parse_datetime(op.high_limit)
             finally:
                 engine.dispose()
 
-        if isinstance(op._low_limit, (datetime.datetime, np.datetime64, pd.Timestamp)):
-            seps = pd.date_range(op._low_limit, op._high_limit, op.num_partitions + 1)
+        if isinstance(op.low_limit, (datetime.datetime, np.datetime64, pd.Timestamp)):
+            seps = pd.date_range(op.low_limit, op.high_limit, op.num_partitions + 1)
         else:
             seps = np.linspace(
-                op._low_limit, op._high_limit, op.num_partitions + 1, endpoint=True
+                op.low_limit, op.high_limit, op.num_partitions + 1, endpoint=True
             )
 
         out_chunks = []
         for i, (start, end) in enumerate(zip(seps, seps[1:])):
             chunk_op = op.copy().reset_key()
-            chunk_op._row_memory_usage = None  # no need for chunk
-            chunk_op._num_partitions = None
-            chunk_op._low_limit = start
-            chunk_op._high_limit = end
-            chunk_op._left_end = i == 0
-            chunk_op._right_end = i == op.num_partitions - 1
+            chunk_op.row_memory_usage = None  # no need for chunk
+            chunk_op.num_partitions = None
+            chunk_op.low_limit = start
+            chunk_op.high_limit = end
+            chunk_op.left_end = i == 0
+            chunk_op.right_end = i == op.num_partitions - 1
 
             if df.index_value.has_value():
                 # range index
@@ -581,8 +441,8 @@ class DataFrameReadSQL(
                         columns.append(selectable.columns[icol])
 
             # convert to python timestamp in case np / pd time types not handled
-            op._low_limit = _adapt_datetime(op._low_limit)
-            op._high_limit = _adapt_datetime(op._high_limit)
+            op.low_limit = _adapt_datetime(op.low_limit)
+            op.high_limit = _adapt_datetime(op.high_limit)
 
             query = sa.sql.select(columns)
             if op.method == "partition":
@@ -697,6 +557,7 @@ def _read_sql(
         num_partitions=num_partitions,
         low_limit=low_limit,
         high_limit=high_limit,
+        chunk_size=chunk_size,
     )
     return op(test_rows, chunk_size)
 

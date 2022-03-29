@@ -91,9 +91,7 @@ class StorageHandlerActor(mo.Actor):
                     data_info.object_id, conditions=conditions
                 )
             except NotImplementedError:
-                data = yield await self._clients[data_info.level].get(
-                    data_info.object_id
-                )
+                data = yield self._clients[data_info.level].get(data_info.object_id)
                 try:
                     sliced_value = data.iloc[tuple(conditions)]
                 except AttributeError:

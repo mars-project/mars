@@ -237,7 +237,7 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
     async def wait_task(self, task_id: str, timeout: float = None):
         path = f"{self._address}/api/session/{self._session_id}/task/{task_id}"
         # client timeout should be longer than server timeout.
-        server_timeout = "" if timeout is None else str(int(timeout / 2.0))
+        server_timeout = "" if timeout is None else str(max(timeout / 2.0, timeout - 1))
         params = {"action": "wait", "timeout": server_timeout}
         res = await self._request_url(
             "GET", path, params=params, request_timeout=timeout or 0

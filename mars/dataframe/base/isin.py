@@ -19,10 +19,9 @@ import pandas as pd
 from pandas.api.types import is_list_like
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, recursive_tile
+from ...core import ENTITY_TYPE
 from ...serialization.serializables import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
-from ...utils import has_unknown_shape
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
@@ -80,14 +79,29 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_entity_values(cls, op):
+        from ..utils import auto_merge_chunks
         from ..arithmetic.bitwise_or import tree_dataframe_or
+        from ...core.context import get_context
 
         in_elements = op.input
         out_elements = op.outputs[0]
         # values contains mars objects
         chunks_list = []
-        for value in op.inputs[1:]:
-            chunks_list.append(value.chunks)
+        if any(len(t.chunks) > 4 for t in op.inputs[1:]):
+            # yield and merge value chunks to reduce graph nodes
+            yield list(
+                itertools.chain(
+                    t.chunks for t in op.inputs[1:] if isinstance(t, ENTITY_TYPE)
+                )
+            )
+            for value in op.inputs[1:]:
+                if isinstance(value, ENTITY_TYPE):
+                    merged = auto_merge_chunks(get_context(), value)
+                    chunks_list.append(merged.chunks)
+        else:
+            for value in op.inputs[1:]:
+                if isinstance(value, ENTITY_TYPE):
+                    chunks_list.append(value.chunks)
 
         out_chunks = []
         for in_chunk in op.input.chunks:
@@ -110,7 +124,7 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
         out_elements = op.outputs[0]
 
         if len(op.inputs) > 1:
-            return cls._tile_entity_values(op)
+            return (yield from cls._tile_entity_values(op))
 
         out_chunks = []
         for chunk in in_elements.chunks:

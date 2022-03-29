@@ -681,7 +681,7 @@ def test_series_isin():
         assert c.op.inputs[0].index == (i,)
         assert c.op.inputs[0].shape == (10,)
         assert c.op.inputs[1].index == (0,)
-        assert c.op.inputs[1].shape == (4,)  # has been rechunked
+        assert c.op.inputs[1].shape == (10,)
 
     # multiple chunk in one chunks
     a = from_pandas_series(pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), chunk_size=2)
@@ -712,8 +712,8 @@ def test_series_isin():
         assert c.op.output_types[0] == OutputType.series
         assert c.op.inputs[0].index == (i,)
         assert c.op.inputs[0].shape == (2,)
-        assert c.op.inputs[1].index == (0,)
-        assert c.op.inputs[1].shape == (4,)  # has been rechunked
+        assert c.op.inputs[1].index == (i,)
+        assert c.op.inputs[1].shape == (2,)
 
     with pytest.raises(TypeError):
         _ = a.isin("sth")
