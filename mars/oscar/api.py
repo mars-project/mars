@@ -65,6 +65,11 @@ async def wait_actor_pool_recovered(address: str, main_pool_address: str = None)
     return await ctx.wait_actor_pool_recovered(address, main_pool_address)
 
 
+async def get_pool_config(address: str):
+    ctx = get_context()
+    return await ctx.get_pool_config(address)
+
+
 def setup_cluster(address_to_resources: Dict[str, Dict[str, Number]]):
     scheme_to_address_resources = defaultdict(dict)
     for address, resources in address_to_resources.items():
