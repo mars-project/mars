@@ -520,7 +520,9 @@ def test_merge_groupby(setup, method):
     df1 = md.DataFrame(raw1, chunk_size=10)
     df2 = md.DataFrame(raw2, chunk_size=10)
     # do not trigger auto merge
-    df3 = df1.merge(df2, on="a", auto_merge_threshold=100, method=method)
+    df3 = df1.merge(
+        df2, on="a", auto_merge_threshold=100, method=method, auto_merge="after"
+    )
     df4 = df3.groupby("a").sum()
 
     result = df4.execute().fetch()

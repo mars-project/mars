@@ -50,7 +50,7 @@ def test_merge(setup):
 
     # merge on index
     expected0 = df1.merge(df2)
-    jdf0 = mdf1.merge(mdf2)
+    jdf0 = mdf1.merge(mdf2, auto_merge="none")
     result0 = jdf0.execute().fetch()
     pd.testing.assert_frame_equal(
         sort_dataframe_inplace(expected0, 0), sort_dataframe_inplace(result0, 0)
@@ -58,7 +58,9 @@ def test_merge(setup):
 
     # merge on left index and `right_on`
     expected1 = df1.merge(df2, how="left", right_on="x", left_index=True)
-    jdf1 = mdf1.merge(mdf2, how="left", right_on="x", left_index=True)
+    jdf1 = mdf1.merge(
+        mdf2, how="left", right_on="x", left_index=True, auto_merge="none"
+    )
     result1 = jdf1.execute().fetch()
     expected1.set_index("a_x", inplace=True)
     result1.set_index("a_x", inplace=True)
@@ -68,7 +70,9 @@ def test_merge(setup):
 
     # merge on `left_on` and right index
     expected2 = df1.merge(df2, how="right", left_on="a", right_index=True)
-    jdf2 = mdf1.merge(mdf2, how="right", left_on="a", right_index=True)
+    jdf2 = mdf1.merge(
+        mdf2, how="right", left_on="a", right_index=True, auto_merge="none"
+    )
     result2 = jdf2.execute().fetch()
     expected2.set_index("a", inplace=True)
     result2.set_index("a", inplace=True)
@@ -78,7 +82,7 @@ def test_merge(setup):
 
     # merge on `left_on` and `right_on`
     expected3 = df1.merge(df2, how="left", left_on="a", right_on="x")
-    jdf3 = mdf1.merge(mdf2, how="left", left_on="a", right_on="x")
+    jdf3 = mdf1.merge(mdf2, how="left", left_on="a", right_on="x", auto_merge="none")
     result3 = jdf3.execute().fetch()
     expected3.set_index("a_x", inplace=True)
     result3.set_index("a_x", inplace=True)
@@ -88,7 +92,7 @@ def test_merge(setup):
 
     # merge on `on`
     expected4 = df1.merge(df2, how="right", on="a")
-    jdf4 = mdf1.merge(mdf2, how="right", on="a")
+    jdf4 = mdf1.merge(mdf2, how="right", on="a", auto_merge="none")
     result4 = jdf4.execute().fetch()
     expected4.set_index("a", inplace=True)
     result4.set_index("a", inplace=True)
@@ -98,7 +102,7 @@ def test_merge(setup):
 
     # merge on multiple columns
     expected5 = df1.merge(df2, how="inner", on=["a", "b"])
-    jdf5 = mdf1.merge(mdf2, how="inner", on=["a", "b"])
+    jdf5 = mdf1.merge(mdf2, how="inner", on=["a", "b"], auto_merge="none")
     result5 = jdf5.execute().fetch()
     pd.testing.assert_frame_equal(
         sort_dataframe_inplace(expected5, 0), sort_dataframe_inplace(result5, 0)
@@ -106,7 +110,9 @@ def test_merge(setup):
 
     # merge when some on is index
     expected6 = df3.merge(df2, how="inner", left_on="index", right_on="a")
-    jdf6 = mdf3.merge(mdf2, how="inner", left_on="index", right_on="a")
+    jdf6 = mdf3.merge(
+        mdf2, how="inner", left_on="index", right_on="a", auto_merge="none"
+    )
     result6 = jdf6.execute().fetch()
     pd.testing.assert_frame_equal(
         sort_dataframe_inplace(expected6, 0), sort_dataframe_inplace(result6, 0)
@@ -114,7 +120,7 @@ def test_merge(setup):
 
     # merge when on is in MultiIndex
     expected7 = df4.merge(df2, how="inner", left_on="i1", right_on="a")
-    jdf7 = mdf4.merge(mdf2, how="inner", left_on="i1", right_on="a")
+    jdf7 = mdf4.merge(mdf2, how="inner", left_on="i1", right_on="a", auto_merge="none")
     result7 = jdf7.execute().fetch()
     pd.testing.assert_frame_equal(
         sort_dataframe_inplace(expected7, 0), sort_dataframe_inplace(result7, 0)
@@ -122,7 +128,7 @@ def test_merge(setup):
 
     # merge when on is in MultiIndex, and on not in index
     expected8 = df4.merge(df2, how="inner", on=["a", "b"])
-    jdf8 = mdf4.merge(mdf2, how="inner", on=["a", "b"])
+    jdf8 = mdf4.merge(mdf2, how="inner", on=["a", "b"], auto_merge="none")
     result8 = jdf8.execute().fetch()
     pd.testing.assert_frame_equal(
         sort_dataframe_inplace(expected8, 0), sort_dataframe_inplace(result8, 0)
@@ -139,31 +145,31 @@ def test_join(setup):
 
     # default `how`
     expected0 = df1.join(df2, lsuffix="l_", rsuffix="r_")
-    jdf0 = mdf1.join(mdf2, lsuffix="l_", rsuffix="r_")
+    jdf0 = mdf1.join(mdf2, lsuffix="l_", rsuffix="r_", auto_merge="none")
     result0 = jdf0.execute().fetch()
     pd.testing.assert_frame_equal(expected0.sort_index(), result0.sort_index())
 
     # how = 'left'
     expected1 = df1.join(df2, how="left", lsuffix="l_", rsuffix="r_")
-    jdf1 = mdf1.join(mdf2, how="left", lsuffix="l_", rsuffix="r_")
+    jdf1 = mdf1.join(mdf2, how="left", lsuffix="l_", rsuffix="r_", auto_merge="none")
     result1 = jdf1.execute().fetch()
     pd.testing.assert_frame_equal(expected1.sort_index(), result1.sort_index())
 
     # how = 'right'
     expected2 = df1.join(df2, how="right", lsuffix="l_", rsuffix="r_")
-    jdf2 = mdf1.join(mdf2, how="right", lsuffix="l_", rsuffix="r_")
+    jdf2 = mdf1.join(mdf2, how="right", lsuffix="l_", rsuffix="r_", auto_merge="none")
     result2 = jdf2.execute().fetch()
     pd.testing.assert_frame_equal(expected2.sort_index(), result2.sort_index())
 
     # how = 'inner'
     expected3 = df1.join(df2, how="inner", lsuffix="l_", rsuffix="r_")
-    jdf3 = mdf1.join(mdf2, how="inner", lsuffix="l_", rsuffix="r_")
+    jdf3 = mdf1.join(mdf2, how="inner", lsuffix="l_", rsuffix="r_", auto_merge="none")
     result3 = jdf3.execute().fetch()
     pd.testing.assert_frame_equal(expected3.sort_index(), result3.sort_index())
 
     # how = 'outer'
     expected4 = df1.join(df2, how="outer", lsuffix="l_", rsuffix="r_")
-    jdf4 = mdf1.join(mdf2, how="outer", lsuffix="l_", rsuffix="r_")
+    jdf4 = mdf1.join(mdf2, how="outer", lsuffix="l_", rsuffix="r_", auto_merge="none")
     result4 = jdf4.execute().fetch()
     pd.testing.assert_frame_equal(expected4.sort_index(), result4.sort_index())
 
@@ -179,14 +185,16 @@ def test_join_on(setup):
     mdf2 = from_pandas(df2, chunk_size=2)
 
     expected0 = df1.join(df2, on=None, lsuffix="_l", rsuffix="_r")
-    jdf0 = mdf1.join(mdf2, on=None, lsuffix="_l", rsuffix="_r")
+    jdf0 = mdf1.join(mdf2, on=None, lsuffix="_l", rsuffix="_r", auto_merge="none")
     result0 = jdf0.execute().fetch()
     pd.testing.assert_frame_equal(
         sort_dataframe_inplace(expected0, 0), sort_dataframe_inplace(result0, 0)
     )
 
     expected1 = df1.join(df2, how="left", on="a1", lsuffix="_l", rsuffix="_r")
-    jdf1 = mdf1.join(mdf2, how="left", on="a1", lsuffix="_l", rsuffix="_r")
+    jdf1 = mdf1.join(
+        mdf2, how="left", on="a1", lsuffix="_l", rsuffix="_r", auto_merge="none"
+    )
     result1 = jdf1.execute().fetch()
 
     # Note [Columns of Left Join]
@@ -265,7 +273,9 @@ def test_join_on(setup):
     # final result dataframe, but we guaranteed that the dataframe content is correctly.
 
     expected2 = df1.join(df2, how="right", on="a2", lsuffix="_l", rsuffix="_r")
-    jdf2 = mdf1.join(mdf2, how="right", on="a2", lsuffix="_l", rsuffix="_r")
+    jdf2 = mdf1.join(
+        mdf2, how="right", on="a2", lsuffix="_l", rsuffix="_r", auto_merge="none"
+    )
     result2 = jdf2.execute().fetch()
 
     expected2.set_index("a2", inplace=True)
@@ -275,14 +285,18 @@ def test_join_on(setup):
     )
 
     expected3 = df1.join(df2, how="inner", on="a2", lsuffix="_l", rsuffix="_r")
-    jdf3 = mdf1.join(mdf2, how="inner", on="a2", lsuffix="_l", rsuffix="_r")
+    jdf3 = mdf1.join(
+        mdf2, how="inner", on="a2", lsuffix="_l", rsuffix="_r", auto_merge="none"
+    )
     result3 = jdf3.execute().fetch()
     pd.testing.assert_frame_equal(
         sort_dataframe_inplace(expected3, 0), sort_dataframe_inplace(result3, 0)
     )
 
     expected4 = df1.join(df2, how="outer", on="a2", lsuffix="_l", rsuffix="_r")
-    jdf4 = mdf1.join(mdf2, how="outer", on="a2", lsuffix="_l", rsuffix="_r")
+    jdf4 = mdf1.join(
+        mdf2, how="outer", on="a2", lsuffix="_l", rsuffix="_r", auto_merge="none"
+    )
     result4 = jdf4.execute().fetch()
 
     expected4.set_index("a2", inplace=True)
@@ -307,7 +321,7 @@ def test_merge_one_chunk(setup):
     mdf2 = from_pandas(df2)
 
     expected = df1.merge(df2, left_on="lkey", right_on="rkey")
-    jdf = mdf1.merge(mdf2, left_on="lkey", right_on="rkey")
+    jdf = mdf1.merge(mdf2, left_on="lkey", right_on="rkey", auto_merge="none")
     result = jdf.execute().fetch()
 
     pd.testing.assert_frame_equal(
@@ -320,7 +334,7 @@ def test_merge_one_chunk(setup):
     mdf2 = from_pandas(df2, chunk_size=2)
 
     expected = df1.merge(df2, left_on="lkey", right_on="rkey")
-    jdf = mdf1.merge(mdf2, left_on="lkey", right_on="rkey")
+    jdf = mdf1.merge(mdf2, left_on="lkey", right_on="rkey", auto_merge="none")
     result = jdf.execute().fetch()
 
     pd.testing.assert_frame_equal(
@@ -333,7 +347,7 @@ def test_merge_one_chunk(setup):
     mdf2 = from_pandas(df2)
 
     expected = df1.merge(df2, left_on="lkey", right_on="rkey")
-    jdf = mdf1.merge(mdf2, left_on="lkey", right_on="rkey")
+    jdf = mdf1.merge(mdf2, left_on="lkey", right_on="rkey", auto_merge="none")
     result = jdf.execute().fetch()
 
     pd.testing.assert_frame_equal(
@@ -347,7 +361,9 @@ def test_merge_one_chunk(setup):
     mdf2 = from_pandas(df2)
 
     expected = df2.merge(df1, left_on="rkey", right_on="lkey", how="left")
-    jdf = mdf2.merge(mdf1, left_on="rkey", right_on="lkey", how="left")
+    jdf = mdf2.merge(
+        mdf1, left_on="rkey", right_on="lkey", how="left", auto_merge="none"
+    )
     result = jdf.execute().fetch()
 
     pd.testing.assert_frame_equal(
@@ -378,7 +394,7 @@ def test_broadcast_merge(setup):
     # test broadcast right and how="inner"
     df1 = from_pandas(raw1, chunk_size=5)
     df2 = from_pandas(raw2, chunk_size=10)
-    r = df2.merge(df1, on="key", auto_merge_threshold=100)
+    r = df2.merge(df1, on="key", auto_merge="none")
     # make sure it selects broadcast merge, for broadcast, there must be
     # DataFrameConcat operands
     graph = build_graph([r], tile=True)
@@ -398,7 +414,7 @@ def test_broadcast_merge(setup):
     # test broadcast right and how="left"
     df1 = from_pandas(raw1, chunk_size=5)
     df2 = from_pandas(raw2, chunk_size=10)
-    r = df2.merge(df1, on="key", how="left", auto_merge_threshold=100)
+    r = df2.merge(df1, on="key", how="left", auto_merge="none")
     # make sure it selects broadcast merge, for broadcast, there must be
     # DataFrameConcat operands
     graph = build_graph([r], tile=True)
@@ -419,7 +435,7 @@ def test_broadcast_merge(setup):
     # test broadcast left
     df1 = from_pandas(raw1, chunk_size=5)
     df2 = from_pandas(raw2, chunk_size=10)
-    r = df1.merge(df2, on="key", auto_merge_threshold=100)
+    r = df1.merge(df2, on="key", auto_merge="none")
     # make sure it selects broadcast merge, for broadcast, there must be
     # DataFrameConcat operands
     graph = build_graph([r], tile=True)
@@ -439,7 +455,7 @@ def test_broadcast_merge(setup):
     # test broadcast left and how="right"
     df1 = from_pandas(raw1, chunk_size=5)
     df2 = from_pandas(raw2, chunk_size=10)
-    r = df1.merge(df2, on="key", how="right", auto_merge_threshold=100)
+    r = df1.merge(df2, on="key", how="right", auto_merge="none")
     # make sure it selects broadcast merge, for broadcast, there must be
     # DataFrameConcat operands
     graph = build_graph([r], tile=True)
@@ -472,7 +488,7 @@ def test_merge_on_duplicate_columns(setup):
     df1 = from_pandas(raw1, chunk_size=2)
     df2 = from_pandas(raw2, chunk_size=3)
 
-    r = df1.merge(df2, left_on="lkey", right_on="rkey")
+    r = df1.merge(df2, left_on="lkey", right_on="rkey", auto_merge="none")
     result = r.execute().fetch()
     expected = raw1.merge(raw2, left_on="lkey", right_on="rkey")
     pd.testing.assert_frame_equal(expected, result)
