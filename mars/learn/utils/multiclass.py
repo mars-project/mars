@@ -199,7 +199,7 @@ class IsMultilabel(LearnOperand, LearnOperandMixin):
 
         ctx = get_context()
 
-        if has_unknown_shape(y):
+        if has_unknown_shape(y):  # pragma: no cover
             yield
 
         if not (hasattr(y, "shape") and y.ndim == 2 and y.shape[1] > 1):
