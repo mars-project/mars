@@ -316,42 +316,43 @@ class MockClusterAPI(ClusterAPI):
         from ..supervisor.node_info import NodeInfoCollectorActor
         from ..uploader import NodeInfoUploaderActor
 
+        create_actor_coros = [
+            mo.create_actor(
+                SupervisorPeerLocatorActor,
+                "fixed",
+                address,
+                uid=SupervisorPeerLocatorActor.default_uid(),
+                address=address,
+            ),
+            mo.create_actor(
+                NodeInfoCollectorActor,
+                uid=NodeInfoCollectorActor.default_uid(),
+                address=address,
+            ),
+            mo.create_actor(
+                NodeAllocatorActor,
+                "fixed",
+                address,
+                uid=NodeAllocatorActor.default_uid(),
+                address=address,
+            ),
+            mo.create_actor(
+                NodeInfoUploaderActor,
+                NodeRole.WORKER,
+                interval=kw.get("upload_interval"),
+                band_to_slots=kw.get("band_to_slots"),
+                use_gpu=kw.get("use_gpu", False),
+                uid=NodeInfoUploaderActor.default_uid(),
+                address=address,
+            ),
+            mo.create_actor(
+                ProcessInfoManagerActor,
+                uid=ProcessInfoManagerActor.default_uid(),
+                address=address,
+            ),
+        ]
         dones, _ = await asyncio.wait(
-            [
-                mo.create_actor(
-                    SupervisorPeerLocatorActor,
-                    "fixed",
-                    address,
-                    uid=SupervisorPeerLocatorActor.default_uid(),
-                    address=address,
-                ),
-                mo.create_actor(
-                    NodeInfoCollectorActor,
-                    uid=NodeInfoCollectorActor.default_uid(),
-                    address=address,
-                ),
-                mo.create_actor(
-                    NodeAllocatorActor,
-                    "fixed",
-                    address,
-                    uid=NodeAllocatorActor.default_uid(),
-                    address=address,
-                ),
-                mo.create_actor(
-                    NodeInfoUploaderActor,
-                    NodeRole.WORKER,
-                    interval=kw.get("upload_interval"),
-                    band_to_slots=kw.get("band_to_slots"),
-                    use_gpu=kw.get("use_gpu", False),
-                    uid=NodeInfoUploaderActor.default_uid(),
-                    address=address,
-                ),
-                mo.create_actor(
-                    ProcessInfoManagerActor,
-                    uid=ProcessInfoManagerActor.default_uid(),
-                    address=address,
-                ),
-            ]
+            [asyncio.ensure_future(coro) for coro in create_actor_coros]
         )
 
         for task in dones:
@@ -370,22 +371,20 @@ class MockClusterAPI(ClusterAPI):
         from ..uploader import NodeInfoUploaderActor
         from ..supervisor.node_info import NodeInfoCollectorActor
 
-        await asyncio.wait(
-            [
-                mo.destroy_actor(
-                    mo.create_actor_ref(
-                        uid=SupervisorPeerLocatorActor.default_uid(), address=address
-                    )
-                ),
-                mo.destroy_actor(
-                    mo.create_actor_ref(
-                        uid=NodeInfoCollectorActor.default_uid(), address=address
-                    )
-                ),
-                mo.destroy_actor(
-                    mo.create_actor_ref(
-                        uid=NodeInfoUploaderActor.default_uid(), address=address
-                    )
-                ),
-            ]
+        await asyncio.gather(
+            mo.destroy_actor(
+                mo.create_actor_ref(
+                    uid=SupervisorPeerLocatorActor.default_uid(), address=address
+                )
+            ),
+            mo.destroy_actor(
+                mo.create_actor_ref(
+                    uid=NodeInfoCollectorActor.default_uid(), address=address
+                )
+            ),
+            mo.destroy_actor(
+                mo.create_actor_ref(
+                    uid=NodeInfoUploaderActor.default_uid(), address=address
+                )
+            ),
         )

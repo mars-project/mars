@@ -142,12 +142,13 @@ class SubtaskManagerActor(mo.Actor):
                         band_tasks[band] += 1
 
         if band_tasks:
-            coros = []
+            tasks = []
             for band, subtask_count in band_tasks.items():
-                coros.append(
+                task = asyncio.ensure_future(
                     self._queueing_ref.submit_subtasks.tell(band, subtask_count)
                 )
-            await asyncio.wait(coros)
+                tasks.append(task)
+            await asyncio.wait(tasks)
 
     def _get_subtasks_by_ids(self, subtask_ids: List[str]) -> List[Optional[Subtask]]:
         subtasks = []

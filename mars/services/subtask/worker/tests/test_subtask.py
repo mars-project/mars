@@ -176,7 +176,7 @@ async def test_cancel_subtask(actor_pool):
     with Timer() as timer:
         # normal cancel by cancel asyncio Task
         aio_task = asyncio.create_task(
-            asyncio.wait_for(subtask_runner.cancel_subtask(), timeout=1)
+            asyncio.wait_for(asyncio.shield(subtask_runner.cancel_subtask()), timeout=1)
         )
         assert await subtask_runner.is_runner_free() is False
         with pytest.raises(asyncio.TimeoutError):

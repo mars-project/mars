@@ -105,7 +105,7 @@ def test_to_dot():
 
     dot = str(graph.to_dot(trunc_key=5))
     try:
-        assert all(str(n.op.key)[5] in dot for n in graph) is True
+        assert all(str(n.key)[5] in dot for n in graph) is True
     except AssertionError:
         graph_reprs = []
         for n in graph:
@@ -117,4 +117,6 @@ def test_to_dot():
             dot,
             "\n".join(graph_reprs),
         )
+        missing_prefix = next(str(n.key)[5] not in dot for n in graph)
+        logging.error("Missing prefix %s", missing_prefix)
         raise
