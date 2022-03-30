@@ -647,7 +647,8 @@ class TaskProcessorActor(mo.Actor):
 
     async def wait(self, timeout: int = None):
         fs = [
-            processor.done.wait() for processor in self._task_id_to_processor.values()
+            asyncio.ensure_future(processor.done.wait())
+            for processor in self._task_id_to_processor.values()
         ]
 
         _, pending = yield asyncio.wait(fs, timeout=timeout)
