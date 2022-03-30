@@ -26,6 +26,7 @@ jobs:
         shell: bash
         env:
           DOCKER_ORG: ${{ secrets.DOCKERHUB_USERNAME }}
+        if: ${{ github.repository == 'mars-project/mars' }}
         run: |
           source ./ci/reload-env.sh
 

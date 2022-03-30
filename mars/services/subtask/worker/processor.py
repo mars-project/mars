@@ -35,8 +35,8 @@ from ....typing import BandType
 from ....utils import get_chunk_key_to_data_keys
 from ...context import ThreadedServiceContext
 from ...meta.api import MetaAPI
-from ...storage import StorageAPI
 from ...session import SessionAPI
+from ...storage import StorageAPI
 from ...task import TaskAPI, task_options
 from ..core import Subtask, SubtaskStatus, SubtaskResult
 

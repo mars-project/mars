@@ -450,12 +450,6 @@ async def test_mars_destroy_has_actor(actor_pool_context):
     assert not await mo.has_actor(ref1)
     assert not await mo.has_actor(ref2)
 
-    # the lru_cache on _ExtensibleAccessor.__get__ will reference all the
-    # decorated actors, so we have to clear the cache here.
-    #
-    # there will be memory leak if the actor create and destroy multiple times.
-    DummyActor.__dict__["add"].__get__.__func__.cache_clear()
-
     if isinstance(ref2, LocalActorRef):
         assert "weakref" in str(ref2)
         assert "dead" in str(ref2)
