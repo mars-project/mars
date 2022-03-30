@@ -52,7 +52,7 @@ async def test_global_resource(actor_pool):
     cluster_api = await ClusterAPI.create(pool.external_address)
     bands = await cluster_api.get_all_bands()
     band = (pool.external_address, "numa-0")
-    band_slots = bands[band]
+    band_resource = bands[band]
 
     print(await global_resource_ref.get_idle_bands(0))
     assert band in await global_resource_ref.get_idle_bands(0)
@@ -62,7 +62,7 @@ async def test_global_resource(actor_pool):
     assert band not in await global_resource_ref.get_idle_bands(0)
 
     await global_resource_ref.update_subtask_resources(
-        band, session_id, "subtask0", Resource(num_cpus=band_slots)
+        band, session_id, "subtask0", band_resource
     )
     assert [] == await global_resource_ref.apply_subtask_resources(
         band, session_id, ["subtask1"], [Resource(num_cpus=1)]
@@ -78,6 +78,6 @@ async def test_global_resource(actor_pool):
     assert ["subtask1"] == await global_resource_ref.apply_subtask_resources(
         band, session_id, ["subtask1"], [Resource(num_cpus=1)]
     )
-    assert (await global_resource_ref.get_remaining_resources())[band] == Resource(
-        num_cpus=band_slots - 1
-    )
+    assert (await global_resource_ref.get_remaining_resources())[
+        band
+    ] == band_resource - Resource(num_cpus=1)

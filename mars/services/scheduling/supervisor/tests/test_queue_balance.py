@@ -80,7 +80,7 @@ class FakeClusterAPI(ClusterAPI):
                     NodeInfoUploaderActor,
                     NodeRole.WORKER,
                     interval=kw.get("upload_interval"),
-                    band_to_slots=kw.get("band_to_slots"),
+                    band_to_resource=kw.get("band_to_resource"),
                     use_gpu=kw.get("use_gpu", False),
                     uid=NodeInfoUploaderActor.default_uid(),
                     address=address,
@@ -193,6 +193,7 @@ async def _queue_subtasks(num_subtasks, expect_bands, queueing_ref):
     subtasks = [Subtask(expect_bands[0] + "-" + str(i)) for i in range(num_subtasks)]
     for subtask in subtasks:
         subtask.expect_bands = [expect_bands]
+        subtask.required_resource = Resource(num_cpus=1)
     priorities = [(i,) for i in range(num_subtasks)]
 
     await queueing_ref.add_subtasks(subtasks, priorities)

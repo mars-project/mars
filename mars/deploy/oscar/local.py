@@ -24,7 +24,7 @@ import numpy as np
 from ... import oscar as mo
 from ...core.entrypoints import init_extension_entrypoints
 from ...lib.aio import get_isolation, stop_isolation
-from ...resource import cpu_count, cuda_count
+from ...resource import cpu_count, cuda_count, mem_total, Resource
 from ...services import NodeRole
 from ...typing import ClusterType, ClientType
 from ..utils import get_third_party_modules_from_config
@@ -51,6 +51,7 @@ async def new_cluster_in_isolation(
     address: str = "0.0.0.0",
     n_worker: int = 1,
     n_cpu: Union[int, str] = "auto",
+    mem_bytes: Union[int, str] = "auto",
     cuda_devices: Union[List[int], str] = "auto",
     subprocess_start_method: str = None,
     backend: str = None,
@@ -65,6 +66,7 @@ async def new_cluster_in_isolation(
         address,
         n_worker,
         n_cpu,
+        mem_bytes,
         cuda_devices,
         subprocess_start_method,
         config,
@@ -79,6 +81,7 @@ async def new_cluster(
     address: str = "0.0.0.0",
     n_worker: int = 1,
     n_cpu: Union[int, str] = "auto",
+    mem_bytes: Union[int, str] = "auto",
     cuda_devices: Union[List[int], str] = "auto",
     subprocess_start_method: str = None,
     config: Union[str, Dict] = None,
@@ -91,6 +94,7 @@ async def new_cluster(
         address,
         n_worker=n_worker,
         n_cpu=n_cpu,
+        mem_bytes=mem_bytes,
         cuda_devices=cuda_devices,
         subprocess_start_method=subprocess_start_method,
         config=config,
@@ -116,6 +120,7 @@ class LocalCluster:
         address: str = "0.0.0.0",
         n_worker: int = 1,
         n_cpu: Union[int, str] = "auto",
+        mem_bytes: Union[int, str] = "auto",
         cuda_devices: Union[List[int], List[List[int]], str] = "auto",
         subprocess_start_method: str = None,
         config: Union[str, Dict] = None,
@@ -132,6 +137,7 @@ class LocalCluster:
         self._subprocess_start_method = subprocess_start_method
         self._config = config
         self._n_cpu = cpu_count() if n_cpu == "auto" else n_cpu
+        self._mem_bytes = mem_total() if mem_bytes == "auto" else mem_bytes
         self._n_supervisor_process = n_supervisor_process
         if cuda_devices == "auto":
             total = cuda_count()
@@ -148,19 +154,22 @@ class LocalCluster:
 
         self._n_worker = n_worker
         self._web = web
-        self._bands_to_slot = bands_to_slot = []
+        self._bands_to_resource = bands_to_resource = []
         worker_cpus = self._n_cpu // n_worker
         if sum(len(devices) for devices in devices_list) == 0:
             assert worker_cpus > 0, (
                 f"{self._n_cpu} cpus are not enough "
                 f"for {n_worker}, try to decrease workers."
             )
+        mem_bytes = self._mem_bytes // n_worker
         for _, devices in zip(range(n_worker), devices_list):
-            worker_band_to_slot = dict()
-            worker_band_to_slot["numa-0"] = worker_cpus
+            worker_band_to_resource = dict()
+            worker_band_to_resource["numa-0"] = Resource(
+                num_cpus=worker_cpus, mem_bytes=mem_bytes
+            )
             for i in devices:  # pragma: no cover
-                worker_band_to_slot[f"gpu-{i}"] = 1
-            bands_to_slot.append(worker_band_to_slot)
+                worker_band_to_resource[f"gpu-{i}"] = Resource(num_gpus=1)
+            bands_to_resource.append(worker_band_to_resource)
         self._supervisor_pool = None
         self._worker_pools = []
 
@@ -211,10 +220,10 @@ class LocalCluster:
         worker_modules = get_third_party_modules_from_config(
             self._config, NodeRole.WORKER
         )
-        for band_to_slot in self._bands_to_slot:
+        for band_to_resource in self._bands_to_resource:
             worker_pool = await create_worker_actor_pool(
                 self._address,
-                band_to_slot,
+                band_to_resource,
                 modules=worker_modules,
                 subprocess_start_method=self._subprocess_start_method,
                 metrics=self._config.get("metrics", {}),
@@ -225,11 +234,13 @@ class LocalCluster:
         self._web = await start_supervisor(
             self.supervisor_address, config=self._config, web=self._web
         )
-        for worker_pool, band_to_slot in zip(self._worker_pools, self._bands_to_slot):
+        for worker_pool, band_to_resource in zip(
+            self._worker_pools, self._bands_to_resource
+        ):
             await start_worker(
                 worker_pool.external_address,
                 self.supervisor_address,
-                band_to_slot,
+                band_to_resource,
                 config=self._config,
             )
 

@@ -15,6 +15,7 @@
 from abc import abstractmethod
 from typing import List, Dict, Set
 
+from ....resource import Resource
 from ....typing import BandType
 from ...core import NodeRole
 from ..core import NodeStatus
@@ -112,14 +113,14 @@ class AbstractClusterAPI:
         role: NodeRole = None,
         statuses: Set[NodeStatus] = None,
         exclude_statuses: Set[NodeStatus] = None,
-    ) -> Dict[BandType, int]:
+    ) -> Dict[BandType, Resource]:
         """
         Get all bands that can be used for computation.
 
         Returns
         -------
-        band_to_slots : dict
-            Band to n_slot.
+        band_to_resource : dict
+            Band to resource.
         """
 
     @abstractmethod
@@ -134,8 +135,8 @@ class AbstractClusterAPI:
 
         Returns
         -------
-        band_to_slots : dict
-            Band to n_slot.
+        band_to_resource : dict
+            Band to resource.
         """
 
     @abstractmethod
@@ -147,4 +148,28 @@ class AbstractClusterAPI:
         -------
         version_list : list
             List of versions
+        """
+
+    @abstractmethod
+    async def get_node_pool_configs(self, address: str) -> List[Dict]:
+        """
+        Get pool configs of a Mars node
+
+        Returns
+        -------
+        config_list : List[Dict]
+            List of configs for all pool processes
+        """
+
+    async def get_node_thread_stacks(self, address: str) -> List[Dict[int, List[str]]]:
+        """
+        Get current thread pool stacks of a Mars node
+
+        Parameters
+        ----------
+        address
+
+        Returns
+        -------
+
         """

@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import asyncio
+import atexit
 import concurrent.futures
+import queue
 import threading
 from typing import List
 from weakref import WeakKeyDictionary, ref
@@ -23,7 +25,55 @@ from ...typing import SessionType, TileableType
 from ..mode import enter_mode
 
 
-_decref_pool = concurrent.futures.ThreadPoolExecutor()
+class DecrefRunner:
+    def __init__(self):
+        self._decref_thread = None
+        self._queue = queue.Queue()
+
+    def start(self):
+        self._decref_thread = threading.Thread(
+            target=self._thread_body, name="DecrefThread"
+        )
+        self._decref_thread.daemon = True
+        self._decref_thread.start()
+
+    def _thread_body(self):
+        from ...deploy.oscar.session import SyncSession
+
+        while True:
+            key, session_ref, fut = self._queue.get()
+            if key is None:
+                break
+
+            session = session_ref()
+            if session is None:
+                fut.set_result(None)
+                continue
+            try:
+                s = SyncSession.from_isolated_session(session)
+                s.decref(key)
+                fut.set_result(None)
+            except (RuntimeError, ConnectionError, KeyError):
+                fut.set_result(None)
+            except Exception as ex:  # pragma: no cover  # noqa: E722  # nosec  # pylint: disable=bare-except
+                fut.set_exception(ex)
+
+    def stop(self):
+        if self._decref_thread:  # pragma: no branch
+            self._queue.put_nowait((None, None, None))
+            self._decref_thread.join(1)
+
+    def put(self, key: str, session_ref: ref):
+        if self._decref_thread is None:
+            self.start()
+
+        fut = concurrent.futures.Future()
+        self._queue.put_nowait((key, session_ref, fut))
+        return fut
+
+
+_decref_runner = DecrefRunner()
+atexit.register(_decref_runner.stop)
 
 
 class _TileableSession:
@@ -38,18 +88,7 @@ class _TileableSession:
                 # isolation destroyed, no need to decref
                 return
 
-            def decref():
-                from ...deploy.oscar.session import SyncSession
-
-                s = sess()
-                if s:
-                    try:
-                        s = SyncSession.from_isolated_session(s)
-                        s.decref(key)
-                    except (RuntimeError, ConnectionError, KeyError):
-                        pass
-
-            fut = _decref_pool.submit(decref)
+            fut = _decref_runner.put(key, sess)
             if not decref_in_isolation:
                 # if decref in isolation, means that this tileable
                 # is not required for main thread, thus we do not need

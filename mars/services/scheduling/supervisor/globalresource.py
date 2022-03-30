@@ -48,7 +48,7 @@ class GlobalResourceManagerActor(mo.Actor):
         async def watch_bands():
             async for bands in self._cluster_api.watch_all_bands():
                 old_bands = set(self._band_total_resources.keys())
-                await self._refresh_bands(bands)
+                self._band_total_resources = bands
                 new_bands = set(bands.keys()) - old_bands
                 for band in new_bands:
                     self._update_band_usage(band, ZeroResource)
@@ -59,20 +59,7 @@ class GlobalResourceManagerActor(mo.Actor):
         self._band_watch_task.cancel()
 
     async def refresh_bands(self):
-        bands = await self._cluster_api.get_all_bands()
-        await self._refresh_bands(bands)
-
-    async def _refresh_bands(self, bands):
-        # TODO add `num_mem_bytes` after supported report worker memory
-        band_total_resources = {}
-        for band, slot in bands.items():
-            if band[1].startswith("gpu"):
-                band_total_resources[band] = Resource(num_gpus=slot)
-            elif band[1].startswith("numa"):
-                band_total_resources[band] = Resource(num_cpus=slot)
-            else:
-                raise NotImplementedError(f"Unsupported band type {band}")
-        self._band_total_resources = band_total_resources
+        self._band_total_resources = await self._cluster_api.get_all_bands()
 
     @mo.extensible
     async def apply_subtask_resources(

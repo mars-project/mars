@@ -18,6 +18,7 @@ from typing import List, Dict, Optional, Set, Type, TypeVar
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
+from ....resource import Resource
 from ....typing import BandType
 from ...core import NodeRole
 from ..core import (
@@ -114,6 +115,10 @@ class ClusterAPI(AbstractClusterAPI):
             references of the actors
         """
         addrs = await self.get_supervisors_by_keys(uids)
+        if any(addr is None for addr in addrs):
+            none_uid = next(uid for addr, uid in zip(addrs, uids) if addr is None)
+            raise mo.ActorNotExist(f"Actor {none_uid} not exist as no supervisors")
+
         return await asyncio.gather(
             *[mo.actor_ref(uid, address=addr) for addr, uid in zip(addrs, uids)]
         )
@@ -155,7 +160,7 @@ class ClusterAPI(AbstractClusterAPI):
         detail: bool = False,
         statuses: Set[NodeStatus] = None,
         exclude_statuses: Set[NodeStatus] = None,
-    ):
+    ) -> Dict[str, Dict]:
         statuses = self._calc_statuses(statuses, exclude_statuses)
         node_info_ref = await self._get_node_info_ref()
         return await node_info_ref.get_nodes_info(
@@ -188,7 +193,7 @@ class ClusterAPI(AbstractClusterAPI):
         role: NodeRole = None,
         statuses: Set[NodeStatus] = None,
         exclude_statuses: Set[NodeStatus] = None,
-    ) -> Dict[BandType, int]:
+    ) -> Dict[BandType, Resource]:
         statuses = self._calc_statuses(statuses, exclude_statuses)
         node_info_ref = await self._get_node_info_ref()
         return await node_info_ref.get_all_bands(role, statuses=statuses)
@@ -217,8 +222,8 @@ class ClusterAPI(AbstractClusterAPI):
 
         Returns
         -------
-        band_to_slots : dict
-            Band to n_slot.
+        band_to_resource : dict
+            Band to resource.
         """
         return await self._uploader_ref.get_bands()
 
@@ -285,46 +290,70 @@ class ClusterAPI(AbstractClusterAPI):
         )
         return node_allocator_ref
 
+    async def _get_process_info_manager_ref(self, address: str = None):
+        from ..procinfo import ProcessInfoManagerActor
+
+        return await mo.actor_ref(
+            ProcessInfoManagerActor.default_uid(), address=address or self._address
+        )
+
+    async def get_node_pool_configs(self, address: str = None) -> List[Dict]:
+        ref = await self._get_process_info_manager_ref(address)
+        return await ref.get_pool_configs()
+
+    async def get_node_thread_stacks(
+        self, address: str = None
+    ) -> List[Dict[int, List[str]]]:
+        ref = await self._get_process_info_manager_ref(address)
+        return await ref.get_thread_stacks()
+
 
 class MockClusterAPI(ClusterAPI):
     @classmethod
     async def create(cls: Type[APIType], address: str, **kw) -> APIType:
+        from ..procinfo import ProcessInfoManagerActor
         from ..supervisor.locator import SupervisorPeerLocatorActor
-        from ..uploader import NodeInfoUploaderActor
         from ..supervisor.node_allocator import NodeAllocatorActor
         from ..supervisor.node_info import NodeInfoCollectorActor
+        from ..uploader import NodeInfoUploaderActor
 
+        create_actor_coros = [
+            mo.create_actor(
+                SupervisorPeerLocatorActor,
+                "fixed",
+                address,
+                uid=SupervisorPeerLocatorActor.default_uid(),
+                address=address,
+            ),
+            mo.create_actor(
+                NodeInfoCollectorActor,
+                uid=NodeInfoCollectorActor.default_uid(),
+                address=address,
+            ),
+            mo.create_actor(
+                NodeAllocatorActor,
+                "fixed",
+                address,
+                uid=NodeAllocatorActor.default_uid(),
+                address=address,
+            ),
+            mo.create_actor(
+                NodeInfoUploaderActor,
+                NodeRole.WORKER,
+                interval=kw.get("upload_interval"),
+                band_to_resource=kw.get("band_to_resource"),
+                use_gpu=kw.get("use_gpu", False),
+                uid=NodeInfoUploaderActor.default_uid(),
+                address=address,
+            ),
+            mo.create_actor(
+                ProcessInfoManagerActor,
+                uid=ProcessInfoManagerActor.default_uid(),
+                address=address,
+            ),
+        ]
         dones, _ = await asyncio.wait(
-            [
-                mo.create_actor(
-                    SupervisorPeerLocatorActor,
-                    "fixed",
-                    address,
-                    uid=SupervisorPeerLocatorActor.default_uid(),
-                    address=address,
-                ),
-                mo.create_actor(
-                    NodeInfoCollectorActor,
-                    uid=NodeInfoCollectorActor.default_uid(),
-                    address=address,
-                ),
-                mo.create_actor(
-                    NodeAllocatorActor,
-                    "fixed",
-                    address,
-                    uid=NodeAllocatorActor.default_uid(),
-                    address=address,
-                ),
-                mo.create_actor(
-                    NodeInfoUploaderActor,
-                    NodeRole.WORKER,
-                    interval=kw.get("upload_interval"),
-                    band_to_slots=kw.get("band_to_slots"),
-                    use_gpu=kw.get("use_gpu", False),
-                    uid=NodeInfoUploaderActor.default_uid(),
-                    address=address,
-                ),
-            ]
+            [asyncio.ensure_future(coro) for coro in create_actor_coros]
         )
 
         for task in dones:
@@ -343,22 +372,20 @@ class MockClusterAPI(ClusterAPI):
         from ..uploader import NodeInfoUploaderActor
         from ..supervisor.node_info import NodeInfoCollectorActor
 
-        await asyncio.wait(
-            [
-                mo.destroy_actor(
-                    mo.create_actor_ref(
-                        uid=SupervisorPeerLocatorActor.default_uid(), address=address
-                    )
-                ),
-                mo.destroy_actor(
-                    mo.create_actor_ref(
-                        uid=NodeInfoCollectorActor.default_uid(), address=address
-                    )
-                ),
-                mo.destroy_actor(
-                    mo.create_actor_ref(
-                        uid=NodeInfoUploaderActor.default_uid(), address=address
-                    )
-                ),
-            ]
+        await asyncio.gather(
+            mo.destroy_actor(
+                mo.create_actor_ref(
+                    uid=SupervisorPeerLocatorActor.default_uid(), address=address
+                )
+            ),
+            mo.destroy_actor(
+                mo.create_actor_ref(
+                    uid=NodeInfoCollectorActor.default_uid(), address=address
+                )
+            ),
+            mo.destroy_actor(
+                mo.create_actor_ref(
+                    uid=NodeInfoUploaderActor.default_uid(), address=address
+                )
+            ),
         )

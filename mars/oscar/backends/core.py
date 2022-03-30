@@ -24,7 +24,7 @@ from ...oscar.profiling import ProfilingData
 from ...utils import Timer
 
 
-result_message_type = Union[ResultMessage, ErrorMessage]
+ResultMessageType = Union[ResultMessage, ErrorMessage]
 
 
 class ActorCaller:

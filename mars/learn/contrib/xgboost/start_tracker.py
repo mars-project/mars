@@ -47,9 +47,9 @@ class StartTracker(LearnOperand, LearnOperandMixin):
 
         env = {"DMLC_NUM_WORKER": op.n_workers}
         rabit_context = RabitTracker(
-            hostIP=ctx.get_local_host_ip(), nslave=op.n_workers
+            host_ip=ctx.get_local_host_ip(), n_workers=op.n_workers
         )
-        env.update(rabit_context.slave_envs())
+        env.update(rabit_context.worker_envs())
 
         rabit_context.start(op.n_workers)
         thread = Thread(target=rabit_context.join)

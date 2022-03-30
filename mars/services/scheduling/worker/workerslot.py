@@ -47,12 +47,12 @@ class WorkerSlotManagerActor(mo.Actor):
     async def __post_create__(self):
         self._cluster_api = await ClusterAPI.create(self.address)
 
-        band_to_slots = await self._cluster_api.get_bands()
-        for band, n_slot in band_to_slots.items():
+        band_to_resource = await self._cluster_api.get_bands()
+        for band, resource in band_to_resource.items():
             self._band_slot_managers[band] = await mo.create_actor(
                 BandSlotManagerActor,
                 band,
-                n_slot,
+                int(resource.num_cpus or resource.num_gpus),
                 self._global_resource_ref,
                 uid=BandSlotManagerActor.gen_uid(band[1]),
                 address=self.address,
@@ -118,9 +118,7 @@ class BandSlotManagerActor(mo.Actor):
             )
             self._fresh_slots.add(slot_id)
 
-        self._usage_upload_task = self.ref().upload_slot_usages.tell_delay(
-            periodical=True, delay=1
-        )
+        self._upload_slot_usage_with_delay()
 
     async def __pre_destroy__(self):
         self._usage_upload_task.cancel()
@@ -131,9 +129,12 @@ class BandSlotManagerActor(mo.Actor):
 
         from ..supervisor import GlobalResourceManagerActor
 
-        [self._global_resource_ref] = await self._cluster_api.get_supervisor_refs(
-            [GlobalResourceManagerActor.default_uid()]
-        )
+        try:
+            [self._global_resource_ref] = await self._cluster_api.get_supervisor_refs(
+                [GlobalResourceManagerActor.default_uid()]
+            )
+        except mo.ActorNotExist:
+            self._global_resource_ref = None
         return self._global_resource_ref
 
     def get_slot_address(self, slot_id: int):
@@ -241,10 +242,21 @@ class BandSlotManagerActor(mo.Actor):
         self._restarting = False
         self._restart_done_event.set()
 
+    def _upload_slot_usage_with_delay(self, delay: int = 1):
+        self._usage_upload_task = self.ref().upload_slot_usages.tell_delay(
+            periodical=True, delay=delay
+        )
+
     async def upload_slot_usages(self, periodical: bool = False):
         delays = []
         slot_infos = []
         global_resource_ref = await self._get_global_resource_ref()
+
+        if global_resource_ref is None:  # pragma: no cover
+            if periodical:
+                self._upload_slot_usage_with_delay()
+            return
+
         for slot_id, proc in self._slot_to_proc.items():
             if slot_id not in self._slot_to_session_stid:
                 continue
@@ -291,9 +303,7 @@ class BandSlotManagerActor(mo.Actor):
             await self._cluster_api.set_band_slot_infos(self._band_name, slot_infos)
 
         if periodical:
-            self._usage_upload_task = self.ref().upload_slot_usages.tell_delay(
-                periodical=True, delay=1
-            )
+            self._upload_slot_usage_with_delay()
 
     def dump_data(self):
         """

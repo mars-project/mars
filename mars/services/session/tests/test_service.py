@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import threading
+import time
 
 import pytest
 import numpy as np
@@ -20,6 +21,7 @@ import numpy as np
 from .... import oscar as mo
 from .... import remote as mr
 from ....core import TileableGraph, TileableGraphBuilder
+from ....resource import Resource
 from ....utils import get_next_port
 from ... import start_services, stop_services, NodeRole
 from ...task.api import TaskAPI
@@ -88,7 +90,7 @@ async def test_get_last_idle_time():
             "cluster": {
                 "backend": "fixed",
                 "lookup_address": sv_pool.external_address,
-                "resource": {"numa-0": 2},
+                "resource": {"numa-0": Resource(num_cpus=2)},
             },
             "meta": {"store": "dict"},
         }
@@ -99,7 +101,10 @@ async def test_get_last_idle_time():
             NodeRole.WORKER, config, address=worker_pool.external_address
         )
 
+        start_time = time.time()
         session_api = await SessionAPI.create(sv_pool.external_address)
+        assert await session_api.get_last_idle_time() < start_time
+
         session_id = "test_session"
         await session_api.create_session(session_id)
         # check last idle time is not None

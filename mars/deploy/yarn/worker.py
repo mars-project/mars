@@ -36,7 +36,7 @@ class YarnWorkerCommandRunner(YarnServiceMixin, WorkerCommandRunner):
         await start_worker(
             self.pool.external_address,
             self.args.supervisors,
-            self.band_to_slot,
+            self.band_to_resource,
             list(self.args.load_modules),
             self.config,
             mark_ready=False,

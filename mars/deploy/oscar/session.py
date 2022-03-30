@@ -1256,10 +1256,10 @@ class _IsolatedSession(AbstractAsyncSession):
     async def get_total_n_cpu(self):
         all_bands = await self._cluster_api.get_all_bands()
         n_cpu = 0
-        for band, size in all_bands.items():
+        for band, resource in all_bands.items():
             _, band_name = band
             if band_name.startswith("numa-"):
-                n_cpu += size
+                n_cpu += resource.num_cpus
         return n_cpu
 
     async def get_cluster_versions(self) -> List[str]:
@@ -1819,8 +1819,10 @@ async def _execute(
                 execution_info, progress_bar, progress_update_interval, cancelled
             )
         else:
+            exec_task = asyncio.ensure_future(execution_info)
+            cancel_task = asyncio.ensure_future(cancelled.wait())
             await asyncio.wait(
-                [execution_info, cancelled.wait()], return_when=asyncio.FIRST_COMPLETED
+                [exec_task, cancel_task], return_when=asyncio.FIRST_COMPLETED
             )
         if cancelled.is_set():
             execution_info.remove_done_callback(_attach_session)
