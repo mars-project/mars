@@ -59,9 +59,16 @@ class SubtaskRunnerActor(mo.Actor):
         self._cluster_api = await ClusterAPI.create(address=self.address)
 
     async def __pre_destroy__(self):
-        await asyncio.gather(
-            *[mo.destroy_actor(ref) for ref in self._session_id_to_processors.values()]
-        )
+        try:
+            await asyncio.gather(
+                *[
+                    mo.destroy_actor(ref)
+                    for ref in self._session_id_to_processors.values()
+                ]
+            )
+        except mo.ActorNotExist:  # pragma: no cover
+            # deleted, ignore
+            pass
 
     @classmethod
     def _get_subtask_processor_cls(cls, subtask_processor_cls):

@@ -232,6 +232,12 @@ class LocalCluster:
             )
 
     async def stop(self):
+        from .session import SessionAPI
+
+        # delete all sessions
+        session_api = await SessionAPI.create(self._supervisor_pool.external_address)
+        await session_api.delete_all_sessions()
+
         for worker_pool in self._worker_pools:
             await stop_worker(worker_pool.external_address, self._config)
         await stop_supervisor(self._supervisor_pool.external_address, self._config)
