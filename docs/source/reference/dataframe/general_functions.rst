@@ -16,6 +16,7 @@ Data manipulations
    melt
    merge
    qcut
+   unique
 
 Top-level missing data
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -27,8 +28,16 @@ Top-level missing data
    notna
    notnull
 
-Top-level dealing with datetimelike
+Top-level dealing with numeric data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+   to_numeric
+
+Top-level dealing with datetimelike data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: generated/
 
