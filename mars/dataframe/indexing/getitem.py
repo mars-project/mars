@@ -601,7 +601,7 @@ def dataframe_getitem(df, item):
     elif isinstance(item, _list_like_types) or hasattr(item, "dtypes"):
         # NB: don't enforce the dtype of `item` to be `bool` since it may be unknown
         if isinstance(item, DATAFRAME_TYPE + SERIES_TYPE):
-            identical_index = (df.index_value.key == item.index_value.key)
+            identical_index = df.index_value.key == item.index_value.key
         else:
             identical_index = False
         op = DataFrameIndex(
