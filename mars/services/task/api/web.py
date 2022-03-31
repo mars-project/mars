@@ -18,7 +18,7 @@ from datetime import timedelta
 from typing import Callable, List, Optional, Union
 
 from tornado import gen
-from tornado.util import TimeoutError
+from tornado.util import TimeoutError as TornadoTimeout
 
 from ....core import TileableGraph, Tileable
 from ....utils import serialize_serializable, deserialize_serializable
@@ -162,7 +162,7 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
                     timedelta(seconds=timeout), oscar_api.wait_task(task_id, timeout)
                 )
                 self.write(json.dumps(_json_serial_task_result(res)))
-            except TimeoutError:
+            except TornadoTimeout:
                 self.write(json.dumps({}))
         else:
             res = await oscar_api.wait_task(task_id, timeout)
