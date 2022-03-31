@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import base64
 import json
-from datetime import timedelta
 from typing import Callable, List, Optional, Union
-
-from tornado import gen
-from tornado.util import TimeoutError as TornadoTimeout
 
 from ....core import TileableGraph, Tileable
 from ....utils import serialize_serializable, deserialize_serializable
@@ -158,11 +155,12 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         oscar_api = await self._get_oscar_task_api(session_id)
         if timeout:
             try:
-                res = await gen.with_timeout(
-                    timedelta(seconds=timeout), oscar_api.wait_task(task_id, timeout)
+                res = await asyncio.wait_for(
+                    asyncio.shield(oscar_api.wait_task(task_id, timeout)),
+                    timeout=timeout,
                 )
                 self.write(json.dumps(_json_serial_task_result(res)))
-            except TornadoTimeout:
+            except asyncio.TimeoutError:
                 self.write(json.dumps({}))
         else:
             res = await oscar_api.wait_task(task_id, timeout)
@@ -250,7 +248,7 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
     async def wait_task(self, task_id: str, timeout: float = None):
         path = f"{self._address}/api/session/{self._session_id}/task/{task_id}"
         # client timeout should be longer than server timeout.
-        server_timeout = "" if timeout is None else str(int(timeout / 2.0))
+        server_timeout = "" if timeout is None else str(max(timeout / 2.0, timeout - 1))
         params = {"action": "wait", "timeout": server_timeout}
         res = await self._request_url(
             "GET", path, params=params, request_timeout=timeout or 0
