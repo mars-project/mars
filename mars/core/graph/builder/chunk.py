@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import dataclasses
 from typing import (
     Callable,
     Dict,
@@ -20,7 +21,6 @@ from typing import (
     List,
     Optional,
     Set,
-    Tuple,
     Type,
     Union,
 )
@@ -37,24 +37,33 @@ from .base import AbstractGraphBuilder
 tile_gen_type = Generator[List[ChunkType], List[ChunkType], List[TileableType]]
 
 
+@dataclasses.dataclass
+class _TileableHandler:
+    tileable: TileableType
+    handler: tile_gen_type
+    last_need_processes: List[EntityType] = None
+
+
 class Tiler:
     _cur_chunk_graph: Optional[ChunkGraph]
-    _tileable_handlers: Iterable[Tuple[TileableType, tile_gen_type]]
+    _tileable_handlers: Iterable[_TileableHandler]
 
     def __init__(
         self,
         tileable_graph: TileableGraph,
         tile_context: Dict[TileableType, TileableType],
         processed_chunks: Set[ChunkType],
+        chunk_to_fetch: Dict[ChunkType, ChunkType],
         add_nodes: Callable,
     ):
         self._tileable_graph = tileable_graph
         self._tile_context = tile_context
         self._processed_chunks = processed_chunks
+        self._chunk_to_fetch = chunk_to_fetch
         self._add_nodes = add_nodes
         self._cur_chunk_graph = None
         self._tileable_handlers = (
-            (tileable, self._tile_handler(tileable))
+            _TileableHandler(tileable, self._tile_handler(tileable))
             for tileable in tileable_graph.topological_iter()
         )
 
@@ -84,10 +93,9 @@ class Tiler:
         tiled_tileables = yield from handler.tile(tiled_tileables)
         return tiled_tileables
 
-    def _gen_tileable_handlers(
-        self, next_tileable_handlers: List[Tuple[TileableType, tile_gen_type]]
-    ):
-        for tileable, tile_handler in self._tileable_handlers:
+    def _gen_tileable_handlers(self, next_tileable_handlers: List[_TileableHandler]):
+        for tile_handler in self._tileable_handlers:
+            tileable, handler = tile_handler.tileable, tile_handler.handler
             if tileable in self._tile_context:
                 continue
             if any(
@@ -95,17 +103,17 @@ class Tiler:
                 for inp in self._tileable_graph.predecessors(tileable)
             ):
                 # predecessors not finished yet
-                next_tileable_handlers.append((tileable, tile_handler))
+                next_tileable_handlers.append(_TileableHandler(tileable, handler))
                 continue
 
-            yield tileable, tile_handler
+            yield _TileableHandler(tileable, handler)
 
     def _tile(
         self,
         chunk_graph: ChunkGraph,
         tileable: TileableType,
         tile_handler: tile_gen_type,
-        next_tileable_handlers: List[Tuple[TileableType, tile_gen_type]],
+        next_tileable_handlers: List[_TileableHandler],
         to_update_tileables: List[TileableType],
         visited: Set[EntityType],
     ):
@@ -120,10 +128,12 @@ class Tiler:
                         to_update_tileables.append(self._get_data(t))
             # not finished yet
             self._add_nodes(chunk_graph, chunks.copy(), visited)
-            next_tileable_handlers.append((tileable, tile_handler))
+            next_tileable_handlers.append(
+                _TileableHandler(tileable, tile_handler, need_process)
+            )
             # add intermediate chunks into result chunks
             # to prevent them being pruned
-            chunk_graph.result_chunks.extend(chunks)
+            chunk_graph.result_chunks.extend(c for c in chunks if c in chunk_graph)
         except StopIteration as e:
             # tile done
             tiled_tileables = e.value
@@ -141,36 +151,46 @@ class Tiler:
     def _gen_result_chunks(
         self,
         chunk_graph: ChunkGraph,
-        next_tileable_handlers: List[Tuple[TileableType, tile_gen_type]],
+        next_tileable_handlers: List[_TileableHandler],
     ):
         result_chunks = chunk_graph.result_chunks
         tileable_graph = self._tileable_graph
-        # generate result chunks
-        result_chunk_set = set()
+        result_chunk_set = set(result_chunks)
+
+        def _add_result_chunk(c):
+            if c not in result_chunk_set:
+                result_chunks.append(c)
+                result_chunk_set.add(c)
+
         if next_tileable_handlers:
-            # add all chunks that have no successors to result chunks
-            for chunk in chunk_graph:
-                if chunk_graph.count_successors(chunk) == 0:
-                    if chunk not in result_chunk_set:
-                        result_chunks.append(chunk)
-                        result_chunk_set.add(chunk)
-            for tileable, _ in next_tileable_handlers:
-                # tileable that tile not completed,
-                # scan inputs to make sure their chunks in result
-                for inp_tileable in tileable_graph.predecessors(tileable):
-                    if inp_tileable in self._tile_context:
-                        for chunk in self._tile_context[inp_tileable].chunks:
-                            chunk = self._get_data(chunk)
-                            if chunk in chunk_graph and chunk not in result_chunk_set:
-                                result_chunks.append(chunk)
-                                result_chunk_set.add(chunk)
+            for tileable_handler in next_tileable_handlers:
+                tileable = tileable_handler.tileable
+                # tileable that tile not completed, scan their inputs
+                for inp_tileable in tileable_graph.iter_predecessors(tileable):
+                    if (
+                        tileable_handler.last_need_processes is None
+                        or tileable_graph.count_successors(inp_tileable) > 1
+                    ):
+                        # if nothing yielded inside its tile,
+                        # or the input has more than 1 successors,
+                        # make sure their chunks in result,
+                        # so that they will not be executed repeatedly
+                        if inp_tileable in self._tile_context:
+                            for chunk in self._tile_context[inp_tileable].chunks:
+                                chunk = self._get_data(chunk)
+                                if chunk in chunk_graph:
+                                    _add_result_chunk(chunk)
         for tileable in tileable_graph.result_tileables:
             if tileable in self._tile_context:
                 for chunk in self._tile_context[tileable].chunks:
                     chunk = self._get_data(chunk)
-                    if chunk in chunk_graph and chunk not in result_chunk_set:
-                        result_chunks.append(chunk)
-                        result_chunk_set.add(chunk)
+                    if chunk in chunk_graph:
+                        _add_result_chunk(chunk)
+                    if (
+                        chunk in self._chunk_to_fetch
+                        and self._chunk_to_fetch[chunk] in chunk_graph
+                    ):
+                        _add_result_chunk(self._chunk_to_fetch[chunk])
 
     def _iter(self):
         chunk_graph = self._cur_chunk_graph
@@ -192,13 +212,11 @@ class Tiler:
 
         next_tileable_handlers = []
         # tile
-        for tileable, tile_handler in self._gen_tileable_handlers(
-            next_tileable_handlers
-        ):
+        for tile_handler in self._gen_tileable_handlers(next_tileable_handlers):
             self._tile(
                 chunk_graph,
-                tileable,
-                tile_handler,
+                tile_handler.tileable,
+                tile_handler.handler,
                 next_tileable_handlers,
                 to_update_tileables,
                 visited,
@@ -206,6 +224,8 @@ class Tiler:
         self._tileable_handlers = next_tileable_handlers
         # gen result chunks
         self._gen_result_chunks(chunk_graph, next_tileable_handlers)
+        # prune unused chunks
+        prune_chunk_graph(chunk_graph)
 
         return to_update_tileables
 
@@ -215,6 +235,40 @@ class Tiler:
             yield self._cur_chunk_graph
             for t in to_update_tileables:
                 t.refresh_params()
+
+
+def prune_chunk_graph(chunk_graph: ChunkGraph):
+    from ....core.operand import Fetch, VirtualOperand, ShuffleProxy
+
+    result_set = set(chunk_graph.result_chunks)
+    stack = list(chunk_graph.result_chunks)
+    used = set()
+    while stack:
+        n = stack.pop()
+        if n in used:
+            continue
+        used.add(n)
+        stack.extend(chunk_graph.predecessors(n))
+        if isinstance(n.op, ShuffleProxy):
+            stack.extend(
+                succ for succ in chunk_graph.iter_successors(n) if succ not in used
+            )
+
+    unused = {n for n in chunk_graph if n not in used}
+    for n in unused:
+        # for pruned chunks, we assume we will use them later,
+        # so we add the inputs of them into result chunks,
+        # to prevent from duplicated submission
+        for inp in chunk_graph.iter_predecessors(n):
+            if (
+                inp in used
+                and inp not in result_set
+                and not isinstance(inp.op, (Fetch, VirtualOperand))
+            ):
+                chunk_graph.result_chunks.append(inp)
+                result_set.add(inp)
+        # prune chunk
+        chunk_graph.remove_node(n)
 
 
 class ChunkGraphBuilder(AbstractGraphBuilder):
@@ -236,8 +290,21 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
 
         tiler_cls = Tiler if tiler_cls is None else tiler_cls
         self.tiler = tiler_cls(
-            self._graph, self.tile_context, self._processed_chunks, self._add_nodes
+            self._graph,
+            self.tile_context,
+            self._processed_chunks,
+            self._chunk_to_fetch,
+            self._add_nodes,
         )
+
+    def _process_node(self, entity: EntityType):
+        if entity in self._processed_chunks:
+            if entity not in self._chunk_to_fetch:
+                # gen fetch
+                fetch_chunk = build_fetch(entity).data
+                self._chunk_to_fetch[entity] = fetch_chunk
+            return self._chunk_to_fetch[entity]
+        return entity
 
     def _select_inputs(self, inputs: List[ChunkType]):
         new_inputs = []

@@ -510,3 +510,22 @@ def test_cache_tileable(setup):
                 match=re.escape(f"Tileable {repr(t)} has been submitted before"),
             ):
                 (t + 1).execute()
+
+
+@pytest.mark.parametrize("method", ["shuffle", "broadcast", None])
+@pytest.mark.parametrize("auto_merge", ["after", "before"])
+def test_merge_groupby(setup, method, auto_merge):
+    rs = np.random.RandomState(0)
+    raw1 = pd.DataFrame({"a": rs.randint(3, size=100), "b": rs.rand(100)})
+    raw2 = pd.DataFrame({"a": rs.randint(3, size=10), "c": rs.rand(10)})
+    df1 = md.DataFrame(raw1, chunk_size=10)
+    df2 = md.DataFrame(raw2, chunk_size=10)
+    # do not trigger auto merge
+    df3 = df1.merge(
+        df2, on="a", auto_merge_threshold=100, method=method, auto_merge=auto_merge
+    )
+    df4 = df3.groupby("a").sum()
+
+    result = df4.execute().fetch()
+    expected = raw1.merge(raw2, on="a").groupby("a").sum()
+    pd.testing.assert_frame_equal(result, expected)

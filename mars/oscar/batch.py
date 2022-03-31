@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import asyncio
-import functools
 import inspect
 import textwrap
 from collections import namedtuple
@@ -198,7 +197,6 @@ class _ExtensibleAccessor(_ExtensibleCallable):
         self.batch_func = func
         return self
 
-    @functools.lru_cache(1000)
     def __get__(self, instance, owner):
         if instance is None:
             # calling from class

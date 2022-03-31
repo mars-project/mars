@@ -1819,8 +1819,10 @@ async def _execute(
                 execution_info, progress_bar, progress_update_interval, cancelled
             )
         else:
+            exec_task = asyncio.ensure_future(execution_info)
+            cancel_task = asyncio.ensure_future(cancelled.wait())
             await asyncio.wait(
-                [execution_info, cancelled.wait()], return_when=asyncio.FIRST_COMPLETED
+                [exec_task, cancel_task], return_when=asyncio.FIRST_COMPLETED
             )
         if cancelled.is_set():
             execution_info.remove_done_callback(_attach_session)

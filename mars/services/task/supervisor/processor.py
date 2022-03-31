@@ -647,7 +647,8 @@ class TaskProcessorActor(mo.Actor):
 
     async def wait(self, timeout: int = None):
         fs = [
-            processor.done.wait() for processor in self._task_id_to_processor.values()
+            asyncio.ensure_future(processor.done.wait())
+            for processor in self._task_id_to_processor.values()
         ]
 
         _, pending = yield asyncio.wait(fs, timeout=timeout)
@@ -724,6 +725,12 @@ class TaskProcessorActor(mo.Actor):
             tiled = processor.get_tiled(result_tileable)
             result.append(build_fetch(tiled))
         return result
+
+    def get_subtask_graphs(self, task_id: str) -> List[SubtaskGraph]:
+        return [
+            stage_processor.subtask_graph
+            for stage_processor in self._task_id_to_processor[task_id].stage_processors
+        ]
 
     def get_tileable_graph_as_dict(self):
         processor = list(self._task_id_to_processor.values())[-1]

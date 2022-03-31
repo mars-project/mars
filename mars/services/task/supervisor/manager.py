@@ -29,7 +29,7 @@ from ...context import ThreadedServiceContext
 from ...lifecycle.api import LifecycleAPI
 from ...meta import MetaAPI
 from ...scheduling import SchedulingAPI
-from ...subtask import SubtaskResult
+from ...subtask import SubtaskResult, SubtaskGraph
 from ..config import task_options
 from ..core import Task, new_task_id, TaskStatus
 from ..errors import TaskNotExist
@@ -192,7 +192,15 @@ class TaskManagerActor(mo.Actor):
 
         return task_id
 
-    async def get_tileable_graph_dict_by_task_id(self, task_id):
+    async def get_subtask_graphs(self, task_id: str) -> List[SubtaskGraph]:
+        try:
+            processor_ref = self._task_id_to_processor_ref[task_id]
+        except KeyError:  # pragma: no cover
+            raise TaskNotExist(f"Task {task_id} does not exist")
+
+        return processor_ref.get_subtask_graphs(task_id)
+
+    async def get_tileable_graph_dict_by_task_id(self, task_id: str):
         try:
             processor_ref = self._task_id_to_processor_ref[task_id]
         except KeyError:

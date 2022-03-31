@@ -14,11 +14,17 @@
 
 import numpy as np
 
+try:
+    from sklearn.metrics._classification import _check_targets as sklearn_check_targets
+except ImportError:  # pragma: no cover
+    # sklearn < 0.22
+    from sklearn.metrics.classification import _check_targets as sklearn_check_targets
+
 from ... import opcodes as OperandDef
 from ... import tensor as mt
 from ...core import ENTITY_TYPE, ExecutableTuple, recursive_tile
 from ...core.context import get_context
-from ...serialization.serializables import AnyField, KeyField
+from ...serialization.serializables import AnyField
 from ...tensor.core import TENSOR_TYPE, TensorOrder
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ..utils.multiclass import type_of_target
@@ -28,63 +34,30 @@ from ..utils import check_consistent_length, column_or_1d
 class CheckTargets(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.CHECK_TARGETS
 
-    _y_true = AnyField("y_true")
-    _y_pred = AnyField("y_pred")
-    _type_true = KeyField("type_true")
-    _type_pred = KeyField("type_pred")
-
-    def __init__(self, y_true=None, y_pred=None, type_true=None, type_pred=None, **kw):
-        super().__init__(
-            _y_true=y_true,
-            _y_pred=y_pred,
-            _type_true=type_true,
-            _type_pred=type_pred,
-            **kw,
-        )
-        # scalar(y_type), y_true, y_pred
-        self.output_types = [OutputType.tensor] * 3
+    y_true = AnyField("y_true")
+    y_pred = AnyField("y_pred")
 
     @property
     def output_limit(self):
         return 3
 
-    @property
-    def y_true(self):
-        return self._y_true
-
-    @property
-    def y_pred(self):
-        return self._y_pred
-
-    @property
-    def type_true(self):
-        return self._type_true
-
-    @property
-    def type_pred(self):
-        return self._type_pred
-
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
-        if isinstance(self._y_true, ENTITY_TYPE):
-            self._y_true = next(inputs_iter)
-        if isinstance(self._y_pred, ENTITY_TYPE):
-            self._y_pred = next(inputs_iter)
-        if self._type_true is not None:
-            self._type_true = next(inputs_iter)
-        if self._type_pred is not None:
-            self._type_pred = next(inputs_iter)
+        if isinstance(self.y_true, ENTITY_TYPE):
+            self.y_true = next(inputs_iter)
+        if isinstance(self.y_pred, ENTITY_TYPE):
+            self.y_pred = next(inputs_iter)
 
     def __call__(self, y_true, y_pred):
+        # scalar(y_type), y_true, y_pred
+        self.output_types = [OutputType.tensor] * 3
+
         inputs = []
         if isinstance(y_true, ENTITY_TYPE):
             inputs.append(y_true)
         if isinstance(y_pred, ENTITY_TYPE):
             inputs.append(y_pred)
-        self._type_true = type_of_target(y_true)
-        self._type_pred = type_of_target(y_pred)
-        inputs.extend([self._type_true, self._type_pred])
 
         kws = list()
         kws.append(
@@ -97,21 +70,40 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
     @classmethod
     def tile(cls, op):
         y_true, y_pred = op.y_true, op.y_pred
-        for y in (op.y_true, op.y_pred):
-            if isinstance(y, ENTITY_TYPE):
-                if np.isnan(y.size):  # pragma: no cover
-                    yield
+        if isinstance(y_true, ENTITY_TYPE):
+            y_true = mt.tensor(y_true)
+        if isinstance(y_pred, ENTITY_TYPE):
+            y_pred = mt.tensor(y_pred)
+
+        if len(op.inputs) == 0:
+            # no entity input
+            type_true, y_true, y_pred = sklearn_check_targets(y_true, y_pred)
+            new_op = op.copy()
+            outs = yield from recursive_tile(
+                mt.tensor(type_true), mt.tensor(y_true), mt.tensor(y_pred)
+            )
+            params = [out.params.copy() for out in op.outputs]
+            for param, out in zip(params, outs):
+                param["nsplits"] = out.nsplits
+                param["chunks"] = out.chunks
+                param["shape"] = out.shape
+            return new_op.new_tileables(op.inputs, kws=params)
 
         check_consistent_length(y_true, y_pred)
 
-        # make sure type_true and type_pred executed first
-        chunks = [op.type_true.chunks[0], op.type_pred.chunks[0]]
-        yield chunks
+        type_true, type_pred = type_of_target(y_true), type_of_target(y_pred)
+        y_true, y_pred = mt.tensor(y_true), mt.tensor(y_pred)
+        tileables = y_true, y_pred, type_true, type_pred = yield from recursive_tile(
+            y_true, y_pred, type_true, type_pred
+        )
+        yield [c for t in tileables for c in t.chunks]
 
         ctx = get_context()
         type_true, type_pred = [
             d.item() if hasattr(d, "item") else d
-            for d in ctx.get_chunks_result([c.key for c in chunks])
+            for d in ctx.get_chunks_result(
+                [type_true.chunks[0].key, type_pred.chunks[0].key]
+            )
         ]
 
         y_type = {type_true, type_pred}
@@ -148,13 +140,10 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
             y_true = mt.tensor(y_true)
         if not isinstance(y_pred, ENTITY_TYPE):
             y_pred = mt.tensor(y_pred)
-
         if not isinstance(y_type, TENSOR_TYPE):
             y_type = mt.tensor(y_type, dtype=object)
 
-        y_type = yield from recursive_tile(y_type)
-        y_true = yield from recursive_tile(y_true)
-        y_pred = yield from recursive_tile(y_pred)
+        y_type, y_true, y_pred = yield from recursive_tile(y_type, y_true, y_pred)
 
         kws = [out.params for out in op.outputs]
         kws[0].update(dict(nsplits=(), chunks=[y_type.chunks[0]]))

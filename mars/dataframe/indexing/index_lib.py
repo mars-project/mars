@@ -247,7 +247,7 @@ class LabelSliceIndexHandler(IndexHandler):
             and index_value.has_value()
             and any(np.isnan(ns) for ns in tileable.nsplits[input_axis])
         ):  # pragma: no cover
-            yield []
+            yield
 
     def set_chunk_index_info(
         cls,
@@ -466,8 +466,10 @@ class LabelIndexHandler(IndexHandler):
         else:
             index_value = [tileable.index_value, tileable.columns_value][input_axis]
         if index_value.has_value():
-            if any(np.isnan(ns) for ns in tileable.nsplits[input_axis]):
-                yield []
+            if any(
+                np.isnan(ns) for ns in tileable.nsplits[input_axis]
+            ):  # pragma: no cover
+                yield
 
     def process(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         tileable = context.tileable
@@ -653,8 +655,8 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
 
     def preprocess(self, index_info: IndexInfo, context: IndexHandlerContext) -> None:
         tileable = context.tileable
-        if has_unknown_shape(tileable):
-            yield []
+        if has_unknown_shape(tileable):  # pragma: no cover
+            yield
 
         # split raw index into chunks on the given axis
         split_info = split_indexes_into_chunks(
@@ -849,7 +851,7 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
 
         # check unknown shape
         if any(np.isnan(s) for s in tileable.nsplits[input_axis]):
-            yield []
+            yield
 
         if tileable.ndim == 2:
             index_value = [tileable.index_value, tileable.columns_value][input_axis]

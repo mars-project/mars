@@ -302,23 +302,26 @@ class PairwiseDistancesTopk(PairwiseDistances):
                     out_distance_chunks.append(o)
             else:
                 to_concat_chunks = []
+                concat_size = 0
                 for j in range(y_chunk_shape):
                     y_chunk = Y.cix[j, 0]
                     chunk_op = op.copy().reset_key()
                     chunk_op._y_offset = y_acc_chunk_shapes[j]
                     chunk_op.stage = OperandStage.map
+                    size = min(k, y_chunk.shape[0])
                     o = chunk_op.new_chunk(
                         [x_chunk, y_chunk],
-                        shape=(x_chunk.shape[0], k),
+                        shape=(x_chunk.shape[0], size),
                         order=TensorOrder.C_ORDER,
                         index=(i, j),
                     )
                     to_concat_chunks.append(o)
+                    concat_size += size
 
                 concat_op = TensorConcatenate(axis=1, dtype=to_concat_chunks[0].dtype)
                 concat = concat_op.new_chunk(
                     to_concat_chunks,
-                    shape=(x_chunk.shape[0], k * y_chunk_shape),
+                    shape=(x_chunk.shape[0], concat_size),
                     order=TensorOrder.C_ORDER,
                     index=(i, 0),
                 )
