@@ -65,6 +65,9 @@ class SessionAPI(AbstractSessionAPI):
     async def delete_session(self, session_id: str):
         await self._session_manager_ref.delete_session(session_id)
 
+    async def delete_all_sessions(self):
+        await self._session_manager_ref.delete_all_sessions()
+
     @alru_cache(cache_exceptions=False)
     async def get_session_address(self, session_id: str) -> str:
         """

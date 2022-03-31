@@ -39,6 +39,7 @@ class DecrefRunner:
 
     def _thread_body(self):
         from ...deploy.oscar.session import SyncSession
+        from ...oscar.errors import ActorNotExist
 
         while True:
             key, session_ref, fut = self._queue.get()
@@ -53,7 +54,7 @@ class DecrefRunner:
                 s = SyncSession.from_isolated_session(session)
                 s.decref(key)
                 fut.set_result(None)
-            except (RuntimeError, ConnectionError, KeyError):
+            except (RuntimeError, ConnectionError, KeyError, ActorNotExist):
                 fut.set_result(None)
             except Exception as ex:  # pragma: no cover  # noqa: E722  # nosec  # pylint: disable=bare-except
                 fut.set_exception(ex)

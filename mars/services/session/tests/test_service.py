@@ -62,6 +62,8 @@ async def test_session_service(test_web):
         await session_api.delete_session(session_id)
         assert await session_api.has_session(session_id) is False
         assert await session_api.get_sessions() == []
+        await session_api.delete_all_sessions()
+        assert await session_api.has_session(session_id) is False
 
         await stop_services(NodeRole.SUPERVISOR, config, address=pool.external_address)
 

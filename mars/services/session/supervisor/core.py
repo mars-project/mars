@@ -102,6 +102,7 @@ class SessionManagerActor(mo.Actor):
 
     async def delete_session(self, session_id):
         session_actor_ref = self._session_refs.pop(session_id)
+        await session_actor_ref.remove()
         await mo.destroy_actor(session_actor_ref)
 
         # sync removing to other managers
@@ -112,6 +113,10 @@ class SessionManagerActor(mo.Actor):
                 supervisor_address, SessionManagerActor.default_uid()
             )
             await session_manager_ref.remove_session_ref(session_id)
+
+    async def delete_all_sessions(self):
+        for session_id in list(self._session_refs):
+            await self.delete_session(session_id)
 
     async def get_last_idle_time(self, session_id=None):
         if session_id is not None:
@@ -160,10 +165,12 @@ class SessionActor(mo.Actor):
             uid=CustomLogMetaActor.gen_uid(self._session_id),
         )
 
-    async def __pre_destroy__(self):
+    async def remove(self):
         await destroy_service_session(
             NodeRole.SUPERVISOR, self._service_config, self._session_id, self.address
         )
+
+    async def __pre_destroy__(self):
         await mo.destroy_actor(self._custom_log_meta_ref)
 
     async def create_services(self):
