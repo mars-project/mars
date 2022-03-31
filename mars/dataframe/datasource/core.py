@@ -59,7 +59,7 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
         yield chunks[:1]
 
         ctx = get_context()
-        chunk_shape = ctx.get_chunks_meta([chunks[0].key])[0]["shape"]
+        chunk_shape = ctx.get_chunks_meta([chunks[0].key], fields=["shape"])[0]["shape"]
 
         if chunk_shape[0] == op.nrows:
             # the first chunk has enough data

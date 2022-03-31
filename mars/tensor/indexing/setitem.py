@@ -197,13 +197,17 @@ class TensorIndexSetValue(TensorMapReduceOperand, TensorOperandMixin):
 
         if is_value_tensor and value.ndim > 0:
             if has_unknown_shape(indexed, value):
-                yield indexed.chunks + [indexed]
+                exec_chunks = indexed.chunks + op.input.chunks
+                for c in indexed.chunks:
+                    exec_chunks.extend(c.inputs)
+                yield exec_chunks + [indexed]
 
-            value = yield from recursive_tile(
-                broadcast_to(value, indexed.shape).astype(op.input.dtype, copy=False)
-            )
             nsplits = indexed.nsplits
-            value = yield from recursive_tile(value.rechunk(nsplits))
+            value = yield from recursive_tile(
+                broadcast_to(value, indexed.shape)
+                .astype(op.input.dtype, copy=False)
+                .rechunk(nsplits)
+            )
 
         chunk_mapping = {c.op.input.index: c for c in indexed.chunks}
         out_chunks = []
