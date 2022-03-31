@@ -256,7 +256,8 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             input_max_chunk = input_max.chunks[0]
 
             # let input min and max execute first
-            yield [input_min_chunk, input_max_chunk]
+            min_max_chunks = [input_min_chunk, input_max_chunk]
+            yield min_max_chunks + [c for inp in op.inputs for c in inp.chunks]
 
             ctx = get_context()
             keys = [input_min_chunk.key, input_max_chunk.key]

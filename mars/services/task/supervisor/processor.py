@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import importlib
 import itertools
 import logging
 import operator
@@ -525,11 +526,18 @@ class TaskProcessorActor(mo.Actor):
     _processed_task_ids: Set[str]
     _cur_processor: Optional[TaskProcessor]
 
-    def __init__(self, session_id: str, task_id: str, task_name: str = None):
+    def __init__(
+        self,
+        session_id: str,
+        task_id: str,
+        task_name: str = None,
+        task_processor_cls: Type[TaskPreprocessor] = None,
+    ):
         self.session_id = session_id
         self.task_id = task_id
         self.task_name = task_name
 
+        self._task_processor_cls = self._get_task_processor_cls(task_processor_cls)
         self._task_id_to_processor = dict()
         self._cur_processor = None
         self._subtask_decref_events = dict()
@@ -559,7 +567,7 @@ class TaskProcessorActor(mo.Actor):
         task_preprocessor = task_preprocessor_cls(
             task, tiled_context=tiled_context, config=config
         )
-        processor = TaskProcessor(
+        processor = self._task_processor_cls(
             task,
             task_preprocessor,
             self._cluster_api,
@@ -571,6 +579,15 @@ class TaskProcessorActor(mo.Actor):
 
         # tell self to start running
         await self.ref().start.tell()
+
+    @classmethod
+    def _get_task_processor_cls(cls, task_processor_cls):
+        if task_processor_cls is not None:
+            assert isinstance(task_processor_cls, str)
+            module, name = task_processor_cls.rsplit(".", 1)
+            return getattr(importlib.import_module(module), name)
+        else:
+            return TaskProcessor
 
     def _get_unprocessed_task_processor(self):
         for processor in self._task_id_to_processor.values():
@@ -647,7 +664,8 @@ class TaskProcessorActor(mo.Actor):
 
     async def wait(self, timeout: int = None):
         fs = [
-            processor.done.wait() for processor in self._task_id_to_processor.values()
+            asyncio.ensure_future(processor.done.wait())
+            for processor in self._task_id_to_processor.values()
         ]
 
         _, pending = yield asyncio.wait(fs, timeout=timeout)
@@ -724,6 +742,12 @@ class TaskProcessorActor(mo.Actor):
             tiled = processor.get_tiled(result_tileable)
             result.append(build_fetch(tiled))
         return result
+
+    def get_subtask_graphs(self, task_id: str) -> List[SubtaskGraph]:
+        return [
+            stage_processor.subtask_graph
+            for stage_processor in self._task_id_to_processor[task_id].stage_processors
+        ]
 
     def get_tileable_graph_as_dict(self):
         processor = list(self._task_id_to_processor.values())[-1]

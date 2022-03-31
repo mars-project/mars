@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import itertools
-from typing import Dict
+from functools import partial
+from typing import Callable, Dict
 
 import numpy as np
 
@@ -31,7 +32,7 @@ from .....tests.core import _check_args, ObjectCheckMixin
 from .....typing import BandType
 from ....subtask import SubtaskGraph
 from ...analyzer import GraphAnalyzer
-from ..preprocessor import TaskPreprocessor
+from ..preprocessor import CancellableTiler, TaskPreprocessor
 
 
 class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
@@ -121,6 +122,17 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
             self._check_nsplits(tiled)
             self._tileable_checked[tileable.key] = True
         return super()._update_tileable_params(tileable, tiled)
+
+    def _get_tiler_cls(self) -> Callable:
+        extra_config = self._task.extra_config or dict()
+        check_duplicated_submission = extra_config.get(
+            "check_duplicated_submission", True
+        )
+        return partial(
+            CancellableTiler,
+            cancelled=self._cancelled,
+            check_duplicated_submission=check_duplicated_submission,
+        )
 
     @enter_mode(build=True)
     def analyze(

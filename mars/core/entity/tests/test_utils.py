@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+import pytest
+
 from .... import tensor as mt
 from ....tensor.operands import TensorOperand, TensorOperandMixin
 from ....utils import has_unknown_shape
@@ -42,3 +45,37 @@ def test_recursive_tile(setup):
     op = _TestOperand()
     t = op.new_tensor([d1, d2], dtype=d1.dtype, shape=(20,), order=d1.order)
     t.execute()
+
+
+class _TestOperandWithDuplicatedSubmission(TensorOperand, TensorOperandMixin):
+    @classmethod
+    def tile(cls, op: "_TestOperand"):
+        data1 = op.inputs[0]
+
+        data2 = yield from recursive_tile(data1 + 1)
+        yield data2.chunks
+        data3 = yield from recursive_tile(data1 + 2)
+        yield data3.chunks
+
+        return (yield from recursive_tile(data2 + data3))
+
+
+def test_recursive_tile_with_duplicated_submission(setup):
+    raw = np.random.RandomState(0).rand(10)
+    d1 = mt.tensor(raw, chunk_size=5)
+    op = _TestOperandWithDuplicatedSubmission()
+    t = op.new_tensor(
+        [
+            d1,
+        ],
+        dtype=d1.dtype,
+        shape=(10,),
+        order=d1.order,
+    )
+
+    with pytest.raises(RuntimeError, match="submitted repeatedly"):
+        t.execute(extra_config={"check_duplicated_submission": True})
+
+    result = t.execute(extra_config={"check_duplicated_submission": False})
+    expected = 2 * raw + 3
+    np.testing.assert_array_equal(result, expected)

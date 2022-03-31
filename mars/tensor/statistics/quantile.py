@@ -329,13 +329,15 @@ class TensorQuantile(TensorOperand, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         if isinstance(op.q, TENSOR_TYPE):
-            # trigger execution of `q`
-            yield op.q.chunks
-
             ctx = get_context()
             # get q's data
             q_chunk_keys = [c.key for c in op.q.chunks]
-            q_data = ctx.get_chunks_result(q_chunk_keys)
+            try:
+                q_data = ctx.get_chunks_result(q_chunk_keys)
+            except KeyError:
+                # trigger execution of `q`
+                yield op.q.chunks
+                q_data = ctx.get_chunks_result(q_chunk_keys)
             op._q = q = np.concatenate(q_data)
             if not _quantile_is_valid(q):
                 raise ValueError(op.q_error_msg)

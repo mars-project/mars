@@ -27,9 +27,9 @@ class EllipHarm(TensorSpecialMultiOp):
 
 @implement_scipy(spspecial.ellip_harm)
 @infer_dtype(spspecial.ellip_harm)
-def ellip_harm(h2, k2, n, s, p, signm=1, signn=1, **kwargs):
+def ellip_harm(h2, k2, n, p, s, signm=1, signn=1, **kwargs):
     op = EllipHarm(**kwargs)
-    return op(h2, k2, n, s, p, signm, signn)
+    return op(h2, k2, n, p, s, signm, signn)
 
 
 @_register_special_op
