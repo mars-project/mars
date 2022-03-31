@@ -19,7 +19,6 @@ from ..utils import infer_dtype, implement_scipy
 from .core import _register_special_op, TensorSpecialMultiOp
 
 
-
 @_register_special_op
 class EllipHarm(TensorSpecialMultiOp):
     _ARG_COUNT = 7
@@ -33,7 +32,6 @@ def ellip_harm(h2, k2, n, s, p, signm=1, signn=1, **kwargs):
     return op(h2, k2, n, s, p, signm, signn)
 
 
-
 @_register_special_op
 class EllipHarm2(TensorSpecialMultiOp):
     _ARG_COUNT = 5
@@ -45,7 +43,6 @@ class EllipHarm2(TensorSpecialMultiOp):
 def ellip_harm_2(h2, k2, n, p, s, **kwargs):
     op = EllipHarm2(**kwargs)
     return op(h2, k2, n, p, s)
-
 
 
 @_register_special_op
