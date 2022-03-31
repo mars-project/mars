@@ -87,13 +87,16 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
         out_elements = op.outputs[0]
         # values contains mars objects
         chunks_list = []
-        if any(len(t.chunks) > 4 for t in op.inputs[1:]):
+        in_chunks = in_elements.chunks
+        if any(len(t.chunks) > 4 for t in op.inputs):
             # yield and merge value chunks to reduce graph nodes
             yield list(
                 itertools.chain(
-                    t.chunks for t in op.inputs[1:] if isinstance(t, ENTITY_TYPE)
+                    t.chunks for t in op.inputs if isinstance(t, ENTITY_TYPE)
                 )
             )
+            in_elements = auto_merge_chunks(get_context(), op.input)
+            in_chunks = in_elements.chunks
             for value in op.inputs[1:]:
                 if isinstance(value, ENTITY_TYPE):
                     merged = auto_merge_chunks(get_context(), value)
@@ -104,7 +107,7 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
                     chunks_list.append(value.chunks)
 
         out_chunks = []
-        for in_chunk in op.input.chunks:
+        for in_chunk in in_chunks:
             isin_chunks = []
             for value_chunks in itertools.product(*chunks_list):
                 input_chunks = [in_chunk] + list(value_chunks)
