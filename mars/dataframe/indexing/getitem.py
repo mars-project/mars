@@ -600,7 +600,10 @@ def dataframe_getitem(df, item):
         op = DataFrameIndex(col_names=item, output_types=[OutputType.dataframe])
     elif isinstance(item, _list_like_types) or hasattr(item, "dtypes"):
         # NB: don't enforce the dtype of `item` to be `bool` since it may be unknown
-        identical_index = df.index_value.key == item.index_value.key
+        if isinstance(item, DATAFRAME_TYPE + SERIES_TYPE):
+            identical_index = (df.index_value.key == item.index_value.key)
+        else:
+            identical_index = False
         op = DataFrameIndex(
             mask=item,
             identical_index=identical_index,

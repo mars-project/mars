@@ -91,16 +91,18 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
         if any(len(t.chunks) > 4 for t in op.inputs):
             # yield and merge value chunks to reduce graph nodes
             yield list(
-                itertools.chain(
+                itertools.chain.from_iterable(
                     t.chunks for t in op.inputs if isinstance(t, ENTITY_TYPE)
                 )
             )
             in_elements = auto_merge_chunks(get_context(), op.input)
             in_chunks = in_elements.chunks
             for value in op.inputs[1:]:
-                if isinstance(value, ENTITY_TYPE):
+                if isinstance(value, DATAFRAME_TYPE + SERIES_TYPE):
                     merged = auto_merge_chunks(get_context(), value)
                     chunks_list.append(merged.chunks)
+                elif isinstance(value, ENTITY_TYPE):
+                    chunks_list.append(value.chunks)
         else:
             for value in op.inputs[1:]:
                 if isinstance(value, ENTITY_TYPE):
