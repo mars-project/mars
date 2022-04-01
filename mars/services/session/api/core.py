@@ -58,6 +58,12 @@ class AbstractSessionAPI(ABC):
         """
 
     @abstractmethod
+    async def delete_all_sessions(self):
+        """
+        Delete all sessions.
+        """
+
+    @abstractmethod
     async def get_last_idle_time(
         self, session_id: Union[str, None] = None
     ) -> Union[float, None]:
