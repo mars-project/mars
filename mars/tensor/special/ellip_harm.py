@@ -19,7 +19,7 @@ from .core import _register_special_op, TensorSpecialMultiOp
 
 
 @_register_special_op
-class EllipHarm(TensorSpecialMultiOp):
+class TensorEllipHarm(TensorSpecialMultiOp):
     _ARG_COUNT = 5
     _func_name = "ellip_harm"
 
@@ -27,12 +27,12 @@ class EllipHarm(TensorSpecialMultiOp):
 @implement_scipy(spspecial.ellip_harm)
 @infer_dtype(spspecial.ellip_harm)
 def ellip_harm(h2, k2, n, p, s, signm=1, signn=1, **kwargs):
-    op = EllipHarm(**kwargs)
+    op = TensorEllipHarm(**kwargs)
     return op(h2, k2, n, p, s, signm=signm, signn=signn)
 
 
 @_register_special_op
-class EllipHarm2(TensorSpecialMultiOp):
+class TensorEllipHarm2(TensorSpecialMultiOp):
     _ARG_COUNT = 5
     _func_name = "ellip_harm_2"
 
@@ -40,12 +40,12 @@ class EllipHarm2(TensorSpecialMultiOp):
 @implement_scipy(spspecial.ellip_harm_2)
 @infer_dtype(spspecial.ellip_harm_2)
 def ellip_harm_2(h2, k2, n, p, s, **kwargs):
-    op = EllipHarm2(**kwargs)
+    op = TensorEllipHarm2(**kwargs)
     return op(h2, k2, n, p, s)
 
 
 @_register_special_op
-class EllipNormal(TensorSpecialMultiOp):
+class TensorEllipNormal(TensorSpecialMultiOp):
     _ARG_COUNT = 4
     _func_name = "ellip_normal"
 
@@ -53,5 +53,5 @@ class EllipNormal(TensorSpecialMultiOp):
 @implement_scipy(spspecial.ellip_normal)
 @infer_dtype(spspecial.ellip_normal)
 def ellip_normal(h2, k2, n, p, **kwargs):
-    op = EllipNormal(**kwargs)
+    op = TensorEllipNormal(**kwargs)
     return op(h2, k2, n, p)
