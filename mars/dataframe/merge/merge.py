@@ -42,6 +42,7 @@ from ..utils import (
     parse_index,
     hash_dataframe_on,
     infer_index_value,
+    filter_by_bloom_filter,
 )
 
 import logging
@@ -328,6 +329,21 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
 
         left_on = _prepare_shuffle_on(op.left_index, op.left_on, op.on)
         right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
+
+        # bloom filter now only available for inner
+        if op.how == "inner":
+            if len(left.chunks) > len(right.chunks):
+                left = filter_by_bloom_filter(
+                    left,
+                    right,
+                    left_on,
+                    right_on,
+                    max_elements=right.chunks[0].shape[0],
+                )
+            else:
+                right = filter_by_bloom_filter(
+                    right, left, right_on, left_on, max_elements=left.chunks[0].shape[0]
+                )
 
         # do shuffle
         left_chunks = cls._gen_shuffle_chunks(out_chunk_shape, left_on, left)

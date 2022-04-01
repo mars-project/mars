@@ -41,6 +41,7 @@ from ..utils import (
     build_concatenated_rows_frame,
     merge_index_value,
     auto_merge_chunks,
+    filter_by_bloom_filter,
 )
 
 

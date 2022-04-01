@@ -1397,3 +1397,84 @@ def auto_merge_chunks(
     else:
         params["nsplits"] = (tuple(n_split), df_or_series.nsplits[1])
     return new_op.new_tileable(df_or_series.op.inputs, kws=[params])
+
+
+def filter_by_bloom_filter(
+    df1: TileableType,
+    df2: TileableType,
+    left_on: Union[str, List],
+    right_on: Union[str, List],
+    max_elements: int = 10000,
+    error_rate: float = 0.1,
+):
+    """
+    Use bloom filter to filter DataFrame.
+
+    Parameters
+    ----------
+    df1: DataFrame.
+        DataFrame to be filtered.
+    df2: DataFrame.
+        Dataframe to build filter.
+    left_on: str or list.
+        Column(s) selected on df1.
+    right_on: str or list.
+        Column(s) selected on df2.
+    max_elements: int
+        How many elements you expect the filter to hold.
+    error_rate: float
+        error_rate defines accuracy.
+
+    Returns
+    -------
+    DataFrame
+        Filtered df1.
+    """
+    from .base.bloom_filter import DataFrameBloomFilter
+
+    # use df2's chunks to build bloom filter
+    chunks = []
+    for c in df2.chunks:
+        op = DataFrameBloomFilter(
+            on=right_on,
+            max_elements=max_elements,
+            error_rate=error_rate,
+            execution_stage="build",
+        )
+        chunks.append(op.new_chunk(inputs=[c]))
+
+    # union all chunk filters
+    combine_size = options.combine_size
+    while len(chunks) > 4:
+        new_chunks = []
+        for idx, i in enumerate(range(0, len(chunks), combine_size)):
+            chks = chunks[i : i + combine_size]
+            if len(chks) == 1:
+                chk = chks[0]
+            else:
+                union_op = DataFrameBloomFilter(execution_stage="union")
+                for j, c in enumerate(chks):
+                    c._index = (j, 0)
+                chk = union_op.new_chunk(chks)
+            new_chunks.append(chk)
+        chunks = new_chunks
+    if len(chunks) > 1:
+        union_op = DataFrameBloomFilter(execution_stage="union")
+        filter_chunk = union_op.new_chunk(chunks)
+    else:
+        filter_chunk = chunks[0]
+
+    # filter df1
+    out_chunks = []
+    for chunk in df1.chunks:
+        filter_op = DataFrameBloomFilter(on=left_on, execution_stage="filter")
+        params = chunk.params.copy()
+        params["shape"] = (np.nan, chunk.shape[1])
+        params["index_value"] = parse_index(pd.RangeIndex(-1))
+        out_chunks.append(filter_op.new_chunk([chunk, filter_chunk], **params))
+
+    new_op = df1.op.copy()
+    params = df1.params.copy()
+    params["chunks"] = out_chunks
+    params["nsplits"] = ((np.nan,) * len(out_chunks), df1.nsplits[1])
+    return new_op.new_dataframe(df1.op.inputs, **params)

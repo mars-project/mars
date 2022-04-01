@@ -267,6 +267,7 @@ MIT License
 - dagre-d3:0.6.4
 - cytoscape:3.19.1
 - cytoscape-dagre:2.3.2
+- bloom-filter2: 2.0
 
 
 ISC License

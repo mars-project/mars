@@ -126,6 +126,15 @@ def test_merge(setup):
         sort_dataframe_inplace(expected7, 0), sort_dataframe_inplace(result7, 0)
     )
 
+    mdf5 = from_pandas(df2, chunk_size=4)
+    mdf6 = from_pandas(df4, chunk_size=1)
+    expected7 = df4.merge(df2, how="inner", left_on="i1", right_on="a")
+    jdf7 = mdf6.merge(mdf5, how="inner", left_on="i1", right_on="a", auto_merge="none")
+    result7 = jdf7.execute().fetch()
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected7, 0), sort_dataframe_inplace(result7, 0)
+    )
+
     # merge when on is in MultiIndex, and on not in index
     expected8 = df4.merge(df2, how="inner", on=["a", "b"])
     jdf8 = mdf4.merge(mdf2, how="inner", on=["a", "b"], auto_merge="none")
