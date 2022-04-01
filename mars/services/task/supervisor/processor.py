@@ -17,12 +17,11 @@ import importlib
 import logging
 import operator
 import os
-import sys
 import tempfile
 import time
 from collections import defaultdict
-from functools import wraps, reduce
-from typing import Callable, Coroutine, Dict, Iterator, Optional, Type, Union, List
+from functools import reduce
+from typing import Dict, Iterator, Optional, Type, List
 
 from .... import oscar as mo
 from ....config import Config
@@ -43,22 +42,6 @@ from .preprocessor import TaskPreprocessor
 logger = logging.getLogger(__name__)
 
 MARS_ENABLE_DUMPING_SUBTASK_GRAPH = int(os.environ.get("MARS_DUMP_SUBTASK_GRAPH", 0))
-
-
-def _record_error(func: Union[Callable, Coroutine] = None, log_when_error=True):
-    assert asyncio.iscoroutinefunction(func)
-
-    @wraps(func)
-    async def inner(processor: "TaskProcessor", *args, **kwargs):
-        try:
-            return await func(processor, *args, **kwargs)
-        except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
-            if log_when_error:
-                logger.exception("Unexpected error happens in %s", func)
-            processor._err_infos.append(sys.exc_info())
-            raise
-
-    return inner
 
 
 class TaskProcessor:

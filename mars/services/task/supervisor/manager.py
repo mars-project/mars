@@ -92,7 +92,12 @@ class TaskManagerActor(mo.Actor):
             TaskConfigurationActor.default_uid(), address=self.address
         )
         task_conf = await configuration_ref.get_config()
-        self._config, self._task_executor_config, self._task_processor_cls, self._task_preprocessor_cls, = (
+        (
+            self._config,
+            self._task_executor_config,
+            self._task_processor_cls,
+            self._task_preprocessor_cls,
+        ) = (
             task_conf["task_options"],
             task_conf["task_executor_config"],
             task_conf["task_processor_cls"],
