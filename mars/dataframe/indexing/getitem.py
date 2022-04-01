@@ -367,6 +367,8 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             mask = op.inputs[1]
 
             if hasattr(mask, "index_value") and mask.ndim == 1 and op.identical_index:
+                if has_unknown_shape(in_df, mask):
+                    yield
                 nsplits = ((np.nan,) * in_df.chunk_shape[0], in_df.nsplits[1])
                 out_shape = in_df.chunk_shape
                 df_chunks = in_df.chunks
