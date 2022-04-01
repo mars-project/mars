@@ -702,7 +702,7 @@ def test_isin_execution(setup):
 
     # multiple chunk in multiple chunks
     a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
-    b = pd.Series([2, 1, 9, 3])
+    b = pd.Series([2, 1, 9, 3] * 2)
     sa = from_pandas_series(a, chunk_size=2)
     sb = from_pandas_series(b, chunk_size=2)
 
@@ -747,7 +747,17 @@ def test_isin_execution(setup):
     pd.testing.assert_frame_equal(result, expected)
 
     # mars object
-    b = tensor([2, 1, raw[1][0]], chunk_size=2)
+    b = tensor([2, 1, raw[1][0]] * 2, chunk_size=2)
+    r = df.isin(b)
+    result = r.execute().fetch()
+    expected = raw.isin([2, 1, raw[1][0]])
+    pd.testing.assert_frame_equal(result, expected)
+
+    # mars object and trigger iterative tiling
+    raw = pd.DataFrame(rs.randint(1000, size=(10, 3)))
+    df = from_pandas_df(raw, chunk_size=(5, 2))
+
+    b = from_pandas_series(pd.Series([raw[1][0]] + list(range(9))), chunk_size=2)
     r = df.isin(b)
     result = r.execute().fetch()
     expected = raw.isin([2, 1, raw[1][0]])

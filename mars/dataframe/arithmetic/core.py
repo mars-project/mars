@@ -14,6 +14,7 @@
 
 import itertools
 import copy
+from functools import reduce
 
 import numpy as np
 import pandas as pd
@@ -618,6 +619,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 inp, (DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, TENSOR_CHUNK_TYPE)
             )
         ]
+        # use first two to infer(for tree operand)
+        property_inputs = property_inputs[:2]
         if len(property_inputs) == 1:
             properties = self._calc_properties(*property_inputs)
         elif any(inp.ndim == 2 for inp in property_inputs):
@@ -869,6 +872,17 @@ class DataFrameUnaryOp(DataFrameOperand, DataFrameUnaryOpMixin):
                 index_value=series.index_value,
                 dtype=self._get_output_dtype(series),
             )
+
+
+class DataFrameArithmeticTreeMixin:
+    @classmethod
+    def execute(cls, ctx, op):
+        inputs = [ctx[c.key] for c in op.inputs]
+        ctx[op.outputs[0].key] = reduce(op._operator, inputs)
+
+    def _set_inputs(self, inputs):
+        inputs = self._get_inputs_data(inputs)
+        setattr(self, "_inputs", inputs)
 
 
 class DataFrameUnaryUfunc(DataFrameUnaryOp, TensorUfuncMixin):

@@ -15,8 +15,8 @@
 import operator
 
 from ... import opcodes as OperandDef
-from ...utils import classproperty
-from .core import DataFrameBinopUfunc
+from ...utils import classproperty, TreeReductionBuilder
+from .core import DataFrameBinopUfunc, DataFrameArithmeticTreeMixin
 
 
 class DataFrameOr(DataFrameBinopUfunc):
@@ -36,6 +36,10 @@ class DataFrameOr(DataFrameBinopUfunc):
         return TensorBitor
 
 
+class DataFrameTreeOr(DataFrameArithmeticTreeMixin, DataFrameOr):
+    _op_type_ = OperandDef.TREE_OR
+
+
 def bitor(df, other, axis="columns", level=None, fill_value=None):
     op = DataFrameOr(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
@@ -44,3 +48,21 @@ def bitor(df, other, axis="columns", level=None, fill_value=None):
 def rbitor(df, other, axis="columns", level=None, fill_value=None):
     op = DataFrameOr(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)
+
+
+def tree_dataframe_or(
+    *args, index=None, combine_size=None, axis="columns", level=None, fill_value=None
+):
+    class MultiplyBuilder(TreeReductionBuilder):
+        def _build_reduction(self, inputs, final=False):
+            op = DataFrameTreeOr(
+                axis=axis,
+                level=level,
+                fill_value=fill_value,
+                output_types=inputs[0].op.output_types,
+            )
+            params = inputs[0].params.copy()
+            params["index"] = index
+            return op.new_chunk(inputs, **params)
+
+    return MultiplyBuilder(combine_size).build(args)
