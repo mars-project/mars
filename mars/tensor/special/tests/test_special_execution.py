@@ -214,7 +214,6 @@ def test_quintuple_execution(setup, func):
     d = tensor(raw4, chunk_size=3)
     e = tensor(raw5, chunk_size=3)
 
-
     r = mt_func(a, b, c, d, e)
 
     result = r.execute().fetch()
