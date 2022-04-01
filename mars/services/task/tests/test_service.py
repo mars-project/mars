@@ -31,6 +31,7 @@ from ...subtask import SubtaskStatus
 from ...web import WebActor
 from ...meta import MetaAPI
 from .. import TaskAPI, TaskStatus, WebTaskAPI
+from ..supervisor.processor import TaskProcessor
 from ..errors import TaskNotExist
 
 
@@ -44,7 +45,7 @@ async def actor_pools():
                 subprocess_start_method="spawn",
             )
         else:
-            kw = dict(n_process=0, subprocess_start_method="spawn")
+            kw = dict(n_process=1, subprocess_start_method="spawn")
         pool = await mo.create_actor_pool("127.0.0.1", **kw)
         await pool.start()
         return pool
@@ -56,11 +57,9 @@ async def actor_pools():
         await asyncio.gather(sv_pool.stop(), worker_pool.stop())
 
 
-@pytest.mark.parametrize(indirect=True)
-@pytest.fixture(params=[False, True])
-async def start_test_service(actor_pools, request):
-    sv_pool, worker_pool = actor_pools
-
+async def _start_services(
+    supervisor_pool, worker_pool, request, task_processor_cls=None
+):
     config = {
         "services": [
             "cluster",
@@ -74,28 +73,31 @@ async def start_test_service(actor_pools, request):
         ],
         "cluster": {
             "backend": "fixed",
-            "lookup_address": sv_pool.external_address,
+            "lookup_address": supervisor_pool.external_address,
             "resource": {"numa-0": 2},
         },
         "meta": {"store": "dict"},
         "scheduling": {},
         "task": {},
     }
+    if task_processor_cls:
+        config["task"]["task_processor_cls"] = task_processor_cls
     if request:
         config["services"].append("web")
-
-    await start_services(NodeRole.SUPERVISOR, config, address=sv_pool.external_address)
+    await start_services(
+        NodeRole.SUPERVISOR, config, address=supervisor_pool.external_address
+    )
     await start_services(NodeRole.WORKER, config, address=worker_pool.external_address)
 
     session_id = "test_session"
-    session_api = await SessionAPI.create(sv_pool.external_address)
+    session_api = await SessionAPI.create(supervisor_pool.external_address)
     await session_api.create_session(session_id)
 
     if not request.param:
-        task_api = await TaskAPI.create(session_id, sv_pool.external_address)
+        task_api = await TaskAPI.create(session_id, supervisor_pool.external_address)
     else:
         web_actor = await mo.actor_ref(
-            WebActor.default_uid(), address=sv_pool.external_address
+            WebActor.default_uid(), address=supervisor_pool.external_address
         )
         web_address = await web_actor.get_web_address()
         task_api = WebTaskAPI(session_id, web_address)
@@ -103,8 +105,17 @@ async def start_test_service(actor_pools, request):
     assert await task_api.get_task_results() == []
 
     # create mock meta and storage APIs
-    _ = await MetaAPI.create(session_id, sv_pool.external_address)
+    _ = await MetaAPI.create(session_id, supervisor_pool.external_address)
     storage_api = await MockStorageAPI.create(session_id, worker_pool.external_address)
+    return task_api, storage_api, config
+
+
+@pytest.mark.parametrize(indirect=True)
+@pytest.fixture(params=[False, True])
+async def start_test_service(actor_pools, request):
+    sv_pool, worker_pool = actor_pools
+
+    task_api, storage_api, config = await _start_services(sv_pool, worker_pool, request)
 
     try:
         yield sv_pool.external_address, task_api, storage_api
@@ -112,6 +123,66 @@ async def start_test_service(actor_pools, request):
         await MockStorageAPI.cleanup(worker_pool.external_address)
         await stop_services(NodeRole.WORKER, config, worker_pool.external_address)
         await stop_services(NodeRole.SUPERVISOR, config, sv_pool.external_address)
+
+
+class MockTaskProcessor(TaskProcessor):
+    @classmethod
+    def _get_decref_stage_chunk_keys(cls, stage_processor):
+        import time
+
+        # time.sleep to block async thread
+        time.sleep(5)
+        return super()._get_decref_stage_chunk_keys(stage_processor)
+
+
+@pytest.mark.parametrize(indirect=True)
+@pytest.fixture(params=[True])
+async def start_test_service_with_mock(actor_pools, request):
+    sv_pool, worker_pool = actor_pools
+
+    task_api, storage_api, config = await _start_services(
+        sv_pool,
+        worker_pool,
+        request,
+        task_processor_cls="mars.services.task.tests.test_service.MockTaskProcessor",
+    )
+
+    try:
+        yield sv_pool.external_address, task_api, storage_api
+    finally:
+        await MockStorageAPI.cleanup(worker_pool.external_address)
+        await stop_services(NodeRole.WORKER, config, worker_pool.external_address)
+        await stop_services(NodeRole.SUPERVISOR, config, sv_pool.external_address)
+
+
+@pytest.mark.asyncio
+async def test_task_timeout_execution(start_test_service_with_mock):
+    _sv_pool_address, task_api, storage_api = start_test_service_with_mock
+
+    def f1():
+        return np.arange(5)
+
+    def f2():
+        return np.arange(5, 10)
+
+    def f3(f1r, f2r):
+        return np.concatenate([f1r, f2r]).sum()
+
+    r1 = mr.spawn(f1)
+    r2 = mr.spawn(f2)
+    r3 = mr.spawn(f3, args=(r1, r2))
+
+    graph = TileableGraph([r3.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
+    assert await task_api.get_last_idle_time() is None
+    assert isinstance(task_id, str)
+
+    await task_api.wait_task(task_id, timeout=2)
+    task_result = await task_api.get_task_result(task_id)
+
+    assert task_result.status == TaskStatus.terminated
 
 
 @pytest.mark.asyncio
@@ -168,7 +239,7 @@ async def test_task_error(start_test_service):
 
     await task_api.wait_task(task_id, timeout=10)
     results = await task_api.get_task_results(progress=True)
-    assert type(results[0].error) is SystemError
+    assert isinstance(results[0].error, SystemError)
 
 
 @pytest.mark.asyncio

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import base64
 import json
 from typing import Callable, List, Optional, Union
@@ -149,8 +150,18 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         timeout = self.get_argument("timeout", None) or None
         timeout = float(timeout) if timeout is not None else None
         oscar_api = await self._get_oscar_task_api(session_id)
-        res = await oscar_api.wait_task(task_id, timeout)
-        self.write(json.dumps(_json_serial_task_result(res)))
+        if timeout:
+            try:
+                res = await asyncio.wait_for(
+                    asyncio.shield(oscar_api.wait_task(task_id, timeout)),
+                    timeout=timeout,
+                )
+                self.write(json.dumps(_json_serial_task_result(res)))
+            except asyncio.TimeoutError:
+                self.write(json.dumps({}))
+        else:
+            res = await oscar_api.wait_task(task_id, timeout)
+            self.write(json.dumps(_json_serial_task_result(res)))
 
     @web_api("(?P<task_id>[^/]+)", method="delete")
     async def cancel_task(self, session_id: str, task_id: str):

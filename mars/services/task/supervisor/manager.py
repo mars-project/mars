@@ -33,22 +33,25 @@ from ..config import task_options
 from ..core import Task, new_task_id, TaskStatus
 from ..errors import TaskNotExist
 from .preprocessor import TaskPreprocessor
-from .processor import TaskProcessorActor
+from .processor import TaskProcessorActor, TaskProcessor
 
 
 class TaskConfigurationActor(mo.Actor):
     def __init__(
         self,
         task_conf: Dict[str, Any],
+        task_processor_cls: Type[TaskProcessor] = None,
         task_preprocessor_cls: Type[TaskPreprocessor] = None,
     ):
         for name, value in task_conf.items():
             setattr(task_options, name, value)
+        self._task_processor_cls = task_processor_cls
         self._task_preprocessor_cls = task_preprocessor_cls
 
     def get_config(self):
         return {
             "task_options": task_options,
+            "task_processor_cls": self._task_processor_cls,
             "task_preprocessor_cls": self._task_preprocessor_cls,
         }
 
@@ -74,6 +77,7 @@ class TaskManagerActor(mo.Actor):
         self._session_id = session_id
 
         self._config = None
+        self._task_processor_cls = None
         self._task_preprocessor_cls = None
         self._last_idle_time = None
 
@@ -101,9 +105,10 @@ class TaskManagerActor(mo.Actor):
             TaskConfigurationActor.default_uid(), address=self.address
         )
         task_conf = await configuration_ref.get_config()
-        self._config, self._task_preprocessor_cls = (
+        self._config, self._task_preprocessor_cls, self._task_processor_cls = (
             task_conf["task_options"],
             task_conf["task_preprocessor_cls"],
+            task_conf["task_processor_cls"],
         )
         self._task_preprocessor_cls = self._get_task_preprocessor_cls()
 
@@ -156,6 +161,7 @@ class TaskManagerActor(mo.Actor):
                 self._session_id,
                 parent_task_id,
                 task_name=task_name,
+                task_processor_cls=self._task_processor_cls,
                 address=self.address,
                 uid=uid,
             )
