@@ -20,7 +20,7 @@ from .core import _register_special_op, TensorSpecialMultiOp
 
 @_register_special_op
 class EllipHarm(TensorSpecialMultiOp):
-    _ARG_COUNT = 7
+    _ARG_COUNT = 5
     _func_name = "ellip_harm"
 
 
@@ -28,7 +28,7 @@ class EllipHarm(TensorSpecialMultiOp):
 @infer_dtype(spspecial.ellip_harm)
 def ellip_harm(h2, k2, n, p, s, signm=1, signn=1, **kwargs):
     op = EllipHarm(**kwargs)
-    return op(h2, k2, n, p, s, signm, signn)
+    return op(h2, k2, n, p, s, signm=signm, signn=signn)
 
 
 @_register_special_op
