@@ -466,13 +466,18 @@ async def test_get_tileable_details(start_test_service):
     details = await task_api.get_tileable_details(task_id)
     assert details[r7.key]["status"] == SubtaskStatus.errored.value
 
+    contain_id_property = False
     for tileable in details.keys():
         for property_key, property_value in (
             details.get(tileable).get("properties").items()
         ):
             assert property_key != "key"
-            assert property_key != "id"
             assert isinstance(property_value, (int, float, str))
+
+            if property_key == "id":
+                contain_id_property = True
+
+    assert contain_id_property == True
 
 
 @pytest.mark.asyncio
