@@ -1447,7 +1447,7 @@ def filter_by_bloom_filter(
     combine_size = options.combine_size
     while len(chunks) > 4:
         new_chunks = []
-        for idx, i in enumerate(range(0, len(chunks), combine_size)):
+        for i in range(0, len(chunks), combine_size):
             chks = chunks[i : i + combine_size]
             if len(chks) == 1:
                 chk = chks[0]
