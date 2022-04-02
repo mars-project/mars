@@ -126,7 +126,7 @@ class MarsTaskExecutor(TaskExecutor):
     ):
         available_bands = await self.get_available_band_slots()
         await self._incref_result_tileables()
-        await self._incref_stage(subtask_graph, chunk_graph)
+        await self._incref_stage(stage_id, subtask_graph, chunk_graph)
         stage_processor = TaskStageProcessor(
             stage_id,
             self._task,
@@ -318,7 +318,7 @@ class MarsTaskExecutor(TaskExecutor):
             [t.key for t in self._lifecycle_processed_tileables]
         )
 
-    async def _incref_stage(self, subtask_graph, chunk_graph):
+    async def _incref_stage(self, stage_id, subtask_graph, chunk_graph):
         incref_chunk_keys = []
         for subtask in subtask_graph:
             # for subtask has successors, incref number of successors
@@ -339,7 +339,7 @@ class MarsTaskExecutor(TaskExecutor):
                     incref_chunk_keys.extend([key[0] for key in data_keys])
         result_chunks = chunk_graph.result_chunks
         incref_chunk_keys.extend([c.key for c in result_chunks])
-        logger.debug("Incref chunks %s for stage", incref_chunk_keys)
+        logger.debug("Incref chunks for stage %s: %s", stage_id, incref_chunk_keys)
         await self._lifecycle_api.incref_chunks(incref_chunk_keys)
 
     @classmethod
@@ -362,7 +362,10 @@ class MarsTaskExecutor(TaskExecutor):
                             # for reducer chunk, decref mapper chunks
                             if isinstance(result_chunk.op, ShuffleProxy):
                                 for chunk in subtask.chunk_graph:
-                                    if isinstance(chunk.op, MapReduceOperand):
+                                    if (
+                                        isinstance(chunk.op, MapReduceOperand)
+                                        and chunk.op.stage == OperandStage.reduce
+                                    ):
                                         data_keys = chunk.op.get_dependent_data_keys()
                                         decref_chunk_keys.extend(data_keys)
                                         decref_chunk_keys.extend(
@@ -381,9 +384,9 @@ class MarsTaskExecutor(TaskExecutor):
     async def _decref_stage(self, stage_processor: "TaskStageProcessor"):
         decref_chunk_keys = self._get_decref_stage_chunk_keys(stage_processor)
         logger.debug(
-            "Decref chunks %s when stage %s finish",
-            decref_chunk_keys,
+            "Decref chunks when stage %s finish: %s",
             stage_processor.stage_id,
+            decref_chunk_keys,
         )
         await self._lifecycle_api.decref_chunks(decref_chunk_keys)
 
@@ -392,7 +395,7 @@ class MarsTaskExecutor(TaskExecutor):
         decref_chunk_keys = []
         for args, kwargs in zip(args_list, kwargs_list):
             decref_chunk_keys.extend(self._get_decref_stage_chunk_keys(*args, **kwargs))
-        logger.debug("Decref chunks %s when stage finish", decref_chunk_keys)
+        logger.debug("Decref chunks when stages finish: %s", decref_chunk_keys)
         await self._lifecycle_api.decref_chunks(decref_chunk_keys)
 
     async def _decref_input_subtasks(
