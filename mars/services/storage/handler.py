@@ -499,10 +499,13 @@ class StorageHandlerActor(mo.Actor):
                 missing_keys.append(data_key)
         if address is None or band_name is None:
             # some mapper keys are absent, specify error='ignore'
+            # remember that meta only records those main keys
             get_metas = [
                 (
                     meta_api.get_chunk_meta.delay(
-                        data_key, fields=["bands"], error="ignore"
+                        data_key[0] if isinstance(data_key, tuple) else data_key,
+                        fields=["bands"],
+                        error="ignore",
                     )
                 )
                 for data_key in missing_keys
@@ -513,6 +516,7 @@ class StorageHandlerActor(mo.Actor):
             metas = await meta_api.get_chunk_meta.batch(*get_metas)
         else:  # pragma: no cover
             metas = [{"bands": [(address, band_name)]}] * len(missing_keys)
+        assert len(metas) == len(missing_keys)
         for data_key, bands in zip(missing_keys, metas):
             if bands is not None:
                 remote_keys[bands["bands"][0]].add(data_key)
@@ -536,10 +540,18 @@ class StorageHandlerActor(mo.Actor):
         await asyncio.gather(*transfer_tasks)
 
         append_bands_delays = []
+        appended_main_keys = set()
         for data_key in fetch_keys:
+            # meta service records main keys only,
+            # so we append band to the main key
+            main_key = data_key[0] if isinstance(data_key, tuple) else data_key
+            if main_key in appended_main_keys:
+                continue
+            appended_main_keys.add(main_key)
             append_bands_delays.append(
                 meta_api.add_chunk_bands.delay(
-                    data_key, [(self.address, self._band_name)]
+                    main_key,
+                    [(self.address, self._band_name)],
                 )
             )
         await meta_api.add_chunk_bands.batch(*append_bands_delays)
