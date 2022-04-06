@@ -483,6 +483,47 @@ def test_broadcast_merge(setup):
     )
 
 
+def test_merge_with_bloom_filter(setup):
+    ns = np.random.RandomState(0)
+    raw_df1 = pd.DataFrame(
+        {"col1": ns.random(100), "col2": ns.randint(0, 10, size=(100,))}
+    )
+    raw_df2 = pd.DataFrame(
+        {"col1": ns.random(100), "col2": ns.randint(0, 10, size=(100,))}
+    )
+
+    df1 = from_pandas(raw_df1, chunk_size=10)
+    df2 = from_pandas(raw_df2, chunk_size=15)
+
+    expected = raw_df1.merge(raw_df2, on="col2")
+
+    result = (
+        df1.merge(
+            df2,
+            on="col2",
+            bloom_filter={"max_elements": 100, "error_rate": 0.01},
+            auto_merge="none",
+        )
+        .execute()
+        .fetch()
+    )
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=["col1_x", "col2"]).reset_index(drop=True),
+        result.sort_values(by=["col1_x", "col2"]).reset_index(drop=True),
+    )
+
+    result = (
+        df2.merge(df1, on="col2", bloom_filter=True, auto_merge="none")
+        .execute()
+        .fetch()
+    )
+    expected = raw_df2.merge(raw_df1, on="col2")
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=["col1_x", "col2"]).reset_index(drop=True),
+        result.sort_values(by=["col1_x", "col2"]).reset_index(drop=True),
+    )
+
+
 def test_merge_on_duplicate_columns(setup):
     raw1 = pd.DataFrame(
         [["foo", 1, "bar"], ["bar", 2, "foo"], ["baz", 3, "foo"]],

@@ -415,8 +415,16 @@ def get_filter_bitno_probes(bloom_filter, key):
             temp = quotient
     elif isinstance(key, (list, tuple, str, bytes)) and not key:
         int_list = []
-    elif hasattr(key[0], "__divmod__"):
-        int_list = key
+
+    elif isinstance(key, (list, tuple)):
+        int_list = []
+        for v in key:
+            if isinstance(v, str):
+                int_list.extend([ord(char) for char in v])
+            elif hasattr(v, "__divmod__"):
+                int_list.append(v)
+            else:
+                raise TypeError("Sorry, I do not know how to hash this type")
     elif isinstance(key[0], str):
         int_list = [ord(char) for char in key]
     else:

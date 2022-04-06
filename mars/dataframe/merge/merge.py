@@ -14,7 +14,7 @@
 
 import itertools
 from collections import namedtuple
-from typing import List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Union, Tuple
 
 import numpy as np
 import pandas as pd
@@ -33,6 +33,8 @@ from ...serialization.serializables import (
     NamedTupleField,
 )
 from ...typing import TileableType
+from ...utils import has_unknown_shape
+from ..base.bloom_filter import filter_by_bloom_filter
 from ..core import DataFrame, Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
 from ..utils import (
@@ -42,7 +44,6 @@ from ..utils import (
     parse_index,
     hash_dataframe_on,
     infer_index_value,
-    filter_by_bloom_filter,
 )
 
 import logging
@@ -148,6 +149,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
     method = StringField("method")
     auto_merge = StringField("auto_merge")
     auto_merge_threshold = Int32Field("auto_merge_threshold")
+    bloom_filter = AnyField("bloom_filter")
 
     # only for broadcast merge
     split_info = NamedTupleField("split_info")
@@ -331,18 +333,32 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
 
         # bloom filter now only available for inner
-        if op.how == "inner":
+        if op.how == "inner" and op.bloom_filter:
+            if has_unknown_shape(left, right):
+                yield left.chunks + right.chunks
+            bloom_filter_params = dict()
+            if isinstance(op.bloom_filter, dict):
+                if "max_elements" in op.bloom_filter:
+                    bloom_filter_params["max_elements"] = op.bloom_filter[
+                        "max_elements"
+                    ]
+                if "error_rate" in op.bloom_filter:
+                    bloom_filter_params["error_rate"] = op.bloom_filter["error_rate"]
+            if "max_elements" not in bloom_filter_params:
+                bloom_filter_params["max_elements"] = max(
+                    c.shape[0] for c in left.chunks + right.chunks
+                )
             if len(left.chunks) > len(right.chunks):
                 left = filter_by_bloom_filter(
                     left,
                     right,
                     left_on,
                     right_on,
-                    max_elements=right.chunks[0].shape[0],
+                    **bloom_filter_params,
                 )
             else:
                 right = filter_by_bloom_filter(
-                    right, left, right_on, left_on, max_elements=left.chunks[0].shape[0]
+                    right, left, right_on, left_on, **bloom_filter_params
                 )
 
         # do shuffle
@@ -546,7 +562,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             ):
                 ret = cls._tile_broadcast(op, left, right)
             else:
-                ret = cls._tile_shuffle(op, left, right)
+                ret = yield from cls._tile_shuffle(op, left, right)
         elif method == "broadcast":
             if cls._can_merge_with_one_chunk(left, right, how):
                 ret = cls._tile_one_chunk(op, left, right)
@@ -556,7 +572,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                 raise ValueError("Cannot specify merge method `broadcast`")
         else:
             assert method == "shuffle"
-            ret = cls._tile_shuffle(op, left, right)
+            ret = yield from cls._tile_shuffle(op, left, right)
 
         if (
             how == "inner"
@@ -651,6 +667,7 @@ def merge(
     method: str = "auto",
     auto_merge: str = "both",
     auto_merge_threshold: int = 8,
+    bloom_filter: Union[bool, Dict] = True,
 ) -> DataFrame:
     """
     Merge DataFrame or named Series objects with a database-style join.
@@ -743,6 +760,9 @@ def merge(
         When how is "inner", merged result could be much smaller than original DataFrame,
         if the number of chunks is greater than the threshold,
         it will merge small chunks automatically.
+    bloom_filter: bool or dict, default True
+        Use bloom filter to optimize merge, you can pass a dict to specify arguments for
+        bloom filter.
 
     Returns
     -------
@@ -850,6 +870,7 @@ def merge(
         method=method,
         auto_merge=auto_merge,
         auto_merge_threshold=auto_merge_threshold,
+        bloom_filter=bloom_filter,
         output_types=[OutputType.dataframe],
     )
     return op(df, right)
@@ -866,6 +887,7 @@ def join(
     method: str = None,
     auto_merge: str = "both",
     auto_merge_threshold: int = 8,
+    bloom_filter: Union[bool, Dict] = True,
 ) -> DataFrame:
     """
     Join columns of another DataFrame.
@@ -920,6 +942,9 @@ def join(
         When how is "inner", merged result could be much smaller than original DataFrame,
         if the number of chunks is greater than the threshold,
         it will merge small chunks automatically.
+    bloom_filter: bool or dict, default True
+        Use bloom filter to optimize merge, you can pass a dict to specify arguments for
+        bloom filter.
 
     Returns
     -------
@@ -1028,4 +1053,5 @@ def join(
         method=method,
         auto_merge=auto_merge,
         auto_merge_threshold=auto_merge_threshold,
+        bloom_filter=bloom_filter,
     )

@@ -12,20 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union
+from typing import Union, List
 
+import numpy as np
 import pandas as pd
 
+from ...config import options
 from ...core import OutputType
 from ...core.context import Context
-from ...lib.bloom_filter2 import BloomFilter
+from ...lib.bloom_filter import BloomFilter
 from ...serialization.serializables import (
     AnyField,
     Int64Field,
     Float64Field,
     StringField,
 )
+from ...typing import TileableType
 from ..operands import DataFrameOperandMixin, DataFrameOperand
+from ..utils import parse_index
 
 
 class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
@@ -63,28 +67,68 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
             return False
 
     @classmethod
-    def execute(cls, ctx: Union[dict, Context], op: "DataFrameBloomFilter"):
-        if op.execution_stage == "build":
-            on = op.on
+    def _build_index_filter(cls, in_data, op):
+        if isinstance(in_data.index, pd.MultiIndex):
+            index = in_data.index.get_level_values(op.on)
+        else:
+            index = in_data.index
+        bloom_filter = BloomFilter(
+            max_elements=op.max_elements, error_rate=op.error_rate
+        )
+        index.map(lambda v: bloom_filter.add(cls._get_value(v)))
+        return bloom_filter
+
+    @classmethod
+    def _build_series_filter(cls, in_data, op):
+        try:
             bloom_filter = BloomFilter(
                 max_elements=op.max_elements, error_rate=op.error_rate
             )
+            in_data[op.on].map(lambda v: bloom_filter.add(cls._get_value(v)))
+        except TypeError:  # pragma: no cover
+            # has unhashable data, convert to str
+            in_data = in_data.astype(str)
+            bloom_filter = BloomFilter(
+                max_elements=op.max_elements, error_rate=op.error_rate
+            )
+            in_data[op.on].map(lambda v: bloom_filter.add(cls._get_value(v)))
+        return bloom_filter
+
+    @classmethod
+    def _build_dataframe_filter(cls, in_data, op):
+        try:
+            bloom_filter = BloomFilter(
+                max_elements=op.max_elements, error_rate=op.error_rate
+            )
+            in_data[op.on].apply(lambda v: bloom_filter.add(cls._get_value(v)), axis=1)
+        except TypeError:  # pragma: no cover
+            # has unhashable data, convert to str
+            in_data = in_data.astype(cls._convert_to_hashable_dtypes(in_data.dtypes))
+            bloom_filter = BloomFilter(
+                max_elements=op.max_elements, error_rate=op.error_rate
+            )
+            in_data[op.on].apply(lambda v: bloom_filter.add(cls._get_value(v)), axis=1)
+        return bloom_filter
+
+    @classmethod
+    def _convert_to_hashable_dtypes(cls, dtypes: pd.Series):
+        dtypes = dict(
+            (name, dtype) if np.issubdtype(dtype, int) else (name, str)
+            for name, dtype in dtypes.iteritems()
+        )
+        return dtypes
+
+    @classmethod
+    def execute(cls, ctx: Union[dict, Context], op: "DataFrameBloomFilter"):
+        if op.execution_stage == "build":
+            on = op.on
             in_data = ctx[op.inputs[0].key]
             if cls._filter_on_index(on, in_data):
-                if isinstance(in_data.index, pd.MultiIndex):
-                    index = in_data.index.get_level_values(on)
-                else:
-                    index = in_data.index
-                for value in index:
-                    bloom_filter.add(cls._get_value(value))
+                bloom_filter = cls._build_index_filter(in_data, op)
+            elif isinstance(on, str):
+                bloom_filter = cls._build_series_filter(in_data, op)
             else:
-                value_iter = (
-                    in_data[on].iteritems()
-                    if isinstance(on, str)
-                    else in_data[on].iterrows()
-                )
-                for _, value in value_iter:
-                    bloom_filter.add(cls._get_value(value))
+                bloom_filter = cls._build_dataframe_filter(in_data, op)
             ctx[op.outputs[0].key] = bloom_filter
         elif op.execution_stage == "union":
             # union bloom filters
@@ -108,15 +152,104 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
                         in_data.index.map(lambda x: x in bloom_filter)
                     ]
             else:
+                row_func = lambda row: cls._get_value(row) in bloom_filter
                 if isinstance(on, str):
-                    ctx[op.outputs[0].key] = in_data[
-                        in_data[on].map(lambda row: cls._get_value(row) in bloom_filter)
-                    ]
+                    # series
+                    try:
+                        filtered = in_data[in_data[on].map(row_func)]
+                    except TypeError:
+                        converted_data = in_data.astype(str)
+                        filtered = in_data[converted_data[on].map(row_func)]
+                    ctx[op.outputs[0].key] = filtered
                 else:
-                    ctx[op.outputs[0].key] = in_data[
-                        in_data[on].apply(
-                            lambda row: cls._get_value(row) in bloom_filter, axis=1
+                    # dataframe
+                    try:
+                        filtered = in_data[in_data[on].apply(row_func, axis=1)]
+                    except TypeError:
+                        converted_data = in_data.astype(
+                            cls._convert_to_hashable_dtypes(in_data.dtypes)
                         )
-                    ]
+                        filtered = in_data[converted_data[on].apply(row_func, axis=1)]
+                    ctx[op.outputs[0].key] = filtered
+
         else:  # pragma: no branch
             raise ValueError(f"Unknown execution stage: {op.execution_stage}")
+
+
+def filter_by_bloom_filter(
+    df1: TileableType,
+    df2: TileableType,
+    left_on: Union[str, List],
+    right_on: Union[str, List],
+    max_elements: int = 10000,
+    error_rate: float = 0.1,
+):
+    """
+    Use bloom filter to filter DataFrame.
+
+    Parameters
+    ----------
+    df1: DataFrame.
+        DataFrame to be filtered.
+    df2: DataFrame.
+        Dataframe to build filter.
+    left_on: str or list.
+        Column(s) selected on df1.
+    right_on: str or list.
+        Column(s) selected on df2.
+    max_elements: int
+        How many elements you expect the filter to hold.
+    error_rate: float
+        error_rate defines accuracy.
+
+    Returns
+    -------
+    DataFrame
+        Filtered df1.
+    """
+    # use df2's chunks to build bloom filter
+    chunks = []
+    for c in df2.chunks:
+        op = DataFrameBloomFilter(
+            on=right_on,
+            max_elements=max_elements,
+            error_rate=error_rate,
+            execution_stage="build",
+        )
+        chunks.append(op.new_chunk(inputs=[c]))
+
+    # union all chunk filters
+    combine_size = options.combine_size
+    while len(chunks) > 4:
+        new_chunks = []
+        for i in range(0, len(chunks), combine_size):
+            chks = chunks[i : i + combine_size]
+            if len(chks) == 1:
+                chk = chks[0]
+            else:
+                union_op = DataFrameBloomFilter(execution_stage="union")
+                for j, c in enumerate(chks):
+                    c._index = (j, 0)
+                chk = union_op.new_chunk(chks)
+            new_chunks.append(chk)
+        chunks = new_chunks
+    if len(chunks) > 1:
+        union_op = DataFrameBloomFilter(execution_stage="union")
+        filter_chunk = union_op.new_chunk(chunks)
+    else:
+        filter_chunk = chunks[0]
+
+    # filter df1
+    out_chunks = []
+    for chunk in df1.chunks:
+        filter_op = DataFrameBloomFilter(on=left_on, execution_stage="filter")
+        params = chunk.params.copy()
+        params["shape"] = (np.nan, chunk.shape[1])
+        params["index_value"] = parse_index(pd.RangeIndex(-1))
+        out_chunks.append(filter_op.new_chunk([chunk, filter_chunk], **params))
+
+    new_op = df1.op.copy()
+    params = df1.params.copy()
+    params["chunks"] = out_chunks
+    params["nsplits"] = ((np.nan,) * len(out_chunks), df1.nsplits[1])
+    return new_op.new_dataframe(df1.op.inputs, **params)
