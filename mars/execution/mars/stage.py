@@ -21,12 +21,12 @@ from ... import oscar as mo
 from ...core import ChunkGraph
 from ...core.operand import Fuse
 from ...metrics import Metrics
-from ...typing import BandType
-from ...utils import get_params_fields
+from ...services.meta import MetaAPI
 from ...services.scheduling import SchedulingAPI
 from ...services.subtask import Subtask, SubtaskGraph, SubtaskResult, SubtaskStatus
-from ...services.meta import MetaAPI
 from ...services.task.core import Task, TaskResult, TaskStatus
+from ...typing import BandType
+from ...utils import get_params_fields
 from ..api import ExecutionChunkResult
 
 logger = logging.getLogger(__name__)

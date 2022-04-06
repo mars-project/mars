@@ -29,13 +29,13 @@ from ...lib.aio import alru_cache
 from ...oscar.profiling import (
     ProfilingData,
 )
-from ...typing import TileableType, BandType
-from ...utils import Timer
 from ...services.cluster.api import ClusterAPI
 from ...services.lifecycle.api import LifecycleAPI
 from ...services.meta.api import MetaAPI
 from ...services.scheduling import SchedulingAPI
 from ...services.subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
+from ...typing import TileableType, BandType
+from ...utils import Timer
 from ..api import TaskExecutor, register_executor_cls
 from .resource import ResourceEvaluator
 from .stage import TaskStageProcessor

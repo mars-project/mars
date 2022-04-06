@@ -17,8 +17,8 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Type
 
 from ..core import ChunkGraph
-from ..typing import BandType
 from ..services.subtask import SubtaskGraph, SubtaskResult
+from ..typing import BandType
 
 
 @dataclass
