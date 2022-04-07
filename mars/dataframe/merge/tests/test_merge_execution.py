@@ -403,7 +403,7 @@ def test_broadcast_merge(setup):
     # test broadcast right and how="inner"
     df1 = from_pandas(raw1, chunk_size=5)
     df2 = from_pandas(raw2, chunk_size=10)
-    r = df2.merge(df1, on="key", auto_merge="none")
+    r = df2.merge(df1, on="key", auto_merge="none", bloom_filter=False)
     # make sure it selects broadcast merge, for broadcast, there must be
     # DataFrameConcat operands
     graph = build_graph([r], tile=True)
@@ -444,7 +444,7 @@ def test_broadcast_merge(setup):
     # test broadcast left
     df1 = from_pandas(raw1, chunk_size=5)
     df2 = from_pandas(raw2, chunk_size=10)
-    r = df1.merge(df2, on="key", auto_merge="none")
+    r = df1.merge(df2, on="key", auto_merge="none", bloom_filter=False)
     # make sure it selects broadcast merge, for broadcast, there must be
     # DataFrameConcat operands
     graph = build_graph([r], tile=True)

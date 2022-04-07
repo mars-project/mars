@@ -563,8 +563,10 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             return MergeMethod.shuffle
 
     @classmethod
-    def _if_apply_bloom_filter(cls, method):
-        if method in [MergeMethod.shuffle]:
+    def _if_apply_bloom_filter(cls, method, op, left, right):
+        if len(left.chunks + right.chunks) <= 8:
+            return False
+        elif method == MergeMethod.shuffle and op.bloom_filter:
             return True
         else:
             return False
@@ -587,7 +589,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             right = auto_merge_chunks(ctx, right)
 
         method = cls._choose_merge_method(op, left, right)
-        if cls._if_apply_bloom_filter(method):
+        if cls._if_apply_bloom_filter(method, op, left, right):
             left_on = _prepare_shuffle_on(op.left_index, op.left_on, op.on)
             right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
             if op.how == "inner" and op.bloom_filter:
@@ -601,6 +603,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                 left = auto_merge_chunks(ctx, left)
                 right = auto_merge_chunks(ctx, right)
 
+        method = cls._choose_merge_method(op, left, right)
         if method == MergeMethod.one_chunk:
             ret = cls._tile_one_chunk(op, left, right)
         elif method == MergeMethod.broadcast:
