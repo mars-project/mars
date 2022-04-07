@@ -423,7 +423,7 @@ def test_broadcast_merge(setup):
     # test broadcast right and how="left"
     df1 = from_pandas(raw1, chunk_size=5)
     df2 = from_pandas(raw2, chunk_size=10)
-    r = df2.merge(df1, on="key", how="left", auto_merge="none")
+    r = df2.merge(df1, on="key", how="left", auto_merge="none", method="broadcast")
     # make sure it selects broadcast merge, for broadcast, there must be
     # DataFrameConcat operands
     graph = build_graph([r], tile=True)
