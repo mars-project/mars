@@ -286,6 +286,9 @@ hyp1f1 = partial(call_sparse, "hyp1f1")
 hyperu = partial(call_sparse, "hyperu")
 hyp0f1 = partial(_call_bin, "hyp0f1")
 
+ellip_harm = partial(call_sparse, "ellip_harm")
+ellip_harm_2 = partial(call_sparse, "ellip_harm_2")
+ellip_normal = partial(call_sparse, "ellip_normal")
 
 def equal(a, b, **_):
     try:
@@ -725,6 +728,10 @@ def isfinite(x, **kw):
 
 def isreal(x, **kw):
     return _call_unary("isreal", x, **kw)
+
+
+def isfortran(x, **kw):
+    return call_sparse("isfortran", x, **kw)
 
 
 def where(cond, x, y):

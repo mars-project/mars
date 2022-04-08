@@ -69,10 +69,10 @@ class TensorSpecialMultiOp(TensorSpecialOperandMixin, TensorMultiOp):
 
     @classmethod
     def _execute_cpu(cls, op, xp, *args, **kw):
-        kw["order"] = op.order
         if kw.get("out") is not None:
             kw["out"] = np.asarray(kw["out"])
-        return cls._get_func(xp)(*args, **kw)
+        r = cls._get_func(xp)(*args, **kw)
+        return convert_order(r, op.outputs[0].order.value)
 
     @classmethod
     def execute(cls, ctx, op):
