@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType
+from ...core import OutputType, recursive_tile
 from ...core.context import get_context
 from ...core.operand import OperandStage, MapReduceOperand
 from ...serialization.serializables import (
@@ -256,7 +256,14 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         return reduce_chunks
 
     @classmethod
-    def _gen_bloom_filter_chunks(cls, left, right, left_on, right_on, op):
+    def _apply_bloom_filter(
+        cls,
+        left: TileableType,
+        right: TileableType,
+        left_on: Union[List, str],
+        right_on: Union[List, str],
+        op: "DataFrameMerge",
+    ):
         bloom_filter_params = dict()
         if isinstance(op.bloom_filter, dict):
             if "max_elements" in op.bloom_filter:
@@ -529,7 +536,9 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             return False, True
 
     @classmethod
-    def _choose_merge_method(cls, op, left, right):
+    def _choose_merge_method(
+        cls, op: "DataFrameMerge", left: TileableType, right: TileableType
+    ):
         how = op.how
         method = op.method
         left_row_chunk_size = left.chunk_shape[0]
@@ -563,7 +572,13 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             return MergeMethod.shuffle
 
     @classmethod
-    def _if_apply_bloom_filter(cls, method, op, left, right):
+    def _if_apply_bloom_filter(
+        cls,
+        method: MergeMethod,
+        op: "DataFrameMerge",
+        left: TileableType,
+        right: TileableType,
+    ):
         if len(left.chunks + right.chunks) <= 8:
             return False
         elif method == MergeMethod.shuffle and op.bloom_filter:
@@ -595,8 +610,8 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             if op.how == "inner" and op.bloom_filter:
                 if has_unknown_shape(left, right):
                     yield left.chunks + right.chunks
-                left, right = cls._gen_bloom_filter_chunks(
-                    left, right, left_on, right_on, op
+                left, right = yield from recursive_tile(
+                    *cls._apply_bloom_filter(left, right, left_on, right_on, op)
                 )
                 # auto merge after bloom filter
                 yield [left, right] + left.chunks + right.chunks

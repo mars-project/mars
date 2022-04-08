@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union, List
+from typing import Union, List, Any
 
 import numpy as np
 import pandas as pd
@@ -27,18 +27,23 @@ from ...serialization.serializables import (
     Float64Field,
     StringField,
 )
+from ... import opcodes as OperandDef
 from ...typing import TileableType
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import parse_index
 
 
 class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = OperandDef.DATAFRAME_BLOOM_FILTER
+
+    left_on = AnyField("left_on")
+    right_on = AnyField("right_on")
     on = AnyField("on")
     # for build
     max_elements = Int64Field("max_elements")
     error_rate = Float64Field("error_rate")
 
-    execution_stage = StringField("execution_stage")
+    execution_stage = StringField("execution_stage", default=None)
 
     def __init__(self, execution_stage=None, **kwargs):
         if execution_stage in ["build", "union"]:
@@ -48,8 +53,61 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
         kwargs["_output_types"] = output_types
         super().__init__(execution_stage=execution_stage, **kwargs)
 
+    def __call__(self, df1: TileableType, df2: TileableType):
+        return self.new_tileable([df1, df2], **df1.params)
+
     @classmethod
-    def _get_value(cls, value):
+    def tile(cls, op: "DataFrameBloomFilter"):
+        df1, df2 = op.inputs
+        # use df2's chunks to build bloom filter
+        chunks = []
+        for c in df2.chunks:
+            build_op = DataFrameBloomFilter(
+                on=op.right_on,
+                max_elements=op.max_elements,
+                error_rate=op.error_rate,
+                execution_stage="build",
+            )
+            chunks.append(build_op.new_chunk(inputs=[c]))
+
+        # union all chunk filters
+        combine_size = options.combine_size
+        while len(chunks) > 4:
+            new_chunks = []
+            for i in range(0, len(chunks), combine_size):
+                chks = chunks[i : i + combine_size]
+                if len(chks) == 1:
+                    chk = chks[0]
+                else:
+                    union_op = DataFrameBloomFilter(execution_stage="union")
+                    for j, c in enumerate(chks):
+                        c._index = (j, 0)
+                    chk = union_op.new_chunk(chks)
+                new_chunks.append(chk)
+            chunks = new_chunks
+        if len(chunks) > 1:
+            union_op = DataFrameBloomFilter(execution_stage="union")
+            filter_chunk = union_op.new_chunk(chunks)
+        else:
+            filter_chunk = chunks[0]
+
+        # filter df1
+        out_chunks = []
+        for chunk in df1.chunks:
+            filter_op = DataFrameBloomFilter(on=op.left_on, execution_stage="filter")
+            params = chunk.params.copy()
+            params["shape"] = (np.nan, chunk.shape[1])
+            params["index_value"] = parse_index(pd.RangeIndex(-1))
+            out_chunks.append(filter_op.new_chunk([chunk, filter_chunk], **params))
+
+        new_op = op.copy()
+        df1_params = df1.params.copy()
+        df1_params["chunks"] = out_chunks
+        df1_params["nsplits"] = ((np.nan,) * len(out_chunks), df1.nsplits[1])
+        return new_op.new_dataframes(op.inputs, **df1_params)
+
+    @classmethod
+    def _get_value(cls, value: Any):
         # value could be an element or a series, as BloomFilter
         # doesn't accept series, convert to list here
         if isinstance(value, pd.Series):
@@ -58,18 +116,17 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
             return value
 
     @classmethod
-    def _filter_on_index(cls, on, data):
+    def _filter_on_index(cls, on: Union[str, List, None], data: pd.DataFrame):
         if on is None:
             return True
         elif isinstance(on, str):
             return on not in data.columns
-        elif isinstance(on, list):
+        else:
+            assert isinstance(on, list)
             return any(c not in data.columns for c in on)
-        else:  # pragma: no cover
-            return False
 
     @classmethod
-    def _build_index_filter(cls, in_data, op):
+    def _build_index_filter(cls, in_data: pd.DataFrame, op: "DataFrameBloomFilter"):
         if isinstance(in_data.index, pd.MultiIndex):
             index = in_data.index.get_level_values(op.on)
         else:
@@ -81,7 +138,7 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
         return bloom_filter
 
     @classmethod
-    def _build_series_filter(cls, in_data, op):
+    def _build_series_filter(cls, in_data: pd.Series, op: "DataFrameBloomFilter"):
         try:
             bloom_filter = BloomFilter(
                 max_elements=op.max_elements, error_rate=op.error_rate
@@ -97,7 +154,7 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
         return bloom_filter
 
     @classmethod
-    def _build_dataframe_filter(cls, in_data, op):
+    def _build_dataframe_filter(cls, in_data: pd.DataFrame, op: "DataFrameBloomFilter"):
         try:
             bloom_filter = BloomFilter(
                 max_elements=op.max_elements, error_rate=op.error_rate
@@ -209,49 +266,10 @@ def filter_by_bloom_filter(
     DataFrame
         Filtered df1.
     """
-    # use df2's chunks to build bloom filter
-    chunks = []
-    for c in df2.chunks:
-        op = DataFrameBloomFilter(
-            on=right_on,
-            max_elements=max_elements,
-            error_rate=error_rate,
-            execution_stage="build",
-        )
-        chunks.append(op.new_chunk(inputs=[c]))
-
-    # union all chunk filters
-    combine_size = options.combine_size
-    while len(chunks) > 4:
-        new_chunks = []
-        for i in range(0, len(chunks), combine_size):
-            chks = chunks[i : i + combine_size]
-            if len(chks) == 1:
-                chk = chks[0]
-            else:
-                union_op = DataFrameBloomFilter(execution_stage="union")
-                for j, c in enumerate(chks):
-                    c._index = (j, 0)
-                chk = union_op.new_chunk(chks)
-            new_chunks.append(chk)
-        chunks = new_chunks
-    if len(chunks) > 1:
-        union_op = DataFrameBloomFilter(execution_stage="union")
-        filter_chunk = union_op.new_chunk(chunks)
-    else:
-        filter_chunk = chunks[0]
-
-    # filter df1
-    out_chunks = []
-    for chunk in df1.chunks:
-        filter_op = DataFrameBloomFilter(on=left_on, execution_stage="filter")
-        params = chunk.params.copy()
-        params["shape"] = (np.nan, chunk.shape[1])
-        params["index_value"] = parse_index(pd.RangeIndex(-1))
-        out_chunks.append(filter_op.new_chunk([chunk, filter_chunk], **params))
-
-    new_op = df1.op.copy()
-    params = df1.params.copy()
-    params["chunks"] = out_chunks
-    params["nsplits"] = ((np.nan,) * len(out_chunks), df1.nsplits[1])
-    return new_op.new_dataframe(df1.op.inputs, **params)
+    op = DataFrameBloomFilter(
+        left_on=left_on,
+        right_on=right_on,
+        max_elements=max_elements,
+        error_rate=error_rate,
+    )
+    return op(df1, df2)

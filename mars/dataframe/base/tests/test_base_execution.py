@@ -19,6 +19,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import mars
+
 try:
     import pyarrow as pa
 except ImportError:  # pragma: no cover
@@ -35,6 +37,7 @@ from ...datasource.dataframe import from_pandas as from_pandas_df
 from ...datasource.series import from_pandas as from_pandas_series
 from ...datasource.index import from_pandas as from_pandas_index
 from .. import to_gpu, to_cpu
+from ..bloom_filter import filter_by_bloom_filter
 from ..to_numeric import to_numeric
 from ..rebalance import DataFrameRebalance
 
@@ -2122,3 +2125,27 @@ def test_pct_change_execution(setup):
     result = r.execute().fetch()
     expected = raw.pct_change(freq="D")
     pd.testing.assert_frame_equal(expected, result)
+
+
+def test_bloom_filter(setup):
+    ns = np.random.RandomState(0)
+    raw1 = pd.DataFrame(
+        {"col1": ns.randint(0, 100, size=(100,)), "col2": ns.random(100)}
+    )
+    raw2 = pd.DataFrame(
+        {"col1": ns.randint(0, 10, size=(100,)), "col2": ns.random(100)}
+    )
+
+    df1 = from_pandas_df(raw1, chunk_size=10)
+    df2 = from_pandas_df(raw2, chunk_size=20)
+
+    filtered = filter_by_bloom_filter(df1, df2, "col1", "col1")
+    r1, r2, filtered_r = mars.fetch(mars.execute(df1, df2, filtered))
+    assert r1.shape[0] > filtered_r.shape[0]
+    assert len(filtered_r[filtered_r["col1"] > 10]) < 10
+
+    pd.testing.assert_frame_equal(r1, raw1)
+    pd.testing.assert_frame_equal(r2, raw2)
+    pd.testing.assert_frame_equal(
+        filtered_r[filtered_r["col1"] <= 10], raw1[raw1["col1"] <= 10]
+    )
