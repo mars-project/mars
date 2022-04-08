@@ -173,9 +173,6 @@ class SenderManagerActor(mo.StatelessActor):
         get_infos = []
         pin_tasks = []
         for data_key in data_keys:
-            if isinstance(data_key, tuple):
-                # for some shuffle keys, they may not be stored
-                error = "ignore"
             get_infos.append(
                 self._data_manager_ref.get_data_info.delay(
                     session_id, data_key, self._band_name, error
@@ -222,7 +219,7 @@ class SenderManagerActor(mo.StatelessActor):
         for data_key in data_keys:
             unpin_tasks.append(
                 self._data_manager_ref.unpin.delay(
-                    session_id, data_key, self._band_name, error="ignore"
+                    session_id, [data_key], self._band_name, error="ignore"
                 )
             )
         await self._data_manager_ref.unpin.batch(*unpin_tasks)

@@ -27,6 +27,7 @@ ignore:
   - "mars/lib/enum.py"
   - "mars/lib/six.py"
   - "mars/lib/nvutils.py"
+  - "mars/lib/ordered_set.py"
   - "mars/lib/tblib"
   - "mars/lib/uhashring"
   - "mars/lib/version.py"
