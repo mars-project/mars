@@ -82,7 +82,7 @@ class TensorBinCount(TensorMapReduceOperand, TensorOperandMixin):
             raise ValueError("The weights and list don't have the same length.")
 
         input_max = yield from recursive_tile(a.max())
-        yield input_max.chunks
+        yield input_max.chunks + [c for inp in op.inputs for c in inp.chunks]
         [max_val] = ctx.get_chunks_result([input_max.chunks[0].key])
         tileable_right_bound = max(op.minlength, int(max_val) + 1)
 

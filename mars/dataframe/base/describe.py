@@ -20,7 +20,7 @@ from ... import tensor as mt
 from ...core import recursive_tile
 from ...core.operand import OperandStage
 from ...serialization.serializables import FieldTypes, KeyField, ListField, AnyField
-from ...utils import lazy_import
+from ...utils import lazy_import, has_unknown_shape
 from ..core import SERIES_TYPE
 from ..initializer import DataFrame, Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -173,14 +173,17 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
         if df.dtypes.index.tolist() != columns:
             df = df[columns]
 
+        # calculate percentiles
+        percentiles = None
+        if len(op.percentiles) > 0:
+            if has_unknown_shape(*op.inputs):
+                yield
+            percentiles = yield from recursive_tile(df.quantile(op.percentiles))
+
         # perform aggregation together
         aggregation = yield from recursive_tile(
             df.agg(["count", "mean", "std", "min", "max"])
         )
-        # calculate percentiles
-        percentiles = None
-        if len(op.percentiles) > 0:
-            percentiles = yield from recursive_tile(df.quantile(op.percentiles))
 
         chunk_op = DataFrameDescribe(
             output_types=op.output_types,

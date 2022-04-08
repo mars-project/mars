@@ -26,7 +26,7 @@ from ....task.supervisor.manager import TaskManagerActor
 from ...supervisor import (
     SubtaskQueueingActor,
     SubtaskManagerActor,
-    GlobalSlotManagerActor,
+    GlobalResourceManagerActor,
 )
 from ...worker import SubtaskExecutionActor
 
@@ -111,8 +111,8 @@ async def actor_pool():
             address=pool.external_address,
         )
         slots_ref = await mo.create_actor(
-            GlobalSlotManagerActor,
-            uid=GlobalSlotManagerActor.default_uid(),
+            GlobalResourceManagerActor,
+            uid=GlobalResourceManagerActor.default_uid(),
             address=pool.external_address,
         )
         task_manager_ref = await mo.create_actor(

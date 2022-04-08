@@ -15,9 +15,9 @@
 import math
 import numbers
 import warnings
+from typing import List
 
 import numpy as np
-
 import pandas as pd
 from sklearn.base import BaseEstimator
 
@@ -27,6 +27,8 @@ except ImportError:  # pragma: no cover
     sklearn_get_config = None
 
 from ... import options
+from ...core import enter_mode
+from ...typing import TileableType
 from ...dataframe import DataFrame, Series
 from ...dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from ...tensor import tensor as astensor
@@ -131,3 +133,19 @@ def get_chunk_n_rows(row_bytes, max_n_rows=None, working_memory=None):
         )
         chunk_n_rows = 1
     return chunk_n_rows
+
+
+@enter_mode(build=True)
+def sort_by(
+    tensors: List[TileableType], by: TileableType, ascending: bool = True
+) -> List[TileableType]:
+    # sort tensors by another tensor
+    i_to_tensors = {i: t for i, t in enumerate(tensors)}
+    if by not in tensors:
+        by_name = len(i_to_tensors)
+        i_to_tensors[by_name] = by
+    else:
+        by_name = tensors.index(by)
+    df = DataFrame(i_to_tensors)
+    sorted_df = df.sort_values(by_name, ascending=ascending)
+    return [sorted_df[i].to_tensor() for i in range(len(tensors))]

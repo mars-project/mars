@@ -135,11 +135,11 @@ class SchedulingAPI(AbstractSchedulingAPI):
 class MockSchedulingAPI(SchedulingAPI):
     @classmethod
     async def create(cls: Type[APIType], session_id: str, address: str) -> APIType:
-        from ..supervisor import GlobalSlotManagerActor, AutoscalerActor
+        from ..supervisor import GlobalResourceManagerActor, AutoscalerActor
 
         await mo.create_actor(
-            GlobalSlotManagerActor,
-            uid=GlobalSlotManagerActor.default_uid(),
+            GlobalResourceManagerActor,
+            uid=GlobalResourceManagerActor.default_uid(),
             address=address,
         )
         await mo.create_actor(

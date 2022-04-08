@@ -35,8 +35,8 @@ from ....typing import BandType
 from ....utils import get_chunk_key_to_data_keys
 from ...context import ThreadedServiceContext
 from ...meta.api import MetaAPI
-from ...storage import StorageAPI
 from ...session import SessionAPI
+from ...storage import StorageAPI
 from ...task import TaskAPI, task_options
 from ..core import Subtask, SubtaskStatus, SubtaskResult
 
@@ -284,20 +284,20 @@ class SubtaskProcessor:
         ]
 
         # store data into storage
-        puts = []
-        stored_keys = []
+        data_key_to_puts = {}
         for result_chunk in result_chunks:
             data_key = result_chunk.key
             if data_key in self._datastore:
                 # non shuffle op
-                stored_keys.append(data_key)
                 result_data = self._datastore[data_key]
                 # update meta
                 if not isinstance(result_data, tuple):
                     result_chunk.params = result_chunk.get_params_from_data(result_data)
-
+                # check data_key after update meta
+                if data_key in data_key_to_puts:
+                    continue
                 put = self._storage_api.put.delay(data_key, result_data)
-                puts.append(put)
+                data_key_to_puts[data_key] = put
             else:
                 assert isinstance(result_chunk.op, MapReduceOperand)
                 keys = [
@@ -306,12 +306,15 @@ class SubtaskProcessor:
                     if isinstance(store_key, tuple) and store_key[0] == data_key
                 ]
                 for key in keys:
-                    stored_keys.append(key)
+                    if key in data_key_to_puts:
+                        continue
                     result_data = self._datastore[key]
                     put = self._storage_api.put.delay(key, result_data)
-                    puts.append(put)
+                    data_key_to_puts[key] = put
+        stored_keys = list(data_key_to_puts.keys())
+        puts = data_key_to_puts.values()
         logger.debug(
-            "Start putting data keys: %s, " "subtask id: %s",
+            "Start putting data keys: %s, subtask id: %s",
             stored_keys,
             self.subtask.subtask_id,
         )
@@ -327,20 +330,20 @@ class SubtaskProcessor:
                     data_key_to_memory_size[store_key] = store_info.memory_size
                     data_key_to_object_id[store_key] = store_info.object_id
                 logger.debug(
-                    "Finish putting data keys: %s, " "subtask id: %s",
+                    "Finish putting data keys: %s, subtask id: %s",
                     stored_keys,
                     self.subtask.subtask_id,
                 )
             except asyncio.CancelledError:
                 logger.debug(
-                    "Cancelling put data keys: %s, " "subtask id: %s",
+                    "Cancelling put data keys: %s, subtask id: %s",
                     stored_keys,
                     self.subtask.subtask_id,
                 )
                 put_infos.cancel()
 
                 logger.debug(
-                    "Cancelled put data keys: %s, " "subtask id: %s",
+                    "Cancelled put data keys: %s, subtask id: %s",
                     stored_keys,
                     self.subtask.subtask_id,
                 )

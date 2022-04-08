@@ -16,6 +16,7 @@ import importlib
 import os
 import tempfile
 import time
+from ..resource import Resource, ZeroResource
 
 _cpu_stat_first = "8678870951786"
 _cpu_stat_last = "8679429771672"
@@ -143,3 +144,29 @@ def test_use_c_group_stats():
         os.unlink(cpu_stat_path)
         os.unlink(mem_stat_path)
         importlib.reload(resource)
+
+
+def test_resource():
+    assert Resource(num_cpus=1) + Resource(num_cpus=1) == Resource(num_cpus=2)
+    assert Resource(num_cpus=1) + Resource(num_gpus=1) + Resource(
+        mem_bytes=1024**3
+    ) == Resource(num_cpus=1, num_gpus=1, mem_bytes=1024**3)
+    assert -Resource(num_cpus=1, num_gpus=1, mem_bytes=1024**3) == Resource(
+        num_cpus=-1, num_gpus=-1, mem_bytes=-(1024**3)
+    )
+    assert Resource(num_cpus=-1) < ZeroResource
+    assert Resource(num_gpus=-1) < ZeroResource
+    assert Resource(mem_bytes=-1) < ZeroResource
+    assert Resource(num_cpus=1, num_gpus=1, mem_bytes=-(1024**3)) < ZeroResource
+    assert Resource(num_cpus=1, num_gpus=1, mem_bytes=1024**3) > Resource(
+        num_cpus=10, num_gpus=1, mem_bytes=1024
+    )
+    assert Resource(num_cpus=1, num_gpus=10, mem_bytes=1024**3) > Resource(
+        num_cpus=10, num_gpus=1, mem_bytes=1024**3
+    )
+    assert Resource(num_cpus=100, num_gpus=10, mem_bytes=1024**3) > Resource(
+        num_cpus=10, num_gpus=10, mem_bytes=1024**3
+    )
+    assert Resource(num_cpus=100, num_gpus=10, mem_bytes=1024) - Resource(
+        num_cpus=10, num_gpus=20, mem_bytes=512
+    ) == Resource(num_cpus=90, num_gpus=-10, mem_bytes=512)

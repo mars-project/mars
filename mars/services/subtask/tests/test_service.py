@@ -22,6 +22,8 @@ from .... import oscar as mo
 from .... import tensor as mt
 from .... import remote as mr
 from ....core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+
+from ....resource import Resource
 from ....utils import Timer
 from ... import start_services, stop_services, NodeRole
 from ...meta import MetaAPI
@@ -85,7 +87,7 @@ async def test_subtask_service(actor_pools):
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,
-            "resource": {"numa-0": 2},
+            "resource": {"numa-0": Resource(num_cpus=2)},
         },
         "meta": {"store": "dict"},
         "scheduling": {},

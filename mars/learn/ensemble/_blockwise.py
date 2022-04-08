@@ -67,7 +67,7 @@ class BlockwiseEnsembleFit(LearnOperand, LearnOperandMixin):
 
         if any(np.isnan(s) for s in x_split + y_split) or np.isnan(
             X.shape[1]
-        ):  # pragma: no ccover
+        ):  # pragma: no cover
             yield
 
         if x_split != y_split or X.chunk_shape[1] > 1:

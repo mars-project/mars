@@ -19,7 +19,7 @@ import pandas as pd
 
 from .... import opcodes as OperandDef
 from ....core import recursive_tile
-from ....serialization.serializables import KeyField, BytesField, DictField
+from ....serialization.serializables import KeyField, BytesField, DictField, FieldTypes
 from ....dataframe.core import SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE
 from ....dataframe.utils import parse_index
 from ....tensor.core import TENSOR_TYPE, TensorOrder
@@ -31,47 +31,28 @@ from .dmatrix import ToDMatrix, check_data
 class XGBPredict(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.XGBOOST_PREDICT
 
-    _data = KeyField("data")
-    _model = BytesField("model", on_serialize=pickle.dumps, on_deserialize=pickle.loads)
-    _kwargs = DictField("kwargs")
+    data = KeyField("data", default=None)
+    model = BytesField(
+        "model", on_serialize=pickle.dumps, on_deserialize=pickle.loads, default=None
+    )
+    kwargs = DictField("kwargs", key_type=FieldTypes.string, default_factory=dict)
 
-    def __init__(
-        self, data=None, model=None, kwargs=None, output_types=None, gpu=None, **kw
-    ):
-        super().__init__(
-            _data=data,
-            _model=model,
-            _kwargs=kwargs,
-            _output_types=output_types,
-            gpu=gpu,
-            **kw,
-        )
-
-    @property
-    def data(self):
-        return self._data
-
-    @property
-    def model(self):
-        return self._model
-
-    @property
-    def kwargs(self):
-        return self._kwargs if self._kwargs is not None else dict()
+    def __init__(self, output_types=None, gpu=None, **kw):
+        super().__init__(_output_types=output_types, gpu=gpu, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        self._data = self._inputs[0]
+        self.data = self._inputs[0]
 
     def __call__(self):
-        num_class = self._model.attr("num_class")
+        num_class = self.model.attr("num_class")
         if num_class is not None:
             num_class = int(num_class)
         if num_class is not None:
-            shape = (self._data.shape[0], num_class)
+            shape = (self.data.shape[0], num_class)
         else:
-            shape = (self._data.shape[0],)
-        inputs = [self._data]
+            shape = (self.data.shape[0],)
+        inputs = [self.data]
         if self.output_types[0] == OutputType.tensor:
             # tensor
             return self.new_tileable(
@@ -88,20 +69,20 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
                 shape=shape,
                 dtypes=dtypes,
                 columns_value=parse_index(dtypes.index),
-                index_value=self._data.index_value,
+                index_value=self.data.index_value,
             )
         else:
             # series
             return self.new_tileable(
                 inputs,
                 shape=shape,
-                index_value=self._data.index_value,
+                index_value=self.data.index_value,
                 name="predictions",
                 dtype=np.dtype(np.float32),
             )
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "XGBPredict"):
         out = op.outputs[0]
         out_chunks = []
         data = op.data
@@ -157,7 +138,7 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "XGBPredict"):
         from xgboost import DMatrix
 
         raw_data = data = ctx[op.data.key]
@@ -190,10 +171,10 @@ def predict(
     run_kwargs=None,
     run=True,
 ):
-    from xgboost import Booster
+    import xgboost
 
     data = check_data(data)
-    if not isinstance(model, Booster):
+    if not isinstance(model, xgboost.Booster):
         raise TypeError(f"model has to be a xgboost.Booster, got {type(model)} instead")
 
     num_class = model.attr("num_class")

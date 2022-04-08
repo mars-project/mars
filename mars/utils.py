@@ -16,6 +16,7 @@
 
 import asyncio
 import dataclasses
+import datetime
 import enum
 import functools
 import importlib
@@ -1033,6 +1034,10 @@ def is_object_dtype(dtype: np.dtype) -> bool:
 def get_dtype(dtype: Union[np.dtype, pd.api.extensions.ExtensionDtype]):
     if pd.api.types.is_extension_array_dtype(dtype):
         return dtype
+    elif dtype is pd.Timestamp or dtype is datetime.datetime:
+        return np.dtype("datetime64[ns]")
+    elif dtype is pd.Timedelta or dtype is datetime.timedelta:
+        return np.dtype("timedelta64[ns]")
     else:
         return np.dtype(dtype)
 
@@ -1602,3 +1607,40 @@ def is_ray_address(address: str) -> bool:
         return True
     else:
         return False
+
+
+def cache_tileables(*tileables):
+    from .core import ENTITY_TYPE
+
+    if len(tileables) == 1 and isinstance(tileables[0], (tuple, list)):
+        tileables = tileables[0]
+    for t in tileables:
+        if isinstance(t, ENTITY_TYPE):
+            t.cache = True
+
+
+class TreeReductionBuilder:
+    def __init__(self, combine_size=None):
+        from .config import options
+
+        self._combine_size = combine_size or options.combine_size
+
+    def _build_reduction(self, inputs, final=False):
+        raise NotImplementedError
+
+    def build(self, inputs):
+        combine_size = self._combine_size
+        while len(inputs) > self._combine_size:
+            new_inputs = []
+            for i in range(0, len(inputs), combine_size):
+                objs = inputs[i : i + combine_size]
+                if len(objs) == 1:
+                    obj = objs[0]
+                else:
+                    obj = self._build_reduction(objs, final=False)
+                new_inputs.append(obj)
+            inputs = new_inputs
+
+        if len(inputs) == 1:
+            return inputs[0]
+        return self._build_reduction(inputs, final=True)

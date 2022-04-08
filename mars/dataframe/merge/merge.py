@@ -32,6 +32,7 @@ from ...serialization.serializables import (
     Int32Field,
     NamedTupleField,
 )
+from ...typing import TileableType
 from ..core import DataFrame, Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
 from ..utils import (
@@ -144,6 +145,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
     indicator = BoolField("indicator")
     validate = AnyField("validate")
     method = StringField("method")
+    auto_merge = StringField("auto_merge")
     auto_merge_threshold = Int32Field("auto_merge_threshold")
 
     # only for broadcast merge
@@ -465,10 +467,50 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         )
 
     @classmethod
+    def _can_merge_with_one_chunk(
+        cls, left: TileableType, right: TileableType, how: str
+    ) -> bool:
+        return (len(left.chunks) == 1 and how in ["right", "inner"]) or (
+            len(right.chunks) == 1 and how in ["left", "inner"]
+        )
+
+    @classmethod
+    def _can_merge_with_broadcast(
+        cls, big_chunk_size: int, small_chunk_size: int, big_side: str, how: str
+    ) -> bool:
+        return how in [big_side, "inner"] and np.log2(big_chunk_size) > small_chunk_size
+
+    @classmethod
+    def _get_auto_merge_options(cls, auto_merge: str) -> Tuple[bool, bool]:
+        if auto_merge == "both":
+            return True, True
+        elif auto_merge == "none":
+            return False, False
+        elif auto_merge == "before":
+            return True, False
+        else:
+            assert auto_merge == "after"
+            return False, True
+
+    @classmethod
     def tile(cls, op: "DataFrameMerge"):
         left = build_concatenated_rows_frame(op.inputs[0])
         right = build_concatenated_rows_frame(op.inputs[1])
+
+        ctx = get_context()
+        auto_merge_threshold = op.auto_merge_threshold
+        auto_merge_before, auto_merge_after = cls._get_auto_merge_options(op.auto_merge)
+
+        if (
+            auto_merge_before
+            and len(left.chunks) + len(right.chunks) > auto_merge_threshold
+        ):
+            yield [left, right] + left.chunks + right.chunks
+            left = auto_merge_chunks(ctx, left)
+            right = auto_merge_chunks(ctx, right)
+
         how = op.how
+        method = op.method
         left_row_chunk_size = left.chunk_shape[0]
         right_row_chunk_size = right.chunk_shape[0]
         if left_row_chunk_size > right_row_chunk_size:
@@ -480,18 +522,31 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             big_chunk_size = right_row_chunk_size
             small_chunk_size = left_row_chunk_size
 
-        if op.method != "shuffle" and (
-            (len(left.chunks) == 1 and op.how in ["right", "inner"])
-            or (len(right.chunks) == 1 and op.how in ["left", "inner"])
-        ):
-            ret = cls._tile_one_chunk(op, left, right)
-        elif op.method == "broadcast" or (
-            how in [big_side, "inner"] and np.log2(big_chunk_size) > small_chunk_size
-        ):
-            ret = cls._tile_broadcast(op, left, right)
+        if method == "auto":
+            if cls._can_merge_with_one_chunk(left, right, how):
+                ret = cls._tile_one_chunk(op, left, right)
+            elif cls._can_merge_with_broadcast(
+                big_chunk_size, small_chunk_size, big_side, how
+            ):
+                ret = cls._tile_broadcast(op, left, right)
+            else:
+                ret = cls._tile_shuffle(op, left, right)
+        elif method == "broadcast":
+            if cls._can_merge_with_one_chunk(left, right, how):
+                ret = cls._tile_one_chunk(op, left, right)
+            elif how in [big_side, "inner"]:
+                ret = cls._tile_broadcast(op, left, right)
+            else:  # pragma: no cover
+                raise ValueError("Cannot specify merge method `broadcast`")
         else:
+            assert method == "shuffle"
             ret = cls._tile_shuffle(op, left, right)
-        if op.how == "inner" and len(ret[0].chunks) > op.auto_merge_threshold:
+
+        if (
+            how == "inner"
+            and auto_merge_after
+            and len(ret[0].chunks) > auto_merge_threshold
+        ):
             # if how=="inner", output data size will reduce greatly with high probability，
             # use auto_merge_chunks to combine small chunks.
             yield ret[0].chunks  # trigger execution for chunks
@@ -577,7 +632,8 @@ def merge(
     copy: bool = True,
     indicator: bool = False,
     validate: str = None,
-    method: str = None,
+    method: str = "auto",
+    auto_merge: str = "both",
     auto_merge_threshold: int = 8,
 ) -> DataFrame:
     """
@@ -656,10 +712,17 @@ def merge(
         * "many_to_one" or "m:1": check if merge keys are unique in right
           dataset.
         * "many_to_many" or "m:m": allowed, but does not result in checks.
-    method : {"shuffle", "broadcast"}, default None
+    method : {"auto", "shuffle", "broadcast"}, default auto
         "broadcast" is recommended when one DataFrame is much smaller than the other,
         otherwise, "shuffle" will be a better choice. By default, we choose method
         according to actual data size.
+    auto_merge : {"both", "none", "before", "after"}, default both
+        Auto merge small chunks before or after merge
+
+        * "both": auto merge small chunks before and after,
+        * "none": do not merge small chunks
+        * "before": only merge small chunks before merge
+        * "after": only merge small chunks after merge
     auto_merge_threshold : int, default 8
         When how is "inner", merged result could be much smaller than original DataFrame,
         if the number of chunks is greater than the threshold,
@@ -744,11 +807,18 @@ def merge(
     0   foo  1  3.0
     1   bar  2  NaN
     """
-    if method is not None and method not in [
+    if method is None:
+        method = "auto"
+    if method not in [
+        "auto",
         "shuffle",
         "broadcast",
     ]:  # pragma: no cover
         raise NotImplementedError(f"{method} merge is not supported")
+    if auto_merge not in ["both", "none", "before", "after"]:  # pragma: no cover
+        raise ValueError(
+            f"{auto_merge} can only be `both`, `none`, `before` or `after`"
+        )
     op = DataFrameMerge(
         how=how,
         on=on,
@@ -762,6 +832,7 @@ def merge(
         indicator=indicator,
         validate=validate,
         method=method,
+        auto_merge=auto_merge,
         auto_merge_threshold=auto_merge_threshold,
         output_types=[OutputType.dataframe],
     )
@@ -777,6 +848,7 @@ def join(
     rsuffix: str = "",
     sort: bool = False,
     method: str = None,
+    auto_merge: str = "both",
     auto_merge_threshold: int = 8,
 ) -> DataFrame:
     """
@@ -821,6 +893,13 @@ def join(
         "broadcast" is recommended when one DataFrame is much smaller than the other,
         otherwise, "shuffle" will be a better choice. By default, we choose method
         according to actual data size.
+    auto_merge : {"both", "none", "before", "after"}, default both
+        Auto merge small chunks before or after merge
+
+        * "both": auto merge small chunks before and after,
+        * "none": do not merge small chunks
+        * "before": only merge small chunks before merge
+        * "after": only merge small chunks after merge
     auto_merge_threshold : int, default 8
         When how is "inner", merged result could be much smaller than original DataFrame,
         if the number of chunks is greater than the threshold,
@@ -931,5 +1010,6 @@ def join(
         suffixes=(lsuffix, rsuffix),
         sort=sort,
         method=method,
+        auto_merge=auto_merge,
         auto_merge_threshold=auto_merge_threshold,
     )

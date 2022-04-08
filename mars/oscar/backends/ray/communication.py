@@ -185,23 +185,11 @@ class RayClientChannel(RayChannelBase):
 
     def _submit_task(self, message: Any, object_ref: "ray.ObjectRef"):
         async def handle_task(message: Any, object_ref: "ray.ObjectRef"):
+            # use `%.500` to avoid print too long messages
             with debug_async_timeout(
-                "ray_object_retrieval_timeout",
-                "Message that client sent to actor %s is %s and object_ref is %s",
-                self.dest_address,
-                message,
-                object_ref,
+                "ray_object_retrieval_timeout", "Client sent message is %.500s", message
             ):
-                try:
-                    result = await object_ref
-                except Exception as e:
-                    logger.exception(
-                        "Get object %s from %s failed, got exception %s.",
-                        object_ref,
-                        self.dest_address,
-                        e,
-                    )
-                    raise
+                result = await object_ref
             if isinstance(result, RayChannelException):
                 raise result.exc_value.with_traceback(result.exc_traceback)
             return result.message

@@ -34,6 +34,7 @@ from .....core import (
     OutputType,
 )
 from .....remote.core import RemoteFunction
+from .....resource import Resource
 from .....tensor.fetch import TensorFetch
 from .....tensor.arithmetic import TensorTreeAdd
 from .....utils import Timer
@@ -46,7 +47,7 @@ from ....storage.handler import StorageHandlerActor
 from ....subtask import MockSubtaskAPI, Subtask, SubtaskStatus
 from ....task.supervisor.manager import TaskManagerActor
 from ....mutable import MockMutableAPI
-from ...supervisor import GlobalSlotManagerActor
+from ...supervisor import GlobalResourceManagerActor
 from ...worker import SubtaskExecutionActor, QuotaActor, BandSlotManagerActor
 
 
@@ -117,15 +118,18 @@ class MockBandSlotManagerActor(BandSlotManagerActor, CancelDetectActorMixin):
         self._delay_function = name
 
 
-class MockGlobalSlotManagerActor(GlobalSlotManagerActor, CancelDetectActorMixin):
+class MockGlobalResourceManagerActor(
+    GlobalResourceManagerActor, CancelDetectActorMixin
+):
     async def __post_create__(self):
         pass
 
     async def __pre_destroy__(self):
         pass
 
-    async def update_subtask_slots(
-        self, band, session_id: str, subtask_id: str, slots: int
+    @mo.extensible
+    async def update_subtask_resources(
+        self, band, session_id: str, subtask_id: str, resources: Resource
     ):
         pass
 
@@ -151,7 +155,8 @@ async def actor_pool(request):
     async with pool:
         session_id = "test_session"
         await MockClusterAPI.create(
-            pool.external_address, band_to_slots={"numa-0": n_slots}
+            pool.external_address,
+            band_to_resource={"numa-0": Resource(num_cpus=n_slots)},
         )
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
@@ -190,9 +195,9 @@ async def actor_pool(request):
         )
 
         # create global slot manager actor
-        global_slot_ref = await mo.create_actor(
-            MockGlobalSlotManagerActor,
-            uid=GlobalSlotManagerActor.default_uid(),
+        global_resource_ref = await mo.create_actor(
+            MockGlobalResourceManagerActor,
+            uid=GlobalResourceManagerActor.default_uid(),
             address=pool.external_address,
         )
 
@@ -208,7 +213,7 @@ async def actor_pool(request):
         finally:
             await mo.destroy_actor(task_manager_ref)
             await mo.destroy_actor(band_slot_ref)
-            await mo.destroy_actor(global_slot_ref)
+            await mo.destroy_actor(global_resource_ref)
             await mo.destroy_actor(quota_ref)
             await mo.destroy_actor(execution_ref)
             await MockStorageAPI.cleanup(pool.external_address)

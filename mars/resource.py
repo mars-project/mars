@@ -25,7 +25,11 @@ from typing import List, Optional
 import psutil
 
 from .lib import nvutils
+from ._resource import Resource, ZeroResource
 from .utils import get_bool_environ
+
+Resource = Resource
+ZeroResource = ZeroResource
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +151,10 @@ def virtual_memory() -> _virt_memory_stat:
 
 def cpu_count():
     return _cpu_total
+
+
+def mem_total():
+    return virtual_memory().total
 
 
 _last_cgroup_cpu_measure = None

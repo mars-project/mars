@@ -79,7 +79,7 @@ class SupervisorLocatorActor(mo.Actor):
 
     @mo.extensible
     def get_supervisor(self, key: str, size=1):
-        if self._supervisors is None:  # pragma: no cover
+        if not self._supervisors:
             return None
         elif size == 1:
             return self._hash_ring.get_node(key)

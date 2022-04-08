@@ -22,6 +22,7 @@ from typing import DefaultDict, Dict, List, Optional, Tuple, Union, Set
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
+from ....resource import ZeroResource
 from ....utils import dataslots
 from ...subtask import Subtask
 from ...task import TaskAPI
@@ -63,7 +64,7 @@ class SubtaskQueueingActor(mo.Actor):
         self._slots_ref = None
         self._assigner_ref = None
 
-        self._band_slot_nums = dict()
+        self._band_to_resource = dict()
         self._band_watch_task = None
         self._max_enqueue_id = 0
 
@@ -74,14 +75,14 @@ class SubtaskQueueingActor(mo.Actor):
         from ...cluster import ClusterAPI
 
         self._cluster_api = await ClusterAPI.create(self.address)
-        self._band_slot_nums = {}
+        self._band_to_resource = {}
 
         async def watch_bands():
             async for bands in self._cluster_api.watch_all_bands():
                 # confirm ready bands indeed changed
-                if bands != self._band_slot_nums:
-                    old_band_slot_nums = self._band_slot_nums
-                    self._band_slot_nums = copy.deepcopy(bands)
+                if bands != self._band_to_resource:
+                    old_band_resource = self._band_to_resource
+                    self._band_to_resource = copy.deepcopy(bands)
                     if self._band_queues:
                         await self.balance_queued_subtasks()
                         # Refresh global slot manager to get latest bands,
@@ -89,11 +90,13 @@ class SubtaskQueueingActor(mo.Actor):
                         # ensured to get submitted as least one subtask every band
                         # successfully.
                         await self._slots_ref.refresh_bands()
-                        all_bands = {*bands.keys(), *old_band_slot_nums.keys()}
+                        all_bands = {*bands.keys(), *old_band_resource.keys()}
                         bands_delta = {}
                         for b in all_bands:
-                            delta = bands.get(b, 0) - old_band_slot_nums.get(b, 0)
-                            if delta != 0:
+                            new_resource = bands.get(b, ZeroResource)
+                            old_resource = old_band_resource.get(b, ZeroResource)
+                            delta = new_resource - old_resource
+                            if delta != ZeroResource:
                                 bands_delta[b] = delta
                         # Submit tasks on new bands manually, otherwise some subtasks
                         # will never got submitted. Note that we must ensure every new
@@ -108,10 +111,10 @@ class SubtaskQueueingActor(mo.Actor):
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
-        from .globalslot import GlobalSlotManagerActor
+        from .globalresource import GlobalResourceManagerActor
 
         [self._slots_ref] = await self._cluster_api.get_supervisor_refs(
-            [GlobalSlotManagerActor.default_uid()]
+            [GlobalResourceManagerActor.default_uid()]
         )
         from .assigner import AssignerActor
 
@@ -176,10 +179,10 @@ class SubtaskQueueingActor(mo.Actor):
     async def submit_subtasks(self, band: Tuple = None, limit: Optional[int] = None):
         logger.debug("Submitting subtasks with limit %s", limit)
 
-        if not limit and band not in self._band_slot_nums:
-            self._band_slot_nums = await self._cluster_api.get_all_bands()
+        if not limit and band not in self._band_to_resource:
+            self._band_to_resource = await self._cluster_api.get_all_bands()
 
-        bands = [band] if band is not None else list(self._band_slot_nums.keys())
+        bands = [band] if band is not None else list(self._band_to_resource.keys())
         submit_aio_tasks = []
         manager_ref = await self._get_manager_ref()
 
@@ -188,7 +191,10 @@ class SubtaskQueueingActor(mo.Actor):
         submitted_bands = []
 
         for band in bands:
-            band_limit = limit or self._band_slot_nums[band]
+            band_limit = limit or (
+                self._band_to_resource[band].num_cpus
+                or self._band_to_resource[band].num_gpus
+            )
             task_queue = self._band_queues[band]
             submit_items = dict()
             while (
@@ -205,12 +211,16 @@ class SubtaskQueueingActor(mo.Actor):
             submitted_bands.append(band)
             submit_items_list.append(submit_items)
 
-            # todo it is possible to provide slot data with more accuracy
-            subtask_slots = [1] * len(subtask_ids)
-
+            # Before hbo, when a manager finish a subtask, it will schedule one subtask successfully because
+            # there is a slot idle. But now we have memory requirements, so the subtask may apply resource
+            # from supervisor failed. In such cases, those subtasks will never got scheduled.
+            # TODO We can use `_periodical_submit_task` to submit those subtasks.
+            subtask_resources = [
+                item.subtask.required_resource for item in submit_items.values()
+            ]
             apply_delays.append(
-                self._slots_ref.apply_subtask_slots.delay(
-                    band, self._session_id, subtask_ids, subtask_slots
+                self._slots_ref.apply_subtask_resources.delay(
+                    band, self._session_id, subtask_ids, subtask_resources
                 )
             )
 
@@ -222,7 +232,7 @@ class SubtaskQueueingActor(mo.Actor):
                 for item in submit_items.values()
             ],
         ):
-            submitted_ids_list = await self._slots_ref.apply_subtask_slots.batch(
+            submitted_ids_list = await self._slots_ref.apply_subtask_resources.batch(
                 *apply_delays
             )
 
@@ -255,6 +265,8 @@ class SubtaskQueueingActor(mo.Actor):
                     logger.debug("No slots available")
 
             for stid in non_submitted_ids:
+                # TODO if subtasks submit failed due to lacking memory/cpu/gpu resources, lower the priority so that
+                # other subtasks can be submitted.
                 heapq.heappush(task_queue, submit_items[stid])
 
         if submit_aio_tasks:
@@ -289,7 +301,7 @@ class SubtaskQueueingActor(mo.Actor):
 
     async def all_bands_busy(self) -> bool:
         """Return True if all bands queue has tasks waiting to be submitted."""
-        bands = set(self._band_slot_nums.keys())
+        bands = set(self._band_to_resource.keys())
         if set(self._band_queues.keys()).issuperset(bands):
             return all(len(self._band_queues[band]) > 0 for band in bands)
         return False

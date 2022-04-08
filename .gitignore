@@ -10,6 +10,7 @@
 *.egg
 *.egg-info
 dist
+wheelhouse
 build/
 eggs
 parts
@@ -66,6 +67,9 @@ test*.ipynb
 *.tmp
 *.log
 *.swp
+
+# nfs temp file
+.nfs*
 
 # docs
 *.mo

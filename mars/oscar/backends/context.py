@@ -175,9 +175,10 @@ class MarsActorContext(BaseActorContext):
             profiling_context=profiling_context,
         )
 
+        # use `%.500` to avoid print too long messages
         with debug_async_timeout(
             "actor_call_timeout",
-            "Calling %r on %s at %s timed out",
+            "Calling %.500r on %s at %s timed out",
             message.content,
             actor_ref.uid,
             actor_ref.address,
@@ -223,3 +224,13 @@ class MarsActorContext(BaseActorContext):
             protocol=DEFAULT_PROTOCOL,
         )
         self._process_result_message(await self._call(main_address, control_message))
+
+    async def get_pool_config(self, address: str):
+        control_message = ControlMessage(
+            new_message_id(),
+            address,
+            ControlMessageType.get_config,
+            None,
+            protocol=DEFAULT_PROTOCOL,
+        )
+        return self._process_result_message(await self._call(address, control_message))

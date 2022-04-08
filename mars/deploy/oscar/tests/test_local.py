@@ -681,7 +681,7 @@ def test_show_progress_raise_exception(m_log):
         progress = Progress()
         profiling = Profiling()
         execution_info = ExecutionInfo(
-            asyncio.create_task(event.wait()), progress, profiling, loop
+            asyncio.create_task(event.wait()), progress, profiling, loop, list()
         )
         progress_bar = ProgressBar(True)
         cancel_event = asyncio.Event()
