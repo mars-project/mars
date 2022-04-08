@@ -541,14 +541,33 @@ def test_merge_with_bloom_filter(setup):
 
     # on float column
     result = (
-        df2.merge(df1, on=["col1"], bloom_filter=True, auto_merge="none")
+        df2.merge(df1, on="col1", bloom_filter=True, auto_merge="none")
         .execute()
         .fetch()
     )
-    expected = raw_df2.merge(raw_df1, on=["col1"])
+    expected = raw_df2.merge(raw_df1, on="col1")
     pd.testing.assert_frame_equal(
         expected.sort_values(by=["col1", "col2_x"]).reset_index(drop=True),
         result.sort_values(by=["col1", "col2_x"]).reset_index(drop=True),
+    )
+
+    # multi index
+    raw_df3 = raw_df1.copy()
+    raw_df3.index = pd.MultiIndex.from_tuples(
+        [(i, i + 1) for i in range(100)], names=["i1", "i2"]
+    )
+    df3 = from_pandas(raw_df3, chunk_size=8)
+    result = (
+        df3.merge(
+            df1, left_on="i1", right_on="col2", bloom_filter=True, auto_merge="none"
+        )
+        .execute()
+        .fetch()
+    )
+    expected = raw_df3.merge(raw_df1, left_on="i1", right_on="col2")
+    pd.testing.assert_frame_equal(
+        expected.sort_index().sort_values(by=["col1_x"]).reset_index(drop=True),
+        result.sort_index().sort_values(by=["col1_x"]).reset_index(drop=True),
     )
 
 
