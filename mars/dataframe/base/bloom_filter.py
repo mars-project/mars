@@ -50,6 +50,8 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _get_value(cls, value):
+        # value could be an element or a series, as BloomFilter
+        # doesn't accept series, convert to list here
         if isinstance(value, pd.Series):
             return value.tolist()
         else:
@@ -63,7 +65,7 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
             return on not in data.columns
         elif isinstance(on, list):
             return any(c not in data.columns for c in on)
-        else:
+        else:  # pragma: no cover
             return False
 
     @classmethod
@@ -85,7 +87,7 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
                 max_elements=op.max_elements, error_rate=op.error_rate
             )
             in_data[op.on].map(lambda v: bloom_filter.add(cls._get_value(v)))
-        except TypeError:  # pragma: no cover
+        except TypeError:
             # has unhashable data, convert to str
             in_data = in_data.astype(str)
             bloom_filter = BloomFilter(
@@ -101,7 +103,7 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
                 max_elements=op.max_elements, error_rate=op.error_rate
             )
             in_data[op.on].apply(lambda v: bloom_filter.add(cls._get_value(v)), axis=1)
-        except TypeError:  # pragma: no cover
+        except TypeError:
             # has unhashable data, convert to str
             in_data = in_data.astype(cls._convert_to_hashable_dtypes(in_data.dtypes))
             bloom_filter = BloomFilter(
@@ -172,7 +174,7 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
                         filtered = in_data[converted_data[on].apply(row_func, axis=1)]
                     ctx[op.outputs[0].key] = filtered
 
-        else:  # pragma: no branch
+        else:  # pragma: no cover
             raise ValueError(f"Unknown execution stage: {op.execution_stage}")
 
 

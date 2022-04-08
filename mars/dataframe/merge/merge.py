@@ -802,7 +802,9 @@ def merge(
         it will merge small chunks automatically.
     bloom_filter: bool or dict, default True
         Use bloom filter to optimize merge, you can pass a dict to specify arguments for
-        bloom filter.
+        bloom filter. If is a dict, pass "max_elements" and "error_rate" to specify max elements
+        or accuracy, for default, "max_elements"'s value is the max size of all input chunks
+        and the value of "error_rate" is 0.1.
 
     Returns
     -------
