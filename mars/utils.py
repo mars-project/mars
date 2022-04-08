@@ -27,6 +27,8 @@ import logging
 import numbers
 import operator
 import os
+import weakref
+
 import cloudpickle as pickle
 import pkgutil
 import random
@@ -1615,6 +1617,18 @@ def wrap_exception(
     )
     new_exc_type = type(type(exc).__name__, bases + (type(exc),), attr_dict)
     return new_exc_type().with_traceback(traceback)
+
+
+_func_token_cache = weakref.WeakKeyDictionary()
+
+
+def get_func_token(func):
+    token = _func_token_cache.get(func)
+    if token is None:
+        fields = get_func_token_values(func)
+        token = tokenize(*fields)
+        _func_token_cache[func] = token
+    return token
 
 
 def get_func_token_values(func):
