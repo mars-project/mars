@@ -603,7 +603,9 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                 left = auto_merge_chunks(ctx, left)
                 right = auto_merge_chunks(ctx, right)
 
-        method = cls._choose_merge_method(op, left, right)
+            if op.method == "auto":
+                # if method is auto, select new method after auto merge
+                method = cls._choose_merge_method(op, left, right)
         if method == MergeMethod.one_chunk:
             ret = cls._tile_one_chunk(op, left, right)
         elif method == MergeMethod.broadcast:

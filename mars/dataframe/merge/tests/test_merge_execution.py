@@ -486,10 +486,18 @@ def test_broadcast_merge(setup):
 def test_merge_with_bloom_filter(setup):
     ns = np.random.RandomState(0)
     raw_df1 = pd.DataFrame(
-        {"col1": ns.random(100), "col2": ns.randint(0, 10, size=(100,))}
+        {
+            "col1": ns.random(100),
+            "col2": ns.randint(0, 10, size=(100,)),
+            "col3": ns.randint(0, 10, size=(100,)),
+        }
     )
     raw_df2 = pd.DataFrame(
-        {"col1": ns.random(100), "col2": ns.randint(0, 10, size=(100,))}
+        {
+            "col1": ns.random(100),
+            "col2": ns.randint(0, 10, size=(100,)),
+            "col3": ns.randint(0, 10, size=(100,)),
+        }
     )
 
     df1 = from_pandas(raw_df1, chunk_size=10)
@@ -513,14 +521,34 @@ def test_merge_with_bloom_filter(setup):
     )
 
     result = (
-        df2.merge(df1, on="col2", bloom_filter=True, auto_merge="none")
+        df2.merge(df1, on=["col2", "col3"], bloom_filter=True, auto_merge="none")
         .execute()
         .fetch()
     )
-    expected = raw_df2.merge(raw_df1, on="col2")
+    expected = raw_df2.merge(raw_df1, on=["col2", "col3"])
     pd.testing.assert_frame_equal(
         expected.sort_values(by=["col1_x", "col2"]).reset_index(drop=True),
         result.sort_values(by=["col1_x", "col2"]).reset_index(drop=True),
+    )
+
+    # on index
+    result = df2.merge(df1, bloom_filter=True, auto_merge="none").execute().fetch()
+    expected = raw_df2.merge(raw_df1)
+    pd.testing.assert_frame_equal(
+        expected.sort_index().reset_index(drop=True),
+        result.sort_index().reset_index(drop=True),
+    )
+
+    # on float column
+    result = (
+        df2.merge(df1, on=["col1"], bloom_filter=True, auto_merge="none")
+        .execute()
+        .fetch()
+    )
+    expected = raw_df2.merge(raw_df1, on=["col1"])
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=["col1", "col2_x"]).reset_index(drop=True),
+        result.sort_values(by=["col1", "col2_x"]).reset_index(drop=True),
     )
 
 
