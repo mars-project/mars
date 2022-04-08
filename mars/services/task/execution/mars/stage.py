@@ -17,16 +17,16 @@ import logging
 import time
 from typing import Dict, List
 
-from ... import oscar as mo
-from ...core import ChunkGraph
-from ...core.operand import Fuse
-from ...metrics import Metrics
-from ...services.meta import MetaAPI
-from ...services.scheduling import SchedulingAPI
-from ...services.subtask import Subtask, SubtaskGraph, SubtaskResult, SubtaskStatus
-from ...services.task.core import Task, TaskResult, TaskStatus
-from ...typing import BandType
-from ...utils import get_params_fields
+from ..... import oscar as mo
+from .....core import ChunkGraph
+from .....core.operand import Fuse
+from .....metrics import Metrics
+from .....typing import BandType
+from .....utils import get_params_fields
+from ....meta import MetaAPI
+from ....scheduling import SchedulingAPI
+from ....subtask import Subtask, SubtaskGraph, SubtaskResult, SubtaskStatus
+from ....task.core import Task, TaskResult, TaskStatus
 from ..api import ExecutionChunkResult
 
 logger = logging.getLogger(__name__)

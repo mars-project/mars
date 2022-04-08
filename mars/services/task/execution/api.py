@@ -16,9 +16,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Dict, Any, Type
 
-from ..core import ChunkGraph
-from ..services.subtask import SubtaskGraph, SubtaskResult
-from ..typing import BandType
+from ....core import ChunkGraph
+from ....typing import BandType
+from ...subtask import SubtaskGraph, SubtaskResult
 
 
 @dataclass

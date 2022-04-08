@@ -17,25 +17,25 @@ import logging
 import sys
 from typing import Dict, List, Optional
 
-from ... import oscar as mo
-from ...core import ChunkGraph
-from ...core.operand import (
+from ..... import oscar as mo
+from .....core import ChunkGraph
+from .....core.operand import (
     Fetch,
     MapReduceOperand,
     ShuffleProxy,
     OperandStage,
 )
-from ...lib.aio import alru_cache
-from ...oscar.profiling import (
+from .....lib.aio import alru_cache
+from .....oscar.profiling import (
     ProfilingData,
 )
-from ...services.cluster.api import ClusterAPI
-from ...services.lifecycle.api import LifecycleAPI
-from ...services.meta.api import MetaAPI
-from ...services.scheduling import SchedulingAPI
-from ...services.subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
-from ...typing import TileableType, BandType
-from ...utils import Timer
+from .....typing import TileableType, BandType
+from .....utils import Timer
+from ....cluster.api import ClusterAPI
+from ....lifecycle.api import LifecycleAPI
+from ....meta.api import MetaAPI
+from ....scheduling import SchedulingAPI
+from ....subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
 from ..api import TaskExecutor, register_executor_cls
 from .resource import ResourceEvaluator
 from .stage import TaskStageProcessor

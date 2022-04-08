@@ -27,7 +27,6 @@ from .... import oscar as mo
 from ....config import Config
 from ....core import ChunkGraph, TileableGraph
 from ....core.operand import Fetch, FetchShuffle
-from ....execution.api import TaskExecutor
 from ....metrics import Metrics
 from ....oscar.profiling import (
     ProfilingData,
@@ -37,6 +36,7 @@ from ....typing import TileableType
 from ....utils import build_fetch, Timer
 from ...subtask import SubtaskResult, SubtaskStatus, SubtaskGraph, Subtask
 from ..core import Task, TaskResult, TaskStatus, new_task_id
+from ..execution.api import TaskExecutor
 from .preprocessor import TaskPreprocessor
 
 logger = logging.getLogger(__name__)
