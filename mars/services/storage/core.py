@@ -182,6 +182,9 @@ class DataManagerActor(mo.Actor):
         self._data_key_to_info = defaultdict(list)
         self._data_info_list = dict()
         self._spill_strategy = dict()
+        # data key may be a tuple in shuffle cases,
+        # we record the mapping from main key to sub keys
+        self._main_key_to_sub_keys = defaultdict(set)
         for level in StorageLevel.__members__.values():
             for band_name in bands:
                 self._data_info_list[level, band_name] = dict()
@@ -210,8 +213,18 @@ class DataManagerActor(mo.Actor):
     @mo.extensible
     def get_data_infos(
         self, session_id: str, data_key: str, band_name: str, error: str = "raise"
-    ) -> List[DataInfo]:
-        return self._get_data_infos(session_id, data_key, band_name, error)
+    ) -> Union[List[DataInfo], Dict]:
+        if (session_id, data_key) in self._main_key_to_sub_keys:
+            key_to_infos = dict()
+            # if data_key is a main key, we return a dict contains all sub keys' info,
+            # it occurs mostly when deleting all shuffle data using main key.
+            for sub_key in self._main_key_to_sub_keys[(session_id, data_key)]:
+                infos = self._get_data_infos(session_id, sub_key, band_name, error)
+                if infos:
+                    key_to_infos[sub_key] = infos
+            return key_to_infos
+        else:
+            return self._get_data_infos(session_id, data_key, band_name, error)
 
     def _get_data_info(
         self, session_id: str, data_key: str, band_name: str, error: str = "raise"
@@ -249,6 +262,8 @@ class DataManagerActor(mo.Actor):
         self._spill_strategy[data_info.level, data_info.band].record_put_info(
             (session_id, data_key), data_info.store_size
         )
+        if isinstance(data_key, tuple):
+            self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
 
     @mo.extensible
     def put_data_info(
@@ -270,6 +285,9 @@ class DataManagerActor(mo.Actor):
             )
             infos = self._data_key_to_info[(session_id, data_key)]
             rest = [info for info in infos if info.data_info.level != level]
+            if isinstance(data_key, tuple):
+                if len(self._main_key_to_sub_keys[(session_id, data_key[0])]) == 0:
+                    del self._main_key_to_sub_keys[(session_id, data_key[0])]
             if len(rest) == 0:
                 del self._data_key_to_info[(session_id, data_key)]
             else:  # pragma: no cover
@@ -285,9 +303,10 @@ class DataManagerActor(mo.Actor):
         return list(self._data_info_list[level, ban_name].keys())
 
     @mo.extensible
-    def pin(self, session_id, data_key, band_name):
-        info = self.get_data_info(session_id, data_key, band_name)
-        self._spill_strategy[info.level, info.band].pin_data((session_id, data_key))
+    def pin(self, session_id, data_key, band_name, error="raise"):
+        info = self.get_data_info(session_id, data_key, band_name, error=error)
+        if info is not None:
+            self._spill_strategy[info.level, info.band].pin_data((session_id, data_key))
 
     @mo.extensible
     def unpin(

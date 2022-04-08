@@ -173,13 +173,18 @@ class SenderManagerActor(mo.StatelessActor):
         get_infos = []
         pin_tasks = []
         for data_key in data_keys:
+            if isinstance(data_key, tuple):
+                # for some shuffle keys, they may not be stored
+                error = "ignore"
             get_infos.append(
                 self._data_manager_ref.get_data_info.delay(
                     session_id, data_key, self._band_name, error
                 )
             )
             pin_tasks.append(
-                self._data_manager_ref.pin.delay(session_id, data_key, self._band_name)
+                self._data_manager_ref.pin.delay(
+                    session_id, data_key, self._band_name, error
+                )
             )
         await self._data_manager_ref.pin.batch(*pin_tasks)
         infos = await self._data_manager_ref.get_data_info.batch(*get_infos)
@@ -191,7 +196,8 @@ class SenderManagerActor(mo.StatelessActor):
         if filtered:
             infos, data_keys = zip(*filtered)
         else:  # pragma: no cover
-            infos, data_keys = [], []
+            # no data to be transferred
+            return
         data_sizes = [info.store_size for info in infos]
         if level is None:
             level = infos[0].level

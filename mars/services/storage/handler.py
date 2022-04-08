@@ -251,19 +251,24 @@ class StorageHandlerActor(mo.Actor):
         if error not in ("raise", "ignore"):  # pragma: no cover
             raise ValueError("error must be raise or ignore")
 
-        infos = await self._data_manager_ref.get_data_infos(
+        all_infos = await self._data_manager_ref.get_data_infos(
             session_id, data_key, self._band_name, error
         )
-        if not infos:
+        if not all_infos:
             return
 
-        for info in infos:
-            level = info.level
-            await self._data_manager_ref.delete_data_info(
-                session_id, data_key, level, self._band_name
-            )
-            await self._clients[level].delete(info.object_id)
-            await self._quota_refs[level].release_quota(info.store_size)
+        key_to_infos = (
+            all_infos if isinstance(all_infos, dict) else {data_key: all_infos}
+        )
+
+        for key, infos in key_to_infos.items():
+            for info in infos:
+                level = info.level
+                await self._data_manager_ref.delete_data_info(
+                    session_id, key, level, self._band_name
+                )
+                await self._clients[level].delete(info.object_id)
+                await self._quota_refs[level].release_quota(info.store_size)
 
     @delete.batch
     async def batch_delete(self, args_list, kwargs_list):
@@ -279,19 +284,24 @@ class StorageHandlerActor(mo.Actor):
         delete_infos = []
         to_removes = []
         level_sizes = defaultdict(lambda: 0)
-        for infos, data_key in zip(infos_list, data_keys):
-            if not infos:
+        for all_infos, data_key in zip(infos_list, data_keys):
+            if not all_infos:
                 # data not exist and error == 'ignore'
                 continue
-            for info in infos:
-                level = info.level
-                delete_infos.append(
-                    self._data_manager_ref.delete_data_info.delay(
-                        session_id, data_key, level, info.band
+            key_to_infos = (
+                all_infos if isinstance(all_infos, dict) else {data_key: all_infos}
+            )
+
+            for key, infos in key_to_infos.items():
+                for info in infos:
+                    level = info.level
+                    delete_infos.append(
+                        self._data_manager_ref.delete_data_info.delay(
+                            session_id, key, level, info.band
+                        )
                     )
-                )
-                to_removes.append((level, info.object_id))
-                level_sizes[level] += info.store_size
+                    to_removes.append((level, info.object_id))
+                    level_sizes[level] += info.store_size
 
         if not delete_infos:
             # no data to remove

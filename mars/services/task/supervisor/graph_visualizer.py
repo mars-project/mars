@@ -63,6 +63,14 @@ class GraphVisualizer:
         return sio.getvalue()
 
     @classmethod
+    def _gen_chunk_key(cls, chunk, trunc_key):
+        if "_" in chunk.key:
+            key, index = chunk.key.split("_", 1)
+            return "_".join([key[:trunc_key], index])
+        else:
+            return chunk.key[:trunc_key]
+
+    @classmethod
     def _export_subtask_to_dot(
         cls,
         subtask: Subtask,
@@ -93,7 +101,7 @@ class GraphVisualizer:
                 if input_chunk.key not in visited and not isinstance(
                     input_chunk.op, (Fetch, FetchShuffle)
                 ):
-                    node_name = f'"Chunk:{input_chunk.key[:trunc_key]}"'
+                    node_name = f'"Chunk:{cls._gen_chunk_key(input_chunk, trunc_key)}"'
                     sio.write(f"{node_name} {chunk_style}\n")
                     all_nodes.append(node_name)
                     visited.add(input_chunk.key)
@@ -114,17 +122,19 @@ class GraphVisualizer:
                             f"style=bold color={line_colors[(current_stage, stage)]}"
                         )
                     sio.write(
-                        f'"Chunk:{input_chunk.key[:trunc_key]}" -> "{op_name}:{op.key[:trunc_key]}" '
+                        f'"Chunk:{cls._gen_chunk_key(input_chunk, trunc_key)}" ->'
+                        f' "{op_name}:{op.key[:trunc_key]}" '
                         f"[lhead={subgraph_name} ltail={tail_cluster} {line_style}];\n"
                     )
                 else:
                     sio.write(
-                        f'"Chunk:{input_chunk.key[:trunc_key]}" -> "{op_name}:{op.key[:trunc_key]}"\n'
+                        f'"Chunk:{cls._gen_chunk_key(input_chunk, trunc_key)}" -> '
+                        f'"{op_name}:{op.key[:trunc_key]}"\n'
                     )
 
             for output_chunk in op.outputs or []:
                 if output_chunk.key not in visited:
-                    node_name = f'"Chunk:{output_chunk.key[:trunc_key]}"'
+                    node_name = f'"Chunk:{cls._gen_chunk_key(output_chunk, trunc_key)}"'
                     sio.write(f"{node_name} {chunk_style}\n")
                     all_nodes.append(node_name)
                     visited.add(output_chunk.key)
@@ -134,7 +144,8 @@ class GraphVisualizer:
                     all_nodes.append(node_name)
                     visited.add(op.key)
                 sio.write(
-                    f'"{op_name}:{op.key[:trunc_key]}" -> "Chunk:{output_chunk.key[:5]}"\n'
+                    f'"{op_name}:{op.key[:trunc_key]}" -> '
+                    f'"Chunk:{cls._gen_chunk_key(output_chunk, trunc_key)}"\n'
                 )
         # write subgraph info
         sio.write(f"subgraph {subgraph_name} {{\n")

@@ -203,8 +203,9 @@ class GraphAnalyzer:
                 chunk_graph.add_node(out_chunk)
                 chunk_to_copied[src_chunk] = out_chunk
                 if chunk in final_result_chunks_set:
-                    result_chunks.append(out_chunk)
-                    result_chunks_set.add(out_chunk)
+                    if out_chunk not in result_chunks_set:
+                        result_chunks.append(out_chunk)
+                        result_chunks_set.add(out_chunk)
                 if not is_virtual:
                     # skip adding fetch chunk to chunk graph when op is virtual operand
                     for c in inp_chunks:
