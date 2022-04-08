@@ -578,8 +578,9 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         op: "DataFrameMerge",
         left: TileableType,
         right: TileableType,
+        bloom_filter_chunk_threshold: int,
     ):
-        if len(left.chunks + right.chunks) <= 8:
+        if len(left.chunks + right.chunks) <= bloom_filter_chunk_threshold:
             return False
         elif method == MergeMethod.shuffle and op.bloom_filter:
             return True
@@ -604,7 +605,14 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             right = auto_merge_chunks(ctx, right)
 
         method = cls._choose_merge_method(op, left, right)
-        if cls._if_apply_bloom_filter(method, op, left, right):
+        bloom_filter_chunk_threshold = 10
+        if isinstance(op.bloom_filter, dict):
+            bloom_filter_chunk_threshold = op.bloom_filter.pop(
+                "apply_chunk_size_threshold", bloom_filter_chunk_threshold
+            )
+        if cls._if_apply_bloom_filter(
+            method, op, left, right, bloom_filter_chunk_threshold
+        ):
             left_on = _prepare_shuffle_on(op.left_index, op.left_on, op.on)
             right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
             if op.how == "inner" and op.bloom_filter:
@@ -817,9 +825,15 @@ def merge(
         it will merge small chunks automatically.
     bloom_filter: bool or dict, default True
         Use bloom filter to optimize merge, you can pass a dict to specify arguments for
-        bloom filter. If is a dict, pass "max_elements" and "error_rate" to specify max elements
-        or accuracy, for default, "max_elements"'s value is the max size of all input chunks
-        and the value of "error_rate" is 0.1.
+        bloom filter.
+
+        If is a dict:
+
+        * "max_elements": max elements in bloom filter,
+          default value is the max size of all input chunks
+        * "error_rate": error raite, default 0.1.
+        * "apply_chunk_size_threshold": min chunk size of input chunks to apply bloom filter, default 10
+          when chunk size of left and right is greater than this threshold, apply bloom filter
 
     Returns
     -------
@@ -1002,6 +1016,14 @@ def join(
     bloom_filter: bool or dict, default True
         Use bloom filter to optimize merge, you can pass a dict to specify arguments for
         bloom filter.
+
+        If is a dict:
+
+        * "max_elements": max elements in bloom filter,
+          default value is the max size of all input chunks
+        * "error_rate": error raite, default 0.1.
+        * "apply_chunk_size_threshold": min chunk size of input chunks to apply bloom filter, default 10
+          when chunk size of left and right is greater than this threshold, apply bloom filter
 
     Returns
     -------
