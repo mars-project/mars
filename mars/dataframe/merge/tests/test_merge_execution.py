@@ -126,6 +126,15 @@ def test_merge(setup):
         sort_dataframe_inplace(expected7, 0), sort_dataframe_inplace(result7, 0)
     )
 
+    mdf5 = from_pandas(df2, chunk_size=4)
+    mdf6 = from_pandas(df4, chunk_size=1)
+    expected7 = df4.merge(df2, how="inner", left_on="i1", right_on="a")
+    jdf7 = mdf6.merge(mdf5, how="inner", left_on="i1", right_on="a", auto_merge="none")
+    result7 = jdf7.execute().fetch()
+    pd.testing.assert_frame_equal(
+        sort_dataframe_inplace(expected7, 0), sort_dataframe_inplace(result7, 0)
+    )
+
     # merge when on is in MultiIndex, and on not in index
     expected8 = df4.merge(df2, how="inner", on=["a", "b"])
     jdf8 = mdf4.merge(mdf2, how="inner", on=["a", "b"], auto_merge="none")
@@ -394,7 +403,7 @@ def test_broadcast_merge(setup):
     # test broadcast right and how="inner"
     df1 = from_pandas(raw1, chunk_size=5)
     df2 = from_pandas(raw2, chunk_size=10)
-    r = df2.merge(df1, on="key", auto_merge="none")
+    r = df2.merge(df1, on="key", auto_merge="none", bloom_filter=False)
     # make sure it selects broadcast merge, for broadcast, there must be
     # DataFrameConcat operands
     graph = build_graph([r], tile=True)
@@ -414,7 +423,7 @@ def test_broadcast_merge(setup):
     # test broadcast right and how="left"
     df1 = from_pandas(raw1, chunk_size=5)
     df2 = from_pandas(raw2, chunk_size=10)
-    r = df2.merge(df1, on="key", how="left", auto_merge="none")
+    r = df2.merge(df1, on="key", how="left", auto_merge="none", method="broadcast")
     # make sure it selects broadcast merge, for broadcast, there must be
     # DataFrameConcat operands
     graph = build_graph([r], tile=True)
@@ -435,7 +444,7 @@ def test_broadcast_merge(setup):
     # test broadcast left
     df1 = from_pandas(raw1, chunk_size=5)
     df2 = from_pandas(raw2, chunk_size=10)
-    r = df1.merge(df2, on="key", auto_merge="none")
+    r = df1.merge(df2, on="key", auto_merge="none", bloom_filter=False)
     # make sure it selects broadcast merge, for broadcast, there must be
     # DataFrameConcat operands
     graph = build_graph([r], tile=True)
@@ -471,6 +480,120 @@ def test_broadcast_merge(setup):
     pd.testing.assert_frame_equal(
         expected.sort_values(by=["key", "value_x"]),
         result.sort_values(by=["key", "value_x"]),
+    )
+
+
+def test_merge_with_bloom_filter(setup):
+    ns = np.random.RandomState(0)
+    raw_df1 = pd.DataFrame(
+        {
+            "col1": ns.random(100),
+            "col2": ns.randint(0, 10, size=(100,)),
+            "col3": ns.randint(0, 10, size=(100,)),
+        }
+    )
+    raw_df2 = pd.DataFrame(
+        {
+            "col1": ns.random(100),
+            "col2": ns.randint(0, 10, size=(100,)),
+            "col3": ns.randint(0, 10, size=(100,)),
+        }
+    )
+
+    df1 = from_pandas(raw_df1, chunk_size=10)
+    df2 = from_pandas(raw_df2, chunk_size=15)
+
+    expected = raw_df1.merge(raw_df2, on="col2")
+
+    result = (
+        df1.merge(
+            df2,
+            on="col2",
+            bloom_filter={"max_elements": 100, "error_rate": 0.01},
+            auto_merge="none",
+        )
+        .execute()
+        .fetch()
+    )
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=["col1_x", "col2"]).reset_index(drop=True),
+        result.sort_values(by=["col1_x", "col2"]).reset_index(drop=True),
+    )
+
+    result = (
+        df2.merge(df1, on=["col2", "col3"], bloom_filter=True, auto_merge="none")
+        .execute()
+        .fetch()
+    )
+    expected = raw_df2.merge(raw_df1, on=["col2", "col3"])
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=["col1_x", "col2"]).reset_index(drop=True),
+        result.sort_values(by=["col1_x", "col2"]).reset_index(drop=True),
+    )
+
+    # on index
+    result = df2.merge(df1, bloom_filter=True, auto_merge="none").execute().fetch()
+    expected = raw_df2.merge(raw_df1)
+    pd.testing.assert_frame_equal(
+        expected.sort_index().reset_index(drop=True),
+        result.sort_index().reset_index(drop=True),
+    )
+
+    # on float column
+    result = (
+        df2.merge(df1, on="col1", bloom_filter=True, auto_merge="none")
+        .execute()
+        .fetch()
+    )
+    expected = raw_df2.merge(raw_df1, on="col1")
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=["col1", "col2_x"]).reset_index(drop=True),
+        result.sort_values(by=["col1", "col2_x"]).reset_index(drop=True),
+    )
+
+    # on float columns
+    result = (
+        df2.merge(df1, on=["col1", "col2"], bloom_filter=True, auto_merge="none")
+        .execute()
+        .fetch()
+    )
+    expected = raw_df2.merge(raw_df1, on=["col1", "col2"])
+    pd.testing.assert_frame_equal(
+        expected.sort_values(by=["col1", "col2"]).reset_index(drop=True),
+        result.sort_values(by=["col1", "col2"]).reset_index(drop=True),
+    )
+
+    # multi index
+    raw_df3 = raw_df1.copy()
+    raw_df3.index = pd.MultiIndex.from_tuples(
+        [(i, i + 1) for i in range(100)], names=["i1", "i2"]
+    )
+    df3 = from_pandas(raw_df3, chunk_size=8)
+    result = (
+        df3.merge(
+            df1, left_on="i1", right_on="col2", bloom_filter=True, auto_merge="none"
+        )
+        .execute()
+        .fetch()
+    )
+    expected = raw_df3.merge(raw_df1, left_on="i1", right_on="col2")
+    pd.testing.assert_frame_equal(
+        expected.sort_index().sort_values(by=["col1_x"]).reset_index(drop=True),
+        result.sort_index().sort_values(by=["col1_x"]).reset_index(drop=True),
+    )
+
+    df4 = from_pandas(raw_df3, chunk_size=20)
+    result = (
+        df4.merge(
+            df1, left_on="i1", right_on="col2", bloom_filter=True, auto_merge="none"
+        )
+        .execute()
+        .fetch()
+    )
+    expected = raw_df3.merge(raw_df1, left_on="i1", right_on="col2")
+    pd.testing.assert_frame_equal(
+        expected.sort_index().sort_values(by=["col1_x"]).reset_index(drop=True),
+        result.sort_index().sort_values(by=["col1_x"]).reset_index(drop=True),
     )
 
 
