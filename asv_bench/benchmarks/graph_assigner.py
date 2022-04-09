@@ -33,7 +33,9 @@ class ChunkGraphAssignerSuite:
         df2 = md.DataFrame(
             mt.random.rand(num_rows, 4, chunk_size=10), columns=list("abcd")
         )
-        merged_df = df1.merge(df2, left_on="a", right_on="a")
+        merged_df = df1.merge(
+            df2, left_on="a", right_on="a", auto_merge="none", bloom_filter=False
+        )
         graph = TileableGraph([merged_df.data])
         next(TileableGraphBuilder(graph).build())
         self.chunk_graph = next(ChunkGraphBuilder(graph, fuse_enabled=False).build())
