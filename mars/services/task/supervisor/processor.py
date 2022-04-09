@@ -32,6 +32,7 @@ from ....core.operand import (
     Fetch,
     FetchShuffle,
     MapReduceOperand,
+    OperandStage,
     ShuffleProxy,
 )
 from ....metrics import Metrics
@@ -71,6 +72,16 @@ def _record_error(func: Union[Callable, Coroutine] = None, log_when_error=True):
             raise
 
     return inner
+
+
+def _get_n_reducer(subtask: Subtask) -> int:
+    return len(
+        [
+            r
+            for r in subtask.chunk_graph
+            if isinstance(r.op, MapReduceOperand) and r.op.stage == OperandStage.reduce
+        ]
+    )
 
 
 class TaskProcessor:
@@ -222,13 +233,14 @@ class TaskProcessor:
             n = subtask_graph.count_successors(subtask)
             for c in subtask.chunk_graph.results:
                 incref_chunk_keys.extend([c.key] * n)
-                # process reducer, incref mapper chunks
-                for pre_graph in subtask_graph.iter_predecessors(subtask):
-                    for chk in pre_graph.chunk_graph.results:
-                        if isinstance(chk.op, ShuffleProxy):
-                            incref_chunk_keys.extend(
-                                [map_chunk.key for map_chunk in chk.inputs]
-                            )
+            # process reducer, incref mapper chunks
+            for pre_graph in subtask_graph.iter_predecessors(subtask):
+                for chk in pre_graph.chunk_graph.results:
+                    if isinstance(chk.op, ShuffleProxy):
+                        n_reducer = _get_n_reducer(subtask)
+                        incref_chunk_keys.extend(
+                            [map_chunk.key for map_chunk in chk.inputs] * n_reducer
+                        )
         result_chunks = stage_processor.chunk_graph.result_chunks
         incref_chunk_keys.extend([c.key for c in result_chunks])
         logger.debug("Incref chunks %s for stage", incref_chunk_keys)
@@ -920,15 +932,9 @@ class TaskProcessorActor(mo.Actor):
             for result_chunk in in_subtask.chunk_graph.results:
                 # for reducer chunk, decref mapper chunks
                 if isinstance(result_chunk.op, ShuffleProxy):
-                    output_num = len(
-                        [
-                            r
-                            for r in subtask.chunk_graph.results
-                            if isinstance(r.op, MapReduceOperand)
-                        ]
-                    )
+                    n_reducer = _get_n_reducer(subtask)
                     decref_chunk_keys.extend(
-                        [inp.key for inp in result_chunk.inputs] * output_num
+                        [inp.key for inp in result_chunk.inputs] * n_reducer
                     )
                 decref_chunk_keys.append(result_chunk.key)
         logger.debug(

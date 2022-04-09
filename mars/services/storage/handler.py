@@ -550,14 +550,10 @@ class StorageHandlerActor(mo.Actor):
         await asyncio.gather(*transfer_tasks)
 
         append_bands_delays = []
-        appended_main_keys = set()
         for data_key in fetch_keys:
             # meta service records main keys only,
             # so we append band to the main key
             main_key = data_key[0] if isinstance(data_key, tuple) else data_key
-            if main_key in appended_main_keys:
-                continue
-            appended_main_keys.add(main_key)
             append_bands_delays.append(
                 meta_api.add_chunk_bands.delay(
                     main_key,

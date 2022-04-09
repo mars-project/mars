@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import logging
 from collections import deque, defaultdict
 from typing import Dict, List, Tuple, Type, Union
@@ -140,7 +141,10 @@ class GraphAnalyzer:
         chunk_priority = None
         expect_worker = None
         bands_specified = None
+        processed = set()
         for chunk in chunks:
+            if chunk in processed:
+                continue
             if expect_worker is None:
                 expect_worker = chunk.op.expect_worker
                 bands_specified = expect_worker is not None
@@ -199,10 +203,13 @@ class GraphAnalyzer:
                 )
             ]
             for src_chunk, out_chunk in zip(chunk.op.outputs, out_chunks):
+                processed.add(src_chunk)
                 out_chunk._key = src_chunk.key
                 chunk_graph.add_node(out_chunk)
+                # cannot be copied twice
+                assert src_chunk not in chunk_to_copied
                 chunk_to_copied[src_chunk] = out_chunk
-                if chunk in final_result_chunks_set:
+                if src_chunk in final_result_chunks_set:
                     if out_chunk not in result_chunks_set:
                         result_chunks.append(out_chunk)
                         result_chunks_set.add(out_chunk)
@@ -337,9 +344,14 @@ class GraphAnalyzer:
             chunk_to_colors = coloring.color()
         else:
             # if not fuse enabled, color all chunks with different colors
-            chunk_to_colors = {
-                c: i for i, c in enumerate(self._chunk_graph.topological_iter())
-            }
+            op_to_colors = dict()
+            chunk_to_colors = dict()
+            color_gen = itertools.count()
+            for c in self._chunk_graph.topological_iter():
+                if c.op not in op_to_colors:
+                    chunk_to_colors[c] = op_to_colors[c.op] = next(color_gen)
+                else:
+                    chunk_to_colors[c] = op_to_colors[c.op]
         color_to_chunks = defaultdict(list)
         for chunk, color in chunk_to_colors.items():
             color_to_chunks[color].append(chunk)
