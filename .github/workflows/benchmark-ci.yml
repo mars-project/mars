@@ -6,6 +6,10 @@ on:
       - master
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   asv-benchmarks:
     name: ASV Benchmarks

@@ -1525,11 +1525,12 @@ def is_full_slice(slc: Any) -> bool:
 
 
 def wrap_exception(
-    name: str,
-    bases: Tuple[Type],
-    message: str,
-    cause: BaseException,
+    exc: Exception,
+    bases: Tuple[Type] = None,
+    wrap_name: str = None,
+    message: str = None,
     traceback: Optional[TracebackType] = None,
+    attr_dict: dict = None,
 ):
     """Generate an exception wraps the cause exception."""
 
@@ -1537,22 +1538,30 @@ def wrap_exception(
         pass
 
     def __getattr__(self, item):
-        return getattr(cause, item)
+        return getattr(exc, item)
 
     def __str__(self):
-        return message
+        return message or super(type(self), self).__str__()
 
-    return type(
-        bases[-1].__name__,
-        bases,
+    traceback = traceback or exc.__traceback__
+    bases = bases or ()
+    attr_dict = attr_dict or {}
+    attr_dict.update(
         {
             "__init__": __init__,
             "__getattr__": __getattr__,
             "__str__": __str__,
-            "__basename__": name,
-            "__module__": bases[-1].__module__,
-        },
-    )().with_traceback(traceback)
+            "__wrapname__": wrap_name,
+            "__wrapped__": exc,
+            "__module__": type(exc).__module__,
+            "__cause__": exc.__cause__,
+            "__context__": exc.__context__,
+            "__suppress_context__": exc.__suppress_context__,
+            "args": exc.args,
+        }
+    )
+    new_exc_type = type(type(exc).__name__, bases + (type(exc),), attr_dict)
+    return new_exc_type().with_traceback(traceback)
 
 
 def get_func_token_values(func):

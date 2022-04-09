@@ -179,7 +179,8 @@ class ErrorMessage(_MessageBase):
     # process, so we don't want to append duplicated address and pid in the
     # error message.
     class AsCauseBase:
-        pass
+        def __str__(self):
+            return f"[address={self.address}, pid={self.pid}] {str(self.__wrapped__)}"
 
     def __init__(
         self,
@@ -208,15 +209,11 @@ class ErrorMessage(_MessageBase):
         if issubclass(self.error_type, ErrorMessage.AsCauseBase):
             return self.error.with_traceback(self.traceback)
 
-        message = f"[address={self.address}, pid={self.pid}] {self.error}"
-        cause = self.error
-
         return wrap_exception(
-            type(self.error).__name__,
-            (ErrorMessage.AsCauseBase, type(self.error)),
-            message,
-            cause,
-            self.traceback,
+            self.error,
+            (ErrorMessage.AsCauseBase,),
+            traceback=self.traceback,
+            attr_dict=dict(address=self.address, pid=self.pid),
         )
 
 
