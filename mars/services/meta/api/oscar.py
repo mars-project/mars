@@ -113,7 +113,9 @@ class MetaAPI(AbstractMetaAPI):
         chunk_key = extra.pop("chunk_key", chunk.key)
         object_ref = extra.pop("object_ref", None)
         if object_ref:
-            object_refs = [object_ref]
+            object_refs = (
+                [object_ref] if not isinstance(object_ref, list) else object_ref
+            )
         else:
             object_refs = []
         if isinstance(

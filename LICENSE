@@ -259,6 +259,8 @@ MIT License
 - sqlalchemy:1.4.0
 - async-lru:1.0.2
 - setuptools:55.0.0
+- bloom-filter2:2.0
+- ordered-set:4.1.0
 - react:17.0.0
 - react-dom:17.0.0
 - react-router-dom:5.2.0
@@ -267,7 +269,6 @@ MIT License
 - dagre-d3:0.6.4
 - cytoscape:3.19.1
 - cytoscape-dagre:2.3.2
-- bloom-filter2: 2.0
 
 
 ISC License
