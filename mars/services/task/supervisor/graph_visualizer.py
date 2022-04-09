@@ -67,7 +67,7 @@ class GraphVisualizer:
         if "_" in chunk.key:
             key, index = chunk.key.split("_", 1)
             return "_".join([key[:trunc_key], index])
-        else:
+        else:  # pragma: no cover
             return chunk.key[:trunc_key]
 
     @classmethod
@@ -100,7 +100,7 @@ class GraphVisualizer:
             for input_chunk in op.inputs or []:
                 if input_chunk.key not in visited and not isinstance(
                     input_chunk.op, (Fetch, FetchShuffle)
-                ):
+                ):  # pragma: no cover
                     node_name = f'"Chunk:{cls._gen_chunk_key(input_chunk, trunc_key)}"'
                     sio.write(f"{node_name} {chunk_style}\n")
                     all_nodes.append(node_name)

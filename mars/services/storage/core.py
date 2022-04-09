@@ -286,7 +286,9 @@ class DataManagerActor(mo.Actor):
             infos = self._data_key_to_info[(session_id, data_key)]
             rest = [info for info in infos if info.data_info.level != level]
             if isinstance(data_key, tuple):
-                if len(self._main_key_to_sub_keys[(session_id, data_key[0])]) == 0:
+                if (
+                    len(self._main_key_to_sub_keys[(session_id, data_key[0])]) == 0
+                ):  # pragma: no cover
                     del self._main_key_to_sub_keys[(session_id, data_key[0])]
             if len(rest) == 0:
                 del self._data_key_to_info[(session_id, data_key)]
