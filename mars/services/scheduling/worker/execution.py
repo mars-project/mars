@@ -84,9 +84,7 @@ async def _retry_run(
                 )
                 logger.error(message)
 
-                raise wrap_exception(
-                    "_ExceedMaxRerun", (type(ex),), message, ex, ex.__traceback__
-                )
+                raise wrap_exception(ex, wrap_name="_ExceedMaxRerun", message=message)
             else:
                 raise ex
         except asyncio.CancelledError:
@@ -101,7 +99,7 @@ async def _retry_run(
                 logger.error(message)
 
                 raise wrap_exception(
-                    "_UnhandledException", (type(ex),), message, ex, ex.__traceback__
+                    ex, wrap_name="_UnhandledException", message=message
                 )
             else:
                 raise ex
@@ -471,7 +469,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 logger.error(message)
 
                 raise wrap_exception(
-                    "_UnretryableException", (type(e),), message, e, e.__traceback__
+                    e, wrap_name="_UnretryableException", message=message
                 )
 
     async def run_subtask(
