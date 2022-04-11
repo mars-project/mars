@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import AbstractMetaAPI, MetaAPI, MockMetaAPI, WebMetaAPI
+from .api import AbstractMetaAPI, MetaAPI, MockMetaAPI, WorkerMetaAPI, WebMetaAPI
 from .core import (
     TensorMeta,
     DataFrameMeta,

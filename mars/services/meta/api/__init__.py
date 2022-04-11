@@ -13,5 +13,5 @@
 # limitations under the License.
 
 from .core import AbstractMetaAPI
-from .oscar import MetaAPI, MockMetaAPI
+from .oscar import MetaAPI, MockMetaAPI, WorkerMetaAPI
 from .web import WebMetaAPI

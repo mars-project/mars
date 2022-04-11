@@ -25,7 +25,7 @@ from ....utils import get_next_port
 from ... import start_services, stop_services, NodeRole
 from ...cluster import MockClusterAPI
 from ...session import MockSessionAPI, SessionAPI
-from .. import MockMetaAPI, MetaAPI, WebMetaAPI
+from .. import MockMetaAPI, MetaAPI, WorkerMetaAPI, WebMetaAPI
 
 
 t = mt.random.rand(10, 10)
@@ -86,6 +86,49 @@ async def test_meta_mock_api(obj):
             await meta_api.get_chunk_meta(chunk.key)
 
         await MockClusterAPI.cleanup(pool.external_address)
+
+
+@pytest.mark.asyncio
+async def test_worker_meta_api():
+    supervisor_pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
+    worker_pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
+
+    async with supervisor_pool, worker_pool:
+        config = {
+            "services": ["cluster", "session", "meta", "web"],
+            "cluster": {
+                "backend": "fixed",
+                "lookup_address": supervisor_pool.external_address,
+            },
+            "meta": {"store": "dict"},
+        }
+        await start_services(
+            NodeRole.SUPERVISOR, config, address=supervisor_pool.external_address
+        )
+        await start_services(
+            NodeRole.WORKER, config, address=worker_pool.external_address
+        )
+
+        session_id = "test_session"
+        session_api = await SessionAPI.create(supervisor_pool.external_address)
+        await session_api.create_session(session_id)
+
+        worker_meta_api = await WorkerMetaAPI.create(
+            session_id=session_id, address=worker_pool.external_address
+        )
+        await worker_meta_api.set_tileable_meta(t)
+        meta = await worker_meta_api.get_tileable_meta(t.key, fields=["nsplits"])
+        assert meta["nsplits"] == t.nsplits
+        await worker_meta_api.del_tileable_meta(t.key)
+        with pytest.raises(KeyError):
+            await worker_meta_api.get_tileable_meta(t.key)
+
+        await stop_services(
+            NodeRole.WORKER, config, address=worker_pool.external_address
+        )
+        await stop_services(
+            NodeRole.SUPERVISOR, config, address=supervisor_pool.external_address
+        )
 
 
 @pytest.mark.asyncio

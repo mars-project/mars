@@ -31,37 +31,16 @@ from ....typing import BandType
 from ..core import get_meta_type
 from ..store import AbstractMetaStore
 from ..supervisor.core import MetaStoreManagerActor, MetaStoreActor
+from ..worker.core import WorkerMetaStoreManagerActor
 from .core import AbstractMetaAPI
 
 
-class MetaAPI(AbstractMetaAPI):
+class BaseMetaAPI(AbstractMetaAPI):
     def __init__(
         self, session_id: str, meta_store: Union[AbstractMetaStore, mo.ActorRef]
     ):
         self._session_id = session_id
         self._meta_store = meta_store
-
-    @classmethod
-    @alru_cache(cache_exceptions=False)
-    async def create(cls, session_id: str, address: str) -> "MetaAPI":
-        """
-        Create Meta API.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID.
-        address : str
-            Supervisor address.
-
-        Returns
-        -------
-        meta_api
-            Meta api.
-        """
-        meta_store_ref = await mo.actor_ref(address, MetaStoreActor.gen_uid(session_id))
-
-        return MetaAPI(session_id, meta_store_ref)
 
     @mo.extensible
     async def set_tileable_meta(
@@ -255,6 +234,30 @@ class MetaAPI(AbstractMetaAPI):
         return await self._meta_store.get_band_chunks(band)
 
 
+class MetaAPI(BaseMetaAPI):
+    @classmethod
+    @alru_cache(cache_exceptions=False)
+    async def create(cls, session_id: str, address: str) -> "MetaAPI":
+        """
+        Create Meta API.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        address : str
+            Supervisor address.
+
+        Returns
+        -------
+        meta_api
+            Meta api.
+        """
+        meta_store_ref = await mo.actor_ref(address, MetaStoreActor.gen_uid(session_id))
+
+        return MetaAPI(session_id, meta_store_ref)
+
+
 class MockMetaAPI(MetaAPI):
     @classmethod
     async def create(cls, session_id: str, address: str) -> "MetaAPI":
@@ -279,3 +282,31 @@ class MockMetaAPI(MetaAPI):
         except mo.ActorAlreadyExist:
             pass
         return await super().create(session_id=session_id, address=address)
+
+
+class WorkerMetaAPI(BaseMetaAPI):
+    @classmethod
+    @alru_cache(cache_exceptions=False)
+    async def create(cls, session_id: str, address: str) -> "WorkerMetaAPI":
+        """
+        Create worker meta API.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        address : str
+            Worker address.
+
+        Returns
+        -------
+        meta_api
+            Worker meta api.
+        """
+        worker_meta_store_manager_ref = await mo.actor_ref(
+            uid=WorkerMetaStoreManagerActor.default_uid(), address=address
+        )
+        worker_meta_store_ref = (
+            await worker_meta_store_manager_ref.new_session_meta_store(session_id)
+        )
+        return WorkerMetaAPI(session_id, worker_meta_store_ref)
