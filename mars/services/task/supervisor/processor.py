@@ -168,7 +168,7 @@ class TaskProcessor:
             stage_profiler.set("total", stage_timer.duration)
 
     async def _process_stage_chunk_graph(self, stage_id, stage_profiler, chunk_graph):
-        available_bands = await self._executor.get_available_band_slots()
+        available_bands = await self._executor.get_available_band_resources()
         with Timer() as timer:
             subtask_graph = await asyncio.to_thread(
                 self._preprocessor.analyze,
@@ -422,7 +422,6 @@ class TaskProcessorActor(mo.Actor):
             task=task,
             session_id=self.session_id,
             address=self.address,
-            tileable_graph=task_preprocessor.tileable_graph,
             tile_context=task_preprocessor.tile_context,
         )
         processor = self._task_processor_cls(

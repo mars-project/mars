@@ -33,7 +33,7 @@ from ..utils import (
     enter_current_session,
     find_objects,
     replace_objects,
-    get_params_fields,
+    get_chunk_params,
 )
 from .operands import RemoteOperandMixin
 
@@ -189,7 +189,7 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
             tileables = find_objects(to_search, TILEABLE_TYPE)
             for tileable in tileables:
                 chunks = tileable.chunks
-                fields = get_params_fields(chunks[0])
+                fields = get_chunk_params(chunks[0]).keys()
                 metas = ctx.get_chunks_meta(
                     [chunk.key for chunk in chunks], fields=fields
                 )

@@ -29,6 +29,7 @@ from .....lib.aio import alru_cache
 from .....oscar.profiling import (
     ProfilingData,
 )
+from .....resource import Resource
 from .....typing import TileableType, BandType
 from .....utils import Timer
 from ....cluster.api import ClusterAPI
@@ -63,7 +64,6 @@ class MarsTaskExecutor(TaskExecutor):
         self,
         config,
         task,
-        tileable_graph,
         tile_context,
         cluster_api,
         lifecycle_api,
@@ -72,7 +72,7 @@ class MarsTaskExecutor(TaskExecutor):
     ):
         self._config = config
         self._task = task
-        self._tileable_graph = tileable_graph
+        self._tileable_graph = task.tileable_graph
         self._raw_tile_context = tile_context.copy()
         self._tile_context = tile_context
 
@@ -89,10 +89,15 @@ class MarsTaskExecutor(TaskExecutor):
 
     @classmethod
     async def create(
-        cls, config: Dict, *, session_id: str, address: str, task, **kwargs
+        cls,
+        config: Dict,
+        *,
+        session_id: str,
+        address: str,
+        task,
+        tile_context,
+        **kwargs,
     ) -> "TaskExecutor":
-        tileable_graph = kwargs.pop("tileable_graph")
-        tile_context = kwargs.pop("tile_context")
         assert (
             len(kwargs) == 0
         ), f"Unexpected kwargs for {cls.__name__}.create: {kwargs}"
@@ -102,7 +107,6 @@ class MarsTaskExecutor(TaskExecutor):
         return cls(
             config,
             task,
-            tileable_graph,
             tile_context,
             cluster_api,
             lifecycle_api,
@@ -134,7 +138,7 @@ class MarsTaskExecutor(TaskExecutor):
         chunk_graph: ChunkGraph,
         context=None,
     ):
-        available_bands = await self.get_available_band_slots()
+        available_bands = await self.get_available_band_resources()
         await self._incref_result_tileables()
         stage_processor = TaskStageProcessor(
             stage_id,
@@ -168,7 +172,7 @@ class MarsTaskExecutor(TaskExecutor):
             # revert result incref if error or cancelled
             await self._decref_result_tileables()
 
-    async def get_available_band_slots(self) -> Dict[BandType, int]:
+    async def get_available_band_resources(self) -> Dict[BandType, Resource]:
         async for bands in self._cluster_api.watch_all_bands():
             if bands:
                 return bands
@@ -307,7 +311,6 @@ class MarsTaskExecutor(TaskExecutor):
             if result_tileable in processed:  # pragma: no cover
                 continue
             try:
-
                 tiled_tileable = self._get_tiled(result_tileable)
                 tracks[0].append(result_tileable.key)
                 tracks[1].append(

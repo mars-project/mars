@@ -54,6 +54,7 @@ from ...services.session import AbstractSessionAPI, SessionAPI
 from ...services.mutable import MutableAPI, MutableTensor
 from ...services.storage import StorageAPI
 from ...services.task import AbstractTaskAPI, TaskAPI, TaskResult
+from ...services.task.execution.api import Fetcher
 from ...services.web import OscarWebAPI
 from ...tensor.utils import slice_split
 from ...typing import ClientType, BandType
@@ -1100,7 +1101,11 @@ class _IsolatedSession(AbstractAsyncSession):
                         continue
                     chunks.append(chunk)
                     get_chunk_metas.append(
-                        self._meta_api.get_chunk_meta.delay(chunk.key, fields=["bands"])
+                        self._meta_api.get_chunk_meta.delay(
+                            # TODO(fyrestone): Get required fields from fetcher type.
+                            chunk.key,
+                            fields=["fetcher", "bands", "object_refs"],
+                        )
                     )
                     indexes = (
                         chunk_to_slice[chunk] if chunk_to_slice is not None else None
@@ -1110,28 +1115,42 @@ class _IsolatedSession(AbstractAsyncSession):
                     )
                 fetch_infos_list.append(fetch_infos)
             chunk_metas = await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
-            chunk_to_band = {
-                chunk: meta["bands"][0] for chunk, meta in zip(chunks, chunk_metas)
-            }
+            fetcher = chunk_metas[0]["fetcher"]
+            if fetcher is None:
+                chunk_to_band = {
+                    chunk: meta["bands"][0] for chunk, meta in zip(chunks, chunk_metas)
+                }
 
-            storage_api_to_gets = defaultdict(list)
-            storage_api_to_fetch_infos = defaultdict(list)
-            for fetch_info in itertools.chain(*fetch_infos_list):
-                conditions = fetch_info.indexes
-                chunk = fetch_info.chunk
-                band = chunk_to_band[chunk]
-                storage_api = await self._get_storage_api(band)
-                storage_api_to_gets[storage_api].append(
-                    storage_api.get.delay(chunk.key, conditions=conditions)
-                )
-                storage_api_to_fetch_infos[storage_api].append(fetch_info)
-            for storage_api in storage_api_to_gets:
-                fetched_data = await storage_api.get.batch(
-                    *storage_api_to_gets[storage_api]
-                )
-                infos = storage_api_to_fetch_infos[storage_api]
-                for info, data in zip(infos, fetched_data):
-                    info.data = data
+                storage_api_to_gets = defaultdict(list)
+                storage_api_to_fetch_infos = defaultdict(list)
+                for fetch_info in itertools.chain(*fetch_infos_list):
+                    conditions = fetch_info.indexes
+                    chunk = fetch_info.chunk
+                    band = chunk_to_band[chunk]
+                    storage_api = await self._get_storage_api(band)
+                    storage_api_to_gets[storage_api].append(
+                        storage_api.get.delay(chunk.key, conditions=conditions)
+                    )
+                    storage_api_to_fetch_infos[storage_api].append(fetch_info)
+                for storage_api in storage_api_to_gets:
+                    fetched_data = await storage_api.get.batch(
+                        *storage_api_to_gets[storage_api]
+                    )
+                    infos = storage_api_to_fetch_infos[storage_api]
+                    for info, data in zip(infos, fetched_data):
+                        info.data = data
+            else:
+                fetcher_list = [
+                    Fetcher.create(meta).get(conditions=fetch_info.indexes)
+                    for fetch_info, meta in zip(
+                        itertools.chain(*fetch_infos_list), chunk_metas
+                    )
+                ]
+                results = await asyncio.gather(*fetcher_list)
+                for fetch_info, data in zip(
+                    itertools.chain(*fetch_infos_list), results
+                ):
+                    fetch_info.data = data
 
             result = []
             for tileable, fetch_infos in zip(tileables, fetch_infos_list):

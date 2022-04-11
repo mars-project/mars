@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .mars import *
-from .ray import *
+from .executor import RayTaskExecutor
+from .fetcher import RayObjectFetcher

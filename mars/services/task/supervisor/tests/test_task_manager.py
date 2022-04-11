@@ -35,18 +35,20 @@ from .....storage import StorageLevel
 from .....utils import Timer, merge_chunks
 from ....cluster import MockClusterAPI
 from ....lifecycle import MockLifecycleAPI
-from ....meta import MockMetaAPI
+from ....meta import MetaAPI, MockMetaAPI
 from ....scheduling import MockSchedulingAPI
 from ....session import MockSessionAPI
 from ....storage import StorageAPI, MockStorageAPI
 from ....subtask import MockSubtaskAPI
 from ....mutable import MockMutableAPI
 from ...core import TaskStatus, TaskResult
+from ...execution.api import Fetcher
 from ..manager import TaskConfigurationActor, TaskManagerActor
 
 
 @pytest.fixture
-async def actor_pool():
+async def actor_pool(request):
+    param = getattr(request, "param", {})
     start_method = (
         os.environ.get("POOL_START_METHOD", "forkserver")
         if sys.platform != "win32"
@@ -77,7 +79,7 @@ async def actor_pool():
         await mo.create_actor(
             TaskConfigurationActor,
             dict(),
-            dict(),
+            param,
             uid=TaskConfigurationActor.default_uid(),
             address=pool.external_address,
         )
@@ -97,13 +99,27 @@ async def actor_pool():
             await MockMutableAPI.cleanup(session_id, pool.external_address)
 
 
-async def _merge_data(fetch_tileable: Tileable, storage_api: StorageAPI):
-    gets = []
-    for i, chunk in enumerate(fetch_tileable.chunks):
-        gets.append(storage_api.get.delay(chunk.key))
-    data = await storage_api.get.batch(*gets)
-    index_data = [(c.index, d) for c, d in zip(fetch_tileable.chunks, data)]
-    return merge_chunks(index_data)
+async def _merge_data(
+    fetch_tileable: Tileable, meta_api: MetaAPI, storage_api: StorageAPI
+):
+    get_metas = []
+    for chunk in fetch_tileable.chunks:
+        get_metas.append(
+            meta_api.get_chunk_meta.delay(chunk.key, fields=["fetcher", "object_refs"])
+        )
+    metas = await meta_api.get_chunk_meta.batch(*get_metas)
+    fetcher = metas[0]["fetcher"]
+    if fetcher is None:
+        gets = []
+        for i, chunk in enumerate(fetch_tileable.chunks):
+            gets.append(storage_api.get.delay(chunk.key))
+        data = await storage_api.get.batch(*gets)
+        index_data = [(c.index, d) for c, d in zip(fetch_tileable.chunks, data)]
+        return merge_chunks(index_data)
+    else:
+        data = await asyncio.gather(*[Fetcher.create(meta).get() for meta in metas])
+        index_data = [(c.index, d) for c, d in zip(fetch_tileable.chunks, data)]
+        return merge_chunks(index_data)
 
 
 @pytest.mark.asyncio
@@ -129,7 +145,7 @@ async def test_run_task(actor_pool):
     assert await manager.get_task_progress(task_id) == 1.0
 
     result_tileable = (await manager.get_task_result_tileables(task_id))[0]
-    result = await _merge_data(result_tileable, storage_api)
+    result = await _merge_data(result_tileable, meta_api, storage_api)
     np.testing.assert_array_equal(result, raw + 1)
 
     # test ref counts
@@ -168,7 +184,7 @@ async def test_run_tasks_with_same_name(actor_pool):
         assert await manager.get_task_progress(task_id) == 1.0
 
         result_tileable = (await manager.get_task_result_tileables(task_id))[0]
-        result = await _merge_data(result_tileable, storage_api)
+        result = await _merge_data(result_tileable, meta_api, storage_api)
         np.testing.assert_array_equal(result, e)
 
 
@@ -259,7 +275,7 @@ async def test_iterative_tiling(actor_pool):
 
     expect = raw_a[raw_a[:, 0] < 3] + raw_b[raw_b[:, 0] < 3]
     result_tileable = (await manager.get_task_result_tileables(task_id))[0]
-    result = await _merge_data(result_tileable, storage_api)
+    result = await _merge_data(result_tileable, meta_api, storage_api)
     np.testing.assert_array_equal(result, expect)
 
     # test ref counts
@@ -295,7 +311,7 @@ async def test_prune_in_iterative_tiling(actor_pool):
 
     expect = raw.groupby(0).agg("sum")
     result_tileable = (await manager.get_task_result_tileables(task_id))[0]
-    result = await _merge_data(result_tileable, storage_api)
+    result = await _merge_data(result_tileable, meta_api, storage_api)
     pd.testing.assert_frame_equal(expect, result)
 
     subtask_graphs = await manager.get_subtask_graphs(task_id)
@@ -342,7 +358,7 @@ async def test_prune_in_iterative_tiling(actor_pool):
     assert await manager.get_task_progress(task_id) == 1.0
 
     result_tileable = (await manager.get_task_result_tileables(task_id))[0]
-    result = await _merge_data(result_tileable, storage_api)
+    result = await _merge_data(result_tileable, meta_api, storage_api)
     pd.testing.assert_frame_equal(raw, result)
 
     subtask_graphs = await manager.get_subtask_graphs(task_id)
@@ -399,7 +415,7 @@ async def test_shuffle(actor_pool):
 
     expect = raw[raw2]
     result_tileable = (await manager.get_task_result_tileables(task_id))[0]
-    result = await _merge_data(result_tileable, storage_api)
+    result = await _merge_data(result_tileable, meta_api, storage_api)
     np.testing.assert_array_equal(result, expect)
 
     # test ref counts
@@ -441,7 +457,7 @@ async def test_numexpr(actor_pool):
 
     expect = (raw + 1) * 2 - 0.3
     result_tileable = (await manager.get_task_result_tileables(task_id))[0]
-    result = await _merge_data(result_tileable, storage_api)
+    result = await _merge_data(result_tileable, meta_api, storage_api)
     np.testing.assert_array_equal(result, expect)
 
     # test ref counts
@@ -491,12 +507,12 @@ async def test_optimization(actor_pool):
         expect = pdf.groupby("c").agg({"a": "sum"})
         result_tileables = await manager.get_task_result_tileables(task_id)
         result1 = result_tileables[0]
-        result = await _merge_data(result1, storage_api)
+        result = await _merge_data(result1, meta_api, storage_api)
         np.testing.assert_array_equal(result, expect)
 
         expect = pdf[["b", "a"]]
         result2 = result_tileables[1]
-        result = await _merge_data(result2, storage_api)
+        result = await _merge_data(result2, meta_api, storage_api)
         np.testing.assert_array_equal(result, expect)
 
         # test ref counts
@@ -545,7 +561,7 @@ async def test_dump_subtask_graph(actor_pool):
     await manager.wait_task(task_id)
 
     result_tileable = (await manager.get_task_result_tileables(task_id))[0]
-    result = await _merge_data(result_tileable, storage_api)
+    result = await _merge_data(result_tileable, meta_api, storage_api)
     pd.testing.assert_frame_equal(result.sort_index(), raw.groupby("c2").agg("sum"))
 
     # read dot file

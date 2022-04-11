@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Type
 
 from ....core import ChunkGraph
+from ....resource import Resource
 from ....typing import BandType
 from ...subtask import SubtaskGraph, SubtaskResult
 
@@ -34,7 +35,14 @@ class TaskExecutor(ABC):
     @classmethod
     @abstractmethod
     async def create(
-        cls, config: Dict, *, session_id: str, address: str, task, **kwargs
+        cls,
+        config: Dict,
+        *,
+        session_id: str,
+        address: str,
+        task,
+        tile_context,
+        **kwargs,
     ) -> "TaskExecutor":
         name = config.get("backend", "mars")
         backend_config = config.get(name, {})
@@ -44,7 +52,12 @@ class TaskExecutor(ABC):
                 f"The {executor_cls} should implement the abstract classmethod `create`."
             )
         return await executor_cls.create(
-            backend_config, session_id=session_id, address=address, task=task, **kwargs
+            backend_config,
+            session_id=session_id,
+            address=address,
+            task=task,
+            tile_context=tile_context,
+            **kwargs,
         )
 
     async def __aenter__(self):
@@ -64,8 +77,8 @@ class TaskExecutor(ABC):
         """Called when finish the task."""
 
     @abstractmethod
-    async def get_available_band_slots(self) -> Dict[BandType, int]:
-        """Get available band slots."""
+    async def get_available_band_resources(self) -> Dict[BandType, Resource]:
+        """Get available band resources."""
 
     @abstractmethod
     async def get_progress(self) -> float:
@@ -89,3 +102,28 @@ _name_to_task_executor_cls: Dict[str, Type[TaskExecutor]] = {}
 
 def register_executor_cls(executor_cls: Type[TaskExecutor]):
     _name_to_task_executor_cls[executor_cls.name] = executor_cls
+
+
+class Fetcher:
+    name = None
+
+    @abstractmethod
+    def __init__(self, meta: Dict, **kwargs):
+        pass
+
+    @abstractmethod
+    async def get(self, conditions: List = None):
+        pass
+
+    @classmethod
+    def create(cls, meta: Dict, **kwargs) -> "Fetcher":
+        name = meta["fetcher"]
+        fetcher_cls = _name_to_fetcher_cls[name]
+        return fetcher_cls(meta, **kwargs)
+
+
+_name_to_fetcher_cls: Dict[str, Type[Fetcher]] = {}
+
+
+def register_fetcher_cls(fetcher_cls: Type[Fetcher]):
+    _name_to_fetcher_cls[fetcher_cls.name] = fetcher_cls
