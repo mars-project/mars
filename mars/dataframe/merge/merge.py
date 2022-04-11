@@ -14,13 +14,14 @@
 
 import itertools
 from collections import namedtuple
-from typing import List, Optional, Union, Tuple
+from enum import Enum
+from typing import Dict, List, Optional, Union, Tuple
 
 import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType
+from ...core import OutputType, recursive_tile
 from ...core.context import get_context
 from ...core.operand import OperandStage, MapReduceOperand
 from ...serialization.serializables import (
@@ -33,6 +34,8 @@ from ...serialization.serializables import (
     NamedTupleField,
 )
 from ...typing import TileableType
+from ...utils import has_unknown_shape
+from ..base.bloom_filter import filter_by_bloom_filter
 from ..core import DataFrame, Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
 from ..utils import (
@@ -130,6 +133,12 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
 MergeSplitInfo = namedtuple("MergeSplitInfo", "split_side, split_index, nsplits")
 
 
+class MergeMethod(Enum):
+    one_chunk = 0
+    broadcast = 1
+    shuffle = 2
+
+
 class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_MERGE
 
@@ -147,6 +156,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
     method = StringField("method")
     auto_merge = StringField("auto_merge")
     auto_merge_threshold = Int32Field("auto_merge_threshold")
+    bloom_filter = AnyField("bloom_filter")
 
     # only for broadcast merge
     split_info = NamedTupleField("split_info")
@@ -244,6 +254,39 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                 )
             )
         return reduce_chunks
+
+    @classmethod
+    def _apply_bloom_filter(
+        cls,
+        left: TileableType,
+        right: TileableType,
+        left_on: Union[List, str],
+        right_on: Union[List, str],
+        op: "DataFrameMerge",
+    ):
+        bloom_filter_params = dict()
+        if isinstance(op.bloom_filter, dict):
+            if "max_elements" in op.bloom_filter:
+                bloom_filter_params["max_elements"] = op.bloom_filter["max_elements"]
+            if "error_rate" in op.bloom_filter:
+                bloom_filter_params["error_rate"] = op.bloom_filter["error_rate"]
+        if "max_elements" not in bloom_filter_params:
+            bloom_filter_params["max_elements"] = max(
+                c.shape[0] for c in left.chunks + right.chunks
+            )
+        if len(left.chunks) > len(right.chunks):
+            left = filter_by_bloom_filter(
+                left,
+                right,
+                left_on,
+                right_on,
+                **bloom_filter_params,
+            )
+        else:
+            right = filter_by_bloom_filter(
+                right, left, right_on, left_on, **bloom_filter_params
+            )
+        return left, right
 
     @classmethod
     def _tile_one_chunk(
@@ -493,6 +536,58 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             return False, True
 
     @classmethod
+    def _choose_merge_method(
+        cls, op: "DataFrameMerge", left: TileableType, right: TileableType
+    ):
+        how = op.how
+        method = op.method
+        left_row_chunk_size = left.chunk_shape[0]
+        right_row_chunk_size = right.chunk_shape[0]
+        if left_row_chunk_size > right_row_chunk_size:
+            big_side = "left"
+            big_chunk_size = left_row_chunk_size
+            small_chunk_size = right_row_chunk_size
+        else:
+            big_side = "right"
+            big_chunk_size = right_row_chunk_size
+            small_chunk_size = left_row_chunk_size
+        if method == "auto":
+            if cls._can_merge_with_one_chunk(left, right, how):
+                return MergeMethod.one_chunk
+            elif cls._can_merge_with_broadcast(
+                big_chunk_size, small_chunk_size, big_side, how
+            ):
+                return MergeMethod.broadcast
+            else:
+                return MergeMethod.shuffle
+        elif method == "broadcast":
+            if cls._can_merge_with_one_chunk(left, right, how):
+                return MergeMethod.one_chunk
+            elif how in [big_side, "inner"]:
+                return MergeMethod.broadcast
+            else:  # pragma: no cover
+                raise ValueError("Cannot specify merge method `broadcast`")
+        else:
+            assert method == "shuffle"
+            return MergeMethod.shuffle
+
+    @classmethod
+    def _if_apply_bloom_filter(
+        cls,
+        method: MergeMethod,
+        op: "DataFrameMerge",
+        left: TileableType,
+        right: TileableType,
+        bloom_filter_chunk_threshold: int,
+    ):
+        if len(left.chunks + right.chunks) <= bloom_filter_chunk_threshold:
+            return False
+        elif method == MergeMethod.shuffle and op.bloom_filter:
+            return True
+        else:
+            return False
+
+    @classmethod
     def tile(cls, op: "DataFrameMerge"):
         left = build_concatenated_rows_frame(op.inputs[0])
         right = build_concatenated_rows_frame(op.inputs[1])
@@ -509,41 +604,41 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             left = auto_merge_chunks(ctx, left)
             right = auto_merge_chunks(ctx, right)
 
-        how = op.how
-        method = op.method
-        left_row_chunk_size = left.chunk_shape[0]
-        right_row_chunk_size = right.chunk_shape[0]
-        if left_row_chunk_size > right_row_chunk_size:
-            big_side = "left"
-            big_chunk_size = left_row_chunk_size
-            small_chunk_size = right_row_chunk_size
-        else:
-            big_side = "right"
-            big_chunk_size = right_row_chunk_size
-            small_chunk_size = left_row_chunk_size
+        method = cls._choose_merge_method(op, left, right)
+        bloom_filter_chunk_threshold = 10
+        if isinstance(op.bloom_filter, dict):
+            bloom_filter_chunk_threshold = op.bloom_filter.pop(
+                "apply_chunk_size_threshold", bloom_filter_chunk_threshold
+            )
+        if cls._if_apply_bloom_filter(
+            method, op, left, right, bloom_filter_chunk_threshold
+        ):
+            left_on = _prepare_shuffle_on(op.left_index, op.left_on, op.on)
+            right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
+            if op.how == "inner" and op.bloom_filter:
+                if has_unknown_shape(left, right):
+                    yield left.chunks + right.chunks
+                left, right = yield from recursive_tile(
+                    *cls._apply_bloom_filter(left, right, left_on, right_on, op)
+                )
+                # auto merge after bloom filter
+                yield [left, right] + left.chunks + right.chunks
+                left = auto_merge_chunks(ctx, left)
+                right = auto_merge_chunks(ctx, right)
 
-        if method == "auto":
-            if cls._can_merge_with_one_chunk(left, right, how):
-                ret = cls._tile_one_chunk(op, left, right)
-            elif cls._can_merge_with_broadcast(
-                big_chunk_size, small_chunk_size, big_side, how
-            ):
-                ret = cls._tile_broadcast(op, left, right)
-            else:
-                ret = cls._tile_shuffle(op, left, right)
-        elif method == "broadcast":
-            if cls._can_merge_with_one_chunk(left, right, how):
-                ret = cls._tile_one_chunk(op, left, right)
-            elif how in [big_side, "inner"]:
-                ret = cls._tile_broadcast(op, left, right)
-            else:  # pragma: no cover
-                raise ValueError("Cannot specify merge method `broadcast`")
+            if op.method == "auto":
+                # if method is auto, select new method after auto merge
+                method = cls._choose_merge_method(op, left, right)
+        if method == MergeMethod.one_chunk:
+            ret = cls._tile_one_chunk(op, left, right)
+        elif method == MergeMethod.broadcast:
+            ret = cls._tile_broadcast(op, left, right)
         else:
-            assert method == "shuffle"
+            assert method == MergeMethod.shuffle
             ret = cls._tile_shuffle(op, left, right)
 
         if (
-            how == "inner"
+            op.how == "inner"
             and auto_merge_after
             and len(ret[0].chunks) > auto_merge_threshold
         ):
@@ -635,6 +730,7 @@ def merge(
     method: str = "auto",
     auto_merge: str = "both",
     auto_merge_threshold: int = 8,
+    bloom_filter: Union[bool, Dict] = True,
 ) -> DataFrame:
     """
     Merge DataFrame or named Series objects with a database-style join.
@@ -727,6 +823,17 @@ def merge(
         When how is "inner", merged result could be much smaller than original DataFrame,
         if the number of chunks is greater than the threshold,
         it will merge small chunks automatically.
+    bloom_filter: bool or dict, default True
+        Use bloom filter to optimize merge, you can pass a dict to specify arguments for
+        bloom filter.
+
+        If is a dict:
+
+        * "max_elements": max elements in bloom filter,
+          default value is the max size of all input chunks
+        * "error_rate": error raite, default 0.1.
+        * "apply_chunk_size_threshold": min chunk size of input chunks to apply bloom filter, default 10
+          when chunk size of left and right is greater than this threshold, apply bloom filter
 
     Returns
     -------
@@ -834,6 +941,7 @@ def merge(
         method=method,
         auto_merge=auto_merge,
         auto_merge_threshold=auto_merge_threshold,
+        bloom_filter=bloom_filter,
         output_types=[OutputType.dataframe],
     )
     return op(df, right)
@@ -850,6 +958,7 @@ def join(
     method: str = None,
     auto_merge: str = "both",
     auto_merge_threshold: int = 8,
+    bloom_filter: Union[bool, Dict] = True,
 ) -> DataFrame:
     """
     Join columns of another DataFrame.
@@ -904,6 +1013,17 @@ def join(
         When how is "inner", merged result could be much smaller than original DataFrame,
         if the number of chunks is greater than the threshold,
         it will merge small chunks automatically.
+    bloom_filter: bool or dict, default True
+        Use bloom filter to optimize merge, you can pass a dict to specify arguments for
+        bloom filter.
+
+        If is a dict:
+
+        * "max_elements": max elements in bloom filter,
+          default value is the max size of all input chunks
+        * "error_rate": error raite, default 0.1.
+        * "apply_chunk_size_threshold": min chunk size of input chunks to apply bloom filter, default 10
+          when chunk size of left and right is greater than this threshold, apply bloom filter
 
     Returns
     -------
@@ -1012,4 +1132,5 @@ def join(
         method=method,
         auto_merge=auto_merge,
         auto_merge_threshold=auto_merge_threshold,
+        bloom_filter=bloom_filter,
     )

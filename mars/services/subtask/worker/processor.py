@@ -362,35 +362,33 @@ class SubtaskProcessor:
     async def _store_meta(
         self,
         chunk_graph: ChunkGraph,
-        stored_keys: List,
         data_key_to_store_size: Dict,
         data_key_to_memory_size: Dict,
         data_key_to_object_id: Dict,
     ):
-        key_to_result_chunk = {c.key: c for c in chunk_graph.result_chunks}
         # store meta
         set_chunk_metas = []
         result_data_size = 0
-        for chunk_key in stored_keys:
-            fields = None
-            if isinstance(chunk_key, tuple):
-                result_chunk = key_to_result_chunk[chunk_key[0]]
-                fields = [
-                    "object_id",
-                    "name",
-                    "memory_size",
-                    "store_size",
-                    "index",
-                    "bands",
-                    "object_ref",
-                    "shape",
-                ]
+        set_meta_keys = []
+        for result_chunk in chunk_graph.result_chunks:
+            chunk_key = result_chunk.key
+            set_meta_keys.append(chunk_key)
+            if chunk_key in data_key_to_store_size:
+                # normal chunk
+                store_size = data_key_to_store_size[chunk_key]
+                memory_size = data_key_to_memory_size[chunk_key]
+                result_data_size += memory_size
+                object_ref = data_key_to_object_id[chunk_key]
             else:
-                result_chunk = key_to_result_chunk[chunk_key]
-            store_size = data_key_to_store_size[chunk_key]
-            memory_size = data_key_to_memory_size[chunk_key]
-            result_data_size += memory_size
-            object_ref = data_key_to_object_id[chunk_key]
+                # mapper chunk
+                mapper_keys = [
+                    k
+                    for k in data_key_to_store_size
+                    if isinstance(k, tuple) and k[0] == chunk_key
+                ]
+                store_size = sum(data_key_to_store_size[k] for k in mapper_keys)
+                memory_size = sum(data_key_to_memory_size[k] for k in mapper_keys)
+                object_ref = [data_key_to_object_id[k] for k in mapper_keys]
             set_chunk_metas.append(
                 self._meta_api.set_chunk_meta.delay(
                     result_chunk,
@@ -398,23 +396,12 @@ class SubtaskProcessor:
                     store_size=store_size,
                     bands=[self._band],
                     chunk_key=chunk_key,
-                    fields=fields,
                     object_ref=object_ref,
                 )
             )
-        for chunk in chunk_graph.result_chunks:
-            if chunk.key not in data_key_to_store_size:
-                # mapper, set meta, so that storage can make sure
-                # this operand is executed, some sub key is absent
-                # due to it's empty actually
-                set_chunk_metas.append(
-                    self._meta_api.set_chunk_meta.delay(
-                        chunk, memory_size=0, store_size=0, bands=[self._band]
-                    )
-                )
         logger.debug(
             "Start storing chunk metas for data keys: %s, " "subtask id: %s",
-            stored_keys,
+            set_meta_keys,
             self.subtask.subtask_id,
         )
         if set_chunk_metas:
@@ -424,14 +411,16 @@ class SubtaskProcessor:
                 await self._meta_api.set_chunk_meta.batch(*set_chunk_metas)
                 logger.debug(
                     "Finish store chunk metas for data keys: %s, " "subtask id: %s",
-                    stored_keys,
+                    set_meta_keys,
                     self.subtask.subtask_id,
                 )
                 f.set_result(None)
 
             try:
-                # Since we don't delete chunk data on this worker, we need to ensure chunk meta are recorded
-                # in meta service, so that `processor.decref_stage` can delete the chunk data finally.
+                # Since we don't delete chunk data on this worker,
+                # we need to ensure chunk meta are recorded
+                # in meta service, so that `processor.decref_stage`
+                # can delete the chunk data finally.
                 await asyncio.shield(set_chunks_meta())
             except asyncio.CancelledError:  # pragma: no cover
                 await f
@@ -475,7 +464,6 @@ class SubtaskProcessor:
             # store meta
             await self._store_meta(
                 chunk_graph,
-                stored_keys,
                 store_sizes,
                 memory_sizes,
                 data_key_to_object_id,

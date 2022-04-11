@@ -155,10 +155,12 @@ class Coloring:
                 stack = []
                 for succ in self.chunk_graph.iter_successors(chunk):
                     if chunk_to_colors[succ] == chunk_color:
-                        chunk_to_colors[succ] = op_to_colors[
-                            succ.op
-                        ] = self._next_color()
-                        stack.extend(self.chunk_graph.successors(succ))
+                        new_color = op_to_colors[succ.op] = self._next_color()
+                        for c in succ.op.outputs:
+                            if c not in self.chunk_graph:  # pragma: no cover
+                                continue
+                            chunk_to_colors[c] = new_color
+                            stack.extend(self.chunk_graph.successors(c))
                 # color the descendants with same color to the new one
                 # the descendants will not be visited more than 2 times
                 while len(stack) > 0:
@@ -177,7 +179,11 @@ class Coloring:
                             node_new_color = node_pred_colors[0]
                         else:
                             node_new_color = self._next_color()
-                        chunk_to_colors[node] = op_to_colors[node.op] = node_new_color
-                        stack.extend(self.chunk_graph.successors(node))
+                        op_to_colors[node.op] = node_new_color
+                        for c in node.op.outputs:
+                            if c not in self.chunk_graph:  # pragma: no cover
+                                continue
+                            chunk_to_colors[c] = node_new_color
+                            stack.extend(self.chunk_graph.successors(c))
 
         return chunk_to_colors

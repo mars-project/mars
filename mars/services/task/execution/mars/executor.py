@@ -22,8 +22,8 @@ from .....core import ChunkGraph
 from .....core.operand import (
     Fetch,
     MapReduceOperand,
-    ShuffleProxy,
     OperandStage,
+    ShuffleProxy,
 )
 from .....lib.aio import alru_cache
 from .....oscar.profiling import (
@@ -41,6 +41,16 @@ from .resource import ResourceEvaluator
 from .stage import TaskStageProcessor
 
 logger = logging.getLogger(__name__)
+
+
+def _get_n_reducer(subtask: Subtask) -> int:
+    return len(
+        [
+            r
+            for r in subtask.chunk_graph
+            if isinstance(r.op, MapReduceOperand) and r.op.stage == OperandStage.reduce
+        ]
+    )
 
 
 @register_executor_cls
@@ -126,7 +136,6 @@ class MarsTaskExecutor(TaskExecutor):
     ):
         available_bands = await self.get_available_band_slots()
         await self._incref_result_tileables()
-        await self._incref_stage(stage_id, subtask_graph, chunk_graph)
         stage_processor = TaskStageProcessor(
             stage_id,
             self._task,
@@ -136,6 +145,7 @@ class MarsTaskExecutor(TaskExecutor):
             self._scheduling_api,
             self._meta_api,
         )
+        await self._incref_stage(stage_processor)
         # Evaluate and initialize subtasks required resource.
         resource_evaluator = ResourceEvaluator(stage_processor)
         resource_evaluator.evaluate()
@@ -318,28 +328,29 @@ class MarsTaskExecutor(TaskExecutor):
             [t.key for t in self._lifecycle_processed_tileables]
         )
 
-    async def _incref_stage(self, stage_id, subtask_graph, chunk_graph):
+    async def _incref_stage(self, stage_processor: "TaskStageProcessor"):
+        subtask_graph = stage_processor.subtask_graph
         incref_chunk_keys = []
         for subtask in subtask_graph:
             # for subtask has successors, incref number of successors
             n = subtask_graph.count_successors(subtask)
             for c in subtask.chunk_graph.results:
                 incref_chunk_keys.extend([c.key] * n)
-            # process reducer, since mapper will generate sub keys
-            # we incref (main_key, sub_key) for reducer
-            for chunk in subtask.chunk_graph:
-                if (
-                    isinstance(chunk.op, MapReduceOperand)
-                    and chunk.op.stage == OperandStage.reduce
-                ):
-                    # reducer
-                    data_keys = chunk.op.get_dependent_data_keys()
-                    incref_chunk_keys.extend(data_keys)
-                    # main key incref as well, to ensure existence of meta
-                    incref_chunk_keys.extend([key[0] for key in data_keys])
-        result_chunks = chunk_graph.result_chunks
+            # process reducer, incref mapper chunks
+            for pre_graph in subtask_graph.iter_predecessors(subtask):
+                for chk in pre_graph.chunk_graph.results:
+                    if isinstance(chk.op, ShuffleProxy):
+                        n_reducer = _get_n_reducer(subtask)
+                        incref_chunk_keys.extend(
+                            [map_chunk.key for map_chunk in chk.inputs] * n_reducer
+                        )
+        result_chunks = stage_processor.chunk_graph.result_chunks
         incref_chunk_keys.extend([c.key for c in result_chunks])
-        logger.debug("Incref chunks for stage %s: %s", stage_id, incref_chunk_keys)
+        logger.debug(
+            "Incref chunks for stage %s: %s",
+            stage_processor.stage_id,
+            incref_chunk_keys,
+        )
         await self._lifecycle_api.incref_chunks(incref_chunk_keys)
 
     @classmethod
@@ -358,19 +369,6 @@ class MarsTaskExecutor(TaskExecutor):
                     stage_processor.decref_subtask.add(subtask.subtask_id)
                     # if subtask not executed, rollback incref of predecessors
                     for inp_subtask in subtask_graph.predecessors(subtask):
-                        for result_chunk in inp_subtask.chunk_graph.results:
-                            # for reducer chunk, decref mapper chunks
-                            if isinstance(result_chunk.op, ShuffleProxy):
-                                for chunk in subtask.chunk_graph:
-                                    if (
-                                        isinstance(chunk.op, MapReduceOperand)
-                                        and chunk.op.stage == OperandStage.reduce
-                                    ):
-                                        data_keys = chunk.op.get_dependent_data_keys()
-                                        decref_chunk_keys.extend(data_keys)
-                                        decref_chunk_keys.extend(
-                                            [key[0] for key in data_keys]
-                                        )
                         decref_chunk_keys.extend(
                             [c.key for c in inp_subtask.chunk_graph.results]
                         )
@@ -413,15 +411,10 @@ class MarsTaskExecutor(TaskExecutor):
             for result_chunk in in_subtask.chunk_graph.results:
                 # for reducer chunk, decref mapper chunks
                 if isinstance(result_chunk.op, ShuffleProxy):
-                    for chunk in subtask.chunk_graph:
-                        if (
-                            isinstance(chunk.op, MapReduceOperand)
-                            and chunk.op.stage == OperandStage.reduce
-                        ):
-                            data_keys = chunk.op.get_dependent_data_keys()
-                            decref_chunk_keys.extend(data_keys)
-                            # decref main key as well
-                            decref_chunk_keys.extend([key[0] for key in data_keys])
+                    n_reducer = _get_n_reducer(subtask)
+                    decref_chunk_keys.extend(
+                        [inp.key for inp in result_chunk.inputs] * n_reducer
+                    )
                 decref_chunk_keys.append(result_chunk.key)
         logger.debug(
             "Decref chunks %s when subtask %s finish",
