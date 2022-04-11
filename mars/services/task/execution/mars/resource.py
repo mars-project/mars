@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....resource import Resource
+from .....resource import Resource
 from .stage import TaskStageProcessor
 
 
