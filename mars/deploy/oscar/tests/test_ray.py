@@ -674,6 +674,7 @@ def test_init_metrics_on_ray(ray_start_regular, create_cluster):
     assert client.session
     from ....metrics import api
 
+    assert client._cluster._config.get("metrics", {}).get("backend") == "ray"
     assert api._metric_backend == "ray"
 
     client.session.stop_server()

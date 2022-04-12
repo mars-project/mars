@@ -528,6 +528,7 @@ class RayCluster:
                     modules=get_third_party_modules_from_config(
                         self._config, NodeRole.WORKER
                     ),
+                    metrics=self._config.get("metrics", {}),
                 )
             )
             for addr in worker_addresses
