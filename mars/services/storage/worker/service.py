@@ -36,9 +36,31 @@ class StorageWorkerService(AbstractService):
         backends = storage_configs.get("backends")
         options = storage_configs.get("default_config", dict())
         transfer_block_size = options.get("transfer_block_size", None)
-        backend_config = {
-            backend: storage_configs.get(backend, dict()) for backend in backends
-        }
+        backend_config = {}
+        for backend in backends:
+            storage_config = storage_configs.get(backend, dict())
+            backend_config[backend] = storage_config
+            if backend == "ray":
+                # Specify supervisor as ray owner will be costly when mars do shuffle which there will be m*n objects
+                # need to specify supervisor as owner, so enable it only for auto scale to avoid data lost when scale
+                # in. This limit can be removed when ray support ownership transfer.
+                if (
+                    self._config.get("scheduling", {})
+                    .get("autoscale", {})
+                    .get("enabled", False)
+                ):
+                    try:
+                        from ...cluster.api import ClusterAPI
+
+                        cluster_api = await ClusterAPI.create(self._address)
+                        supervisor_address = (await cluster_api.get_supervisors())[0]
+                        # ray storage backend need to set supervisor as owner to avoid data lost when worker dies.
+                        owner = supervisor_address
+                    except mo.ActorNotExist:
+                        owner = self._address
+                else:
+                    owner = self._address
+                storage_config["owner"] = owner
 
         await mo.create_actor(
             StorageManagerActor,

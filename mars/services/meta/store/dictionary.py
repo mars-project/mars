@@ -15,9 +15,10 @@
 import functools
 from collections import defaultdict
 from dataclasses import fields as dataclass_fields
-from typing import Dict, List, Set
+from typing import Dict, List
 
 from .... import oscar as mo
+from ....lib.ordered_set import OrderedSet
 from ....utils import implements
 from ....typing import BandType
 from ..core import _CommonMeta, _ChunkMeta
@@ -36,7 +37,11 @@ class DictMetaStore(AbstractMetaStore):
     def __init__(self, session_id: str, **kw):
         super().__init__(session_id)
         self._store: Dict[str, _CommonMeta] = dict()
-        self._band_chunks: Dict[BandType, Set[str]] = defaultdict(set)
+        # For shuffle data, we use main key to record them, here uses
+        # OrderedSet to make sure that the first band in set stores complete
+        # data, other bands may only have part data, so when reducers fetch data,
+        # we always choose the first band to avoid unexpected absence.
+        self._band_chunks: Dict[BandType, OrderedSet[str]] = defaultdict(OrderedSet)
         if kw:  # pragma: no cover
             raise TypeError(f"Keyword arguments {kw!r} cannot be recognized.")
 
@@ -119,7 +124,7 @@ class DictMetaStore(AbstractMetaStore):
     def _add_chunk_bands(self, object_id: str, bands: List[BandType]):
         meta = self._store[object_id]
         assert isinstance(meta, _ChunkMeta)
-        meta.bands = list(set(meta.bands) | set(bands))
+        meta.bands = list(OrderedSet(meta.bands) | OrderedSet(bands))
         for band in bands:
             self._band_chunks[band].add(object_id)
 
@@ -136,7 +141,7 @@ class DictMetaStore(AbstractMetaStore):
     def _remove_chunk_bands(self, object_id: str, bands: List[BandType]):
         meta = self._store[object_id]
         assert isinstance(meta, _ChunkMeta)
-        meta.bands = list(set(meta.bands) - set(bands))
+        meta.bands = list(OrderedSet(meta.bands) - OrderedSet(bands))
         for band in bands:
             self._band_chunks[band].remove(object_id)
 

@@ -492,6 +492,16 @@ def test_dataframe_getitem_bool(setup):
     result = r.execute().fetch()
     pd.testing.assert_frame_equal(result, data[data["c1"] > 0.5])
 
+    # test input data with unknown shape
+    data = pd.DataFrame(np.random.rand(10, 2), columns=["c1", "c2"])
+    mask_data = data[data["c2"] > 0.5]
+    df = md.DataFrame(data, chunk_size=2)
+    s = md.Series(mask_data["c1"] > 0.5, chunk_size=2)
+    df1 = df[df["c2"] > 0.5]
+    s._index_value = df1.index_value
+    r = df1[s]
+    pd.testing.assert_frame_equal(r.execute().fetch(), mask_data[mask_data["c1"] > 0.5])
+
 
 def test_dataframe_getitem_using_attr(setup):
     data = pd.DataFrame(

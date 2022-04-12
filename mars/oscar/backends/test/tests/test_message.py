@@ -42,10 +42,14 @@ def test_as_instanceof_cause():
             assert type(cause) is type(cause1)
             raise cause
         except Exception as e1:
+            e1 = pickle.loads(pickle.dumps(e1))
             # Check cause exception.
             assert isinstance(e1, CustomException)
             assert e1.i == value
+            assert e1.address == fake_address
+            assert e1.pid == fake_pid
             assert fake_address in str(e1)
+            assert "Custom Exception" in str(e1)
             assert str(fake_pid) in str(e1)
             em1 = ErrorMessage(
                 b"Fake message id",
@@ -58,8 +62,12 @@ def test_as_instanceof_cause():
             try:
                 raise em1.as_instanceof_cause()
             except Exception as e2:
+                e2 = pickle.loads(pickle.dumps(e2))
                 # Check recursive cause exception.
                 assert isinstance(e2, CustomException)
                 assert e2.i == value
+                assert e2.address == fake_address
+                assert e2.pid == fake_pid
+                assert str(e2).count("Custom Exception") == 1
                 assert str(e2).count(fake_address) == 1
                 assert str(e2).count(str(fake_pid)) == 1

@@ -266,7 +266,10 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.INDEX
 
     col_names = AnyField("col_names", default=None)
+
+    # for bool index
     mask = AnyField("mask", default=None)
+    identical_index = BoolField("identical_index")
 
     def __init__(self, output_types=None, **kw):
         output_types = output_types or [OutputType.series]
@@ -354,7 +357,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             return (yield from cls.tile_with_mask(op))
 
     @classmethod
-    def tile_with_mask(cls, op):
+    def tile_with_mask(cls, op: "DataFrameIndex"):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
 
@@ -363,15 +366,16 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(op.mask, (SERIES_TYPE, DATAFRAME_TYPE, TENSOR_TYPE)):
             mask = op.inputs[1]
 
-            if (
-                hasattr(mask, "index_value")
-                and mask.ndim == 1
-                and in_df.index_value.key == mask.index_value.key
-            ):
+            if hasattr(mask, "index_value") and mask.ndim == 1 and op.identical_index:
+                if has_unknown_shape(in_df, mask):
+                    yield
                 nsplits = ((np.nan,) * in_df.chunk_shape[0], in_df.nsplits[1])
                 out_shape = in_df.chunk_shape
                 df_chunks = in_df.chunks
-                mask_chunks = mask.chunks
+                aligned_mask = yield from recursive_tile(
+                    mask.rechunk(in_df.nsplits[: mask.ndim])
+                )
+                mask_chunks = aligned_mask.chunks
             elif isinstance(mask, SERIES_TYPE):
                 nsplits, out_shape, df_chunks, mask_chunks = align_dataframe_series(
                     in_df, mask, axis="index"
@@ -553,7 +557,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             return new_op.new_dataframes(op.inputs, kws=[params])
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "DataFrameIndex"):
         if op.mask is None:
             df = ctx[op.inputs[0].key]
             ctx[op.outputs[0].key] = df[op.col_names]
@@ -565,7 +569,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                 mask = ctx[op.inputs[1].key]
             else:
                 mask = op.mask
-            if hasattr(mask, "reindex_like"):
+            if hasattr(mask, "reindex_like") and not op.identical_index:
                 mask = mask.reindex_like(df).fillna(False)
             ctx[op.outputs[0].key] = df[mask]
 
@@ -598,7 +602,15 @@ def dataframe_getitem(df, item):
         op = DataFrameIndex(col_names=item, output_types=[OutputType.dataframe])
     elif isinstance(item, _list_like_types) or hasattr(item, "dtypes"):
         # NB: don't enforce the dtype of `item` to be `bool` since it may be unknown
-        op = DataFrameIndex(mask=item, output_types=[OutputType.dataframe])
+        if isinstance(item, DATAFRAME_TYPE + SERIES_TYPE):
+            identical_index = df.index_value.key == item.index_value.key
+        else:
+            identical_index = False
+        op = DataFrameIndex(
+            mask=item,
+            identical_index=identical_index,
+            output_types=[OutputType.dataframe],
+        )
     else:
         if item not in columns_set:
             raise KeyError(f"{item} not in columns")

@@ -17,17 +17,17 @@ import logging
 import time
 from typing import Dict, List
 
-from .... import oscar as mo
-from ....core import ChunkGraph
-from ....core.operand import Fuse
-from ....metrics import Metrics
-from ....optimization.logical import OptimizationRecords
-from ....typing import BandType, TileableType
-from ....utils import get_params_fields
-from ...scheduling import SchedulingAPI
-from ...subtask import Subtask, SubtaskGraph, SubtaskResult, SubtaskStatus
-from ...meta import MetaAPI
-from ..core import Task, TaskResult, TaskStatus
+from ..... import oscar as mo
+from .....core import ChunkGraph
+from .....core.operand import Fuse
+from .....metrics import Metrics
+from .....typing import BandType
+from .....utils import get_params_fields
+from ....meta import MetaAPI
+from ....scheduling import SchedulingAPI
+from ....subtask import Subtask, SubtaskGraph, SubtaskResult, SubtaskStatus
+from ....task.core import Task, TaskResult, TaskStatus
+from ..api import ExecutionChunkResult
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +40,6 @@ class TaskStageProcessor:
         chunk_graph: ChunkGraph,
         subtask_graph: SubtaskGraph,
         bands: List[BandType],
-        tileable_to_subtasks: Dict[TileableType, List[Subtask]],
-        tileable_id_to_tileable: Dict[str, TileableType],
-        optimization_records: OptimizationRecords,
         scheduling_api: SchedulingAPI,
         meta_api: MetaAPI,
     ):
@@ -50,10 +47,7 @@ class TaskStageProcessor:
         self.task = task
         self.chunk_graph = chunk_graph
         self.subtask_graph = subtask_graph
-        self.tileable_to_subtasks = tileable_to_subtasks
-        self.tileable_id_to_tileable = tileable_id_to_tileable
         self._bands = bands
-        self._optimization_records = optimization_records
 
         # APIs
         self._scheduling_api = scheduling_api
@@ -108,9 +102,10 @@ class TaskStageProcessor:
             subtasks, [subtask.priority for subtask in subtasks]
         )
 
-    async def _update_chunks_meta(self, chunk_graph: ChunkGraph):
+    async def _get_stage_result(self):
+        execution_chunk_results = []
         get_meta = []
-        chunks = chunk_graph.result_chunks
+        chunks = self.chunk_graph.result_chunks
         for chunk in chunks:
             if isinstance(chunk.op, Fuse):
                 chunk = chunk.chunk
@@ -120,10 +115,10 @@ class TaskStageProcessor:
             )
         metas = await self._meta_api.get_chunk_meta.batch(*get_meta)
         for chunk, meta in zip(chunks, metas):
-            chunk.params = meta
-            original_chunk = self._optimization_records.get_original_entity(chunk)
-            if original_chunk is not None:
-                original_chunk.params = chunk.params
+            execution_chunk_results.append(
+                ExecutionChunkResult(key=chunk.key, meta=meta, context=None)
+            )
+        return execution_chunk_results
 
     def _schedule_done(self):
         self._done.set()
@@ -141,11 +136,6 @@ class TaskStageProcessor:
         )
 
         if all_done or error_or_cancelled:
-            # terminated
-            if all_done and not error_or_cancelled:
-                # subtask graph finished, update result chunks' meta
-                await self._update_chunks_meta(self.chunk_graph)
-
             # tell scheduling to finish subtasks
             await self._scheduling_api.finish_subtasks(
                 [result.subtask_id], bands=[band], schedule_next=not error_or_cancelled
@@ -226,7 +216,7 @@ class TaskStageProcessor:
             # no subtask to schedule, set status to done
             self._schedule_done()
             self.result.status = TaskStatus.terminated
-            return
+            return []
 
         # schedule independent subtasks
         indep_subtasks = list(self.subtask_graph.iter_indep())
@@ -234,6 +224,12 @@ class TaskStageProcessor:
 
         # wait for completion
         await self._done.wait()
+        if self.error_or_cancelled():
+            if self.result.error is not None:
+                raise self.result.error.with_traceback(self.result.traceback)
+            else:
+                raise asyncio.CancelledError()
+        return await self._get_stage_result()
 
     async def cancel(self):
         logger.info("Start to cancel stage %s of task %s.", self.stage_id, self.task)

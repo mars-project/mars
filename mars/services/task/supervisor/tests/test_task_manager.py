@@ -77,6 +77,7 @@ async def actor_pool():
         await mo.create_actor(
             TaskConfigurationActor,
             dict(),
+            dict(),
             uid=TaskConfigurationActor.default_uid(),
             address=pool.external_address,
         )
@@ -216,6 +217,7 @@ async def test_cancel_task(actor_pool):
 
     with Timer() as timer:
         await manager.cancel_task(task_id)
+        await manager.wait_task(task_id)
         result = await manager.get_task_result(task_id)
         assert result.status == TaskStatus.terminated
 
