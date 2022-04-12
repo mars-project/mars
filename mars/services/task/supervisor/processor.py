@@ -21,22 +21,26 @@ import tempfile
 import time
 from collections import defaultdict
 from functools import reduce
-from typing import Dict, Iterator, Optional, Type, List
+from typing import Dict, Iterator, Optional, Set, Type, List
 
 from .... import oscar as mo
 from ....config import Config
 from ....core import ChunkGraph, TileableGraph
 from ....core.operand import Fetch, FetchShuffle
+from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from ....metrics import Metrics
+from ....optimization.logical import OptimizationRecords
 from ....oscar.profiling import (
     ProfilingData,
     MARS_ENABLE_PROFILING,
 )
-from ....typing import TileableType
-from ....utils import build_fetch, Timer
+from ....tensor.core import TENSOR_TYPE
+from ....typing import ChunkType, TileableType
+from ....utils import build_fetch, Timer, get_params_fields
+from ...meta.api import WorkerMetaAPI
 from ...subtask import SubtaskResult, SubtaskStatus, SubtaskGraph, Subtask
 from ..core import Task, TaskResult, TaskStatus, new_task_id
-from ..execution.api import TaskExecutor
+from ..execution.api import TaskExecutor, ExecutionChunkResult
 from .preprocessor import TaskPreprocessor
 
 logger = logging.getLogger(__name__)
@@ -47,6 +51,7 @@ MARS_ENABLE_DUMPING_SUBTASK_GRAPH = int(os.environ.get("MARS_DUMP_SUBTASK_GRAPH"
 class TaskProcessor:
     _tileable_to_subtasks: Dict[TileableType, List[Subtask]]
     _tileable_id_to_tileable: Dict[str, TileableType]
+    _meta_updated_tileables: Set[TileableType]
 
     def __init__(
         self,
@@ -57,9 +62,11 @@ class TaskProcessor:
         self._task = task
         self._preprocessor = preprocessor
         self._executor = executor
+        self._session_id = self._task.session_id
 
         self._tileable_to_subtasks = dict()
         self._tileable_id_to_tileable = dict()
+        self._meta_updated_tileables = set()
 
         if MARS_ENABLE_PROFILING:
             ProfilingData.init(task.task_id)
@@ -165,9 +172,15 @@ class TaskProcessor:
                     },
                 )
                 yield stage_id, stage_profiler, chunk_graph
+
             stage_profiler.set("total", stage_timer.duration)
 
-    async def _process_stage_chunk_graph(self, stage_id, stage_profiler, chunk_graph):
+    async def _process_stage_chunk_graph(
+        self,
+        stage_id: str,
+        stage_profiler,
+        chunk_graph: ChunkGraph,
+    ):
         available_bands = await self._executor.get_available_band_slots()
         with Timer() as timer:
             subtask_graph = await asyncio.to_thread(
@@ -207,31 +220,182 @@ class TaskProcessor:
             )
         stage_profiler.set("run", timer.duration)
 
+        self._preprocessor.post_chunk_graph_execution()
         if self._preprocessor.chunk_optimization_records_list:
             optimization_records = self._preprocessor.chunk_optimization_records_list[
                 -1
             ]
         else:
             optimization_records = None
-        self._update_chunks_meta(
-            chunk_graph.result_chunks,
-            execution_chunk_results,
-            optimization_records,
+        await self._update_meta(
+            chunk_graph, execution_chunk_results, optimization_records
         )
 
-    @staticmethod
-    def _update_chunks_meta(
-        chunk_graph_results, execution_chunk_results, optimization_records
+    async def _update_meta(
+        self,
+        chunk_graph: ChunkGraph,
+        execution_chunk_results: List[ExecutionChunkResult],
+        optimization_records: OptimizationRecords,
     ):
-        for chunk, execution_chunk_result in zip(
-            chunk_graph_results, execution_chunk_results
+        chunk_to_band = {
+            c: r.meta["bands"][0][0]
+            for c, r in zip(chunk_graph.results, execution_chunk_results)
+        }
+        update_meta_chunks = set(chunk_graph.result_chunks)
+        update_meta_tileables = dict()
+
+        updated = self._meta_updated_tileables
+        for tileable in self.tileable_graph:
+            if tileable in updated:
+                continue
+            tiled_tileable = self._preprocessor.tile_context.get(tileable)
+            if tiled_tileable is not None:
+                tileable_chunks = [c.data for c in tiled_tileable.chunks]
+                if any(c not in chunk_to_band for c in tileable_chunks):
+                    continue
+                update_meta_tileables[tiled_tileable] = tileable
+                # we no longer update the chunk meta directly,
+                # we try to update their meta via tileable,
+                # e.g. for DataFrame, chunks (0, 0) and (1, 0)
+                # have the same dtypes_value, thus we only need to update one
+                update_meta_chunks.difference_update(tileable_chunks)
+
+        worker_meta_api_to_chunk_delays = defaultdict(dict)
+        for c in update_meta_chunks:
+            meta_api = await WorkerMetaAPI.create(self._session_id, chunk_to_band[c])
+            call = meta_api.get_chunk_meta.delay(c.key, fields=get_params_fields(c))
+            worker_meta_api_to_chunk_delays[meta_api][c] = call
+        for tileable in update_meta_tileables:
+            chunks = [c.data for c in tileable.chunks]
+            for c, params_fields in zip(chunks, self._get_params_fields(tileable)):
+                meta_api = await WorkerMetaAPI.create(
+                    self._session_id, chunk_to_band[c]
+                )
+                call = meta_api.get_chunk_meta.delay(c.key, fields=params_fields)
+                worker_meta_api_to_chunk_delays[meta_api][c] = call
+        coros = []
+        for worker_meta_api, chunk_delays in worker_meta_api_to_chunk_delays.items():
+            coros.append(worker_meta_api.get_chunk_meta.batch(*chunk_delays.values()))
+        worker_metas = await asyncio.gather(*coros)
+        chunk_to_meta = dict()
+        for chunk_delays, metas in zip(
+            worker_meta_api_to_chunk_delays.values(), worker_metas
         ):
-            chunk.params = execution_chunk_result.meta
+            for c, meta in zip(chunk_delays, metas):
+                chunk_to_meta[c] = meta
+
+        # update meta
+        for c in update_meta_chunks:
+            params = c.params = chunk_to_meta[c]
             original_chunk = (
-                optimization_records and optimization_records.get_original_entity(chunk)
+                optimization_records and optimization_records.get_original_entity(c)
             )
             if original_chunk is not None:
-                original_chunk.params = chunk.params
+                original_chunk.params = params
+
+        # update tileable
+        for tiled, tileable in update_meta_tileables.items():
+            self._update_tileable_meta(tiled, chunk_to_meta, optimization_records)
+            tileable.params = tiled.params
+            updated.add(tileable)
+
+    @classmethod
+    def _get_params_fields(cls, tileable: TileableType):
+        params_fields = []
+        fields = get_params_fields(tileable.chunks[0])
+        if isinstance(tileable, DATAFRAME_TYPE):
+            for c in tileable.chunks:
+                cur_fields = set(fields)
+                if c.index[1] > 0:
+                    # skip fetch index_value for i >= 1 on column axis
+                    cur_fields.remove("index_value")
+                if c.index[0] > 0:
+                    # skip fetch dtypes_value for i >= 1 on index axis
+                    cur_fields.remove("dtypes_value")
+                if c.index[0] > 0 and c.index[1] > 0:
+                    # fetch shape only for i == 0 on index or column axis
+                    cur_fields.remove("shape")
+                params_fields.append(list(cur_fields))
+        elif isinstance(tileable, SERIES_TYPE):
+            for c in tileable.chunks:
+                cur_fields = set(fields)
+                if c.index[0] > 0:
+                    # skip fetch name and dtype for i >= 1
+                    cur_fields.remove("name")
+                    cur_fields.remove("dtype")
+                params_fields.append(list(cur_fields))
+        elif isinstance(tileable, TENSOR_TYPE):
+            for i, c in enumerate(tileable.chunks):
+                cur_fields = set(fields)
+                if all(j > 0 for j in c.index):
+                    cur_fields.remove("shape")
+                if i > 0:
+                    cur_fields.remove("dtype")
+                    cur_fields.remove("order")
+        else:
+            for _ in tileable.chunks:
+                params_fields.append(fields)
+        return params_fields
+
+    def _update_tileable_meta(
+        self,
+        tileable: TileableType,
+        chunk_to_meta: Dict[ChunkType, dict],
+        optimization_records: OptimizationRecords,
+    ):
+        chunks = [c.data for c in tileable.chunks]
+        if isinstance(tileable, DATAFRAME_TYPE):
+            for c in chunks:
+                i, j = c.index
+                meta = chunk_to_meta[c]
+                shape = meta.get("shape")
+                update_shape = shape is None
+                shape = shape if not update_shape else [None, None]
+                if i > 0:
+                    # update dtypes_value
+                    ci0 = tileable.cix[i, 0]
+                    meta["dtypes_value"] = ci0["dtypes_value"]
+                    if update_shape:
+                        shape[1] = ci0.shape[1]
+                if j > 0:
+                    # update index_value
+                    c0j = tileable.cix[0, j]
+                    meta["index_value"] = c0j["index_value"]
+                    if update_shape:
+                        shape[0] = c0j.shape[0]
+                if update_shape:
+                    meta["shape"] = tuple(shape)
+        elif isinstance(tileable, SERIES_TYPE):
+            first_meta = chunk_to_meta[chunks[0]]
+            for c in chunks:
+                i = c.index[0]
+                meta = chunk_to_meta[c]
+                if i > 0:
+                    meta["name"] = first_meta["name"]
+                    meta["dtype"] = first_meta["dtype"]
+        elif isinstance(tileable, TENSOR_TYPE):
+            ndim = tileable.ndim
+            for c in chunks:
+                meta = chunk_to_meta[c]
+                if "shape" not in meta:
+                    shape = []
+                    for i, ind in enumerate(c.index):
+                        ind0 = [0] * ndim
+                        ind0[i] = ind
+                        shape.append(
+                            chunk_to_meta[tileable.cix[tuple(ind0)]]["shape"][i]
+                        )
+                    meta["shape"] = tuple(shape)
+
+        for c in chunks:
+            params = c.params = chunk_to_meta[c]
+            original_chunk = (
+                optimization_records and optimization_records.get_original_entity(c)
+            )
+            if original_chunk is not None:
+                original_chunk.params = params
+
+        tileable.refresh_params()
 
     async def run(self):
         profiling = ProfilingData[self.task_id, "general"]

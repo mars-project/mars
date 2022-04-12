@@ -17,7 +17,7 @@ import logging
 import sys
 import time
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Set, Type
 
 from .... import oscar as mo
 from ....core import ChunkGraph, OperandType, enter_mode
@@ -31,10 +31,10 @@ from ....core.operand import (
 )
 from ....metrics import Metrics
 from ....optimization.physical import optimize
-from ....typing import BandType
+from ....typing import BandType, ChunkType
 from ....utils import get_chunk_key_to_data_keys
 from ...context import ThreadedServiceContext
-from ...meta.api import MetaAPI
+from ...meta.api import MetaAPI, WorkerMetaAPI
 from ...session import SessionAPI
 from ...storage import StorageAPI
 from ...task import TaskAPI, task_options
@@ -49,6 +49,9 @@ class DataStore(dict):
         return getattr(ctx, attr)
 
 
+BASIC_META_FIELDS = ["memory_size", "store_size", "bands", "object_ref"]
+
+
 class SubtaskProcessor:
     _chunk_graph: ChunkGraph
     _chunk_key_to_data_keys: Dict[str, List[str]]
@@ -59,6 +62,7 @@ class SubtaskProcessor:
         session_api: SessionAPI,
         storage_api: StorageAPI,
         meta_api: MetaAPI,
+        worker_meta_api: WorkerMetaAPI,
         band: BandType,
         supervisor_address: str,
         engines: List[str] = None,
@@ -102,6 +106,7 @@ class SubtaskProcessor:
         self._session_api = session_api
         self._storage_api = storage_api
         self._meta_api = meta_api
+        self._worker_meta_api = worker_meta_api
 
         # add metrics
         self._subtask_execution_time = Metrics.gauge(
@@ -365,9 +370,11 @@ class SubtaskProcessor:
         data_key_to_store_size: Dict,
         data_key_to_memory_size: Dict,
         data_key_to_object_id: Dict,
+        update_meta_chunks: Set[ChunkType],
     ):
         # store meta
         set_chunk_metas = []
+        set_worker_chunk_metas = []
         result_data_size = 0
         set_meta_keys = []
         for result_chunk in chunk_graph.result_chunks:
@@ -389,6 +396,20 @@ class SubtaskProcessor:
                 store_size = sum(data_key_to_store_size[k] for k in mapper_keys)
                 memory_size = sum(data_key_to_memory_size[k] for k in mapper_keys)
                 object_ref = [data_key_to_object_id[k] for k in mapper_keys]
+            # for worker, if chunk in update_meta_chunks
+            # save meta including dtypes_value etc, otherwise,
+            # save basic meta only
+            if result_chunk in update_meta_chunks:
+                set_worker_chunk_metas.append(
+                    self._worker_meta_api.set_chunk_meta.delay(
+                        result_chunk,
+                        memory_size=memory_size,
+                        store_size=store_size,
+                        bands=[self._band],
+                        chunk_key=chunk_key,
+                    )
+                )
+            # for supervisor, only save basic meta that is small like memory_size etc
             set_chunk_metas.append(
                 self._meta_api.set_chunk_meta.delay(
                     result_chunk,
@@ -397,6 +418,7 @@ class SubtaskProcessor:
                     bands=[self._band],
                     chunk_key=chunk_key,
                     object_ref=object_ref,
+                    fields=BASIC_META_FIELDS,
                 )
             )
         logger.debug(
@@ -408,7 +430,15 @@ class SubtaskProcessor:
             f = asyncio.get_running_loop().create_future()
 
             async def set_chunks_meta():
-                await self._meta_api.set_chunk_meta.batch(*set_chunk_metas)
+                coros = []
+                if set_worker_chunk_metas:
+                    coros.append(
+                        self._worker_meta_api.set_chunk_meta.batch(
+                            *set_worker_chunk_metas
+                        )
+                    )
+                coros.append(self._meta_api.set_chunk_meta.batch(*set_chunk_metas))
+                await asyncio.gather(*coros)
                 logger.debug(
                     "Finish store chunk metas for data keys: %s, " "subtask id: %s",
                     set_meta_keys,
@@ -441,9 +471,17 @@ class SubtaskProcessor:
         input_keys = None
         unpinned = False
         try:
+            raw_result_chunks = list(self._chunk_graph.result_chunks)
             chunk_graph = optimize(self._chunk_graph, self._engines)
             self._chunk_key_to_data_keys = get_chunk_key_to_data_keys(chunk_graph)
             report_progress = asyncio.create_task(self.report_progress_periodically())
+
+            result_chunk_to_optimized = {
+                c: o for c, o in zip(raw_result_chunks, chunk_graph.result_chunks)
+            }
+            update_meta_chunks = {
+                result_chunk_to_optimized[c] for c in self.subtask.update_meta_chunks
+            }
 
             # load inputs data
             input_keys = await self._load_input_data()
@@ -467,6 +505,7 @@ class SubtaskProcessor:
                 store_sizes,
                 memory_sizes,
                 data_key_to_object_id,
+                update_meta_chunks,
             )
         except asyncio.CancelledError:
             self.result.status = SubtaskStatus.cancelled
@@ -527,6 +566,7 @@ class SubtaskProcessorActor(mo.Actor):
     _session_api: Optional[SessionAPI]
     _storage_api: Optional[StorageAPI]
     _meta_api: Optional[MetaAPI]
+    _worker_meta_api: Optional[WorkerMetaAPI]
     _processor: Optional[SubtaskProcessor]
     _last_processor: Optional[SubtaskProcessor]
     _running_aio_task: Optional[asyncio.Task]
@@ -553,6 +593,7 @@ class SubtaskProcessorActor(mo.Actor):
         self._session_api = None
         self._storage_api = None
         self._meta_api = None
+        self._worker_meta_api = None
 
     @classmethod
     def gen_uid(cls, session_id: str):
@@ -563,10 +604,11 @@ class SubtaskProcessorActor(mo.Actor):
             SessionAPI.create(self._supervisor_address),
             StorageAPI.create(self._session_id, self.address, self._band[1]),
             MetaAPI.create(self._session_id, self._supervisor_address),
+            WorkerMetaAPI.create(self._session_id, self.address),
         ]
         coros = [asyncio.ensure_future(coro) for coro in coros]
         await asyncio.gather(*coros)
-        self._session_api, self._storage_api, self._meta_api = [
+        self._session_api, self._storage_api, self._meta_api, self._worker_meta_api = [
             coro.result() for coro in coros
         ]
 
@@ -595,6 +637,7 @@ class SubtaskProcessorActor(mo.Actor):
             self._session_api,
             self._storage_api,
             self._meta_api,
+            self._worker_meta_api,
             self._band,
             self._supervisor_address,
         )

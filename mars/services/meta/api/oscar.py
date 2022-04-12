@@ -310,3 +310,25 @@ class WorkerMetaAPI(BaseMetaAPI):
             await worker_meta_store_manager_ref.new_session_meta_store(session_id)
         )
         return WorkerMetaAPI(session_id, worker_meta_store_ref)
+
+
+class MockWorkerMetaAPI(WorkerMetaAPI):
+    @classmethod
+    async def create(cls, session_id: str, address: str) -> "WorkerMetaAPI":
+        # create an Actor for mock
+        try:
+            await mo.create_actor(
+                WorkerMetaStoreManagerActor,
+                "dict",
+                dict(),
+                address=address,
+                uid=WorkerMetaStoreManagerActor.default_uid(),
+            )
+        except mo.ActorAlreadyExist:
+            # ignore if actor exists
+            await mo.actor_ref(
+                WorkerMetaStoreManagerActor,
+                address=address,
+                uid=WorkerMetaStoreManagerActor.default_uid(),
+            )
+        return await super().create(session_id, address)

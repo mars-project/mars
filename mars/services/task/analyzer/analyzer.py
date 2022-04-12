@@ -134,6 +134,7 @@ class GraphAnalyzer:
         chunk_graph = ChunkGraph(result_chunks)
         out_of_scope_chunks = []
         chunk_to_copied = self._chunk_to_copied
+        update_meta_chunks = []
         # subtask properties
         band = None
         is_virtual = None
@@ -211,7 +212,11 @@ class GraphAnalyzer:
                 chunk_to_copied[src_chunk] = out_chunk
                 if src_chunk in final_result_chunks_set:
                     if out_chunk not in result_chunks_set:
+                        # add to result chunks
                         result_chunks.append(out_chunk)
+                        # chunk is in the result chunks of full chunk graph
+                        # meta need to be updated
+                        update_meta_chunks.append(out_chunk)
                         result_chunks_set.add(out_chunk)
                 if not is_virtual:
                     # skip adding fetch chunk to chunk graph when op is virtual operand
@@ -220,11 +225,7 @@ class GraphAnalyzer:
                             chunk_graph.add_node(c)
                         chunk_graph.add_edge(c, out_chunk)
         # add chunks with no successors into result chunks
-        result_chunks.extend(
-            c
-            for c in chunk_graph.iter_indep(reverse=True)
-            if c not in result_chunks_set
-        )
+        result_chunks.extend(chunk_graph.iter_indep(reverse=True))
         expect_bands = (
             [self._to_band(expect_worker)]
             if bands_specified
@@ -265,6 +266,7 @@ class GraphAnalyzer:
             virtual=is_virtual,
             priority=priority,
             retryable=retryable,
+            update_meta_chunks=update_meta_chunks,
             extra_config=self._extra_config,
         )
         return subtask, inp_subtasks
