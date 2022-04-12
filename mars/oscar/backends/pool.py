@@ -29,7 +29,13 @@ from ...utils import lazy_import, register_asyncio_task_timeout_detector
 from ..api import Actor
 from ..core import ActorRef, register_local_pool
 from ..debug import record_message_trace, debug_async_timeout
-from ..errors import ActorAlreadyExist, ActorNotExist, ServerClosed, CannotCancelTask
+from ..errors import (
+    ActorAlreadyExist,
+    ActorNotExist,
+    ServerClosed,
+    CannotCancelTask,
+    SendMessageFailed,
+)
 from ..utils import create_actor_ref
 from .allocate_strategy import allocated_type, AddressSpecified
 from .communication import Channel, Server, get_server_type, gen_local_address
@@ -334,6 +340,33 @@ class AbstractActorPool(ABC):
         finally:
             self._process_messages.pop(message_id, None)
 
+    async def _send_channel(
+        self, result: _MessageBase, channel: Channel, resend_failure: bool = True
+    ):
+        try:
+            await channel.send(result)
+        except (ChannelClosed, ConnectionResetError):
+            if not self._stopped.is_set():
+                raise
+        except Exception as ex:
+            logger.exception(
+                "Error when sending message %s from %s to %s",
+                result.message_id.hex(),
+                channel.local_address,
+                channel.dest_address,
+            )
+            if not resend_failure:  # pragma: no cover
+                raise
+
+            with _ErrorProcessor(
+                self.external_address, result.message_id, result.protocol
+            ) as processor:
+                raise SendMessageFailed(
+                    f"Error when sending message {result.message_id.hex()}. "
+                    f"Caused by {ex!r}. See server logs for more details"
+                ) from None
+            await self._send_channel(processor.result, channel, resend_failure=False)
+
     async def process_message(self, message: _MessageBase, channel: Channel):
         handler = self._message_handler[message.message_type]
         with _ErrorProcessor(
@@ -349,11 +382,8 @@ class AbstractActorPool(ABC):
                 processor.result = await self._run_coro(
                     message.message_id, handler(self, message)
                 )
-        try:
-            await channel.send(processor.result)
-        except (ChannelClosed, ConnectionResetError):
-            if not self._stopped.is_set():
-                raise
+
+        await self._send_channel(processor.result, channel)
 
     async def call(self, dest_address: str, message: _MessageBase) -> ResultMessageType:
         return await self._caller.call(self._router, dest_address, message)
