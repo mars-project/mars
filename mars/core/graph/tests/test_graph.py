@@ -110,13 +110,15 @@ def test_to_dot():
         graph_reprs = []
         for n in graph:
             graph_reprs.append(
-                f"{n.op.key} -> {[succ.op.key for succ in graph.successors(n)]}"
+                f"{n.op.key} -> {[succ.key for succ in graph.successors(n)]}"
             )
         logging.error(
-            "Unexpected error in test_to_dot.\ndot = %r\ngraph_repr: %r",
+            "Unexpected error in test_to_dot.\ndot = %r\ngraph_repr = %r",
             dot,
             "\n".join(graph_reprs),
         )
-        missing_prefix = next(str(n.key)[5] not in dot for n in graph)
-        logging.error("Missing prefix %s", missing_prefix)
+        missing_prefix = next(n.key for n in graph if str(n.key)[5] not in dot)
+        logging.error(
+            "Missing prefix %r (type: %s)", missing_prefix, type(missing_prefix)
+        )
         raise

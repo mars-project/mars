@@ -53,6 +53,10 @@ class CannotCancelTask(MarsError):
     pass
 
 
+class SendMessageFailed(MarsError):
+    pass
+
+
 class Return(MarsError):
     def __init__(self, value):
         self.value = value
