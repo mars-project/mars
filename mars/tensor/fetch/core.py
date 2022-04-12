@@ -14,6 +14,7 @@
 
 from ...core import register_fetch_class, OutputType
 from ...core.operand import Fetch, FetchShuffle, FetchMixin
+from ...serialization.core import CachedSerializer
 from ...serialization.serializables import DataTypeField
 from ..operands import TensorOperandMixin
 
@@ -55,5 +56,6 @@ class TensorFetchShuffle(TensorFetchMixin, FetchShuffle):
         return getattr(self, "_dtype", None)
 
 
+CachedSerializer.register(TensorFetchShuffle)
 register_fetch_class(OutputType.tensor, TensorFetch, TensorFetchShuffle)
 register_fetch_class(OutputType.scalar, TensorFetch, TensorFetchShuffle)

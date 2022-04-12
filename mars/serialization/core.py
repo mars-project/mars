@@ -17,6 +17,7 @@ import sys
 import types
 from functools import partial, wraps
 from typing import Any, Dict, List
+from weakref import WeakKeyDictionary
 
 import pandas as pd
 
@@ -300,6 +301,31 @@ class DictSerializer(CollectionSerializer):
             if isinstance(v, Placeholder):
                 v.callbacks.append(partial(_value_replacer, k))
         return ret
+
+
+class CachedSerializer(Serializer):
+    _serialized = WeakKeyDictionary()
+    serializer_name = "cached"
+
+    @buffered
+    def serialize(self, obj, context: Dict):
+        serialized = CachedSerializer._serialized.get(obj)
+        if not serialized:
+            try:
+                CachedSerializer.unregister(type(obj))
+                CachedSerializer._serialized[obj] = serialized = cloudpickle.dumps(serialize(obj))
+            finally:
+                CachedSerializer.register(type(obj))
+        return {"t": type(obj)}, [serialized]
+
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
+        [serialized] = buffers
+        type_ = header["t"]
+        try:
+            CachedSerializer.unregister(type_)
+            return deserialize(*cloudpickle.loads(serialized))
+        finally:
+            CachedSerializer.register(type_)
 
 
 PickleSerializer.register(object)

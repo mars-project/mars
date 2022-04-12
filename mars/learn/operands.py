@@ -28,6 +28,7 @@ from ..dataframe.core import (
     CHUNK_TYPE as DATAFRAME_CHUNK_TYPE,
 )
 from ..dataframe.operands import DataFrameOperandMixin, DataFrameFuseChunk
+from ..serialization.core import CachedSerializer
 
 
 LearnOperand = Operand
@@ -89,3 +90,6 @@ class LearnShuffleProxy(ShuffleProxy, LearnOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         pass
+
+
+CachedSerializer.register(LearnShuffleProxy)

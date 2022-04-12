@@ -14,6 +14,7 @@
 
 from ...core import OutputType, register_fetch_class
 from ...core.operand import Fetch, FetchShuffle, FetchMixin
+from ...serialization.core import CachedSerializer
 from ...serialization.serializables import FieldTypes, TupleField
 from ...utils import on_serialize_shape, on_deserialize_shape
 from ..operands import DataFrameOperandMixin
@@ -61,6 +62,7 @@ class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
         super().__init__(_output_types=output_types, **kw)
 
 
+CachedSerializer.register(DataFrameFetchShuffle)
 register_fetch_class(OutputType.dataframe, DataFrameFetch, DataFrameFetchShuffle)
 register_fetch_class(
     OutputType.dataframe_groupby, DataFrameFetch, DataFrameFetchShuffle

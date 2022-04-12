@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..serialization.serializables import DataTypeField
 from ..core import OutputType
 from ..core.operand import (
     Operand,
@@ -22,6 +21,8 @@ from ..core.operand import (
     MapReduceOperand,
     Fuse,
 )
+from ..serialization.core import CachedSerializer
+from ..serialization.serializables import DataTypeField
 from ..utils import calc_nsplits
 
 
@@ -118,6 +119,9 @@ class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         pass
+
+
+CachedSerializer.register(TensorShuffleProxy)
 
 
 class TensorMapReduceOperand(MapReduceOperand):
