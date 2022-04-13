@@ -92,3 +92,9 @@ mars/services/web/static
 
 # docs
 docs/source/savefig/
+
+# Unit / Performance Testing #
+##############################
+asv_bench/env/
+asv_bench/html/
+asv_bench/results/
