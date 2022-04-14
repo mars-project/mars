@@ -504,7 +504,11 @@ def build_fetch_chunk(
 
         # Make list weak referencable so we can cache serialization for it without preventing it from gc.
         class _List(list):
-            pass
+            def __eq__(self, other):
+                return id(other) == id(self)
+
+            def __hash__(self):
+                return object.__hash__(self)
 
         source_keys, source_idxes, source_mappers = _List(), _List(), _List()
         for pinp in chunk.inputs:
