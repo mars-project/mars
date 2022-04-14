@@ -12,11 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass, field
 from functools import partial
 from typing import Any, Dict, Generator, List, Type, Tuple
+from weakref import WeakKeyDictionary
 
 from ..core import Serializer, Placeholder, buffered
-from .field import Field, OneOfField
+from ...utils import dataslots
+from .field import Field, OneOfField, AbstractFieldType
+from .field_type import (
+    PrimitiveFieldType,
+    ListType,
+    TupleType,
+    DtypeType,
+    DatetimeType,
+    TimedeltaType,
+    FunctionType,
+    NamedtupleType,
+    TZInfoType,
+)
 
 
 class SerializableMeta(type):
@@ -49,7 +63,8 @@ class SerializableMeta(type):
 
 
 class Serializable(metaclass=SerializableMeta):
-    __slots__ = ()
+    __slots__ = ("__weakref__",)
+    _cache_serialize = True
 
     _FIELDS: Dict[str, Field]
     _FIELD_VALUES: Dict[str, Any]
@@ -77,18 +92,49 @@ class Serializable(metaclass=SerializableMeta):
         return copied
 
 
+_serialize_with_pickle_field_types = (
+    PrimitiveFieldType,
+    DtypeType,
+    DatetimeType,
+    TimedeltaType,
+    FunctionType,
+    NamedtupleType,
+    TZInfoType,
+)
+
+
+def _serialize_with_pickle(field_type: AbstractFieldType) -> bool:
+    if isinstance(field_type, _serialize_with_pickle_field_types):
+        return True
+    if isinstance(field_type, (ListType, TupleType)):
+        if all(
+            _serialize_with_pickle(element_type) or element_type is Ellipsis
+            for element_type in field_type.element_types
+        ):
+            return True
+    return False
+
+
+@dataslots
+@dataclass
+class _PickleObj:
+    keys: list = field(default_factory=list)
+    values: list = field(default_factory=list)
+
+
 class SerializableSerializer(Serializer):
     """
     Leverage DictSerializer to perform serde.
     """
 
     serializer_name = "serializable"
+    _cached = WeakKeyDictionary()
 
     @classmethod
-    def _get_tag_to_values(cls, obj: Serializable):
+    def _get_tag_to_field_values(cls, obj: Serializable):
         fields = obj._FIELDS
         attr_to_values = obj._FIELD_VALUES
-        tag_to_values = dict()
+        tag_to_field_values = dict()
 
         for field in fields.values():
             tag = field.tag
@@ -99,26 +145,48 @@ class SerializableSerializer(Serializer):
                 continue
             if field.on_serialize:
                 value = field.on_serialize(value)
-            tag_to_values[tag] = value
+            tag_to_field_values[tag] = (field, value)
 
-        return tag_to_values
+        return tag_to_field_values
 
     @buffered
     def serialize(self, obj: Serializable, context: Dict):
-        tag_to_values = self._get_tag_to_values(obj)
+        tag_to_values = self._get_tag_to_field_values(obj)
 
-        keys = [None] * len(tag_to_values)
-        value_headers = [None] * len(tag_to_values)
-        value_sizes = [0] * len(tag_to_values)
+        value_headers = []
+        value_keys = []
+        value_sizes = []
         value_buffers = []
-        for idx, (key, val) in enumerate(tag_to_values.items()):
-            keys[idx] = key
-            value_headers[idx], val_buf = yield val
-            value_sizes[idx] = len(val_buf)
-            value_buffers.extend(val_buf)
+        pickle_obj = cached_pickle_obj = None
+        try:
+            cached_pickle_obj = SerializableSerializer._cached[obj]
+            is_cached = True
+        except KeyError:
+            pickle_obj = _PickleObj()
+            is_cached = False
+        for key, (field, val) in tag_to_values.items():
+            if _serialize_with_pickle(field.field_type):
+                if not is_cached:
+                    pickle_obj.keys.append(key)
+                    pickle_obj.values.append(val)
+            else:
+                value_keys.append(key)
+                value_header, val_buf = yield val
+                value_headers.append(value_header)
+                value_sizes.append(len(val_buf))
+                value_buffers.extend(val_buf)
+        if not is_cached:
+            pickled_header, pickled = yield pickle_obj
+            if type(obj)._cache_serialize:
+                SerializableSerializer._cached[obj] = (pickled_header, pickled)
+        else:
+            pickled_header, pickled = cached_pickle_obj
+        value_headers.append(pickled_header)
+        value_sizes.append(len(pickled))
+        value_buffers.extend(pickled)
 
         header = {
-            "keys": keys,
+            "value_keys": value_keys,
             "value_headers": value_headers,
             "value_sizes": value_sizes,
             "class": type(obj),
@@ -132,14 +200,21 @@ class SerializableSerializer(Serializer):
 
         tag_to_values = dict()
         pos = 0
-        for key, value_header, value_size in zip(
-            header["keys"], header["value_headers"], header["value_sizes"]
+        for value_key, value_header, value_size in zip(
+            header["value_keys"], header["value_headers"], header["value_sizes"]
         ):
-            tag_to_values[key] = (
+            tag_to_values[value_key] = (
                 yield value_header,
                 buffers[pos : pos + value_size],
             )  # noqa: E999
             pos += value_size
+        pickled_size = header["value_sizes"][-1]
+        pickle_obj = (
+            yield header["value_headers"][-1],
+            buffers[pos : pos + pickled_size],
+        )
+        for k, v in zip(pickle_obj.keys, pickle_obj.values):
+            tag_to_values[k] = v
 
         attr_to_values = dict()
         for field in obj_class._FIELDS.values():

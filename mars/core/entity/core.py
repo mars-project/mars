@@ -23,7 +23,7 @@ from ..base import Base
 
 
 class EntityData(Base):
-    __slots__ = "__weakref__", "_siblings"
+    __slots__ = ("_siblings",)
     type_name = None
 
     # required fields

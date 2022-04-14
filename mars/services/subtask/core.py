@@ -154,6 +154,8 @@ class Subtask(Serializable):
 
 
 class SubtaskResult(Serializable):
+    _cache_serialize = False
+
     subtask_id: str = StringField("subtask_id")
     session_id: str = StringField("session_id")
     task_id: str = StringField("task_id")

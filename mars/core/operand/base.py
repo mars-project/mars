@@ -161,7 +161,7 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
     which should be the :class:`mars.tensor.core.TensorData`, :class:`mars.tensor.core.ChunkData` etc.
     """
 
-    __slots__ = ("__weakref__",)
+    __slots__ = ()
     attr_tag = "attr"
     _init_update_key_ = False
     _output_type_ = None
@@ -328,10 +328,11 @@ class OperandSerializer(SerializableSerializer):
     serializer_name = "operand"
 
     @classmethod
-    def _get_tag_to_values(cls, obj: Operand):
-        tag_to_values = super()._get_tag_to_values(obj)
+    def _get_tag_to_field_values(cls, obj: Operand):
+        tag_to_values = super()._get_tag_to_field_values(obj)
         # outputs are weak-refs which are not pickle-able
-        tag_to_values["outputs"] = [out_ref() for out_ref in tag_to_values["outputs"]]
+        field, outputs = tag_to_values["outputs"]
+        tag_to_values["outputs"] = field, [out_ref() for out_ref in outputs]
         return tag_to_values
 
     def deserialize(self, header: Dict, buffers: List, context: Dict) -> Operand:

@@ -194,7 +194,7 @@ class KeyType(SingletonFieldType):
 
     @property
     def type_name(self) -> str:
-        return "dtype"
+        return "key"
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
@@ -353,6 +353,10 @@ class _CollectionType(AbstractFieldType, metaclass=ABCMeta):
         self._field_types = field_types
         if len(field_types) == 0:
             self._field_types = (AnyType(), Ellipsis)
+
+    @property
+    def element_types(self):
+        return self._field_types
 
     @property
     def name(self) -> str:

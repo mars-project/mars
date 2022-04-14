@@ -70,6 +70,8 @@ class Task(Serializable):
 
 
 class TaskResult(Serializable):
+    _cache_serialize = False
+
     task_id: str = StringField("task_id")
     session_id: str = StringField("session_id")
     stage_id: str = StringField("stage_id")
