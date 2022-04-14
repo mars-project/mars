@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import datetime
 import inspect
 import sys
 import types
@@ -38,6 +38,7 @@ BUFFER_PICKLE_PROTOCOL = max(pickle.DEFAULT_PROTOCOL, 5)
 _PANDAS_HAS_MGR = hasattr(pd.Series([0]), "_mgr")
 
 
+_basic_types = {str, int, float, datetime.datetime, datetime.date}
 _serial_dispatcher = TypeDispatcher()
 _deserializers = dict()
 
@@ -73,6 +74,10 @@ def buffered(func):
             return func(self, obj, context)
 
     return wrapped
+
+
+def is_basic_type(t: type):
+    return t in _basic_types
 
 
 def pickle_buffers(obj):
