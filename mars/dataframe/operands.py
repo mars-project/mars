@@ -25,7 +25,6 @@ from ..core.operand import (
     ShuffleProxy,
     FuseChunkMixin,
 )
-from ..serialization.core import CachedSerializer
 from ..tensor.core import TENSOR_TYPE
 from ..tensor.operands import TensorOperandMixin
 from ..utils import calc_nsplits
@@ -446,9 +445,6 @@ class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         pass
-
-
-CachedSerializer.register(DataFrameShuffleProxy)
 
 
 class DataFrameFuseChunkMixin(FuseChunkMixin, DataFrameOperandMixin):

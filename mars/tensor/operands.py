@@ -21,7 +21,6 @@ from ..core.operand import (
     MapReduceOperand,
     Fuse,
 )
-from ..serialization.core import CachedSerializer
 from ..serialization.serializables import DataTypeField
 from ..utils import calc_nsplits
 
@@ -119,9 +118,6 @@ class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         pass
-
-
-CachedSerializer.register(TensorShuffleProxy)
 
 
 class TensorMapReduceOperand(MapReduceOperand):

@@ -303,29 +303,14 @@ class DictSerializer(CollectionSerializer):
         return ret
 
 
-class CachedSerializer(Serializer):
-    _serialized = WeakKeyDictionary()
-    serializer_name = "cached"
+_cached_pickle_serialized = WeakKeyDictionary()
 
-    @buffered
-    def serialize(self, obj, context: Dict):
-        serialized = CachedSerializer._serialized.get(obj)
-        if not serialized:
-            try:
-                CachedSerializer.unregister(type(obj))
-                CachedSerializer._serialized[obj] = serialized = cloudpickle.dumps(serialize(obj))
-            finally:
-                CachedSerializer.register(type(obj))
-        return {"t": type(obj)}, [serialized]
 
-    def deserialize(self, header: Dict, buffers: List, context: Dict):
-        [serialized] = buffers
-        type_ = header["t"]
-        try:
-            CachedSerializer.unregister(type_)
-            return deserialize(*cloudpickle.loads(serialized))
-        finally:
-            CachedSerializer.register(type_)
+def cached_pickle_dumps(obj):
+    serialized = _cached_pickle_serialized.get(obj)
+    if serialized is None:
+        _cached_pickle_serialized[obj] = serialized = cloudpickle.dumps(obj)
+    return serialized
 
 
 PickleSerializer.register(object)
