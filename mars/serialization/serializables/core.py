@@ -158,9 +158,14 @@ class SerializableSerializer(Serializer):
         value_sizes = []
         value_buffers = []
         pickle_obj = cached_pickle_obj = None
+        need_cache = type(obj)._cache_serialize
         try:
             cached_pickle_obj = SerializableSerializer._cached[obj]
             is_cached = True
+        except TypeError:
+            pickle_obj = _PickleObj()
+            is_cached = False
+            need_cache = False
         except KeyError:
             pickle_obj = _PickleObj()
             is_cached = False
@@ -177,7 +182,7 @@ class SerializableSerializer(Serializer):
                 value_buffers.extend(val_buf)
         if not is_cached:
             pickled_header, pickled = yield pickle_obj
-            if type(obj)._cache_serialize:
+            if need_cache:
                 SerializableSerializer._cached[obj] = (pickled_header, pickled)
         else:
             pickled_header, pickled = cached_pickle_obj
