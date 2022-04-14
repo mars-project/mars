@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import datetime
+
 import inspect
 import sys
 import types
+import typing
 from functools import partial, wraps
 from typing import Any, Dict, List
 from weakref import WeakKeyDictionary
@@ -74,21 +75,9 @@ def buffered(func):
     return wrapped
 
 
-def is_basic_type(t: type):
-    # Avoid isinstance since it's pretty time consuming
-    return t in _basic_types
-
-
-_basic_types = {
-    str,
-    int,
-    float,
-    datetime.datetime,
-    datetime.date,
-    datetime.timedelta,
-    type(max),
-    type(is_basic_type),
-}
+def serialize_by_pickle(obj):
+    from .serializables.core import Serializable
+    return not isinstance(obj, (Serializable, typing.List, typing.Tuple, typing.Dict))
 
 
 def pickle_buffers(obj):
@@ -179,7 +168,7 @@ class CollectionSerializer(Serializer):
         headers = [None] * len(c)
         buffers_list = [None] * len(c)
         for idx, obj in enumerate(c):
-            if is_basic_type(type(obj)):
+            if serialize_by_pickle(obj):
                 header, buffers = obj, []
             else:
                 header, buffers = yield obj
