@@ -37,8 +37,6 @@ HAS_PICKLE_BUFFER = pickle.HIGHEST_PROTOCOL >= 5
 BUFFER_PICKLE_PROTOCOL = max(pickle.DEFAULT_PROTOCOL, 5)
 _PANDAS_HAS_MGR = hasattr(pd.Series([0]), "_mgr")
 
-
-_basic_types = {str, int, float, datetime.datetime, datetime.date}
 _serial_dispatcher = TypeDispatcher()
 _deserializers = dict()
 
@@ -77,7 +75,20 @@ def buffered(func):
 
 
 def is_basic_type(t: type):
+    # Avoid isinstance since it's pretty time consuming
     return t in _basic_types
+
+
+_basic_types = {
+    str,
+    int,
+    float,
+    datetime.datetime,
+    datetime.date,
+    datetime.timedelta,
+    type(max),
+    type(is_basic_type),
+}
 
 
 def pickle_buffers(obj):
@@ -168,7 +179,10 @@ class CollectionSerializer(Serializer):
         headers = [None] * len(c)
         buffers_list = [None] * len(c)
         for idx, obj in enumerate(c):
-            header, buffers = yield obj
+            if is_basic_type(type(obj)):
+                header, buffers = obj, []
+            else:
+                header, buffers = yield obj
             headers[idx] = header
             buffers_list[idx] = buffers
         return headers, buffers_list
@@ -189,10 +203,13 @@ class CollectionSerializer(Serializer):
         pos = 0
         ret = [None] * len(headers)
         for idx, sub_header in enumerate(headers):
-            buf_num = sub_header["buf_num"]
-            sub_buffers = buffers[pos : pos + buf_num]
-            ret[idx] = yield sub_header, sub_buffers
-            pos += buf_num
+            if type(sub_header) is dict:
+                buf_num = sub_header["buf_num"]
+                sub_buffers = buffers[pos:pos + buf_num]
+                ret[idx] = yield sub_header, sub_buffers
+                pos += buf_num
+            else:
+                ret[idx] = sub_header
         return ret
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):

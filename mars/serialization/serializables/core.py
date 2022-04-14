@@ -16,7 +16,7 @@ from collections import OrderedDict
 from functools import partial
 from typing import Any, Dict, Generator, List, Type, Tuple
 
-from ..core import Serializer, Placeholder, buffered, is_basic_type
+from ..core import Serializer, Placeholder, buffered
 from .field import Field, OneOfField
 from .field_type import (
     PrimitiveFieldType,
@@ -27,7 +27,6 @@ from .field_type import (
     TimedeltaType,
     FunctionType,
     TZInfoType,
-    AbstractFieldType,
 )
 
 
