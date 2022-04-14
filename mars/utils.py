@@ -355,7 +355,8 @@ def serialize_serializable(serializable, compress: bool = False):
 
     bio = io.BytesIO()
     header, buffers = serialize(serializable)
-    header["buf_sizes"] = [getattr(buf, "nbytes", len(buf)) for buf in buffers]
+    buf_sizes = [getattr(buf, "nbytes", len(buf)) for buf in buffers]
+    header[0]["buf_sizes"] = buf_sizes
     s_header = pickle.dumps(header)
     bio.write(struct.pack("<Q", len(s_header)))
     bio.write(s_header)
@@ -374,7 +375,7 @@ def deserialize_serializable(ser_serializable: bytes):
     bio = io.BytesIO(ser_serializable)
     s_header_length = struct.unpack("Q", bio.read(8))[0]
     header2 = pickle.loads(bio.read(s_header_length))
-    buffers2 = [bio.read(s) for s in header2["buf_sizes"]]
+    buffers2 = [bio.read(s) for s in header2[0]["buf_sizes"]]
     return deserialize(header2, buffers2)
 
 
@@ -501,16 +502,7 @@ def build_fetch_chunk(
     if isinstance(chunk_op, ShuffleProxy):
         # for shuffle nodes, we build FetchShuffle chunks
         # to replace ShuffleProxy
-
-        # Make list weak referencable so we can cache serialization for it without preventing it from gc.
-        class _List(list):
-            def __eq__(self, other):
-                return id(other) == id(self)
-
-            def __hash__(self):
-                return object.__hash__(self)
-
-        source_keys, source_idxes, source_mappers = _List(), _List(), _List()
+        source_keys, source_idxes, source_mappers = [], [], []
         for pinp in chunk.inputs:
             if input_chunk_keys is not None and pinp.key not in input_chunk_keys:
                 continue

@@ -345,8 +345,6 @@ class TileableData(EntityData, _ExecutableMixin):
 
 
 class Tileable(Entity):
-    __slots__ = ("__weakref__",)
-
     def __init__(self, data: TileableType = None, **kw):
         super().__init__(data=data, **kw)
         data = self._data

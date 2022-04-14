@@ -15,6 +15,7 @@
 from functools import wraps
 from typing import Dict
 
+from ..serialization.core import Placeholder, short_id
 from ..serialization.serializables import Serializable, StringField
 from ..serialization.serializables.core import SerializableSerializer
 from ..utils import tokenize
@@ -117,16 +118,12 @@ class Base(Serializable):
         return self._id
 
 
-def buffered(func):
+def buffered_base(func):
     @wraps(func)
     def wrapped(self, obj: Base, context: Dict):
         obj_id = (obj.key, obj.id)
         if obj_id in context:
-            return {
-                "id": id(context[obj_id]),
-                "serializer": "ref",
-                "buf_num": 0,
-            }, []
+            return Placeholder(short_id(context[obj_id]))
         else:
             context[obj_id] = obj
             return func(self, obj, context)
@@ -135,9 +132,9 @@ def buffered(func):
 
 
 class BaseSerializer(SerializableSerializer):
-    @buffered
-    def serialize(self, obj: Serializable, context: Dict):
-        return (yield from super().serialize(obj, context))
+    @buffered_base
+    def serial(self, obj: Base, context: Dict):
+        return super().serial(obj, context)
 
 
 BaseSerializer.register(Base)

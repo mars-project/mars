@@ -72,7 +72,7 @@ class MySerializable(Serializable):
     _dict_val = DictField("dict_val", FieldTypes.string, FieldTypes.bytes)
 
 
-class SerializationSuite:
+class SerializeSerializableSuite:
     def setup(self):
         children = []
         for idx in range(1000):
@@ -90,6 +90,12 @@ class SerializationSuite:
             children.append(child)
         self.test_data = SerializableParent(children=children)
 
+    def time_serialize_deserialize(self):
+        deserialize(*serialize(self.test_data))
+
+
+class SerializeSubtaskSuite:
+    def setup(self):
         self.subtasks = []
         for i in range(10000):
             subtask = Subtask(
@@ -110,7 +116,13 @@ class SerializationSuite:
             )
             self.subtasks.append(subtask)
 
-        self.test_basic_serializable = []
+    def time_pickle_serialize_deserialize_subtask(self):
+        deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.subtasks))))
+
+
+class SerializePrimitivesSuite:
+    def setup(self):
+        self.test_primitive_serializable = []
         for i in range(10000):
             my_serializable = MySerializable(
                 _bool_val=True,
@@ -129,27 +141,24 @@ class SerializationSuite:
                 _tuple_val=("a", "b"),
                 _dict_val={"a": b"bytes_value"},
             )
-            self.test_basic_serializable.append(my_serializable)
+            self.test_primitive_serializable.append(my_serializable)
 
-        self.test_list = list(range(100000))
-        self.test_tuple = tuple(range(100000))
-        self.test_dict = {i: i for i in range(100000)}
-
-    def time_serialize_deserialize(self):
-        deserialize(*serialize(self.test_data))
-
-    def time_serialize_deserialize_basic(self):
-        deserialize(*serialize(self.test_basic_serializable))
+    def time_serialize_deserialize_primitive(self):
+        deserialize(*serialize(self.test_primitive_serializable))
 
     def time_pickle_serialize_deserialize_basic(self):
         deserialize(
             *cloudpickle.loads(
-                cloudpickle.dumps(serialize(self.test_basic_serializable))
+                cloudpickle.dumps(serialize(self.test_primitive_serializable))
             )
         )
 
-    def time_pickle_serialize_deserialize_subtask(self):
-        deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.subtasks))))
+
+class SerializeContainersSuite:
+    def setup(self):
+        self.test_list = list(range(100000))
+        self.test_tuple = tuple(range(100000))
+        self.test_dict = {i: i for i in range(100000)}
 
     def time_pickle_serialize_deserialize_list(self):
         deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.test_list))))

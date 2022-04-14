@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
@@ -20,15 +20,13 @@ from .core import Serializer, buffered, pickle_buffers, unpickle_buffers
 
 
 class NDArraySerializer(Serializer):
-    serializer_name = "np_ndarray"
-
     @buffered
-    def serialize(self, obj: np.ndarray, context: Dict):
+    def serial(self, obj: np.ndarray, context: Dict):
         header = {}
         if obj.dtype.hasobject:
             header["pickle"] = True
             buffers = pickle_buffers(obj)
-            return header, buffers
+            return (header,), buffers, True
 
         order = "C"
         if obj.flags.f_contiguous:
@@ -55,11 +53,12 @@ class NDArraySerializer(Serializer):
                 order=order,
             )
         )
-        return header, [memoryview(obj.ravel(order=order).view("uint8").data)]
+        return (header,), [memoryview(obj.ravel(order=order).view("uint8").data)], True
 
-    def deserialize(self, header: Dict, buffers: List, context: Dict):
+    def deserial(self, serialized: Tuple, context: Dict, subs: List[Any]):
+        header = serialized[0]
         if header["pickle"]:
-            return unpickle_buffers(buffers)
+            return unpickle_buffers(subs)
 
         try:
             dtype = np.lib.format.descr_to_dtype(header["descr"])
@@ -73,7 +72,7 @@ class NDArraySerializer(Serializer):
         return np.ndarray(
             shape=tuple(header["shape"]),
             dtype=dtype,
-            buffer=buffers[0],
+            buffer=subs[0],
             strides=tuple(header["strides"]),
             order=header["order"],
         )

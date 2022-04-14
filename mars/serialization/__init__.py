@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .aio import AioSerializer, AioDeserializer
-from .core import serialize, deserialize
+from .core import serialize, deserialize, Serializer
 
 from . import arrow, cuda, numpy, scipy, mars_objects, ray, exception
 

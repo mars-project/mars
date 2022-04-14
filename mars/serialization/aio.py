@@ -24,7 +24,7 @@ from .core import pickle, serialize, deserialize
 cupy = lazy_import("cupy", globals=globals())
 cudf = lazy_import("cudf", globals=globals())
 
-DEFAULT_SERIALIZATION_VERSION = 0
+DEFAULT_SERIALIZATION_VERSION = 1
 BUFFER_SIZES_NAME = "buf_sizes"
 
 
@@ -51,10 +51,10 @@ class AioSerializer:
                 return False
 
         is_cuda_buffers = [_is_cuda_buffer(buf) for buf in buffers]
-        headers["is_cuda_buffers"] = np.array(is_cuda_buffers)
+        headers[0]["is_cuda_buffers"] = np.array(is_cuda_buffers)
 
         # add buffer lengths into headers
-        headers[BUFFER_SIZES_NAME] = [
+        headers[0][BUFFER_SIZES_NAME] = [
             getattr(buf, "nbytes", len(buf)) for buf in buffers
         ]
         header = pickle.dumps(headers)
@@ -113,7 +113,7 @@ class AioDeserializer:
     async def _get_obj(self):
         header = pickle.loads(await self._get_obj_header_bytes())
         # get buffer size
-        buffer_sizes = header.pop(BUFFER_SIZES_NAME)
+        buffer_sizes = header[0].pop(BUFFER_SIZES_NAME)
         # get buffers
         buffers = [await self._readexactly(size) for size in buffer_sizes]
 
@@ -127,7 +127,7 @@ class AioDeserializer:
         header_bytes = await self._get_obj_header_bytes()
         header = pickle.loads(header_bytes)
         # get buffer size
-        buffer_sizes = header.pop(BUFFER_SIZES_NAME)
+        buffer_sizes = header[0].pop(BUFFER_SIZES_NAME)
         return 11 + len(header_bytes) + sum(buffer_sizes)
 
     async def get_header(self):
