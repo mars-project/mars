@@ -67,7 +67,7 @@ def buffered(func):
     @wraps(func)
     def wrapped(self, obj: Any, context: Dict):
         if id(obj) in context:
-            return {"id": id(obj), "serializer": "ref", "buf_num": 0}, []
+            return {"id": id(obj), "serializer": "ref"}, []
         else:
             context[id(obj)] = obj
             return func(self, obj, context)
@@ -77,6 +77,7 @@ def buffered(func):
 
 def serialize_by_pickle(obj):
     from .serializables.core import Serializable
+
     return not isinstance(obj, (Serializable, typing.List, typing.Tuple, typing.Dict))
 
 
@@ -132,20 +133,24 @@ class StrSerializer(Serializer):
 
     @buffered
     def serialize(self, obj, context: Dict):
-        header = {}
-        if isinstance(obj, str):
-            header["unicode"] = True
-            bytes_data = obj.encode()
-        else:
-            bytes_data = obj
-        return header, [bytes_data]
+        bytes_data = obj.encode()
+        return {}, [bytes_data]
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
-        if header.get("unicode"):
-            buffer = buffers[0]
-            if isinstance(buffer, memoryview):
-                buffer = buffer.tobytes()
-            return buffer.decode()
+        buffer = buffers[0]
+        if isinstance(buffer, memoryview):
+            buffer = buffer.tobytes()
+        return buffer.decode()
+
+
+class BytesSerializer(Serializer):
+    serializer_name = "bytes"
+
+    @buffered
+    def serialize(self, obj, context: Dict):
+        return {}, [obj]
+
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         return buffers[0]
 
 
@@ -193,7 +198,7 @@ class CollectionSerializer(Serializer):
         ret = [None] * len(headers)
         for idx, sub_header in enumerate(headers):
             if type(sub_header) is dict:
-                buf_num = sub_header["buf_num"]
+                buf_num = sub_header.get("buf_num", 0)
                 sub_buffers = buffers[pos:pos + buf_num]
                 ret[idx] = yield sub_header, sub_buffers
                 pos += buf_num
@@ -330,7 +335,7 @@ ScalarSerializer.register(int)
 ScalarSerializer.register(float)
 ScalarSerializer.register(complex)
 ScalarSerializer.register(type(None))
-StrSerializer.register(bytes)
+BytesSerializer.register(bytes)
 StrSerializer.register(str)
 ListSerializer.register(list)
 TupleSerializer.register(tuple)
@@ -360,7 +365,8 @@ def serialize(obj, context: Dict = None):
             return _header, _buffers
         # if serializer already defined, do not change
         _header["serializer"] = _header.get("serializer", _serializer_name)
-        _header["buf_num"] = len(_buffers)
+        if len(_buffers) > 0:
+            _header["buf_num"] = len(_buffers)
         _header["id"] = id(_obj)
         return _header, _buffers
 

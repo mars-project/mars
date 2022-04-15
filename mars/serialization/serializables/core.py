@@ -22,6 +22,7 @@ from .field_type import (
     PrimitiveFieldType,
     ListType,
     TupleType,
+    DictType,
     DtypeType,
     DatetimeType,
     TimedeltaType,
@@ -40,18 +41,28 @@ _basic_field_type = (
 )
 
 
-def serialize_by_pickle(field_type: Field):
-    if field_type.on_serialize is not None or field_type.on_deserialize is not None:
+def serialize_by_pickle(field: Field):
+    if field.on_serialize is not None or field.on_deserialize is not None:
         return False
-    if isinstance(field_type.field_type, _basic_field_type):
-        return True
-    if isinstance(field_type, (ListType, TupleType)):
-        if all(
-            isinstance(element_type, _basic_field_type) or element_type is Ellipsis
-            for element_type in field_type._field_types
-        ):
+
+    def check_type(field_type):
+        if isinstance(field_type, _basic_field_type):
             return True
-    return False
+        if isinstance(field_type, (ListType, TupleType)):
+            if all(
+                check_type(element_type) or element_type is Ellipsis
+                for element_type in field_type._field_types
+            ):
+                return True
+        if isinstance(field_type, DictType):
+            if all(
+                isinstance(element_type, _basic_field_type) or element_type is Ellipsis
+                for element_type in (field_type.key_type, field_type.value_type)
+            ):
+                return True
+        return False
+
+    return check_type(field.field_type)
 
 
 class SerializableMeta(type):
@@ -66,8 +77,8 @@ class SerializableMeta(type):
 
         # make field order deterministic to serialize it as list instead of dict
         property_to_fields = OrderedDict()
-        basic_fields = OrderedDict()
-        composed_fields = OrderedDict()
+        pickle_fields = OrderedDict()
+        non_pickle_fields = OrderedDict()
         # filter out all fields
         for k, v in properties.items():
             if not isinstance(v, Field):
@@ -76,13 +87,13 @@ class SerializableMeta(type):
             property_to_fields[k] = v
             v._attr_name = k
             if serialize_by_pickle(v):
-                basic_fields[k] = v
+                pickle_fields[k] = v
             else:
-                composed_fields[k] = v
+                non_pickle_fields[k] = v
 
         properties["_FIELDS"] = property_to_fields
-        properties["_BASIC_FIELDS"] = basic_fields
-        properties["_COMPOSED_FIELDS"] = composed_fields
+        properties["_PICKLE_FIELDS"] = pickle_fields
+        properties["_NON_PICKLE_FIELDS"] = non_pickle_fields
         slots = set(properties.pop("__slots__", set()))
         if property_to_fields:
             slots.add("_FIELD_VALUES")
@@ -149,8 +160,8 @@ class SerializableSerializer(Serializer):
 
     @buffered
     def serialize(self, obj: Serializable, context: Dict):
-        basic_values = self._get_field_values(obj, obj._BASIC_FIELDS)
-        composed_values = self._get_field_values(obj, obj._COMPOSED_FIELDS)
+        basic_values = self._get_field_values(obj, obj._PICKLE_FIELDS)
+        composed_values = self._get_field_values(obj, obj._NON_PICKLE_FIELDS)
 
         value_headers = [None] * len(composed_values)
         value_sizes = [0] * len(composed_values)
@@ -194,11 +205,11 @@ class SerializableSerializer(Serializer):
         obj_class: Type[Serializable] = header.pop("class")
         basic_values = header["basic_values"]
         attr_to_values = dict()
-        for value, field in zip(basic_values, obj_class._BASIC_FIELDS.values()):
+        for value, field in zip(basic_values, obj_class._PICKLE_FIELDS.values()):
             self._set_field_value(attr_to_values, field, value)
         pos = 0
         for field, value_header, value_size in zip(
-            obj_class._COMPOSED_FIELDS.values(),
+            obj_class._NON_PICKLE_FIELDS.values(),
             header["value_headers"],
             header["value_sizes"],
         ):
