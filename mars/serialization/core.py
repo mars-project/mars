@@ -88,7 +88,6 @@ _basic_types = {
     datetime.date,
     datetime.timedelta,
     type(max),
-    type(is_basic_type),
 }
 
 
@@ -149,7 +148,7 @@ class StrSerializer(Serializer):
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         buffer = buffers[0]
-        if isinstance(buffer, memoryview):
+        if type(buffer) is memoryview:
             buffer = buffer.tobytes()
         return buffer.decode()
 
@@ -210,7 +209,7 @@ class CollectionSerializer(Serializer):
         for idx, sub_header in enumerate(headers):
             if type(sub_header) is dict:
                 buf_num = sub_header.get("buf_num", 0)
-                sub_buffers = buffers[pos:pos + buf_num]
+                sub_buffers = buffers[pos : pos + buf_num]
                 ret[idx] = yield sub_header, sub_buffers
                 pos += buf_num
             else:
@@ -239,7 +238,7 @@ class ListSerializer(CollectionSerializer):
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         ret = yield from super().deserialize(header, buffers, context)
         for idx, v in enumerate(ret):
-            if isinstance(v, Placeholder):
+            if type(v) is Placeholder:
                 v.callbacks.append(partial(ret.__setitem__, idx))
         return ret
 
@@ -250,7 +249,7 @@ class TupleSerializer(CollectionSerializer):
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         ret = yield from super().deserialize(header, buffers, context)
-        assert not any(isinstance(v, Placeholder) for v in ret)
+        assert not any(type(v) is Placeholder for v in ret)
         return ret
 
 
@@ -312,7 +311,7 @@ class DictSerializer(CollectionSerializer):
             ret[real_key] = ret.pop(key)
 
         def _value_replacer(key, real_value):
-            if isinstance(key, Placeholder):
+            if type(key) is Placeholder:
                 key = context[key.id]
             ret[key] = real_value
 
@@ -323,9 +322,9 @@ class DictSerializer(CollectionSerializer):
             ret = obj_type()
             ret.update(zip(keys, values))
         for k, v in zip(keys, values):
-            if isinstance(k, Placeholder):
+            if type(k) is Placeholder:
                 k.callbacks.append(partial(_key_replacer, k))
-            if isinstance(v, Placeholder):
+            if type(v) is Placeholder:
                 v.callbacks.append(partial(_value_replacer, k))
         return ret
 
@@ -365,7 +364,7 @@ class Placeholder:
         return hash(self.id)
 
     def __eq__(self, other):  # pragma: no cover
-        if not isinstance(other, Placeholder):
+        if type(other) is not Placeholder:
             return False
         return self.id == other.id
 
@@ -441,7 +440,7 @@ def deserialize(header: Dict, buffers: List, context: Dict = None):
 
     def _fill_context(obj_id, result):
         context_val, context[obj_id] = context.get(obj_id), result
-        if isinstance(context_val, Placeholder):
+        if type(context_val) is Placeholder:
             for cb in context_val.callbacks:
                 cb(result)
 
