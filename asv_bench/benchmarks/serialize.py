@@ -15,7 +15,9 @@
 import cloudpickle
 import numpy as np
 import pandas as pd
+from mars.oscar.core import ActorRef
 
+from mars.oscar.backends.message import SendMessage, new_message_id, ActorRefMessage
 from mars.serialization import serialize, deserialize
 from mars.serialization.serializables import (
     Serializable,
@@ -36,7 +38,7 @@ from mars.serialization.serializables import (
     TupleField,
     DictField,
 )
-from mars.services.subtask import Subtask
+from mars.services.subtask import Subtask, SubtaskResult, SubtaskStatus
 from mars.services.task import new_task_id
 
 
@@ -91,6 +93,9 @@ class SerializationSuite:
         self.test_data = SerializableParent(children=children)
 
         self.subtasks = []
+        self.subtask_results = []
+        self.send_messages = []
+        self.actor_ref_messages = []
         for i in range(10000):
             subtask = Subtask(
                 subtask_id=new_task_id(),
@@ -109,6 +114,33 @@ class SerializationSuite:
                 extra_config={},
             )
             self.subtasks.append(subtask)
+            new_result = SubtaskResult(
+                subtask_id=new_task_id(),
+                session_id=new_task_id(),
+                task_id=new_task_id(),
+                stage_id=new_task_id(),
+                status=SubtaskStatus.succeeded,
+                progress=1.0,
+                data_size=1000000.0,
+                bands=[("ray://mars_cluster_1649927648/17/0", "numa-0")],
+                execution_start_time=1646125099.622051,
+                execution_end_time=1646125104.448726,
+            )
+            self.subtask_results.append(new_result)
+            ref = ActorRef("ray://mars_cluster_1649927648/17/0", b'F20Wyerq6EiqltB8jAVs7L3N_task_manager'),
+            send_message = SendMessage(
+                new_message_id(),
+                ref,
+                new_result,
+                protocol=0,
+            )
+            self.send_messages.append(send_message)
+            actor_ref_message = ActorRefMessage(
+                message_id=new_message_id(),
+                actor_ref=ref,
+                protocol=0,
+            )
+            self.actor_ref_messages.append(actor_ref_message)
 
         self.test_basic_serializable = []
         for i in range(10000):
@@ -150,6 +182,15 @@ class SerializationSuite:
 
     def time_pickle_serialize_deserialize_subtask(self):
         deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.subtasks))))
+
+    def time_pickle_serialize_deserialize_subtask_result(self):
+        deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.subtask_results))))
+
+    def time_pickle_serialize_deserialize_send_messages(self):
+        deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.send_messages))))
+
+    def time_pickle_serialize_deserialize_actor_ref_messages(self):
+        deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.actor_ref_messages))))
 
     def time_pickle_serialize_deserialize_list(self):
         deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.test_list))))

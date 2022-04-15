@@ -241,7 +241,7 @@ class PromiseTestActor(mo.Actor):
 
 
 @pytest.mark.parametrize(indirect=True)
-@pytest.fixture(params=[False, True])
+@pytest.fixture(params=[True])
 async def actor_pool_context(request):
     start_method = (
         os.environ.get("POOL_START_METHOD", "forkserver")

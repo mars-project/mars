@@ -78,6 +78,7 @@ class ProfilingContext:
 
 class _MessageBase(ABC):
     __slots__ = "protocol", "message_id", "message_trace", "profiling_context"
+    __non_pickle_slots__ = ()
 
     def __init__(
         self,
@@ -114,7 +115,7 @@ class _MessageBase(ABC):
         """
 
     def __repr__(self):
-        slots = _get_slots(self.__class__)
+        slots = _get_slots(self.__class__, "__slot__")
         values = ", ".join(
             ["{}={!r}".format(slot, getattr(self, slot)) for slot in slots]
         )
@@ -123,6 +124,7 @@ class _MessageBase(ABC):
 
 class ControlMessage(_MessageBase):
     __slots__ = "address", "control_message_type", "content"
+    __non_pickle_slots__ = ("content",)
 
     def __init__(
         self,
@@ -146,6 +148,7 @@ class ControlMessage(_MessageBase):
 
 class ResultMessage(_MessageBase):
     __slots__ = ("result",)
+    __non_pickle_slots__ = ("result",)
 
     def __init__(
         self,
@@ -226,6 +229,7 @@ class CreateActorMessage(_MessageBase):
         "allocate_strategy",
         "from_main",
     )
+    __non_pickle_slots__ = ("args", "kwargs")
 
     def __init__(
         self,
@@ -317,6 +321,7 @@ class SendMessage(_MessageBase):
         "actor_ref",
         "content",
     )
+    __non_pickle_slots__ = ("content",)
 
     def __init__(
         self,
@@ -391,26 +396,35 @@ class MessageSerializer(Serializer):
         assert obj.protocol == 0, "only support protocol 0 for now"
 
         message_class = type(obj)
-        to_serialize = [getattr(obj, slot) for slot in _get_slots(message_class)]
-        header, buffers = yield to_serialize
+        pickle_slots = [getattr(obj, slot) for slot in _get_pickle_slots(message_class)]
         new_header = {
-            "message_class": message_class,
-            "message_id": obj.message_id,
-            "protocol": obj.protocol,
-            "attributes_header": header,
+            b"msg_cls": message_class,
+            b"msg_id": obj.message_id,
+            b"pickles": pickle_slots,
         }
+        non_pickle_slots = [
+            getattr(obj, slot) for slot in _get_non_pickle_slots(message_class)
+        ]
+        if non_pickle_slots:
+            header, buffers = yield non_pickle_slots
+            new_header[b"non_pickles"] = header
+        else:
+            buffers = []
         return new_header, buffers
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
-        protocol = header["protocol"]
-        assert protocol == 0, "only support protocol 0 for now"
-        message_id = header["message_id"]
-        message_class = header["message_class"]
+        message_id = header[b"msg_id"]
+        message_class = header[b"msg_cls"]
         try:
-            serialized = yield header["attributes_header"], buffers
             message = object.__new__(message_class)
-            for slot, val in zip(_get_slots(message_class), serialized):
+            for slot, val in zip(_get_pickle_slots(message_class), header[b"pickles"]):
                 setattr(message, slot, val)
+            non_pickles_header = header.get(b"non_pickles")
+            if non_pickles_header:
+                non_pickles = yield non_pickles_header, buffers
+                for slot, val in zip(_get_non_pickle_slots(message_class), non_pickles):
+                    setattr(message, slot, val)
+                print(f"message {message}")
             return message
         except pickle.UnpicklingError as e:  # pragma: no cover
             raise DeserializeMessageFailed(message_id) from e
@@ -421,12 +435,28 @@ MessageSerializer.register(_MessageBase)
 
 
 @lru_cache(20)
-def _get_slots(message_cls: Type[_MessageBase]):
-    slots = []
+def _get_slots(message_cls: Type[_MessageBase], slot_name: str):
+    slots = set()
     for tp in message_cls.__mro__:
         if issubclass(tp, _MessageBase):
-            slots.extend(tp.__slots__)
+            tp_slots = (
+                getattr(tp, slot_name, []) if slot_name != "__slot__" else tp.__slots__
+            )
+            slots.update(tp_slots)
     return slots
+
+
+@lru_cache(20)
+def _get_pickle_slots(message_cls: Type[_MessageBase]):
+    return sorted(
+        _get_slots(message_cls, "__slot__")
+        - _get_slots(message_cls, "__non_pickle_slots__")
+    )
+
+
+@lru_cache(20)
+def _get_non_pickle_slots(message_cls: Type[_MessageBase]):
+    return sorted(_get_slots(message_cls, "__non_pickle_slots__"))
 
 
 def new_message_id():
