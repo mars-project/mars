@@ -179,7 +179,8 @@ class SerializableSerializer(Serializer):
             header["value_sizes"] = value_sizes
         return header, value_buffers
 
-    def _set_field_value(self, attr_to_values: dict, field: Field, value):
+    @classmethod
+    def _set_field_value(cls, attr_to_values: dict, field: Field, value):
         if value is _SkipStub:
             return
         attr_to_values[field.attr_name] = value
