@@ -65,13 +65,15 @@ def serialize_by_pickle(field: Field):
 
 class SerializableMeta(type):
     def __new__(mcs, name: str, bases: Tuple[Type], properties: Dict):
-        # make field order deterministic to serialize it as list instead of dict
-        new_properties = OrderedDict()
+        new_properties = dict()
         for base in bases:
             if hasattr(base, "_FIELDS"):
                 new_properties.update(base._FIELDS)
         new_properties.update(properties)
-        properties = new_properties
+        # make field order deterministic to serialize it as list instead of dict
+        properties = OrderedDict()
+        for k, v in sorted(new_properties.items(), key=lambda item: item[0]):
+            properties[k] = v
 
         # make field order deterministic to serialize it as list instead of dict
         property_to_fields = OrderedDict()
