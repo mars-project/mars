@@ -118,7 +118,11 @@ class DummyActor(mo.Actor):
 
     def get_ref(self):
         ref = self.ref()
-        tp = LocalActorRef if get_debug_options() is None else ActorRef
+        tp = (
+            LocalActorRef
+            if get_debug_options() is None or not get_debug_options().log_cycle_send
+            else ActorRef
+        )
         assert (
             type(ref) is tp
         ), f"Expect type of actor ref is {tp}, but got {ref} instead."
