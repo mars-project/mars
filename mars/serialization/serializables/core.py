@@ -26,7 +26,6 @@ from .field_type import (
     DtypeType,
     DatetimeType,
     TimedeltaType,
-    FunctionType,
     TZInfoType,
 )
 
@@ -36,7 +35,6 @@ _basic_field_type = (
     DtypeType,
     DatetimeType,
     TimedeltaType,
-    FunctionType,
     TZInfoType,
 )
 
