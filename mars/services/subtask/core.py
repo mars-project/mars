@@ -17,6 +17,7 @@ from typing import Iterable, List, Optional, Set, Tuple
 
 from ...core import ChunkGraph, DAG
 from ...resource import Resource
+from ...serialization.serializables.field_type import TupleType
 from ...serialization.serializables import (
     Serializable,
     StringField,
@@ -58,7 +59,9 @@ class Subtask(Serializable):
     session_id: str = StringField("session_id")
     task_id: str = StringField("task_id")
     chunk_graph: ChunkGraph = ReferenceField("chunk_graph", ChunkGraph)
-    expect_bands: List[BandType] = ListField("expect_bands", FieldTypes.tuple)
+    expect_bands: List[BandType] = ListField(
+        "expect_bands", TupleType(FieldTypes.string, FieldTypes.string)
+    )
     virtual: bool = BoolField("virtual")
     retryable: bool = BoolField("retryable")
     priority: Tuple[int, int] = TupleField("priority", FieldTypes.int32)

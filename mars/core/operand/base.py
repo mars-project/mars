@@ -181,7 +181,10 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
     _inputs = ListField(
         "inputs", FieldTypes.reference(EntityData), default_factory=list
     )
-    _outputs = ListField("outputs", default=None)
+    # outputs are weak-refs which are not pickle-able
+    _outputs = ListField(
+        "outputs", default=None, on_serialize=lambda outputs: [o() for o in outputs]
+    )
     _output_types = ListField(
         "output_type", FieldTypes.reference(OutputType), default=None
     )
@@ -326,13 +329,6 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
 
 class OperandSerializer(SerializableSerializer):
     serializer_name = "operand"
-
-    @classmethod
-    def _get_tag_to_values(cls, obj: Operand):
-        tag_to_values = super()._get_tag_to_values(obj)
-        # outputs are weak-refs which are not pickle-able
-        tag_to_values["outputs"] = [out_ref() for out_ref in tag_to_values["outputs"]]
-        return tag_to_values
 
     def deserialize(self, header: Dict, buffers: List, context: Dict) -> Operand:
         # convert outputs back to weak-refs

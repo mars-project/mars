@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cloudpickle
+
 from ... import opcodes
+from ...serialization.core import cached_pickle_dumps
 from ...serialization.serializables import FieldTypes, StringField, ListField
 from .base import Operand
 from .core import TileableOperandMixin
@@ -44,6 +47,21 @@ class FetchMixin(TileableOperandMixin):
 class FetchShuffle(Operand):
     _op_type_ = opcodes.FETCH_SHUFFLE
 
-    source_keys = ListField("source_keys", FieldTypes.string)
-    source_idxes = ListField("source_idxes", FieldTypes.tuple(FieldTypes.uint64))
-    source_mappers = ListField("source_mappers", FieldTypes.uint16)
+    source_keys = ListField(
+        "source_keys",
+        FieldTypes.string,
+        on_serialize=cached_pickle_dumps,
+        on_deserialize=cloudpickle.loads,
+    )
+    source_idxes = ListField(
+        "source_idxes",
+        FieldTypes.tuple(FieldTypes.uint64),
+        on_serialize=cached_pickle_dumps,
+        on_deserialize=cloudpickle.loads,
+    )
+    source_mappers = ListField(
+        "source_mappers",
+        FieldTypes.uint16,
+        on_serialize=cached_pickle_dumps,
+        on_deserialize=cloudpickle.loads,
+    )

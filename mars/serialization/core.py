@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import datetime
 import inspect
 import sys
 import types
 from functools import partial, wraps
 from typing import Any, Dict, List
+from weakref import WeakKeyDictionary
 
 import pandas as pd
 
@@ -35,7 +36,6 @@ else:
 HAS_PICKLE_BUFFER = pickle.HIGHEST_PROTOCOL >= 5
 BUFFER_PICKLE_PROTOCOL = max(pickle.DEFAULT_PROTOCOL, 5)
 _PANDAS_HAS_MGR = hasattr(pd.Series([0]), "_mgr")
-
 
 _serial_dispatcher = TypeDispatcher()
 _deserializers = dict()
@@ -66,12 +66,29 @@ def buffered(func):
     @wraps(func)
     def wrapped(self, obj: Any, context: Dict):
         if id(obj) in context:
-            return {"id": id(obj), "serializer": "ref", "buf_num": 0}, []
+            return {"id": id(obj), "serializer": "ref"}, []
         else:
             context[id(obj)] = obj
             return func(self, obj, context)
 
     return wrapped
+
+
+def is_basic_type(o):
+    # Avoid isinstance since it's pretty time consuming
+    return type(o) in _basic_types
+
+
+_basic_types = {
+    str,
+    int,
+    float,
+    complex,
+    datetime.datetime,
+    datetime.date,
+    datetime.timedelta,
+    type(max),
+}
 
 
 def pickle_buffers(obj):
@@ -126,20 +143,24 @@ class StrSerializer(Serializer):
 
     @buffered
     def serialize(self, obj, context: Dict):
-        header = {}
-        if isinstance(obj, str):
-            header["unicode"] = True
-            bytes_data = obj.encode()
-        else:
-            bytes_data = obj
-        return header, [bytes_data]
+        bytes_data = obj.encode()
+        return {}, [bytes_data]
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
-        if header.get("unicode"):
-            buffer = buffers[0]
-            if isinstance(buffer, memoryview):
-                buffer = buffer.tobytes()
-            return buffer.decode()
+        buffer = buffers[0]
+        if type(buffer) is memoryview:
+            buffer = buffer.tobytes()
+        return buffer.decode()
+
+
+class BytesSerializer(Serializer):
+    serializer_name = "bytes"
+
+    @buffered
+    def serialize(self, obj, context: Dict):
+        return {}, [obj]
+
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         return buffers[0]
 
 
@@ -162,7 +183,10 @@ class CollectionSerializer(Serializer):
         headers = [None] * len(c)
         buffers_list = [None] * len(c)
         for idx, obj in enumerate(c):
-            header, buffers = yield obj
+            if is_basic_type(obj):
+                header, buffers = obj, []
+            else:
+                header, buffers = yield obj
             headers[idx] = header
             buffers_list[idx] = buffers
         return headers, buffers_list
@@ -175,7 +199,7 @@ class CollectionSerializer(Serializer):
             buffers.extend(b)
         headers = {"headers": headers_list}
         if type(obj) is not self.obj_type:
-            headers["obj_type"] = pickle.dumps(type(obj))
+            headers["obj_type"] = type(obj)
         return headers, buffers
 
     @staticmethod
@@ -183,16 +207,19 @@ class CollectionSerializer(Serializer):
         pos = 0
         ret = [None] * len(headers)
         for idx, sub_header in enumerate(headers):
-            buf_num = sub_header["buf_num"]
-            sub_buffers = buffers[pos : pos + buf_num]
-            ret[idx] = yield sub_header, sub_buffers
-            pos += buf_num
+            if type(sub_header) is dict:
+                buf_num = sub_header.get("buf_num", 0)
+                sub_buffers = buffers[pos : pos + buf_num]
+                ret[idx] = yield sub_header, sub_buffers
+                pos += buf_num
+            else:
+                ret[idx] = sub_header
         return ret
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         obj_type = self.obj_type
         if "obj_type" in header:
-            obj_type = pickle.loads(header["obj_type"])
+            obj_type = header["obj_type"]
         if hasattr(obj_type, "_fields"):
             # namedtuple
             return obj_type(
@@ -211,7 +238,7 @@ class ListSerializer(CollectionSerializer):
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         ret = yield from super().deserialize(header, buffers, context)
         for idx, v in enumerate(ret):
-            if isinstance(v, Placeholder):
+            if type(v) is Placeholder:
                 v.callbacks.append(partial(ret.__setitem__, idx))
         return ret
 
@@ -222,7 +249,7 @@ class TupleSerializer(CollectionSerializer):
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         ret = yield from super().deserialize(header, buffers, context)
-        assert not any(isinstance(v, Placeholder) for v in ret)
+        assert not any(type(v) is Placeholder for v in ret)
         return ret
 
 
@@ -284,7 +311,7 @@ class DictSerializer(CollectionSerializer):
             ret[real_key] = ret.pop(key)
 
         def _value_replacer(key, real_value):
-            if isinstance(key, Placeholder):
+            if type(key) is Placeholder:
                 key = context[key.id]
             ret[key] = real_value
 
@@ -295,11 +322,21 @@ class DictSerializer(CollectionSerializer):
             ret = obj_type()
             ret.update(zip(keys, values))
         for k, v in zip(keys, values):
-            if isinstance(k, Placeholder):
+            if type(k) is Placeholder:
                 k.callbacks.append(partial(_key_replacer, k))
-            if isinstance(v, Placeholder):
+            if type(v) is Placeholder:
                 v.callbacks.append(partial(_value_replacer, k))
         return ret
+
+
+_cached_pickle_serialized = WeakKeyDictionary()
+
+
+def cached_pickle_dumps(obj):
+    serialized = _cached_pickle_serialized.get(obj)
+    if serialized is None:
+        _cached_pickle_serialized[obj] = serialized = cloudpickle.dumps(obj)
+    return serialized
 
 
 PickleSerializer.register(object)
@@ -308,7 +345,7 @@ ScalarSerializer.register(int)
 ScalarSerializer.register(float)
 ScalarSerializer.register(complex)
 ScalarSerializer.register(type(None))
-StrSerializer.register(bytes)
+BytesSerializer.register(bytes)
 StrSerializer.register(str)
 ListSerializer.register(list)
 TupleSerializer.register(tuple)
@@ -327,7 +364,7 @@ class Placeholder:
         return hash(self.id)
 
     def __eq__(self, other):  # pragma: no cover
-        if not isinstance(other, Placeholder):
+        if type(other) is not Placeholder:
             return False
         return self.id == other.id
 
@@ -338,7 +375,8 @@ def serialize(obj, context: Dict = None):
             return _header, _buffers
         # if serializer already defined, do not change
         _header["serializer"] = _header.get("serializer", _serializer_name)
-        _header["buf_num"] = len(_buffers)
+        if len(_buffers) > 0:
+            _header["buf_num"] = len(_buffers)
         _header["id"] = id(_obj)
         return _header, _buffers
 
@@ -402,7 +440,7 @@ def deserialize(header: Dict, buffers: List, context: Dict = None):
 
     def _fill_context(obj_id, result):
         context_val, context[obj_id] = context.get(obj_id), result
-        if isinstance(context_val, Placeholder):
+        if type(context_val) is Placeholder:
             for cb in context_val.callbacks:
                 cb(result)
 
