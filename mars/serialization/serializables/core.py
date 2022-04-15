@@ -77,8 +77,8 @@ class SerializableMeta(type):
 
         # make field order deterministic to serialize it as list instead of dict
         property_to_fields = OrderedDict()
-        pickle_fields = OrderedDict()
-        non_pickle_fields = OrderedDict()
+        pickle_fields = []
+        non_pickle_fields = []
         # filter out all fields
         for k, v in properties.items():
             if not isinstance(v, Field):
@@ -87,9 +87,9 @@ class SerializableMeta(type):
             property_to_fields[k] = v
             v._attr_name = k
             if serialize_by_pickle(v):
-                pickle_fields[k] = v
+                pickle_fields.append(v)
             else:
-                non_pickle_fields[k] = v
+                non_pickle_fields.append(v)
 
         properties["_FIELDS"] = property_to_fields
         properties["_PICKLE_FIELDS"] = pickle_fields
@@ -147,7 +147,7 @@ class SerializableSerializer(Serializer):
     def _get_field_values(cls, obj: Serializable, fields):
         attr_to_values = obj._FIELD_VALUES
         values = []
-        for index, field in enumerate(fields.values()):
+        for field in fields:
             attr_name = field.attr_name
             try:
                 value = attr_to_values[attr_name]
@@ -160,7 +160,7 @@ class SerializableSerializer(Serializer):
 
     @buffered
     def serialize(self, obj: Serializable, context: Dict):
-        basic_values = self._get_field_values(obj, obj._PICKLE_FIELDS)
+        pickles = self._get_field_values(obj, obj._PICKLE_FIELDS)
         composed_values = self._get_field_values(obj, obj._NON_PICKLE_FIELDS)
 
         value_headers = [None] * len(composed_values)
@@ -172,7 +172,7 @@ class SerializableSerializer(Serializer):
             value_buffers.extend(val_buf)
 
         header = {
-            "basic_values": basic_values,
+            "pickles": pickles,
             "value_headers": value_headers,
             "value_sizes": value_sizes,
             "class": type(obj),
@@ -182,7 +182,8 @@ class SerializableSerializer(Serializer):
     def _set_field_value(self, attr_to_values: dict, field: Field, value):
         if value is _SkipStub:
             return
-        if not isinstance(field, OneOfField):
+        attr_to_values[field.attr_name] = value
+        if type(field) is not OneOfField:
             if value is not None:
                 if field.on_deserialize:
 
@@ -194,7 +195,7 @@ class SerializableSerializer(Serializer):
                     def cb(v, field_):
                         attr_to_values[field_.attr_name] = v
 
-                if isinstance(value, Placeholder):
+                if type(value) is Placeholder:
                     value.callbacks.append(partial(cb, field_=field))
                 else:
                     cb(value, field)
@@ -203,13 +204,13 @@ class SerializableSerializer(Serializer):
         self, header: Dict, buffers: List, context: Dict
     ) -> Generator[Any, Any, Serializable]:
         obj_class: Type[Serializable] = header.pop("class")
-        basic_values = header["basic_values"]
+        pickles = header["pickles"]
         attr_to_values = dict()
-        for value, field in zip(basic_values, obj_class._PICKLE_FIELDS.values()):
+        for value, field in zip(pickles, obj_class._PICKLE_FIELDS):
             self._set_field_value(attr_to_values, field, value)
         pos = 0
         for field, value_header, value_size in zip(
-            obj_class._NON_PICKLE_FIELDS.values(),
+            obj_class._NON_PICKLE_FIELDS,
             header["value_headers"],
             header["value_sizes"],
         ):
