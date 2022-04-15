@@ -59,7 +59,9 @@ class Subtask(Serializable):
     session_id: str = StringField("session_id")
     task_id: str = StringField("task_id")
     chunk_graph: ChunkGraph = ReferenceField("chunk_graph", ChunkGraph)
-    expect_bands: List[BandType] = ListField("expect_bands", TupleType(FieldTypes.string, FieldTypes.string))
+    expect_bands: List[BandType] = ListField(
+        "expect_bands", TupleType(FieldTypes.string, FieldTypes.string)
+    )
     virtual: bool = BoolField("virtual")
     retryable: bool = BoolField("retryable")
     priority: Tuple[int, int] = TupleField("priority", FieldTypes.int32)
