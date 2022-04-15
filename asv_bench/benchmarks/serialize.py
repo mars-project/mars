@@ -30,6 +30,8 @@ from mars.serialization.serializables import (
 
 
 class SerializableChild(Serializable):
+    _cache_serialize = False
+
     str_field = StringField("str_field")
     int_field = Int64Field("int_field")
     float_field = Float64Field("float_field")
@@ -42,6 +44,8 @@ class SerializableChild(Serializable):
 
 
 class SerializableParent(Serializable):
+    _cache_serialize = False
+
     children = ListField("children", field_type=FieldTypes.reference)
 
 
