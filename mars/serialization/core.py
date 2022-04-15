@@ -11,11 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import datetime
 import inspect
 import sys
 import types
-import typing
 from functools import partial, wraps
 from typing import Any, Dict, List
 from weakref import WeakKeyDictionary
@@ -75,10 +74,22 @@ def buffered(func):
     return wrapped
 
 
-def serialize_by_pickle(obj):
-    from .serializables.core import Serializable
+def is_basic_type(o):
+    # Avoid isinstance since it's pretty time consuming
+    return type(o) in _basic_types
 
-    return not isinstance(obj, (Serializable, typing.List, typing.Tuple, typing.Dict))
+
+_basic_types = {
+    str,
+    int,
+    float,
+    complex,
+    datetime.datetime,
+    datetime.date,
+    datetime.timedelta,
+    type(max),
+    type(is_basic_type),
+}
 
 
 def pickle_buffers(obj):
@@ -173,7 +184,7 @@ class CollectionSerializer(Serializer):
         headers = [None] * len(c)
         buffers_list = [None] * len(c)
         for idx, obj in enumerate(c):
-            if serialize_by_pickle(obj):
+            if is_basic_type(obj):
                 header, buffers = obj, []
             else:
                 header, buffers = yield obj
@@ -189,7 +200,7 @@ class CollectionSerializer(Serializer):
             buffers.extend(b)
         headers = {"headers": headers_list}
         if type(obj) is not self.obj_type:
-            headers["obj_type"] = pickle.dumps(type(obj))
+            headers["obj_type"] = type(obj)
         return headers, buffers
 
     @staticmethod
@@ -209,7 +220,7 @@ class CollectionSerializer(Serializer):
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         obj_type = self.obj_type
         if "obj_type" in header:
-            obj_type = pickle.loads(header["obj_type"])
+            obj_type = header["obj_type"]
         if hasattr(obj_type, "_fields"):
             # namedtuple
             return obj_type(
