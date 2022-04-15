@@ -169,12 +169,12 @@ class SerializableSerializer(Serializer):
             value_sizes[idx] = len(val_buf)
             value_buffers.extend(val_buf)
 
-        header = {
-            "pickles": pickles,
-            "value_headers": value_headers,
-            "value_sizes": value_sizes,
-            "class": type(obj),
-        }
+        header = {"class": type(obj)}
+        if pickles:
+            header["pickles"] = pickles
+        if composed_values:
+            header["value_headers"] = value_headers
+            header["value_sizes"] = value_sizes
         return header, value_buffers
 
     def _set_field_value(self, attr_to_values: dict, field: Field, value):
@@ -202,22 +202,24 @@ class SerializableSerializer(Serializer):
         self, header: Dict, buffers: List, context: Dict
     ) -> Generator[Any, Any, Serializable]:
         obj_class: Type[Serializable] = header.pop("class")
-        pickles = header["pickles"]
         attr_to_values = dict()
-        for value, field in zip(pickles, obj_class._PICKLE_FIELDS):
-            self._set_field_value(attr_to_values, field, value)
-        pos = 0
-        for field, value_header, value_size in zip(
-            obj_class._NON_PICKLE_FIELDS,
-            header["value_headers"],
-            header["value_sizes"],
-        ):
-            value = (
-                yield value_header,
-                buffers[pos : pos + value_size],
-            )  # noqa: E999
-            pos += value_size
-            self._set_field_value(attr_to_values, field, value)
+        pickles = header.get("pickles")
+        if pickles:
+            for value, field in zip(pickles, obj_class._PICKLE_FIELDS):
+                self._set_field_value(attr_to_values, field, value)
+        if obj_class._NON_PICKLE_FIELDS:
+            pos = 0
+            value_headers = header.get("value_headers")
+            value_sizes = header.get("value_sizes")
+            for field, value_header, value_size in zip(
+                obj_class._NON_PICKLE_FIELDS, value_headers, value_sizes
+            ):
+                value = (
+                    yield value_header,
+                    buffers[pos : pos + value_size],
+                )  # noqa: E999
+                pos += value_size
+                self._set_field_value(attr_to_values, field, value)
         obj = obj_class()
         obj._FIELD_VALUES = attr_to_values
         return obj
