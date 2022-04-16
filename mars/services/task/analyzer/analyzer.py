@@ -225,7 +225,11 @@ class GraphAnalyzer:
                             chunk_graph.add_node(c)
                         chunk_graph.add_edge(c, out_chunk)
         # add chunks with no successors into result chunks
-        result_chunks.extend(chunk_graph.iter_indep(reverse=True))
+        result_chunks.extend(
+            c
+            for c in chunk_graph.iter_indep(reverse=True)
+            if c not in result_chunks_set
+        )
         expect_bands = (
             [self._to_band(expect_worker)]
             if bands_specified

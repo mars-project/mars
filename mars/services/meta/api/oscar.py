@@ -83,6 +83,7 @@ class BaseMetaAPI(AbstractMetaAPI):
         store_size: int = None,
         bands: List[BandType] = None,
         fields: List[str] = None,
+        exclude_fields: List[str] = None,
         **extra
     ):
         if isinstance(chunk.op, Fuse):
@@ -114,6 +115,9 @@ class BaseMetaAPI(AbstractMetaAPI):
         if fields is not None:
             fields = set(fields)
             params = {k: v for k, v in params.items() if k in fields}
+        elif exclude_fields is not None:
+            exclude_fields = set(exclude_fields)
+            params = {k: v for k, v in params.items() if k not in exclude_fields}
 
         return get_meta_type(type(chunk))(
             object_id=chunk_key,
@@ -132,6 +136,7 @@ class BaseMetaAPI(AbstractMetaAPI):
         store_size: int = None,
         bands: List[BandType] = None,
         fields: List[str] = None,
+        exclude_fields: List[str] = None,
         **extra
     ):
         """
@@ -145,6 +150,10 @@ class BaseMetaAPI(AbstractMetaAPI):
             serialized size for chunk data
         bands:
             chunk data bands
+        fields: list
+            fields to include in meta
+        exclude_fields: list
+            fields to exclude in meta
         extra
 
         Returns
@@ -157,6 +166,7 @@ class BaseMetaAPI(AbstractMetaAPI):
             store_size=store_size,
             bands=bands,
             fields=fields,
+            exclude_fields=exclude_fields,
             **extra
         )
         return await self._meta_store.set_meta(meta.object_id, meta)

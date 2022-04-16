@@ -169,6 +169,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
         )
 
         if op.ignore_index:
+            yield out_chunks
             out_chunks = standardize_range_index(out_chunks)
 
         new_op = op.copy()
@@ -263,6 +264,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 offset += 1
 
         if op.ignore_index:
+            yield out_chunks
             out_chunks = standardize_range_index(out_chunks)
 
         new_op = op.copy()

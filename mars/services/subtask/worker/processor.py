@@ -407,6 +407,7 @@ class SubtaskProcessor:
                         store_size=store_size,
                         bands=[self._band],
                         chunk_key=chunk_key,
+                        exclude_fields=["object_ref"],
                     )
                 )
             # for supervisor, only save basic meta that is small like memory_size etc
@@ -479,8 +480,11 @@ class SubtaskProcessor:
             result_chunk_to_optimized = {
                 c: o for c, o in zip(raw_result_chunks, chunk_graph.result_chunks)
             }
+            raw_update_meta_chunks = self.subtask.update_meta_chunks
+            if raw_update_meta_chunks is None:
+                raw_update_meta_chunks = raw_result_chunks
             update_meta_chunks = {
-                result_chunk_to_optimized[c] for c in self.subtask.update_meta_chunks
+                result_chunk_to_optimized[c] for c in raw_update_meta_chunks
             }
 
             # load inputs data

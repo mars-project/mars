@@ -237,11 +237,12 @@ class TaskProcessor:
         execution_chunk_results: List[ExecutionChunkResult],
         optimization_records: OptimizationRecords,
     ):
+        result_chunks = [c for c in chunk_graph.results if not isinstance(c.op, Fetch)]
         chunk_to_band = {
             c: r.meta["bands"][0][0]
-            for c, r in zip(chunk_graph.results, execution_chunk_results)
+            for c, r in zip(result_chunks, execution_chunk_results)
         }
-        update_meta_chunks = set(chunk_graph.result_chunks)
+        update_meta_chunks = set(result_chunks)
         update_meta_tileables = dict()
 
         updated = self._meta_updated_tileables
@@ -327,18 +328,20 @@ class TaskProcessor:
         elif isinstance(tileable, TENSOR_TYPE):
             for i, c in enumerate(tileable.chunks):
                 cur_fields = set(fields)
-                if all(j > 0 for j in c.index):
+                if c.ndim > 1 and all(j > 0 for j in c.index):
                     cur_fields.remove("shape")
                 if i > 0:
                     cur_fields.remove("dtype")
                     cur_fields.remove("order")
+                params_fields.append(list(cur_fields))
         else:
             for _ in tileable.chunks:
                 params_fields.append(fields)
         return params_fields
 
+    @classmethod
     def _update_tileable_meta(
-        self,
+        cls,
         tileable: TileableType,
         chunk_to_meta: Dict[ChunkType, dict],
         optimization_records: OptimizationRecords,
@@ -353,16 +356,16 @@ class TaskProcessor:
                 shape = shape if not update_shape else [None, None]
                 if i > 0:
                     # update dtypes_value
-                    ci0 = tileable.cix[i, 0]
-                    meta["dtypes_value"] = ci0["dtypes_value"]
+                    c0j = chunk_to_meta[tileable.cix[0, j].data]
+                    meta["dtypes_value"] = c0j["dtypes_value"]
                     if update_shape:
-                        shape[1] = ci0.shape[1]
+                        shape[1] = c0j["shape"][1]
                 if j > 0:
                     # update index_value
-                    c0j = tileable.cix[0, j]
-                    meta["index_value"] = c0j["index_value"]
+                    ci0 = chunk_to_meta[tileable.cix[i, 0].data]
+                    meta["index_value"] = ci0["index_value"]
                     if update_shape:
-                        shape[0] = c0j.shape[0]
+                        shape[0] = ci0["shape"][0]
                 if update_shape:
                     meta["shape"] = tuple(shape)
         elif isinstance(tileable, SERIES_TYPE):
@@ -375,17 +378,20 @@ class TaskProcessor:
                     meta["dtype"] = first_meta["dtype"]
         elif isinstance(tileable, TENSOR_TYPE):
             ndim = tileable.ndim
-            for c in chunks:
+            for i, c in enumerate(chunks):
                 meta = chunk_to_meta[c]
                 if "shape" not in meta:
                     shape = []
                     for i, ind in enumerate(c.index):
                         ind0 = [0] * ndim
                         ind0[i] = ind
-                        shape.append(
-                            chunk_to_meta[tileable.cix[tuple(ind0)]]["shape"][i]
-                        )
+                        c0 = tileable.cix[tuple(ind0)].data
+                        shape.append(chunk_to_meta[c0]["shape"][i])
                     meta["shape"] = tuple(shape)
+                if i > 0:
+                    first = chunk_to_meta[chunks[0]]
+                    meta["dtype"] = first["dtype"]
+                    meta["order"] = first["order"]
 
         for c in chunks:
             params = c.params = chunk_to_meta[c]
