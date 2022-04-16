@@ -21,7 +21,7 @@ from ....config import Config
 from ....core import ChunkGraph, ChunkType, enter_mode
 from ....core.operand import Fetch, VirtualOperand, LogicKeyGenerator
 from ....resource import Resource
-from ....typing import BandType
+from ....typing import BandType, OperandType
 from ....utils import build_fetch, tokenize
 from ...subtask import SubtaskGraph, Subtask
 from ..core import Task, new_task_id
@@ -118,6 +118,27 @@ class GraphAnalyzer:
         else:
             return band_or_worker, "numa-0"
 
+    def _copy_outputs(
+        self, op: OperandType, inp_chunks: List[ChunkType]
+    ) -> List[ChunkType]:  # noqa: R0201  # pylint: disable=no-self-use
+        copied_op = op.copy()
+        copied_op._key = op.key
+        kws = []
+        for c in op.outputs:
+            # params include `index`, 'dtype', 'shape' only,
+            # 'dtype' and 'shape' may be used in `estimate_size`,
+            # no longer pass other params,
+            # like `dtypes` etc to worker for execution,
+            # cause `op` should be deterministic enough
+            kw = c.params
+            params = {"index": c.index}
+            if "dtype" in kw:
+                params["dtype"] = kw["dtype"]
+            if "shape" in kw:
+                params["shape"] = kw["shape"]
+            kws.append(params)
+        return [c.data for c in copied_op.new_chunks(inp_chunks, kws=kws)]
+
     def _gen_subtask_info(
         self,
         chunks: List[ChunkType],
@@ -194,14 +215,7 @@ class GraphAnalyzer:
             )
             for i, fetch_chunk in zip(build_fetch_index_to_chunks, fetch_chunks):
                 inp_chunks[i] = fetch_chunk
-            copied_op = chunk.op.copy()
-            copied_op._key = chunk.op.key
-            out_chunks = [
-                c.data
-                for c in copied_op.new_chunks(
-                    inp_chunks, kws=[c.params.copy() for c in chunk.op.outputs]
-                )
-            ]
+            out_chunks = self._copy_outputs(chunk.op, inp_chunks)
             for src_chunk, out_chunk in zip(chunk.op.outputs, out_chunks):
                 processed.add(src_chunk)
                 out_chunk._key = src_chunk.key

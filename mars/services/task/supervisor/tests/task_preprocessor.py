@@ -14,7 +14,7 @@
 
 import itertools
 from functools import partial
-from typing import Callable, Dict
+from typing import Callable, Dict, List
 
 import numpy as np
 
@@ -29,10 +29,25 @@ from .....core import (
 from .....core.operand import Fetch
 from .....resource import Resource
 from .....tests.core import _check_args, ObjectCheckMixin
-from .....typing import BandType
+from .....typing import BandType, ChunkType, OperandType
 from ....subtask import SubtaskGraph
 from ...analyzer import GraphAnalyzer
 from ..preprocessor import CancellableTiler, TaskPreprocessor
+
+
+class TestGraphAnalyzer(GraphAnalyzer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # keep chunks' params for test purpose
+        self.chunk_to_params = dict()
+
+    def _copy_outputs(
+        self, op: OperandType, inp_chunks: List[ChunkType]
+    ) -> List[ChunkType]:
+        copied_outputs = super()._copy_outputs(op, inp_chunks)
+        for out, copied in zip(op.outputs, copied_outputs):
+            self.chunk_to_params[copied] = out.params.copy()
+        return copied_outputs
 
 
 class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
@@ -145,7 +160,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
         for n in chunk_graph:
             self._raw_chunk_shapes[n.key] = getattr(n, "shape", None)
         task = self._task
-        analyzer = GraphAnalyzer(chunk_graph, available_bands, task, self._config)
+        analyzer = TestGraphAnalyzer(chunk_graph, available_bands, task, self._config)
         subtask_graph = analyzer.gen_subtask_graph()
         results = set(
             analyzer._chunk_to_copied[c]
@@ -161,4 +176,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
                 subtask.extra_config["check_keys"] = [
                     c.key for c in subtask.chunk_graph.results if c in results
                 ]
+            subtask.extra_config["chunk_params"] = chunk_to_params = dict()
+            for chunk in subtask.chunk_graph.results:
+                chunk_to_params[chunk] = analyzer.chunk_to_params[chunk]
         return subtask_graph

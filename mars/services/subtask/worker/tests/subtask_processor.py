@@ -64,6 +64,7 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
             check_options[key] = kwargs.get(key, True)
         self._check_options = check_options
         self._check_keys = kwargs.get("check_keys")
+        self._chunk_to_params = self.subtask.extra_config["chunk_params"]
         self._storage_api = CheckStorageAPI(self._storage_api)
 
     def _execute_operand(self, ctx: Dict[str, Any], op: OperandType):
@@ -79,6 +80,8 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
                 ):
                     # both shuffle mapper and reducer
                     continue
+                # set back params for test
+                out.params = self._chunk_to_params[out]
                 self.assert_object_consistent(out, ctx[out.key])
 
     async def done(self):
