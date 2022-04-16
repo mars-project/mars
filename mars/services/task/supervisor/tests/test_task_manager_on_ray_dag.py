@@ -19,6 +19,9 @@ from . import test_task_manager
 from .test_task_manager import actor_pool  # noqa: F401
 
 
+actor_pool = actor_pool
+
+
 @require_ray
 @pytest.mark.parametrize("actor_pool", [{"backend": "ray"}], indirect=True)
 @pytest.mark.asyncio

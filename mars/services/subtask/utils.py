@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Optional, Type, Iterator
-from ...core import ChunkGraph, OperandType, enter_mode
+from typing import Any, Dict, List
+from ...core import ChunkGraph
 from ...core.operand import (
     Fetch,
     FetchShuffle,
     MapReduceOperand,
     VirtualOperand,
-    execute,
 )
-from ...utils import get_chunk_key_to_data_keys
-from .core import Subtask, SubtaskStatus, SubtaskResult
+from .core import Subtask
 
 
 def iter_input_data_keys(
