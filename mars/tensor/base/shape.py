@@ -73,6 +73,8 @@ class TensorGetShape(TensorOperand, TensorOperandMixin):
         a = op.a
         outs = op.outputs
 
+        yield a.chunks
+
         chunk_op = TensorGetShape(pure_depends=[True] * len(a.chunks), ndim=op.ndim)
         chunk_kws = []
         for out in outs:

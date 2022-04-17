@@ -18,6 +18,7 @@ from ... import opcodes as OperandDef
 from ...core import OutputType, recursive_tile
 from ...serialization.serializables import ListField, BoolField
 from ...tensor.base.sort import _validate_sort_psrs_kinds
+from ...utils import calc_nsplits
 from ..utils import (
     parse_index,
     validate_axis,
@@ -106,14 +107,16 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
             )
             r = [(yield from recursive_tile(df[sorted_columns]))]
             if op.ignore_index:
+                chunks = r[0].chunks
+                yield chunks
                 out = op.outputs[0]
-                chunks = standardize_range_index(r[0].chunks, axis=0)
+                chunks = standardize_range_index(chunks, axis=0)
                 new_op = op.copy()
                 return new_op.new_dataframes(
                     op.inputs,
                     shape=out.shape,
                     chunks=chunks,
-                    nsplits=r[0].nsplits,
+                    nsplits=calc_nsplits({c.index: c.shape for c in chunks}),
                     index_value=out.index_value,
                     columns_value=out.columns_value,
                     dtypes=out.dtypes,

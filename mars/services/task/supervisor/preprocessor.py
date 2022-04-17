@@ -188,7 +188,6 @@ class TaskPreprocessor:
             tiler_cls=self._get_tiler_cls(),
         )
         optimize = self._config.optimize_chunk_graph
-        meta_updated = set()
         for chunk_graph in chunk_graph_builder.build():
             if len(chunk_graph) == 0:
                 continue
@@ -198,8 +197,9 @@ class TaskPreprocessor:
                     optimize_chunk_graph(chunk_graph)
                 )
             yield chunk_graph
-            # update tileables' meta
-            self._update_tileables_params(tileable_graph, meta_updated)
+
+    def post_chunk_graph_execution(self):  # pylint: disable=no-self-use
+        """Post calling after execution of current chunk graph"""
 
     def analyze(
         self,
@@ -237,23 +237,6 @@ class TaskPreprocessor:
     def get_tiled(self, tileable: TileableType):
         tileable = tileable.data if hasattr(tileable, "data") else tileable
         return self.tile_context[tileable]
-
-    def _update_tileable_params(
-        self, tileable: TileableType, tiled: TileableType  # pylint: disable=no-self-use
-    ):
-        tiled.refresh_params()
-        tileable.params = tiled.params
-
-    def _update_tileables_params(
-        self, tileable_graph: TileableGraph, updated: Set[TileableType]
-    ):
-        for tileable in tileable_graph:
-            if tileable in updated:
-                continue
-            tiled_tileable = self.tile_context.get(tileable)
-            if tiled_tileable is not None:
-                self._update_tileable_params(tileable, tiled_tileable)
-                updated.add(tileable)
 
     def __await__(self):
         return self._done.wait().__await__()

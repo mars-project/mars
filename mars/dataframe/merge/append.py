@@ -94,6 +94,7 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
             nsplits[0] += df.nsplits[0]
             row_index += len(df.nsplits[0])
         if op.ignore_index:
+            yield out_chunks
             out_chunks = standardize_range_index(out_chunks)
 
         nsplits = tuple(tuple(n) for n in nsplits)
@@ -134,6 +135,7 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
             row_index += len(series.nsplits[0])
 
         if op.ignore_index:
+            yield out_chunks
             out_chunks = standardize_range_index(out_chunks)
 
         nsplits = (tuple(nsplits),)
@@ -153,7 +155,7 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
         if op.output_types[0] == OutputType.dataframe:
             return (yield from cls._tile_dataframe(op))
         else:
-            return cls._tile_series(op)
+            return (yield from cls._tile_series(op))
 
     def _call_dataframe(self, df, other):
         if isinstance(other, DATAFRAME_TYPE):

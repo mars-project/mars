@@ -28,7 +28,7 @@ from .cluster import ClusterAPI, NodeRole
 from .session import SessionAPI
 from .storage import StorageAPI
 from .subtask import SubtaskAPI
-from .meta import MetaAPI
+from .meta import MetaAPI, WorkerMetaAPI
 
 logger = logging.getLogger(__name__)
 
@@ -136,11 +136,30 @@ class ThreadedServiceContext(Context):
         get_metas = []
         for data_key in data_keys:
             meta = self._meta_api.get_chunk_meta.delay(
-                data_key, fields=fields, error=error
+                data_key, fields=["bands"], error=error
             )
             get_metas.append(meta)
         metas = await self._meta_api.get_chunk_meta.batch(*get_metas)
-        return metas
+        api_to_keys_calls = defaultdict(lambda: (list(), list()))
+        for data_key, meta in zip(data_keys, metas):
+            addr = meta["bands"][0][0]
+            worker_meta_api = await WorkerMetaAPI.create(self.session_id, addr)
+            keys, calls = api_to_keys_calls[worker_meta_api]
+            keys.append(data_key)
+            calls.append(
+                worker_meta_api.get_chunk_meta.delay(
+                    data_key, fields=fields, error=error
+                )
+            )
+        coros = []
+        for api, (keys, calls) in api_to_keys_calls.items():
+            coros.append(api.get_chunk_meta.batch(*calls))
+        all_metas = await asyncio.gather(*coros)
+        key_to_meta = dict()
+        for (keys, _), metas in zip(api_to_keys_calls.values(), all_metas):
+            for k, meta in zip(keys, metas):
+                key_to_meta[k] = meta
+        return [key_to_meta[k] for k in data_keys]
 
     async def _get_chunks_result(self, data_keys: List[str]) -> List:
         metas = await self._get_chunks_meta(data_keys, fields=["bands"])

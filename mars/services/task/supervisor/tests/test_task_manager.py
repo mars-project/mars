@@ -35,7 +35,7 @@ from .....storage import StorageLevel
 from .....utils import Timer, merge_chunks
 from ....cluster import MockClusterAPI
 from ....lifecycle import MockLifecycleAPI
-from ....meta import MockMetaAPI
+from ....meta import MockMetaAPI, MockWorkerMetaAPI
 from ....scheduling import MockSchedulingAPI
 from ....session import MockSessionAPI
 from ....storage import StorageAPI, MockStorageAPI
@@ -67,6 +67,7 @@ async def actor_pool():
         )
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
+        await MockWorkerMetaAPI.create(session_id, pool.external_address)
         lifecycle_api = await MockLifecycleAPI.create(session_id, pool.external_address)
         storage_api = await MockStorageAPI.create(session_id, pool.external_address)
         await MockSchedulingAPI.create(session_id, pool.external_address)
