@@ -16,6 +16,8 @@ import cloudpickle
 import numpy as np
 import pandas as pd
 
+from mars.core.operand import MapReduceOperand
+from mars.dataframe.operands import DataFrameOperandMixin
 from mars.serialization import serialize, deserialize
 from mars.serialization.serializables import (
     Serializable,
@@ -38,6 +40,7 @@ from mars.serialization.serializables import (
 )
 from mars.services.subtask import Subtask
 from mars.services.task import new_task_id
+from mars.utils import tokenize
 
 
 class SerializableChild(Serializable):
@@ -168,3 +171,47 @@ class SerializeContainersSuite:
 
     def time_pickle_serialize_deserialize_dict(self):
         deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.test_dict))))
+
+
+class MockDFOperand(MapReduceOperand, DataFrameOperandMixin):
+    _op_type_ = 14320
+
+
+class SerializeFetchShuffleSuite:
+    def setup(self):
+        from mars.core import OutputType
+        from mars.core.operand import OperandStage
+        from mars.dataframe.operands import DataFrameShuffleProxy
+        from mars.utils import build_fetch
+
+        source_chunks = []
+        for i in range(1000):
+            op = MockDFOperand(
+                _output_types=[OutputType.dataframe],
+                _key=tokenize(i),
+                stage=OperandStage.map,
+            )
+            source_chunks.append(op.new_chunk([], index=(i,)))
+
+        shuffle_chunk = DataFrameShuffleProxy(
+            output_types=[OutputType.dataframe]
+        ).new_chunk(source_chunks)
+
+        fetch_chunk = build_fetch(shuffle_chunk)
+
+        self.test_fetch_chunks = []
+        for i in range(1000):
+            reduce_op = MockDFOperand(
+                _output_types=[OutputType.dataframe],
+                _key=tokenize((i, 1)),
+                stage=OperandStage.reduce,
+            )
+            self.test_fetch_chunks.append(
+                reduce_op.new_chunk([fetch_chunk], index=(i,))
+            )
+
+    def time_pickle_serialize_fetch_shuffle_chunks(self):
+        for fetch_chunk in self.test_fetch_chunks:
+            header, buffers = serialize(fetch_chunk)
+            serialized = cloudpickle.dumps((header, buffers))
+            deserialize(*cloudpickle.loads(serialized))

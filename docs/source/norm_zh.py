@@ -31,7 +31,7 @@ def _zh_len(s):
     Calculate text length in Chinese
     """
     try:
-        return len(s.encode('gb2312'))
+        return len(s.encode("gb2312"))
     except ValueError:
         return len(s)
 
@@ -41,8 +41,9 @@ def _zh_split(s):
     Split text length in Chinese
     """
     import jieba
+
     try:
-        s.encode('ascii')
+        s.encode("ascii")
         has_zh = False
     except ValueError:
         has_zh = True
@@ -54,7 +55,7 @@ def _zh_split(s):
 
 
 # code modified from babel.messages.pofile (hash 359ecffca479dfe032d0f7210d5cd8160599c816)
-def _normalize(string, prefix='', width=76):
+def _normalize(string, prefix="", width=76):
     r"""Convert a string into a format that is appropriate for .po files.
     >>> print(normalize('''Say:
     ...   "hello, world!"
@@ -97,7 +98,7 @@ def _normalize(string, prefix='', width=76):
                                 # separate line
                                 buf.append(chunks.pop())
                             break
-                    lines.append(u''.join(buf))
+                    lines.append("".join(buf))
             else:
                 lines.append(line)
     else:
@@ -109,8 +110,8 @@ def _normalize(string, prefix='', width=76):
     # Remove empty trailing line
     if lines and not lines[-1]:
         del lines[-1]
-        lines[-1] += '\n'
-    return u'""\n' + u'\n'.join([(prefix + escape(line)) for line in lines])
+        lines[-1] += "\n"
+    return '""\n' + "\n".join([(prefix + escape(line)) for line in lines])
 
 
 def main():
@@ -120,11 +121,11 @@ def main():
         return
 
     pofile.normalize = _normalize
-    for root, dirs, files in os.walk('.'):
-        if 'zh' not in root:
+    for root, dirs, files in os.walk("."):
+        if "zh" not in root:
             continue
         for f in files:
-            if not f.endswith('.po'):
+            if not f.endswith(".po"):
                 continue
             path = os.path.join(root, f)
 
@@ -133,11 +134,11 @@ def main():
             if (datetime.datetime.now() - modify_time).total_seconds() > 120:
                 continue
 
-            with open(path, 'rb') as inpf:
+            with open(path, "rb") as inpf:
                 catalog = pofile.read_po(inpf)
-            with open(path, 'wb') as outf:
+            with open(path, "wb") as outf:
                 pofile.write_po(outf, catalog)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
