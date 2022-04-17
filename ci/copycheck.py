@@ -52,7 +52,7 @@ def main():
     if miss_files:
         file_list = "\n    ".join(miss_files)
         sys.stderr.write(
-            f"Please add missing copyright header for files:\n" f"    {file_list}\n"
+            f"Please add missing copyright header for files:\n    {file_list}\n"
         )
         sys.exit(1)
 

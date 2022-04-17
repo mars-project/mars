@@ -88,7 +88,7 @@ def _wrap_comparison(func):
                     index_eq = left.key == right.key
                 if not index_eq:
                     raise ValueError(
-                        "Can only compare " "identically-labeled DataFrame object"
+                        "Can only compare identically-labeled DataFrame object"
                     )
         return wrap_notimplemented_exception(func)(df, other, **kw)
 

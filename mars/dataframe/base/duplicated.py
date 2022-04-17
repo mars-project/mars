@@ -469,7 +469,7 @@ def series_duplicated(series, keep="first", method="auto"):
     """
     if method not in ("auto", "tree", "shuffle", None):
         raise ValueError(
-            "method could only be one of " "'auto', 'tree', 'shuffle' or None"
+            "method could only be one of 'auto', 'tree', 'shuffle' or None"
         )
     op = DataFrameDuplicated(keep=keep, method=method)
     return op(series)

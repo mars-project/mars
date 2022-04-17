@@ -285,7 +285,7 @@ class FunctionType(SingletonFieldType):
 
     def validate(self, value):
         if value is not None and not callable(value):
-            raise TypeError(f"value should be a function, " f"got {type(value)}")
+            raise TypeError(f"value should be a function, got {type(value)}")
 
 
 class NamedtupleType(SingletonFieldType):
@@ -302,7 +302,7 @@ class NamedtupleType(SingletonFieldType):
     def validate(self, value):
         if not (isinstance(value, self.valid_types) and hasattr(value, "_fields")):
             raise TypeError(
-                f"value should be instance of namedtuple, " f"got {type(value)}"
+                f"value should be instance of namedtuple, got {type(value)}"
             )
 
 
@@ -376,7 +376,7 @@ class _CollectionType(AbstractFieldType, metaclass=ABCMeta):
             return
         if not isinstance(value, self.valid_types):
             raise TypeError(
-                f"value should be instance of {self.valid_types}, " f"got {type(value)}"
+                f"value should be instance of {self.valid_types}, got {type(value)}"
             )
         if self.is_homogeneous():
             field_type: AbstractFieldType = self._field_types[0]

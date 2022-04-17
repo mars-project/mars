@@ -175,7 +175,7 @@ class RunScript(MergeDictOperand):
 def _extract_inputs(data: Dict[str, TileableType] = None) -> List[TileableType]:
     if data is not None and not isinstance(data, dict):
         raise TypeError(
-            "`data` must be a dict whose key is " "variable name and value is data"
+            "`data` must be a dict whose key is variable name and value is data"
         )
 
     inputs = []

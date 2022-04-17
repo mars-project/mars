@@ -121,7 +121,7 @@ def main():
         return
 
     pofile.normalize = _normalize
-    for root, dirs, files in os.walk("."):
+    for root, _dirs, files in os.walk("."):
         if "zh" not in root:
             continue
         for f in files:

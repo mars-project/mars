@@ -373,7 +373,7 @@ class TensorArgReductionMixin(TensorReductionMixin):
             axis = (axis,)
             ravel = ndim == 1
         else:
-            raise TypeError("axis must be either `None` or int, " f"got '{axis}'")
+            raise TypeError(f"axis must be either `None` or int, got '{axis}'")
         return axis, ravel
 
     @staticmethod

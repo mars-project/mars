@@ -70,8 +70,8 @@ class CudaFileObject:
         self._offset = 0
         self._has_read_headers = False
         self._buffers = []
-        headers, buffers = _id_to_buffers[self._object_id]
-        self._headers = headers = headers.copy()
+        (metas, serialized), buffers = _id_to_buffers[self._object_id]
+        self._headers = headers = (metas.copy(), serialized)
         buffer_types = []
         for buf in buffers:
             if isinstance(buf, cupy.ndarray):
@@ -90,7 +90,7 @@ class CudaFileObject:
                 size = getattr(buf, "size", len(buf))
                 self._buffers.append(buf)
                 buffer_types.append(["memory", size])
-        headers["buffer_types"] = buffer_types
+        headers[0]["buffer_types"] = buffer_types
 
     def _initialize_write(self):
         self._had_write_headers = False
@@ -143,7 +143,7 @@ class CudaFileObject:
 
         if not self._has_write_headers:
             self._headers = headers = pickle.loads(content)
-            buffer_types = headers["buffer_types"]
+            buffer_types = headers[0]["buffer_types"]
             for buffer_type, size in buffer_types:
                 if buffer_type == "cuda":
                     self._buffers.append(Buffer.empty(size))
@@ -153,7 +153,7 @@ class CudaFileObject:
             return
 
         cur_buf = self._buffers[self._cur_buffer_index]
-        cur_buf_size = self._headers["buffer_types"][self._cur_buffer_index][1]
+        cur_buf_size = self._headers[0]["buffer_types"][self._cur_buffer_index][1]
         if isinstance(cur_buf, Buffer):
             cur_cupy_memory = UnownedMemory(cur_buf.ptr, len(cur_buf), cur_buf)
             cupy_pointer = MemoryPointer(cur_cupy_memory, self._offset)
@@ -188,7 +188,7 @@ class CudaFileObject:
 
     def _write_close(self):
         headers = self._headers
-        headers.pop("buffer_types")
+        headers[0].pop("buffer_types")
         # hold cuda buffers
 
         _id_to_buffers[self._object_id] = headers, self._buffers

@@ -25,7 +25,7 @@ class ChunkData(EntityData):
 
     def __repr__(self):
         if self.op.stage is None:
-            return f"Chunk <op={type(self.op).__name__}, " f"key={self.key}>"
+            return f"Chunk <op={type(self.op).__name__}, key={self.key}>"
         else:
             return (
                 f"Chunk <op={type(self.op).__name__}, "

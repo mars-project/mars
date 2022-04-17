@@ -206,7 +206,7 @@ class DummyClient(Client):
         server = DummyServer.get_instance(dest_address)
         if server is None:  # pragma: no cover
             raise RuntimeError(
-                "DummyServer needs to be created " "first before DummyClient"
+                "DummyServer needs to be created first before DummyClient"
             )
         if server.stopped:  # pragma: no cover
             raise ConnectionError("Dummy server closed")

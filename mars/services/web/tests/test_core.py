@@ -119,12 +119,12 @@ async def test_web_api(actor_pool):
     assert res.body.decode() == "get_sub_value_test_id_sub_tid"
 
     res = await client.fetch(
-        f"http://localhost:{web_port}/api/test/test_id/" f"subtest/sub_tid?action=a1"
+        f"http://localhost:{web_port}/api/test/test_id/subtest/sub_tid?action=a1"
     )
     assert res.body.decode() == "get_sub_value_test_id_sub_tid_action1"
 
     res = await client.fetch(
-        f"http://localhost:{web_port}/api/test/test_id/" f"subtest/sub_tid?action=a2"
+        f"http://localhost:{web_port}/api/test/test_id/subtest/sub_tid?action=a2"
     )
     assert res.body.decode() == "get_sub_value_test_id_sub_tid_action2"
 

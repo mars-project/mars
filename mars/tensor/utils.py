@@ -669,9 +669,7 @@ def check_random_state(seed):
         return mtrand.RandomState.from_numpy(seed)
     if isinstance(seed, mtrand.RandomState):
         return seed
-    raise ValueError(
-        f"{seed} cannot be used to seed a mt.random.RandomState" " instance"
-    )
+    raise ValueError(f"{seed} cannot be used to seed a mt.random.RandomState instance")
 
 
 def filter_inputs(inputs):

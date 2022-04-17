@@ -52,7 +52,7 @@ class DataFrameAround(DataFrameUnaryUfunc):
 def around(df, decimals=0, *args, **kwargs):
     if len(args) > 0:
         raise TypeError(
-            "round() takes 0 positional arguments " f"but {len(args)} was given"
+            f"round() takes 0 positional arguments but {len(args)} was given"
         )
     op = DataFrameAround(decimals=decimals, **kwargs)
     return op(df)

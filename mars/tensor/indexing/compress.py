@@ -98,7 +98,7 @@ def compress(condition, a, axis=None, out=None):
         axis = validate_axis(a.ndim, axis)
     except ValueError:
         raise np.AxisError(
-            f"axis {axis} is out of bounds " f"for tensor of dimension {a.ndim}"
+            f"axis {axis} is out of bounds for tensor of dimension {a.ndim}"
         )
 
     try:
@@ -120,5 +120,5 @@ def compress(condition, a, axis=None, out=None):
         return out
     except IndexError:
         raise np.AxisError(
-            f"axis {len(condition)} is out of bounds " "for tensor of dimension 1"
+            f"axis {len(condition)} is out of bounds for tensor of dimension 1"
         )

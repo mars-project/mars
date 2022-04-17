@@ -53,7 +53,7 @@ class TensorQR(TensorHasInput, TensorOperandMixin):
 
         if a.ndim != 2:
             raise LinAlgError(
-                f"{a.ndim}-dimensional tensor given. " "Tensor must be two-dimensional"
+                f"{a.ndim}-dimensional tensor given. Tensor must be two-dimensional"
             )
 
         tiny_q, tiny_r = np.linalg.qr(np.ones((1, 1), dtype=a.dtype))

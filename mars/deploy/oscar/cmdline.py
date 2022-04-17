@@ -65,7 +65,7 @@ class OscarCommandRunner:
         parser.add_argument(
             "-p",
             "--ports",
-            help="ports of the service, must equal to" "num of processes",
+            help="ports of the service, must equal to num of processes",
         )
         parser.add_argument("-c", "--config", help="service configuration")
         parser.add_argument(

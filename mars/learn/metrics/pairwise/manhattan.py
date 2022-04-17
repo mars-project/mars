@@ -120,7 +120,7 @@ class ManhattanDistances(PairwiseDistances):
             else:  # pragma: no cover
                 # we cannot support sparse
                 raise NotImplementedError(
-                    "cannot support calculate manhattan " "distances on GPU"
+                    "cannot support calculate manhattan distances on GPU"
                 )
 
 

@@ -143,7 +143,7 @@ class Tiler:
 
                 chunks = tiled_tileable.chunks
                 if chunks is None:  # pragma: no cover
-                    raise ValueError(f"tileable({out}) is still coarse " f"after tile")
+                    raise ValueError(f"tileable({out}) is still coarse after tile")
                 chunks = [self._get_data(c) for c in chunks]
                 self._add_nodes(chunk_graph, chunks, visited)
                 self._tile_context[out] = tiled_tileable

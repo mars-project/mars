@@ -310,7 +310,7 @@ class LabelBinarizer(TransformerMixin, BaseEstimator):
         )
         if "multioutput" in self.y_type_:
             raise ValueError(
-                "Multioutput target data is not supported with " "label binarization"
+                "Multioutput target data is not supported with label binarization"
             )
         if _num_samples(y) == 0:  # pragma: no cover
             raise ValueError("y has 0 samples: %r" % y)
@@ -375,7 +375,7 @@ class LabelBinarizer(TransformerMixin, BaseEstimator):
         )
         y_is_multilabel = target.startswith("multilabel")
         if y_is_multilabel and not self.y_type_.startswith("multilabel"):
-            raise ValueError("The object was not fitted with multilabel" " input.")
+            raise ValueError("The object was not fitted with multilabel input.")
 
         return label_binarize(
             y,
@@ -547,7 +547,7 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
         y_type = y_type.item() if hasattr(y_type, "item") else y_type
         if "multioutput" in y_type:
             raise ValueError(
-                "Multioutput target data is not supported with label " "binarization"
+                "Multioutput target data is not supported with label binarization"
             )
         if y_type == "unknown":
             raise ValueError("The type of target data is not known")
@@ -588,7 +588,7 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
             out_shape = y.shape
         else:
             raise ValueError(
-                "%s target data is not supported with label " "binarization" % y_type
+                "%s target data is not supported with label binarization" % y_type
             )
 
         out_chunks = []
@@ -671,7 +671,7 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
                 Y.data = data
         else:  # pragma: no cover
             raise ValueError(
-                "%s target data is not supported with label " "binarization" % y_type
+                "%s target data is not supported with label binarization" % y_type
             )
 
         if not sparse_output:
@@ -827,7 +827,7 @@ def _inverse_binarize_thresholding(
 
     if output_type != "binary" and y.shape[1] != len(classes):
         raise ValueError(
-            "The number of class is not equal to the number of " "dimension of y."
+            "The number of class is not equal to the number of dimension of y."
         )
 
     classes = np.asarray(classes)

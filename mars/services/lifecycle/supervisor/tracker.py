@@ -163,9 +163,7 @@ class LifecycleTrackerActor(mo.Actor):
     def incref_tileables(self, tileable_keys: List[str]):
         for tileable_key in tileable_keys:
             if tileable_key not in self._tileable_key_to_chunk_keys:
-                raise TileableNotTracked(
-                    f"tileable {tileable_key} " f"not tracked before"
-                )
+                raise TileableNotTracked(f"tileable {tileable_key} not tracked before")
             self._tileable_ref_counts[tileable_key] += 1
             incref_chunk_keys = self._tileable_key_to_chunk_keys[tileable_key]
             # incref chunks for this tileable
@@ -180,9 +178,7 @@ class LifecycleTrackerActor(mo.Actor):
         decref_chunk_keys = []
         for tileable_key in tileable_keys:
             if tileable_key not in self._tileable_key_to_chunk_keys:
-                raise TileableNotTracked(
-                    f"tileable {tileable_key} " f"not tracked before"
-                )
+                raise TileableNotTracked(f"tileable {tileable_key} not tracked before")
             self._tileable_ref_counts[tileable_key] -= 1
 
             decref_chunk_keys.extend(self._tileable_key_to_chunk_keys[tileable_key])

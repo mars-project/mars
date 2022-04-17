@@ -997,9 +997,7 @@ def _wrap_execute_data_source_usecols(usecols, op_cls):
         result = ctx[op.outputs[0].key]
         if not isinstance(usecols, list):
             if not isinstance(result, pd.Series):
-                raise RuntimeError(
-                    "Out data should be a Series, " f"got {type(result)}"
-                )
+                raise RuntimeError(f"Out data should be a Series, got {type(result)}")
         elif len(result.columns) > len(usecols):
             params = dict(
                 (k, getattr(op, k, None))

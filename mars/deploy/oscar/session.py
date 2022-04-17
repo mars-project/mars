@@ -853,7 +853,7 @@ class _IsolatedSession(AbstractAsyncSession):
         if kwargs:  # pragma: no cover
             unexpected_keys = ", ".join(list(kwargs.keys()))
             raise TypeError(
-                f"Oscar session got unexpected " f"arguments: {unexpected_keys}"
+                f"Oscar session got unexpected arguments: {unexpected_keys}"
             )
 
         if urlparse(address).scheme == "http":
@@ -1030,7 +1030,7 @@ class _IsolatedSession(AbstractAsyncSession):
             elif isinstance(tileable.op, Fetch):
                 break
             else:
-                raise ValueError(f"Cannot fetch unexecuted " f"tileable: {tileable!r}")
+                raise ValueError(f"Cannot fetch unexecuted tileable: {tileable!r}")
 
         if isinstance(tileable.op, Fetch):
             return tileable, indexes
@@ -1083,7 +1083,7 @@ class _IsolatedSession(AbstractAsyncSession):
 
         if kwargs:  # pragma: no cover
             unexpected_keys = ", ".join(list(kwargs.keys()))
-            raise TypeError(f"`fetch` got unexpected " f"arguments: {unexpected_keys}")
+            raise TypeError(f"`fetch` got unexpected arguments: {unexpected_keys}")
 
         with enter_mode(build=True):
             chunks = []
@@ -1167,13 +1167,13 @@ class _IsolatedSession(AbstractAsyncSession):
             for field_name in fields:
                 if field_name not in available_fields:  # pragma: no cover
                     raise TypeError(
-                        f"`fetch_infos` got unexpected " f"field name: {field_name}"
+                        f"`fetch_infos` got unexpected field name: {field_name}"
                     )
             fields = set(fields)
 
         if kwargs:  # pragma: no cover
             unexpected_keys = ", ".join(list(kwargs.keys()))
-            raise TypeError(f"`fetch` got unexpected " f"arguments: {unexpected_keys}")
+            raise TypeError(f"`fetch` got unexpected arguments: {unexpected_keys}")
 
         with enter_mode(build=True):
             chunks = []

@@ -84,7 +84,7 @@ def _ttest_finish(df, t, alternative):
     elif alternative == "two-sided":
         prob = mt_abs(t).map_chunk(sp_distributions.t.sf, args=(df,)) * 2
     else:
-        raise ValueError("alternative must be " "'less', 'greater' or 'two-sided'")
+        raise ValueError("alternative must be 'less', 'greater' or 'two-sided'")
     if t.ndim == 0:
         t = t[()]
     return t, prob

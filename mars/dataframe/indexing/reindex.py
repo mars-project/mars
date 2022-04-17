@@ -760,7 +760,7 @@ def reindex(df_or_series, *args, **kwargs):
             columns = columns.fetch()
         except ValueError:
             raise NotImplementedError(
-                "`columns` need to be executed first " "if it's a Mars object"
+                "`columns` need to be executed first if it's a Mars object"
             )
     elif columns is not None:
         columns = np.asarray(columns)
