@@ -18,7 +18,9 @@ from typing import Dict, List
 
 class AbstractLifecycleAPI(ABC):
     @abstractmethod
-    async def decref_tileables(self, tileable_keys: List[str]):
+    async def decref_tileables(
+        self, tileable_keys: List[str], counts: List[int] = None
+    ):
         """
         Decref tileables.
 
@@ -26,6 +28,8 @@ class AbstractLifecycleAPI(ABC):
         ----------
         tileable_keys : list
             List of tileable keys.
+        counts: list
+            List of ref count.
         """
 
     @abstractmethod

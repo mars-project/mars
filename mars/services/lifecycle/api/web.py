@@ -30,9 +30,12 @@ class LifecycleWebAPIHandler(MarsServiceWebAPIHandler):
     @web_api("", method="post", arg_filter={"action": "decref_tileables"})
     async def decref_tileables(self, session_id: str):
         tileable_keys = self.get_argument("tileable_keys").split(",")
+        counts = self.get_argument("counts", None)
+        if counts:
+            counts = [int(c) for c in counts.split(",")]
 
         oscar_api = await self._get_oscar_lifecycle_api(session_id)
-        await oscar_api.decref_tileables(tileable_keys)
+        await oscar_api.decref_tileables(tileable_keys, counts=counts)
 
     @web_api("", method="get", arg_filter={"action": "get_all_chunk_ref_counts"})
     async def get_all_chunk_ref_counts(self, session_id: str):
@@ -52,15 +55,20 @@ class WebLifecycleAPI(AbstractLifecycleAPI, MarsWebAPIClientMixin):
         self._address = address.rstrip("/")
         self.request_rewriter = request_rewriter
 
-    async def decref_tileables(self, tileable_keys: List[str]):
+    async def decref_tileables(
+        self, tileable_keys: List[str], counts: List[int] = None
+    ):
         path = f"{self._address}/api/session/{self._session_id}/lifecycle"
         params = dict(action="decref_tileables")
+        counts = (
+            f"&counts={','.join(str(c) for c in counts)}" if counts is not None else ""
+        )
         await self._request_url(
             path=path,
             method="POST",
             params=params,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
-            data="tileable_keys=" + ",".join(tileable_keys),
+            data="tileable_keys=" + ",".join(tileable_keys) + counts,
         )
 
     async def get_all_chunk_ref_counts(self) -> Dict[str, int]:
