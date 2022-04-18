@@ -60,7 +60,7 @@ def process_loc_indexes(inp, indexes):
                         index = index.fetch()
                     except (RuntimeError, ValueError):
                         raise NotImplementedError(
-                            "indexer on axis columns cannot be " "non-executed tensor"
+                            "indexer on axis columns cannot be non-executed tensor"
                         )
         new_indexes.append(index)
 

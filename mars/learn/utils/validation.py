@@ -62,7 +62,7 @@ def _num_samples(x):
             if hasattr(x.op, "data") and x.op.data is not None:
                 x = np.asarray(x.op.data)
             raise TypeError(
-                f"Singleton array {x!r} cannot be considered" " a valid collection."
+                f"Singleton array {x!r} cannot be considered a valid collection."
             )
         # Check that shape is returning an integer or default to len
         if isinstance(x.shape[0], numbers.Integral):

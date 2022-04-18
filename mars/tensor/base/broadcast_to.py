@@ -129,7 +129,7 @@ def broadcast_to(tensor, shape):
 
     if any(np.isnan(s) for s in tensor.shape):
         raise ValueError(
-            "input tensor has unknown shape, " "need to call `.execute()` first"
+            "input tensor has unknown shape, need to call `.execute()` first"
         )
 
     if tensor.shape == shape:

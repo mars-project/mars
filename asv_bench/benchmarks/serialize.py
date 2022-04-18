@@ -16,6 +16,8 @@ import cloudpickle
 import numpy as np
 import pandas as pd
 
+from mars.core.operand import MapReduceOperand
+from mars.dataframe.operands import DataFrameOperandMixin
 from mars.serialization import serialize, deserialize
 from mars.serialization.serializables import (
     Serializable,
@@ -38,6 +40,7 @@ from mars.serialization.serializables import (
 )
 from mars.services.subtask import Subtask
 from mars.services.task import new_task_id
+from mars.utils import tokenize
 
 
 class SerializableChild(Serializable):
@@ -72,7 +75,7 @@ class MySerializable(Serializable):
     _dict_val = DictField("dict_val", FieldTypes.string, FieldTypes.bytes)
 
 
-class SerializationSuite:
+class SerializeSerializableSuite:
     def setup(self):
         children = []
         for idx in range(1000):
@@ -90,6 +93,12 @@ class SerializationSuite:
             children.append(child)
         self.test_data = SerializableParent(children=children)
 
+    def time_serialize_deserialize(self):
+        deserialize(*serialize(self.test_data))
+
+
+class SerializeSubtaskSuite:
+    def setup(self):
         self.subtasks = []
         for i in range(10000):
             subtask = Subtask(
@@ -110,7 +119,13 @@ class SerializationSuite:
             )
             self.subtasks.append(subtask)
 
-        self.test_basic_serializable = []
+    def time_pickle_serialize_deserialize_subtask(self):
+        deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.subtasks))))
+
+
+class SerializePrimitivesSuite:
+    def setup(self):
+        self.test_primitive_serializable = []
         for i in range(10000):
             my_serializable = MySerializable(
                 _bool_val=True,
@@ -129,27 +144,24 @@ class SerializationSuite:
                 _tuple_val=("a", "b"),
                 _dict_val={"a": b"bytes_value"},
             )
-            self.test_basic_serializable.append(my_serializable)
+            self.test_primitive_serializable.append(my_serializable)
 
-        self.test_list = list(range(100000))
-        self.test_tuple = tuple(range(100000))
-        self.test_dict = {i: i for i in range(100000)}
-
-    def time_serialize_deserialize(self):
-        deserialize(*serialize(self.test_data))
-
-    def time_serialize_deserialize_basic(self):
-        deserialize(*serialize(self.test_basic_serializable))
+    def time_serialize_deserialize_primitive(self):
+        deserialize(*serialize(self.test_primitive_serializable))
 
     def time_pickle_serialize_deserialize_basic(self):
         deserialize(
             *cloudpickle.loads(
-                cloudpickle.dumps(serialize(self.test_basic_serializable))
+                cloudpickle.dumps(serialize(self.test_primitive_serializable))
             )
         )
 
-    def time_pickle_serialize_deserialize_subtask(self):
-        deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.subtasks))))
+
+class SerializeContainersSuite:
+    def setup(self):
+        self.test_list = list(range(100000))
+        self.test_tuple = tuple(range(100000))
+        self.test_dict = {i: i for i in range(100000)}
 
     def time_pickle_serialize_deserialize_list(self):
         deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.test_list))))
@@ -159,3 +171,47 @@ class SerializationSuite:
 
     def time_pickle_serialize_deserialize_dict(self):
         deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.test_dict))))
+
+
+class MockDFOperand(MapReduceOperand, DataFrameOperandMixin):
+    _op_type_ = 14320
+
+
+class SerializeFetchShuffleSuite:
+    def setup(self):
+        from mars.core import OutputType
+        from mars.core.operand import OperandStage
+        from mars.dataframe.operands import DataFrameShuffleProxy
+        from mars.utils import build_fetch
+
+        source_chunks = []
+        for i in range(1000):
+            op = MockDFOperand(
+                _output_types=[OutputType.dataframe],
+                _key=tokenize(i),
+                stage=OperandStage.map,
+            )
+            source_chunks.append(op.new_chunk([], index=(i,)))
+
+        shuffle_chunk = DataFrameShuffleProxy(
+            output_types=[OutputType.dataframe]
+        ).new_chunk(source_chunks)
+
+        fetch_chunk = build_fetch(shuffle_chunk)
+
+        self.test_fetch_chunks = []
+        for i in range(1000):
+            reduce_op = MockDFOperand(
+                _output_types=[OutputType.dataframe],
+                _key=tokenize((i, 1)),
+                stage=OperandStage.reduce,
+            )
+            self.test_fetch_chunks.append(
+                reduce_op.new_chunk([fetch_chunk], index=(i,))
+            )
+
+    def time_pickle_serialize_fetch_shuffle_chunks(self):
+        for fetch_chunk in self.test_fetch_chunks:
+            header, buffers = serialize(fetch_chunk)
+            serialized = cloudpickle.dumps((header, buffers))
+            deserialize(*cloudpickle.loads(serialized))

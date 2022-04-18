@@ -219,7 +219,7 @@ def delete(arr, obj, axis=None):
     arr = astensor(arr)
     if getattr(obj, "ndim", 0) > 1:  # pragma: no cover
         raise ValueError(
-            "index array argument obj to insert must be " "one dimensional or scalar"
+            "index array argument obj to insert must be one dimensional or scalar"
         )
 
     if axis is None:

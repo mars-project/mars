@@ -20,7 +20,7 @@ import numpy as np
 def make_import_error_func(package_name):
     def _func(*_, **__):  # pragma: no cover
         raise ImportError(
-            f"Cannot import {package_name}, please reinstall " f"that package."
+            f"Cannot import {package_name}, please reinstall that package."
         )
 
     return _func

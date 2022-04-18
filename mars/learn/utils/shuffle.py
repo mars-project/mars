@@ -470,7 +470,7 @@ def shuffle(*arrays, **options):
     random_state = check_random_state(options.pop("random_state", None)).to_numpy()
     if options:
         raise TypeError(
-            "shuffle() got an unexpected " f"keyword argument {next(iter(options))}"
+            f"shuffle() got an unexpected keyword argument {next(iter(options))}"
         )
 
     max_ndim = max(ar.ndim for ar in arrays)

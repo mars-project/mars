@@ -446,7 +446,7 @@ class PCA(_BasePCA):
         if n_components == "mle":
             if n_samples < n_features:
                 raise ValueError(
-                    "n_components='mle' is only supported " "if n_samples >= n_features"
+                    "n_components='mle' is only supported if n_samples >= n_features"
                 )
         elif not 0 <= n_components <= min(n_samples, n_features):
             raise ValueError(

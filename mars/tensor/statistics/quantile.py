@@ -545,7 +545,7 @@ def quantile(
     handle_non_numeric = kw.pop("handle_non_numeric", None)
     if len(kw) > 0:  # pragma: no cover
         raise TypeError(
-            "quantile() got an unexpected keyword " f"argument '{next(iter(kw))}'"
+            f"quantile() got an unexpected keyword argument '{next(iter(kw))}'"
         )
 
     if not isinstance(q, ENTITY_TYPE):

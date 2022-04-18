@@ -35,6 +35,4 @@ class FuseChunkMixin:
 
     @classmethod
     def tile(cls, op):
-        raise NotSupportTile(
-            "FuseChunk is a chunk operand " "which does not support tile"
-        )
+        raise NotSupportTile("FuseChunk is a chunk operand which does not support tile")

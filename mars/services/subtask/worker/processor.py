@@ -133,7 +133,7 @@ class SubtaskProcessor:
             gets.append(self._storage_api.get.delay(key, **gets_params))
         if keys:
             logger.debug(
-                "Start getting input data, keys: %s, " "subtask id: %s",
+                "Start getting input data, keys: %s, subtask id: %s",
                 keys,
                 self.subtask.subtask_id,
             )
@@ -146,7 +146,7 @@ class SubtaskProcessor:
                 }
             )
             logger.debug(
-                "Finish getting input data keys: %s, " "subtask id: %s",
+                "Finish getting input data keys: %s, subtask id: %s",
                 keys,
                 self.subtask.subtask_id,
             )
@@ -197,7 +197,7 @@ class SubtaskProcessor:
                 # since `op.execute` may be a time-consuming operation,
                 # we make it run in a thread pool to not block current thread.
                 logger.debug(
-                    "Start executing operand: %s," "chunk: %s, subtask id: %s",
+                    "Start executing operand: %s, chunk: %s, subtask id: %s",
                     chunk.op,
                     chunk,
                     self.subtask.subtask_id,
@@ -219,7 +219,7 @@ class SubtaskProcessor:
                 try:
                     await to_wait
                     logger.debug(
-                        "Finish executing operand: %s," "chunk: %s, subtask id: %s",
+                        "Finish executing operand: %s, chunk: %s, subtask id: %s",
                         chunk.op,
                         chunk,
                         self.subtask.subtask_id,
@@ -236,7 +236,7 @@ class SubtaskProcessor:
                     await future
                     # if cancelled, stop next computation
                     logger.debug(
-                        "Cancelled operand: %s, chunk: %s, " "subtask id: %s",
+                        "Cancelled operand: %s, chunk: %s, subtask id: %s",
                         chunk.op,
                         chunk,
                         self.subtask.subtask_id,
@@ -384,7 +384,7 @@ class SubtaskProcessor:
                 )
             )
         logger.debug(
-            "Start storing chunk metas for data keys: %s, " "subtask id: %s",
+            "Start storing chunk metas for data keys: %s, subtask id: %s",
             set_meta_keys,
             self.subtask.subtask_id,
         )
@@ -402,7 +402,7 @@ class SubtaskProcessor:
                 coros.append(self._meta_api.set_chunk_meta.batch(*set_chunk_metas))
                 await asyncio.gather(*coros)
                 logger.debug(
-                    "Finish store chunk metas for data keys: %s, " "subtask id: %s",
+                    "Finish store chunk metas for data keys: %s, subtask id: %s",
                     set_meta_keys,
                     self.subtask.subtask_id,
                 )

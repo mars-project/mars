@@ -68,8 +68,8 @@ async def read_buffers(header: Dict, reader: StreamReader):
         CPBuffer = CPUnownedMemory = CPMemoryPointer = None
 
     # construct a empty cuda buffer and copy from host
-    is_cuda_buffers = header.get("is_cuda_buffers")
-    buffer_sizes = header.pop(BUFFER_SIZES_NAME)
+    is_cuda_buffers = header[0].get("is_cuda_buffers")
+    buffer_sizes = header[0].pop(BUFFER_SIZES_NAME)
 
     buffers = []
     for is_cuda_buffer, buf_size in zip(is_cuda_buffers, buffer_sizes):

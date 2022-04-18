@@ -435,7 +435,7 @@ def test_n_components_mle(setup):
             n_components_dict[solver] = pca.n_components_
         else:  # arpack/randomized solver
             error_message = (
-                "n_components='mle' cannot be a string with " f"svd_solver='{solver}'"
+                f"n_components='mle' cannot be a string with svd_solver='{solver}'"
             )
             assert_raise_message(ValueError, error_message, pca.fit, X)
     assert n_components_dict["auto"] == n_components_dict["full"]

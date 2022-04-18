@@ -384,32 +384,20 @@ class DeserializeMessageFailed(Exception):
 
 
 class MessageSerializer(Serializer):
-    serializer_name = "actor_message"
-
     @buffered
-    def serialize(self, obj: _MessageBase, context: Dict):
+    def serial(self, obj: _MessageBase, context: Dict):
         assert obj.protocol == 0, "only support protocol 0 for now"
 
-        message_class = type(obj)
-        to_serialize = [getattr(obj, slot) for slot in _get_slots(message_class)]
-        header, buffers = yield to_serialize
-        new_header = {
-            "message_class": message_class,
-            "message_id": obj.message_id,
-            "protocol": obj.protocol,
-            "attributes_header": header,
-        }
-        return new_header, buffers
+        message_cls = type(obj)
+        to_serialize = [getattr(obj, slot) for slot in _get_slots(message_cls)]
+        return (message_cls, obj.message_id, obj.protocol), [to_serialize], False
 
-    def deserialize(self, header: Dict, buffers: List, context: Dict):
-        protocol = header["protocol"]
+    def deserial(self, serialized: Tuple, context: Dict, subs: List):
+        message_cls, message_id, protocol = serialized
         assert protocol == 0, "only support protocol 0 for now"
-        message_id = header["message_id"]
-        message_class = header["message_class"]
         try:
-            serialized = yield header["attributes_header"], buffers
-            message = object.__new__(message_class)
-            for slot, val in zip(_get_slots(message_class), serialized):
+            message = object.__new__(message_cls)
+            for slot, val in zip(_get_slots(message_cls), subs[0]):
                 setattr(message, slot, val)
             return message
         except pickle.UnpicklingError as e:  # pragma: no cover

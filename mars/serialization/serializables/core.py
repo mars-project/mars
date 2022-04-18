@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import weakref
 from collections import OrderedDict
 from functools import partial
-from typing import Any, Dict, Generator, List, Type, Tuple
+from typing import Any, Dict, List, Type, Tuple
 
+import cloudpickle
+
+from ...utils import no_default
 from ..core import Serializer, Placeholder, buffered
 from .field import Field, OneOfField
 from .field_type import (
@@ -30,7 +34,7 @@ from .field_type import (
 )
 
 
-_basic_field_type = (
+_primitive_field_types = (
     PrimitiveFieldType,
     DtypeType,
     DatetimeType,
@@ -39,12 +43,12 @@ _basic_field_type = (
 )
 
 
-def serialize_by_pickle(field: Field):
+def _is_field_primitive_compound(field: Field):
     if field.on_serialize is not None or field.on_deserialize is not None:
         return False
 
     def check_type(field_type):
-        if isinstance(field_type, _basic_field_type):
+        if isinstance(field_type, _primitive_field_types):
             return True
         if isinstance(field_type, (ListType, TupleType)):
             if all(
@@ -54,7 +58,8 @@ def serialize_by_pickle(field: Field):
                 return True
         if isinstance(field_type, DictType):
             if all(
-                isinstance(element_type, _basic_field_type) or element_type is Ellipsis
+                isinstance(element_type, _primitive_field_types)
+                or element_type is Ellipsis
                 for element_type in (field_type.key_type, field_type.value_type)
             ):
                 return True
@@ -86,14 +91,14 @@ class SerializableMeta(type):
 
             property_to_fields[k] = v
             v._attr_name = k
-            if serialize_by_pickle(v):
+            if _is_field_primitive_compound(v):
                 pickle_fields.append(v)
             else:
                 non_pickle_fields.append(v)
 
         properties["_FIELDS"] = property_to_fields
-        properties["_PICKLE_FIELDS"] = pickle_fields
-        properties["_NON_PICKLE_FIELDS"] = non_pickle_fields
+        properties["_PRIMITIVE_FIELDS"] = pickle_fields
+        properties["_NON_PRIMITIVE_FIELDS"] = non_pickle_fields
         slots = set(properties.pop("__slots__", set()))
         if property_to_fields:
             slots.add("_FIELD_VALUES")
@@ -104,10 +109,14 @@ class SerializableMeta(type):
 
 
 class Serializable(metaclass=SerializableMeta):
-    __slots__ = ()
+    __slots__ = ("__weakref__",)
+
+    _cache_primitive_serial = False
 
     _FIELDS: Dict[str, Field]
     _FIELD_VALUES: Dict[str, Any]
+    _PRIMITIVE_FIELDS: List[str]
+    _NON_PRIMITIVE_FIELDS: List[str]
 
     def __init__(self, *args, **kwargs):
         if args:  # pragma: no cover
@@ -132,16 +141,13 @@ class Serializable(metaclass=SerializableMeta):
         return copied
 
 
-class _SkipStub:
-    pass
+_primitive_serial_cache = weakref.WeakKeyDictionary()
 
 
 class SerializableSerializer(Serializer):
     """
     Leverage DictSerializer to perform serde.
     """
-
-    serializer_name = "serializable"
 
     @classmethod
     def _get_field_values(cls, obj: Serializable, fields):
@@ -154,34 +160,27 @@ class SerializableSerializer(Serializer):
                 if field.on_serialize:
                     value = field.on_serialize(value)
             except KeyError:
-                value = _SkipStub  # Most field values are not None, serialize by list is more efficient than dict.
+                # Most field values are not None, serialize by list is more efficient than dict.
+                value = no_default
             values.append(value)
         return values
 
     @buffered
-    def serialize(self, obj: Serializable, context: Dict):
-        pickles = self._get_field_values(obj, obj._PICKLE_FIELDS)
-        composed_values = self._get_field_values(obj, obj._NON_PICKLE_FIELDS)
+    def serial(self, obj: Serializable, context: Dict):
+        if obj._cache_primitive_serial and obj in _primitive_serial_cache:
+            primitive_vals = _primitive_serial_cache[obj]
+        else:
+            primitive_vals = self._get_field_values(obj, obj._PRIMITIVE_FIELDS)
+            if obj._cache_primitive_serial:
+                primitive_vals = cloudpickle.dumps(primitive_vals)
+                _primitive_serial_cache[obj] = primitive_vals
 
-        value_headers = [None] * len(composed_values)
-        value_sizes = [0] * len(composed_values)
-        value_buffers = []
-        for idx, val in enumerate(composed_values):
-            value_headers[idx], val_buf = yield val
-            value_sizes[idx] = len(val_buf)
-            value_buffers.extend(val_buf)
-
-        header = {"class": type(obj)}
-        if pickles:
-            header["pickles"] = pickles
-        if composed_values:
-            header["value_headers"] = value_headers
-            header["value_sizes"] = value_sizes
-        return header, value_buffers
+        compound_vals = self._get_field_values(obj, obj._NON_PRIMITIVE_FIELDS)
+        return (type(obj), primitive_vals), [compound_vals], False
 
     @classmethod
     def _set_field_value(cls, attr_to_values: dict, field: Field, value):
-        if value is _SkipStub:
+        if value is no_default:
             return
         attr_to_values[field.attr_name] = value
         if type(field) is not OneOfField:
@@ -201,28 +200,21 @@ class SerializableSerializer(Serializer):
                 else:
                     cb(value, field)
 
-    def deserialize(
-        self, header: Dict, buffers: List, context: Dict
-    ) -> Generator[Any, Any, Serializable]:
-        obj_class: Type[Serializable] = header.pop("class")
+    def deserial(self, serialized: Tuple, context: Dict, subs: List) -> Serializable:
+        obj_class, primitives = serialized
         attr_to_values = dict()
-        pickles = header.get("pickles")
-        if pickles:
-            for value, field in zip(pickles, obj_class._PICKLE_FIELDS):
+
+        if type(primitives) is not list:
+            primitives = cloudpickle.loads(primitives)
+
+        if primitives:
+            for field, value in zip(obj_class._PRIMITIVE_FIELDS, primitives):
                 self._set_field_value(attr_to_values, field, value)
-        if obj_class._NON_PICKLE_FIELDS:
-            pos = 0
-            value_headers = header.get("value_headers")
-            value_sizes = header.get("value_sizes")
-            for field, value_header, value_size in zip(
-                obj_class._NON_PICKLE_FIELDS, value_headers, value_sizes
-            ):
-                value = (
-                    yield value_header,
-                    buffers[pos : pos + value_size],
-                )  # noqa: E999
-                pos += value_size
+
+        if obj_class._NON_PRIMITIVE_FIELDS:
+            for field, value in zip(obj_class._NON_PRIMITIVE_FIELDS, subs[0]):
                 self._set_field_value(attr_to_values, field, value)
+
         obj = obj_class()
         obj._FIELD_VALUES = attr_to_values
         return obj

@@ -31,18 +31,16 @@ class UnpickleableError(Exception):
 
 
 class ExceptionSerializer(Serializer):
-    serializer_name = "pickle"
-
     @buffered
-    def serialize(self, obj: Exception, context: Dict):
+    def serial(self, obj: Exception, context: Dict):
         try:
             buffers = pickle_buffers(obj)
         except (TypeError, pickle.PicklingError):
             buffers = pickle_buffers(UnpickleableError(obj))
-        return {}, buffers
+        return (), buffers, True
 
-    def deserialize(self, header: Dict, buffers: List, context: Dict):
-        return unpickle_buffers(buffers)
+    def deserial(self, serialized: Dict, context: Dict, subs: List):
+        return unpickle_buffers(subs)
 
 
 ExceptionSerializer.register(Exception)

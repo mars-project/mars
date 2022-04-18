@@ -694,7 +694,7 @@ def pdist(X, metric="euclidean", **kwargs):
 
     if not callable(metric) and not isinstance(metric, str):
         raise TypeError(
-            "2nd argument metric must be a string identifier " "or a function."
+            "2nd argument metric must be a string identifier or a function."
         )
 
     # scipy remove "wminkowski" since v1.8.0, use "minkowski" with `w=`

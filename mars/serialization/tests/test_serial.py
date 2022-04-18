@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
+from collections import defaultdict, OrderedDict
 
 import numpy as np
 import pandas as pd
@@ -31,6 +31,7 @@ from ...lib.sparse import SparseMatrix
 from ...tests.core import require_cupy, require_cudf
 from ...utils import lazy_import
 from .. import serialize, deserialize
+from ..core import Placeholder
 
 cupy = lazy_import("cupy", globals=globals())
 cudf = lazy_import("cudf", globals=globals())
@@ -53,6 +54,7 @@ class CustomList(list):
         CustomList([3, 4, CustomList([5, 6])]),
         {"abc": 5.6, "def": [3.4]},
         OrderedDict([("abcd", 5.6)]),
+        defaultdict(lambda: 0, [("abcd", 0)]),
     ],
 )
 def test_core(val):
@@ -61,8 +63,26 @@ def test_core(val):
     assert val == deserialized
 
 
+def test_strings():
+    str_obj = "abcd" * 1024
+    obj = [str_obj, str_obj]
+    header, bufs = serialize(obj)
+    assert len(header) < len(str_obj) * 2
+    bufs = [memoryview(buf) for buf in bufs]
+    assert obj == deserialize(header, bufs)
+
+
+def test_placeholder_obj():
+    assert Placeholder(1024) == Placeholder(1024)
+    assert hash(Placeholder(1024)) == hash(Placeholder(1024))
+    assert Placeholder(1024) != Placeholder(1023)
+    assert hash(Placeholder(1024)) != hash(Placeholder(1023))
+    assert Placeholder(1024) != 1024
+    assert "1024" in repr(Placeholder(1024))
+
+
 def test_nested_list():
-    val = ["a" * 100] * 100
+    val = [b"a" * 1200] * 10
     val[0] = val
     deserialized = deserialize(*serialize(val))
     assert deserialized[0] is deserialized

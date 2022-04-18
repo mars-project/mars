@@ -117,7 +117,7 @@ class StorageQuotaActor(mo.Actor):
     def request_quota(self, size: int) -> bool:
         if self._total_size is not None and size > self._total_size:  # pragma: no cover
             raise StorageFull(
-                f"Request size {size} is larger " f"than total size {self._total_size}"
+                f"Request size {size} is larger than total size {self._total_size}"
             )
         if self._total_size is not None and self._used_size + size > self._total_size:
             logger.debug(
@@ -131,7 +131,7 @@ class StorageQuotaActor(mo.Actor):
         else:
             self._used_size += size
             logger.debug(
-                "Request %s bytes of %s, used size now is %s," "total size is %s",
+                "Request %s bytes of %s, used size now is %s, total size is %s",
                 size,
                 self._level,
                 self._used_size,
@@ -142,7 +142,7 @@ class StorageQuotaActor(mo.Actor):
     def release_quota(self, size: int):
         self._used_size -= size
         logger.debug(
-            "Release %s bytes of %s, used size now is %s," "total size is %s",
+            "Release %s bytes of %s, used size now is %s, total size is %s",
             size,
             self._level,
             self._used_size,
@@ -445,7 +445,7 @@ class StorageManagerActor(mo.StatelessActor):
                 for client, storage_band in zip(clients, storage_bands):
                     if client.level & level:
                         logger.debug(
-                            "Create quota manager for %s," " total size is %s",
+                            "Create quota manager for %s, total size is %s",
                             level,
                             client.size,
                         )

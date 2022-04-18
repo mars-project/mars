@@ -327,7 +327,7 @@ async def new_cluster(
         ray.init(num_cpus=16 + worker_num * worker_cpu)
     ensure_isolation_created(kwargs)
     if kwargs:  # pragma: no cover
-        raise TypeError(f"new_cluster got unexpected " f"arguments: {list(kwargs)}")
+        raise TypeError(f"new_cluster got unexpected arguments: {list(kwargs)}")
     n_supervisor_process = kwargs.get(
         "n_supervisor_process", DEFAULT_SUPERVISOR_SUB_POOL_NUM
     )

@@ -672,7 +672,7 @@ def _validate_partition_arguments(a, kth, axis, kind, order, kw):
     need_align = kw.pop("need_align", None)
     if len(kw) > 0:
         raise TypeError(
-            "partition() got an unexpected keyword " f"argument '{next(iter(kw))}'"
+            f"partition() got an unexpected keyword argument '{next(iter(kw))}'"
         )
 
     return a, kth, axis, kind, order, need_align

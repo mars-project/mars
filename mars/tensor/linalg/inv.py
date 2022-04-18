@@ -145,7 +145,7 @@ def inv(a, sparse=None):
     a = astensor(a)
     if a.ndim != 2:
         raise LinAlgError(
-            f"{a.ndim}-dimensional array given. " "Tensor must be two-dimensional"
+            f"{a.ndim}-dimensional array given. Tensor must be two-dimensional"
         )
     if a.shape[0] != a.shape[1]:
         raise LinAlgError("Input must be square")

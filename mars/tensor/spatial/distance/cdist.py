@@ -529,7 +529,7 @@ def cdist(XA, XB, metric="euclidean", **kwargs):
 
     if not isinstance(metric, str) and not callable(metric):
         raise TypeError(
-            "3rd argument metric must be a string identifier " "or a function."
+            "3rd argument metric must be a string identifier or a function."
         )
 
     # scipy remove "wminkowski" since v1.8.0, use "minkowski" with `w=`

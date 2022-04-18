@@ -50,7 +50,7 @@ class HashRing(object):
             nodes = [nodes]
         elif not isinstance(nodes, (dict, list)):
             raise ValueError(
-                "nodes configuration should be a list or a dict," f" got {type(nodes)}"
+                f"nodes configuration should be a list or a dict, got {type(nodes)}"
             )
 
         conf_changed = False
