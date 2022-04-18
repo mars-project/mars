@@ -18,7 +18,7 @@ import pandas as pd
 from ... import opcodes
 from ...core.operand import OperandStage
 from ...serialization.serializables import BoolField
-from ...utils import lazy_import
+from ...utils import lazy_import, calc_nsplits
 from ..operands import OutputType
 from ..utils import (
     parse_index,
@@ -120,10 +120,11 @@ class DataFrameDropDuplicates(DuplicateOperand):
         tiled = super()._tile_shuffle(op, inp)[0]
         put_back_chunks = tiled.chunks
         if op.ignore_index:
+            yield put_back_chunks
             put_back_chunks = standardize_range_index(put_back_chunks)
         new_op = op.copy()
         params = tiled.params
-        params["nsplits"] = tiled.nsplits
+        params["nsplits"] = calc_nsplits({c.index: c.shape for c in put_back_chunks})
         params["chunks"] = put_back_chunks
         return new_op.new_tileables(op.inputs, kws=[params])
 

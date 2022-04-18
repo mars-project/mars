@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 from typing import Dict
 
 from .... import oscar as mo
@@ -51,9 +52,21 @@ class MetaStoreActor(mo.Actor):
     def __init__(self, meta_store_name: str, session_id: str, **meta_store_kwargs):
         meta_store_type = get_meta_store(meta_store_name)
         self._store = meta_store_type(session_id, **meta_store_kwargs)
+        self._worker_meta_store_refs = []
+
+    def add_worker_meta_store(self, ref: mo.ActorRef):
+        self._worker_meta_store_refs.append(ref)
+
+    async def __pre_destroy__(self):
+        await asyncio.gather(
+            *[
+                mo.destroy_actor(mo.create_actor_ref(ref))
+                for ref in self._worker_meta_store_refs
+            ]
+        )
 
     @staticmethod
-    def gen_uid(session_id):
+    def gen_uid(session_id: str):
         return f"{session_id}_meta"
 
     def __getattr__(self, attr):

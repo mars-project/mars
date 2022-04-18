@@ -12,11 +12,55 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import OrderedDict
 from functools import partial
 from typing import Any, Dict, Generator, List, Type, Tuple
 
 from ..core import Serializer, Placeholder, buffered
 from .field import Field, OneOfField
+from .field_type import (
+    PrimitiveFieldType,
+    ListType,
+    TupleType,
+    DictType,
+    DtypeType,
+    DatetimeType,
+    TimedeltaType,
+    TZInfoType,
+)
+
+
+_basic_field_type = (
+    PrimitiveFieldType,
+    DtypeType,
+    DatetimeType,
+    TimedeltaType,
+    TZInfoType,
+)
+
+
+def serialize_by_pickle(field: Field):
+    if field.on_serialize is not None or field.on_deserialize is not None:
+        return False
+
+    def check_type(field_type):
+        if isinstance(field_type, _basic_field_type):
+            return True
+        if isinstance(field_type, (ListType, TupleType)):
+            if all(
+                check_type(element_type) or element_type is Ellipsis
+                for element_type in field_type._field_types
+            ):
+                return True
+        if isinstance(field_type, DictType):
+            if all(
+                isinstance(element_type, _basic_field_type) or element_type is Ellipsis
+                for element_type in (field_type.key_type, field_type.value_type)
+            ):
+                return True
+        return False
+
+    return check_type(field.field_type)
 
 
 class SerializableMeta(type):
@@ -26,19 +70,30 @@ class SerializableMeta(type):
             if hasattr(base, "_FIELDS"):
                 new_properties.update(base._FIELDS)
         new_properties.update(properties)
-        properties = new_properties
+        # make field order deterministic to serialize it as list instead of dict
+        properties = OrderedDict()
+        for k, v in sorted(new_properties.items(), key=lambda item: item[0]):
+            properties[k] = v
 
-        property_to_fields = dict()
+        # make field order deterministic to serialize it as list instead of dict
+        property_to_fields = OrderedDict()
+        pickle_fields = []
+        non_pickle_fields = []
         # filter out all fields
         for k, v in properties.items():
             if not isinstance(v, Field):
                 continue
 
             property_to_fields[k] = v
-            properties[k] = v
             v._attr_name = k
+            if serialize_by_pickle(v):
+                pickle_fields.append(v)
+            else:
+                non_pickle_fields.append(v)
 
         properties["_FIELDS"] = property_to_fields
+        properties["_PICKLE_FIELDS"] = pickle_fields
+        properties["_NON_PICKLE_FIELDS"] = non_pickle_fields
         slots = set(properties.pop("__slots__", set()))
         if property_to_fields:
             slots.add("_FIELD_VALUES")
@@ -77,6 +132,10 @@ class Serializable(metaclass=SerializableMeta):
         return copied
 
 
+class _SkipStub:
+    pass
+
+
 class SerializableSerializer(Serializer):
     """
     Leverage DictSerializer to perform serde.
@@ -85,85 +144,85 @@ class SerializableSerializer(Serializer):
     serializer_name = "serializable"
 
     @classmethod
-    def _get_tag_to_values(cls, obj: Serializable):
-        fields = obj._FIELDS
+    def _get_field_values(cls, obj: Serializable, fields):
         attr_to_values = obj._FIELD_VALUES
-        tag_to_values = dict()
-
-        for field in fields.values():
-            tag = field.tag
+        values = []
+        for field in fields:
             attr_name = field.attr_name
             try:
                 value = attr_to_values[attr_name]
+                if field.on_serialize:
+                    value = field.on_serialize(value)
             except KeyError:
-                continue
-            if field.on_serialize:
-                value = field.on_serialize(value)
-            tag_to_values[tag] = value
-
-        return tag_to_values
+                value = _SkipStub  # Most field values are not None, serialize by list is more efficient than dict.
+            values.append(value)
+        return values
 
     @buffered
     def serialize(self, obj: Serializable, context: Dict):
-        tag_to_values = self._get_tag_to_values(obj)
+        pickles = self._get_field_values(obj, obj._PICKLE_FIELDS)
+        composed_values = self._get_field_values(obj, obj._NON_PICKLE_FIELDS)
 
-        keys = [None] * len(tag_to_values)
-        value_headers = [None] * len(tag_to_values)
-        value_sizes = [0] * len(tag_to_values)
+        value_headers = [None] * len(composed_values)
+        value_sizes = [0] * len(composed_values)
         value_buffers = []
-        for idx, (key, val) in enumerate(tag_to_values.items()):
-            keys[idx] = key
+        for idx, val in enumerate(composed_values):
             value_headers[idx], val_buf = yield val
             value_sizes[idx] = len(val_buf)
             value_buffers.extend(val_buf)
 
-        header = {
-            "keys": keys,
-            "value_headers": value_headers,
-            "value_sizes": value_sizes,
-            "class": type(obj),
-        }
+        header = {"class": type(obj)}
+        if pickles:
+            header["pickles"] = pickles
+        if composed_values:
+            header["value_headers"] = value_headers
+            header["value_sizes"] = value_sizes
         return header, value_buffers
+
+    @classmethod
+    def _set_field_value(cls, attr_to_values: dict, field: Field, value):
+        if value is _SkipStub:
+            return
+        attr_to_values[field.attr_name] = value
+        if type(field) is not OneOfField:
+            if value is not None:
+                if field.on_deserialize:
+
+                    def cb(v, field_):
+                        attr_to_values[field_.attr_name] = field_.on_deserialize(v)
+
+                else:
+
+                    def cb(v, field_):
+                        attr_to_values[field_.attr_name] = v
+
+                if type(value) is Placeholder:
+                    value.callbacks.append(partial(cb, field_=field))
+                else:
+                    cb(value, field)
 
     def deserialize(
         self, header: Dict, buffers: List, context: Dict
     ) -> Generator[Any, Any, Serializable]:
         obj_class: Type[Serializable] = header.pop("class")
-
-        tag_to_values = dict()
-        pos = 0
-        for key, value_header, value_size in zip(
-            header["keys"], header["value_headers"], header["value_sizes"]
-        ):
-            tag_to_values[key] = (
-                yield value_header,
-                buffers[pos : pos + value_size],
-            )  # noqa: E999
-            pos += value_size
-
         attr_to_values = dict()
-        for field in obj_class._FIELDS.values():
-            try:
-                value = attr_to_values[field.attr_name] = tag_to_values[field.tag]
-            except KeyError:
-                continue
-            if not isinstance(field, OneOfField):
-                if value is not None:
-                    if field.on_deserialize:
-
-                        def cb(v, field_):
-                            attr_to_values[field_.attr_name] = field_.on_deserialize(v)
-
-                    else:
-
-                        def cb(v, field_):
-                            attr_to_values[field_.attr_name] = v
-
-                    if isinstance(value, Placeholder):
-                        value.callbacks.append(partial(cb, field_=field))
-                    else:
-                        cb(value, field)
-
+        pickles = header.get("pickles")
+        if pickles:
+            for value, field in zip(pickles, obj_class._PICKLE_FIELDS):
+                self._set_field_value(attr_to_values, field, value)
+        if obj_class._NON_PICKLE_FIELDS:
+            pos = 0
+            value_headers = header.get("value_headers")
+            value_sizes = header.get("value_sizes")
+            for field, value_header, value_size in zip(
+                obj_class._NON_PICKLE_FIELDS, value_headers, value_sizes
+            ):
+                value = (
+                    yield value_header,
+                    buffers[pos : pos + value_size],
+                )  # noqa: E999
+                pos += value_size
+                self._set_field_value(attr_to_values, field, value)
         obj = obj_class()
         obj._FIELD_VALUES = attr_to_values
         return obj

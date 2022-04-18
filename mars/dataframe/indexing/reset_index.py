@@ -20,7 +20,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...serialization.serializables import AnyField, BoolField
-from ...utils import no_default
+from ...utils import no_default, calc_nsplits
 from ..core import IndexValue
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE
 from ..utils import (
@@ -126,20 +126,21 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
             and isinstance(out.index_value.value, IndexValue.RangeIndex)
             and op.incremental_index
         ):
+            yield out_chunks
             out_chunks = standardize_range_index(out_chunks)
         new_op = op.copy()
+        nsplits = calc_nsplits({c.index: c.shape for c in out_chunks})
         if op.drop:
             return new_op.new_seriess(
                 op.inputs,
                 op.inputs[0].shape,
-                nsplits=op.inputs[0].nsplits,
                 name=out.name,
                 chunks=out_chunks,
+                nsplits=nsplits,
                 dtype=out.dtype,
                 index_value=out.index_value,
             )
         else:
-            nsplits = (op.inputs[0].nsplits[0], (out.shape[1],))
             return new_op.new_dataframes(
                 op.inputs,
                 out.shape,
@@ -198,11 +199,12 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
                 isinstance(out_df.index_value.value, IndexValue.RangeIndex)
                 and op.incremental_index
             ):
+                yield out_chunks
                 out_chunks = standardize_range_index(out_chunks)
         new_op = op.copy()
         columns_splits = list(in_df.nsplits[1])
         columns_splits[0] += added_columns_num
-        nsplits = (in_df.nsplits[0], tuple(columns_splits))
+        nsplits = calc_nsplits({c.index: c.shape for c in out_chunks})
         return new_op.new_dataframes(
             op.inputs,
             out_df.shape,
@@ -216,9 +218,9 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op):
         if isinstance(op.inputs[0], DATAFRAME_TYPE):
-            return cls._tile_dataframe(op)
+            return (yield from cls._tile_dataframe(op))
         else:
-            return cls._tile_series(op)
+            return (yield from cls._tile_series(op))
 
     @classmethod
     def execute(cls, ctx, op):

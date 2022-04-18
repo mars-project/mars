@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cloudpickle
 import numpy as np
 import pandas as pd
 
@@ -26,7 +27,17 @@ from mars.serialization.serializables import (
     NDArrayField,
     StringField,
     FieldTypes,
+    BoolField,
+    Int32Field,
+    Float32Field,
+    SliceField,
+    Datetime64Field,
+    Timedelta64Field,
+    TupleField,
+    DictField,
 )
+from mars.services.subtask import Subtask
+from mars.services.task import new_task_id
 
 
 class SerializableChild(Serializable):
@@ -43,6 +54,22 @@ class SerializableChild(Serializable):
 
 class SerializableParent(Serializable):
     children = ListField("children", field_type=FieldTypes.reference)
+
+
+class MySerializable(Serializable):
+    _bool_val = BoolField("f1")
+    _int32_val = Int32Field("f2")
+    _int64_val = Int64Field("f3")
+    _float32_val = Float32Field("f4")
+    _float64_val = Float64Field("f5")
+    _string_val = StringField("f6")
+    _datetime64_val = Datetime64Field("f7")
+    _timedelta64_val = Timedelta64Field("f8")
+    _datatype_val = DataTypeField("f9")
+    _slice_val = SliceField("f10")
+    _list_val = ListField("list_val", FieldTypes.int64)
+    _tuple_val = TupleField("tuple_val", FieldTypes.string)
+    _dict_val = DictField("dict_val", FieldTypes.string, FieldTypes.bytes)
 
 
 class SerializationSuite:
@@ -63,5 +90,72 @@ class SerializationSuite:
             children.append(child)
         self.test_data = SerializableParent(children=children)
 
+        self.subtasks = []
+        for i in range(10000):
+            subtask = Subtask(
+                subtask_id=new_task_id(),
+                stage_id=new_task_id(),
+                logic_key=new_task_id(),
+                session_id=new_task_id(),
+                task_id=new_task_id(),
+                chunk_graph=None,
+                expect_bands=[
+                    ("ray://mars_cluster_1649927648/17/0", "numa-0"),
+                ],
+                bands_specified=False,
+                virtual=False,
+                priority=(1, 0),
+                retryable=True,
+                extra_config={},
+            )
+            self.subtasks.append(subtask)
+
+        self.test_basic_serializable = []
+        for i in range(10000):
+            my_serializable = MySerializable(
+                _bool_val=True,
+                _int32_val=-32,
+                _int64_val=-64,
+                _float32_val=np.float32(2.0),
+                _float64_val=2.0,
+                _complex64_val=np.complex64(1 + 2j),
+                _complex128_val=1 + 2j,
+                _string_val="string_value",
+                _datetime64_val=pd.Timestamp(123),
+                _timedelta64_val=pd.Timedelta(days=1),
+                _datatype_val=np.dtype(np.int32),
+                _slice_val=slice(1, 10, 2),
+                _list_val=[1, 2],
+                _tuple_val=("a", "b"),
+                _dict_val={"a": b"bytes_value"},
+            )
+            self.test_basic_serializable.append(my_serializable)
+
+        self.test_list = list(range(100000))
+        self.test_tuple = tuple(range(100000))
+        self.test_dict = {i: i for i in range(100000)}
+
     def time_serialize_deserialize(self):
         deserialize(*serialize(self.test_data))
+
+    def time_serialize_deserialize_basic(self):
+        deserialize(*serialize(self.test_basic_serializable))
+
+    def time_pickle_serialize_deserialize_basic(self):
+        deserialize(
+            *cloudpickle.loads(
+                cloudpickle.dumps(serialize(self.test_basic_serializable))
+            )
+        )
+
+    def time_pickle_serialize_deserialize_subtask(self):
+        deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.subtasks))))
+
+    def time_pickle_serialize_deserialize_list(self):
+        deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.test_list))))
+
+    def time_pickle_serialize_deserialize_tuple(self):
+        deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.test_tuple))))
+
+    def time_pickle_serialize_deserialize_dict(self):
+        deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.test_dict))))

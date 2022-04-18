@@ -29,7 +29,7 @@ from ....serialization.serializables import (
     DictField,
     ListField,
 )
-from ....utils import lazy_import, has_unknown_shape, pd_release_version
+from ....utils import lazy_import, has_unknown_shape, pd_release_version, calc_nsplits
 from ...operands import DataFrameOperand, DataFrameOperandMixin
 from ...core import DATAFRAME_TYPE
 from ...utils import build_empty_df, build_empty_series, parse_index
@@ -432,12 +432,7 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
             params["shape"] = (inp.shape[0],)
         else:
             params["shape"] = (inp.shape[0], params["shape"][1])
-        nsplits = list(inp.nsplits)
-        if input_ndim == 1 and output_ndim == 2:
-            nsplits.append((out.shape[1],))
-        elif input_ndim == 2 and output_ndim == 2:
-            nsplits[1 - op.axis] = (out.shape[1 - op.axis],)
-        params["nsplits"] = tuple(nsplits)
+        params["nsplits"] = calc_nsplits({c.index: c.shape for c in out_chunks})
         new_op = op.copy()
         return new_op.new_tileables([inp], kws=[params])
 

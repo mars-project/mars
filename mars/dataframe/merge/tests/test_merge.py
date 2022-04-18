@@ -18,7 +18,6 @@ import pandas as pd
 from ....core import tile
 from ....core.operand import OperandStage
 from ...core import IndexValue
-from ...base.standardize_range_index import ChunkStandardizeRangeIndex
 from ...datasource.dataframe import from_pandas
 from .. import DataFrameMergeAlign, DataFrameMerge, concat
 
@@ -234,11 +233,6 @@ def test_append():
     assert adf.shape == (20, 4)
     assert isinstance(adf.index_value.value, IndexValue.RangeIndex)
     pd.testing.assert_index_equal(adf.index_value.to_pandas(), pd.RangeIndex(20))
-
-    tiled = tile(adf)
-    assert tiled.nsplits == ((3, 3, 3, 1, 3, 3, 3, 1), (3, 1))
-    assert tiled.chunk_shape == (8, 2)
-    assert isinstance(tiled.chunks[0].op, ChunkStandardizeRangeIndex)
 
 
 def test_concat():

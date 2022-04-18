@@ -36,7 +36,13 @@ from .backends.pool import MainActorPoolType
 from .batch import extensible
 from .core import ActorRef
 from .debug import set_debug_options, get_debug_options, DebugOptions
-from .errors import ActorNotExist, ActorAlreadyExist, ServerClosed, Return
+from .errors import (
+    ActorNotExist,
+    ActorAlreadyExist,
+    ServerClosed,
+    SendMessageFailed,
+    Return,
+)
 from .utils import create_actor_ref
 
 # make sure methods are registered

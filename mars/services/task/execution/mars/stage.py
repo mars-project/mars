@@ -22,7 +22,6 @@ from .....core import ChunkGraph
 from .....core.operand import Fuse
 from .....metrics import Metrics
 from .....typing import BandType
-from .....utils import get_chunk_params
 from ....meta import MetaAPI
 from ....scheduling import SchedulingAPI
 from ....subtask import Subtask, SubtaskGraph, SubtaskResult, SubtaskStatus
@@ -109,9 +108,12 @@ class TaskStageProcessor:
         for chunk in chunks:
             if isinstance(chunk.op, Fuse):
                 chunk = chunk.chunk
-            fields = get_chunk_params(chunk).keys()
             get_meta.append(
-                self._meta_api.get_chunk_meta.delay(chunk.key, fields=fields)
+                self._meta_api.get_chunk_meta.delay(
+                    chunk.key,
+                    # only fetch bands from supervisor meta
+                    fields=["bands"],
+                )
             )
         metas = await self._meta_api.get_chunk_meta.batch(*get_meta)
         for chunk, meta in zip(chunks, metas):

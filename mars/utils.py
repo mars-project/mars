@@ -501,7 +501,16 @@ def build_fetch_chunk(
     if isinstance(chunk_op, ShuffleProxy):
         # for shuffle nodes, we build FetchShuffle chunks
         # to replace ShuffleProxy
-        source_keys, source_idxes, source_mappers = [], [], []
+
+        # Make list weak referencable so we can cache serialization for it without preventing it from gc.
+        class _List(list):
+            def __eq__(self, other):
+                return id(other) == id(self)
+
+            def __hash__(self):
+                return object.__hash__(self)
+
+        source_keys, source_idxes, source_mappers = _List(), _List(), _List()
         for pinp in chunk.inputs:
             if input_chunk_keys is not None and pinp.key not in input_chunk_keys:
                 continue

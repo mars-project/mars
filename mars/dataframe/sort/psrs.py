@@ -19,7 +19,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core.operand import OperandStage, MapReduceOperand
-from ...utils import lazy_import
+from ...utils import lazy_import, calc_nsplits
 from ...serialization.serializables import Int32Field, ListField, StringField, BoolField
 from ...tensor.base.psrs import PSRSOperandMixin
 from ..core import IndexValue, OutputType
@@ -274,12 +274,13 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
         )[0]
 
         if op.ignore_index:
+            yield partition_sort_chunks
             chunks = standardize_range_index(partition_sort_chunks, axis=op.axis)
         else:
             chunks = partition_sort_chunks
 
+        nsplits = calc_nsplits({c.index: c.shape for c in chunks})
         if op.outputs[0].ndim == 2:
-            nsplits = ((np.nan,) * len(chunks), (out.shape[1],))
             new_op = op.copy()
             return new_op.new_dataframes(
                 op.inputs,
@@ -291,7 +292,6 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
                 dtypes=out.dtypes,
             )
         else:
-            nsplits = ((np.nan,) * len(chunks),)
             new_op = op.copy()
             return new_op.new_seriess(
                 op.inputs,
