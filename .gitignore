@@ -86,6 +86,7 @@ mars/learn/cluster/*.c*
 mars/learn/utils/*.c*
 mars/lib/*.c*
 mars/oscar/**/*.c*
+mars/serialization/*.c*
 
 # web bundle file
 mars/services/web/static
