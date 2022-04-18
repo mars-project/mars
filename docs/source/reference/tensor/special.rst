@@ -45,6 +45,18 @@ Error function
    mars.tensor.special.erf
 
 
+Ellipsoidal harmonics
+---------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   mars.tensor.special.ellip_harm
+   mars.tensor.special.ellip_harm_2
+   mars.tensor.special.ellip_normal
+
+
 Gamma and related functions
 ---------------------------
 
