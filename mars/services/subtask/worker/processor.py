@@ -277,7 +277,7 @@ class SubtaskProcessor:
     async def _store_data(self, chunk_graph: ChunkGraph):
         # store data into storage
         data_key_to_puts = {}
-        for key, data, is_shuffle in iter_output_data(chunk_graph, self._datastore):
+        for key, data, _ in iter_output_data(chunk_graph, self._datastore):
             put = self._storage_api.put.delay(key, data)
             data_key_to_puts[key] = put
 

@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import asyncio
+import itertools
 import logging
 import sys
-from typing import Dict, List, Optional
+from collections import defaultdict
+from typing import Dict, List, Optional, Set
 
 from ..... import oscar as mo
 from .....core import ChunkGraph
@@ -25,19 +27,21 @@ from .....core.operand import (
     OperandStage,
     ShuffleProxy,
 )
+from .....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from .....lib.aio import alru_cache
 from .....oscar.profiling import (
     ProfilingData,
 )
 from .....resource import Resource
-from .....typing import TileableType, BandType
-from .....utils import Timer
+from .....typing import TileableType, BandType, ChunkType
+from .....utils import Timer, get_chunk_params
+from .....tensor.core import TENSOR_TYPE
 from ....cluster.api import ClusterAPI
 from ....lifecycle.api import LifecycleAPI
-from ....meta.api import MetaAPI
+from ....meta.api import MetaAPI, WorkerMetaAPI
 from ....scheduling import SchedulingAPI
 from ....subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
-from ..api import TaskExecutor, register_executor_cls
+from ..api import TaskExecutor, ExecutionChunkResult, register_executor_cls
 from .resource import ResourceEvaluator
 from .stage import TaskStageProcessor
 
@@ -59,6 +63,7 @@ class MarsTaskExecutor(TaskExecutor):
     name = "mars"
     _stage_processors: List[TaskStageProcessor]
     _cur_stage_processor: Optional[TaskStageProcessor]
+    _meta_updated_tileables: Set[TileableType]
 
     def __init__(
         self,
@@ -75,6 +80,7 @@ class MarsTaskExecutor(TaskExecutor):
         self._tileable_graph = task.tileable_graph
         self._raw_tile_context = tile_context.copy()
         self._tile_context = tile_context
+        self._session_id = task.session_id
 
         # api
         self._cluster_api = cluster_api
@@ -86,6 +92,7 @@ class MarsTaskExecutor(TaskExecutor):
         self._cur_stage_processor = None
         self._lifecycle_processed_tileables = set()
         self._subtask_decref_events = dict()
+        self._meta_updated_tileables = set()
 
     @classmethod
     async def create(
@@ -136,6 +143,7 @@ class MarsTaskExecutor(TaskExecutor):
         stage_id: str,
         subtask_graph: SubtaskGraph,
         chunk_graph: ChunkGraph,
+        tile_context: Dict[TileableType, TileableType],
         context=None,
     ):
         available_bands = await self.get_available_band_resources()
@@ -155,7 +163,11 @@ class MarsTaskExecutor(TaskExecutor):
         resource_evaluator.evaluate()
         self._stage_processors.append(stage_processor)
         self._cur_stage_processor = stage_processor
-        return await stage_processor.run()
+        execution_chunk_results = await stage_processor.run()
+        await self._update_result_meta(
+            chunk_graph.result_chunks, execution_chunk_results, tile_context
+        )
+        return execution_chunk_results
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         # clean ups
@@ -433,3 +445,83 @@ class MarsTaskExecutor(TaskExecutor):
         # TODO(Catch-Bull): Pop asyncio.Event when current subtask `set_subtask_result`
         # will never be called
         self._subtask_decref_events[subtask.subtask_id].set()
+
+    async def _update_result_meta(
+        self,
+        chunk_graph_results: List[ChunkType],
+        execution_chunk_results: List[ExecutionChunkResult],
+        tile_context: Dict[TileableType, TileableType],
+    ):
+        chunk_to_chunk_result = dict(zip(chunk_graph_results, execution_chunk_results))
+        update_meta_chunks = chunk_to_chunk_result.keys() - set(
+            itertools.chain(
+                (c.data for c in tiled_tileable.chunks)
+                for tiled_tileable in tile_context.values()
+            )
+        )
+
+        chunk_results = []
+        worker_meta_api_to_chunk_delays = defaultdict(list)
+        for c in update_meta_chunks:
+            r = chunk_to_chunk_result[c]
+            address = r.meta["bands"][0][0]
+            meta_api = await WorkerMetaAPI.create(self._session_id, address)
+            call = meta_api.get_chunk_meta.delay(
+                c.key, fields=list(get_chunk_params(c).keys())
+            )
+            chunk_results.append(r)
+            worker_meta_api_to_chunk_delays[meta_api].append(call)
+        for tileable in tile_context.values():
+            chunks = [c.data for c in tileable.chunks]
+            for c, params_fields in zip(chunks, self._get_params_fields(tileable)):
+                r = chunk_to_chunk_result[c]
+                address = r.meta["bands"][0][0]
+                meta_api = await WorkerMetaAPI.create(self._session_id, address)
+                call = meta_api.get_chunk_meta.delay(c.key, fields=params_fields)
+                chunk_results.append(r)
+                worker_meta_api_to_chunk_delays[meta_api].append(call)
+        coros = []
+        for worker_meta_api, chunk_delays in worker_meta_api_to_chunk_delays.items():
+            coros.append(worker_meta_api.get_chunk_meta.batch(*chunk_delays))
+        worker_metas = await asyncio.gather(*coros)
+        for r, meta in zip(chunk_results, itertools.chain(*worker_metas)):
+            r.meta = meta
+
+    @classmethod
+    def _get_params_fields(cls, tileable: TileableType):
+        params_fields = []
+        fields = get_chunk_params(tileable.chunks[0])
+        if isinstance(tileable, DATAFRAME_TYPE):
+            for c in tileable.chunks:
+                cur_fields = set(fields)
+                if c.index[1] > 0:
+                    # skip fetch index_value for i >= 1 on column axis
+                    cur_fields.remove("index_value")
+                if c.index[0] > 0:
+                    # skip fetch dtypes_value for i >= 1 on index axis
+                    cur_fields.remove("dtypes_value")
+                if c.index[0] > 0 and c.index[1] > 0:
+                    # fetch shape only for i == 0 on index or column axis
+                    cur_fields.remove("shape")
+                params_fields.append(list(cur_fields))
+        elif isinstance(tileable, SERIES_TYPE):
+            for c in tileable.chunks:
+                cur_fields = set(fields)
+                if c.index[0] > 0:
+                    # skip fetch name and dtype for i >= 1
+                    cur_fields.remove("name")
+                    cur_fields.remove("dtype")
+                params_fields.append(list(cur_fields))
+        elif isinstance(tileable, TENSOR_TYPE):
+            for i, c in enumerate(tileable.chunks):
+                cur_fields = set(fields)
+                if c.ndim > 1 and all(j > 0 for j in c.index):
+                    cur_fields.remove("shape")
+                if i > 0:
+                    cur_fields.remove("dtype")
+                    cur_fields.remove("order")
+                params_fields.append(list(cur_fields))
+        else:
+            for _ in tileable.chunks:
+                params_fields.append(list(fields))
+        return params_fields

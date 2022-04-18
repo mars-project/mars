@@ -18,7 +18,7 @@ from typing import List, Dict, Any, Type
 
 from ....core import ChunkGraph
 from ....resource import Resource
-from ....typing import BandType
+from ....typing import BandType, TileableType
 from ...subtask import SubtaskGraph, SubtaskResult
 
 
@@ -41,7 +41,7 @@ class TaskExecutor(ABC):
         session_id: str,
         address: str,
         task,
-        tile_context,
+        tile_context: Dict[TileableType, TileableType],
         **kwargs,
     ) -> "TaskExecutor":
         name = config.get("backend", "mars")
@@ -69,6 +69,7 @@ class TaskExecutor(ABC):
         stage_id: str,
         subtask_graph: SubtaskGraph,
         chunk_graph: ChunkGraph,
+        tile_context: Dict[TileableType, TileableType],
         context: Any = None,
     ) -> List[ExecutionChunkResult]:
         """Execute a subtask graph and returns result."""

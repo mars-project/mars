@@ -26,7 +26,7 @@ from .....lib.aio import alru_cache
 from .....optimization.physical import optimize
 from .....resource import Resource
 from .....serialization import serialize, deserialize
-from .....typing import BandType
+from .....typing import BandType, TileableType
 from .....utils import lazy_import, get_chunk_params, get_chunk_key_to_data_keys
 from ....cluster.api import ClusterAPI
 from ....lifecycle.api import LifecycleAPI
@@ -136,6 +136,7 @@ class RayTaskExecutor(TaskExecutor):
         stage_id: str,
         subtask_graph: SubtaskGraph,
         chunk_graph: ChunkGraph,
+        tile_context: Dict[TileableType, TileableType],
         context: Any = None,
     ) -> List[ExecutionChunkResult]:
         logger.info("Stage %s start.", stage_id)

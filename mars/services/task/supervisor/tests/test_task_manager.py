@@ -35,7 +35,7 @@ from .....storage import StorageLevel
 from .....utils import Timer, merge_chunks
 from ....cluster import MockClusterAPI
 from ....lifecycle import MockLifecycleAPI
-from ....meta import MockMetaAPI
+from ....meta import MetaAPI, MockMetaAPI, MockWorkerMetaAPI
 from ....scheduling import MockSchedulingAPI
 from ....session import MockSessionAPI
 from ....storage import StorageAPI, MockStorageAPI
