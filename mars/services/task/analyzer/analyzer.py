@@ -144,8 +144,6 @@ class GraphAnalyzer:
         bands_specified = None
         processed = set()
         for chunk in chunks:
-            if isinstance(chunk.op, Fetch):
-                continue
             if chunk in processed:
                 continue
             if expect_worker is None:
