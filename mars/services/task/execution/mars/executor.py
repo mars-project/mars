@@ -18,7 +18,7 @@ import sys
 from typing import Dict, List, Optional
 
 from ..... import oscar as mo
-from .....core import ChunkGraph
+from .....core import ChunkGraph, TileableGraph
 from .....core.operand import (
     Fetch,
     MapReduceOperand,
@@ -36,6 +36,7 @@ from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
 from ....scheduling import SchedulingAPI
 from ....subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
+from ...core import Task
 from ..api import TaskExecutor, register_executor_cls
 from .resource import ResourceEvaluator
 from .stage import TaskStageProcessor
@@ -61,14 +62,14 @@ class MarsTaskExecutor(TaskExecutor):
 
     def __init__(
         self,
-        config,
-        task,
-        tileable_graph,
-        tile_context,
-        cluster_api,
-        lifecycle_api,
-        scheduling_api,
-        meta_api,
+        config: Dict,
+        task: Task,
+        tileable_graph: TileableGraph,
+        tile_context: Dict[TileableType, TileableType],
+        cluster_api: ClusterAPI,
+        lifecycle_api: LifecycleAPI,
+        scheduling_api: SchedulingAPI,
+        meta_api: MetaAPI,
     ):
         self._config = config
         self._task = task
@@ -172,6 +173,16 @@ class MarsTaskExecutor(TaskExecutor):
         async for bands in self._cluster_api.watch_all_bands():
             if bands:
                 return bands
+
+    async def get_chunk_bands(self, chunk_keys: List[str]) -> Dict[str, BandType]:
+        tasks = [
+            self._meta_api.get_chunk_meta.delay(key, fields=["bands"])
+            for key in chunk_keys
+        ]
+        key_to_bands = await self._meta_api.get_chunk_meta.batch(*tasks)
+        return dict(
+            (key, meta["bands"][0]) for key, meta in zip(chunk_keys, key_to_bands)
+        )
 
     async def get_progress(self) -> float:
         # get progress of stages

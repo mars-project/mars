@@ -182,12 +182,24 @@ class TaskProcessor:
         chunk_graph: ChunkGraph,
     ):
         available_bands = await self._executor.get_available_band_slots()
+        fetch_ops = []
+        fetch_chunks = []
+        for c in chunk_graph.iter_indep():
+            if isinstance(c.op, Fetch):
+                fetch_ops.append(c.op.key)
+                fetch_chunks.append(c.key)
+        if fetch_chunks:
+            fetch_bands = await self._executor.get_chunk_bands(fetch_chunks)
+            fetch_op_to_bands = dict(zip(fetch_ops, fetch_bands.values()))
+        else:
+            fetch_op_to_bands = dict()
         with Timer() as timer:
             subtask_graph = await asyncio.to_thread(
                 self._preprocessor.analyze,
                 chunk_graph,
                 available_bands,
                 stage_id=stage_id,
+                op_to_bands=fetch_op_to_bands,
             )
         stage_profiler.set(f"gen_subtask_graph({len(subtask_graph)})", timer.duration)
         logger.info(

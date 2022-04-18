@@ -68,6 +68,10 @@ class TaskExecutor(ABC):
         """Get available band slots."""
 
     @abstractmethod
+    async def get_chunk_bands(self, chunk_keys: List[str]) -> Dict[str, BandType]:
+        """Get bands that store these chunks"""
+
+    @abstractmethod
     async def get_progress(self) -> float:
         """Get the execution progress."""
 

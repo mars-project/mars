@@ -144,6 +144,8 @@ class GraphAnalyzer:
         bands_specified = None
         processed = set()
         for chunk in chunks:
+            if isinstance(chunk.op, Fetch):
+                continue
             if chunk in processed:
                 continue
             if expect_worker is None:
@@ -281,7 +283,9 @@ class GraphAnalyzer:
         )
 
     @enter_mode(build=True)
-    def gen_subtask_graph(self) -> SubtaskGraph:
+    def gen_subtask_graph(
+        self, op_to_bands: Dict[str, BandType] = None
+    ) -> SubtaskGraph:
         """
         Analyze chunk graph and generate subtask graph.
 
@@ -289,6 +293,8 @@ class GraphAnalyzer:
         -------
         subtask_graph: SubtaskGraph
             Subtask graph.
+        op_to_bands: Dict
+            Assigned operand's band, usually for fetch operands.
         """
         reassign_worker_ops = [
             chunk.op for chunk in self._chunk_graph if chunk.op.reassign_worker
@@ -310,6 +316,8 @@ class GraphAnalyzer:
             for op in start_ops
             if op.expect_worker is not None
         }
+        if op_to_bands:
+            cur_assigns.update(op_to_bands)
         logger.debug(
             "Start to assign %s start chunks for task %s",
             len(start_ops),
@@ -360,7 +368,8 @@ class GraphAnalyzer:
                     chunk_to_colors[c] = op_to_colors[c.op]
         color_to_chunks = defaultdict(list)
         for chunk, color in chunk_to_colors.items():
-            color_to_chunks[color].append(chunk)
+            if not isinstance(chunk.op, Fetch):
+                color_to_chunks[color].append(chunk)
 
         # gen subtask graph
         subtask_graph = SubtaskGraph()
@@ -370,7 +379,8 @@ class GraphAnalyzer:
         visited = set()
         logic_key_to_subtasks = defaultdict(list)
         for chunk in self._chunk_graph.topological_iter():
-            if chunk in visited:
+            if chunk in visited or isinstance(chunk.op, Fetch):
+                # skip fetch chunk
                 continue
 
             color = chunk_to_colors[chunk]
