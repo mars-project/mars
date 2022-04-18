@@ -106,5 +106,13 @@ try:
         hyp0f1,
         TensorHYP0F1,
     )
+    from .ellip_harm import (
+        ellip_harm,
+        TensorEllipHarm,
+        ellip_harm_2,
+        TensorEllipHarm2,
+        ellip_normal,
+        TensorEllipNormal,
+    )
 except ImportError:  # pragma: no cover
     pass
