@@ -50,7 +50,7 @@ cdef uint32_t _MAX_STR_PRIMITIVE_LEN = 1024
 cdef class Serializer:
     serializer_id = None
 
-    cpdef serial(self, obj: Any, dict context):
+    cpdef serial(self, object obj, dict context):
         """
         Returns intermediate serialization result of certain object.
         The returned value can be a Placeholder or a tuple comprising
@@ -657,6 +657,7 @@ def deserialize(tuple serialized, list buffers, dict context = None):
     cdef bint final
     cdef Serializer serializer
     cdef object deserialized = None
+    cdef bint has_deserialized = False
 
     context = context if context is not None else dict()
     # drop extra meta field
@@ -674,7 +675,9 @@ def deserialize(tuple serialized, list buffers, dict context = None):
 
     while deserial_stack:
         stack_item = deserial_stack[-1]
-        if deserialized is not None:
+        # the deserialized result can be None, hence we cannot
+        # simply judge from the value deserialized
+        if has_deserialized:
             # have previously-deserialized results, record first
             stack_item.subs_deserialized.append(deserialized)
         num_deserialized = len(stack_item.subs_deserialized)
@@ -683,6 +686,7 @@ def deserialize(tuple serialized, list buffers, dict context = None):
             deserialized = _deserial_single(
                 stack_item.serialized, context, stack_item.subs_deserialized
             )
+            has_deserialized = True
             deserial_stack.pop()
         else:
             # select next subcomponent to process
@@ -693,6 +697,7 @@ def deserialize(tuple serialized, list buffers, dict context = None):
                 deserialized = _deserial_single(
                     serialized, context, buffers[buf_pos : buf_pos + num_subs]
                 )
+                has_deserialized = True
                 buf_pos += num_subs
             else:
                 # next subcomponent has its own subcomponents, we push it
@@ -703,5 +708,5 @@ def deserialize(tuple serialized, list buffers, dict context = None):
                 deserial_stack.append(stack_item)
                 # note that the deserialized object should be cleaned
                 # as we are just starting to handle the subcomponent itself
-                deserialized = None
+                has_deserialized = False
     return deserialized

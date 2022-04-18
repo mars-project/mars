@@ -16,12 +16,12 @@ import asyncio
 import copy
 from typing import Dict, Union
 
+from ...oscar.profiling import ProfilingData
+from ...utils import Timer
 from ..errors import ServerClosed
 from .communication import Client
 from .message import _MessageBase, ResultMessage, ErrorMessage, DeserializeMessageFailed
 from .router import Router
-from ...oscar.profiling import ProfilingData
-from ...utils import Timer
 
 
 ResultMessageType = Union[ResultMessage, ErrorMessage]
