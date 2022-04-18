@@ -15,6 +15,7 @@
 import asyncio
 import logging
 import sys
+from collections import defaultdict
 from typing import Dict, List, Optional
 
 from ..... import oscar as mo
@@ -330,34 +331,37 @@ class MarsTaskExecutor(TaskExecutor):
 
     async def _incref_stage(self, stage_processor: "TaskStageProcessor"):
         subtask_graph = stage_processor.subtask_graph
-        incref_chunk_keys = []
+        incref_chunk_key_to_counts = defaultdict(lambda: 0)
         for subtask in subtask_graph:
             # for subtask has successors, incref number of successors
             n = subtask_graph.count_successors(subtask)
             for c in subtask.chunk_graph.results:
-                incref_chunk_keys.extend([c.key] * n)
+                incref_chunk_key_to_counts[c.key] += n
             # process reducer, incref mapper chunks
             for pre_graph in subtask_graph.iter_predecessors(subtask):
                 for chk in pre_graph.chunk_graph.results:
                     if isinstance(chk.op, ShuffleProxy):
                         n_reducer = _get_n_reducer(subtask)
-                        incref_chunk_keys.extend(
-                            [map_chunk.key for map_chunk in chk.inputs] * n_reducer
-                        )
+                        for map_chunk in chk.inputs:
+                            incref_chunk_key_to_counts[map_chunk.key] += n_reducer
         result_chunks = stage_processor.chunk_graph.result_chunks
-        incref_chunk_keys.extend([c.key for c in result_chunks])
+        for c in result_chunks:
+            incref_chunk_key_to_counts[c.key] += 1
         logger.debug(
             "Incref chunks for stage %s: %s",
             stage_processor.stage_id,
-            incref_chunk_keys,
+            incref_chunk_key_to_counts,
         )
-        await self._lifecycle_api.incref_chunks(incref_chunk_keys)
+        await self._lifecycle_api.incref_chunks(
+            list(incref_chunk_key_to_counts),
+            counts=list(incref_chunk_key_to_counts.values()),
+        )
 
     @classmethod
-    def _get_decref_stage_chunk_keys(
+    def _get_decref_stage_chunk_key_to_counts(
         cls, stage_processor: "TaskStageProcessor"
-    ) -> List[str]:
-        decref_chunk_keys = []
+    ) -> Dict[str, int]:
+        decref_chunk_key_to_counts = defaultdict(lambda: 0)
         error_or_cancelled = stage_processor.error_or_cancelled()
         if stage_processor.subtask_graph:
             subtask_graph = stage_processor.subtask_graph
@@ -369,32 +373,42 @@ class MarsTaskExecutor(TaskExecutor):
                     stage_processor.decref_subtask.add(subtask.subtask_id)
                     # if subtask not executed, rollback incref of predecessors
                     for inp_subtask in subtask_graph.predecessors(subtask):
-                        decref_chunk_keys.extend(
-                            [c.key for c in inp_subtask.chunk_graph.results]
-                        )
+                        for c in inp_subtask.chunk_graph.results:
+                            decref_chunk_key_to_counts[c.key] += 1
             # decref result of chunk graphs
-            decref_chunk_keys.extend(
-                [c.key for c in stage_processor.chunk_graph.results]
-            )
-        return decref_chunk_keys
+            for c in stage_processor.chunk_graph.results:
+                decref_chunk_key_to_counts[c.key] += 1
+        return decref_chunk_key_to_counts
 
     @mo.extensible
     async def _decref_stage(self, stage_processor: "TaskStageProcessor"):
-        decref_chunk_keys = self._get_decref_stage_chunk_keys(stage_processor)
+        decref_chunk_key_to_counts = self._get_decref_stage_chunk_key_to_counts(
+            stage_processor
+        )
         logger.debug(
             "Decref chunks when stage %s finish: %s",
             stage_processor.stage_id,
-            decref_chunk_keys,
+            decref_chunk_key_to_counts,
         )
-        await self._lifecycle_api.decref_chunks(decref_chunk_keys)
+        await self._lifecycle_api.decref_chunks(
+            list(decref_chunk_key_to_counts),
+            counts=list(decref_chunk_key_to_counts.values()),
+        )
 
     @_decref_stage.batch
     async def _decref_stage(self, args_list, kwargs_list):
-        decref_chunk_keys = []
+        decref_chunk_key_to_counts = defaultdict(lambda: 0)
         for args, kwargs in zip(args_list, kwargs_list):
-            decref_chunk_keys.extend(self._get_decref_stage_chunk_keys(*args, **kwargs))
-        logger.debug("Decref chunks when stages finish: %s", decref_chunk_keys)
-        await self._lifecycle_api.decref_chunks(decref_chunk_keys)
+            chunk_key_to_counts = self._get_decref_stage_chunk_key_to_counts(
+                *args, **kwargs
+            )
+            for k, c in chunk_key_to_counts.items():
+                decref_chunk_key_to_counts[k] += c
+        logger.debug("Decref chunks when stages finish: %s", decref_chunk_key_to_counts)
+        await self._lifecycle_api.decref_chunks(
+            list(decref_chunk_key_to_counts),
+            counts=list(decref_chunk_key_to_counts.values()),
+        )
 
     async def _decref_input_subtasks(
         self, subtask: Subtask, subtask_graph: SubtaskGraph
@@ -406,22 +420,24 @@ class MarsTaskExecutor(TaskExecutor):
             await self._subtask_decref_events[subtask.subtask_id].wait()
             return
 
-        decref_chunk_keys = []
+        decref_chunk_key_to_counts = defaultdict(lambda: 0)
         for in_subtask in subtask_graph.iter_predecessors(subtask):
             for result_chunk in in_subtask.chunk_graph.results:
                 # for reducer chunk, decref mapper chunks
                 if isinstance(result_chunk.op, ShuffleProxy):
                     n_reducer = _get_n_reducer(subtask)
-                    decref_chunk_keys.extend(
-                        [inp.key for inp in result_chunk.inputs] * n_reducer
-                    )
-                decref_chunk_keys.append(result_chunk.key)
+                    for inp in result_chunk.inputs:
+                        decref_chunk_key_to_counts[inp.key] += n_reducer
+                decref_chunk_key_to_counts[result_chunk.key] += 1
         logger.debug(
             "Decref chunks %s when subtask %s finish",
-            decref_chunk_keys,
+            decref_chunk_key_to_counts,
             subtask.subtask_id,
         )
-        await self._lifecycle_api.decref_chunks(decref_chunk_keys)
+        await self._lifecycle_api.decref_chunks(
+            list(decref_chunk_key_to_counts),
+            counts=list(decref_chunk_key_to_counts.values()),
+        )
 
         # `set_subtask_result` will be called when subtask finished
         # but report progress will call set_subtask_result too,
