@@ -58,7 +58,7 @@ class TensorSVD(TensorHasInput, TensorOperandMixin):
 
         if a.ndim != 2:
             raise LinAlgError(
-                f"{a.ndim}-dimensional tensor given. " "Tensor must be two-dimensional"
+                f"{a.ndim}-dimensional tensor given. Tensor must be two-dimensional"
             )
 
         tiny_U, tiny_s, tiny_V = np.linalg.svd(np.ones((1, 1), dtype=a.dtype))

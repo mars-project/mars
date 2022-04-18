@@ -26,29 +26,25 @@ except ImportError:  # pragma: no cover
 
 
 class ArrowBatchSerializer(Serializer):
-    serializer_name = "arrow"
-
     @buffered
-    def serialize(self, obj: pa_types, context: Dict):
-        header = {}
-
+    def serial(self, obj: pa_types, context: Dict):
         sink = pa.BufferOutputStream()
         writer = pa.RecordBatchStreamWriter(sink, obj.schema)
         if isinstance(obj, pa.Table):
-            header["type"] = "Table"
+            batch_type = "T"
             writer.write_table(obj)
         else:
-            header["type"] = "Batch"
+            batch_type = "B"
             writer.write_batch(obj)
         writer.close()
 
         buf = sink.getvalue()
         buffers = [buf]
-        return header, buffers
+        return (batch_type,), buffers, True
 
-    def deserialize(self, header: Dict, buffers: List, context: Dict):
-        reader = pa.RecordBatchStreamReader(pa.BufferReader(buffers[0]))
-        if header["type"] == "Table":
+    def deserial(self, serialized: Dict, context: Dict, subs: List):
+        reader = pa.RecordBatchStreamReader(pa.BufferReader(subs[0]))
+        if serialized[0] == "T":
             return reader.read_all()
         else:
             return reader.read_next_batch()

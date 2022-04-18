@@ -103,7 +103,7 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
 
         if dtype is None:
             raise ValueError(
-                "cannot infer dtype, " "it needs to be specified manually for `map`"
+                "cannot infer dtype, it needs to be specified manually for `map`"
             )
         else:
             dtype = np.int64 if dtype is int else dtype

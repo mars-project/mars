@@ -1030,7 +1030,7 @@ class LabelTensorFancyIndexHandler(_LabelFancyIndexHandler):
     def parse(self, raw_index, context: IndexHandlerContext) -> IndexInfo:
         if context.input_axis == 1:  # pragma: no cover
             raise NotImplementedError(
-                "do not support tensor-based index " "on columns axis"
+                "do not support tensor-based index on columns axis"
             )
         info = LabelFancyIndexInfo(
             IndexType.label_fancy_index,

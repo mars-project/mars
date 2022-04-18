@@ -515,4 +515,4 @@ def estimate_size(results: Dict[str, Any], op: OperandType):
                 size_estimator = _op_type_to_size_estimator[op_cls]
                 _op_type_to_size_estimator[type(op)] = size_estimator
                 return size_estimator(results, op)
-        raise KeyError(f"No handler found for op: " f"{op} to estimate size")
+        raise KeyError(f"No handler found for op: {op} to estimate size")

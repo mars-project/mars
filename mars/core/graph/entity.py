@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from abc import ABCMeta, abstractmethod
-from typing import List, Dict, Union, Iterable
+from typing import List, Dict, Tuple, Union, Iterable
 
 from ...core import Tileable, Chunk
 from ...serialization.core import buffered
@@ -133,19 +133,15 @@ class SerializableGraph(Serializable):
 
 
 class GraphSerializer(SerializableSerializer):
-    serializer_name = "graph"
-
     @buffered
-    def serialize(self, obj: Union[TileableGraph, ChunkGraph], context: Dict):
+    def serial(self, obj: Union[TileableGraph, ChunkGraph], context: Dict):
         serializable_graph = SerializableGraph.from_graph(obj)
-        return (yield from super().serialize(serializable_graph, context))
+        return (), [serializable_graph], False
 
-    def deserialize(
-        self, header: Dict, buffers: List, context: Dict
+    def deserial(
+        self, serialized: Tuple, context: Dict, subs: List
     ) -> Union[TileableGraph, ChunkGraph]:
-        serializable_graph: SerializableGraph = (
-            yield from super().deserialize(header, buffers, context)
-        )
+        serializable_graph: SerializableGraph = subs[0]
         return serializable_graph.to_graph()
 
 

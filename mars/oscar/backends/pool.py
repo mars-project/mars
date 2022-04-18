@@ -500,7 +500,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             actor_id = message.actor_id
             if actor_id in self._actors:
                 raise ActorAlreadyExist(
-                    f"Actor {actor_id} already exist, " f"cannot create"
+                    f"Actor {actor_id} already exist, cannot create"
                 )
 
             actor = message.actor_cls(*message.args, **message.kwargs)
@@ -1269,10 +1269,10 @@ async def create_actor_pool(
         n_process = multiprocessing.cpu_count()
     if labels and len(labels) != n_process + 1:
         raise ValueError(
-            f"`labels` should be of size {n_process + 1}, " f"got {len(labels)}"
+            f"`labels` should be of size {n_process + 1}, got {len(labels)}"
         )
     if envs and len(envs) != n_process:
-        raise ValueError(f"`envs` should be of size {n_process}, " f"got {len(envs)}")
+        raise ValueError(f"`envs` should be of size {n_process}, got {len(envs)}")
     if auto_recover is True:
         auto_recover = "actor"
     if auto_recover not in ("actor", "process", False):

@@ -123,7 +123,7 @@ def take(a, indices, axis=None, out=None):
 
     if out.shape != t.shape:
         raise ValueError(
-            "output tensor has wrong shape, " f"expect: {t.shape}, got: {out.shape}"
+            f"output tensor has wrong shape, expect: {t.shape}, got: {out.shape}"
         )
     check_out_param(out, t, "unsafe")
     out.data = t.data

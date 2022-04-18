@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Dict, Any
+from typing import Any, Dict, List, Tuple
 
 from ..utils import lazy_import
 from .core import Serializer, buffered, PickleSerializer
@@ -24,17 +24,13 @@ ray = lazy_import("ray")
 class RaySerializer(Serializer):
     """Return raw object to let ray do serialization."""
 
-    serializer_name = "ray"
-
     @buffered
-    def serialize(self, obj: Any, context: Dict):
-        header = {"o": obj}
-        buffers = []
-        return header, buffers
+    def serial(self, obj: Any, context: Dict):
+        return (obj,), [], True
 
-    def deserialize(self, header: Dict, buffers: List, context: Dict):
-        assert not buffers
-        return header["o"]
+    def deserial(self, serialized: Tuple, context: Dict, subs: List[Any]):
+        assert not subs
+        return serialized[0]
 
 
 def register_ray_serializers():

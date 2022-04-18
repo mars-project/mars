@@ -59,9 +59,9 @@ def test_checked_session(setup):
 
 def test_check_task_preprocessor(setup):
     config = load_config(CONFIG_FILE)
-    config["task"]["task_preprocessor_cls"] = (
-        "mars.deploy.oscar.tests." "test_checked_session.FakeCheckedTaskPreprocessor"
-    )
+    config["task"][
+        "task_preprocessor_cls"
+    ] = "mars.deploy.oscar.tests.test_checked_session.FakeCheckedTaskPreprocessor"
 
     sess = new_test_session(default=True, config=config)
 
@@ -79,9 +79,9 @@ def test_check_task_preprocessor(setup):
 
 def test_check_subtask_processor(setup):
     config = load_config(CONFIG_FILE)
-    config["subtask"]["subtask_processor_cls"] = (
-        "mars.deploy.oscar.tests." "test_checked_session.FakeCheckedSubtaskProcessor"
-    )
+    config["subtask"][
+        "subtask_processor_cls"
+    ] = "mars.deploy.oscar.tests.test_checked_session.FakeCheckedSubtaskProcessor"
 
     sess = new_test_session(default=True, config=config)
 

@@ -189,7 +189,7 @@ class TruncatedSVD(BaseEstimator, TransformerMixin):
             n_features = X.shape[1]
             if k >= n_features:
                 raise ValueError(
-                    "n_components must be < n_features; " f"got {k} >= {n_features}"
+                    f"n_components must be < n_features; got {k} >= {n_features}"
                 )
             U, Sigma, VT = randomized_svd(
                 X, self.n_components, n_iter=self.n_iter, random_state=random_state

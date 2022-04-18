@@ -316,7 +316,7 @@ def cholesky(a, lower=False):
 
     if a.ndim != 2:  # pragma: no cover
         raise LinAlgError(
-            f"{a.ndim}-dimensional array given. " "Tensor must be two-dimensional"
+            f"{a.ndim}-dimensional array given. Tensor must be two-dimensional"
         )
     if a.shape[0] != a.shape[1]:  # pragma: no cover
         raise LinAlgError("Input must be square")

@@ -87,7 +87,7 @@ class ArrowBasedFileSystem(FileSystem):
                 raise OSError(f"[Errno 66] Directory not empty: '{path}'")
             self._arrow_fs.delete_dir(path)
         else:  # pragma: no cover
-            raise TypeError(f"path({path}) to delete " f"must be a file or directory")
+            raise TypeError(f"path({path}) to delete must be a file or directory")
 
     @implements(FileSystem.rename)
     def rename(self, path: path_type, new_path: path_type):
@@ -141,7 +141,7 @@ class ArrowBasedFileSystem(FileSystem):
         is_binary = mode.endswith("b")
         if not is_binary:  # pragma: no cover
             raise ValueError(
-                f"mode can only be binary for " f"arrow based filesystem, got {mode}"
+                f"mode can only be binary for arrow based filesystem, got {mode}"
             )
         mode = mode.rstrip("b")
         if mode == "w":

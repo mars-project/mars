@@ -95,12 +95,12 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
         if force.lower() == "tomatrix":
             if len(s) != 1:
                 raise ValueError(
-                    "Forcing 'tomatrix' but input X is not a " "distance vector."
+                    "Forcing 'tomatrix' but input X is not a distance vector."
                 )
         elif force.lower() == "tovector":
             if len(s) != 2:
                 raise ValueError(
-                    "Forcing 'tovector' but input X is not a " "distance matrix."
+                    "Forcing 'tovector' but input X is not a distance matrix."
                 )
 
         # X = squareform(v)

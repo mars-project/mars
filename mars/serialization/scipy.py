@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
@@ -25,34 +25,38 @@ from .core import Serializer, buffered, serialize, deserialize
 
 
 class CsrMatrixSerializer(Serializer):
-    serializer_name = "sps.csr_matrix"
-
     @buffered
-    def serialize(self, obj: Any, context: Dict):
+    def serial(self, obj: Any, context: Dict):
         data_header, data_buffers = serialize(obj.data)
         idx_header, idx_buffers = serialize(obj.indices)
         indptr_header, indptr_buffers = serialize(obj.indptr)
-        header = {
-            "data_header": data_header,
-            "data_buf_num": len(data_buffers),
-            "idx_header": idx_header,
-            "idx_buf_num": len(idx_buffers),
-            "indptr_header": indptr_header,
-            "shape": list(obj.shape),
-        }
-        return header, data_buffers + idx_buffers + indptr_buffers
+        header = (
+            data_header,  # data_header
+            len(data_buffers),  # data_buf_num
+            idx_header,  # idx_header
+            len(idx_buffers),  # idx_buf_num
+            indptr_header,  # indptr_header
+            obj.shape,  # shape
+        )
+        return header, data_buffers + idx_buffers + indptr_buffers, True
 
-    def deserialize(self, header: Dict, buffers: List, context: Dict):
-        data_buf_num = header["data_buf_num"]
-        idx_buf_num = header["idx_buf_num"]
-        data_buffers = buffers[:data_buf_num]
-        idx_buffers = buffers[data_buf_num : data_buf_num + idx_buf_num]
-        indptr_buffers = buffers[data_buf_num + idx_buf_num :]
+    def deserial(self, serialized: Tuple, context: Dict, subs: List):
+        (
+            data_header,
+            data_buf_num,
+            idx_header,
+            idx_buf_num,
+            indptr_header,
+            shape,
+        ) = serialized
+        data_buffers = subs[:data_buf_num]
+        idx_buffers = subs[data_buf_num : data_buf_num + idx_buf_num]
+        indptr_buffers = subs[data_buf_num + idx_buf_num :]
 
-        data = deserialize(header["data_header"], data_buffers)
-        indices = deserialize(header["idx_header"], idx_buffers)
-        indptr = deserialize(header["indptr_header"], indptr_buffers)
-        shape = tuple(header["shape"])
+        data = deserialize(data_header, data_buffers)
+        indices = deserialize(idx_header, idx_buffers)
+        indptr = deserialize(indptr_header, indptr_buffers)
+        shape = tuple(shape)
 
         empty_arr = np.zeros(0, dtype=data.dtype)
 

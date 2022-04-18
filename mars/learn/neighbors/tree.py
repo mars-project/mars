@@ -103,7 +103,7 @@ class TreeBase(LearnOperand, LearnOperandMixin):
     def execute(cls, ctx, op):
         if op.gpu:  # pragma: no cover
             raise NotImplementedError(
-                "Does not support tree-based " "nearest neighbors on GPU"
+                "Does not support tree-based nearest neighbors on GPU"
             )
 
         a = ctx[op.input.key]
@@ -263,7 +263,7 @@ class TreeQueryBase(LearnOperand, LearnOperandMixin):
     def execute(cls, ctx, op):
         if op.gpu:  # pragma: no cover
             raise NotImplementedError(
-                "Does not support tree-based " "nearest neighbors on GPU"
+                "Does not support tree-based nearest neighbors on GPU"
             )
 
         x = ctx[op.input.key]

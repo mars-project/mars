@@ -252,9 +252,7 @@ TEMPDIR = tempfile.gettempdir()
 
 @lru_cache(100)
 def _gen_unix_socket_default_path(process_index):
-    return (
-        f"{TEMPDIR}/mars/" f"{md5(to_binary(str(process_index))).hexdigest()}"
-    )  # nosec
+    return f"{TEMPDIR}/mars/{md5(to_binary(str(process_index))).hexdigest()}"  # nosec
 
 
 @register_server
@@ -352,7 +350,7 @@ class UnixSocketClient(Client):
             (reader, writer) = await asyncio.open_unix_connection(path, **kwargs)
         except FileNotFoundError:
             raise ConnectionRefusedError(
-                "Cannot connect unix socket " "due to file not exists"
+                "Cannot connect unix socket due to file not exists"
             )
         channel = SocketChannel(
             reader, writer, local_address=local_address, dest_address=dest_address

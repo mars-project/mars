@@ -84,10 +84,6 @@ cpdef unicode to_text(s, encoding='utf-8'):
 
 
 cdef class TypeDispatcher:
-    cdef dict _handlers
-    cdef dict _lazy_handlers
-    cdef dict _inherit_handlers
-
     def __init__(self):
         self._handlers = dict()
         self._lazy_handlers = dict()

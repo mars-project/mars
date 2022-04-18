@@ -118,7 +118,7 @@ def average(a, axis=None, weights=None, returned=False):
         if a.shape != wgt.shape:
             if axis is None:
                 raise TypeError(
-                    "Axis must be specified when shapes of a and weights " "differ."
+                    "Axis must be specified when shapes of a and weights differ."
                 )
             if wgt.ndim != 1:
                 raise TypeError(
