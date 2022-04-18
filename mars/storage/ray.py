@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import inspect
+import logging
 
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
@@ -27,9 +28,7 @@ from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_bac
 from .core import BufferWrappedFileObject, StorageFileObject
 
 ray = lazy_import("ray")
-
-
-# TODO(fyrestone): make the SparseMatrix pickleable.
+logger = logging.getLogger(__name__)
 
 
 def _mars_sparse_matrix_serializer(value):
@@ -180,6 +179,7 @@ class RayStorage(StorageBackend):
     def __init__(self, *args, **kwargs):
         self._owner_address = kwargs.get("owner")
         self._owner = None  # A ray actor which will own the objects put by workers.
+        logger.info("Ray support batch_put API: %s", _support_batch_put)
 
     @classmethod
     @implements(StorageBackend.setup)
@@ -250,3 +250,28 @@ class RayStorage(StorageBackend):
     @implements(StorageBackend.fetch)
     async def fetch(self, object_id):
         pass
+
+
+_support_batch_put = False
+
+
+if ray:
+    if hasattr(ray, "batch_put"):
+        _support_batch_put = True
+
+        async def batch_put(self, objects, importance=0) -> List[ObjectInfo]:
+            try:
+                with record_time_cost_percentile(self._storage_put_metrics):
+                    if support_specify_owner() and self._owner_address:
+                        if not self._owner:
+                            self._owner = ray.get_actor(self._owner_address)
+                        object_refs = ray.batch_put(objects, _owner=self._owner)
+                    else:
+                        object_refs = ray.batch_put(objects)
+            except Exception as e:
+                logger.exception("ray.put error %s", e)
+                raise
+                # We can't get the serialized bytes length from ray.put
+            return [ObjectInfo(object_id=ref) for ref in object_refs]
+
+        RayStorage.batch_put = batch_put

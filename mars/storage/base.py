@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import asyncio
 import functools
 import operator
 from abc import ABC, abstractmethod
@@ -194,6 +194,27 @@ class StorageBackend(ABC):
         ObjectInfo
             object information including size, raw_size, device
         """
+
+    async def batch_put(self, objects: List, importance: int = 0) -> List[ObjectInfo]:
+        """
+        Batch put objects into storage with same importance.
+
+        Parameters
+        ----------
+        objects : python objects
+            Objects to put.
+
+        importance: int
+             The priority to spill when storage is full
+
+        Returns
+        -------
+        List[ObjectInfo]
+            objects information including size, raw_size, device
+        """
+        return await asyncio.gather(
+            *[self.put(obj, importance=importance) for obj in objects]
+        )
 
     @abstractmethod
     async def delete(self, object_id):

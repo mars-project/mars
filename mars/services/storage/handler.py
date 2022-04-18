@@ -205,8 +205,8 @@ class StorageHandlerActor(mo.Actor):
         data_infos = []
         put_infos = []
         quota_delta = 0
-        for size, data_key, obj in zip(sizes, data_keys, objs):
-            object_info = await self._clients[level].put(obj)
+        object_infos = await self._clients[level].batch_put(objs)
+        for size, data_key, object_info in zip(sizes, data_keys, object_infos):
             data_info = build_data_info(object_info, level, size, self._band_name)
             data_infos.append(data_info)
             if (
