@@ -45,7 +45,7 @@ SERIALIZATION_TIMEOUT_MILLS = 1000
 DESERIALIZATION_TIMEOUT_MILLS = 1000
 
 
-def msg_to_simple_str(msg):
+def msg_to_simple_str(msg):  # pragma: no cover
     """An helper that prints message structure without generate a big str."""
     from ..message import SendMessage, _MessageBase
 
@@ -127,7 +127,7 @@ if ray:
                 bytes_length = serialized_object.total_bytes
                 serialized_bytes_counter.record(bytes_length)
             serialization_time_mills.record(timer.duration * 1000)
-            if timer.duration * 1000 > SERIALIZATION_TIMEOUT_MILLS:
+            if timer.duration * 1000 > SERIALIZATION_TIMEOUT_MILLS:  # pragma: no cover
                 report_event(
                     "WARNING",
                     "SERIALIZATION_TIMEOUT",
@@ -158,7 +158,7 @@ if ray:
         value = _ray_deserialize_object(self, data, metadata, object_ref)
         duration = time.time() - start_time
         deserialization_time_mills.record(duration * 1000)
-        if duration * 1000 > DESERIALIZATION_TIMEOUT_MILLS:
+        if duration * 1000 > DESERIALIZATION_TIMEOUT_MILLS:  # pragma: no cover
             report_event(
                 "WARNING",
                 "DESERIALIZATION_TIMEOUT",

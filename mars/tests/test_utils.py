@@ -586,3 +586,8 @@ def test_get_func_token_values():
 
     func = Func()
     assert get_func_token_values(func) == [func]
+
+
+@require_ray
+def test_report_event(ray_start_regular):
+    utils.report_event("WARNING", "test_label", "test_message")
