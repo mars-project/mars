@@ -24,7 +24,6 @@ from ...subtask import SubtaskGraph, SubtaskResult
 
 @dataclass
 class ExecutionChunkResult:
-    chunk: Chunk  # The chunk of result.
     meta: Dict  # The chunk meta for iterative tiling.
     context: Any  # The context info, e.g. ray.ObjectRef.
 
@@ -71,7 +70,7 @@ class TaskExecutor(ABC):
         chunk_graph: ChunkGraph,
         tile_context: Dict[TileableType, TileableType],
         context: Any = None,
-    ) -> List[ExecutionChunkResult]:
+    ) -> Dict[Chunk, ExecutionChunkResult]:
         """Execute a subtask graph and returns result."""
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):

@@ -15,7 +15,7 @@
 import asyncio
 import logging
 from typing import List, Dict, Any, Set
-from .....core import ChunkGraph
+from .....core import ChunkGraph, Chunk
 from .....core.operand import (
     Fuse,
     VirtualOperand,
@@ -138,7 +138,7 @@ class RayTaskExecutor(TaskExecutor):
         chunk_graph: ChunkGraph,
         tile_context: Dict[TileableType, TileableType],
         context: Any = None,
-    ) -> List[ExecutionChunkResult]:
+    ) -> Dict[Chunk, ExecutionChunkResult]:
         logger.info("Stage %s start.", stage_id)
         context = self._task_context  # TODO(fyrestone): Load context from meta service.
         output_meta_object_refs = []
@@ -189,19 +189,20 @@ class RayTaskExecutor(TaskExecutor):
         assert len(key_to_meta) == len(chunk_graph.result_chunks)
         logger.info("Got %s metas of stage %s.", len(output_meta_object_refs), stage_id)
 
-        results = []
+        chunk_to_result = {}
         output_object_refs = []
         for chunk in chunk_graph.result_chunks:
             chunk_key = chunk.key
             object_ref = context[chunk_key]
             output_object_refs.append(object_ref)
-            result = ExecutionChunkResult(chunk_key, key_to_meta[chunk_key], object_ref)
-            results.append(result)
+            chunk_to_result[chunk] = ExecutionChunkResult(
+                key_to_meta[chunk_key], object_ref
+            )
 
         logger.info("Waiting for stage %s complete.", stage_id)
         ray.wait(output_object_refs, fetch_local=False)
         logger.info("Stage %s is complete.", stage_id)
-        return results
+        return chunk_to_result
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if exc_type is None:

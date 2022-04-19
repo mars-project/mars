@@ -25,7 +25,7 @@ from typing import Dict, Iterator, Optional, Type, List, Set
 
 from .... import oscar as mo
 from ....config import Config
-from ....core import ChunkGraph, TileableGraph
+from ....core import ChunkGraph, TileableGraph, Chunk
 from ....core.operand import Fetch, FetchShuffle
 from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from ....metrics import Metrics
@@ -35,11 +35,11 @@ from ....oscar.profiling import (
     MARS_ENABLE_PROFILING,
 )
 from ....tensor.core import TENSOR_TYPE
-from ....typing import TileableType, ChunkType
+from ....typing import TileableType
 from ....utils import build_fetch, Timer
 from ...subtask import SubtaskResult, SubtaskStatus, SubtaskGraph, Subtask
 from ..core import Task, TaskResult, TaskStatus, new_task_id
-from ..execution.api import TaskExecutor
+from ..execution.api import TaskExecutor, ExecutionChunkResult
 from .preprocessor import TaskPreprocessor
 
 logger = logging.getLogger(__name__)
@@ -232,7 +232,7 @@ class TaskProcessor:
         )
 
         with Timer() as timer:
-            execution_chunk_results = await self._executor.execute_subtask_graph(
+            chunk_to_result = await self._executor.execute_subtask_graph(
                 stage_id, subtask_graph, chunk_graph, tile_context
             )
         stage_profiler.set("run", timer.duration)
@@ -244,13 +244,9 @@ class TaskProcessor:
             ]
         else:
             optimization_records = None
-        self._update_stage_meta(
-            tile_context,
-            execution_chunk_results,
-            optimization_records,
-        )
+        self._update_stage_meta(chunk_to_result, tile_context, optimization_records)
 
-    def _get_stage_tile_context(self, result_chunks):
+    def _get_stage_tile_context(self, result_chunks: Set[Chunk]):
         collected = self._stage_tileables
         tile_context = {}
         for tileable in self.tileable_graph:
@@ -268,76 +264,73 @@ class TaskProcessor:
     @classmethod
     def _update_stage_meta(
         cls,
-        tile_context,
-        execution_chunk_results,
+        chunk_to_result: Dict[Chunk, ExecutionChunkResult],
+        tile_context: Dict[TileableType, TileableType],
         optimization_records: OptimizationRecords,
     ):
-        chunk_to_meta = {r: r.meta for r in execution_chunk_results}
         for tiled_tileable in tile_context.values():
-            cls._update_chunk_to_meta(tiled_tileable, chunk_to_meta)
+            cls._update_result_meta(chunk_to_result, tiled_tileable)
 
-        for c, meta in chunk_to_meta.items():
-            c.params = meta
+        for c, r in chunk_to_result.items():
+            c.params = r.meta
             original_chunk = (
                 optimization_records and optimization_records.get_original_entity(c)
             )
             if original_chunk is not None:
-                original_chunk.params = meta
+                original_chunk.params = r.meta
 
         for tileable, tiled_tileable in tile_context.items():
             tiled_tileable.refresh_params()
             tileable.params = tiled_tileable.params
 
     @classmethod
-    def _update_chunk_to_meta(
-        cls,
-        tileable: TileableType,
-        chunk_to_meta: Dict[ChunkType, dict],
+    def _update_result_meta(
+        cls, chunk_to_result: Dict[Chunk, ExecutionChunkResult], tileable: TileableType
     ):
         chunks = [c.data for c in tileable.chunks]
         if isinstance(tileable, DATAFRAME_TYPE):
             for c in chunks:
                 i, j = c.index
-                meta = chunk_to_meta[c]
+                meta = chunk_to_result[c].meta
                 shape = meta.get("shape")
                 update_shape = shape is None
                 shape = shape if not update_shape else [None, None]
                 if i > 0:
                     # update dtypes_value
-                    c0j = chunk_to_meta[tileable.cix[0, j].data]
+                    c0j = chunk_to_result[tileable.cix[0, j].data].meta
                     meta["dtypes_value"] = c0j["dtypes_value"]
                     if update_shape:
                         shape[1] = c0j["shape"][1]
                 if j > 0:
                     # update index_value
-                    ci0 = chunk_to_meta[tileable.cix[i, 0].data]
+                    ci0 = chunk_to_result[tileable.cix[i, 0].data].meta
                     meta["index_value"] = ci0["index_value"]
                     if update_shape:
                         shape[0] = ci0["shape"][0]
                 if update_shape:
                     meta["shape"] = tuple(shape)
         elif isinstance(tileable, SERIES_TYPE):
-            first_meta = chunk_to_meta[chunks[0]]
+            first_meta = chunk_to_result[chunks[0]].meta
             for c in chunks:
                 i = c.index[0]
-                meta = chunk_to_meta[c]
+                meta = chunk_to_result[c].meta
                 if i > 0:
                     meta["name"] = first_meta["name"]
                     meta["dtype"] = first_meta["dtype"]
         elif isinstance(tileable, TENSOR_TYPE):
             ndim = tileable.ndim
             for i, c in enumerate(chunks):
-                meta = chunk_to_meta[c]
+                meta = chunk_to_result[c].meta
                 if "shape" not in meta:
                     shape = []
                     for i, ind in enumerate(c.index):
                         ind0 = [0] * ndim
                         ind0[i] = ind
                         c0 = tileable.cix[tuple(ind0)].data
-                        shape.append(chunk_to_meta[c0]["shape"][i])
+                        shape.append(chunk_to_result[c0].meta["shape"][i])
                     meta["shape"] = tuple(shape)
                 if i > 0:
-                    first = chunk_to_meta[chunks[0]]
+                    first = chunk_to_result[chunks[0]].meta
                     meta["dtype"] = first["dtype"]
                     meta["order"] = first["order"]
 
