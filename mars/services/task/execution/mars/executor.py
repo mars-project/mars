@@ -469,7 +469,7 @@ class MarsTaskExecutor(TaskExecutor):
     ):
         chunk_to_chunk_result = dict(zip(chunk_graph_results, execution_chunk_results))
         update_meta_chunks = chunk_to_chunk_result.keys() - set(
-            itertools.chain(
+            itertools.chain.from_iterable(
                 (c.data for c in tiled_tileable.chunks)
                 for tiled_tileable in tile_context.values()
             )
