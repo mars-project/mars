@@ -232,9 +232,7 @@ class ArrowArray(ExtensionArray):
             # just for infer dtypes purpose
             self._init_by_numpy(values, dtype=dtype, copy=copy)
         else:
-            raise ImportError(
-                "Cannot create ArrowArray " "when `pyarrow` not installed"
-            )
+            raise ImportError("Cannot create ArrowArray when `pyarrow` not installed")
 
         # for test purpose
         self._force_use_pandas = pandas_only

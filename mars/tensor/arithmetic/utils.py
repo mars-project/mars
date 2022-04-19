@@ -17,7 +17,7 @@
 
 import numpy as np
 
-from ...config import options
+from ...utils import TreeReductionBuilder
 
 
 def arithmetic_operand(cls=None, init=True, sparse_mode=None):
@@ -66,31 +66,6 @@ def arithmetic_operand(cls=None, init=True, sparse_mode=None):
         return _decorator(cls)
     else:
         return _decorator
-
-
-class TreeReductionBuilder:
-    def __init__(self, combine_size=None):
-        self._combine_size = combine_size or options.combine_size
-
-    def _build_reduction(self, inputs, final=False):
-        raise NotImplementedError
-
-    def build(self, inputs):
-        combine_size = self._combine_size
-        while len(inputs) > self._combine_size:
-            new_inputs = []
-            for i in range(0, len(inputs), combine_size):
-                objs = inputs[i : i + combine_size]
-                if len(objs) == 1:
-                    obj = objs[0]
-                else:
-                    obj = self._build_reduction(objs, final=False)
-                new_inputs.append(obj)
-            inputs = new_inputs
-
-        if len(inputs) == 1:
-            return inputs[0]
-        return self._build_reduction(inputs, final=True)
 
 
 def chunk_tree_add(dtype, chunks, idx, shape, sparse=False, combine_size=None):

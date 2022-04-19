@@ -105,16 +105,20 @@ def test_to_dot():
 
     dot = str(graph.to_dot(trunc_key=5))
     try:
-        assert all(str(n.op.key)[5] in dot for n in graph) is True
+        assert all(str(n.key)[5] in dot for n in graph) is True
     except AssertionError:
         graph_reprs = []
         for n in graph:
             graph_reprs.append(
-                f"{n.op.key} -> {[succ.op.key for succ in graph.successors(n)]}"
+                f"{n.op.key} -> {[succ.key for succ in graph.successors(n)]}"
             )
         logging.error(
-            "Unexpected error in test_to_dot.\ndot = %r\ngraph_repr: %r",
+            "Unexpected error in test_to_dot.\ndot = %r\ngraph_repr = %r",
             dot,
             "\n".join(graph_reprs),
+        )
+        missing_prefix = next(n.key for n in graph if str(n.key)[5] not in dot)
+        logging.error(
+            "Missing prefix %r (type: %s)", missing_prefix, type(missing_prefix)
         )
         raise

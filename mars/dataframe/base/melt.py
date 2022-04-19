@@ -18,6 +18,7 @@ import pandas as pd
 from ... import opcodes
 from ...core import recursive_tile
 from ...serialization.serializables import AnyField, StringField
+from ...utils import calc_nsplits
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import build_empty_df, parse_index, standardize_range_index
 
@@ -109,12 +110,13 @@ class DataFrameMelt(DataFrameOperand, DataFrameOperandMixin):
                 )
             )
 
+        yield chunks
         chunks = standardize_range_index(chunks)
         new_op = op.copy().reset_key()
         return new_op.new_tileables(
             [inp],
             chunks=chunks,
-            nsplits=((np.nan,) * inp.chunk_shape[0], (out.shape[1],)),
+            nsplits=calc_nsplits({c.index: c.shape for c in chunks}),
             **out.params
         )
 

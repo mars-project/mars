@@ -405,6 +405,8 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if func_name == "custom_reduction":
             empty_series = build_series(series, ensure_string=True)
             result_scalar = getattr(self, "custom_reduction").__call_agg__(empty_series)
+            if hasattr(result_scalar, "to_pandas"):  # pragma: no cover
+                result_scalar = result_scalar.to_pandas()
             result_dtype = pd.Series(result_scalar).dtype
         else:
             result_dtype = _get_series_reduction_dtype(

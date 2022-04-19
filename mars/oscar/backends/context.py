@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import asyncio
+from dataclasses import dataclass
 from typing import Tuple, Union, Type
 
-from ...utils import to_binary
+from ...utils import to_binary, dataslots
 from ..api import Actor
 from ..core import ActorRef, create_local_actor_ref
 from ..context import BaseActorContext
@@ -38,9 +39,14 @@ from .message import (
     CancelMessage,
     ControlMessage,
     ControlMessageType,
-    ProfilingContext,
 )
 from .router import Router
+
+
+@dataslots
+@dataclass
+class ProfilingContext:
+    task_id: str
 
 
 class MarsActorContext(BaseActorContext):

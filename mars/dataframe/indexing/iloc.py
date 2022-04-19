@@ -86,7 +86,7 @@ def process_iloc_indexes(inp, indexes):
                         index = index.fetch()
                     except (RuntimeError, ValueError):
                         raise NotImplementedError(
-                            "indexer on axis columns cannot be " "non-executed tensor"
+                            "indexer on axis columns cannot be non-executed tensor"
                         )
             if index.dtype != np.bool_:
                 index = index.astype(np.int64)

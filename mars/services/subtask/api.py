@@ -14,7 +14,7 @@
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
-from ...oscar.backends.message import ProfilingContext
+from ...oscar.backends.context import ProfilingContext
 from ...oscar.profiling import MARS_ENABLE_PROFILING
 from .core import Subtask
 

@@ -125,7 +125,7 @@ def train_test_split(*arrays, **options):
     if shuffle is False:
         if stratify is not None:  # pragma: no cover
             raise ValueError(
-                "Stratified train/test split is not implemented for " "shuffle=False"
+                "Stratified train/test split is not implemented for shuffle=False"
             )
 
         iterables = ((a[:n_train], a[n_train : n_train + n_test]) for a in arrays)
@@ -305,7 +305,7 @@ class _BaseKFold(BaseCrossValidator, metaclass=ABCMeta):
             )
 
         if not isinstance(shuffle, bool):
-            raise TypeError("shuffle must be True or False;" " got {0}".format(shuffle))
+            raise TypeError("shuffle must be True or False; got {0}".format(shuffle))
 
         if not shuffle and random_state is not None:  # None is the default
             raise ValueError(

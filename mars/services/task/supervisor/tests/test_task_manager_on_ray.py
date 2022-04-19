@@ -41,6 +41,7 @@ async def test_task_manager_creation(ray_start_regular):
     await mo.create_actor(
         TaskConfigurationActor,
         dict(),
+        dict(),
         uid=TaskConfigurationActor.default_uid(),
         address="ray://test_cluster/0/0",
     )

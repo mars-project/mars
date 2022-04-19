@@ -30,7 +30,7 @@ from .....resource import Resource
 from .....utils import Timer
 from ....cluster import MockClusterAPI
 from ....lifecycle import MockLifecycleAPI
-from ....meta import MockMetaAPI
+from ....meta import MockMetaAPI, MockWorkerMetaAPI
 from ....scheduling import MockSchedulingAPI
 from ....session import MockSessionAPI
 from ....storage import MockStorageAPI
@@ -69,6 +69,7 @@ async def actor_pool():
         )
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
+        await MockWorkerMetaAPI.create(session_id, pool.external_address)
         await MockLifecycleAPI.create(session_id, pool.external_address)
         storage_api = await MockStorageAPI.create(session_id, pool.external_address)
         await MockSchedulingAPI.create(session_id, pool.external_address)
@@ -77,6 +78,7 @@ async def actor_pool():
         # create configuration
         await mo.create_actor(
             TaskConfigurationActor,
+            dict(),
             dict(),
             uid=TaskConfigurationActor.default_uid(),
             address=pool.external_address,
@@ -180,7 +182,7 @@ async def test_cancel_subtask(actor_pool):
     with Timer() as timer:
         # normal cancel by cancel asyncio Task
         aio_task = asyncio.create_task(
-            asyncio.wait_for(subtask_runner.cancel_subtask(), timeout=1)
+            asyncio.wait_for(asyncio.shield(subtask_runner.cancel_subtask()), timeout=1)
         )
         assert await subtask_runner.is_runner_free() is False
         with pytest.raises(asyncio.TimeoutError):

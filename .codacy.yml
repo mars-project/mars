@@ -8,7 +8,7 @@ exclude_paths:
   - 'bin'
   - 'docs'
   - 'mars/_version.py'
-  - 'mars/lib'
+  - 'mars/lib/**'
   - 'mars/web/static'
   - 'misc'
   - 'versioneer.py'

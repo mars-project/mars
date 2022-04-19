@@ -41,13 +41,13 @@ class Context(ABC):
             # try to get session id from environment
             session_id = os.environ.get("MARS_SESSION_ID")
             if session_id is None:
-                raise ValueError("session_id should be provided " "to create a context")
+                raise ValueError("session_id should be provided to create a context")
         if supervisor_address is None:
             # try to get supervisor address from environment
             supervisor_address = os.environ.get("MARS_SUPERVISOR_ADDRESS")
             if supervisor_address is None:
                 raise ValueError(
-                    "supervisor_address should be provided " "to create a context"
+                    "supervisor_address should be provided to create a context"
                 )
 
         self.session_id = session_id

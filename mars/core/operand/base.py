@@ -161,11 +161,11 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
     which should be the :class:`mars.tensor.core.TensorData`, :class:`mars.tensor.core.ChunkData` etc.
     """
 
-    __slots__ = ("__weakref__",)
     attr_tag = "attr"
     _init_update_key_ = False
     _output_type_ = None
     _no_copy_attrs_ = Base._no_copy_attrs_ | {"scheduling_hint"}
+    _cache_primitive_serial = True
 
     sparse = BoolField("sparse", default=False)
     device = Int32Field("device", default=None)
@@ -181,7 +181,10 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
     _inputs = ListField(
         "inputs", FieldTypes.reference(EntityData), default_factory=list
     )
-    _outputs = ListField("outputs", default=None)
+    # outputs are weak-refs which are not pickle-able
+    _outputs = ListField(
+        "outputs", default=None, on_serialize=lambda outputs: [o() for o in outputs]
+    )
     _output_types = ListField(
         "output_type", FieldTypes.reference(OutputType), default=None
     )
@@ -325,18 +328,13 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
 
 
 class OperandSerializer(SerializableSerializer):
-    serializer_name = "operand"
+    def serial(self, obj: Serializable, context: Dict):
+        res = super().serial(obj, context)
+        return res
 
-    @classmethod
-    def _get_tag_to_values(cls, obj: Operand):
-        tag_to_values = super()._get_tag_to_values(obj)
-        # outputs are weak-refs which are not pickle-able
-        tag_to_values["outputs"] = [out_ref() for out_ref in tag_to_values["outputs"]]
-        return tag_to_values
-
-    def deserialize(self, header: Dict, buffers: List, context: Dict) -> Operand:
+    def deserial(self, serialized: Tuple, context: Dict, subs: List) -> Operand:
         # convert outputs back to weak-refs
-        operand: Operand = (yield from super().deserialize(header, buffers, context))
+        operand: Operand = super().deserial(serialized, context, subs)
         for i, out in enumerate(operand._outputs):
 
             def cb(o, index):

@@ -79,9 +79,9 @@ def recursive_tile(
             to_update_inputs = []
             chunks = []
             for inp in t.op.inputs:
+                chunks.extend(inp.chunks)
                 if has_unknown_shape(inp):
                     to_update_inputs.append(inp)
-                    chunks.extend(inp.chunks)
             if obj is None:
                 yield chunks + to_update_inputs
             else:

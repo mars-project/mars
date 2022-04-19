@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
+
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like
@@ -324,7 +326,11 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             return cls._tile_tree(op, inp)
         else:
             assert op.method == "shuffle"
-            return cls._tile_shuffle(op, inp)
+            ret = cls._tile_shuffle(op, inp)
+            if inspect.isgenerator(ret):
+                return (yield from ret)
+            else:
+                return ret
 
     @classmethod
     def _drop_duplicates(cls, inp, op, subset=None, keep=None, ignore_index=None):

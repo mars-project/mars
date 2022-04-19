@@ -40,7 +40,7 @@ from .....tensor.arithmetic import TensorTreeAdd
 from .....utils import Timer
 from ....cluster import MockClusterAPI
 from ....lifecycle import MockLifecycleAPI
-from ....meta import MockMetaAPI
+from ....meta import MockMetaAPI, MockWorkerMetaAPI
 from ....session import MockSessionAPI
 from ....storage import MockStorageAPI
 from ....storage.handler import StorageHandlerActor
@@ -160,6 +160,9 @@ async def actor_pool(request):
         )
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
+        worker_meta_api = await MockWorkerMetaAPI.create(
+            session_id, pool.external_address
+        )
         await MockLifecycleAPI.create(session_id, pool.external_address)
         await MockSubtaskAPI.create(pool.external_address)
         await MockMutableAPI.create(session_id, pool.external_address)
@@ -209,7 +212,7 @@ async def actor_pool(request):
         )
 
         try:
-            yield pool, session_id, meta_api, storage_api, execution_ref
+            yield pool, session_id, meta_api, worker_meta_api, storage_api, execution_ref
         finally:
             await mo.destroy_actor(task_manager_ref)
             await mo.destroy_actor(band_slot_ref)
@@ -225,7 +228,7 @@ async def actor_pool(request):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("actor_pool", [(1, True)], indirect=True)
 async def test_execute_tensor(actor_pool):
-    pool, session_id, meta_api, storage_api, execution_ref = actor_pool
+    pool, session_id, meta_api, worker_meta_api, storage_api, execution_ref = actor_pool
 
     data1 = np.random.rand(10, 10)
     data2 = np.random.rand(10, 10)
@@ -278,7 +281,7 @@ async def test_execute_tensor(actor_pool):
     assert quota[(subtask.session_id, subtask.subtask_id)] == data1.nbytes
 
     # check if metas are correct
-    result_meta = await meta_api.get_chunk_meta(result_chunk.key)
+    result_meta = await worker_meta_api.get_chunk_meta(result_chunk.key)
     assert result_meta["object_id"] == result_chunk.key
     assert result_meta["shape"] == result.shape
 
@@ -300,7 +303,7 @@ _cancel_phases = [
     indirect=["actor_pool"],
 )
 async def test_execute_with_cancel(actor_pool, cancel_phase):
-    pool, session_id, meta_api, storage_api, execution_ref = actor_pool
+    pool, session_id, meta_api, worker_meta_api, storage_api, execution_ref = actor_pool
     delay_fetch_event = asyncio.Event()
     delay_wait_event = asyncio.Event()
 
@@ -399,7 +402,7 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("actor_pool", [(1, True)], indirect=True)
 async def test_execute_with_pure_deps(actor_pool):
-    pool, session_id, meta_api, storage_api, execution_ref = actor_pool
+    pool, session_id, meta_api, worker_meta_api, storage_api, execution_ref = actor_pool
 
     dep = TensorFetch(key="input1", dtype=np.dtype(int)).new_chunk([])
 
@@ -469,7 +472,7 @@ def test_estimate_size():
 @pytest.mark.asyncio
 @pytest.mark.parametrize("actor_pool", [(1, False)], indirect=True)
 async def test_cancel_without_kill(actor_pool):
-    pool, session_id, meta_api, storage_api, execution_ref = actor_pool
+    pool, session_id, meta_api, worker_meta_api, storage_api, execution_ref = actor_pool
     executed_file = os.path.join(
         tempfile.gettempdir(), f"mars_test_cancel_without_kill_{os.getpid()}.tmp"
     )

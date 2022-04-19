@@ -1244,7 +1244,7 @@ def agg(groupby, func=None, method="auto", combine_size=None, *args, **kwargs):
         method = "auto"
     if method not in ["shuffle", "tree", "auto"]:
         raise ValueError(
-            f"Method {method} is not available, " "please specify 'tree' or 'shuffle"
+            f"Method {method} is not available, please specify 'tree' or 'shuffle"
         )
 
     if not is_funcs_aggregate(func, ndim=groupby.ndim):

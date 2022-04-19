@@ -285,7 +285,7 @@ async def test_rerun_subtask_fail(fault_cluster, fault_config):
         b.execute(extra_config=extra_config)
 
     tb_str = "".join(traceback.format_tb(e.tb))
-    assert e.value.__basename__ == exception_typename, tb_str
+    assert e.value.__wrapname__ == exception_typename, tb_str
     assert e.traceback[-1].name == stack_string, tb_str
 
 
@@ -329,5 +329,5 @@ async def test_retryable(fault_cluster, fault_config):
         r.execute(extra_config=extra_config)
 
     tb_str = "".join(traceback.format_tb(e.tb))
-    assert e.value.__basename__ == exception_typename, tb_str
+    assert e.value.__wrapname__ == exception_typename, tb_str
     assert stack_string == "*" or e.traceback[-1].name == stack_string, tb_str

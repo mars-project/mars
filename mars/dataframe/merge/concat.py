@@ -169,6 +169,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
         )
 
         if op.ignore_index:
+            yield out_chunks
             out_chunks = standardize_range_index(out_chunks)
 
         new_op = op.copy()
@@ -263,6 +264,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 offset += 1
 
         if op.ignore_index:
+            yield out_chunks
             out_chunks = standardize_range_index(out_chunks)
 
         new_op = op.copy()
@@ -553,7 +555,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 new_objs = [obj if obj.ndim == 2 else obj.to_frame() for obj in objs]
             else:  # pragma: no cover
                 raise NotImplementedError(
-                    "Does not support concat dataframes " "which has different index"
+                    "Does not support concat dataframes which has different index"
                 )
 
             shape = (objs[0].shape[0], col_length)

@@ -256,7 +256,8 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             input_max_chunk = input_max.chunks[0]
 
             # let input min and max execute first
-            yield [input_min_chunk, input_max_chunk]
+            min_max_chunks = [input_min_chunk, input_max_chunk]
+            yield min_max_chunks + [c for inp in op.inputs for c in inp.chunks]
 
             ctx = get_context()
             keys = [input_min_chunk.key, input_max_chunk.key]
@@ -265,7 +266,7 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             # calculate bins
             if np.isinf(min_val) or np.isinf(max_val):
                 raise ValueError(
-                    "cannot specify integer `bins` " "when input data contains infinity"
+                    "cannot specify integer `bins` when input data contains infinity"
                 )
             elif min_val == max_val:  # adjust end points before binning
                 min_val -= 0.001 * abs(min_val) if min_val != 0 else 0.001

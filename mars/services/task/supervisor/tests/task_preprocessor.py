@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import itertools
-from typing import Dict
+from functools import partial
+from typing import Callable, Dict
 
 import numpy as np
 
@@ -31,7 +32,7 @@ from .....tests.core import _check_args, ObjectCheckMixin
 from .....typing import BandType
 from ....subtask import SubtaskGraph
 from ...analyzer import GraphAnalyzer
-from ..preprocessor import TaskPreprocessor
+from ..preprocessor import CancellableTiler, TaskPreprocessor
 
 
 class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
@@ -112,15 +113,28 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
                         % (tiled.chunks[cid].op, shape, chunk_shape)
                     )
 
-    def _update_tileable_params(self, tileable: TileableType, tiled: TileableType):
-        if (
-            self._check_options["check_nsplits"]
-            and tileable.key not in self._tileable_checked
-            and not isinstance(tileable, OBJECT_TYPE)
-        ):
-            self._check_nsplits(tiled)
-            self._tileable_checked[tileable.key] = True
-        return super()._update_tileable_params(tileable, tiled)
+    def post_chunk_graph_execution(self):
+        for tileable in self.tileable_graph:
+            tiled_tileable = self.tile_context.get(tileable)
+            if (
+                tiled_tileable is not None
+                and self._check_options["check_nsplits"]
+                and tileable.key not in self._tileable_checked
+                and not isinstance(tileable, OBJECT_TYPE)
+            ):
+                self._check_nsplits(tiled_tileable)
+                self._tileable_checked[tileable.key] = True
+
+    def _get_tiler_cls(self) -> Callable:
+        extra_config = self._task.extra_config or dict()
+        check_duplicated_submission = extra_config.get(
+            "check_duplicated_submission", True
+        )
+        return partial(
+            CancellableTiler,
+            cancelled=self._cancelled,
+            check_duplicated_submission=check_duplicated_submission,
+        )
 
     @enter_mode(build=True)
     def analyze(
@@ -128,6 +142,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
         chunk_graph: ChunkGraph,
         available_bands: Dict[BandType, Resource],
         stage_id: str,
+        op_to_bands: Dict[str, BandType] = None,
     ) -> SubtaskGraph:
         # record shapes generated in tile
         for n in chunk_graph:

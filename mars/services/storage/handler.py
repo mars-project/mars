@@ -91,9 +91,7 @@ class StorageHandlerActor(mo.Actor):
                     data_info.object_id, conditions=conditions
                 )
             except NotImplementedError:
-                data = yield await self._clients[data_info.level].get(
-                    data_info.object_id
-                )
+                data = yield self._clients[data_info.level].get(data_info.object_id)
                 try:
                     sliced_value = data.iloc[tuple(conditions)]
                 except AttributeError:
@@ -253,19 +251,24 @@ class StorageHandlerActor(mo.Actor):
         if error not in ("raise", "ignore"):  # pragma: no cover
             raise ValueError("error must be raise or ignore")
 
-        infos = await self._data_manager_ref.get_data_infos(
+        all_infos = await self._data_manager_ref.get_data_infos(
             session_id, data_key, self._band_name, error
         )
-        if not infos:
+        if not all_infos:
             return
 
-        for info in infos:
-            level = info.level
-            await self._data_manager_ref.delete_data_info(
-                session_id, data_key, level, self._band_name
-            )
-            await self._clients[level].delete(info.object_id)
-            await self._quota_refs[level].release_quota(info.store_size)
+        key_to_infos = (
+            all_infos if isinstance(all_infos, dict) else {data_key: all_infos}
+        )
+
+        for key, infos in key_to_infos.items():
+            for info in infos:
+                level = info.level
+                await self._data_manager_ref.delete_data_info(
+                    session_id, key, level, self._band_name
+                )
+                await self._clients[level].delete(info.object_id)
+                await self._quota_refs[level].release_quota(info.store_size)
 
     @delete.batch
     async def batch_delete(self, args_list, kwargs_list):
@@ -281,19 +284,24 @@ class StorageHandlerActor(mo.Actor):
         delete_infos = []
         to_removes = []
         level_sizes = defaultdict(lambda: 0)
-        for infos, data_key in zip(infos_list, data_keys):
-            if not infos:
+        for all_infos, data_key in zip(infos_list, data_keys):
+            if not all_infos:
                 # data not exist and error == 'ignore'
                 continue
-            for info in infos:
-                level = info.level
-                delete_infos.append(
-                    self._data_manager_ref.delete_data_info.delay(
-                        session_id, data_key, level, info.band
+            key_to_infos = (
+                all_infos if isinstance(all_infos, dict) else {data_key: all_infos}
+            )
+
+            for key, infos in key_to_infos.items():
+                for info in infos:
+                    level = info.level
+                    delete_infos.append(
+                        self._data_manager_ref.delete_data_info.delay(
+                            session_id, key, level, info.band
+                        )
                     )
-                )
-                to_removes.append((level, info.object_id))
-                level_sizes[level] += info.store_size
+                    to_removes.append((level, info.object_id))
+                    level_sizes[level] += info.store_size
 
         if not delete_infos:
             # no data to remove
@@ -501,10 +509,13 @@ class StorageHandlerActor(mo.Actor):
                 missing_keys.append(data_key)
         if address is None or band_name is None:
             # some mapper keys are absent, specify error='ignore'
+            # remember that meta only records those main keys
             get_metas = [
                 (
                     meta_api.get_chunk_meta.delay(
-                        data_key, fields=["bands"], error="ignore"
+                        data_key[0] if isinstance(data_key, tuple) else data_key,
+                        fields=["bands"],
+                        error="ignore",
                     )
                 )
                 for data_key in missing_keys
@@ -515,6 +526,7 @@ class StorageHandlerActor(mo.Actor):
             metas = await meta_api.get_chunk_meta.batch(*get_metas)
         else:  # pragma: no cover
             metas = [{"bands": [(address, band_name)]}] * len(missing_keys)
+        assert len(metas) == len(missing_keys)
         for data_key, bands in zip(missing_keys, metas):
             if bands is not None:
                 remote_keys[bands["bands"][0]].add(data_key)
@@ -539,12 +551,18 @@ class StorageHandlerActor(mo.Actor):
 
         append_bands_delays = []
         for data_key in fetch_keys:
+            # skip shuffle keys
+            if isinstance(data_key, tuple):
+                continue
             append_bands_delays.append(
                 meta_api.add_chunk_bands.delay(
-                    data_key, [(self.address, self._band_name)]
+                    data_key,
+                    [(self.address, self._band_name)],
                 )
             )
-        await meta_api.add_chunk_bands.batch(*append_bands_delays)
+        if append_bands_delays:
+            await meta_api.add_chunk_bands.batch(*append_bands_delays)
+        return fetch_keys
 
     async def request_quota_with_spill(self, level: StorageLevel, size: int):
         if await self._quota_refs[level].request_quota(size):

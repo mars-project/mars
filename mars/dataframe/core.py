@@ -433,6 +433,8 @@ def refresh_index_value(tileable: ENTITY_TYPE):
     index_value._index_value.should_be_monotonic = getattr(
         tileable.index_value, "should_be_monotonic", None
     )
+    # keep key as original index_value's
+    index_value._index_value._key = tileable.index_value.key
     tileable._index_value = index_value
 
 

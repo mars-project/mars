@@ -20,6 +20,7 @@ import pytest
 
 from ... import dataframe as md
 from ... import tensor as mt
+from ... import oscar as mo
 from ...core import tile
 from ...deploy.oscar.session import get_default_session
 from ...learn.utils import shuffle
@@ -188,3 +189,16 @@ def test_none_outputs(setup):
     r4 = spawn(f, args=(r2, r3))
 
     assert r4.execute().fetch() is None
+
+
+def test_remote_with_unpickable(setup_cluster):
+    def f(*_):
+        class Unpickleable:
+            def __reduce__(self):
+                raise ValueError
+
+        raise KeyError(Unpickleable())
+
+    with pytest.raises(mo.SendMessageFailed):
+        d = spawn(f, retry_when_fail=False)
+        d.execute()

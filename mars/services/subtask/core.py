@@ -15,8 +15,9 @@
 from enum import Enum
 from typing import Iterable, List, Optional, Set, Tuple
 
-from ...core import ChunkGraph, DAG
+from ...core import ChunkGraph, DAG, ChunkData
 from ...resource import Resource
+from ...serialization.serializables.field_type import TupleType
 from ...serialization.serializables import (
     Serializable,
     StringField,
@@ -31,7 +32,7 @@ from ...serialization.serializables import (
     TupleField,
     FieldTypes,
 )
-from ...typing import BandType
+from ...typing import BandType, ChunkType
 
 
 class SubtaskStatus(Enum):
@@ -58,13 +59,19 @@ class Subtask(Serializable):
     session_id: str = StringField("session_id")
     task_id: str = StringField("task_id")
     chunk_graph: ChunkGraph = ReferenceField("chunk_graph", ChunkGraph)
-    expect_bands: List[BandType] = ListField("expect_bands", FieldTypes.tuple)
+    expect_bands: List[BandType] = ListField(
+        "expect_bands", TupleType(FieldTypes.string, FieldTypes.string)
+    )
     virtual: bool = BoolField("virtual")
     retryable: bool = BoolField("retryable")
     priority: Tuple[int, int] = TupleField("priority", FieldTypes.int32)
     rerun_time: int = Int32Field("rerun_time")
     extra_config: dict = DictField("extra_config")
     stage_id: str = StringField("stage_id")
+    # chunks that need meta updated
+    update_meta_chunks: List[ChunkType] = ListField(
+        "update_meta_chunks", FieldTypes.reference(ChunkData)
+    )
     # An unique and deterministic key for subtask compute logic. See logic_key in operator.py.
     logic_key: str = StringField("logic_key")
     # index for subtask with same compute logic.
@@ -89,6 +96,7 @@ class Subtask(Serializable):
         rerun_time: int = 0,
         extra_config: dict = None,
         stage_id: str = None,
+        update_meta_chunks: List[ChunkType] = None,
         logic_key: str = None,
         logic_index: int = None,
         logic_parallelism: int = None,
@@ -108,6 +116,7 @@ class Subtask(Serializable):
             rerun_time=rerun_time,
             extra_config=extra_config,
             stage_id=stage_id,
+            update_meta_chunks=update_meta_chunks,
             logic_key=logic_key,
             logic_index=logic_index,
             logic_parallelism=logic_parallelism,

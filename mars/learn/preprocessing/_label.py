@@ -17,6 +17,7 @@ from typing import Union
 import numpy as np
 import scipy.sparse as sp
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import label_binarize as sklearn_label_binarize
 from sklearn.utils.sparsefuncs import min_max_axis
 
 from ... import execute as execute_tileable, fetch as fetch_tileable
@@ -28,7 +29,6 @@ from ...lib.sparse import SparseNDArray
 from ...serialization.serializables import AnyField, BoolField, Int32Field, StringField
 from ...tensor.core import TensorOrder
 from ...typing import TileableType
-from ...utils import has_unknown_shape
 from ..operands import LearnOperand, LearnOperandMixin
 from ..utils import column_or_1d
 from ..utils._encode import _unique, _encode
@@ -310,7 +310,7 @@ class LabelBinarizer(TransformerMixin, BaseEstimator):
         )
         if "multioutput" in self.y_type_:
             raise ValueError(
-                "Multioutput target data is not supported with " "label binarization"
+                "Multioutput target data is not supported with label binarization"
             )
         if _num_samples(y) == 0:  # pragma: no cover
             raise ValueError("y has 0 samples: %r" % y)
@@ -375,7 +375,7 @@ class LabelBinarizer(TransformerMixin, BaseEstimator):
         )
         y_is_multilabel = target.startswith("multilabel")
         if y_is_multilabel and not self.y_type_.startswith("multilabel"):
-            raise ValueError("The object was not fitted with multilabel" " input.")
+            raise ValueError("The object was not fitted with multilabel input.")
 
         return label_binarize(
             y,
@@ -466,6 +466,10 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
 
     def __call__(self, y: TileableType, classes: TileableType):
         inputs = []
+        if not isinstance(y, list):
+            # XXX Workaround that will be removed when list of list format is
+            # dropped
+            self.y = y = check_array(y, accept_sparse=True, ensure_2d=False, dtype=None)
         if isinstance(y, ENTITY_TYPE):
             inputs.append(y)
         if isinstance(classes, ENTITY_TYPE):
@@ -500,24 +504,23 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
         out = op.outputs[0]
         ctx = get_context()
 
-        if (isinstance(y, ENTITY_TYPE) and has_unknown_shape(y)) or (
-            isinstance(classes, ENTITY_TYPE) and has_unknown_shape(classes)
-        ):  # pragma: no cover
-            yield
-        if (
-            isinstance(classes, ENTITY_TYPE) and len(classes.chunks) > 1
-        ):  # pragma: no cover
-            classes = yield from recursive_tile(classes.rechunk(classes.shape))
-
-        if not isinstance(y, list):
-            # XXX Workaround that will be removed when list of list format is
-            # dropped
-            y = check_array(y, accept_sparse=True, ensure_2d=False, dtype=None)
-        else:
+        if isinstance(y, list):
             if _num_samples(y) == 0:
                 raise ValueError("y has 0 samples: %r" % y)
 
-        y = yield from recursive_tile(mt.tensor(y))
+        if len(op.inputs) == 0:
+            # no entity input
+            r = sklearn_label_binarize(
+                op.y,
+                classes=op.classes,
+                neg_label=neg_label,
+                pos_label=pos_label,
+                sparse_output=sparse_output,
+            )
+            return (yield from recursive_tile(mt.tensor(r)))
+        else:
+            # trigger execution
+            yield
 
         if neg_label >= pos_label:
             raise ValueError(
@@ -544,7 +547,7 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
         y_type = y_type.item() if hasattr(y_type, "item") else y_type
         if "multioutput" in y_type:
             raise ValueError(
-                "Multioutput target data is not supported with label " "binarization"
+                "Multioutput target data is not supported with label binarization"
             )
         if y_type == "unknown":
             raise ValueError("The type of target data is not known")
@@ -585,7 +588,7 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
             out_shape = y.shape
         else:
             raise ValueError(
-                "%s target data is not supported with label " "binarization" % y_type
+                "%s target data is not supported with label binarization" % y_type
             )
 
         out_chunks = []
@@ -668,7 +671,7 @@ class LabelBinarize(LearnOperand, LearnOperandMixin):
                 Y.data = data
         else:  # pragma: no cover
             raise ValueError(
-                "%s target data is not supported with label " "binarization" % y_type
+                "%s target data is not supported with label binarization" % y_type
             )
 
         if not sparse_output:
@@ -824,7 +827,7 @@ def _inverse_binarize_thresholding(
 
     if output_type != "binary" and y.shape[1] != len(classes):
         raise ValueError(
-            "The number of class is not equal to the number of " "dimension of y."
+            "The number of class is not equal to the number of dimension of y."
         )
 
     classes = np.asarray(classes)

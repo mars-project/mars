@@ -58,10 +58,17 @@ async def test_tracker():
 
             await tracker.track(tileable_key, chunk_keys)
             await tracker.incref_tileables([tileable_key])
+            await tracker.incref_tileables([tileable_key], [2])
             await tracker.incref_chunks(chunk_keys[:2])
+            await tracker.incref_chunks(chunk_keys[:2], [3, 3])
             await tracker.decref_chunks(chunk_keys[:2])
+            await tracker.decref_chunks(chunk_keys[:2], [3, 3])
             await tracker.decref_tileables([tileable_key])
+            await tracker.decref_tileables([tileable_key], [2])
             assert len(await tracker.get_all_chunk_ref_counts()) == 0
+
+            with pytest.raises(ValueError):
+                await tracker.incref_tileables([tileable_key], [2, 3])
 
             for chunk_key in chunk_keys:
                 with pytest.raises(KeyError):

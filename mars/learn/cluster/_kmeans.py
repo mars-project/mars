@@ -766,7 +766,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         # n_clusters
         if X.shape[0] < self.n_clusters:
             raise ValueError(
-                f"n_samples={X.shape[0]} should be >= " f"n_clusters={self.n_clusters}."
+                f"n_samples={X.shape[0]} should be >= n_clusters={self.n_clusters}."
             )
 
         # tol

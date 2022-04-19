@@ -73,7 +73,9 @@ class LifecycleAPI(AbstractLifecycleAPI):
             tracks.append(self._lifecycle_tracker_ref.track.delay(*args, **kwargs))
         return await self._lifecycle_tracker_ref.track.batch(*tracks)
 
-    async def incref_tileables(self, tileable_keys: List[str]):
+    async def incref_tileables(
+        self, tileable_keys: List[str], counts: List[int] = None
+    ):
         """
         Incref tileables.
 
@@ -81,10 +83,16 @@ class LifecycleAPI(AbstractLifecycleAPI):
         ----------
         tileable_keys : list
              List of tileable keys.
+        counts: list
+            List of ref count.
         """
-        return await self._lifecycle_tracker_ref.incref_tileables(tileable_keys)
+        return await self._lifecycle_tracker_ref.incref_tileables(
+            tileable_keys, counts=counts
+        )
 
-    async def decref_tileables(self, tileable_keys: List[str]):
+    async def decref_tileables(
+        self, tileable_keys: List[str], counts: List[int] = None
+    ):
         """
         Decref tileables.
 
@@ -92,6 +100,8 @@ class LifecycleAPI(AbstractLifecycleAPI):
         ----------
         tileable_keys : list
             List of tileable keys.
+        counts: list
+            List of ref count.
         """
         return await self._lifecycle_tracker_ref.decref_tileables(tileable_keys)
 
@@ -111,7 +121,7 @@ class LifecycleAPI(AbstractLifecycleAPI):
         """
         return await self._lifecycle_tracker_ref.get_tileable_ref_counts(tileable_keys)
 
-    async def incref_chunks(self, chunk_keys: List[str]):
+    async def incref_chunks(self, chunk_keys: List[str], counts: List[int] = None):
         """
         Incref chunks.
 
@@ -119,10 +129,14 @@ class LifecycleAPI(AbstractLifecycleAPI):
         ----------
         chunk_keys : list
             List of chunk keys.
+        counts: list
+            List of ref count.
         """
-        return await self._lifecycle_tracker_ref.incref_chunks(chunk_keys)
+        return await self._lifecycle_tracker_ref.incref_chunks(
+            chunk_keys, counts=counts
+        )
 
-    async def decref_chunks(self, chunk_keys: List[str]):
+    async def decref_chunks(self, chunk_keys: List[str], counts: List[int] = None):
         """
         Decref chunks
 
@@ -130,8 +144,12 @@ class LifecycleAPI(AbstractLifecycleAPI):
         ----------
         chunk_keys : list
             List of chunk keys.
+        counts: list
+            List of ref count.
         """
-        return await self._lifecycle_tracker_ref.decref_chunks(chunk_keys)
+        return await self._lifecycle_tracker_ref.decref_chunks(
+            chunk_keys, counts=counts
+        )
 
     async def get_chunk_ref_counts(self, chunk_keys: List[str]) -> List[int]:
         """

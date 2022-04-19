@@ -84,9 +84,7 @@ async def _retry_run(
                 )
                 logger.error(message)
 
-                raise wrap_exception(
-                    "_ExceedMaxRerun", (type(ex),), message, ex, ex.__traceback__
-                )
+                raise wrap_exception(ex, wrap_name="_ExceedMaxRerun", message=message)
             else:
                 raise ex
         except asyncio.CancelledError:
@@ -101,7 +99,7 @@ async def _retry_run(
                 logger.error(message)
 
                 raise wrap_exception(
-                    "_UnhandledException", (type(ex),), message, ex, ex.__traceback__
+                    ex, wrap_name="_UnhandledException", message=message
                 )
             else:
                 raise ex
@@ -191,7 +189,11 @@ class SubtaskExecutionActor(mo.StatelessActor):
         if shuffle_queries:
             # TODO(hks): The batch method doesn't accept different error arguments,
             #  combine them when it can.
-            await storage_api.fetch.batch(*shuffle_queries)
+
+            # shuffle data fetch from remote won't be recorded in meta,
+            # thus they are not tracked by lifecycle service,
+            # here return remote mapper keys to remove them later.
+            return await storage_api.fetch.batch(*shuffle_queries)
 
     async def _collect_input_sizes(
         self, subtask: Subtask, supervisor_address: str, band_name: str
@@ -338,7 +340,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     subtask, subtask_info, self._prepare_input_data, subtask, band_name
                 )
             )
-            await asyncio.wait_for(
+            remote_mapper_keys = await asyncio.wait_for(
                 prepare_data_task, timeout=self._data_prepare_timeout
             )
 
@@ -355,6 +357,16 @@ class SubtaskExecutionActor(mo.StatelessActor):
             subtask_info.result = await self._retry_run_subtask(
                 subtask, band_name, subtask_api, batch_quota_req
             )
+            if remote_mapper_keys:
+                storage_api = await StorageAPI.create(
+                    subtask.session_id, address=self.address, band_name=band_name
+                )
+                await storage_api.delete.batch(
+                    *[
+                        storage_api.delete.delay(key, error="ignore")
+                        for key in remote_mapper_keys
+                    ]
+                )
         except:  # noqa: E722  # pylint: disable=bare-except
             _fill_subtask_result_with_exception(subtask, subtask_info)
         finally:
@@ -471,7 +483,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 logger.error(message)
 
                 raise wrap_exception(
-                    "_UnretryableException", (type(e),), message, e, e.__traceback__
+                    e, wrap_name="_UnretryableException", message=message
                 )
 
     async def run_subtask(

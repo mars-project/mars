@@ -126,7 +126,7 @@ class SharedMemoryStorage(StorageBackend):
     @staticmethod
     @implements(StorageBackend.teardown)
     async def teardown(**kwargs):
-        object_ids = kwargs.get("object_ids")
+        object_ids = kwargs.get("object_ids") or ()
         for object_id in object_ids:
             try:
                 shm = SharedMemory(name=object_id)

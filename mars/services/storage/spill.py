@@ -171,7 +171,7 @@ async def spill(
     multiplier=1.1,
 ):
     logger.debug(
-        "%s is full, need to spill %s bytes, " "multiplier is %s",
+        "%s is full, need to spill %s bytes, multiplier is %s",
         level,
         request_size,
         multiplier,
@@ -183,7 +183,7 @@ async def spill(
         level, band_name, request_size
     )
     logger.debug(
-        "Decide to spill %s bytes, " "data keys are %s", sum(spill_sizes), spill_keys
+        "Decide to spill %s bytes, data keys are %s", sum(spill_sizes), spill_keys
     )
 
     for (session_id, key), size in zip(spill_keys, spill_sizes):

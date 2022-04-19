@@ -18,7 +18,7 @@ import shutil
 import subprocess
 import sys
 import warnings
-from sysconfig import get_config_var
+from sysconfig import get_config_vars
 
 from pkg_resources import parse_version
 from setuptools import setup, Extension, Command
@@ -46,12 +46,16 @@ except ImportError:
 # MACOSX_DEPLOYMENT_TARGET before calling setup.py
 if sys.platform == "darwin":
     if "MACOSX_DEPLOYMENT_TARGET" not in os.environ:
+        current_system = platform.mac_ver()[0]
+        python_target = get_config_vars().get(
+            "MACOSX_DEPLOYMENT_TARGET", current_system
+        )
         target_macos_version = "10.9"
-        parsed_macos_version = parse_version(target_macos_version)
 
-        current_system = parse_version(platform.mac_ver()[0])
-        python_target = parse_version(get_config_var("MACOSX_DEPLOYMENT_TARGET"))
-        if python_target < parsed_macos_version <= current_system:
+        parsed_python_target = parse_version(python_target)
+        parsed_current_system = parse_version(current_system)
+        parsed_macos_version = parse_version(target_macos_version)
+        if parsed_python_target <= parsed_macos_version <= parsed_current_system:
             os.environ["MACOSX_DEPLOYMENT_TARGET"] = target_macos_version
 
 

@@ -172,14 +172,14 @@ def fromtiledb(uri, ctx=None, key=None, timestamp=None, gpu=None):
 
     if tiledb_arr.nattr > 1:
         raise NotImplementedError(
-            "Does not supported TileDB array schema " "with more than 1 attr"
+            "Does not supported TileDB array schema with more than 1 attr"
         )
     tiledb_dim_starts = tuple(
         tiledb_arr.domain.dim(j).domain[0].item() for j in range(tiledb_arr.ndim)
     )
     if any(isinstance(s, float) for s in tiledb_dim_starts):
         raise ValueError(
-            "Does not support TileDB array schema " "whose dimensions has float domain"
+            "Does not support TileDB array schema whose dimensions has float domain"
         )
 
     dtype = tiledb_arr.attr(0).dtype

@@ -149,7 +149,7 @@ def test_make_classification_informative_features(setup):
             assert_array_almost_equal(
                 np.bincount(y) / len(y) // weights,
                 [1] * n_classes,
-                err_msg="Wrong number of samples " "per class",
+                err_msg="Wrong number of samples per class",
             )
 
             # Ensure on vertices of hypercube
@@ -160,7 +160,7 @@ def test_make_classification_informative_features(setup):
                         np.abs(centroid) / class_sep,
                         np.ones(n_informative),
                         decimal=5,
-                        err_msg="Clusters are not " "centered on hypercube " "vertices",
+                        err_msg="Clusters are not centered on hypercube vertices",
                     )
                 else:
                     assert_raises(
@@ -317,7 +317,7 @@ def test_make_blobs_error(setup):
         centers=centers,
         cluster_std=cluster_stds[:-1],
     )
-    wrong_type_msg = "Parameter `centers` must be array-like. " f"Got {3!r} instead"
+    wrong_type_msg = f"Parameter `centers` must be array-like. Got {3!r} instead"
     assert_raise_message(ValueError, wrong_type_msg, make_blobs, n_samples, centers=3)
 
 

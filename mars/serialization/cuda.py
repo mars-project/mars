@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Tuple
 
 import pandas as pd
 
@@ -24,10 +24,8 @@ cudf = lazy_import("cudf", globals=globals())
 
 
 class CupySerializer(Serializer):
-    serializer_name = "cupy"
-
     @buffered
-    def serialize(self, obj: Any, context: Dict):
+    def serial(self, obj: Any, context: Dict):
         if not (obj.flags["C_CONTIGUOUS"] or obj.flags["F_CONTIGUOUS"]):
             obj = cupy.array(obj, copy=True)
 
@@ -37,20 +35,19 @@ class CupySerializer(Serializer):
         buffer = cupy.ndarray(
             shape=(obj.nbytes,), dtype=cupy.dtype("u1"), memptr=obj.data, strides=(1,)
         )
-        return header, [buffer]
+        return (header,), [buffer], True
 
-    def deserialize(self, header: Dict, buffers: List, context: Dict):
+    def deserial(self, serialized: Tuple, context: Dict, subs: List):
+        (header,) = serialized
         return cupy.ndarray(
             shape=header["shape"],
             dtype=header["typestr"],
-            memptr=cupy.asarray(buffers[0]).data,
+            memptr=cupy.asarray(subs[0]).data,
             strides=header["strides"],
         )
 
 
 class CudfSerializer(Serializer):
-    serializer_name = "cudf"
-
     @staticmethod
     def _get_ext_index_type(index_obj):
         import cudf
@@ -81,17 +78,18 @@ class CudfSerializer(Serializer):
         new_index = multi_index_cls.from_tuples(original_index, names=header["names"])
         setattr(obj, attr, new_index)
 
-    def serialize(self, obj: Any, context: Dict):
+    def serial(self, obj: Any, context: Dict):
         header, buffers = obj.device_serialize()
         if hasattr(obj, "columns"):
             header["_ext_columns"] = self._get_ext_index_type(obj.columns)
         if hasattr(obj, "index"):
             header["_ext_index"] = self._get_ext_index_type(obj.index)
-        return header, buffers
+        return (header,), buffers, True
 
-    def deserialize(self, header: Dict, buffers: List, context: Dict):
+    def deserial(self, serialized: Tuple, context: Dict, buffers: List):
         from cudf.core.abc import Serializable
 
+        (header,) = serialized
         col_header = header.pop("_ext_columns", None)
         index_header = header.pop("_ext_index", None)
 

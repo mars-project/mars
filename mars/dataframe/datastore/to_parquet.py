@@ -190,7 +190,7 @@ class DataFrameToParquet(DataFrameOperand, DataFrameOperandMixin):
                 )
             else:  # pragma: no cover
                 raise NotImplementedError(
-                    "Only support pyarrow engine when " "specify `partition_cols`."
+                    "Only support pyarrow engine when specify `partition_cols`."
                 )
 
         ctx[out.key] = pd.DataFrame()

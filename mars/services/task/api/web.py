@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import base64
 import json
 from typing import Callable, List, Optional, Union
@@ -152,8 +153,18 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         timeout = self.get_argument("timeout", None) or None
         timeout = float(timeout) if timeout is not None else None
         oscar_api = await self._get_oscar_task_api(session_id)
-        res = await oscar_api.wait_task(task_id, timeout)
-        self.write(json.dumps(_json_serial_task_result(res)))
+        if timeout:
+            try:
+                res = await asyncio.wait_for(
+                    asyncio.shield(oscar_api.wait_task(task_id, timeout)),
+                    timeout=timeout,
+                )
+                self.write(json.dumps(_json_serial_task_result(res)))
+            except asyncio.TimeoutError:
+                self.write(json.dumps({}))
+        else:
+            res = await oscar_api.wait_task(task_id, timeout)
+            self.write(json.dumps(_json_serial_task_result(res)))
 
     @web_api("(?P<task_id>[^/]+)", method="delete")
     async def cancel_task(self, session_id: str, task_id: str):
@@ -236,11 +247,11 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
 
     async def wait_task(self, task_id: str, timeout: float = None):
         path = f"{self._address}/api/session/{self._session_id}/task/{task_id}"
-        # client timeout should be longer than server timeout.
-        server_timeout = "" if timeout is None else str(max(timeout / 2.0, timeout - 1))
-        params = {"action": "wait", "timeout": server_timeout}
+        # increase client timeout to handle network overhead during entire request
+        client_timeout = timeout + 3 if timeout else 0
+        params = {"action": "wait", "timeout": "" if timeout is None else str(timeout)}
         res = await self._request_url(
-            "GET", path, params=params, request_timeout=timeout or 0
+            "GET", path, params=params, request_timeout=client_timeout
         )
         return _json_deserial_task_result(json.loads(res.body.decode()))
 

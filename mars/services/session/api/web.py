@@ -67,6 +67,11 @@ class SessionWebAPIHandler(SessionWebAPIBaseHandler):
         oscar_api = await self._get_oscar_session_api()
         await oscar_api.delete_session(session_id)
 
+    @web_api("", method="delete")
+    async def delete_all_sessions(self):
+        oscar_api = await self._get_oscar_session_api()
+        await oscar_api.delete_all_sessions()
+
     @web_api(
         "(?P<session_id>[^/]+)", method="get", arg_filter={"action": "check_exist"}
     )
@@ -133,6 +138,10 @@ class WebSessionAPI(AbstractSessionAPI, MarsWebAPIClientMixin):
 
     async def delete_session(self, session_id: str):
         addr = f"{self._address}/api/session/{session_id}"
+        await self._request_url(path=addr, method="DELETE")
+
+    async def delete_all_sessions(self):
+        addr = f"{self._address}/api/session"
         await self._request_url(path=addr, method="DELETE")
 
     async def has_session(self, session_id: str):

@@ -25,7 +25,7 @@ from .....tests.core import mock
 from .....utils import get_next_port
 from .... import create_actor_ref, Actor, kill_actor
 from ....context import get_context
-from ....errors import NoIdleSlot, ActorNotExist, ServerClosed
+from ....errors import NoIdleSlot, ActorNotExist, ServerClosed, SendMessageFailed
 from ...allocate_strategy import (
     AddressSpecified,
     IdleLabel,
@@ -51,6 +51,11 @@ from ...message import (
 from ...pool import create_actor_pool
 from ...router import Router
 from ..pool import MainActorPool, SubActorPool
+
+
+class _CannotBePickled:
+    def __getstate__(self):
+        raise RuntimeError("cannot pickle")
 
 
 class _CannotBeUnpickled:
@@ -84,6 +89,9 @@ class TestActor(Actor):
 
     def return_cannot_unpickle(self):
         return _CannotBeUnpickled()
+
+    def raise_cannot_pickle(self):
+        raise ValueError(_CannotBePickled())
 
 
 def _add_pool_conf(
@@ -506,6 +514,8 @@ async def test_create_actor_pool():
         assert await actor_ref2.add(1) == 4
         with pytest.raises(RuntimeError):
             await actor_ref2.return_cannot_unpickle()
+        with pytest.raises(SendMessageFailed):
+            await actor_ref2.raise_cannot_pickle()
         assert (await ctx.has_actor(actor_ref2)) is True
         assert (await ctx.actor_ref(actor_ref2)) == actor_ref2
         # test cancel

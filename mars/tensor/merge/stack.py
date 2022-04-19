@@ -209,7 +209,7 @@ def stack(tensors, axis=0, out=None):
         axis = ndim + axis + 1
     if axis > ndim or axis < 0:
         raise np.AxisError(
-            f"axis {raw_axis} is out of bounds for tensor " f"of dimension {ndim}"
+            f"axis {raw_axis} is out of bounds for tensor of dimension {ndim}"
         )
 
     dtype = np.result_type(*[t.dtype for t in tensors])

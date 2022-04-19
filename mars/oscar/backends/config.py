@@ -78,7 +78,7 @@ class ActorPoolConfig:
             if external_address in conf["external_address"]:
                 return process_index
         raise ValueError(
-            f"Cannot get process_index " f"for {external_address}"
+            f"Cannot get process_index for {external_address}"
         )  # pragma: no cover
 
     def get_external_addresses(self, label=None) -> List[str]:

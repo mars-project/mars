@@ -15,7 +15,15 @@
 
 from ... import opcodes
 from ..arithmetic.core import TensorUnaryOp, TensorBinOp, TensorMultiOp
-from ..array_utils import np, cp, sparse, convert_order, as_same_device, device
+from ..array_utils import (
+    np,
+    cp,
+    issparse,
+    sparse,
+    convert_order,
+    as_same_device,
+    device,
+)
 
 
 _func_name_to_special_cls = {}
@@ -72,7 +80,14 @@ class TensorSpecialMultiOp(TensorSpecialOperandMixin, TensorMultiOp):
         kw["order"] = op.order
         if kw.get("out") is not None:
             kw["out"] = np.asarray(kw["out"])
-        return cls._get_func(xp)(*args, **kw)
+        try:
+            return cls._get_func(xp)(*args, **kw)
+        except TypeError:
+            kw.pop("order")
+            r = cls._get_func(xp)(*args, **kw)
+            if issparse(r):
+                return r
+            return convert_order(r, op.outputs[0].order.value)
 
     @classmethod
     def execute(cls, ctx, op):

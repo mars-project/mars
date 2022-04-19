@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import logging
 from collections import deque, defaultdict
 from typing import Dict, List, Tuple, Type, Union
@@ -133,6 +134,7 @@ class GraphAnalyzer:
         chunk_graph = ChunkGraph(result_chunks)
         out_of_scope_chunks = []
         chunk_to_copied = self._chunk_to_copied
+        update_meta_chunks = []
         # subtask properties
         band = None
         is_virtual = None
@@ -140,7 +142,10 @@ class GraphAnalyzer:
         chunk_priority = None
         expect_worker = None
         bands_specified = None
+        processed = set()
         for chunk in chunks:
+            if chunk in processed:
+                continue
             if expect_worker is None:
                 expect_worker = chunk.op.expect_worker
                 bands_specified = expect_worker is not None
@@ -199,12 +204,20 @@ class GraphAnalyzer:
                 )
             ]
             for src_chunk, out_chunk in zip(chunk.op.outputs, out_chunks):
+                processed.add(src_chunk)
                 out_chunk._key = src_chunk.key
                 chunk_graph.add_node(out_chunk)
+                # cannot be copied twice
+                assert src_chunk not in chunk_to_copied
                 chunk_to_copied[src_chunk] = out_chunk
-                if chunk in final_result_chunks_set:
-                    result_chunks.append(out_chunk)
-                    result_chunks_set.add(out_chunk)
+                if src_chunk in final_result_chunks_set:
+                    if out_chunk not in result_chunks_set:
+                        # add to result chunks
+                        result_chunks.append(out_chunk)
+                        # chunk is in the result chunks of full chunk graph
+                        # meta need to be updated
+                        update_meta_chunks.append(out_chunk)
+                        result_chunks_set.add(out_chunk)
                 if not is_virtual:
                     # skip adding fetch chunk to chunk graph when op is virtual operand
                     for c in inp_chunks:
@@ -257,6 +270,7 @@ class GraphAnalyzer:
             virtual=is_virtual,
             priority=priority,
             retryable=retryable,
+            update_meta_chunks=update_meta_chunks,
             extra_config=self._extra_config,
         )
         return subtask, inp_subtasks
@@ -267,7 +281,9 @@ class GraphAnalyzer:
         )
 
     @enter_mode(build=True)
-    def gen_subtask_graph(self) -> SubtaskGraph:
+    def gen_subtask_graph(
+        self, op_to_bands: Dict[str, BandType] = None
+    ) -> SubtaskGraph:
         """
         Analyze chunk graph and generate subtask graph.
 
@@ -275,6 +291,8 @@ class GraphAnalyzer:
         -------
         subtask_graph: SubtaskGraph
             Subtask graph.
+        op_to_bands: Dict
+            Assigned operand's band, usually for fetch operands.
         """
         reassign_worker_ops = [
             chunk.op for chunk in self._chunk_graph if chunk.op.reassign_worker
@@ -296,6 +314,8 @@ class GraphAnalyzer:
             for op in start_ops
             if op.expect_worker is not None
         }
+        if op_to_bands:
+            cur_assigns.update(op_to_bands)
         logger.debug(
             "Start to assign %s start chunks for task %s",
             len(start_ops),
@@ -336,12 +356,18 @@ class GraphAnalyzer:
             chunk_to_colors = coloring.color()
         else:
             # if not fuse enabled, color all chunks with different colors
-            chunk_to_colors = {
-                c: i for i, c in enumerate(self._chunk_graph.topological_iter())
-            }
+            op_to_colors = dict()
+            chunk_to_colors = dict()
+            color_gen = itertools.count()
+            for c in self._chunk_graph.topological_iter():
+                if c.op not in op_to_colors:
+                    chunk_to_colors[c] = op_to_colors[c.op] = next(color_gen)
+                else:
+                    chunk_to_colors[c] = op_to_colors[c.op]
         color_to_chunks = defaultdict(list)
         for chunk, color in chunk_to_colors.items():
-            color_to_chunks[color].append(chunk)
+            if not isinstance(chunk.op, Fetch):
+                color_to_chunks[color].append(chunk)
 
         # gen subtask graph
         subtask_graph = SubtaskGraph()
@@ -351,7 +377,8 @@ class GraphAnalyzer:
         visited = set()
         logic_key_to_subtasks = defaultdict(list)
         for chunk in self._chunk_graph.topological_iter():
-            if chunk in visited:
+            if chunk in visited or isinstance(chunk.op, Fetch):
+                # skip fetch chunk
                 continue
 
             color = chunk_to_colors[chunk]

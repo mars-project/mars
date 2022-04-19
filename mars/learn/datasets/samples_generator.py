@@ -177,9 +177,7 @@ def make_classification(
             " be smaller or equal 2 ** n_informative"
         )
     if weights and len(weights) not in [n_classes, n_classes - 1]:
-        raise ValueError(
-            "Weights specified but incompatible with number " "of classes."
-        )
+        raise ValueError("Weights specified but incompatible with number of classes.")
 
     n_useless = n_features - n_informative - n_redundant - n_repeated
     n_clusters = n_classes * n_clusters_per_class
@@ -506,7 +504,7 @@ def make_blobs(
             assert len(centers) == n_centers
         except TypeError:
             raise ValueError(
-                "Parameter `centers` must be array-like. " f"Got {centers!r} instead"
+                f"Parameter `centers` must be array-like. Got {centers!r} instead"
             )
         except AssertionError:
             raise ValueError(

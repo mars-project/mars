@@ -34,9 +34,7 @@ class SessionAPI(AbstractSessionAPI):
     @alru_cache(cache_exceptions=False)
     async def create(cls, address: str, **kwargs) -> "SessionAPI":
         if kwargs:  # pragma: no cover
-            raise TypeError(
-                f"SessionAPI.create " f"got unknown arguments: {list(kwargs)}"
-            )
+            raise TypeError(f"SessionAPI.create got unknown arguments: {list(kwargs)}")
         session_manager = await mo.actor_ref(address, SessionManagerActor.default_uid())
         return SessionAPI(address, session_manager)
 
@@ -64,6 +62,9 @@ class SessionAPI(AbstractSessionAPI):
 
     async def delete_session(self, session_id: str):
         await self._session_manager_ref.delete_session(session_id)
+
+    async def delete_all_sessions(self):
+        await self._session_manager_ref.delete_all_sessions()
 
     @alru_cache(cache_exceptions=False)
     async def get_session_address(self, session_id: str) -> str:
@@ -198,9 +199,7 @@ class MockSessionAPI(SessionAPI):
     async def create(cls, address: str, **kwargs) -> "SessionAPI":
         session_id = kwargs.pop("session_id")
         if kwargs:  # pragma: no cover
-            raise TypeError(
-                f"SessionAPI.create " f"got unknown arguments: {list(kwargs)}"
-            )
+            raise TypeError(f"SessionAPI.create got unknown arguments: {list(kwargs)}")
 
         session_manager = await mo.create_actor(
             SessionManagerActor, address=address, uid=SessionManagerActor.default_uid()

@@ -450,12 +450,6 @@ async def test_mars_destroy_has_actor(actor_pool_context):
     assert not await mo.has_actor(ref1)
     assert not await mo.has_actor(ref2)
 
-    # the lru_cache on _ExtensibleAccessor.__get__ will reference all the
-    # decorated actors, so we have to clear the cache here.
-    #
-    # there will be memory leak if the actor create and destroy multiple times.
-    DummyActor.__dict__["add"].__get__.__func__.cache_clear()
-
     if isinstance(ref2, LocalActorRef):
         assert "weakref" in str(ref2)
         assert "dead" in str(ref2)
@@ -606,3 +600,21 @@ async def test_promise_chain(actor_pool_context):
     call_log = await promise_test_ref.get_call_log()
     assert len(call_log) == 2
     assert call_log[1][0] - call_log[0][0] < 1
+
+
+class ActorCannotDestroy(mo.Actor):
+    async def __pre_destroy__(self):
+        raise ValueError("Cannot destroy")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("in_sub_pool", [True, False])
+async def test_error_in_pre_destroy(actor_pool_context, in_sub_pool):
+    pool = actor_pool_context
+
+    strategy = None if not in_sub_pool else RandomSubPool()
+    a = await mo.create_actor(
+        ActorCannotDestroy, address=pool.external_address, strategy=strategy
+    )
+    with pytest.raises(ValueError, match="Cannot destroy"):
+        await mo.destroy_actor(a)

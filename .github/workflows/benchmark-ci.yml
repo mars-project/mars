@@ -6,6 +6,10 @@ on:
       - master
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   asv-benchmarks:
     name: ASV Benchmarks
@@ -48,6 +52,7 @@ jobs:
           asv check -E existing
           git remote add upstream https://github.com/mars-project/mars.git
           git fetch upstream
+          git merge upstream/master
           asv machine --yes
           asv continuous -f 1.1 --strict upstream/master HEAD
         if: ${{ steps.build.outcome == 'success' }}

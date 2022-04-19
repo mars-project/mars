@@ -18,6 +18,7 @@ import pandas as pd
 from ... import opcodes
 from ...core import OutputType, recursive_tile
 from ...serialization.serializables import AnyField, BoolField
+from ...utils import calc_nsplits
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, standardize_range_index
 
@@ -74,17 +75,14 @@ class DataFrameExplode(DataFrameOperand, DataFrameOperandMixin):
             chunks.append(new_op.new_chunk([chunk], **op._rewrite_params(chunk)))
 
         if op.ignore_index:
+            yield chunks
             chunks = standardize_range_index(chunks)
 
         new_op = op.copy().reset_key()
-        out_params = op.outputs[0].params
-        if in_obj.ndim == 2:
-            new_nsplits = ((np.nan,) * in_obj.chunk_shape[0], in_obj.nsplits[1])
-        else:
-            new_nsplits = ((np.nan,) * in_obj.chunk_shape[0],)
-        return new_op.new_tileable(
-            [in_obj], chunks=chunks, nsplits=new_nsplits, **out_params
-        )
+        out_params = op.outputs[0].params.copy()
+        out_params["chunks"] = chunks
+        out_params["nsplits"] = calc_nsplits({c.index: c.shape for c in chunks})
+        return new_op.new_tileable([in_obj], kws=[out_params])
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameExplode"):

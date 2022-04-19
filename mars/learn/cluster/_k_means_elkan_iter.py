@@ -193,9 +193,7 @@ class KMeansElkanInitBounds(LearnOperand, LearnOperandMixin):
 
         with device(device_id):
             if xp is cp:  # pragma: no cover
-                raise NotImplementedError(
-                    "cannot support init_bounds " "for kmeans elkan"
-                )
+                raise NotImplementedError("cannot support init_bounds for kmeans elkan")
 
             n_samples = x.shape[0]
             n_clusters = op.n_clusters

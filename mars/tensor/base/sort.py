@@ -311,12 +311,12 @@ def _validate_sort_psrs_kinds(psrs_kinds):
                         continue
                     else:
                         raise ValueError(
-                            "3rd element of psrs_kinds " "should be specified"
+                            "3rd element of psrs_kinds should be specified"
                         )
                 upper_psrs_kind = psrs_kind.upper()
                 if upper_psrs_kind not in _AVAILABLE_KINDS:
                     raise ValueError(
-                        f"{psrs_kind} is an unrecognized kind " "in psrs_kinds"
+                        f"{psrs_kind} is an unrecognized kind in psrs_kinds"
                     )
         else:
             raise TypeError("psrs_kinds should be list or tuple")
@@ -343,7 +343,7 @@ def _validate_sort_arguments(a, axis, kind, parallel_kind, psrs_kinds, order):
         parallel_kind = parallel_kind.upper()
         if parallel_kind not in {"PSRS"}:
             raise ValueError(
-                f"{raw_parallel_kind} is an unrecognized kind of " "parallel sort"
+                f"{raw_parallel_kind} is an unrecognized kind of parallel sort"
             )
 
     order = validate_order(a.dtype, order)
@@ -489,9 +489,7 @@ def sort(
     """
     need_align = kw.pop("need_align", None)
     if len(kw) > 0:
-        raise TypeError(
-            "sort() got an unexpected keyword " f"argument '{next(iter(kw))}'"
-        )
+        raise TypeError(f"sort() got an unexpected keyword argument '{next(iter(kw))}'")
     a, axis, kind, parallel_kind, psrs_kinds, order = _validate_sort_arguments(
         a, axis, kind, parallel_kind, psrs_kinds, order
     )

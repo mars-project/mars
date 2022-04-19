@@ -88,7 +88,7 @@ class OperandTilesHandler:
         tiled_results = [t.data if hasattr(t, "data") else t for t in tiled_result]
         assert len(tileables) == len(tiled_results)
         if any(inspect.isgenerator(r) for r in tiled_results):  # pragma: no cover
-            raise TypeError(f"tiled result cannot be generator " f"when tiling {op}")
+            raise TypeError(f"tiled result cannot be generator when tiling {op}")
         cls._assign_to(tiled_results, tileables)
         return tileables
 
@@ -345,8 +345,6 @@ class TileableData(EntityData, _ExecutableMixin):
 
 
 class Tileable(Entity):
-    __slots__ = ("__weakref__",)
-
     def __init__(self, data: TileableType = None, **kw):
         super().__init__(data=data, **kw)
         data = self._data

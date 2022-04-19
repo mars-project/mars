@@ -1074,7 +1074,7 @@ def validate_output_types(**kwargs):
     )
 
 
-def standardize_range_index(chunks, axis=0):
+def standardize_range_index(chunks: List[ChunkType], axis: int = 0):
     from .base.standardize_range_index import ChunkStandardizeRangeIndex
 
     row_chunks = dict(
@@ -1084,13 +1084,23 @@ def standardize_range_index(chunks, axis=0):
 
     out_chunks = []
     for c in chunks:
-        inputs = row_chunks[: c.index[axis]] + [c]
+        prev_chunks = row_chunks[: c.index[axis]]
         op = ChunkStandardizeRangeIndex(
-            pure_depends=[True] * (len(inputs) - 1) + [False],
-            axis=axis,
-            output_types=c.op.output_types,
+            prev_keys=[p.key for p in prev_chunks], axis=axis
         )
-        out_chunks.append(op.new_chunk(inputs, **c.params.copy()))
+        op.output_types = c.op.output_types
+        params = c.params.copy()
+        start_pos = sum(p.shape[axis] for p in prev_chunks)
+        end_pos = start_pos + c.shape[axis]
+        index = pd.RangeIndex(start_pos, end_pos)
+        if axis == 0:
+            params["index_value"] = parse_index(index)
+        else:
+            dtypes = params["dtypes"]
+            dtypes.index = index
+            params["dtypes"] = dtypes
+            params["columns_value"] = parse_index(dtypes.index, store_data=True)
+        out_chunks.append(op.new_chunk([c], kws=[params]))
 
     return out_chunks
 
@@ -1363,13 +1373,13 @@ def auto_merge_chunks(
     n_split = []
     out_chunks = []
     for chunk, chunk_memory_size in zip(df_or_series.chunks, memory_sizes):
-        if acc_memory_size + chunk_memory_size > to_merge_size:
-            if len(to_merge_chunks) > 0:
-                # adding current chunk would exceed the maximum,
-                # concat previous chunks
-                merged_chunk = _concat_chunks(to_merge_chunks, len(n_split))
-            else:
-                merged_chunk = chunk
+        if (
+            acc_memory_size + chunk_memory_size > to_merge_size
+            and len(to_merge_chunks) > 0
+        ):
+            # adding current chunk would exceed the maximum,
+            # concat previous chunks
+            merged_chunk = _concat_chunks(to_merge_chunks, len(n_split))
             out_chunks.append(merged_chunk)
             n_split.append(merged_chunk.shape[0])
             # reset

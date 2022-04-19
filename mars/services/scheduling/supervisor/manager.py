@@ -21,7 +21,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ....oscar.backends.message import ProfilingContext
+from ....oscar.backends.context import ProfilingContext
 from ....oscar.errors import MarsError
 from ....oscar.profiling import ProfilingData, MARS_ENABLE_PROFILING
 from ....typing import BandType
@@ -197,12 +197,13 @@ class SubtaskManagerActor(mo.Actor):
                         band_tasks[band] += 1
         await self._queueing_ref.remove_queued_subtasks(subtask_ids)
         if band_tasks:
-            coros = []
+            tasks = []
             for band, subtask_count in band_tasks.items():
-                coros.append(
+                task = asyncio.ensure_future(
                     self._queueing_ref.submit_subtasks.tell(band, subtask_count)
                 )
-            await asyncio.wait(coros)
+                tasks.append(task)
+            await asyncio.wait(tasks)
 
     def _get_subtasks_by_ids(self, subtask_ids: List[str]) -> List[Optional[Subtask]]:
         subtasks = []

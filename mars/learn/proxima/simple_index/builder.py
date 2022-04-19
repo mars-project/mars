@@ -186,9 +186,9 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
                 elif cur >= topk:
                     new_nsplit.append(cur)
         new_nsplit = tuple(new_nsplit)
-        assert sum(new_nsplit) == sum(nsplit), (
-            f"sum of nsplit not equal, " f"old: {nsplit}, new: {new_nsplit}"
-        )
+        assert sum(new_nsplit) == sum(
+            nsplit
+        ), f"sum of nsplit not equal, old: {nsplit}, new: {new_nsplit}"
 
         return new_nsplit
 

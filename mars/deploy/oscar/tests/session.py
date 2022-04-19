@@ -76,7 +76,7 @@ class CheckedSession(ObjectCheckMixin, _IsolatedSession):
         extra_config = kwargs.pop("extra_config", dict())
         if kwargs:
             unexpected_keys = ", ".join(list(kwargs.keys()))
-            raise TypeError(f"`fetch` got unexpected " f"arguments: {unexpected_keys}")
+            raise TypeError(f"`fetch` got unexpected arguments: {unexpected_keys}")
 
         self._check_options = self._extract_check_options(extra_config)
         results = await super().fetch(*tileables)
