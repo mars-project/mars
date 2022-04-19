@@ -212,8 +212,11 @@ class TaskProcessor:
         )
         self._tileable_to_subtasks.update(tileable_to_subtasks)
 
+        result_chunks = [
+            c for c in chunk_graph.result_chunks if not isinstance(c.op, Fetch)
+        ]
         tile_context = await asyncio.to_thread(
-            self._get_stage_tile_context, set(chunk_graph.result_chunks)
+            self._get_stage_tile_context, set(result_chunks)
         )
 
         with Timer() as timer:
@@ -231,7 +234,7 @@ class TaskProcessor:
             optimization_records = None
         self._update_stage_meta(
             tile_context,
-            chunk_graph.result_chunks,
+            result_chunks,
             execution_chunk_results,
             optimization_records,
         )

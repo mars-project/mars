@@ -475,32 +475,30 @@ class MarsTaskExecutor(TaskExecutor):
             )
         )
 
-        chunk_results = []
-        worker_meta_api_to_chunk_delays = defaultdict(list)
+        worker_meta_api_to_chunk_delays = defaultdict(dict)
         for c in update_meta_chunks:
-            r = chunk_to_chunk_result[c]
-            address = r.meta["bands"][0][0]
+            address = chunk_to_chunk_result[c].meta["bands"][0][0]
             meta_api = await WorkerMetaAPI.create(self._session_id, address)
             call = meta_api.get_chunk_meta.delay(
                 c.key, fields=list(get_chunk_params(c).keys())
             )
-            chunk_results.append(r)
-            worker_meta_api_to_chunk_delays[meta_api].append(call)
+            worker_meta_api_to_chunk_delays[meta_api][c] = call
         for tileable in tile_context.values():
             chunks = [c.data for c in tileable.chunks]
             for c, params_fields in zip(chunks, self._get_params_fields(tileable)):
-                r = chunk_to_chunk_result[c]
-                address = r.meta["bands"][0][0]
+                address = chunk_to_chunk_result[c].meta["bands"][0][0]
                 meta_api = await WorkerMetaAPI.create(self._session_id, address)
                 call = meta_api.get_chunk_meta.delay(c.key, fields=params_fields)
-                chunk_results.append(r)
-                worker_meta_api_to_chunk_delays[meta_api].append(call)
+                worker_meta_api_to_chunk_delays[meta_api][c] = call
         coros = []
         for worker_meta_api, chunk_delays in worker_meta_api_to_chunk_delays.items():
-            coros.append(worker_meta_api.get_chunk_meta.batch(*chunk_delays))
+            coros.append(worker_meta_api.get_chunk_meta.batch(*chunk_delays.values()))
         worker_metas = await asyncio.gather(*coros)
-        for r, meta in zip(chunk_results, itertools.chain(*worker_metas)):
-            r.meta = meta
+        for chunk_delays, metas in zip(
+            worker_meta_api_to_chunk_delays.values(), worker_metas
+        ):
+            for c, meta in zip(chunk_delays, metas):
+                chunk_to_chunk_result[c].meta = meta
 
     @classmethod
     def _get_params_fields(cls, tileable: TileableType):
