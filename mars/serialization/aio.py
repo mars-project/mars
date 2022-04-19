@@ -80,6 +80,12 @@ class AioSerializer:
         return self._get_buffers()
 
 
+MALFORMED_MSG = """\
+Received malformed data, please check Mars version on both side,
+if error occurs when using `mars.new_session('http://web_ip:web_port'),
+please check if web port is right."""
+
+
 class AioDeserializer:
     def __init__(self, file):
         self._file = file
@@ -103,7 +109,7 @@ class AioDeserializer:
             raise EOFError("Received empty bytes")
         version = struct.unpack("B", header_bytes[:1])[0]
         # now we only have default version
-        assert version == DEFAULT_SERIALIZATION_VERSION
+        assert version == DEFAULT_SERIALIZATION_VERSION, MALFORMED_MSG
         # header length
         header_length = struct.unpack("<Q", header_bytes[1:9])[0]
         # compress
