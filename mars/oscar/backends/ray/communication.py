@@ -48,6 +48,7 @@ DESERIALIZATION_TIMEOUT_MILLS = 1000
 def msg_to_simple_str(msg):
     """An helper that prints message structure without generate a big str."""
     from ..message import SendMessage, _MessageBase
+
     if type(msg) == _ArgWrapper:
         msg = msg.message
     if isinstance(msg, SendMessage):
@@ -263,11 +264,11 @@ class RayClientChannel(RayChannelBase):
         async def handle_task(message: Any, object_ref: "ray.ObjectRef"):
             # use `%.500` to avoid print too long messages
             with debug_async_timeout(
-                    "ray_object_retrieval_timeout",
-                    "Message that client sent to actor %s is %.500s and object_ref is %s",
-                    self.dest_address,
-                    message,
-                    object_ref,
+                "ray_object_retrieval_timeout",
+                "Message that client sent to actor %s is %.500s and object_ref is %s",
+                self.dest_address,
+                message,
+                object_ref,
             ):
                 try:
                     result = await object_ref
