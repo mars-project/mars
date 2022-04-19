@@ -102,6 +102,38 @@ cdef class Serializer:
         """
         raise NotImplementedError
 
+    cpdef on_deserial_error(
+        self,
+        tuple serialized,
+        dict context,
+        list subs_serialized,
+        int error_index,
+        object exc,
+    ):
+        """
+        Returns rewritten exception when subcomponent deserialization fails
+        
+        Parameters
+        ----------
+        serialized: Tuple
+            Serialized object header as a tuple
+        context
+            Serialization context for instantiation of Placeholder
+            objects
+        subs_serialized: List
+            Serialized subcomponents
+        error_index: int
+            Index of subcomponent causing error
+        exc: BaseException
+            Exception raised
+            
+        Returns
+        -------
+        exc: BaseException | None
+            Rewritten exception. If None, original exception is kept.
+        """
+        return None
+
     @classmethod
     def calc_default_serializer_id(cls):
         return tokenize_int(f"{cls.__module__}.{cls.__qualname__}") & 0x7fffffff
@@ -448,8 +480,8 @@ cdef class Placeholder:
     The object records object identifier and keeps callbacks
     to replace itself in parent objects.
     """
-    cpdef public uint32_t id
-    cpdef public list callbacks
+    cdef public uint32_t id
+    cdef public list callbacks
 
     def __init__(self, uint32_t id_):
         self.id = id_
@@ -506,6 +538,9 @@ cdef class _SerialStackItem:
         self.subs_serialized = []
 
 
+cdef int _COMMON_HEADER_LEN = 4
+
+
 cdef tuple _serial_single(obj, dict context):
     """Serialize single object and return serialized tuples"""
     cdef uint32_t obj_id
@@ -524,6 +559,8 @@ cdef tuple _serial_single(obj, dict context):
             else:
                 obj_id = _short_id(obj)
 
+            # REMEMBER to change _COMMON_HEADER_LEN when content of
+            # this header changed
             common_header = (
                 serializer.serializer_id, obj_id, len(subs), final
             )
@@ -618,9 +655,9 @@ cdef _deserial_single(tuple serialized, dict context, list subs):
     cdef Serializer serializer
     cdef int64_t num_subs
 
-    serializer_id, obj_id, num_subs, final = serialized[:4]
+    serializer_id, obj_id, num_subs, final = serialized[:_COMMON_HEADER_LEN]
     serializer = _deserializers[serializer_id]
-    res = serializer.deserial(serialized[4:], context, subs)
+    res = serializer.deserial(serialized[_COMMON_HEADER_LEN:], context, subs)
 
     # get previously-recorded context values
     context_val, context[obj_id] = context.get(obj_id), res
@@ -656,7 +693,7 @@ def deserialize(tuple serialized, list buffers, dict context = None):
     cdef int64_t num_subs, num_deserialized, buf_pos = 0
     cdef bint final
     cdef Serializer serializer
-    cdef object deserialized = None
+    cdef object deserialized = None, exc_value = None
     cdef bint has_deserialized = False
 
     context = context if context is not None else dict()
@@ -680,25 +717,50 @@ def deserialize(tuple serialized, list buffers, dict context = None):
         if has_deserialized:
             # have previously-deserialized results, record first
             stack_item.subs_deserialized.append(deserialized)
+        elif exc_value is not None:
+            # have exception in successor components, try rewrite
+            # and pass to predecessors
+            serializer_id = stack_item.serialized[0]
+            serializer = _deserializers[serializer_id]
+            new_exc_value = serializer.on_deserial_error(
+                stack_item.serialized[_COMMON_HEADER_LEN:],
+                context,
+                list(stack_item.subs),
+                len(stack_item.subs_deserialized),
+                exc_value,
+            )
+            exc_value = new_exc_value if new_exc_value is not None else exc_value
+            deserial_stack.pop()
+            continue
+
         num_deserialized = len(stack_item.subs_deserialized)
         if len(stack_item.subs) == num_deserialized:
-            # all subcomponents deserialized, we can deserialize the object itself
-            deserialized = _deserial_single(
-                stack_item.serialized, context, stack_item.subs_deserialized
-            )
-            has_deserialized = True
-            deserial_stack.pop()
+            try:
+                # all subcomponents deserialized, we can deserialize the object itself
+                deserialized = _deserial_single(
+                    stack_item.serialized, context, stack_item.subs_deserialized
+                )
+                has_deserialized = True
+                deserial_stack.pop()
+            except BaseException as ex:
+                has_deserialized = False
+                exc_value = ex
+                deserial_stack.pop()
         else:
             # select next subcomponent to process
             serialized = stack_item.subs[num_deserialized]
             serializer_id, obj_id, num_subs, final = serialized[:4]
             if final or num_subs == 0:
-                # next subcomponent is a leaf, just deserialize
-                deserialized = _deserial_single(
-                    serialized, context, buffers[buf_pos : buf_pos + num_subs]
-                )
-                has_deserialized = True
-                buf_pos += num_subs
+                try:
+                    # next subcomponent is a leaf, just deserialize
+                    deserialized = _deserial_single(
+                        serialized, context, buffers[buf_pos : buf_pos + num_subs]
+                    )
+                    has_deserialized = True
+                    buf_pos += num_subs
+                except BaseException as ex:
+                    has_deserialized = False
+                    exc_value = ex
             else:
                 # next subcomponent has its own subcomponents, we push it
                 # into stack and start handling its children
@@ -709,4 +771,7 @@ def deserialize(tuple serialized, list buffers, dict context = None):
                 # note that the deserialized object should be cleaned
                 # as we are just starting to handle the subcomponent itself
                 has_deserialized = False
+
+    if exc_value is not None:
+        raise exc_value
     return deserialized

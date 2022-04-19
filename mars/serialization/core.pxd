@@ -15,3 +15,11 @@
 cdef class Serializer:
     cpdef serial(self, object obj, dict context)
     cpdef deserial(self, tuple serialized, dict context, list subs)
+    cpdef on_deserial_error(
+        self,
+        tuple serialized,
+        dict context,
+        list subs_serialized,
+        int error_index,
+        object exc,
+    )

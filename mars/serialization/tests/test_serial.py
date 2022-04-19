@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from collections import defaultdict, OrderedDict
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -31,7 +32,7 @@ from ...lib.sparse import SparseMatrix
 from ...tests.core import require_cupy, require_cudf
 from ...utils import lazy_import
 from .. import serialize, deserialize
-from ..core import Placeholder
+from ..core import Placeholder, ListSerializer
 
 cupy = lazy_import("cupy", globals=globals())
 cudf = lazy_import("cudf", globals=globals())
@@ -216,3 +217,69 @@ def test_mars_sparse():
     val = SparseMatrix(sps.random(100, 100, 0.1, format="csr"))
     deserial = deserialize(*serialize(val))
     assert (val.spmatrix != deserial.spmatrix).nnz == 0
+
+
+class MockSerializer(ListSerializer):
+    serializer_id = 145921
+    raises = False
+
+    def on_deserial_error(
+        self,
+        serialized: Tuple,
+        context: Dict,
+        subs_serialized: List,
+        error_index: int,
+        exc: BaseException,
+    ):
+        assert serialized[2] is CustomList  # obj_type field of ListSerializer
+        assert error_index == 1
+        assert subs_serialized[error_index]
+        try:
+            raise SystemError from exc
+        except BaseException as ex:
+            return ex
+
+    def deserial(self, serialized: Tuple, context: Dict, subs: List[Any]):
+        if len(subs) == 2 and self.raises:
+            raise TypeError
+        return super().deserial(serialized, context, subs)
+
+
+class UnpickleWithError:
+    def __getstate__(self):
+        return (None,)
+
+    def __setstate__(self, state):
+        raise ValueError
+
+
+def test_deserial_errors():
+    try:
+        MockSerializer.raises = False
+        MockSerializer.register(CustomList)
+
+        # error of leaf object is raised
+        obj = [1, [[3, UnpickleWithError()]]]
+        with pytest.raises(ValueError):
+            deserialize(*serialize(obj))
+
+        # error of leaf object is rewritten in parent object
+        obj = CustomList([[1], [[3, UnpickleWithError()]]])
+        with pytest.raises(SystemError) as exc_info:
+            deserialize(*serialize(obj))
+        assert isinstance(exc_info.value.__cause__, ValueError)
+
+        MockSerializer.raises = True
+
+        # error of non-leaf object is raised
+        obj = [CustomList([[1], [[2]]])]
+        with pytest.raises(TypeError):
+            deserialize(*serialize(obj))
+
+        # error of non-leaf CustomList is rewritten in parent object
+        obj = CustomList([[1], CustomList([[1], [[2]]]), [2]])
+        with pytest.raises(SystemError) as exc_info:
+            deserialize(*serialize(obj))
+        assert isinstance(exc_info.value.__cause__, TypeError)
+    finally:
+        MockSerializer.unregister(CustomList)

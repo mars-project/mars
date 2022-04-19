@@ -23,7 +23,7 @@ from ..core cimport ActorRef
 
 try:
     from random import randbytes
-except ImportError:
+except ImportError:  # pragma: no cover
     from random import getrandbits
 
     def randbytes(long n) -> bytes:
@@ -506,7 +506,7 @@ cdef dict _message_type_to_message_cls = {
 }
 
 
-class DeserializeMessageFailed(Exception):
+class DeserializeMessageFailed(RuntimeError):
     def __init__(self, message_id):
         self.message_id = message_id
 
@@ -533,10 +533,24 @@ cdef class MessageSerializer(Serializer):
         msg.deserial_members(serialized, subs)
         return msg
 
+    cpdef on_deserial_error(
+        self,
+        tuple serialized,
+        dict context,
+        list subs_serialized,
+        int error_index,
+        object exc,
+    ):
+        message_id = serialized[1]  # pos of message_id field
+        try:
+            raise DeserializeMessageFailed(message_id) from exc
+        except BaseException as new_ex:
+            return new_ex
+
 
 # register message serializer
 MessageSerializer.register(_MessageBase)
 
 
-def new_message_id() -> bytes:
+cpdef bytes new_message_id():
     return randbytes(32)
