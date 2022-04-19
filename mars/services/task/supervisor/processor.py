@@ -189,7 +189,12 @@ class TaskProcessor:
                     meta_api.get_chunk_meta.delay(c.key, fields=["bands"])
                 )
                 fetch_op_keys.append(c.op.key)
-        key_to_bands = await meta_api.get_chunk_meta.batch(*get_meta_tasks)
+        # TODO(fyrestone): A more general way to get the key to bands
+        # for all execution backends.
+        try:
+            key_to_bands = await meta_api.get_chunk_meta.batch(*get_meta_tasks)
+        except KeyError:
+            key_to_bands = {}
         fetch_op_to_bands = dict(
             (key, meta["bands"][0]) for key, meta in zip(fetch_op_keys, key_to_bands)
         )
