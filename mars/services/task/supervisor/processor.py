@@ -182,17 +182,19 @@ class TaskProcessor:
         chunk_graph: ChunkGraph,
     ):
         available_bands = await self._executor.get_available_band_slots()
-        fetch_ops = []
-        fetch_chunks = []
+        meta_api = self._executor._meta_api
+        get_meta_tasks = []
+        fetch_op_keys = []
         for c in chunk_graph.iter_indep():
             if isinstance(c.op, Fetch):
-                fetch_ops.append(c.op.key)
-                fetch_chunks.append(c.key)
-        if fetch_chunks:
-            fetch_bands = await self._executor.get_chunk_bands(fetch_chunks)
-            fetch_op_to_bands = dict(zip(fetch_ops, fetch_bands.values()))
-        else:
-            fetch_op_to_bands = dict()
+                get_meta_tasks.append(
+                    meta_api.get_chunk_meta.delay(c.key, fields=["bands"])
+                )
+                fetch_op_keys.append(c.op.key)
+        key_to_bands = await meta_api.get_chunk_meta.batch(*get_meta_tasks)
+        fetch_op_to_bands = dict(
+            (key, meta["bands"][0]) for key, meta in zip(fetch_op_keys, key_to_bands)
+        )
         with Timer() as timer:
             subtask_graph = await asyncio.to_thread(
                 self._preprocessor.analyze,

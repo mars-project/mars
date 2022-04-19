@@ -174,16 +174,6 @@ class MarsTaskExecutor(TaskExecutor):
             if bands:
                 return bands
 
-    async def get_chunk_bands(self, chunk_keys: List[str]) -> Dict[str, BandType]:
-        tasks = [
-            self._meta_api.get_chunk_meta.delay(key, fields=["bands"])
-            for key in chunk_keys
-        ]
-        key_to_bands = await self._meta_api.get_chunk_meta.batch(*tasks)
-        return dict(
-            (key, meta["bands"][0]) for key, meta in zip(chunk_keys, key_to_bands)
-        )
-
     async def get_progress(self) -> float:
         # get progress of stages
         subtask_progress = 0.0
