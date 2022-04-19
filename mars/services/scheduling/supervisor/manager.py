@@ -21,7 +21,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ....oscar.backends.message import ProfilingContext
+from ....oscar.backends.context import ProfilingContext
 from ....oscar.errors import MarsError
 from ....oscar.profiling import ProfilingData, MARS_ENABLE_PROFILING
 from ....typing import BandType

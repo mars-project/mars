@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import asyncio
 import dataclasses
 import os
@@ -126,15 +127,12 @@ def test_collect():
         {"slow_calls_duration_threshold": 0, "slow_subtasks_duration_threshold": 0}
     )
 
-    @dataclasses.dataclass
-    class _FakeActorId:
-        uid: object
-        address: str
-
     # Test collect message with incomparable arguments.
-    fake_actor_id = _FakeActorId(b"uid", "def")
-    fake_message1 = SendMessage(b"abc", fake_actor_id, ["name", {}])
-    fake_message2 = SendMessage(b"abc", fake_actor_id, ["name", 1])
+    from ..core import ActorRef
+
+    fake_actor_ref = ActorRef("def", b"uid")
+    fake_message1 = SendMessage(b"abc", fake_actor_ref, ["name", {}])
+    fake_message2 = SendMessage(b"abc", fake_actor_ref, ["name", 1])
 
     cs = _CallStats(options)
     cs.collect(fake_message1, 1.0)
@@ -155,7 +153,9 @@ def test_collect():
     # Test call stats order.
     cs = _CallStats(options)
     for i in range(20):
-        fake_message = SendMessage(f"{i}", fake_actor_id, ["name", True, (i,), {}])
+        fake_message = SendMessage(
+            f"{i}".encode(), fake_actor_ref, ["name", True, (i,), {}]
+        )
         cs.collect(fake_message, i)
     d = cs.to_dict()
     assert list(d["most_calls"].values())[0] == 20

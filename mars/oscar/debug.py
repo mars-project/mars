@@ -29,6 +29,14 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 @dataslots
 @dataclass
+class MessageTraceItem:
+    uid: str
+    address: str
+    method: str
+
+
+@dataslots
+@dataclass
 class DebugOptions:
     actor_call_timeout: int = 10
     process_message_timeout: int = 30
@@ -105,8 +113,6 @@ def record_message_trace(message):
     if _debug_opts is None or not _debug_opts.log_cycle_send:
         yield
     else:
-        from .backends.message import MessageTraceItem
-
         msg_trace = list(message.message_trace or [])
         msg_trace.append(
             MessageTraceItem(
@@ -125,8 +131,6 @@ def record_message_trace(message):
 def detect_cycle_send(message, wait_response: bool = True):
     if _debug_opts is None or not _debug_opts.log_cycle_send or not wait_response:
         return
-
-    from .backends.message import MessageTraceItem
 
     cur_trace = _message_trace_var.get(None) or []  # type: List[MessageTraceItem]
     message.message_trace = cur_trace

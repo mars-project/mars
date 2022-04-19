@@ -16,12 +16,12 @@ import asyncio
 import copy
 from typing import Dict, Union
 
+from ...oscar.profiling import ProfilingData
+from ...utils import Timer
 from ..errors import ServerClosed
 from .communication import Client
 from .message import _MessageBase, ResultMessage, ErrorMessage, DeserializeMessageFailed
 from .router import Router
-from ...oscar.profiling import ProfilingData
-from ...utils import Timer
 
 
 ResultMessageType = Union[ResultMessage, ErrorMessage]
@@ -60,10 +60,10 @@ class ActorCaller:
                     ) from None
                 future = self._client_to_message_futures[client].pop(message.message_id)
                 future.set_result(message)
-            except DeserializeMessageFailed as e:  # pragma: no cover
+            except DeserializeMessageFailed as e:
                 message_id = e.message_id
                 future = self._client_to_message_futures[client].pop(message_id)
-                future.set_exception(e)
+                future.set_exception(e.__cause__)
             except Exception as e:  # noqa: E722  # pylint: disable=bare-except
                 message_futures = self._client_to_message_futures.get(client)
                 self._client_to_message_futures[client] = dict()
