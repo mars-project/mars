@@ -26,6 +26,7 @@ from ..api.web import MarsApiEntryHandler
 
 
 class TestAPIHandler(MarsServiceWebAPIHandler):
+    __test__ = False
     _root_pattern = "/api/test/(?P<test_id>[^/]+)"
 
     @web_api("", method="get")

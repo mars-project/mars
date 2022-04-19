@@ -206,13 +206,14 @@ class TaskPreprocessor:
         chunk_graph: ChunkGraph,
         available_bands: Dict[BandType, Resource],
         stage_id: str = None,
+        op_to_bands: Dict[str, BandType] = None,
     ) -> SubtaskGraph:
         logger.debug("Start to gen subtask graph for task %s", self._task.task_id)
         task = self._task
         analyzer = GraphAnalyzer(
             chunk_graph, available_bands, task, self._config, stage_id=stage_id
         )
-        graph = analyzer.gen_subtask_graph()
+        graph = analyzer.gen_subtask_graph(op_to_bands)
         logger.debug(
             "Generated subtask graph of %s subtasks for task %s",
             len(graph),

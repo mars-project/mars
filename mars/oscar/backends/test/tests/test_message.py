@@ -35,6 +35,7 @@ def test_as_instanceof_cause():
         em = ErrorMessage(
             b"Fake message id", fake_address, fake_pid, type(e), e, e.__traceback__
         )
+        assert "Fake message id" in repr(em)
         try:
             cause = em.as_instanceof_cause()
             # Test serialization.

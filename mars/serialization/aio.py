@@ -16,10 +16,11 @@ import struct
 from io import BytesIO
 from typing import Any
 
+import cloudpickle
 import numpy as np
 
 from ..utils import lazy_import
-from .core import pickle, serialize, deserialize
+from .core import serialize, deserialize
 
 cupy = lazy_import("cupy", globals=globals())
 cudf = lazy_import("cudf", globals=globals())
@@ -57,7 +58,7 @@ class AioSerializer:
         headers[0][BUFFER_SIZES_NAME] = [
             getattr(buf, "nbytes", len(buf)) for buf in buffers
         ]
-        header = pickle.dumps(headers)
+        header = cloudpickle.dumps(headers)
 
         # gen header buffer
         header_bio = BytesIO()
@@ -111,7 +112,7 @@ class AioDeserializer:
         return await self._readexactly(header_length)
 
     async def _get_obj(self):
-        header = pickle.loads(await self._get_obj_header_bytes())
+        header = cloudpickle.loads(await self._get_obj_header_bytes())
         # get buffer size
         buffer_sizes = header[0].pop(BUFFER_SIZES_NAME)
         # get buffers
@@ -125,10 +126,10 @@ class AioDeserializer:
     async def get_size(self):
         # extract header
         header_bytes = await self._get_obj_header_bytes()
-        header = pickle.loads(header_bytes)
+        header = cloudpickle.loads(header_bytes)
         # get buffer size
         buffer_sizes = header[0].pop(BUFFER_SIZES_NAME)
         return 11 + len(header_bytes) + sum(buffer_sizes)
 
     async def get_header(self):
-        return pickle.loads(await self._get_obj_header_bytes())
+        return cloudpickle.loads(await self._get_obj_header_bytes())

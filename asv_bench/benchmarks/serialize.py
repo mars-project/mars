@@ -18,6 +18,9 @@ import pandas as pd
 
 from mars.core.operand import MapReduceOperand
 from mars.dataframe.operands import DataFrameOperandMixin
+from mars.oscar.core import ActorRef
+
+from mars.oscar.backends.message import SendMessage, new_message_id, ActorRefMessage
 from mars.serialization import serialize, deserialize
 from mars.serialization.serializables import (
     Serializable,
@@ -38,7 +41,7 @@ from mars.serialization.serializables import (
     TupleField,
     DictField,
 )
-from mars.services.subtask import Subtask
+from mars.services.subtask import Subtask, SubtaskResult, SubtaskStatus
 from mars.services.task import new_task_id
 from mars.utils import tokenize
 
@@ -215,3 +218,49 @@ class SerializeFetchShuffleSuite:
             header, buffers = serialize(fetch_chunk)
             serialized = cloudpickle.dumps((header, buffers))
             deserialize(*cloudpickle.loads(serialized))
+
+
+class SerializeMessageSuite:
+    def setup(self):
+        self.send_messages = []
+        self.actor_ref_messages = []
+        for i in range(10000):
+            ref = ActorRef(
+                "ray://mars_cluster_1649927648/17/0",
+                b"F20Wyerq6EiqltB8jAVs7L3N_task_manager",
+            )
+            new_result = SubtaskResult(
+                subtask_id=new_task_id(),
+                session_id=new_task_id(),
+                task_id=new_task_id(),
+                stage_id=new_task_id(),
+                status=SubtaskStatus.succeeded,
+                progress=1.0,
+                data_size=1000000.0,
+                bands=[("ray://mars_cluster_1649927648/17/0", "numa-0")],
+                execution_start_time=1646125099.622051,
+                execution_end_time=1646125104.448726,
+            )
+            send_message = SendMessage(
+                new_message_id(),
+                ref,
+                new_result,
+                protocol=0,
+            )
+            self.send_messages.append(send_message)
+            actor_ref_message = ActorRefMessage(
+                message_id=new_message_id(),
+                actor_ref=ref,
+                protocol=0,
+            )
+            self.actor_ref_messages.append(actor_ref_message)
+
+    def time_pickle_serialize_deserialize_send_messages(self):
+        deserialize(
+            *cloudpickle.loads(cloudpickle.dumps(serialize(self.send_messages)))
+        )
+
+    def time_pickle_serialize_deserialize_actor_ref_messages(self):
+        deserialize(
+            *cloudpickle.loads(cloudpickle.dumps(serialize(self.actor_ref_messages)))
+        )

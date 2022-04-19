@@ -21,6 +21,14 @@ class Serializer:
     serializer_id: int
     def serial(self, obj: Any, context: Dict): ...
     def deserial(self, serialized: Tuple, context: Dict, subs: List[Any]): ...
+    def on_deserial_error(
+        self,
+        serialized: Tuple,
+        context: Dict,
+        subs_serialized: List,
+        error_index: int,
+        exc: BaseException,
+    ): ...
     @classmethod
     def register(cls, obj_type): ...
     @classmethod

@@ -41,6 +41,7 @@ from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI, WorkerMetaAPI
 from ....scheduling import SchedulingAPI
 from ....subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
+from ...core import Task
 from ..api import TaskExecutor, ExecutionChunkResult, register_executor_cls
 from .resource import ResourceEvaluator
 from .stage import TaskStageProcessor
@@ -67,13 +68,13 @@ class MarsTaskExecutor(TaskExecutor):
 
     def __init__(
         self,
-        config,
-        task,
-        tile_context,
-        cluster_api,
-        lifecycle_api,
-        scheduling_api,
-        meta_api,
+        config: Dict,
+        task: Task,
+        tile_context: Dict[TileableType, TileableType],
+        cluster_api: ClusterAPI,
+        lifecycle_api: LifecycleAPI,
+        scheduling_api: SchedulingAPI,
+        meta_api: MetaAPI,
     ):
         self._config = config
         self._task = task
@@ -101,8 +102,8 @@ class MarsTaskExecutor(TaskExecutor):
         *,
         session_id: str,
         address: str,
-        task,
-        tile_context,
+        task: Task,
+        tile_context: Dict[TileableType, TileableType],
         **kwargs,
     ) -> "TaskExecutor":
         assert (
@@ -164,9 +165,7 @@ class MarsTaskExecutor(TaskExecutor):
         self._stage_processors.append(stage_processor)
         self._cur_stage_processor = stage_processor
         execution_chunk_results = await stage_processor.run()
-        await self._update_result_meta(
-            chunk_graph.result_chunks, execution_chunk_results, tile_context
-        )
+        await self._update_result_meta(execution_chunk_results, tile_context)
         return execution_chunk_results
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -463,11 +462,10 @@ class MarsTaskExecutor(TaskExecutor):
 
     async def _update_result_meta(
         self,
-        chunk_graph_results: List[ChunkType],
         execution_chunk_results: List[ExecutionChunkResult],
         tile_context: Dict[TileableType, TileableType],
     ):
-        chunk_to_chunk_result = dict(zip(chunk_graph_results, execution_chunk_results))
+        chunk_to_chunk_result = {r.chunk: r for r in execution_chunk_results}
         update_meta_chunks = chunk_to_chunk_result.keys() - set(
             itertools.chain.from_iterable(
                 (c.data for c in tiled_tileable.chunks)
