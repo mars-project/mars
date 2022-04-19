@@ -182,12 +182,26 @@ class TaskProcessor:
         chunk_graph: ChunkGraph,
     ):
         available_bands = await self._executor.get_available_band_slots()
+        meta_api = self._executor._meta_api
+        get_meta_tasks = []
+        fetch_op_keys = []
+        for c in chunk_graph.iter_indep():
+            if isinstance(c.op, Fetch):
+                get_meta_tasks.append(
+                    meta_api.get_chunk_meta.delay(c.key, fields=["bands"])
+                )
+                fetch_op_keys.append(c.op.key)
+        key_to_bands = await meta_api.get_chunk_meta.batch(*get_meta_tasks)
+        fetch_op_to_bands = dict(
+            (key, meta["bands"][0]) for key, meta in zip(fetch_op_keys, key_to_bands)
+        )
         with Timer() as timer:
             subtask_graph = await asyncio.to_thread(
                 self._preprocessor.analyze,
                 chunk_graph,
                 available_bands,
                 stage_id=stage_id,
+                op_to_bands=fetch_op_to_bands,
             )
         stage_profiler.set(f"gen_subtask_graph({len(subtask_graph)})", timer.duration)
         logger.info(
@@ -239,8 +253,8 @@ class TaskProcessor:
     ):
         result_chunks = [c for c in chunk_graph.results if not isinstance(c.op, Fetch)]
         chunk_to_band = {
-            c: r.meta["bands"][0][0]
-            for c, r in zip(result_chunks, execution_chunk_results)
+            result.chunk: result.meta["bands"][0][0]
+            for result in execution_chunk_results
         }
         update_meta_chunks = set(result_chunks)
         update_meta_tileables = dict()

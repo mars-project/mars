@@ -19,7 +19,7 @@ from collections import defaultdict
 from typing import Dict, List, Optional
 
 from ..... import oscar as mo
-from .....core import ChunkGraph
+from .....core import ChunkGraph, TileableGraph
 from .....core.operand import (
     Fetch,
     MapReduceOperand,
@@ -37,6 +37,7 @@ from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
 from ....scheduling import SchedulingAPI
 from ....subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
+from ...core import Task
 from ..api import TaskExecutor, register_executor_cls
 from .resource import ResourceEvaluator
 from .stage import TaskStageProcessor
@@ -62,14 +63,14 @@ class MarsTaskExecutor(TaskExecutor):
 
     def __init__(
         self,
-        config,
-        task,
-        tileable_graph,
-        tile_context,
-        cluster_api,
-        lifecycle_api,
-        scheduling_api,
-        meta_api,
+        config: Dict,
+        task: Task,
+        tileable_graph: TileableGraph,
+        tile_context: Dict[TileableType, TileableType],
+        cluster_api: ClusterAPI,
+        lifecycle_api: LifecycleAPI,
+        scheduling_api: SchedulingAPI,
+        meta_api: MetaAPI,
     ):
         self._config = config
         self._task = task

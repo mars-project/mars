@@ -142,6 +142,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
         chunk_graph: ChunkGraph,
         available_bands: Dict[BandType, Resource],
         stage_id: str,
+        op_to_bands: Dict[str, BandType] = None,
     ) -> SubtaskGraph:
         # record shapes generated in tile
         for n in chunk_graph:
