@@ -253,8 +253,8 @@ class TaskProcessor:
     ):
         result_chunks = [c for c in chunk_graph.results if not isinstance(c.op, Fetch)]
         chunk_to_band = {
-            c: r.meta["bands"][0][0]
-            for c, r in zip(result_chunks, execution_chunk_results)
+            result.chunk: result.meta["bands"][0][0]
+            for result in execution_chunk_results
         }
         update_meta_chunks = set(result_chunks)
         update_meta_tileables = dict()

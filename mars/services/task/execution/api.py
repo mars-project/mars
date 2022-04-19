@@ -16,14 +16,14 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Dict, Any, Type
 
-from ....core import ChunkGraph
+from ....core import ChunkGraph, Chunk
 from ....typing import BandType
 from ...subtask import SubtaskGraph, SubtaskResult
 
 
 @dataclass
 class ExecutionChunkResult:
-    key: str  # The chunk key for fetching the result.
+    chunk: Chunk  # The chunk key for fetching the result.
     meta: Dict  # The chunk meta for iterative tiling.
     context: Any  # The context info, e.g. ray.ObjectRef.
 

@@ -118,7 +118,7 @@ class TaskStageProcessor:
         metas = await self._meta_api.get_chunk_meta.batch(*get_meta)
         for chunk, meta in zip(chunks, metas):
             execution_chunk_results.append(
-                ExecutionChunkResult(key=chunk.key, meta=meta, context=None)
+                ExecutionChunkResult(chunk=chunk, meta=meta, context=None)
             )
         return execution_chunk_results
 
