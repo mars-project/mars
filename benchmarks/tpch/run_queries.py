@@ -730,9 +730,7 @@ def q17(lineitem, part):
         lineitem_avg, left_on="P_PARTKEY", right_on="L_PARTKEY", how="inner"
     )
     total = total[total["L_QUANTITY"] < total["avg"]]
-    total = md.DataFrame(
-        {"avg_yearly": [total["L_EXTENDEDPRICE"].sum() / 7.0]}
-    )
+    total = md.DataFrame({"avg_yearly": [total["L_EXTENDEDPRICE"].sum() / 7.0]})
     print(total.execute())
     print("Q17 Execution time (s): ", time.time() - t1)
 
@@ -984,11 +982,8 @@ def q22(customer, orders):
 
 
 def run_queries(data_folder: str):
-    mars.new_session()
-
     # Load the data
     t1 = time.time()
-    # FIXME: remove rebalance once it's automatically optimized
     lineitem = load_lineitem(data_folder)
     orders = load_orders(data_folder)
     customer = load_customer(data_folder)
@@ -1032,8 +1027,15 @@ def main():
         type=str,
         help="The folder containing TPCH data",
     )
+    parser.add_argument(
+        "--endpoint",
+        type=str,
+        help="Endpoint to connect to, if not provided, will create a local cluster",
+    )
     args = parser.parse_args()
     folder = args.folder
+    endpoint = args.endpoint
+    mars.new_session(endpoint)
     run_queries(folder)
 
 
