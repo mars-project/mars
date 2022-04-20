@@ -14,6 +14,8 @@
 
 import asyncio
 import functools
+import logging
+import os
 import time
 from typing import Dict, List, Optional
 
@@ -22,6 +24,8 @@ from ....utils import to_binary
 from ...cluster import ClusterAPI
 from ...core import NodeRole, create_service_session, destroy_service_session
 from ..core import SessionInfo
+
+logger = logging.getLogger(__name__)
 
 
 class SessionManagerActor(mo.Actor):
@@ -163,6 +167,11 @@ class SessionActor(mo.Actor):
             self._session_id,
             address=self.address,
             uid=CustomLogMetaActor.gen_uid(self._session_id),
+        )
+        logger.debug(
+            "Session %s actor created on pid: %s",
+            self._session_id,
+            os.getpid(),
         )
 
     async def remove(self):
