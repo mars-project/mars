@@ -14,5 +14,4 @@ exclude_paths:
   - 'versioneer.py'
   - '*.min.js'
   - '**/tests/**'
-  - 'asv_bench/**'
   - 'benchmarks/**'
