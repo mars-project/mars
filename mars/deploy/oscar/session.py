@@ -1355,6 +1355,7 @@ class _IsolatedWebSession(_IsolatedSession):
         return cls(
             address,
             session_id,
+            execution_backend,
             session_api,
             meta_api,
             lifecycle_api,
@@ -1364,7 +1365,6 @@ class _IsolatedWebSession(_IsolatedSession):
             None,
             timeout=timeout,
             request_rewriter=request_rewriter,
-            execution_backend=execution_backend,
         )
 
     async def get_web_endpoint(self) -> Optional[str]:
