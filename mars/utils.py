@@ -1635,7 +1635,7 @@ def cache_tileables(*tileables):
 
 
 def report_event(severity, label, message):
-    if ray and ray.is_initialized() and hasattr(ray, "report_event"):
+    if ray and ray.is_initialized() and hasattr(ray, "report_event"):  # pragma: no cover
         severity = (
             getattr(ray.EventSeverity, severity)
             if isinstance(severity, str)

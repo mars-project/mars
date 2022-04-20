@@ -139,7 +139,7 @@ if ray:
                     ProfilingData[task_id, "serialization"].inc(
                         "serialize", timer.duration
                     )
-            except AttributeError:
+            except AttributeError:  # pragma: no cover
                 logger.info(
                     "Profiling serialization got error, the send "
                     "message %s may not be an instance of message",
@@ -173,7 +173,7 @@ if ray:
                     ProfilingData[task_id, "serialization"].inc(
                         "deserialize", time.time() - start_time
                     )
-            except AttributeError:
+            except AttributeError:  # pragma: no cover
                 logger.info(
                     "Profiling serialization got error, the recv "
                     "message %s may not be an instance of message",
@@ -272,7 +272,7 @@ class RayClientChannel(RayChannelBase):
             ):
                 try:
                     result = await object_ref
-                except Exception as e:
+                except Exception as e:  # pragma: no cover
                     logger.exception(
                         "Get object %s from %s failed, got exception %s.",
                         object_ref,
