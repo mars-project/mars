@@ -19,7 +19,6 @@ import time
 
 import mars
 import mars.dataframe as md
-import pandas as pd
 
 
 def load_lineitem(data_folder: str) -> md.DataFrame:
@@ -92,7 +91,7 @@ def load_partsupp(data_folder: str) -> md.DataFrame:
 
 def q01(lineitem: md.DataFrame):
     t1 = time.time()
-    date = pd.Timestamp("1998-09-02")
+    date = md.Timestamp("1998-09-02")
     lineitem_filtered = lineitem.loc[
         :,
         [
@@ -254,7 +253,7 @@ def q02(part, partsupp, supplier, nation, region):
 
 def q03(lineitem, orders, customer):
     t1 = time.time()
-    date = pd.Timestamp("1995-03-04")
+    date = md.Timestamp("1995-03-04")
     lineitem_filtered = lineitem.loc[
         :, ["L_ORDERKEY", "L_EXTENDEDPRICE", "L_DISCOUNT", "L_SHIPDATE"]
     ]
@@ -285,8 +284,8 @@ def q03(lineitem, orders, customer):
 
 def q04(lineitem, orders):
     t1 = time.time()
-    date1 = pd.Timestamp("1993-11-01")
-    date2 = pd.Timestamp("1993-08-01")
+    date1 = md.Timestamp("1993-11-01")
+    date2 = md.Timestamp("1993-08-01")
     lsel = lineitem.L_COMMITDATE < lineitem.L_RECEIPTDATE
     osel = (orders.O_ORDERDATE < date1) & (orders.O_ORDERDATE >= date2)
     flineitem = lineitem[lsel]
@@ -303,8 +302,8 @@ def q04(lineitem, orders):
 
 def q05(lineitem, orders, customer, nation, region, supplier):
     t1 = time.time()
-    date1 = pd.Timestamp("1996-01-01")
-    date2 = pd.Timestamp("1997-01-01")
+    date1 = md.Timestamp("1996-01-01")
+    date2 = md.Timestamp("1997-01-01")
     rsel = region.R_NAME == "ASIA"
     osel = (orders.O_ORDERDATE >= date1) & (orders.O_ORDERDATE < date2)
     forders = orders[osel]
@@ -325,8 +324,8 @@ def q05(lineitem, orders, customer, nation, region, supplier):
 
 def q06(lineitem):
     t1 = time.time()
-    date1 = pd.Timestamp("1996-01-01")
-    date2 = pd.Timestamp("1997-01-01")
+    date1 = md.Timestamp("1996-01-01")
+    date2 = md.Timestamp("1997-01-01")
     lineitem_filtered = lineitem.loc[
         :, ["L_QUANTITY", "L_EXTENDEDPRICE", "L_DISCOUNT", "L_SHIPDATE"]
     ]
@@ -348,8 +347,8 @@ def q07(lineitem, supplier, orders, customer, nation):
     t1 = time.time()
 
     lineitem_filtered = lineitem[
-        (lineitem["L_SHIPDATE"] >= pd.Timestamp("1995-01-01"))
-        & (lineitem["L_SHIPDATE"] < pd.Timestamp("1997-01-01"))
+        (lineitem["L_SHIPDATE"] >= md.Timestamp("1995-01-01"))
+        & (lineitem["L_SHIPDATE"] < md.Timestamp("1997-01-01"))
     ]
     lineitem_filtered["L_YEAR"] = lineitem_filtered["L_SHIPDATE"].dt.year
     lineitem_filtered["VOLUME"] = lineitem_filtered["L_EXTENDEDPRICE"] * (
@@ -451,8 +450,8 @@ def q08(part, lineitem, supplier, orders, customer, nation, region):
     )
     total = total.loc[:, ["L_ORDERKEY", "VOLUME", "S_NATIONKEY"]]
     orders_filtered = orders[
-        (orders["O_ORDERDATE"] >= pd.Timestamp("1995-01-01"))
-        & (orders["O_ORDERDATE"] < pd.Timestamp("1997-01-01"))
+        (orders["O_ORDERDATE"] >= md.Timestamp("1995-01-01"))
+        & (orders["O_ORDERDATE"] < md.Timestamp("1997-01-01"))
     ]
     orders_filtered["O_YEAR"] = orders_filtered["O_ORDERDATE"].dt.year
     orders_filtered = orders_filtered.loc[:, ["O_ORDERKEY", "O_CUSTKEY", "O_YEAR"]]
@@ -520,8 +519,8 @@ def q09(lineitem, orders, part, nation, partsupp, supplier):
 
 def q10(lineitem, orders, customer, nation):
     t1 = time.time()
-    date1 = pd.Timestamp("1994-11-01")
-    date2 = pd.Timestamp("1995-02-01")
+    date1 = md.Timestamp("1994-11-01")
+    date2 = md.Timestamp("1995-02-01")
     osel = (orders.O_ORDERDATE >= date1) & (orders.O_ORDERDATE < date2)
     lsel = lineitem.L_RETURNFLAG == "R"
     forders = orders[osel]
@@ -576,8 +575,8 @@ def q11(partsupp, supplier, nation):
 
 def q12(lineitem, orders):
     t1 = time.time()
-    date1 = pd.Timestamp("1994-01-01")
-    date2 = pd.Timestamp("1995-01-01")
+    date1 = md.Timestamp("1994-01-01")
+    date2 = md.Timestamp("1995-01-01")
     sel = (
         (lineitem.L_RECEIPTDATE < date2)
         & (lineitem.L_COMMITDATE < date2)
@@ -626,8 +625,8 @@ def q13(customer, orders):
 
 def q14(lineitem, part):
     t1 = time.time()
-    startDate = pd.Timestamp("1994-03-01")
-    endDate = pd.Timestamp("1994-04-01")
+    startDate = md.Timestamp("1994-03-01")
+    endDate = md.Timestamp("1994-04-01")
     p_type_like = "PROMO"
     part_filtered = part.loc[:, ["P_PARTKEY", "P_TYPE"]]
     lineitem_filtered = lineitem.loc[
@@ -647,10 +646,10 @@ def q14(lineitem, part):
 def q15(lineitem, supplier):
     t1 = time.time()
     lineitem_filtered = lineitem[
-        (lineitem["L_SHIPDATE"] >= pd.Timestamp("1996-01-01"))
+        (lineitem["L_SHIPDATE"] >= md.Timestamp("1996-01-01"))
         & (
             lineitem["L_SHIPDATE"]
-            < (pd.Timestamp("1996-01-01") + pd.DateOffset(months=3))
+            < (md.Timestamp("1996-01-01") + md.DateOffset(months=3))
         )
     ]
     lineitem_filtered["REVENUE_PARTS"] = lineitem_filtered["L_EXTENDEDPRICE"] * (
@@ -856,8 +855,8 @@ def q19(lineitem, part):
 
 def q20(lineitem, part, nation, partsupp, supplier):
     t1 = time.time()
-    date1 = pd.Timestamp("1996-01-01")
-    date2 = pd.Timestamp("1997-01-01")
+    date1 = md.Timestamp("1996-01-01")
+    date2 = md.Timestamp("1997-01-01")
     psel = part.P_NAME.str.startswith("azure")
     nsel = nation.N_NAME == "JORDAN"
     lsel = (lineitem.L_SHIPDATE >= date1) & (lineitem.L_SHIPDATE < date2)

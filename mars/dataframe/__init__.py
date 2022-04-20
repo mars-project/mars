@@ -79,7 +79,7 @@ from ..core import ExecutableTuple
 from .arrays import ArrowStringDtype, ArrowStringArray, ArrowListDtype, ArrowListArray
 
 # noinspection PyUnresolvedReferences
-from pandas import Timedelta, Timestamp, offsets, NaT, Interval
+from pandas import Timedelta, Timestamp, offsets, NaT, Interval, DateOffset
 
 try:
     from pandas import NA, NamedAgg
