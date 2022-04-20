@@ -21,7 +21,7 @@ from typing import Dict, List
 
 from ..... import oscar as mo
 from .....core import ChunkGraph, Chunk
-from .....core.operand import Fuse
+from .....core.operand import Fuse, Fetch
 from .....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from .....metrics import Metrics
 from .....utils import get_chunk_params
@@ -109,9 +109,13 @@ class TaskStageProcessor:
         )
 
     async def _get_stage_result(self):
+        chunks = []
         get_meta = []
-        chunks = self.chunk_graph.result_chunks
-        for chunk in chunks:
+        results_chunks = self.chunk_graph.result_chunks
+        for chunk in results_chunks:
+            if isinstance(chunk.op, Fetch):
+                continue
+            chunks.append(chunk)
             if isinstance(chunk.op, Fuse):
                 chunk = chunk.chunk
             get_meta.append(
@@ -281,7 +285,10 @@ class TaskStageProcessor:
         for tileable in tile_context.values():
             chunks = [c.data for c in tileable.chunks]
             for c, params_fields in zip(chunks, self._get_params_fields(tileable)):
-                address = chunk_to_result[c].meta["bands"][0][0]
+                try:
+                    address = chunk_to_result[c].meta["bands"][0][0]
+                except KeyError:
+                    print(tileable)
                 meta_api = await WorkerMetaAPI.create(session_id, address)
                 call = meta_api.get_chunk_meta.delay(c.key, fields=params_fields)
                 worker_meta_api_to_chunk_delays[meta_api][c] = call
