@@ -168,7 +168,6 @@ class _ChunkMeta(_CommonMeta):
     bands: List[BandType] = None
     # needed by ray ownership to keep object alive when worker died.
     object_refs: List[Any] = None
-    fetcher: str = None
 
     def merge_from(self, value: "_ChunkMeta"):
         if value.bands:

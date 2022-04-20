@@ -12,24 +12,45 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+from collections import namedtuple
+from typing import Dict, List
 from ..api import Fetcher, register_fetcher_cls
+
+
+_FetchInfo = namedtuple("FetchInfo", ["key", "object_ref", "conditions"])
 
 
 @register_fetcher_cls
 class RayObjectFetcher(Fetcher):
-    __slots__ = ("_object_ref",)
     name = "ray"
+    required_meta_keys = ("object_refs",)
 
-    def __init__(self, meta, **kwargs):
-        object_refs = meta["object_refs"]
-        assert len(object_refs) == 1
-        self._object_ref = object_refs[0]
+    def __init__(self, **kwargs):
+        self._fetch_info_list = []
+        self._no_conditions = True
 
-    async def get(self, conditions=None):
-        data = await self._object_ref
-        if conditions is None:
-            return data
-        try:
-            return data.iloc[tuple(conditions)]
-        except AttributeError:
-            return data[tuple(conditions)]
+    async def append(self, chunk_key: str, chunk_meta: Dict, conditions: List = None):
+        if conditions is not None:
+            self._no_conditions = False
+        self._fetch_info_list.append(
+            _FetchInfo(chunk_key, chunk_meta["object_refs"][0], conditions)
+        )
+        return self
+
+    async def get(self):
+        objects = await asyncio.gather(
+            *(info.object_ref for info in self._fetch_info_list)
+        )
+        if self._no_conditions:
+            return objects
+        results = []
+        for o, fetch_info in zip(objects, self._fetch_info_list):
+            if fetch_info.conditions is None:
+                results.append(o)
+            else:
+                try:
+                    results.append(o.iloc[tuple(fetch_info.conditions)])
+                except AttributeError:
+                    results.append(o[tuple(fetch_info.conditions)])
+        return results

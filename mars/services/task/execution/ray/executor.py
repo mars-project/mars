@@ -150,6 +150,7 @@ class RayTaskExecutor(TaskExecutor):
         output_meta_object_refs = []
 
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
+        # TODO(fyrestone): Filter out the Fetch chunk.
         result_keys = {chunk.key for chunk in chunk_graph.result_chunks}
         for subtask in subtask_graph.topological_iter():
             subtask_chunk_graph = subtask.chunk_graph
@@ -178,6 +179,7 @@ class RayTaskExecutor(TaskExecutor):
                 output_object_refs = [output_object_refs]
             if output_meta_keys:
                 meta_object_ref, *output_object_refs = output_object_refs
+                # TODO(fyrestone): Fetch(not get) meta object here.
                 output_meta_object_refs.append(meta_object_ref)
             context.update(zip(output_keys, output_object_refs))
         logger.info("Submitted %s subtasks of stage %s.", len(subtask_graph), stage_id)
@@ -222,7 +224,6 @@ class RayTaskExecutor(TaskExecutor):
                             chunk,
                             bands=[],
                             object_ref=object_ref,
-                            fetcher="ray",
                         )
                     )
                     update_lifecycles.append(

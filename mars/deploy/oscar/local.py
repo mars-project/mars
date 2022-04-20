@@ -74,7 +74,9 @@ async def new_cluster_in_isolation(
         n_supervisor_process,
     )
     await cluster.start()
-    return await LocalClient.create(cluster, backend, timeout)
+    return await LocalClient.create(
+        cluster, backend, cluster.execution_backend, timeout
+    )
 
 
 async def new_cluster(
@@ -179,6 +181,14 @@ class LocalCluster:
         self._exiting_check_task = None
 
     @property
+    def execution_backend(self):
+        return (
+            self._config.get("task", {})
+            .get("task_executor_config", {})
+            .get("backend", "mars")
+        )
+
+    @property
     def external_address(self):
         return self._supervisor_pool.external_address
 
@@ -268,11 +278,19 @@ class LocalClient:
 
     @classmethod
     async def create(
-        cls, cluster: LocalCluster, backend: str = None, timeout: float = None
+        cls,
+        cluster: LocalCluster,
+        backend: str = None,
+        execution_backend: str = None,
+        timeout: float = None,
     ) -> ClientType:
         backend = backend or "oscar"
         session = await _new_session(
-            cluster.external_address, backend=backend, default=True, timeout=timeout
+            cluster.external_address,
+            backend=backend,
+            execution_backend=execution_backend,
+            default=True,
+            timeout=timeout,
         )
         client = LocalClient(cluster, session)
         session.client = client

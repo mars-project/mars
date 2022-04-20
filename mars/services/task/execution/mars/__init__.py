@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .executor import MarsTaskExecutor
+from .fetcher import MarsFetcher

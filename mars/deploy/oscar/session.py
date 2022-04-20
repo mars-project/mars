@@ -765,6 +765,7 @@ class _IsolatedSession(AbstractAsyncSession):
         self,
         address: str,
         session_id: str,
+        execution_backend: str,
         session_api: AbstractSessionAPI,
         meta_api: AbstractMetaAPI,
         lifecycle_api: AbstractLifecycleAPI,
@@ -777,6 +778,7 @@ class _IsolatedSession(AbstractAsyncSession):
         request_rewriter: Callable = None,
     ):
         super().__init__(address, session_id)
+        self._execution_backend = execution_backend
         self._session_api = session_api
         self._task_api = task_api
         self._meta_api = meta_api
@@ -802,7 +804,12 @@ class _IsolatedSession(AbstractAsyncSession):
 
     @classmethod
     async def _init(
-        cls, address: str, session_id: str, new: bool = True, timeout: float = None
+        cls,
+        address: str,
+        session_id: str,
+        execution_backend: str,
+        new: bool = True,
+        timeout: float = None,
     ):
         session_api = await SessionAPI.create(address)
         if new:
@@ -822,6 +829,7 @@ class _IsolatedSession(AbstractAsyncSession):
         return cls(
             address,
             session_id,
+            execution_backend,
             session_api,
             meta_api,
             lifecycle_api,
@@ -844,6 +852,7 @@ class _IsolatedSession(AbstractAsyncSession):
     ) -> "AbstractAsyncSession":
         init_local = kwargs.pop("init_local", False)
         request_rewriter = kwargs.pop("request_rewriter", None)
+        execution_backend = kwargs.pop("execution_backend", "mars")
         if init_local:
             from .local import new_cluster_in_isolation
 
@@ -864,9 +873,16 @@ class _IsolatedSession(AbstractAsyncSession):
                 new=new,
                 timeout=timeout,
                 request_rewriter=request_rewriter,
+                execution_backend=execution_backend,
             )
         else:
-            return await cls._init(address, session_id, new=new, timeout=timeout)
+            return await cls._init(
+                address,
+                session_id,
+                new=new,
+                timeout=timeout,
+                execution_backend=execution_backend,
+            )
 
     async def _update_progress(self, task_id: str, progress: Progress):
         zero_acc_time = 0
@@ -1086,6 +1102,10 @@ class _IsolatedSession(AbstractAsyncSession):
             unexpected_keys = ", ".join(list(kwargs.keys()))
             raise TypeError(f"`fetch` got unexpected arguments: {unexpected_keys}")
 
+        fetcher = Fetcher.create(
+            self._execution_backend, get_storage_api=self._get_storage_api
+        )
+
         with enter_mode(build=True):
             chunks = []
             get_chunk_metas = []
@@ -1102,9 +1122,8 @@ class _IsolatedSession(AbstractAsyncSession):
                     chunks.append(chunk)
                     get_chunk_metas.append(
                         self._meta_api.get_chunk_meta.delay(
-                            # TODO(fyrestone): Get required fields from fetcher type.
                             chunk.key,
-                            fields=["fetcher", "bands", "object_refs"],
+                            fields=fetcher.required_meta_keys,
                         )
                     )
                     indexes = (
@@ -1114,43 +1133,17 @@ class _IsolatedSession(AbstractAsyncSession):
                         ChunkFetchInfo(tileable=tileable, chunk=chunk, indexes=indexes)
                     )
                 fetch_infos_list.append(fetch_infos)
-            chunk_metas = await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
-            fetcher = chunk_metas[0]["fetcher"]
-            if fetcher is None:
-                chunk_to_band = {
-                    chunk: meta["bands"][0] for chunk, meta in zip(chunks, chunk_metas)
-                }
 
-                storage_api_to_gets = defaultdict(list)
-                storage_api_to_fetch_infos = defaultdict(list)
-                for fetch_info in itertools.chain(*fetch_infos_list):
-                    conditions = fetch_info.indexes
-                    chunk = fetch_info.chunk
-                    band = chunk_to_band[chunk]
-                    storage_api = await self._get_storage_api(band)
-                    storage_api_to_gets[storage_api].append(
-                        storage_api.get.delay(chunk.key, conditions=conditions)
-                    )
-                    storage_api_to_fetch_infos[storage_api].append(fetch_info)
-                for storage_api in storage_api_to_gets:
-                    fetched_data = await storage_api.get.batch(
-                        *storage_api_to_gets[storage_api]
-                    )
-                    infos = storage_api_to_fetch_infos[storage_api]
-                    for info, data in zip(infos, fetched_data):
-                        info.data = data
-            else:
-                fetcher_list = [
-                    Fetcher.create(meta).get(conditions=fetch_info.indexes)
-                    for fetch_info, meta in zip(
-                        itertools.chain(*fetch_infos_list), chunk_metas
-                    )
-                ]
-                results = await asyncio.gather(*fetcher_list)
-                for fetch_info, data in zip(
-                    itertools.chain(*fetch_infos_list), results
-                ):
-                    fetch_info.data = data
+            chunk_metas = await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
+            for chunk, meta, fetch_info in zip(
+                chunks, chunk_metas, itertools.chain(*fetch_infos_list)
+            ):
+                await fetcher.append(chunk.key, meta, fetch_info.indexes)
+            fetched_data = await fetcher.get()
+            for fetch_info, data in zip(
+                itertools.chain(*fetch_infos_list), fetched_data
+            ):
+                fetch_info.data = data
 
             result = []
             for tileable, fetch_infos in zip(tileables, fetch_infos_list):
@@ -1337,6 +1330,7 @@ class _IsolatedWebSession(_IsolatedSession):
         cls,
         address: str,
         session_id: str,
+        execution_backend: str,
         new: bool = True,
         timeout: float = None,
         request_rewriter: Callable = None,
@@ -1370,6 +1364,7 @@ class _IsolatedWebSession(_IsolatedSession):
             None,
             timeout=timeout,
             request_rewriter=request_rewriter,
+            execution_backend=execution_backend,
         )
 
     async def get_web_endpoint(self) -> Optional[str]:

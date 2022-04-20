@@ -105,21 +105,27 @@ def register_executor_cls(executor_cls: Type[TaskExecutor]):
 
 
 class Fetcher:
+    """The data fetcher for execution backends."""
+
     name = None
+    required_meta_keys = ()  # The required meta keys.
 
     @abstractmethod
-    def __init__(self, meta: Dict, **kwargs):
+    def __init__(self, **kwargs):
         pass
 
     @abstractmethod
-    async def get(self, conditions: List = None):
-        pass
+    async def append(self, chunk_key: str, chunk_meta: Dict, conditions: List = None):
+        """Append chunk key and related infos."""
+
+    @abstractmethod
+    async def get(self):
+        """Get all the data of appended chunk keys."""
 
     @classmethod
-    def create(cls, meta: Dict, **kwargs) -> "Fetcher":
-        name = meta["fetcher"]
-        fetcher_cls = _name_to_fetcher_cls[name]
-        return fetcher_cls(meta, **kwargs)
+    def create(cls, backend: str, **kwargs) -> "Fetcher":
+        fetcher_cls = _name_to_fetcher_cls[backend]
+        return fetcher_cls(**kwargs)
 
 
 _name_to_fetcher_cls: Dict[str, Type[Fetcher]] = {}
