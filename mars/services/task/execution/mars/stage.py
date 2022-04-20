@@ -225,7 +225,7 @@ class TaskStageProcessor:
             # no subtask to schedule, set status to done
             self._schedule_done()
             self.result.status = TaskStatus.terminated
-            return []
+            return {}
 
         # schedule independent subtasks
         indep_subtasks = list(self.subtask_graph.iter_indep())
