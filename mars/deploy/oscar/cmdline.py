@@ -26,20 +26,12 @@ from typing import List
 
 import psutil
 
+from ...utils import ensure_coverage
 from ..utils import load_service_config_file, get_third_party_modules_from_config
 
 logger = logging.getLogger(__name__)
-
 _is_windows: bool = sys.platform.startswith("win")
-
-# make sure coverage is handled when starting with subprocess.Popen
-if not _is_windows and "COV_CORE_SOURCE" in os.environ:  # pragma: no cover
-    try:
-        from pytest_cov.embed import cleanup_on_sigterm
-    except ImportError:
-        pass
-    else:
-        cleanup_on_sigterm()
+ensure_coverage()
 
 
 class OscarCommandRunner:

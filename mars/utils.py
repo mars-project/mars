@@ -1654,3 +1654,17 @@ class TreeReductionBuilder:
         if len(inputs) == 1:
             return inputs[0]
         return self._build_reduction(inputs, final=True)
+
+
+_is_windows: bool = sys.platform.startswith("win")
+
+
+def ensure_coverage():
+    # make sure coverage is handled when starting with subprocess.Popen
+    if not _is_windows and "COV_CORE_SOURCE" in os.environ:  # pragma: no cover
+        try:
+            from pytest_cov.embed import cleanup_on_sigterm
+        except ImportError:
+            pass
+        else:
+            cleanup_on_sigterm()
