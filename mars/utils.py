@@ -519,7 +519,14 @@ def build_fetch_chunk(
         # for non-shuffle nodes, we build Fetch chunks
         # to replace original chunk
         op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse, gpu=chunk.op.gpu)
-    return op.new_chunk(None, kws=[params], _key=chunk.key, _id=chunk.id, **kwargs)
+    return op.new_chunk(
+        None,
+        is_broadcaster=chunk.is_broadcaster,
+        kws=[params],
+        _key=chunk.key,
+        _id=chunk.id,
+        **kwargs,
+    )
 
 
 def build_fetch_tileable(tileable: TileableType) -> TileableType:
