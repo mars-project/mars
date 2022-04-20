@@ -45,9 +45,9 @@ logger = logging.getLogger(__name__)
 
 
 def execute_subtask_chunk_graph(
-    stage_id: str, chunk_graph, output_meta_keys: Set[str], keys: List[str], *inputs
+    subtask_id: str, chunk_graph, output_meta_keys: Set[str], keys: List[str], *inputs
 ):
-    logger.info("Begin to execute stage: %s", stage_id)
+    logger.info("Begin to execute subtask: %s", subtask_id)
     ensure_coverage()
     chunk_graph = deserialize(*chunk_graph)
     # inputs = [i[1] for i in inputs]
@@ -69,7 +69,7 @@ def execute_subtask_chunk_graph(
             output_meta[chunk.key] = get_chunk_params(chunk)
     assert len(output_meta_keys) == len(output_meta)
 
-    logger.info("Finish executing stage: %s", stage_id)
+    logger.info("Finish executing subtask: %s", subtask_id)
     has_meta = bool(output_meta_keys)
     if len(output) + has_meta == 1:
         return next(iter(output.values()))
@@ -149,13 +149,8 @@ class RayTaskExecutor(TaskExecutor):
         context = self._task_context  # TODO(fyrestone): Load context from meta service.
         output_meta_object_refs = []
 
-        key_to_result_chunks = {}
-        for chunk in chunk_graph.result_chunks:
-            if isinstance(chunk.op, Fuse):
-                chunk = chunk.chunk
-            key_to_result_chunks[chunk.key] = chunk
-
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
+        result_keys = {chunk.key for chunk in chunk_graph.result_chunks}
         for subtask in subtask_graph.topological_iter():
             subtask_chunk_graph = subtask.chunk_graph
             chunk_key_to_data_keys = get_chunk_key_to_data_keys(subtask_chunk_graph)
@@ -166,12 +161,12 @@ class RayTaskExecutor(TaskExecutor):
                 )
             }
             output_keys = self._get_output_keys(subtask_chunk_graph)
-            output_meta_keys = key_to_result_chunks & output_keys
+            output_meta_keys = result_keys & output_keys
             output_count = len(output_keys) + bool(output_meta_keys)
             output_object_refs = self._ray_executor.options(
                 num_returns=output_count
             ).remote(
-                stage_id,
+                subtask.subtask_id,
                 serialize(subtask_chunk_graph),
                 output_meta_keys,
                 list(key_to_input.keys()),
@@ -189,7 +184,7 @@ class RayTaskExecutor(TaskExecutor):
 
         assert len(output_meta_object_refs) > 0
         key_to_meta = {}
-        meta_list = ray.get(output_meta_object_refs)
+        meta_list = await asyncio.gather(*output_meta_object_refs)
         for meta in meta_list:
             key_to_meta.update(meta)
         assert len(key_to_meta) == len(chunk_graph.result_chunks)
