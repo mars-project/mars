@@ -816,8 +816,15 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             return cls._combine_tree(op, chunks + left_chunks, out_df, func_infos)
         else:
             # otherwise, use shuffle
+            pivot_chunk = None
+            if op.groupby_params['sort'] and len(in_df.chunks) > 1:
+                out_idx = (0,) if in_df.ndim == 2 else (),
+                agg_chunk_len = len(chunks + left_chunks)
+                sample_chunks = cls._sample_chunks(op, chunks + left_chunks)
+                pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, out_idx, agg_chunk_len)
+
             return cls._perform_shuffle(
-                op, chunks + left_chunks, in_df, out_df, func_infos
+                op, chunks + left_chunks, in_df, out_df, func_infos, pivot_chunk
             )
 
     @classmethod

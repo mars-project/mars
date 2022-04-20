@@ -47,7 +47,9 @@ class DataFrameGroupbyConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMix
         a = xdf.concat(inputs, axis=0)
         # a = a.reset_index(level=[op.by])[op.by]
         a = a.sort_index()
+        # print("a " + str(a))
         index = a.index.drop_duplicates()
+        # print("index " + str(index))
 
         p = len(inputs)
         if len(index) < p:
@@ -56,12 +58,17 @@ class DataFrameGroupbyConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMix
         # assert a.shape[op.axis] == p * len(op.inputs)
 
         index = index.sort_values()
+        # print("index " + str(index))
 
         values = index.values
+        # print("values " + str(values))
+
         slc = np.linspace(
             p - 1, len(index) - 1, num=len(op.inputs) - 1, endpoint=False
         ).astype(int)
+        # print("slc " + str(slc))
         out = values[slc]
+        # print(out)
         ctx[op.outputs[-1].key] = out
 
 class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixin):
@@ -117,6 +124,7 @@ class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixi
         ).astype(int)
 
         out = a.iloc[slc]
+        # print(out)
 
         ctx[op.outputs[-1].key] = out
 
@@ -232,12 +240,22 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
 
         def _get_out_df(p_index, in_df):
             if p_index == 0:
-                out_df = in_df.loc[:pivots[p_index]].iloc[:-1]
+                if pivots[p_index] in in_df.index.values:
+                    out_df = in_df.loc[:pivots[p_index]].iloc[:-1]
+                else:
+                    out_df = in_df.loc[:pivots[p_index]]
+                    # print("here " + str(out_df))
             elif p_index == op.n_partition - 1:
                 out_df = in_df.loc[pivots[p_index-1]:]
             else:
-                out_df = in_df.loc[pivots[p_index - 1]:pivots[p_index]].iloc[:-1]
+                if pivots[p_index] in in_df.index.values:
+                    out_df = in_df.loc[pivots[p_index - 1]:pivots[p_index]].iloc[:-1]
+                else:
+                    out_df = in_df.loc[pivots[p_index - 1]:pivots[p_index]]
+                    # print("here " + str(out_df))
             return out_df
+
+        # print("index " + str(out.key) + " " + str(df))
 
         for i in range(op.n_partition):
             index = (i, 0)
@@ -245,6 +263,7 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
                 out_df = tuple(_get_out_df(i, x) for x in df)
             else:
                 out_df = _get_out_df(i, df)
+            # print("index " + str(out.key) + " " + str(index) + " out df " + str(out_df))
             ctx[out.key, index] = out_df
 
 
