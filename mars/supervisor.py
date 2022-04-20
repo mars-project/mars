@@ -16,7 +16,9 @@
 # python -m mars.supervisor
 
 from .deploy.oscar.supervisor import main
+from .utils import ensure_coverage
 
 
 if __name__ == "__main__":
+    ensure_coverage()
     main()

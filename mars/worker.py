@@ -16,7 +16,9 @@
 # python -m mars.worker
 
 from .deploy.oscar.worker import main
+from .utils import ensure_coverage
 
 
 if __name__ == "__main__":
+    ensure_coverage()
     main()

@@ -85,8 +85,8 @@ async def test_cluster():
         sess2 = new_session(web_addr, session_id=sess.session_id)
         sess2.close()
     finally:
-        r.kill()
-        w.kill()
+        r.terminate()
+        w.terminate()
 
     # test stderr
     out = r.communicate()[1].decode()
