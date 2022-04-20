@@ -27,7 +27,12 @@ from .....optimization.physical import optimize
 from .....resource import Resource
 from .....serialization import serialize, deserialize
 from .....typing import BandType, TileableType
-from .....utils import lazy_import, get_chunk_params, get_chunk_key_to_data_keys
+from .....utils import (
+    lazy_import,
+    get_chunk_params,
+    get_chunk_key_to_data_keys,
+    ensure_coverage,
+)
 from ....cluster.api import ClusterAPI
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
@@ -43,6 +48,7 @@ def execute_subtask_chunk_graph(
     stage_id: str, chunk_graph, output_meta_keys: Set[str], keys: List[str], *inputs
 ):
     logger.info("Begin to execute stage: %s", stage_id)
+    ensure_coverage()
     chunk_graph = deserialize(*chunk_graph)
     # inputs = [i[1] for i in inputs]
     context = dict(zip(keys, inputs))
