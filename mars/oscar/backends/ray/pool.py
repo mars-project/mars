@@ -26,13 +26,9 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional
 
-from .communication import ChannelID, RayServer, RayChannelException
-from .utils import (
-    process_address_to_placement,
-    process_placement_to_address,
-    get_placement_group,
-    kill_and_wait,
-)
+from ... import ServerClosed
+from ....serialization.ray import register_ray_serializers
+from ....utils import lazy_import, ensure_coverage
 from ..config import ActorPoolConfig
 from ..message import CreateActorMessage
 from ..pool import (
@@ -43,13 +39,17 @@ from ..pool import (
     _register_message_handler,
 )
 from ..router import Router
-from ... import ServerClosed
-from ....serialization.ray import register_ray_serializers
-from ....utils import lazy_import
+from .communication import ChannelID, RayServer, RayChannelException
+from .utils import (
+    process_address_to_placement,
+    process_placement_to_address,
+    get_placement_group,
+    kill_and_wait,
+)
+
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
-_is_windows: bool = sys.platform.startswith("win")
 
 
 class RayPoolState(Enum):
@@ -204,18 +204,8 @@ class RayPoolBase(ABC):
     _state: RayPoolState = RayPoolState.INIT
 
     def __new__(cls, *args, **kwargs):
-        if not _is_windows:
-            try:
-                if (
-                    "COV_CORE_SOURCE" in os.environ
-                    and threading.current_thread() is threading.main_thread()
-                ):  # pragma: no branch
-                    # register coverage hooks on SIGTERM
-                    from pytest_cov.embed import cleanup_on_sigterm
-
-                    cleanup_on_sigterm()
-            except ImportError:  # pragma: no cover
-                pass
+        if threading.current_thread() is threading.main_thread():
+            ensure_coverage()
         return super().__new__(cls, *args, **kwargs)
 
     def __init__(self):

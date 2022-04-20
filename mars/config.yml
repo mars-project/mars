@@ -1,1 +1,1 @@
-"@inherits": "@mars/deploy/oscar/base_config.yml"
+"@inherits": "@mars/deploy/oscar/config.yml"
