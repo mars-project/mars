@@ -618,6 +618,12 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             if op.how == "inner" and op.bloom_filter:
                 if has_unknown_shape(left, right):
                     yield left.chunks + right.chunks
+                small_one = right if len(left.chunks) > right.chunks else left
+                logger.debug(
+                    "Apply bloom filter for operand %s, use DataFrame %s to build bloom filter.",
+                    op,
+                    small_one,
+                )
                 left, right = yield from recursive_tile(
                     *cls._apply_bloom_filter(left, right, left_on, right_on, op)
                 )
@@ -629,6 +635,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             if op.method == "auto":
                 # if method is auto, select new method after auto merge
                 method = cls._choose_merge_method(op, left, right)
+        logger.debug("Choose %s method for merge operand %s", method, op)
         if method == MergeMethod.one_chunk:
             ret = cls._tile_one_chunk(op, left, right)
         elif method == MergeMethod.broadcast:
