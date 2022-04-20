@@ -148,7 +148,7 @@ jobs:
 
         # special check for __init__.py
         grep -A 10000 '\[flake8\]' setup.cfg | awk '!/(F401|F811|__init__\.py)/' > flake8_init.ini
-        flake8 --config=flake8_init.ini
+        flake8 mars --config=flake8_init.ini
 
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 mars --config="default" --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
