@@ -18,7 +18,7 @@ import inspect
 import sys
 from cpython cimport PyObject
 from functools import partial, wraps
-from libc.stdint cimport uint32_t, int64_t, uintptr_t
+from libc.stdint cimport uint32_t, int64_t, uint64_t, uintptr_t
 from typing import Any, Dict, List
 
 import numpy as np
@@ -150,7 +150,10 @@ cdef class Serializer:
             # inherited serializer_id not acceptable
             cls.serializer_id = cls.calc_default_serializer_id()
         _serial_dispatcher.register(obj_type, inst)
-        _deserializers[cls.serializer_id] = inst
+        if _deserializers.get(cls.serializer_id) is not None:
+            assert type(_deserializers[cls.serializer_id]) is cls
+        else:
+            _deserializers[cls.serializer_id] = inst
 
     @classmethod
     def unregister(cls, obj_type):
@@ -158,13 +161,17 @@ cdef class Serializer:
         _deserializers.pop(cls.serializer_id, None)
 
 
-cdef inline uint32_t _short_id(object obj) nogil:
+# we use address of sys module to reduce computed short_id() value
+cdef uint64_t _base_id = <uintptr_t><PyObject*>sys
+
+
+cdef inline uint64_t _short_id(object obj) nogil:
     cdef void* ptr = <PyObject*>obj
-    return (<uintptr_t>ptr) & <uint32_t>0xffffffff
+    return <uintptr_t>ptr - _base_id
 
 
 def short_id(obj):
-    """Short representation of id() used for serialization"""
+    """Shorter representation of id() used for serialization"""
     return _short_id(obj)
 
 
@@ -174,7 +181,7 @@ def buffered(func):
     """
     @wraps(func)
     def wrapped(self, obj: Any, dict context):
-        cdef uint32_t short_id = _short_id(obj)
+        cdef uint64_t short_id = _short_id(obj)
         if short_id in context:
             return Placeholder(_short_id(obj))
         else:
@@ -224,7 +231,7 @@ cdef class PickleSerializer(Serializer):
     serializer_id = 0
 
     cpdef serial(self, obj: Any, dict context):
-        cdef uint32_t obj_id
+        cdef uint64_t obj_id
         obj_id = _short_id(obj)
         if obj_id in context:
             return Placeholder(obj_id)
@@ -266,7 +273,7 @@ cdef class BytesSerializer(Serializer):
     serializer_id = 2
 
     cpdef serial(self, obj: Any, dict context):
-        cdef uint32_t obj_id
+        cdef uint64_t obj_id
         obj_id = _short_id(obj)
         if obj_id in context:
             return Placeholder(obj_id)
@@ -282,7 +289,7 @@ cdef class StrSerializer(Serializer):
     serializer_id = 3
 
     cpdef serial(self, obj: Any, dict context):
-        cdef uint32_t obj_id
+        cdef uint64_t obj_id
         obj_id = _short_id(obj)
         if obj_id in context:
             return Placeholder(obj_id)
@@ -330,7 +337,7 @@ cdef class CollectionSerializer(Serializer):
         return (obj_list, idx_to_propagate, obj_type), obj_to_propagate, False
 
     cpdef serial(self, obj: Any, dict context):
-        cdef uint32_t obj_id
+        cdef uint64_t obj_id
         obj_id = _short_id(obj)
         if obj_id in context:
             return Placeholder(obj_id)
@@ -402,7 +409,7 @@ cdef class DictSerializer(CollectionSerializer):
     _inspected_inherits = set()
 
     cpdef serial(self, obj: Any, dict context):
-        cdef uint32_t obj_id
+        cdef uint64_t obj_id
         cdef tuple key_obj, value_obj
         cdef list key_bufs, value_bufs
 
@@ -481,10 +488,10 @@ cdef class Placeholder:
     The object records object identifier and keeps callbacks
     to replace itself in parent objects.
     """
-    cdef public uint32_t id
+    cdef public uint64_t id
     cdef public list callbacks
 
-    def __init__(self, uint32_t id_):
+    def __init__(self, uint64_t id_):
         self.id = id_
         self.callbacks = []
 
@@ -544,7 +551,7 @@ cdef int _COMMON_HEADER_LEN = 4
 
 cdef tuple _serial_single(obj, dict context):
     """Serialize single object and return serialized tuples"""
-    cdef uint32_t obj_id
+    cdef uint64_t obj_id
     cdef Serializer serializer
     cdef tuple common_header, serialized
 
@@ -579,7 +586,7 @@ class _SerializeObjectOverflow(Exception):
         self.num_total_serialized = num_total_serialized
 
 
-cpdef object _serialize_context(
+cpdef object _serialize_with_stack(
     list serial_stack,
     tuple serialized,
     dict context,
@@ -668,7 +675,7 @@ def serialize(obj, dict context = None):
         return ({}, serialized), subs
 
     serial_stack.append(_SerialStackItem(serialized, subs))
-    return _serialize_context(
+    return _serialize_with_stack(
         serial_stack, None, context, result_bufs_list
     )
 
@@ -712,13 +719,13 @@ async def serialize_with_spawn(
     serial_stack.append(_SerialStackItem(serialized, subs))
 
     try:
-        result = _serialize_context(
+        result = _serialize_with_stack(
             serial_stack, None, context, result_bufs_list, spawn_threshold
         )
     except _SerializeObjectOverflow as ex:
         result = await asyncio.get_running_loop().run_in_executor(
             executor,
-            _serialize_context,
+            _serialize_with_stack,
             serial_stack,
             ex.cur_serialized,
             context,
