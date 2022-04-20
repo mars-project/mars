@@ -618,7 +618,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             if op.how == "inner" and op.bloom_filter:
                 if has_unknown_shape(left, right):
                     yield left.chunks + right.chunks
-                small_one = right if len(left.chunks) > right.chunks else left
+                small_one = right if len(left.chunks) > len(right.chunks) else left
                 logger.debug(
                     "Apply bloom filter for operand %s, use DataFrame %s to build bloom filter.",
                     op,
