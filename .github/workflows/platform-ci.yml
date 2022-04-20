@@ -92,7 +92,7 @@ jobs:
             fi
             if [ -n "$WITH_RAY" ]; then
               pip install ray[default]==1.9.2
-              pip install xgboost_ray==0.1.5 xgboost<1.6.0
+              pip install "xgboost_ray==0.1.5" "xgboost<1.6.0"
             fi
             if [ -n "$RUN_DASK" ]; then
               pip install dask[complete] mimesis sklearn
