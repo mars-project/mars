@@ -285,10 +285,7 @@ class TaskStageProcessor:
         for tileable in tile_context.values():
             chunks = [c.data for c in tileable.chunks]
             for c, params_fields in zip(chunks, self._get_params_fields(tileable)):
-                try:
-                    address = chunk_to_result[c].meta["bands"][0][0]
-                except KeyError:
-                    print(tileable)
+                address = chunk_to_result[c].meta["bands"][0][0]
                 meta_api = await WorkerMetaAPI.create(session_id, address)
                 call = meta_api.get_chunk_meta.delay(c.key, fields=params_fields)
                 worker_meta_api_to_chunk_delays[meta_api][c] = call
