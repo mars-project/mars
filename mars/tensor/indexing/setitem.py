@@ -276,6 +276,19 @@ class TensorIndexSetValue(TensorMapReduceOperand, TensorOperandMixin):
         input_[tuple(indexes)] = value
         ctx[op.outputs[0].key] = input_
 
+    def get_output_data_keys(self):
+        if self.stage == OperandStage.map:
+            nsplits = self.input_nsplits
+            output_key = self.outputs[0].key
+            return [
+                (output_key, reducer_index)
+                for reducer_index in itertools.product(
+                    *(map(range, [len(s) for s in nsplits]))
+                )
+            ]
+        else:
+            return super().get_output_data_keys()
+
     @classmethod
     def _execute_map(cls, ctx, op):
         nsplits = op.input_nsplits

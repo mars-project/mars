@@ -280,6 +280,60 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
                 kw["name"] = inputs[0].inputs[0].name
         return kw
 
+    def get_output_data_keys(self):
+        out = self.outputs[0]
+        filters = [None, None]
+
+        if self.index_shuffle_size == -1:
+            # no shuffle and no min-max filter on index
+            filters[0] = 1
+        elif self.index_shuffle_size is None:
+            # no shuffle on index
+            filters[0] = 1
+        else:
+            # shuffle on index
+            filters[0] = self.index_shuffle_size
+
+        if out.ndim == 1:
+            if filters[0] == 1:
+                # no shuffle
+                return [out.key]
+            else:
+                return [(out.key, (index_idx,)) for index_idx in range(filters[0])]
+
+        if self.column_shuffle_size == -1:
+            # no shuffle and no min-max filter on columns
+            filters[1] = 1
+        elif self.column_shuffle_size is None:
+            # no shuffle on columns
+            filters[1] = 1
+        else:
+            # shuffle on columns
+            filters[1] = self.column_shuffle_size
+
+        if all(it == 1 for it in filters):
+            # no shuffle
+            return [out.key]
+        elif filters[0] == 1:
+            # shuffle on columns
+            return [
+                (out.key, (out.index[0], column_idx))
+                for column_idx in range(filters[1])
+            ]
+        elif filters[1] == 1:
+            # shuffle on index
+            return [
+                (out.key, (index_idx, out.index[1])) for index_idx in range(filters[0])
+            ]
+        else:
+            # full shuffle
+            shuffle_index_size = self.index_shuffle_size
+            shuffle_column_size = self.column_shuffle_size
+            out_idxes = itertools.product(
+                range(shuffle_index_size), range(shuffle_column_size)
+            )
+            return [(out.key, out_idx) for out_idx in out_idxes]
+
     @classmethod
     def execute_map(cls, ctx, op):
         # TODO(QIN): add GPU support here
@@ -315,7 +369,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
         if op.column_shuffle_size == -1:
             # no shuffle and no min-max filter on columns
             filters[1].append(slice(None, None, None))
-        if op.column_shuffle_size is None:
+        elif op.column_shuffle_size is None:
             # no shuffle on columns
             comp_op = operator.ge if op.column_min_close else operator.gt
             columns_cond = comp_op(df.columns, op.column_min)

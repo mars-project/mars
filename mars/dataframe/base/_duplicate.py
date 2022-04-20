@@ -391,6 +391,23 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
         ret.reset_index(drop=True, inplace=True)
         ctx[op.outputs[0].key] = ret
 
+    def get_output_data_keys(self):
+        method = self.method
+        if method is not None:
+            if self.stage == OperandStage.map:
+                if method == "tree":
+                    return [self.outputs[0].key]
+                elif method == "subset_tree":
+                    return [self.outputs[0].key]
+                else:
+                    assert method == "shuffle"
+                    out = self.outputs[0]
+                    shuffle_size = self.shuffle_size
+                    return [
+                        (out.key, (i,) + out.index[1:]) for i in range(shuffle_size)
+                    ]
+        return super().get_output_data_keys()
+
 
 def validate_subset(df, subset):
     if subset is None:

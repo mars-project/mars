@@ -861,6 +861,7 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
             tileable.chunk_shape[info.input_axis] for info in fancy_index_infos
         )
         fancy_indexes = [info.shape_unified_index for info in fancy_index_infos]
+        fancy_shuffle_size = np.prod(fancy_indexes[0].chunk_shape)
 
         concat_index_to_chunks = dict()
         for chunk in chunks:
@@ -873,6 +874,7 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
             concat_map_op = FancyIndexingConcat(
                 stage=OperandStage.map,
                 fancy_index_axis=to_concat_axis,
+                fancy_shuffle_size=fancy_shuffle_size,
                 sparse=chunk.issparse(),
                 dtype=chunk.dtype,
             )

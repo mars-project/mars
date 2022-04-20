@@ -344,6 +344,21 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
         params["chunks"] = out_chunks
         return new_op.new_tileables(new_inputs, **params)
 
+    def get_output_data_keys(self):
+        if self.stage == OperandStage.map:
+            is_dataframe_obj = self.is_dataframe_obj
+            chunk = self.outputs[0]
+            output = []
+            for index_idx in range(self.shuffle_size):
+                if is_dataframe_obj:
+                    reducer_index = (index_idx, chunk.index[1])
+                else:
+                    reducer_index = (index_idx,)
+                output.append((chunk.key, reducer_index))
+            return output
+        else:
+            return super().get_output_data_keys()
+
     @classmethod
     def execute_map(cls, ctx, op):
         is_dataframe_obj = op.is_dataframe_obj

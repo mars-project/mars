@@ -77,7 +77,7 @@ def execute_subtask(
         for chunk in subtask_chunk_graph.result_chunks:
             if chunk.key in output_meta_keys:
                 if isinstance(chunk.op, Fuse):
-                    # fuse op
+                    # fuse op for numexpr optimization.
                     chunk = chunk.chunk
                 output_meta[chunk.key] = get_chunk_params(chunk)
         assert len(output_meta_keys) == len(output_meta)
@@ -298,10 +298,12 @@ class RayTaskExecutor(TaskExecutor):
             if isinstance(chunk.op, VirtualOperand):
                 continue
             elif isinstance(chunk.op, MapReduceOperand):
-                # TODO(fyrestone): Handle shuffle operands.
-                raise NotImplementedError(
-                    "The shuffle operands are not supported by the ray executor."
-                )
+                keys = chunk.op.get_output_data_keys()
+                if keys is None:
+                    output_keys[chunk.key] = 1
+                else:
+                    for k in keys:
+                        output_keys[k] = 1
             else:
                 output_keys[chunk.key] = 1
         return output_keys.keys()

@@ -300,6 +300,13 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
         else:
             return cls._tile_chunks(op, in_tensor, w, v, vi)
 
+    def get_output_data_keys(self):
+        if self.stage == OperandStage.map:
+            out = self.outputs[0]
+            return [(out.key, (i,)) for i in range(len(self.out_sizes))]
+        else:
+            return super().get_output_data_keys()
+
     @classmethod
     def _execute_map(cls, ctx, op):
         from scipy.spatial.distance import pdist, cdist

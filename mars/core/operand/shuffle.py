@@ -40,6 +40,9 @@ class MapReduceOperand(Operand):
 
         return super()._new_chunks(inputs, kws, **kw)
 
+    def get_output_data_keys(self):
+        return None
+
     def get_dependent_data_keys(self):
         from .fetch import FetchShuffle
 

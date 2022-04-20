@@ -290,6 +290,15 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
         else:
             return (yield from cls._tile_via_shuffle(op))
 
+    def get_output_data_keys(self):
+        if self.stage == OperandStage.map:
+            return [
+                (self.outputs[0].key, (reducer,))
+                for reducer in range(op.aggregate_size)
+            ]
+        else:
+            return super().get_output_data_keys()
+
     @classmethod
     def _execute_map(cls, ctx, op: "TensorUnique"):
         (ar,), device_id, xp = as_same_device(

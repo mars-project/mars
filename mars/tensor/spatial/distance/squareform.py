@@ -331,6 +331,23 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
             out_indices = to_indices[filtered] - cum_chunk_size[i]
             ctx[op.outputs[0].key, (i,)] = out_indices, x[filtered]
 
+    def get_output_data_keys(self):
+        if self.stage == OperandStage.map:
+            x = self.inputs[0]
+            out_chunk_size = self.reduce_sizes
+            output_key = self.outputs[0].key
+            if x.ndim == 1:
+                return [
+                    (output_key, idx)
+                    for idx in itertools.product(
+                        *(range(len(ns)) for ns in out_chunk_size)
+                    )
+                ]
+            else:
+                return [(output_key, (i,)) for i in range(len(out_chunk_size[0]))]
+        else:
+            return super().get_output_data_keys()
+
     @classmethod
     def _execute_map(cls, ctx, op):
         inputs, device_id, xp = as_same_device(

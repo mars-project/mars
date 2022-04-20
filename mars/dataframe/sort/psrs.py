@@ -658,6 +658,13 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
             values = a.iloc[poses[i] : poses[i + 1]]
             ctx[out.key, (i,)] = values
 
+    def get_output_data_keys(self):
+        if self.stage == OperandStage.map:
+            out = self.outputs[0]
+            return [(out.key, (i,)) for i in range(self.n_partition)]
+        else:
+            return super().get_output_data_keys()
+
     @classmethod
     def _execute_map(cls, ctx, op):
         a = [ctx[c.key] for c in op.inputs][0]

@@ -154,6 +154,22 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
             nsplits=nsplits,
         )
 
+    def get_output_data_keys(self):
+        if self.stage == OperandStage.map:
+            out_chunk = self.outputs[0]
+            reduce_size = self.reduce_size
+            keys = []
+            for to_reduce_idx in range(reduce_size):
+                reduce_idx = (
+                    out_chunk.index[: self.axis]
+                    + (to_reduce_idx,)
+                    + out_chunk.index[self.axis + 1 :]
+                )
+                keys.append((out_chunk.key, reduce_idx))
+            return keys
+        else:
+            return super().get_output_data_keys()
+
     @classmethod
     def _execute_map(cls, ctx, op):
         (x,), device_id, xp = as_same_device(

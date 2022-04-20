@@ -15,6 +15,7 @@
 from typing import Any, Dict
 
 from .....core import OperandType
+from .....core.operand.shuffle import MapReduceOperand
 from .....tests.core import _check_args, ObjectCheckMixin
 from ...worker.processor import SubtaskProcessor
 
@@ -67,7 +68,16 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
         self._storage_api = CheckStorageAPI(self._storage_api)
 
     def _execute_operand(self, ctx: Dict[str, Any], op: OperandType):
+        output_data_keys = (
+            op.get_output_data_keys() if isinstance(op, MapReduceOperand) else None
+        )
         super()._execute_operand(ctx, op)
+        # Check the get_output_data_keys is correct.
+        if output_data_keys is not None:
+            new_keys = list(ctx.keys())[-len(output_data_keys) :]
+            assert (
+                new_keys == output_data_keys
+            ), f"\nexpect data keys: {new_keys}\noutput data keys: {output_data_keys}"
         if self._check_options.get("check_all", True):
             for out in op.outputs:
                 if out not in self._chunk_graph.result_chunks:

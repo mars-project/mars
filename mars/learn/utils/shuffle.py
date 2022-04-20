@@ -365,6 +365,28 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
 
         ctx[op.outputs[0].key] = conv(x)
 
+    def get_output_data_keys(self):
+        if self.stage == OperandStage.map:
+            out = self.outputs[0]
+            axes, reduce_sizes = self.axes, self.reduce_sizes
+            extra_axes, extra_reduce_sizes = [], []
+            for ax, reduce_size in zip(axes, reduce_sizes):
+                if reduce_size == 1:
+                    continue
+                extra_axes.append(ax)
+                extra_reduce_sizes.append(reduce_size)
+            axes, reduce_sizes = extra_axes, extra_reduce_sizes
+
+            keys = []
+            for reduce_index in itertools.product(*(range(rs) for rs in reduce_sizes)):
+                index = list(out.index)
+                for ax, ind in zip(axes, reduce_index):
+                    index[ax] = ind
+                keys.append((out.key, tuple(index)))
+            return keys
+        else:
+            return super().get_output_data_keys()
+
     @classmethod
     def execute_map(cls, ctx, op):
         out = op.outputs[0]

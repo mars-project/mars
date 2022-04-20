@@ -563,6 +563,13 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
             return cls._tile_one_chunk(op, in_df, weights)
         return (yield from cls._tile_distributed(op, in_df, weights))
 
+    def get_output_data_keys(self):
+        if self.stage == OperandStage.map:
+            key = self.outputs[0].key
+            return [(key, (idx,)) for idx in range(len(self.input_nsplits))]
+        else:
+            return super().get_output_data_keys()
+
     @classmethod
     def execute(cls, ctx, op: "GroupBySample"):
         out_df = op.outputs[0]

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 from numbers import Integral
 
 import numpy as np
@@ -178,6 +179,18 @@ class FancyIndexingDistribute(TensorMapReduceOperand, TensorOperandMixin):
     def axes(self):
         return self._axes
 
+    def get_output_data_keys(self):
+        if self.stage == OperandStage.map:
+            nsplits = self.dest_nsplits
+            axes = self.axes
+            output_key = self.outputs[0].key
+            return [
+                (output_key, idx)
+                for idx in itertools.product(*(range(len(nsplits[ax])) for ax in axes))
+            ]
+        else:
+            return super().get_output_data_keys()
+
     @classmethod
     def _execute_map(cls, ctx, op):
         nsplits = op.dest_nsplits
@@ -241,11 +254,19 @@ class FancyIndexingConcat(TensorMapReduceOperand, TensorOperandMixin):
 
     _fancy_index_axis = Int32Field("fancy_index_axis")
     _fancy_index_shape = TupleField("fancy_index_shape", FieldTypes.int64)
+    _fancy_shuffle_size = Int32Field("fancy_shuffle_size")
 
-    def __init__(self, fancy_index_axis=None, fancy_index_shape=None, **kw):
+    def __init__(
+        self,
+        fancy_index_axis=None,
+        fancy_index_shape=None,
+        fancy_shuffle_size=None,
+        **kw
+    ):
         super().__init__(
             _fancy_index_axis=fancy_index_axis,
             _fancy_index_shape=fancy_index_shape,
+            _fancy_shuffle_size=fancy_shuffle_size,
             **kw
         )
 
@@ -260,6 +281,13 @@ class FancyIndexingConcat(TensorMapReduceOperand, TensorOperandMixin):
     @property
     def fancy_index_shape(self):
         return self._fancy_index_shape
+
+    def get_output_data_keys(self):
+        if self.stage == OperandStage.map:
+            key = self.outputs[0].key
+            return [(key, (i,)) for i in range(self._fancy_shuffle_size)]
+        else:
+            return super().get_output_data_keys()
 
     @classmethod
     def _execute_map(cls, ctx, op):

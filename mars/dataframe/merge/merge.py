@@ -80,6 +80,18 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
         super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
+    def get_output_data_keys(self):
+        if self.stage == OperandStage.map:
+            chunk = self.outputs[0]
+            chunk_index = chunk.index[1]
+            chunk_key = chunk.key
+            return [
+                (chunk_key, (index_idx, chunk_index))
+                for index_idx in range(self.index_shuffle_size)
+            ]
+        else:
+            return super().get_output_data_keys()
+
     @classmethod
     def execute_map(cls, ctx, op):
         chunk = op.outputs[0]

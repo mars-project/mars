@@ -460,6 +460,27 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
         result.sort()
         return result
 
+    @staticmethod
+    def _get_reducer_iter(op):
+        remains = op.n_estimators % op.n_reducers
+        reducer_iters = [
+            itertools.repeat(idx, 1 + op.n_estimators // op.n_reducers)
+            for idx in range(remains)
+        ]
+        reducer_iters += [
+            itertools.repeat(idx, op.n_estimators // op.n_reducers)
+            for idx in range(remains, op.n_reducers)
+        ]
+        return itertools.chain(*reducer_iters)
+
+    def get_output_data_keys(self):
+        if self.stage == OperandStage.map:
+            out_samples = self.outputs[0]
+            reducer_iter = self._get_reducer_iter(self)
+            return [(out_samples.key, (reducer_id, 0)) for reducer_id in reducer_iter]
+        else:
+            return super().get_output_data_keys()
+
     @classmethod
     def _execute_map(cls, ctx, op: "BaggingSample"):
         in_sample, in_labels, in_weights, _ = _extract_bagging_io(
@@ -470,16 +491,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
         in_weights_data = ctx[in_weights.key] if op.with_weights else None
         out_samples = op.outputs[0]
 
-        remains = op.n_estimators % op.n_reducers
-        reducer_iters = [
-            itertools.repeat(idx, 1 + op.n_estimators // op.n_reducers)
-            for idx in range(remains)
-        ]
-        reducer_iters += [
-            itertools.repeat(idx, op.n_estimators // op.n_reducers)
-            for idx in range(remains, op.n_reducers)
-        ]
-        reducer_iter = itertools.chain(*reducer_iters)
+        reducer_iter = cls._get_reducer_iter(op)
 
         result_store = defaultdict(lambda: ([], [], [], []))
         for est_id in range(op.n_estimators):
