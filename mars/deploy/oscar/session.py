@@ -60,7 +60,6 @@ from ...typing import ClientType, BandType
 from ...utils import (
     implements,
     merge_chunks,
-    sort_dataframe_result,
     register_asyncio_task_timeout_detector,
     classproperty,
     copy_tileables,
@@ -1063,7 +1062,7 @@ class _IsolatedSession(AbstractAsyncSession):
         return result
 
     def _process_result(self, tileable, result):  # pylint: disable=no-self-use
-        return sort_dataframe_result(tileable, result)
+        return result
 
     @alru_cache(cache_exceptions=False)
     async def _get_storage_api(self, band: BandType):

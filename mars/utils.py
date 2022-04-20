@@ -715,25 +715,6 @@ def calc_nsplits(chunk_idx_to_shape: Dict[Tuple[int], Tuple[int]]) -> Tuple[Tupl
     return tuple(tileable_nsplits)
 
 
-def sort_dataframe_result(df, result: pd.DataFrame) -> pd.DataFrame:
-    """sort DataFrame on client according to `should_be_monotonic` attribute"""
-    if hasattr(df, "index_value"):
-        if getattr(df.index_value, "should_be_monotonic", False):
-            try:
-                result.sort_index(inplace=True)
-            except TypeError:  # pragma: no cover
-                # cudf doesn't support inplace
-                result = result.sort_index()
-        if hasattr(df, "columns_value"):
-            if getattr(df.columns_value, "should_be_monotonic", False):
-                try:
-                    result.sort_index(axis=1, inplace=True)
-                except TypeError:  # pragma: no cover
-                    # cudf doesn't support inplace
-                    result = result.sort_index(axis=1)
-    return result
-
-
 def has_unknown_shape(*tiled_tileables: TileableType) -> bool:
     for tileable in tiled_tileables:
         if getattr(tileable, "shape", None) is None:
