@@ -158,7 +158,7 @@ jobs:
         set -e
         source ./ci/reload-env.sh
 
-        black --check --diff --verbose mars asv_bench
+        black --check --diff --verbose mars benchmarks
       displayName: 'Check code style with black'
 
     - bash: |
