@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import datetime
 import inspect
 import sys
@@ -571,6 +572,71 @@ cdef tuple _serial_single(obj, dict context):
     return common_header + serialized, subs, final
 
 
+class _SerializeObjectOverflow(Exception):
+    def __init__(self, tuple cur_serialized, int num_total_serialized):
+        super(_SerializeObjectOverflow, self).__init__(cur_serialized)
+        self.cur_serialized = cur_serialized
+        self.num_total_serialized = num_total_serialized
+
+
+cpdef object _serialize_context(
+    list serial_stack,
+    tuple serialized,
+    dict context,
+    list result_bufs_list,
+    int64_t num_overflow = 0,
+    int64_t num_total_serialized = 0,
+):
+    cdef _SerialStackItem stack_item
+    cdef list subs
+    cdef bint final
+    cdef int64_t num_sub_serialized
+    cdef bint is_resume = num_total_serialized > 0
+
+    while serial_stack:
+        stack_item = serial_stack[-1]
+        if serialized is not None:
+            # have previously-serialized results, record first
+            stack_item.subs_serialized.append(serialized)
+
+        num_sub_serialized = len(stack_item.subs_serialized)
+        if len(stack_item.subs) == num_sub_serialized:
+            # all subcomponents serialized, serialization of current is done
+            # and we can move to the parent object
+            serialized = stack_item.serialized + tuple(stack_item.subs_serialized)
+            num_total_serialized += 1
+            serial_stack.pop()
+        else:
+            # serialize next subcomponent at stack top
+            serialized, subs, final = _serial_single(
+                stack_item.subs[num_sub_serialized], context
+            )
+            num_total_serialized += 1
+            if final or not subs:
+                # the subcomponent is a leaf
+                if subs:
+                    result_bufs_list.extend(subs)
+            else:
+                # the subcomponent has its own subcomponents, we push itself
+                # into stack and process its children
+                stack_item = _SerialStackItem(serialized, subs)
+                serial_stack.append(stack_item)
+                # note that the serialized header should not be recorded
+                # as we are now processing the subcomponent itself
+                serialized = None
+        if 0 < num_overflow < num_total_serialized:
+            raise _SerializeObjectOverflow(serialized, num_total_serialized)
+
+    # we keep an empty dict for extra metas required for other modules
+    if is_resume:
+        # returns num of deserialized objects when resumed
+        extra_meta = {"_N": num_total_serialized}
+    else:
+        # otherwise does not record the number to reduce result size
+        extra_meta = {}
+    return (extra_meta, serialized), result_bufs_list
+
+
 def serialize(obj, dict context = None):
     """
     Serialize an object and return a header and buffers.
@@ -590,12 +656,10 @@ def serialize(obj, dict context = None):
         Picklable header and buffers
     """
     cdef list serial_stack = []
-    cdef _SerialStackItem stack_item
     cdef list result_bufs_list = []
     cdef tuple serialized
     cdef list subs
     cdef bint final
-    cdef int64_t num_serialized
 
     context = context if context is not None else dict()
     serialized, subs, final = _serial_single(obj, context)
@@ -604,39 +668,65 @@ def serialize(obj, dict context = None):
         return ({}, serialized), subs
 
     serial_stack.append(_SerialStackItem(serialized, subs))
-    serialized = None
+    return _serialize_context(
+        serial_stack, None, context, result_bufs_list
+    )
 
-    while serial_stack:
-        stack_item = serial_stack[-1]
-        if serialized is not None:
-            # have previously-serialized results, record first
-            stack_item.subs_serialized.append(serialized)
 
-        num_serialized = len(stack_item.subs_serialized)
-        if len(stack_item.subs) == num_serialized:
-            # all subcomponents serialized, serialization of current is done
-            # and we can move to the parent object
-            serialized = stack_item.serialized + tuple(stack_item.subs_serialized)
-            serial_stack.pop()
-        else:
-            # serialize next subcomponent at stack top
-            serialized, subs, final = _serial_single(
-                stack_item.subs[num_serialized], context
-            )
-            if final or not subs:
-                # the subcomponent is a leaf
-                if subs:
-                    result_bufs_list.extend(subs)
-            else:
-                # the subcomponent has its own subcomponents, we push itself
-                # into stack and process its children
-                stack_item = _SerialStackItem(serialized, subs)
-                serial_stack.append(stack_item)
-                # note that the serialized header should not be recorded
-                # as we are now processing the subcomponent itself
-                serialized = None
-    # we keep an empty dict for extra metas required for other modules
-    return ({}, serialized), result_bufs_list
+async def serialize_with_spawn(
+    obj, dict context = None, int spawn_threshold = 100, object executor = None
+):
+    """
+    Serialize an object and return a header and buffers.
+    Buffers are intended for zero-copy data manipulation.
+
+    Parameters
+    ----------
+    obj: Any
+        Object to serialize
+    context: Dict
+        Serialization context for instantiation of Placeholder
+        objects
+    spawn_threshold: int
+        Threshold to spawn into a ThreadPoolExecutor
+    executor: ThreadPoolExecutor
+        ThreadPoolExecutor to spawn rest serialization into
+
+    Returns
+    -------
+    result: Tuple[Tuple, List]
+        Picklable header and buffers
+    """
+    cdef list serial_stack = []
+    cdef list result_bufs_list = []
+    cdef tuple serialized
+    cdef list subs
+    cdef bint final
+
+    context = context if context is not None else dict()
+    serialized, subs, final = _serial_single(obj, context)
+    if final or not subs:
+        # marked as a leaf node, return directly
+        return ({}, serialized), subs
+
+    serial_stack.append(_SerialStackItem(serialized, subs))
+
+    try:
+        result = _serialize_context(
+            serial_stack, None, context, result_bufs_list, spawn_threshold
+        )
+    except _SerializeObjectOverflow as ex:
+        result = await asyncio.get_running_loop().run_in_executor(
+            executor,
+            _serialize_context,
+            serial_stack,
+            ex.cur_serialized,
+            context,
+            result_bufs_list,
+            0,
+            ex.num_total_serialized,
+        )
+    return result
 
 
 cdef class _DeserialStackItem:

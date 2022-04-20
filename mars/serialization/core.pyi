@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from concurrent.futures import Executor
 from typing import Any, Callable, Dict, List, Tuple
 
 def buffered(func: Callable) -> Callable: ...
@@ -42,4 +43,10 @@ class Placeholder:
     def __eq__(self, other): ...
 
 def serialize(obj: Any, context: Dict = None): ...
+async def serialize_with_spawn(
+    obj: Any,
+    context: Dict = None,
+    spawn_threshold: int = 100,
+    executor: Executor = None,
+): ...
 def deserialize(headers: List, buffers: List, context: Dict = None): ...
