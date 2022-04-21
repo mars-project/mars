@@ -112,7 +112,7 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
     @classmethod
     def execute_reduce(cls, ctx, op: "DataFrameMergeAlign"):
         chunk = op.outputs[0]
-        input_idx_to_df = dict(op.iter_mapper_data_with_index(ctx))
+        input_idx_to_df = dict(op.iter_mapper_data_with_index(ctx, skip_none=True))
         row_idxes = sorted({idx[0] for idx in input_idx_to_df})
 
         res = []
