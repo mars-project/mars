@@ -29,7 +29,7 @@ from functools import wraps
 from numbers import Integral
 from urllib.parse import urlparse
 from weakref import ref, WeakKeyDictionary, WeakSet
-from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
