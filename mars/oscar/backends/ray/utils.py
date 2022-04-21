@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import enum
 import os
 import asyncio
 import logging
@@ -168,8 +168,26 @@ async def kill_and_wait(
     )
 
 
+if ray and not hasattr(ray, "report_event"):  # pragma: no cover
+    # lower version of ray doesn't support event
+
+    class EventSeverity(enum.Enum):
+        INFO = 0
+        WARNING = 1
+        ERROR = 2
+        FATAL = 3
+
+    def report_event(severity, label, message):
+        logger.warning(
+            "severity: %s, label: %s, message: %s.", severity, label, message
+        )
+
+    ray.EventSeverity = EventSeverity
+    ray.report_event = report_event
+
+
 def report_event(severity, label, message):
-    if ray and ray.is_initialized() and hasattr(ray, "report_event"):
+    if ray and ray.is_initialized():
         severity = (
             getattr(ray.EventSeverity, severity)
             if isinstance(severity, str)
