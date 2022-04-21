@@ -20,12 +20,9 @@ from .core import EntityData, Entity
 class ChunkData(EntityData):
     __slots__ = ()
 
-    _is_broadcaster = BoolField("is_broadcaster", default=False)
+    is_broadcaster = BoolField("is_broadcaster", default=False)
     # optional fields
     _index = TupleField("index", FieldTypes.uint32)
-
-    def __init__(self, is_broadcaster=None, **kw):
-        super().__init__(_is_broadcaster=is_broadcaster, **kw)
 
     def __repr__(self):
         if self.op.stage is None:
@@ -39,14 +36,6 @@ class ChunkData(EntityData):
     @property
     def index(self):
         return getattr(self, "_index", None)
-
-    @property
-    def is_broadcaster(self):
-        return self._is_broadcaster
-
-    @is_broadcaster.setter
-    def is_broadcaster(self, is_broadcaster: bool):
-        self._is_broadcaster = is_broadcaster
 
     @property
     def device(self):
