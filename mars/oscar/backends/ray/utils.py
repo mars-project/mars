@@ -182,6 +182,9 @@ if ray and not hasattr(ray, "report_event"):  # pragma: no cover
             "severity: %s, label: %s, message: %s.", severity, label, message
         )
 
+    # lazy imported module can't override really module attr
+    import ray
+
     ray.EventSeverity = EventSeverity
     ray.report_event = report_event
 
