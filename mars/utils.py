@@ -73,11 +73,6 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
 from .lib.version import parse as parse_version
 from .typing import ChunkType, TileableType, EntityType, OperandType
 
-try:
-    import ray
-except ImportError:
-    ray = None
-
 logger = logging.getLogger(__name__)
 random.seed(int(time.time()) * os.getpid())
 pd_release_version: Tuple[int] = parse_version(pd.__version__).release
@@ -1632,18 +1627,6 @@ def cache_tileables(*tileables):
     for t in tileables:
         if isinstance(t, ENTITY_TYPE):
             t.cache = True
-
-
-def report_event(severity, label, message):
-    if (
-        ray and ray.is_initialized() and hasattr(ray, "report_event")
-    ):  # pragma: no cover
-        severity = (
-            getattr(ray.EventSeverity, severity)
-            if isinstance(severity, str)
-            else severity
-        )
-        ray.report_event(severity, label, message)
 
 
 class TreeReductionBuilder:

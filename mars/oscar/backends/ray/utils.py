@@ -166,3 +166,13 @@ async def kill_and_wait(
     raise Exception(
         f"The actor {actor_handle} is not died after ray.kill {timeout} seconds."
     )
+
+
+def report_event(severity, label, message):
+    if ray and ray.is_initialized() and hasattr(ray, "report_event"):
+        severity = (
+            getattr(ray.EventSeverity, severity)
+            if isinstance(severity, str)
+            else severity
+        )
+        ray.report_event(severity, label, message)

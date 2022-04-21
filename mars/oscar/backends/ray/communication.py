@@ -27,12 +27,13 @@ from urllib.parse import urlparse
 from ....oscar.profiling import ProfilingData
 from ....serialization import serialize, deserialize
 from ....metrics import Metrics
-from ....utils import lazy_import, implements, classproperty, Timer, report_event
+from ....utils import lazy_import, implements, classproperty, Timer
 from ...debug import debug_async_timeout
 from ...errors import ServerClosed
 from ..communication.base import Channel, ChannelType, Server, Client
 from ..communication.core import register_client, register_server
 from ..communication.errors import ChannelClosed
+from .utils import report_event
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)

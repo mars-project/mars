@@ -41,9 +41,7 @@ from .. import tensor as mt
 from .. import utils
 from ..core import tile, TileableGraph
 from ..serialization.ray import register_ray_serializers
-from .core import require_ray, mock, lazy_import
-
-ray = lazy_import("ray")
+from .core import require_ray
 
 
 def test_string_conversion():
@@ -588,17 +586,3 @@ def test_get_func_token_values():
 
     func = Func()
     assert get_func_token_values(func) == [func]
-
-
-@require_ray
-@mock.patch("ray.report_event")
-def test_report_event(fake_report_event, ray_start_regular):
-    arguments = []
-
-    def _report_event(*args):
-        arguments.extend(args)
-
-    fake_report_event.side_effect = _report_event
-    severity, label, message = "WARNING", "test_label", "test_message"
-    utils.report_event(severity, label, message)
-    assert arguments == [ray.EventSeverity.WARNING, label, message]
