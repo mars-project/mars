@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Iterator
 from ...core import ChunkGraph
 from ...core.operand import (
     Fetch,
@@ -27,7 +27,8 @@ def iter_input_data_keys(
     subtask: Subtask,
     chunk_graph: ChunkGraph,
     chunk_key_to_data_keys: Dict[str, List[str]],
-):
+) -> Iterator[str, bool]:
+    """An iterator yield (input data key, is shuffle)."""
     data_keys = set()
     for chunk in chunk_graph.iter_indep():
         if isinstance(chunk.op, Fetch) and chunk.key not in subtask.pure_depend_keys:
@@ -40,7 +41,8 @@ def iter_input_data_keys(
                     yield key, True
 
 
-def get_mapper_data_keys(key: str, context: Dict[str, Any]):
+def get_mapper_data_keys(key: str, context: Dict[str, Any]) -> List[str]:
+    """Get the mapper data keys of key from context."""
     return [
         store_key
         for store_key in context
@@ -48,7 +50,10 @@ def get_mapper_data_keys(key: str, context: Dict[str, Any]):
     ]
 
 
-def iter_output_data(chunk_graph: ChunkGraph, context: Dict[str, Any]):
+def iter_output_data(
+    chunk_graph: ChunkGraph, context: Dict[str, Any]
+) -> Iterator[str, Any, bool]:
+    """An iterator yield (output chunk key, output data, is shuffle)."""
     data_keys = set()
     for result_chunk in chunk_graph.result_chunks:
         # skip virtual operands for result chunks

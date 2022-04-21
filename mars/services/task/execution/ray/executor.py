@@ -44,24 +44,30 @@ ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
 
 
-def execute_subtask_chunk_graph(
-    subtask_id: str, chunk_graph, output_meta_keys: Set[str], keys: List[str], *inputs
+def execute_subtask(
+    subtask_id: str,
+    subtask_chunk_graph: ChunkGraph,
+    output_meta_keys: Set[str],
+    input_keys: List[str],
+    *inputs
 ):
     logger.info("Begin to execute subtask: %s", subtask_id)
     ensure_coverage()
-    chunk_graph = deserialize(*chunk_graph)
+    subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     # inputs = [i[1] for i in inputs]
-    context = dict(zip(keys, inputs))
+    context = dict(zip(input_keys, inputs))
     # optimize chunk graph.
-    chunk_graph = optimize(chunk_graph)
+    subtask_chunk_graph = optimize(subtask_chunk_graph)
     # from data_key to results
-    for chunk in chunk_graph.topological_iter():
+    for chunk in subtask_chunk_graph.topological_iter():
         if chunk.key not in context:
             execute(context, chunk.op)
 
-    output = {key: data for key, data, _ in iter_output_data(chunk_graph, context)}
+    output = {
+        key: data for key, data, _ in iter_output_data(subtask_chunk_graph, context)
+    }
     output_meta = {}
-    for chunk in chunk_graph.result_chunks:
+    for chunk in subtask_chunk_graph.result_chunks:
         if chunk.key in output_meta_keys:
             if isinstance(chunk.op, Fuse):
                 # fuse op
@@ -115,7 +121,7 @@ class RayTaskExecutor(TaskExecutor):
         tile_context,
         **kwargs
     ) -> "TaskExecutor":
-        ray_executor = ray.remote(execute_subtask_chunk_graph)
+        ray_executor = ray.remote(execute_subtask)
         cluster_api, lifecycle_api, meta_api = await cls._get_apis(session_id, address)
         return cls(
             config,

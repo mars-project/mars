@@ -13,4 +13,4 @@
 # limitations under the License.
 
 from .executor import RayTaskExecutor
-from .fetcher import RayObjectFetcher
+from .fetcher import RayFetcher

@@ -22,7 +22,7 @@ _FetchInfo = namedtuple("FetchInfo", ["key", "object_ref", "conditions"])
 
 
 @register_fetcher_cls
-class RayObjectFetcher(Fetcher):
+class RayFetcher(Fetcher):
     name = "ray"
     required_meta_keys = ("object_refs",)
 
