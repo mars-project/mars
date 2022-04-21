@@ -389,7 +389,7 @@ def new_ray_session(
         session_id = session_id or client.session.session_id
         address = client.address
     session = new_session(
-        address=address, session_id=session_id, backend="oscar", default=default
+        address=address, session_id=session_id, backend="mars", default=default
     )
     session._ray_client = client
     if default:
