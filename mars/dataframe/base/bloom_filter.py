@@ -72,7 +72,7 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
 
         # union all chunk filters
         combine_size = options.combine_size
-        while len(chunks) > 4:
+        while len(chunks) > combine_size:
             new_chunks = []
             for i in range(0, len(chunks), combine_size):
                 chks = chunks[i : i + combine_size]
