@@ -55,7 +55,7 @@ async def new_cluster_in_isolation(
     cuda_devices: Union[List[int], str] = "auto",
     subprocess_start_method: str = None,
     backend: str = None,
-    config: Union[Dict] = None,
+    config: Union[str, Dict] = None,
     web: bool = True,
     timeout: float = None,
     n_supervisor_process: int = 0,
