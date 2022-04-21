@@ -72,10 +72,13 @@ if os.environ.get("CYTHON_TRACE"):
     cythonize_kw["compiler_directives"] = {"linetrace": True}
 
 if "MSC" in sys.version:
-    extra_compile_args = ["/Ot", "/I" + os.path.join(repo_root, "misc")]
+    extra_compile_args = ["/std:c11", "/Ot", "/I" + os.path.join(repo_root, "misc")]
     cy_extension_kw["extra_compile_args"] = extra_compile_args
 else:
     extra_compile_args = ["-O3"]
+    if sys.platform != "darwin":
+        # for macOS, we assume that C++ 11 is enabled by default
+        extra_compile_args.append("-std=c++0x")
     cy_extension_kw["extra_compile_args"] = extra_compile_args
 
 
