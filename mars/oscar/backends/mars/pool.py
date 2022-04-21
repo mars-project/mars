@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from types import TracebackType
 from typing import List
 
-from ....utils import get_next_port, dataslots
+from ....utils import get_next_port, dataslots, ensure_coverage
 from ..config import ActorPoolConfig
 from ..message import CreateActorMessage
 from ..pool import MainActorPoolBase, SubActorPoolBase, _register_message_handler
@@ -162,15 +162,7 @@ class MainActorPool(MainActorPoolBase):
         process_index: int,
         status_queue: multiprocessing.Queue,
     ):
-        if not _is_windows:
-            try:
-                # register coverage hooks on SIGTERM
-                from pytest_cov.embed import cleanup_on_sigterm
-
-                if "COV_CORE_SOURCE" in os.environ:  # pragma: no branch
-                    cleanup_on_sigterm()
-            except ImportError:  # pragma: no cover
-                pass
+        ensure_coverage()
 
         conf = actor_config.get_pool_config(process_index)
         suspend_sigint = conf["suspend_sigint"]

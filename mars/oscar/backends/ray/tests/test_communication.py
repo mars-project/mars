@@ -14,32 +14,21 @@
 
 import asyncio
 import inspect
-import os
-import sys
 
 import pytest
 
 from .....tests.core import require_ray
-from .....utils import lazy_import
+from .....utils import ensure_coverage, lazy_import
 from ....errors import ServerClosed
 from ...communication.base import ChannelType
 from ..communication import ChannelID, Channel, RayServer, RayClient
 
 ray = lazy_import("ray")
-_is_windows: bool = sys.platform.startswith("win")
 
 
 class ServerActor:
     def __new__(cls, *args, **kwargs):
-        if not _is_windows:
-            try:
-                if "COV_CORE_SOURCE" in os.environ:  # pragma: no branch
-                    # register coverage hooks on SIGTERM
-                    from pytest_cov.embed import cleanup_on_sigterm
-
-                    cleanup_on_sigterm()
-            except ImportError:  # pragma: no cover
-                pass
+        ensure_coverage()
         return super().__new__(cls, *args, **kwargs)
 
     def __init__(self, address):
