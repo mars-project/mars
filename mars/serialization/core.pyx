@@ -1,3 +1,4 @@
+# distutils: language = c++
 # Copyright 1999-2022 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import datetime
 import inspect
 import sys
 from cpython cimport PyObject
 from functools import partial, wraps
-from libc.stdint cimport uint32_t, int64_t, uintptr_t
+from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, uintptr_t
+from libcpp.unordered_map cimport unordered_map
 from typing import Any, Dict, List
 
 import numpy as np
@@ -45,6 +48,9 @@ cdef TypeDispatcher _serial_dispatcher = TypeDispatcher()
 cdef dict _deserializers = dict()
 
 cdef uint32_t _MAX_STR_PRIMITIVE_LEN = 1024
+# prime modulus for serializer ids
+# use the largest prime number smaller than 32767
+cdef int32_t _SERIALIZER_ID_PRIME = 32749
 
 
 cdef class Serializer:
@@ -136,7 +142,7 @@ cdef class Serializer:
 
     @classmethod
     def calc_default_serializer_id(cls):
-        return tokenize_int(f"{cls.__module__}.{cls.__qualname__}") & 0x7fffffff
+        return tokenize_int(f"{cls.__module__}.{cls.__qualname__}") % _SERIALIZER_ID_PRIME
 
     @classmethod
     def register(cls, obj_type):
@@ -149,7 +155,10 @@ cdef class Serializer:
             # inherited serializer_id not acceptable
             cls.serializer_id = cls.calc_default_serializer_id()
         _serial_dispatcher.register(obj_type, inst)
-        _deserializers[cls.serializer_id] = inst
+        if _deserializers.get(cls.serializer_id) is not None:
+            assert type(_deserializers[cls.serializer_id]) is cls
+        else:
+            _deserializers[cls.serializer_id] = inst
 
     @classmethod
     def unregister(cls, obj_type):
@@ -157,14 +166,13 @@ cdef class Serializer:
         _deserializers.pop(cls.serializer_id, None)
 
 
-cdef inline uint32_t _short_id(object obj) nogil:
-    cdef void* ptr = <PyObject*>obj
-    return (<uintptr_t>ptr) & <uint32_t>0xffffffff
+cdef inline uint64_t _fast_id(object obj) nogil:
+    return <uintptr_t><PyObject*>obj
 
 
-def short_id(obj):
-    """Short representation of id() used for serialization"""
-    return _short_id(obj)
+def fast_id(obj):
+    """C version of id() used for serialization"""
+    return _fast_id(obj)
 
 
 def buffered(func):
@@ -173,11 +181,11 @@ def buffered(func):
     """
     @wraps(func)
     def wrapped(self, obj: Any, dict context):
-        cdef uint32_t short_id = _short_id(obj)
-        if short_id in context:
-            return Placeholder(_short_id(obj))
+        cdef uint64_t obj_id = _fast_id(obj)
+        if obj_id in context:
+            return Placeholder(_fast_id(obj))
         else:
-            context[short_id] = obj
+            context[obj_id] = obj
             return func(self, obj, context)
 
     return wrapped
@@ -223,8 +231,8 @@ cdef class PickleSerializer(Serializer):
     serializer_id = 0
 
     cpdef serial(self, obj: Any, dict context):
-        cdef uint32_t obj_id
-        obj_id = _short_id(obj)
+        cdef uint64_t obj_id
+        obj_id = _fast_id(obj)
         if obj_id in context:
             return Placeholder(obj_id)
         context[obj_id] = obj
@@ -265,8 +273,8 @@ cdef class BytesSerializer(Serializer):
     serializer_id = 2
 
     cpdef serial(self, obj: Any, dict context):
-        cdef uint32_t obj_id
-        obj_id = _short_id(obj)
+        cdef uint64_t obj_id
+        obj_id = _fast_id(obj)
         if obj_id in context:
             return Placeholder(obj_id)
         context[obj_id] = obj
@@ -281,8 +289,8 @@ cdef class StrSerializer(Serializer):
     serializer_id = 3
 
     cpdef serial(self, obj: Any, dict context):
-        cdef uint32_t obj_id
-        obj_id = _short_id(obj)
+        cdef uint64_t obj_id
+        obj_id = _fast_id(obj)
         if obj_id in context:
             return Placeholder(obj_id)
         context[obj_id] = obj
@@ -329,8 +337,8 @@ cdef class CollectionSerializer(Serializer):
         return (obj_list, idx_to_propagate, obj_type), obj_to_propagate, False
 
     cpdef serial(self, obj: Any, dict context):
-        cdef uint32_t obj_id
-        obj_id = _short_id(obj)
+        cdef uint64_t obj_id
+        obj_id = _fast_id(obj)
         if obj_id in context:
             return Placeholder(obj_id)
         context[obj_id] = obj
@@ -401,11 +409,11 @@ cdef class DictSerializer(CollectionSerializer):
     _inspected_inherits = set()
 
     cpdef serial(self, obj: Any, dict context):
-        cdef uint32_t obj_id
+        cdef uint64_t obj_id
         cdef tuple key_obj, value_obj
         cdef list key_bufs, value_bufs
 
-        obj_id = _short_id(obj)
+        obj_id = _fast_id(obj)
         if obj_id in context:
             return Placeholder(obj_id)
         context[obj_id] = obj
@@ -480,10 +488,10 @@ cdef class Placeholder:
     The object records object identifier and keeps callbacks
     to replace itself in parent objects.
     """
-    cdef public uint32_t id
+    cdef public uint64_t id
     cdef public list callbacks
 
-    def __init__(self, uint32_t id_):
+    def __init__(self, uint64_t id_):
         self.id = id_
         self.callbacks = []
 
@@ -506,14 +514,10 @@ cdef class PlaceholderSerializer(Serializer):
     serializer_id = 7
 
     cpdef serial(self, obj: Any, dict context):
-        return ((<Placeholder>obj).id,), [], True
+        return (), [], True
 
     cpdef deserial(self, tuple serialized, dict context, list subs):
-        obj_id = serialized[0]
-        try:
-            return context[obj_id]
-        except KeyError:
-            return Placeholder(obj_id)
+        return Placeholder(0)
 
 
 PickleSerializer.register(object)
@@ -538,12 +542,18 @@ cdef class _SerialStackItem:
         self.subs_serialized = []
 
 
+cdef class _IdContextHolder:
+    cdef unordered_map[uint64_t, uint64_t] d
+
+
 cdef int _COMMON_HEADER_LEN = 4
 
 
-cdef tuple _serial_single(obj, dict context):
+cdef tuple _serial_single(
+    obj, dict context, _IdContextHolder id_context_holder
+):
     """Serialize single object and return serialized tuples"""
-    cdef uint32_t obj_id
+    cdef uint64_t obj_id, ordered_id
     cdef Serializer serializer
     cdef tuple common_header, serialized
 
@@ -556,19 +566,88 @@ cdef tuple _serial_single(obj, dict context):
 
             if type(obj) is Placeholder:
                 obj_id = (<Placeholder>obj).id
+                ordered_id = id_context_holder.d[obj_id]
             else:
-                obj_id = _short_id(obj)
+                obj_id = _fast_id(obj)
+                ordered_id = id_context_holder.d.size()
+                id_context_holder.d[obj_id] = ordered_id
 
             # REMEMBER to change _COMMON_HEADER_LEN when content of
             # this header changed
             common_header = (
-                serializer.serializer_id, obj_id, len(subs), final
+                serializer.serializer_id, ordered_id, len(subs), final
             )
             break
         else:
             # object is converted into another (usually a Placeholder)
             obj = ret_serial
     return common_header + serialized, subs, final
+
+
+class _SerializeObjectOverflow(Exception):
+    def __init__(self, tuple cur_serialized, int num_total_serialized):
+        super(_SerializeObjectOverflow, self).__init__(cur_serialized)
+        self.cur_serialized = cur_serialized
+        self.num_total_serialized = num_total_serialized
+
+
+cpdef object _serialize_with_stack(
+    list serial_stack,
+    tuple serialized,
+    dict context,
+    _IdContextHolder id_context_holder,
+    list result_bufs_list,
+    int64_t num_overflow = 0,
+    int64_t num_total_serialized = 0,
+):
+    cdef _SerialStackItem stack_item
+    cdef list subs
+    cdef bint final
+    cdef int64_t num_sub_serialized
+    cdef bint is_resume = num_total_serialized > 0
+
+    while serial_stack:
+        stack_item = serial_stack[-1]
+        if serialized is not None:
+            # have previously-serialized results, record first
+            stack_item.subs_serialized.append(serialized)
+
+        num_sub_serialized = len(stack_item.subs_serialized)
+        if len(stack_item.subs) == num_sub_serialized:
+            # all subcomponents serialized, serialization of current is done
+            # and we can move to the parent object
+            serialized = stack_item.serialized + tuple(stack_item.subs_serialized)
+            num_total_serialized += 1
+            serial_stack.pop()
+        else:
+            # serialize next subcomponent at stack top
+            serialized, subs, final = _serial_single(
+                stack_item.subs[num_sub_serialized], context, id_context_holder
+            )
+            num_total_serialized += 1
+            if final or not subs:
+                # the subcomponent is a leaf
+                if subs:
+                    result_bufs_list.extend(subs)
+            else:
+                # the subcomponent has its own subcomponents, we push itself
+                # into stack and process its children
+                stack_item = _SerialStackItem(serialized, subs)
+                serial_stack.append(stack_item)
+                # note that the serialized header should not be recorded
+                # as we are now processing the subcomponent itself
+                serialized = None
+        if 0 < num_overflow < num_total_serialized:
+            raise _SerializeObjectOverflow(serialized, num_total_serialized)
+
+    # we keep an empty dict for extra metas required for other modules
+    if is_resume:
+        # returns num of deserialized objects when resumed
+        extra_meta = {"_N": num_total_serialized}
+    else:
+        # otherwise does not record the number to reduce result size
+        extra_meta = {}
+    return (extra_meta, serialized), result_bufs_list
 
 
 def serialize(obj, dict context = None):
@@ -590,53 +669,80 @@ def serialize(obj, dict context = None):
         Picklable header and buffers
     """
     cdef list serial_stack = []
-    cdef _SerialStackItem stack_item
     cdef list result_bufs_list = []
     cdef tuple serialized
     cdef list subs
     cdef bint final
-    cdef int64_t num_serialized
+    cdef _IdContextHolder id_context_holder = _IdContextHolder()
 
     context = context if context is not None else dict()
-    serialized, subs, final = _serial_single(obj, context)
+    serialized, subs, final = _serial_single(obj, context, id_context_holder)
     if final or not subs:
         # marked as a leaf node, return directly
         return ({}, serialized), subs
 
     serial_stack.append(_SerialStackItem(serialized, subs))
-    serialized = None
+    return _serialize_with_stack(
+        serial_stack, None, context, id_context_holder, result_bufs_list
+    )
 
-    while serial_stack:
-        stack_item = serial_stack[-1]
-        if serialized is not None:
-            # have previously-serialized results, record first
-            stack_item.subs_serialized.append(serialized)
 
-        num_serialized = len(stack_item.subs_serialized)
-        if len(stack_item.subs) == num_serialized:
-            # all subcomponents serialized, serialization of current is done
-            # and we can move to the parent object
-            serialized = stack_item.serialized + tuple(stack_item.subs_serialized)
-            serial_stack.pop()
-        else:
-            # serialize next subcomponent at stack top
-            serialized, subs, final = _serial_single(
-                stack_item.subs[num_serialized], context
-            )
-            if final or not subs:
-                # the subcomponent is a leaf
-                if subs:
-                    result_bufs_list.extend(subs)
-            else:
-                # the subcomponent has its own subcomponents, we push itself
-                # into stack and process its children
-                stack_item = _SerialStackItem(serialized, subs)
-                serial_stack.append(stack_item)
-                # note that the serialized header should not be recorded
-                # as we are now processing the subcomponent itself
-                serialized = None
-    # we keep an empty dict for extra metas required for other modules
-    return ({}, serialized), result_bufs_list
+async def serialize_with_spawn(
+    obj, dict context = None, int spawn_threshold = 100, object executor = None
+):
+    """
+    Serialize an object and return a header and buffers.
+    Buffers are intended for zero-copy data manipulation.
+
+    Parameters
+    ----------
+    obj: Any
+        Object to serialize
+    context: Dict
+        Serialization context for instantiation of Placeholder
+        objects
+    spawn_threshold: int
+        Threshold to spawn into a ThreadPoolExecutor
+    executor: ThreadPoolExecutor
+        ThreadPoolExecutor to spawn rest serialization into
+
+    Returns
+    -------
+    result: Tuple[Tuple, List]
+        Picklable header and buffers
+    """
+    cdef list serial_stack = []
+    cdef list result_bufs_list = []
+    cdef tuple serialized
+    cdef list subs
+    cdef bint final
+    cdef _IdContextHolder id_context_holder = _IdContextHolder()
+
+    context = context if context is not None else dict()
+    serialized, subs, final = _serial_single(obj, context, id_context_holder)
+    if final or not subs:
+        # marked as a leaf node, return directly
+        return ({}, serialized), subs
+
+    serial_stack.append(_SerialStackItem(serialized, subs))
+
+    try:
+        result = _serialize_with_stack(
+            serial_stack, None, context, id_context_holder, result_bufs_list, spawn_threshold
+        )
+    except _SerializeObjectOverflow as ex:
+        result = await asyncio.get_running_loop().run_in_executor(
+            executor,
+            _serialize_with_stack,
+            serial_stack,
+            ex.cur_serialized,
+            context,
+            id_context_holder,
+            result_bufs_list,
+            0,
+            ex.num_total_serialized,
+        )
+    return result
 
 
 cdef class _DeserialStackItem:
@@ -658,6 +764,12 @@ cdef _deserial_single(tuple serialized, dict context, list subs):
     serializer_id, obj_id, num_subs, final = serialized[:_COMMON_HEADER_LEN]
     serializer = _deserializers[serializer_id]
     res = serializer.deserial(serialized[_COMMON_HEADER_LEN:], context, subs)
+
+    if type(res) is Placeholder:
+        try:
+            res = context[obj_id]
+        except KeyError:
+            (<Placeholder>res).id = obj_id
 
     # get previously-recorded context values
     context_val, context[obj_id] = context.get(obj_id), res

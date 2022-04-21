@@ -91,6 +91,7 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
         else:
             filter_chunk = chunks[0]
 
+        filter_chunk.is_broadcaster = True
         # filter df1
         out_chunks = []
         for chunk in df1.chunks:

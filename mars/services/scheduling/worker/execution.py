@@ -361,6 +361,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 storage_api = await StorageAPI.create(
                     subtask.session_id, address=self.address, band_name=band_name
                 )
+                logger.debug("Delete mapper data %s", remote_mapper_keys)
                 await storage_api.delete.batch(
                     *[
                         storage_api.delete.delay(key, error="ignore")

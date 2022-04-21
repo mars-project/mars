@@ -47,3 +47,5 @@ ignore:
   - "mars/deploy/kubedl"
   # proxima related things
   - "mars/learn/proxima/**"
+  # benchmarks
+  - "benchmarks/**"

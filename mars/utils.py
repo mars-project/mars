@@ -519,7 +519,14 @@ def build_fetch_chunk(
         # for non-shuffle nodes, we build Fetch chunks
         # to replace original chunk
         op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse, gpu=chunk.op.gpu)
-    return op.new_chunk(None, kws=[params], _key=chunk.key, _id=chunk.id, **kwargs)
+    return op.new_chunk(
+        None,
+        is_broadcaster=chunk.is_broadcaster,
+        kws=[params],
+        _key=chunk.key,
+        _id=chunk.id,
+        **kwargs,
+    )
 
 
 def build_fetch_tileable(tileable: TileableType) -> TileableType:
@@ -1654,3 +1661,17 @@ class TreeReductionBuilder:
         if len(inputs) == 1:
             return inputs[0]
         return self._build_reduction(inputs, final=True)
+
+
+_is_windows: bool = sys.platform.startswith("win")
+
+
+def ensure_coverage():
+    # make sure coverage is handled when starting with subprocess.Popen
+    if not _is_windows and "COV_CORE_SOURCE" in os.environ:  # pragma: no cover
+        try:
+            from pytest_cov.embed import cleanup_on_sigterm
+        except ImportError:
+            pass
+        else:
+            cleanup_on_sigterm()
