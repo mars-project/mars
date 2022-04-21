@@ -143,7 +143,9 @@ class _ExtensibleWrapper(_ExtensibleCallable):
     async def _async_batch(self, *delays):
         # when there is only one call in batch, calling one-pass method
         # will be more efficient
-        if len(delays) == 1:
+        if len(delays) == 0:
+            return []
+        elif len(delays) == 1:
             d = delays[0]
             return [await self._async_call(*d.args, **d.kwargs)]
         elif self.batch_func:
@@ -162,7 +164,9 @@ class _ExtensibleWrapper(_ExtensibleCallable):
                 return await asyncio.gather(*tasks)
 
     def _sync_batch(self, *delays):
-        if self.batch_func:
+        if delays == 0:
+            return []
+        elif self.batch_func:
             args_list, kwargs_list = self._gen_args_kwargs_list(delays)
             return self.batch_func(args_list, kwargs_list)
         else:

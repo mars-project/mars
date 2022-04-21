@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import struct
 from io import BytesIO
 from typing import Any
@@ -20,12 +21,13 @@ import cloudpickle
 import numpy as np
 
 from ..utils import lazy_import
-from .core import serialize, deserialize
+from .core import serialize_with_spawn, deserialize
 
 cupy = lazy_import("cupy", globals=globals())
 cudf = lazy_import("cudf", globals=globals())
 
 DEFAULT_SERIALIZATION_VERSION = 1
+DEFAULT_SPAWN_THRESHOLD = 100
 BUFFER_SIZES_NAME = "buf_sizes"
 
 
@@ -34,8 +36,10 @@ class AioSerializer:
         self._obj = obj
         self._compress = compress
 
-    def _get_buffers(self):
-        headers, buffers = serialize(self._obj)
+    async def _get_buffers(self):
+        headers, buffers = await serialize_with_spawn(
+            self._obj, spawn_threshold=DEFAULT_SPAWN_THRESHOLD
+        )
 
         def _is_cuda_buffer(buf):  # pragma: no cover
             if cupy is not None and cudf is not None:
@@ -78,7 +82,7 @@ class AioSerializer:
         return out_buffers
 
     async def run(self):
-        return self._get_buffers()
+        return await self._get_buffers()
 
 
 MALFORMED_MSG = """\
@@ -123,8 +127,13 @@ class AioDeserializer:
         buffer_sizes = header[0].pop(BUFFER_SIZES_NAME)
         # get buffers
         buffers = [await self._readexactly(size) for size in buffer_sizes]
+        # get num of objs
+        num_objs = header[0].get("_N", 0)
 
-        return deserialize(header, buffers)
+        if num_objs <= DEFAULT_SPAWN_THRESHOLD:
+            return deserialize(header, buffers)
+        else:
+            return await asyncio.to_thread(deserialize, header, buffers)
 
     async def run(self):
         return await self._get_obj()
