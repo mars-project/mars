@@ -221,7 +221,7 @@ def test_mars_sparse():
 
 
 class MockSerializerForErrors(ListSerializer):
-    serializer_id = 145921
+    serializer_id = 25951
     raises = False
 
     def on_deserial_error(
