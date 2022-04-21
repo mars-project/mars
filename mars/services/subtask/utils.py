@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Iterator
+from typing import Any, Dict, List, Iterator, Tuple
 from ...core import ChunkGraph
 from ...core.operand import (
     Fetch,
@@ -27,7 +27,7 @@ def iter_input_data_keys(
     subtask: Subtask,
     chunk_graph: ChunkGraph,
     chunk_key_to_data_keys: Dict[str, List[str]],
-) -> Iterator[str, bool]:
+) -> Iterator[Tuple[str, bool]]:
     """An iterator yield (input data key, is shuffle)."""
     data_keys = set()
     for chunk in chunk_graph.iter_indep():
@@ -52,7 +52,7 @@ def get_mapper_data_keys(key: str, context: Dict[str, Any]) -> List[str]:
 
 def iter_output_data(
     chunk_graph: ChunkGraph, context: Dict[str, Any]
-) -> Iterator[str, Any, bool]:
+) -> Iterator[Tuple[str, Any, bool]]:
     """An iterator yield (output chunk key, output data, is shuffle)."""
     data_keys = set()
     for result_chunk in chunk_graph.result_chunks:

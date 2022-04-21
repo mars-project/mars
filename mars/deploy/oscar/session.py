@@ -443,7 +443,7 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
         cls,
         address: str,
         session_id: str,
-        backend: str = "oscar",
+        backend: str = "mars",
         new: bool = True,
         **kwargs,
     ) -> "AbstractSession":
@@ -660,14 +660,6 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
         return fetch(tileables, self, offsets=offsets, sizes=sizes)
 
 
-_type_name_to_session_cls: Dict[str, Type[AbstractAsyncSession]] = dict()
-
-
-def register_session_cls(session_cls: Type[AbstractAsyncSession]):
-    _type_name_to_session_cls[session_cls.name] = session_cls
-    return session_cls
-
-
 @dataclass
 class ChunkFetchInfo:
     tileable: TileableType
@@ -757,15 +749,12 @@ def gen_submit_tileable_graph(
     return graph, to_execute_tileables
 
 
-@register_session_cls
 class _IsolatedSession(AbstractAsyncSession):
-    name = "oscar"
-
     def __init__(
         self,
         address: str,
         session_id: str,
-        execution_backend: str,
+        backend: str,
         session_api: AbstractSessionAPI,
         meta_api: AbstractMetaAPI,
         lifecycle_api: AbstractLifecycleAPI,
@@ -778,7 +767,7 @@ class _IsolatedSession(AbstractAsyncSession):
         request_rewriter: Callable = None,
     ):
         super().__init__(address, session_id)
-        self._execution_backend = execution_backend
+        self._backend = backend
         self._session_api = session_api
         self._task_api = task_api
         self._meta_api = meta_api
@@ -807,7 +796,7 @@ class _IsolatedSession(AbstractAsyncSession):
         cls,
         address: str,
         session_id: str,
-        execution_backend: str,
+        backend: str,
         new: bool = True,
         timeout: float = None,
     ):
@@ -829,7 +818,7 @@ class _IsolatedSession(AbstractAsyncSession):
         return cls(
             address,
             session_id,
-            execution_backend,
+            backend,
             session_api,
             meta_api,
             lifecycle_api,
@@ -846,13 +835,13 @@ class _IsolatedSession(AbstractAsyncSession):
         cls,
         address: str,
         session_id: str,
+        backend: str,
         new: bool = True,
         timeout: float = None,
         **kwargs,
     ) -> "AbstractAsyncSession":
         init_local = kwargs.pop("init_local", False)
         request_rewriter = kwargs.pop("request_rewriter", None)
-        execution_backend = kwargs.pop("execution_backend", "mars")
         if init_local:
             from .local import new_cluster_in_isolation
 
@@ -870,18 +859,18 @@ class _IsolatedSession(AbstractAsyncSession):
             return await _IsolatedWebSession._init(
                 address,
                 session_id,
+                backend,
                 new=new,
                 timeout=timeout,
                 request_rewriter=request_rewriter,
-                execution_backend=execution_backend,
             )
         else:
             return await cls._init(
                 address,
                 session_id,
+                backend,
                 new=new,
                 timeout=timeout,
-                execution_backend=execution_backend,
             )
 
     async def _update_progress(self, task_id: str, progress: Progress):
@@ -1102,9 +1091,7 @@ class _IsolatedSession(AbstractAsyncSession):
             unexpected_keys = ", ".join(list(kwargs.keys()))
             raise TypeError(f"`fetch` got unexpected arguments: {unexpected_keys}")
 
-        fetcher = Fetcher.create(
-            self._execution_backend, get_storage_api=self._get_storage_api
-        )
+        fetcher = Fetcher.create(self._backend, get_storage_api=self._get_storage_api)
 
         with enter_mode(build=True):
             chunks = []
@@ -1330,7 +1317,7 @@ class _IsolatedWebSession(_IsolatedSession):
         cls,
         address: str,
         session_id: str,
-        execution_backend: str,
+        backend: str,
         new: bool = True,
         timeout: float = None,
         request_rewriter: Callable = None,
@@ -1355,7 +1342,7 @@ class _IsolatedWebSession(_IsolatedSession):
         return cls(
             address,
             session_id,
-            execution_backend,
+            backend,
             session_api,
             meta_api,
             lifecycle_api,
@@ -1430,13 +1417,12 @@ class AsyncSession(AbstractAsyncSession):
         cls,
         address: str,
         session_id: str,
-        backend: str = "oscar",
+        backend: str = "mars",
         new: bool = True,
         **kwargs,
     ) -> "AbstractSession":
-        session_cls = _type_name_to_session_cls[backend]
         isolation = ensure_isolation_created(kwargs)
-        coro = session_cls.init(address, session_id, new=new, **kwargs)
+        coro = _IsolatedSession.init(address, session_id, backend, new=new, **kwargs)
         fut = asyncio.run_coroutine_threadsafe(coro, isolation.loop)
         isolated_session = await asyncio.wrap_future(fut)
         return AsyncSession(address, session_id, isolated_session, isolation)
@@ -1602,13 +1588,12 @@ class SyncSession(AbstractSyncSession):
         cls,
         address: str,
         session_id: str,
-        backend: str = "oscar",
+        backend: str = "mars",
         new: bool = True,
         **kwargs,
     ) -> "AbstractSession":
-        session_cls = _type_name_to_session_cls[backend]
         isolation = ensure_isolation_created(kwargs)
-        coro = session_cls.init(address, session_id, new=new, **kwargs)
+        coro = _IsolatedSession.init(address, session_id, backend, new=new, **kwargs)
         fut = asyncio.run_coroutine_threadsafe(coro, isolation.loop)
         isolated_session = fut.result()
         return SyncSession(address, session_id, isolated_session, isolation)
@@ -1978,7 +1963,7 @@ def _new_session_id():
 async def _new_session(
     address: str,
     session_id: str = None,
-    backend: str = "oscar",
+    backend: str = "mars",
     default: bool = False,
     **kwargs,
 ) -> AbstractSession:
@@ -1996,7 +1981,7 @@ async def _new_session(
 def new_session(
     address: str = None,
     session_id: str = None,
-    backend: str = "oscar",
+    backend: str = "mars",
     default: bool = True,
     new: bool = True,
     **kwargs,

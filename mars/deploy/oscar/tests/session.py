@@ -22,7 +22,6 @@ from ..session import (
     _IsolatedSession,
     AsyncSession,
     ensure_isolation_created,
-    register_session_cls,
     _ensure_sync,
 )
 
@@ -30,10 +29,7 @@ from ..session import (
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "check_enabled_config.yml")
 
 
-@register_session_cls
 class CheckedSession(ObjectCheckMixin, _IsolatedSession):
-    name = "test"
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._tileable_checked = dict()
@@ -99,7 +95,7 @@ def new_test_session(
     address: str = None,
     session_id: str = None,
     default: bool = False,
-    backend: str = "test",
+    backend: str = "mars",
     **kwargs,
 ):
     isolation = ensure_isolation_created(kwargs)

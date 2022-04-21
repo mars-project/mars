@@ -55,13 +55,22 @@ async def new_cluster_in_isolation(
     cuda_devices: Union[List[int], str] = "auto",
     subprocess_start_method: str = None,
     backend: str = None,
-    config: Union[str, Dict] = None,
+    config: Union[Dict] = None,
     web: bool = True,
     timeout: float = None,
     n_supervisor_process: int = 0,
 ) -> ClientType:
     if subprocess_start_method is None:
         subprocess_start_method = "spawn" if sys.platform == "win32" else "forkserver"
+    # load config file to dict.
+    if not config or isinstance(config, str):
+        config = load_config(config)
+    if backend is None:
+        backend = (
+            config.get("task", {})
+            .get("task_executor_config", {})
+            .get("backend", "mars")
+        )
     cluster = LocalCluster(
         address,
         n_worker,
@@ -74,9 +83,7 @@ async def new_cluster_in_isolation(
         n_supervisor_process,
     )
     await cluster.start()
-    return await LocalClient.create(
-        cluster, backend, cluster.execution_backend, timeout
-    )
+    return await LocalClient.create(cluster, backend, timeout)
 
 
 async def new_cluster(
@@ -132,9 +139,6 @@ class LocalCluster:
     ):
         # load third party extensions.
         init_extension_entrypoints()
-        # load config file to dict.
-        if not config or isinstance(config, str):
-            config = load_config(config)
         self._address = address
         self._subprocess_start_method = subprocess_start_method
         self._config = config
@@ -179,14 +183,6 @@ class LocalCluster:
         self.web_address = None
 
         self._exiting_check_task = None
-
-    @property
-    def execution_backend(self):
-        return (
-            self._config.get("task", {})
-            .get("task_executor_config", {})
-            .get("backend", "mars")
-        )
 
     @property
     def external_address(self):
@@ -281,14 +277,12 @@ class LocalClient:
         cls,
         cluster: LocalCluster,
         backend: str = None,
-        execution_backend: str = None,
         timeout: float = None,
     ) -> ClientType:
-        backend = backend or "oscar"
+        backend = backend or "mars"
         session = await _new_session(
             cluster.external_address,
             backend=backend,
-            execution_backend=execution_backend,
             default=True,
             timeout=timeout,
         )
