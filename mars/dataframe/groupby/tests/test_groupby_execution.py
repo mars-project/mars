@@ -483,6 +483,111 @@ def test_dataframe_groupby_agg(setup):
         ),
     )
 
+def test_dataframe_groupby_agg_sort(setup):
+    agg_funs = [
+        "std",
+        "mean",
+        "var",
+        "max",
+        "count",
+        "size",
+        "all",
+        "any",
+        "skew",
+        "kurt",
+        "sem",
+    ]
+
+    rs = np.random.RandomState(0)
+    raw = pd.DataFrame(
+        {
+            "c1": np.arange(100).astype(np.int64),
+            "c2": rs.choice(["a", "b", "c"], (100,)),
+            "c3": rs.rand(100),
+        }
+    )
+    mdf = md.DataFrame(raw, chunk_size=13)
+
+    for method in ["tree", "shuffle"]:
+        r = mdf.groupby("c2").agg("size", method=method)
+        pd.testing.assert_series_equal(
+            r.execute().fetch(), raw.groupby("c2").agg("size")
+        )
+
+        for agg_fun in agg_funs:
+            if agg_fun == "size":
+                continue
+            r = mdf.groupby("c2").agg(agg_fun, method=method)
+            pd.testing.assert_frame_equal(
+                r.execute().fetch(),
+                raw.groupby("c2").agg(agg_fun),
+            )
+
+        r = mdf.groupby("c2").agg(agg_funs, method=method)
+        pd.testing.assert_frame_equal(
+            r.execute().fetch(),
+            raw.groupby("c2").agg(agg_funs),
+        )
+
+        agg = OrderedDict([("c1", ["min", "mean"]), ("c3", "std")])
+        r = mdf.groupby("c2").agg(agg, method=method)
+        pd.testing.assert_frame_equal(
+            r.execute().fetch(), raw.groupby("c2").agg(agg)
+        )
+
+        agg = OrderedDict([("c1", "min"), ("c3", "sum")])
+        r = mdf.groupby("c2").agg(agg, method=method)
+        pd.testing.assert_frame_equal(
+            r.execute().fetch(), raw.groupby("c2").agg(agg)
+        )
+
+        r = mdf.groupby("c2").agg({"c1": "min", "c3": "min"}, method=method)
+        pd.testing.assert_frame_equal(
+            r.execute().fetch(),
+            raw.groupby("c2").agg({"c1": "min", "c3": "min"}),
+        )
+
+        r = mdf.groupby("c2").agg({"c1": "min"}, method=method)
+        pd.testing.assert_frame_equal(
+            r.execute().fetch(),
+            raw.groupby("c2").agg({"c1": "min"}),
+        )
+
+        # test groupby series
+        r = mdf.groupby(mdf["c2"]).sum(method=method)
+        pd.testing.assert_frame_equal(
+            r.execute().fetch(), raw.groupby(raw["c2"]).sum()
+        )
+
+    r = mdf.groupby("c2").size(method="tree")
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.groupby("c2").size())
+
+    # test inserted kurt method
+    r = mdf.groupby("c2").kurtosis(method="tree")
+    pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby("c2").kurtosis())
+
+    for agg_fun in agg_funs:
+        if agg_fun == "size" or callable(agg_fun):
+            continue
+        r = getattr(mdf.groupby("c2"), agg_fun)(method="tree")
+        pd.testing.assert_frame_equal(
+            r.execute().fetch(), getattr(raw.groupby("c2"), agg_fun)()
+        )
+
+    # test as_index=False takes no effect
+    r = mdf.groupby(["c1", "c2"], as_index=False).agg(["mean", "count"])
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(),
+        raw.groupby(["c1", "c2"], as_index=False).agg(["mean", "count"]),
+    )
+    assert r.op.groupby_params["as_index"] is True
+
+    # r = mdf.groupby("c2").agg(["cumsum", "cumcount"])
+    # pd.testing.assert_frame_equal(
+    #     r.execute().fetch(),
+    #     raw.groupby("c2").agg(["cumsum", "cumcount"]),
+    # )
+
 
 def test_series_groupby_agg(setup):
     rs = np.random.RandomState(0)
@@ -1251,3 +1356,4 @@ def test_groupby_nunique(setup):
             .nunique()
             .sort_values(by="b", ignore_index=True),
         )
+
