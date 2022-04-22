@@ -222,7 +222,7 @@ async def test_cancel_task(actor_pool):
         result = await manager.get_task_result(task_id)
         assert result.status == TaskStatus.terminated
 
-    assert timer.duration < 20
+    assert timer.duration < 25
 
     keys = [r.key for r in rs]
     del rs
