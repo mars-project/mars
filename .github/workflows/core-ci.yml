@@ -86,6 +86,7 @@ jobs:
       run: |
         source ./ci/reload-env.sh
         source ./.github/workflows/run-tests.sh
+        echo "done"
         coverage xml
 
     - name: Report coverage data
