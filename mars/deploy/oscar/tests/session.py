@@ -18,10 +18,11 @@ import os
 import uuid
 
 from ....core import OBJECT_TYPE
-from ....deploy.oscar.local import LocalCluster
+from ....deploy.oscar.local import LocalCluster, LocalClient
 from ....tests.core import _check_args, ObjectCheckMixin
 from ..session import (
     _IsolatedSession,
+    AbstractSession,
     AsyncSession,
     ensure_isolation_created,
     _ensure_sync,
@@ -76,9 +77,33 @@ async def _new_test_session(
     new: bool = True,
     timeout: float = None,
     **kwargs,
-) -> AsyncSession:
+) -> AbstractSession:
     if session_id is None:
         session_id = str(uuid.uuid4())
+
+    async def _get_checked_session(_address):
+        session = AsyncSession.from_isolated_session(
+            await CheckedSession.init(
+                _address,
+                session_id=session_id,
+                backend=backend,
+                new=new,
+                timeout=timeout,
+                **kwargs,
+            )
+        )
+        if default:
+            session.as_default()
+        return session
+
+    async def _new_test_cluster_in_isolation(**new_cluster_kwargs):
+        cluster = LocalCluster(**new_cluster_kwargs)
+        await cluster.start()
+        session = await _get_checked_session(cluster.external_address)
+        client = LocalClient(cluster, session)
+        session.client = client
+        return client
+
     init_local = kwargs.pop("init_local", False)
     if init_local:
         if "n_cpu" not in kwargs:
@@ -89,28 +114,12 @@ async def _new_test_session(
             kwargs["config"] = CONFIG_FILE
 
         sig = inspect.signature(LocalCluster)
-        init_local_params = {}
-        for k in sig.parameters.keys():
+        new_cluster_params = {}
+        for k in sig.parameters:
             if k in kwargs:
-                init_local_params[k] = kwargs.pop(k)
-        cluster = LocalCluster(address, **init_local_params)
-        await cluster.start()
-        address = cluster.external_address
-        default = True
-
-    session = AsyncSession.from_isolated_session(
-        await CheckedSession.init(
-            address,
-            session_id=session_id,
-            backend=backend,
-            new=new,
-            timeout=timeout,
-            **kwargs,
-        )
-    )
-    if default:
-        session.as_default()
-    return session
+                new_cluster_params[k] = kwargs.pop(k)
+        return (await _new_test_cluster_in_isolation(**new_cluster_params)).session
+    return await _get_checked_session(address)
 
 
 def new_test_session(
@@ -136,9 +145,6 @@ def new_test_session(
         new=new,
         **kwargs,
     )
-    session = _ensure_sync(
+    return _ensure_sync(
         asyncio.run_coroutine_threadsafe(coro, isolation.loop).result(120)
     )
-    if default:
-        session.as_default()
-    return session
