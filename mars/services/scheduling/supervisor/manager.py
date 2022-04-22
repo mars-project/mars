@@ -21,6 +21,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
+from ....metrics import Metrics
 from ....oscar.backends.context import ProfilingContext
 from ....oscar.errors import MarsError
 from ....oscar.profiling import ProfilingData, MARS_ENABLE_PROFILING
@@ -82,6 +83,21 @@ class SubtaskManagerActor(mo.Actor):
         self._speculation_config = speculation_config or {}
         self._queueing_ref = None
         self._global_resource_ref = None
+        self._submitted_subtask_count = Metrics.counter(
+            "mars.scheduling.submitted_subtask_count",
+            "The count of submitted subtasks to all bands.",
+            ("session_id", "task_id", "stage_id"),
+        )
+        self._finished_subtask_count = Metrics.counter(
+            "mars.scheduling.finished_subtask_count",
+            "The count of finished subtasks of all bands.",
+            ("session_id", "task_id", "stage_id"),
+        )
+        self._canceled_subtask_count = Metrics.counter(
+            "mars.scheduling.canceled_subtask_count",
+            "The count of canceled subtasks of all bands.",
+            ("session_id", "task_id", "stage_id"),
+        )
         logger.info(
             "Created SubtaskManager with subtask_max_reschedules %s, "
             "speculation_config %s",
@@ -167,6 +183,14 @@ class SubtaskManagerActor(mo.Actor):
         for subtask_id, subtask_band in zip(subtask_ids, bands):
             subtask_info = self._subtask_infos.get(subtask_id, None)
             if subtask_info is not None:
+                self._finished_subtask_count.record(
+                    1,
+                    {
+                        "session_id": self._session_id,
+                        "task_id": subtask_info.subtask.task_id,
+                        "stage_id": subtask_info.subtask.stage_id,
+                    },
+                )
                 self._subtask_summaries[subtask_id] = subtask_info.to_summary(
                     is_finished=True
                 )
@@ -235,6 +259,14 @@ class SubtaskManagerActor(mo.Actor):
                     ProfilingContext(subtask_info.subtask.task_id)
                     if enable_profiling
                     else None
+                )
+                self._submitted_subtask_count.record(
+                    1,
+                    {
+                        "session_id": self._session_id,
+                        "task_id": subtask_info.subtask.task_id,
+                        "stage_id": subtask_info.subtask.stage_id,
+                    },
                 )
                 logger.debug("Start run subtask %s in band %s.", subtask_id, band)
                 with Timer() as timer:
@@ -387,6 +419,14 @@ class SubtaskManagerActor(mo.Actor):
             if subtask_info is not None:
                 self._subtask_summaries[subtask_id] = subtask_info.to_summary(
                     is_finished=True, is_cancelled=True
+                )
+                self._canceled_subtask_count.record(
+                    1,
+                    {
+                        "session_id": self._session_id,
+                        "task_id": subtask_info.subtask.task_id,
+                        "stage_id": subtask_info.subtask.stage_id,
+                    },
                 )
         await self._queueing_ref.submit_subtasks.tell()
         logger.info("Subtasks %s canceled.", subtask_ids)

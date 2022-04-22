@@ -26,6 +26,7 @@ from .... import oscar as mo
 from ....core.graph import DAG
 from ....core.operand import Fetch, FetchShuffle
 from ....lib.aio import alru_cache
+from ....metrics import Metrics
 from ....oscar.errors import MarsError
 from ....storage import StorageLevel
 from ....utils import dataslots, get_chunk_key_to_data_keys, wrap_exception
@@ -143,6 +144,16 @@ class SubtaskExecutionActor(mo.StatelessActor):
         self._data_prepare_timeout = data_prepare_timeout
 
         self._subtask_info = dict()
+        self._submitted_subtask_count = Metrics.counter(
+            "mars.band.submitted_subtask_count",
+            "The count of submitted subtasks to the current band.",
+            ("band",),
+        )
+        self._finished_subtask_count = Metrics.counter(
+            "mars.band.finished_subtask_count",
+            "The count of finished subtasks of the current band.",
+            ("band",),
+        )
 
     async def __post_create__(self):
         self._cluster_api = await ClusterAPI.create(self.address)
@@ -497,6 +508,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
         logger.debug(
             "Start to schedule subtask %s on %s.", subtask.subtask_id, self.address
         )
+        self._submitted_subtask_count.record(1, {"band": self.address})
         with mo.debug.no_message_trace():
             task = asyncio.create_task(
                 self.ref().internal_run_subtask(subtask, band_name)
@@ -517,6 +529,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
         )
         result = await task
         self._subtask_info.pop(subtask.subtask_id, None)
+        self._finished_subtask_count.record(1, {"band": self.address})
         logger.debug("Subtask %s finished with result %s", subtask.subtask_id, result)
         return result
 
