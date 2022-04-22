@@ -16,14 +16,12 @@ import asyncio
 import inspect
 import os
 import uuid
-from typing import Union, List, Dict
 
 from ....core import OBJECT_TYPE
 from ....deploy.oscar.local import LocalCluster
 from ....tests.core import _check_args, ObjectCheckMixin
 from ..session import (
     _IsolatedSession,
-    AbstractAsyncSession,
     AsyncSession,
     ensure_isolation_created,
     _ensure_sync,
