@@ -144,8 +144,7 @@ jobs:
             coverage report
           fi
           if [ -n "$RUN_DASK" ]; then
-            pytest $PYTEST_CONFIG -s -v --log-cli-level=debug mars/contrib/dask/tests/test_dask.py
-            echo "done"
+            pytest $PYTEST_CONFIG mars/contrib/dask/tests/test_dask.py
             coverage report
           fi
           coverage xml

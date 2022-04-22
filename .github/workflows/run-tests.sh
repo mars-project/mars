@@ -24,7 +24,7 @@ if [ -z "$NO_COMMON_TESTS" ]; then
   pytest $PYTEST_CONFIG mars/remote mars/storage mars/lib mars/metrics
   mv .coverage build/.coverage.tileable.file
 
-  pytest $PYTEST_CONFIG -s -v --log-cli-level=debug --forked --ignore mars/tensor --ignore mars/dataframe \
+  pytest $PYTEST_CONFIG --forked --ignore mars/tensor --ignore mars/dataframe \
     --ignore mars/learn --ignore mars/remote mars
   mv .coverage build/.coverage.main.file
   coverage combine build/ && coverage report
