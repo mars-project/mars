@@ -96,6 +96,6 @@ docs/source/savefig/
 
 # Unit / Performance Testing #
 ##############################
-asv_bench/env/
-asv_bench/html/
-asv_bench/results/
+benchmarks/asv_bench/env/
+benchmarks/asv_bench/html/
+benchmarks/asv_bench/results/

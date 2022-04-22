@@ -147,6 +147,11 @@ async def test_extensible_batch_only(use_async):
         assert asyncio.iscoroutinefunction(TestClass.method)
 
     test_inst = TestClass()
+    ret = test_inst.method.batch()
+    ret = await ret if use_async else ret
+    assert ret == []
+
+    test_inst = TestClass()
     ret = test_inst.method.batch(test_inst.method.delay(12))
     ret = await ret if use_async else ret
     assert ret == [1]

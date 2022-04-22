@@ -15,7 +15,7 @@
 from functools import wraps
 from typing import Dict
 
-from ..serialization.core import Placeholder, short_id
+from ..serialization.core import Placeholder, fast_id
 from ..serialization.serializables import Serializable, StringField
 from ..serialization.serializables.core import SerializableSerializer
 from ..utils import tokenize
@@ -123,7 +123,7 @@ def buffered_base(func):
     def wrapped(self, obj: Base, context: Dict):
         obj_id = (obj.key, obj.id)
         if obj_id in context:
-            return Placeholder(short_id(context[obj_id]))
+            return Placeholder(fast_id(context[obj_id]))
         else:
             context[obj_id] = obj
             return func(self, obj, context)
