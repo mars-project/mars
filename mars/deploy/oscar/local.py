@@ -123,7 +123,6 @@ class LocalCluster:
         subprocess_start_method: str = None,
         config: Union[str, Dict] = None,
         web: Union[bool, str] = "auto",
-        timeout: float = None,
         n_supervisor_process: int = 0,
     ):
         # load third party extensions.
