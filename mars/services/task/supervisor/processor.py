@@ -25,7 +25,7 @@ from typing import Dict, Iterator, Optional, Type, List, Set
 
 from .... import oscar as mo
 from ....config import Config
-from ....core import ChunkGraph, TileableGraph, Chunk
+from ....core import ChunkGraph, TileableGraph, Chunk, TileContext
 from ....core.operand import Fetch, FetchShuffle
 from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from ....metrics import Metrics
@@ -364,12 +364,10 @@ class TaskProcessor:
             self._gen_result()
             self._finish()
 
-    async def get_progress(self):
+    async def get_progress(self) -> float:
         # get tileable proportion that is tiled
         tileable_graph = self._preprocessor.tileable_graph
-        tileable_context = self._preprocessor.tile_context
-        tiled_percentage = len(tileable_context) / len(tileable_graph)
-        return tiled_percentage * await self._executor.get_progress()
+        return await self._executor.get_progress() / len(tileable_graph)
 
     async def cancel(self):
         self._preprocessor.cancel()
@@ -381,7 +379,7 @@ class TaskProcessor:
     @staticmethod
     def _get_tileable_to_subtasks(
         tileable_graph: TileableGraph,
-        tile_context: Dict[TileableType, TileableType],
+        tile_context: TileContext,
         subtask_graph: SubtaskGraph,
     ) -> Dict[TileableType, List[Subtask]]:
         tileable_to_chunks = defaultdict(set)
@@ -515,7 +513,7 @@ class TaskProcessorActor(mo.Actor):
     async def add_task(
         self,
         task: Task,
-        tiled_context: Dict[TileableType, TileableType],
+        tiled_context: TileContext,
         config: Config,
         task_executor_config: Dict,
         task_preprocessor_cls: Type[TaskPreprocessor],

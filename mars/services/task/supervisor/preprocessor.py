@@ -19,7 +19,7 @@ from functools import partial
 from typing import Callable, Dict, List, Iterable, Set
 
 from ....config import Config
-from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder
+from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, TileContext
 from ....core.graph.builder.chunk import Tiler, _TileableHandler
 from ....core.operand import Fetch
 from ....resource import Resource
@@ -38,7 +38,7 @@ class CancellableTiler(Tiler):
     def __init__(
         self,
         tileable_graph: TileableGraph,
-        tile_context: Dict[TileableType, TileableType],
+        tile_context: TileContext,
         processed_chunks: Set[ChunkType],
         chunk_to_fetch: Dict[ChunkType, ChunkType],
         add_nodes: Callable,
@@ -117,12 +117,12 @@ class TaskPreprocessor:
         "_done",
     )
 
-    tile_context: Dict[TileableType, TileableType]
+    tile_context: TileContext
 
     def __init__(
         self,
         task: Task,
-        tiled_context: Dict[TileableType, TileableType] = None,
+        tiled_context: TileContext = None,
         config: Config = None,
     ):
         self._task = task

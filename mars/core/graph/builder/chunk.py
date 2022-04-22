@@ -35,6 +35,7 @@ from .base import AbstractGraphBuilder
 
 
 tile_gen_type = Generator[List[ChunkType], List[ChunkType], List[TileableType]]
+DEFAULT_UPDATED_PROGRESS = 0.4
 
 
 @dataclasses.dataclass
@@ -44,6 +45,39 @@ class _TileableHandler:
     last_need_processes: List[EntityType] = None
 
 
+class TileContext(Dict[TileableType, TileableType]):
+    _tileable_to_progress: Dict[TileableType, float]
+
+    def __init__(self):
+        super().__init__()
+        self._tileable_to_progress = dict()
+
+    def __setitem__(self, key, value):
+        self._tileable_to_progress.pop(key, None)
+        return super().__setitem__(key, value)
+
+    def set_progress(self, tileable: TileableType, progress: float):
+        assert 0.0 <= progress <= 1.0
+        self._tileable_to_progress[tileable] = progress
+
+    def get_progress(self, tileable: TileableType) -> float:
+        if tileable in self:
+            return 1.0
+        else:
+            return self._tileable_to_progress.get(tileable, 0.0)
+
+    def get_all_progress(self) -> float:
+        if not self._tileable_to_progress:
+            return len(self) * 1.0
+        return sum(self.get_progress(t) for t in self)
+
+
+@dataclasses.dataclass
+class TileStatus:
+    entities: List[EntityType] = None
+    progress: float = None
+
+
 class Tiler:
     _cur_chunk_graph: Optional[ChunkGraph]
     _tileable_handlers: Iterable[_TileableHandler]
@@ -51,7 +85,7 @@ class Tiler:
     def __init__(
         self,
         tileable_graph: TileableGraph,
-        tile_context: Dict[TileableType, TileableType],
+        tile_context: TileContext,
         processed_chunks: Set[ChunkType],
         chunk_to_fetch: Dict[ChunkType, ChunkType],
         add_nodes: Callable,
@@ -119,6 +153,17 @@ class Tiler:
     ):
         try:
             need_process = next(tile_handler)
+
+            if isinstance(need_process, TileStatus):
+                # process tile that returns progress
+                self._tile_context.set_progress(tileable, need_process.progress)
+                need_process = need_process.entities
+            else:
+                # if progress not specified, we just update 0.4 * rest progress
+                progress = self._tile_context.get_progress(tileable)
+                new_progress = progress + (1.0 - progress) * DEFAULT_UPDATED_PROGRESS
+                self._tile_context.set_progress(tileable, new_progress)
+
             chunks = []
             if need_process is not None:
                 for t in need_process:
@@ -278,7 +323,7 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
         self,
         graph: TileableGraph,
         fuse_enabled: bool = True,
-        tile_context: Dict[TileableType, TileableType] = None,
+        tile_context: TileContext = None,
         tiler_cls: Union[Type[Tiler], Callable] = None,
     ):
         super().__init__(graph)
