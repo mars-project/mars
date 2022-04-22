@@ -115,7 +115,7 @@ class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixi
         n = op.n_partition
         if a.shape[0] < n:
             num = n // a.shape[0] + 1
-            a = xdf.concat([a] * num).sort_values(by=op.by)
+            a = xdf.concat([a] * num).sort_index()
 
         w = a.shape[0] * 1.0 / (n + 1)
 
@@ -240,19 +240,11 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
 
         def _get_out_df(p_index, in_df):
             if p_index == 0:
-                if pivots[p_index] in in_df.index.values:
-                    out_df = in_df.loc[:pivots[p_index]].iloc[:-1]
-                else:
-                    out_df = in_df.loc[:pivots[p_index]]
-                    # print("here " + str(out_df))
+                out_df = in_df.loc[:pivots[p_index]]
             elif p_index == op.n_partition - 1:
-                out_df = in_df.loc[pivots[p_index-1]:]
+                out_df = in_df.loc[pivots[p_index-1]:].drop(index=pivots[p_index-1], errors="ignore")
             else:
-                if pivots[p_index] in in_df.index.values:
-                    out_df = in_df.loc[pivots[p_index - 1]:pivots[p_index]].iloc[:-1]
-                else:
-                    out_df = in_df.loc[pivots[p_index - 1]:pivots[p_index]]
-                    # print("here " + str(out_df))
+                out_df = in_df.loc[pivots[p_index - 1]:pivots[p_index]].drop(index=pivots[p_index-1], errors="ignore")
             return out_df
 
         # print("index " + str(out.key) + " " + str(df))

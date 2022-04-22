@@ -310,7 +310,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             partition_shuffle_reduce = DataFrameGroupbySortShuffle(
                 stage=OperandStage.reduce,
                 reducer_index=(i, 0),
-                output_types=op.output_types,
+                output_types=[OutputType.dataframe_groupby],
                 **properties
             )
             chunk_shape = list(partition_chunk.shape)
@@ -321,17 +321,16 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 index=partition_chunk.index,
                 index_value=partition_chunk.index_value,
             )
-            if op.outputs[0].ndim == 2:
-                kw.update(
-                    dict(
-                        columns_value=partition_chunk.columns_value,
-                        dtypes=partition_chunk.dtypes
-                    )
-                )
-            else:
-                kw.update(dict(dtype=partition_chunk.dtype, name=partition_chunk.name))
+            # if op.outputs[0].ndim == 2:
+            #     kw.update(
+            #         dict(
+            #             columns_value=partition_chunk.columns_value,
+            #             # dtypes=partition_chunk.dtypes
+            #         )
+            #     )
+            # else:
+            #     kw.update(dict(dtype=partition_chunk.dtype, name=partition_chunk.name))
             cs = partition_shuffle_reduce.new_chunks([proxy_chunk], **kw)
-
             partition_sort_chunks.append(cs[0])
         return partition_sort_chunks
 
@@ -352,19 +351,21 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 shuffle_size=chunk_shape[0],
                 stage=OperandStage.map,
                 n_partition = len(sorted_chunks),
-                output_types=op.output_types,
-                **properties
+                output_types=[OutputType.dataframe_groupby],
+                # columns_value=chunk_inputs[0].columns_value,
             )
             kw = dict()
-            if op.outputs[0].ndim == 2:
-                kw.update(
-                    dict(
-                        columns_value=chunk_inputs[0].columns_value,
-                        dtypes=chunk_inputs[0].dtypes
-                    )
-                )
-            else:
-                kw.update(dict(dtype=chunk_inputs[0].dtype, name=chunk_inputs[0].name))
+            # if op.outputs[0].ndim == 2:
+            #     kw.update(
+            #         dict(
+            #             columns_value=chunk_inputs[0].columns_value,
+            #             # dtypes=chunk_inputs[0].dtypes
+            #         )
+            #     )
+            # else:
+                # kw.update(dict(dtype=chunk_inputs[0].dtype, name=chunk_inputs[0].name))
+                # kw.update(dict(name=chunk_inputs[0].name))
+
 
             map_chunks.append(
                 map_chunk_op.new_chunk(
@@ -372,7 +373,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                     shape=chunk_shape,
                     index=chunk.index,
                     index_value=chunk_inputs[0].index_value,
-                    **kw
+                    # **kw
                 )
             )
 
@@ -384,7 +385,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             op, chunks, pivot, in_df
         )
 
-        proxy_chunk = DataFrameShuffleProxy(output_types=op.output_types).new_chunk(
+        proxy_chunk = DataFrameShuffleProxy(output_types=[OutputType.dataframe]).new_chunk(
             map_chunks, shape=()
         )
 
@@ -437,18 +438,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return reduce_chunks
 
     @classmethod
-    def _gen_pivot_chunks(
-        cls,
-        op: "DataFrameGroupByAgg",
-        in_chunks: List[ChunkType],
-        func_infos: ReductionSteps,
-    ):
-        # find groups -> dataframe group by operand
-        # stage 1: local sort and regular samples collected
-        # stage 2: gather and merge samples, choose and broadcast p-1 pivots
-        pass
-
-    @classmethod
     def _gen_map_chunks(
         cls,
         op: "DataFrameGroupByAgg",
@@ -487,7 +476,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                     index=new_index,
                     index_value=out_df.index_value,
                     columns_value=out_df.columns_value,
-                    dtypes=chunk.dtypes,
                 )
             else:
                 map_chunk = map_op.new_chunk(
@@ -495,7 +483,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                     shape=(out_df.shape[0], 1),
                     index=new_index,
                     index_value=out_df.index_value,
-                    dtype=chunk.dtype,
                 )
             map_chunks.append(map_chunk)
         return map_chunks
@@ -589,13 +576,14 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             chunk_op = DataFramePSRSGroupbySample (
                 kind='quicksort',
                 n_partition=chunk_shape,
-                output_types=op.output_types,
+                output_types=[OutputType.dataframe],
                 **properties
             )
             kws = []
             sampled_shape = (
                 (chunk_shape, len(op.groupby_params['by'])) if op.groupby_params['by'] else (chunk_shape,)
             )
+            print(chunk)
             kws.append(
                 {
                     "shape": sampled_shape,
@@ -604,12 +592,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                     "type": "regular_sampled",
                 }
             )
-            if op.outputs[0].ndim == 2:
-                kws[0].update(
-                    {"columns_value": chunk.columns_value, "dtypes": chunk.dtypes}
-                )
-            else:
-                kws[0].update({"dtype": chunk.dtype})
 
             chunk = chunk_op.new_chunk([chunk], kws=kws)
             sampled_chunks.append(chunk)
@@ -1061,6 +1043,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             size_recorder = ctx.get_remote_object(op.size_recorder_name)
             size_recorder.record(raw_size, agg_size)
 
+        # print(tuple(agg_dfs))
         ctx[op.outputs[0].key] = tuple(agg_dfs)
 
     @classmethod
