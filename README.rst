@@ -330,7 +330,7 @@ Getting involved
 ----------------
 
 - Read `development guide <https://docs.pymars.org/en/latest/development/index.html>`_.
-- Join our Slack workgroup: `Slack <https://join.slack.com/t/mars-computing/shared_invite/zt-13ldfh53l-mWBp4YhN7XaDpXjnKmpmeQ>`_.
+- Join our Slack workgroup: `Slack <https://join.slack.com/t/mars-computing/shared_invite/zt-17pw2cfua-NRb2H4vrg77pr9T4g3nQOQ>`_.
 - Join the mailing list: send an email to `mars-dev@googlegroups.com`_.
 - Please report bugs by submitting a `GitHub issue`_.
 - Submit contributions using `pull requests`_.
