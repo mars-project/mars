@@ -605,8 +605,6 @@ class MarsSupervisorsConfig(MarsReplicationConfig):
             cmd += ["-p", str(self._service_port)]
         if self._web_port:
             cmd += ["-w", str(self._web_port)]
-        if self._cpu:
-            cmd += ["--n-process", str(self._cpu)]
         return cmd
 
 
