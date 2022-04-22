@@ -4,7 +4,7 @@ if [ -n "$WITH_CYTHON" ]; then
   mkdir -p build
   export POOL_START_METHOD=forkserver
 
-  coverage run --rcfile=setup.cfg -m pytest $PYTEST_CONFIG_WITHOUT_COV -s -v --log-cli-level=debug \
+  coverage run --rcfile=setup.cfg -m pytest $PYTEST_CONFIG_WITHOUT_COV \
     mars/tests \
     mars/core/graph \
     mars/serialization
@@ -12,7 +12,7 @@ if [ -n "$WITH_CYTHON" ]; then
   coverage combine
   mv .coverage build/.coverage.non-oscar.file
 
-  coverage run --rcfile=setup.cfg -m pytest $PYTEST_CONFIG_WITHOUT_COV -s -v --log-cli-level=debug mars/oscar
+  coverage run --rcfile=setup.cfg -m pytest $PYTEST_CONFIG_WITHOUT_COV mars/oscar
   python .github/workflows/remove_tracer_errors.py
   coverage combine
   mv .coverage build/.coverage.oscar_ctx.file
@@ -21,10 +21,10 @@ if [ -n "$WITH_CYTHON" ]; then
 fi
 if [ -z "$NO_COMMON_TESTS" ]; then
   mkdir -p build
-  pytest $PYTEST_CONFIG -s -v --log-cli-level=debug mars/remote mars/storage mars/lib mars/metrics
+  pytest $PYTEST_CONFIG mars/remote mars/storage mars/lib mars/metrics
   mv .coverage build/.coverage.tileable.file
 
-  pytest $PYTEST_CONFIG -s -v --log-cli-level=debug --forked --ignore mars/tensor --ignore mars/dataframe \
+  pytest $PYTEST_CONFIG --forked --ignore mars/tensor --ignore mars/dataframe \
     --ignore mars/learn --ignore mars/remote mars
   mv .coverage build/.coverage.main.file
   coverage combine build/ && coverage report
