@@ -177,7 +177,7 @@ if ray and not hasattr(ray, "report_event"):  # pragma: no cover
         ERROR = 2
         FATAL = 3
 
-    def report_event(severity, label, message):
+    def _report_event(severity, label, message):
         logger.warning(
             "severity: %s, label: %s, message: %s.", severity, label, message
         )
@@ -186,7 +186,7 @@ if ray and not hasattr(ray, "report_event"):  # pragma: no cover
     import ray
 
     ray.EventSeverity = EventSeverity
-    ray.report_event = report_event
+    ray.report_event = _report_event
 
 
 def report_event(severity, label, message):
