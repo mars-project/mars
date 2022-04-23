@@ -17,6 +17,7 @@ from dask.core import istask, ishashable
 from typing import List, Tuple, Union
 from .utils import reduce
 from ...remote import spawn
+from ...deploy.oscar.session import execute
 
 
 def mars_scheduler(dsk: dict, keys: Union[List[List[str]], List[str]]):
@@ -40,9 +41,12 @@ def mars_scheduler(dsk: dict, keys: Union[List[List[str]], List[str]]):
     """
 
     if isinstance(keys, List) and not isinstance(keys[0], List):  # 1d keys
-        return map(lambda x: x.execute().fetch(), mars_dask_get(dsk, keys))
+        task = execute(mars_dask_get(dsk, keys))
+        if not isinstance(task, List):
+            task = [task]
+        return map(lambda x: x.fetch(), task)
     else:  # 2d keys
-        res = reduce(mars_dask_get(dsk, keys)).execute().fetch()
+        res = execute(reduce(mars_dask_get(dsk, keys))).fetch()
         if not isinstance(res, List):
             return [[res]]
         else:
@@ -72,7 +76,7 @@ def mars_dask_get(dsk: dict, keys: Union[List[List[str]], List[str]]):
         if ishashable(a) and a in dsk.keys():
             while ishashable(a) and a in dsk.keys():
                 a = dsk[a]
-            return _execute_task(a)
+            return _spawn_task(a)
         elif not isinstance(a, str) and hasattr(a, "__getitem__"):
             if istask(
                 a
@@ -84,14 +88,14 @@ def mars_dask_get(dsk: dict, keys: Union[List[List[str]], List[str]]):
                 return type(a)(_get_arg(i) for i in a)
         return a
 
-    def _execute_task(task: tuple):
+    def _spawn_task(task: tuple):
         if not istask(task):
             return _get_arg(task)
         return spawn(task[0], args=tuple(_get_arg(a) for a in task[1:]))
 
     return [
-        [_execute_task(dsk[k]) for k in keys_d]
+        [_spawn_task(dsk[k]) for k in keys_d]
         if isinstance(keys_d, List)
-        else _execute_task(dsk[keys_d])
+        else _spawn_task(dsk[keys_d])
         for keys_d in keys
     ]
