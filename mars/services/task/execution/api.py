@@ -133,3 +133,4 @@ _name_to_fetcher_cls: Dict[str, Type[Fetcher]] = {}
 
 def register_fetcher_cls(fetcher_cls: Type[Fetcher]):
     _name_to_fetcher_cls[fetcher_cls.name] = fetcher_cls
+    return fetcher_cls

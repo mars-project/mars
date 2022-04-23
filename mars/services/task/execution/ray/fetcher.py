@@ -36,7 +36,6 @@ class RayFetcher(Fetcher):
         self._fetch_info_list.append(
             _FetchInfo(chunk_key, chunk_meta["object_refs"][0], conditions)
         )
-        return self
 
     async def get(self):
         objects = await asyncio.gather(
@@ -50,7 +49,7 @@ class RayFetcher(Fetcher):
                 results.append(o)
             else:
                 try:
-                    results.append(o.iloc[tuple(fetch_info.conditions)])
+                    results.append(o.iloc[fetch_info.conditions])
                 except AttributeError:
-                    results.append(o[tuple(fetch_info.conditions)])
+                    results.append(o[fetch_info.conditions])
         return results

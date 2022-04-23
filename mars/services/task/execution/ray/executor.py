@@ -66,22 +66,21 @@ def execute_subtask(
     output = {
         key: data for key, data, _ in iter_output_data(subtask_chunk_graph, context)
     }
-    output_meta = {}
-    for chunk in subtask_chunk_graph.result_chunks:
-        if chunk.key in output_meta_keys:
-            if isinstance(chunk.op, Fuse):
-                # fuse op
-                chunk = chunk.chunk
-            output_meta[chunk.key] = get_chunk_params(chunk)
-    assert len(output_meta_keys) == len(output_meta)
+    output_values = []
+    if output_meta_keys:
+        output_meta = {}
+        for chunk in subtask_chunk_graph.result_chunks:
+            if chunk.key in output_meta_keys:
+                if isinstance(chunk.op, Fuse):
+                    # fuse op
+                    chunk = chunk.chunk
+                output_meta[chunk.key] = get_chunk_params(chunk)
+        assert len(output_meta_keys) == len(output_meta)
+        output_values.append(output_meta)
+    output_values.extend(output.values())
 
     logger.info("Finish executing subtask: %s", subtask_id)
-    has_meta = bool(output_meta_keys)
-    if len(output) + has_meta == 1:
-        return next(iter(output.values()))
-    else:
-        output_values = list(output.values())
-        return [output_meta] + output_values if has_meta else output_values
+    return output_values[0] if len(output_values) == 1 else output_values
 
 
 @register_executor_cls
