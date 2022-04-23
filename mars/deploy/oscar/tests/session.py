@@ -118,7 +118,9 @@ async def _new_test_session(
         for k in sig.parameters:
             if k in kwargs:
                 new_cluster_params[k] = kwargs.pop(k)
-        return (await _new_test_cluster_in_isolation(**new_cluster_params)).session
+        return (
+            await _new_test_cluster_in_isolation(address=address, **new_cluster_params)
+        ).session
     return await _get_checked_session(address)
 
 
