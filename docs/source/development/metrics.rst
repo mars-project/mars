@@ -13,7 +13,7 @@ Mars metrics API are in ``mars/metrics/api.py`` and there are four metric types:
 * ``Counter`` is a cumulative type of data which represents a monotonically increasing number.
 * ``Gauge`` is a single numerical value.
 * ``Meter`` is the rate at which a set of events occur. we can use it as qps or tps.
-* ``Histogram`` is a type of statistics which  records the average value of a window data.
+* ``Histogram`` is a type of statistics which records the average value of a window data.
 
 And we can use these types as follows:
 
@@ -57,7 +57,7 @@ Mars metrics support three different backends:
 
 * ``console`` is used for debug and it just prints the value.
 * ``prometheus`` is an open-source systems monitoring and alerting toolkit.
-* ``ray`` is ray metric backend which just runs on ray engine.
+* ``ray`` is a metric backend which just runs on ray engine.
 
 We can choose a metric backend by configuring ``metrics.backend`` in
 ``mars/deploy/oscar/base_config.yml`` or its descendant files.
@@ -70,7 +70,7 @@ We propose a naming convention for metrics as follows:
 ``namespace.[component].metric_name[_units]``
 
 * ``namespace`` could be ``mars``.
-* ``component`` could be `supervisor` or `worker`, and can be omitted.
+* ``component`` could be `supervisor`, `worker` or `band` etc, and can be omitted.
 * ``units`` is the metric unit which may be seconds when recording time, or
   ``_count`` when metric type is ``Counter``, ``_number`` when metric type is
   ``Gauge`` if there is no suitable unit.
