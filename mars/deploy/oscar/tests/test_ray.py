@@ -38,8 +38,8 @@ from ....tests.core import require_ray, mock, DICT_NOT_EMPTY
 from ....utils import lazy_import
 from ..ray import (
     _load_config,
-    new_cluster,
     ClusterStateActor,
+    new_cluster,
     new_cluster_in_ray,
     new_ray_session,
 )

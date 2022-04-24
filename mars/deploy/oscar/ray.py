@@ -38,9 +38,9 @@ from ...services.cluster.backends.base import (
 from ...services import NodeRole
 from ...utils import lazy_import
 from ..utils import (
+    load_config,
     load_service_config_file,
     get_third_party_modules_from_config,
-    load_config,
 )
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
 from .session import (
