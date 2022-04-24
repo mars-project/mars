@@ -29,9 +29,15 @@ class AbstractMetric(ABC):
     def __init__(
         self, name: str, description: str = "", tag_keys: Optional[Tuple[str]] = None
     ):
+        assert isinstance(name, str), "Argument name should be a str"
+        assert isinstance(description, str), "Argument description should be a str"
+        if tag_keys is not None:
+            assert isinstance(tag_keys, tuple) and all(
+                isinstance(tag, str) for tag in tag_keys
+            ), "Argument tag_keys should be a tuple and its elements should be str"
         self._name = name
         self._description = description
-        self._tag_keys = tuple(tag_keys) if tag_keys else tuple()
+        self._tag_keys = tag_keys or tuple()
         self._init()
 
     @property

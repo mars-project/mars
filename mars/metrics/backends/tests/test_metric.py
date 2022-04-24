@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
+
 from ..metric import (
     AbstractMetric,
     AbstractCounter,
@@ -19,6 +21,24 @@ from ..metric import (
     AbstractMeter,
     AbstractHistogram,
 )
+
+
+def test_illegal_arguments():
+    class DummyMetric(AbstractMetric):
+        pass
+
+    DummyMetric.__abstractmethods__ = set()
+    with pytest.raises(AssertionError):
+        DummyMetric(1)
+
+    with pytest.raises(AssertionError):
+        DummyMetric("dummy_metric", 1)
+
+    with pytest.raises(AssertionError):
+        DummyMetric("dummy_metric", "A test metric", "service")
+
+    with pytest.raises(AssertionError):
+        DummyMetric("dummy_metric", "A test metric", ("service", 1))
 
 
 def test_dummy_metric():
