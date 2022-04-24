@@ -15,7 +15,7 @@
 import operator
 from dataclasses import dataclass
 from functools import partial
-from typing import Callable
+from typing import Callable, Union
 
 import numpy as np
 import pandas as pd
@@ -45,6 +45,16 @@ binary_functions = dict(
         func=operator.and_, func_name="__and__", rfunc_name="__rand__"
     ),
 )
+
+
+def sort_dataframe(
+    df: Union[pd.DataFrame, pd.Series], index: bool = True, columns: bool = True
+):
+    if index:
+        df.sort_index(inplace=True)
+    if columns and isinstance(df, pd.DataFrame):
+        df.sort_index(axis=1, inplace=True)
+    return df
 
 
 def to_boolean_if_needed(func_name, value, split_value=0.5):
@@ -81,7 +91,7 @@ def test_without_shuffle_execution(setup, func_name, func_opts):
     expected = func_opts.func(data1, data2)
     result = df3.execute().fetch()
 
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
 
 @pytest.mark.parametrize("func_name, func_opts", binary_functions.items())
@@ -113,7 +123,7 @@ def test_with_one_shuffle_execution(setup, func_name, func_opts):
     expected = func_opts.func(data1, data2)
     result = df3.execute().fetch()
 
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
     # only 1 axis is monotonic
     # data1 with columns split into [0...4], [5...9],
@@ -138,7 +148,7 @@ def test_with_one_shuffle_execution(setup, func_name, func_opts):
     expected = func_opts.func(data1, data2)
     result = df3.execute().fetch()
 
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
 
 @pytest.mark.parametrize("func_name, func_opts", binary_functions.items())
@@ -168,7 +178,7 @@ def test_with_all_shuffle_execution(setup, func_name, func_opts):
     expected = func_opts.func(data1, data2)
     result = df3.execute().fetch()
 
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
 
 @pytest.mark.parametrize("func_name, func_opts", binary_functions.items())
@@ -257,7 +267,7 @@ def test_without_shuffle_and_with_one_chunk(setup, func_name, func_opts):
     expected = func_opts.func(data1, data2)
     result = df3.execute().fetch()
 
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
     # only 1 axis is monotonic
     # data1 with columns split into [0...4], [5...9],
@@ -282,7 +292,7 @@ def test_without_shuffle_and_with_one_chunk(setup, func_name, func_opts):
     expected = func_opts.func(data1, data2)
     result = df3.execute().fetch()
 
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
 
 @pytest.mark.parametrize("func_name, func_opts", binary_functions.items())
@@ -312,7 +322,7 @@ def test_with_shuffle_and_with_one_chunk(setup, func_name, func_opts):
     expected = func_opts.func(data1, data2)
     result = df3.execute().fetch()
 
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
     # only 1 axis is monotonic
     # data1 with columns split into [0...4], [5...9],
@@ -337,7 +347,7 @@ def test_with_shuffle_and_with_one_chunk(setup, func_name, func_opts):
     expected = func_opts.func(data1, data2)
     result = df3.execute().fetch()
 
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
 
 @pytest.mark.parametrize("func_name, func_opts", binary_functions.items())
@@ -497,7 +507,7 @@ def test_with_shuffle_on_string_index(setup, func_name, func_opts):
     expected = func_opts.func(data1, data2)
     result = df3.execute().fetch()
 
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
 
 @pytest.mark.parametrize("func_name, func_opts", binary_functions.items())
@@ -527,7 +537,7 @@ def test_dataframe_and_series(setup, func_name, func_opts):
 
     expected = getattr(data1[[1]], func_opts.func_name)(data2[1], axis="index")
     result = r1.execute().fetch()
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
     # operate on dataframe and series without shuffle
     df2 = from_pandas(data1, chunk_size=(5, 5))
@@ -535,7 +545,7 @@ def test_dataframe_and_series(setup, func_name, func_opts):
 
     expected = getattr(data1, func_opts.func_name)(data2[1], axis="index")
     result = r2.execute().fetch()
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
     # operate on dataframe and series with shuffle
     df3 = from_pandas(data1, chunk_size=(5, 5))
@@ -543,7 +553,7 @@ def test_dataframe_and_series(setup, func_name, func_opts):
 
     expected = getattr(data1, func_opts.func_name)(data2[1], axis="columns")
     result = r3.execute().fetch()
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
     # test both one chunk, axis=0
     pdf = pd.DataFrame({"ca": [1, 3, 2], "cb": [360, 180, 2]}, index=[1, 2, 3])
@@ -553,7 +563,7 @@ def test_dataframe_and_series(setup, func_name, func_opts):
     mars_series = from_pandas_series(series)
     result = getattr(df, func_opts.func_name)(mars_series, axis=0).execute().fetch()
     expected = getattr(pdf, func_opts.func_name)(series, axis=0)
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
     # test different number of chunks, axis=0
     pdf = pd.DataFrame({"ca": [1, 3, 2], "cb": [360, 180, 2]}, index=[1, 2, 3])
@@ -563,7 +573,7 @@ def test_dataframe_and_series(setup, func_name, func_opts):
     mars_series = from_pandas_series(series)
     result = getattr(df, func_opts.func_name)(mars_series, axis=0).execute().fetch()
     expected = getattr(pdf, func_opts.func_name)(series, axis=0)
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
     # test with row shuffle, axis=0
     pdf = pd.DataFrame({"ca": [1, 3, 2], "cb": [360, 180, 2]}, index=[2, 1, 3])
@@ -575,7 +585,7 @@ def test_dataframe_and_series(setup, func_name, func_opts):
     expected = getattr(pdf, func_opts.func_name)(series, axis=0).reindex([3, 1, 2])
     # modify the order of rows
     result = result.reindex(index=[3, 1, 2])
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
     # test both one chunk, axis=1
     pdf = pd.DataFrame(
@@ -587,7 +597,7 @@ def test_dataframe_and_series(setup, func_name, func_opts):
     mars_series = from_pandas_series(series)
     result = getattr(df, func_opts.func_name)(mars_series, axis=1).execute().fetch()
     expected = getattr(pdf, func_opts.func_name)(series, axis=1)
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
     # test different number of chunks, axis=1
     pdf = pd.DataFrame(
@@ -599,7 +609,7 @@ def test_dataframe_and_series(setup, func_name, func_opts):
     mars_series = from_pandas_series(series)
     result = getattr(df, func_opts.func_name)(mars_series, axis=1).execute().fetch()
     expected = getattr(pdf, func_opts.func_name)(series, axis=1)
-    pd.testing.assert_frame_equal(expected, result)
+    pd.testing.assert_frame_equal(sort_dataframe(expected), sort_dataframe(result))
 
     # test with row shuffle, axis=1
     pdf = pd.DataFrame(
@@ -665,7 +675,7 @@ def test_series(setup, func_name, func_opts):
     )
     result = r.execute().fetch()
     expected = func_opts.func(s1, s2)
-    pd.testing.assert_series_equal(expected, result)
+    pd.testing.assert_series_equal(sort_dataframe(expected), sort_dataframe(result))
 
     if func_opts.func_name in ["__and__", "__or__", "__xor__"]:
         # bitwise logical operators doesn\'t support floating point scalars

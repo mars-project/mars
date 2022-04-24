@@ -223,7 +223,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
         shape = (np.nan, agg_df.shape[1])
         index_value = parse_index(agg_df.index, groupby.key, groupby.index_value.key)
-        index_value.value.should_be_monotonic = True
 
         # make sure if as_index=False takes effect
         self._fix_as_index(agg_df.index)
@@ -251,7 +250,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         index_value = parse_index(
             agg_result.index, groupby.key, groupby.index_value.key
         )
-        index_value.value.should_be_monotonic = True
 
         inputs = self._get_inputs([in_series])
 
