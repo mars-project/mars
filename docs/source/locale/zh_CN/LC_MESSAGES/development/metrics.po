@@ -1,0 +1,128 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2022.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.9.0rc2+18.g21929ced5\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-04-24 12:19+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.10.1\n"
+
+#: ../../source/development/metrics.rst:4
+msgid "Metrics"
+msgstr ""
+
+#: ../../source/development/metrics.rst:6
+msgid "Mars has a unified metrics API and three different backends."
+msgstr "Mars 有一个统一的 metrics API 和三个不同的后端。"
+
+#: ../../source/development/metrics.rst:9
+msgid "A Unified Metrics API"
+msgstr "统一的 Metrics API"
+
+#: ../../source/development/metrics.rst:11
+msgid ""
+"Mars metrics API are in ``mars/metrics/api.py`` and there are four metric"
+" types:"
+msgstr "Mars metrics API 在 ``mars/metrics/api.py``，有四种 metric 类型："
+
+#: ../../source/development/metrics.rst:13
+msgid ""
+"``Counter`` is a cumulative type of data which represents a monotonically"
+" increasing number."
+msgstr "``Counter`` 是一种累积类型的数据，代表一个单调递增的数字。"
+
+#: ../../source/development/metrics.rst:14
+msgid "``Gauge`` is a single numerical value."
+msgstr "``Gauge`` 是一个单一的数值。"
+
+#: ../../source/development/metrics.rst:15
+msgid ""
+"``Meter`` is the rate at which a set of events occur. we can use it as "
+"qps or tps."
+msgstr "``Meter`` 是一组事件发生的速率。 我们可以将其用作 qps 或 tps。"
+
+#: ../../source/development/metrics.rst:16
+msgid ""
+"``Histogram`` is a type of statistics which records the average value of"
+" a window data."
+msgstr "``Histogram`` 是一种统计类型，它记录窗口数据的平均值。"
+
+#: ../../source/development/metrics.rst:18
+msgid "And we can use these types as follows:"
+msgstr "我们可以如下使用这几种 metrics："
+
+#: ../../source/development/metrics.rst:50
+msgid ""
+"**Note**: If ``tag_keys`` is declared, ``tags`` must be specified when "
+"invoking ``record`` method and tags' keys must be consistent with "
+"``tag_keys``."
+msgstr "**注意**：如果声明了 ``tag_keys``，调用 ``record`` 方法时必须指定 ``tags`` "
+"参数，并且 ``tags`` 的 keys 必须跟 ``tag_keys`` 保持一致。"
+
+#: ../../source/development/metrics.rst:54
+msgid "Three different Backends"
+msgstr "三种不同的后端"
+
+#: ../../source/development/metrics.rst:56
+msgid "Mars metrics support three different backends:"
+msgstr "Mars metrics 支持3种不同的后端："
+
+#: ../../source/development/metrics.rst:58
+msgid "``console`` is used for debug and it just prints the value."
+msgstr "``console`` 是用来调试的，只打印出 metric 值。"
+
+#: ../../source/development/metrics.rst:59
+msgid "``prometheus`` is an open-source systems monitoring and alerting toolkit."
+msgstr "``prometheus`` 一个开源系统监控和报警工具包。"
+
+#: ../../source/development/metrics.rst:60
+msgid "``ray`` is a metric backend which just runs on ray engine."
+msgstr "``ray`` 是一种运行在 ray 引擎上的 metric 后端。"
+
+#: ../../source/development/metrics.rst:62
+msgid ""
+"We can choose a metric backend by configuring ``metrics.backend`` in "
+"``mars/deploy/oscar/base_config.yml`` or its descendant files."
+msgstr "我们可以通过配置 ``mars/deploy/oscar/base_config.yml`` 或它的继承文件中的 "
+"``metrics.backend`` 来选择一种 metric 后端。"
+
+#: ../../source/development/metrics.rst:66
+msgid "Metrics Naming Convention"
+msgstr "Metrics 命名约定"
+
+#: ../../source/development/metrics.rst:68
+msgid "We propose a naming convention for metrics as follows:"
+msgstr "我们提出一种如下的 metrics 命名约定："
+
+#: ../../source/development/metrics.rst:70
+msgid "``namespace.[component].metric_name[_units]``"
+msgstr ""
+
+#: ../../source/development/metrics.rst:72
+msgid "``namespace`` could be ``mars``."
+msgstr "``namespace`` 可以是 ``mars``。"
+
+#: ../../source/development/metrics.rst:73
+msgid "``component`` could be `supervisor`, `worker` or `band` etc, and can be "
+"omitted."
+msgstr "``component`` 可以是 `supervisor`，`worker` 或 `band` 等等，也可以省略这个参数。"
+
+#: ../../source/development/metrics.rst:74
+msgid ""
+"``units`` is the metric unit which may be seconds when recording time, or"
+" ``_count`` when metric type is ``Counter``, ``_number`` when metric type"
+" is ``Gauge`` if there is no suitable unit."
+msgstr "``units`` 是 metric 的单位，当记录的是时间时，可以用 seconds，当没有合适的单位"
+"时，``Counter`` 类型的 metric 可以用 ``_count``，``Gauge`` 类型的 metric 可以用 "
+"``_number``。"
+
