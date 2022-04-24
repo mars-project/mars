@@ -23,7 +23,7 @@ from ..utils import load_service_config_file
 logger = logging.getLogger(__name__)
 
 
-def load_config(filename=None):
+def load_config_file(filename=None):
     # use default config
     if not filename:  # pragma: no cover
         d = os.path.dirname(os.path.abspath(__file__))
@@ -40,7 +40,7 @@ async def start_supervisor(
 ):
     logger.debug("Starting Mars supervisor at %s", address)
     if not config or isinstance(config, str):
-        config = load_config(config)
+        config = load_config_file(config)
     lookup_address = lookup_address or address
     backend = config["cluster"].get("backend", "fixed")
     if backend == "fixed" and config["cluster"].get("lookup_address") is None:
@@ -69,7 +69,7 @@ async def start_supervisor(
 
 async def stop_supervisor(address: str, config: Dict = None):
     if not config or isinstance(config, str):
-        config = load_config(config)
+        config = load_config_file(config)
     await stop_services(NodeRole.SUPERVISOR, address=address, config=config)
 
 
@@ -83,7 +83,7 @@ async def start_worker(
 ):
     logger.debug("Starting Mars worker at %s", address)
     if not config or isinstance(config, str):
-        config = load_config(config)
+        config = load_config_file(config)
     backend = config["cluster"].get("backend", "fixed")
     if backend == "fixed" and config["cluster"].get("lookup_address") is None:
         config["cluster"]["lookup_address"] = lookup_address
@@ -104,5 +104,5 @@ async def start_worker(
 
 async def stop_worker(address: str, config: Dict = None):
     if not config or isinstance(config, str):
-        config = load_config(config)
+        config = load_config_file(config)
     await stop_services(NodeRole.WORKER, address=address, config=config)

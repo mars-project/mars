@@ -14,8 +14,9 @@
 
 import asyncio
 import atexit
-import logging
+import os
 import sys
+import logging
 from concurrent.futures import Future as SyncFuture
 from typing import Dict, List, Union
 
@@ -27,14 +28,13 @@ from ...lib.aio import get_isolation, stop_isolation
 from ...resource import cpu_count, cuda_count, mem_total, Resource
 from ...services import NodeRole
 from ...typing import ClusterType, ClientType
-from ..utils import get_third_party_modules_from_config
+from ..utils import get_third_party_modules_from_config, load_config
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 from .service import (
     start_supervisor,
     start_worker,
     stop_supervisor,
     stop_worker,
-    load_config,
 )
 from .session import AbstractSession, _new_session, ensure_isolation_created
 
@@ -45,6 +45,11 @@ atexit.register(
     lambda: _is_exiting_future.set_result(0) if not _is_exiting_future.done() else None
 )
 atexit.register(stop_isolation)
+
+# The default config file.
+DEFAULT_CONFIG_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "config.yml"
+)
 
 
 async def new_cluster_in_isolation(
@@ -67,6 +72,7 @@ async def new_cluster_in_isolation(
         mem_bytes,
         cuda_devices,
         subprocess_start_method,
+        backend,
         config,
         web,
         n_supervisor_process,
@@ -82,6 +88,7 @@ async def new_cluster(
     mem_bytes: Union[int, str] = "auto",
     cuda_devices: Union[List[int], str] = "auto",
     subprocess_start_method: str = None,
+    backend: str = None,
     config: Union[str, Dict] = None,
     web: bool = True,
     loop: asyncio.AbstractEventLoop = None,
@@ -95,6 +102,7 @@ async def new_cluster(
         mem_bytes=mem_bytes,
         cuda_devices=cuda_devices,
         subprocess_start_method=subprocess_start_method,
+        backend=backend,
         config=config,
         web=web,
         n_supervisor_process=n_supervisor_process,
@@ -121,6 +129,7 @@ class LocalCluster:
         mem_bytes: Union[int, str] = "auto",
         cuda_devices: Union[List[int], List[List[int]], str] = "auto",
         subprocess_start_method: str = None,
+        backend: str = None,
         config: Union[str, Dict] = None,
         web: Union[bool, str] = "auto",
         n_supervisor_process: int = 0,
@@ -133,11 +142,11 @@ class LocalCluster:
                 "spawn" if sys.platform == "win32" else "forkserver"
             )
         # load config file to dict.
-        if not config or isinstance(config, str):
-            config = load_config(config)
         self._address = address
         self._subprocess_start_method = subprocess_start_method
-        self._config = config
+        self._config = load_config(config, default_config_file=DEFAULT_CONFIG_FILE)
+        if backend is not None:
+            self._config["task"]["task_executor_config"]["backend"] = backend
         self._n_cpu = cpu_count() if n_cpu == "auto" else n_cpu
         self._mem_bytes = mem_total() if mem_bytes == "auto" else mem_bytes
         self._n_supervisor_process = n_supervisor_process
