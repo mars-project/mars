@@ -36,13 +36,12 @@ from ....services.cluster import ClusterAPI
 from ....services.scheduling.supervisor.autoscale import AutoscalerActor
 from ....tests.core import require_ray, mock, DICT_NOT_EMPTY
 from ....utils import lazy_import
-from ...utils import load_config
 from ..ray import (
+    _load_config,
     new_cluster,
     ClusterStateActor,
     new_cluster_in_ray,
     new_ray_session,
-    DEFAULT_CONFIG_FILE,
 )
 from ..session import get_default_session, new_session
 from ..tests import test_local
@@ -85,10 +84,6 @@ EXPECT_PROFILING_STRUCTURE = {
 EXPECT_PROFILING_STRUCTURE_NO_SLOW = copy.deepcopy(EXPECT_PROFILING_STRUCTURE)
 EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_calls"] = {}
 EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_subtasks"] = {}
-
-
-def _load_config(config=None):
-    return load_config(config, default_config_file=DEFAULT_CONFIG_FILE)
 
 
 @pytest.fixture

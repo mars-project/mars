@@ -64,6 +64,10 @@ DEFAULT_SUPERVISOR_STANDALONE = False
 DEFAULT_SUPERVISOR_SUB_POOL_NUM = 0
 
 
+def _load_config(config: Union[str, Dict] = None):
+    return load_config(config, default_config_file=DEFAULT_CONFIG_FILE)
+
+
 @register_cluster_backend
 class RayClusterBackend(AbstractClusterBackend):
     name = "ray"
