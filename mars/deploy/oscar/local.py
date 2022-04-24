@@ -60,8 +60,6 @@ async def new_cluster_in_isolation(
     timeout: float = None,
     n_supervisor_process: int = 0,
 ) -> ClientType:
-    if subprocess_start_method is None:
-        subprocess_start_method = "spawn" if sys.platform == "win32" else "forkserver"
     cluster = LocalCluster(
         address,
         n_worker,
@@ -125,11 +123,15 @@ class LocalCluster:
         subprocess_start_method: str = None,
         config: Union[str, Dict] = None,
         web: Union[bool, str] = "auto",
-        timeout: float = None,
         n_supervisor_process: int = 0,
     ):
         # load third party extensions.
         init_extension_entrypoints()
+        # auto choose the subprocess_start_method.
+        if subprocess_start_method is None:
+            subprocess_start_method = (
+                "spawn" if sys.platform == "win32" else "forkserver"
+            )
         # load config file to dict.
         if not config or isinstance(config, str):
             config = load_config(config)
@@ -268,11 +270,22 @@ class LocalClient:
 
     @classmethod
     async def create(
-        cls, cluster: LocalCluster, backend: str = None, timeout: float = None
+        cls,
+        cluster: LocalCluster,
+        backend: str = None,
+        timeout: float = None,
     ) -> ClientType:
-        backend = backend or "oscar"
+        if backend is None:
+            backend = (
+                cluster._config.get("task", {})
+                .get("task_executor_config", {})
+                .get("backend", "mars")
+            )
         session = await _new_session(
-            cluster.external_address, backend=backend, default=True, timeout=timeout
+            cluster.external_address,
+            backend=backend,
+            default=True,
+            timeout=timeout,
         )
         client = LocalClient(cluster, session)
         session.client = client

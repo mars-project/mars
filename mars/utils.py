@@ -1251,25 +1251,27 @@ def dataslots(cls):
     return cls
 
 
-def get_params_fields(chunk):
+def get_chunk_params(chunk):
     from .dataframe.core import (
         DATAFRAME_CHUNK_TYPE,
         DATAFRAME_GROUPBY_CHUNK_TYPE,
         SERIES_GROUPBY_CHUNK_TYPE,
     )
 
-    fields = list(chunk.params)
-    if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
-        fields.remove("dtypes")
-        fields.remove("columns_value")
-    elif isinstance(chunk, DATAFRAME_GROUPBY_CHUNK_TYPE):
-        fields.remove("dtypes")
-        fields.remove("key_dtypes")
-        fields.remove("columns_value")
-    elif isinstance(chunk, SERIES_GROUPBY_CHUNK_TYPE):
-        fields.remove("key_dtypes")
-
-    return fields
+    params = chunk.params.copy()
+    if isinstance(
+        chunk,
+        (
+            DATAFRAME_CHUNK_TYPE,
+            DATAFRAME_GROUPBY_CHUNK_TYPE,
+            SERIES_GROUPBY_CHUNK_TYPE,
+        ),
+    ):
+        # dataframe chunk needs some special process for now
+        params.pop("columns_value", None)
+        params.pop("dtypes", None)
+        params.pop("key_dtypes", None)
+    return params
 
 
 # Please refer to https://bugs.python.org/issue41451

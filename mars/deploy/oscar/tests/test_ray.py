@@ -156,7 +156,7 @@ async def test_fetch_infos(ray_start_regular, create_cluster):
 def test_sync_execute(ray_start_regular, create_cluster):
     client = create_cluster[0]
     assert client.session
-    session = new_session(address=client.address, backend="oscar")
+    session = new_session(address=client.address)
     with session:
         raw = np.random.RandomState(0).rand(10, 5)
         a = mt.tensor(raw, chunk_size=5).sum(axis=1)
@@ -185,7 +185,7 @@ def _run_web_session(web_address):
 
 def _sync_web_session_test(web_address):
     register_ray_serializers()
-    new_session(web_address, backend="oscar")
+    new_session(web_address)
     raw = np.random.RandomState(0).rand(10, 5)
     a = mt.tensor(raw, chunk_size=5).sum(axis=1)
     b = a.execute(show_progress=False)
@@ -357,7 +357,7 @@ async def test_load_third_party_modules(ray_start_regular, config_exception):
 def test_load_third_party_modules2(ray_start_regular, create_cluster):
     client = create_cluster[0]
     assert client.session
-    session = new_session(address=client.address, backend="oscar")
+    session = new_session(address=client.address)
     with session:
         raw = np.random.RandomState(0).rand(10, 10)
         a = mt.tensor(raw, chunk_size=5)
