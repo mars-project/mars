@@ -58,7 +58,7 @@ def test_ray_execute_subtask_basic():
 
 @require_ray
 @pytest.mark.asyncio
-async def test_ray_fetcher():
+async def test_ray_fetcher(ray_start_regular_shared2):
     pd_value = pd.DataFrame(
         {
             "col1": [str(i) for i in range(10)],
