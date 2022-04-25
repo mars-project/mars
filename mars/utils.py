@@ -71,6 +71,7 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     ceildiv,
     Timer,
 )
+from .core.base import MarsError
 from .lib.version import parse as parse_version
 from .typing import ChunkType, TileableType, EntityType, OperandType
 
