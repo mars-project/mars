@@ -1122,6 +1122,26 @@ def enter_current_session(func: Callable):
     return wrapped
 
 
+def wrap_user_function_error(ctx):
+    def wrapper(fun: Callable):
+        @functools.wraps(fun)
+        def wrapped(*args, **kw):
+            from .core.base import UserFunctionError
+            # skip in some test cases
+            if not hasattr(ctx, "get_current_session"):
+                return fun(*args, **kw)
+
+            try:
+                return fun(*args, **kw)
+            except BaseException as exc:
+                if not hasattr(ctx, "get_current_session"):
+                    raise
+                raise UserFunctionError(exc).with_traceback(exc.__traceback__) from None
+        return wrapped
+
+    return wrapper
+
+
 _io_quiet_local = threading.local()
 _io_quiet_lock = threading.Lock()
 

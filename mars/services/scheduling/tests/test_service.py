@@ -266,6 +266,17 @@ async def test_schedule_error(actor_pools):
     with pytest.raises(ValueError):
         await task_manager_ref.wait_subtask_result(subtask.subtask_id)
 
+    def _remote_fun_gen_exit():
+        raise asyncio.CancelledError
+
+    a = mr.spawn(_remote_fun_gen_exit)
+    subtask = _gen_subtask(a, session_id)
+    subtask.expect_bands = [(worker_pool.external_address, "numa-0")]
+
+    await scheduling_api.add_subtasks([subtask])
+    with pytest.raises(asyncio.CancelledError):
+        await task_manager_ref.wait_subtask_result(subtask.subtask_id)
+
     assert _approx_resource(
         (await global_resource_ref.get_used_resources()).get(
             (worker_pool.external_address, "numa-0"), Resource()
