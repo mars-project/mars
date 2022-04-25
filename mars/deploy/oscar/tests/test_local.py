@@ -108,6 +108,8 @@ async def create_cluster(request):
         config = CONFIG_TEST_FILE
     elif request.param == "vineyard":
         config = CONFIG_VINEYARD_TEST_FILE
+    else:
+        config = None
     start_method = os.environ.get("POOL_START_METHOD", None)
     client = await new_cluster(
         subprocess_start_method=start_method,
@@ -133,6 +135,37 @@ def _assert_storage_cleaned(session_id: str, addr: str, level: StorageLevel):
     asyncio.run_coroutine_threadsafe(
         _assert(session_id, addr, level), isolation.loop
     ).result()
+
+
+@pytest.mark.parametrize("backend", ["mars"])
+def test_new_session(backend):
+    from mars.services.task.execution.api import _name_to_config_cls
+
+    config_cls = _name_to_config_cls[backend]
+    original_config_init = config_cls.__init__
+    original_deploy_band_resources = config_cls.get_deploy_band_resources
+    with mock.patch.object(
+        config_cls, "__init__", autospec=True
+    ) as config_init, mock.patch.object(
+        config_cls, "get_deploy_band_resources", autospec=True
+    ) as deploy_band_resources:
+        return_deploy_band_resources = []
+
+        def _wrap_original_deploy_band_resources(*args, **kwargs):
+            nonlocal return_deploy_band_resources
+            return_deploy_band_resources = original_deploy_band_resources(
+                *args, **kwargs
+            )
+            return return_deploy_band_resources
+
+        config_init.side_effect = original_config_init
+        deploy_band_resources.side_effect = _wrap_original_deploy_band_resources
+        sess = new_session(backend=backend, n_cpu=2, web=False, use_uvloop=False)
+        with sess:
+            assert config_init.call_count > 0
+            assert deploy_band_resources.call_count > 0
+            worker_pools = sess.default.client._cluster._worker_pools
+            assert len(worker_pools) == len(return_deploy_band_resources)
 
 
 @pytest.mark.asyncio

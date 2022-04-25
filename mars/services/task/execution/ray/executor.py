@@ -33,12 +33,16 @@ from .....utils import (
     get_chunk_key_to_data_keys,
     ensure_coverage,
 )
-from ....cluster.api import ClusterAPI
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
 from ....subtask import SubtaskGraph
 from ....subtask.utils import iter_input_data_keys, iter_output_data
-from ..api import TaskExecutor, ExecutionChunkResult, register_executor_cls
+from ..api import (
+    TaskExecutor,
+    ExecutionConfig,
+    ExecutionChunkResult,
+    register_executor_cls,
+)
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
@@ -49,7 +53,7 @@ def execute_subtask(
     subtask_chunk_graph: ChunkGraph,
     output_meta_keys: Set[str],
     input_keys: List[str],
-    *inputs
+    *inputs,
 ):
     logger.info("Begin to execute subtask: %s", subtask_id)
     ensure_coverage()
@@ -89,11 +93,10 @@ class RayTaskExecutor(TaskExecutor):
 
     def __init__(
         self,
-        config,
+        config: ExecutionConfig,
         task,
         tile_context,
         ray_executor,
-        cluster_api,
         lifecycle_api,
         meta_api,
     ):
@@ -103,31 +106,30 @@ class RayTaskExecutor(TaskExecutor):
         self._ray_executor = ray_executor
 
         # api
-        self._cluster_api = cluster_api
         self._lifecycle_api = lifecycle_api
         self._meta_api = meta_api
 
         self._task_context = {}
+        self._available_band_resources = None
 
     @classmethod
     async def create(
         cls,
-        config: Dict,
+        config: ExecutionConfig,
         *,
         session_id: str,
         address: str,
         task,
         tile_context,
-        **kwargs
+        **kwargs,
     ) -> "TaskExecutor":
         ray_executor = ray.remote(execute_subtask)
-        cluster_api, lifecycle_api, meta_api = await cls._get_apis(session_id, address)
+        lifecycle_api, meta_api = await cls._get_apis(session_id, address)
         return cls(
             config,
             task,
             tile_context,
             ray_executor,
-            cluster_api,
             lifecycle_api,
             meta_api,
         )
@@ -135,9 +137,7 @@ class RayTaskExecutor(TaskExecutor):
     @classmethod
     @alru_cache(cache_exceptions=False)
     async def _get_apis(cls, session_id: str, address: str):
-        # TODO(fyrestone): Remove ClusterAPI usage.
         return await asyncio.gather(
-            ClusterAPI.create(address),
             LifecycleAPI.create(session_id, address),
             MetaAPI.create(session_id, address),
         )
@@ -239,9 +239,17 @@ class RayTaskExecutor(TaskExecutor):
             await self._lifecycle_api.incref_tileables(tileable_keys)
 
     async def get_available_band_resources(self) -> Dict[BandType, Resource]:
-        async for bands in self._cluster_api.watch_all_bands():
-            if bands:
-                return bands
+        if self._available_band_resources is None:
+            band_resources = self._config.get_band_resources()
+            virtual_band_resources = {}
+            idx = 0
+            for band_resource in band_resources:
+                for band, resource in band_resource.items():
+                    virtual_band_resources[(f"ray_virtual://{idx}", band)] = resource
+                    idx += 1
+            self._available_band_resources = virtual_band_resources
+
+        return self._available_band_resources
 
     async def get_progress(self) -> float:
         """Get the execution progress."""

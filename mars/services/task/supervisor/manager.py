@@ -39,20 +39,20 @@ class TaskConfigurationActor(mo.Actor):
     def __init__(
         self,
         task_conf: Dict[str, Any],
-        task_executor_config: Dict[str, Any],
+        execution_config: Dict[str, Any],
         task_processor_cls: Type[TaskProcessor] = None,
         task_preprocessor_cls: Type[TaskPreprocessor] = None,
     ):
         for name, value in task_conf.items():
             setattr(task_options, name, value)
-        self._task_executor_config = task_executor_config
+        self._execution_config = execution_config
         self._task_processor_cls = task_processor_cls
         self._task_preprocessor_cls = task_preprocessor_cls
 
     def get_config(self):
         return {
             "task_options": task_options,
-            "task_executor_config": self._task_executor_config,
+            "execution_config": self._execution_config,
             "task_processor_cls": self._task_processor_cls,
             "task_preprocessor_cls": self._task_preprocessor_cls,
         }
@@ -75,7 +75,7 @@ class TaskManagerActor(mo.Actor):
         self._session_id = session_id
 
         self._config = None
-        self._task_executor_config = None
+        self._execution_config = None
         self._task_processor_cls = None
         self._task_preprocessor_cls = None
         self._last_idle_time = None
@@ -94,12 +94,12 @@ class TaskManagerActor(mo.Actor):
         task_conf = await configuration_ref.get_config()
         (
             self._config,
-            self._task_executor_config,
+            self._execution_config,
             self._task_processor_cls,
             self._task_preprocessor_cls,
         ) = (
             task_conf["task_options"],
-            task_conf["task_executor_config"],
+            task_conf["execution_config"],
             task_conf["task_processor_cls"],
             task_conf["task_preprocessor_cls"],
         )
@@ -182,7 +182,7 @@ class TaskManagerActor(mo.Actor):
             task,
             tiled_context,
             self._config,
-            self._task_executor_config,
+            self._execution_config,
             self._task_preprocessor_cls,
         )
 

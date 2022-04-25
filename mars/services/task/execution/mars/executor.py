@@ -39,7 +39,7 @@ from ....meta.api import MetaAPI
 from ....scheduling import SchedulingAPI
 from ....subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
 from ...core import Task
-from ..api import TaskExecutor, register_executor_cls
+from ..api import ExecutionConfig, TaskExecutor, register_executor_cls
 from .resource import ResourceEvaluator
 from .stage import TaskStageProcessor
 
@@ -65,7 +65,7 @@ class MarsTaskExecutor(TaskExecutor):
 
     def __init__(
         self,
-        config: Dict,
+        config: ExecutionConfig,
         task: Task,
         tile_context: Dict[TileableType, TileableType],
         cluster_api: ClusterAPI,
@@ -95,7 +95,7 @@ class MarsTaskExecutor(TaskExecutor):
     @classmethod
     async def create(
         cls,
-        config: Dict,
+        config: ExecutionConfig,
         *,
         session_id: str,
         address: str,

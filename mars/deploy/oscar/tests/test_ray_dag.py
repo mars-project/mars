@@ -68,6 +68,12 @@ async def create_cluster(request):
 
 
 @require_ray
+@pytest.mark.parametrize("backend", ["ray"])
+def test_new_session(backend):
+    test_local.test_new_session(backend)
+
+
+@require_ray
 @pytest.mark.parametrize(
     "config",
     [
