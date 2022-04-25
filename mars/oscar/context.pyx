@@ -30,6 +30,10 @@ cdef class BaseActorContext:
     Base class for actor context. Every backend need to implement
     actor context for their own.
     """
+
+    def __init__(self, address: str = None):
+        self._address = address
+
     async def create_actor(self, object actor_cls, *args, object uid=None, object address=None, **kwargs):
         """
         Stub method for creating an actor in current context.
@@ -166,7 +170,8 @@ cdef class ClientActorContext(BaseActorContext):
     """
     cdef dict _backend_contexts
 
-    def __init__(self):
+    def __init__(self, address: str = None):
+        BaseActorContext.__init__(self, address)
         self._backend_contexts = dict()
 
     cdef inline object _get_backend_context(self, object address):
@@ -180,7 +185,7 @@ cdef class ClientActorContext(BaseActorContext):
             return self._backend_contexts[scheme]
         except KeyError:
             context = self._backend_contexts[scheme] = \
-                _backend_context_cls[scheme]()
+                _backend_context_cls[scheme](address)
             return context
 
     def create_actor(self, object actor_cls, *args, object uid=None, object address=None, **kwargs):

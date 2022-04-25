@@ -17,8 +17,10 @@ import concurrent.futures as futures
 import logging.config
 import multiprocessing
 import os
+import random
 import signal
 import sys
+import uuid
 from dataclasses import dataclass
 from types import TracebackType
 from typing import List
@@ -171,6 +173,9 @@ class MainActorPool(MainActorPoolBase):
                     cleanup_on_sigterm()
             except ImportError:  # pragma: no cover
                 pass
+
+        # make sure enough randomness for every sub pool
+        random.seed(uuid.uuid1().bytes)
 
         conf = actor_config.get_pool_config(process_index)
         suspend_sigint = conf["suspend_sigint"]

@@ -34,6 +34,7 @@ import struct
 import sys
 import threading
 import time
+import uuid
 import warnings
 import zlib
 from abc import ABC
@@ -288,8 +289,7 @@ def get_next_port(typ: int = None, occupy: bool = True) -> int:
             occupied = _get_ports_from_netstat()
 
     occupied.update(_local_occupied_ports)
-    randn = struct.unpack("<Q", os.urandom(8))[0]
-    random.seed(int(time.time() * 1000000) | randn)
+    random.seed(uuid.uuid1().bytes)
     randn = random.randint(0, 100000000)
 
     idx = int(randn % (1 + HIGH_PORT_BOUND - LOW_PORT_BOUND - len(occupied)))
