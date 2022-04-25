@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-
 from abc import ABCMeta, abstractmethod
 from typing import List, Dict, Tuple, Union, Iterable
 
@@ -23,8 +21,6 @@ from ...serialization.serializables import Serializable, DictField, ListField, B
 from ...serialization.serializables.core import SerializableSerializer
 from ...utils import tokenize
 from .core import DAG
-
-logger = logging.getLogger(__name__)
 
 
 class EntityGraph(DAG, metaclass=ABCMeta):
@@ -88,14 +84,13 @@ class TileableGraph(EntityGraph, Iterable[Tileable]):
     def logic_key(self):
         if not hasattr(self, "_logic_key") or self._logic_key is None:
             token_keys = []
-            for node in self.topological_iter():
+            for node in self.bfs():
                 token_keys.append(
                     tokenize(node.op.get_logic_key(), **node.extra_params)
+                    if node.extra_params
+                    else node.op.get_logic_key()
                 )
-            self._logic_key = tokenize(*sorted(token_keys))
-            logger.debug(
-                "Got logic key: %s, token_keys: %s", self._logic_key, token_keys
-            )
+            self._logic_key = tokenize(*token_keys)
         return self._logic_key
 
 

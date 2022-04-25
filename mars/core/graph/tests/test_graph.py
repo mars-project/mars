@@ -115,27 +115,33 @@ def test_tileable_graph_logic_key():
     t1 = mt.random.randint(10, size=(10, 8), chunk_size=4)
     t2 = mt.random.randint(10, size=(10, 8), chunk_size=5)
     graph1 = (t1 + t2).build_graph(tile=False)
-    graph2 = (t2 + t1).build_graph(tile=False)
-    assert graph1.logic_key == "49a93c50414bbc14f308b0d662a74095"
+    graph2 = (t1 + t2).build_graph(tile=False)
+    assert graph1.logic_key == "33b1700157220552d27b5d4be63a4a8e"
     assert graph1.logic_key == graph2.logic_key
     t3 = mt.random.randint(10, size=(10, 8), chunk_size=6)
     graph3 = (t1 + t3).build_graph(tile=False)
-    graph4 = (t3 + t1).build_graph(tile=False)
+    graph4 = (t1 + t3).build_graph(tile=False)
     assert graph1.logic_key != graph3.logic_key
     assert graph3.logic_key == graph4.logic_key
+    t4 = mt.random.randint(10, size=(10, 8))
+    graph5 = (t1 + t4).build_graph(tile=False)
+    assert graph1.logic_key != graph5.logic_key
 
     # Series
     s1 = md.Series([1, 3, 5, mt.nan, 6, 8])
     s2 = md.Series(np.random.randn(1000), chunk_size=100)
     graph1 = (s1 + s2).build_graph(tile=False)
-    graph2 = (s2 + s1).build_graph(tile=False)
+    graph2 = (s1 + s2).build_graph(tile=False)
     assert graph1.logic_key == "922e93fe10764a5548efa3f06ca8252c"
     assert graph1.logic_key == graph2.logic_key
     s3 = md.Series(np.random.randn(1000), chunk_size=200)
     graph3 = (s1 + s3).build_graph(tile=False)
-    graph4 = (s3 + s1).build_graph(tile=False)
+    graph4 = (s1 + s3).build_graph(tile=False)
     assert graph1.logic_key != graph3.logic_key
     assert graph3.logic_key == graph4.logic_key
+    s4 = md.Series(np.random.randn(1000))
+    graph5 = (s1 + s4).build_graph(tile=False)
+    assert graph1.logic_key != graph5.logic_key
 
     # DataFrame
     df1 = md.DataFrame(
@@ -145,26 +151,31 @@ def test_tileable_graph_logic_key():
         np.random.randint(0, 100, size=(100_000, 4)), columns=list("ABCD"), chunk_size=4
     )
     graph1 = (df1 + df2).build_graph(tile=False)
-    graph2 = (df2 + df1).build_graph(tile=False)
-    assert graph1.logic_key == "9e8c90043f49060b112081aa8be5dbcb"
+    graph2 = (df1 + df2).build_graph(tile=False)
+    assert graph1.logic_key == "62379a3ddd8369623d04e3104ec098ef"
     assert graph1.logic_key == graph2.logic_key
     df3 = md.DataFrame(
         np.random.randint(0, 100, size=(100_000, 4)), columns=list("ABCD"), chunk_size=3
     )
     graph3 = (df1 + df3).build_graph(tile=False)
-    graph4 = (df3 + df1).build_graph(tile=False)
+    graph4 = (df1 + df3).build_graph(tile=False)
     assert graph1.logic_key != graph3.logic_key
     assert graph3.logic_key == graph4.logic_key
-    graph5 = df1.describe().build_graph(tile=False)
-    graph6 = df1.apply(lambda x: x.max() - x.min()).build_graph(tile=False)
-    assert graph5.logic_key == "ba74ee4ca9b725186a32d920f013093e"
-    assert graph6.logic_key == "64cd0afee708e8bf295733e55ea74cb3"
+    df5 = md.DataFrame(
+        np.random.randint(0, 100, size=(100_000, 4)), columns=list("ABCD")
+    )
+    graph5 = (df1 + df5).build_graph(tile=False)
+    assert graph1.logic_key != graph5.logic_key
+    graph6 = df1.describe().build_graph(tile=False)
+    graph7 = df1.apply(lambda x: x.max() - x.min()).build_graph(tile=False)
+    assert graph6.logic_key == "62957d11cf4892060626042c584c5dea"
+    assert graph7.logic_key == "64cd0afee708e8bf295733e55ea74cb3"
     pieces = [df1[:3], df1[3:7], df1[7:]]
-    graph7 = md.concat(pieces).build_graph()
-    assert graph7.logic_key == "309535447287fd566b3b383a21e26785"
-    graph8 = md.merge(df1, df2, on="A", how="left").build_graph()
-    assert graph8.logic_key == "aa047766e009bda5880e59c0129430bc"
-    graph9 = df2.groupby("A").sum().build_graph()
-    graph10 = df3.groupby("A").sum().build_graph()
-    assert graph9.logic_key == "1e4512b4bc3783b002ceccc1a0ed058f"
-    assert graph9.logic_key != graph10.logic_key
+    graph8 = md.concat(pieces).build_graph()
+    assert graph8.logic_key == "07cdf055e24496692edc9e8c7b20a39f"
+    graph9 = md.merge(df1, df2, on="A", how="left").build_graph()
+    assert graph9.logic_key == "9d4998e652b6d1bdfbdb65bbc83de69a"
+    graph10 = df2.groupby("A").sum().build_graph()
+    graph11 = df3.groupby("A").sum().build_graph()
+    assert graph10.logic_key == "1e4512b4bc3783b002ceccc1a0ed058f"
+    assert graph10.logic_key != graph11.logic_key
