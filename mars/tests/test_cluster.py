@@ -18,6 +18,7 @@ import sys
 import subprocess
 import tempfile
 
+import psutil
 import pytest
 
 from .. import new_session
@@ -30,6 +31,19 @@ CONFIG_CONTENT = """\
 "@inherits": "@mars/config.yml"
 scheduling:
   mem_hard_limit: null"""
+
+
+def _terminate(pid: int):
+    proc = psutil.Process(pid)
+    sub_pids = [p.pid for p in proc.children(recursive=True)]
+    proc.terminate()
+    proc.wait(5)
+    for p in sub_pids:
+        try:
+            proc = psutil.Process(p)
+            proc.kill()
+        except psutil.NoSuchProcess:
+            continue
 
 
 @pytest.mark.asyncio
@@ -85,8 +99,8 @@ async def test_cluster():
         sess2 = new_session(web_addr, session_id=sess.session_id)
         sess2.close()
     finally:
-        r.terminate()
-        w.terminate()
+        _terminate(w.pid)
+        _terminate(r.pid)
 
     # test stderr
     out = r.communicate()[1].decode()

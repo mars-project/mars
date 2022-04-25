@@ -14,7 +14,7 @@
 
 
 cdef class BaseActorContext:
-    pass
+    cdef public str _address
 
 
 cpdef get_context()

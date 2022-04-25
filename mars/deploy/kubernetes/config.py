@@ -15,6 +15,7 @@
 
 import abc
 import functools
+import math
 import re
 
 from ... import __version__ as mars_version
@@ -605,6 +606,8 @@ class MarsSupervisorsConfig(MarsReplicationConfig):
             cmd += ["-p", str(self._service_port)]
         if self._web_port:
             cmd += ["-w", str(self._web_port)]
+        if self._cpu:
+            cmd += ["--n-process", str(int(math.ceil(self._cpu)))]
         return cmd
 
 

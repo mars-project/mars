@@ -242,7 +242,7 @@ class PromiseTestActor(mo.Actor):
 
 @pytest.mark.parametrize(indirect=True)
 @pytest.fixture(params=[False, True])
-async def actor_pool_context(request):
+async def actor_pool(request):
     start_method = (
         os.environ.get("POOL_START_METHOD", "forkserver")
         if sys.platform != "win32"
@@ -266,9 +266,10 @@ async def actor_pool_context(request):
 
 
 @pytest.mark.asyncio
-async def test_simple_local_actor_pool(actor_pool_context):
-    pool = actor_pool_context
-    actor_ref = await mo.create_actor(DummyActor, 100, address=pool.external_address)
+async def test_simple_local_actor_pool(actor_pool):
+    actor_ref = await mo.create_actor(
+        DummyActor, 100, address=actor_pool.external_address
+    )
     assert await actor_ref.add(1) == 101
     await actor_ref.add(1)
 
@@ -279,17 +280,18 @@ async def test_simple_local_actor_pool(actor_pool_context):
     assert actor_ref.address == ref2.address
     assert actor_ref.uid == ref2.uid
 
-    ref = await mo.actor_ref(uid=actor_ref.uid, address=pool.external_address)
+    ref = await mo.actor_ref(uid=actor_ref.uid, address=actor_pool.external_address)
     assert await ref.add(2) == 104
 
 
 @pytest.mark.asyncio
-async def test_mars_post_create_pre_destroy(actor_pool_context):
-    pool = actor_pool_context
+async def test_mars_post_create_pre_destroy(actor_pool):
     rec_ref = await mo.create_actor(
-        RecordActor, uid=RecordActor.default_uid(), address=pool.external_address
+        RecordActor, uid=RecordActor.default_uid(), address=actor_pool.external_address
     )
-    actor_ref = await mo.create_actor(CreateDestroyActor, address=pool.external_address)
+    actor_ref = await mo.create_actor(
+        CreateDestroyActor, address=actor_pool.external_address
+    )
     await actor_ref.destroy()
 
     records = await rec_ref.get_records()
@@ -299,72 +301,78 @@ async def test_mars_post_create_pre_destroy(actor_pool_context):
 
 
 @pytest.mark.asyncio
-async def test_mars_create_actor(actor_pool_context):
-    pool = actor_pool_context
-    actor_ref = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+async def test_mars_create_actor(actor_pool):
+    actor_ref = await mo.create_actor(
+        DummyActor, 1, address=actor_pool.external_address
+    )
     # create actor inside on_receive
-    r = await actor_ref.create(DummyActor, 5, address=pool.external_address)
-    ref = await mo.actor_ref(r, address=pool.external_address)
+    r = await actor_ref.create(DummyActor, 5, address=actor_pool.external_address)
+    ref = await mo.actor_ref(r, address=actor_pool.external_address)
     assert await ref.add(10) == 15
     # create actor inside on_receive and send message
     r = await actor_ref.create_send(
-        DummyActor, 5, method="add", method_args=(1,), address=pool.external_address
+        DummyActor,
+        5,
+        method="add",
+        method_args=(1,),
+        address=actor_pool.external_address,
     )
     assert r == 6
 
 
 @pytest.mark.asyncio
-async def test_mars_create_actor_error(actor_pool_context):
-    pool = actor_pool_context
+async def test_mars_create_actor_error(actor_pool):
     ref1 = await mo.create_actor(
-        DummyActor, 1, uid="dummy1", address=pool.external_address
+        DummyActor, 1, uid="dummy1", address=actor_pool.external_address
     )
     with pytest.raises(mo.ActorAlreadyExist):
         await mo.create_actor(
-            DummyActor, 1, uid="dummy1", address=pool.external_address
+            DummyActor, 1, uid="dummy1", address=actor_pool.external_address
         )
     await mo.destroy_actor(ref1)
 
     with pytest.raises(ValueError):
-        await mo.create_actor(DummyActor, -1, address=pool.external_address)
-    ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+        await mo.create_actor(DummyActor, -1, address=actor_pool.external_address)
+    ref1 = await mo.create_actor(DummyActor, 1, address=actor_pool.external_address)
     with pytest.raises(ValueError):
-        await ref1.create(DummyActor, -2, address=pool.external_address)
+        await ref1.create(DummyActor, -2, address=actor_pool.external_address)
 
 
 @pytest.mark.asyncio
-async def test_mars_send(actor_pool_context):
-    pool = actor_pool_context
-    ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+async def test_mars_send(actor_pool):
+    ref1 = await mo.create_actor(DummyActor, 1, address=actor_pool.external_address)
     ref2 = await mo.actor_ref(
-        await ref1.create(DummyActor, 2, address=pool.external_address)
+        await ref1.create(DummyActor, 2, address=actor_pool.external_address)
     )
     assert await ref1.send(ref2, "add", 3) == 5
 
-    ref3 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+    ref3 = await mo.create_actor(DummyActor, 1, address=actor_pool.external_address)
     ref4 = await mo.create_actor(
-        DummyActor, 2, address=pool.external_address, allocate_strategy=RandomSubPool()
+        DummyActor,
+        2,
+        address=actor_pool.external_address,
+        allocate_strategy=RandomSubPool(),
     )
     assert await ref4.send(ref3, "add", 3) == 4
 
 
 @pytest.mark.asyncio
-async def test_mars_send_error(actor_pool_context):
-    pool = actor_pool_context
-    ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+async def test_mars_send_error(actor_pool):
+    ref1 = await mo.create_actor(DummyActor, 1, address=actor_pool.external_address)
     with pytest.raises(TypeError):
         await ref1.add(1.0)
-    ref2 = await mo.create_actor(DummyActor, 2, address=pool.external_address)
+    ref2 = await mo.create_actor(DummyActor, 2, address=actor_pool.external_address)
     with pytest.raises(TypeError):
         await ref1.send(ref2, "add", 1.0)
     with pytest.raises(mo.ActorNotExist):
-        await (await mo.actor_ref("fake_uid", address=pool.external_address)).add(1)
+        await (await mo.actor_ref("fake_uid", address=actor_pool.external_address)).add(
+            1
+        )
 
 
 @pytest.mark.asyncio
-async def test_mars_tell(actor_pool_context):
-    pool = actor_pool_context
-    ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+async def test_mars_tell(actor_pool):
+    ref1 = await mo.create_actor(DummyActor, 1, address=actor_pool.external_address)
     ref2 = await mo.actor_ref(await ref1.create(DummyActor, 2))
     await ref1.tell(ref2, "add", 3)
     assert await ref2.get_value() == 5
@@ -382,9 +390,8 @@ async def test_mars_tell(actor_pool_context):
 
 
 @pytest.mark.asyncio
-async def test_mars_batch_method(actor_pool_context):
-    pool = actor_pool_context
-    ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+async def test_mars_batch_method(actor_pool):
+    ref1 = await mo.create_actor(DummyActor, 1, address=actor_pool.external_address)
     batch_result = await ref1.add_ret.batch(
         ref1.add_ret.delay(1), ref1.add_ret.delay(2), ref1.add_ret.delay(3)
     )
@@ -401,11 +408,10 @@ async def test_mars_batch_method(actor_pool_context):
 
 
 @pytest.mark.asyncio
-async def test_gather_exception(actor_pool_context):
+async def test_gather_exception(actor_pool):
     try:
         Router.get_instance_or_empty()._cache.clear()
-        pool = actor_pool_context
-        ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+        ref1 = await mo.create_actor(DummyActor, 1, address=actor_pool.external_address)
         router = Router.get_instance_or_empty()
         client = next(iter(router._cache.values()))
 
@@ -439,9 +445,8 @@ async def test_gather_exception(actor_pool_context):
 
 
 @pytest.mark.asyncio
-async def test_mars_destroy_has_actor(actor_pool_context):
-    pool = actor_pool_context
-    ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+async def test_mars_destroy_has_actor(actor_pool):
+    ref1 = await mo.create_actor(DummyActor, 1, address=actor_pool.external_address)
     ref2 = await mo.actor_ref(ref1)
     ref2_add_method = ref2.add
     assert isinstance(ref1, ActorRef)
@@ -465,7 +470,7 @@ async def test_mars_destroy_has_actor(actor_pool_context):
         await ref2_add_method(1)
 
     ref1 = await mo.create_actor(
-        DummyActor, 1, uid=ref1.uid, address=pool.external_address
+        DummyActor, 1, uid=ref1.uid, address=actor_pool.external_address
     )
 
     # the ref2 should be works after actor is recreated.
@@ -479,8 +484,8 @@ async def test_mars_destroy_has_actor(actor_pool_context):
     assert not await mo.has_actor(ref1)
     assert not await mo.has_actor(ref2)
 
-    ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
-    ref2 = await ref1.create(DummyActor, 2, address=pool.external_address)
+    ref1 = await mo.create_actor(DummyActor, 1, address=actor_pool.external_address)
+    ref2 = await ref1.create(DummyActor, 2, address=actor_pool.external_address)
 
     assert await mo.has_actor(ref2)
 
@@ -489,23 +494,24 @@ async def test_mars_destroy_has_actor(actor_pool_context):
 
     with pytest.raises(mo.ActorNotExist):
         await mo.destroy_actor(
-            await mo.actor_ref("fake_uid", address=pool.external_address)
+            await mo.actor_ref("fake_uid", address=actor_pool.external_address)
         )
 
-    ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+    ref1 = await mo.create_actor(DummyActor, 1, address=actor_pool.external_address)
     with pytest.raises(mo.ActorNotExist):
-        await ref1.delete(await mo.actor_ref("fake_uid", address=pool.external_address))
+        await ref1.delete(
+            await mo.actor_ref("fake_uid", address=actor_pool.external_address)
+        )
 
     # test self destroy
-    ref1 = await mo.create_actor(DummyActor, 2, address=pool.external_address)
+    ref1 = await mo.create_actor(DummyActor, 2, address=actor_pool.external_address)
     await ref1.destroy()
     assert not await mo.has_actor(ref1)
 
 
 @pytest.mark.asyncio
-async def test_mars_resource_lock(actor_pool_context):
-    pool = actor_pool_context
-    ref = await mo.create_actor(ResourceLockActor, address=pool.external_address)
+async def test_mars_resource_lock(actor_pool):
+    ref = await mo.create_actor(ResourceLockActor, address=actor_pool.external_address)
     event_list = []
 
     async def test_task(idx):
@@ -525,13 +531,12 @@ async def test_mars_resource_lock(actor_pool_context):
 
 
 @pytest.mark.asyncio
-async def test_promise_chain(actor_pool_context):
-    pool = actor_pool_context
+async def test_promise_chain(actor_pool):
     lock_ref = await mo.create_actor(
-        ResourceLockActor, 2, address=pool.external_address
+        ResourceLockActor, 2, address=actor_pool.external_address
     )
     promise_test_ref = await mo.create_actor(
-        PromiseTestActor, lock_ref, address=pool.external_address
+        PromiseTestActor, lock_ref, address=actor_pool.external_address
     )
 
     delay_val = 1.0
@@ -609,8 +614,8 @@ class ActorCannotDestroy(mo.Actor):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("in_sub_pool", [True, False])
-async def test_error_in_pre_destroy(actor_pool_context, in_sub_pool):
-    pool = actor_pool_context
+async def test_error_in_pre_destroy(actor_pool, in_sub_pool):
+    pool = actor_pool
 
     strategy = None if not in_sub_pool else RandomSubPool()
     a = await mo.create_actor(
