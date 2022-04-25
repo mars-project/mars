@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+
 from abc import ABCMeta, abstractmethod
 from typing import List, Dict, Tuple, Union, Iterable
 
@@ -19,7 +21,10 @@ from ...core import Tileable, Chunk
 from ...serialization.core import buffered
 from ...serialization.serializables import Serializable, DictField, ListField, BoolField
 from ...serialization.serializables.core import SerializableSerializer
+from ...utils import tokenize
 from .core import DAG
+
+logger = logging.getLogger(__name__)
 
 
 class EntityGraph(DAG, metaclass=ABCMeta):
@@ -57,6 +62,11 @@ class EntityGraph(DAG, metaclass=ABCMeta):
 
 class TileableGraph(EntityGraph, Iterable[Tileable]):
     _result_tileables: List[Tileable]
+    # logic key is a unique and deterministic key for `TileableGraph`. For
+    # multiple runs the logic key will remain same if the computational logic
+    # doesn't change. And it can be used to some optimization when running a
+    # same `execute`, like HBO.
+    _logic_key: str
 
     def __init__(self, result_tileables: List[Tileable] = None):
         super().__init__()
@@ -73,6 +83,20 @@ class TileableGraph(EntityGraph, Iterable[Tileable]):
     @results.setter
     def results(self, new_results):
         self._result_tileables = new_results
+
+    @property
+    def logic_key(self):
+        if not hasattr(self, "_logic_key") or self._logic_key is None:
+            token_keys = []
+            for node in self.topological_iter():
+                token_keys.append(
+                    tokenize(node.op.get_logic_key(), **node.extra_params)
+                )
+            self._logic_key = tokenize(*sorted(token_keys))
+            logger.debug(
+                "Got logic key: %s, token_keys: %s", self._logic_key, token_keys
+            )
+        return self._logic_key
 
 
 class ChunkGraph(EntityGraph, Iterable[Chunk]):
