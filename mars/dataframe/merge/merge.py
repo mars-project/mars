@@ -112,7 +112,7 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
     @classmethod
     def execute_reduce(cls, ctx, op: "DataFrameMergeAlign"):
         chunk = op.outputs[0]
-        input_idx_to_df = dict(op.iter_mapper_data_with_index(ctx))
+        input_idx_to_df = dict(op.iter_mapper_data_with_index(ctx, skip_none=True))
         row_idxes = sorted({idx[0] for idx in input_idx_to_df})
 
         res = []
@@ -311,6 +311,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         elif len(left.chunks) == 1:
             out_chunks = []
             left_chunk = left.chunks[0]
+            left_chunk.is_broadcaster = True
             for c in right.chunks:
                 merge_op = op.copy().reset_key()
                 out_chunk = merge_op.new_chunk(
@@ -328,6 +329,8 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         else:
             out_chunks = []
             right_chunk = right.chunks[0]
+            # set `is_broadcaster` as True
+            right_chunk.is_broadcaster = True
             for c in left.chunks:
                 merge_op = op.copy().reset_key()
                 out_chunk = merge_op.new_chunk(
@@ -422,6 +425,9 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                 left_on = _prepare_shuffle_on(op.left_index, op.left_on, op.on)
                 left_chunks = cls._gen_shuffle_chunks(left.chunk_shape, left_on, left)
                 need_split = True
+            # set is_broadcast property
+            for c in left_chunks:
+                c.is_broadcaster = True
             right_chunks = right.chunks
             for right_chunk in right_chunks:
                 merged_chunks = []
@@ -465,6 +471,9 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                 right_chunks = cls._gen_shuffle_chunks(
                     right.chunk_shape, right_on, right
                 )
+            # set is_broadcast property
+            for c in right_chunks:
+                c.is_broadcaster = True
             left_chunks = left.chunks
             for left_chunk in left_chunks:
                 merged_chunks = []
@@ -618,6 +627,12 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             if op.how == "inner" and op.bloom_filter:
                 if has_unknown_shape(left, right):
                     yield left.chunks + right.chunks
+                small_one = right if len(left.chunks) > len(right.chunks) else left
+                logger.debug(
+                    "Apply bloom filter for operand %s, use DataFrame %s to build bloom filter.",
+                    op,
+                    small_one,
+                )
                 left, right = yield from recursive_tile(
                     *cls._apply_bloom_filter(left, right, left_on, right_on, op)
                 )
@@ -629,6 +644,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             if op.method == "auto":
                 # if method is auto, select new method after auto merge
                 method = cls._choose_merge_method(op, left, right)
+        logger.debug("Choose %s method for merge operand %s", method, op)
         if method == MergeMethod.one_chunk:
             ret = cls._tile_one_chunk(op, left, right)
         elif method == MergeMethod.broadcast:

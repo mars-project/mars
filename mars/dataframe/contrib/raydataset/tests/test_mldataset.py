@@ -76,7 +76,7 @@ async def test_convert_to_ray_mldataset(
     ray_start_regular_shared, create_cluster, test_option
 ):
     assert create_cluster.session
-    session = new_session(address=create_cluster.address, backend="oscar", default=True)
+    session = new_session(address=create_cluster.address, default=True)
     with session:
         value = np.random.rand(10, 10)
         chunk_size, num_shards = test_option
@@ -95,7 +95,7 @@ async def test_mars_with_xgboost(ray_start_regular_shared, create_cluster):
     from sklearn.datasets import load_breast_cancer
 
     assert create_cluster.session
-    session = new_session(address=create_cluster.address, backend="oscar", default=True)
+    session = new_session(address=create_cluster.address, default=True)
     with session:
         train_x, train_y = load_breast_cancer(return_X_y=True, as_frame=True)
         df: md.DataFrame = md.concat(

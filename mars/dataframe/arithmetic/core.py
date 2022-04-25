@@ -493,21 +493,17 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     index=x1.dtypes.index,
                 )
                 columns = copy.copy(x1.columns_value)
-                columns.value.should_be_monotonic = False
                 column_shape = len(dtypes)
             elif x1.dtypes is not None and x2.dtypes is not None:
                 dtypes = infer_dtypes(x1.dtypes, x2.dtypes, cls._operator)
                 columns = parse_index(dtypes.index, store_data=True)
-                columns.value.should_be_monotonic = True
                 column_shape = len(dtypes)
             if x1.index_value is not None and x2.index_value is not None:
                 if x1.index_value.key == x2.index_value.key:
                     index = copy.copy(x1.index_value)
-                    index.value.should_be_monotonic = False
                     index_shape = x1.shape[0]
                 else:
                     index = infer_index_value(x1.index_value, x2.index_value)
-                    index.value.should_be_monotonic = True
                     if index.key == x1.index_value.key == x2.index_value.key and (
                         not np.isnan(x1.shape[0]) or not np.isnan(x2.shape[0])
                     ):
@@ -539,12 +535,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                             index=x1.dtypes.index,
                         )
                         columns = copy.copy(x1.columns_value)
-                        columns.value.should_be_monotonic = False
                         column_shape = len(dtypes)
                     else:  # pragma: no cover
                         dtypes = x1.dtypes  # FIXME
                         columns = infer_index_value(x1.columns_value, x2.index_value)
-                        columns.value.should_be_monotonic = True
                         column_shape = np.nan
             else:
                 assert axis == "index" or axis == 0
@@ -562,7 +556,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                             index=x1.dtypes.index,
                         )
                         index = copy.copy(x1.index_value)
-                        index.value.should_be_monotonic = False
                         index_shape = x1.shape[0]
                     else:
                         if x1.dtypes is not None:
@@ -574,7 +567,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                                 index=x1.dtypes.index,
                             )
                         index = infer_index_value(x1.index_value, x2.index_value)
-                        index.value.should_be_monotonic = True
                         index_shape = np.nan
             return {
                 "shape": (index_shape, column_shape),
@@ -592,11 +584,9 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             if x1.index_value is not None and x2.index_value is not None:
                 if x1.index_value.key == x2.index_value.key:
                     index = copy.copy(x1.index_value)
-                    index.value.should_be_monotonic = False
                     index_shape = x1.shape[0]
                 else:
                     index = infer_index_value(x1.index_value, x2.index_value)
-                    index.value.should_be_monotonic = True
                     if index.key == x1.index_value.key == x2.index_value.key and (
                         not np.isnan(x1.shape[0]) or not np.isnan(x2.shape[0])
                     ):

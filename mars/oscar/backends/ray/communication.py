@@ -17,6 +17,7 @@ import concurrent.futures as futures
 import itertools
 import logging
 import time
+import typing
 from abc import ABC
 from collections import namedtuple
 from dataclasses import dataclass
@@ -25,12 +26,14 @@ from urllib.parse import urlparse
 
 from ....oscar.profiling import ProfilingData
 from ....serialization import serialize, deserialize
+from ....metrics import Metrics
 from ....utils import lazy_import, implements, classproperty, Timer
 from ...debug import debug_async_timeout
 from ...errors import ServerClosed
 from ..communication.base import Channel, ChannelType, Server, Client
 from ..communication.core import register_client, register_server
 from ..communication.errors import ChannelClosed
+from .utils import report_event
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
@@ -38,6 +41,43 @@ logger = logging.getLogger(__name__)
 ChannelID = namedtuple(
     "ChannelID", ["local_address", "client_id", "channel_index", "dest_address"]
 )
+
+SERIALIZATION_TIMEOUT_MILLS = 1000
+DESERIALIZATION_TIMEOUT_MILLS = 1000
+
+
+def msg_to_simple_str(msg):  # pragma: no cover
+    """An helper that prints message structure without generate a big str."""
+    from ..message import SendMessage, _MessageBase
+
+    if type(msg) == _ArgWrapper:
+        msg = msg.message
+    if isinstance(msg, SendMessage):
+        return f"{str(type(msg))}(actor_ref={msg.actor_ref}, content={msg_to_simple_str(msg.content)})"
+    if isinstance(msg, _MessageBase):
+        return str(msg)
+    if msg and isinstance(msg, typing.List):
+        part_str = ", ".join([msg_to_simple_str(item) for item in msg[:5]])
+        return f"List<{part_str}...{len(msg)}>"
+    if msg and isinstance(msg, typing.Tuple):
+        part_str = ", ".join([msg_to_simple_str(item) for item in msg[:5]])
+        return f"Tuple<{part_str}...{len(msg)}>"
+    if msg and isinstance(msg, typing.Dict):
+        part_str = []
+        it = iter(msg.items())
+        try:
+            while len(part_str) < 5:
+                entry = next(it)
+                part_str.append(
+                    f"k={msg_to_simple_str(entry[0])}, v={msg_to_simple_str(entry[1])}"
+                )
+        except StopIteration:
+            pass
+        part_str = ", ".join(part_str)
+        return f"Dict<k={part_str}...{len(msg)}>"
+    if isinstance(msg, (str, float, int)):
+        return "{!s:.50}".format(msg)
+    return str(type(msg))
 
 
 def _argwrapper_unpickler(serialized_message):
@@ -63,20 +103,45 @@ if ray:
     init_metrics("ray")
     _ray_serialize = ray.serialization.SerializationContext.serialize
     _ray_deserialize_object = ray.serialization.SerializationContext._deserialize_object
+    serialized_bytes_counter = Metrics.counter(
+        "mars.channel_serialized_bytes",
+        "The bytes serialized by mars ray channel.",
+    )
+    deserialized_bytes_counter = Metrics.counter(
+        "mars.channel_deserialized_bytes",
+        "The bytes deserialized by mars ray channel.",
+    )
+    serialization_time_mills = Metrics.counter(
+        "mars.channel_serialization_time_mills",
+        "The time used by mars ray channel serialization.",
+    )
+    deserialization_time_mills = Metrics.counter(
+        "mars.channel_deserialization_time_mills",
+        "The time used by mars ray channel deserialization.",
+    )
 
     def _serialize(self, value):
         if type(value) is _ArgWrapper:  # pylint: disable=unidiomatic-typecheck
             message = value.message
             with Timer() as timer:
                 serialized_object = _ray_serialize(self, value)
+                bytes_length = serialized_object.total_bytes
+                serialized_bytes_counter.record(bytes_length)
+            serialization_time_mills.record(timer.duration * 1000)
+            if timer.duration * 1000 > SERIALIZATION_TIMEOUT_MILLS:  # pragma: no cover
+                report_event(
+                    "WARNING",
+                    "SERIALIZATION_TIMEOUT",
+                    f"Serialization took {timer.duration} seconds for {bytes_length} sized message {msg_to_simple_str(message)}.",
+                )
             try:
                 if message.profiling_context is not None:
                     task_id = message.profiling_context.task_id
                     ProfilingData[task_id, "serialization"].inc(
                         "serialize", timer.duration
                     )
-            except AttributeError:
-                logger.debug(
+            except AttributeError:  # pragma: no cover
+                logger.info(
                     "Profiling serialization got error, the send "
                     "message %s may not be an instance of message",
                     type(message),
@@ -87,7 +152,20 @@ if ray:
 
     def _deserialize_object(self, data, metadata, object_ref):
         start_time = time.time()
+        bytes_length = 0
+        if data:
+            bytes_length = len(data)
+            deserialized_bytes_counter.record(bytes_length)
         value = _ray_deserialize_object(self, data, metadata, object_ref)
+        duration = time.time() - start_time
+        deserialization_time_mills.record(duration * 1000)
+        if duration * 1000 > DESERIALIZATION_TIMEOUT_MILLS:  # pragma: no cover
+            report_event(
+                "WARNING",
+                "DESERIALIZATION_TIMEOUT",
+                f"Deserialization took {duration} seconds for "
+                f"{bytes_length} sized msg {msg_to_simple_str(value)}",
+            )
         if type(value) is _ArgWrapper:  # pylint: disable=unidiomatic-typecheck
             message = value.message
             try:
@@ -96,8 +174,8 @@ if ray:
                     ProfilingData[task_id, "serialization"].inc(
                         "deserialize", time.time() - start_time
                     )
-            except AttributeError:
-                logger.debug(
+            except AttributeError:  # pragma: no cover
+                logger.info(
                     "Profiling serialization got error, the recv "
                     "message %s may not be an instance of message",
                     type(message),
@@ -187,9 +265,22 @@ class RayClientChannel(RayChannelBase):
         async def handle_task(message: Any, object_ref: "ray.ObjectRef"):
             # use `%.500` to avoid print too long messages
             with debug_async_timeout(
-                "ray_object_retrieval_timeout", "Client sent message is %.500s", message
+                "ray_object_retrieval_timeout",
+                "Message that client sent to actor %s is %.500s and object_ref is %s",
+                self.dest_address,
+                message,
+                object_ref,
             ):
-                result = await object_ref
+                try:
+                    result = await object_ref
+                except Exception as e:  # pragma: no cover
+                    logger.exception(
+                        "Get object %s from %s failed, got exception %s.",
+                        object_ref,
+                        self.dest_address,
+                        e,
+                    )
+                    raise
             if isinstance(result, RayChannelException):
                 raise result.exc_value.with_traceback(result.exc_traceback)
             return result.message

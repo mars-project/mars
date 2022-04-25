@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import asyncio
+import inspect
 import os
 import uuid
 
 from ....core import OBJECT_TYPE
+from ....deploy.oscar.local import LocalCluster, LocalClient
 from ....tests.core import _check_args, ObjectCheckMixin
 from ..session import (
     _IsolatedSession,
+    AbstractSession,
     AsyncSession,
     ensure_isolation_created,
-    register_session_cls,
     _ensure_sync,
 )
 
@@ -30,10 +32,7 @@ from ..session import (
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "check_enabled_config.yml")
 
 
-@register_session_cls
 class CheckedSession(ObjectCheckMixin, _IsolatedSession):
-    name = "test"
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._tileable_checked = dict()
@@ -42,19 +41,6 @@ class CheckedSession(ObjectCheckMixin, _IsolatedSession):
         for key in _check_args:
             check_options[key] = kwargs.get(key, True)
         self._check_options = check_options
-
-    @classmethod
-    async def init(cls, address: str, session_id: str, **kwargs) -> "_IsolatedSession":
-        init_local = kwargs.get("init_local", False)
-        if init_local:
-            if "n_cpu" not in kwargs:
-                # limit to 2 cpu each worker
-                kwargs["n_cpu"] = 2 * kwargs.get("n_worker", 1)
-            if "config" not in kwargs:
-                # enable check for task and subtask processor
-                kwargs["config"] = CONFIG_FILE
-        session = await super().init(address, session_id, **kwargs)
-        return session
 
     @staticmethod
     def _extract_check_options(extra_config):
@@ -84,22 +70,66 @@ class CheckedSession(ObjectCheckMixin, _IsolatedSession):
 
 
 async def _new_test_session(
-    address: str, session_id: str = None, **kwargs
-) -> AsyncSession:
+    address: str,
+    session_id: str = None,
+    backend: str = "mars",
+    default: bool = False,
+    new: bool = True,
+    timeout: float = None,
+    **kwargs,
+) -> AbstractSession:
     if session_id is None:
         session_id = str(uuid.uuid4())
 
-    session = AsyncSession.from_isolated_session(
-        await CheckedSession.init(address, session_id=session_id, **kwargs)
-    )
-    return session
+    async def _get_checked_session(_address):
+        session = AsyncSession.from_isolated_session(
+            await CheckedSession.init(
+                _address,
+                session_id=session_id,
+                backend=backend,
+                new=new,
+                timeout=timeout,
+                **kwargs,
+            )
+        )
+        if default:
+            session.as_default()
+        return session
+
+    async def _new_test_cluster_in_isolation(**new_cluster_kwargs):
+        cluster = LocalCluster(**new_cluster_kwargs)
+        await cluster.start()
+        session = await _get_checked_session(cluster.external_address)
+        client = LocalClient(cluster, session)
+        session.client = client
+        return client
+
+    init_local = kwargs.pop("init_local", False)
+    if init_local:
+        if "n_cpu" not in kwargs:
+            # limit to 2 cpu each worker
+            kwargs["n_cpu"] = 2 * kwargs.get("n_worker", 1)
+        if "config" not in kwargs:
+            # enable check for task and subtask processor
+            kwargs["config"] = CONFIG_FILE
+
+        sig = inspect.signature(LocalCluster)
+        new_cluster_params = {}
+        for k in sig.parameters:
+            if k in kwargs:
+                new_cluster_params[k] = kwargs.pop(k)
+        return (
+            await _new_test_cluster_in_isolation(address=address, **new_cluster_params)
+        ).session
+    return await _get_checked_session(address)
 
 
 def new_test_session(
     address: str = None,
     session_id: str = None,
+    backend: str = "mars",
     default: bool = False,
-    backend: str = "test",
+    new: bool = True,
     **kwargs,
 ):
     isolation = ensure_isolation_created(kwargs)
@@ -109,10 +139,14 @@ def new_test_session(
             kwargs["init_local"] = True
     if "web" not in kwargs:
         kwargs["web"] = False
-    coro = _new_test_session(address, session_id=session_id, backend=backend, **kwargs)
-    session = _ensure_sync(
+    coro = _new_test_session(
+        address,
+        session_id=session_id,
+        backend=backend,
+        default=default,
+        new=new,
+        **kwargs,
+    )
+    return _ensure_sync(
         asyncio.run_coroutine_threadsafe(coro, isolation.loop).result(120)
     )
-    if default:
-        session.as_default()
-    return session

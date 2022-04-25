@@ -79,7 +79,6 @@ class IndexValue(Serializable):
         _is_monotonic_increasing = BoolField("is_monotonic_increasing")
         _is_monotonic_decreasing = BoolField("is_monotonic_decreasing")
         _is_unique = BoolField("is_unique")
-        _should_be_monotonic = BoolField("should_be_monotonic")
         _max_val = AnyField("max_val", on_serialize=on_serialize_numpy_type)
         _max_val_close = BoolField("max_val_close")
         _min_val = AnyField("min_val", on_serialize=on_serialize_numpy_type)
@@ -96,14 +95,6 @@ class IndexValue(Serializable):
         @property
         def is_unique(self):
             return self._is_unique
-
-        @property
-        def should_be_monotonic(self):
-            return self._should_be_monotonic
-
-        @should_be_monotonic.setter
-        def should_be_monotonic(self, val):
-            self._should_be_monotonic = val
 
         @property
         def min_val(self):
@@ -344,10 +335,6 @@ class IndexValue(Serializable):
         return self.is_monotonic_increasing or self.is_monotonic_decreasing
 
     @property
-    def should_be_monotonic(self):
-        return self._index_value.should_be_monotonic
-
-    @property
     def is_unique(self):
         return self._index_value.is_unique
 
@@ -430,9 +417,6 @@ def refresh_index_value(tileable: ENTITY_TYPE):
         elif chunk.index[1] == 0:
             index_to_index_values[chunk.index] = chunk.index_value
     index_value = merge_index_value(index_to_index_values, store_data=False)
-    index_value._index_value.should_be_monotonic = getattr(
-        tileable.index_value, "should_be_monotonic", None
-    )
     # keep key as original index_value's
     index_value._index_value._key = tileable.index_value.key
     tileable._index_value = index_value
@@ -443,9 +427,6 @@ def refresh_dtypes(tileable: ENTITY_TYPE):
     dtypes = pd.concat(all_dtypes)
     tileable._dtypes = dtypes
     columns_values = parse_index(dtypes.index, store_data=True)
-    columns_values._index_value.should_be_monotonic = getattr(
-        tileable.columns_value, "should_be_monotonic", None
-    )
     tileable._columns_value = columns_values
     tileable._dtypes_value = DtypesValue(key=tokenize(dtypes), value=dtypes)
 

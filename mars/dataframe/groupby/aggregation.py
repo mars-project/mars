@@ -14,7 +14,7 @@
 
 import functools
 import itertools
-import threading
+import logging
 import typing
 import uuid
 from typing import List
@@ -60,6 +60,8 @@ from .core import DataFrameGroupByOperand
 
 cp = lazy_import("cupy", globals=globals(), rename="cp")
 cudf = lazy_import("cudf", globals=globals())
+
+logger = logging.getLogger(__name__)
 
 _support_get_group_without_as_index = pd_release_version[:2] > (1, 0)
 
@@ -795,6 +797,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         if cls._choose_tree_method(
             raw_sizes, agg_sizes, len(chunks), len(in_df.chunks), op.chunk_store_limit
         ):
+            logger.debug("Choose tree method for groupby operand %s", op)
             return cls._combine_tree(op, chunks + left_chunks, out_df, func_infos)
         else:
             # otherwise, use shuffle
@@ -805,6 +808,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 sample_chunks = cls._sample_chunks(op, chunks + left_chunks)
                 pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, out_idx, agg_chunk_len)
 
+            logger.debug("Choose shuffle method for groupby operand %s", op)
             return cls._perform_shuffle(
                 op, chunks + left_chunks, in_df, out_df, func_infos, pivot_chunk
             )

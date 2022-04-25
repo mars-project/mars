@@ -519,7 +519,14 @@ def build_fetch_chunk(
         # for non-shuffle nodes, we build Fetch chunks
         # to replace original chunk
         op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse, gpu=chunk.op.gpu)
-    return op.new_chunk(None, kws=[params], _key=chunk.key, _id=chunk.id, **kwargs)
+    return op.new_chunk(
+        None,
+        is_broadcaster=chunk.is_broadcaster,
+        kws=[params],
+        _key=chunk.key,
+        _id=chunk.id,
+        **kwargs,
+    )
 
 
 def build_fetch_tileable(tileable: TileableType) -> TileableType:
@@ -706,25 +713,6 @@ def calc_nsplits(chunk_idx_to_shape: Dict[Tuple[int], Tuple[int]]) -> Tuple[Tupl
                 splits.append(shape[i])
         tileable_nsplits.append(tuple(splits))
     return tuple(tileable_nsplits)
-
-
-def sort_dataframe_result(df, result: pd.DataFrame) -> pd.DataFrame:
-    """sort DataFrame on client according to `should_be_monotonic` attribute"""
-    if hasattr(df, "index_value"):
-        if getattr(df.index_value, "should_be_monotonic", False):
-            try:
-                result.sort_index(inplace=True)
-            except TypeError:  # pragma: no cover
-                # cudf doesn't support inplace
-                result = result.sort_index()
-        if hasattr(df, "columns_value"):
-            if getattr(df.columns_value, "should_be_monotonic", False):
-                try:
-                    result.sort_index(axis=1, inplace=True)
-                except TypeError:  # pragma: no cover
-                    # cudf doesn't support inplace
-                    result = result.sort_index(axis=1)
-    return result
 
 
 def has_unknown_shape(*tiled_tileables: TileableType) -> bool:
@@ -1263,25 +1251,27 @@ def dataslots(cls):
     return cls
 
 
-def get_params_fields(chunk):
+def get_chunk_params(chunk):
     from .dataframe.core import (
         DATAFRAME_CHUNK_TYPE,
         DATAFRAME_GROUPBY_CHUNK_TYPE,
         SERIES_GROUPBY_CHUNK_TYPE,
     )
 
-    fields = list(chunk.params)
-    if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
-        fields.remove("dtypes")
-        fields.remove("columns_value")
-    elif isinstance(chunk, DATAFRAME_GROUPBY_CHUNK_TYPE):
-        fields.remove("dtypes")
-        fields.remove("key_dtypes")
-        fields.remove("columns_value")
-    elif isinstance(chunk, SERIES_GROUPBY_CHUNK_TYPE):
-        fields.remove("key_dtypes")
-
-    return fields
+    params = chunk.params.copy()
+    if isinstance(
+        chunk,
+        (
+            DATAFRAME_CHUNK_TYPE,
+            DATAFRAME_GROUPBY_CHUNK_TYPE,
+            SERIES_GROUPBY_CHUNK_TYPE,
+        ),
+    ):
+        # dataframe chunk needs some special process for now
+        params.pop("columns_value", None)
+        params.pop("dtypes", None)
+        params.pop("key_dtypes", None)
+    return params
 
 
 # Please refer to https://bugs.python.org/issue41451

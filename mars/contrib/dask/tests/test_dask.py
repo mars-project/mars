@@ -143,3 +143,41 @@ def test_multiple_objects(setup_cluster):
         assert dask.compute(test_obj) == dask.compute(
             test_obj, scheduler=mars_scheduler
         )
+
+
+@pytest.mark.skipif(not dask_installed, reason="dask not installed")
+def test_persist(setup_cluster):
+    import dask
+
+    def inc(x):
+        return x + 1
+
+    a = dask.delayed(inc)(1)
+    task_mars_persist = dask.delayed(inc)(a.persist(scheduler=mars_scheduler))
+    task_dask_persist = dask.delayed(inc)(a.persist())
+
+    assert task_dask_persist.compute() == task_mars_persist.compute(
+        scheduler=mars_scheduler
+    )
+
+
+@pytest.mark.skipif(not dask_installed, reason="dask not installed")
+def test_partitioned_dataframe_persist(setup_cluster):
+    import numpy as np
+    import pandas as pd
+    from dask import dataframe as dd
+    from pandas._testing import assert_frame_equal
+
+    data = np.random.randn(10000, 100)
+    df = dd.from_pandas(
+        pd.DataFrame(data, columns=[f"col{i}" for i in range(100)]), npartitions=4
+    )
+    df["col0"] = df["col0"] + df["col1"] / 2
+    col2_mean = df["col2"].mean()
+
+    df_mars_persist = df[df["col2"] > col2_mean.persist(scheduler=mars_scheduler)]
+    df_dask_persist = df[df["col2"] > col2_mean.persist()]
+
+    assert_frame_equal(
+        df_dask_persist.compute(), df_mars_persist.compute(scheduler=mars_scheduler)
+    )

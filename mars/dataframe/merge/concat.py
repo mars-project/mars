@@ -356,10 +356,6 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                     # cuDF will lost index name when concat two seriess.
                     ret.index.name = concats[0].index.name
 
-            if getattr(chunk.index_value, "should_be_monotonic", False):
-                ret.sort_index(inplace=True)
-            if getattr(chunk.columns_value, "should_be_monotonic", False):
-                ret.sort_index(axis=1, inplace=True)
             return ret
 
         def _auto_concat_series_chunks(chunk, inputs):
@@ -372,8 +368,6 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                     concat = xdf.concat(inputs, axis=chunk.op.axis)
                 else:
                     concat = xdf.concat(inputs)
-            if getattr(chunk.index_value, "should_be_monotonic", False):
-                concat.sort_index(inplace=True)
             return concat
 
         def _auto_concat_index_chunks(chunk, inputs):
@@ -384,8 +378,6 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 xdf = pd if isinstance(inputs[0], pd.Index) or cudf is None else cudf
                 empty_dfs = [xdf.DataFrame(index=inp) for inp in inputs]
                 concat_df = xdf.concat(empty_dfs, axis=0)
-            if getattr(chunk.index_value, "should_be_monotonic", False):
-                concat_df.sort_index(inplace=True)
             return concat_df.index
 
         def _auto_concat_categorical_chunks(_, inputs):

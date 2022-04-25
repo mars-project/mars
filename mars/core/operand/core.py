@@ -22,6 +22,7 @@ try:
 except ImportError:  # pragma: no cover
     UFuncTypeError = None
 
+from ...metrics import Metrics
 from ...typing import TileableType, ChunkType, OperandType
 from ...utils import calc_data_size
 from ..context import Context
@@ -37,6 +38,11 @@ from ..entity import (
 
 _op_type_to_executor: Dict[Type[OperandType], Callable] = dict()
 _op_type_to_size_estimator: Dict[Type[OperandType], Callable] = dict()
+
+
+op_executed_number = Metrics.counter(
+    "mars.operand.executed_number", "The number of executed operands.", ("op",)
+)
 
 
 class TileableOperandMixin:
@@ -484,6 +490,7 @@ def execute(results: Dict[str, Any], op: OperandType):
             try:
                 result = executor(results, op)
                 succeeded = True
+                op_executed_number.record(1, {"op": op.__class__.__name__})
                 return result
             except UFuncTypeError as e:  # pragma: no cover
                 raise TypeError(str(e)).with_traceback(sys.exc_info()[2]) from None

@@ -22,6 +22,7 @@ from typing import DefaultDict, Dict, List, Optional, Tuple, Union, Set
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
+from ....metrics import Metrics
 from ....resource import ZeroResource
 from ....utils import dataslots
 from ...subtask import Subtask
@@ -70,6 +71,16 @@ class SubtaskQueueingActor(mo.Actor):
 
         self._periodical_submit_task = None
         self._submit_period = submit_period or _DEFAULT_SUBMIT_PERIOD
+        self._submitted_subtask_number = Metrics.gauge(
+            "mars.band.submitted_subtask_number",
+            "The number of submitted subtask to a band.",
+            ("session_id", "band"),
+        )
+        self._unsubmitted_subtask_number = Metrics.gauge(
+            "mars.band.unsubmitted_subtask_number",
+            "The number of unsubmitted subtask to a band.",
+            ("session_id", "band"),
+        )
 
     async def __post_create__(self):
         from ...cluster import ClusterAPI
@@ -246,6 +257,12 @@ class SubtaskQueueingActor(mo.Actor):
                 self, [item.subtask for item in submit_items.values()]
             ):
                 non_submitted_ids = [k for k in submit_items if k not in submitted_ids]
+                tags = {
+                    "session_id": self._session_id,
+                    "band": band[0] if band else "",
+                }
+                self._submitted_subtask_number.record(len(submitted_ids), tags)
+                self._unsubmitted_subtask_number.record(len(non_submitted_ids), tags)
                 if submitted_ids:
                     for stid in subtask_ids:
                         if stid not in submitted_ids:

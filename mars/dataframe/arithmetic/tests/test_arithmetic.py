@@ -176,9 +176,7 @@ def test_without_shuffle(func_name, func_opts):
     pd.testing.assert_index_equal(
         df3.columns_value.to_pandas(), func_opts.func(data1, data2).columns
     )
-    assert df3.columns_value.should_be_monotonic is True
     assert isinstance(df3.index_value.value, IndexValue.Int64Index)
-    assert df3.index_value.should_be_monotonic is True
     pd.testing.assert_index_equal(
         df3.index_value.to_pandas(), pd.Index([], dtype=np.int64)
     )
@@ -192,9 +190,7 @@ def test_without_shuffle(func_name, func_opts):
     pd.testing.assert_index_equal(
         df3.columns_value.to_pandas(), func_opts.func(data1, data2).columns
     )
-    assert df3.columns_value.should_be_monotonic is True
     assert isinstance(df3.index_value.value, IndexValue.Int64Index)
-    assert df3.index_value.should_be_monotonic is True
     pd.testing.assert_index_equal(
         df3.index_value.to_pandas(), pd.Index([], dtype=np.int64)
     )
@@ -419,7 +415,6 @@ def test_dataframe_and_series_with_shuffle(func_name, func_opts):
         df2.columns_value.to_pandas(), pd.Index([], dtype=np.int64)
     )
     assert df2.columns_value.key != df1.columns_value.key
-    assert df2.columns_value.should_be_monotonic is True
 
     df1, df2, s1 = tile(df1, df2, s1)
 
@@ -614,7 +609,6 @@ def test_series_and_series_with_shuffle(func_name, func_opts):
     pd.testing.assert_index_equal(
         s3.index_value.to_pandas(), pd.Index([], dtype=np.int64)
     )
-    assert s3.index_value.should_be_monotonic is True
 
     s1, s2, s3 = tile(s1, s2, s3)
 
@@ -673,9 +667,7 @@ def test_identical_index_and_columns(func_name, func_opts):
     pd.testing.assert_index_equal(
         df3.columns_value.to_pandas(), func_opts.func(data1, data2).columns
     )
-    assert df3.columns_value.should_be_monotonic is False
     assert isinstance(df3.index_value.value, IndexValue.RangeIndex)
-    assert df3.index_value.should_be_monotonic is False
     pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.RangeIndex(0, 10))
     assert df3.index_value.key == df1.index_value.key
     assert df3.index_value.key == df2.index_value.key
@@ -734,9 +726,7 @@ def test_with_one_shuffle(func_name, func_opts):
     pd.testing.assert_index_equal(
         df3.columns_value.to_pandas(), func_opts.func(data1, data2).columns
     )
-    assert df3.columns_value.should_be_monotonic is True
     assert isinstance(df3.index_value.value, IndexValue.Int64Index)
-    assert df3.index_value.should_be_monotonic is True
     pd.testing.assert_index_equal(
         df3.index_value.to_pandas(), pd.Index([], dtype=np.int64)
     )
@@ -868,9 +858,7 @@ def test_with_all_shuffle(func_name, func_opts):
     pd.testing.assert_index_equal(
         df3.columns_value.to_pandas(), func_opts.func(data1, data2).columns
     )
-    assert df3.columns_value.should_be_monotonic is True
     assert isinstance(df3.index_value.value, IndexValue.Int64Index)
-    assert df3.index_value.should_be_monotonic is True
     pd.testing.assert_index_equal(
         df3.index_value.to_pandas(), pd.Index([], dtype=np.int64)
     )
@@ -970,9 +958,7 @@ def test_with_all_shuffle(func_name, func_opts):
     pd.testing.assert_index_equal(
         df6.columns_value.to_pandas(), func_opts.func(data4, data5).columns
     )
-    assert df6.columns_value.should_be_monotonic is True
     assert isinstance(df6.index_value.value, IndexValue.Int64Index)
-    assert df6.index_value.should_be_monotonic is True
     pd.testing.assert_index_equal(
         df6.index_value.to_pandas(), pd.Index([], dtype=np.int64)
     )
@@ -1077,9 +1063,7 @@ def test_without_shuffle_and_with_one_chunk(func_name, func_opts):
     pd.testing.assert_index_equal(
         df3.columns_value.to_pandas(), func_opts.func(data1, data2).columns
     )
-    assert df3.columns_value.should_be_monotonic is True
     assert isinstance(df3.index_value.value, IndexValue.Int64Index)
-    assert df3.index_value.should_be_monotonic is True
     pd.testing.assert_index_equal(
         df3.index_value.to_pandas(), pd.Index([], dtype=np.int64)
     )
@@ -1191,9 +1175,7 @@ def test_both_one_chunk(func_name, func_opts):
     pd.testing.assert_index_equal(
         df3.columns_value.to_pandas(), func_opts.func(data1, data2).columns
     )
-    assert df3.columns_value.should_be_monotonic is True
     assert isinstance(df3.index_value.value, IndexValue.Int64Index)
-    assert df3.index_value.should_be_monotonic is True
     pd.testing.assert_index_equal(
         df3.index_value.to_pandas(), pd.Index([], dtype=np.int64)
     )
@@ -1237,9 +1219,7 @@ def test_with_shuffle_and_one_chunk(func_name, func_opts):
     pd.testing.assert_index_equal(
         df3.columns_value.to_pandas(), func_opts.func(data1, data2).columns
     )
-    assert df3.columns_value.should_be_monotonic is True
     assert isinstance(df3.index_value.value, IndexValue.Int64Index)
-    assert df3.index_value.should_be_monotonic is True
     pd.testing.assert_index_equal(
         df3.index_value.to_pandas(), pd.Index([], dtype=np.int64)
     )
@@ -1332,9 +1312,7 @@ def test_on_same_dataframe(func_name, func_opts):
     pd.testing.assert_index_equal(
         df2.columns_value.to_pandas(), func_opts.func(data, data).columns
     )
-    assert df2.columns_value.should_be_monotonic is False
     assert isinstance(df2.index_value.value, IndexValue.Int64Index)
-    assert df2.index_value.should_be_monotonic is False
     pd.testing.assert_index_equal(
         df2.index_value.to_pandas(), pd.Index([], dtype=np.int64)
     )

@@ -369,11 +369,3 @@ class RaySubPool(RayPoolBase):
                 "Main pool %s has exited, exit current sub pool now.", main_pool
             )
             os._exit(0)
-
-
-if ray and ray.is_initialized():
-    # When using ray client to connect to a ray cluster, ray server will act as mars driver. All mars call from mars
-    # client will go to ray server first, then the ray server will ray call to other actors. So the ray server need to
-    # register ray serializers.
-    # TODO Need a way to check whether current process is a ray server.
-    register_ray_serializers()

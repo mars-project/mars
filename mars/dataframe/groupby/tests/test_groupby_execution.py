@@ -297,7 +297,7 @@ def test_groupby_getitem(setup):
         {"c1": "max", "c4": "mean"}, method="shuffle"
     )
     pd.testing.assert_frame_equal(
-        r.execute().fetch(),
+        r.execute().fetch().sort_index(),
         raw.groupby(["c2"])[["c1", "c4"]].agg({"c1": "max", "c4": "mean"}),
     )
 

@@ -17,13 +17,13 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Type
 
 from ....core import ChunkGraph, Chunk
-from ....typing import BandType
+from ....resource import Resource
+from ....typing import BandType, TileableType
 from ...subtask import SubtaskGraph, SubtaskResult
 
 
 @dataclass
 class ExecutionChunkResult:
-    chunk: Chunk  # The chunk key for fetching the result.
     meta: Dict  # The chunk meta for iterative tiling.
     context: Any  # The context info, e.g. ray.ObjectRef.
 
@@ -34,7 +34,14 @@ class TaskExecutor(ABC):
     @classmethod
     @abstractmethod
     async def create(
-        cls, config: Dict, *, session_id: str, address: str, task, **kwargs
+        cls,
+        config: Dict,
+        *,
+        session_id: str,
+        address: str,
+        task,
+        tile_context: Dict[TileableType, TileableType],
+        **kwargs,
     ) -> "TaskExecutor":
         name = config.get("backend", "mars")
         backend_config = config.get(name, {})
@@ -44,7 +51,12 @@ class TaskExecutor(ABC):
                 f"The {executor_cls} should implement the abstract classmethod `create`."
             )
         return await executor_cls.create(
-            backend_config, session_id=session_id, address=address, task=task, **kwargs
+            backend_config,
+            session_id=session_id,
+            address=address,
+            task=task,
+            tile_context=tile_context,
+            **kwargs,
         )
 
     async def __aenter__(self):
@@ -56,16 +68,17 @@ class TaskExecutor(ABC):
         stage_id: str,
         subtask_graph: SubtaskGraph,
         chunk_graph: ChunkGraph,
+        tile_context: Dict[TileableType, TileableType],
         context: Any = None,
-    ) -> List[ExecutionChunkResult]:
+    ) -> Dict[Chunk, ExecutionChunkResult]:
         """Execute a subtask graph and returns result."""
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Called when finish the task."""
 
     @abstractmethod
-    async def get_available_band_slots(self) -> Dict[BandType, int]:
-        """Get available band slots."""
+    async def get_available_band_resources(self) -> Dict[BandType, Resource]:
+        """Get available band resources."""
 
     @abstractmethod
     async def get_progress(self) -> float:
@@ -89,3 +102,35 @@ _name_to_task_executor_cls: Dict[str, Type[TaskExecutor]] = {}
 
 def register_executor_cls(executor_cls: Type[TaskExecutor]):
     _name_to_task_executor_cls[executor_cls.name] = executor_cls
+
+
+class Fetcher:
+    """The data fetcher for execution backends."""
+
+    name = None
+    required_meta_keys = ()  # The required meta keys.
+
+    @abstractmethod
+    def __init__(self, **kwargs):
+        pass
+
+    @abstractmethod
+    async def append(self, chunk_key: str, chunk_meta: Dict, conditions: List = None):
+        """Append chunk key and related infos."""
+
+    @abstractmethod
+    async def get(self):
+        """Get all the data of appended chunk keys."""
+
+    @classmethod
+    def create(cls, backend: str, **kwargs) -> "Fetcher":
+        fetcher_cls = _name_to_fetcher_cls[backend]
+        return fetcher_cls(**kwargs)
+
+
+_name_to_fetcher_cls: Dict[str, Type[Fetcher]] = {}
+
+
+def register_fetcher_cls(fetcher_cls: Type[Fetcher]):
+    _name_to_fetcher_cls[fetcher_cls.name] = fetcher_cls
+    return fetcher_cls

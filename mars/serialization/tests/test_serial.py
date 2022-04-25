@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import threading
 from collections import defaultdict, OrderedDict
 from typing import Any, Dict, List, Tuple
 
@@ -31,7 +32,7 @@ except ImportError:
 from ...lib.sparse import SparseMatrix
 from ...tests.core import require_cupy, require_cudf
 from ...utils import lazy_import
-from .. import serialize, deserialize
+from .. import serialize, serialize_with_spawn, deserialize
 from ..core import Placeholder, ListSerializer
 
 cupy = lazy_import("cupy", globals=globals())
@@ -219,8 +220,8 @@ def test_mars_sparse():
     assert (val.spmatrix != deserial.spmatrix).nnz == 0
 
 
-class MockSerializer(ListSerializer):
-    serializer_id = 145921
+class MockSerializerForErrors(ListSerializer):
+    serializer_id = 25951
     raises = False
 
     def on_deserial_error(
@@ -255,8 +256,8 @@ class UnpickleWithError:
 
 def test_deserial_errors():
     try:
-        MockSerializer.raises = False
-        MockSerializer.register(CustomList)
+        MockSerializerForErrors.raises = False
+        MockSerializerForErrors.register(CustomList)
 
         # error of leaf object is raised
         obj = [1, [[3, UnpickleWithError()]]]
@@ -269,7 +270,7 @@ def test_deserial_errors():
             deserialize(*serialize(obj))
         assert isinstance(exc_info.value.__cause__, ValueError)
 
-        MockSerializer.raises = True
+        MockSerializerForErrors.raises = True
 
         # error of non-leaf object is raised
         obj = [CustomList([[1], [[2]]])]
@@ -282,4 +283,32 @@ def test_deserial_errors():
             deserialize(*serialize(obj))
         assert isinstance(exc_info.value.__cause__, TypeError)
     finally:
-        MockSerializer.unregister(CustomList)
+        MockSerializerForErrors.unregister(CustomList)
+
+
+class MockSerializerForSpawn(ListSerializer):
+    thread_calls = defaultdict(lambda: 0)
+
+    def serial(self, obj: Any, context: Dict):
+        self.thread_calls[threading.current_thread().ident] += 1
+        return super().serial(obj, context)
+
+
+@pytest.mark.asyncio
+async def test_spawn_threshold():
+    try:
+        assert 0 == deserialize(*(await serialize_with_spawn(0)))
+
+        MockSerializerForSpawn.register(CustomList)
+        obj = [CustomList([i]) for i in range(200)]
+        serialized = await serialize_with_spawn(obj, spawn_threshold=100)
+        assert serialized[0][0]["_N"] == 201
+        deserialized = deserialize(*serialized)
+        for s, d in zip(obj, deserialized):
+            assert s[0] == d[0]
+
+        calls = MockSerializerForSpawn.thread_calls
+        assert sum(calls.values()) == 200
+        assert calls[threading.current_thread().ident] == 101
+    finally:
+        MockSerializerForSpawn.unregister(CustomList)

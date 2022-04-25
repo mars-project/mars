@@ -12,5 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .executor import MarsTaskExecutor
-from .fetcher import MarsFetcher
+from .....tests.core import require_ray, mock
+from .....utils import lazy_import
+from ..utils import report_event
+
+ray = lazy_import("ray")
+
+
+@require_ray
+@mock.patch("ray.report_event")
+def test_report_event(fake_report_event, ray_start_regular):
+    arguments = []
+
+    def _report_event(*args):
+        arguments.extend(args)
+
+    fake_report_event.side_effect = _report_event
+    severity, label, message = "WARNING", "test_label", "test_message"
+    report_event(severity, label, message)
+    assert arguments == [ray.EventSeverity.WARNING, label, message]

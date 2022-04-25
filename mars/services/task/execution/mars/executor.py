@@ -16,10 +16,10 @@ import asyncio
 import logging
 import sys
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 from ..... import oscar as mo
-from .....core import ChunkGraph, TileableGraph
+from .....core import ChunkGraph
 from .....core.operand import (
     Fetch,
     MapReduceOperand,
@@ -30,6 +30,7 @@ from .....lib.aio import alru_cache
 from .....oscar.profiling import (
     ProfilingData,
 )
+from .....resource import Resource
 from .....typing import TileableType, BandType
 from .....utils import Timer
 from ....cluster.api import ClusterAPI
@@ -60,12 +61,12 @@ class MarsTaskExecutor(TaskExecutor):
     name = "mars"
     _stage_processors: List[TaskStageProcessor]
     _cur_stage_processor: Optional[TaskStageProcessor]
+    _meta_updated_tileables: Set[TileableType]
 
     def __init__(
         self,
         config: Dict,
         task: Task,
-        tileable_graph: TileableGraph,
         tile_context: Dict[TileableType, TileableType],
         cluster_api: ClusterAPI,
         lifecycle_api: LifecycleAPI,
@@ -74,9 +75,10 @@ class MarsTaskExecutor(TaskExecutor):
     ):
         self._config = config
         self._task = task
-        self._tileable_graph = tileable_graph
+        self._tileable_graph = task.tileable_graph
         self._raw_tile_context = tile_context.copy()
         self._tile_context = tile_context
+        self._session_id = task.session_id
 
         # api
         self._cluster_api = cluster_api
@@ -88,13 +90,19 @@ class MarsTaskExecutor(TaskExecutor):
         self._cur_stage_processor = None
         self._lifecycle_processed_tileables = set()
         self._subtask_decref_events = dict()
+        self._meta_updated_tileables = set()
 
     @classmethod
     async def create(
-        cls, config: Dict, *, session_id: str, address: str, task, **kwargs
+        cls,
+        config: Dict,
+        *,
+        session_id: str,
+        address: str,
+        task: Task,
+        tile_context: Dict[TileableType, TileableType],
+        **kwargs,
     ) -> "TaskExecutor":
-        tileable_graph = kwargs.pop("tileable_graph")
-        tile_context = kwargs.pop("tile_context")
         assert (
             len(kwargs) == 0
         ), f"Unexpected kwargs for {cls.__name__}.create: {kwargs}"
@@ -104,7 +112,6 @@ class MarsTaskExecutor(TaskExecutor):
         return cls(
             config,
             task,
-            tileable_graph,
             tile_context,
             cluster_api,
             lifecycle_api,
@@ -134,9 +141,10 @@ class MarsTaskExecutor(TaskExecutor):
         stage_id: str,
         subtask_graph: SubtaskGraph,
         chunk_graph: ChunkGraph,
+        tile_context: Dict[TileableType, TileableType],
         context=None,
     ):
-        available_bands = await self.get_available_band_slots()
+        available_bands = await self.get_available_band_resources()
         await self._incref_result_tileables()
         stage_processor = TaskStageProcessor(
             stage_id,
@@ -144,6 +152,7 @@ class MarsTaskExecutor(TaskExecutor):
             chunk_graph,
             subtask_graph,
             list(available_bands),
+            tile_context,
             self._scheduling_api,
             self._meta_api,
         )
@@ -170,7 +179,7 @@ class MarsTaskExecutor(TaskExecutor):
             # revert result incref if error or cancelled
             await self._decref_result_tileables()
 
-    async def get_available_band_slots(self) -> Dict[BandType, int]:
+    async def get_available_band_resources(self) -> Dict[BandType, Resource]:
         async for bands in self._cluster_api.watch_all_bands():
             if bands:
                 return bands
@@ -309,7 +318,6 @@ class MarsTaskExecutor(TaskExecutor):
             if result_tileable in processed:  # pragma: no cover
                 continue
             try:
-
                 tiled_tileable = self._get_tiled(result_tileable)
                 tracks[0].append(result_tileable.key)
                 tracks[1].append(

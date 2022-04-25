@@ -20,14 +20,12 @@ from ....core import ChunkType
 from ....core.operand import Fuse
 from ....dataframe.core import (
     DATAFRAME_TYPE,
-    DATAFRAME_CHUNK_TYPE,
     DATAFRAME_GROUPBY_TYPE,
-    DATAFRAME_GROUPBY_CHUNK_TYPE,
     SERIES_GROUPBY_TYPE,
-    SERIES_GROUPBY_CHUNK_TYPE,
 )
 from ....lib.aio import alru_cache
 from ....typing import BandType
+from ....utils import get_chunk_params
 from ..core import get_meta_type
 from ..store import AbstractMetaStore
 from ..supervisor.core import MetaStoreManagerActor, MetaStoreActor
@@ -89,28 +87,17 @@ class BaseMetaAPI(AbstractMetaAPI):
         if isinstance(chunk.op, Fuse):
             # fuse op
             chunk = chunk.chunk
-        params = chunk.params.copy()
+        params = get_chunk_params(chunk)
         chunk_key = extra.pop("chunk_key", chunk.key)
         object_ref = extra.pop("object_ref", None)
+        params.update(extra)
+
         if object_ref:
             object_refs = (
                 [object_ref] if not isinstance(object_ref, list) else object_ref
             )
         else:
             object_refs = []
-        if isinstance(
-            chunk,
-            (
-                DATAFRAME_CHUNK_TYPE,
-                DATAFRAME_GROUPBY_CHUNK_TYPE,
-                SERIES_GROUPBY_CHUNK_TYPE,
-            ),
-        ):
-            # dataframe chunk needs some special process for now
-            params.pop("columns_value", None)
-            params.pop("dtypes", None)
-            params.pop("key_dtypes", None)
-        params.update(extra)
 
         if fields is not None:
             fields = set(fields)

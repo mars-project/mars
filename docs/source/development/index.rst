@@ -10,3 +10,4 @@ Development
    operand
    oscar/index
    services/index
+   metrics

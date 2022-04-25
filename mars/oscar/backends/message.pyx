@@ -515,7 +515,7 @@ class DeserializeMessageFailed(RuntimeError):
 
 
 cdef class MessageSerializer(Serializer):
-    serializer_id = 56951
+    serializer_id = 32105
 
     cpdef serial(self, object obj, dict context):
         cdef _MessageBase msg = <_MessageBase>obj
