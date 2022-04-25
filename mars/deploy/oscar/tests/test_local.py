@@ -39,8 +39,7 @@ from ....storage import StorageLevel
 from ....services.storage import StorageAPI
 from ....tensor.arithmetic.add import TensorAdd
 from ....tests.core import mock, check_dict_structure_same, DICT_NOT_EMPTY
-from ..local import new_cluster
-from ..service import load_config_file
+from ..local import new_cluster, _load_config
 from ..session import (
     get_default_async_session,
     get_default_session,
@@ -614,7 +613,7 @@ def test_cancel(setup_session, test_func):
 
 
 def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: F811
-    config = load_config_file()
+    config = _load_config()
 
     config["third_party_modules"] = set()
     with pytest.raises(TypeError, match="set"):
@@ -698,7 +697,7 @@ min_task_runtime = 2
 
 @pytest.fixture
 async def speculative_cluster():
-    config = load_config_file()
+    config = _load_config()
     # coloring based fusion will make subtask too heterogeneous such that the speculative scheduler can't
     # get enough homogeneous subtasks to calculate statistics
     config["task"]["default_config"]["fuse_enabled"] = False

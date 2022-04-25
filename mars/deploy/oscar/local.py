@@ -52,6 +52,10 @@ DEFAULT_CONFIG_FILE = os.path.join(
 )
 
 
+def _load_config(config: Union[str, Dict] = None):
+    return load_config(config, default_config_file=DEFAULT_CONFIG_FILE)
+
+
 async def new_cluster_in_isolation(
     address: str = "0.0.0.0",
     n_worker: int = 1,
