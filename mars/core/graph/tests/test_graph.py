@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import pytest
 
 from .... import tensor as mt
 from ....tests.core import flaky
+from ....utils import to_str
 from .. import DAG, GraphContainsCycleError
 
 
@@ -103,22 +103,5 @@ def test_to_dot():
     arr2 = arr + arr_add
     graph = arr2.build_graph(fuse_enabled=False, tile=True)
 
-    dot = str(graph.to_dot(trunc_key=5))
-    try:
-        assert all(str(n.key)[5] in dot for n in graph) is True
-    except AssertionError:
-        graph_reprs = []
-        for n in graph:
-            graph_reprs.append(
-                f"{n.op.key} -> {[succ.key for succ in graph.successors(n)]}"
-            )
-        logging.error(
-            "Unexpected error in test_to_dot.\ndot = %r\ngraph_repr = %r",
-            dot,
-            "\n".join(graph_reprs),
-        )
-        missing_prefix = next(n.key for n in graph if str(n.key)[5] not in dot)
-        logging.error(
-            "Missing prefix %r (type: %s)", missing_prefix, type(missing_prefix)
-        )
-        raise
+    dot = to_str(graph.to_dot(trunc_key=5))
+    assert all(to_str(n.key)[:5] in dot for n in graph) is True

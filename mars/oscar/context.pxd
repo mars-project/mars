@@ -14,4 +14,4 @@
 
 
 cdef class BaseActorContext:
-    pass
+    cdef public str _address

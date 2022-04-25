@@ -690,8 +690,14 @@ class SubActorPoolBase(ActorPoolBase):
     async def actor_ref(self, message: ActorRefMessage) -> ResultMessageType:
         result = await super().actor_ref(message)
         if isinstance(result, ErrorMessage):
-            message.actor_ref.address = self._main_address
-            result = await self.call(self._main_address, message)
+            # need a new message id to call main actor
+            main_message = ActorRefMessage(
+                new_message_id(),
+                create_actor_ref(self._main_address, message.actor_ref.uid),
+            )
+            result = await self.call(self._main_address, main_message)
+            # rewrite to message_id of the original request
+            result.message_id = message.message_id
         return result
 
     @implements(AbstractActorPool.destroy_actor)
