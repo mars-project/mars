@@ -218,8 +218,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             self.groupby_params["as_index"] = True
 
     def _call_dataframe(self, groupby, input_df):
+        print(groupby.op.preserve_order)
         agg_df = build_mock_agg_result(
-            groupby, self.groupby_params, self.raw_func, **self.raw_func_kw
+            groupby, groupby.op.groupby_params, self.raw_func, **self.raw_func_kw
         )
 
         shape = (np.nan, agg_df.shape[1])
