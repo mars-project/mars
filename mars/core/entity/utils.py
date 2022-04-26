@@ -28,7 +28,12 @@ def refresh_tileable_shape(tileable):
 
 
 def tile(tileable, *tileables: TileableType):
-    from ..graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+    from ..graph import (
+        TileableGraph,
+        TileableGraphBuilder,
+        ChunkGraphBuilder,
+        TileContext,
+    )
 
     raw_tileables = target_tileables = [tileable] + list(tileables)
     target_tileables = [t.data if hasattr(t, "data") else t for t in target_tileables]
@@ -38,7 +43,7 @@ def tile(tileable, *tileables: TileableType):
     next(tileable_graph_builder.build())
 
     # tile
-    tile_context = dict()
+    tile_context = TileContext()
     chunk_graph_builder = ChunkGraphBuilder(
         tileable_graph, fuse_enabled=False, tile_context=tile_context
     )

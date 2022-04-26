@@ -19,6 +19,7 @@ import logging
 import multiprocessing
 import os
 import threading
+import traceback
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
@@ -361,10 +362,19 @@ class AbstractActorPool(ABC):
             with _ErrorProcessor(
                 self.external_address, result.message_id, result.protocol
             ) as processor:
-                raise SendMessageFailed(
+                error_msg = (
                     f"Error when sending message {result.message_id.hex()}. "
-                    f"Caused by {ex!r}. See server logs for more details"
-                ) from None
+                    f"Caused by {ex!r}. "
+                )
+                if isinstance(result, ErrorMessage):
+                    format_tb = "\n".join(traceback.format_tb(result.traceback))
+                    error_msg += (
+                        f"\nOriginal error: {result.error!r}"
+                        f"Traceback: \n{format_tb}"
+                    )
+                else:
+                    error_msg += "See server logs for more details"
+                raise SendMessageFailed(error_msg) from None
             await self._send_channel(processor.result, channel, resend_failure=False)
 
     async def process_message(self, message: _MessageBase, channel: Channel):

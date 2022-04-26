@@ -102,7 +102,7 @@ class MarsTaskExecutor(TaskExecutor):
         session_id: str,
         address: str,
         task: Task,
-        tile_context: Dict[TileableType, TileableType],
+        tile_context: TileContext,
         **kwargs,
     ) -> "TaskExecutor":
         assert (
@@ -143,7 +143,7 @@ class MarsTaskExecutor(TaskExecutor):
         stage_id: str,
         subtask_graph: SubtaskGraph,
         chunk_graph: ChunkGraph,
-        tile_context: Dict[TileableType, TileableType],
+        tile_context: TileContext,
         context=None,
     ):
         available_bands = await self.get_available_band_resources()
@@ -165,10 +165,8 @@ class MarsTaskExecutor(TaskExecutor):
         self._stage_processors.append(stage_processor)
         self._cur_stage_processor = stage_processor
         # get the tiled progress for current stage
-        last_tile_progess = (
-            self._stage_tile_progresses[-1] if self._stage_tile_progresses else 0.0
-        )
-        curr_tile_progress = self._tile_context.get_all_progress() - last_tile_progess
+        prev_progress = sum(self._stage_tile_progresses)
+        curr_tile_progress = self._tile_context.get_all_progress() - prev_progress
         self._stage_tile_progresses.append(curr_tile_progress)
         return await stage_processor.run()
 
@@ -194,8 +192,7 @@ class MarsTaskExecutor(TaskExecutor):
 
     async def get_progress(self) -> float:
         # get progress of stages
-        subtask_progress = 0.0
-
+        executor_progress = 0.0
         assert len(self._stage_tile_progresses) == len(self._stage_processors)
         for stage_processor, stage_tile_progress in zip(
             self._stage_processors, self._stage_tile_progresses
@@ -214,9 +211,9 @@ class MarsTaskExecutor(TaskExecutor):
                 for subtask_key, result in stage_processor.subtask_snapshots.items()
                 if subtask_key not in stage_processor.subtask_results
             )
-            subtask_progress += (progress / n_subtask) * stage_tile_progress
-
-        return subtask_progress
+            subtask_progress = progress / n_subtask
+            executor_progress += subtask_progress * stage_tile_progress
+        return executor_progress
 
     async def cancel(self):
         if self._cur_stage_processor is not None:

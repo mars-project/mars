@@ -30,7 +30,8 @@ from ..config import task_options
 from ..core import Task, new_task_id, TaskStatus
 from ..errors import TaskNotExist
 from .preprocessor import TaskPreprocessor
-from .processor import TaskProcessorActor, TaskProcessor
+from .processor import TaskProcessor
+from .task import TaskProcessorActor
 
 logger = logging.getLogger(__name__)
 
