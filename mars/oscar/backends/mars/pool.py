@@ -27,7 +27,7 @@ from typing import List
 
 from ....utils import get_next_port, dataslots, ensure_coverage
 from ..config import ActorPoolConfig
-from ..message import CreateActorMessage
+from ..message import CreateActorMessage, reset_random_seed as reset_message_seed
 from ..pool import MainActorPoolBase, SubActorPoolBase, _register_message_handler
 
 
@@ -168,6 +168,7 @@ class MainActorPool(MainActorPoolBase):
 
         # make sure enough randomness for every sub pool
         random.seed(uuid.uuid1().bytes)
+        reset_message_seed()
 
         conf = actor_config.get_pool_config(process_index)
         suspend_sigint = conf["suspend_sigint"]

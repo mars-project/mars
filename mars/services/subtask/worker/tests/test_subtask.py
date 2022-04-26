@@ -23,6 +23,7 @@ import pytest
 from ..... import oscar as mo
 from ..... import tensor as mt
 from ..... import remote as mr
+from .....core import ExecutionError
 from .....core.context import get_context
 from .....core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 
@@ -155,8 +156,9 @@ async def test_subtask_failure(actor_pool):
     subtask_runner: SubtaskRunnerRef = await mo.actor_ref(
         SubtaskRunnerActor.gen_uid("numa-0", 0), address=pool.external_address
     )
-    with pytest.raises(FloatingPointError):
+    with pytest.raises(ExecutionError) as ex_info:
         await subtask_runner.run_subtask(subtask)
+    assert isinstance(ex_info.value.nested_error, FloatingPointError)
     result = await subtask_runner.get_subtask_result()
     assert result.status == SubtaskStatus.errored
     assert isinstance(result.error, FloatingPointError)
