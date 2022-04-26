@@ -115,11 +115,14 @@ def test_tileable_graph_logic_key():
     t1 = mt.random.randint(10, size=(10, 8), chunk_size=4)
     t2 = mt.random.randint(10, size=(10, 8), chunk_size=5)
     graph1 = (t1 + t2).build_graph(tile=False)
-    graph2 = (t1 + t2).build_graph(tile=False)
+    tt1 = mt.random.randint(10, size=(10, 8), chunk_size=4)
+    tt2 = mt.random.randint(10, size=(10, 8), chunk_size=5)
+    graph2 = (tt1 + tt2).build_graph(tile=False)
     assert graph1.logic_key == graph2.logic_key
     t3 = mt.random.randint(10, size=(10, 8), chunk_size=6)
+    tt3 = mt.random.randint(10, size=(10, 8), chunk_size=6)
     graph3 = (t1 + t3).build_graph(tile=False)
-    graph4 = (t1 + t3).build_graph(tile=False)
+    graph4 = (t1 + tt3).build_graph(tile=False)
     assert graph1.logic_key != graph3.logic_key
     assert graph3.logic_key == graph4.logic_key
     t4 = mt.random.randint(10, size=(10, 8))
@@ -130,11 +133,14 @@ def test_tileable_graph_logic_key():
     s1 = md.Series([1, 3, 5, mt.nan, 6, 8])
     s2 = md.Series(np.random.randn(1000), chunk_size=100)
     graph1 = (s1 + s2).build_graph(tile=False)
-    graph2 = (s1 + s2).build_graph(tile=False)
+    ss1 = md.Series([1, 3, 5, mt.nan, 6, 8])
+    ss2 = md.Series(np.random.randn(1000), chunk_size=100)
+    graph2 = (ss1 + ss2).build_graph(tile=False)
     assert graph1.logic_key == graph2.logic_key
     s3 = md.Series(np.random.randn(1000), chunk_size=200)
+    ss3 = md.Series(np.random.randn(1000), chunk_size=200)
     graph3 = (s1 + s3).build_graph(tile=False)
-    graph4 = (s1 + s3).build_graph(tile=False)
+    graph4 = (s1 + ss3).build_graph(tile=False)
     assert graph1.logic_key != graph3.logic_key
     assert graph3.logic_key == graph4.logic_key
     s4 = md.Series(np.random.randn(1000))
@@ -149,13 +155,22 @@ def test_tileable_graph_logic_key():
         np.random.randint(0, 100, size=(100_000, 4)), columns=list("ABCD"), chunk_size=4
     )
     graph1 = (df1 + df2).build_graph(tile=False)
-    graph2 = (df1 + df2).build_graph(tile=False)
+    ddf1 = md.DataFrame(
+        np.random.randint(0, 100, size=(100_000, 4)), columns=list("ABCD"), chunk_size=5
+    )
+    ddf2 = md.DataFrame(
+        np.random.randint(0, 100, size=(100_000, 4)), columns=list("ABCD"), chunk_size=4
+    )
+    graph2 = (ddf1 + ddf2).build_graph(tile=False)
     assert graph1.logic_key == graph2.logic_key
     df3 = md.DataFrame(
         np.random.randint(0, 100, size=(100_000, 4)), columns=list("ABCD"), chunk_size=3
     )
+    ddf3 = md.DataFrame(
+        np.random.randint(0, 100, size=(100_000, 4)), columns=list("ABCD"), chunk_size=3
+    )
     graph3 = (df1 + df3).build_graph(tile=False)
-    graph4 = (df1 + df3).build_graph(tile=False)
+    graph4 = (df1 + ddf3).build_graph(tile=False)
     assert graph1.logic_key != graph3.logic_key
     assert graph3.logic_key == graph4.logic_key
     df5 = md.DataFrame(
