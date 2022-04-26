@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from ..sort import DataFrameGroupbySortShuffle
 from .... import dataframe as md
 from .... import opcodes
 from ....core import OutputType, tile
@@ -118,7 +119,7 @@ def test_groupby_agg():
         }
     )
     mdf = md.DataFrame(df, chunk_size=2)
-    r = mdf.groupby("c2").sum(method="shuffle")
+    r = mdf.groupby("c2", sort=False).sum(method="shuffle")
 
     assert isinstance(r.op, DataFrameGroupByAgg)
     assert isinstance(r, DataFrame)
@@ -133,6 +134,27 @@ def test_groupby_agg():
         assert isinstance(chunk.inputs[0].inputs[0].op, DataFrameShuffleProxy)
         assert isinstance(
             chunk.inputs[0].inputs[0].inputs[0].op, DataFrameGroupByOperand
+        )
+        assert chunk.inputs[0].inputs[0].inputs[0].op.stage == OperandStage.map
+
+        agg_chunk = chunk.inputs[0].inputs[0].inputs[0].inputs[0]
+        assert agg_chunk.op.stage == OperandStage.map
+
+    r = mdf.groupby("c2", ).sum(method="shuffle")
+
+    assert isinstance(r.op, DataFrameGroupByAgg)
+    assert isinstance(r, DataFrame)
+
+    r = tile(r)
+    assert len(r.chunks) == 5
+    for chunk in r.chunks:
+        assert isinstance(chunk.op, DataFrameGroupByAgg)
+        assert chunk.op.stage == OperandStage.agg
+        assert isinstance(chunk.inputs[0].op, DataFrameGroupbySortShuffle)
+        assert chunk.inputs[0].op.stage == OperandStage.reduce
+        assert isinstance(chunk.inputs[0].inputs[0].op, DataFrameShuffleProxy)
+        assert isinstance(
+            chunk.inputs[0].inputs[0].inputs[0].op, DataFrameGroupbySortShuffle
         )
         assert chunk.inputs[0].inputs[0].inputs[0].op.stage == OperandStage.map
 
