@@ -671,6 +671,12 @@ def test_nunique(setup, check_ref_counts):
     expected = data1.nunique(axis=1)
     pd.testing.assert_series_equal(result, expected)
 
+    # test with agg func
+    df = md.DataFrame(data1, chunk_size=3)
+    result = df.agg("nunique").execute().fetch()
+    expected = data1.agg("nunique")
+    pd.testing.assert_series_equal(result, expected)
+
 
 @pytest.mark.skipif(pa is None, reason="pyarrow not installed")
 def test_use_arrow_dtype_nunique(setup, check_ref_counts):

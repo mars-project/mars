@@ -972,13 +972,15 @@ class ReductionCompiler:
             else:
                 map_func_name, agg_func_name = step_func_name, step_func_name
 
+            op_custom_reduction = getattr(t.op, "custom_reduction", None)
+
             # build agg description
             agg_funcs.append(
                 ReductionAggStep(
                     agg_input_key,
                     map_func_name,
                     agg_func_name,
-                    custom_reduction,
+                    op_custom_reduction or custom_reduction,
                     t.key,
                     output_limit,
                     t.op.get_reduction_args(axis=self._axis),

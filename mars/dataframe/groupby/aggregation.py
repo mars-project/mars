@@ -94,6 +94,7 @@ _agg_functions = {
     "skew": lambda x, bias=False: x.skew(bias=bias),
     "kurt": lambda x, bias=False: x.kurt(bias=bias),
     "kurtosis": lambda x, bias=False: x.kurtosis(bias=bias),
+    "nunique": lambda x: x.nunique(),
 }
 _series_col_name = "col_name"
 
@@ -720,7 +721,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                     result = (result,)
 
             if out.ndim == 2:
-                result = tuple(r.to_frame().T for r in result)
+                if result[0].ndim == 1:
+                    result = tuple(r.to_frame().T for r in result)
                 if op.stage == OperandStage.agg:
                     result = tuple(r.astype(out.dtypes) for r in result)
             else:
