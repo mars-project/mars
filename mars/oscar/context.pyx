@@ -34,7 +34,14 @@ cdef class BaseActorContext:
     def __init__(self, address: str = None):
         self._address = address
 
-    async def create_actor(self, object actor_cls, *args, object uid=None, object address=None, **kwargs):
+    async def create_actor(
+        self,
+        object actor_cls,
+        *args,
+        object uid=None,
+        object address=None,
+        **kwargs,
+    ):
         """
         Stub method for creating an actor in current context.
 
@@ -188,7 +195,14 @@ cdef class ClientActorContext(BaseActorContext):
                 _backend_context_cls[scheme](address)
             return context
 
-    def create_actor(self, object actor_cls, *args, object uid=None, object address=None, **kwargs):
+    def create_actor(
+        self,
+        object actor_cls,
+        *args,
+        object uid=None,
+        object address=None,
+        **kwargs,
+    ):
         context = self._get_backend_context(address)
         uid = uid or new_actor_id()
         return context.create_actor(actor_cls, *args, uid=uid, address=address, **kwargs)
@@ -238,10 +252,3 @@ def get_context():
     if _context is None:
         _context = ClientActorContext()
     return _context
-
-
-def set_context(context):
-    """
-    Set default actor context to use
-    """
-    _context = context

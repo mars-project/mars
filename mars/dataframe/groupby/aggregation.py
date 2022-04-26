@@ -14,9 +14,8 @@
 
 import functools
 import itertools
-import typing
 import uuid
-from typing import List, Dict
+from typing import Callable, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -121,8 +120,8 @@ del _patch_groupby_kurt
 
 def build_mock_agg_result(
     groupby: GROUPBY_TYPE,
-    groupby_params: typing.Dict,
-    raw_func: typing.Callable,
+    groupby_params: Dict,
+    raw_func: Callable,
     **raw_func_kw,
 ):
     try:
