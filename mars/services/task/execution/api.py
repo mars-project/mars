@@ -91,7 +91,7 @@ class ExecutionConfig:
         if backend is not None:
             name = execution_config["backend"] = backend
         else:
-            name = execution_config["backend"]
+            name = execution_config.setdefault("backend", "mars")
         config_cls = _name_to_config_cls[name]
         return config_cls(execution_config)
 

@@ -139,7 +139,7 @@ def _assert_storage_cleaned(session_id: str, addr: str, level: StorageLevel):
 
 @pytest.mark.parametrize("backend", ["mars"])
 def test_new_session(backend):
-    from mars.services.task.execution.api import _name_to_config_cls
+    from ....services.task.execution.api import _name_to_config_cls
 
     config_cls = _name_to_config_cls[backend]
     original_config_init = config_cls.__init__
