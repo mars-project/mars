@@ -71,7 +71,6 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     ceildiv,
     Timer,
 )
-from .core.base import MarsError
 from .lib.version import parse as parse_version
 from .typing import ChunkType, TileableType, EntityType, OperandType
 
@@ -90,7 +89,7 @@ _create_task = asyncio.create_task
 
 
 # fix encoding conversion problem under windows
-if sys.platform == "win32":  # pragma: no cover
+if sys.platform.startswith("win"):
 
     def _replace_default_encoding(func):
         def _fun(s, encoding=None):
@@ -117,6 +116,15 @@ except ImportError:  # pragma: no cover
             return "<no_default>"
 
     no_default = NoDefault.no_default
+
+    try:
+        # register for pickle compatibility
+        from pandas._libs import lib as _pd__libs_lib
+
+        _pd__libs_lib.NoDefault = NoDefault
+        _pd__libs_lib.no_default = no_default
+    except (ImportError, AttributeError):
+        pass
 
 
 class AttributeDict(dict):
@@ -1123,26 +1131,6 @@ def enter_current_session(func: Callable):
     return wrapped
 
 
-def wrap_user_function_error(ctx):
-    def wrapper(fun: Callable):
-        @functools.wraps(fun)
-        def wrapped(*args, **kw):
-            from .core.base import UserFunctionError
-            # skip in some test cases
-            if not hasattr(ctx, "get_current_session"):
-                return fun(*args, **kw)
-
-            try:
-                return fun(*args, **kw)
-            except BaseException as exc:
-                if not hasattr(ctx, "get_current_session"):
-                    raise
-                raise UserFunctionError(exc).with_traceback(exc.__traceback__) from None
-        return wrapped
-
-    return wrapper
-
-
 _io_quiet_local = threading.local()
 _io_quiet_lock = threading.Lock()
 
@@ -1667,12 +1655,11 @@ class TreeReductionBuilder:
         return self._build_reduction(inputs, final=True)
 
 
-_is_windows: bool = sys.platform.startswith("win")
-
-
 def ensure_coverage():
     # make sure coverage is handled when starting with subprocess.Popen
-    if not _is_windows and "COV_CORE_SOURCE" in os.environ:  # pragma: no cover
+    if (
+        not sys.platform.startswith("win") and "COV_CORE_SOURCE" in os.environ
+    ):  # pragma: no cover
         try:
             from pytest_cov.embed import cleanup_on_sigterm
         except ImportError:

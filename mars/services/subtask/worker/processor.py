@@ -20,7 +20,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Optional, Set, Type
 
 from .... import oscar as mo
-from ....core import ChunkGraph, OperandType, enter_mode
+from ....core import ChunkGraph, OperandType, enter_mode, ExecutionError
 from ....core.context import get_context, set_context
 from ....core.operand import (
     Fetch,
@@ -185,7 +185,11 @@ class SubtaskProcessor:
     def _execute_operand(
         self, ctx: Dict[str, Any], op: OperandType
     ):  # noqa: R0201  # pylint: disable=no-self-use
-        return execute(ctx, op)
+        try:
+            return execute(ctx, op)
+        except BaseException as ex:
+            # wrap exception in execution to avoid side effects
+            raise ExecutionError(ex).with_traceback(ex.__traceback__) from None
 
     async def _execute_graph(self, chunk_graph: ChunkGraph):
         loop = asyncio.get_running_loop()

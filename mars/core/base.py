@@ -144,7 +144,7 @@ class MarsError(Exception):
     pass
 
 
-class UserFunctionError(MarsError):
+class ExecutionError(MarsError):
     def __init__(self, nested_error: BaseException):
         super().__init__(nested_error)
         self.nested_error = nested_error
