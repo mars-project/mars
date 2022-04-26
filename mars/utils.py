@@ -122,7 +122,6 @@ except ImportError:  # pragma: no cover
         from pandas._libs import lib as _pd__libs_lib
 
         _pd__libs_lib.NoDefault = NoDefault
-        _pd__libs_lib.no_default = no_default
     except (ImportError, AttributeError):
         pass
 

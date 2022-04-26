@@ -480,10 +480,14 @@ class SubtaskProcessor:
             self.result.status = SubtaskStatus.cancelled
             self.result.progress = 1.0
             raise
-        except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+        except BaseException as ex:  # noqa: E722  # nosec  # pylint: disable=bare-except
             self.result.status = SubtaskStatus.errored
             self.result.progress = 1.0
-            _, self.result.error, self.result.traceback = sys.exc_info()
+            if isinstance(ex, ExecutionError):
+                self.result.error = ex.nested_error
+                self.result.traceback = ex.nested_error.__traceback__
+            else:  # pragma: no cover
+                _, self.result.error, self.result.traceback = sys.exc_info()
             await self.done()
             raise
         finally:
