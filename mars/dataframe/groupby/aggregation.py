@@ -701,34 +701,36 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         out = op.outputs[0]
         for group_key in input_objs[0].groups.keys():
             group_objs = [o.get_group(group_key) for o in input_objs]
+
             agg_done = False
             if op.stage == OperandStage.map:
-                result = custom_reduction.pre(group_objs[0])
+                res_tuple = custom_reduction.pre(group_objs[0])
                 agg_done = custom_reduction.pre_with_agg
-                if not isinstance(result, tuple):
-                    result = (result,)
+                if not isinstance(res_tuple, tuple):
+                    res_tuple = (res_tuple,)
             else:
-                result = group_objs
+                res_tuple = group_objs
 
             if not agg_done:
-                result = custom_reduction.agg(*result)
-                if not isinstance(result, tuple):
-                    result = (result,)
+                res_tuple = custom_reduction.agg(*res_tuple)
+                if not isinstance(res_tuple, tuple):
+                    res_tuple = (res_tuple,)
 
             if op.stage == OperandStage.agg:
-                result = custom_reduction.post(*result)
-                if not isinstance(result, tuple):
-                    result = (result,)
+                res_tuple = custom_reduction.post(*res_tuple)
+                if not isinstance(res_tuple, tuple):
+                    res_tuple = (res_tuple,)
 
-            if out.ndim == 2:
-                if result[0].ndim == 1:
-                    result = tuple(r.to_frame().T for r in result)
-                if op.stage == OperandStage.agg:
-                    result = tuple(r.astype(out.dtypes) for r in result)
-            else:
-                result = tuple(xdf.Series(r) for r in result)
+            new_res_list = []
+            for r in res_tuple:
+                if out.ndim == 2 and r.ndim == 1:
+                    r = r.to_frame().T
+                elif out.ndim < 2:
+                    if getattr(r, "ndim", 0) == 2:
+                        r = r.iloc[0, :]
+                    else:
+                        r = xdf.Series(r)
 
-            for r in result:
                 if len(input_objs[0].grouper.names) == 1:
                     r.index = xdf.Index(
                         [group_key], name=input_objs[0].grouper.names[0]
@@ -737,7 +739,21 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                     r.index = xdf.MultiIndex.from_tuples(
                         [group_key], names=input_objs[0].grouper.names
                     )
-            results.append(result)
+
+                if op.groupby_params.get("selection"):
+                    # correct columns for groupby-selection-agg paradigms
+                    selection = op.groupby_params["selection"]
+                    r.columns = [selection] if input_objs[0].ndim == 1 else selection
+
+                if out.ndim == 2 and op.stage == OperandStage.agg:
+                    dtype_cols = set(out.dtypes.index) & set(r.columns)
+                    conv_dtypes = {
+                        k: v for k, v in out.dtypes.items() if k in dtype_cols
+                    }
+                    r = r.astype(conv_dtypes)
+                new_res_list.append(r)
+
+            results.append(tuple(new_res_list))
         if not results and op.stage == OperandStage.agg:
             empty_df = pd.DataFrame(
                 [], columns=out.dtypes.index, index=out.index_value.to_pandas()[:0]

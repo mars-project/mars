@@ -41,61 +41,53 @@ class NuniqueReduction(CustomReduction):
         self._dropna = dropna
         self._use_arrow_dtype = use_arrow_dtype
 
-    @staticmethod
-    def _drop_duplicates_to_arrow(v, explode=False):
+    def _drop_duplicates(self, xdf, value, explode=False):
         if explode:
-            v = v.explode()
-        try:
-            return ArrowListArray([v.drop_duplicates().to_numpy()])
-        except pa.ArrowInvalid:
-            # fallback due to diverse dtypes
-            return [v.drop_duplicates().to_list()]
+            value = value.explode()
+
+        if not self._use_arrow_dtype or xdf is cudf:
+            return [value.drop_duplicates().to_numpy()]
+        else:
+            try:
+                return ArrowListArray([value.drop_duplicates().to_numpy()])
+            except pa.ArrowInvalid:
+                # fallback due to diverse dtypes
+                return [value.drop_duplicates().to_numpy()]
 
     def pre(self, in_data):  # noqa: W0221  # pylint: disable=arguments-differ
         xdf = cudf if self.is_gpu() else pd
         if isinstance(in_data, xdf.Series):
-            unique_values = in_data.drop_duplicates()
+            unique_values = self._drop_duplicates(xdf, in_data)
             return xdf.Series(unique_values, name=in_data.name)
         else:
             if self._axis == 0:
                 data = dict()
                 for d, v in in_data.iteritems():
-                    if not self._use_arrow_dtype or xdf is cudf:
-                        data[d] = [v.drop_duplicates().to_list()]
-                    else:
-                        data[d] = self._drop_duplicates_to_arrow(v)
+                    data[d] = self._drop_duplicates(xdf, v)
                 df = xdf.DataFrame(data)
             else:
                 df = xdf.DataFrame(columns=[0])
                 for d, v in in_data.iterrows():
-                    if not self._use_arrow_dtype or xdf is cudf:
-                        df.loc[d] = [v.drop_duplicates().to_list()]
-                    else:
-                        df.loc[d] = self._drop_duplicates_to_arrow(v)
+                    df.loc[d] = self._drop_duplicates(xdf, v)
             return df
 
     def agg(self, in_data):  # noqa: W0221  # pylint: disable=arguments-differ
         xdf = cudf if self.is_gpu() else pd
         if isinstance(in_data, xdf.Series):
-            unique_values = in_data.explode().drop_duplicates()
+            unique_values = self._drop_duplicates(xdf, in_data, explode=True)
             return xdf.Series(unique_values, name=in_data.name)
         else:
             if self._axis == 0:
                 data = dict()
                 for d, v in in_data.iteritems():
-                    if not self._use_arrow_dtype or xdf is cudf:
-                        data[d] = [v.explode().drop_duplicates().to_list()]
-                    else:
+                    if self._use_arrow_dtype and xdf is not cudf:
                         v = pd.Series(v.to_numpy())
-                        data[d] = self._drop_duplicates_to_arrow(v, explode=True)
+                    data[d] = self._drop_duplicates(xdf, v, explode=True)
                 df = xdf.DataFrame(data)
             else:
                 df = xdf.DataFrame(columns=[0])
                 for d, v in in_data.iterrows():
-                    if not self._use_arrow_dtype or xdf is cudf:
-                        df.loc[d] = [v.explode().drop_duplicates().to_list()]
-                    else:
-                        df.loc[d] = self._drop_duplicates_to_arrow(v, explode=True)
+                    df.loc[d] = self._drop_duplicates(xdf, v, explode=True)
             return df
 
     def post(self, in_data):  # noqa: W0221  # pylint: disable=arguments-differ

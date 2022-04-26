@@ -476,3 +476,24 @@ def test_groupby_fill():
     assert len(r.chunks) == 4
     assert r.shape == (len(s1),)
     assert r.chunks[0].shape == (np.nan,)
+
+
+def test_groupby_nunique():
+    df1 = pd.DataFrame(
+        [
+            [1, 1, 10],
+            [1, 1, np.nan],
+            [1, 1, np.nan],
+            [1, 2, np.nan],
+            [1, 2, 20],
+            [1, 2, np.nan],
+            [1, 3, np.nan],
+            [1, 3, np.nan],
+        ],
+        columns=["one", "two", "three"],
+    )
+    mdf = md.DataFrame(df1, chunk_size=3)
+
+    r = tile(mdf.groupby(["one", "two"]).nunique())
+    assert len(r.chunks) == 1
+    assert isinstance(r.chunks[0].op, DataFrameGroupByAgg)
