@@ -28,10 +28,6 @@ from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
 
 ray = lazy_import("ray")
 
-CONFIG_TEST_FILE = os.path.join(
-    os.path.dirname(__file__), "local_test_with_ray_dag_config.yml"
-)
-
 EXPECT_PROFILING_STRUCTURE = {
     "supervisor": {
         "general": {
@@ -61,7 +57,7 @@ async def create_cluster(request):
     start_method = os.environ.get("POOL_START_METHOD", None)
     client = await new_cluster(
         subprocess_start_method=start_method,
-        config=CONFIG_TEST_FILE,
+        backend="ray",
         n_worker=2,
         n_cpu=2,
         use_uvloop=False,
