@@ -161,11 +161,15 @@ def test_new_session(backend):
         config_init.side_effect = original_config_init
         deploy_band_resources.side_effect = _wrap_original_deploy_band_resources
         sess = new_session(backend=backend, n_cpu=2, web=False, use_uvloop=False)
-        with sess:
+        try:
             assert config_init.call_count > 0
             assert deploy_band_resources.call_count > 0
             worker_pools = sess.default.client._cluster._worker_pools
             assert len(worker_pools) == len(return_deploy_band_resources)
+        finally:
+            sess.stop_server()
+
+    assert get_default_async_session() is None
 
 
 @pytest.mark.asyncio
