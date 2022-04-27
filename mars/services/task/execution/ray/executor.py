@@ -161,7 +161,7 @@ class RayTaskExecutor(TaskExecutor):
         for subtask in subtask_graph.topological_iter():
             subtask_chunk_graph = subtask.chunk_graph
             key_to_input = await self._load_subtask_inputs(
-                subtask, subtask_chunk_graph, context
+                stage_id, subtask, subtask_chunk_graph, context
             )
             output_keys = self._get_subtask_output_keys(subtask_chunk_graph)
             output_meta_keys = result_keys & output_keys
@@ -248,7 +248,7 @@ class RayTaskExecutor(TaskExecutor):
         """Cancel execution."""
 
     async def _load_subtask_inputs(
-        self, subtask: Subtask, chunk_graph: ChunkGraph, context: Dict
+        self, stage_id: str, subtask: Subtask, chunk_graph: ChunkGraph, context: Dict
     ):
         """
         Load a dict of input key to object ref of subtask from context.
