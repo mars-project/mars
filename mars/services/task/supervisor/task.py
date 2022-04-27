@@ -303,14 +303,14 @@ class TaskProcessorActor(mo.Actor, _TaskInfoProcessorMixin):
         task: Task,
         tiled_context: TileContext,
         config: Config,
-        task_executor_config: Dict,
+        execution_config: Dict,
         task_preprocessor_cls: Type[TaskPreprocessor],
     ):
         task_preprocessor = task_preprocessor_cls(
             task, tiled_context=tiled_context, config=config
         )
         task_executor = await TaskExecutor.create(
-            task_executor_config,
+            execution_config,
             task=task,
             session_id=self.session_id,
             address=self.address,
