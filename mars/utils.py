@@ -84,7 +84,7 @@ ceildiv = ceildiv
 
 
 # fix encoding conversion problem under windows
-if sys.platform == "win32":  # pragma: no cover
+if sys.platform.startswith("win"):
 
     def _replace_default_encoding(func):
         def _fun(s, encoding=None):
@@ -111,6 +111,14 @@ except ImportError:  # pragma: no cover
             return "<no_default>"
 
     no_default = NoDefault.no_default
+
+    try:
+        # register for pickle compatibility
+        from pandas._libs import lib as _pd__libs_lib
+
+        _pd__libs_lib.NoDefault = NoDefault
+    except (ImportError, AttributeError):
+        pass
 
 
 class AttributeDict(dict):

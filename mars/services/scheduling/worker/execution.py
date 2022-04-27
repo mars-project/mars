@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional, Union
 
 from .... import oscar as mo
+from ....core import ExecutionError
 from ....core.graph import DAG
 from ....core.operand import Fetch, FetchShuffle
 from ....lib.aio import alru_cache
@@ -95,18 +96,27 @@ def _fill_subtask_result_with_exception(
     subtask: Subtask, subtask_info: SubtaskExecutionInfo
 ):
     _, exc, tb = sys.exc_info()
+    if isinstance(exc, ExecutionError):
+        exc = exc.nested_error
+        tb = exc.__traceback__
+
+    exc_info = (type(exc), exc, tb)
     if isinstance(exc, asyncio.CancelledError):
         status = SubtaskStatus.cancelled
-        log_str = "Cancel"
+        logger.exception(
+            "Cancel run subtask %s on band %s",
+            subtask.subtask_id,
+            subtask_info.band_name,
+            exc_info=exc_info,
+        )
     else:
         status = SubtaskStatus.errored
-        log_str = "Failed to"
-    logger.exception(
-        "%s run subtask %s on band %s",
-        log_str,
-        subtask.subtask_id,
-        subtask_info.band_name,
-    )
+        logger.exception(
+            "Failed to run subtask %s on band %s",
+            subtask.subtask_id,
+            subtask_info.band_name,
+            exc_info=exc_info,
+        )
     subtask_info.result.status = status
     subtask_info.result.progress = 1.0
     subtask_info.result.error = exc
