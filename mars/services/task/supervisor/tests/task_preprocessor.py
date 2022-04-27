@@ -29,8 +29,8 @@ from .....core import (
 from .....core.operand import Fetch
 from .....resource import Resource
 from .....tests.core import _check_args, ObjectCheckMixin
-from .....typing import BandType
-from ....subtask import SubtaskGraph
+from .....typing import BandType, ChunkType
+from ....subtask import Subtask, SubtaskGraph
 from ...analyzer import GraphAnalyzer
 from ..preprocessor import CancellableTiler, TaskPreprocessor
 
@@ -140,6 +140,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
     def analyze(
         self,
         chunk_graph: ChunkGraph,
+        chunk_to_subtasks: Dict[ChunkType, Subtask],
         available_bands: Dict[BandType, Resource],
         stage_id: str,
         op_to_bands: Dict[str, BandType] = None,
@@ -148,7 +149,9 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
         for n in chunk_graph:
             self._raw_chunk_shapes[n.key] = getattr(n, "shape", None)
         task = self._task
-        analyzer = GraphAnalyzer(chunk_graph, available_bands, task, self._config)
+        analyzer = GraphAnalyzer(
+            chunk_graph, available_bands, task, self._config, chunk_to_subtasks
+        )
         subtask_graph = analyzer.gen_subtask_graph()
         results = set(
             analyzer._chunk_to_copied[c]

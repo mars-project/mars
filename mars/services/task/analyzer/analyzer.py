@@ -38,6 +38,7 @@ class GraphAnalyzer:
         band_resource: Dict[BandType, Resource],
         task: Task,
         config: Config,
+        chunk_to_subtasks: Dict[ChunkType, Subtask],
         graph_assigner_cls: Type[AbstractGraphAssigner] = None,
         stage_id: str = None,
     ):
@@ -48,6 +49,7 @@ class GraphAnalyzer:
         self._config = config
         self._fuse_enabled = task.fuse_enabled
         self._extra_config = task.extra_config
+        self._chunk_to_subtasks = chunk_to_subtasks
         if graph_assigner_cls is None:
             graph_assigner_cls = GraphAssigner
         self._graph_assigner_cls = graph_assigner_cls
@@ -291,8 +293,6 @@ class GraphAnalyzer:
         -------
         subtask_graph: SubtaskGraph
             Subtask graph.
-        op_to_bands: Dict
-            Assigned operand's band, usually for fetch operands.
         """
         reassign_worker_ops = [
             chunk.op for chunk in self._chunk_graph if chunk.op.reassign_worker
@@ -372,7 +372,7 @@ class GraphAnalyzer:
         # gen subtask graph
         subtask_graph = SubtaskGraph()
         chunk_to_fetch_chunk = dict()
-        chunk_to_subtask = dict()
+        chunk_to_subtask = self._chunk_to_subtasks
         # states
         visited = set()
         logic_key_to_subtasks = defaultdict(list)

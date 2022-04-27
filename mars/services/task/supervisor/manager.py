@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Type, Union
 
 from .... import oscar as mo
-from ....core import TileableGraph, TileableType, enter_mode
+from ....core import TileableGraph, TileableType, enter_mode, TileContext
 from ....core.context import set_context
 from ....core.operand import Fetch
 from ...context import ThreadedServiceContext
@@ -30,7 +30,8 @@ from ..config import task_options
 from ..core import Task, new_task_id, TaskStatus
 from ..errors import TaskNotExist
 from .preprocessor import TaskPreprocessor
-from .processor import TaskProcessorActor, TaskProcessor
+from .processor import TaskProcessor
+from .task import TaskProcessorActor
 
 logger = logging.getLogger(__name__)
 
@@ -225,11 +226,9 @@ class TaskManagerActor(mo.Actor):
 
         return await processor_ref.get_tileable_subtasks(tileable_id, with_input_output)
 
-    async def _gen_tiled_context(
-        self, graph: TileableGraph
-    ) -> Dict[TileableType, TileableType]:
+    async def _gen_tiled_context(self, graph: TileableGraph) -> TileContext:
         # process graph, add fetch node to tiled context
-        tiled_context = dict()
+        tiled_context = TileContext()
         for tileable in graph:
             if isinstance(tileable.op, Fetch) and tileable.is_coarse():
                 info = self._tileable_key_to_info[tileable.key][-1]

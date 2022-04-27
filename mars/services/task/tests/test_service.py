@@ -16,15 +16,19 @@ import asyncio
 import time
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from .... import dataframe as md
 from .... import oscar as mo
 from .... import remote as mr
-from ....core import TileableGraph, TileableGraphBuilder
+from .... import tensor as mt
+from ....core import TileableGraph, TileableGraphBuilder, TileStatus, recursive_tile
 from ....core.context import get_context
 from ....resource import Resource
-from ....utils import Timer
+from ....tensor.core import TensorOrder
+from ....tensor.operands import TensorOperand, TensorOperandMixin
+from ....utils import Timer, build_fetch
 from ... import start_services, stop_services, NodeRole
 from ...session import SessionAPI
 from ...storage import MockStorageAPI
@@ -319,6 +323,50 @@ async def test_task_progress(start_test_service):
     assert results[0].progress == 1.0
 
 
+class _TileProgressOperand(TensorOperand, TensorOperandMixin):
+    @classmethod
+    def tile(cls, op: "_TileProgressOperand"):
+        progress_controller = get_context().get_remote_object("progress_controller")
+
+        t = yield from recursive_tile(mt.random.rand(10, 10, chunk_size=5))
+        yield TileStatus(t.chunks, progress=0.25)
+        progress_controller.wait()
+
+        new_op = op.copy()
+        params = op.outputs[0].params.copy()
+        params["chunks"] = t.chunks
+        params["nsplits"] = t.nsplits
+        return new_op.new_tileables(t.inputs, kws=[params])
+
+
+@pytest.mark.asyncio
+async def test_task_tile_progress(start_test_service):
+    sv_pool_address, task_api, storage_api = start_test_service
+
+    session_api = await SessionAPI.create(address=sv_pool_address)
+    ref = await session_api.create_remote_object(
+        task_api._session_id, "progress_controller", _ProgressController
+    )
+
+    t = _TileProgressOperand(dtype=np.dtype(np.float64)).new_tensor(
+        None, (10, 10), order=TensorOrder.C_ORDER
+    )
+
+    graph = TileableGraph([t.data])
+    next(TileableGraphBuilder(graph).build())
+
+    await task_api.submit_tileable_graph(graph, fuse_enabled=False)
+
+    await asyncio.sleep(1)
+    results = await task_api.get_task_results(progress=True)
+    assert results[0].progress == 0.25
+
+    await ref.set()
+    await asyncio.sleep(1)
+    results = await task_api.get_task_results(progress=True)
+    assert results[0].progress == 1.0
+
+
 @pytest.mark.asyncio
 async def test_get_tileable_graph(start_test_service):
     _sv_pool_address, task_api, storage_api = start_test_service
@@ -474,6 +522,38 @@ async def test_get_tileable_details(start_test_service):
             assert property_key != "key"
             assert property_key != "id"
             assert isinstance(property_value, (int, float, str))
+
+    # test merge
+    d1 = pd.DataFrame({"a": np.random.rand(100), "b": np.random.randint(3, size=100)})
+    d2 = pd.DataFrame({"c": np.random.rand(100), "b": np.random.randint(3, size=100)})
+    df1 = md.DataFrame(d1, chunk_size=10)
+    df2 = md.DataFrame(d2, chunk_size=10)
+
+    graph = TileableGraph([df1.data, df2.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
+    await task_api.wait_task(task_id)
+    details = await task_api.get_tileable_details(task_id)
+    assert details[df1.key]["progress"] == details[df2.key]["progress"] == 1.0
+
+    f1 = build_fetch(df1)
+    f2 = build_fetch(df2)
+    df3 = f1.merge(f2, auto_merge="none", bloom_filter=False)
+    graph = TileableGraph([df3.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
+    await task_api.wait_task(task_id)
+    for _ in range(2):
+        # get twice to ensure cache work
+        details = await task_api.get_tileable_details(task_id)
+        assert (
+            details[df3.key]["progress"]
+            == details[f1.key]["progress"]
+            == details[f2.key]["progress"]
+            == 1.0
+        )
 
 
 @pytest.mark.asyncio
