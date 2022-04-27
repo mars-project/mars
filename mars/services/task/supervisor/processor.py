@@ -204,11 +204,11 @@ class TaskProcessor:
         # for all execution backends.
         try:
             key_to_bands = await meta_api.get_chunk_meta.batch(*get_meta_tasks)
-        except KeyError:
-            key_to_bands = {}
-        fetch_op_to_bands = dict(
-            (key, meta["bands"][0]) for key, meta in zip(fetch_op_keys, key_to_bands)
-        )
+            fetch_op_to_bands = dict(
+                (key, meta["bands"][0]) for key, meta in zip(fetch_op_keys, key_to_bands)
+            )
+        except (KeyError, IndexError):
+            fetch_op_to_bands = {}
         with Timer() as timer:
             subtask_graph = await asyncio.to_thread(
                 self._preprocessor.analyze,
