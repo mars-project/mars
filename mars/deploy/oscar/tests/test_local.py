@@ -230,6 +230,15 @@ async def test_execute(create_cluster, config):
 
     del a, b
 
+    # remove this after fixing refcount
+    if not isinstance(session._isolated_session, _IsolatedWebSession):
+        worker_pools = session.client._cluster._worker_pools
+        await session.destroy()
+        for worker_pool in worker_pools:
+            _assert_storage_cleaned(
+                session.session_id, worker_pool.external_address, StorageLevel.MEMORY
+            )
+
 
 @pytest.mark.asyncio
 async def test_iterative_tiling(create_cluster):
@@ -254,6 +263,15 @@ async def test_iterative_tiling(create_cluster):
     assert df2.index_value.min_val >= 1
     assert df2.index_value.max_val <= 30
 
+    # remove this after fixing refcount
+    if not isinstance(session._isolated_session, _IsolatedWebSession):
+        worker_pools = session.client._cluster._worker_pools
+        await session.destroy()
+        for worker_pool in worker_pools:
+            _assert_storage_cleaned(
+                session.session_id, worker_pool.external_address, StorageLevel.MEMORY
+            )
+
 
 @pytest.mark.asyncio
 async def test_execute_describe(create_cluster):
@@ -270,6 +288,14 @@ async def test_execute_describe(create_cluster):
     assert info.progress() == 1
     res = await session.fetch(r)
     pd.testing.assert_frame_equal(res, raw.describe())
+    # remove this after fixing refcount
+    if not isinstance(session._isolated_session, _IsolatedWebSession):
+        worker_pools = session.client._cluster._worker_pools
+        await session.destroy()
+        for worker_pool in worker_pools:
+            _assert_storage_cleaned(
+                session.session_id, worker_pool.external_address, StorageLevel.MEMORY
+            )
 
 
 @pytest.mark.asyncio
@@ -394,6 +420,11 @@ async def test_web_session(create_cluster, config):
     AsyncSession.reset_default()
     await session.destroy()
     await _run_web_session_test(web_address)
+    worker_pools = client._cluster._worker_pools
+    for worker_pool in worker_pools:
+        _assert_storage_cleaned(
+            session.session_id, worker_pool.external_address, StorageLevel.MEMORY
+        )
 
 
 def test_sync_execute():
