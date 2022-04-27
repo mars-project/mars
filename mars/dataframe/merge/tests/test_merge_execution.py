@@ -14,6 +14,7 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from ....core.graph.builder.utils import build_graph
 from ...datasource.dataframe import from_pandas
@@ -597,7 +598,8 @@ def test_merge_with_bloom_filter(setup):
     )
 
 
-def test_merge_on_duplicate_columns(setup):
+@pytest.mark.parametrize("auto_merge", ["none", "both", "before", "after"])
+def test_merge_on_duplicate_columns(setup, auto_merge):
     raw1 = pd.DataFrame(
         [["foo", 1, "bar"], ["bar", 2, "foo"], ["baz", 3, "foo"]],
         columns=["lkey", "value", "value"],
@@ -611,7 +613,7 @@ def test_merge_on_duplicate_columns(setup):
     df1 = from_pandas(raw1, chunk_size=2)
     df2 = from_pandas(raw2, chunk_size=3)
 
-    r = df1.merge(df2, left_on="lkey", right_on="rkey", auto_merge="none")
+    r = df1.merge(df2, left_on="lkey", right_on="rkey", auto_merge=auto_merge)
     result = r.execute().fetch()
     expected = raw1.merge(raw2, left_on="lkey", right_on="rkey")
     pd.testing.assert_frame_equal(expected, result)

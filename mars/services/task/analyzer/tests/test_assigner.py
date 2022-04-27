@@ -52,7 +52,7 @@ def test_assigner_with_fetch_inputs():
     band_resource = dict((band, Resource(num_cpus=1)) for band in all_bands)
 
     task = Task("mock_task", "mock_session")
-    analyzer = GraphAnalyzer(chunk_graph, band_resource, task, Config())
+    analyzer = GraphAnalyzer(chunk_graph, band_resource, task, Config(), dict())
     subtask_graph = analyzer.gen_subtask_graph(cur_assigns)
 
     assigner = GraphAssigner(

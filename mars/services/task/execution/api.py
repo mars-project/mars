@@ -16,9 +16,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Dict, Any, Type, Union
 
-from ....core import ChunkGraph, Chunk
+from ....core import ChunkGraph, Chunk, TileContext
 from ....resource import Resource, build_band_resources
-from ....typing import BandType, TileableType
+from ....typing import BandType
 from ....utils import merge_dict
 from ...subtask import SubtaskGraph, SubtaskResult
 
@@ -147,7 +147,7 @@ class TaskExecutor(ABC):
         session_id: str,
         address: str,
         task,
-        tile_context: Dict[TileableType, TileableType],
+        tile_context: TileContext,
         **kwargs,
     ) -> "TaskExecutor":
         backend_config = ExecutionConfig.from_execution_config(config)
@@ -174,7 +174,7 @@ class TaskExecutor(ABC):
         stage_id: str,
         subtask_graph: SubtaskGraph,
         chunk_graph: ChunkGraph,
-        tile_context: Dict[TileableType, TileableType],
+        tile_context: TileContext,
         context: Any = None,
     ) -> Dict[Chunk, ExecutionChunkResult]:
         """Execute a subtask graph and returns result."""

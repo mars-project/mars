@@ -15,7 +15,7 @@
 import asyncio
 import logging
 from typing import List, Dict, Any, Set
-from .....core import ChunkGraph, Chunk
+from .....core import ChunkGraph, Chunk, TileContext
 from .....core.operand import (
     Fuse,
     VirtualOperand,
@@ -26,7 +26,7 @@ from .....lib.aio import alru_cache
 from .....optimization.physical import optimize
 from .....resource import Resource
 from .....serialization import serialize, deserialize
-from .....typing import BandType, TileableType
+from .....typing import BandType
 from .....utils import (
     lazy_import,
     get_chunk_params,
@@ -147,7 +147,7 @@ class RayTaskExecutor(TaskExecutor):
         stage_id: str,
         subtask_graph: SubtaskGraph,
         chunk_graph: ChunkGraph,
-        tile_context: Dict[TileableType, TileableType],
+        tile_context: TileContext,
         context: Any = None,
     ) -> Dict[Chunk, ExecutionChunkResult]:
         logger.info("Stage %s start.", stage_id)

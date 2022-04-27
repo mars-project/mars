@@ -24,6 +24,7 @@ import pytest
 from .. import new_session
 from .. import tensor as mt
 from ..services.cluster import NodeRole, WebClusterAPI
+from ..tests.core import flaky
 from ..utils import get_next_port
 
 
@@ -46,6 +47,7 @@ def _terminate(pid: int):
             continue
 
 
+@flaky(max_runs=3)
 @pytest.mark.asyncio
 async def test_cluster():
     port = get_next_port()
