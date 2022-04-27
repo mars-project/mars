@@ -205,7 +205,8 @@ class TaskProcessor:
         try:
             key_to_bands = await meta_api.get_chunk_meta.batch(*get_meta_tasks)
             fetch_op_to_bands = dict(
-                (key, meta["bands"][0]) for key, meta in zip(fetch_op_keys, key_to_bands)
+                (key, meta["bands"][0])
+                for key, meta in zip(fetch_op_keys, key_to_bands)
             )
         except (KeyError, IndexError):
             fetch_op_to_bands = {}
