@@ -36,9 +36,10 @@ from .....utils import (
 from ....cluster.api import ClusterAPI
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
-from ....subtask import SubtaskGraph
+from ....subtask import Subtask, SubtaskGraph
 from ....subtask.utils import iter_input_data_keys, iter_output_data
 from ..api import TaskExecutor, ExecutionChunkResult, register_executor_cls
+from .context import RayExecutionContext
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
@@ -55,7 +56,7 @@ def execute_subtask(
     ensure_coverage()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     # inputs = [i[1] for i in inputs]
-    context = dict(zip(input_keys, inputs))
+    context = RayExecutionContext(zip(input_keys, inputs))
     # optimize chunk graph.
     subtask_chunk_graph = optimize(subtask_chunk_graph)
     # from data_key to results
@@ -117,7 +118,7 @@ class RayTaskExecutor(TaskExecutor):
         session_id: str,
         address: str,
         task,
-        tile_context,
+        tile_context: TileContext,
         **kwargs
     ) -> "TaskExecutor":
         ray_executor = ray.remote(execute_subtask)
@@ -159,14 +160,10 @@ class RayTaskExecutor(TaskExecutor):
         result_keys = {chunk.key for chunk in chunk_graph.result_chunks}
         for subtask in subtask_graph.topological_iter():
             subtask_chunk_graph = subtask.chunk_graph
-            chunk_key_to_data_keys = get_chunk_key_to_data_keys(subtask_chunk_graph)
-            key_to_input = {
-                key: context[key]
-                for key, _ in iter_input_data_keys(
-                    subtask, subtask_chunk_graph, chunk_key_to_data_keys
-                )
-            }
-            output_keys = self._get_output_keys(subtask_chunk_graph)
+            key_to_input = await self._load_subtask_inputs(
+                stage_id, subtask, subtask_chunk_graph, context
+            )
+            output_keys = self._get_subtask_output_keys(subtask_chunk_graph)
             output_meta_keys = result_keys & output_keys
             output_count = len(output_keys) + bool(output_meta_keys)
             output_object_refs = self._ray_executor.options(
@@ -250,8 +247,44 @@ class RayTaskExecutor(TaskExecutor):
     async def cancel(self):
         """Cancel execution."""
 
+    async def _load_subtask_inputs(
+        self, stage_id: str, subtask: Subtask, chunk_graph: ChunkGraph, context: Dict
+    ):
+        """
+        Load a dict of input key to object ref of subtask from context.
+
+        It updates the context if the input object refs are fetched from
+        the meta service.
+        """
+        key_to_input = {}
+        key_to_get_meta = {}
+        chunk_key_to_data_keys = get_chunk_key_to_data_keys(chunk_graph)
+        for key, _ in iter_input_data_keys(
+            subtask, chunk_graph, chunk_key_to_data_keys
+        ):
+            if key in context:
+                key_to_input[key] = context[key]
+            else:
+                key_to_get_meta[key] = self._meta_api.get_chunk_meta.delay(
+                    key, fields=["object_refs"]
+                )
+        if key_to_get_meta:
+            logger.info(
+                "Fetch %s metas and update context of stage %s.",
+                len(key_to_get_meta),
+                stage_id,
+            )
+            meta_list = await self._meta_api.get_chunk_meta.batch(
+                *key_to_get_meta.values()
+            )
+            for key, meta in zip(key_to_get_meta.keys(), meta_list):
+                object_ref = meta["object_refs"][0]
+                key_to_input[key] = object_ref
+                context[key] = object_ref
+        return key_to_input
+
     @staticmethod
-    def _get_output_keys(chunk_graph):
+    def _get_subtask_output_keys(chunk_graph: ChunkGraph):
         output_keys = {}
         for chunk in chunk_graph.results:
             if isinstance(chunk.op, VirtualOperand):

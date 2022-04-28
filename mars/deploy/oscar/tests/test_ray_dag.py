@@ -95,3 +95,16 @@ async def create_cluster(request):
 @pytest.mark.asyncio
 async def test_execute(ray_start_regular_shared2, create_cluster, config):
     await test_local.test_execute(create_cluster, config)
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_iterative_tiling(ray_start_regular_shared2, create_cluster):
+    await test_local.test_iterative_tiling(create_cluster)
+
+
+# TODO(fyrestone): Support incremental index in ray backend.
+@require_ray
+@pytest.mark.parametrize("config", [{"backend": "ray", "incremental_index": False}])
+def test_sync_execute(config):
+    test_local.test_sync_execute(config)

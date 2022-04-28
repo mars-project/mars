@@ -845,7 +845,9 @@ class _IsolatedSession(AbstractAsyncSession):
             from .local import new_cluster_in_isolation
 
             return (
-                await new_cluster_in_isolation(address, timeout=timeout, **kwargs)
+                await new_cluster_in_isolation(
+                    address, timeout=timeout, backend=backend, **kwargs
+                )
             ).session
 
         if kwargs:  # pragma: no cover
