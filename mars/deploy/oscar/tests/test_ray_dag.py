@@ -20,7 +20,9 @@ import pytest
 from ....tests.core import DICT_NOT_EMPTY, require_ray
 from ....utils import lazy_import
 from ..local import new_cluster
+from ..session import new_session
 from ..tests import test_local
+from ..tests.session import new_test_session
 from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
     get_output_filenames,
@@ -69,8 +71,9 @@ async def create_cluster(request):
 
 @require_ray
 @pytest.mark.parametrize("backend", ["ray"])
-def test_new_session(backend):
-    test_local.test_new_session(backend)
+@pytest.mark.parametrize("_new_session", [new_session, new_test_session])
+def test_new_session_backend(ray_start_regular_shared2, _new_session, backend):
+    test_local.test_new_session_backend(_new_session, backend)
 
 
 @require_ray

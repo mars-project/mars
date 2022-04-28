@@ -55,6 +55,7 @@ from ..session import (
     _IsolatedWebSession,
     _execute_with_progress,
 )
+from ..tests.session import new_test_session
 from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
     get_output_filenames,
@@ -138,7 +139,8 @@ def _assert_storage_cleaned(session_id: str, addr: str, level: StorageLevel):
 
 
 @pytest.mark.parametrize("backend", ["mars"])
-def test_new_session(backend):
+@pytest.mark.parametrize("_new_session", [new_session, new_test_session])
+def test_new_session_backend(_new_session, backend):
     from ....services.task.execution.api import _name_to_config_cls
 
     config_cls = _name_to_config_cls[backend]
@@ -160,12 +162,18 @@ def test_new_session(backend):
 
         config_init.side_effect = original_config_init
         deploy_band_resources.side_effect = _wrap_original_deploy_band_resources
-        sess = new_session(backend=backend, n_cpu=2, web=False, use_uvloop=False)
+        sess = _new_session(
+            backend=backend, n_cpu=2, web=False, use_uvloop=False, default=True
+        )
         try:
             assert config_init.call_count > 0
             assert deploy_band_resources.call_count > 0
             worker_pools = sess.default.client._cluster._worker_pools
             assert len(worker_pools) == len(return_deploy_band_resources)
+            a = mt.ones((10, 10))
+            b = a + 1
+            res = b.to_numpy()
+            np.testing.assert_array_equal(res, np.ones((10, 10)) + 1)
         finally:
             sess.stop_server()
 
