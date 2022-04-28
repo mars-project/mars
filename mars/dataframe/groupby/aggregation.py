@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import variation
 
+from .preserve_order import DataFrameOrderPreserveIndexOperand
 from .sort import DataFramePSRSGroupbySample, DataFrameGroupbyConcatPivot, DataFrameGroupbySortShuffle
 from ... import opcodes as OperandDef
 from ...config import options
@@ -159,6 +160,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     func_rename = ListField("func_rename")
 
     groupby_params = DictField("groupby_params")
+    preserve_order = BoolField("preserve_order")
 
     method = StringField("method")
     use_inf_as_na = BoolField("use_inf_as_na")
@@ -218,7 +220,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             self.groupby_params["as_index"] = True
 
     def _call_dataframe(self, groupby, input_df):
-        print(groupby.op.preserve_order)
         agg_df = build_mock_agg_result(
             groupby, groupby.op.groupby_params, self.raw_func, **self.raw_func_kw
         )
@@ -277,6 +278,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             )
 
     def __call__(self, groupby):
+        self.preserve_order = groupby.op.preserve_order
         normalize_reduction_funcs(self, ndim=groupby.ndim)
         df = groupby
         while df.op.output_types[0] not in (OutputType.dataframe, OutputType.series):
@@ -525,16 +527,56 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         agg_chunks = cls._gen_map_chunks(op, in_df.chunks, out_df, func_infos)
         pivot_chunk = None
         if op.groupby_params['sort'] and len(in_df.chunks) > 1:
-            out_idx = (0,) if in_df.ndim == 2 else (),
             agg_chunk_len = len(agg_chunks)
             sample_chunks = cls._sample_chunks(op, agg_chunks)
-            pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, out_idx, agg_chunk_len)
+            pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, agg_chunk_len)
+
+        if op.preserve_order and len(in_df.chunks) > 1:
+            # add min col to in_df
+            index_chunks = cls._gen_index_chunks(op, agg_chunks)
+            # concat and get table and pivot
+            index_table, pivot_chunk = cls._find_index_table_and_pivot(op, index_chunks, agg_chunk_len)
+            # join the concat table with in_dfs
+            pass
 
         # agg_chunks = agg_chunks + sample_chunks
         return cls._perform_shuffle(op, agg_chunks, in_df, out_df, func_infos, pivot_chunk)
 
     @classmethod
-    def _gen_pivot_chunk(cls, op, sample_chunks, out_idx, agg_chunk_len):
+    def _gen_index_chunks(cls, op, agg_chunks):
+        chunk_shape = len(agg_chunks)
+        index_chunks = []
+
+        properties = dict(
+            by=op.groupby_params['by'],
+            gpu=op.is_gpu(),
+        )
+
+        for i, chunk in enumerate(agg_chunks):
+            chunk_op = DataFrameOrderPreserveIndexOperand(
+                output_types=[OutputType.dataframe],
+                **properties
+            )
+            kws = []
+            sampled_shape = (
+                (chunk_shape, len(op.groupby_params['by'])) if op.groupby_params['by'] else (chunk_shape,)
+            )
+            print(chunk)
+            kws.append(
+                {
+                    "shape": sampled_shape,
+                    "index_value": chunk.index_value,
+                    "index": (i, 0),
+                }
+            )
+
+            chunk = chunk_op.new_chunk([chunk], kws=kws)
+            index_chunks.append(chunk)
+
+        return index_chunks
+
+    @classmethod
+    def _gen_pivot_chunk(cls, op, sample_chunks, agg_chunk_len):
 
         properties = dict(
             by=op.groupby_params['by'],
@@ -800,10 +842,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             # otherwise, use shuffle
             pivot_chunk = None
             if op.groupby_params['sort'] and len(in_df.chunks) > 1:
-                out_idx = (0,) if in_df.ndim == 2 else (),
                 agg_chunk_len = len(chunks + left_chunks)
                 sample_chunks = cls._sample_chunks(op, chunks + left_chunks)
-                pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, out_idx, agg_chunk_len)
+                pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, agg_chunk_len)
 
             logger.debug("Choose shuffle method for groupby operand %s", op)
             return cls._perform_shuffle(
@@ -1265,5 +1306,6 @@ def agg(groupby, func=None, method="auto", combine_size=None, *args, **kwargs):
         combine_size=combine_size or options.combine_size,
         chunk_store_limit=options.chunk_store_limit,
         use_inf_as_na=use_inf_as_na,
+        preserve_order=groupby.op.preserve_order,
     )
     return agg_op(groupby)
