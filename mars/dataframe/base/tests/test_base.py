@@ -217,7 +217,7 @@ def test_rechunk():
     assert series2.nsplits == series.nsplits
 
 
-def test_data_frame_apply():
+def test_dataframe_apply():
     cols = [chr(ord("A") + i) for i in range(10)]
     df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
 
@@ -231,6 +231,10 @@ def test_data_frame_apply():
             assert len(v) > 2
             return v.sort_values()
 
+        def df_series_func_with_err(v):
+            assert len(v) > 2
+            return 0
+
         with pytest.raises(TypeError):
             df.apply(df_func_with_err)
 
@@ -238,6 +242,15 @@ def test_data_frame_apply():
         assert r.shape == (np.nan, df.shape[-1])
         assert r.op._op_type_ == opcodes.APPLY
         assert r.op.output_types[0] == OutputType.dataframe
+        assert r.op.elementwise is False
+
+        r = df.apply(
+            df_series_func_with_err, output_type="series", dtype=object, name="output"
+        )
+        assert r.dtype == np.dtype("O")
+        assert r.shape == (df.shape[-1],)
+        assert r.op._op_type_ == opcodes.APPLY
+        assert r.op.output_types[0] == OutputType.series
         assert r.op.elementwise is False
 
         r = df.apply("ffill")

@@ -277,7 +277,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
             if self.output_types is not None and (
                 dtypes is not None or dtype is not None
             ):
-                ret_dtypes = dtypes if dtypes is not None else (dtype, name)
+                ret_dtypes = dtypes if dtypes is not None else (name, dtype)
                 ret_index_value = parse_index(index) if index is not None else None
                 self._elementwise = False
                 return ret_dtypes, ret_index_value
@@ -455,7 +455,9 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         self._axis = validate_axis(axis, df_or_series)
 
         if df_or_series.op.output_types[0] == OutputType.dataframe:
-            return self._call_dataframe(df_or_series, dtypes=dtypes, index=index)
+            return self._call_dataframe(
+                df_or_series, dtypes=dtypes, dtype=dtype, name=name, index=index
+            )
         else:
             return self._call_series(
                 df_or_series, dtypes=dtypes, dtype=dtype, name=name, index=index
