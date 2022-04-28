@@ -396,28 +396,28 @@ def test_groupby_fill():
     )
     mdf = md.DataFrame(df1, chunk_size=3)
 
-    r = tile(getattr(mdf.groupby(["one", "two"]), "ffill")())
+    r = tile(mdf.groupby(["one", "two"]).ffill())
     assert r.op.output_types[0] == OutputType.dataframe
     assert r.shape == (len(df1), 1)
     assert len(r.chunks) == 3
     assert r.chunks[0].shape == (np.nan, 1)
     assert r.dtypes.index.tolist() == ["three"]
 
-    r = tile(getattr(mdf.groupby(["two"]), "bfill")())
+    r = tile(mdf.groupby(["two"]).bfill())
     assert r.op.output_types[0] == OutputType.dataframe
     assert r.shape == (len(df1), 2)
     assert len(r.chunks) == 3
     assert r.chunks[0].shape == (np.nan, 2)
     assert r.dtypes.index.tolist() == ["one", "three"]
 
-    r = tile(getattr(mdf.groupby(["two"]), "backfill")())
+    r = tile(mdf.groupby(["two"]).backfill())
     assert r.op.output_types[0] == OutputType.dataframe
     assert r.shape == (len(df1), 2)
     assert len(r.chunks) == 3
     assert r.chunks[0].shape == (np.nan, 2)
     assert r.dtypes.index.tolist() == ["one", "three"]
 
-    r = tile(getattr(mdf.groupby(["one"]), "fillna")(5))
+    r = tile(mdf.groupby(["one"]).fillna(5))
     assert r.op.output_types[0] == OutputType.dataframe
     assert r.shape == (len(df1), 2)
     assert len(r.chunks) == 3
@@ -426,25 +426,25 @@ def test_groupby_fill():
 
     s1 = pd.Series([4, 3, 9, np.nan, np.nan, 7, 10, 8, 1, 6])
     ms1 = md.Series(s1, chunk_size=3)
-    r = tile(getattr(ms1.groupby(lambda x: x % 2), "ffill")())
+    r = tile(ms1.groupby(lambda x: x % 2).ffill())
     assert r.op.output_types[0] == OutputType.series
     assert len(r.chunks) == 4
     assert r.shape == (len(s1),)
     assert r.chunks[0].shape == (np.nan,)
 
-    r = tile(getattr(ms1.groupby(lambda x: x % 2), "bfill")())
+    r = tile(ms1.groupby(lambda x: x % 2).bfill())
     assert r.op.output_types[0] == OutputType.series
     assert len(r.chunks) == 4
     assert r.shape == (len(s1),)
     assert r.chunks[0].shape == (np.nan,)
 
-    r = tile(getattr(ms1.groupby(lambda x: x % 2), "backfill")())
+    r = tile(ms1.groupby(lambda x: x % 2).backfill())
     assert r.op.output_types[0] == OutputType.series
     assert len(r.chunks) == 4
     assert r.shape == (len(s1),)
     assert r.chunks[0].shape == (np.nan,)
 
-    r = tile(getattr(ms1.groupby(lambda x: x % 2), "fillna")(5))
+    r = tile(ms1.groupby(lambda x: x % 2).fillna(5))
     assert r.op.output_types[0] == OutputType.series
     assert len(r.chunks) == 4
     assert r.shape == (len(s1),)
@@ -453,25 +453,25 @@ def test_groupby_fill():
     s1 = pd.Series([4, 3, 9, np.nan, np.nan, 7, 10, 8, 1, 6])
     ms1 = md.Series(s1, chunk_size=3)
 
-    r = tile(getattr(ms1.groupby(lambda x: x % 2), "ffill")())
+    r = tile(ms1.groupby(lambda x: x % 2).ffill())
     assert r.op.output_types[0] == OutputType.series
     assert len(r.chunks) == 4
     assert r.shape == (len(s1),)
     assert r.chunks[0].shape == (np.nan,)
 
-    r = tile(getattr(ms1.groupby(lambda x: x % 2), "bfill")())
+    r = tile(ms1.groupby(lambda x: x % 2).bfill())
     assert r.op.output_types[0] == OutputType.series
     assert len(r.chunks) == 4
     assert r.shape == (len(s1),)
     assert r.chunks[0].shape == (np.nan,)
 
-    r = tile(getattr(ms1.groupby(lambda x: x % 2), "backfill")())
+    r = tile(ms1.groupby(lambda x: x % 2).backfill())
     assert r.op.output_types[0] == OutputType.series
     assert len(r.chunks) == 4
     assert r.shape == (len(s1),)
     assert r.chunks[0].shape == (np.nan,)
 
-    r = tile(getattr(ms1.groupby(lambda x: x % 2), "fillna")(5))
+    r = tile(ms1.groupby(lambda x: x % 2).fillna(5))
     assert r.op.output_types[0] == OutputType.series
     assert len(r.chunks) == 4
     assert r.shape == (len(s1),)

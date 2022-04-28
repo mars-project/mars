@@ -550,8 +550,9 @@ async def test_numexpr(actor_pool):
     ) == [1] * len(result_tileable.chunks)
 
 
+@pytest.mark.parametrize("config", [{"incremental_index": True}])
 @pytest.mark.asyncio
-async def test_optimization(actor_pool):
+async def test_optimization(actor_pool, config):
     (
         execution_backend,
         pool,
@@ -575,7 +576,7 @@ async def test_optimization(actor_pool):
         )
         pdf.to_csv(file_path, index=False)
 
-        df = md.read_csv(file_path)
+        df = md.read_csv(file_path, incremental_index=config["incremental_index"])
         df2 = df.groupby("c").agg({"a": "sum"})
         df3 = df[["b", "a"]]
 

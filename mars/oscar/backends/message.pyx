@@ -556,7 +556,6 @@ cpdef reset_random_seed():
     global _rnd_is_seed_set
 
     seed_bytes = getrandbits(64).to_bytes(8, "little")
-    # memcpy(&seed, <char *>seed_bytes, 8)
     _rnd_gen.seed((<uint_fast64_t *><char *>seed_bytes)[0])
     _rnd_is_seed_set = True
 

@@ -433,8 +433,11 @@ async def test_web_session(create_cluster, config):
     await _run_web_session_test(web_address)
 
 
-def test_sync_execute():
-    session = new_session(n_cpu=2, web=False, use_uvloop=False)
+@pytest.mark.parametrize("config", [{"backend": "mars", "incremental_index": True}])
+def test_sync_execute(config):
+    session = new_session(
+        backend=config["backend"], n_cpu=2, web=False, use_uvloop=False
+    )
 
     # web not started
     assert session._session.client.web_address is None
@@ -458,23 +461,25 @@ def test_sync_execute():
         assert d is c
         assert abs(session.fetch(d) - raw.sum()) < 0.001
 
-        with tempfile.TemporaryDirectory() as tempdir:
-            file_path = os.path.join(tempdir, "test.csv")
-            pdf = pd.DataFrame(
-                np.random.RandomState(0).rand(100, 10),
-                columns=[f"col{i}" for i in range(10)],
-            )
-            pdf.to_csv(file_path, index=False)
+        # TODO(fyrestone): Remove this when the Ray backend support incremental index.
+        if config["incremental_index"]:
+            with tempfile.TemporaryDirectory() as tempdir:
+                file_path = os.path.join(tempdir, "test.csv")
+                pdf = pd.DataFrame(
+                    np.random.RandomState(0).rand(100, 10),
+                    columns=[f"col{i}" for i in range(10)],
+                )
+                pdf.to_csv(file_path, index=False)
 
-            df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
-            result = df.sum(axis=1).execute().fetch()
-            expected = pd.read_csv(file_path).sum(axis=1)
-            pd.testing.assert_series_equal(result, expected)
+                df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
+                result = df.sum(axis=1).execute().fetch()
+                expected = pd.read_csv(file_path).sum(axis=1)
+                pd.testing.assert_series_equal(result, expected)
 
-            df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
-            result = df.head(10).execute().fetch()
-            expected = pd.read_csv(file_path).head(10)
-            pd.testing.assert_frame_equal(result, expected)
+                df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
+                result = df.head(10).execute().fetch()
+                expected = pd.read_csv(file_path).head(10)
+                pd.testing.assert_frame_equal(result, expected)
 
     for worker_pool in session._session.client._cluster._worker_pools:
         _assert_storage_cleaned(
