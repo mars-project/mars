@@ -1236,6 +1236,7 @@ class _IsolatedSession(AbstractAsyncSession):
             return result
 
     async def decref(self, *tileable_keys):
+        logger.debug("Decref tileables on client: %s", tileable_keys)
         return await self._lifecycle_api.decref_tileables(list(tileable_keys))
 
     async def _get_ref_counts(self) -> Dict[str, int]:
