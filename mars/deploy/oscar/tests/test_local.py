@@ -424,6 +424,7 @@ def test_sync_execute(config):
         assert d is c
         assert abs(session.fetch(d) - raw.sum()) < 0.001
 
+        # TODO(fyrestone): Remove this when the Ray backend support incremental index.
         if config["incremental_index"]:
             with tempfile.TemporaryDirectory() as tempdir:
                 file_path = os.path.join(tempdir, "test.csv")
@@ -442,8 +443,6 @@ def test_sync_execute(config):
                 result = df.head(10).execute().fetch()
                 expected = pd.read_csv(file_path).head(10)
                 pd.testing.assert_frame_equal(result, expected)
-        else:
-            print("Incremental index is not supported.")
 
     for worker_pool in session._session.client._cluster._worker_pools:
         _assert_storage_cleaned(
