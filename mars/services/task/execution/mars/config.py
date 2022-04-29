@@ -15,7 +15,7 @@
 from typing import Dict, List
 from .....resource import Resource
 from ..api import ExecutionConfig, register_config_cls
-from ..utils import get_band_resources_from_dict
+from ..utils import get_band_resources_from_config
 
 
 @register_config_cls
@@ -23,4 +23,4 @@ class MarsExecutionConfig(ExecutionConfig):
     name = "mars"
 
     def get_deploy_band_resources(self) -> List[Dict[str, Resource]]:
-        return get_band_resources_from_dict(self._execution_config)
+        return get_band_resources_from_config(self._execution_config)

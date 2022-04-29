@@ -20,7 +20,7 @@ import subprocess  # nosec
 import sys
 import time
 from collections import namedtuple
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 import psutil
 
@@ -391,25 +391,3 @@ def cuda_card_stats() -> List[_cuda_card_stat]:  # pragma: no cover
             )
         )
     return infos
-
-
-def build_band_resources(
-    n_worker: int, n_cpu: int, mem_bytes: int = 0, cuda_devices: List[List[int]] = None
-) -> List[Dict[str, Resource]]:
-    bands_to_resource = []
-    worker_cpus = n_cpu // n_worker
-    cuda_devices = cuda_devices or ([[]] * n_worker)
-    if sum(len(devices) for devices in cuda_devices) == 0:
-        assert worker_cpus > 0, (
-            f"{n_cpu} cpus are not enough " f"for {n_worker}, try to decrease workers."
-        )
-    mem_bytes = mem_bytes // n_worker
-    for _, devices in zip(range(n_worker), cuda_devices):
-        worker_band_to_resource = dict()
-        worker_band_to_resource["numa-0"] = Resource(
-            num_cpus=worker_cpus, mem_bytes=mem_bytes
-        )
-        for i in devices:  # pragma: no cover
-            worker_band_to_resource[f"gpu-{i}"] = Resource(num_gpus=1)
-        bands_to_resource.append(worker_band_to_resource)
-    return bands_to_resource
