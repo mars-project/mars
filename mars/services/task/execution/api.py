@@ -17,14 +17,29 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Type, Union
 
 from ....core import ChunkGraph, Chunk, TileContext
-from ....resource import Resource, build_band_resources
+from ....resource import Resource
 from ....typing import BandType
 from ....utils import merge_dict
 from ...subtask import SubtaskGraph, SubtaskResult
+from .core import _CommonPrivateConfigMixin
 
 
-class ExecutionConfig:
-    """The config for execution backends."""
+class ExecutionConfig(_CommonPrivateConfigMixin):
+    """
+    The config for execution backends.
+
+    This class should ONLY provide the APIs for the parts other than
+    just the execution. Each backend may have a different implementation
+    of the API.
+
+    If there are common logic shared by all the backends, but they are
+    only used inside the execution. The `_CommonPrivateConfigMixin` is
+    a good place for them.
+
+    If some configuration is for a specific backend. They should be in
+    the backend config. e.g. `get_mars_special_config()` should be in
+    the `MarsExecutionConfig`.
+    """
 
     name = None
 
@@ -59,16 +74,6 @@ class ExecutionConfig:
     def get_execution_config(self) -> Dict:
         """Get the execution config dict."""
         return self._execution_config
-
-    def get_band_resources(self) -> List[Dict[str, Resource]]:
-        """Get the band resources from config."""
-        config = self._execution_config[self.backend]
-        return build_band_resources(
-            n_worker=config["n_worker"],
-            n_cpu=config["n_cpu"],
-            mem_bytes=config["mem_bytes"],
-            cuda_devices=config["cuda_devices"],
-        )
 
     @abstractmethod
     def get_deploy_band_resources(self) -> List[Dict[str, Resource]]:

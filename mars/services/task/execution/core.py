@@ -12,14 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List
-from .....resource import Resource
-from ..api import ExecutionConfig, register_config_cls
+
+from typing import List, Dict
+from ....resource import Resource, build_band_resources
 
 
-@register_config_cls
-class MarsExecutionConfig(ExecutionConfig):
-    name = "mars"
+class _CommonPrivateConfigMixin:
+    """This class should ONLY provide the common private APIs for all backend."""
 
-    def get_deploy_band_resources(self) -> List[Dict[str, Resource]]:
-        return self._get_band_resources()
+    def _get_band_resources(self) -> List[Dict[str, Resource]]:
+        """Get the band resources from config."""
+        config = self._execution_config[self.backend]
+        return build_band_resources(
+            n_worker=config["n_worker"],
+            n_cpu=config["n_cpu"],
+            mem_bytes=config["mem_bytes"],
+            cuda_devices=config["cuda_devices"],
+        )

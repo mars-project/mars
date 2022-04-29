@@ -21,5 +21,8 @@ from ..api import ExecutionConfig, register_config_cls
 class RayExecutionConfig(ExecutionConfig):
     name = "ray"
 
+    def get_band_resources(self):
+        return self._get_band_resources()
+
     def get_deploy_band_resources(self) -> List[Dict[str, Resource]]:
         return []
