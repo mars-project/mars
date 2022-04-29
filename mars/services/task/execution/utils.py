@@ -17,15 +17,13 @@ from typing import List, Dict
 from ....resource import Resource, build_band_resources
 
 
-class _CommonPrivateConfigMixin:
-    """This class should ONLY provide the common private APIs for all backend."""
-
-    def _get_band_resources(self) -> List[Dict[str, Resource]]:
-        """Get the band resources from config."""
-        config = self._execution_config[self.backend]
-        return build_band_resources(
-            n_worker=config["n_worker"],
-            n_cpu=config["n_cpu"],
-            mem_bytes=config["mem_bytes"],
-            cuda_devices=config["cuda_devices"],
-        )
+def get_band_resources_from_dict(execution_config: Dict) -> List[Dict[str, Resource]]:
+    """Get the band resources from config dict."""
+    backend = execution_config["backend"]
+    config = execution_config[backend]
+    return build_band_resources(
+        n_worker=config["n_worker"],
+        n_cpu=config["n_cpu"],
+        mem_bytes=config["mem_bytes"],
+        cuda_devices=config["cuda_devices"],
+    )

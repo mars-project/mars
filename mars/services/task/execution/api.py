@@ -21,20 +21,15 @@ from ....resource import Resource
 from ....typing import BandType
 from ....utils import merge_dict
 from ...subtask import SubtaskGraph, SubtaskResult
-from .core import _CommonPrivateConfigMixin
 
 
-class ExecutionConfig(_CommonPrivateConfigMixin):
+class ExecutionConfig:
     """
     The config for execution backends.
 
     This class should ONLY provide the APIs for the parts other than
     just the execution. Each backend may have a different implementation
     of the API.
-
-    If there are common logic shared by all the backends, but they are
-    only used inside the execution. The `_CommonPrivateConfigMixin` is
-    a good place for them.
 
     If some configuration is for a specific backend. They should be in
     the backend config. e.g. `get_mars_special_config()` should be in
