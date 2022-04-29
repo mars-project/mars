@@ -185,11 +185,9 @@ class StorageAPI(AbstractStorageAPI):
         error: str
             raise or ignore
         """
-        fetch_key = await self._storage_handler_ref.fetch_batch(
+        await self._storage_handler_ref.fetch_batch(
             self._session_id, [data_key], level, band_name, remote_address, error
         )
-        if fetch_key:
-            return fetch_key
 
     @fetch.batch
     async def batch_fetch(self, args_list, kwargs_list):
@@ -203,7 +201,7 @@ class StorageAPI(AbstractStorageAPI):
                 assert extracted_args == (level, band_name, dest_address, error)
             extracted_args = (level, band_name, dest_address, error)
             data_keys.append(data_key)
-        return await self._storage_handler_ref.fetch_batch(
+        await self._storage_handler_ref.fetch_batch(
             self._session_id, data_keys, *extracted_args
         )
 

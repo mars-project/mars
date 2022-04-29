@@ -78,10 +78,7 @@ class LifecycleTrackerActor(mo.Actor):
             )
 
     def incref_chunks(self, chunk_keys: List[str], counts: List[int] = None):
-        logger.debug(
-            "Increase reference count for chunks %s",
-            {ck: self._chunk_ref_counts[ck] for ck in chunk_keys},
-        )
+        logger.debug("Increase reference count for chunks %s", chunk_keys)
         self._check_ref_counts(chunk_keys, counts)
         counts = counts if counts is not None else itertools.repeat(1)
         for chunk_key, count in zip(chunk_keys, counts):
