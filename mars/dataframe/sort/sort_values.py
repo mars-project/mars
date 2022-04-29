@@ -252,6 +252,13 @@ def dataframe_sort_values(
         raise NotImplementedError("Only support sort on axis 0")
     psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
     by = by if isinstance(by, (list, tuple)) else [by]
+    if isinstance(ascending, list):  # pragma: no cover
+        if all(ascending):
+            # all are True, convert to True
+            ascending = True
+        if not any(ascending):
+            # all are False, convert to False
+            ascending = False
     op = DataFrameSortValues(
         by=by,
         axis=axis,

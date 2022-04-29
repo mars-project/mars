@@ -67,6 +67,29 @@ def test_sort_values_execution(setup, distinct_opt):
 
     pd.testing.assert_frame_equal(result, expected)
 
+    # test ascending is a list
+    result = (
+        mdf.sort_values(["a3", "a4", "a5", "a6"], ascending=[False, True, True, False])
+        .execute()
+        .fetch()
+    )
+    expected = df.sort_values(
+        ["a3", "a4", "a5", "a6"], ascending=[False, True, True, False]
+    )
+    pd.testing.assert_frame_equal(result, expected)
+
+    int_df = pd.DataFrame(
+        np.random.randint(0, 10, (100, 10)), columns=["a" + str(i) for i in range(10)]
+    )
+    mdf = DataFrame(int_df, chunk_size=10)
+    result = (
+        mdf.sort_values(["a3", "a4", "a5"], ascending=[False, True, False])
+        .execute()
+        .fetch()
+    )
+    expected = int_df.sort_values(["a3", "a4", "a5"], ascending=[False, True, False])
+    pd.testing.assert_frame_equal(result, expected)
+
     # test multiindex
     df2 = df.copy(deep=True)
     df2.columns = pd.MultiIndex.from_product([list("AB"), list("CDEFG")])
