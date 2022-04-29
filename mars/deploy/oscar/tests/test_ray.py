@@ -244,7 +244,7 @@ def test_ray_client(ray_start_regular):
 import ray.util.client.server.server as ray_client_server
 
 server = ray_client_server.init_and_serve("{address}", num_cpus=20)
-print("OK")
+print("OK", flush=True)
 while True:
     time.sleep(1)
 """
@@ -255,7 +255,7 @@ while True:
         f.write(server_code.format(address=address))
         f.flush()
 
-        proc = subprocess.Popen([sys.executable, f.name], stdout=subprocess.PIPE)
+        proc = subprocess.Popen([sys.executable, "-u", f.name], stdout=subprocess.PIPE)
 
         try:
 
