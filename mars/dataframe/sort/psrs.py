@@ -389,7 +389,7 @@ class DataFramePSRSChunkOperand(DataFrameOperand):
     sort_type = StringField("sort_type")
 
     axis = Int32Field("axis")
-    by = ListField("by")
+    by = ListField("by", default=None)
     ascending = AnyField("ascending")
     inplace = BoolField("inplace")
     kind = StringField("kind")
