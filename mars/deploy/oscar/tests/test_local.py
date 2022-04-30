@@ -230,13 +230,19 @@ async def test_execute(create_cluster, config):
 
     del a, b
 
-    if not isinstance(session._isolated_session, _IsolatedWebSession):
+    if (
+        not isinstance(session._isolated_session, _IsolatedWebSession)
+        and session.client
+    ):
         worker_pools = session.client._cluster._worker_pools
         await session.destroy()
         for worker_pool in worker_pools:
-            _assert_storage_cleaned(
-                session.session_id, worker_pool.external_address, StorageLevel.MEMORY
-            )
+            if hasattr(worker_pool, "external_address"):
+                _assert_storage_cleaned(
+                    session.session_id,
+                    worker_pool.external_address,
+                    StorageLevel.MEMORY,
+                )
 
 
 @pytest.mark.asyncio
@@ -262,13 +268,19 @@ async def test_iterative_tiling(create_cluster):
     assert df2.index_value.min_val >= 1
     assert df2.index_value.max_val <= 30
 
-    if not isinstance(session._isolated_session, _IsolatedWebSession):
+    if (
+        not isinstance(session._isolated_session, _IsolatedWebSession)
+        and session.client
+    ):
         worker_pools = session.client._cluster._worker_pools
         await session.destroy()
         for worker_pool in worker_pools:
-            _assert_storage_cleaned(
-                session.session_id, worker_pool.external_address, StorageLevel.MEMORY
-            )
+            if hasattr(worker_pool, "external_address"):
+                _assert_storage_cleaned(
+                    session.session_id,
+                    worker_pool.external_address,
+                    StorageLevel.MEMORY,
+                )
 
 
 @pytest.mark.asyncio
@@ -287,13 +299,19 @@ async def test_execute_describe(create_cluster):
     res = await session.fetch(r)
     pd.testing.assert_frame_equal(res, raw.describe())
 
-    if not isinstance(session._isolated_session, _IsolatedWebSession):
+    if (
+        not isinstance(session._isolated_session, _IsolatedWebSession)
+        and session.client
+    ):
         worker_pools = session.client._cluster._worker_pools
         await session.destroy()
         for worker_pool in worker_pools:
-            _assert_storage_cleaned(
-                session.session_id, worker_pool.external_address, StorageLevel.MEMORY
-            )
+            if hasattr(worker_pool, "external_address"):
+                _assert_storage_cleaned(
+                    session.session_id,
+                    worker_pool.external_address,
+                    StorageLevel.MEMORY,
+                )
 
 
 @pytest.mark.asyncio
@@ -421,9 +439,10 @@ async def test_web_session(create_cluster, config):
 
     worker_pools = client._cluster._worker_pools
     for worker_pool in worker_pools:
-        _assert_storage_cleaned(
-            session.session_id, worker_pool.external_address, StorageLevel.MEMORY
-        )
+        if hasattr(worker_pool, "external_address"):
+            _assert_storage_cleaned(
+                session.session_id, worker_pool.external_address, StorageLevel.MEMORY
+            )
 
 
 @pytest.mark.parametrize("config", [{"backend": "mars", "incremental_index": True}])
