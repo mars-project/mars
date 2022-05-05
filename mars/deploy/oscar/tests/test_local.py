@@ -629,6 +629,7 @@ def _cancel_when_execute(session, cancelled):
     assert all(not r._executed_sessions for r in rs)
 
     del rs
+    time.sleep(0.5)
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
 
@@ -652,6 +653,7 @@ def _cancel_when_tile(session, cancelled):
     assert not a._executed_sessions
 
     del a
+    time.sleep(0.5)
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
 
