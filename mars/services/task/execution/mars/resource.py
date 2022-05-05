@@ -55,8 +55,8 @@ class ResourceEvaluator:
           the running information and result of the task. And this method
           does not have to be implemented.
 
-        * Add configs the new evaluator needed in `base_config.xml` or its
-          descendant files.
+        * Add default configs of the new evaluator needed in `base_config.xml`
+          or its descendant files.
 
         * Set the `resource_evaluator` to choose a resource evaluator in
           `base_config.xml` when running a mars job.
