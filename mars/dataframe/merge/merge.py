@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType, recursive_tile
+from ...core import OutputType, recursive_tile, TileStatus
 from ...core.context import get_context
 from ...core.operand import OperandStage, MapReduceOperand
 from ...serialization.serializables import (
@@ -609,7 +609,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             auto_merge_before
             and len(left.chunks) + len(right.chunks) > auto_merge_threshold
         ):
-            yield [left, right] + left.chunks + right.chunks
+            yield TileStatus([left, right] + left.chunks + right.chunks, progress=0.2)
             left = auto_merge_chunks(ctx, left)
             right = auto_merge_chunks(ctx, right)
 
@@ -626,7 +626,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
             if op.how == "inner" and op.bloom_filter:
                 if has_unknown_shape(left, right):
-                    yield left.chunks + right.chunks
+                    yield TileStatus(left.chunks + right.chunks, progress=0.3)
                 small_one = right if len(left.chunks) > len(right.chunks) else left
                 logger.debug(
                     "Apply bloom filter for operand %s, use DataFrame %s to build bloom filter.",
@@ -637,7 +637,9 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                     *cls._apply_bloom_filter(left, right, left_on, right_on, op)
                 )
                 # auto merge after bloom filter
-                yield [left, right] + left.chunks + right.chunks
+                yield TileStatus(
+                    [left, right] + left.chunks + right.chunks, progress=0.5
+                )
                 left = auto_merge_chunks(ctx, left)
                 right = auto_merge_chunks(ctx, right)
 
@@ -660,7 +662,9 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         ):
             # if how=="inner", output data size will reduce greatly with high probability，
             # use auto_merge_chunks to combine small chunks.
-            yield ret[0].chunks  # trigger execution for chunks
+            yield TileStatus(
+                ret[0].chunks, progress=0.8
+            )  # trigger execution for chunks
             return [auto_merge_chunks(get_context(), ret[0])]
         else:
             return ret

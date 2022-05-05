@@ -19,7 +19,13 @@ import pandas as pd
 import pytest
 
 from ..... import dataframe as md
-from .....core import enter_mode, TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from .....core import (
+    enter_mode,
+    TileableGraph,
+    TileableGraphBuilder,
+    ChunkGraphBuilder,
+    TileContext,
+)
 from .. import optimize
 
 
@@ -47,7 +53,7 @@ def test_read_csv_head(gen_data1):
     df2 = df1.head(5)
     graph = TileableGraph([df2.data])
     next(TileableGraphBuilder(graph).build())
-    context = dict()
+    context = TileContext()
     chunk_graph_builder = ChunkGraphBuilder(
         graph, fuse_enabled=False, tile_context=context
     )

@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from random import getrandbits
 from typing import AsyncGenerator
-
-import numpy as np
 
 from .._utils cimport to_str
 from .core cimport ActorRef, LocalActorRef
 
 
 cpdef bytes new_actor_id():
-    return np.random.bytes(32)
+    return getrandbits(256).to_bytes(32, "little")
 
 
 def create_actor_ref(*args, **kwargs):

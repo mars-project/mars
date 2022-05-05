@@ -36,9 +36,11 @@ from ...services.cluster.backends.base import (
     AbstractClusterBackend,
 )
 from ...services import NodeRole
-from ...utils import merge_dict, flatten_dict_to_nested_dict
 from ...utils import lazy_import
-from ..utils import load_service_config_file, get_third_party_modules_from_config
+from ..utils import (
+    load_config,
+    get_third_party_modules_from_config,
+)
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
 from .session import (
     _new_session,
@@ -51,6 +53,10 @@ from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
 
+# The default config file.
+DEFAULT_CONFIG_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "rayconfig.yml"
+)
 # The default value for supervisor standalone (not share node with worker).
 DEFAULT_SUPERVISOR_STANDALONE = False
 # The default value for supervisor sub pool count.
@@ -58,24 +64,7 @@ DEFAULT_SUPERVISOR_SUB_POOL_NUM = 0
 
 
 def _load_config(config: Union[str, Dict] = None):
-    # use default config
-    if isinstance(config, str):
-        filename = config
-    else:
-        d = os.path.dirname(os.path.abspath(__file__))
-        filename = os.path.join(d, "rayconfig.yml")
-    full_config = load_service_config_file(filename)
-    if config and not isinstance(config, str):
-        if not isinstance(config, Dict):  # pragma: no cover
-            raise ValueError(f"{config} is not a dict")
-        flatten_keys = set(k for k in config.keys() if isinstance(k, str) and "." in k)
-        nested_flatten_config = flatten_dict_to_nested_dict(
-            {k: config[k] for k in flatten_keys}
-        )
-        nested_config = {k: config[k] for k in config.keys() if k not in flatten_keys}
-        config = merge_dict(nested_config, nested_flatten_config, overwrite=False)
-        merge_dict(full_config, config)
-    return full_config
+    return load_config(config, default_config_file=DEFAULT_CONFIG_FILE)
 
 
 @register_cluster_backend
@@ -421,7 +410,7 @@ class RayCluster:
         self._worker_cpu = worker_cpu
         self._worker_mem = worker_mem
         # load config file to dict.
-        self._config = _load_config(config)
+        self._config = load_config(config, default_config_file=DEFAULT_CONFIG_FILE)
         self.supervisor_address = None
         # Hold actor handles to avoid being freed
         self._supervisor_pool = None

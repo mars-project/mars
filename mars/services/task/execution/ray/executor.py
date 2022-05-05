@@ -15,7 +15,7 @@
 import asyncio
 import logging
 from typing import List, Dict, Any, Set
-from .....core import ChunkGraph, Chunk
+from .....core import ChunkGraph, Chunk, TileContext
 from .....core.operand import (
     Fuse,
     VirtualOperand,
@@ -26,19 +26,24 @@ from .....lib.aio import alru_cache
 from .....optimization.physical import optimize
 from .....resource import Resource
 from .....serialization import serialize, deserialize
-from .....typing import BandType, TileableType
+from .....typing import BandType
 from .....utils import (
     lazy_import,
     get_chunk_params,
     get_chunk_key_to_data_keys,
     ensure_coverage,
 )
-from ....cluster.api import ClusterAPI
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
-from ....subtask import SubtaskGraph
+from ....subtask import Subtask, SubtaskGraph
 from ....subtask.utils import iter_input_data_keys, iter_output_data
-from ..api import TaskExecutor, ExecutionChunkResult, register_executor_cls
+from ..api import (
+    TaskExecutor,
+    ExecutionConfig,
+    ExecutionChunkResult,
+    register_executor_cls,
+)
+from .context import RayExecutionContext
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
@@ -49,13 +54,13 @@ def execute_subtask(
     subtask_chunk_graph: ChunkGraph,
     output_meta_keys: Set[str],
     input_keys: List[str],
-    *inputs
+    *inputs,
 ):
     logger.info("Begin to execute subtask: %s", subtask_id)
     ensure_coverage()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     # inputs = [i[1] for i in inputs]
-    context = dict(zip(input_keys, inputs))
+    context = RayExecutionContext(zip(input_keys, inputs))
     # optimize chunk graph.
     subtask_chunk_graph = optimize(subtask_chunk_graph)
     # from data_key to results
@@ -89,11 +94,10 @@ class RayTaskExecutor(TaskExecutor):
 
     def __init__(
         self,
-        config,
+        config: ExecutionConfig,
         task,
         tile_context,
         ray_executor,
-        cluster_api,
         lifecycle_api,
         meta_api,
     ):
@@ -103,31 +107,30 @@ class RayTaskExecutor(TaskExecutor):
         self._ray_executor = ray_executor
 
         # api
-        self._cluster_api = cluster_api
         self._lifecycle_api = lifecycle_api
         self._meta_api = meta_api
 
         self._task_context = {}
+        self._available_band_resources = None
 
     @classmethod
     async def create(
         cls,
-        config: Dict,
+        config: ExecutionConfig,
         *,
         session_id: str,
         address: str,
         task,
-        tile_context,
-        **kwargs
+        tile_context: TileContext,
+        **kwargs,
     ) -> "TaskExecutor":
         ray_executor = ray.remote(execute_subtask)
-        cluster_api, lifecycle_api, meta_api = await cls._get_apis(session_id, address)
+        lifecycle_api, meta_api = await cls._get_apis(session_id, address)
         return cls(
             config,
             task,
             tile_context,
             ray_executor,
-            cluster_api,
             lifecycle_api,
             meta_api,
         )
@@ -135,9 +138,7 @@ class RayTaskExecutor(TaskExecutor):
     @classmethod
     @alru_cache(cache_exceptions=False)
     async def _get_apis(cls, session_id: str, address: str):
-        # TODO(fyrestone): Remove ClusterAPI usage.
         return await asyncio.gather(
-            ClusterAPI.create(address),
             LifecycleAPI.create(session_id, address),
             MetaAPI.create(session_id, address),
         )
@@ -147,11 +148,11 @@ class RayTaskExecutor(TaskExecutor):
         stage_id: str,
         subtask_graph: SubtaskGraph,
         chunk_graph: ChunkGraph,
-        tile_context: Dict[TileableType, TileableType],
+        tile_context: TileContext,
         context: Any = None,
     ) -> Dict[Chunk, ExecutionChunkResult]:
         logger.info("Stage %s start.", stage_id)
-        context = self._task_context  # TODO(fyrestone): Load context from meta service.
+        context = self._task_context
         output_meta_object_refs = []
 
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
@@ -159,14 +160,10 @@ class RayTaskExecutor(TaskExecutor):
         result_keys = {chunk.key for chunk in chunk_graph.result_chunks}
         for subtask in subtask_graph.topological_iter():
             subtask_chunk_graph = subtask.chunk_graph
-            chunk_key_to_data_keys = get_chunk_key_to_data_keys(subtask_chunk_graph)
-            key_to_input = {
-                key: context[key]
-                for key, _ in iter_input_data_keys(
-                    subtask, subtask_chunk_graph, chunk_key_to_data_keys
-                )
-            }
-            output_keys = self._get_output_keys(subtask_chunk_graph)
+            key_to_input = await self._load_subtask_inputs(
+                stage_id, subtask, subtask_chunk_graph, context
+            )
+            output_keys = self._get_subtask_output_keys(subtask_chunk_graph)
             output_meta_keys = result_keys & output_keys
             output_count = len(output_keys) + bool(output_meta_keys)
             output_object_refs = self._ray_executor.options(
@@ -239,9 +236,17 @@ class RayTaskExecutor(TaskExecutor):
             await self._lifecycle_api.incref_tileables(tileable_keys)
 
     async def get_available_band_resources(self) -> Dict[BandType, Resource]:
-        async for bands in self._cluster_api.watch_all_bands():
-            if bands:
-                return bands
+        if self._available_band_resources is None:
+            band_resources = self._config.get_band_resources()
+            virtual_band_resources = {}
+            idx = 0
+            for band_resource in band_resources:
+                for band, resource in band_resource.items():
+                    virtual_band_resources[(f"ray_virtual://{idx}", band)] = resource
+                    idx += 1
+            self._available_band_resources = virtual_band_resources
+
+        return self._available_band_resources
 
     async def get_progress(self) -> float:
         """Get the execution progress."""
@@ -250,8 +255,44 @@ class RayTaskExecutor(TaskExecutor):
     async def cancel(self):
         """Cancel execution."""
 
+    async def _load_subtask_inputs(
+        self, stage_id: str, subtask: Subtask, chunk_graph: ChunkGraph, context: Dict
+    ):
+        """
+        Load a dict of input key to object ref of subtask from context.
+
+        It updates the context if the input object refs are fetched from
+        the meta service.
+        """
+        key_to_input = {}
+        key_to_get_meta = {}
+        chunk_key_to_data_keys = get_chunk_key_to_data_keys(chunk_graph)
+        for key, _ in iter_input_data_keys(
+            subtask, chunk_graph, chunk_key_to_data_keys
+        ):
+            if key in context:
+                key_to_input[key] = context[key]
+            else:
+                key_to_get_meta[key] = self._meta_api.get_chunk_meta.delay(
+                    key, fields=["object_refs"]
+                )
+        if key_to_get_meta:
+            logger.info(
+                "Fetch %s metas and update context of stage %s.",
+                len(key_to_get_meta),
+                stage_id,
+            )
+            meta_list = await self._meta_api.get_chunk_meta.batch(
+                *key_to_get_meta.values()
+            )
+            for key, meta in zip(key_to_get_meta.keys(), meta_list):
+                object_ref = meta["object_refs"][0]
+                key_to_input[key] = object_ref
+                context[key] = object_ref
+        return key_to_input
+
     @staticmethod
-    def _get_output_keys(chunk_graph):
+    def _get_subtask_output_keys(chunk_graph: ChunkGraph):
         output_keys = {}
         for chunk in chunk_graph.results:
             if isinstance(chunk.op, VirtualOperand):

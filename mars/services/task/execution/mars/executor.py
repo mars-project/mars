@@ -19,7 +19,7 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Set
 
 from ..... import oscar as mo
-from .....core import ChunkGraph
+from .....core import ChunkGraph, TileContext
 from .....core.operand import (
     Fetch,
     MapReduceOperand,
@@ -39,7 +39,7 @@ from ....meta.api import MetaAPI
 from ....scheduling import SchedulingAPI
 from ....subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
 from ...core import Task
-from ..api import TaskExecutor, register_executor_cls
+from ..api import ExecutionConfig, TaskExecutor, register_executor_cls
 from .resource import ResourceEvaluator
 from .stage import TaskStageProcessor
 
@@ -60,14 +60,15 @@ def _get_n_reducer(subtask: Subtask) -> int:
 class MarsTaskExecutor(TaskExecutor):
     name = "mars"
     _stage_processors: List[TaskStageProcessor]
+    _stage_tile_progresses: List[float]
     _cur_stage_processor: Optional[TaskStageProcessor]
     _meta_updated_tileables: Set[TileableType]
 
     def __init__(
         self,
-        config: Dict,
+        config: ExecutionConfig,
         task: Task,
-        tile_context: Dict[TileableType, TileableType],
+        tile_context: TileContext,
         cluster_api: ClusterAPI,
         lifecycle_api: LifecycleAPI,
         scheduling_api: SchedulingAPI,
@@ -87,6 +88,7 @@ class MarsTaskExecutor(TaskExecutor):
         self._meta_api = meta_api
 
         self._stage_processors = []
+        self._stage_tile_progresses = []
         self._cur_stage_processor = None
         self._lifecycle_processed_tileables = set()
         self._subtask_decref_events = dict()
@@ -95,12 +97,12 @@ class MarsTaskExecutor(TaskExecutor):
     @classmethod
     async def create(
         cls,
-        config: Dict,
+        config: ExecutionConfig,
         *,
         session_id: str,
         address: str,
         task: Task,
-        tile_context: Dict[TileableType, TileableType],
+        tile_context: TileContext,
         **kwargs,
     ) -> "TaskExecutor":
         assert (
@@ -141,7 +143,7 @@ class MarsTaskExecutor(TaskExecutor):
         stage_id: str,
         subtask_graph: SubtaskGraph,
         chunk_graph: ChunkGraph,
-        tile_context: Dict[TileableType, TileableType],
+        tile_context: TileContext,
         context=None,
     ):
         available_bands = await self.get_available_band_resources()
@@ -162,6 +164,10 @@ class MarsTaskExecutor(TaskExecutor):
         resource_evaluator.evaluate()
         self._stage_processors.append(stage_processor)
         self._cur_stage_processor = stage_processor
+        # get the tiled progress for current stage
+        prev_progress = sum(self._stage_tile_progresses)
+        curr_tile_progress = self._tile_context.get_all_progress() - prev_progress
+        self._stage_tile_progresses.append(curr_tile_progress)
         return await stage_processor.run()
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -186,10 +192,11 @@ class MarsTaskExecutor(TaskExecutor):
 
     async def get_progress(self) -> float:
         # get progress of stages
-        subtask_progress = 0.0
-        n_stage = 0
-
-        for stage_processor in self._stage_processors:
+        executor_progress = 0.0
+        assert len(self._stage_tile_progresses) == len(self._stage_processors)
+        for stage_processor, stage_tile_progress in zip(
+            self._stage_processors, self._stage_tile_progresses
+        ):
             if stage_processor.subtask_graph is None:  # pragma: no cover
                 # generating subtask
                 continue
@@ -204,12 +211,9 @@ class MarsTaskExecutor(TaskExecutor):
                 for subtask_key, result in stage_processor.subtask_snapshots.items()
                 if subtask_key not in stage_processor.subtask_results
             )
-            subtask_progress += progress / n_subtask
-            n_stage += 1
-        if n_stage > 0:
-            subtask_progress /= n_stage
-
-        return subtask_progress
+            subtask_progress = progress / n_subtask
+            executor_progress += subtask_progress * stage_tile_progress
+        return executor_progress
 
     async def cancel(self):
         if self._cur_stage_processor is not None:
@@ -384,9 +388,9 @@ class MarsTaskExecutor(TaskExecutor):
                     for inp_subtask in subtask_graph.predecessors(subtask):
                         for c in inp_subtask.chunk_graph.results:
                             decref_chunk_key_to_counts[c.key] += 1
-            # decref result of chunk graphs
-            for c in stage_processor.chunk_graph.results:
-                decref_chunk_key_to_counts[c.key] += 1
+        # decref result of chunk graphs
+        for c in stage_processor.chunk_graph.results:
+            decref_chunk_key_to_counts[c.key] += 1
         return decref_chunk_key_to_counts
 
     @mo.extensible

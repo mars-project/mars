@@ -31,7 +31,18 @@ cdef class BaseActorContext:
     Base class for actor context. Every backend need to implement
     actor context for their own.
     """
-    async def create_actor(self, object actor_cls, *args, object uid=None, object address=None, **kwargs):
+
+    def __init__(self, address: str = None):
+        self._address = address
+
+    async def create_actor(
+        self,
+        object actor_cls,
+        *args,
+        object uid=None,
+        object address=None,
+        **kwargs,
+    ):
         """
         Stub method for creating an actor in current context.
 
@@ -102,7 +113,13 @@ cdef class BaseActorContext:
         bool
         """
 
-    async def send(self, ActorRef actor_ref, object message, bint wait_response=True, object profiling_context=None):
+    async def send(
+        self,
+        ActorRef actor_ref,
+        object message,
+        bint wait_response=True,
+        object profiling_context=None,
+    ):
         """
         Send a message to given actor by its reference
 
@@ -169,7 +186,8 @@ cdef class ClientActorContext(BaseActorContext):
     """
     cdef dict _backend_contexts
 
-    def __init__(self):
+    def __init__(self, address: str = None):
+        BaseActorContext.__init__(self, address)
         self._backend_contexts = dict()
 
     cdef inline object _get_backend_context(self, object address):
@@ -183,10 +201,17 @@ cdef class ClientActorContext(BaseActorContext):
             return self._backend_contexts[scheme]
         except KeyError:
             context = self._backend_contexts[scheme] = \
-                _backend_context_cls[scheme]()
+                _backend_context_cls[scheme](address)
             return context
 
-    def create_actor(self, object actor_cls, *args, object uid=None, object address=None, **kwargs):
+    def create_actor(
+        self,
+        object actor_cls,
+        *args,
+        object uid=None,
+        object address=None,
+        **kwargs,
+    ):
         context = self._get_backend_context(address)
         uid = uid or new_actor_id()
         return context.create_actor(actor_cls, *args, uid=uid, address=address, **kwargs)
@@ -208,9 +233,20 @@ cdef class ClientActorContext(BaseActorContext):
         context = self._get_backend_context(actor_ref.address)
         return context.actor_ref(actor_ref)
 
-    def send(self, ActorRef actor_ref, object message, bint wait_response=True, object profiling_context=None):
+    def send(
+        self,
+        ActorRef actor_ref,
+        object message,
+        bint wait_response=True,
+        object profiling_context=None
+    ):
         context = self._get_backend_context(actor_ref.address)
-        return context.send(actor_ref, message, wait_response=wait_response, profiling_context=profiling_context)
+        return context.send(
+            actor_ref,
+            message,
+            wait_response=wait_response,
+            profiling_context=profiling_context,
+        )
 
     def wait_actor_pool_recovered(self, str address, str main_address = None):
         context = self._get_backend_context(address)
@@ -235,10 +271,3 @@ cpdef get_context():
     if _context is None:
         _context = ClientActorContext()
     return _context
-
-
-def set_context(context):
-    """
-    Set default actor context to use
-    """
-    _context = context

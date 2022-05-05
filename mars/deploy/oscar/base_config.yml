@@ -29,6 +29,8 @@ task:
     fuse_enabled: yes
     initial_same_color_num: null
     as_broadcaster_successor_num: null
+  execution_config:
+    backend: mars
 scheduling:
   autoscale:
     enabled: false

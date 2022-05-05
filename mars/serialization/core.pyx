@@ -15,17 +15,18 @@
 
 import asyncio
 import datetime
+import enum
 import hashlib
 import inspect
 import sys
-from cpython cimport PyObject
 from functools import partial, wraps
-from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, uintptr_t
-from libcpp.unordered_map cimport unordered_map
 from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
+from cpython cimport PyObject
+from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, uintptr_t
+from libcpp.unordered_map cimport unordered_map
 
 from .._utils cimport TypeDispatcher
 
@@ -254,6 +255,7 @@ cdef set _primitive_types = {
     datetime.datetime,
     datetime.date,
     datetime.timedelta,
+    enum.Enum,
     type(max),  # builtin functions
     np.dtype,
     np.number,

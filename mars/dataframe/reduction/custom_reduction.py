@@ -23,14 +23,7 @@ class DataFrameCustomReduction(DataFrameReductionOperand, DataFrameReductionMixi
     _op_type_ = OperandDef.CUSTOM_REDUCTION
     _func_name = "custom_reduction"
 
-    _custom_reduction = AnyField("custom_reduction")
-
-    def __init__(self, custom_reduction=None, **kw):
-        super().__init__(_custom_reduction=custom_reduction, **kw)
-
-    @property
-    def custom_reduction(self):
-        return self._custom_reduction
+    custom_reduction = AnyField("custom_reduction")
 
     @property
     def is_atomic(self):

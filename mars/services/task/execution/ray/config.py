@@ -12,6 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .builder import TileableGraphBuilder, ChunkGraphBuilder, TileContext, TileStatus
-from .core import DirectedGraph, DAG, GraphContainsCycleError
-from .entity import TileableGraph, ChunkGraph, EntityGraph
+from typing import Dict, List
+from .....resource import Resource
+from ..api import ExecutionConfig, register_config_cls
+from ..utils import get_band_resources_from_config
+
+
+@register_config_cls
+class RayExecutionConfig(ExecutionConfig):
+    name = "ray"
+
+    def get_band_resources(self):
+        """
+        Get the band resources from config for generating ray virtual
+        resources.
+        """
+        return get_band_resources_from_config(self._execution_config)
+
+    def get_deploy_band_resources(self) -> List[Dict[str, Resource]]:
+        return []

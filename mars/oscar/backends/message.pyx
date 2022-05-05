@@ -1,4 +1,5 @@
-# Copyright 1999-2021 Alibaba Group Holding Ltd.
+# distutils: language = c++
+# Copyright 1999-2022 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,28 +14,26 @@
 # limitations under the License.
 
 from enum import Enum
+from random import getrandbits
 from types import TracebackType
 from typing import Any, Type
 
+from libc.stdint cimport uint_fast64_t
+
+from ...lib.cython.libcpp cimport mt19937_64
 from ...lib.tblib import pickling_support
 from ...serialization.core cimport Serializer
 from ...utils import wrap_exception
 from ..core cimport ActorRef
-
-try:
-    from random import randbytes
-except ImportError:  # pragma: no cover
-    from random import getrandbits
-
-    def randbytes(long n) -> bytes:
-        return getrandbits(n * 8).to_bytes(n, "little")
-
 
 # make sure traceback can be pickled
 pickling_support.install()
 
 cdef int _DEFAULT_PROTOCOL = 0
 DEFAULT_PROTOCOL = _DEFAULT_PROTOCOL
+
+cdef mt19937_64 _rnd_gen
+cdef bint _rnd_is_seed_set = False
 
 
 class MessageType(Enum):
@@ -552,5 +551,22 @@ cdef class MessageSerializer(Serializer):
 MessageSerializer.register(_MessageBase)
 
 
+cpdef reset_random_seed():
+    cdef bytes seed_bytes
+    global _rnd_is_seed_set
+
+    seed_bytes = getrandbits(64).to_bytes(8, "little")
+    _rnd_gen.seed((<uint_fast64_t *><char *>seed_bytes)[0])
+    _rnd_is_seed_set = True
+
+
 cpdef bytes new_message_id():
-    return randbytes(32)
+    cdef uint_fast64_t res_array[4]
+    cdef int i
+
+    if not _rnd_is_seed_set:
+        reset_random_seed()
+
+    for i in range(4):
+        res_array[i] = _rnd_gen()
+    return <bytes>((<char *>&(res_array[0]))[:32])
