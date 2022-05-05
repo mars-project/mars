@@ -201,10 +201,10 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
             int(np.power(max_chunk_size / nbytes_occupied, 1 / float(nleft))), 1
         )
 
-        if col_left_size == 0:
+        if col_left_size == 0 and not col_chunk_size:
             col_chunk_size.append(0)
 
-        if row_left_size == 0:
+        if row_left_size == 0 and not row_chunk_size:
             row_chunk_size.append(0)
 
         # check col first
