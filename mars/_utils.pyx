@@ -152,13 +152,14 @@ def tokenize_int(*args, **kwargs):
 cdef class Tokenizer(TypeDispatcher):
     def __call__(self, object obj, *args, **kwargs):
         try:
-            return super().__call__(obj, *args, **kwargs)
+            return self.get_handler(type(obj))(obj, *args, **kwargs)
         except KeyError:
             if hasattr(obj, '__mars_tokenize__') and not isinstance(obj, type):
                 if len(args) == 0 and len(kwargs) == 0:
                     return obj.__mars_tokenize__()
                 else:
-                    return super().__call__(obj.__mars_tokenize__(), *args, **kwargs)
+                    obj = obj.__mars_tokenize__()
+                    return self.get_handler(type(obj))(obj, *args, **kwargs)
             if callable(obj):
                 if PDTick is not None and not isinstance(obj, PDTick):
                     return tokenize_function(obj)
@@ -176,7 +177,9 @@ cdef inline list iterative_tokenize(object ob):
     while dq_pos < len(dq):
         x = dq[dq_pos]
         dq_pos += 1
-        if isinstance(x, (list, tuple)):
+        if type(x) in _primitive_types:
+            h_list.append(x)
+        elif isinstance(x, (list, tuple)):
             dq.extend(x)
         elif isinstance(x, set):
             dq.extend(sorted(x))
@@ -184,6 +187,10 @@ cdef inline list iterative_tokenize(object ob):
             dq.extend(sorted(x.items()))
         else:
             h_list.append(tokenize_handler(x))
+
+        if dq_pos >= 64 and len(dq) < dq_pos * 2:  # pragma: no cover
+            dq = dq[dq_pos:]
+            dq_pos = 0
     return h_list
 
 
@@ -202,20 +209,20 @@ cdef inline tuple tokenize_numpy(ob):
                 ob.shape, ob.strides, offset)
     if ob.dtype.hasobject:
         try:
-            data = mmh_hash_bytes('-'.join(ob.flat).encode('utf-8', errors='surrogatepass')).hex()
+            data = mmh_hash_bytes('-'.join(ob.flat).encode('utf-8', errors='surrogatepass'))
         except UnicodeDecodeError:
-            data = mmh_hash_bytes(b'-'.join([to_binary(x) for x in ob.flat])).hex()
+            data = mmh_hash_bytes(b'-'.join([to_binary(x) for x in ob.flat]))
         except TypeError:
             try:
-                data = mmh_hash_bytes(pickle.dumps(ob, pickle.HIGHEST_PROTOCOL)).hex()
+                data = mmh_hash_bytes(pickle.dumps(ob, pickle.HIGHEST_PROTOCOL))
             except:
                 # nothing can do, generate uuid
                 data = uuid.uuid4().hex
     else:
         try:
-            data = mmh_hash_bytes(ob.ravel().view('i1').data).hex()
+            data = mmh_hash_bytes(ob.ravel().view('i1').data)
         except (BufferError, AttributeError, ValueError):
-            data = mmh_hash_bytes(ob.copy().ravel().view('i1').data).hex()
+            data = mmh_hash_bytes(ob.copy().ravel().view('i1').data)
     return data, ob.dtype, ob.shape, ob.strides
 
 
@@ -332,20 +339,19 @@ def tokenize_cudf(ob):
 
 cdef Tokenizer tokenize_handler = Tokenizer()
 
-base_types = (int, float, str, unicode, bytes, complex,
-              type(None), type, slice, date, datetime, timedelta)
-for t in base_types:
+cdef set _primitive_types = {
+    int, float, str, unicode, bytes, complex, type(None), type, slice, date, datetime, timedelta
+}
+for t in _primitive_types:
     tokenize_handler.register(t, lambda ob: ob)
 
 for t in (np.dtype, np.generic):
-    tokenize_handler.register(t, lambda ob: repr(ob))
+    tokenize_handler.register(t, lambda ob: ob)
 
 for t in (list, tuple, dict, set):
     tokenize_handler.register(t, iterative_tokenize)
 
 tokenize_handler.register(np.ndarray, tokenize_numpy)
-tokenize_handler.register(dict, lambda ob: iterative_tokenize(sorted(ob.items())))
-tokenize_handler.register(set, lambda ob: iterative_tokenize(sorted(ob)))
 tokenize_handler.register(np.random.RandomState, lambda ob: iterative_tokenize(ob.get_state()))
 tokenize_handler.register(memoryview, lambda ob: mmh3_hash_from_buffer(ob))
 tokenize_handler.register(Enum, tokenize_enum)
