@@ -42,13 +42,14 @@ from ....storage import StorageAPI, MockStorageAPI
 from ....subtask import MockSubtaskAPI
 from ....mutable import MockMutableAPI
 from ...core import TaskStatus, TaskResult
-from ...execution.api import Fetcher
+from ...execution.api import Fetcher, ExecutionConfig
 from ..manager import TaskConfigurationActor, TaskManagerActor
 
 
 @pytest.fixture
 async def actor_pool(request):
     param = getattr(request, "param", {})
+    backend = param.get("backend", "mars")
     start_method = (
         os.environ.get("POOL_START_METHOD", "forkserver")
         if sys.platform != "win32"
@@ -77,10 +78,11 @@ async def actor_pool(request):
         await MockMutableAPI.create(session_id, pool.external_address)
 
         # create configuration
+        config = ExecutionConfig.from_params(backend=backend, n_worker=1, n_cpu=2)
         await mo.create_actor(
             TaskConfigurationActor,
             dict(),
-            param,
+            config.get_execution_config(),
             uid=TaskConfigurationActor.default_uid(),
             address=pool.external_address,
         )
@@ -92,9 +94,8 @@ async def actor_pool(request):
             address=pool.external_address,
             allocate_strategy=MainPool(),
         )
-        execution_backend = param.get("backend", "mars")
         try:
-            yield execution_backend, pool, session_id, meta_api, lifecycle_api, storage_api, manager
+            yield backend, pool, session_id, meta_api, lifecycle_api, storage_api, manager
         finally:
             await MockStorageAPI.cleanup(pool.external_address)
             await MockClusterAPI.cleanup(pool.external_address)

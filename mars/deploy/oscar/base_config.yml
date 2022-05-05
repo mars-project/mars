@@ -29,7 +29,7 @@ task:
     fuse_enabled: yes
     initial_same_color_num: null
     as_broadcaster_successor_num: null
-  task_executor_config:
+  execution_config:
     backend: mars
 scheduling:
   autoscale:

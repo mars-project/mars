@@ -55,6 +55,7 @@ from ..session import (
     _IsolatedWebSession,
     _execute_with_progress,
 )
+from ..tests.session import new_test_session
 from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
     get_output_filenames,
@@ -108,6 +109,8 @@ async def create_cluster(request):
         config = CONFIG_TEST_FILE
     elif request.param == "vineyard":
         config = CONFIG_VINEYARD_TEST_FILE
+    else:
+        config = None
     start_method = os.environ.get("POOL_START_METHOD", None)
     client = await new_cluster(
         subprocess_start_method=start_method,
@@ -133,6 +136,48 @@ def _assert_storage_cleaned(session_id: str, addr: str, level: StorageLevel):
     asyncio.run_coroutine_threadsafe(
         _assert(session_id, addr, level), isolation.loop
     ).result()
+
+
+@pytest.mark.parametrize("backend", ["mars"])
+@pytest.mark.parametrize("_new_session", [new_session, new_test_session])
+def test_new_session_backend(_new_session, backend):
+    from ....services.task.execution.api import _name_to_config_cls
+
+    config_cls = _name_to_config_cls[backend]
+    original_config_init = config_cls.__init__
+    original_deploy_band_resources = config_cls.get_deploy_band_resources
+    with mock.patch.object(
+        config_cls, "__init__", autospec=True
+    ) as config_init, mock.patch.object(
+        config_cls, "get_deploy_band_resources", autospec=True
+    ) as deploy_band_resources:
+        return_deploy_band_resources = []
+
+        def _wrap_original_deploy_band_resources(*args, **kwargs):
+            nonlocal return_deploy_band_resources
+            return_deploy_band_resources = original_deploy_band_resources(
+                *args, **kwargs
+            )
+            return return_deploy_band_resources
+
+        config_init.side_effect = original_config_init
+        deploy_band_resources.side_effect = _wrap_original_deploy_band_resources
+        sess = _new_session(
+            backend=backend, n_cpu=2, web=False, use_uvloop=False, default=True
+        )
+        try:
+            assert config_init.call_count > 0
+            assert deploy_band_resources.call_count > 0
+            worker_pools = sess.default.client._cluster._worker_pools
+            assert len(worker_pools) == len(return_deploy_band_resources)
+            a = mt.ones((10, 10))
+            b = a + 1
+            res = b.to_numpy()
+            np.testing.assert_array_equal(res, np.ones((10, 10)) + 1)
+        finally:
+            sess.stop_server()
+
+    assert get_default_async_session() is None
 
 
 @pytest.mark.asyncio
