@@ -15,6 +15,7 @@
 import os
 import tempfile
 import shutil
+import string
 from collections import OrderedDict
 
 import numpy as np
@@ -22,6 +23,7 @@ import pandas as pd
 import pytest
 
 from .... import tensor as mt
+from ....config import option_context
 from ....core import tile
 from ....tests.core import require_ray
 from ....utils import lazy_import
@@ -137,6 +139,20 @@ def test_from_pandas_dataframe():
     assert df2.chunks[3].index_value._index_value._slice == slice(8, 10, 2)
     pd.testing.assert_frame_equal(df2.chunks[5].op.data, df2.op.data.iloc[4:, 8:])
     assert df2.chunks[3].index_value._index_value._slice == slice(8, 10, 2)
+
+    raw = pd.DataFrame(
+        {
+            "a": [
+                string.printable[i : i + 15]
+                for i in np.random.randint(len(string.printable), size=100)
+            ],
+            "b": np.random.rand(100),
+        }
+    )
+    with option_context({"chunk_store_limit": raw["a"].memory_usage(deep=True) / 10}):
+        df = tile(from_pandas_df(raw))
+        # see GH#2985, empty chunks are wrongly generated
+        assert len([ns for ns in df.nsplits[1] if ns == 0]) == 0
 
 
 def test_from_pandas_series():
