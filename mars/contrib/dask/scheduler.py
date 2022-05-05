@@ -14,12 +14,13 @@
 
 from dask.core import istask, ishashable
 
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from .utils import reduce
 from ...remote import spawn
+from ...deploy.oscar.session import execute
 
 
-def mars_scheduler(dsk: dict, keys: List[List[str]]):
+def mars_scheduler(dsk: dict, keys: Union[List[List[str]], List[str]]):
     """
     A Dask-Mars scheduler
 
@@ -30,22 +31,29 @@ def mars_scheduler(dsk: dict, keys: List[List[str]]):
     ----------
     dsk: Dict
         Dask graph, represented as a task DAG dictionary.
-    keys: List[List[str]]
-        2d-list of Dask graph keys whose values we wish to compute and return.
+    keys: Union[List[List[str]], List[str]]
+        1d or 2d list of Dask graph keys whose values we wish to compute and return.
 
     Returns
     -------
     Object
-        Computed values corresponding to the provided keys.
+        Computed values corresponding to the provided keys with same dimension.
     """
-    res = reduce(mars_dask_get(dsk, keys)).execute().fetch()
-    if not isinstance(res, List):
-        return [[res]]
-    else:
-        return res
+
+    if isinstance(keys, List) and not isinstance(keys[0], List):  # 1d keys
+        task = execute(mars_dask_get(dsk, keys))
+        if not isinstance(task, List):
+            task = [task]
+        return map(lambda x: x.fetch(), task)
+    else:  # 2d keys
+        res = execute(reduce(mars_dask_get(dsk, keys))).fetch()
+        if not isinstance(res, List):
+            return [[res]]
+        else:
+            return res
 
 
-def mars_dask_get(dsk: dict, keys: List[List]):
+def mars_dask_get(dsk: dict, keys: Union[List[List[str]], List[str]]):
     """
     A Dask-Mars convert function. This function will send the dask graph layers
         to Mars Remote API, generating mars objects correspond to the provided keys.
@@ -54,13 +62,13 @@ def mars_dask_get(dsk: dict, keys: List[List]):
     ----------
     dsk: Dict
         Dask graph, represented as a task DAG dictionary.
-    keys: List[List[str]]
-        2d-list of Dask graph keys whose values we wish to compute and return.
+    keys: Union[List[List[str]], List[str]]
+        1d or 2d list of Dask graph keys whose values we wish to compute and return.
 
     Returns
     -------
     Object
-        Spawned mars objects corresponding to the provided keys.
+        Spawned mars objects corresponding to the provided keys with same dimension.
     """
 
     def _get_arg(a):
@@ -68,7 +76,7 @@ def mars_dask_get(dsk: dict, keys: List[List]):
         if ishashable(a) and a in dsk.keys():
             while ishashable(a) and a in dsk.keys():
                 a = dsk[a]
-            return _execute_task(a)
+            return _spawn_task(a)
         elif not isinstance(a, str) and hasattr(a, "__getitem__"):
             if istask(
                 a
@@ -80,9 +88,14 @@ def mars_dask_get(dsk: dict, keys: List[List]):
                 return type(a)(_get_arg(i) for i in a)
         return a
 
-    def _execute_task(task: tuple):
+    def _spawn_task(task: tuple):
         if not istask(task):
             return _get_arg(task)
         return spawn(task[0], args=tuple(_get_arg(a) for a in task[1:]))
 
-    return [[_execute_task(dsk[k]) for k in keys_d] for keys_d in keys]
+    return [
+        [_spawn_task(dsk[k]) for k in keys_d]
+        if isinstance(keys_d, List)
+        else _spawn_task(dsk[keys_d])
+        for keys_d in keys
+    ]
