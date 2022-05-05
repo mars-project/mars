@@ -163,7 +163,8 @@ class AbstractActorPool(ABC):
         init_extension_entrypoints()
         # init metrics
         metric_configs = self._config.get_metric_configs()
-        init_metrics(metric_configs.get("backend"), port=metric_configs.get("port"))
+        metric_backend = metric_configs.get("backend")
+        init_metrics(metric_backend, config=metric_configs.get(metric_backend))
 
     @property
     def router(self):

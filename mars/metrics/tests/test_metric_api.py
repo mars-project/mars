@@ -39,7 +39,7 @@ def test_init_metrics():
     assert api._metric_backend == "console"
     init_metrics("prometheus")
     assert api._metric_backend == "prometheus"
-    init_metrics(backend="prometheus", port=0)
+    init_metrics(backend="prometheus", config={"port": 0})
     assert api._metric_backend == "prometheus"
     init_metrics("ray")
     assert api._metric_backend == "ray"
