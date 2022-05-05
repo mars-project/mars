@@ -186,6 +186,40 @@ async def test_assign_cpu_tasks(actor_pool):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("actor_pool", [False], indirect=True)
+async def test_assign_broadcaster(actor_pool):
+    pool, session_id, assigner_ref, cluster_api, meta_api = actor_pool
+
+    broadcaster = TensorFetch(key="x", source_key="x", dtype=np.dtype(int)).new_chunk(
+        [], is_broadcaster=True
+    )
+    input_chunk = TensorFetch(key="a", source_key="a", dtype=np.dtype(int)).new_chunk(
+        []
+    )
+    result_chunk = TensorTreeAdd(args=[broadcaster, input_chunk]).new_chunk(
+        [broadcaster, input_chunk]
+    )
+
+    chunk_graph = ChunkGraph([result_chunk])
+    chunk_graph.add_node(broadcaster)
+    chunk_graph.add_node(input_chunk)
+    chunk_graph.add_node(result_chunk)
+    chunk_graph.add_edge(broadcaster, result_chunk)
+    chunk_graph.add_edge(input_chunk, result_chunk)
+
+    await meta_api.set_chunk_meta(
+        broadcaster, memory_size=1000, store_size=200, bands=[("address0", "numa-0")]
+    )
+    await meta_api.set_chunk_meta(
+        input_chunk, memory_size=200, store_size=200, bands=[("address1", "numa-0")]
+    )
+
+    subtask = Subtask("test_task", session_id, chunk_graph=chunk_graph)
+    [result] = await assigner_ref.assign_subtasks([subtask])
+    assert result == ("address1", "numa-0")
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("actor_pool", [True], indirect=True)
 async def test_assign_gpu_tasks(actor_pool):
     pool, session_id, assigner_ref, cluster_api, meta_api = actor_pool

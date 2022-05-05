@@ -91,6 +91,7 @@ class AssignerActor(mo.Actor):
 
     async def assign_subtasks(self, subtasks: List[Subtask]):
         inp_keys = set()
+        broadcaster_keys = set()
         selected_bands = dict()
 
         if not self._bands:
@@ -120,6 +121,8 @@ class AssignerActor(mo.Actor):
                 continue
             for indep_chunk in subtask.chunk_graph.iter_indep():
                 if isinstance(indep_chunk.op, Fetch):
+                    if indep_chunk.is_broadcaster:
+                        broadcaster_keys.add(indep_chunk.key)
                     inp_keys.add(indep_chunk.key)
                 elif isinstance(indep_chunk.op, FetchShuffle):
                     selected_bands[subtask.subtask_id] = [self._get_random_band(is_gpu)]
@@ -132,6 +135,10 @@ class AssignerActor(mo.Actor):
         )
 
         inp_metas = dict(zip(inp_keys, metas))
+        if broadcaster_keys:
+            # set broadcaster's size as 0 to avoid assigning all successors to same band.
+            for key in broadcaster_keys:
+                inp_metas[key]["store_size"] = 0
         assigns = []
         for subtask in subtasks:
             is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
