@@ -1,4 +1,4 @@
-# Copyright 1999-2021 Alibaba Group Holding Ltd.
+# Copyright 1999-2022 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,9 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# complementary header for C++ STL libs not included in Cython
 
-cdef class BaseActorContext:
-    cdef public str _address
+from libc.stdint cimport uint_fast64_t
 
 
-cpdef get_context()
+cdef extern from "<random>" namespace "std" nogil:
+    cdef cppclass mt19937_64:
+        ctypedef uint_fast64_t result_type
+
+        mt19937_64() except +
+        mt19937_64(result_type seed) except +
+        result_type operator()() except +
+        result_type min() except +
+        result_type max() except +
+        void discard(size_t z) except +
+        void seed(result_type seed) except +

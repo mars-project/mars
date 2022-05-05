@@ -77,10 +77,8 @@ jobs:
           conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
 
           if [[ "$(mars.test.module)" == "learn" ]]; then
-            # remove version limit when blue-yonder/tsfresh#897 is fixed.
-            # remove keras version after https://github.com/tensorflow/tensorflow/issues/52922 is fixed.
-            pip install xgboost lightgbm keras==2.6.0 tensorflow faiss-cpu torch torchvision \
-              statsmodels\<0.13.0 tsfresh
+            pip install xgboost lightgbm keras tensorflow faiss-cpu torch torchvision \
+              statsmodels tsfresh
           fi
         fi
         conda list -n test
@@ -95,7 +93,7 @@ jobs:
 
         # do compatibility test for earliest supported pandas release
         if [[ "$(mars.test.module)" == "dataframe" ]]; then
-          pip install pandas==1.0.5
+          pip install -i https://pkgs.dev.azure.com/mars-project/mars/_packaging/pandas/pypi/simple/ pandas==1.0.5
           pytest $PYTEST_CONFIG -m pd_compat mars/dataframe
           mv .coverage build/.coverage.pd_compat.file
         fi

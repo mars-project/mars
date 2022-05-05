@@ -22,7 +22,7 @@ from ....config import option_context
 from ....core import TileableType, OperandType
 from ....services.task.supervisor.tests import CheckedTaskPreprocessor
 from ....services.subtask.worker.tests import CheckedSubtaskProcessor
-from ..service import load_config
+from ..local import _load_config
 from ..tests.session import new_test_session, CONFIG_FILE
 
 
@@ -58,7 +58,7 @@ def test_checked_session(setup):
 
 
 def test_check_task_preprocessor(setup):
-    config = load_config(CONFIG_FILE)
+    config = _load_config(CONFIG_FILE)
     config["task"][
         "task_preprocessor_cls"
     ] = "mars.deploy.oscar.tests.test_checked_session.FakeCheckedTaskPreprocessor"
@@ -78,7 +78,7 @@ def test_check_task_preprocessor(setup):
 
 
 def test_check_subtask_processor(setup):
-    config = load_config(CONFIG_FILE)
+    config = _load_config(CONFIG_FILE)
     config["subtask"][
         "subtask_processor_cls"
     ] = "mars.deploy.oscar.tests.test_checked_session.FakeCheckedSubtaskProcessor"

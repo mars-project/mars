@@ -673,7 +673,7 @@ def test_nunique(setup, check_ref_counts):
 
 
 @pytest.mark.skipif(pa is None, reason="pyarrow not installed")
-def test_use_arrow_dtype_n_unique(setup, check_ref_counts):
+def test_use_arrow_dtype_nunique(setup, check_ref_counts):
     with option_context({"dataframe.use_arrow_dtype": True, "combine_size": 2}):
         rs = np.random.RandomState(0)
         data1 = pd.DataFrame(

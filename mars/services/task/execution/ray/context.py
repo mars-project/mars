@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .builder import TileableGraphBuilder, ChunkGraphBuilder, TileContext, TileStatus
-from .core import DirectedGraph, DAG, GraphContainsCycleError
-from .entity import TileableGraph, ChunkGraph, EntityGraph
+
+# TODO(fyrestone): Should implement the mars.core.context.Context.
+class RayExecutionContext(dict):
+    @staticmethod
+    def new_custom_log_dir():
+        return None

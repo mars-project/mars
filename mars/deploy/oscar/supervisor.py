@@ -38,7 +38,7 @@ class SupervisorCommandRunner(OscarCommandRunner):
         super().config_args(parser)
         parser.add_argument("-w", "--web-port", help="web port of the service")
         parser.add_argument(
-            "--n-process", help="number of supervisor processes", default="0"
+            "--n-process", help="number of supervisor processes", default="1"
         )
 
     def parse_args(self, parser, argv, environ=None):

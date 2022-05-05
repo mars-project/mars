@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .chunk import ChunkGraphBuilder
+from .chunk import ChunkGraphBuilder, TileContext, TileStatus
 from .tileable import TileableGraphBuilder

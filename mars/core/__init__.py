@@ -14,6 +14,7 @@
 
 # noinspection PyUnresolvedReferences
 from ..typing import ChunkType, TileableType, EntityType, OperandType
+from .base import ExecutionError
 from .entity import (
     Entity,
     EntityData,
@@ -60,5 +61,7 @@ from .graph import (
     ChunkGraph,
     TileableGraphBuilder,
     ChunkGraphBuilder,
+    TileContext,
+    TileStatus,
 )
 from .mode import enter_mode, is_build_mode, is_eager_mode, is_kernel_mode

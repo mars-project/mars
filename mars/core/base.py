@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from functools import wraps
-from typing import Dict
+from typing import Dict, Tuple, Type
 
 from ..serialization.core import Placeholder, fast_id
 from ..serialization.serializables import Serializable, StringField
@@ -117,6 +117,15 @@ class Base(Serializable):
     def id(self):
         return self._id
 
+    def to_kv(self, exclude_fields: Tuple[str], accept_value_types: Tuple[Type]):
+        fields = self._FIELDS
+        field_values = self._FIELD_VALUES
+        return {
+            fields[attr_name].tag: value
+            for attr_name, value in field_values.items()
+            if attr_name not in exclude_fields and isinstance(value, accept_value_types)
+        }
+
 
 def buffered_base(func):
     @wraps(func)
@@ -142,3 +151,9 @@ BaseSerializer.register(Base)
 
 class MarsError(Exception):
     pass
+
+
+class ExecutionError(MarsError):
+    def __init__(self, nested_error: BaseException):
+        super().__init__(nested_error)
+        self.nested_error = nested_error

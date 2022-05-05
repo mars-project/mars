@@ -36,6 +36,7 @@ import sys
 import threading
 import time
 import types
+import uuid
 import warnings
 import zlib
 from abc import ABC
@@ -88,7 +89,7 @@ _create_task = asyncio.create_task
 
 
 # fix encoding conversion problem under windows
-if sys.platform == "win32":  # pragma: no cover
+if sys.platform.startswith("win"):
 
     def _replace_default_encoding(func):
         def _fun(s, encoding=None):
@@ -115,6 +116,14 @@ except ImportError:  # pragma: no cover
             return "<no_default>"
 
     no_default = NoDefault.no_default
+
+    try:
+        # register for pickle compatibility
+        from pandas._libs import lib as _pd__libs_lib
+
+        _pd__libs_lib.NoDefault = NoDefault
+    except (ImportError, AttributeError):
+        pass
 
 
 class AttributeDict(dict):
@@ -293,8 +302,7 @@ def get_next_port(typ: int = None, occupy: bool = True) -> int:
             occupied = _get_ports_from_netstat()
 
     occupied.update(_local_occupied_ports)
-    randn = struct.unpack("<Q", os.urandom(8))[0]
-    random.seed(int(time.time() * 1000000) | randn)
+    random.seed(uuid.uuid1().bytes)
     randn = random.randint(0, 100000000)
 
     idx = int(randn % (1 + HIGH_PORT_BOUND - LOW_PORT_BOUND - len(occupied)))
@@ -1646,12 +1654,11 @@ class TreeReductionBuilder:
         return self._build_reduction(inputs, final=True)
 
 
-_is_windows: bool = sys.platform.startswith("win")
-
-
 def ensure_coverage():
     # make sure coverage is handled when starting with subprocess.Popen
-    if not _is_windows and "COV_CORE_SOURCE" in os.environ:  # pragma: no cover
+    if (
+        not sys.platform.startswith("win") and "COV_CORE_SOURCE" in os.environ
+    ):  # pragma: no cover
         try:
             from pytest_cov.embed import cleanup_on_sigterm
         except ImportError:

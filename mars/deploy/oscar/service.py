@@ -13,22 +13,12 @@
 # limitations under the License.
 
 import logging
-import os
 from typing import List, Dict, Union
 
 from ...resource import Resource
 from ...services import start_services, stop_services, NodeRole
-from ..utils import load_service_config_file
 
 logger = logging.getLogger(__name__)
-
-
-def load_config(filename=None):
-    # use default config
-    if not filename:  # pragma: no cover
-        d = os.path.dirname(os.path.abspath(__file__))
-        filename = os.path.join(d, "config.yml")
-    return load_service_config_file(filename)
 
 
 async def start_supervisor(
@@ -39,8 +29,6 @@ async def start_supervisor(
     web: Union[str, bool] = "auto",
 ):
     logger.debug("Starting Mars supervisor at %s", address)
-    if not config or isinstance(config, str):
-        config = load_config(config)
     lookup_address = lookup_address or address
     backend = config["cluster"].get("backend", "fixed")
     if backend == "fixed" and config["cluster"].get("lookup_address") is None:
@@ -68,8 +56,6 @@ async def start_supervisor(
 
 
 async def stop_supervisor(address: str, config: Dict = None):
-    if not config or isinstance(config, str):
-        config = load_config(config)
     await stop_services(NodeRole.SUPERVISOR, address=address, config=config)
 
 
@@ -82,8 +68,6 @@ async def start_worker(
     mark_ready: bool = True,
 ):
     logger.debug("Starting Mars worker at %s", address)
-    if not config or isinstance(config, str):
-        config = load_config(config)
     backend = config["cluster"].get("backend", "fixed")
     if backend == "fixed" and config["cluster"].get("lookup_address") is None:
         config["cluster"]["lookup_address"] = lookup_address
@@ -103,6 +87,4 @@ async def start_worker(
 
 
 async def stop_worker(address: str, config: Dict = None):
-    if not config or isinstance(config, str):
-        config = load_config(config)
     await stop_services(NodeRole.WORKER, address=address, config=config)

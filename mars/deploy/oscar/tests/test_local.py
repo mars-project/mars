@@ -39,8 +39,7 @@ from ....storage import StorageLevel
 from ....services.storage import StorageAPI
 from ....tensor.arithmetic.add import TensorAdd
 from ....tests.core import mock, check_dict_structure_same, DICT_NOT_EMPTY
-from ..local import new_cluster
-from ..service import load_config
+from ..local import new_cluster, _load_config
 from ..session import (
     get_default_async_session,
     get_default_session,
@@ -231,6 +230,20 @@ async def test_execute(create_cluster, config):
 
     del a, b
 
+    if (
+        not isinstance(session._isolated_session, _IsolatedWebSession)
+        and session.client
+    ):
+        worker_pools = session.client._cluster._worker_pools
+        await session.destroy()
+        for worker_pool in worker_pools:
+            if hasattr(worker_pool, "external_address"):
+                _assert_storage_cleaned(
+                    session.session_id,
+                    worker_pool.external_address,
+                    StorageLevel.MEMORY,
+                )
+
 
 @pytest.mark.asyncio
 async def test_iterative_tiling(create_cluster):
@@ -255,6 +268,20 @@ async def test_iterative_tiling(create_cluster):
     assert df2.index_value.min_val >= 1
     assert df2.index_value.max_val <= 30
 
+    if (
+        not isinstance(session._isolated_session, _IsolatedWebSession)
+        and session.client
+    ):
+        worker_pools = session.client._cluster._worker_pools
+        await session.destroy()
+        for worker_pool in worker_pools:
+            if hasattr(worker_pool, "external_address"):
+                _assert_storage_cleaned(
+                    session.session_id,
+                    worker_pool.external_address,
+                    StorageLevel.MEMORY,
+                )
+
 
 @pytest.mark.asyncio
 async def test_execute_describe(create_cluster):
@@ -271,6 +298,20 @@ async def test_execute_describe(create_cluster):
     assert info.progress() == 1
     res = await session.fetch(r)
     pd.testing.assert_frame_equal(res, raw.describe())
+
+    if (
+        not isinstance(session._isolated_session, _IsolatedWebSession)
+        and session.client
+    ):
+        worker_pools = session.client._cluster._worker_pools
+        await session.destroy()
+        for worker_pool in worker_pools:
+            if hasattr(worker_pool, "external_address"):
+                _assert_storage_cleaned(
+                    session.session_id,
+                    worker_pool.external_address,
+                    StorageLevel.MEMORY,
+                )
 
 
 @pytest.mark.asyncio
@@ -396,9 +437,19 @@ async def test_web_session(create_cluster, config):
     await session.destroy()
     await _run_web_session_test(web_address)
 
+    worker_pools = client._cluster._worker_pools
+    for worker_pool in worker_pools:
+        if hasattr(worker_pool, "external_address"):
+            _assert_storage_cleaned(
+                session.session_id, worker_pool.external_address, StorageLevel.MEMORY
+            )
 
-def test_sync_execute():
-    session = new_session(n_cpu=2, web=False, use_uvloop=False)
+
+@pytest.mark.parametrize("config", [{"backend": "mars", "incremental_index": True}])
+def test_sync_execute(config):
+    session = new_session(
+        backend=config["backend"], n_cpu=2, web=False, use_uvloop=False
+    )
 
     # web not started
     assert session._session.client.web_address is None
@@ -422,23 +473,25 @@ def test_sync_execute():
         assert d is c
         assert abs(session.fetch(d) - raw.sum()) < 0.001
 
-        with tempfile.TemporaryDirectory() as tempdir:
-            file_path = os.path.join(tempdir, "test.csv")
-            pdf = pd.DataFrame(
-                np.random.RandomState(0).rand(100, 10),
-                columns=[f"col{i}" for i in range(10)],
-            )
-            pdf.to_csv(file_path, index=False)
+        # TODO(fyrestone): Remove this when the Ray backend support incremental index.
+        if config["incremental_index"]:
+            with tempfile.TemporaryDirectory() as tempdir:
+                file_path = os.path.join(tempdir, "test.csv")
+                pdf = pd.DataFrame(
+                    np.random.RandomState(0).rand(100, 10),
+                    columns=[f"col{i}" for i in range(10)],
+                )
+                pdf.to_csv(file_path, index=False)
 
-            df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
-            result = df.sum(axis=1).execute().fetch()
-            expected = pd.read_csv(file_path).sum(axis=1)
-            pd.testing.assert_series_equal(result, expected)
+                df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
+                result = df.sum(axis=1).execute().fetch()
+                expected = pd.read_csv(file_path).sum(axis=1)
+                pd.testing.assert_series_equal(result, expected)
 
-            df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
-            result = df.head(10).execute().fetch()
-            expected = pd.read_csv(file_path).head(10)
-            pd.testing.assert_frame_equal(result, expected)
+                df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
+                result = df.head(10).execute().fetch()
+                expected = pd.read_csv(file_path).head(10)
+                pd.testing.assert_frame_equal(result, expected)
 
     for worker_pool in session._session.client._cluster._worker_pools:
         _assert_storage_cleaned(
@@ -542,6 +595,26 @@ def test_decref(setup_session):
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
 
+    with tempfile.TemporaryDirectory() as tempdir:
+        file_path = os.path.join(tempdir, "test.csv")
+        pdf = pd.DataFrame(
+            np.random.RandomState(0).rand(100, 10),
+            columns=[f"col{i}" for i in range(10)],
+        )
+        pdf.to_csv(file_path, index=False)
+
+        df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
+        df2 = df.head(10)
+
+        result = df2.execute().fetch()
+        expected = pdf.head(10)
+        pd.testing.assert_frame_equal(result, expected)
+
+        del df, df2
+
+        ref_counts = session._get_ref_counts()
+        assert len(ref_counts) == 0
+
     worker_addr = session._session.client._cluster._worker_pools[0].external_address
     _assert_storage_cleaned(session.session_id, worker_addr, StorageLevel.MEMORY)
 
@@ -614,7 +687,7 @@ def test_cancel(setup_session, test_func):
 
 
 def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: F811
-    config = load_config()
+    config = _load_config()
 
     config["third_party_modules"] = set()
     with pytest.raises(TypeError, match="set"):
@@ -698,7 +771,7 @@ min_task_runtime = 2
 
 @pytest.fixture
 async def speculative_cluster():
-    config = load_config()
+    config = _load_config()
     # coloring based fusion will make subtask too heterogeneous such that the speculative scheduler can't
     # get enough homogeneous subtasks to calculate statistics
     config["task"]["default_config"]["fuse_enabled"] = False

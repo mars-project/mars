@@ -17,11 +17,10 @@ import concurrent.futures as futures
 import itertools
 import logging
 import time
-import typing
 from abc import ABC
 from collections import namedtuple
 from dataclasses import dataclass
-from typing import Any, Callable, Coroutine, Dict, Type
+from typing import Any, Callable, Coroutine, Dict, List, Tuple, Type
 from urllib.parse import urlparse
 
 from ....oscar.profiling import ProfilingData
@@ -56,13 +55,13 @@ def msg_to_simple_str(msg):  # pragma: no cover
         return f"{str(type(msg))}(actor_ref={msg.actor_ref}, content={msg_to_simple_str(msg.content)})"
     if isinstance(msg, _MessageBase):
         return str(msg)
-    if msg and isinstance(msg, typing.List):
+    if msg and isinstance(msg, List):
         part_str = ", ".join([msg_to_simple_str(item) for item in msg[:5]])
         return f"List<{part_str}...{len(msg)}>"
-    if msg and isinstance(msg, typing.Tuple):
+    if msg and isinstance(msg, Tuple):
         part_str = ", ".join([msg_to_simple_str(item) for item in msg[:5]])
         return f"Tuple<{part_str}...{len(msg)}>"
-    if msg and isinstance(msg, typing.Dict):
+    if msg and isinstance(msg, Dict):
         part_str = []
         it = iter(msg.items())
         try:
