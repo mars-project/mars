@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import pandas as pd
 
 try:
@@ -27,82 +28,99 @@ from ...utils import lazy_import
 from ..arrays import ArrowListArray, ArrowListDtype
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
 
+cp = lazy_import("cupy", globals=globals(), rename="cp")
 cudf = lazy_import("cudf", globals=globals())
 
 
 class NuniqueReduction(CustomReduction):
     pre_with_agg = True
+    post_with_agg = True
 
     def __init__(
-        self, name="unique", axis=0, dropna=True, use_arrow_dtype=False, is_gpu=False
+        self, name="nunique", axis=0, dropna=True, use_arrow_dtype=False, is_gpu=False
     ):
         super().__init__(name, is_gpu=is_gpu)
         self._axis = axis
         self._dropna = dropna
         self._use_arrow_dtype = use_arrow_dtype
 
-    def _drop_duplicates(self, xdf, value, explode=False):
-        if explode:
-            value = value.explode()
+    def _get_modules(self):
+        if not self.is_gpu():
+            return np, pd
+        else:  # pragma: no cover
+            return cp, cudf
 
-        if not self._use_arrow_dtype or xdf is cudf:
-            return [value.drop_duplicates().to_numpy()]
+    def _drop_duplicates(self, value, explode=False, agg=False):
+        xp, xdf = self._get_modules()
+        if self._use_arrow_dtype and xp is not cp and hasattr(value, "to_numpy"):
+            value = value.to_numpy()
         else:
-            try:
-                return ArrowListArray([value.drop_duplicates().to_numpy()])
-            except pa.ArrowInvalid:
-                # fallback due to diverse dtypes
-                return [value.drop_duplicates().to_numpy()]
+            value = value.values
+
+        if explode:
+            value = xp.concatenate(value)
+
+        value = xdf.unique(value)
+
+        if not agg:
+            if not self._use_arrow_dtype or xp is cp:
+                return [value]
+            else:
+                try:
+                    return ArrowListArray([value])
+                except pa.ArrowInvalid:
+                    # fallback due to diverse dtypes
+                    return [value]
+        else:
+            if self._dropna:
+                return xp.sum(xdf.notna(value))
+            return len(value)
 
     def pre(self, in_data):  # noqa: W0221  # pylint: disable=arguments-differ
-        xdf = cudf if self.is_gpu() else pd
+        xp, xdf = self._get_modules()
         if isinstance(in_data, xdf.Series):
-            unique_values = self._drop_duplicates(xdf, in_data)
-            return xdf.Series(unique_values, name=in_data.name)
+            unique_values = self._drop_duplicates(in_data)
+            return xdf.Series(unique_values, name=in_data.name, dtype=object)
         else:
             if self._axis == 0:
                 data = dict()
                 for d, v in in_data.iteritems():
-                    data[d] = self._drop_duplicates(xdf, v)
-                df = xdf.DataFrame(data)
+                    data[d] = self._drop_duplicates(v)
+                df = xdf.DataFrame(data, copy=False, dtype=object)
             else:
                 df = xdf.DataFrame(columns=[0])
                 for d, v in in_data.iterrows():
-                    df.loc[d] = self._drop_duplicates(xdf, v)
+                    df.loc[d] = self._drop_duplicates(v)
             return df
 
     def agg(self, in_data):  # noqa: W0221  # pylint: disable=arguments-differ
-        xdf = cudf if self.is_gpu() else pd
+        xp, xdf = self._get_modules()
         if isinstance(in_data, xdf.Series):
-            unique_values = self._drop_duplicates(xdf, in_data, explode=True)
-            return xdf.Series(unique_values, name=in_data.name)
+            unique_values = self._drop_duplicates(in_data, explode=True)
+            return xdf.Series(unique_values, name=in_data.name, dtype=object)
         else:
             if self._axis == 0:
                 data = dict()
                 for d, v in in_data.iteritems():
-                    if self._use_arrow_dtype and xdf is not cudf:
-                        v = pd.Series(v.to_numpy())
-                    data[d] = self._drop_duplicates(xdf, v, explode=True)
-                df = xdf.DataFrame(data)
+                    data[d] = self._drop_duplicates(v, explode=True)
+                df = xdf.DataFrame(data, copy=False, dtype=object)
             else:
                 df = xdf.DataFrame(columns=[0])
                 for d, v in in_data.iterrows():
-                    df.loc[d] = self._drop_duplicates(xdf, v, explode=True)
+                    df.loc[d] = self._drop_duplicates(v, explode=True)
             return df
 
     def post(self, in_data):  # noqa: W0221  # pylint: disable=arguments-differ
-        xdf = cudf if self.is_gpu() else pd
+        xp, xdf = self._get_modules()
         if isinstance(in_data, xdf.Series):
-            return in_data.explode().nunique(dropna=self._dropna)
+            return self._drop_duplicates(in_data, explode=True, agg=True)
         else:
             in_data_iter = (
                 in_data.iteritems() if self._axis == 0 else in_data.iterrows()
             )
             data = dict()
             for d, v in in_data_iter:
-                if isinstance(v.dtype, ArrowListDtype):
-                    v = xdf.Series(v.to_numpy())
-                data[d] = v.explode().nunique(dropna=self._dropna)
+                data[d] = self._drop_duplicates(v, explode=True, agg=True)
             return xdf.Series(data)
 
 

@@ -655,6 +655,8 @@ class CustomReduction:
 
     # set to True when pre() already performs aggregation
     pre_with_agg = False
+    # set to True when post() already performs aggregation
+    post_with_agg = False
 
     def __init__(self, name=None, is_gpu=None):
         self.name = name or "<custom>"

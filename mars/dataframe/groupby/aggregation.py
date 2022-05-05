@@ -51,6 +51,7 @@ from ..reduction.core import (
     ReductionCompiler,
     ReductionSteps,
     ReductionAggStep,
+    CustomReduction,
 )
 from ..reduction.aggregation import is_funcs_aggregate, normalize_reduction_funcs
 from ..utils import parse_index, build_concatenated_rows_frame, is_cudf
@@ -695,7 +696,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return out_dict
 
     @staticmethod
-    def _do_custom_agg_single(op, custom_reduction, input_obj):
+    def _do_custom_agg_single(op, custom_reduction: CustomReduction, input_obj):
         if op.stage == OperandStage.map:
             if custom_reduction.pre_with_agg:
                 apply_fun = custom_reduction.pre
@@ -705,9 +706,12 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                     return custom_reduction.agg(custom_reduction.pre(obj))
 
         elif op.stage == OperandStage.agg:
+            if custom_reduction.post_with_agg:
+                apply_fun = custom_reduction.post
+            else:
 
-            def apply_fun(obj):
-                return custom_reduction.post(custom_reduction.agg(obj))
+                def apply_fun(obj):
+                    return custom_reduction.post(custom_reduction.agg(obj))
 
         else:
             apply_fun = custom_reduction.agg
@@ -716,7 +720,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return (res,)
 
     @staticmethod
-    def _do_custom_agg_multiple(op, custom_reduction, *input_objs):
+    def _do_custom_agg_multiple(op, custom_reduction: CustomReduction, *input_objs):
         xdf = cudf if op.gpu else pd
         results = []
         out = op.outputs[0]
