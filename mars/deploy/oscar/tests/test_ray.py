@@ -15,6 +15,10 @@
 import asyncio
 import copy
 import os
+import subprocess
+import sys
+import tempfile
+import threading
 import time
 
 import numpy as np
@@ -236,11 +240,55 @@ def new_ray_session_test():
 
 @require_ray
 def test_ray_client(ray_start_regular):
-    from ray.util.client.ray_client_helpers import ray_start_client_server
-    from ray._private.client_mode_hook import enable_client_mode
+    server_code = """import time
+import ray.util.client.server.server as ray_client_server
 
-    with ray_start_client_server(), enable_client_mode():
-        new_ray_session_test()
+server = ray_client_server.init_and_serve("{address}", num_cpus=20)
+print("OK", flush=True)
+while True:
+    time.sleep(1)
+"""
+
+    address = "127.0.0.1:50051"
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py") as f:
+        f.write(server_code.format(address=address))
+        f.flush()
+
+        proc = subprocess.Popen([sys.executable, "-u", f.name], stdout=subprocess.PIPE)
+
+        try:
+
+            def _check_ready(expect_exit=False):
+                while True:
+                    line = proc.stdout.readline()
+                    if proc.returncode is not None:
+                        if expect_exit:
+                            break
+                        raise Exception(
+                            f"Failed to start ray server at {address}, "
+                            f"the return code is {proc.returncode}."
+                        )
+                    if b"OK" in line:
+                        break
+
+            # Avoid ray.init timeout.
+            _check_ready()
+
+            # Avoid blocking the subprocess when the stdout pipe is full.
+            t = threading.Thread(target=_check_ready, args=(True,))
+            t.start()
+
+            ray.init(f"ray://{address}")
+            ray._inside_client_test = True
+            try:
+                new_ray_session_test()
+            finally:
+                ray._inside_client_test = False
+                ray.shutdown()
+        finally:
+            proc.kill()
+            proc.wait()
 
 
 @require_ray
