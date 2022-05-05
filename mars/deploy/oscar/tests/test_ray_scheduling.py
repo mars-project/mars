@@ -35,9 +35,6 @@ async def speculative_cluster():
         worker_mem=512 * 1024**2,
         supervisor_mem=100 * 1024**2,
         config={
-            # coloring based fusion will make subtask too heterogeneous such that the speculative scheduler can't
-            # get enough homogeneous subtasks to calculate statistics
-            "task": {"default_config": {"fuse_enabled": False}},
             "scheduling": {
                 "speculation": {
                     "enabled": True,
