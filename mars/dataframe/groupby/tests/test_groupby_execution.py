@@ -483,6 +483,7 @@ def test_dataframe_groupby_agg(setup):
         ),
     )
 
+
 def test_dataframe_groupby_agg_sort(setup):
     agg_funs = [
         "std",
@@ -531,15 +532,11 @@ def test_dataframe_groupby_agg_sort(setup):
 
         agg = OrderedDict([("c1", ["min", "mean"]), ("c3", "std")])
         r = mdf.groupby("c2").agg(agg, method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch(), raw.groupby("c2").agg(agg)
-        )
+        pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby("c2").agg(agg))
 
         agg = OrderedDict([("c1", "min"), ("c3", "sum")])
         r = mdf.groupby("c2").agg(agg, method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch(), raw.groupby("c2").agg(agg)
-        )
+        pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby("c2").agg(agg))
 
         r = mdf.groupby("c2").agg({"c1": "min", "c3": "min"}, method=method)
         pd.testing.assert_frame_equal(
@@ -555,9 +552,7 @@ def test_dataframe_groupby_agg_sort(setup):
 
         # test groupby series
         r = mdf.groupby(mdf["c2"]).sum(method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch(), raw.groupby(raw["c2"]).sum()
-        )
+        pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby(raw["c2"]).sum())
 
     r = mdf.groupby("c2").size(method="tree")
     pd.testing.assert_series_equal(r.execute().fetch(), raw.groupby("c2").size())
@@ -1356,4 +1351,3 @@ def test_groupby_nunique(setup):
             .nunique()
             .sort_values(by="b", ignore_index=True),
         )
-

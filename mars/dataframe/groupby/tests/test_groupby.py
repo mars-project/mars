@@ -140,7 +140,9 @@ def test_groupby_agg():
         agg_chunk = chunk.inputs[0].inputs[0].inputs[0].inputs[0]
         assert agg_chunk.op.stage == OperandStage.map
 
-    r = mdf.groupby("c2", ).sum(method="shuffle")
+    r = mdf.groupby(
+        "c2",
+    ).sum(method="shuffle")
 
     assert isinstance(r.op, DataFrameGroupByAgg)
     assert isinstance(r, DataFrame)

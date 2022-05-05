@@ -12,6 +12,7 @@ from ...serialization.serializables import StringField, Int32Field, BoolField, L
 
 cudf = lazy_import("cudf", globals=globals())
 
+
 class _Largest:
     """
     This util class resolve TypeError when
@@ -26,6 +27,7 @@ class _Largest:
 
 
 _largest = _Largest()
+
 
 class DataFrameGroupbyConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_SORT_PIVOT
@@ -54,7 +56,7 @@ class DataFrameGroupbyConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMix
         p = len(inputs)
         if len(index) < p:
             num = p // len(index) + 1
-            index = index.append([index] * (num-1))
+            index = index.append([index] * (num - 1))
         # assert a.shape[op.axis] == p * len(op.inputs)
 
         index = index.sort_values()
@@ -70,6 +72,7 @@ class DataFrameGroupbyConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMix
         out = values[slc]
         # print(out)
         ctx[op.outputs[-1].key] = out
+
 
 class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_SORT_REGULAR_SAMPLE
@@ -119,14 +122,15 @@ class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixi
 
         w = a.shape[0] * 1.0 / (n + 1)
 
-        slc = np.linspace(
-            max(w - 1, 0), a.shape[0] - 1, num=n, endpoint=False
-        ).astype(int)
+        slc = np.linspace(max(w - 1, 0), a.shape[0] - 1, num=n, endpoint=False).astype(
+            int
+        )
 
         out = a.iloc[slc]
         # print(out)
 
         ctx[op.outputs[-1].key] = out
+
 
 class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_SORT_SHUFFLE
@@ -240,11 +244,15 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
 
         def _get_out_df(p_index, in_df):
             if p_index == 0:
-                out_df = in_df.loc[:pivots[p_index]]
+                out_df = in_df.loc[: pivots[p_index]]
             elif p_index == op.n_partition - 1:
-                out_df = in_df.loc[pivots[p_index-1]:].drop(index=pivots[p_index-1], errors="ignore")
+                out_df = in_df.loc[pivots[p_index - 1] :].drop(
+                    index=pivots[p_index - 1], errors="ignore"
+                )
             else:
-                out_df = in_df.loc[pivots[p_index - 1]:pivots[p_index]].drop(index=pivots[p_index-1], errors="ignore")
+                out_df = in_df.loc[pivots[p_index - 1] : pivots[p_index]].drop(
+                    index=pivots[p_index - 1], errors="ignore"
+                )
             return out_df
 
         # print("index " + str(out.key) + " " + str(df))
@@ -257,7 +265,6 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
                 out_df = _get_out_df(i, df)
             # print("index " + str(out.key) + " " + str(index) + " out df " + str(out_df))
             ctx[out.key, index] = out_df
-
 
     @classmethod
     def _calc_series_poses(cls, s, pivots, ascending=True):
@@ -284,9 +291,7 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
             except TypeError:
                 filled_a = a.fillna(_largest)
                 filled_pivots = pivots.fillna(_largest)
-                poses = cls._calc_series_poses(
-                    filled_a, filled_pivots
-                )
+                poses = cls._calc_series_poses(filled_a, filled_pivots)
             poses = (None,) + tuple(poses) + (None,)
             for i in range(op.n_partition):
                 values = a.iloc[poses[i] : poses[i + 1]]
