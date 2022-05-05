@@ -523,7 +523,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 op, sample_chunks, out_idx, agg_chunk_len
             )
 
-        # agg_chunks = agg_chunks + sample_chunks
         return cls._perform_shuffle(
             op, agg_chunks, in_df, out_df, func_infos, pivot_chunk
         )
@@ -547,13 +546,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             **properties,
         )
 
-        # concat_pivot_index = out_idx[: 0] + (0,) + out_idx[0:]
         concat_pivot_chunk = concat_pivot_op.new_chunk(
             sample_chunks,
             shape=(agg_chunk_len,),
             dtype=object,
-            # shape=concat_pivot_shape,
-            # index=concat_pivot_index,
         )
         return concat_pivot_chunk
 
@@ -865,8 +861,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         if op.stage == OperandStage.agg:
             grouped = df.groupby(**params)
         else:
-            # for the intermediate phases, do not sort
-            # params["sort"] = False
             grouped = df.groupby(**params)
 
         if selection is not None:

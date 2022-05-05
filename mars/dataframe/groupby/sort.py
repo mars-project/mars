@@ -29,11 +29,13 @@ class _Largest:
 
 _largest = _Largest()
 
+
 def _series_to_df(in_series, xdf):
     in_df = in_series.to_frame()
     if in_series.name is not None:
         in_df.columns = xdf.Index([in_series.name])
     return in_df
+
 
 class DataFrameGroupbyConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_SORT_PIVOT
@@ -126,19 +128,19 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
     _kind = StringField("kind")
 
     def __init__(
-        self,
-        sort_type=None,
-        by=None,
-        axis=None,
-        ascending=None,
-        n_partition=None,
-        na_position=None,
-        inplace=None,
-        kind=None,
-        level=None,
-        sort_remaining=None,
-        output_types=None,
-        **kw
+            self,
+            sort_type=None,
+            by=None,
+            axis=None,
+            ascending=None,
+            n_partition=None,
+            na_position=None,
+            inplace=None,
+            kind=None,
+            level=None,
+            sort_remaining=None,
+            output_types=None,
+            **kw
     ):
         super().__init__(
             _sort_type=sort_type,
@@ -199,17 +201,6 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
     def output_limit(self):
         return 1
 
-    @staticmethod
-    def _calc_poses(src_cols, pivots, ascending=True):
-        records = src_cols.to_records(index=False)
-        p_records = pivots.to_records(index=False)
-        if ascending:
-            poses = records.searchsorted(p_records, side="right")
-        else:
-            poses = len(records) - records[::-1].searchsorted(p_records, side="right")
-        del records, p_records
-        return poses
-
     @classmethod
     def _execute_dataframe_map(cls, ctx, op):
         df, pivots = [ctx[c.key] for c in op.inputs]
@@ -219,11 +210,11 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
             if p_index == 0:
                 out_df = in_df.loc[: pivots[p_index]]
             elif p_index == op.n_partition - 1:
-                out_df = in_df.loc[pivots[p_index - 1] :].drop(
+                out_df = in_df.loc[pivots[p_index - 1]:].drop(
                     index=pivots[p_index - 1], errors="ignore"
                 )
             else:
-                out_df = in_df.loc[pivots[p_index - 1] : pivots[p_index]].drop(
+                out_df = in_df.loc[pivots[p_index - 1]: pivots[p_index]].drop(
                     index=pivots[p_index - 1], errors="ignore"
                 )
             return out_df
@@ -235,37 +226,6 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
             else:
                 out_df = _get_out_df(i, df)
             ctx[out.key, index] = out_df
-
-    @classmethod
-    def _calc_series_poses(cls, s, pivots, ascending=True):
-        if ascending:
-            poses = s.searchsorted(pivots, side="right")
-        else:
-            poses = len(s) - s.iloc[::-1].searchsorted(pivots, side="right")
-        return poses
-
-    @classmethod
-    def _execute_series_map(cls, ctx, op):
-        a, pivots = [ctx[c.key] for c in op.inputs]
-        out = op.outputs[0]
-
-        if len(a) == 0:
-            # when the chunk is empty, no slices can be produced
-            for i in range(op.n_partition):
-                ctx[out.key, (i,)] = a
-            return
-
-        if isinstance(a, pd.Series):
-            try:
-                poses = cls._calc_series_poses(a, pivots)
-            except TypeError:
-                filled_a = a.fillna(_largest)
-                filled_pivots = pivots.fillna(_largest)
-                poses = cls._calc_series_poses(filled_a, filled_pivots)
-            poses = (None,) + tuple(poses) + (None,)
-            for i in range(op.n_partition):
-                values = a.iloc[poses[i] : poses[i + 1]]
-                ctx[out.key, (i,)] = values
 
     @classmethod
     def _execute_map(cls, ctx, op):
