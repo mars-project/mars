@@ -211,10 +211,6 @@ class MarsWebAPIClientMixin:
     def request_rewriter(self, value: Callable):
         self._request_rewriter = value
 
-    def __del__(self):
-        if hasattr(self, "_client_obj"):
-            self._client_obj.close()
-
     async def _request_url(self, method, path, **kwargs):
         self._running_loop = asyncio.get_running_loop()
 
