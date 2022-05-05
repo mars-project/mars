@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...serialization.serializables import FieldTypes, TupleField
+from ...serialization.serializables import BoolField, FieldTypes, TupleField
 from ...utils import tokenize
 from .core import EntityData, Entity
 
@@ -20,6 +20,7 @@ from .core import EntityData, Entity
 class ChunkData(EntityData):
     __slots__ = ()
 
+    is_broadcaster = BoolField("is_broadcaster", default=False)
     # optional fields
     _index = TupleField("index", FieldTypes.uint32)
 

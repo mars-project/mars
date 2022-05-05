@@ -101,7 +101,7 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
     @classmethod
     def execute_reduce(cls, ctx, op: "DataFrameMergeAlign"):
         chunk = op.outputs[0]
-        input_idx_to_df = dict(op.iter_mapper_data_with_index(ctx))
+        input_idx_to_df = dict(op.iter_mapper_data_with_index(ctx, skip_none=True))
         row_idxes = sorted({idx[0] for idx in input_idx_to_df})
 
         res = []
@@ -321,6 +321,7 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
         elif len(left.chunks) == 1:
             out_chunks = []
             left_chunk = left.chunks[0]
+            left_chunk.is_broadcaster = True
             for c in right.chunks:
                 merge_op = op.copy().reset_key()
                 out_chunk = merge_op.new_chunk(
@@ -338,6 +339,8 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
         else:
             out_chunks = []
             right_chunk = right.chunks[0]
+            # set `is_broadcaster` as True
+            right_chunk.is_broadcaster = True
             for c in left.chunks:
                 merge_op = op.copy().reset_key()
                 out_chunk = merge_op.new_chunk(
