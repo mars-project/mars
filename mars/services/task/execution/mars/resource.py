@@ -12,28 +12,89 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import abstractmethod
+from typing import Dict, Type, Any
+
 from .....resource import Resource
-from .stage import TaskStageProcessor
+
+
+_name_to_resource_evaluator: Dict[str, Type["ResourceEvaluator"]] = {}
+
+
+def register_resource_evaluator(evaluator_cls: Type["ResourceEvaluator"]):
+    _name_to_resource_evaluator[evaluator_cls.name] = evaluator_cls
+    return evaluator_cls
+
+
+def init_default_resource_for_subtask(subtask_graph: "SubtaskGraph"):
+    for subtask in subtask_graph.iter_nodes():
+        is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
+        subtask.required_resource = (
+            Resource(num_gpus=1) if is_gpu else Resource(num_cpus=1)
+        )
 
 
 class ResourceEvaluator:
     """
-    Evaluate and initialize the required resource of subtasks by different
-    configurations, e.g. fixed value by default, or some recommended values
-    through external services like an HBO service which could calculate a
-    accurate value by the running history of tasks.
+    Resource evaluator is used to estimate and set resources required by
+    subtasks. It can be an internal service or an external service. If it
+    is an internal service, we can set default of adjustable resources for
+    subtasks. If it is an external service, we should report the running
+    result of the task to the external service, so that it can accurately
+    predict the required resources of subtasks based on the historical
+    running information, we call it HBO.
+
+    Best practice
+    ----------
+    You can follow the steps below to add a new resource evaluator:
+        * Inherit `ResourceEvaluator` and implement `create`, `evaluate`
+          and `report` methods. The `create` method is to create a new
+          resource evaluator instance. The `evaluate` method is to estimate
+          and set required resources for the subtasks of a task stage. And
+          this method must be implemented. The `report` method is to report
+          the running information and result of the task. And this method
+          does not have to be implemented.
+
+        * Add configs the new evaluator needed in `base_config.xml` or its
+          descendant files.
+
+        * Set the `resource_evaluator` to choose a resource evaluator in
+          `base_config.xml` when running a mars job.
     """
 
-    def __init__(self, stage_processor: TaskStageProcessor):
-        self._stage_processor = stage_processor
-        self._subtask_graph = stage_processor.subtask_graph
+    name = None
 
-    def evaluate(self):
-        """Here we could implement different acquisitions by state processor
-        configurations.
-        """
-        for subtask in self._subtask_graph.iter_nodes():
-            is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
-            subtask.required_resource = (
-                Resource(num_gpus=1) if is_gpu else Resource(num_cpus=1)
+    @classmethod
+    @abstractmethod
+    async def create(cls, config: Dict[str, Any], **kwargs) -> "ResourceEvaluator":
+        name = config.get("resource_evaluator", "default")
+        evaluator_config = config.get(name, {})
+        evaluator_cls = _name_to_resource_evaluator[name]
+        if evaluator_cls.create.__func__ is ResourceEvaluator.create.__func__:
+            raise NotImplementedError(
+                f"The {evaluator_cls} should implement the abstract classmethod `create`."
             )
+        return await evaluator_cls.create(evaluator_config, **kwargs)
+
+    @abstractmethod
+    async def evaluate(self, stage_processor: "TaskStageProcessor"):
+        """Called before executing a task stage."""
+
+    @abstractmethod
+    async def report(self):
+        """Called after executing a task."""
+
+
+@register_resource_evaluator
+class DefaultEvaluator(ResourceEvaluator):
+    name = "default"
+
+    @classmethod
+    async def create(cls, config, **kwargs) -> "ResourceEvaluator":
+        return cls()
+
+    async def evaluate(self, stage_processor: "TaskStageProcessor"):
+        init_default_resource_for_subtask(stage_processor.subtask_graph)
+
+    async def report(self):
+        pass
