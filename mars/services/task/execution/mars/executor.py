@@ -388,9 +388,9 @@ class MarsTaskExecutor(TaskExecutor):
                     for inp_subtask in subtask_graph.predecessors(subtask):
                         for c in inp_subtask.chunk_graph.results:
                             decref_chunk_key_to_counts[c.key] += 1
-            # decref result of chunk graphs
-            for c in stage_processor.chunk_graph.results:
-                decref_chunk_key_to_counts[c.key] += 1
+        # decref result of chunk graphs
+        for c in stage_processor.chunk_graph.results:
+            decref_chunk_key_to_counts[c.key] += 1
         return decref_chunk_key_to_counts
 
     @mo.extensible
