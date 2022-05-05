@@ -26,7 +26,7 @@ def register_resource_evaluator(evaluator_cls: Type["ResourceEvaluator"]):
     return evaluator_cls
 
 
-def init_default_resource_for_subtask(subtask_graph: "SubtaskGraph"):
+def init_default_resource_for_subtask(subtask_graph: "SubtaskGraph"):  # noqa: F821
     for subtask in subtask_graph.iter_nodes():
         is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
         subtask.required_resource = (
@@ -77,7 +77,7 @@ class ResourceEvaluator:
         return await evaluator_cls.create(evaluator_config, **kwargs)
 
     @abstractmethod
-    async def evaluate(self, stage_processor: "TaskStageProcessor"):
+    async def evaluate(self, stage_processor: "TaskStageProcessor"):  # noqa: F821
         """Called before executing a task stage."""
 
     @abstractmethod
@@ -93,7 +93,7 @@ class DefaultEvaluator(ResourceEvaluator):
     async def create(cls, config, **kwargs) -> "ResourceEvaluator":
         return cls()
 
-    async def evaluate(self, stage_processor: "TaskStageProcessor"):
+    async def evaluate(self, stage_processor: "TaskStageProcessor"):  # noqa: F821
         init_default_resource_for_subtask(stage_processor.subtask_graph)
 
     async def report(self):
