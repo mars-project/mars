@@ -539,12 +539,17 @@ class StorageHandlerActor(mo.Actor):
 
         append_bands_delays = []
         for data_key in fetch_keys:
+            # skip shuffle keys
+            if isinstance(data_key, tuple):
+                continue
             append_bands_delays.append(
                 meta_api.add_chunk_bands.delay(
                     data_key, [(self.address, self._band_name)]
                 )
             )
-        await meta_api.add_chunk_bands.batch(*append_bands_delays)
+        if append_bands_delays:
+            await meta_api.add_chunk_bands.batch(*append_bands_delays)
+        return fetch_keys
 
     async def request_quota_with_spill(self, level: StorageLevel, size: int):
         if await self._quota_refs[level].request_quota(size):
