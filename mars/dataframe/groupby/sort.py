@@ -27,6 +27,7 @@ class _Largest:
 
 _largest = _Largest()
 
+
 class DataFrameGroupbyConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_SORT_PIVOT
 
@@ -45,31 +46,24 @@ class DataFrameGroupbyConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMix
         xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series)) else cudf
 
         a = xdf.concat(inputs, axis=0)
-        # a = a.reset_index(level=[op.by])[op.by]
         a = a.sort_index()
-        # print("a " + str(a))
         index = a.index.drop_duplicates()
-        # print("index " + str(index))
 
         p = len(inputs)
         if len(index) < p:
             num = p // len(index) + 1
             index = index.append([index] * (num-1))
-        # assert a.shape[op.axis] == p * len(op.inputs)
 
         index = index.sort_values()
-        # print("index " + str(index))
 
         values = index.values
-        # print("values " + str(values))
 
         slc = np.linspace(
             p - 1, len(index) - 1, num=len(op.inputs) - 1, endpoint=False
         ).astype(int)
-        # print("slc " + str(slc))
         out = values[slc]
-        # print(out)
         ctx[op.outputs[-1].key] = out
+
 
 class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_SORT_REGULAR_SAMPLE
@@ -87,31 +81,6 @@ class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixi
             ctx[op.outputs[0].key] = a
             return
 
-        # if op.sort_type == "sort_values":
-        #     ctx[op.outputs[0].key] = res = execute_sort_values(a, op)
-        # else:
-        #     ctx[op.outputs[0].key] = res = execute_sort_index(a, op)
-
-        by = op.by
-        # add_distinct_col = bool(int(os.environ.get("PSRS_DISTINCT_COL", "0")))
-        # if (
-        #         add_distinct_col
-        #         and isinstance(a, xdf.DataFrame)
-        #         and op.sort_type == "sort_values"
-        # ):
-        #     # when running under distributed mode, we introduce an extra column
-        #     # to make sure pivots are distinct
-        #     chunk_idx = op.inputs[0].index[0]
-        #     distinct_col = (
-        #         _PSRS_DISTINCT_COL
-        #         if a.columns.nlevels == 1
-        #         else (_PSRS_DISTINCT_COL,) + ("",) * (a.columns.nlevels - 1)
-        #     )
-        #     res[distinct_col] = np.arange(
-        #         chunk_idx << 32, (chunk_idx << 32) + len(a), dtype=np.int64
-        #     )
-        #     by = list(by) + [distinct_col]
-
         n = op.n_partition
         if a.shape[0] < n:
             num = n // a.shape[0] + 1
@@ -124,7 +93,6 @@ class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixi
         ).astype(int)
 
         out = a.iloc[slc]
-        # print(out)
 
         ctx[op.outputs[-1].key] = out
 
@@ -247,7 +215,6 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
                 out_df = in_df.loc[pivots[p_index - 1]:pivots[p_index]].drop(index=pivots[p_index-1], errors="ignore")
             return out_df
 
-        # print("index " + str(out.key) + " " + str(df))
 
         for i in range(op.n_partition):
             index = (i, 0)
@@ -255,7 +222,6 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
                 out_df = tuple(_get_out_df(i, x) for x in df)
             else:
                 out_df = _get_out_df(i, df)
-            # print("index " + str(out.key) + " " + str(index) + " out df " + str(out_df))
             ctx[out.key, index] = out_df
 
 
