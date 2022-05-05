@@ -7,8 +7,9 @@ from mars.utils import lazy_import
 from ..utils import is_cudf
 
 from ... import opcodes as OperandDef
+from ...core import OutputType
 from ...core.operand import MapReduceOperand, OperandStage
-from ...serialization.serializables import StringField, Int32Field, BoolField, ListField
+from ...serialization.serializables import StringField, Int32Field, BoolField, ListField, FieldTypes
 
 cudf = lazy_import("cudf", globals=globals())
 
@@ -28,6 +29,11 @@ class _Largest:
 
 _largest = _Largest()
 
+def _series_to_df(in_series, xdf):
+    in_df = in_series.to_frame()
+    if in_series.name is not None:
+        in_df.columns = xdf.Index([in_series.name])
+    return in_df
 
 class DataFrameGroupbyConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_SORT_PIVOT
@@ -47,30 +53,22 @@ class DataFrameGroupbyConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMix
         xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series)) else cudf
 
         a = xdf.concat(inputs, axis=0)
-        # a = a.reset_index(level=[op.by])[op.by]
         a = a.sort_index()
-        # print("a " + str(a))
         index = a.index.drop_duplicates()
-        # print("index " + str(index))
 
         p = len(inputs)
         if len(index) < p:
             num = p // len(index) + 1
             index = index.append([index] * (num - 1))
-        # assert a.shape[op.axis] == p * len(op.inputs)
 
         index = index.sort_values()
-        # print("index " + str(index))
 
         values = index.values
-        # print("values " + str(values))
 
         slc = np.linspace(
             p - 1, len(index) - 1, num=len(op.inputs) - 1, endpoint=False
         ).astype(int)
-        # print("slc " + str(slc))
         out = values[slc]
-        # print(out)
         ctx[op.outputs[-1].key] = out
 
 
@@ -89,31 +87,8 @@ class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixi
             # when chunk is empty, return the empty chunk itself
             ctx[op.outputs[0].key] = a
             return
-
-        # if op.sort_type == "sort_values":
-        #     ctx[op.outputs[0].key] = res = execute_sort_values(a, op)
-        # else:
-        #     ctx[op.outputs[0].key] = res = execute_sort_index(a, op)
-
-        by = op.by
-        # add_distinct_col = bool(int(os.environ.get("PSRS_DISTINCT_COL", "0")))
-        # if (
-        #         add_distinct_col
-        #         and isinstance(a, xdf.DataFrame)
-        #         and op.sort_type == "sort_values"
-        # ):
-        #     # when running under distributed mode, we introduce an extra column
-        #     # to make sure pivots are distinct
-        #     chunk_idx = op.inputs[0].index[0]
-        #     distinct_col = (
-        #         _PSRS_DISTINCT_COL
-        #         if a.columns.nlevels == 1
-        #         else (_PSRS_DISTINCT_COL,) + ("",) * (a.columns.nlevels - 1)
-        #     )
-        #     res[distinct_col] = np.arange(
-        #         chunk_idx << 32, (chunk_idx << 32) + len(a), dtype=np.int64
-        #     )
-        #     by = list(by) + [distinct_col]
+        if isinstance(a, xdf.Series) and op.output_types[0] == OutputType.dataframe:
+            a = _series_to_df(a, xdf)
 
         n = op.n_partition
         if a.shape[0] < n:
@@ -127,8 +102,6 @@ class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixi
         )
 
         out = a.iloc[slc]
-        # print(out)
-
         ctx[op.outputs[-1].key] = out
 
 
@@ -255,15 +228,12 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
                 )
             return out_df
 
-        # print("index " + str(out.key) + " " + str(df))
-
         for i in range(op.n_partition):
             index = (i, 0)
             if isinstance(df, tuple):
                 out_df = tuple(_get_out_df(i, x) for x in df)
             else:
                 out_df = _get_out_df(i, df)
-            # print("index " + str(out.key) + " " + str(index) + " out df " + str(out_df))
             ctx[out.key, index] = out_df
 
     @classmethod
@@ -302,12 +272,7 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
         a = [ctx[c.key] for c in op.inputs][0]
         if isinstance(a, tuple):
             a = a[0]
-        if len(a.shape) == 2:
-            # DataFrame type
-            cls._execute_dataframe_map(ctx, op)
-        else:
-            # Series type
-            cls._execute_series_map(ctx, op)
+        cls._execute_dataframe_map(ctx, op)
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "DataFramePSRSShuffle"):

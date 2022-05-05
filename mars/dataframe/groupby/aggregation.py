@@ -568,29 +568,36 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         )
 
         for i, chunk in enumerate(agg_chunks):
-            output_types = (
-                [OutputType.dataframe] if chunk.ndim == 2 else [OutputType.series]
-            )
-            chunk_op = DataFramePSRSGroupbySample(
-                kind="quicksort",
-                n_partition=chunk_shape,
-                output_types=output_types,
-                **properties,
-            )
             kws = []
             sampled_shape = (
                 (chunk_shape, chunk.shape[1]) if chunk.ndim == 2 else (chunk_shape,)
             )
             chunk_index = (i, 0) if chunk.ndim == 2 else (i,)
-            kws.append(
-                {
-                    "shape": sampled_shape,
-                    "index_value": chunk.index_value,
-                    "index": chunk_index,
-                    "type": "regular_sampled",
-                }
+            chunk_op = DataFramePSRSGroupbySample(
+                kind="quicksort",
+                n_partition=chunk_shape,
+                output_types=op.output_types,
+                **properties,
             )
-
+            if op.output_types[0] == OutputType.dataframe:
+                kws.append(
+                        {
+                        "shape": sampled_shape,
+                        "index_value": chunk.index_value,
+                        "index": chunk_index,
+                        "type": "regular_sampled",
+                    }
+                )
+            else:
+                kws.append(
+                    {
+                        "shape": sampled_shape,
+                        "index_value": chunk.index_value,
+                        "index": chunk_index,
+                        "type": "regular_sampled",
+                        "dtype": chunk.dtype,
+                    }
+                )
             chunk = chunk_op.new_chunk([chunk], kws=kws)
             sampled_chunks.append(chunk)
 
@@ -1047,7 +1054,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             size_recorder = ctx.get_remote_object(op.size_recorder_name)
             size_recorder.record(raw_size, agg_size)
 
-        # print(tuple(agg_dfs))
         ctx[op.outputs[0].key] = tuple(agg_dfs)
 
     @classmethod
