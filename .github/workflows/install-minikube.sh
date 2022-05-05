@@ -18,7 +18,7 @@ mv tmp $KUBECONFIG
 
 minikube update-context
 
-K8S_VERSION=$(minikube kubectl version --client --output=json | jq -r '.clientVersion.gitVersion')
+K8S_VERSION=$(minikube kubectl -- version --client --output='json' | jq -r '.clientVersion.gitVersion')
 curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/$K8S_VERSION/bin/linux/amd64/kubectl && \
   chmod +x kubectl && sudo mv kubectl /usr/local/bin/
 
