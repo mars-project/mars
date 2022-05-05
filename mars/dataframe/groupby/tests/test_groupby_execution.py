@@ -350,10 +350,10 @@ def test_dataframe_groupby_agg(setup):
     mdf = md.DataFrame(raw, chunk_size=13)
 
     for method in ["tree", "shuffle"]:
-        r = mdf.groupby("c2").agg("size", method=method)
-        pd.testing.assert_series_equal(
-            r.execute().fetch().sort_index(), raw.groupby("c2").agg("size").sort_index()
-        )
+        # r = mdf.groupby("c2").agg("size", method=method)
+        # pd.testing.assert_series_equal(
+        #     r.execute().fetch().sort_index(), raw.groupby("c2").agg("size").sort_index()
+        # )
 
         for agg_fun in agg_funs:
             if agg_fun == "size":
@@ -400,8 +400,8 @@ def test_dataframe_groupby_agg(setup):
             r.execute().fetch().sort_index(), raw.groupby(raw["c2"]).sum().sort_index()
         )
 
-    r = mdf.groupby("c2").size(method="tree")
-    pd.testing.assert_series_equal(r.execute().fetch(), raw.groupby("c2").size())
+    # r = mdf.groupby("c2").size(method="tree")
+    # pd.testing.assert_series_equal(r.execute().fetch(), raw.groupby("c2").size())
 
     # test inserted kurt method
     r = mdf.groupby("c2").kurtosis(method="tree")
@@ -417,19 +417,19 @@ def test_dataframe_groupby_agg(setup):
 
     # test as_index=False
     for method in ["tree", "shuffle"]:
-        r = mdf.groupby("c2", as_index=False).agg("size", method=method)
-        if _agg_size_as_frame:
-            result = r.execute().fetch().sort_values("c2", ignore_index=True)
-            expected = (
-                raw.groupby("c2", as_index=False)
-                .agg("size")
-                .sort_values("c2", ignore_index=True)
-            )
-            pd.testing.assert_frame_equal(result, expected)
-        else:
-            result = r.execute().fetch().sort_index()
-            expected = raw.groupby("c2", as_index=False).agg("size").sort_index()
-            pd.testing.assert_series_equal(result, expected)
+        # r = mdf.groupby("c2", as_index=False).agg("size", method=method)
+        # if _agg_size_as_frame:
+        #     result = r.execute().fetch().sort_values("c2", ignore_index=True)
+        #     expected = (
+        #         raw.groupby("c2", as_index=False)
+        #         .agg("size")
+        #         .sort_values("c2", ignore_index=True)
+        #     )
+        #     pd.testing.assert_frame_equal(result, expected)
+        # else:
+        #     result = r.execute().fetch().sort_index()
+        #     expected = raw.groupby("c2", as_index=False).agg("size").sort_index()
+        #     pd.testing.assert_series_equal(result, expected)
 
         r = mdf.groupby("c2", as_index=False).agg("mean", method=method)
         pd.testing.assert_frame_equal(
@@ -483,6 +483,7 @@ def test_dataframe_groupby_agg(setup):
         ),
     )
 
+
 def test_dataframe_groupby_agg_sort(setup):
     agg_funs = [
         "std",
@@ -509,10 +510,10 @@ def test_dataframe_groupby_agg_sort(setup):
     mdf = md.DataFrame(raw, chunk_size=13)
 
     for method in ["tree", "shuffle"]:
-        r = mdf.groupby("c2").agg("size", method=method)
-        pd.testing.assert_series_equal(
-            r.execute().fetch(), raw.groupby("c2").agg("size")
-        )
+        # r = mdf.groupby("c2").agg("size", method=method)
+        # pd.testing.assert_series_equal(
+        #     r.execute().fetch(), raw.groupby("c2").agg("size")
+        # )
 
         for agg_fun in agg_funs:
             if agg_fun == "size":
@@ -531,15 +532,11 @@ def test_dataframe_groupby_agg_sort(setup):
 
         agg = OrderedDict([("c1", ["min", "mean"]), ("c3", "std")])
         r = mdf.groupby("c2").agg(agg, method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch(), raw.groupby("c2").agg(agg)
-        )
+        pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby("c2").agg(agg))
 
         agg = OrderedDict([("c1", "min"), ("c3", "sum")])
         r = mdf.groupby("c2").agg(agg, method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch(), raw.groupby("c2").agg(agg)
-        )
+        pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby("c2").agg(agg))
 
         r = mdf.groupby("c2").agg({"c1": "min", "c3": "min"}, method=method)
         pd.testing.assert_frame_equal(
@@ -555,12 +552,10 @@ def test_dataframe_groupby_agg_sort(setup):
 
         # test groupby series
         r = mdf.groupby(mdf["c2"]).sum(method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch(), raw.groupby(raw["c2"]).sum()
-        )
+        pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby(raw["c2"]).sum())
 
-    r = mdf.groupby("c2").size(method="tree")
-    pd.testing.assert_series_equal(r.execute().fetch(), raw.groupby("c2").size())
+    # r = mdf.groupby("c2").size(method="tree")
+    # pd.testing.assert_series_equal(r.execute().fetch(), raw.groupby("c2").size())
 
     # test inserted kurt method
     r = mdf.groupby("c2").kurtosis(method="tree")
@@ -1356,4 +1351,96 @@ def test_groupby_nunique(setup):
             .nunique()
             .sort_values(by="b", ignore_index=True),
         )
+
+def test_dataframe_groupby_agg_op(setup):
+    agg_funs = [
+        "std",
+        "mean",
+        "var",
+        "max",
+        "count",
+        "size",
+        "all",
+        "any",
+        "skew",
+        "kurt",
+        "sem",
+    ]
+
+    rs = np.random.RandomState(0)
+    raw = pd.DataFrame(
+        {
+            "c1": np.arange(100).astype(np.int64),
+            "c2": rs.choice(["a", "b", "c"], (100,)),
+            "c3": rs.rand(100),
+        }
+    )
+    mdf = md.DataFrame(raw, chunk_size=13)
+
+    # r = mdf.groupby(mdf["c2"], sort=False, preserve_order=True).sum(method="shuffle")
+    # pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby(raw["c2"], sort=False).sum())
+
+    for method in ["tree", "shuffle"]:
+
+        for agg_fun in agg_funs:
+            if agg_fun == "size":
+                continue
+            r = mdf.groupby("c2", sort=False, preserve_order=True).agg(agg_fun, method=method)
+            pd.testing.assert_frame_equal(
+                r.execute().fetch(),
+                raw.groupby("c2", sort=False).agg(agg_fun),
+            )
+
+        r = mdf.groupby("c2", sort=False, preserve_order=True).agg(agg_funs, method=method)
+        pd.testing.assert_frame_equal(
+            r.execute().fetch(),
+            raw.groupby("c2", sort=False).agg(agg_funs),
+        )
+
+        agg = OrderedDict([("c1", ["min", "mean"]), ("c3", "std")])
+        r = mdf.groupby("c2", sort=False, preserve_order=True).agg(agg, method=method)
+        pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby("c2", sort=False).agg(agg))
+
+        agg = OrderedDict([("c1", "min"), ("c3", "sum")])
+        r = mdf.groupby("c2", sort=False, preserve_order=True).agg(agg, method=method)
+        pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby("c2", sort=False).agg(agg))
+
+        r = mdf.groupby("c2", sort=False, preserve_order=True).agg({"c1": "min", "c3": "min"}, method=method)
+        pd.testing.assert_frame_equal(
+            r.execute().fetch(),
+            raw.groupby("c2", sort=False).agg({"c1": "min", "c3": "min"}),
+        )
+
+        r = mdf.groupby("c2", sort=False, preserve_order=True).agg({"c1": "min"}, method=method)
+        pd.testing.assert_frame_equal(
+            r.execute().fetch(),
+            raw.groupby("c2", sort=False).agg({"c1": "min"}),
+        )
+
+        # # test groupby series
+        # r = mdf.groupby(mdf["c2"], sort=False, preserve_order=True).sum(method=method)
+        # pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby(raw["c2"], sort=False).sum())
+
+    # r = mdf.groupby("c2").size(method="tree")
+    # pd.testing.assert_series_equal(r.execute().fetch(), raw.groupby("c2").size())
+
+    # test inserted kurt method
+    r = mdf.groupby("c2", sort=False, preserve_order=True).kurtosis(method="tree")
+    pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby("c2", sort=False).kurtosis())
+
+    for agg_fun in agg_funs:
+        if agg_fun == "size" or callable(agg_fun):
+            continue
+        r = getattr(mdf.groupby("c2", sort=False, preserve_order=True), agg_fun)(method="tree")
+        pd.testing.assert_frame_equal(
+            r.execute().fetch(), getattr(raw.groupby("c2", sort=False), agg_fun)()
+        )
+
+    # test as_index=False takes no effect
+    r = mdf.groupby(["c1", "c2"], sort=False, preserve_order=True, as_index=False).agg(["mean", "count"])
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(),
+        raw.groupby(["c1", "c2"], sort=False, as_index=False).agg(["mean", "count"]),
+    )
+    assert r.op.groupby_params["as_index"] is True
 

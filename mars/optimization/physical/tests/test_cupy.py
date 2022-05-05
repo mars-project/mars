@@ -13,7 +13,13 @@
 # limitations under the License.
 
 from .... import tensor as mt
-from ....core import enter_mode, TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from ....core import (
+    enter_mode,
+    TileableGraph,
+    TileableGraphBuilder,
+    ChunkGraphBuilder,
+    TileContext,
+)
 from ..cupy import CupyRuntimeOptimizer
 
 
@@ -25,7 +31,7 @@ def test_cupy():
 
     graph = TileableGraph([t.data])
     next(TileableGraphBuilder(graph).build())
-    context = dict()
+    context = TileContext()
     chunk_graph_builder = ChunkGraphBuilder(
         graph, fuse_enabled=False, tile_context=context
     )

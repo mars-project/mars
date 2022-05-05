@@ -14,8 +14,9 @@
 
 import asyncio
 import atexit
-import logging
+import os
 import sys
+import logging
 from concurrent.futures import Future as SyncFuture
 from typing import Dict, List, Union
 
@@ -24,17 +25,17 @@ import numpy as np
 from ... import oscar as mo
 from ...core.entrypoints import init_extension_entrypoints
 from ...lib.aio import get_isolation, stop_isolation
-from ...resource import cpu_count, cuda_count, mem_total, Resource
+from ...resource import cpu_count, cuda_count, mem_total
 from ...services import NodeRole
+from ...services.task.execution.api import ExecutionConfig
 from ...typing import ClusterType, ClientType
-from ..utils import get_third_party_modules_from_config
+from ..utils import get_third_party_modules_from_config, load_config
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 from .service import (
     start_supervisor,
     start_worker,
     stop_supervisor,
     stop_worker,
-    load_config,
 )
 from .session import AbstractSession, _new_session, ensure_isolation_created
 
@@ -45,6 +46,15 @@ atexit.register(
     lambda: _is_exiting_future.set_result(0) if not _is_exiting_future.done() else None
 )
 atexit.register(stop_isolation)
+
+# The default config file.
+DEFAULT_CONFIG_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "config.yml"
+)
+
+
+def _load_config(config: Union[str, Dict] = None):
+    return load_config(config, default_config_file=DEFAULT_CONFIG_FILE)
 
 
 async def new_cluster_in_isolation(
@@ -67,12 +77,13 @@ async def new_cluster_in_isolation(
         mem_bytes,
         cuda_devices,
         subprocess_start_method,
+        backend,
         config,
         web,
         n_supervisor_process,
     )
     await cluster.start()
-    return await LocalClient.create(cluster, backend, timeout)
+    return await LocalClient.create(cluster, timeout)
 
 
 async def new_cluster(
@@ -82,6 +93,7 @@ async def new_cluster(
     mem_bytes: Union[int, str] = "auto",
     cuda_devices: Union[List[int], str] = "auto",
     subprocess_start_method: str = None,
+    backend: str = None,
     config: Union[str, Dict] = None,
     web: bool = True,
     loop: asyncio.AbstractEventLoop = None,
@@ -95,6 +107,7 @@ async def new_cluster(
         mem_bytes=mem_bytes,
         cuda_devices=cuda_devices,
         subprocess_start_method=subprocess_start_method,
+        backend=backend,
         config=config,
         web=web,
         n_supervisor_process=n_supervisor_process,
@@ -121,6 +134,7 @@ class LocalCluster:
         mem_bytes: Union[int, str] = "auto",
         cuda_devices: Union[List[int], List[List[int]], str] = "auto",
         subprocess_start_method: str = None,
+        backend: str = None,
         config: Union[str, Dict] = None,
         web: Union[bool, str] = "auto",
         n_supervisor_process: int = 0,
@@ -132,53 +146,54 @@ class LocalCluster:
             subprocess_start_method = (
                 "spawn" if sys.platform == "win32" else "forkserver"
             )
-        # load config file to dict.
-        if not config or isinstance(config, str):
-            config = load_config(config)
         self._address = address
-        self._subprocess_start_method = subprocess_start_method
-        self._config = config
+        self._n_worker = n_worker
         self._n_cpu = cpu_count() if n_cpu == "auto" else n_cpu
         self._mem_bytes = mem_total() if mem_bytes == "auto" else mem_bytes
-        self._n_supervisor_process = n_supervisor_process
-        if cuda_devices == "auto":
-            total = cuda_count()
-            all_devices = np.arange(total)
-            devices_list = [list(arr) for arr in np.array_split(all_devices, n_worker)]
-
-        else:  # pragma: no cover
-            if isinstance(cuda_devices[0], int):
-                assert n_worker == 1
-                devices_list = [cuda_devices]
-            else:
-                assert len(cuda_devices) == n_worker
-                devices_list = cuda_devices
-
-        self._n_worker = n_worker
+        self._cuda_devices = self._get_cuda_devices(cuda_devices, n_worker)
+        self._subprocess_start_method = subprocess_start_method
+        self._config = load_config(config, default_config_file=DEFAULT_CONFIG_FILE)
+        execution_config = ExecutionConfig.from_config(self._config, backend=backend)
+        self._backend = execution_config.backend
         self._web = web
-        self._bands_to_resource = bands_to_resource = []
-        worker_cpus = self._n_cpu // n_worker
-        if sum(len(devices) for devices in devices_list) == 0:
-            assert worker_cpus > 0, (
-                f"{self._n_cpu} cpus are not enough "
-                f"for {n_worker}, try to decrease workers."
+        self._n_supervisor_process = n_supervisor_process
+
+        execution_config.merge_from(
+            ExecutionConfig.from_params(
+                backend=self._backend,
+                n_worker=self._n_worker,
+                n_cpu=self._n_cpu,
+                mem_bytes=self._mem_bytes,
+                cuda_devices=self._cuda_devices,
             )
-        mem_bytes = self._mem_bytes // n_worker
-        for _, devices in zip(range(n_worker), devices_list):
-            worker_band_to_resource = dict()
-            worker_band_to_resource["numa-0"] = Resource(
-                num_cpus=worker_cpus, mem_bytes=mem_bytes
-            )
-            for i in devices:  # pragma: no cover
-                worker_band_to_resource[f"gpu-{i}"] = Resource(num_gpus=1)
-            bands_to_resource.append(worker_band_to_resource)
+        )
+
+        self._bands_to_resource = execution_config.get_deploy_band_resources()
         self._supervisor_pool = None
         self._worker_pools = []
+        self._exiting_check_task = None
 
         self.supervisor_address = None
         self.web_address = None
 
-        self._exiting_check_task = None
+    @staticmethod
+    def _get_cuda_devices(cuda_devices, n_worker):
+        if cuda_devices == "auto":
+            total = cuda_count()
+            all_devices = np.arange(total)
+            return [list(arr) for arr in np.array_split(all_devices, n_worker)]
+
+        else:  # pragma: no cover
+            if isinstance(cuda_devices[0], int):
+                assert n_worker == 1
+                return [cuda_devices]
+            else:
+                assert len(cuda_devices) == n_worker
+                return cuda_devices
+
+    @property
+    def backend(self):
+        return self._backend
 
     @property
     def external_address(self):
@@ -272,18 +287,11 @@ class LocalClient:
     async def create(
         cls,
         cluster: LocalCluster,
-        backend: str = None,
         timeout: float = None,
     ) -> ClientType:
-        if backend is None:
-            backend = (
-                cluster._config.get("task", {})
-                .get("task_executor_config", {})
-                .get("backend", "mars")
-            )
         session = await _new_session(
             cluster.external_address,
-            backend=backend,
+            backend=cluster.backend,
             default=True,
             timeout=timeout,
         )

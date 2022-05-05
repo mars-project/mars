@@ -36,7 +36,7 @@ class DataFrameOrderPreserveIndexOperand(DataFrameOperand, DataFrameOperandMixin
             ctx[op.outputs[0].key] = a
             return
 
-        min_table = xdf.DataFrame({"min_col": np.arange(0, len((a))), "index": op.index_prefix} , index=a.index)
+        min_table = xdf.DataFrame({"min_col": np.arange(0, len((a))), "chunk_index": op.index_prefix} , index=a.index)
 
         ctx[op.outputs[-1].key] = min_table
 
@@ -70,36 +70,35 @@ class DataFrameOrderPreservePivotOperand(DataFrameOperand, DataFrameOperandMixin
 
         a = xdf.concat(inputs, axis=0)
         a = a.sort_index()
-        # a = a.groupby(op.by).min(['index', 'min_col'])
         a_group = a.groupby(op.by).groups
         a_list = []
         for g in a_group:
             group_df = a.loc[g]
-            group_min_index = group_df['index'].min()
-            group_min_col = group_df.loc[group_df['index'] == group_min_index]['min_col'].min()
+            group_min_index = group_df['chunk_index'].min()
+            group_min_col = group_df.loc[group_df['chunk_index'] == group_min_index]['min_col'].min()
             if isinstance(a.axes[0], MultiIndex):
                 index = pd.MultiIndex.from_tuples([g], names=group_df.index.names)
             else:
                 index = pd.Index([g], name=group_df.index.names)
-            a_list_df = pd.DataFrame({"index" : group_min_index, "min_col" : group_min_col}, index=index)
+            a_list_df = pd.DataFrame({"chunk_index" : group_min_index, "min_col" : group_min_col}, index=index)
             a_list.append(a_list_df)
 
         a = pd.concat(a_list)
 
         ctx[op.outputs[0].key] = a
 
-        sort_values_df = a.sort_values(['index', 'min_col'])
+        sort_values_df = a.sort_values(['chunk_index', 'min_col'])
 
         p = len(inputs)
         if len(sort_values_df) < p:
             num = p // len(a) + 1
             sort_values_df = sort_values_df.append([sort_values_df] * (num - 1))
 
-        sort_values_df = sort_values_df.sort_values(['index', 'min_col'])
+        sort_values_df = sort_values_df.sort_values(['chunk_index', 'min_col'])
 
         w = sort_values_df.shape[0] * 1.0 / (p + 1)
 
-        values = sort_values_df[['index', 'min_col']].values
+        values = sort_values_df[['chunk_index', 'min_col']].values
 
         slc = np.linspace(
             max(w-1, 0), len(sort_values_df) - 1, num=len(op.inputs) - 1, endpoint=False
@@ -161,40 +160,38 @@ class DataFrameGroupbyOrderPresShuffle(MapReduceOperand, DataFrameOperandMixin):
                 intermediary_dfs = []
                 for i in range(0, index_upper):
                     if i == index_upper-1:
-                        intermediary_dfs.append(in_df.loc[in_df['index'] == i].loc[in_df['min_col'] < pivots[p_index][1]])
+                        intermediary_dfs.append(in_df.loc[in_df['chunk_index'] == i].loc[in_df['min_col'] < pivots[p_index][1]])
                     else:
-                        intermediary_dfs.append(in_df.loc[in_df['index'] == i])
+                        intermediary_dfs.append(in_df.loc[in_df['chunk_index'] == i])
             elif p_index == op.n_partition - 1:
                 intermediary_dfs = []
                 index_lower = pivots[p_index-1][0]
-                index_upper = in_df['index'].max() + 1
+                index_upper = in_df['chunk_index'].max() + 1
                 for i in range(index_lower, index_upper):
                     if i == index_lower:
-                        intermediary_dfs.append(in_df.loc[in_df['index'] == i].loc[in_df['min_col'] >= pivots[p_index-1][1]])
+                        intermediary_dfs.append(in_df.loc[in_df['chunk_index'] == i].loc[in_df['min_col'] >= pivots[p_index-1][1]])
                     else:
-                        intermediary_dfs.append(in_df.loc[in_df['index'] == i])
+                        intermediary_dfs.append(in_df.loc[in_df['chunk_index'] == i])
             else:
                 intermediary_dfs = []
                 index_lower = pivots[p_index - 1][0]
                 index_upper = pivots[p_index][0]+1
                 if index_upper == index_lower + 1:
                     intermediary_dfs.append(
-                        in_df.loc[in_df['index'] == index_lower].loc[
+                        in_df.loc[in_df['chunk_index'] == index_lower].loc[
                             (in_df['min_col'] >= pivots[p_index - 1][1]) & (in_df['min_col'] < pivots[p_index][1])])
                 else:
                     for i in range(index_lower, index_upper):
                         if i == index_lower:
                             if index_lower != index_upper:
-                                intermediary_dfs.append(in_df.loc[in_df['index'] == i].loc[in_df['min_col'] >= pivots[p_index-1][1]])
+                                intermediary_dfs.append(in_df.loc[in_df['chunk_index'] == i].loc[in_df['min_col'] >= pivots[p_index-1][1]])
                         elif i == index_upper-1:
-                            intermediary_dfs.append(in_df.loc[in_df['index'] == i].loc[in_df['min_col'] < pivots[p_index][1]])
+                            intermediary_dfs.append(in_df.loc[in_df['chunk_index'] == i].loc[in_df['min_col'] < pivots[p_index][1]])
                         else:
-                            intermediary_dfs.append(in_df.loc[in_df['index'] == i])
+                            intermediary_dfs.append(in_df.loc[in_df['chunk_index'] == i])
             if len(intermediary_dfs) > 0:
                 out_df = pd.concat(intermediary_dfs)
             else:
-                # out_df = pd.DataFrame(columns=in_df.columns)
-                # out_df.index = out_df.index.rename(in_df.index.names) if isinstance(in_df.index, MultiIndex) else out_df.index.rename(in_df.index.name)
                 out_df = None
             return out_df
 
@@ -224,12 +221,12 @@ class DataFrameGroupbyOrderPresShuffle(MapReduceOperand, DataFrameOperandMixin):
             tuple_len = len(raw_inputs[0])
             for i in range(tuple_len):
                 concat_df = xdf.concat([inp[i] for inp in raw_inputs], axis=0)
-                concat_df = concat_df.sort_values(["index", "min_col"]).drop(columns=["index", "min_col"])
+                concat_df = concat_df.sort_values(["chunk_index", "min_col"]).drop(columns=["chunk_index", "min_col"])
                 r.append(concat_df)
             r = tuple(r)
         else:
             concat_df = xdf.concat(raw_inputs, axis=0)
-            concat_df = concat_df.sort_values(["index", "min_col"]).drop(columns=["index", "min_col"])
+            concat_df = concat_df.sort_values(["chunk_index", "min_col"]).drop(columns=["chunk_index", "min_col"])
             r = concat_df
 
         if isinstance(r, tuple):

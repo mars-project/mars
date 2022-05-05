@@ -20,17 +20,15 @@ import pytest
 from ....tests.core import DICT_NOT_EMPTY, require_ray
 from ....utils import lazy_import
 from ..local import new_cluster
+from ..session import new_session
 from ..tests import test_local
+from ..tests.session import new_test_session
 from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
     get_output_filenames,
 )
 
 ray = lazy_import("ray")
-
-CONFIG_TEST_FILE = os.path.join(
-    os.path.dirname(__file__), "local_test_with_ray_dag_config.yml"
-)
 
 EXPECT_PROFILING_STRUCTURE = {
     "supervisor": {
@@ -61,7 +59,7 @@ async def create_cluster(request):
     start_method = os.environ.get("POOL_START_METHOD", None)
     client = await new_cluster(
         subprocess_start_method=start_method,
-        config=CONFIG_TEST_FILE,
+        backend="ray",
         n_worker=2,
         n_cpu=2,
         use_uvloop=False,
@@ -69,6 +67,13 @@ async def create_cluster(request):
     async with client:
         assert client.session.client is not None
         yield client, {}
+
+
+@require_ray
+@pytest.mark.parametrize("backend", ["ray"])
+@pytest.mark.parametrize("_new_session", [new_session, new_test_session])
+def test_new_session_backend(ray_start_regular_shared2, _new_session, backend):
+    test_local.test_new_session_backend(_new_session, backend)
 
 
 @require_ray
@@ -99,3 +104,16 @@ async def create_cluster(request):
 @pytest.mark.asyncio
 async def test_execute(ray_start_regular_shared2, create_cluster, config):
     await test_local.test_execute(create_cluster, config)
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_iterative_tiling(ray_start_regular_shared2, create_cluster):
+    await test_local.test_iterative_tiling(create_cluster)
+
+
+# TODO(fyrestone): Support incremental index in ray backend.
+@require_ray
+@pytest.mark.parametrize("config", [{"backend": "ray", "incremental_index": False}])
+def test_sync_execute(config):
+    test_local.test_sync_execute(config)

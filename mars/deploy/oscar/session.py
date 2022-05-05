@@ -845,7 +845,9 @@ class _IsolatedSession(AbstractAsyncSession):
             from .local import new_cluster_in_isolation
 
             return (
-                await new_cluster_in_isolation(address, timeout=timeout, **kwargs)
+                await new_cluster_in_isolation(
+                    address, timeout=timeout, backend=backend, **kwargs
+                )
             ).session
 
         if kwargs:  # pragma: no cover
@@ -1236,6 +1238,7 @@ class _IsolatedSession(AbstractAsyncSession):
             return result
 
     async def decref(self, *tileable_keys):
+        logger.debug("Decref tileables on client: %s", tileable_keys)
         return await self._lifecycle_api.decref_tileables(list(tileable_keys))
 
     async def _get_ref_counts(self) -> Dict[str, int]:

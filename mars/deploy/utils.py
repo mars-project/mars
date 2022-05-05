@@ -20,6 +20,7 @@ from typing import Callable, Dict, List, Union, TextIO
 import yaml
 
 from ..services import NodeRole
+from ..utils import merge_dict, flatten_dict_to_nested_dict
 
 DEFAULT_CONFIG_FILE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "oscar/config.yml"
@@ -111,6 +112,48 @@ def load_service_config_file(path: Union[str, TextIO]) -> Dict:
 
     _clear_meta_cfg(cfg)
     return cfg
+
+
+def _merge_config(full_config: Dict, config: Dict) -> Dict:
+    """
+    Merge the config to full_config, the config support flatten key, e.g.
+
+    config={
+        'scheduling.autoscale.enabled': True,
+        'scheduling.autoscale.scheduler_check_interval': 1,
+        'scheduling.autoscale.scheduler_backlog_timeout': 1,
+        'scheduling.autoscale.worker_idle_timeout': 10,
+        'scheduling.autoscale.min_workers': 1,
+        'scheduling.autoscale.max_workers': 4
+    }
+    """
+    if not config:
+        return full_config
+    if not isinstance(config, Dict):  # pragma: no cover
+        raise ValueError(
+            f"The config should be a dict, but the type is {type(config)}."
+        )
+    flatten_keys = set(k for k in config.keys() if isinstance(k, str) and "." in k)
+    nested_flatten_config = flatten_dict_to_nested_dict(
+        {k: config[k] for k in flatten_keys}
+    )
+    nested_config = {k: config[k] for k in config.keys() if k not in flatten_keys}
+    config = merge_dict(nested_config, nested_flatten_config, overwrite=False)
+    merge_dict(full_config, config)
+    return full_config
+
+
+def load_config(config: Union[str, Dict], default_config_file: str):
+    """
+    Load config based on the default_config.
+    """
+    # use default config
+    if isinstance(config, str):
+        filename = config
+        return load_service_config_file(filename)
+    else:
+        full_config = load_service_config_file(default_config_file)
+        return _merge_config(full_config, config)
 
 
 async def wait_all_supervisors_ready(endpoint):

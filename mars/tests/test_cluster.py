@@ -18,11 +18,13 @@ import sys
 import subprocess
 import tempfile
 
+import psutil
 import pytest
 
 from .. import new_session
 from .. import tensor as mt
 from ..services.cluster import NodeRole, WebClusterAPI
+from ..tests.core import flaky
 from ..utils import get_next_port
 
 
@@ -32,6 +34,20 @@ scheduling:
   mem_hard_limit: null"""
 
 
+def _terminate(pid: int):
+    proc = psutil.Process(pid)
+    sub_pids = [p.pid for p in proc.children(recursive=True)]
+    proc.terminate()
+    proc.wait(5)
+    for p in sub_pids:
+        try:
+            proc = psutil.Process(p)
+            proc.kill()
+        except psutil.NoSuchProcess:
+            continue
+
+
+@flaky(max_runs=3)
 @pytest.mark.asyncio
 async def test_cluster():
     port = get_next_port()
@@ -85,8 +101,8 @@ async def test_cluster():
         sess2 = new_session(web_addr, session_id=sess.session_id)
         sess2.close()
     finally:
-        r.terminate()
-        w.terminate()
+        _terminate(w.pid)
+        _terminate(r.pid)
 
     # test stderr
     out = r.communicate()[1].decode()

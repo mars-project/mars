@@ -50,12 +50,12 @@ class ProfilingContext:
 
 
 class MarsActorContext(BaseActorContext):
-    __slots__ = "_address", "_caller"
+    __slots__ = ("_caller",)
 
     support_allocate_strategy = True
 
     def __init__(self, address: str = None):
-        self._address = address
+        BaseActorContext.__init__(self, address)
         self._caller = ActorCaller()
 
     def __del__(self):

@@ -16,7 +16,7 @@ from collections.abc import Iterable
 
 from ... import opcodes
 from ...core import OutputType
-from ...serialization.serializables import AnyField
+from ...serialization.serializables import AnyField, BoolField
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import parse_index
 
@@ -27,8 +27,10 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
 
     _selection = AnyField("selection")
 
-    def __init__(self, selection=None, output_types=None, **kw):
-        super().__init__(_selection=selection, _output_types=output_types, **kw)
+    _preserve_order = BoolField("preserve_order")
+
+    def __init__(self, selection=None, output_types=None, preserve_order=None, **kw):
+        super().__init__(_selection=selection, _output_types=output_types, _preserve_order=preserve_order, **kw)
 
     @property
     def selection(self):
@@ -39,6 +41,10 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
         params = self.inputs[0].op.groupby_params
         params["selection"] = self.selection
         return params
+
+    @property
+    def preserve_order(self):
+        return self._preserve_order
 
     def build_mock_groupby(self, **kwargs):
         groupby_op = self.inputs[0].op

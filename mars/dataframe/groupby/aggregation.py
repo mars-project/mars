@@ -15,17 +15,20 @@
 import functools
 import itertools
 import logging
-import typing
 import uuid
-from typing import List
+from typing import Callable, Dict, List
 
 import numpy as np
 import pandas as pd
 from scipy.stats import variation
 
-from .preserve_order import DataFrameOrderPreserveIndexOperand, DataFrameOrderPreservePivotOperand, \
-    DataFrameGroupbyOrderPresShuffle
-from .sort import DataFramePSRSGroupbySample, DataFrameGroupbyConcatPivot, DataFrameGroupbySortShuffle
+from .preserve_order import DataFrameGroupbyOrderPresShuffle, DataFrameOrderPreserveIndexOperand, \
+    DataFrameOrderPreservePivotOperand
+from .sort import (
+    DataFramePSRSGroupbySample,
+    DataFrameGroupbyConcatPivot,
+    DataFrameGroupbySortShuffle,
+)
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core.custom_log import redirect_custom_log
@@ -131,22 +134,22 @@ del _patch_groupby_kurt
 
 
 def build_mock_agg_result(
-        groupby: GROUPBY_TYPE,
-        groupby_params: typing.Dict,
-        raw_func: typing.Callable,
-        **raw_func_kw,
+    groupby: GROUPBY_TYPE,
+    groupby_params: Dict,
+    raw_func: Callable,
+    **raw_func_kw,
 ):
     try:
         agg_result = groupby.op.build_mock_groupby().aggregate(raw_func, **raw_func_kw)
     except ValueError:
         if (
-                groupby_params.get("as_index") or _support_get_group_without_as_index
+            groupby_params.get("as_index") or _support_get_group_without_as_index
         ):  # pragma: no cover
             raise
         agg_result = (
             groupby.op.build_mock_groupby(as_index=True)
-                .aggregate(raw_func, **raw_func_kw)
-                .to_frame()
+            .aggregate(raw_func, **raw_func_kw)
+            .to_frame()
         )
         agg_result.index.names = [None] * agg_result.index.nlevels
     return agg_result
@@ -300,22 +303,17 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             return self._call_series(groupby, df)
 
     @classmethod
-    def partition_merge_data(
-            cls, op, partition_chunks, proxy_chunk, in_df
-    ):
+    def partition_merge_data(cls, op, partition_chunks, proxy_chunk, in_df):
         # stage 4: all *ith* classes are gathered and merged
         partition_sort_chunks = []
-        properties = dict(
-            by=op.groupby_params['by'],
-            gpu=op.is_gpu()
-        )
+        properties = dict(by=op.groupby_params["by"], gpu=op.is_gpu())
 
         for i, partition_chunk in enumerate(partition_chunks):
             partition_shuffle_reduce = DataFrameGroupbySortShuffle(
                 stage=OperandStage.reduce,
                 reducer_index=(i, 0),
                 output_types=[OutputType.dataframe_groupby],
-                **properties
+                **properties,
             )
             chunk_shape = list(partition_chunk.shape)
             chunk_shape[0] = np.nan
@@ -330,13 +328,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return partition_sort_chunks
 
     @classmethod
-    def partition_local_data(
-            cls, op, sorted_chunks, concat_pivot_chunk, in_df
-    ):
-        properties = dict(
-            by=op.groupby_params['by'],
-            gpu=op.is_gpu()
-        )
+    def partition_local_data(cls, op, sorted_chunks, concat_pivot_chunk, in_df):
+        properties = dict(by=op.groupby_params["by"], gpu=op.is_gpu())
 
         map_chunks = []
         chunk_shape = (in_df.chunk_shape[0], 1)
@@ -423,13 +416,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _gen_shuffle_chunks_with_pivot(cls, op, in_df, chunks, pivot):
-        map_chunks = cls.partition_local_data(
-            op, chunks, pivot, in_df
-        )
+        map_chunks = cls.partition_local_data(op, chunks, pivot, in_df)
 
-        proxy_chunk = DataFrameShuffleProxy(output_types=[OutputType.dataframe]).new_chunk(
-            map_chunks, shape=()
-        )
+        proxy_chunk = DataFrameShuffleProxy(
+            output_types=[OutputType.dataframe]
+        ).new_chunk(map_chunks, shape=())
 
         partition_sort_chunks = cls.partition_merge_data(
             op, map_chunks, proxy_chunk, in_df
@@ -481,18 +472,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _gen_map_chunks(
-            cls,
-            op: "DataFrameGroupByAgg",
-            in_chunks: List[ChunkType],
-            out_df: TileableType,
-            func_infos: ReductionSteps,
+        cls,
+        op: "DataFrameGroupByAgg",
+        in_chunks: List[ChunkType],
+        out_df: TileableType,
+        func_infos: ReductionSteps,
     ):
         map_chunks = []
         for chunk in in_chunks:
             chunk_inputs = [chunk]
             map_op = op.copy().reset_key()
             # force as_index=True for map phase
-            map_op.output_types = [OutputType.dataframe]
+            map_op.output_types = op.output_types
             map_op.groupby_params = map_op.groupby_params.copy()
             map_op.groupby_params["as_index"] = True
             if isinstance(map_op.groupby_params["by"], list):
@@ -510,7 +501,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             map_op.stage = OperandStage.map
             map_op.pre_funcs = func_infos.pre_funcs
             map_op.agg_funcs = func_infos.agg_funcs
-            new_index = chunk.index if len(chunk.index) == 2 else (chunk.index[0], 0)
+            new_index = chunk.index if len(chunk.index) == 2 else (chunk.index[0],)
             if op.output_types[0] == OutputType.dataframe:
                 map_chunk = map_op.new_chunk(
                     chunk_inputs,
@@ -522,9 +513,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             else:
                 map_chunk = map_op.new_chunk(
                     chunk_inputs,
-                    shape=(out_df.shape[0], 1),
+                    shape=(out_df.shape[0],),
                     index=new_index,
                     index_value=out_df.index_value,
+                    dtype=out_df.dtype,
                 )
             map_chunks.append(map_chunk)
         return map_chunks
@@ -557,11 +549,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_with_shuffle(
-            cls,
-            op: "DataFrameGroupByAgg",
-            in_df: TileableType,
-            out_df: TileableType,
-            func_infos: ReductionSteps,
+        cls,
+        op: "DataFrameGroupByAgg",
+        in_df: TileableType,
+        out_df: TileableType,
+        func_infos: ReductionSteps,
     ):
         # First, perform groupby and aggregation on each chunk.
         agg_chunks = cls._gen_map_chunks(op, in_df.chunks, out_df, func_infos)
@@ -571,7 +563,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
         if op.groupby_params['sort'] and len(in_df.chunks) > 1:
             sample_chunks = cls._sample_chunks(op, agg_chunks)
-            pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, agg_chunk_len)
+            pivot_chunk = cls._gen_pivot_chunk(
+                    op, sample_chunks, agg_chunk_len
+            )
 
         if op.preserve_order and len(in_df.chunks) > 1:
             # add min col to in_df
@@ -609,12 +603,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 "dtype": object
             }
         )
-        # if op.outputs[0].ndim == 2:
-        #     kws[0].update(
-        #         {"columns_value": chunks[0].columns_value, "dtypes": chunks[0].dtypes}
-        #     )
-        # else:
-        #     kws[0].update(({"dtype": chunks[0].dtype, "name": chunks[0].name}))
 
         chunks = pivot_op.new_chunks(chunks, kws=kws, output_limit=2)
         index_table, pivot_chunk = chunks
@@ -654,28 +642,25 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     def _gen_pivot_chunk(cls, op, sample_chunks, agg_chunk_len):
 
         properties = dict(
-            by=op.groupby_params['by'],
+            by=op.groupby_params["by"],
             gpu=op.is_gpu(),
         )
 
         # stage 2: gather and merge samples, choose and broadcast p-1 pivots
-        kind = 'quicksort'
+        kind = "quicksort"
         output_types = [OutputType.tensor]
 
         concat_pivot_op = DataFrameGroupbyConcatPivot(
             kind=kind,
             n_partition=agg_chunk_len,
             output_types=output_types,
-            **properties
+            **properties,
         )
 
-        # concat_pivot_index = out_idx[: 0] + (0,) + out_idx[0:]
         concat_pivot_chunk = concat_pivot_op.new_chunk(
             sample_chunks,
             shape=(agg_chunk_len,),
             dtype=object,
-            # shape=concat_pivot_shape,
-            # index=concat_pivot_index,
         )
         return concat_pivot_chunk
 
@@ -685,30 +670,41 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         sampled_chunks = []
 
         properties = dict(
-            by=op.groupby_params['by'],
+            by=op.groupby_params["by"],
             gpu=op.is_gpu(),
         )
 
         for i, chunk in enumerate(agg_chunks):
-            chunk_op = DataFramePSRSGroupbySample(
-                kind='quicksort',
-                n_partition=chunk_shape,
-                output_types=[OutputType.dataframe],
-                **properties
-            )
             kws = []
             sampled_shape = (
-                (chunk_shape, chunk.shape[1]) if len(chunk.shape) == 2 else (chunk_shape,)
+                (chunk_shape, chunk.shape[1]) if chunk.ndim == 2 else (chunk_shape,)
             )
-            kws.append(
-                {
-                    "shape": sampled_shape,
-                    "index_value": chunk.index_value,
-                    "index": (i, 0),
-                    "type": "regular_sampled",
-                }
+            chunk_index = (i, 0) if chunk.ndim == 2 else (i,)
+            chunk_op = DataFramePSRSGroupbySample(
+                kind="quicksort",
+                n_partition=chunk_shape,
+                output_types=op.output_types,
+                **properties,
             )
-
+            if op.output_types[0] == OutputType.dataframe:
+                kws.append(
+                        {
+                        "shape": sampled_shape,
+                        "index_value": chunk.index_value,
+                        "index": chunk_index,
+                        "type": "regular_sampled",
+                    }
+                )
+            else:
+                kws.append(
+                    {
+                        "shape": sampled_shape,
+                        "index_value": chunk.index_value,
+                        "index": chunk_index,
+                        "type": "regular_sampled",
+                        "dtype": chunk.dtype,
+                    }
+                )
             chunk = chunk_op.new_chunk([chunk], kws=kws)
             sampled_chunks.append(chunk)
 
@@ -727,7 +723,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     ):
         # Shuffle the aggregation chunk.
         if op.groupby_params["sort"] and pivot_chunk is not None:
-            reduce_chunks = cls._gen_shuffle_chunks_with_pivot(op, in_df, agg_chunks, pivot_chunk)
+            reduce_chunks = cls._gen_shuffle_chunks_with_pivot(
+                op, in_df, agg_chunks, pivot_chunk
+            )
         elif op.preserve_order and index_table is not None:
             reduce_chunks = cls._gen_shuffle_chunks_order_preserve(op, in_df, agg_chunks, pivot_chunk, index_table)
         else:
@@ -777,28 +775,28 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_with_tree(
-            cls,
-            op: "DataFrameGroupByAgg",
-            in_df: TileableType,
-            out_df: TileableType,
-            func_infos: ReductionSteps,
+        cls,
+        op: "DataFrameGroupByAgg",
+        in_df: TileableType,
+        out_df: TileableType,
+        func_infos: ReductionSteps,
     ):
         chunks = cls._gen_map_chunks(op, in_df.chunks, out_df, func_infos)
         return cls._combine_tree(op, chunks, out_df, func_infos)
 
     @classmethod
     def _combine_tree(
-            cls,
-            op: "DataFrameGroupByAgg",
-            chunks: List[ChunkType],
-            out_df: TileableType,
-            func_infos: ReductionSteps,
+        cls,
+        op: "DataFrameGroupByAgg",
+        chunks: List[ChunkType],
+        out_df: TileableType,
+        func_infos: ReductionSteps,
     ):
         combine_size = op.combine_size
         while len(chunks) > combine_size:
             new_chunks = []
             for idx, i in enumerate(range(0, len(chunks), combine_size)):
-                chks = chunks[i: i + combine_size]
+                chks = chunks[i : i + combine_size]
                 if len(chks) == 1:
                     chk = chks[0]
                 else:
@@ -860,7 +858,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _choose_tree_method(
-            cls, raw_sizes, agg_sizes, sample_count, total_count, chunk_store_limit
+        cls, raw_sizes, agg_sizes, sample_count, total_count, chunk_store_limit
     ):
         # calculate the coefficient of variation of aggregation sizes,
         # if the CV is less than 0.2 and the mean of agg_size/raw_size
@@ -885,11 +883,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_auto(
-            cls,
-            op: "DataFrameGroupByAgg",
-            in_df: TileableType,
-            out_df: TileableType,
-            func_infos: ReductionSteps,
+        cls,
+        op: "DataFrameGroupByAgg",
+        in_df: TileableType,
+        out_df: TileableType,
+        func_infos: ReductionSteps,
     ):
         ctx = get_context()
         combine_size = op.combine_size
@@ -912,21 +910,30 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         left_chunks = in_df.chunks[combine_size:]
         left_chunks = cls._gen_map_chunks(op, left_chunks, out_df, func_infos)
         if cls._choose_tree_method(
-                raw_sizes, agg_sizes, len(chunks), len(in_df.chunks), op.chunk_store_limit
+            raw_sizes, agg_sizes, len(chunks), len(in_df.chunks), op.chunk_store_limit
         ):
             logger.debug("Choose tree method for groupby operand %s", op)
             return cls._combine_tree(op, chunks + left_chunks, out_df, func_infos)
         else:
             # otherwise, use shuffle
             pivot_chunk = None
+            index_table = None
             if op.groupby_params['sort'] and len(in_df.chunks) > 1:
                 agg_chunk_len = len(chunks + left_chunks)
                 sample_chunks = cls._sample_chunks(op, chunks + left_chunks)
-                pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, agg_chunk_len)
+                pivot_chunk = cls._gen_pivot_chunk(
+                    op, sample_chunks, agg_chunk_len
+                )
+
+            if op.preserve_order and len(in_df.chunks) > 1:
+                # add min col to in_df
+                index_chunks = cls._gen_index_chunks(op, chunks + left_chunks)
+                # concat and get table and pivot
+                index_table, pivot_chunk = cls._find_index_table_and_pivot(op, index_chunks, agg_chunk_len)
 
             logger.debug("Choose shuffle method for groupby operand %s", op)
             return cls._perform_shuffle(
-                op, chunks + left_chunks, in_df, out_df, func_infos, pivot_chunk
+                op, chunks + left_chunks, in_df, out_df, func_infos, pivot_chunk, index_table
             )
 
     @classmethod
@@ -989,7 +996,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 out_dict[step.output_key] = in_data[pos]
             else:
                 out_dict[step.output_key] = tuple(
-                    in_data[pos: pos + step.output_limit]
+                    in_data[pos : pos + step.output_limit]
                 )
             pos += step.output_limit
         return out_dict
@@ -1084,8 +1091,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
         in_data = ctx[op.inputs[0].key]
         if (
-                isinstance(in_data, xdf.Series)
-                and op.output_types[0] == OutputType.dataframe
+            isinstance(in_data, xdf.Series)
+            and op.output_types[0] == OutputType.dataframe
         ):
             in_data = cls._series_to_df(in_data, op.gpu)
 
@@ -1135,13 +1142,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
         agg_dfs = []
         for (
-                input_key,
-                map_func_name,
-                _agg_func_name,
-                custom_reduction,
-                _output_key,
-                _output_limit,
-                kwds,
+            input_key,
+            map_func_name,
+            _agg_func_name,
+            custom_reduction,
+            _output_key,
+            _output_limit,
+            kwds,
         ) in op.agg_funcs:
             input_obj = ret_map_groupbys[input_key]
             if map_func_name == "custom_reduction":
@@ -1171,8 +1178,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         in_data_list = []
         for in_data in in_data_tuple:
             if (
-                    isinstance(in_data, xdf.Series)
-                    and op.output_types[0] == OutputType.dataframe
+                isinstance(in_data, xdf.Series)
+                and op.output_types[0] == OutputType.dataframe
             ):
                 in_data = cls._series_to_df(in_data, op.gpu)
             in_data_list.append(cls._get_grouped(op, in_data, ctx))
@@ -1181,13 +1188,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
         combines = []
         for (
-                _input_key,
-                _map_func_name,
-                agg_func_name,
-                custom_reduction,
-                output_key,
-                _output_limit,
-                kwds,
+            _input_key,
+            _map_func_name,
+            agg_func_name,
+            custom_reduction,
+            output_key,
+            _output_limit,
+            kwds,
         ) in op.agg_funcs:
             input_obj = in_data_dict[output_key]
             if agg_func_name == "custom_reduction":
@@ -1212,8 +1219,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         in_data_list = []
         for in_data in in_data_tuple:
             if (
-                    isinstance(in_data, xdf.Series)
-                    and op.output_types[0] == OutputType.dataframe
+                isinstance(in_data, xdf.Series)
+                and op.output_types[0] == OutputType.dataframe
             ):
                 in_data = cls._series_to_df(in_data, op.gpu)
             in_data_list.append(in_data)
@@ -1221,13 +1228,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         in_data_dict = cls._pack_inputs(op.agg_funcs, in_data_tuple)
 
         for (
-                _input_key,
-                _map_func_name,
-                agg_func_name,
-                custom_reduction,
-                output_key,
-                _output_limit,
-                kwds,
+            _input_key,
+            _map_func_name,
+            agg_func_name,
+            custom_reduction,
+            output_key,
+            _output_limit,
+            kwds,
         ) in op.agg_funcs:
             if agg_func_name == "custom_reduction":
                 input_obj = tuple(
@@ -1250,8 +1257,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 func_inputs = [in_data_dict[k][cols] for k in input_keys]
 
             if (
-                    func_inputs[0].ndim == 2
-                    and len(set(inp.shape[1] for inp in func_inputs)) > 1
+                func_inputs[0].ndim == 2
+                and len(set(inp.shape[1] for inp in func_inputs)) > 1
             ):
                 common_cols = func_inputs[0].columns
                 for inp in func_inputs[1:]:
@@ -1280,8 +1287,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         if out_chunk.ndim == 2:
             result = xdf.concat(aggs, axis=1)
             if (
-                    not op.groupby_params.get("as_index", True)
-                    and col_value.nlevels == result.columns.nlevels
+                not op.groupby_params.get("as_index", True)
+                and col_value.nlevels == result.columns.nlevels
             ):
                 result.reset_index(
                     inplace=True, drop=result.index.name in result.columns

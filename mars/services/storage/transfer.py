@@ -224,7 +224,11 @@ class SenderManagerActor(mo.StatelessActor):
             )
         await self._data_manager_ref.unpin.batch(*unpin_tasks)
         logger.debug(
-            "Finish sending data (%s, %s) to %s", session_id, data_keys, address
+            "Finish sending data (%s, %s) to %s, total size is %s",
+            session_id,
+            data_keys,
+            address,
+            sum(data_sizes),
         )
 
 
