@@ -25,7 +25,7 @@ from ...core import OutputType
 from ...config import options
 from ...serialization.serializables import BoolField
 from ...utils import lazy_import
-from ..arrays import ArrowListArray, ArrowListDtype
+from ..arrays import ArrowListArray
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
 
 cp = lazy_import("cupy", globals=globals(), rename="cp")
@@ -52,18 +52,24 @@ class NuniqueReduction(CustomReduction):
 
     def _drop_duplicates(self, value, explode=False, agg=False):
         xp, xdf = self._get_modules()
+        use_arrow_dtype = self._use_arrow_dtype and xp is not cp
         if self._use_arrow_dtype and xp is not cp and hasattr(value, "to_numpy"):
             value = value.to_numpy()
         else:
             value = value.values
 
         if explode:
+            if len(value) == 0:
+                if not use_arrow_dtype:
+                    return [xp.array([], dtype=object)]
+                else:
+                    return [ArrowListArray([])]
             value = xp.concatenate(value)
 
         value = xdf.unique(value)
 
         if not agg:
-            if not self._use_arrow_dtype or xp is cp:
+            if not use_arrow_dtype:
                 return [value]
             else:
                 try:
@@ -78,15 +84,16 @@ class NuniqueReduction(CustomReduction):
 
     def pre(self, in_data):  # noqa: W0221  # pylint: disable=arguments-differ
         xp, xdf = self._get_modules()
+        out_dtype = object if not self._use_arrow_dtype or xp is cp else None
         if isinstance(in_data, xdf.Series):
             unique_values = self._drop_duplicates(in_data)
-            return xdf.Series(unique_values, name=in_data.name, dtype=object)
+            return xdf.Series(unique_values, name=in_data.name, dtype=out_dtype)
         else:
             if self._axis == 0:
                 data = dict()
                 for d, v in in_data.iteritems():
                     data[d] = self._drop_duplicates(v)
-                df = xdf.DataFrame(data, copy=False, dtype=object)
+                df = xdf.DataFrame(data, copy=False, dtype=out_dtype)
             else:
                 df = xdf.DataFrame(columns=[0])
                 for d, v in in_data.iterrows():
@@ -95,15 +102,16 @@ class NuniqueReduction(CustomReduction):
 
     def agg(self, in_data):  # noqa: W0221  # pylint: disable=arguments-differ
         xp, xdf = self._get_modules()
+        out_dtype = object if not self._use_arrow_dtype or xp is cp else None
         if isinstance(in_data, xdf.Series):
             unique_values = self._drop_duplicates(in_data, explode=True)
-            return xdf.Series(unique_values, name=in_data.name, dtype=object)
+            return xdf.Series(unique_values, name=in_data.name, dtype=out_dtype)
         else:
             if self._axis == 0:
                 data = dict()
                 for d, v in in_data.iteritems():
                     data[d] = self._drop_duplicates(v, explode=True)
-                df = xdf.DataFrame(data, copy=False, dtype=object)
+                df = xdf.DataFrame(data, copy=False, dtype=out_dtype)
             else:
                 df = xdf.DataFrame(columns=[0])
                 for d, v in in_data.iterrows():
