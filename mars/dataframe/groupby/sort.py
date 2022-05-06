@@ -4,12 +4,16 @@ import pandas as pd
 from mars.dataframe.operands import DataFrameOperandMixin
 from mars.dataframe.sort.psrs import DataFramePSRSChunkOperand
 from mars.utils import lazy_import
-from ..utils import is_cudf
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...core.operand import MapReduceOperand, OperandStage
-from ...serialization.serializables import StringField, Int32Field, BoolField, ListField, FieldTypes
+from ...serialization.serializables import (
+    StringField,
+    Int32Field,
+    BoolField,
+    ListField,
+)
 
 cudf = lazy_import("cudf", globals=globals())
 
@@ -104,6 +108,9 @@ class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixi
         )
 
         out = a.iloc[slc]
+        if op.output_types[0] == OutputType.series and out.ndim == 2:
+            assert out.shape[1] == 1
+            out = out.iloc[:, 0]
         ctx[op.outputs[-1].key] = out
 
 
@@ -128,19 +135,19 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
     _kind = StringField("kind")
 
     def __init__(
-            self,
-            sort_type=None,
-            by=None,
-            axis=None,
-            ascending=None,
-            n_partition=None,
-            na_position=None,
-            inplace=None,
-            kind=None,
-            level=None,
-            sort_remaining=None,
-            output_types=None,
-            **kw
+        self,
+        sort_type=None,
+        by=None,
+        axis=None,
+        ascending=None,
+        n_partition=None,
+        na_position=None,
+        inplace=None,
+        kind=None,
+        level=None,
+        sort_remaining=None,
+        output_types=None,
+        **kw
     ):
         super().__init__(
             _sort_type=sort_type,
@@ -210,11 +217,11 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
             if p_index == 0:
                 out_df = in_df.loc[: pivots[p_index]]
             elif p_index == op.n_partition - 1:
-                out_df = in_df.loc[pivots[p_index - 1]:].drop(
+                out_df = in_df.loc[pivots[p_index - 1] :].drop(
                     index=pivots[p_index - 1], errors="ignore"
                 )
             else:
-                out_df = in_df.loc[pivots[p_index - 1]: pivots[p_index]].drop(
+                out_df = in_df.loc[pivots[p_index - 1] : pivots[p_index]].drop(
                     index=pivots[p_index - 1], errors="ignore"
                 )
             return out_df
@@ -235,8 +242,7 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
         cls._execute_dataframe_map(ctx, op)
 
     @classmethod
-    def _execute_reduce(cls, ctx, op: "DataFramePSRSShuffle"):
-        out_chunk = op.outputs[0]
+    def _execute_reduce(cls, ctx, op: "DataFrameGroupbySortShuffle"):
         raw_inputs = list(op.iter_mapper_data(ctx, pop=False))
         by = op.by
         xdf = cudf if op.gpu else pd
