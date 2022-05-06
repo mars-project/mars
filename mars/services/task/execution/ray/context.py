@@ -14,6 +14,7 @@
 
 import functools
 import inspect
+from typing import Union
 
 from .....core.context import Context
 from .....utils import implements, lazy_import
@@ -70,24 +71,36 @@ class _RayRemoteObjectWrapper:
 
 
 class _RayRemoteObjectContext:
-    def __init__(self, task_state_actor: "ray.actor.ActorHandle", *args, **kwargs):
+    def __init__(
+        self, actor_name_or_handle: Union[str, "ray.actor.ActorHandle"], *args, **kwargs
+    ):
         super().__init__(*args, **kwargs)
-        self._task_state_actor = task_state_actor
+        self._actor_name_or_handle = actor_name_or_handle
+        self._task_state_actor = None
+
+    def _get_task_state_actor(self) -> "ray.actor.ActorHandle":
+        if self._task_state_actor is None:
+            if isinstance(self._actor_name_or_handle, ray.actor.ActorHandle):
+                self._task_state_actor = self._actor_name_or_handle
+            else:
+                self._task_state_actor = ray.get_actor(self._actor_name_or_handle)
+        return self._task_state_actor
 
     @implements(Context.create_remote_object)
     def create_remote_object(self, name: str, object_cls, *args, **kwargs):
-        self._task_state_actor.create_remote_object.remote(
-            name, object_cls, *args, **kwargs
-        )
-        return _RayRemoteObjectWrapper(self._task_state_actor, name)
+        task_state_actor = self._get_task_state_actor()
+        task_state_actor.create_remote_object.remote(name, object_cls, *args, **kwargs)
+        return _RayRemoteObjectWrapper(task_state_actor, name)
 
     @implements(Context.get_remote_object)
     def get_remote_object(self, name: str):
-        return _RayRemoteObjectWrapper(self._task_state_actor, name)
+        task_state_actor = self._get_task_state_actor()
+        return _RayRemoteObjectWrapper(task_state_actor, name)
 
     @implements(Context.destroy_remote_object)
     def destroy_remote_object(self, name: str):
-        self._task_state_actor.destroy_remote_object.remote(name)
+        task_state_actor = self._get_task_state_actor()
+        task_state_actor.destroy_remote_object.remote(name)
 
 
 # TODO(fyrestone): Implement more APIs for Ray.

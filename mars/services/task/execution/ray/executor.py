@@ -39,6 +39,7 @@ from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
 from ....subtask import Subtask, SubtaskGraph
 from ....subtask.utils import iter_input_data_keys, iter_output_data
+from ...core import Task
 from ..api import (
     TaskExecutor,
     ExecutionConfig,
@@ -56,11 +57,13 @@ logger = logging.getLogger(__name__)
 
 
 class RayTaskState(RayRemoteObjectManager):
-    pass
+    @classmethod
+    def gen_name(cls, task_id: str):
+        return f"{cls.__name__}_{task_id}"
 
 
 def execute_subtask(
-    task_state_actor: "ray.actor.ActorHandle",
+    task_id: str,
     subtask_id: str,
     subtask_chunk_graph: ChunkGraph,
     output_meta_keys: Set[str],
@@ -71,7 +74,9 @@ def execute_subtask(
     ensure_coverage()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     # inputs = [i[1] for i in inputs]
-    context = RayExecutionWorkerContext(task_state_actor, zip(input_keys, inputs))
+    context = RayExecutionWorkerContext(
+        RayTaskState.gen_name(task_id), zip(input_keys, inputs)
+    )
     # optimize chunk graph.
     subtask_chunk_graph = optimize(subtask_chunk_graph)
     # from data_key to results
@@ -106,23 +111,23 @@ class RayTaskExecutor(TaskExecutor):
     def __init__(
         self,
         config: ExecutionConfig,
-        task,
-        tile_context,
-        ray_executor,
-        lifecycle_api,
-        meta_api,
-        task_state_actor,
+        task: Task,
+        tile_context: TileContext,
+        ray_executor: "ray.remote_function.RemoteFunction",
+        task_state_actor: "ray.actor.ActorHandle",
+        lifecycle_api: LifecycleAPI,
+        meta_api: MetaAPI,
     ):
         self._config = config
         self._task = task
         self._tile_context = tile_context
         self._ray_executor = ray_executor
+        self._task_state_actor = task_state_actor
 
         # api
         self._lifecycle_api = lifecycle_api
         self._meta_api = meta_api
 
-        self._task_state_actor = task_state_actor
         self._task_context = {}
         self._available_band_resources = None
 
@@ -133,22 +138,26 @@ class RayTaskExecutor(TaskExecutor):
         *,
         session_id: str,
         address: str,
-        task,
+        task: Task,
         tile_context: TileContext,
         **kwargs,
     ) -> "TaskExecutor":
         ray_executor = ray.remote(execute_subtask)
         lifecycle_api, meta_api = await cls._get_apis(session_id, address)
-        task_state_actor = ray.remote(RayTaskState).remote()
+        task_state_actor = (
+            ray.remote(RayTaskState)
+            .options(name=RayTaskState.gen_name(task.task_id))
+            .remote()
+        )
         await cls._init_context(task_state_actor, session_id, address)
         return cls(
             config,
             task,
             tile_context,
             ray_executor,
+            task_state_actor,
             lifecycle_api,
             meta_api,
-            task_state_actor,
         )
 
     @classmethod
@@ -199,7 +208,7 @@ class RayTaskExecutor(TaskExecutor):
             output_object_refs = self._ray_executor.options(
                 num_returns=output_count
             ).remote(
-                self._task_state_actor,
+                subtask.task_id,
                 subtask.subtask_id,
                 serialize(subtask_chunk_graph),
                 output_meta_keys,
