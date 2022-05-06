@@ -42,7 +42,7 @@ class RayRemoteObjectManager:
         return await async_meth(*args, **kwargs)
 
     @staticmethod
-    @functools.lru_cache
+    @functools.lru_cache(100)
     def _sync_to_async(func):
         if inspect.iscoroutinefunction(func):
             return func
