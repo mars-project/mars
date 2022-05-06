@@ -19,9 +19,11 @@ import pytest
 
 from .....tests.core import require_ray
 from .....utils import ensure_coverage, lazy_import
+from ....core import ActorRef
 from ....errors import ServerClosed
 from ...communication.base import ChannelType
-from ..communication import ChannelID, Channel, RayServer, RayClient
+from ...message import SendMessage
+from ..communication import ChannelID, Channel, RayServer, RayClient, msg_to_simple_str
 
 ray = lazy_import("ray")
 
@@ -121,3 +123,23 @@ async def test_actor_to_actor_channel(ray_start_regular):
     for i in range(10):
         assert await server_actor1.check.remote(server2_address, i)
         assert await server_actor2.check.remote(server1_address, i)
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_msg_to_simple_str(ray_start_regular):
+    assert msg_to_simple_str(1) == "1"
+    assert msg_to_simple_str(True) == "True"
+    assert msg_to_simple_str("a") == "a"
+    assert msg_to_simple_str([1, 2]) == "List<1, 2...2>"
+    assert msg_to_simple_str({1, 2}) == "Set<1, 2...2>"
+    assert msg_to_simple_str((1, 2.0, False)) == "Tuple<1, 2.0, False...3>"
+    assert msg_to_simple_str({"a": [1, 2]}) == "Dict<k=a, v=List<1, 2...2>...1>"
+    assert (
+        msg_to_simple_str(
+            SendMessage(
+                message_id=b"abc", actor_ref=ActorRef("addr", b"id"), content="abc"
+            )
+        )
+        == "SendMessage(actor_ref=ActorRef(uid=b'id', address='addr'), content=abc)"
+    )

@@ -680,6 +680,7 @@ def _cancel_when_execute(session, cancelled):
     assert all(not r._executed_sessions for r in rs)
 
     del rs
+    time.sleep(0.5)
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
 
@@ -703,6 +704,7 @@ def _cancel_when_tile(session, cancelled):
     assert not a._executed_sessions
 
     del a
+    time.sleep(0.5)
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
 
@@ -823,9 +825,6 @@ min_task_runtime = 2
 @pytest.fixture
 async def speculative_cluster():
     config = _load_config()
-    # coloring based fusion will make subtask too heterogeneous such that the speculative scheduler can't
-    # get enough homogeneous subtasks to calculate statistics
-    config["task"]["default_config"]["fuse_enabled"] = False
     config["scheduling"]["speculation"]["enabled"] = True
     config["scheduling"]["speculation"]["interval"] = 0.5
     config["scheduling"]["speculation"]["threshold"] = 0.2
