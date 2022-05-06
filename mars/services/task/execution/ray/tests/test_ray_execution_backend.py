@@ -23,11 +23,7 @@ from ......serialization import serialize
 from ......tests.core import require_ray
 from ......utils import lazy_import, get_chunk_params
 from ....core import new_task_id
-from ..context import (
-    RayRemoteObjectManager,
-    _RayRemoteObjectContext,
-    _RayRemoteObjectWrapper,
-)
+from ..context import RayRemoteObjectManager, _RayRemoteObjectContext
 from ..executor import execute_subtask
 from ..fetcher import RayFetcher
 
