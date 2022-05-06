@@ -39,7 +39,9 @@ scheduling:
     scheduler_backlog_timeout: 60
     worker_idle_timeout: 120
   speculation:
-    # Enables (yes) or disables (no) speculative execution of subtasks
+    # Enables (yes) or disables (no) speculative execution of subtasks.
+    # If enabled, `initial_same_color_num` will be set to 1 to ensure enough homogeneous subtasks to
+    # calculate statistics
     enabled: no
     # Don't submit subtasks actually for slow subtasks
     dry: no
