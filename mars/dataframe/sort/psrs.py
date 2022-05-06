@@ -543,9 +543,6 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
                 return self._value >= other
 
             def __gt__(self, other):
-                if isinstance(other, ReversedValue):
-                    # may happen when call searchsorted
-                    return self._value <= other._value
                 return self._value <= other
 
             def __repr__(self):
@@ -554,7 +551,12 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
         if isinstance(ascending, list):
             for asc, col in zip(ascending, pivots.columns):
                 if not asc:
-                    pivots[col] = pivots[col].map(lambda x: ReversedValue(x))
+                    if np.issubdtype(pivots.dtypes[col], np.number):
+                        # for numeric dtypes, convert to negative is more efficient
+                        pivots[col] = -pivots[col]
+                    else:
+                        # for other types, convert to ReversedValue
+                        pivots[col] = pivots[col].map(lambda x: ReversedValue(x))
             ascending = True
 
         records = src_cols.to_records(index=False)
