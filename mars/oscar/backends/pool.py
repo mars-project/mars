@@ -456,7 +456,9 @@ class AbstractActorPool(ABC):
     async def stop(self):
         try:
             # clean global router
-            Router.get_instance().remove_router(self._router)
+            router = Router.get_instance()
+            if router is not None:
+                router.remove_router(self._router)
             stop_tasks = []
             # stop all servers
             stop_tasks.extend([server.stop() for server in self._servers])
