@@ -70,10 +70,6 @@ class ResourceEvaluator(ABC):
         name = config.get("resource_evaluator", "default")
         evaluator_config = config.get(name, {})
         evaluator_cls = _name_to_resource_evaluator[name]
-        if evaluator_cls.create.__func__ is ResourceEvaluator.create.__func__:
-            raise NotImplementedError(
-                f"The {evaluator_cls} should implement the abstract classmethod `create`."
-            )
         return await evaluator_cls.create(evaluator_config, **kwargs)
 
     @abstractmethod
