@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Dict, Type, Any
 
 from .....resource import Resource
@@ -34,7 +34,7 @@ def init_default_resource_for_subtask(subtask_graph: "SubtaskGraph"):  # noqa: F
         )
 
 
-class ResourceEvaluator:
+class ResourceEvaluator(ABC):
     """
     Resource evaluator is used to estimate and set resources required by
     subtasks. It can be an internal service or an external service. If it

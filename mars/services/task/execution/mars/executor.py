@@ -73,7 +73,7 @@ class MarsTaskExecutor(TaskExecutor):
         lifecycle_api: LifecycleAPI,
         scheduling_api: SchedulingAPI,
         meta_api: MetaAPI,
-        resource_evaluator,
+        resource_evaluator: ResourceEvaluator,
     ):
         self._config = config
         self._task = task
