@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import logging
+import time
 
 from contextlib import contextmanager
 from enum import Enum
 from queue import PriorityQueue
-import time
-from typing import Optional, Tuple, NamedTuple, Callable, List
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
 
 from .backends.console import console_metric
 from .backends.prometheus import prometheus_metric
@@ -34,7 +34,7 @@ _backends_cls = {
 }
 
 
-def init_metrics(backend="console", port=0):
+def init_metrics(backend="console", config: Dict[str, Any] = None):
     backend = backend or "console"
     if backend not in _backends_cls:
         raise NotImplementedError(f"Do not support metric backend {backend}")
@@ -44,6 +44,7 @@ def init_metrics(backend="console", port=0):
         try:
             from prometheus_client import start_http_server
 
+            port = config.get("port", 0) if config else 0
             start_http_server(port)
             logger.info("Finished startup prometheus http server and port is %d", port)
         except ImportError:
