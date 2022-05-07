@@ -147,8 +147,8 @@ class Operand(Base, metaclass=OperandMetaclass):
         extra_names = (
             set(kwargs) - set(self._FIELDS) - set(SchedulingHint.all_hint_names)
         )
-        extras = AttributeDict((k, kwargs.pop(k)) for k in extra_names)
-        kwargs["extra_params"] = kwargs.pop("extra_params", extras)
+        extras = dict((k, kwargs.pop(k)) for k in extra_names)
+        kwargs["extra_params"] = AttributeDict(kwargs.pop("extra_params", extras))
         self._extract_scheduling_hint(kwargs)
         super().__init__(*args, **kwargs)
 

@@ -73,6 +73,8 @@ class MyOperand5(MyOperand4):
 
 
 def test_execute():
+    op = MyOperand(extra_params={"my_extra_params": 1})
+    assert op.extra_params["my_extra_params"] == 1
     MyOperand.register_executor(lambda *_: 2)
     assert execute(dict(), MyOperand(_key="1")) == 2
     assert execute(dict(), MyOperand2(_key="1")) == 2
