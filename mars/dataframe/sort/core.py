@@ -19,11 +19,12 @@ from ...core import recursive_tile
 from ...core.operand import OperandStage
 from ...serialization.serializables import (
     FieldTypes,
+    AnyField,
+    BoolField,
     Int32Field,
     Int64Field,
-    StringField,
     ListField,
-    BoolField,
+    StringField,
 )
 from ...utils import ceildiv
 from ..operands import DataFrameOperand
@@ -32,7 +33,7 @@ from ..utils import parse_index
 
 class DataFrameSortOperand(DataFrameOperand):
     _axis = Int32Field("axis")
-    _ascending = BoolField("ascending")
+    _ascending = AnyField("ascending")
     _inplace = BoolField("inplace")
     _kind = StringField("kind")
     _na_position = StringField("na_position")
