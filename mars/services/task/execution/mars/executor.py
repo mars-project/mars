@@ -20,6 +20,7 @@ from typing import Dict, List, Optional, Set
 
 from ..... import oscar as mo
 from .....core import ChunkGraph, TileContext
+from .....core.context import set_context
 from .....core.operand import (
     Fetch,
     MapReduceOperand,
@@ -33,6 +34,7 @@ from .....oscar.profiling import (
 from .....resource import Resource
 from .....typing import TileableType, BandType
 from .....utils import Timer
+from ....context import ThreadedServiceContext
 from ....cluster.api import ClusterAPI
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
@@ -121,6 +123,7 @@ class MarsTaskExecutor(TaskExecutor):
             task_id=task.task_id,
             cluster_api=cluster_api,
         )
+        await cls._init_context(session_id, address)
         return cls(
             config,
             task,
@@ -141,6 +144,15 @@ class MarsTaskExecutor(TaskExecutor):
             SchedulingAPI.create(session_id, address),
             MetaAPI.create(session_id, address),
         )
+
+    @classmethod
+    async def _init_context(cls, session_id: str, address: str):
+        loop = asyncio.get_running_loop()
+        context = ThreadedServiceContext(
+            session_id, address, address, address, loop=loop
+        )
+        await context.init()
+        set_context(context)
 
     async def __aenter__(self):
         profiling = ProfilingData[self._task.task_id, "general"]
