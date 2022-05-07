@@ -162,6 +162,7 @@ class RayTaskExecutor(TaskExecutor):
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
         # TODO(fyrestone): Filter out the Fetch chunk.
         result_keys = {chunk.key for chunk in chunk_graph.result_chunks}
+        stage_object_refs = []
         for subtask in subtask_graph.topological_iter():
             subtask_chunk_graph = subtask.chunk_graph
             key_to_input = await self._load_subtask_inputs(
@@ -179,6 +180,7 @@ class RayTaskExecutor(TaskExecutor):
                 list(key_to_input.keys()),
                 *key_to_input.values(),
             )
+            self._stage_output_object_refs.append(stage_object_refs)
             if output_count == 0:
                 continue
             elif output_count == 1:
@@ -188,6 +190,9 @@ class RayTaskExecutor(TaskExecutor):
                 # TODO(fyrestone): Fetch(not get) meta object here.
                 output_meta_object_refs.append(meta_object_ref)
             context.update(zip(output_keys, output_object_refs))
+        prev_progress = sum(self._stage_tile_progresses)
+        curr_tile_progress = self._tile_context.get_all_progress() - prev_progress
+        self._stage_tile_progresses.append(curr_tile_progress)
         logger.info("Submitted %s subtasks of stage %s.", len(subtask_graph), stage_id)
 
         assert len(output_meta_object_refs) > 0
@@ -207,11 +212,6 @@ class RayTaskExecutor(TaskExecutor):
             chunk_to_result[chunk] = ExecutionChunkResult(
                 key_to_meta[chunk_key], object_ref
             )
-
-        self._stage_output_object_refs.append(output_object_refs)
-        prev_progress = sum(self._stage_tile_progresses)
-        curr_tile_progress = self._tile_context.get_all_progress() - prev_progress
-        self._stage_tile_progresses.append(curr_tile_progress)
 
         logger.info("Waiting for stage %s complete.", stage_id)
         ray.wait(output_object_refs, fetch_local=False)
