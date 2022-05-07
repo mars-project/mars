@@ -406,7 +406,7 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
                     return [
                         (out.key, (i,) + out.index[1:]) for i in range(shuffle_size)
                     ]
-        return super().get_output_data_keys()
+        return None
 
 
 def validate_subset(df, subset):

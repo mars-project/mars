@@ -379,6 +379,10 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
         else:
             super().estimate_size(ctx, op)
 
+    def get_output_data_keys(self):
+        # TODO(fyrestone): To be implemented.
+        return None
+
     @classmethod
     def _execute_map(cls, ctx, op):
         chunk = op.outputs[0]

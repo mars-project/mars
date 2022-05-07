@@ -357,7 +357,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
                 output.append((chunk.key, reducer_index))
             return output
         else:
-            return super().get_output_data_keys()
+            return None
 
     @classmethod
     def execute_map(cls, ctx, op):

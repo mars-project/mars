@@ -346,7 +346,7 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
             else:
                 return [(output_key, (i,)) for i in range(len(out_chunk_size[0]))]
         else:
-            return super().get_output_data_keys()
+            return None
 
     @classmethod
     def _execute_map(cls, ctx, op):

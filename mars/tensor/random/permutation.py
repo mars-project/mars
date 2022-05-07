@@ -168,7 +168,7 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
                 keys.append((out_chunk.key, reduce_idx))
             return keys
         else:
-            return super().get_output_data_keys()
+            return None
 
     @classmethod
     def _execute_map(cls, ctx, op):

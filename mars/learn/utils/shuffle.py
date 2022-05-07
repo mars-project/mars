@@ -385,7 +385,7 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
                 keys.append((out.key, tuple(index)))
             return keys
         else:
-            return super().get_output_data_keys()
+            return None
 
     @classmethod
     def execute_map(cls, ctx, op):

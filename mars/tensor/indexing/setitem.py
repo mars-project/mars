@@ -287,7 +287,7 @@ class TensorIndexSetValue(TensorMapReduceOperand, TensorOperandMixin):
                 )
             ]
         else:
-            return super().get_output_data_keys()
+            return None
 
     @classmethod
     def _execute_map(cls, ctx, op):

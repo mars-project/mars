@@ -189,7 +189,7 @@ class FancyIndexingDistribute(TensorMapReduceOperand, TensorOperandMixin):
                 for idx in itertools.product(*(range(len(nsplits[ax])) for ax in axes))
             ]
         else:
-            return super().get_output_data_keys()
+            return None
 
     @classmethod
     def _execute_map(cls, ctx, op):
@@ -287,7 +287,7 @@ class FancyIndexingConcat(TensorMapReduceOperand, TensorOperandMixin):
             key = self.outputs[0].key
             return [(key, (i,)) for i in range(self._fancy_shuffle_size)]
         else:
-            return super().get_output_data_keys()
+            return None
 
     @classmethod
     def _execute_map(cls, ctx, op):

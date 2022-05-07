@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Union, List
+
 from ... import opcodes
 from ...serialization.serializables import (
     Int32Field,
@@ -40,8 +42,12 @@ class MapReduceOperand(Operand):
 
         return super()._new_chunks(inputs, kws, **kw)
 
-    def get_output_data_keys(self):
-        return None
+    def get_output_data_keys(self) -> Union[List, None]:
+        """
+        Get the output data keys before execute.
+        If the stage != OperandStage.map, returns None.
+        """
+        raise NotImplementedError
 
     def get_dependent_data_keys(self):
         from .fetch import FetchShuffle

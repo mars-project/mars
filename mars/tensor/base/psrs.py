@@ -693,7 +693,7 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
         if self.stage == OperandStage.map:
             return [(self.outputs[0].key, (i,)) for i in range(self.n_partition)]
         else:
-            return super().get_output_data_keys()
+            return None
 
     @classmethod
     def _execute_map(cls, ctx, op):
@@ -883,7 +883,7 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
                 (self.outputs[0].key, (idx,)) for idx in range(len(self.output_sizes))
             ]
         else:
-            return super().get_output_data_keys()
+            return None
 
     @classmethod
     def _execute_map(cls, ctx, op):

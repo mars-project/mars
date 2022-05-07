@@ -158,6 +158,10 @@ class TensorBinCount(TensorMapReduceOperand, TensorOperandMixin):
             **params,
         )
 
+    def get_output_data_keys(self):
+        # TODO(fyrestone): To be implemented.
+        return None
+
     @classmethod
     def _execute_map(cls, ctx, op: "TensorBinCount"):
         input_val = ctx[op.inputs[0].key]

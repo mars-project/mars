@@ -90,7 +90,7 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
                 for index_idx in range(self.index_shuffle_size)
             ]
         else:
-            return super().get_output_data_keys()
+            return None
 
     @classmethod
     def execute_map(cls, ctx, op):

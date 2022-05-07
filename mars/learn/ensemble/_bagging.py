@@ -479,7 +479,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             reducer_iter = self._get_reducer_iter(self)
             return [(out_samples.key, (reducer_id, 0)) for reducer_id in reducer_iter]
         else:
-            return super().get_output_data_keys()
+            return None
 
     @classmethod
     def _execute_map(cls, ctx, op: "BaggingSample"):

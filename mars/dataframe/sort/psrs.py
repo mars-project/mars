@@ -663,7 +663,7 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
             out = self.outputs[0]
             return [(out.key, (i,)) for i in range(self.n_partition)]
         else:
-            return super().get_output_data_keys()
+            return None
 
     @classmethod
     def _execute_map(cls, ctx, op):

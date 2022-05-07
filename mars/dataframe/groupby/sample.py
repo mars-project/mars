@@ -568,7 +568,7 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
             key = self.outputs[0].key
             return [(key, (idx,)) for idx in range(len(self.input_nsplits))]
         else:
-            return super().get_output_data_keys()
+            return None
 
     @classmethod
     def execute(cls, ctx, op: "GroupBySample"):
