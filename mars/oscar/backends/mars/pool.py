@@ -239,7 +239,14 @@ class MainActorPool(MainActorPoolBase):
         await asyncio.to_thread(process.join, 5)
 
     async def is_sub_pool_alive(self, process: multiprocessing.Process):
-        return await asyncio.to_thread(process.is_alive)
+        try:
+            return await asyncio.to_thread(process.is_alive)
+        except RuntimeError as ex:  # pragma : no cover
+            if "shutdown" not in str(ex):
+                # when atexit is triggered, the default pool might be shutdown
+                # and to_thread will fail
+                raise
+            return process.is_alive()
 
     async def recover_sub_pool(self, address: str):
         process_index = self._config.get_process_index(address)

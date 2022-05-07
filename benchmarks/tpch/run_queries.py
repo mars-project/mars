@@ -15,10 +15,14 @@
 # limitations under the License.
 
 import argparse
+import functools
 import time
+from typing import Callable
 
 import mars
 import mars.dataframe as md
+
+queries = None
 
 
 def load_lineitem(data_folder: str) -> md.DataFrame:
@@ -89,8 +93,21 @@ def load_partsupp(data_folder: str) -> md.DataFrame:
     return df
 
 
+def tpc_query(q: Callable):
+    @functools.wraps(q)
+    def wrapped(*args, **kwargs):
+        if not queries or q.__name__ in queries:
+            t = time.time()
+            q(*args, **kwargs)
+            print("%s Execution time (s): %f" % (q.__name__.upper(), time.time() - t))
+        else:
+            pass
+
+    return wrapped
+
+
+@tpc_query
 def q01(lineitem: md.DataFrame):
-    t1 = time.time()
     date = md.Timestamp("1998-09-02")
     lineitem_filtered = lineitem.loc[
         :,
@@ -143,11 +160,10 @@ def q01(lineitem: md.DataFrame):
     )
     total = total.sort_values(["L_RETURNFLAG", "L_LINESTATUS"])
     print(total.execute())
-    print("Q01 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q02(part, partsupp, supplier, nation, region):
-    t1 = time.time()
     nation_filtered = nation.loc[:, ["N_NATIONKEY", "N_NAME", "N_REGIONKEY"]]
     region_filtered = region[(region["R_NAME"] == "EUROPE")]
     region_filtered = region_filtered.loc[:, ["R_REGIONKEY"]]
@@ -248,11 +264,10 @@ def q02(part, partsupp, supplier, nation, region):
         ascending=[False, True, True, True],
     )
     print(total.execute())
-    print("Q02 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q03(lineitem, orders, customer):
-    t1 = time.time()
     date = md.Timestamp("1995-03-04")
     lineitem_filtered = lineitem.loc[
         :, ["L_ORDERKEY", "L_EXTENDEDPRICE", "L_DISCOUNT", "L_SHIPDATE"]
@@ -279,9 +294,9 @@ def q03(lineitem, orders, customer):
     )
     res = total.loc[:, ["L_ORDERKEY", "TMP", "O_ORDERDATE", "O_SHIPPRIORITY"]]
     print(res.head(10).execute())
-    print("Q03 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q04(lineitem, orders):
     t1 = time.time()
     date1 = md.Timestamp("1993-11-01")
@@ -297,11 +312,10 @@ def q04(lineitem, orders):
         .sort_values(["O_ORDERPRIORITY"])
     )
     print(total.execute())
-    print("Q04 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q05(lineitem, orders, customer, nation, region, supplier):
-    t1 = time.time()
     date1 = md.Timestamp("1996-01-01")
     date2 = md.Timestamp("1997-01-01")
     rsel = region.R_NAME == "ASIA"
@@ -319,11 +333,10 @@ def q05(lineitem, orders, customer, nation, region, supplier):
     gb = jn5.groupby("N_NAME", as_index=False)["TMP"].sum()
     total = gb.sort_values("TMP", ascending=False)
     print(total.execute())
-    print("Q05 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q06(lineitem):
-    t1 = time.time()
     date1 = md.Timestamp("1996-01-01")
     date2 = md.Timestamp("1997-01-01")
     lineitem_filtered = lineitem.loc[
@@ -339,13 +352,11 @@ def q06(lineitem):
     flineitem = lineitem_filtered[sel]
     total = (flineitem.L_EXTENDEDPRICE * flineitem.L_DISCOUNT).sum()
     print(total.execute())
-    print("Q06 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q07(lineitem, supplier, orders, customer, nation):
     """This version is faster than q07_old. Keeping the old one for reference"""
-    t1 = time.time()
-
     lineitem_filtered = lineitem[
         (lineitem["L_SHIPDATE"] >= md.Timestamp("1995-01-01"))
         & (lineitem["L_SHIPDATE"] < md.Timestamp("1997-01-01"))
@@ -429,11 +440,10 @@ def q07(lineitem, supplier, orders, customer, nation):
         by=["SUPP_NATION", "CUST_NATION", "L_YEAR"], ascending=[True, True, True]
     )
     print(total.execute())
-    print("Q07 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q08(part, lineitem, supplier, orders, customer, nation, region):
-    t1 = time.time()
     part_filtered = part[(part["P_TYPE"] == "ECONOMY ANODIZED STEEL")]
     part_filtered = part_filtered.loc[:, ["P_PARTKEY"]]
     lineitem_filtered = lineitem.loc[:, ["L_PARTKEY", "L_SUPPKEY", "L_ORDERKEY"]]
@@ -493,11 +503,10 @@ def q08(part, lineitem, supplier, orders, customer, nation, region):
     total.columns = ["O_YEAR", "MKT_SHARE"]
     total = total.sort_values(by=["O_YEAR"], ascending=[True])
     print(total.execute())
-    print("Q08 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q09(lineitem, orders, part, nation, partsupp, supplier):
-    t1 = time.time()
     psel = part.P_NAME.str.contains("ghost")
     fpart = part[psel]
     jn1 = lineitem.merge(fpart, left_on="L_PARTKEY", right_on="P_PARTKEY")
@@ -514,11 +523,10 @@ def q09(lineitem, orders, part, nation, partsupp, supplier):
     gb = jn5.groupby(["N_NAME", "O_YEAR"], as_index=False)["TMP"].sum()
     total = gb.sort_values(["N_NAME", "O_YEAR"], ascending=[True, False])
     print(total.execute())
-    print("Q09 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q10(lineitem, orders, customer, nation):
-    t1 = time.time()
     date1 = md.Timestamp("1994-11-01")
     date2 = md.Timestamp("1995-02-01")
     osel = (orders.O_ORDERDATE >= date1) & (orders.O_ORDERDATE < date2)
@@ -543,11 +551,10 @@ def q10(lineitem, orders, customer, nation):
     )["TMP"].sum()
     total = gb.sort_values("TMP", ascending=False)
     print(total.head(20).execute())
-    print("Q10 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q11(partsupp, supplier, nation):
-    t1 = time.time()
     partsupp_filtered = partsupp.loc[:, ["PS_PARTKEY", "PS_SUPPKEY"]]
     partsupp_filtered["TOTAL_COST"] = (
         partsupp["PS_SUPPLYCOST"] * partsupp["PS_AVAILQTY"]
@@ -570,11 +577,10 @@ def q11(partsupp, supplier, nation):
     total = total[total["VALUE"] > sum_val]
     total = total.sort_values("VALUE", ascending=False)
     print(total.execute())
-    print("Q11 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q12(lineitem, orders):
-    t1 = time.time()
     date1 = md.Timestamp("1994-01-01")
     date2 = md.Timestamp("1995-01-01")
     sel = (
@@ -599,11 +605,10 @@ def q12(lineitem, orders):
     total = total.reset_index()  # reset index to keep consistency with pandas
     total = total.sort_values("L_SHIPMODE")
     print(total.execute())
-    print("Q12 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q13(customer, orders):
-    t1 = time.time()
     customer_filtered = customer.loc[:, ["C_CUSTKEY"]]
     orders_filtered = orders[
         ~orders["O_COMMENT"].str.contains("special(\S|\s)*requests")
@@ -620,11 +625,10 @@ def q13(customer, orders):
     total.columns = ["C_COUNT", "CUSTDIST"]
     total = total.sort_values(by=["CUSTDIST", "C_COUNT"], ascending=[False, False])
     print(total.execute())
-    print("Q13 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q14(lineitem, part):
-    t1 = time.time()
     startDate = md.Timestamp("1994-03-01")
     endDate = md.Timestamp("1994-04-01")
     p_type_like = "PROMO"
@@ -640,11 +644,10 @@ def q14(lineitem, part):
     jn["TMP"] = jn.L_EXTENDEDPRICE * (1.0 - jn.L_DISCOUNT)
     total = jn[jn.P_TYPE.str.startswith(p_type_like)].TMP.sum() * 100 / jn.TMP.sum()
     print(total.execute())
-    print("Q14 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q15(lineitem, supplier):
-    t1 = time.time()
     lineitem_filtered = lineitem[
         (lineitem["L_SHIPDATE"] >= md.Timestamp("1996-01-01"))
         & (
@@ -671,11 +674,10 @@ def q15(lineitem, supplier):
         :, ["S_SUPPKEY", "S_NAME", "S_ADDRESS", "S_PHONE", "TOTAL_REVENUE"]
     ]
     print(total.execute())
-    print("Q15 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q16(part, partsupp, supplier):
-    t1 = time.time()
     part_filtered = part[
         (part["P_BRAND"] != "Brand#45")
         & (~part["P_TYPE"].str.contains("^MEDIUM POLISHED"))
@@ -706,11 +708,10 @@ def q16(part, partsupp, supplier):
         ascending=[False, True, True, True],
     )
     print(total.execute())
-    print("Q16 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q17(lineitem, part):
-    t1 = time.time()
     left = lineitem.loc[:, ["L_PARTKEY", "L_QUANTITY", "L_EXTENDEDPRICE"]]
     right = part[((part["P_BRAND"] == "Brand#23") & (part["P_CONTAINER"] == "MED BOX"))]
     right = right.loc[:, ["P_PARTKEY"]]
@@ -732,11 +733,10 @@ def q17(lineitem, part):
     total = total[total["L_QUANTITY"] < total["avg"]]
     total = md.DataFrame({"avg_yearly": [total["L_EXTENDEDPRICE"].sum() / 7.0]})
     print(total.execute())
-    print("Q17 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q18(lineitem, orders, customer):
-    t1 = time.time()
     gb1 = lineitem.groupby("L_ORDERKEY", as_index=False)["L_QUANTITY"].sum()
     fgb1 = gb1[gb1.L_QUANTITY > 300]
     jn1 = fgb1.merge(orders, left_on="L_ORDERKEY", right_on="O_ORDERKEY")
@@ -747,11 +747,10 @@ def q18(lineitem, orders, customer):
     )["L_QUANTITY"].sum()
     total = gb2.sort_values(["O_TOTALPRICE", "O_ORDERDATE"], ascending=[False, True])
     print(total.head(100).execute())
-    print("Q18 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q19(lineitem, part):
-    t1 = time.time()
     Brand31 = "Brand#31"
     Brand43 = "Brand#43"
     SMBOX = "SM BOX"
@@ -848,11 +847,10 @@ def q19(lineitem, part):
     jn = jn[jnsel]
     total = (jn.L_EXTENDEDPRICE * (1.0 - jn.L_DISCOUNT)).sum()
     print(total.execute())
-    print("Q19 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q20(lineitem, part, nation, partsupp, supplier):
-    t1 = time.time()
     date1 = md.Timestamp("1996-01-01")
     date2 = md.Timestamp("1997-01-01")
     psel = part.P_NAME.str.startswith("azure")
@@ -877,11 +875,10 @@ def q20(lineitem, part, nation, partsupp, supplier):
     jn4 = jn4.loc[:, ["S_NAME", "S_ADDRESS"]]
     total = jn4.sort_values("S_NAME").drop_duplicates()
     print(total.execute())
-    print("Q20 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q21(lineitem, orders, supplier, nation):
-    t1 = time.time()
     lineitem_filtered = lineitem.loc[
         :, ["L_ORDERKEY", "L_SUPPKEY", "L_RECEIPTDATE", "L_COMMITDATE"]
     ]
@@ -943,11 +940,10 @@ def q21(lineitem, orders, supplier, nation):
     total.columns = ["S_NAME", "NUMWAIT"]
     total = total.sort_values(by=["NUMWAIT", "S_NAME"], ascending=[False, True])
     print(total.execute())
-    print("Q21 Execution time (s): ", time.time() - t1)
 
 
+@tpc_query
 def q22(customer, orders):
-    t1 = time.time()
     customer_filtered = customer.loc[:, ["C_ACCTBAL", "C_CUSTKEY"]]
     customer_filtered["CNTRYCODE"] = customer["C_PHONE"].str.slice(0, 2)
     customer_filtered = customer_filtered[
@@ -978,7 +974,6 @@ def q22(customer, orders):
     total = agg1.merge(agg2, on="CNTRYCODE", how="inner")
     total = total.sort_values(by=["CNTRYCODE"], ascending=[True])
     print(total.execute())
-    print("Q22 Execution time (s): ", time.time() - t1)
 
 
 def run_queries(data_folder: str):
@@ -1021,6 +1016,8 @@ def run_queries(data_folder: str):
 
 
 def main():
+    global queries
+
     parser = argparse.ArgumentParser(description="tpch-queries")
     parser.add_argument(
         "--folder",
@@ -1032,9 +1029,21 @@ def main():
         type=str,
         help="Endpoint to connect to, if not provided, will create a local cluster",
     )
+    parser.add_argument(
+        "-q",
+        "--query",
+        type=str,
+        help=(
+            "Queries selected to run, separated by commas. If not provided, "
+            "all tests will be executed"
+        ),
+    )
     args = parser.parse_args()
     folder = args.folder
     endpoint = args.endpoint
+    queries = (
+        set(x.lower().strip() for x in args.query.split(",")) if args.query else None
+    )
     mars.new_session(endpoint)
     run_queries(folder)
 
