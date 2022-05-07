@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import weakref
 from collections import OrderedDict
 from functools import partial
@@ -41,6 +42,8 @@ _primitive_field_types = (
     TimedeltaType,
     TZInfoType,
 )
+
+_is_ci = (os.environ.get("CI") or "0").lower() in ("1", "true")
 
 
 def _is_field_primitive_compound(field: Field):
@@ -122,9 +125,14 @@ class Serializable(metaclass=SerializableMeta):
         if args:  # pragma: no cover
             values = dict(zip(self.__slots__, args))
             values.update(kwargs)
+        else:
+            values = kwargs
+        if not _is_ci:
             self._FIELD_VALUES = values
         else:
-            self._FIELD_VALUES = kwargs
+            self._FIELD_VALUES = dict()
+            for k, v in values.items():
+                setattr(self, k, v)
 
     def __repr__(self):
         values = ", ".join(

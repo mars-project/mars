@@ -29,7 +29,7 @@ from .field_type import (
     ReferenceType,
 )
 
-_is_ci = "CI" in os.environ
+_is_ci = (os.environ.get("CI") or "0").lower() in ("1", "true")
 
 
 class Field(ABC):
