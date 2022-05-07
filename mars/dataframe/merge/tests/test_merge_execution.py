@@ -510,7 +510,8 @@ def test_merge_with_bloom_filter(setup):
         df1.merge(
             df2,
             on="col2",
-            bloom_filter={"max_elements": 100, "error_rate": 0.01},
+            bloom_filter=True,
+            bloom_filter_options={"max_elements": 100, "error_rate": 0.01},
             auto_merge="none",
         )
         .execute()
@@ -592,6 +593,43 @@ def test_merge_with_bloom_filter(setup):
         .fetch()
     )
     expected = raw_df3.merge(raw_df1, left_on="i1", right_on="col2")
+    pd.testing.assert_frame_equal(
+        expected.sort_index().sort_values(by=["col1_x"]).reset_index(drop=True),
+        result.sort_index().sort_values(by=["col1_x"]).reset_index(drop=True),
+    )
+
+
+@pytest.mark.parametrize("filter", ["small", "large", "both"])
+def test_merge_with_bloom_filter_options(setup, filter):
+    ns = np.random.RandomState(0)
+    raw_df1 = pd.DataFrame(
+        {
+            "col1": ns.random(100),
+            "col2": ns.randint(0, 10, size=(100,)),
+            "col3": ns.randint(0, 10, size=(100,)),
+        }
+    )
+    raw_df2 = pd.DataFrame(
+        {
+            "col1": ns.random(100),
+            "col2": ns.randint(0, 10, size=(100,)),
+            "col3": ns.randint(0, 10, size=(100,)),
+        }
+    )
+
+    df1 = from_pandas(raw_df1, chunk_size=25)
+    df2 = from_pandas(raw_df2, chunk_size=30)
+    m = df1.merge(
+        df2,
+        on="col2",
+        auto_merge="none",
+        method="shuffle",
+        bloom_filter=True,
+        bloom_filter_options={"filter": filter, "apply_chunk_size_threshold": 0},
+    )
+
+    expected = raw_df1.merge(raw_df2, on="col2")
+    result = m.execute().fetch()
     pd.testing.assert_frame_equal(
         expected.sort_index().sort_values(by=["col1_x"]).reset_index(drop=True),
         result.sort_index().sort_values(by=["col1_x"]).reset_index(drop=True),

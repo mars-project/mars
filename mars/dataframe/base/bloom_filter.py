@@ -42,7 +42,8 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
     # for build
     max_elements = Int64Field("max_elements")
     error_rate = Float64Field("error_rate")
-
+    combine_size = Int64Field("combine_size")
+    # chunk
     execution_stage = StringField("execution_stage", default=None)
 
     def __init__(self, execution_stage=None, **kwargs):
@@ -71,7 +72,7 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
             chunks.append(build_op.new_chunk(inputs=[c]))
 
         # union all chunk filters
-        combine_size = options.combine_size
+        combine_size = op.combine_size
         while len(chunks) > combine_size:
             new_chunks = []
             for i in range(0, len(chunks), combine_size):
@@ -243,6 +244,7 @@ def filter_by_bloom_filter(
     right_on: Union[str, List],
     max_elements: int = 10000,
     error_rate: float = 0.1,
+    combine_size: int = None,
 ):
     """
     Use bloom filter to filter DataFrame.
@@ -261,16 +263,21 @@ def filter_by_bloom_filter(
         How many elements you expect the filter to hold.
     error_rate: float
         error_rate defines accuracy.
+    combine_size: int
+        Combine size.
 
     Returns
     -------
     DataFrame
         Filtered df1.
     """
+    if combine_size is None:
+        combine_size = options.combine_size
     op = DataFrameBloomFilter(
         left_on=left_on,
         right_on=right_on,
         max_elements=max_elements,
         error_rate=error_rate,
+        combine_size=combine_size,
     )
     return op(df1, df2)
