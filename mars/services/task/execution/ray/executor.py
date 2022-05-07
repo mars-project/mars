@@ -113,6 +113,10 @@ class RayTaskExecutor(TaskExecutor):
         self._task_context = {}
         self._available_band_resources = None
 
+        # For progress
+        self._stage_output_object_refs = []
+        self._stage_tile_progresses = []
+
     @classmethod
     async def create(
         cls,
@@ -204,6 +208,11 @@ class RayTaskExecutor(TaskExecutor):
                 key_to_meta[chunk_key], object_ref
             )
 
+        self._stage_output_object_refs.append(output_object_refs)
+        prev_progress = sum(self._stage_tile_progresses)
+        curr_tile_progress = self._tile_context.get_all_progress() - prev_progress
+        self._stage_tile_progresses.append(curr_tile_progress)
+
         logger.info("Waiting for stage %s complete.", stage_id)
         ray.wait(output_object_refs, fetch_local=False)
         logger.info("Stage %s is complete.", stage_id)
@@ -250,7 +259,27 @@ class RayTaskExecutor(TaskExecutor):
 
     async def get_progress(self) -> float:
         """Get the execution progress."""
-        return 1
+        executor_progress = 0.0
+        assert len(self._stage_tile_progresses) == len(self._stage_output_object_refs)
+        for output_object_refs, stage_tile_progress in zip(
+            self._stage_output_object_refs, self._stage_tile_progresses
+        ):
+            if output_object_refs is None:
+                continue
+            total_refs = len(output_object_refs)
+            if total_refs == 0:
+                continue
+            finished_refs = len(
+                ray.wait(
+                    output_object_refs,
+                    num_returns=total_refs,
+                    timeout=0.1,
+                    fetch_local=False,
+                )[0]
+            )
+            progress = finished_refs / total_refs
+            executor_progress += progress * stage_tile_progress
+        return executor_progress
 
     async def cancel(self):
         """Cancel execution."""
