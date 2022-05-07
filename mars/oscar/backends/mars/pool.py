@@ -241,7 +241,7 @@ class MainActorPool(MainActorPoolBase):
     async def is_sub_pool_alive(self, process: multiprocessing.Process):
         try:
             return await asyncio.to_thread(process.is_alive)
-        except RuntimeError as ex:  # pragma : no cover
+        except RuntimeError as ex:  # pragma: no cover
             if "shutdown" not in str(ex):
                 # when atexit is triggered, the default pool might be shutdown
                 # and to_thread will fail
