@@ -59,7 +59,7 @@ class _ReversedValue:
         self._value = value
 
     def __lt__(self, other):
-        if isinstance(other, _ReversedValue):
+        if type(other) is _ReversedValue:
             # may happen when call searchsorted
             return self._value >= other._value
         return self._value >= other
@@ -551,6 +551,7 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
     def _calc_poses(src_cols, pivots, ascending=True):
         if isinstance(ascending, list):
             for asc, col in zip(ascending, pivots.columns):
+                # Make pivots available to use ascending order when mixed order specified
                 if not asc:
                     if pd.api.types.is_numeric_dtype(pivots.dtypes[col]):
                         # for numeric dtypes, convert to negative is more efficient
@@ -560,7 +561,7 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
                         # for other types, convert to ReversedValue
                         pivots[col] = pivots[col].map(
                             lambda x: x
-                            if isinstance(x, _ReversedValue)
+                            if type(x) is _ReversedValue
                             else _ReversedValue(x)
                         )
             ascending = True
