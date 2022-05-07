@@ -475,9 +475,16 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
 
     def get_output_data_keys(self):
         if self.stage == OperandStage.map:
-            out_samples = self.outputs[0]
+            key = self.outputs[0].key
             reducer_iter = self._get_reducer_iter(self)
-            return [(out_samples.key, (reducer_id, 0)) for reducer_id in reducer_iter]
+            seen = set()
+            output = []
+            for reducer_id in reducer_iter:
+                out_key = (key, (reducer_id, 0))
+                if out_key not in seen:
+                    seen.add(out_key)
+                    output.append(out_key)
+            return output
         else:
             return None
 
