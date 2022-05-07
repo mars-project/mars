@@ -23,25 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorWald(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_mean", "_scale"]
+    _input_fields_ = ["mean", "scale"]
     _op_type_ = OperandDef.RAND_WALD
 
-    _fields_ = "_mean", "_scale", "_size"
-    _mean = AnyField("mean")
-    _scale = AnyField("scale")
+    _fields_ = "mean", "scale", "size"
+    mean = AnyField("mean")
+    scale = AnyField("scale")
     _func_name = "wald"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def mean(self):
-        return self._mean
-
-    @property
-    def scale(self):
-        return self._scale
 
     def __call__(self, mean, scale, chunk_size=None):
         return self.new_tensor([mean, scale], None, raw_chunk_size=chunk_size)

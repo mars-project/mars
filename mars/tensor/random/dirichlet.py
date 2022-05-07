@@ -29,21 +29,13 @@ from .core import TensorRandomOperandMixin, TensorDistribution
 class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_DIRICHLET
 
-    _fields_ = "_alpha", "_size"
-    _alpha = TupleField("alpha")
+    _fields_ = "alpha", "size"
+    alpha = TupleField("alpha", default=None)
     _func_name = "dirichlet"
-
-    def __init__(self, alpha=None, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_alpha=alpha, _size=size, dtype=dtype, **kw)
-
-    @property
-    def alpha(self):
-        return self._alpha
 
     def _calc_shape(self, shapes):
         shape = super()._calc_shape(shapes)
-        return shape + (len(self._alpha),)
+        return shape + (len(self.alpha),)
 
     def __call__(self, chunk_size=None):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)
@@ -67,8 +59,8 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
 
             chunk_op = op.copy().reset_key()
             chunk_op._state = None
-            chunk_op._seed = seed
-            chunk_op._size = size
+            chunk_op.seed = seed
+            chunk_op.size = size
             out_chunk = chunk_op.new_chunk(inputs, shape=shape, index=idx)
             out_chunks.append(out_chunk)
 

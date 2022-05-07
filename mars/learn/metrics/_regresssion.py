@@ -214,7 +214,7 @@ def r2_score(
     nonzero_denominator = denominator != 0
     nonzero_numerator = numerator != 0
     valid_score = nonzero_denominator & nonzero_numerator
-    output_scores = mt.ones([y_true.shape[1]])
+    output_scores = mt.ones((y_true.shape[1],))
     output_scores[valid_score] = 1 - (numerator[valid_score] / denominator[valid_score])
     # arbitrary set to zero to avoid -inf scores, having a constant
     # y_true is not interesting for scoring a regression anyway
