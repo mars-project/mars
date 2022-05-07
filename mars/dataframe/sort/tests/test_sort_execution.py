@@ -27,10 +27,9 @@ from ... import DataFrame, Series, ArrowStringDtype
     "distinct_opt", ["0"] if sys.platform.lower().startswith("win") else ["0", "1"]
 )
 def test_sort_values_execution(setup, distinct_opt):
+    ns = np.random.RandomState(0)
     os.environ["PSRS_DISTINCT_COL"] = distinct_opt
-    df = pd.DataFrame(
-        np.random.rand(100, 10), columns=["a" + str(i) for i in range(10)]
-    )
+    df = pd.DataFrame(ns.rand(100, 10), columns=["a" + str(i) for i in range(10)])
 
     # test one chunk
     mdf = DataFrame(df)
@@ -65,6 +64,38 @@ def test_sort_values_execution(setup, distinct_opt):
     result = mdf.sort_values(["a7"], ascending=False).execute().fetch()
     expected = df.sort_values(["a7"], ascending=False)
 
+    pd.testing.assert_frame_equal(result, expected)
+
+    # test ascending is a list
+    result = (
+        mdf.sort_values(["a3", "a4", "a5", "a6"], ascending=[False, True, True, False])
+        .execute()
+        .fetch()
+    )
+    expected = df.sort_values(
+        ["a3", "a4", "a5", "a6"], ascending=[False, True, True, False]
+    )
+    pd.testing.assert_frame_equal(result, expected)
+
+    in_df = pd.DataFrame(
+        {
+            "col1": ns.choice([f"a{i}" for i in range(5)], size=(100,)),
+            "col2": ns.choice([f"b{i}" for i in range(5)], size=(100,)),
+            "col3": ns.choice([f"c{i}" for i in range(5)], size=(100,)),
+            "col4": ns.randint(10, 20, size=(100,)),
+        }
+    )
+    mdf = DataFrame(in_df, chunk_size=10)
+    result = (
+        mdf.sort_values(
+            ["col1", "col4", "col3", "col2"], ascending=[False, False, True, False]
+        )
+        .execute()
+        .fetch()
+    )
+    expected = in_df.sort_values(
+        ["col1", "col4", "col3", "col2"], ascending=[False, False, True, False]
+    )
     pd.testing.assert_frame_equal(result, expected)
 
     # test multiindex
