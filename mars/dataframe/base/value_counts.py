@@ -55,12 +55,12 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
 
             # cut
             try:
-                inp = cut(inp, self._bins, include_lowest=True)
+                inp = cut(inp, self.bins, include_lowest=True)
             except TypeError:  # pragma: no cover
                 raise TypeError("bins argument only works with numeric data.")
 
-            self._bins = None
-            self._convert_index_to_interval = True
+            self.bins = None
+            self.convert_index_to_interval = True
             return self.new_series(
                 [inp],
                 shape=(np.nan,),
