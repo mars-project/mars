@@ -294,7 +294,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
         if self.stage == OperandStage.map:
             return [
                 (self.outputs[0].key, (reducer,))
-                for reducer in range(op.aggregate_size)
+                for reducer in range(self.aggregate_size)
             ]
         else:
             return None
