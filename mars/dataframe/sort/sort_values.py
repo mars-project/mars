@@ -256,7 +256,7 @@ def dataframe_sort_values(
         if all(ascending):
             # all are True, convert to True
             ascending = True
-        if not any(ascending):
+        elif not any(ascending):
             # all are False, convert to False
             ascending = False
     op = DataFrameSortValues(

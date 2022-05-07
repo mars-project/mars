@@ -54,6 +54,23 @@ class _Largest:
 _largest = _Largest()
 
 
+class _ReversedValue:
+    def __init__(self, value):
+        self._value = value
+
+    def __lt__(self, other):
+        if isinstance(other, _ReversedValue):
+            # may happen when call searchsorted
+            return self._value >= other._value
+        return self._value >= other
+
+    def __gt__(self, other):
+        return self._value <= other
+
+    def __repr__(self):
+        return repr(self._value)
+
+
 class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
     @classmethod
     def _collect_op_properties(cls, op):
@@ -532,31 +549,20 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
 
     @staticmethod
     def _calc_poses(src_cols, pivots, ascending=True):
-        class ReversedValue:
-            def __init__(self, value):
-                self._value = value
-
-            def __lt__(self, other):
-                if isinstance(other, ReversedValue):
-                    # may happen when call searchsorted
-                    return self._value >= other._value
-                return self._value >= other
-
-            def __gt__(self, other):
-                return self._value <= other
-
-            def __repr__(self):
-                return repr(self._value)
-
         if isinstance(ascending, list):
             for asc, col in zip(ascending, pivots.columns):
                 if not asc:
-                    if np.issubdtype(pivots.dtypes[col], np.number):
+                    if pd.api.types.is_numeric_dtype(pivots.dtypes[col]):
                         # for numeric dtypes, convert to negative is more efficient
                         pivots[col] = -pivots[col]
+                        src_cols[col] = -src_cols[col]
                     else:
                         # for other types, convert to ReversedValue
-                        pivots[col] = pivots[col].map(lambda x: ReversedValue(x))
+                        pivots[col] = pivots[col].map(
+                            lambda x: x
+                            if isinstance(x, _ReversedValue)
+                            else _ReversedValue(x)
+                        )
             ascending = True
 
         records = src_cols.to_records(index=False)
