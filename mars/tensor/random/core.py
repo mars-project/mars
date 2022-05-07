@@ -406,6 +406,11 @@ class TensorDistribution(TensorRandomOperand):
 class TensorSimpleRandomData(TensorRandomOperand):
     _size = TupleField("size", FieldTypes.int64)
 
+    def __init__(self, _size=None, **kw):
+        if type(_size) is int:
+            _size = (_size,)
+        super().__init__(_size=_size, **kw)
+
     @property
     def size(self):
         return self._size

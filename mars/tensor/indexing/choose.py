@@ -37,7 +37,7 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
 
     def __setattr__(self, key, value):
         if key == "_mode" and value not in ("raise", "wrap", "clip"):
-            raise ValueError("mode should be raise, wrap or clip")
+            raise ValueError(f"mode should be raise, wrap or clip, not {value}")
 
         super().__setattr__(key, value)
 

@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Type, Tuple
 
 import cloudpickle
 
+from ...core.mode import is_kernel_mode, is_build_mode
 from ...utils import no_default
 from ..core import Serializer, Placeholder, buffered
 from .field import Field, OneOfField
@@ -127,7 +128,7 @@ class Serializable(metaclass=SerializableMeta):
             values.update(kwargs)
         else:
             values = kwargs
-        if not _is_ci:
+        if not _is_ci or is_kernel_mode() or is_build_mode():
             self._FIELD_VALUES = values
         else:
             self._FIELD_VALUES = dict()
