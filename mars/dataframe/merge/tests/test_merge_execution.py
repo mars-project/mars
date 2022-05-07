@@ -651,7 +651,13 @@ def test_merge_on_duplicate_columns(setup, auto_merge):
     df1 = from_pandas(raw1, chunk_size=2)
     df2 = from_pandas(raw2, chunk_size=3)
 
-    r = df1.merge(df2, left_on="lkey", right_on="rkey", auto_merge=auto_merge)
+    r = df1.merge(
+        df2,
+        left_on="lkey",
+        right_on="rkey",
+        auto_merge=auto_merge,
+        auto_merge_threshold=0,
+    )
     result = r.execute().fetch()
     expected = raw1.merge(raw2, left_on="lkey", right_on="rkey")
     pd.testing.assert_frame_equal(expected, result)

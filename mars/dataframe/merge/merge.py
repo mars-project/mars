@@ -673,7 +673,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
 
         method = cls._choose_merge_method(op, left, right)
         if cls._if_apply_bloom_filter(method, op, left, right):
-            if has_unknown_shape(left, right):
+            if has_unknown_shape(left, right):  # pragma: no cover
                 yield TileStatus(left.chunks + right.chunks, progress=0.3)
             left_on = _prepare_shuffle_on(op.left_index, op.left_on, op.on)
             right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
