@@ -1,9 +1,11 @@
 import numpy as np
 import pandas as pd
 
-from mars.dataframe.operands import DataFrameOperandMixin
-from mars.dataframe.sort.psrs import DataFramePSRSChunkOperand
-from mars.utils import lazy_import
+from ..operands import DataFrameOperandMixin
+from ..sort.psrs import DataFramePSRSChunkOperand
+from ...utils import (
+    lazy_import,
+)
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
@@ -16,22 +18,6 @@ from ...serialization.serializables import (
 )
 
 cudf = lazy_import("cudf", globals=globals())
-
-
-class _Largest:
-    """
-    This util class resolve TypeError when
-    comparing strings with None values
-    """
-
-    def __lt__(self, other):
-        return False
-
-    def __gt__(self, other):
-        return self is not other
-
-
-_largest = _Largest()
 
 
 def _series_to_df(in_series, xdf):
@@ -117,92 +103,39 @@ class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixi
 class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_SORT_SHUFFLE
 
-    _sort_type = StringField("sort_type")
-
     # for shuffle map
-    _axis = Int32Field("axis")
     _by = ListField("by")
-    _ascending = BoolField("ascending")
     _inplace = BoolField("inplace")
-    _na_position = StringField("na_position")
     _n_partition = Int32Field("n_partition")
 
-    # for sort_index
-    _level = ListField("level")
-    _sort_remaining = BoolField("sort_remaining")
-
-    # for shuffle reduce
-    _kind = StringField("kind")
 
     def __init__(
         self,
-        sort_type=None,
         by=None,
-        axis=None,
-        ascending=None,
         n_partition=None,
-        na_position=None,
         inplace=None,
-        kind=None,
-        level=None,
-        sort_remaining=None,
         output_types=None,
         **kw
     ):
         super().__init__(
-            _sort_type=sort_type,
             _by=by,
-            _axis=axis,
-            _ascending=ascending,
             _n_partition=n_partition,
-            _na_position=na_position,
             _inplace=inplace,
-            _kind=kind,
-            _level=level,
-            _sort_remaining=sort_remaining,
             _output_types=output_types,
             **kw
         )
-
-    @property
-    def sort_type(self):
-        return self._sort_type
 
     @property
     def by(self):
         return self._by
 
     @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def ascending(self):
-        return self._ascending
-
-    @property
     def inplace(self):
         return self._inplace
 
     @property
-    def na_position(self):
-        return self._na_position
-
-    @property
-    def level(self):
-        return self._level
-
-    @property
-    def sort_remaining(self):
-        return self._sort_remaining
-
-    @property
     def n_partition(self):
         return self._n_partition
-
-    @property
-    def kind(self):
-        return self._kind
 
     @property
     def output_limit(self):
