@@ -117,7 +117,6 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
 
     # for shuffle map
     _by = ListField("by")
-    _inplace = BoolField("inplace")
     _n_partition = Int32Field("n_partition")
 
     def __init__(
@@ -126,7 +125,6 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
         super().__init__(
             _by=by,
             _n_partition=n_partition,
-            _inplace=inplace,
             _output_types=output_types,
             **kw
         )
@@ -134,10 +132,6 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
     @property
     def by(self):
         return self._by
-
-    @property
-    def inplace(self):
-        return self._inplace
 
     @property
     def n_partition(self):
@@ -148,7 +142,7 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
         return 1
 
     @classmethod
-    def _execute_dataframe_map(cls, ctx, op):
+    def _execute_map(cls, ctx, op):
         df, pivots = [ctx[c.key] for c in op.inputs]
         out = op.outputs[0]
 
@@ -156,11 +150,11 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
             if p_index == 0:
                 out_df = in_df.loc[: pivots[p_index]]
             elif p_index == op.n_partition - 1:
-                out_df = in_df.loc[pivots[p_index - 1] :].drop(
+                out_df = in_df.loc[pivots[p_index - 1]:].drop(
                     index=pivots[p_index - 1], errors="ignore"
                 )
             else:
-                out_df = in_df.loc[pivots[p_index - 1] : pivots[p_index]].drop(
+                out_df = in_df.loc[pivots[p_index - 1]: pivots[p_index]].drop(
                     index=pivots[p_index - 1], errors="ignore"
                 )
             return out_df
@@ -172,13 +166,6 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
             else:
                 out_df = _get_out_df(i, df)
             ctx[out.key, index] = out_df
-
-    @classmethod
-    def _execute_map(cls, ctx, op):
-        a = [ctx[c.key] for c in op.inputs][0]
-        if isinstance(a, tuple):
-            a = a[0]
-        cls._execute_dataframe_map(ctx, op)
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "DataFrameGroupbySortShuffle"):
