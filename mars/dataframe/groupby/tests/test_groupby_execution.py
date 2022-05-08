@@ -583,7 +583,7 @@ def test_dataframe_groupby_agg_sort(setup):
     for method in ["tree", "shuffle"]:
         pd.testing.assert_frame_equal(
             e_mars_df.groupby(["A"]).mean(method=method).execute().fetch(),
-            e_df.groupby("A").mean()
+            e_df.groupby("A").mean(),
         )
 
 

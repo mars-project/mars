@@ -122,10 +122,7 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
         self, by=None, n_partition=None, inplace=None, output_types=None, **kw
     ):
         super().__init__(
-            _by=by,
-            _n_partition=n_partition,
-            _output_types=output_types,
-            **kw
+            _by=by, _n_partition=n_partition, _output_types=output_types, **kw
         )
 
     @property
@@ -149,11 +146,11 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
             if p_index == 0:
                 out_df = in_df.loc[: pivots[p_index]]
             elif p_index == op.n_partition - 1:
-                out_df = in_df.loc[pivots[p_index - 1]:].drop(
+                out_df = in_df.loc[pivots[p_index - 1] :].drop(
                     index=pivots[p_index - 1], errors="ignore"
                 )
             else:
-                out_df = in_df.loc[pivots[p_index - 1]: pivots[p_index]].drop(
+                out_df = in_df.loc[pivots[p_index - 1] : pivots[p_index]].drop(
                     index=pivots[p_index - 1], errors="ignore"
                 )
             return out_df
