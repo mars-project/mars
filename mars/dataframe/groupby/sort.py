@@ -107,7 +107,7 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
     _n_partition = Int32Field("n_partition")
 
     def __init__(
-            self, by=None, n_partition=None, inplace=None, output_types=None, **kw
+        self, by=None, n_partition=None, inplace=None, output_types=None, **kw
     ):
         super().__init__(
             _by=by,
