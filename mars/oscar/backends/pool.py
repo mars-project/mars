@@ -163,7 +163,8 @@ class AbstractActorPool(ABC):
         init_extension_entrypoints()
         # init metrics
         metric_configs = self._config.get_metric_configs()
-        init_metrics(metric_configs.get("backend"), port=metric_configs.get("port"))
+        metric_backend = metric_configs.get("backend")
+        init_metrics(metric_backend, config=metric_configs.get(metric_backend))
 
     @property
     def router(self):
@@ -456,7 +457,9 @@ class AbstractActorPool(ABC):
     async def stop(self):
         try:
             # clean global router
-            Router.get_instance().remove_router(self._router)
+            router = Router.get_instance()
+            if router is not None:
+                router.remove_router(self._router)
             stop_tasks = []
             # stop all servers
             stop_tasks.extend([server.stop() for server in self._servers])

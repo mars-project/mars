@@ -195,7 +195,8 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
 
     @classmethod
     def _parse_kwargs(cls, kwargs: Dict[str, Any]):
-        kwargs["extra_params"] = extras = AttributeDict()
+        extra_params = kwargs.pop("extra_params", {})
+        kwargs["extra_params"] = extras = AttributeDict(extra_params)
         kwargs["scheduling_hint"] = scheduling_hint = kwargs.get(
             "scheduling_hint", SchedulingHint()
         )

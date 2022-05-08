@@ -20,7 +20,13 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core.operand import OperandStage, MapReduceOperand
 from ...utils import lazy_import, calc_nsplits
-from ...serialization.serializables import Int32Field, ListField, StringField, BoolField
+from ...serialization.serializables import (
+    AnyField,
+    Int32Field,
+    ListField,
+    StringField,
+    BoolField,
+)
 from ...tensor.base.psrs import PSRSOperandMixin
 from ..core import IndexValue, OutputType
 from ..utils import standardize_range_index, parse_index, is_cudf
@@ -46,6 +52,23 @@ class _Largest:
 
 
 _largest = _Largest()
+
+
+class _ReversedValue:
+    def __init__(self, value):
+        self._value = value
+
+    def __lt__(self, other):
+        if type(other) is _ReversedValue:
+            # may happen when call searchsorted
+            return self._value >= other._value
+        return self._value >= other
+
+    def __gt__(self, other):
+        return self._value <= other
+
+    def __repr__(self):
+        return repr(self._value)
 
 
 class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
@@ -380,90 +403,23 @@ def execute_sort_index(data, op, inplace=None):
 
 class DataFramePSRSChunkOperand(DataFrameOperand):
     # sort type could be 'sort_values' or 'sort_index'
-    _sort_type = StringField("sort_type")
+    sort_type = StringField("sort_type")
 
-    _axis = Int32Field("axis")
-    _by = ListField("by")
-    _ascending = BoolField("ascending")
-    _inplace = BoolField("inplace")
-    _kind = StringField("kind")
-    _na_position = StringField("na_position")
+    axis = Int32Field("axis")
+    by = ListField("by", default=None)
+    ascending = AnyField("ascending")
+    inplace = BoolField("inplace")
+    kind = StringField("kind")
+    na_position = StringField("na_position")
 
     # for sort_index
-    _level = ListField("level")
-    _sort_remaining = BoolField("sort_remaining")
+    level = ListField("level")
+    sort_remaining = BoolField("sort_remaining")
 
-    _n_partition = Int32Field("n_partition")
+    n_partition = Int32Field("n_partition")
 
-    def __init__(
-        self,
-        sort_type=None,
-        by=None,
-        axis=None,
-        ascending=None,
-        inplace=None,
-        kind=None,
-        na_position=None,
-        level=None,
-        sort_remaining=None,
-        n_partition=None,
-        output_types=None,
-        **kw
-    ):
-        super().__init__(
-            _sort_type=sort_type,
-            _by=by,
-            _axis=axis,
-            _ascending=ascending,
-            _inplace=inplace,
-            _kind=kind,
-            _na_position=na_position,
-            _level=level,
-            _sort_remaining=sort_remaining,
-            _n_partition=n_partition,
-            _output_types=output_types,
-            **kw
-        )
-
-    @property
-    def sort_type(self):
-        return self._sort_type
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def by(self):
-        return self._by
-
-    @property
-    def ascending(self):
-        return self._ascending
-
-    @property
-    def inplace(self):
-        return self._inplace
-
-    @property
-    def kind(self):
-        return self._kind
-
-    @property
-    def na_position(self):
-        return self._na_position
-
-    @property
-    def level(self):
-        return self._level
-
-    @property
-    def sort_remaining(self):
-        return self._sort_remaining
-
-    @property
-    def n_partition(self):
-        return self._n_partition
+    def __init__(self, output_types=None, **kw):
+        super().__init__(_output_types=output_types, **kw)
 
 
 class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperandMixin):
@@ -567,92 +523,25 @@ class DataFramePSRSConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMixin)
 class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.PSRS_SHUFFLE
 
-    _sort_type = StringField("sort_type")
+    sort_type = StringField("sort_type")
 
     # for shuffle map
-    _axis = Int32Field("axis")
-    _by = ListField("by")
-    _ascending = BoolField("ascending")
-    _inplace = BoolField("inplace")
-    _na_position = StringField("na_position")
-    _n_partition = Int32Field("n_partition")
+    axis = Int32Field("axis")
+    by = ListField("by")
+    ascending = AnyField("ascending")
+    inplace = BoolField("inplace")
+    na_position = StringField("na_position")
+    n_partition = Int32Field("n_partition")
 
     # for sort_index
-    _level = ListField("level")
-    _sort_remaining = BoolField("sort_remaining")
+    level = ListField("level")
+    sort_remaining = BoolField("sort_remaining")
 
     # for shuffle reduce
-    _kind = StringField("kind")
+    kind = StringField("kind")
 
-    def __init__(
-        self,
-        sort_type=None,
-        by=None,
-        axis=None,
-        ascending=None,
-        n_partition=None,
-        na_position=None,
-        inplace=None,
-        kind=None,
-        level=None,
-        sort_remaining=None,
-        output_types=None,
-        **kw
-    ):
-        super().__init__(
-            _sort_type=sort_type,
-            _by=by,
-            _axis=axis,
-            _ascending=ascending,
-            _n_partition=n_partition,
-            _na_position=na_position,
-            _inplace=inplace,
-            _kind=kind,
-            _level=level,
-            _sort_remaining=sort_remaining,
-            _output_types=output_types,
-            **kw
-        )
-
-    @property
-    def sort_type(self):
-        return self._sort_type
-
-    @property
-    def by(self):
-        return self._by
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def ascending(self):
-        return self._ascending
-
-    @property
-    def inplace(self):
-        return self._inplace
-
-    @property
-    def na_position(self):
-        return self._na_position
-
-    @property
-    def level(self):
-        return self._level
-
-    @property
-    def sort_remaining(self):
-        return self._sort_remaining
-
-    @property
-    def n_partition(self):
-        return self._n_partition
-
-    @property
-    def kind(self):
-        return self._kind
+    def __init__(self, output_types=None, **kw):
+        super().__init__(_output_types=output_types, **kw)
 
     @property
     def output_limit(self):
@@ -660,6 +549,23 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
 
     @staticmethod
     def _calc_poses(src_cols, pivots, ascending=True):
+        if isinstance(ascending, list):
+            for asc, col in zip(ascending, pivots.columns):
+                # Make pivots available to use ascending order when mixed order specified
+                if not asc:
+                    if pd.api.types.is_numeric_dtype(pivots.dtypes[col]):
+                        # for numeric dtypes, convert to negative is more efficient
+                        pivots[col] = -pivots[col]
+                        src_cols[col] = -src_cols[col]
+                    else:
+                        # for other types, convert to ReversedValue
+                        pivots[col] = pivots[col].map(
+                            lambda x: x
+                            if type(x) is _ReversedValue
+                            else _ReversedValue(x)
+                        )
+            ascending = True
+
         records = src_cols.to_records(index=False)
         p_records = pivots.to_records(index=False)
         if ascending:

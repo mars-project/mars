@@ -427,7 +427,8 @@ class RayCluster:
         logger.info("Start cluster with config %s", self._config)
         # init metrics to guarantee metrics use in driver
         metric_configs = self._config.get("metrics", {})
-        init_metrics(metric_configs.get("backend"), port=metric_configs.get("port"))
+        metric_backend = metric_configs.get("backend")
+        init_metrics(metric_backend, config=metric_configs.get(metric_backend))
         address_to_resources = dict()
         supervisor_standalone = (
             self._config.get("cluster", {})
