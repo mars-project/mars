@@ -15,6 +15,7 @@
 import asyncio
 import os
 import time
+import warnings
 from typing import Callable, Dict, List, Union, TextIO
 
 import yaml
@@ -150,10 +151,19 @@ def load_config(config: Union[str, Dict], default_config_file: str):
     # use default config
     if isinstance(config, str):
         filename = config
-        return load_service_config_file(filename)
+        config = load_service_config_file(filename)
     else:
         full_config = load_service_config_file(default_config_file)
-        return _merge_config(full_config, config)
+        config = _merge_config(full_config, config)
+    if config["scheduling"]["speculation"]["enabled"] is True:
+        # if `initial_same_color_num` > 1, coloring based fusion will make subtask too heterogeneous such that
+        # the speculative scheduler can't get enough homogeneous subtasks to calculate statistics
+        warnings.warn(
+            "speculative execution is enabled, set initial_same_color_num to 1 to "
+            "ensure enough homogeneous subtasks to calculate statistics."
+        )
+        config["task"]["default_config"]["initial_same_color_num"] = 1
+    return config
 
 
 async def wait_all_supervisors_ready(endpoint):

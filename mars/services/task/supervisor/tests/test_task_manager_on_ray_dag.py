@@ -57,10 +57,8 @@ async def test_numexpr(ray_start_regular_shared2, actor_pool):
     await test_task_manager.test_numexpr(actor_pool)
 
 
-# TODO(fyrestone): Support incremental index in ray backend.
 @require_ray
-@pytest.mark.parametrize("config", [{"incremental_index": False}])
 @pytest.mark.parametrize("actor_pool", [{"backend": "ray"}], indirect=True)
 @pytest.mark.asyncio
-async def test_optimization(ray_start_regular_shared2, actor_pool, config):
-    await test_task_manager.test_optimization(actor_pool, config)
+async def test_optimization(ray_start_regular_shared2, actor_pool):
+    await test_task_manager.test_optimization(actor_pool)

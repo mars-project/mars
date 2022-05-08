@@ -1,37 +1,34 @@
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 import pandas as pd
 
-from mars.dataframe.operands import DataFrameOperandMixin
-from mars.dataframe.sort.psrs import DataFramePSRSChunkOperand
-from mars.utils import lazy_import
-
+from ..operands import DataFrameOperandMixin
+from ..sort.psrs import DataFramePSRSChunkOperand
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...core.operand import MapReduceOperand, OperandStage
 from ...serialization.serializables import (
-    StringField,
     Int32Field,
-    BoolField,
     ListField,
+)
+from ...utils import (
+    lazy_import,
 )
 
 cudf = lazy_import("cudf", globals=globals())
-
-
-class _Largest:
-    """
-    This util class resolve TypeError when
-    comparing strings with None values
-    """
-
-    def __lt__(self, other):
-        return False
-
-    def __gt__(self, other):
-        return self is not other
-
-
-_largest = _Largest()
 
 
 def _series_to_df(in_series, xdf):
@@ -51,10 +48,6 @@ class DataFrameGroupbyConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMix
     @classmethod
     def execute(cls, ctx, op):
         inputs = [ctx[c.key] for c in op.inputs if len(ctx[c.key]) > 0]
-        if len(inputs) == 0:
-            # corner case: nothing sampled, we need to do nothing
-            ctx[op.outputs[-1].key] = ctx[op.inputs[0].key]
-            return
 
         xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series)) else cudf
 
@@ -89,10 +82,6 @@ class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixi
     def execute(cls, ctx, op):
         a = ctx[op.inputs[0].key][0]
         xdf = pd if isinstance(a, (pd.DataFrame, pd.Series)) else cudf
-        if len(a) == 0:
-            # when chunk is empty, return the empty chunk itself
-            ctx[op.outputs[0].key] = a
-            return
         if isinstance(a, xdf.Series) and op.output_types[0] == OutputType.dataframe:
             a = _series_to_df(a, xdf)
 
@@ -117,99 +106,31 @@ class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixi
 class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_SORT_SHUFFLE
 
-    _sort_type = StringField("sort_type")
-
     # for shuffle map
-    _axis = Int32Field("axis")
     _by = ListField("by")
-    _ascending = BoolField("ascending")
-    _inplace = BoolField("inplace")
-    _na_position = StringField("na_position")
     _n_partition = Int32Field("n_partition")
 
-    # for sort_index
-    _level = ListField("level")
-    _sort_remaining = BoolField("sort_remaining")
-
-    # for shuffle reduce
-    _kind = StringField("kind")
-
     def __init__(
-        self,
-        sort_type=None,
-        by=None,
-        axis=None,
-        ascending=None,
-        n_partition=None,
-        na_position=None,
-        inplace=None,
-        kind=None,
-        level=None,
-        sort_remaining=None,
-        output_types=None,
-        **kw
+        self, by=None, n_partition=None, inplace=None, output_types=None, **kw
     ):
         super().__init__(
-            _sort_type=sort_type,
-            _by=by,
-            _axis=axis,
-            _ascending=ascending,
-            _n_partition=n_partition,
-            _na_position=na_position,
-            _inplace=inplace,
-            _kind=kind,
-            _level=level,
-            _sort_remaining=sort_remaining,
-            _output_types=output_types,
-            **kw
+            _by=by, _n_partition=n_partition, _output_types=output_types, **kw
         )
-
-    @property
-    def sort_type(self):
-        return self._sort_type
 
     @property
     def by(self):
         return self._by
 
     @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def ascending(self):
-        return self._ascending
-
-    @property
-    def inplace(self):
-        return self._inplace
-
-    @property
-    def na_position(self):
-        return self._na_position
-
-    @property
-    def level(self):
-        return self._level
-
-    @property
-    def sort_remaining(self):
-        return self._sort_remaining
-
-    @property
     def n_partition(self):
         return self._n_partition
-
-    @property
-    def kind(self):
-        return self._kind
 
     @property
     def output_limit(self):
         return 1
 
     @classmethod
-    def _execute_dataframe_map(cls, ctx, op):
+    def _execute_map(cls, ctx, op):
         df, pivots = [ctx[c.key] for c in op.inputs]
         out = op.outputs[0]
 
@@ -229,18 +150,8 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
 
         for i in range(op.n_partition):
             index = (i, 0)
-            if isinstance(df, tuple):
-                out_df = tuple(_get_out_df(i, x) for x in df)
-            else:
-                out_df = _get_out_df(i, df)
+            out_df = tuple(_get_out_df(i, x) for x in df)
             ctx[out.key, index] = out_df
-
-    @classmethod
-    def _execute_map(cls, ctx, op):
-        a = [ctx[c.key] for c in op.inputs][0]
-        if isinstance(a, tuple):
-            a = a[0]
-        cls._execute_dataframe_map(ctx, op)
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "DataFrameGroupbySortShuffle"):
@@ -250,18 +161,12 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
 
         r = []
 
-        if isinstance(raw_inputs[0], tuple):
-            tuple_len = len(raw_inputs[0])
-            for i in range(tuple_len):
-                r.append(xdf.concat([inp[i] for inp in raw_inputs], axis=0))
-            r = tuple(r)
-        else:
-            r = xdf.concat(raw_inputs, axis=0)
+        tuple_len = len(raw_inputs[0])
+        for i in range(tuple_len):
+            r.append(xdf.concat([inp[i] for inp in raw_inputs], axis=0))
+        r = tuple(r)
 
-        if isinstance(r, tuple):
-            ctx[op.outputs[0].key] = r + (by,)
-        else:
-            ctx[op.outputs[0].key] = (r, by)
+        ctx[op.outputs[0].key] = r + (by,)
 
     @classmethod
     def estimate_size(cls, ctx, op):

@@ -577,12 +577,6 @@ def test_dataframe_groupby_agg_sort(setup):
     )
     assert r.op.groupby_params["as_index"] is True
 
-    # r = mdf.groupby("c2").agg(["cumsum", "cumcount"])
-    # pd.testing.assert_frame_equal(
-    #     r.execute().fetch(),
-    #     raw.groupby("c2").agg(["cumsum", "cumcount"]),
-    # )
-
 
 def test_series_groupby_agg(setup):
     rs = np.random.RandomState(0)

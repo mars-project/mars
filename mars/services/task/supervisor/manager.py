@@ -22,9 +22,7 @@ from typing import Any, Dict, List, Type, Union
 
 from .... import oscar as mo
 from ....core import TileableGraph, TileableType, enter_mode, TileContext
-from ....core.context import set_context
 from ....core.operand import Fetch
-from ...context import ThreadedServiceContext
 from ...subtask import SubtaskResult, SubtaskGraph
 from ..config import task_options
 from ..core import Task, new_task_id, TaskStatus
@@ -106,20 +104,9 @@ class TaskManagerActor(mo.Actor):
         )
         self._task_preprocessor_cls = self._get_task_preprocessor_cls()
 
-        # init context
-        await self._init_context()
-
     async def __pre_destroy__(self):
         for processor_ref in self._task_id_to_processor_ref.values():
             await processor_ref.destroy()
-
-    async def _init_context(self):
-        loop = asyncio.get_running_loop()
-        context = ThreadedServiceContext(
-            self._session_id, self.address, self.address, self.address, loop=loop
-        )
-        await context.init()
-        set_context(context)
 
     @staticmethod
     def gen_uid(session_id):
