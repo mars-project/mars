@@ -3,18 +3,16 @@ import pandas as pd
 
 from ..operands import DataFrameOperandMixin
 from ..sort.psrs import DataFramePSRSChunkOperand
-from ...utils import (
-    lazy_import,
-)
-
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...core.operand import MapReduceOperand, OperandStage
 from ...serialization.serializables import (
-    StringField,
     Int32Field,
     BoolField,
     ListField,
+)
+from ...utils import (
+    lazy_import,
 )
 
 cudf = lazy_import("cudf", globals=globals())
@@ -108,14 +106,13 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
     _inplace = BoolField("inplace")
     _n_partition = Int32Field("n_partition")
 
-
     def __init__(
-        self,
-        by=None,
-        n_partition=None,
-        inplace=None,
-        output_types=None,
-        **kw
+            self,
+            by=None,
+            n_partition=None,
+            inplace=None,
+            output_types=None,
+            **kw
     ):
         super().__init__(
             _by=by,
@@ -150,11 +147,11 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
             if p_index == 0:
                 out_df = in_df.loc[: pivots[p_index]]
             elif p_index == op.n_partition - 1:
-                out_df = in_df.loc[pivots[p_index - 1] :].drop(
+                out_df = in_df.loc[pivots[p_index - 1]:].drop(
                     index=pivots[p_index - 1], errors="ignore"
                 )
             else:
-                out_df = in_df.loc[pivots[p_index - 1] : pivots[p_index]].drop(
+                out_df = in_df.loc[pivots[p_index - 1]: pivots[p_index]].drop(
                     index=pivots[p_index - 1], errors="ignore"
                 )
             return out_df
