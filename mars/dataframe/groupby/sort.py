@@ -48,10 +48,6 @@ class DataFrameGroupbyConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMix
     @classmethod
     def execute(cls, ctx, op):
         inputs = [ctx[c.key] for c in op.inputs if len(ctx[c.key]) > 0]
-        if len(inputs) == 0:
-            # corner case: nothing sampled, we need to do nothing
-            ctx[op.outputs[-1].key] = ctx[op.inputs[0].key]
-            return
 
         xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series)) else cudf
 
@@ -86,10 +82,6 @@ class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixi
     def execute(cls, ctx, op):
         a = ctx[op.inputs[0].key][0]
         xdf = pd if isinstance(a, (pd.DataFrame, pd.Series)) else cudf
-        if len(a) == 0:
-            # when chunk is empty, return the empty chunk itself
-            ctx[op.outputs[0].key] = a
-            return
         if isinstance(a, xdf.Series) and op.output_types[0] == OutputType.dataframe:
             a = _series_to_df(a, xdf)
 
@@ -157,10 +149,7 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
 
         for i in range(op.n_partition):
             index = (i, 0)
-            if isinstance(df, tuple):
-                out_df = tuple(_get_out_df(i, x) for x in df)
-            else:
-                out_df = _get_out_df(i, df)
+            out_df = tuple(_get_out_df(i, x) for x in df)
             ctx[out.key, index] = out_df
 
     @classmethod
@@ -171,18 +160,12 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
 
         r = []
 
-        if isinstance(raw_inputs[0], tuple):
-            tuple_len = len(raw_inputs[0])
-            for i in range(tuple_len):
-                r.append(xdf.concat([inp[i] for inp in raw_inputs], axis=0))
-            r = tuple(r)
-        else:
-            r = xdf.concat(raw_inputs, axis=0)
+        tuple_len = len(raw_inputs[0])
+        for i in range(tuple_len):
+            r.append(xdf.concat([inp[i] for inp in raw_inputs], axis=0))
+        r = tuple(r)
 
-        if isinstance(r, tuple):
-            ctx[op.outputs[0].key] = r + (by,)
-        else:
-            ctx[op.outputs[0].key] = (r, by)
+        ctx[op.outputs[0].key] = r + (by,)
 
     @classmethod
     def estimate_size(cls, ctx, op):
