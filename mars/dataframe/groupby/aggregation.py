@@ -51,7 +51,7 @@ from ...utils import (
     pd_release_version,
     estimate_pandas_size,
 )
-from ..core import GROUPBY_TYPE, IndexValue
+from ..core import GROUPBY_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
 from ..reduction.core import (
@@ -307,12 +307,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         # stage 4: all *ith* classes are gathered and merged
         partition_sort_chunks = []
         properties = dict(by=op.groupby_params["by"], gpu=op.is_gpu())
+        out_df = op.outputs[0]
 
         for i, partition_chunk in enumerate(partition_chunks):
+            output_types = (
+                [OutputType.dataframe_groupby]
+                if out_df.ndim == 2
+                else [OutputType.series_groupby]
+            )
             partition_shuffle_reduce = DataFrameGroupbySortShuffle(
                 stage=OperandStage.reduce,
                 reducer_index=(i, 0),
-                output_types=[OutputType.dataframe_groupby],
+                output_types=output_types,
                 **properties,
             )
             chunk_shape = list(partition_chunk.shape)
@@ -323,25 +329,49 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 index=partition_chunk.index,
                 index_value=partition_chunk.index_value,
             )
+            if op.outputs[0].ndim == 2:
+                kw.update(
+                    dict(
+                        columns_value=partition_chunk.columns_value,
+                        dtypes=partition_chunk.dtypes,
+                    )
+                )
+            else:
+                kw.update(dict(dtype=partition_chunk.dtype, name=partition_chunk.name))
             cs = partition_shuffle_reduce.new_chunks([proxy_chunk], **kw)
             partition_sort_chunks.append(cs[0])
         return partition_sort_chunks
 
     @classmethod
     def partition_local_data(cls, op, sorted_chunks, concat_pivot_chunk, in_df):
-        properties = dict(by=op.groupby_params["by"], gpu=op.is_gpu())
-
+        # properties = dict(by=op.groupby_params["by"], gpu=op.is_gpu())
+        out_df = op.outputs[0]
         map_chunks = []
         chunk_shape = (in_df.chunk_shape[0], 1)
         for chunk in sorted_chunks:
             chunk_inputs = [chunk, concat_pivot_chunk]
+            output_types = (
+                [OutputType.dataframe_groupby]
+                if out_df.ndim == 2
+                else [OutputType.series_groupby]
+            )
             map_chunk_op = DataFrameGroupbySortShuffle(
                 shuffle_size=chunk_shape[0],
                 stage=OperandStage.map,
                 n_partition=len(sorted_chunks),
-                output_types=[OutputType.dataframe_groupby],
-                # columns_value=chunk_inputs[0].columns_value,
+                output_types=output_types,
             )
+
+            kw = dict()
+            if out_df.ndim == 2:
+                kw.update(
+                    dict(
+                        columns_value=chunk_inputs[0].columns_value,
+                        dtypes=chunk_inputs[0].dtypes,
+                    )
+                )
+            else:
+                kw.update(dict(dtype=chunk_inputs[0].dtype, name=chunk_inputs[0].name))
 
             map_chunks.append(
                 map_chunk_op.new_chunk(
@@ -502,15 +532,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             map_op.pre_funcs = func_infos.pre_funcs
             map_op.agg_funcs = func_infos.agg_funcs
             new_index = chunk.index if len(chunk.index) == 2 else (chunk.index[0],)
-            if op.output_types[0] == OutputType.dataframe:
+            if out_df.ndim == 2:
+                new_index = (new_index[0], 0) if len(new_index) == 1 else new_index
                 map_chunk = map_op.new_chunk(
                     chunk_inputs,
                     shape=out_df.shape,
                     index=new_index,
                     index_value=out_df.index_value,
                     columns_value=out_df.columns_value,
+                    dtypes=out_df.dtypes,
                 )
             else:
+                new_index = new_index[:1] if len(new_index) == 2 else new_index
                 map_chunk = map_op.new_chunk(
                     chunk_inputs,
                     shape=(out_df.shape[0],),
@@ -688,7 +721,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             )
             if op.output_types[0] == OutputType.dataframe:
                 kws.append(
-                        {
+                    {
                         "shape": sampled_shape,
                         "index_value": chunk.index_value,
                         "index": chunk_index,
@@ -800,14 +833,17 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 if len(chks) == 1:
                     chk = chks[0]
                 else:
-                    concat_op = DataFrameConcat(output_types=[OutputType.dataframe])
+                    concat_op = DataFrameConcat(output_types=out_df.op.output_types)
                     # Change index for concatenate
                     for j, c in enumerate(chks):
                         c._index = (j, 0)
-                    chk = concat_op.new_chunk(chks, dtypes=chks[0].dtypes)
+                    if out_df.ndim == 2:
+                        chk = concat_op.new_chunk(chks, dtypes=chks[0].dtypes)
+                    else:
+                        chk = concat_op.new_chunk(chks, dtype=chunks[0].dtype)
                 chunk_op = op.copy().reset_key()
                 chunk_op.tileable_op_key = None
-                chunk_op.output_types = [OutputType.dataframe]
+                chunk_op.output_types = out_df.op.output_types
                 chunk_op.stage = OperandStage.combine
                 chunk_op.groupby_params = chunk_op.groupby_params.copy()
                 chunk_op.groupby_params.pop("selection", None)
@@ -831,8 +867,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 )
             chunks = new_chunks
 
-        concat_op = DataFrameConcat(output_types=[OutputType.dataframe])
-        chk = concat_op.new_chunk(chunks, dtypes=chunks[0].dtypes)
+        concat_op = DataFrameConcat(output_types=out_df.op.output_types)
+        if out_df.ndim == 2:
+            chk = concat_op.new_chunk(chunks, dtypes=chunks[0].dtypes)
+        else:
+            chk = concat_op.new_chunk(chunks, dtype=chunks[0].dtype)
         chunk_op = op.copy().reset_key()
         chunk_op.tileable_op_key = op.key
         chunk_op.stage = OperandStage.agg
