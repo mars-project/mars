@@ -22,7 +22,6 @@ from ...core import OutputType
 from ...core.operand import MapReduceOperand, OperandStage
 from ...serialization.serializables import (
     Int32Field,
-    BoolField,
     ListField,
 )
 from ...utils import (
