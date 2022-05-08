@@ -577,11 +577,14 @@ def test_dataframe_groupby_agg_sort(setup):
     )
     assert r.op.groupby_params["as_index"] is True
 
-    # r = mdf.groupby("c2").agg(["cumsum", "cumcount"])
-    # pd.testing.assert_frame_equal(
-    #     r.execute().fetch(),
-    #     raw.groupby("c2").agg(["cumsum", "cumcount"]),
-    # )
+    # test empty dataframe
+    e_df = pd.DataFrame(columns=["A", "B"])
+    e_mars_df = md.DataFrame(e_df, chunk_size=10)
+    for method in ["tree", "shuffle"]:
+        pd.testing.assert_frame_equal(
+            e_mars_df.groupby(["A"]).mean(method=method).execute().fetch(),
+            e_df.groupby("A").mean()
+        )
 
 
 def test_series_groupby_agg(setup):
