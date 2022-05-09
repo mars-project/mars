@@ -21,6 +21,7 @@ from pandas.api.types import is_list_like
 from ...config import options
 from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage, MapReduceOperand
+from ...core.operand.shuffle import ExactlyMapDataKeys
 from ...serialization.serializables import AnyField, Int32Field, StringField, KeyField
 from ...utils import ceildiv, has_unknown_shape, lazy_import
 from ..initializer import DataFrame as asdataframe
