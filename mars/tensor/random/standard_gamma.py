@@ -23,20 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorStandardGamma(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_shape"]
+    _input_fields_ = ["shape"]
     _op_type_ = OperandDef.RAND_STANDARD_GAMMMA
 
-    _fields_ = "_shape", "_size"
-    _shape = AnyField("shape")
+    _fields_ = "shape", "size"
+    shape = AnyField("shape")
     _func_name = "standard_gamma"
-
-    @property
-    def shape(self):
-        return self._shape
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
 
     def __call__(self, shape, chunk_size=None):
         return self.new_tensor([shape], None, raw_chunk_size=chunk_size)

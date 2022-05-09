@@ -23,30 +23,14 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorTriangular(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_left", "_mode", "_right"]
+    _input_fields_ = ["left", "mode", "right"]
     _op_type_ = OperandDef.RAND_TRIANGULAR
 
-    _fields_ = "_left", "_mode", "_right", "_size"
-    _left = AnyField("left")
-    _mode = AnyField("mode")
-    _right = AnyField("right")
+    _fields_ = "left", "mode", "right", "size"
+    left = AnyField("left")
+    mode = AnyField("mode")
+    right = AnyField("right")
     _func_name = "triangular"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def left(self):
-        return self._left
-
-    @property
-    def mode(self):
-        return self._mode
-
-    @property
-    def right(self):
-        return self._right
 
     def __call__(self, left, mode, right, chunk_size=None):
         return self.new_tensor([left, mode, right], None, raw_chunk_size=chunk_size)

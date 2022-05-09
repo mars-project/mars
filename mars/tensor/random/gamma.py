@@ -23,25 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorRandGamma(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_shape", "_scale"]
+    _input_fields_ = ["shape", "scale"]
     _op_type_ = OperandDef.RAND_GAMMA
 
-    _fields_ = "_shape", "_scale", "_size"
-    _shape = AnyField("shape")
-    _scale = AnyField("scale")
+    _fields_ = "shape", "scale", "size"
+    shape = AnyField("shape")
+    scale = AnyField("scale")
     _func_name = "gamma"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def scale(self):
-        return self._scale
 
     def __call__(self, shape, scale, chunk_size=None):
         return self.new_tensor([shape, scale], None, raw_chunk_size=chunk_size)

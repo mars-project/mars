@@ -48,6 +48,7 @@ jobs:
       - name: Run ASV benchmarks
         run: |
           source ./ci/reload-env.sh
+          unset CI
           cd benchmarks/asv_bench
           asv check -E existing
           git remote add upstream https://github.com/mars-project/mars.git

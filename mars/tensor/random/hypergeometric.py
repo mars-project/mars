@@ -23,30 +23,14 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorHypergeometric(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_ngood", "_nbad", "_nsample"]
+    _input_fields_ = ["ngood", "nbad", "nsample"]
     _op_type_ = OperandDef.RAND_HYPERGEOMETRIC
 
-    _fields_ = "_ngood", "_nbad", "_nsample", "_size"
-    _ngood = AnyField("ngood")
-    _nbad = AnyField("nbad")
-    _nsample = AnyField("nsample")
+    _fields_ = "ngood", "nbad", "nsample", "size"
+    ngood = AnyField("ngood")
+    nbad = AnyField("nbad")
+    nsample = AnyField("nsample")
     _func_name = "hypergeometric"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def ngood(self):
-        return self._ngood
-
-    @property
-    def nbad(self):
-        return self._nbad
-
-    @property
-    def nsample(self):
-        return self._nsample
 
     def __call__(self, ngood, nbad, nsample, chunk_size=None):
         return self.new_tensor([ngood, nbad, nsample], None, raw_chunk_size=chunk_size)

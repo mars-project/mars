@@ -24,12 +24,8 @@ from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 class TensorRandomSample(TensorSimpleRandomData, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_RANDOM_SAMPLE
 
-    _fields_ = ("_size",)
+    _fields_ = ("size",)
     _func_name = "random_sample"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
 
     def __call__(self, chunk_size):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)

@@ -23,20 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorStandardT(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_df"]
+    _input_fields_ = ["df"]
     _op_type_ = OperandDef.RAND_STANDARD_T
 
-    _fields_ = "_df", "_size"
-    _df = AnyField("df")
+    _fields_ = "df", "size"
+    df = AnyField("df")
     _func_name = "standard_t"
-
-    def __init__(self, size=None, state=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _state=state, dtype=dtype, **kw)
-
-    @property
-    def df(self):
-        return self._df
 
     def __call__(self, df, chunk_size=None):
         return self.new_tensor([df], None, raw_chunk_size=chunk_size)

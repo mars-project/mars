@@ -23,25 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorVonmises(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_mu", "_kappa"]
+    _input_fields_ = ["mu", "kappa"]
     _op_type_ = OperandDef.RAND_VONMISES
 
-    _fields_ = "_mu", "_kappa", "_size"
-    _mu = AnyField("mu")
-    _kappa = AnyField("kappa")
+    _fields_ = "mu", "kappa", "size"
+    mu = AnyField("mu")
+    kappa = AnyField("kappa")
     _func_name = "vonmises"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def mu(self):
-        return self._mu
-
-    @property
-    def kappa(self):
-        return self._kappa
 
     def __call__(self, mu, kappa, chunk_size=None):
         return self.new_tensor([mu, kappa], None, raw_chunk_size=chunk_size)

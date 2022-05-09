@@ -23,25 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorBinomial(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_n", "_p"]
+    _input_fields_ = ["n", "p"]
     _op_type_ = OperandDef.RAND_BINOMIAL
 
-    _fields_ = "_n", "_p", "_size"
-    _n = AnyField("n")
-    _p = AnyField("p")
+    _fields_ = "n", "p", "size"
+    n = AnyField("n")
+    p = AnyField("p")
     _func_name = "binomial"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def n(self):
-        return self._n
-
-    @property
-    def p(self):
-        return self._p
 
     def __call__(self, n, p, chunk_size=None):
         return self.new_tensor([n, p], None, raw_chunk_size=chunk_size)

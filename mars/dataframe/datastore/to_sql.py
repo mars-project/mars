@@ -40,14 +40,14 @@ class DataFrameToSQLTableLogicKeyGeneratorMixin(OperatorLogicKeyGeneratorMixin):
         fields_to_tokenize = [
             getattr(self, k, None)
             for k in [
-                "_table_name",
-                "_schema",
-                "_if_exists",
-                "_index",
-                "_index_label",
-                "_chunksize",
-                "_dtype",
-                "_method",
+                "table_name",
+                "schema",
+                "if_exists",
+                "index",
+                "index_label",
+                "chunksize",
+                "dtype",
+                "method",
             ]
         ]
         return super()._get_logic_key_token_values() + fields_to_tokenize
@@ -58,92 +58,25 @@ class DataFrameToSQLTable(
 ):
     _op_type_ = opcodes.TO_SQL
 
-    _table_name = StringField("table_name")
-    _con = AnyField("con")
-    _schema = StringField("schema")
-    _if_exists = StringField("if_exists")
-    _index = BoolField("index")
-    _index_label = AnyField("index_label")
-    _chunksize = Int64Field("chunksize")
-    _dtype = AnyField("dtype")
-    _method = AnyField("method")
-    _engine_kwargs = BytesField(
+    table_name = StringField("table_name")
+    con = AnyField("con")
+    schema = StringField("schema")
+    if_exists = StringField("if_exists")
+    index = BoolField("index")
+    index_label = AnyField("index_label")
+    chunksize = Int64Field("chunksize")
+    dtype = AnyField("dtype")
+    method = AnyField("method")
+    engine_kwargs = BytesField(
         "engine_kwargs",
         on_serialize=cloudpickle.dumps,
         on_deserialize=cloudpickle.loads,
+        default=None,
     )
 
-    def __init__(
-        self,
-        table_name=None,
-        con=None,
-        schema=None,
-        if_exists=None,
-        index=None,
-        index_label=None,
-        chunksize=None,
-        dtype=None,
-        method=None,
-        engine_kwargs=None,
-        **kw
-    ):
-        super().__init__(
-            _table_name=table_name,
-            _con=con,
-            _schema=schema,
-            _if_exists=if_exists,
-            _index=index,
-            _index_label=index_label,
-            _chunksize=chunksize,
-            _dtype=dtype,
-            _method=method,
-            _engine_kwargs=engine_kwargs,
-            **kw
-        )
-
-    @property
-    def table_name(self):
-        return self._table_name
-
-    @property
-    def con(self):
-        return self._con
-
-    @property
-    def schema(self):
-        return self._schema
-
-    @property
-    def if_exists(self):
-        return self._if_exists
-
-    @property
-    def index(self):
-        return self._index
-
-    @property
-    def index_label(self):
-        return self._index_label
-
-    @property
-    def chunksize(self):
-        return self._chunksize
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @property
-    def method(self):
-        return self._method
-
-    @property
-    def engine_kwargs(self):
-        return self._engine_kwargs
-
     def __call__(self, df_or_series):
-        with create_sa_connection(self._con, **(self._engine_kwargs or dict())) as con:
-            self._con = str(con.engine.url)
+        with create_sa_connection(self.con, **(self.engine_kwargs or dict())) as con:
+            self.con = str(con.engine.url)
             empty_index = df_or_series.index_value.to_pandas()[:0]
             if isinstance(df_or_series, DATAFRAME_TYPE):
                 empty_obj = build_empty_df(df_or_series.dtypes, index=empty_index)
@@ -197,7 +130,7 @@ class DataFrameToSQLTable(
         chunks = []
         for c in inp.chunks:
             new_op = op.copy().reset_key()
-            new_op._if_exists = "append"
+            new_op.if_exists = "append"
 
             index_value = parse_index(c.index_value.to_pandas()[:0], c)
             if c.ndim == 2:
