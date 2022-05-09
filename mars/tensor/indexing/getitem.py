@@ -286,7 +286,9 @@ class FancyIndexingConcat(TensorMapReduceOperand, TensorOperandMixin):
     def get_output_data_keys(self):
         if self.stage == OperandStage.map:
             key = self.outputs[0].key
-            return [(key, (i,)) for i in range(self._fancy_shuffle_size)]
+            return ExactlyMapDataKeys(
+                (key, (i,)) for i in range(self._fancy_shuffle_size)
+            )
         else:
             return None
 
