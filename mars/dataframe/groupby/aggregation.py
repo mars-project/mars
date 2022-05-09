@@ -405,9 +405,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             output_types=[OutputType.dataframe]
         ).new_chunk(map_chunks, shape=())
 
-        partition_sort_chunks = cls.partition_merge_data(
-            op, map_chunks, proxy_chunk
-        )
+        partition_sort_chunks = cls.partition_merge_data(op, map_chunks, proxy_chunk)
 
         return partition_sort_chunks
 
@@ -547,9 +545,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         if op.groupby_params["sort"] and len(in_df.chunks) > 1:
             agg_chunk_len = len(agg_chunks)
             sample_chunks = cls._sample_chunks(op, agg_chunks)
-            pivot_chunk = cls._gen_pivot_chunk(
-                op, sample_chunks, agg_chunk_len
-            )
+            pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, agg_chunk_len)
 
         return cls._perform_shuffle(
             op, agg_chunks, in_df, out_df, func_infos, pivot_chunk
@@ -849,9 +845,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             if op.groupby_params["sort"] and len(in_df.chunks) > 1:
                 agg_chunk_len = len(chunks + left_chunks)
                 sample_chunks = cls._sample_chunks(op, chunks + left_chunks)
-                pivot_chunk = cls._gen_pivot_chunk(
-                    op, sample_chunks, agg_chunk_len
-                )
+                pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, agg_chunk_len)
 
             logger.debug("Choose shuffle method for groupby operand %s", op)
             return cls._perform_shuffle(
