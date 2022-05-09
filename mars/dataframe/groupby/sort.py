@@ -110,9 +110,9 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
     # for shuffle map
     by = ListField("by")
     n_partition = Int32Field("n_partition")
-    output_types = ListField(
-        "output_type", FieldTypes.reference(OutputType), default=None
-    )
+
+    def __init__(self, *args, output_types=None, **kw):
+        super().__init__(self, *args, _output_types=output_types, **kw)
 
     @property
     def output_limit(self):
