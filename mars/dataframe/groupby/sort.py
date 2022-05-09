@@ -21,7 +21,6 @@ from ...core.operand import MapReduceOperand, OperandStage
 from ...serialization.serializables import (
     Int32Field,
     ListField,
-    FieldTypes,
 )
 from ...utils import (
     lazy_import,
