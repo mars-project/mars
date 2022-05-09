@@ -180,7 +180,7 @@ class RayTaskExecutor(TaskExecutor):
                 list(key_to_input.keys()),
                 *key_to_input.values(),
             )
-            self._stage_output_object_refs.append(stage_object_refs)
+            stage_object_refs.append(output_object_refs)
             if output_count == 0:
                 continue
             elif output_count == 1:
@@ -190,6 +190,7 @@ class RayTaskExecutor(TaskExecutor):
                 # TODO(fyrestone): Fetch(not get) meta object here.
                 output_meta_object_refs.append(meta_object_ref)
             context.update(zip(output_keys, output_object_refs))
+        self._stage_output_object_refs.append(stage_object_refs)
         prev_progress = sum(self._stage_tile_progresses)
         curr_tile_progress = self._tile_context.get_all_progress() - prev_progress
         self._stage_tile_progresses.append(curr_tile_progress)
