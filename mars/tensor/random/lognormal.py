@@ -23,25 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorLognormal(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_mean", "_sigma"]
+    _input_fields_ = ["mean", "sigma"]
     _op_type_ = OperandDef.RAND_LOGNORMAL
 
-    _fields_ = "_mean", "_sigma", "_size"
-    _mean = AnyField("mean")
-    _sigma = AnyField("sigma")
+    _fields_ = "mean", "sigma", "size"
+    mean = AnyField("mean")
+    sigma = AnyField("sigma")
     _func_name = "lognormal"
-
-    @property
-    def mean(self):
-        return self._mean
-
-    @property
-    def sigma(self):
-        return self._sigma
-
-    def __init__(self, state=None, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, dtype=dtype, **kw)
 
     def __call__(self, mean, sigma, chunk_size=None):
         return self.new_tensor([mean, sigma], None, raw_chunk_size=chunk_size)

@@ -23,30 +23,14 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorNoncentralF(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_dfnum", "_dfden", "_nonc"]
+    _input_fields_ = ["dfnum", "dfden", "nonc"]
     _op_type_ = OperandDef.RAND_NONCENTRAL_F
 
-    _fields_ = "_dfnum", "_dfden", "_nonc", "_size"
-    _dfnum = AnyField("dfnum")
-    _dfden = AnyField("dfden")
-    _nonc = AnyField("nonc")
+    _fields_ = "dfnum", "dfden", "nonc", "size"
+    dfnum = AnyField("dfnum")
+    dfden = AnyField("dfden")
+    nonc = AnyField("nonc")
     _func_name = "noncentral_f"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def dfnum(self):
-        return self._dfnum
-
-    @property
-    def dfden(self):
-        return self._dfden
-
-    @property
-    def nonc(self):
-        return self._nonc
 
     def __call__(self, dfnum, dfden, nonc, chunk_size=None):
         return self.new_tensor([dfnum, dfden, nonc], None, raw_chunk_size=chunk_size)

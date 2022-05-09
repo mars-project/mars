@@ -23,20 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorPoisson(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_lam"]
+    _input_fields_ = ["lam"]
     _op_type_ = OperandDef.RAND_POSSION
 
-    _fields_ = "_lam", "_size"
-    _lam = AnyField("lam")
+    _fields_ = "lam", "size"
+    lam = AnyField("lam")
     _func_name = "poisson"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def lam(self):
-        return self._lam
 
     def __call__(self, lam, chunk_size=None):
         return self.new_tensor([lam], None, raw_chunk_size=chunk_size)

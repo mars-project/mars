@@ -29,7 +29,7 @@ from .field_type import (
     ReferenceType,
 )
 
-_is_ci = "CI" in os.environ
+_is_ci = (os.environ.get("CI") or "0").lower() in ("1", "true")
 
 
 class Field(ABC):
@@ -124,7 +124,10 @@ class Field(ABC):
                         to_check_value = self._on_serialize(to_check_value)
                     field_type.validate(to_check_value)
                 except (TypeError, ValueError) as e:
-                    raise type(e)(f"Failed to set `{self._attr_name}`: {str(e)}")
+                    raise type(e)(
+                        f"Failed to set `{self._attr_name}` for {type(instance).__name__} "
+                        f"when environ CI=true is set: {str(e)}"
+                    )
         instance._FIELD_VALUES[self._attr_name] = value
 
     def __delete__(self, instance):
@@ -526,7 +529,10 @@ class ReferenceField(Field):
                     if not self._attr_name:
                         raise
                     else:
-                        raise type(e)(f"Failed to set `{self._attr_name}`: {e}")
+                        raise type(e)(
+                            f"Failed to set `{self._attr_name}` for {type(instance).__name__} "
+                            f"when environ CI=true is set: {e}"
+                        )
             instance._FIELD_VALUES[self._attr_name] = value
         else:
             super().__set__(instance, value)
@@ -590,6 +596,7 @@ class OneOfField(Field):
             )
         )
         raise TypeError(
-            f"Failed to set `{self._attr_name}`: type of instance cannot "
-            f"match any of {valid_types}, got {type(value)}"
+            f"Failed to set `{self._attr_name}` for {type(instance).__name__} "
+            f"when environ CI=true is set: type of instance cannot match any "
+            f"of {valid_types}, got {type(value).__name__}"
         )

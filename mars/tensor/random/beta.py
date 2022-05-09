@@ -22,25 +22,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorRandBeta(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_a", "_b"]
+    _input_fields_ = ["a", "b"]
     _op_type_ = OperandDef.RAND_BETA
 
-    _fields_ = "_a", "_b", "_size"
-    _a = AnyField("a")
-    _b = AnyField("b")
+    _fields_ = "a", "b", "size"
+    a = AnyField("a")
+    b = AnyField("b")
     _func_name = "beta"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def a(self):
-        return self._a
-
-    @property
-    def b(self):
-        return self._b
 
     def __call__(self, a, b, chunk_size=None):
         return self.new_tensor([a, b], None, raw_chunk_size=chunk_size)

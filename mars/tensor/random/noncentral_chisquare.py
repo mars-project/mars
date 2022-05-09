@@ -23,25 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorNoncentralChisquare(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_df", "_nonc"]
+    _input_fields_ = ["df", "nonc"]
     _op_type_ = OperandDef.RAND_NONCENTRAL_CHISQURE
 
-    _fields_ = "_df", "_nonc", "_size"
-    _df = AnyField("df")
-    _nonc = AnyField("nonc")
+    _fields_ = "df", "nonc", "size"
+    df = AnyField("df")
+    nonc = AnyField("nonc")
     _func_name = "noncentral_chisquare"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def df(self):
-        return self._df
-
-    @property
-    def nonc(self):
-        return self._nonc
 
     def __call__(self, df, nonc, chunk_size=None):
         return self.new_tensor([df, nonc], None, raw_chunk_size=chunk_size)
