@@ -28,7 +28,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
-      - name: Build web source
+      - name: Build web for Linux
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           git reset --hard
