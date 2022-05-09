@@ -706,62 +706,25 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
 
 class DataFrameBinOp(DataFrameOperand, DataFrameBinOpMixin):
-    _axis = AnyField("axis")
-    _level = AnyField("level")
-    _fill_value = AnyField("fill_value")
-    _lhs = AnyField("lhs")
-    _rhs = AnyField("rhs")
+    axis = AnyField("axis", default=None)
+    level = AnyField("level", default=None)
+    fill_value = AnyField("fill_value", default=None)
+    lhs = AnyField("lhs")
+    rhs = AnyField("rhs")
 
-    def __init__(
-        self,
-        axis=None,
-        level=None,
-        fill_value=None,
-        output_types=None,
-        lhs=None,
-        rhs=None,
-        **kw,
-    ):
-        super().__init__(
-            _axis=axis,
-            _level=level,
-            _fill_value=fill_value,
-            _output_types=output_types,
-            _lhs=lhs,
-            _rhs=rhs,
-            **kw,
-        )
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def level(self):
-        return self._level
-
-    @property
-    def fill_value(self):
-        return self._fill_value
-
-    @property
-    def lhs(self):
-        return self._lhs
-
-    @property
-    def rhs(self):
-        return self._rhs
+    def __init__(self, output_types=None, **kw):
+        super().__init__(_output_types=output_types, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         if len(self._inputs) == 2:
-            self._lhs = self._inputs[0]
-            self._rhs = self._inputs[1]
+            self.lhs = self._inputs[0]
+            self.rhs = self._inputs[1]
         else:
-            if isinstance(self._lhs, ENTITY_TYPE):
-                self._lhs = self._inputs[0]
-            elif pd.api.types.is_scalar(self._lhs):
-                self._rhs = self._inputs[0]
+            if isinstance(self.lhs, ENTITY_TYPE):
+                self.lhs = self._inputs[0]
+            elif pd.api.types.is_scalar(self.lhs):
+                self.rhs = self._inputs[0]
 
 
 class DataFrameUnaryOpMixin(DataFrameOperandMixin):

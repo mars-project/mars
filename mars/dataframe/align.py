@@ -46,131 +46,72 @@ from .utils import (
 class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_INDEX_ALIGN
 
-    _index_min = AnyField("index_min")
-    _index_min_close = BoolField("index_min_close")
-    _index_max = AnyField("index_max")
-    _index_max_close = BoolField("index_max_close")
-    _index_shuffle_size = Int32Field("index_shuffle_size")
-    _column_min = AnyField("column_min")
-    _column_min_close = BoolField("column_min_close")
-    _column_max = AnyField("column_max")
-    _column_max_close = BoolField("column_max_close")
-    _column_shuffle_size = Int32Field("column_shuffle_size")
-    _column_shuffle_segments = ListField("column_shuffle_segments", FieldTypes.series)
+    index_min = AnyField("index_min")
+    index_min_close = BoolField("index_min_close")
+    index_max = AnyField("index_max")
+    index_max_close = BoolField("index_max_close")
+    index_shuffle_size = Int32Field("index_shuffle_size", default=None)
+    column_min = AnyField("column_min")
+    column_min_close = BoolField("column_min_close")
+    column_max = AnyField("column_max")
+    column_max_close = BoolField("column_max_close")
+    column_shuffle_size = Int32Field("column_shuffle_size", default=None)
+    column_shuffle_segments = ListField("column_shuffle_segments", FieldTypes.series)
 
-    _input = KeyField("input")
+    input = KeyField("input")
 
     def __init__(
         self,
         index_min_max=None,
-        index_shuffle_size=None,
         column_min_max=None,
-        column_shuffle_size=None,
-        column_shuffle_segments=None,
-        sparse=None,
-        dtype=None,
-        dtypes=None,
         output_types=None,
         **kw
     ):
         if index_min_max is not None:
             kw.update(
                 dict(
-                    _index_min=index_min_max[0],
-                    _index_min_close=index_min_max[1],
-                    _index_max=index_min_max[2],
-                    _index_max_close=index_min_max[3],
+                    index_min=index_min_max[0],
+                    index_min_close=index_min_max[1],
+                    index_max=index_min_max[2],
+                    index_max_close=index_min_max[3],
                 )
             )
         if column_min_max is not None:
             kw.update(
                 dict(
-                    _column_min=column_min_max[0],
-                    _column_min_close=column_min_max[1],
-                    _column_max=column_min_max[2],
-                    _column_max_close=column_min_max[3],
+                    column_min=column_min_max[0],
+                    column_min_close=column_min_max[1],
+                    column_max=column_min_max[2],
+                    column_max_close=column_min_max[3],
                 )
             )
-        super().__init__(
-            _index_shuffle_size=index_shuffle_size,
-            _column_shuffle_size=column_shuffle_size,
-            _column_shuffle_segments=column_shuffle_segments,
-            sparse=sparse,
-            _dtype=dtype,
-            _dtypes=dtypes,
-            _output_types=output_types,
-            **kw
-        )
-
-    @property
-    def index_min(self):
-        return self._index_min
-
-    @property
-    def index_min_close(self):
-        return self._index_min_close
-
-    @property
-    def index_max(self):
-        return self._index_max
-
-    @property
-    def index_max_close(self):
-        return self._index_max_close
+        super().__init__(_output_types=output_types, **kw)
 
     @property
     def index_min_max(self):
-        if getattr(self, "_index_min", None) is None:
+        if getattr(self, "index_min", None) is None:
             return None
         return (
-            self._index_min,
-            self._index_min_close,
-            self._index_max,
-            self._index_max_close,
+            self.index_min,
+            self.index_min_close,
+            self.index_max,
+            self.index_max_close,
         )
-
-    @property
-    def index_shuffle_size(self):
-        return self._index_shuffle_size
-
-    @property
-    def column_min(self):
-        return self._column_min
-
-    @property
-    def column_min_close(self):
-        return self._column_min_close
-
-    @property
-    def column_max(self):
-        return self._column_max
-
-    @property
-    def column_max_close(self):
-        return self._column_max_close
 
     @property
     def column_min_max(self):
-        if getattr(self, "_column_min", None) is None:
+        if getattr(self, "column_min", None) is None:
             return None
         return (
-            self._column_min,
-            self._column_min_close,
-            self._column_max,
-            self._column_max_close,
+            self.column_min,
+            self.column_min_close,
+            self.column_max,
+            self.column_max_close,
         )
-
-    @property
-    def column_shuffle_size(self):
-        return self._column_shuffle_size
-
-    @property
-    def column_shuffle_segments(self):
-        return self._column_shuffle_segments
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        self._input = self._inputs[0]
+        self.input = self._inputs[0]
 
     def build_map_chunk_kw(self, inputs, **kw):
         if kw.get("index_value", None) is None and inputs[0].index_value is not None:
@@ -205,7 +146,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
                 kw["dtypes"] = input_dtypes[kw["columns_value"].to_pandas()]
                 column_shuffle_size = self.column_shuffle_size
                 if column_shuffle_size is not None:
-                    self._column_shuffle_segments = hash_dtypes(
+                    self.column_shuffle_segments = hash_dtypes(
                         input_dtypes, column_shuffle_size
                     )
         else:
