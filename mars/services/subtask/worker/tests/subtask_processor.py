@@ -15,7 +15,7 @@
 from typing import Any, Dict
 
 from .....core import OperandType
-from .....core.operand.shuffle import MapReduceOperand
+from .....core.operand.shuffle import MapReduceOperand, ExactlyMapDataKeys
 from .....tests.core import _check_args, ObjectCheckMixin
 from ...worker.processor import SubtaskProcessor
 
@@ -73,7 +73,7 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
         )
         super()._execute_operand(ctx, op)
         # Check the get_output_data_keys is correct.
-        if output_data_keys is not None:
+        if isinstance(output_data_keys, ExactlyMapDataKeys):
             # The same operand may be executed multiple times.
             first_key = output_data_keys[0]
             ctx_keys = list(ctx.keys())
@@ -82,6 +82,8 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
             assert (
                 new_keys == output_data_keys
             ), f"\nexpect data keys: {new_keys}\noutput data keys: {output_data_keys}"
+        else:
+            assert output_data_keys is None
         if self._check_options.get("check_all", True):
             for out in op.outputs:
                 if out not in self._chunk_graph.result_chunks:

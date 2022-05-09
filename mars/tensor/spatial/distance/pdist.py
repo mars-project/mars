@@ -19,6 +19,7 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ....core import recursive_tile
 from ....core.operand import OperandStage
+from ....core.operand.shuffle import ExactlyMapDataKeys
 from ....serialization.serializables import (
     FieldTypes,
     KeyField,
@@ -302,8 +303,8 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
 
     def get_output_data_keys(self):
         if self.stage == OperandStage.map:
-            out = self.outputs[0]
-            return [(out.key, (i,)) for i in range(len(self.out_sizes))]
+            key = self.outputs[0].key
+            return ExactlyMapDataKeys((key, (i,)) for i in range(len(self.out_sizes)))
         else:
             return None
 

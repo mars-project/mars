@@ -23,6 +23,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core import get_output_types, recursive_tile
 from ...core.operand import OperandStage, MapReduceOperand
+from ...core.operand.shuffle import ExactlyMapDataKeys
 from ...dataframe.utils import parse_index
 from ...lib import sparse
 from ...serialization.serializables import FieldTypes, TupleField, KeyField
@@ -377,7 +378,7 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
                 extra_reduce_sizes.append(reduce_size)
             axes, reduce_sizes = extra_axes, extra_reduce_sizes
 
-            keys = []
+            keys = ExactlyMapDataKeys()
             for reduce_index in itertools.product(*(range(rs) for rs in reduce_sizes)):
                 index = list(out.index)
                 for ax, ind in zip(axes, reduce_index):

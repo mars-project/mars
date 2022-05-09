@@ -24,6 +24,7 @@ from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, recursive_tile
 from ...core.context import Context
 from ...core.operand import OperandStage
+from ...core.operand.shuffle import ExactlyMapDataKeys
 from ...serialization.serializables import KeyField, TupleField, AnyField, BoolField
 from ...tensor import tensor as astensor
 from ...utils import has_unknown_shape
@@ -280,12 +281,12 @@ class TensorIndexSetValue(TensorMapReduceOperand, TensorOperandMixin):
         if self.stage == OperandStage.map:
             nsplits = self.input_nsplits
             output_key = self.outputs[0].key
-            return [
+            return ExactlyMapDataKeys(
                 (output_key, reducer_index)
                 for reducer_index in itertools.product(
                     *(map(range, [len(s) for s in nsplits]))
                 )
-            ]
+            )
         else:
             return None
 

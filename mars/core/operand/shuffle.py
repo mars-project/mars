@@ -24,6 +24,13 @@ from ...serialization.serializables import (
 from .base import Operand, VirtualOperand, OperandStage
 
 
+class ExactlyMapDataKeys(list):
+    """
+    The type for the shuffle output data keys which
+    exactly the same with map execution results keys.
+    """
+
+
 class ShuffleProxy(VirtualOperand):
     _op_type_ = opcodes.SHUFFLE_PROXY
 
@@ -42,7 +49,7 @@ class MapReduceOperand(Operand):
 
         return super()._new_chunks(inputs, kws, **kw)
 
-    def get_output_data_keys(self) -> Union[List, None]:
+    def get_output_data_keys(self) -> Union[ExactlyMapDataKeys, None]:
         """
         Get the output data keys before execute.
         If the stage != OperandStage.map, returns None.

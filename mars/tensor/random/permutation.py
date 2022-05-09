@@ -19,6 +19,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core.operand import OperandStage
+from ...core.operand.shuffle import ExactlyMapDataKeys
 from ...serialization.serializables import KeyField, Int32Field
 from ..operands import TensorOperandMixin, TensorShuffleProxy
 from ..utils import gen_random_seeds, validate_axis
@@ -158,7 +159,7 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
         if self.stage == OperandStage.map:
             out_chunk = self.outputs[0]
             reduce_size = self.reduce_size
-            keys = []
+            keys = ExactlyMapDataKeys()
             for to_reduce_idx in range(reduce_size):
                 reduce_idx = (
                     out_chunk.index[: self.axis]

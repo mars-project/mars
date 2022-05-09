@@ -20,6 +20,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
 from ...core.operand import OperandStage
+from ...core.operand.shuffle import ExactlyMapDataKeys
 from ...serialization.serializables import (
     FieldTypes,
     Int32Field,
@@ -692,7 +693,7 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
     def get_output_data_keys(self):
         if self.stage == OperandStage.map:
             key = self.outputs[0].key
-            return [(key, (i,)) for i in range(self.n_partition)]
+            return ExactlyMapDataKeys((key, (i,)) for i in range(self.n_partition))
         else:
             return None
 

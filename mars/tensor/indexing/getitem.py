@@ -20,6 +20,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE
 from ...core.operand import OperandStage
+from ...core.operand.shuffle import ExactlyMapDataKeys
 from ...serialization.serializables import (
     FieldTypes,
     KeyField,
@@ -184,10 +185,10 @@ class FancyIndexingDistribute(TensorMapReduceOperand, TensorOperandMixin):
             nsplits = self.dest_nsplits
             axes = self.axes
             output_key = self.outputs[0].key
-            return [
+            return ExactlyMapDataKeys(
                 (output_key, idx)
                 for idx in itertools.product(*(range(len(nsplits[ax])) for ax in axes))
-            ]
+            )
         else:
             return None
 

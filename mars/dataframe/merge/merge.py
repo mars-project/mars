@@ -24,6 +24,7 @@ from ... import opcodes as OperandDef
 from ...core import OutputType, recursive_tile, TileStatus
 from ...core.context import get_context
 from ...core.operand import OperandStage, MapReduceOperand
+from ...core.operand.shuffle import ExactlyMapDataKeys
 from ...serialization.serializables import (
     AnyField,
     BoolField,
@@ -85,10 +86,10 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
             chunk = self.outputs[0]
             chunk_index = chunk.index[1]
             chunk_key = chunk.key
-            return [
+            return ExactlyMapDataKeys(
                 (chunk_key, (index_idx, chunk_index))
                 for index_idx in range(self.index_shuffle_size)
-            ]
+            )
         else:
             return None
 

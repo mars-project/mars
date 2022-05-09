@@ -35,6 +35,7 @@ from ... import opcodes, tensor as mt
 from ...core import OutputType, get_output_types, recursive_tile
 from ...core.context import Context
 from ...core.operand import OperandStage
+from ...core.operand.shuffle import ExactlyMapDataKeys
 from ...dataframe.core import DATAFRAME_TYPE
 from ...dataframe.utils import parse_index
 from ...deploy.oscar.session import execute
@@ -478,7 +479,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             key = self.outputs[0].key
             reducer_iter = self._get_reducer_iter(self)
             seen = set()
-            output = []
+            output = ExactlyMapDataKeys()
             for reducer_id in reducer_iter:
                 out_key = (key, (reducer_id, 0))
                 if out_key not in seen:

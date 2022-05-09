@@ -23,6 +23,7 @@ import pandas as pd
 from ... import opcodes
 from ...core import ENTITY_TYPE, OutputType, get_output_types, recursive_tile
 from ...core.operand import OperandStage, MapReduceOperand
+from ...core.operand.shuffle import ExactlyMapDataKeys
 from ...serialization.serializables import (
     BoolField,
     DictField,
@@ -566,7 +567,9 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
     def get_output_data_keys(self):
         if self.stage == OperandStage.map:
             key = self.outputs[0].key
-            return [(key, (idx,)) for idx in range(len(self.input_nsplits))]
+            return ExactlyMapDataKeys(
+                (key, (idx,)) for idx in range(len(self.input_nsplits))
+            )
         else:
             return None
 

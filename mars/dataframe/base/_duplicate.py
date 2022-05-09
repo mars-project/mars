@@ -396,16 +396,16 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
         if method is not None:
             if self.stage == OperandStage.map:
                 if method == "tree":
-                    return [self.outputs[0].key]
+                    return ExactlyMapDataKeys(self.outputs[0].key)
                 elif method == "subset_tree":
-                    return [self.outputs[0].key]
+                    return ExactlyMapDataKeys(self.outputs[0].key)
                 else:
                     assert method == "shuffle"
                     out = self.outputs[0]
                     shuffle_size = self.shuffle_size
-                    return [
+                    return ExactlyMapDataKeys(
                         (out.key, (i,) + out.index[1:]) for i in range(shuffle_size)
-                    ]
+                    )
         return None
 
 

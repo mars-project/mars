@@ -22,6 +22,7 @@ import pandas as pd
 from .. import opcodes as OperandDef
 from ..core import OutputType
 from ..core.operand import OperandStage, MapReduceOperand
+from ..core.operand.shuffle import ExactlyMapDataKeys
 from ..serialization.serializables import (
     FieldTypes,
     AnyField,
@@ -297,9 +298,11 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
         if out.ndim == 1:
             if filters[0] == 1:
                 # no shuffle
-                return [out.key]
+                return ExactlyMapDataKeys(out.key)
             else:
-                return [(out.key, (index_idx,)) for index_idx in range(filters[0])]
+                return ExactlyMapDataKeys(
+                    (out.key, (index_idx,)) for index_idx in range(filters[0])
+                )
 
         if self.column_shuffle_size == -1:
             # no shuffle and no min-max filter on columns
@@ -313,18 +316,18 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
 
         if all(it == 1 for it in filters):
             # no shuffle
-            return [out.key]
+            return ExactlyMapDataKeys(out.key)
         elif filters[0] == 1:
             # shuffle on columns
-            return [
+            return ExactlyMapDataKeys(
                 (out.key, (out.index[0], column_idx))
                 for column_idx in range(filters[1])
-            ]
+            )
         elif filters[1] == 1:
             # shuffle on index
-            return [
+            return ExactlyMapDataKeys(
                 (out.key, (index_idx, out.index[1])) for index_idx in range(filters[0])
-            ]
+            )
         else:
             # full shuffle
             shuffle_index_size = self.index_shuffle_size
@@ -332,7 +335,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
             out_idxes = itertools.product(
                 range(shuffle_index_size), range(shuffle_column_size)
             )
-            return [(out.key, out_idx) for out_idx in out_idxes]
+            return ExactlyMapDataKeys((out.key, out_idx) for out_idx in out_idxes)
 
     @classmethod
     def execute_map(cls, ctx, op):

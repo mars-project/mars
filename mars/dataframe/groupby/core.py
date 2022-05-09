@@ -21,6 +21,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, Entity, OutputType
 from ...core.operand import OperandStage, MapReduceOperand
+from ...core.operand.shuffle import ExactlyMapDataKeys
 from ...lib.groupby_wrapper import wrapped_groupby
 from ...serialization.serializables import BoolField, Int32Field, AnyField
 from ...utils import lazy_import
@@ -348,7 +349,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
         if self.stage == OperandStage.map:
             is_dataframe_obj = self.is_dataframe_obj
             chunk = self.outputs[0]
-            output = []
+            output = ExactlyMapDataKeys()
             for index_idx in range(self.shuffle_size):
                 if is_dataframe_obj:
                     reducer_index = (index_idx, chunk.index[1])

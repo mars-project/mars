@@ -20,6 +20,7 @@ from ... import opcodes as OperandDef
 from ...config import options
 from ...core import recursive_tile
 from ...core.operand import OperandStage
+from ...core.operand.shuffle import ExactlyMapDataKeys
 from ...lib import sparse
 from ...lib.sparse.core import get_array_module as get_sparse_array_module
 from ...serialization.serializables import BoolField, Int32Field, Int64Field
@@ -293,7 +294,9 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
     def get_output_data_keys(self):
         if self.stage == OperandStage.map:
             key = self.outputs[0].key
-            return [(key, (reducer,)) for reducer in range(self.aggregate_size)]
+            return ExactlyMapDataKeys(
+                (key, (reducer,)) for reducer in range(self.aggregate_size)
+            )
         else:
             return None
 

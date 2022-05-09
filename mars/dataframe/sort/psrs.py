@@ -19,6 +19,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core.operand import OperandStage, MapReduceOperand
+from ...core.operand.shuffle import ExactlyMapDataKeys
 from ...utils import lazy_import, calc_nsplits
 from ...serialization.serializables import (
     AnyField,
@@ -661,7 +662,7 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
     def get_output_data_keys(self):
         if self.stage == OperandStage.map:
             key = self.outputs[0].key
-            return [(key, (i,)) for i in range(self.n_partition)]
+            return ExactlyMapDataKeys((key, (i,)) for i in range(self.n_partition))
         else:
             return None
 

@@ -19,6 +19,7 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ....core import recursive_tile
 from ....core.operand import OperandStage
+from ....core.operand.shuffle import ExactlyMapDataKeys
 from ....serialization.serializables import FieldTypes, KeyField, BoolField, TupleField
 from ....config import options
 from ....utils import has_unknown_shape, require_module
@@ -337,12 +338,12 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
             out_chunk_size = self.reduce_sizes
             output_key = self.outputs[0].key
             if x.ndim == 1:
-                return [
+                return ExactlyMapDataKeys(
                     (output_key, idx)
                     for idx in itertools.product(
                         *(range(len(ns)) for ns in out_chunk_size)
                     )
-                ]
+                )
             else:
                 return [(output_key, (i,)) for i in range(len(out_chunk_size[0]))]
         else:
