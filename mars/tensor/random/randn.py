@@ -25,10 +25,6 @@ class TensorRandn(TensorSimpleRandomData, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_RANDN
     _func_name = "randn"
 
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
     def __call__(self, chunk_size=None):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)
 

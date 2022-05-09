@@ -25,22 +25,10 @@ from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 class TensorRandomIntegers(TensorSimpleRandomData, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_RANDOM_INTEGERS
 
-    _fields_ = "_low", "_high", "_size"
-    _low = Int64Field("low")
-    _high = Int64Field("high")
+    _fields_ = "low", "high", "size"
+    low = Int64Field("low")
+    high = Int64Field("high")
     _func_name = "random_integers"
-
-    def __init__(self, size=None, low=None, high=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _low=low, _high=high, dtype=dtype, **kw)
-
-    @property
-    def low(self):
-        return self._low
-
-    @property
-    def high(self):
-        return self._high
 
     def __call__(self, chunk_size=None):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)

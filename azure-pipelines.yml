@@ -87,6 +87,7 @@ jobs:
     - bash: |
         set -e
         source ci/reload-env.sh
+        export CI=true
         mkdir -p build
         pytest $PYTEST_CONFIG mars/$(mars.test.module)
         mv .coverage build/.coverage.main.file

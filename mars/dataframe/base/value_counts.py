@@ -30,94 +30,37 @@ _keep_original_order = pd_release_version >= (1, 3, 0)
 class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.VALUE_COUNTS
 
-    _input = KeyField("input")
-    _normalize = BoolField("normalize")
-    _sort = BoolField("sort")
-    _ascending = BoolField("ascending")
-    _bins = Int64Field("bins")
-    _dropna = BoolField("dropna")
-    _method = StringField("method")
-    _convert_index_to_interval = BoolField("convert_index_to_interval")
-    _nrows = Int64Field("nrows")
+    input = KeyField("input")
+    normalize = BoolField("normalize")
+    sort = BoolField("sort")
+    ascending = BoolField("ascending")
+    bins = Int64Field("bins")
+    dropna = BoolField("dropna")
+    method = StringField("method")
+    convert_index_to_interval = BoolField("convert_index_to_interval", default=None)
+    nrows = Int64Field("nrows", default=None)
 
-    def __init__(
-        self,
-        normalize=None,
-        sort=None,
-        ascending=None,
-        bins=None,
-        dropna=None,
-        method=None,
-        convert_index_to_interval=None,
-        nrows=None,
-        **kw
-    ):
-        super().__init__(
-            _normalize=normalize,
-            _sort=sort,
-            _ascending=ascending,
-            _bins=bins,
-            _dropna=dropna,
-            _method=method,
-            _convert_index_to_interval=convert_index_to_interval,
-            _nrows=nrows,
-            **kw
-        )
+    def __init__(self, **kw):
+        super().__init__(**kw)
         self.output_types = [OutputType.series]
-
-    @property
-    def input(self):
-        return self._input
-
-    @property
-    def normalize(self):
-        return self._normalize
-
-    @property
-    def sort(self):
-        return self._sort
-
-    @property
-    def ascending(self):
-        return self._ascending
-
-    @property
-    def bins(self):
-        return self._bins
-
-    @property
-    def dropna(self):
-        return self._dropna
-
-    @property
-    def method(self):
-        return self._method
-
-    @property
-    def convert_index_to_interval(self):
-        return self._convert_index_to_interval
-
-    @property
-    def nrows(self):
-        return self._nrows
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        self._input = self._inputs[0]
+        self.input = self._inputs[0]
 
     def __call__(self, inp):
         test_series = build_series(inp).value_counts(normalize=self.normalize)
-        if self._bins is not None:
+        if self.bins is not None:
             from .cut import cut
 
             # cut
             try:
-                inp = cut(inp, self._bins, include_lowest=True)
+                inp = cut(inp, self.bins, include_lowest=True)
             except TypeError:  # pragma: no cover
                 raise TypeError("bins argument only works with numeric data.")
 
-            self._bins = None
-            self._convert_index_to_interval = True
+            self.bins = None
+            self.convert_index_to_interval = True
             return self.new_series(
                 [inp],
                 shape=(np.nan,),
@@ -174,7 +117,7 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
 
             if op.nrows:
                 # set to sort_values
-                inp.op._nrows = op.nrows
+                inp.op.nrows = op.nrows
         elif op.nrows:
             inp = inp.iloc[: op.nrows]
 

@@ -143,8 +143,8 @@ class TensorRandomOperandMixin(TensorOperandMixin):
                 size = shape
 
             chunk_op = op.copy().reset_key()
-            chunk_op._seed = int(seed)
-            chunk_op._size = size
+            chunk_op.seed = int(seed)
+            chunk_op.size = size
             out_chunk = chunk_op.new_chunk(
                 inputs, shape=shape, index=idx, order=tensor.order
             )
@@ -225,8 +225,8 @@ class TensorRandomOperandMixin(TensorOperandMixin):
 
     def _calc_shape(self, shapes):
         shapes = list(shapes)
-        if getattr(self, "_size", None) is not None:
-            shapes.append(getattr(self, "_size"))
+        if getattr(self, "size", None) is not None:
+            shapes.append(getattr(self, "size"))
         return broadcast_shape(*shapes)
 
     @classmethod
@@ -331,7 +331,7 @@ def RandomStateField(name, **kwargs):
 class TensorSeedOperandMixin(object):
     @property
     def seed(self):
-        return getattr(self, "_seed", None)
+        return getattr(self, "seed", None)
 
     @property
     def args(self):
@@ -346,26 +346,27 @@ class TensorSeedOperandMixin(object):
 
 
 class TensorRandomOperand(TensorSeedOperandMixin, TensorOperand):
-    _seed = Int32Field("seed")
+    seed = Int32Field("seed")
 
-    def __init__(self, seed=None, **kwargs):
-        super().__init__(_seed=seed, **kwargs)
-
-    @property
-    def seed(self):
-        return self._seed
+    def __init__(self, dtype=None, **kw):
+        dtype = np.dtype(dtype) if dtype is not None else dtype
+        if "state" in kw:
+            kw["_state"] = kw.pop("state")
+        super().__init__(dtype=dtype, **kw)
 
 
 class TensorRandomMapReduceOperand(TensorSeedOperandMixin, TensorMapReduceOperand):
-    _seed = Int32Field("seed")
+    seed = Int32Field("seed")
+
+    def __init__(self, dtype=None, **kw):
+        dtype = np.dtype(dtype) if dtype is not None else dtype
+        if "state" in kw:
+            kw["_state"] = kw.pop("state")
+        super().__init__(dtype=dtype, **kw)
 
 
 class TensorDistribution(TensorRandomOperand):
-    _size = TupleField("size", FieldTypes.int64)
-
-    @property
-    def size(self):
-        return self._size
+    size = TupleField("size", FieldTypes.int64)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -404,8 +405,9 @@ class TensorDistribution(TensorRandomOperand):
 
 
 class TensorSimpleRandomData(TensorRandomOperand):
-    _size = TupleField("size", FieldTypes.int64)
+    size = TupleField("size", FieldTypes.int64)
 
-    @property
-    def size(self):
-        return self._size
+    def __init__(self, size=None, **kw):
+        if type(size) is int:
+            size = (size,)
+        super().__init__(size=size, **kw)

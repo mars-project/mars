@@ -23,20 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorLogseries(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_p"]
+    _input_fields_ = ["p"]
     _op_type_ = OperandDef.RAND_LOGSERIES
 
-    _fields_ = "_p", "_size"
-    _p = AnyField("p")
+    _fields_ = "p", "size"
+    p = AnyField("p")
     _func_name = "logseries"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def p(self):
-        return self._p
 
     def __call__(self, p, chunk_size=None):
         return self.new_tensor([p], None, raw_chunk_size=chunk_size)

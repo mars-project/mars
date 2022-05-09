@@ -26,29 +26,11 @@ from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 class TensorRandint(TensorSimpleRandomData, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_RANDINT
 
-    _fields_ = "_low", "_high", "_density", "_size"
-    _low = Int64Field("low")
-    _high = Int64Field("high")
-    _density = Float64Field("density")
+    _fields_ = "low", "high", "density", "size"
+    low = Int64Field("low")
+    high = Int64Field("high")
+    density = Float64Field("density")
     _func_name = "randint"
-
-    def __init__(self, size=None, dtype=None, low=None, high=None, density=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(
-            _size=size, _low=low, _high=high, _density=density, dtype=dtype, **kw
-        )
-
-    @property
-    def low(self):
-        return self._low
-
-    @property
-    def high(self):
-        return self._high
-
-    @property
-    def density(self):
-        return self._density
 
     def __call__(self, chunk_size=None):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)

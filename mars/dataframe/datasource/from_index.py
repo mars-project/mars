@@ -14,7 +14,7 @@
 
 from ... import opcodes
 from ...core import recursive_tile
-from ...serialization.serializables import KeyField, StringField
+from ...serialization.serializables import AnyField, KeyField
 from ..initializer import Index
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
@@ -24,7 +24,7 @@ class SeriesFromIndex(DataFrameOperand, DataFrameOperandMixin):
 
     input_ = KeyField("input_")
     index = KeyField("index")
-    name = StringField("name", default=None)
+    name = AnyField("name", default=None)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
