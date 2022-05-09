@@ -643,7 +643,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         pivot_chunk: ChunkType,
     ):
         # Shuffle the aggregation chunk.
-        if op.groupby_params["sort"] and pivot_chunk is not None:
+        if pivot_chunk is not None:
             reduce_chunks = cls._gen_shuffle_chunks_with_pivot(
                 op, in_df, agg_chunks, pivot_chunk
             )
