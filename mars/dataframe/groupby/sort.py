@@ -15,18 +15,19 @@
 import numpy as np
 import pandas as pd
 
-from ..operands import DataFrameOperandMixin
-from ..sort.psrs import DataFramePSRSChunkOperand
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...core.operand import MapReduceOperand, OperandStage
 from ...serialization.serializables import (
     Int32Field,
     ListField,
+    FieldTypes,
 )
 from ...utils import (
     lazy_import,
 )
+from ..operands import DataFrameOperandMixin
+from ..sort.psrs import DataFramePSRSChunkOperand
 
 cudf = lazy_import("cudf", globals=globals())
 
@@ -46,7 +47,7 @@ class DataFrameGroupbyConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMix
         return 1
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "DataFrameGroupbyConcatPivot"):
         inputs = [ctx[c.key] for c in op.inputs if len(ctx[c.key]) > 0]
 
         xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series)) else cudf
@@ -79,7 +80,7 @@ class DataFramePSRSGroupbySample(DataFramePSRSChunkOperand, DataFrameOperandMixi
         return 1
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "DataFramePSRSGroupbySample"):
         a = ctx[op.inputs[0].key][0]
         xdf = pd if isinstance(a, (pd.DataFrame, pd.Series)) else cudf
         if isinstance(a, xdf.Series) and op.output_types[0] == OutputType.dataframe:
@@ -107,30 +108,26 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_SORT_SHUFFLE
 
     # for shuffle map
-    _by = ListField("by")
-    _n_partition = Int32Field("n_partition")
+    by = ListField("by")
+    n_partition = Int32Field("n_partition")
+    output_types = ListField(
+        "output_type", FieldTypes.reference(OutputType), default=None
+    )
 
-    def __init__(
-        self, by=None, n_partition=None, inplace=None, output_types=None, **kw
-    ):
-        super().__init__(
-            _by=by, _n_partition=n_partition, _output_types=output_types, **kw
-        )
-
-    @property
-    def by(self):
-        return self._by
-
-    @property
-    def n_partition(self):
-        return self._n_partition
+    # @property
+    # def by(self):
+    #     return self.by
+    #
+    # @property
+    # def n_partition(self):
+    #     return self.n_partition
 
     @property
     def output_limit(self):
         return 1
 
     @classmethod
-    def _execute_map(cls, ctx, op):
+    def _execute_map(cls, ctx, op: "DataFrameGroupbySortShuffle"):
         df, pivots = [ctx[c.key] for c in op.inputs]
         out = op.outputs[0]
 
@@ -168,7 +165,7 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = r + (by,)
 
     @classmethod
-    def estimate_size(cls, ctx, op):
+    def estimate_size(cls, ctx, op: "DataFrameGroupbySortShuffle"):
         super().estimate_size(ctx, op)
         result = ctx[op.outputs[0].key]
         if op.stage == OperandStage.reduce:
@@ -177,7 +174,7 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
             ctx[op.outputs[0].key] = result
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "DataFrameGroupbySortShuffle"):
         if op.stage == OperandStage.map:
             cls._execute_map(ctx, op)
         else:
