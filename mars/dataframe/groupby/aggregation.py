@@ -386,49 +386,64 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return map_chunks
 
     @classmethod
-    def _gen_shuffle_chunks_order_preserve(cls, op, in_df, chunks, pivot, index_table):
-        properties = dict(
-            by=op.groupby_params['by'],
-            gpu=op.is_gpu()
-        )
-
+    def partition_local_data_op(cls, op, sorted_chunks, concat_pivot_chunk, in_df, index_table):
+        out_df = op.outputs[0]
         map_chunks = []
         chunk_shape = (in_df.chunk_shape[0], 1)
-        for chunk in chunks:
-            chunk_inputs = [chunk, pivot, index_table]
+        for chunk in sorted_chunks:
+            chunk_inputs = [chunk, concat_pivot_chunk, index_table]
+            output_types = (
+                [OutputType.dataframe_groupby]
+                if out_df.ndim == 2
+                else [OutputType.series_groupby]
+            )
             map_chunk_op = DataFrameGroupbyOrderPresShuffle(
                 shuffle_size=chunk_shape[0],
                 stage=OperandStage.map,
-                n_partition=len(chunks),
-                output_types=[OutputType.dataframe_groupby],
-                # columns_value=chunk_inputs[0].columns_value,
+                n_partition=len(sorted_chunks),
+                output_types=output_types,
             )
+
+            kw = dict()
+            if out_df.ndim == 2:
+                kw.update(
+                    dict(
+                        columns_value=chunk_inputs[0].columns_value,
+                        dtypes=chunk_inputs[0].dtypes,
+                    )
+                )
+            else:
+                kw.update(dict(dtype=chunk_inputs[0].dtype, name=chunk_inputs[0].name))
 
             map_chunks.append(
                 map_chunk_op.new_chunk(
                     chunk_inputs,
                     shape=chunk_shape,
                     index=chunk.index,
-                    index_value=chunk.index_value,
+                    index_value=chunk_inputs[0].index_value,
                     # **kw
                 )
             )
 
-        proxy_chunk = DataFrameShuffleProxy(output_types=[OutputType.dataframe]).new_chunk(
-            map_chunks, shape=()
-        )
+        return map_chunks
 
+    @classmethod
+    def partition_merge_data_op(cls, op, partition_chunks, proxy_chunk, in_df):
+        # stage 4: all *ith* classes are gathered and merged
         partition_sort_chunks = []
-        properties = dict(
-            by=op.groupby_params['by'],
-            gpu=op.is_gpu()
-        )
+        properties = dict(by=op.groupby_params["by"], gpu=op.is_gpu())
+        out_df = op.outputs[0]
 
-        for i, partition_chunk in enumerate(map_chunks):
+        for i, partition_chunk in enumerate(partition_chunks):
+            output_types = (
+                [OutputType.dataframe_groupby]
+                if out_df.ndim == 2
+                else [OutputType.series_groupby]
+            )
             partition_shuffle_reduce = DataFrameGroupbyOrderPresShuffle(
                 stage=OperandStage.reduce,
                 reducer_index=(i, 0),
-                output_types=[OutputType.dataframe_groupby],
+                output_types=output_types,
                 **properties
             )
             chunk_shape = list(partition_chunk.shape)
@@ -439,8 +454,29 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 index=partition_chunk.index,
                 index_value=partition_chunk.index_value,
             )
+            if op.outputs[0].ndim == 2:
+                kw.update(
+                    dict(
+                        columns_value=partition_chunk.columns_value,
+                        dtypes=partition_chunk.dtypes,
+                    )
+                )
+            else:
+                kw.update(dict(dtype=partition_chunk.dtype, name=partition_chunk.name))
             cs = partition_shuffle_reduce.new_chunks([proxy_chunk], **kw)
             partition_sort_chunks.append(cs[0])
+        return partition_sort_chunks
+
+    @classmethod
+    def _gen_shuffle_chunks_order_preserve(cls, op, in_df, chunks, pivot, index_table):
+        # properties = dict(by=op.groupby_params['by'], gpu=op.is_gpu())
+        map_chunks = cls.partition_local_data_op(op, chunks, pivot, in_df, index_table)
+
+        proxy_chunk = DataFrameShuffleProxy(output_types=[OutputType.dataframe]).new_chunk(
+            map_chunks, shape=()
+        )
+
+        partition_sort_chunks = cls.partition_merge_data_op(op, map_chunks, proxy_chunk, in_df)
 
         return partition_sort_chunks
 

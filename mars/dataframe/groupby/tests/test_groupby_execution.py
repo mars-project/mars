@@ -1371,8 +1371,6 @@ def test_dataframe_groupby_agg_op(setup):
     )
     mdf = md.DataFrame(raw, chunk_size=13)
 
-    # r = mdf.groupby(mdf["c2"], sort=False, preserve_order=True).sum(method="shuffle")
-    # pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby(raw["c2"], sort=False).sum())
 
     for method in ["tree", "shuffle"]:
 
@@ -1415,9 +1413,6 @@ def test_dataframe_groupby_agg_op(setup):
         # r = mdf.groupby(mdf["c2"], sort=False, preserve_order=True).sum(method=method)
         # pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby(raw["c2"], sort=False).sum())
 
-    # r = mdf.groupby("c2").size(method="tree")
-    # pd.testing.assert_series_equal(r.execute().fetch(), raw.groupby("c2").size())
-
     # test inserted kurt method
     r = mdf.groupby("c2", sort=False, preserve_order=True).kurtosis(method="tree")
     pd.testing.assert_frame_equal(r.execute().fetch(), raw.groupby("c2", sort=False).kurtosis())
@@ -1437,4 +1432,3 @@ def test_dataframe_groupby_agg_op(setup):
         raw.groupby(["c1", "c2"], sort=False, as_index=False).agg(["mean", "count"]),
     )
     assert r.op.groupby_params["as_index"] is True
-
