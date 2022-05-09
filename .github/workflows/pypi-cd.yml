@@ -36,6 +36,7 @@ jobs:
         uses: pypa/cibuildwheel@v2.3.1
         env:
           CIBW_BEFORE_BUILD: git reset --hard && pip install -r ci/requirements-wheel.txt
+          CIBW_BEFORE_BUILD_LINUX: apt-get install -y npm
           CIBW_ARCHS: ${{ matrix.arch }}
           CIBW_SKIP: pp* *-musllinux* cp36-* cp310-win32 *i686 cp310-manylinux_x86_64
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
@@ -46,6 +47,7 @@ jobs:
         uses: pypa/cibuildwheel@v2.3.1
         env:
           CIBW_BEFORE_BUILD: git reset --hard && pip install -r ci/requirements-wheel.txt
+          CIBW_BEFORE_BUILD_LINUX: apt-get install -y npm
           CIBW_BUILD: cp310-manylinux_x86_64
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
 
