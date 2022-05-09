@@ -132,8 +132,8 @@ class RayTaskExecutor(TaskExecutor):
         self._available_band_resources = None
 
         # For progress
-        self._pre_all_stage_progress = 0.0
-        self._pre_all_stage_tile_progress = 0
+        self._pre_all_stages_progress = 0.0
+        self._pre_all_stages_tile_progress = 0
         self._cur_stage_tile_progress = 0
         self._cur_stage_output_object_refs = []
 
@@ -196,11 +196,11 @@ class RayTaskExecutor(TaskExecutor):
         logger.info("Stage %s start.", stage_id)
         context = self._task_context
         output_meta_object_refs = []
-        self._pre_all_stage_tile_progress = (
-            self._pre_all_stage_tile_progress + self._cur_stage_tile_progress
+        self._pre_all_stages_tile_progress = (
+            self._pre_all_stages_tile_progress + self._cur_stage_tile_progress
         )
         self._cur_stage_tile_progress = (
-            self._tile_context.get_all_progress() - self._pre_all_stage_tile_progress
+            self._tile_context.get_all_progress() - self._pre_all_stages_tile_progress
         )
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
         result_meta_keys = {
@@ -261,7 +261,7 @@ class RayTaskExecutor(TaskExecutor):
 
         logger.info("Waiting for stage %s complete.", stage_id)
         ray.wait(output_object_refs, fetch_local=False)
-        self._pre_all_stage_progress += self._calculate_cur_stage_progress()
+        self._pre_all_stages_progress += self._calculate_cur_stage_progress()
         self._cur_stage_output_object_refs.clear()
         logger.info("Stage %s is complete.", stage_id)
         return chunk_to_meta
@@ -322,7 +322,7 @@ class RayTaskExecutor(TaskExecutor):
 
     async def get_progress(self) -> float:
         """Get the execution progress."""
-        return self._pre_all_stage_progress + self._calculate_cur_stage_progress()
+        return self._pre_all_stages_progress + self._calculate_cur_stage_progress()
 
     async def cancel(self):
         """Cancel execution."""
