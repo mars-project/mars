@@ -132,8 +132,10 @@ class RayTaskExecutor(TaskExecutor):
         self._available_band_resources = None
 
         # For progress
-        self._stage_output_object_refs = []
-        self._stage_tile_progresses = []
+        self._pre_all_stage_progress = 0.0
+        self._pre_all_stage_tile_progress = 0
+        self._cur_stage_tile_progress = 0
+        self._cur_stage_output_object_refs = []
 
     @classmethod
     async def create(
@@ -194,14 +196,18 @@ class RayTaskExecutor(TaskExecutor):
         logger.info("Stage %s start.", stage_id)
         context = self._task_context
         output_meta_object_refs = []
-
+        self._pre_all_stage_tile_progress = (
+            self._pre_all_stage_tile_progress + self._cur_stage_tile_progress
+        )
+        self._cur_stage_tile_progress = (
+            self._tile_context.get_all_progress() - self._pre_all_stage_tile_progress
+        )
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
         result_meta_keys = {
             chunk.key
             for chunk in chunk_graph.result_chunks
             if not isinstance(chunk.op, Fetch)
         }
-        stage_object_refs = []
         for subtask in subtask_graph.topological_iter():
             subtask_chunk_graph = subtask.chunk_graph
             key_to_input = await self._load_subtask_inputs(
@@ -220,20 +226,16 @@ class RayTaskExecutor(TaskExecutor):
                 list(key_to_input.keys()),
                 *key_to_input.values(),
             )
-            stage_object_refs.append(output_object_refs)
             if output_count == 0:
                 continue
             elif output_count == 1:
                 output_object_refs = [output_object_refs]
+            self._cur_stage_output_object_refs.extend(output_object_refs)
             if output_meta_keys:
                 meta_object_ref, *output_object_refs = output_object_refs
                 # TODO(fyrestone): Fetch(not get) meta object here.
                 output_meta_object_refs.append(meta_object_ref)
             context.update(zip(output_keys, output_object_refs))
-        self._stage_output_object_refs.append(stage_object_refs)
-        prev_progress = sum(self._stage_tile_progresses)
-        curr_tile_progress = self._tile_context.get_all_progress() - prev_progress
-        self._stage_tile_progresses.append(curr_tile_progress)
         logger.info("Submitted %s subtasks of stage %s.", len(subtask_graph), stage_id)
 
         key_to_meta = {}
@@ -259,6 +261,8 @@ class RayTaskExecutor(TaskExecutor):
 
         logger.info("Waiting for stage %s complete.", stage_id)
         ray.wait(output_object_refs, fetch_local=False)
+        self._pre_all_stage_progress += self._calculate_cur_stage_progress()
+        self._cur_stage_output_object_refs.clear()
         logger.info("Stage %s is complete.", stage_id)
         return chunk_to_meta
 
@@ -301,29 +305,24 @@ class RayTaskExecutor(TaskExecutor):
 
         return self._available_band_resources
 
+    def _calculate_cur_stage_progress(self) -> float:
+        stage_progress = 0.0
+        total = len(self._cur_stage_output_object_refs)
+        if total > 0:
+            finished_objects, _ = ray.wait(
+                self._cur_stage_output_object_refs,
+                num_returns=total,
+                timeout=0.1,
+                fetch_local=False,
+            )
+            stage_progress = (
+                len(finished_objects) / total * self._cur_stage_tile_progress
+            )
+        return stage_progress
+
     async def get_progress(self) -> float:
         """Get the execution progress."""
-        executor_progress = 0.0
-        assert len(self._stage_tile_progresses) == len(self._stage_output_object_refs)
-        for output_object_refs, stage_tile_progress in zip(
-            self._stage_output_object_refs, self._stage_tile_progresses
-        ):
-            if output_object_refs is None:
-                continue
-            total_refs = len(output_object_refs)
-            if total_refs == 0:
-                continue
-            finished_refs = len(
-                ray.wait(
-                    output_object_refs,
-                    num_returns=total_refs,
-                    timeout=0.1,
-                    fetch_local=False,
-                )[0]
-            )
-            progress = finished_refs / total_refs
-            executor_progress += progress * stage_tile_progress
-        return executor_progress
+        return self._pre_all_stage_progress + self._calculate_cur_stage_progress()
 
     async def cancel(self):
         """Cancel execution."""
