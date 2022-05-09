@@ -74,7 +74,11 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
         super()._execute_operand(ctx, op)
         # Check the get_output_data_keys is correct.
         if output_data_keys is not None:
-            new_keys = list(ctx.keys())[-len(output_data_keys) :]
+            # The same operand may be executed multiple times.
+            first_key = output_data_keys[0]
+            ctx_keys = list(ctx.keys())
+            pos = ctx_keys.index(first_key)
+            new_keys = ctx_keys[pos : pos + len(output_data_keys)]
             assert (
                 new_keys == output_data_keys
             ), f"\nexpect data keys: {new_keys}\noutput data keys: {output_data_keys}"
