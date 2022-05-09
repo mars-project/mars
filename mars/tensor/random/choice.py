@@ -40,36 +40,17 @@ from .core import TensorRandomOperand, RandomState
 class TensorChoice(TensorRandomOperand, TensorOperandMixin):
     _op_type_ = OperandDef.RAND_CHOICE
 
-    _a = AnyField("a")
-    _size = TupleField("size", FieldTypes.int64)
-    _replace = BoolField("replace")
-    _p = KeyField("p")
-
-    def __init__(self, a=None, size=None, replace=None, p=None, seed=None, **kw):
-        super().__init__(_a=a, _size=size, _replace=replace, _p=p, seed=seed, **kw)
-
-    @property
-    def a(self):
-        return self._a
-
-    @property
-    def size(self):
-        return self._size
-
-    @property
-    def replace(self):
-        return self._replace
-
-    @property
-    def p(self):
-        return self._p
+    a = AnyField("a")
+    size = TupleField("size", FieldTypes.int64)
+    replace = BoolField("replace")
+    p = KeyField("p")
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if isinstance(self._a, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
-            self._a = self._inputs[0]
-        if isinstance(self._p, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
-            self._p = self._inputs[-1]
+        if isinstance(self.a, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
+            self.a = self._inputs[0]
+        if isinstance(self.p, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
+            self.p = self._inputs[-1]
 
     def __call__(self, a, p, chunk_size=None):
         inputs = []
@@ -79,7 +60,7 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
             inputs.append(p)
         return self.new_tensor(
             inputs,
-            shape=self._size,
+            shape=self.size,
             raw_chunk_size=chunk_size,
             order=TensorOrder.C_ORDER,
         )
@@ -88,18 +69,18 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
     def _tile_one_chunk(cls, op, a, p):
         out = op.outputs[0]
         chunk_op = op.copy().reset_key()
-        chunk_op._seed = gen_random_seeds(1, np.random.RandomState(op.seed))[0]
+        chunk_op.seed = gen_random_seeds(1, np.random.RandomState(op.seed))[0]
         chunk_inputs = []
         if isinstance(a, TENSOR_TYPE):
-            chunk_op._a = a.chunks[0]
+            chunk_op.a = a.chunks[0]
             chunk_inputs.append(chunk_op.a)
         else:
-            chunk_op._a = a
+            chunk_op.a = a
         if isinstance(p, TENSOR_TYPE):
-            chunk_op._p = p.chunks[0]
+            chunk_op.p = p.chunks[0]
             chunk_inputs.append(chunk_op.p)
         else:
-            chunk_op._p = p
+            chunk_op.p = p
         chunk = chunk_op.new_chunk(
             chunk_inputs, shape=out.shape, index=(0,) * out.ndim, order=out.order
         )
@@ -183,8 +164,8 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
         for seed, chunk in zip(sample_seeds, a.chunks):
             chunk_op = op.copy().reset_key()
             chunk_op._a = chunk
-            chunk_op._size = (m,)
-            chunk_op._seed = seed
+            chunk_op.size = (m,)
+            chunk_op.seed = seed
             sampled_chunk = chunk_op.new_chunk(
                 [chunk], shape=(m,), order=out.order, index=chunk.index
             )

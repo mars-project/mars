@@ -23,23 +23,15 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorExponential(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_scale"]
+    _input_fields_ = ["scale"]
     _op_type_ = OperandDef.RAND_EXPONENTIAL
 
-    _fields_ = "_scale", "_size"
-    _scale = AnyField("scale")
+    _fields_ = "scale", "size"
+    scale = AnyField("scale")
     _func_name = "exponential"
 
-    @property
-    def scale(self):
-        return self._scale
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
     def __call__(self, scale, chunk_size=None):
-        return self.new_tensor([scale], self._size, raw_chunk_size=chunk_size)
+        return self.new_tensor([scale], self.size, raw_chunk_size=chunk_size)
 
 
 def exponential(

@@ -23,23 +23,15 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorChisquareDist(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_df"]
+    _input_fields_ = ["df"]
     _op_type_ = OperandDef.RAND_CHISQUARE
 
-    _fields_ = "_df", "_size"
-    _df = AnyField("df")
+    _fields_ = "df", "size"
+    df = AnyField("df")
     _func_name = "chisquare"
 
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def df(self):
-        return self._df
-
     def __call__(self, df, chunk_size=None):
-        return self.new_tensor([df], self._size, raw_chunk_size=chunk_size)
+        return self.new_tensor([df], self.size, raw_chunk_size=chunk_size)
 
 
 def chisquare(random_state, df, size=None, chunk_size=None, gpu=None, dtype=None):

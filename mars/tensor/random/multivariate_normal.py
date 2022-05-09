@@ -29,59 +29,22 @@ from .core import TensorRandomOperandMixin, TensorDistribution, TENSOR_CHUNK_TYP
 class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_MULTIVARIATE_NORMAL
 
-    _fields_ = "_mean", "_cov", "_size", "_check_valid", "_tol"
-    _mean = NDArrayField("mean")
-    _cov = NDArrayField("cov")
-    _check_valid = StringField("check_valid")
-    _tol = Float64Field("tol")
+    _fields_ = "mean", "cov", "size", "check_valid", "tol"
+    mean = NDArrayField("mean")
+    cov = NDArrayField("cov")
+    check_valid = StringField("check_valid")
+    tol = Float64Field("tol")
     _func_name = "multivariate_normal"
 
-    def __init__(
-        self,
-        mean=None,
-        cov=None,
-        size=None,
-        check_valid=None,
-        tol=None,
-        dtype=None,
-        **kw
-    ):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(
-            _mean=mean,
-            _cov=cov,
-            _size=size,
-            _check_valid=check_valid,
-            _tol=tol,
-            dtype=dtype,
-            **kw
-        )
-
-    @property
-    def mean(self):
-        return self._mean
-
-    @property
-    def cov(self):
-        return self._cov
-
-    @property
-    def check_valid(self):
-        return self._check_valid
-
-    @property
-    def tol(self):
-        return self._tol
-
     def __call__(self, chunk_size=None):
-        N = self._mean.size
-        if self._size is None:
+        N = self.mean.size
+        if self.size is None:
             shape = (N,)
         else:
             try:
-                shape = tuple(self._size) + (N,)
+                shape = tuple(self.size) + (N,)
             except TypeError:
-                shape = (self._size, N)
+                shape = (self.size, N)
 
         return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
 
@@ -103,8 +66,8 @@ class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
         for seed, out_idx, shape in zip(seeds, idxes, itertools.product(*nsplits)):
             chunk_op = op.copy().reset_key()
             chunk_op._state = None
-            chunk_op._seed = seed
-            chunk_op._size = shape[:-1]
+            chunk_op.seed = seed
+            chunk_op.size = shape[:-1]
             out_chunk = chunk_op.new_chunk(
                 [mean_chunk, cov_chunk], shape=shape, index=out_idx
             )
