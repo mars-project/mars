@@ -28,6 +28,13 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
+      - name: Build web source
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          git reset --hard
+          pip install -r ci/requirements-wheel.txt
+          python setup.py build_web
+
       - name: Set up QEMU
         if: ${{ matrix.arch == 'aarch64' }}
         uses: docker/setup-qemu-action@v1
@@ -36,7 +43,6 @@ jobs:
         uses: pypa/cibuildwheel@v2.3.1
         env:
           CIBW_BEFORE_BUILD: git reset --hard && pip install -r ci/requirements-wheel.txt
-          CIBW_BEFORE_BUILD_LINUX: apt-get install -y npm
           CIBW_ARCHS: ${{ matrix.arch }}
           CIBW_SKIP: pp* *-musllinux* cp36-* cp310-win32 *i686 cp310-manylinux_x86_64
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
@@ -47,12 +53,11 @@ jobs:
         uses: pypa/cibuildwheel@v2.3.1
         env:
           CIBW_BEFORE_BUILD: git reset --hard && pip install -r ci/requirements-wheel.txt
-          CIBW_BEFORE_BUILD_LINUX: apt-get install -y npm
           CIBW_BUILD: cp310-manylinux_x86_64
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
 
       - name: Build source
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.arch == 'auto'}}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.arch == 'auto' }}
         run: |
           git reset --hard
           pip install -r ci/requirements-wheel.txt
