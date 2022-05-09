@@ -660,8 +660,8 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
 
     def get_output_data_keys(self):
         if self.stage == OperandStage.map:
-            out = self.outputs[0]
-            return [(out.key, (i,)) for i in range(self.n_partition)]
+            key = self.outputs[0].key
+            return [(key, (i,)) for i in range(self.n_partition)]
         else:
             return None
 

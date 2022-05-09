@@ -691,7 +691,8 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
 
     def get_output_data_keys(self):
         if self.stage == OperandStage.map:
-            return [(self.outputs[0].key, (i,)) for i in range(self.n_partition)]
+            key = self.outputs[0].key
+            return [(key, (i,)) for i in range(self.n_partition)]
         else:
             return None
 
@@ -879,9 +880,8 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
 
     def get_output_data_keys(self):
         if self.stage == OperandStage.map:
-            return [
-                (self.outputs[0].key, (idx,)) for idx in range(len(self.output_sizes))
-            ]
+            key = self.outputs[0].key
+            return [(key, (idx,)) for idx in range(len(self.output_sizes))]
         else:
             return None
 

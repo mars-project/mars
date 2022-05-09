@@ -20,6 +20,7 @@ from .....core.context import set_context
 from .....core.operand import (
     Fetch,
     Fuse,
+    OperandStage,
     VirtualOperand,
     MapReduceOperand,
     execute,
@@ -338,11 +339,15 @@ class RayTaskExecutor(TaskExecutor):
     def _get_subtask_output_keys(chunk_graph: ChunkGraph):
         output_keys = {}
         for chunk in chunk_graph.results:
-            if isinstance(chunk.op, VirtualOperand):
+            op = chunk.op
+            if isinstance(op, VirtualOperand):
                 continue
-            elif isinstance(chunk.op, MapReduceOperand):
-                keys = chunk.op.get_output_data_keys()
+            elif isinstance(op, MapReduceOperand):
+                keys = op.get_output_data_keys()
                 if keys is None:
+                    if op.stage == OperandStage.map:
+                        # TODO(fyrestone): Support TensorReshape and TensorBinCount.
+                        raise NotImplementedError
                     output_keys[chunk.key] = 1
                 else:
                     for k in keys:

@@ -292,10 +292,8 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
 
     def get_output_data_keys(self):
         if self.stage == OperandStage.map:
-            return [
-                (self.outputs[0].key, (reducer,))
-                for reducer in range(self.aggregate_size)
-            ]
+            key = self.outputs[0].key
+            return [(key, (reducer,)) for reducer in range(self.aggregate_size)]
         else:
             return None
 
