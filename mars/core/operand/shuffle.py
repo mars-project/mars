@@ -30,6 +30,9 @@ class ExactlyMapDataKeys(list):
     exactly the same with map execution results keys.
     """
 
+    def __repr__(self):
+        return f"{type(self).__name__}({super().__repr__()})"
+
 
 class ShuffleProxy(VirtualOperand):
     _op_type_ = opcodes.SHUFFLE_PROXY

@@ -345,7 +345,9 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
                     )
                 )
             else:
-                return [(output_key, (i,)) for i in range(len(out_chunk_size[0]))]
+                return ExactlyMapDataKeys(
+                    (output_key, (i,)) for i in range(len(out_chunk_size[0]))
+                )
         else:
             return None
 
