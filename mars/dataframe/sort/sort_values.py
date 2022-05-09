@@ -28,14 +28,10 @@ from .psrs import DataFramePSRSOperandMixin, execute_sort_values
 class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
     _op_type_ = OperandDef.SORT_VALUES
 
-    _by = ListField("by")
+    by = ListField("by", default=None)
 
-    def __init__(self, by=None, output_types=None, **kw):
-        super().__init__(_by=by, _output_types=output_types, **kw)
-
-    @property
-    def by(self):
-        return self._by
+    def __init__(self, output_types=None, **kw):
+        super().__init__(_output_types=output_types, **kw)
 
     @classmethod
     def _tile_dataframe(cls, op):
@@ -252,6 +248,13 @@ def dataframe_sort_values(
         raise NotImplementedError("Only support sort on axis 0")
     psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
     by = by if isinstance(by, (list, tuple)) else [by]
+    if isinstance(ascending, list):  # pragma: no cover
+        if all(ascending):
+            # all are True, convert to True
+            ascending = True
+        elif not any(ascending):
+            # all are False, convert to False
+            ascending = False
     op = DataFrameSortValues(
         by=by,
         axis=axis,

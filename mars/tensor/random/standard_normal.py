@@ -24,11 +24,7 @@ from .core import TensorRandomOperandMixin, TensorDistribution
 class TensorStandardNormal(TensorDistribution, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_STANDARD_NORMAL
     _func_name = "standard_normal"
-    _fields_ = ("_size",)
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
+    _fields_ = ("size",)
 
     def __call__(self, chunk_size=None):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)

@@ -39,6 +39,11 @@ class TensorOnes(TensorNoInput):
     shape = TupleField("shape", FieldTypes.int64)
     chunk_size = AnyField("chunk_size")
 
+    def __init__(self, shape=None, **kwargs):
+        if type(shape) is int:
+            shape = (shape,)
+        super().__init__(shape=shape, **kwargs)
+
     def to_chunk_op(self, *args):
         chunk_op = super().to_chunk_op(*args)
         chunk_op.shape = args[0]

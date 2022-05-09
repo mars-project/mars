@@ -16,7 +16,9 @@ import asyncio
 import logging
 from typing import List, Dict, Any, Set
 from .....core import ChunkGraph, Chunk, TileContext
+from .....core.context import set_context
 from .....core.operand import (
+    Fetch,
     Fuse,
     VirtualOperand,
     MapReduceOperand,
@@ -37,19 +39,31 @@ from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
 from ....subtask import Subtask, SubtaskGraph
 from ....subtask.utils import iter_input_data_keys, iter_output_data
+from ...core import Task
 from ..api import (
     TaskExecutor,
     ExecutionConfig,
     ExecutionChunkResult,
     register_executor_cls,
 )
-from .context import RayExecutionContext
+from .context import (
+    RayExecutionContext,
+    RayExecutionWorkerContext,
+    RayRemoteObjectManager,
+)
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
 
 
+class RayTaskState(RayRemoteObjectManager):
+    @classmethod
+    def gen_name(cls, task_id: str):
+        return f"{cls.__name__}_{task_id}"
+
+
 def execute_subtask(
+    task_id: str,
     subtask_id: str,
     subtask_chunk_graph: ChunkGraph,
     output_meta_keys: Set[str],
@@ -60,7 +74,9 @@ def execute_subtask(
     ensure_coverage()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     # inputs = [i[1] for i in inputs]
-    context = RayExecutionContext(zip(input_keys, inputs))
+    context = RayExecutionWorkerContext(
+        RayTaskState.gen_name(task_id), zip(input_keys, inputs)
+    )
     # optimize chunk graph.
     subtask_chunk_graph = optimize(subtask_chunk_graph)
     # from data_key to results
@@ -95,16 +111,18 @@ class RayTaskExecutor(TaskExecutor):
     def __init__(
         self,
         config: ExecutionConfig,
-        task,
-        tile_context,
-        ray_executor,
-        lifecycle_api,
-        meta_api,
+        task: Task,
+        tile_context: TileContext,
+        ray_executor: "ray.remote_function.RemoteFunction",
+        task_state_actor: "ray.actor.ActorHandle",
+        lifecycle_api: LifecycleAPI,
+        meta_api: MetaAPI,
     ):
         self._config = config
         self._task = task
         self._tile_context = tile_context
         self._ray_executor = ray_executor
+        self._task_state_actor = task_state_actor
 
         # api
         self._lifecycle_api = lifecycle_api
@@ -124,17 +142,24 @@ class RayTaskExecutor(TaskExecutor):
         *,
         session_id: str,
         address: str,
-        task,
+        task: Task,
         tile_context: TileContext,
         **kwargs,
     ) -> "TaskExecutor":
         ray_executor = ray.remote(execute_subtask)
         lifecycle_api, meta_api = await cls._get_apis(session_id, address)
+        task_state_actor = (
+            ray.remote(RayTaskState)
+            .options(name=RayTaskState.gen_name(task.task_id))
+            .remote()
+        )
+        await cls._init_context(task_state_actor, session_id, address)
         return cls(
             config,
             task,
             tile_context,
             ray_executor,
+            task_state_actor,
             lifecycle_api,
             meta_api,
         )
@@ -146,6 +171,17 @@ class RayTaskExecutor(TaskExecutor):
             LifecycleAPI.create(session_id, address),
             MetaAPI.create(session_id, address),
         )
+
+    @classmethod
+    async def _init_context(
+        cls, task_state_actor: "ray.actor.ActorHandle", session_id: str, address: str
+    ):
+        loop = asyncio.get_running_loop()
+        context = RayExecutionContext(
+            task_state_actor, session_id, address, address, address, loop=loop
+        )
+        await context.init()
+        set_context(context)
 
     async def execute_subtask_graph(
         self,
@@ -160,20 +196,24 @@ class RayTaskExecutor(TaskExecutor):
         output_meta_object_refs = []
 
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
-        # TODO(fyrestone): Filter out the Fetch chunk.
-        result_keys = {chunk.key for chunk in chunk_graph.result_chunks}
-        stage_object_refs = []
+        result_meta_keys = {
+            chunk.key
+            for chunk in chunk_graph.result_chunks
+            if not isinstance(chunk.op, Fetch)
+        }
+		stage_object_refs = []
         for subtask in subtask_graph.topological_iter():
             subtask_chunk_graph = subtask.chunk_graph
             key_to_input = await self._load_subtask_inputs(
                 stage_id, subtask, subtask_chunk_graph, context
             )
             output_keys = self._get_subtask_output_keys(subtask_chunk_graph)
-            output_meta_keys = result_keys & output_keys
+            output_meta_keys = result_meta_keys & output_keys
             output_count = len(output_keys) + bool(output_meta_keys)
             output_object_refs = self._ray_executor.options(
                 num_returns=output_count
             ).remote(
+                subtask.task_id,
                 subtask.subtask_id,
                 serialize(subtask_chunk_graph),
                 output_meta_keys,
@@ -196,28 +236,31 @@ class RayTaskExecutor(TaskExecutor):
         self._stage_tile_progresses.append(curr_tile_progress)
         logger.info("Submitted %s subtasks of stage %s.", len(subtask_graph), stage_id)
 
-        assert len(output_meta_object_refs) > 0
         key_to_meta = {}
-        meta_list = await asyncio.gather(*output_meta_object_refs)
-        for meta in meta_list:
-            key_to_meta.update(meta)
-        assert len(key_to_meta) == len(chunk_graph.result_chunks)
-        logger.info("Got %s metas of stage %s.", len(output_meta_object_refs), stage_id)
+        if len(output_meta_object_refs) > 0:
+            # TODO(fyrestone): Optimize update meta by fetching partial meta.
+            meta_list = await asyncio.gather(*output_meta_object_refs)
+            for meta in meta_list:
+                key_to_meta.update(meta)
+            assert len(key_to_meta) == len(result_meta_keys)
+            logger.info(
+                "Got %s metas of stage %s.", len(output_meta_object_refs), stage_id
+            )
 
-        chunk_to_result = {}
+        chunk_to_meta = {}
         output_object_refs = []
         for chunk in chunk_graph.result_chunks:
             chunk_key = chunk.key
             object_ref = context[chunk_key]
             output_object_refs.append(object_ref)
-            chunk_to_result[chunk] = ExecutionChunkResult(
-                key_to_meta[chunk_key], object_ref
-            )
+            chunk_meta = key_to_meta.get(chunk_key)
+            if chunk_meta is not None:
+                chunk_to_meta[chunk] = ExecutionChunkResult(chunk_meta, object_ref)
 
         logger.info("Waiting for stage %s complete.", stage_id)
         ray.wait(output_object_refs, fetch_local=False)
         logger.info("Stage %s is complete.", stage_id)
-        return chunk_to_result
+        return chunk_to_meta
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if exc_type is None:

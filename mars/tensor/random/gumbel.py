@@ -23,25 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorGumbel(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_loc", "_scale"]
+    _input_fields_ = ["loc", "scale"]
     _op_type_ = OperandDef.RAND_GUMBEL
 
-    _fields_ = "_loc", "_scale", "_size"
-    _loc = AnyField("loc")
-    _scale = AnyField("scale")
+    _fields_ = "loc", "scale", "size"
+    loc = AnyField("loc")
+    scale = AnyField("scale")
     _func_name = "gumbel"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def loc(self):
-        return self._loc
-
-    @property
-    def scale(self):
-        return self._scale
 
     def __call__(self, loc, scale, chunk_size=None):
         return self.new_tensor([loc, scale], None, raw_chunk_size=chunk_size)

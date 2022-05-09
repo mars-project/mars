@@ -23,20 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorRandomPower(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_a"]
+    _input_fields_ = ["a"]
     _op_type_ = OperandDef.RAND_POWER
 
-    _fields_ = "_a", "_size"
-    _a = AnyField("a")
+    _fields_ = "a", "size"
+    a = AnyField("a")
     _func_name = "power"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def a(self):
-        return self._a
 
     def __call__(self, a, chunk_size=None):
         return self.new_tensor([a], None, raw_chunk_size=chunk_size)

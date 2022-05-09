@@ -21,7 +21,7 @@ import time
 from abc import ABC
 from collections import namedtuple
 from dataclasses import dataclass
-from typing import Any, Callable, Coroutine, Dict, List, Tuple, Type
+from typing import Any, Callable, Coroutine, Dict, List, Set, Tuple, Type
 from urllib.parse import urlparse
 
 from ....oscar.profiling import ProfilingData
@@ -54,16 +54,19 @@ def msg_to_simple_str(msg):  # pragma: no cover
     if type(msg) == _ArgWrapper:
         msg = msg.message
     if isinstance(msg, SendMessage):
-        return f"{str(type(msg))}(actor_ref={msg.actor_ref}, content={msg_to_simple_str(msg.content)})"
+        return f"{str(type(msg).__name__)}(actor_ref={msg.actor_ref}, content={msg_to_simple_str(msg.content)})"
     if isinstance(msg, _MessageBase):
         return str(msg)
-    if msg and isinstance(msg, List):
+    if isinstance(msg, List):
         part_str = ", ".join([msg_to_simple_str(item) for item in msg[:5]])
         return f"List<{part_str}...{len(msg)}>"
-    if msg and isinstance(msg, Tuple):
+    if isinstance(msg, Set):
+        part_str = ", ".join([msg_to_simple_str(item) for item in list(msg)[:5]])
+        return f"Set<{part_str}...{len(msg)}>"
+    if isinstance(msg, Tuple):
         part_str = ", ".join([msg_to_simple_str(item) for item in msg[:5]])
         return f"Tuple<{part_str}...{len(msg)}>"
-    if msg and isinstance(msg, Dict):
+    if isinstance(msg, Dict):
         part_str = []
         it = iter(msg.items())
         try:
@@ -75,8 +78,8 @@ def msg_to_simple_str(msg):  # pragma: no cover
         except StopIteration:
             pass
         part_str = ", ".join(part_str)
-        return f"Dict<k={part_str}...{len(msg)}>"
-    if isinstance(msg, (str, float, int)):
+        return f"Dict<{part_str}...{len(msg)}>"
+    if isinstance(msg, (str, float, int, bool)):
         return "{!s:.50}".format(msg)
     return str(type(msg))
 

@@ -36,11 +36,7 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
     # First, it will try to trigger first_chunk.head() and raise TilesError,
     # When iterative tiling is triggered,
     # check if the first_chunk.head() meets requirements.
-    _nrows = Int64Field("nrows", default=None)
-
-    @property
-    def nrows(self):
-        return self._nrows
+    nrows = Int64Field("nrows", default=None)
 
     @property
     def first_chunk(self):
@@ -58,9 +54,7 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
         # execute first chunk
         yield chunks[:1]
 
-        ctx = get_context()
-        chunk_shape = ctx.get_chunks_meta([chunks[0].key], fields=["shape"])[0]["shape"]
-
+        chunk_shape = chunks[0].shape
         if chunk_shape[0] == op.nrows:
             # the first chunk has enough data
             tileds[0]._nsplits = tuple((s,) for s in chunk_shape)
@@ -69,7 +63,7 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
             tileds[0]._shape = chunk_shape
         else:
             for chunk in tileds[0].chunks:
-                chunk.op._nrows = None
+                chunk.op.nrows = None
             # otherwise
             tiled = yield from recursive_tile(tileds[0].iloc[: op.nrows])
             tileds = [tiled]

@@ -20,6 +20,7 @@ from typing import Dict, List, Optional, Set
 
 from ..... import oscar as mo
 from .....core import ChunkGraph, TileContext
+from .....core.context import set_context
 from .....core.operand import (
     Fetch,
     MapReduceOperand,
@@ -33,6 +34,7 @@ from .....oscar.profiling import (
 from .....resource import Resource
 from .....typing import TileableType, BandType
 from .....utils import Timer
+from ....context import ThreadedServiceContext
 from ....cluster.api import ClusterAPI
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
@@ -73,6 +75,7 @@ class MarsTaskExecutor(TaskExecutor):
         lifecycle_api: LifecycleAPI,
         scheduling_api: SchedulingAPI,
         meta_api: MetaAPI,
+        resource_evaluator: ResourceEvaluator,
     ):
         self._config = config
         self._task = task
@@ -94,6 +97,9 @@ class MarsTaskExecutor(TaskExecutor):
         self._subtask_decref_events = dict()
         self._meta_updated_tileables = set()
 
+        # Evaluate and initialize subtasks required resource.
+        self._resource_evaluator = resource_evaluator
+
     @classmethod
     async def create(
         cls,
@@ -111,6 +117,13 @@ class MarsTaskExecutor(TaskExecutor):
         cluster_api, lifecycle_api, scheduling_api, meta_api = await cls._get_apis(
             session_id, address
         )
+        resource_evaluator = await ResourceEvaluator.create(
+            config.get_execution_config(),
+            session_id=task.session_id,
+            task_id=task.task_id,
+            cluster_api=cluster_api,
+        )
+        await cls._init_context(session_id, address)
         return cls(
             config,
             task,
@@ -119,6 +132,7 @@ class MarsTaskExecutor(TaskExecutor):
             lifecycle_api,
             scheduling_api,
             meta_api,
+            resource_evaluator,
         )
 
     @classmethod
@@ -130,6 +144,15 @@ class MarsTaskExecutor(TaskExecutor):
             SchedulingAPI.create(session_id, address),
             MetaAPI.create(session_id, address),
         )
+
+    @classmethod
+    async def _init_context(cls, session_id: str, address: str):
+        loop = asyncio.get_running_loop()
+        context = ThreadedServiceContext(
+            session_id, address, address, address, loop=loop
+        )
+        await context.init()
+        set_context(context)
 
     async def __aenter__(self):
         profiling = ProfilingData[self._task.task_id, "general"]
@@ -159,9 +182,7 @@ class MarsTaskExecutor(TaskExecutor):
             self._meta_api,
         )
         await self._incref_stage(stage_processor)
-        # Evaluate and initialize subtasks required resource.
-        resource_evaluator = ResourceEvaluator(stage_processor)
-        resource_evaluator.evaluate()
+        await self._resource_evaluator.evaluate(stage_processor)
         self._stage_processors.append(stage_processor)
         self._cur_stage_processor = stage_processor
         # get the tiled progress for current stage
@@ -184,6 +205,7 @@ class MarsTaskExecutor(TaskExecutor):
         if error_or_cancelled:
             # revert result incref if error or cancelled
             await self._decref_result_tileables()
+        await self._resource_evaluator.report()
 
     async def get_available_band_resources(self) -> Dict[BandType, Resource]:
         async for bands in self._cluster_api.watch_all_bands():

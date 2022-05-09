@@ -46,33 +46,10 @@ class DataFrameReadRayDataset(
 ):
     _op_type_ = OperandDef.READ_RAYDATASET
 
-    _refs = AnyField("refs")
-    _columns = ListField("columns")
-    _incremental_index = BoolField("incremental_index")
-    _nrows = Int64Field("nrows")
-
-    def __init__(
-        self, refs=None, columns=None, incremental_index=None, nrows=None, **kw
-    ):
-        super().__init__(
-            _refs=refs,
-            _columns=columns,
-            _incremental_index=incremental_index,
-            _nrows=nrows,
-            **kw,
-        )
-
-    @property
-    def refs(self):
-        return self._refs
-
-    @property
-    def columns(self):
-        return self._columns
-
-    @property
-    def incremental_index(self):
-        return self._incremental_index
+    refs = AnyField("refs", default=None)
+    columns = ListField("columns", default=None)
+    incremental_index = BoolField("incremental_index", default=None)
+    nrows = Int64Field("nrows", default=None)
 
     @classmethod
     def _tile_partitioned(cls, op: "DataFrameReadRayDataset"):
@@ -157,20 +134,12 @@ def read_raydataset(*args, **kwargs):
 
 class DataFrameReadMLDataset(HeadOptimizedDataSource):
     _op_type_ = OperandDef.READ_MLDATASET
-    _mldataset = ReferenceField("mldataset", "ray.util.data.MLDataset")
-    _columns = ListField("columns")
 
-    def __init__(self, mldataset=None, columns=None, **kw):
-        super().__init__(
-            _mldataset=mldataset,
-            _columns=columns,
-            _output_types=[OutputType.dataframe],
-            **kw,
-        )
+    mldataset = ReferenceField("mldataset", "ray.util.data.MLDataset", default=None)
+    columns = ListField("columns", default=None)
 
-    @property
-    def mldataset(self):
-        return self._mldataset
+    def __init__(self, **kw):
+        super().__init__(_output_types=[OutputType.dataframe], **kw)
 
     def _update_key(self):
         """We can't direct generate token for mldataset when we use

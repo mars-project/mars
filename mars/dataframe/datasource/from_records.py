@@ -28,46 +28,15 @@ from ..utils import parse_index
 class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_FROM_RECORDS
 
-    _columns = ListField("columns")
-    _exclude = ListField("exclude")
-    _coerce_float = BoolField("coerce_float")
-    _nrows = Int32Field("nrows")
+    columns = ListField("columns", default=None)
+    exclude = ListField("exclude", default=None)
+    coerce_float = BoolField("coerce_float", default=False)
+    nrows = Int32Field("nrows", default=None)
 
-    def __init__(
-        self,
-        index=None,
-        columns=None,
-        exclude=None,
-        coerce_float=False,
-        nrows=None,
-        **kw
-    ):
+    def __init__(self, index=None, columns=None, **kw):
         if index is not None or columns is not None:
             raise NotImplementedError("Specifying index value is not supported for now")
-        super().__init__(
-            _exclude=exclude,
-            _columns=columns,
-            _coerce_float=coerce_float,
-            _nrows=nrows,
-            _output_types=[OutputType.dataframe],
-            **kw
-        )
-
-    @property
-    def columns(self):
-        return self._columns
-
-    @property
-    def exclude(self):
-        return self._exclude
-
-    @property
-    def coerce_float(self):
-        return self._coerce_float
-
-    @property
-    def nrows(self):
-        return self._nrows
+        super().__init__(columns=columns, _output_types=[OutputType.dataframe], **kw)
 
     def __call__(self, data):
         if self.nrows is None:

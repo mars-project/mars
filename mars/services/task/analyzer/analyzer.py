@@ -327,8 +327,9 @@ class GraphAnalyzer:
         )
         # assign expect workers for those specified with `expect_worker`
         # skip `start_ops`, which have been assigned before
+        start_ops_set = set(start_ops)
         for chunk in self._chunk_graph:
-            if chunk not in start_ops and chunk.op.expect_worker is not None:
+            if chunk not in start_ops_set and chunk.op.expect_worker is not None:
                 chunk_to_bands[chunk] = self._to_band(chunk.op.expect_worker)
 
         # color nodes
