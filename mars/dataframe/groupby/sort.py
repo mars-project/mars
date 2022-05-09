@@ -114,14 +114,6 @@ class DataFrameGroupbySortShuffle(MapReduceOperand, DataFrameOperandMixin):
         "output_type", FieldTypes.reference(OutputType), default=None
     )
 
-    # @property
-    # def by(self):
-    #     return self.by
-    #
-    # @property
-    # def n_partition(self):
-    #     return self.n_partition
-
     @property
     def output_limit(self):
         return 1
