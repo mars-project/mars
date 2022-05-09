@@ -58,6 +58,8 @@ class DecrefRunner:
                 fut.set_result(None)
             except Exception as ex:  # pragma: no cover  # noqa: E722  # nosec  # pylint: disable=bare-except
                 fut.set_exception(ex)
+            finally:
+                del session
 
     def stop(self):
         if self._decref_thread:  # pragma: no branch
