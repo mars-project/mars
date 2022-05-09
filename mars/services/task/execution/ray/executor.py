@@ -201,7 +201,7 @@ class RayTaskExecutor(TaskExecutor):
             for chunk in chunk_graph.result_chunks
             if not isinstance(chunk.op, Fetch)
         }
-		stage_object_refs = []
+        stage_object_refs = []
         for subtask in subtask_graph.topological_iter():
             subtask_chunk_graph = subtask.chunk_graph
             key_to_input = await self._load_subtask_inputs(
