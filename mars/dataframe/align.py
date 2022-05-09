@@ -298,7 +298,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
         if out.ndim == 1:
             if filters[0] == 1:
                 # no shuffle
-                return ExactlyMapDataKeys(out.key)
+                return ExactlyMapDataKeys([out.key])
             else:
                 return ExactlyMapDataKeys(
                     (out.key, (index_idx,)) for index_idx in range(filters[0])
@@ -316,7 +316,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
 
         if all(it == 1 for it in filters):
             # no shuffle
-            return ExactlyMapDataKeys(out.key)
+            return ExactlyMapDataKeys([out.key])
         elif filters[0] == 1:
             # shuffle on columns
             return ExactlyMapDataKeys(

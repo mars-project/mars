@@ -397,9 +397,9 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
         if method is not None:
             if self.stage == OperandStage.map:
                 if method == "tree":
-                    return ExactlyMapDataKeys(self.outputs[0].key)
+                    return ExactlyMapDataKeys([self.outputs[0].key])
                 elif method == "subset_tree":
-                    return ExactlyMapDataKeys(self.outputs[0].key)
+                    return ExactlyMapDataKeys([self.outputs[0].key])
                 else:
                     assert method == "shuffle"
                     out = self.outputs[0]

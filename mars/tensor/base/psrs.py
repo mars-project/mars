@@ -882,7 +882,9 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
     def get_output_data_keys(self):
         if self.stage == OperandStage.map:
             key = self.outputs[0].key
-            return [(key, (idx,)) for idx in range(len(self.output_sizes))]
+            return ExactlyMapDataKeys(
+                (key, (idx,)) for idx in range(len(self.output_sizes))
+            )
         else:
             return None
 
