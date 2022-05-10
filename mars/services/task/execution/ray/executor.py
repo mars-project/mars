@@ -261,7 +261,9 @@ class RayTaskExecutor(TaskExecutor):
 
         logger.info("Waiting for stage %s complete.", stage_id)
         ray.wait(output_object_refs, fetch_local=False)
-        self._pre_all_stages_progress += self._calculate_cur_stage_progress()
+        # Just use `self._cur_stage_tile_progress` as current stage progress
+        # because current stage is finished, its progress is 1.
+        self._pre_all_stages_progress += self._cur_stage_tile_progress
         self._cur_stage_output_object_refs.clear()
         logger.info("Stage %s is complete.", stage_id)
         return chunk_to_meta
@@ -305,7 +307,8 @@ class RayTaskExecutor(TaskExecutor):
 
         return self._available_band_resources
 
-    def _calculate_cur_stage_progress(self) -> float:
+    async def get_progress(self) -> float:
+        """Get the execution progress."""
         stage_progress = 0.0
         total = len(self._cur_stage_output_object_refs)
         if total > 0:
@@ -318,11 +321,7 @@ class RayTaskExecutor(TaskExecutor):
             stage_progress = (
                 len(finished_objects) / total * self._cur_stage_tile_progress
             )
-        return stage_progress
-
-    async def get_progress(self) -> float:
-        """Get the execution progress."""
-        return self._pre_all_stages_progress + self._calculate_cur_stage_progress()
+        return self._pre_all_stages_progress + stage_progress
 
     async def cancel(self):
         """Cancel execution."""
