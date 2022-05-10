@@ -26,7 +26,7 @@ from .base import Operand, VirtualOperand, OperandStage
 
 class ExactlyMapDataKeys(list):
     """
-    The type for the shuffle output data keys which
+    The type for the shuffle output data keys which are
     exactly the same with map execution results keys.
     """
 
@@ -54,7 +54,7 @@ class MapReduceOperand(Operand):
 
     def get_output_data_keys(self) -> Union[ExactlyMapDataKeys, None]:
         """
-        Get the output data keys before execute.
+        Get the output data keys before execution.
         If the stage != OperandStage.map, returns None.
         """
         raise NotImplementedError

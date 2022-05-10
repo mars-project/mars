@@ -159,15 +159,15 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
         if self.stage == OperandStage.map:
             out_chunk = self.outputs[0]
             reduce_size = self.reduce_size
-            keys = ExactlyMapDataKeys()
+            output = ExactlyMapDataKeys()
             for to_reduce_idx in range(reduce_size):
                 reduce_idx = (
                     out_chunk.index[: self.axis]
                     + (to_reduce_idx,)
                     + out_chunk.index[self.axis + 1 :]
                 )
-                keys.append((out_chunk.key, reduce_idx))
-            return keys
+                output.append((out_chunk.key, reduce_idx))
+            return output
         else:
             return None
 

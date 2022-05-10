@@ -378,13 +378,13 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
                 extra_reduce_sizes.append(reduce_size)
             axes, reduce_sizes = extra_axes, extra_reduce_sizes
 
-            keys = ExactlyMapDataKeys()
+            output = ExactlyMapDataKeys()
             for reduce_index in itertools.product(*(range(rs) for rs in reduce_sizes)):
                 index = list(out.index)
                 for ax, ind in zip(axes, reduce_index):
                     index[ax] = ind
-                keys.append((out.key, tuple(index)))
-            return keys
+                output.append((out.key, tuple(index)))
+            return output
         else:
             return None
 
