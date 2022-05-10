@@ -50,6 +50,7 @@ from .check_monotonic import (
 )
 from .pct_change import pct_change
 from .transpose import transpose
+from .align import align
 
 
 def _install():
@@ -90,6 +91,7 @@ def _install():
         setattr(t, "query", df_query)
         setattr(t, "pct_change", pct_change)
         setattr(t, "transpose", transpose)
+        setattr(t, "align", align)
 
     for t in SERIES_TYPE:
         setattr(t, "to_gpu", to_gpu)
@@ -118,6 +120,7 @@ def _install():
         setattr(t, "is_monotonic_increasing", property(fget=is_monotonic_increasing))
         setattr(t, "is_monotonic_decreasing", property(fget=is_monotonic_decreasing))
         setattr(t, "pct_change", pct_change)
+        setattr(t, "align", align)
 
     for t in INDEX_TYPE:
         setattr(t, "map", index_map)

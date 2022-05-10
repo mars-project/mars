@@ -53,10 +53,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         left, right = op.lhs, op.rhs
         df = op.outputs[0]
 
-        nsplits, out_shape, left_chunks, right_chunks = align_dataframe_dataframe(
+        nsplits, out_shapes, left_chunks, right_chunks = align_dataframe_dataframe(
             left, right
         )
-        out_chunk_indexes = itertools.product(*(range(s) for s in out_shape))
+        out_chunk_indexes = itertools.product(*(range(s) for s in out_shapes[0]))
 
         out_chunks = []
         for idx, left_chunk, right_chunk in zip(

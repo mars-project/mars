@@ -40,6 +40,7 @@ from .utils import (
     filter_index_value,
     hash_index,
     is_index_value_identical,
+    validate_axis,
 )
 
 
@@ -61,11 +62,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
     input = KeyField("input")
 
     def __init__(
-        self,
-        index_min_max=None,
-        column_min_max=None,
-        output_types=None,
-        **kw
+        self, index_min_max=None, column_min_max=None, output_types=None, **kw
     ):
         if index_min_max is not None:
             kw.update(
@@ -814,46 +811,68 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
     return out_chunks
 
 
-def align_dataframe_dataframe(left, right):
+def align_dataframe_dataframe(left, right, axis=None):
     left_index_chunks = [c.index_value for c in left.cix[:, 0]]
-    left_columns_chunks = [c.columns_value for c in left.cix[0, :]]
     right_index_chunks = [c.index_value for c in right.cix[:, 0]]
+    left_columns_chunks = [c.columns_value for c in left.cix[0, :]]
     right_columns_chunks = [c.columns_value for c in right.cix[0, :]]
 
-    index_splits, index_chunk_shape = _calc_axis_splits(
-        left.index_value, right.index_value, left_index_chunks, right_index_chunks
-    )
+    axis = validate_axis(axis) if axis is not None else None
+    if axis is None or axis == 0:
+        index_splits, index_chunk_shape = _calc_axis_splits(
+            left.index_value, right.index_value, left_index_chunks, right_index_chunks
+        )
+    else:
+        index_splits, index_chunk_shape = None, None
 
-    columns_splits, column_chunk_shape = _calc_axis_splits(
-        left.columns_value,
-        right.columns_value,
-        left_columns_chunks,
-        right_columns_chunks,
-    )
+    if axis is None or axis == 1:
+        columns_splits, column_chunk_shape = _calc_axis_splits(
+            left.columns_value,
+            right.columns_value,
+            left_columns_chunks,
+            right_columns_chunks,
+        )
+    else:
+        columns_splits, column_chunk_shape = None, None
 
     splits = _MinMaxSplitInfo(index_splits, columns_splits)
-    out_chunk_shape = (
+    out_left_chunk_shape = (
         len(index_chunk_shape or list(itertools.chain(*index_splits._left_split))),
         len(column_chunk_shape or list(itertools.chain(*columns_splits._left_split))),
     )
-    left_chunks = _gen_dataframe_chunks(splits, out_chunk_shape, 0, left)
-    right_chunks = _gen_dataframe_chunks(splits, out_chunk_shape, 1, right)
-    if _is_index_identical(left_index_chunks, right_index_chunks):
-        index_nsplits = left.nsplits[0]
+    if axis is None:
+        out_right_chunk_shape = out_left_chunk_shape
     else:
-        index_nsplits = [np.nan for _ in range(out_chunk_shape[0])]
-    if _is_index_identical(left_columns_chunks, right_columns_chunks):
-        columns_nsplits = left.nsplits[1]
-    else:
-        columns_nsplits = [np.nan for _ in range(out_chunk_shape[1])]
+        out_right_chunk_shape = (
+            len(index_chunk_shape or list(itertools.chain(*index_splits._right_split))),
+            len(
+                column_chunk_shape
+                or list(itertools.chain(*columns_splits._right_split))
+            ),
+        )
+    left_chunks = _gen_dataframe_chunks(splits, out_left_chunk_shape, 0, left)
+    right_chunks = _gen_dataframe_chunks(splits, out_right_chunk_shape, 1, right)
+
+    index_nsplits = columns_nsplits = None
+    if axis is None or axis == 0:
+        if _is_index_identical(left_index_chunks, right_index_chunks):
+            index_nsplits = left.nsplits[0]
+        else:
+            index_nsplits = [np.nan for _ in range(out_left_chunk_shape[0])]
+    if axis is None or axis == 1:
+        if _is_index_identical(left_columns_chunks, right_columns_chunks):
+            columns_nsplits = left.nsplits[1]
+        else:
+            columns_nsplits = [np.nan for _ in range(out_left_chunk_shape[1])]
 
     nsplits = [index_nsplits, columns_nsplits]
 
-    return nsplits, out_chunk_shape, left_chunks, right_chunks
+    return nsplits, out_left_chunk_shape, left_chunks, right_chunks
 
 
 def align_dataframe_series(left, right, axis="columns"):
-    if axis == "columns" or axis == 1:
+    axis = validate_axis(axis)
+    if axis == 1:
         left_columns_chunks = [c.columns_value for c in left.cix[0, :]]
         right_index_chunks = [c.index_value for c in right.chunks]
         index_splits, chunk_shape = _calc_axis_splits(
@@ -882,7 +901,6 @@ def align_dataframe_series(left, right, axis="columns"):
             index_nsplits = [np.nan for _ in range(out_chunk_shape[1])]
         nsplits = [dummy_nsplits, index_nsplits]
     else:
-        assert axis == "index" or axis == 0
         left_index_chunks = [c.index_value for c in left.cix[:, 0]]
         right_index_chunks = [c.index_value for c in right.chunks]
         index_splits, index_chunk_shape = _calc_axis_splits(
