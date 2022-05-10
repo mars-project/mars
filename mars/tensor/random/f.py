@@ -23,25 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorF(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_dfnum", "_dfden"]
+    _input_fields_ = ["dfnum", "dfden"]
     _op_type_ = OperandDef.RAND_F
 
-    _fields_ = "_dfnum", "_dfden", "_size"
-    _dfnum = AnyField("dfnum")
-    _dfden = AnyField("dfden")
+    _fields_ = "dfnum", "dfden", "size"
+    dfnum = AnyField("dfnum")
+    dfden = AnyField("dfden")
     _func_name = "f"
-
-    def __init__(self, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, dtype=dtype, **kw)
-
-    @property
-    def dfnum(self):
-        return self._dfnum
-
-    @property
-    def dfden(self):
-        return self._dfden
 
     def __call__(self, dfnum, dfden, chunk_size=None):
         return self.new_tensor([dfnum, dfden], None, raw_chunk_size=chunk_size)

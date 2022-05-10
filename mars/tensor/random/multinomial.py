@@ -25,33 +25,19 @@ from .core import TensorRandomOperandMixin, TensorDistribution
 class TensorMultinomial(TensorDistribution, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_MULTINOMIAL
 
-    _fields_ = "_n", "_pvals", "_size"
-    _n = Int64Field("n")
-    _pvals = TupleField("pvals", FieldTypes.float64)
+    _fields_ = "n", "pvals", "size"
+    n = Int64Field("n")
+    pvals = TupleField("pvals", FieldTypes.float64)
     _func_name = "multinomial"
 
-    def __init__(self, n=None, pvals=None, state=None, size=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(
-            _n=n, _pvals=pvals, _state=state, _size=size, dtype=dtype, **kw
-        )
-
-    @property
-    def n(self):
-        return self._n
-
-    @property
-    def pvals(self):
-        return self._pvals
-
     def __call__(self, chunk_size=None):
-        if self._size is None:
-            shape = (len(self._pvals),)
+        if self.size is None:
+            shape = (len(self.pvals),)
         else:
             try:
-                shape = tuple(self._size) + (len(self._pvals),)
+                shape = tuple(self.size) + (len(self.pvals),)
             except TypeError:
-                shape = (self._size, len(self._pvals))
+                shape = (self.size, len(self.pvals))
         return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
 
 

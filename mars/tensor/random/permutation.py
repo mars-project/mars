@@ -43,31 +43,14 @@ def _permutation_on_axis(ar, axis, rs, xp):
 class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.PERMUTATION
 
-    _input = KeyField("input")
-    _axis = Int32Field("axis")
+    input = KeyField("input")
+    axis = Int32Field("axis")
 
-    _reduce_size = Int32Field("reduce_size")
-
-    def __init__(self, seed=None, state=None, axis=None, reduce_size=None, **kw):
-        super().__init__(
-            _reduce_size=reduce_size, _seed=seed, _state=state, _axis=axis, **kw
-        )
-
-    @property
-    def input(self):
-        return self._input
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def reduce_size(self):
-        return self._reduce_size
+    reduce_size = Int32Field("reduce_size")
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        self._input = self._inputs[0]
+        self.input = self._inputs[0]
 
     def __call__(self, x):
         return self.new_tensor([x], x.shape, order=x.order)
@@ -81,7 +64,7 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
         if len(op.input.chunks) == 1:
             chunk_op = op.copy().reset_key()
             chunk_op._state = None
-            chunk_op._seed = gen_random_seeds(1, state)[0]
+            chunk_op.seed = gen_random_seeds(1, state)[0]
             c = op.input.chunks[0]
             chunk = chunk_op.new_chunk([c], shape=c.shape, index=c.index, order=c.order)
             new_op = op.copy()

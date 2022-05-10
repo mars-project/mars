@@ -75,7 +75,7 @@ class HeadPushDown(OptimizationRule):
 
         new_input_op = input_node.op.copy()
         new_input_op._key = input_node.op.key
-        new_input_op._nrows = nrows = max(nrows, head)
+        new_input_op.nrows = nrows = max(nrows, head)
         new_input_params = input_node.params.copy()
         new_input_params["shape"] = (nrows,) + input_node.shape[1:]
         pandas_index = node.index_value.to_pandas()[:nrows]

@@ -33,19 +33,8 @@ from .psrs import DataFramePSRSOperandMixin, execute_sort_index
 class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
     _op_type_ = OperandDef.SORT_INDEX
 
-    _level = ListField("level")
-    _sort_remaining = BoolField("sort_remaining")
-
-    def __init__(self, level=None, sort_remaining=None, **kw):
-        super().__init__(_level=level, _sort_remaining=sort_remaining, **kw)
-
-    @property
-    def level(self):
-        return self._level
-
-    @property
-    def sort_remaining(self):
-        return self._sort_remaining
+    level = ListField("level", default=None)
+    sort_remaining = BoolField("sort_remaining", default=None)
 
     @classmethod
     def _tile(cls, op):

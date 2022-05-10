@@ -23,25 +23,13 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorUniform(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ["_low", "_high"]
+    _input_fields_ = ["low", "high"]
     _op_type_ = OperandDef.RAND_UNIFORM
 
-    _fields_ = "_low", "_high", "_size"
-    _low = AnyField("low")
-    _high = AnyField("high")
+    _fields_ = "low", "high", "size"
+    low = AnyField("low")
+    high = AnyField("high")
     _func_name = "uniform"
-
-    def __init__(self, size=None, state=None, dtype=None, **kw):
-        dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _state=state, dtype=dtype, **kw)
-
-    @property
-    def low(self):
-        return self._low
-
-    @property
-    def high(self):
-        return self._high
 
     def __call__(self, low, high, chunk_size=None):
         return self.new_tensor([low, high], None, raw_chunk_size=chunk_size)
