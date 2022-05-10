@@ -189,7 +189,7 @@ class StorageAPI(AbstractStorageAPI):
             self._session_id, [data_key], level, band_name, remote_address, error
         )
         if fetch_key:
-            return fetch_key
+            return fetch_key[0]
 
     @fetch.batch
     async def batch_fetch(self, args_list, kwargs_list):
