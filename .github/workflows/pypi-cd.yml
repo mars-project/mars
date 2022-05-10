@@ -23,6 +23,13 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
+      - name: Build web for Linux
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          git reset --hard
+          pip install -r ci/requirements-wheel.txt
+          python setup.py build_web
+
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.3.1
         env:
@@ -32,7 +39,7 @@ jobs:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
 
       - name: Build source
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.arch == 'auto'}}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.arch == 'auto' }}
         run: |
           git reset --hard
           pip install -r ci/requirements-wheel.txt
