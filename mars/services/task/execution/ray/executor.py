@@ -136,6 +136,7 @@ class RayTaskExecutor(TaskExecutor):
         self._pre_all_stages_tile_progress = 0
         self._cur_stage_tile_progress = 0
         self._cur_stage_output_object_refs = []
+        self._output_object_refs_nums = []
 
     @classmethod
     async def create(
@@ -231,6 +232,7 @@ class RayTaskExecutor(TaskExecutor):
             elif output_count == 1:
                 output_object_refs = [output_object_refs]
             self._cur_stage_output_object_refs.extend(output_object_refs)
+            self._output_object_refs_nums.append(len(output_object_refs))
             if output_meta_keys:
                 meta_object_ref, *output_object_refs = output_object_refs
                 # TODO(fyrestone): Fetch(not get) meta object here.
@@ -265,6 +267,7 @@ class RayTaskExecutor(TaskExecutor):
         # because current stage is finished, its progress is 1.
         self._pre_all_stages_progress += self._cur_stage_tile_progress
         self._cur_stage_output_object_refs.clear()
+        self._output_object_refs_nums.clear()
         logger.info("Stage %s is complete.", stage_id)
         return chunk_to_meta
 
@@ -325,6 +328,13 @@ class RayTaskExecutor(TaskExecutor):
 
     async def cancel(self):
         """Cancel execution."""
+        subtask_num = len(self._output_object_refs_nums)
+        if subtask_num > 0:
+            pos = 0
+            for i in range(0, subtask_num):
+                if i > 0:
+                    pos += self._output_object_refs_nums[i - 1]
+                ray.cancel(self._cur_stage_output_object_refs[pos], force=True)
 
     async def _load_subtask_inputs(
         self, stage_id: str, subtask: Subtask, chunk_graph: ChunkGraph, context: Dict
