@@ -20,7 +20,6 @@ from typing import Union, Dict, List
 from .....core.context import Context
 from .....utils import implements, lazy_import
 from ....context import ThreadedServiceContext
-from .fetcher import RayFetcher
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
