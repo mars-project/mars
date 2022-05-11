@@ -19,6 +19,7 @@ import tempfile
 
 import numpy as np
 import pytest
+import pytest_asyncio
 
 from .... import oscar as mo
 from ....storage import StorageLevel, PlasmaStorage
@@ -34,7 +35,7 @@ if sys.platform.lower().startswith("win"):
 MEMORY_SIZE = 100 * 1024
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pool():
     async def start_pool():
         start_method = (
@@ -71,7 +72,7 @@ def _build_storage_config():
     return storage_configs
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def create_actors(actor_pool):
     storage_configs = _build_storage_config()
     manager_ref = await mo.create_actor(
@@ -155,7 +156,7 @@ class DelayPutStorageHandler(StorageHandlerActor):
         return data_info
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def create_actors_with_delay(actor_pool):
     storage_configs = _build_storage_config()
     manager_ref = await mo.create_actor(

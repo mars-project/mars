@@ -15,6 +15,7 @@
 import numpy as np
 import asyncio
 import pytest
+import pytest_asyncio
 
 from ..... import oscar as mo
 from .....core import ChunkGraph
@@ -100,7 +101,7 @@ class FakeClusterAPI(ClusterAPI):
         return api
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pool(request):
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
     with_gpu = request.param

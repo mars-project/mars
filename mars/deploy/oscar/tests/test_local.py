@@ -23,6 +23,7 @@ import uuid
 import numpy as np
 import pandas as pd
 import pytest
+import pytest_asyncio
 
 try:
     import vineyard
@@ -103,7 +104,7 @@ if vineyard is not None:
 
 
 @pytest.mark.parametrize(indirect=True)
-@pytest.fixture(params=params)
+@pytest_asyncio.fixture(params=params)
 async def create_cluster(request):
     if request.param == "default":
         config = CONFIG_TEST_FILE
@@ -822,7 +823,7 @@ def test_show_progress_raise_exception(m_log):
 min_task_runtime = 2
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def speculative_cluster():
     config = _load_config()
     config["scheduling"]["speculation"]["enabled"] = True

@@ -17,6 +17,7 @@ from collections import defaultdict
 from typing import List, Tuple, Set
 
 import pytest
+import pytest_asyncio
 
 from ..... import oscar as mo
 from .....typing import BandType
@@ -98,7 +99,7 @@ class MockSubtaskExecutionActor(mo.StatelessActor):
             pass
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pool():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 

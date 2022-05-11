@@ -20,6 +20,7 @@ from typing import Tuple, Union
 
 import psutil
 import pytest
+import pytest_asyncio
 import pandas as pd
 
 from ..... import oscar as mo
@@ -47,7 +48,7 @@ class MockGlobalResourceManagerActor(mo.Actor):
         return self._result
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pool(request):
     start_method = (
         os.environ.get("POOL_START_METHOD", "forkserver")

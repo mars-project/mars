@@ -23,6 +23,7 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 import pytest
+import pytest_asyncio
 
 from ..... import oscar as mo
 from ..... import remote as mr
@@ -145,7 +146,7 @@ class MockTaskManager(mo.Actor):
         return self._results
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pool(request):
     n_slots, enable_kill = request.param
     pool = await mo.create_actor_pool(

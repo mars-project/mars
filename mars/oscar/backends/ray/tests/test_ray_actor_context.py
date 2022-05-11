@@ -16,6 +16,7 @@ import inspect
 import time
 
 import pytest
+import pytest_asyncio
 
 from .....utils import lazy_import
 from .....tests.core import require_ray
@@ -29,7 +30,7 @@ from ..utils import process_placement_to_address
 ray = lazy_import("ray")
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pool_context():
     pg_name, n_process = f"ray_cluster_{time.time_ns()}", 2
     from .....serialization.ray import (

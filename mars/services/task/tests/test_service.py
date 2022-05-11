@@ -18,6 +18,7 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
+import pytest_asyncio
 
 from .... import dataframe as md
 from .... import oscar as mo
@@ -40,7 +41,7 @@ from ..supervisor.processor import TaskProcessor
 from ..errors import TaskNotExist
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pools():
     async def start_pool(is_worker: bool):
         if is_worker:
@@ -116,7 +117,7 @@ async def _start_services(
 
 
 @pytest.mark.parametrize(indirect=True)
-@pytest.fixture(params=[False, True])
+@pytest_asyncio.fixture(params=[False, True])
 async def start_test_service(actor_pools, request):
     sv_pool, worker_pool = actor_pools
 
@@ -141,7 +142,7 @@ class MockTaskProcessor(TaskProcessor):
 
 
 @pytest.mark.parametrize(indirect=True)
-@pytest.fixture(params=[True])
+@pytest_asyncio.fixture(params=[True])
 async def start_test_service_with_mock(actor_pools, request):
     sv_pool, worker_pool = actor_pools
 
