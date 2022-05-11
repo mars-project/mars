@@ -185,7 +185,12 @@ def _new_integrated_test_session(_stop_isolation):
     from .deploy.oscar.tests.session import new_test_session
 
     sess = new_test_session(
-        address="127.0.0.1", init_local=True, n_worker=2, default=True, timeout=300
+        address="127.0.0.1",
+        backend=MARS_CI_BACKEND,
+        init_local=True,
+        n_worker=2,
+        default=True,
+        timeout=300,
     )
     with option_context({"show_progress": False}):
         try:

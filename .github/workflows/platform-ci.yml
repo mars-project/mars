@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.8-kubernetes, 3.8-hadoop, 3.8-ray, 3.8-vineyard, 3.8-dask]
+        python-version: [3.8-kubernetes, 3.8-hadoop, 3.8-ray, 3.8-ray-dag, 3.8-vineyard, 3.8-dask]
         include:
           - { os: ubuntu-latest, python-version: 3.8-kubernetes, no-common-tests: 1,
               no-deploy: 1, with-kubernetes: "with Kubernetes" }
@@ -70,7 +70,7 @@ jobs:
           if [[ $UNAME == "windows" ]]; then
             pip install virtualenv flaky
           else
-            pip install virtualenv flaky ray
+            pip install virtualenv flaky
             if [ -n "$WITH_KUBERNETES" ]; then
               ./.github/workflows/install-minikube.sh
               pip install kubernetes

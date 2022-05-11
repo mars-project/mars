@@ -12,3 +12,8 @@ build-backend = "setuptools.build_meta"
 extend-exclude = '''
 ^/mars/_version.py
 '''
+
+[tool.pytest.ini_options]
+markers = [
+    "ray_dag: marks tests for ray backend')",
+]
