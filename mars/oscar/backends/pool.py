@@ -65,6 +65,8 @@ from .router import Router
 logger = logging.getLogger(__name__)
 ray = lazy_import("ray", globals=globals())
 
+DEFAULT_MODULES = ["mars.tensor", "mars.dataframe", "mars.learn", "mars.remote"]
+
 
 class _ErrorProcessor:
     def __init__(self, address: str, message_id: bytes, protocol):
@@ -1306,6 +1308,8 @@ async def create_actor_pool(
             use_uvloop = True
         except ImportError:
             use_uvloop = False
+
+    modules = list(modules or []) + DEFAULT_MODULES
 
     external_addresses = pool_cls.get_external_addresses(
         address, n_process=n_process, ports=ports

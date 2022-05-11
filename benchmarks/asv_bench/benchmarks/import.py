@@ -18,6 +18,7 @@ import sys
 # make sure necessary pyc files generated
 import mars.dataframe as md
 import mars.tensor as mt
+
 del md, mt
 
 
@@ -25,6 +26,7 @@ class ImportPackageSuite:
     """
     Benchmark that times performance of chunk graph builder
     """
+
     def time_import_mars(self):
         proc = subprocess.Popen([sys.executable, "-c", "import mars"])
         proc.wait(120)
