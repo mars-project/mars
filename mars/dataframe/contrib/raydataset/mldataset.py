@@ -19,9 +19,9 @@ from typing import Dict, Iterable, List, Tuple
 
 from ....utils import lazy_import
 
-ray = lazy_import("ray")
-parallel_it = lazy_import("ray.util.iter")
-ml_dataset = lazy_import("ray.util.data")
+ray = lazy_import("ray", globals=globals())
+parallel_it = lazy_import("ray.util.iter", globals=globals(), rename="parallel_it")
+ml_dataset = lazy_import("ray.util.data", globals=globals(), rename="ml_dataset")
 
 
 class ChunkRefBatch:

@@ -31,17 +31,13 @@ try:
     from pandas.tseries.offsets import Tick as PDTick
 except ImportError:
     PDTick = None
-try:
-    from sqlalchemy.sql import Selectable as SASelectable
-    from sqlalchemy.sql.sqltypes import TypeEngine as SATypeEngine
-except ImportError:
-    SASelectable, SATypeEngine = None, None
 
 from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes, \
     hash_from_buffer as mmh3_hash_from_buffer
 
 cdef bint _has_cupy = bool(pkgutil.find_loader('cupy'))
 cdef bint _has_cudf = bool(pkgutil.find_loader('cudf'))
+cdef bint _has_sqlalchemy = bool(pkgutil.find_loader('sqlalchemy'))
 
 
 cpdef str to_str(s, encoding='utf-8'):
@@ -376,10 +372,13 @@ if _has_cudf:
 
 if PDTick is not None:
     tokenize_handler.register(PDTick, tokenize_pandas_tick)
-if SATypeEngine is not None:
-    tokenize_handler.register(SATypeEngine, tokenize_sqlalchemy_data_type)
-if SASelectable is not None:
-    tokenize_handler.register(SASelectable, tokenize_sqlalchemy_selectable)
+if _has_sqlalchemy:
+    tokenize_handler.register(
+        "sqlalchemy.sql.sqltypes.TypeEngine", tokenize_sqlalchemy_data_type
+    )
+    tokenize_handler.register(
+        "sqlalchemy.sql.Selectable", tokenize_sqlalchemy_selectable
+    )
 
 cpdef register_tokenizer(cls, handler):
     tokenize_handler.register(cls, handler)

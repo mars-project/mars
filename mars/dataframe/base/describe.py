@@ -27,7 +27,7 @@ from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, build_empty_df
 
 
-cudf = lazy_import("cudf")
+cudf = lazy_import("cudf", globals=globals())
 
 
 class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):

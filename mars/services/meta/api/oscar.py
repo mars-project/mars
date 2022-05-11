@@ -18,11 +18,6 @@ from typing import Dict, List, Any, Union
 from .... import oscar as mo
 from ....core import ChunkType
 from ....core.operand import Fuse
-from ....dataframe.core import (
-    DATAFRAME_TYPE,
-    DATAFRAME_GROUPBY_TYPE,
-    SERIES_GROUPBY_TYPE,
-)
 from ....lib.aio import alru_cache
 from ....typing import BandType
 from ....utils import get_chunk_params
@@ -44,6 +39,12 @@ class BaseMetaAPI(AbstractMetaAPI):
     async def set_tileable_meta(
         self, tileable, memory_size: int = None, store_size: int = None, **extra
     ):
+        from ....dataframe.core import (
+            DATAFRAME_TYPE,
+            DATAFRAME_GROUPBY_TYPE,
+            SERIES_GROUPBY_TYPE,
+        )
+
         params = tileable.params.copy()
         if isinstance(
             tileable, (DATAFRAME_TYPE, DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE)

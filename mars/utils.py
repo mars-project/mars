@@ -58,7 +58,6 @@ from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
 
 from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     to_binary,
@@ -336,6 +335,7 @@ def lazy_import(
     globals: Dict = None,  # pylint: disable=redefined-builtin
     locals: Dict = None,  # pylint: disable=redefined-builtin
     rename: str = None,
+    placeholder: bool = False,
 ):
     rename = rename or name
     prefix_name = name.split(".", 1)[0]
@@ -354,8 +354,24 @@ def lazy_import(
 
     if pkgutil.find_loader(prefix_name) is not None:
         return LazyModule()
+    elif placeholder:
+        return ModulePlaceholder(prefix_name)
     else:
         return None
+
+
+class ModulePlaceholder:
+    def __init__(self, mod_name: str):
+        self._mod_name = mod_name
+
+    def _raises(self):
+        raise AttributeError(f"{self._mod_name} is required but not installed.")
+
+    def __getattr__(self, key):
+        self._raises()
+
+    def __call__(self, *_args, **_kwargs):
+        self._raises()
 
 
 def serialize_serializable(serializable, compress: bool = False):
@@ -609,6 +625,8 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
     -------
     Data
     """
+    from sklearn.base import BaseEstimator
+
     from .dataframe.utils import is_dataframe, is_index, is_series, get_xdf
     from .lib.groupby_wrapper import GroupByWrapper
     from .tensor.array_utils import get_array_module, is_array
@@ -1423,20 +1441,6 @@ def get_chunk_key_to_data_keys(chunk_graph):
                             keys.append(key)
             chunk_key_to_data_keys[chunk.key] = keys
     return chunk_key_to_data_keys
-
-
-class ModulePlaceholder:
-    def __init__(self, mod_name: str):
-        self._mod_name = mod_name
-
-    def _raises(self):
-        raise AttributeError(f"{self._mod_name} is required but not installed.")
-
-    def __getattr__(self, key):
-        self._raises()
-
-    def __call__(self, *_args, **_kwargs):
-        self._raises()
 
 
 def merge_dict(dest: Dict, src: Dict, path=None, overwrite=True):

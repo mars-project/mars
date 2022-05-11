@@ -50,7 +50,7 @@ from ..from_tensor import dataframe_from_tensor, dataframe_from_1d_tileables
 from ..from_records import from_records
 
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 _date_range_use_inclusive = pd_release_version[:2] >= (1, 4)
 
 

@@ -14,12 +14,10 @@
 
 from io import IOBase
 
-from .common import *
+from ....utils import lazy_import
+from .common import parse_osspath, oss_stat
 
-try:
-    import oss2
-except ImportError:
-    oss2 = ModulePlaceholder("oss2")
+oss2 = lazy_import("oss2", globals=globals(), placeholder=True)
 
 
 class OSSIOBase(IOBase):

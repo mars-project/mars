@@ -18,11 +18,6 @@ from typing import Dict, List
 from ... import oscar as mo
 from ...resource import cuda_count, Resource
 
-try:
-    from IPython import get_ipython
-except ImportError:
-    get_ipython = None
-
 
 async def create_supervisor_actor_pool(
     address: str,
@@ -32,7 +27,12 @@ async def create_supervisor_actor_pool(
     subprocess_start_method: str = None,
     **kwargs,
 ):
-    suspend_sigint = get_ipython is not None and get_ipython() is not None
+    try:
+        from IPython import get_ipython
+        suspend_sigint = get_ipython() is not None
+    except ImportError:
+        suspend_sigint = False
+
     return await mo.create_actor_pool(
         address,
         n_process=n_process,

@@ -16,10 +16,10 @@ from ....utils import lazy_import
 from .mldataset import _rechunk_if_needed
 from typing import Dict, List
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 # Ray Datasets is available in early preview at ray.data with Ray 1.6+
 # (and ray.experimental.data in Ray 1.5)
-ray_dataset = lazy_import("ray.data")
+ray_dataset = lazy_import("ray.data", globals=globals(), rename="ray_dataset")
 
 
 def to_ray_dataset(df, num_shards: int = None):

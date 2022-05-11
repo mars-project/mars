@@ -33,11 +33,11 @@ from .core import (
     HeadOptimizedDataSource,
 )
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 # Ray Datasets is available in early preview at ray.data with Ray 1.6+
 # (and ray.experimental.data in Ray 1.5)
-ray_dataset = lazy_import("ray.data")
-ray_exp_dataset = lazy_import("ray.experimental.data")
+ray_dataset = lazy_import("ray.data", globals=globals(), rename="ray_dataset")
+ray_exp_dataset = lazy_import("ray.experimental.data", globals=globals(), rename="ray_exp_dataset")
 real_ray_dataset = ray_dataset or ray_exp_dataset
 
 
