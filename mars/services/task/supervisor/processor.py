@@ -21,14 +21,12 @@ from typing import Dict, Iterator, Optional, List, Set
 
 from ....core import ChunkGraph, TileableGraph, Chunk, TileContext
 from ....core.operand import Fetch
-from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from ....metrics import Metrics
 from ....optimization.logical import OptimizationRecords
 from ....oscar.profiling import (
     ProfilingData,
     MARS_ENABLE_PROFILING,
 )
-from ....tensor.core import TENSOR_TYPE
 from ....typing import TileableType, ChunkType
 from ....utils import Timer
 from ...subtask import SubtaskResult, Subtask
@@ -297,6 +295,9 @@ class TaskProcessor:
     def _update_result_meta(
         cls, chunk_to_result: Dict[Chunk, ExecutionChunkResult], tileable: TileableType
     ):
+        from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
+        from ....tensor.core import TENSOR_TYPE
+
         chunks = [c.data for c in tileable.chunks]
         if isinstance(tileable, DATAFRAME_TYPE):
             for c in chunks:

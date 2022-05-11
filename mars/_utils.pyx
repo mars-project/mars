@@ -89,19 +89,26 @@ cdef class TypeDispatcher:
     cpdef void register(self, object type_, object handler):
         if isinstance(type_, str):
             self._lazy_handlers[type_] = handler
+        elif isinstance(type_, tuple):
+            for t in type_:
+                self.register(t, handler)
         else:
             self._handlers[type_] = handler
 
     cpdef void unregister(self, object type_):
-        self._lazy_handlers.pop(type_, None)
-        self._handlers.pop(type_, None)
-        self._inherit_handlers.clear()
+        if isinstance(type_, tuple):
+            for t in type_:
+                self.unregister(t)
+        else:
+            self._lazy_handlers.pop(type_, None)
+            self._handlers.pop(type_, None)
+            self._inherit_handlers.clear()
 
     cdef _reload_lazy_handlers(self):
         for k, v in self._lazy_handlers.items():
             mod_name, obj_name = k.rsplit('.', 1)
             mod = importlib.import_module(mod_name, __name__)
-            self._handlers[getattr(mod, obj_name)] = v
+            self.register(getattr(mod, obj_name), v)
         self._lazy_handlers = dict()
 
     cpdef get_handler(self, object type_):

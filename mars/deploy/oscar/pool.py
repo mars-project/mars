@@ -29,6 +29,7 @@ async def create_supervisor_actor_pool(
 ):
     try:
         from IPython import get_ipython
+
         suspend_sigint = get_ipython() is not None
     except ImportError:
         suspend_sigint = False

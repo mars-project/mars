@@ -25,7 +25,6 @@ from .....core.operand import (
     execute,
 )
 from .....lib.aio import alru_cache
-from .....optimization.physical import optimize
 from .....resource import Resource
 from .....serialization import serialize, deserialize
 from .....typing import BandType
@@ -70,6 +69,8 @@ def execute_subtask(
     input_keys: List[str],
     *inputs,
 ):
+    from .....optimization.physical import optimize
+
     logger.info("Begin to execute subtask: %s", subtask_id)
     ensure_coverage()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)

@@ -37,32 +37,23 @@ from ...dataframe.core import (
 )
 from ...tensor.core import TensorOrder, TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...typing import BandType
-from ...utils import dataslots
+from ...utils import dataslots, TypeDispatcher
 
 PandasDtypeType = Union[np.dtype, pd.api.extensions.ExtensionDtype]
 
-_type_to_meta_class = dict()
+_meta_class_dispatcher = TypeDispatcher()
 
 
 def _register_type(object_types: Tuple):
     def _call(meta):
-        for obj_type in object_types:
-            _type_to_meta_class[obj_type] = meta
+        _meta_class_dispatcher.register(object_types, meta)
         return meta
 
     return _call
 
 
 def get_meta_type(object_type: Type) -> Type["_CommonMeta"]:
-    try:
-        return _type_to_meta_class[object_type]
-    except KeyError:
-        for m_type in object_type.__mro__:
-            try:
-                return _type_to_meta_class[m_type]
-            except KeyError:
-                continue
-        raise
+    return _meta_class_dispatcher.get_handler(object_type)
 
 
 @dataslots
