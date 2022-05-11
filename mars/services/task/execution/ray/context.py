@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import asyncio
 import functools
 import inspect
 import logging
@@ -27,9 +27,15 @@ logger = logging.getLogger(__name__)
 
 
 class RayRemoteObjectManager:
-    """The remote object manager in task state actor."""
+    """
+    The remote object manager in task state actor.
+
+    This should be a sync actor because ray call is out of order on the
+    async actor: https://github.com/ray-project/ray/issues/19822
+    """
 
     def __init__(self):
+        self._loop = asyncio.get_event_loop()
         self._named_remote_objects = {}
 
     def create_remote_object(self, name: str, object_cls, *args, **kwargs):
@@ -39,23 +45,24 @@ class RayRemoteObjectManager:
     def destroy_remote_object(self, name: str):
         self._named_remote_objects.pop(name, None)
 
-    async def call_remote_object(self, name: str, attr: str, *args, **kwargs):
+    def call_remote_object(self, name: str, attr: str, *args, **kwargs):
         remote_object = self._named_remote_objects[name]
         meth = getattr(remote_object, attr)
-        async_meth = self._sync_to_async(meth)
-        return await async_meth(*args, **kwargs)
+        async_meth = self._async_to_sync(self._loop, meth)
+        return async_meth(*args, **kwargs)
 
     @staticmethod
     @functools.lru_cache(100)
-    def _sync_to_async(func):
+    def _async_to_sync(loop, func):
         if inspect.iscoroutinefunction(func):
-            return func
+
+            def sync_wrapper(*args, **kwargs):
+                co = func(*args, **kwargs)
+                return loop.run_until_complete(co)
+
+            return sync_wrapper
         else:
-
-            async def async_wrapper(*args, **kwargs):
-                return func(*args, **kwargs)
-
-            return async_wrapper
+            return func
 
 
 class _RayRemoteObjectWrapper:

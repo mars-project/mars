@@ -20,10 +20,15 @@ from ...... import tensor as mt
 
 from ......core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 from ......serialization import serialize
-from ......tests.core import require_ray
+from ......tests.core import require_ray, mock
 from ......utils import lazy_import, get_chunk_params
+from .....context import ThreadedServiceContext
 from ....core import new_task_id
-from ..context import RayRemoteObjectManager, _RayRemoteObjectContext
+from ..context import (
+    RayExecutionContext,
+    RayRemoteObjectManager,
+    _RayRemoteObjectContext,
+)
 from ..executor import execute_subtask
 from ..fetcher import RayFetcher
 
@@ -83,8 +88,7 @@ async def test_ray_fetcher(ray_start_regular_shared2):
 
 
 @require_ray
-@pytest.mark.asyncio
-async def test_ray_remote_object(ray_start_regular_shared2):
+def test_ray_remote_object(ray_start_regular_shared2):
     class _TestRemoteObject:
         def __init__(self, i):
             self._i = i
@@ -99,13 +103,13 @@ async def test_ray_remote_object(ray_start_regular_shared2):
     name = "abc"
     manager = RayRemoteObjectManager()
     manager.create_remote_object(name, _TestRemoteObject, 2)
-    r = await manager.call_remote_object(name, "foo", 3, 4)
+    r = manager.call_remote_object(name, "foo", 3, 4)
     assert r == 9
-    r = await manager.call_remote_object(name, "bar", 3, 4)
+    r = manager.call_remote_object(name, "bar", 3, 4)
     assert r == 24
     manager.destroy_remote_object(name)
     with pytest.raises(KeyError):
-        await manager.call_remote_object(name, "foo", 3, 4)
+        manager.call_remote_object(name, "foo", 3, 4)
 
     # Test _RayRemoteObjectContext
     remote_manager = ray.remote(RayRemoteObjectManager).remote()
@@ -119,3 +123,17 @@ async def test_ray_remote_object(ray_start_regular_shared2):
     context.destroy_remote_object(name)
     with pytest.raises(KeyError):
         remote_object.foo(3, 4)
+
+
+@require_ray
+def test_get_chunks_result(ray_start_regular_shared2):
+    value = 123
+    o = ray.put(value)
+
+    def fake_init(self):
+        pass
+
+    with mock.patch.object(ThreadedServiceContext, "__init__", new=fake_init):
+        context = RayExecutionContext({"abc": o}, None)
+        r = context.get_chunks_result(["abc"])
+        assert r == [value]
