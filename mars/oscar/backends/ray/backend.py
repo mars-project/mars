@@ -21,7 +21,7 @@ from .driver import RayActorDriver
 from .pool import RayMainPool
 from .utils import process_address_to_placement, get_placement_group
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 
 __all__ = ["RayActorBackend"]
 

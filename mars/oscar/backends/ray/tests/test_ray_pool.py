@@ -27,7 +27,7 @@ from ..backend import RayActorBackend
 from ..pool import RayMainActorPool, create_actor_pool, RayPoolState
 from ..utils import process_placement_to_address, kill_and_wait
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 
 
 class TestActor(mo.Actor):

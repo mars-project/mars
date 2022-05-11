@@ -20,7 +20,7 @@ from .....tests.core import require_ray
 from .....utils import lazy_import
 from ..manager import TaskConfigurationActor
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 
 
 @require_ray

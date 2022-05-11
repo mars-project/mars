@@ -15,10 +15,10 @@
 import asyncio
 from collections import namedtuple
 from typing import Dict, List
-from .....utils import lazy_import
+from .....utils import lazy_import, lazy_import_on_load
 from ..api import Fetcher, register_fetcher_cls
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 _FetchInfo = namedtuple("FetchInfo", ["key", "object_ref", "conditions"])
 
 
@@ -61,5 +61,8 @@ def query_object_with_condition(o, conditions):
         return o[conditions]
 
 
-if ray:
+@lazy_import_on_load(ray)
+def _make_query_function_remote():
+    global query_object_with_condition
+
     query_object_with_condition = ray.remote(query_object_with_condition)

@@ -63,7 +63,7 @@ from .message import (
 from .router import Router
 
 logger = logging.getLogger(__name__)
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 
 
 class _ErrorProcessor:

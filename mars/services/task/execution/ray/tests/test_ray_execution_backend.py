@@ -27,7 +27,7 @@ from ..context import RayRemoteObjectManager, _RayRemoteObjectContext
 from ..executor import execute_subtask
 from ..fetcher import RayFetcher
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 
 
 def _gen_subtask_chunk_graph(t):

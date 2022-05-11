@@ -11,16 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import enum
-import os
+
 import asyncio
+import enum
 import logging
+import os
 import posixpath
 from urllib.parse import urlparse, unquote
 
-from ....utils import lazy_import
+from ....utils import lazy_import, lazy_import_on_load
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 
 logger = logging.getLogger(__name__)
 
@@ -168,25 +169,28 @@ async def kill_and_wait(
     )
 
 
-if ray and not hasattr(ray, "report_event"):  # pragma: no cover
-    # lower version of ray doesn't support event
+@lazy_import_on_load(ray)
+def _patch_event_security():
+    global ray
 
-    class EventSeverity(enum.Enum):
-        INFO = 0
-        WARNING = 1
-        ERROR = 2
-        FATAL = 3
+    if ray and not hasattr(ray, "report_event"):  # pragma: no cover
+        # lower version of ray doesn't support event
 
-    def _report_event(severity, label, message):
-        logger.warning(
-            "severity: %s, label: %s, message: %s.", severity, label, message
-        )
+        class EventSeverity(enum.Enum):
+            INFO = 0
+            WARNING = 1
+            ERROR = 2
+            FATAL = 3
 
-    # lazy imported module can't override really module attr
-    import ray
+        def _report_event(severity, label, message):
+            logger.warning(
+                "severity: %s, label: %s, message: %s.", severity, label, message
+            )
 
-    ray.EventSeverity = EventSeverity
-    ray.report_event = _report_event
+        import ray
+
+        ray.EventSeverity = EventSeverity
+        ray.report_event = _report_event
 
 
 def report_event(severity, label, message):

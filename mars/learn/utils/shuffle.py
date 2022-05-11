@@ -39,7 +39,7 @@ from ..operands import LearnOperandMixin, OutputType, LearnShuffleProxy
 from ..utils import convert_to_tensor_or_dataframe
 
 
-cudf = lazy_import("cudf")
+cudf = lazy_import("cudf", globals=globals())
 
 
 def _shuffle_index_value(op, index_value, chunk_index=None):

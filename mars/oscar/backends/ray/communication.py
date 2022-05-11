@@ -28,7 +28,7 @@ from ....oscar.profiling import ProfilingData
 from ....serialization import serialize, deserialize
 from ....serialization.ray import register_ray_serializers
 from ....metrics import Metrics
-from ....utils import lazy_import, implements, classproperty, Timer
+from ....utils import lazy_import, lazy_import_on_load, implements, classproperty, Timer
 from ...debug import debug_async_timeout
 from ...errors import ServerClosed
 from ..communication.base import Channel, ChannelType, Server, Client
@@ -36,7 +36,7 @@ from ..communication.core import register_client, register_server
 from ..communication.errors import ChannelClosed
 from .utils import report_event
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 logger = logging.getLogger(__name__)
 
 ChannelID = namedtuple(
@@ -104,7 +104,8 @@ class _ArgWrapper:
         return _argwrapper_unpickler, (serialize(self.message),)
 
 
-if ray:
+@lazy_import_on_load(ray)
+def _init_ray_metrics():
     # Note: Must init metrics before using and here initializing metrics
     # with ray backend.
     from ....metrics import init_metrics

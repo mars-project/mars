@@ -341,6 +341,9 @@ def lazy_import(
     prefix_name = name.split(".", 1)[0]
 
     class LazyModule(object):
+        def __init__(self):
+            self._on_loads = []
+
         def __getattr__(self, item):
             if item.startswith("_pytest") or item in ("__bases__", "__test__"):
                 raise AttributeError(item)
@@ -350,7 +353,16 @@ def lazy_import(
                 globals[rename] = real_mod
             elif locals is not None:
                 locals[rename] = real_mod
-            return getattr(real_mod, item)
+            ret = getattr(real_mod, item)
+            for on_load_func in self._on_loads:
+                on_load_func()
+            # make sure on_load hooks only executed once
+            self._on_loads = []
+            return ret
+
+        def add_load_handler(self, func: Callable):
+            self._on_loads.append(func)
+            return func
 
     if pkgutil.find_loader(prefix_name) is not None:
         return LazyModule()
@@ -358,6 +370,15 @@ def lazy_import(
         return ModulePlaceholder(prefix_name)
     else:
         return None
+
+
+def lazy_import_on_load(lazy_mod):
+    def wrapper(fun):
+        if lazy_mod is not None and hasattr(lazy_mod, "add_load_handler"):
+            lazy_mod.add_load_handler(fun)
+        return fun
+
+    return wrapper
 
 
 class ModulePlaceholder:
@@ -404,8 +425,9 @@ def deserialize_serializable(ser_serializable: bytes):
 
 
 def register_ray_serializer(obj_type, serializer=None, deserializer=None):
-    ray = lazy_import("ray")
-    if ray:
+    try:
+        import ray
+
         try:
             ray.register_custom_serializer(
                 obj_type, serializer=serializer, deserializer=deserializer
@@ -423,6 +445,8 @@ def register_ray_serializer(obj_type, serializer=None, deserializer=None):
                 ray.util.register_serializer(
                     obj_type, serializer=serializer, deserializer=deserializer
                 )
+    except ImportError:
+        pass
 
 
 def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:

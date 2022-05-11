@@ -25,7 +25,7 @@ from ....core import tile
 from ....serialization import AioDeserializer, AioSerializer
 from ....storage import StorageLevel
 from ....tests.core import require_ray
-from ....utils import get_next_port
+from ....utils import get_next_port, lazy_import
 from ...cluster import MockClusterAPI
 from ...meta import MockMetaAPI
 from ...session import MockSessionAPI
@@ -36,10 +36,7 @@ try:
     import vineyard
 except ImportError:
     vineyard = None
-try:
-    import ray
-except ImportError:
-    ray = None
+ray = lazy_import("ray", globals=globals())
 
 require_lib = lambda x: x
 storage_configs = []

@@ -201,6 +201,11 @@ def test_lazy_import():
         non_exist_mod = utils.lazy_import("non_exist_mod", locals=locals())
         assert non_exist_mod is None
 
+        non_exist_mod1 = utils.lazy_import("non_exist_mod1", placeholder=True)
+        with pytest.raises(AttributeError) as ex_data:
+            non_exist_mod1.meth()
+        assert "required" in str(ex_data.value)
+
         mod = utils.lazy_import(
             "test_mod", globals=globals(), locals=locals(), rename="mod"
         )

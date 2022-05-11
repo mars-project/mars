@@ -16,7 +16,7 @@ from .....tests.core import require_ray, mock
 from .....utils import lazy_import
 from ..utils import report_event
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 
 
 @require_ray

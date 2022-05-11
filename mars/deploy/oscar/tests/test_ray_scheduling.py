@@ -24,7 +24,7 @@ from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     get_output_filenames,
 )
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 
 
 @pytest_asyncio.fixture

@@ -32,7 +32,7 @@ from ..utils import (
     process_address_to_placement,
 )
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 
 TEST_PLACEMENT_GROUP_NAME = "test_placement_group"
 TEST_PLACEMENT_GROUP_BUNDLES = [{"CPU": 3}, {"CPU": 5}, {"CPU": 7}]

@@ -18,7 +18,7 @@ from ..utils import lazy_import
 from .core import Serializer, buffered, PickleSerializer
 from .exception import ExceptionSerializer
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 
 
 class RaySerializer(Serializer):

@@ -16,7 +16,7 @@ import pytest
 
 from ..... import tensor as mt
 from .....core import tile
-from ...core import TensorMeta
+from ...metas import TensorMeta
 from ...store import get_meta_store
 
 

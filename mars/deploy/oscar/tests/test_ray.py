@@ -55,7 +55,7 @@ from .modules.utils import (  # noqa: F401  # pylint: disable=unused-variable
     get_output_filenames,
 )
 
-ray = lazy_import("ray")
+ray = lazy_import("ray", globals=globals())
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "local_test_with_ray_config.yml")
 CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(

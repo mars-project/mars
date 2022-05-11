@@ -14,11 +14,7 @@
 
 from typing import Optional, Dict
 
-try:
-    from prometheus_client import Gauge as PGauge
-except ImportError:
-    PGauge = None
-
+from ....utils import lazy_import
 from ..metric import (
     AbstractMetric,
     AbstractCounter,
@@ -27,11 +23,13 @@ from ..metric import (
     AbstractHistogram,
 )
 
+pc = lazy_import("prometheus_client", globals=globals(), rename="pc")
+
 
 class PrometheusMetricMixin(AbstractMetric):
     def _init(self):
         self._metric = (
-            PGauge(self._name, self._description, self._tag_keys) if PGauge else None
+            pc.Gauge(self._name, self._description, self._tag_keys) if pc else None
         )
 
     def _record(self, value=1, tags: Optional[Dict[str, str]] = None):

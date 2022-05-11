@@ -21,11 +21,22 @@ from ....core.operand import Fuse
 from ....lib.aio import alru_cache
 from ....typing import BandType
 from ....utils import get_chunk_params
+from ..core import get_meta_type
+from ..store import AbstractMetaStore
+from ..supervisor.core import MetaStoreManagerActor, MetaStoreActor
+from ..worker.core import WorkerMetaStoreManagerActor
 from .core import AbstractMetaAPI
 
 
 class BaseMetaAPI(AbstractMetaAPI):
-    def __init__(self, session_id: str, meta_store: mo.ActorRef):
+    def __init__(
+        self, session_id: str, meta_store: Union[AbstractMetaStore, mo.ActorRef]
+    ):
+        # make sure all meta types registered
+        from .. import metas
+
+        del metas
+
         self._session_id = session_id
         self._meta_store = meta_store
 
@@ -38,7 +49,6 @@ class BaseMetaAPI(AbstractMetaAPI):
             DATAFRAME_GROUPBY_TYPE,
             SERIES_GROUPBY_TYPE,
         )
-        from ..core import get_meta_type
 
         params = tileable.params.copy()
         if isinstance(
@@ -80,8 +90,6 @@ class BaseMetaAPI(AbstractMetaAPI):
         exclude_fields: List[str] = None,
         **extra
     ):
-        from ..core import get_meta_type
-
         if isinstance(chunk.op, Fuse):
             # fuse op
             chunk = chunk.chunk
@@ -248,8 +256,6 @@ class MetaAPI(BaseMetaAPI):
         meta_api
             Meta api.
         """
-        from ..supervisor.core import MetaStoreActor
-
         meta_store_ref = await mo.actor_ref(address, MetaStoreActor.gen_uid(session_id))
 
         return MetaAPI(session_id, meta_store_ref)
@@ -258,8 +264,6 @@ class MetaAPI(BaseMetaAPI):
 class MockMetaAPI(MetaAPI):
     @classmethod
     async def create(cls, session_id: str, address: str) -> "MetaAPI":
-        from ..supervisor.core import MetaStoreManagerActor
-
         # create an Actor for mock
         try:
             meta_store_manager_ref = await mo.create_actor(
@@ -302,8 +306,6 @@ class WorkerMetaAPI(BaseMetaAPI):
         meta_api
             Worker meta api.
         """
-        from ..worker.core import WorkerMetaStoreManagerActor
-
         worker_meta_store_manager_ref = await mo.actor_ref(
             uid=WorkerMetaStoreManagerActor.default_uid(), address=address
         )
@@ -316,8 +318,6 @@ class WorkerMetaAPI(BaseMetaAPI):
 class MockWorkerMetaAPI(WorkerMetaAPI):
     @classmethod
     async def create(cls, session_id: str, address: str) -> "WorkerMetaAPI":
-        from ..worker.core import WorkerMetaStoreManagerActor
-
         # create an Actor for mock
         try:
             await mo.create_actor(
