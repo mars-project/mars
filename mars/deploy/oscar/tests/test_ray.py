@@ -155,6 +155,12 @@ async def test_execute_describe(ray_start_regular, create_cluster):
 @pytest.mark.asyncio
 async def test_fetch_infos(ray_start_regular, create_cluster):
     await test_local.test_fetch_infos(create_cluster)
+    df = md.DataFrame(mt.random.RandomState(0).rand(5000, 1, chunk_size=1000))
+    df.execute()
+    fetched_infos = df.fetch_infos(fields=["object_refs"])
+    object_refs = reduce(operator.concat, fetched_infos["object_refs"])
+    assert len(fetched_infos) == 1
+    assert len(object_refs) == 5
 
 
 @require_ray
@@ -728,13 +734,3 @@ def test_init_metrics_on_ray(ray_start_regular, create_cluster):
     assert api._metric_backend == "ray"
 
     client.session.stop_server()
-
-
-@pytest.mark.asyncio
-async def test_fetch_infos(create_cluster):
-    df = md.DataFrame(mt.random.RandomState(0).rand(5000, 1, chunk_size=1000))
-    df.execute()
-    fetched_infos = df.fetch_infos(fields=["object_refs"])
-    object_refs = reduce(operator.concat, fetched_infos["object_refs"])
-    assert len(fetched_infos) == 1
-    assert len(object_refs) == 5

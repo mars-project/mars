@@ -9,9 +9,6 @@ session:
   custom_log_dir: null
 storage:
   backends: [ray]
-task:
-  task_executor_config:
-    subtask_max_retries: 3
 scheduling:
   autoscale:
     enabled: false

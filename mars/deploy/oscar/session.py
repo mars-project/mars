@@ -1216,8 +1216,9 @@ class _IsolatedSession(AbstractAsyncSession):
                         for f in fields:
                             if f == "band":
                                 bands = chunk_to_meta[fetch_info.chunk]["bands"]
-                                fetched[f] = bands[0] if bands else None
-                            fetched[f].append(chunk_to_meta[fetch_info.chunk][f])
+                                fetched[f].append(bands[0] if bands else None)
+                            else:
+                                fetched[f].append(chunk_to_meta[fetch_info.chunk][f])
                     result.append(fetched)
                 return result
             chunk_to_band = {

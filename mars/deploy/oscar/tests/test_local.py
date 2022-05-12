@@ -385,10 +385,7 @@ async def test_fetch_infos(create_cluster):
     fetched_infos = df.fetch_infos(fields=["object_id", "band"])
     assert "object_id" in fetched_infos
     assert "band" in fetched_infos
-    assert "level" not in fetched_infos
-    assert "memory_size" not in fetched_infos
-    assert "store_size" not in fetched_infos
-    assert "object_refs" not in fetched_infos
+    assert len(fetched_infos) == 2
 
     fetch_infos((df, df), fields=None)
     results_infos = mr.ExecutableTuple([df, df]).execute()._fetch_infos()
