@@ -20,7 +20,7 @@ import pprint
 import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from .... import oscar as mo
 from ....core import ExecutionError
@@ -344,6 +344,20 @@ class SubtaskExecutionActor(mo.StatelessActor):
         if subtask_info.cancelling:
             raise asyncio.CancelledError
 
+    async def _remove_mapper_data(
+        self, session_id: str, band_name: str, remote_mapper_keys: List
+    ):
+        storage_api = await StorageAPI.create(
+            session_id, address=self.address, band_name=band_name
+        )
+        logger.debug("Delete mapper data %s", remote_mapper_keys)
+        await storage_api.delete.batch(
+            *[
+                storage_api.delete.delay(key, error="ignore")
+                for key in remote_mapper_keys
+            ]
+        )
+
     async def internal_run_subtask(self, subtask: Subtask, band_name: str):
         subtask_api = SubtaskAPI(self.address)
         subtask_info = self._subtask_info[subtask.subtask_id]
@@ -379,16 +393,9 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 subtask, band_name, subtask_api, batch_quota_req
             )
             if remote_mapper_keys:
-                storage_api = await StorageAPI.create(
-                    subtask.session_id, address=self.address, band_name=band_name
-                )
-                logger.debug("Delete mapper data %s", remote_mapper_keys)
-                await storage_api.delete.batch(
-                    *[
-                        storage_api.delete.delay(key, error="ignore")
-                        for key in remote_mapper_keys
-                    ]
-                )
+                await self.ref()._remove_mapper_data.tell(
+                        subtask.session_id, band_name, remote_mapper_keys
+                    )
         except:  # noqa: E722  # pylint: disable=bare-except
             _fill_subtask_result_with_exception(subtask, subtask_info)
         finally:
