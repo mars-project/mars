@@ -48,6 +48,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
     _level = AnyField("level")
     _as_index = BoolField("as_index")
     _sort = BoolField("sort")
+    _preserve_order = BoolField("preserve_order")
     _group_keys = BoolField("group_keys")
 
     _shuffle_size = Int32Field("shuffle_size")
@@ -61,6 +62,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
         group_keys=None,
         shuffle_size=None,
         output_types=None,
+        preserve_order=None,
         **kw
     ):
         super().__init__(
@@ -71,8 +73,13 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
             _group_keys=group_keys,
             _shuffle_size=shuffle_size,
             _output_types=output_types,
+            _preserve_order=preserve_order,
             **kw
         )
+        if sort:
+            self._preserve_order = False
+        else:
+            self._preserve_order = preserve_order
         if output_types:
             if self.stage in (OperandStage.map, OperandStage.reduce):
                 if output_types[0] in (
@@ -107,6 +114,10 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
     @property
     def sort(self):
         return self._sort
+
+    @property
+    def preserve_order(self):
+        return self._preserve_order
 
     @property
     def group_keys(self):
@@ -485,7 +496,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
             )
 
 
-def groupby(df, by=None, level=None, as_index=True, sort=True, group_keys=True):
+def groupby(df, by=None, level=None, as_index=True, sort=True, group_keys=True, preserve_order=False):
     if not as_index and df.op.output_types[0] == OutputType.series:
         raise TypeError("as_index=False only valid with DataFrame")
 
@@ -505,5 +516,6 @@ def groupby(df, by=None, level=None, as_index=True, sort=True, group_keys=True):
         sort=sort,
         group_keys=group_keys,
         output_types=output_types,
+        preserve_order=preserve_order,
     )
     return op(df)
