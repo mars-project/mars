@@ -88,7 +88,8 @@ async def test_ray_fetcher(ray_start_regular_shared2):
 
 
 @require_ray
-def test_ray_remote_object(ray_start_regular_shared2):
+@pytest.mark.asyncio
+async def test_ray_remote_object(ray_start_regular_shared2):
     class _TestRemoteObject:
         def __init__(self, i):
             self._i = i
@@ -103,13 +104,13 @@ def test_ray_remote_object(ray_start_regular_shared2):
     name = "abc"
     manager = RayRemoteObjectManager()
     manager.create_remote_object(name, _TestRemoteObject, 2)
-    r = manager.call_remote_object(name, "foo", 3, 4)
+    r = await manager.call_remote_object(name, "foo", 3, 4)
     assert r == 9
-    r = manager.call_remote_object(name, "bar", 3, 4)
+    r = await manager.call_remote_object(name, "bar", 3, 4)
     assert r == 24
     manager.destroy_remote_object(name)
     with pytest.raises(KeyError):
-        manager.call_remote_object(name, "foo", 3, 4)
+        await manager.call_remote_object(name, "foo", 3, 4)
 
     # Test _RayRemoteObjectContext
     remote_manager = ray.remote(RayRemoteObjectManager).remote()
@@ -123,6 +124,16 @@ def test_ray_remote_object(ray_start_regular_shared2):
     context.destroy_remote_object(name)
     with pytest.raises(KeyError):
         remote_object.foo(3, 4)
+
+    class MyException(Exception):
+        pass
+
+    class _ErrorRemoteObject:
+        def __init__(self):
+            raise MyException()
+
+    with pytest.raises(MyException):
+        context.create_remote_object(name, _ErrorRemoteObject)
 
 
 @require_ray
