@@ -35,8 +35,8 @@ from ...utils import lazy_import
 from .. import serialize, serialize_with_spawn, deserialize
 from ..core import Placeholder, ListSerializer
 
-cupy = lazy_import("cupy", globals=globals())
-cudf = lazy_import("cudf", globals=globals())
+cupy = lazy_import("cupy")
+cudf = lazy_import("cudf")
 
 
 class CustomList(list):

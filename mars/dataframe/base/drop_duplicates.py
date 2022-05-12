@@ -28,7 +28,7 @@ from ..utils import (
 )
 from ._duplicate import DuplicateOperand, validate_subset
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 
 class DataFrameDropDuplicates(DuplicateOperand):

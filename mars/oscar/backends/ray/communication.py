@@ -36,7 +36,7 @@ from ..communication.core import register_client, register_server
 from ..communication.errors import ChannelClosed
 from .utils import report_event
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
 
 ChannelID = namedtuple(

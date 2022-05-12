@@ -50,7 +50,7 @@ from .session import (
 )
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
 
 # The default config file.

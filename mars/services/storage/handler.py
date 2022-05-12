@@ -33,8 +33,8 @@ from .core import (
 )
 from .errors import DataNotExist, NoDataToSpill
 
-cupy = lazy_import("cupy", globals=globals())
-cudf = lazy_import("cudf", globals=globals())
+cupy = lazy_import("cupy")
+cudf = lazy_import("cudf")
 
 logger = logging.getLogger(__name__)
 

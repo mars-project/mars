@@ -28,7 +28,7 @@ from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     get_output_filenames,
 )
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 
 EXPECT_PROFILING_STRUCTURE = {
     "supervisor": {

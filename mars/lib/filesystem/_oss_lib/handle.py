@@ -17,7 +17,7 @@ from io import IOBase
 from ....utils import lazy_import
 from .common import parse_osspath, oss_stat
 
-oss2 = lazy_import("oss2", globals=globals(), placeholder=True)
+oss2 = lazy_import("oss2", placeholder=True)
 
 
 class OSSIOBase(IOBase):

@@ -49,7 +49,7 @@ from ..read_raydataset import (
 from ..series import from_pandas as from_pandas_series
 
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 
 
 def test_from_pandas_dataframe():

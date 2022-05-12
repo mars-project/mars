@@ -23,7 +23,7 @@ from ..metric import (
     AbstractHistogram,
 )
 
-pc = lazy_import("prometheus_client", globals=globals(), rename="pc")
+pc = lazy_import("prometheus_client", rename="pc")
 
 
 class PrometheusMetricMixin(AbstractMetric):

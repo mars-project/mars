@@ -32,11 +32,8 @@ from ...session import MockSessionAPI
 from ...web import WebActor
 from ..api import MockStorageAPI, WebStorageAPI
 
-try:
-    import vineyard
-except ImportError:
-    vineyard = None
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
+vineyard = lazy_import("vineyard")
 
 require_lib = lambda x: x
 storage_configs = []

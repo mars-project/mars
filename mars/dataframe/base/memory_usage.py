@@ -27,7 +27,7 @@ from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..core import IndexValue
 from ..utils import parse_index
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 
 class DataFrameMemoryUsage(DataFrameOperand, DataFrameOperandMixin):

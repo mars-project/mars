@@ -42,9 +42,9 @@ from ..core.operand import OperandStage
 from ..utils import lazy_import
 
 
-cupy = lazy_import("cupy", globals=globals())
-cudf = lazy_import("cudf", globals=globals())
-ray = lazy_import("ray", globals=globals())
+cupy = lazy_import("cupy")
+cudf = lazy_import("cudf")
+ray = lazy_import("ray")
 
 logger = logging.getLogger(__name__)
 

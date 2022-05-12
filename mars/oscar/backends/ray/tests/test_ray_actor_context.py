@@ -27,7 +27,7 @@ from ..communication import RayServer
 from ..pool import RayMainPool
 from ..utils import process_placement_to_address
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 
 
 @pytest_asyncio.fixture

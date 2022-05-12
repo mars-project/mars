@@ -20,8 +20,8 @@ from ... import tensor as mt
 from ...tests.core import require_cudf, require_cupy
 from ...utils import lazy_import
 
-cupy = lazy_import("cupy", globals=globals())
-cudf = lazy_import("cudf", globals=globals())
+cupy = lazy_import("cupy")
+cudf = lazy_import("cudf")
 
 
 def test_dataframe_initializer(setup):

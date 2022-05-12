@@ -23,7 +23,7 @@ from ..metric import (
     AbstractHistogram,
 )
 
-ray_metrics = lazy_import("ray.util.metrics", globals=globals(), rename="ray_metrics")
+ray_metrics = lazy_import("ray.util.metrics", rename="ray_metrics")
 
 _ray_gauge_set_available = None
 

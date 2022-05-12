@@ -70,7 +70,7 @@ from .. import (
     fromzarr,
 )
 
-cupy = lazy_import("cupy", globals=globals())
+cupy = lazy_import("cupy")
 
 
 @require_cupy

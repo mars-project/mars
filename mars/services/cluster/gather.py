@@ -35,8 +35,8 @@ from ...utils import git_info, lazy_import
 from ...storage import StorageLevel
 from .core import WorkerSlotInfo, QuotaInfo, DiskInfo, StorageInfo
 
-cp = lazy_import("cupy", globals=globals(), rename="cp")
-cudf = lazy_import("cudf", globals=globals())
+cp = lazy_import("cupy", rename="cp")
+cudf = lazy_import("cudf")
 
 logger = logging.getLogger(__name__)
 

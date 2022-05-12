@@ -28,7 +28,7 @@ from mars.oscar.backends.ray.communication import RayServer
 from mars.serialization.ray import register_ray_serializers, unregister_ray_serializers
 from mars.utils import lazy_import
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 
 
 @pytest.fixture(scope="module")

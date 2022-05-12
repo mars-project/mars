@@ -25,7 +25,7 @@ from ...communication.base import ChannelType
 from ...message import SendMessage
 from ..communication import ChannelID, Channel, RayServer, RayClient, msg_to_simple_str
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 
 
 class ServerActor:

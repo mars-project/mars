@@ -30,7 +30,7 @@ from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_bac
 from .core import BufferWrappedFileObject, StorageFileObject
 from .errors import DataNotExist
 
-plasma = lazy_import("pyarrow.plasma", globals=globals(), rename="plasma")
+plasma = lazy_import("pyarrow.plasma", rename="plasma")
 if sys.platform.startswith("win"):
     plasma = None
 

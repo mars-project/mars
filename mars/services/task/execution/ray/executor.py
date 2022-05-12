@@ -51,7 +51,7 @@ from .context import (
     RayRemoteObjectManager,
 )
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
 
 

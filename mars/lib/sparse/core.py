@@ -26,8 +26,8 @@ except ImportError:  # pragma: no cover
 from ...utils import lazy_import
 
 splinalg = splinalg
-cp = lazy_import("cupy", globals=globals(), rename="cp")
-cps = lazy_import("cupy.sparse", globals=globals(), rename="cps")
+cp = lazy_import("cupy", rename="cp")
+cps = lazy_import("cupy.sparse", rename="cps")
 
 
 def issparse(x):

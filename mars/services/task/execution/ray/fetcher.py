@@ -20,7 +20,7 @@ from typing import Dict, List
 from .....utils import lazy_import
 from ..api import Fetcher, register_fetcher_cls
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 _FetchInfo = namedtuple("FetchInfo", ["key", "object_ref", "conditions"])
 
 

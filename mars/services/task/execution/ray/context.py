@@ -20,7 +20,7 @@ from .....core.context import Context
 from .....utils import implements, lazy_import
 from ....context import ThreadedServiceContext
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 
 
 class RayRemoteObjectManager:

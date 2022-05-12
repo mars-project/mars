@@ -22,7 +22,7 @@ from ....utils import lazy_import
 from ...driver import BaseActorDriver
 from .utils import process_placement_to_address, addresses_to_placement_group_info
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
 
 

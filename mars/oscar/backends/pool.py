@@ -63,7 +63,7 @@ from .message import (
 from .router import Router
 
 logger = logging.getLogger(__name__)
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 
 DEFAULT_MODULES = ["mars.tensor", "mars.dataframe", "mars.learn", "mars.remote"]
 

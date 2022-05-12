@@ -21,7 +21,7 @@ from urllib.parse import urlparse, unquote
 
 from ....utils import lazy_import, lazy_import_on_load
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 
 logger = logging.getLogger(__name__)
 

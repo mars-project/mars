@@ -21,7 +21,7 @@ from ._oss_lib.glob import glob
 from ._oss_lib.handle import OSSIOBase
 from .base import FileSystem, path_type
 
-oss2 = lazy_import("oss2", globals=globals(), placeholder=True)
+oss2 = lazy_import("oss2", placeholder=True)
 
 _oss_time_out = 10
 

@@ -30,7 +30,7 @@ from ....utils import lazy_import
 from ..ray import new_cluster, _load_config
 from ..tests import test_fault_injection
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 
 RAY_CONFIG_FILE = os.path.join(
     os.path.dirname(__file__), "local_test_with_ray_config.yml"

@@ -26,7 +26,7 @@ from ..metrics import Metrics, Percentile, record_time_cost_percentile
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
-ray = lazy_import("ray", globals=globals())
+ray = lazy_import("ray")
 
 
 # TODO(fyrestone): make the SparseMatrix pickleable.

@@ -19,7 +19,7 @@ import os
 from ..base import path_type, stringify_path
 from ....utils import lazy_import
 
-oss2 = lazy_import("oss2", globals=globals(), placeholder=True)
+oss2 = lazy_import("oss2", placeholder=True)
 
 # OSS api time out
 _oss_time_out = 10

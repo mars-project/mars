@@ -53,7 +53,7 @@ def mars_sparse_matrix_resolver(obj, resolver) -> sparse.SparseNDArray:
     return sparse.matrix.SparseMatrix(spmatrix, shape=shape)
 
 
-if vineyard is not None:
+def _register_vineyard_matrices():
     vineyard.core.default_builder_context.register(
         sparse.matrix.SparseMatrix, mars_sparse_matrix_builder
     )
@@ -122,6 +122,8 @@ class VineyardStorage(StorageBackend):
     name = "vineyard"
 
     def __init__(self, vineyard_size: int, vineyard_socket: str = None):
+        _register_vineyard_matrices()
+
         self._size = vineyard_size
         self._vineyard_socket = vineyard_socket
         self._client = vineyard.connect(vineyard_socket)

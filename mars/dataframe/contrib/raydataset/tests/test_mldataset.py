@@ -25,8 +25,8 @@ from .....utils import lazy_import
 from ....contrib import raydataset as mdd
 
 
-ray = lazy_import("ray", globals=globals())
-ml_dataset = lazy_import("ray.util.data", globals=globals(), rename="ml_dataset")
+ray = lazy_import("ray")
+ml_dataset = lazy_import("ray.util.data", rename="ml_dataset")
 
 try:
     import xgboost_ray
