@@ -48,7 +48,6 @@ def _json_serial_task_result(result: Optional[TaskResult]):
 def _json_deserial_task_result(d: dict) -> Optional[TaskResult]:
     if not d:
         return None
-    print(d)
     if "error" in d:
         d["error"] = deserialize_serializable(base64.b64decode(d["error"]))
         d["traceback"] = deserialize_serializable(base64.b64decode(d["traceback"]))

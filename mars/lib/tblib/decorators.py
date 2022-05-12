@@ -1,8 +1,6 @@
 import sys
 from functools import wraps
 
-from six import reraise
-
 from . import Traceback
 
 
@@ -17,7 +15,7 @@ class Error(object):
         return self.__traceback.as_traceback()
 
     def reraise(self):
-        reraise(self.exc_type, self.exc_value, self.traceback)
+        raise self.exc_value.with_traceback(self.traceback) from None
 
 
 def return_error(func, exc_type=Exception):
