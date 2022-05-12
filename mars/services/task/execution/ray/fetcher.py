@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import asyncio
+import types
 from collections import namedtuple
 from typing import Dict, List
-from .....utils import lazy_import, lazy_import_on_load
+
+from .....utils import lazy_import
 from ..api import Fetcher, register_fetcher_cls
 
 ray = lazy_import("ray", globals=globals())
@@ -28,6 +30,8 @@ class RayFetcher(Fetcher):
     required_meta_keys = ("object_refs",)
 
     def __init__(self, **kwargs):
+        _make_query_function_remote()
+
         self._fetch_info_list = []
         self._no_conditions = True
 
@@ -61,8 +65,8 @@ def query_object_with_condition(o, conditions):
         return o[conditions]
 
 
-@lazy_import_on_load(ray)
 def _make_query_function_remote():
     global query_object_with_condition
 
-    query_object_with_condition = ray.remote(query_object_with_condition)
+    if isinstance(query_object_with_condition, types.FunctionType):
+        query_object_with_condition = ray.remote(query_object_with_condition)
