@@ -44,7 +44,7 @@ def test_recursive_tile(setup):
     d2 = mt.random.rand(10, chunk_size=5)
     op = _TestOperand()
     t = op.new_tensor([d1, d2], dtype=d1.dtype, shape=(20,), order=d1.order)
-    t.execute()
+    t.execute(extra_config={"check_duplicated_operand_keys": True})
 
 
 class _TestOperandWithDuplicatedSubmission(TensorOperand, TensorOperandMixin):
