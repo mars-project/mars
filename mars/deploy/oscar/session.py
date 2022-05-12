@@ -1160,7 +1160,14 @@ class _IsolatedSession(AbstractAsyncSession):
             return result
 
     async def fetch_infos(self, *tileables, fields, **kwargs) -> list:
-        available_fields = {"object_id", "level", "memory_size", "store_size", "band"}
+        available_fields = {
+            "object_id",
+            "object_refs",
+            "level",
+            "memory_size",
+            "store_size",
+            "band",
+        }
         if fields is None:
             fields = available_fields
         else:
@@ -1174,7 +1181,13 @@ class _IsolatedSession(AbstractAsyncSession):
         if kwargs:  # pragma: no cover
             unexpected_keys = ", ".join(list(kwargs.keys()))
             raise TypeError(f"`fetch` got unexpected arguments: {unexpected_keys}")
-
+        need_fetch_fields = {"level", "memory_size", "store_size"}
+        need_fetch = bool(need_fetch_fields & fields)
+        get_chunk_meta_fields = ["bands"]
+        if not need_fetch:
+            get_chunk_meta_fields = list(fields)
+            if "band" in get_chunk_meta_fields:
+                get_chunk_meta_fields[get_chunk_meta_fields.index("band")] = "bands"
         with enter_mode(build=True):
             chunks = []
             get_chunk_metas = []
@@ -1185,13 +1198,28 @@ class _IsolatedSession(AbstractAsyncSession):
                 for chunk in fetch_tileable.chunks:
                     chunks.append(chunk)
                     get_chunk_metas.append(
-                        self._meta_api.get_chunk_meta.delay(chunk.key, fields=["bands"])
+                        self._meta_api.get_chunk_meta.delay(
+                            chunk.key, fields=get_chunk_meta_fields
+                        )
                     )
                     fetch_infos.append(
                         ChunkFetchInfo(tileable=tileable, chunk=chunk, indexes=None)
                     )
                 fetch_infos_list.append(fetch_infos)
             chunk_metas = await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
+            if not need_fetch:
+                result = []
+                chunk_to_meta = dict(zip(chunks, chunk_metas))
+                for fetch_infos in fetch_infos_list:
+                    fetched = defaultdict(list)
+                    for fetch_info in fetch_infos:
+                        for f in fields:
+                            if f == "band":
+                                bands = chunk_to_meta[fetch_info.chunk]["bands"]
+                                fetched[f] = bands[0] if bands else None
+                            fetched[f].append(chunk_to_meta[fetch_info.chunk][f])
+                    result.append(fetched)
+                return result
             chunk_to_band = {
                 chunk: meta["bands"][0] for chunk, meta in zip(chunks, chunk_metas)
             }
