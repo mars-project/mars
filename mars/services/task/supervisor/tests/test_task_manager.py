@@ -57,7 +57,7 @@ async def actor_pool():
     )
     pool = await mo.create_actor_pool(
         "127.0.0.1",
-        n_process=3,
+        n_process=0 if backend == "ray" else 3,
         labels=["main"] + ["numa-0"] * 2 + ["io"],
         subprocess_start_method=start_method,
     )
