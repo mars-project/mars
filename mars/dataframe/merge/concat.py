@@ -324,7 +324,10 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             )
 
             if chunk.op.axis is not None:
-                return xdf.concat(inputs, axis=op.axis)
+                try:
+                    return xdf.concat(inputs, axis=op.axis)
+                except:
+                    raise
 
             # auto generated concat when executing a DataFrame
             if len(inputs) == 1:

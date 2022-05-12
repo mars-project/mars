@@ -1241,13 +1241,16 @@ def test_groupby_nunique(setup):
     # test with as_index=False
     mdf = md.DataFrame(df1, chunk_size=13)
     if _agg_size_as_frame:
+        res = mdf.groupby("b", as_index=False)["a"].nunique().execute().fetch()
+        expected = df1.groupby("b", as_index=False)["a"].nunique()
         pd.testing.assert_frame_equal(
-            mdf.groupby("b", as_index=False)["a"]
-            .nunique()
-            .execute()
-            .fetch()
-            .sort_values(by="b", ignore_index=True),
-            df1.groupby("b", as_index=False)["a"]
-            .nunique()
-            .sort_values(by="b", ignore_index=True),
+            res.sort_values(by="b", ignore_index=True),
+            expected.sort_values(by="b", ignore_index=True),
+        )
+
+        res = mdf.groupby("b", as_index=False)[["a", "c"]].nunique().execute().fetch()
+        expected = df1.groupby("b", as_index=False)[["a", "c"]].nunique()
+        pd.testing.assert_frame_equal(
+            res.sort_values(by="b", ignore_index=True),
+            expected.sort_values(by="b", ignore_index=True),
         )
