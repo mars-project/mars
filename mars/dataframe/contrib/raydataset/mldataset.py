@@ -104,11 +104,14 @@ def to_ray_mldataset(df, num_shards: int = None):
     #       chunk1 for addr1,
     #       chunk2 & chunk3 for addr2,
     #       chunk4 for addr1
-    fetched_infos: Dict[str, List] = df.fetch_infos(fields=["band", "object_id"])
+    fetched_infos: Dict[str, List] = df.fetch_infos(fields=["band", "object_refs"])
     chunk_addr_refs: List[Tuple[Tuple, "ray.ObjectRef"]] = [
-        (band, object_id)
-        for band, object_id in zip(fetched_infos["band"], fetched_infos["object_id"])
+        (band, object_refs[0])
+        for band, object_refs in zip(
+            fetched_infos["band"], fetched_infos["object_refs"]
+        )
     ]
+    print(f"fetched_infos {fetched_infos} \n {chunk_addr_refs}")
     group_to_obj_refs: Dict[str, List[ray.ObjectRef]] = _group_chunk_refs(
         chunk_addr_refs, num_shards
     )

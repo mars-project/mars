@@ -156,6 +156,14 @@ async def ray_create_mars_cluster(request):
         yield client
 
 
+@pytest.fixture
+def stop_mars():
+    yield
+    import mars
+
+    mars.stop_server()
+
+
 @pytest.fixture(scope="module")
 def _stop_isolation():
     yield

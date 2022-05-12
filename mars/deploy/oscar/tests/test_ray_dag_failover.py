@@ -20,8 +20,8 @@ import pandas as pd
 import pytest
 
 import mars
-import mars.dataframe as md
-import mars.tensor as mt
+from .... import dataframe as md
+from .... import tensor as mt
 from ....tests.core import require_ray
 from ....utils import lazy_import
 
@@ -35,7 +35,9 @@ ray = lazy_import("ray")
     indirect=True,
 )
 @pytest.mark.parametrize("reconstruction_enabled", [True, False])
-def test_basic_object_reconstruction(ray_large_cluster, reconstruction_enabled):
+def test_basic_object_reconstruction(
+    ray_large_cluster, reconstruction_enabled, stop_mars
+):
     config = {
         "num_heartbeats_timeout": 10,
         "raylet_heartbeat_period_milliseconds": 200,
