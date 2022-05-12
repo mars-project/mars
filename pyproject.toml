@@ -9,6 +9,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.black]
-extend-exclude = '''
-^/mars/_version.py
-'''
+extend-exclude = [
+    "^/mars/_version.py",
+    "^/mars/lib/tblib/.*",
+]

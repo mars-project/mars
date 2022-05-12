@@ -1,6 +1,5 @@
 """
 Taken verbatim from Jinja2.
-
 https://github.com/mitsuhiko/jinja2/blob/master/jinja2/debug.py#L267
 """
 import platform
@@ -80,5 +79,5 @@ try:
     if platform.python_implementation() == "CPython":
         tb_set_next = _init_ugly_crap()
 except Exception as exc:
-    sys.stderr.write(f"Failed to initialize cpython support: {exc!r}")
+    sys.stderr.write("Failed to initialize cpython support: {!r}".format(exc))
 del _init_ugly_crap
