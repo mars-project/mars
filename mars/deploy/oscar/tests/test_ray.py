@@ -24,6 +24,7 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
+import pytest_asyncio
 
 import mars
 from .... import oscar as mo
@@ -90,7 +91,7 @@ EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_calls"] = {}
 EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_subtasks"] = {}
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def create_cluster(request):
     param = getattr(request, "param", {})
     ray_config = _load_config(CONFIG_FILE)

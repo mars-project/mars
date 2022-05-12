@@ -17,6 +17,7 @@ import os
 import sys
 
 import pytest
+import pytest_asyncio
 from tornado import httpclient
 
 from .... import oscar as mo
@@ -59,7 +60,7 @@ class TestAPIHandler(MarsServiceWebAPIHandler):
         raise ValueError(test_id)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pool():
     start_method = (
         os.environ.get("POOL_START_METHOD", "forkserver")

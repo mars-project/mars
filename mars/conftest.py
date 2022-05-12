@@ -18,6 +18,7 @@ import subprocess
 
 import psutil
 import pytest
+import pytest_asyncio
 
 from mars.config import option_context
 from mars.core.mode import is_kernel_mode, is_build_mode
@@ -132,7 +133,7 @@ def stop_ray(request):  # pragma: no cover
         ray.shutdown()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def ray_create_mars_cluster(request):
     from mars.deploy.oscar.ray import new_cluster, _load_config
 
