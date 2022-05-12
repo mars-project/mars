@@ -84,9 +84,6 @@ class MySerializable(Serializable):
 
 class SerializeSerializableSuite:
     def setup(self):
-        # do warmup
-        serialize(None)
-
         children = []
         for idx in range(1000):
             child = SerializableChild(

@@ -22,6 +22,7 @@ import uuid
 from datetime import date, datetime, timedelta, tzinfo
 from enum import Enum
 from functools import lru_cache, partial
+from weakref import WeakSet
 
 import numpy as np
 import pandas as pd
@@ -79,12 +80,17 @@ cpdef unicode to_text(s, encoding='utf-8'):
         raise TypeError(f"Could not convert from {s} to unicode.")
 
 
+_type_dispatchers = WeakSet()
+
+
 cdef class TypeDispatcher:
     def __init__(self):
         self._handlers = dict()
         self._lazy_handlers = dict()
         # store inherited handlers to facilitate unregistering
         self._inherit_handlers = dict()
+
+        _type_dispatchers.add(self)
 
     cpdef void register(self, object type_, object handler):
         if isinstance(type_, str):
@@ -136,6 +142,11 @@ cdef class TypeDispatcher:
 
     def __call__(self, object obj, *args, **kwargs):
         return self.get_handler(type(obj))(obj, *args, **kwargs)
+
+    @staticmethod
+    def reload_all_lazy_handlers():
+        for dispatcher in _type_dispatchers:
+            (<TypeDispatcher>dispatcher)._reload_lazy_handlers()
 
 
 cdef inline build_canonical_bytes(tuple args, kwargs):

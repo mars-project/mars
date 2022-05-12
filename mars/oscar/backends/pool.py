@@ -26,7 +26,7 @@ from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Option
 from ...core.entrypoints import init_extension_entrypoints
 from ...metrics import init_metrics
 from ...utils import implements, to_binary
-from ...utils import lazy_import, register_asyncio_task_timeout_detector
+from ...utils import lazy_import, register_asyncio_task_timeout_detector, TypeDispatcher
 from ..api import Actor
 from ..core import ActorRef, register_local_pool
 from ..debug import record_message_trace, debug_async_timeout
@@ -656,6 +656,8 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         modules = actor_pool_config.get_pool_config(process_index)["modules"] or []
         for mod in modules:
             __import__(mod, globals(), locals(), [])
+        # make sure all lazy imports loaded
+        TypeDispatcher.reload_all_lazy_handlers()
 
         # set default router
         # actor context would be able to use exact client
