@@ -30,7 +30,7 @@ from ....oscar.profiling import (
 from ....typing import TileableType, ChunkType
 from ....utils import Timer
 from ...subtask import SubtaskResult, Subtask
-from ..core import Task, TaskResult, TaskStatus, new_task_id
+from ..core import Task, TaskResult, TaskStatus, new_task_id, MapReduceInfo
 from ..execution.api import TaskExecutor, ExecutionChunkResult
 from .preprocessor import TaskPreprocessor
 
@@ -406,6 +406,9 @@ class TaskProcessor:
             cost_time_secs,
             {"session_id": self._task.session_id, "task_id": self._task.task_id},
         )
+
+    def get_map_reduce_info(self, map_reduce_id: int) -> MapReduceInfo:
+        return self._preprocessor.get_map_reduce_info(map_reduce_id)
 
     def dump_subtask_graph(self):
         from .graph_visualizer import GraphVisualizer

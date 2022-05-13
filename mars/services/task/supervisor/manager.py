@@ -25,7 +25,7 @@ from ....core import TileableGraph, TileableType, enter_mode, TileContext
 from ....core.operand import Fetch
 from ...subtask import SubtaskResult, SubtaskGraph
 from ..config import task_options
-from ..core import Task, new_task_id, TaskStatus
+from ..core import Task, new_task_id, TaskStatus, MapReduceInfo
 from ..errors import TaskNotExist
 from .preprocessor import TaskPreprocessor
 from .processor import TaskProcessor
@@ -326,3 +326,13 @@ class TaskManagerActor(mo.Actor):
             else:
                 self._last_idle_time = time.time()
         return self._last_idle_time
+
+    async def get_map_reduce_info(
+        self, task_id: str, map_reduce_id: int
+    ) -> MapReduceInfo:
+        try:
+            processor_ref = self._task_id_to_processor_ref[task_id]
+        except KeyError:  # pragma: no cover
+            raise TaskNotExist(f"Task {task_id} does not exist")
+
+        return await processor_ref.get_map_reduce_info(map_reduce_id)

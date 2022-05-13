@@ -18,14 +18,17 @@ import sys
 import time
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from ..... import oscar as mo
+from ..... import dataframe as md
 from ..... import tensor as mt
 from ..... import remote as mr
-from .....core import ExecutionError
+from .....core import ExecutionError, ChunkGraph
 from .....core.context import get_context
 from .....core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from .....core.operand import OperandStage
 from .....resource import Resource
 from .....utils import Timer
 from ....cluster import MockClusterAPI
@@ -34,7 +37,7 @@ from ....meta import MockMetaAPI, MockWorkerMetaAPI
 from ....scheduling import MockSchedulingAPI
 from ....session import MockSessionAPI
 from ....storage import MockStorageAPI
-from ....task import new_task_id
+from ....task import new_task_id, MapReduceInfo
 from ....task.supervisor.manager import TaskManagerActor, TaskConfigurationActor
 from ....mutable import MockMutableAPI
 from ... import Subtask, SubtaskStatus, SubtaskResult
@@ -45,6 +48,13 @@ from ...worker.runner import SubtaskRunnerActor, SubtaskRunnerRef
 class FakeTaskManager(TaskManagerActor):
     def set_subtask_result(self, subtask_result: SubtaskResult):
         return
+
+    def get_map_reduce_info(self, task_id: str, map_reduce_id: int) -> MapReduceInfo:
+        return MapReduceInfo(
+            map_reduce_id=0,
+            reducer_indexes=[(0, 0)],
+            reducer_bands=[(self.address, "numa-0")],
+        )
 
 
 @pytest.fixture
@@ -140,6 +150,39 @@ async def test_subtask_success(actor_pool):
     assert chunk_meta is not None
     assert chunk_meta["bands"][0] == (pool.external_address, "numa-0")
     assert await subtask_runner.is_runner_free() is True
+
+
+@pytest.mark.asyncio
+async def test_shuffle_subtask(actor_pool):
+    pool, session_id, meta_api, storage_api, manager = actor_pool
+
+    pdf = pd.DataFrame({"f1": ["a", "b", "a"], "f2": [1, 2, 3]})
+    df = md.DataFrame(pdf)
+    result = df.groupby("f1").sum(method="shuffle")
+
+    graph = TileableGraph([result.data])
+    next(TileableGraphBuilder(graph).build())
+    chunk_graph = next(ChunkGraphBuilder(graph, fuse_enabled=False).build())
+    result_chunks = []
+    new_chunk_graph = ChunkGraph(result_chunks)
+    chunk_graph_iter = chunk_graph.topological_iter()
+    curr = None
+    for _ in range(3):
+        prev = curr
+        curr = next(chunk_graph_iter)
+        new_chunk_graph.add_node(curr)
+        if prev is not None:
+            new_chunk_graph.add_edge(prev, curr)
+    assert curr.op.stage == OperandStage.map
+    curr.op.extra_params = {"analyzer_map_reduce_id": 0}
+    result_chunks.append(curr)
+    subtask = Subtask(new_task_id(), session_id, new_task_id(), new_chunk_graph)
+    subtask_runner: SubtaskRunnerRef = await mo.actor_ref(
+        SubtaskRunnerActor.gen_uid("numa-0", 0), address=pool.external_address
+    )
+    await subtask_runner.run_subtask(subtask, wait_post_run=True)
+    result = await subtask_runner.get_subtask_result()
+    assert result.status == SubtaskStatus.succeeded
 
 
 @pytest.mark.asyncio

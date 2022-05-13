@@ -18,7 +18,7 @@ from .... import oscar as mo
 from ....core import Tileable
 from ....lib.aio import alru_cache
 from ...subtask import SubtaskResult
-from ..core import TileableGraph, TaskResult
+from ..core import TileableGraph, TaskResult, MapReduceInfo
 from ..supervisor.manager import TaskManagerActor
 from .core import AbstractTaskAPI
 
@@ -104,3 +104,8 @@ class TaskAPI(AbstractTaskAPI):
 
     async def get_last_idle_time(self) -> Union[float, None]:
         return await self._task_manager_ref.get_last_idle_time()
+
+    async def get_map_reduce_info(
+        self, task_id: str, map_reduce_id: int
+    ) -> MapReduceInfo:
+        return await self._task_manager_ref.get_map_reduce_info(task_id, map_reduce_id)

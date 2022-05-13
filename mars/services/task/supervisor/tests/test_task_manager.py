@@ -499,6 +499,25 @@ async def test_shuffle(actor_pool):
     )
     np.testing.assert_array_equal(result, expect)
 
+    # test generating map reduce info
+    subtask_graphs = (await manager.get_subtask_graphs(task_id))[0]
+    map_reduce_ids = []
+    for subtask in subtask_graphs:
+        for chunk in subtask.chunk_graph.result_chunks:
+            map_reduce_id = getattr(chunk.op, "extra_params", dict()).get(
+                "analyzer_map_reduce_id"
+            )
+            if map_reduce_id is not None:
+                map_reduce_ids.append(map_reduce_id)
+    assert len(map_reduce_ids) > 0
+    map_reduce_info = await manager.get_map_reduce_info(task_id, map_reduce_ids[0])
+    assert (
+        len(set(map_reduce_info.reducer_indexes))
+        == len(map_reduce_info.reducer_indexes)
+        == len(map_reduce_info.reducer_bands)
+        > 0
+    )
+
     # test ref counts
     assert (await lifecycle_api.get_tileable_ref_counts([c.key]))[0] == 1
     assert (

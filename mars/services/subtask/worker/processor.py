@@ -17,12 +17,17 @@ import logging
 import sys
 import time
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Set, Type
+from typing import Any, Dict, List, Optional, Set, Type, Tuple
 
 from .... import oscar as mo
 from ....core import ChunkGraph, OperandType, enter_mode, ExecutionError
 from ....core.context import get_context, set_context
-from ....core.operand import Fetch, FetchShuffle, execute
+from ....core.operand import (
+    Fetch,
+    FetchShuffle,
+    execute,
+)
+from ....lib.aio import alru_cache
 from ....metrics import Metrics
 from ....optimization.physical import optimize
 from ....typing import BandType, ChunkType
@@ -420,26 +425,56 @@ class SubtaskProcessor:
         # set result data size
         self.result.data_size = result_data_size
 
-    async def _push_mapper_data(self, chunk_graph):
-        # TODO: use task api to get reducer bands
-        reducer_idx_to_band = dict()
-        if not reducer_idx_to_band:
-            return
+    @classmethod
+    @alru_cache(cache_exceptions=False)
+    async def _gen_reducer_index_to_bands(
+        cls, session_id: str, supervisor_address: str, task_id: str, map_reduce_id: int
+    ) -> Dict[Tuple[int], BandType]:
+        task_api = await TaskAPI.create(session_id, supervisor_address)
+        map_reduce_info = await task_api.get_map_reduce_info(task_id, map_reduce_id)
+        assert len(map_reduce_info.reducer_indexes) == len(
+            map_reduce_info.reducer_bands
+        )
+        return {
+            reducer_index: band
+            for reducer_index, band in zip(
+                map_reduce_info.reducer_indexes, map_reduce_info.reducer_bands
+            )
+        }
+
+    async def _push_mapper_data(self):
         storage_api_to_fetch_tasks = defaultdict(list)
-        for result_chunk in chunk_graph.result_chunks:
-            key = result_chunk.key
-            reducer_idx = key[1]
-            if isinstance(key, tuple):
+        skip = True
+        for result_chunk in self._chunk_graph.result_chunks:
+            map_reduce_id = getattr(result_chunk.op, "extra_params", dict()).get(
+                "analyzer_map_reduce_id"
+            )
+            if map_reduce_id is None:
+                continue
+            skip = False
+            reducer_index_to_bands = await self._gen_reducer_index_to_bands(
+                self._session_id,
+                self._supervisor_address,
+                self.subtask.task_id,
+                map_reduce_id,
+            )
+            for reducer_index, band in reducer_index_to_bands.items():
                 # mapper key is a tuple
-                address, band_name = reducer_idx_to_band[reducer_idx]
-                storage_api = StorageAPI(address, self._session_id, band_name)
+                address, band_name = band
+                storage_api = await StorageAPI.create(
+                    self._session_id, address, band_name
+                )
                 fetch_task = storage_api.fetch.delay(
-                    key, band_name=self._band[1], remote_address=self._band[0]
+                    (result_chunk.key, reducer_index),
+                    band_name=self._band[1],
+                    remote_address=self._band[0],
                 )
                 storage_api_to_fetch_tasks[storage_api].append(fetch_task)
+        if skip:
+            return
         batch_tasks = []
         for storage_api, tasks in storage_api_to_fetch_tasks.items():
-            batch_tasks.append(asyncio.create_task(storage_api.fetch.batch(*tasks)))
+            batch_tasks.append(storage_api.fetch.batch(*tasks))
         await asyncio.gather(*batch_tasks)
 
     async def done(self):
@@ -513,8 +548,6 @@ class SubtaskProcessor:
                 await self._unpin_data(input_keys)
 
         await self.done()
-        # after done, we push mapper data to reducers in advance.
-        await self.ref()._push_mapper_data.tell(chunk_graph)
         if self.result.status == SubtaskStatus.succeeded:
             cost_time_secs = (
                 self.result.execution_end_time - self.result.execution_start_time
@@ -535,6 +568,9 @@ class SubtaskProcessor:
         except asyncio.CancelledError:
             pass
         return self.result
+
+    async def post_run(self):
+        await self._push_mapper_data()
 
     async def report_progress_periodically(self, interval=0.5, eps=0.001):
         last_progress = self.result.progress
@@ -618,7 +654,7 @@ class SubtaskProcessorActor(mo.Actor):
         await context.init()
         set_context(context)
 
-    async def run(self, subtask: Subtask):
+    async def run(self, subtask: Subtask, wait_post_run: bool = False):
         logger.info(
             "Start to run subtask: %r on %s. chunk graph contains %s",
             subtask,
@@ -644,9 +680,17 @@ class SubtaskProcessorActor(mo.Actor):
         try:
             result = yield self._running_aio_task
             logger.info("Finished subtask: %s", subtask.subtask_id)
+            # post run with actor tell which will not block
+            if not wait_post_run:
+                await self.ref().post_run.tell(processor)
+            else:
+                await self.post_run(processor)
             raise mo.Return(result)
         finally:
             self._processor = self._running_aio_task = None
+
+    async def post_run(self, processor: SubtaskProcessor):
+        await processor.post_run()
 
     async def wait(self):
         return self._processor.is_done.wait()
