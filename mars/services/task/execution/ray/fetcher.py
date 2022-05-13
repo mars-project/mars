@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import asyncio
-import types
 from collections import namedtuple
 from typing import Dict, List
 
@@ -52,21 +51,24 @@ class RayFetcher(Fetcher):
             if fetch_info.conditions is None:
                 refs[index] = fetch_info.object_ref
             else:
-                refs[index] = query_object_with_condition.remote(
+                refs[index] = _remote_query_object_with_condition.remote(
                     fetch_info.object_ref, fetch_info.conditions
                 )
         return await asyncio.gather(*refs)
 
 
-def query_object_with_condition(o, conditions):
+def _query_object_with_condition(o, conditions):
     try:
         return o.iloc[conditions]
     except AttributeError:
         return o[conditions]
 
 
-def _make_query_function_remote():
-    global query_object_with_condition
+_remote_query_object_with_condition = None
 
-    if isinstance(query_object_with_condition, types.FunctionType):
-        query_object_with_condition = ray.remote(query_object_with_condition)
+
+def _make_query_function_remote():
+    global _remote_query_object_with_condition
+
+    if _remote_query_object_with_condition is None:
+        _remote_query_object_with_condition = ray.remote(_query_object_with_condition)
