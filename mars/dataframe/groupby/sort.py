@@ -18,17 +18,12 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...core.operand import MapReduceOperand, OperandStage
-from ...serialization.serializables import (
-    Int32Field,
-    ListField,
-)
-from ...utils import (
-    lazy_import,
-)
+from ...serialization.serializables import Int32Field, ListField
+from ...utils import lazy_import
 from ..operands import DataFrameOperandMixin
 from ..sort.psrs import DataFramePSRSChunkOperand
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 
 def _series_to_df(in_series, xdf):

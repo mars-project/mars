@@ -722,6 +722,18 @@ def test_groupby_agg_auto_method(setup):
     pd.testing.assert_frame_equal(result.sort_index(), raw.groupby("c1").agg("sum"))
 
 
+def test_distributed_groupby_agg(setup_cluster):
+    rs = np.random.RandomState(0)
+    raw = pd.DataFrame(rs.rand(50000, 10))
+    df = md.DataFrame(raw, chunk_size=raw.shape[0] // 2)
+    with option_context({"chunk_store_limit": 1024**2}):
+        r = df.groupby(0).sum(combine_size=1)
+    result = r.execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.groupby(0).sum())
+    # test use shuffle
+    assert len(r._fetch_infos()["memory_size"]) > 1
+
+
 def test_groupby_agg_str_cat(setup):
     agg_fun = lambda x: x.str.cat(sep="_", na_rep="NA")
 
