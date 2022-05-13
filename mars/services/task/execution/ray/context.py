@@ -14,13 +14,15 @@
 
 import functools
 import inspect
-from typing import Union
+import logging
+from typing import Union, Dict, List
 
 from .....core.context import Context
 from .....utils import implements, lazy_import
 from ....context import ThreadedServiceContext
 
 ray = lazy_import("ray")
+logger = logging.getLogger(__name__)
 
 
 class RayRemoteObjectManager:
@@ -89,7 +91,14 @@ class _RayRemoteObjectContext:
     @implements(Context.create_remote_object)
     def create_remote_object(self, name: str, object_cls, *args, **kwargs):
         task_state_actor = self._get_task_state_actor()
-        task_state_actor.create_remote_object.remote(name, object_cls, *args, **kwargs)
+        r = task_state_actor.create_remote_object.remote(
+            name, object_cls, *args, **kwargs
+        )
+        # Make sure the actor is created. The remote object may not be created
+        # when get_remote_object from worker because the callers of
+        # create_remote_object and get_remote_object are not in the same worker.
+        # Use sync Ray actor requires this `ray.get`, too.
+        ray.get(r)
         return _RayRemoteObjectWrapper(task_state_actor, name)
 
     @implements(Context.get_remote_object)
@@ -107,7 +116,17 @@ class _RayRemoteObjectContext:
 class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
     """The context for tiling."""
 
-    pass
+    def __init__(self, task_context: Dict, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._task_context = task_context
+
+    @implements(Context.get_chunks_result)
+    def get_chunks_result(self, data_keys: List[str]) -> List:
+        logger.info("Getting %s chunks result.", len(data_keys))
+        object_refs = [self._task_context[key] for key in data_keys]
+        result = ray.get(object_refs)
+        logger.info("Got %s chunks result.", len(result))
+        return result
 
 
 # TODO(fyrestone): Implement more APIs for Ray.
