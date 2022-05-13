@@ -124,7 +124,7 @@ class Serializable(metaclass=SerializableMeta):
 
     def __init__(self, *args, **kwargs):
         if args:  # pragma: no cover
-            values = dict(zip(self.__slots__, args))
+            values = dict(zip(self._FIELDS, args))
             values.update(kwargs)
         else:
             values = kwargs
