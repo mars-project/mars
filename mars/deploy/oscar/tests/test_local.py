@@ -607,17 +607,17 @@ async def test_session_get_progress(create_cluster):
     t = mt.tensor(raw, chunk_size=5)
 
     def f1(c):
-        time.sleep(2)
+        time.sleep(0.5)
         return c
 
     t1 = t.sum()
     r = t1.map_chunk(f1)
     info = await session.execute(r)
 
-    for _ in range(30):
+    for _ in range(100):
         if 0 < info.progress() < 1:
             break
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.1)
     else:
         raise Exception(f"progress test failed, actual value {info.progress()}.")
 
