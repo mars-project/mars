@@ -1181,10 +1181,11 @@ class _IsolatedSession(AbstractAsyncSession):
         if kwargs:  # pragma: no cover
             unexpected_keys = ", ".join(list(kwargs.keys()))
             raise TypeError(f"`fetch` got unexpected arguments: {unexpected_keys}")
-        need_fetch_fields = {"level", "memory_size", "store_size"}
-        need_fetch = bool(need_fetch_fields & fields)
+        # following fields needs to access storage API to get the meta.
+        _need_query_storage_fields = {"level", "memory_size", "store_size"}
+        _need_query_storage = bool(_need_query_storage_fields & fields)
         get_chunk_meta_fields = ["bands"]
-        if not need_fetch:
+        if not _need_query_storage:
             get_chunk_meta_fields = list(fields)
             if "band" in get_chunk_meta_fields:
                 get_chunk_meta_fields[get_chunk_meta_fields.index("band")] = "bands"
@@ -1207,7 +1208,7 @@ class _IsolatedSession(AbstractAsyncSession):
                     )
                 fetch_infos_list.append(fetch_infos)
             chunk_metas = await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
-            if not need_fetch:
+            if not _need_query_storage:
                 result = []
                 chunk_to_meta = dict(zip(chunks, chunk_metas))
                 for fetch_infos in fetch_infos_list:

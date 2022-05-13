@@ -104,10 +104,6 @@ def execute_subtask(
     return output_values[0] if len(output_values) == 1 else output_values
 
 
-# the default times to retry subtask.
-DEFAULT_SUBTASK_MAX_RETRIES = 3
-
-
 @register_executor_cls
 class RayTaskExecutor(TaskExecutor):
     name = "ray"
@@ -124,9 +120,6 @@ class RayTaskExecutor(TaskExecutor):
     ):
         self._config = config
         self._ray_config = self._config.get_execution_config().get("ray", {})
-        self._subtask_max_retries = self._ray_config.get(
-            "subtask_max_retries", DEFAULT_SUBTASK_MAX_RETRIES
-        )
         self._task = task
         self._tile_context = tile_context
         self._ray_executor = ray_executor
@@ -213,7 +206,9 @@ class RayTaskExecutor(TaskExecutor):
             output_keys = self._get_subtask_output_keys(subtask_chunk_graph)
             output_meta_keys = result_meta_keys & output_keys
             output_count = len(output_keys) + bool(output_meta_keys)
-            subtask_max_retries = self._subtask_max_retries if subtask.retryable else 0
+            subtask_max_retries = (
+                self._config.subtask_max_retries if subtask.retryable else 0
+            )
             output_object_refs = self._ray_executor.options(
                 num_returns=output_count, max_retries=subtask_max_retries
             ).remote(
