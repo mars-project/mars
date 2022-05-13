@@ -39,8 +39,12 @@ def _json_serial_task_result(result: Optional[TaskResult]):
         "profiling": result.profiling,
     }
     if result.error is not None:
-        res_json["error"] = base64.b64encode(serialize_serializable(result.error)).decode()
-        res_json["traceback"] = base64.b64encode(serialize_serializable(result.traceback)).decode()
+        res_json["error"] = base64.b64encode(
+            serialize_serializable(result.error)
+        ).decode()
+        res_json["traceback"] = base64.b64encode(
+            serialize_serializable(result.traceback)
+        ).decode()
         res_json["traceback_code"] = dump_traceback_code(result.traceback)
     return res_json
 
