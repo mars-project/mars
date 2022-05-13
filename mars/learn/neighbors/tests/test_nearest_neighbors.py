@@ -36,7 +36,7 @@ from ....utils import lazy_import
 from ...proxima.core import proxima
 from .. import NearestNeighbors
 
-cupy = lazy_import("cupy", globals=globals())
+cupy = lazy_import("cupy")
 
 
 def test_nearest_neighbors(setup):

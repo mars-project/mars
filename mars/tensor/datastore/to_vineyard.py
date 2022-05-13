@@ -19,15 +19,13 @@ from ... import opcodes as OperandDef
 from ...core.operand.base import SchedulingHint
 from ...serialization.serializables import FieldTypes, KeyField, StringField, TupleField
 from ...storage.base import StorageLevel
+from ...utils import lazy_import
 from ..datasource import tensor as astensor
 from .core import TensorDataStore
 
-try:
-    import vineyard
-    from vineyard.data.tensor import make_global_tensor
-    from vineyard.data.utils import to_json
-except ImportError:
-    vineyard = None
+vineyard = lazy_import("vineyard")
+vy_data_tensor = lazy_import("vineyard.data.tensor", rename="vy_data_tensor")
+vy_data_utils = lazy_import("vineyard.data.utils", rename="vy_data_utils")
 
 
 def resolve_vineyard_socket(ctx, op) -> Tuple[str, bool]:
@@ -120,7 +118,7 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
                         new_meta.add_member(k, v)
                     else:
                         new_meta[k] = v
-            new_meta["partition_index_"] = to_json(op.inputs[0].index)
+            new_meta["partition_index_"] = vy_data_utils.to_json(op.inputs[0].index)
             tensor_id = client.create_metadata(new_meta).id
 
         client.persist(tensor_id)
@@ -168,7 +166,7 @@ class TensorVineyardDataStoreMeta(TensorDataStore):
         # # store the result object id to execution context
         chunks = [ctx[chunk.key][0] for chunk in op.inputs]
         holder = np.empty((1,), dtype=object)
-        holder[0] = make_global_tensor(client, chunks).id
+        holder[0] = vy_data_tensor.make_global_tensor(client, chunks).id
         ctx[op.outputs[0].key] = holder
 
 

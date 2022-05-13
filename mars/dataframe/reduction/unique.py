@@ -22,7 +22,7 @@ from ...tensor.core import TensorOrder
 from ...utils import lazy_import
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 
 class UniqueReduction(CustomReduction):

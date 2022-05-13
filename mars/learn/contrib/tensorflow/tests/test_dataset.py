@@ -20,7 +20,7 @@ from ..... import dataframe as md
 from .....utils import lazy_import
 from .. import gen_tensorflow_dataset, run_tensorflow_script
 
-tf_installed = lazy_import("tensorflow", globals=globals()) is not None
+tf_installed = lazy_import("tensorflow") is not None
 
 
 @pytest.mark.skipif(not tf_installed, reason="tensorflow not installed")

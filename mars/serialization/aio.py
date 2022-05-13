@@ -23,8 +23,8 @@ import numpy as np
 from ..utils import lazy_import
 from .core import serialize_with_spawn, deserialize
 
-cupy = lazy_import("cupy", globals=globals())
-cudf = lazy_import("cudf", globals=globals())
+cupy = lazy_import("cupy")
+cudf = lazy_import("cudf")
 
 DEFAULT_SERIALIZATION_VERSION = 1
 DEFAULT_SPAWN_THRESHOLD = 100

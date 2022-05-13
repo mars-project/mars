@@ -56,6 +56,11 @@ class WebMetaAPI(AbstractMetaAPI, MarsWebAPIClientMixin):
     def __init__(
         self, session_id: str, address: str, request_rewriter: Callable = None
     ):
+        # make sure all meta types registered
+        from .. import metas
+
+        del metas
+
         self._session_id = session_id
         self._address = address.rstrip("/")
         self.request_rewriter = request_rewriter

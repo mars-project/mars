@@ -20,16 +20,13 @@ from ...core import OutputType
 from ...core.context import get_context
 from ...serialization.serializables import Int32Field, StringField
 from ...tensor.datasource.from_vineyard import resolve_vineyard_socket
-from ...utils import calc_nsplits, has_unknown_shape
+from ...utils import calc_nsplits, has_unknown_shape, lazy_import
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
 
-try:
-    import vineyard
-    from vineyard.data.utils import normalize_dtype, from_json
-except ImportError:
-    vineyard = None
+vineyard = lazy_import("vineyard")
+vy_data_utils = lazy_import("vineyard.data.utils", rename="vy_data_utils")
 
 
 class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
@@ -130,7 +127,7 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
         chunks, dtypes = [], None
         for idx in range(meta["partitions_-size"]):
             chunk_meta = meta["partitions_-%d" % idx]
-            columns = pd.Index(from_json(chunk_meta["columns_"]))
+            columns = pd.Index(vy_data_utils.from_json(chunk_meta["columns_"]))
             shape = (np.nan, len(columns))
             if not chunk_meta.islocal:
                 continue
@@ -138,7 +135,7 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
                 dtypes = []
                 for idx in range(len(columns)):
                     column_meta = chunk_meta["__values_-value-%d" % idx]
-                    dtype = normalize_dtype(
+                    dtype = vy_data_utils.normalize_dtype(
                         column_meta["value_type_"],
                         column_meta.get("value_type_meta_", None),
                     )

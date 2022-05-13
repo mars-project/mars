@@ -22,10 +22,8 @@ from typing import Dict, List
 from ..... import oscar as mo
 from .....core import ChunkGraph, Chunk
 from .....core.operand import Fuse, Fetch
-from .....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from .....metrics import Metrics
 from .....utils import get_chunk_params
-from .....tensor.core import TENSOR_TYPE
 from .....typing import BandType, TileableType
 from ....meta import MetaAPI, WorkerMetaAPI
 from ....scheduling import SchedulingAPI
@@ -301,6 +299,9 @@ class TaskStageProcessor:
 
     @classmethod
     def _get_params_fields(cls, tileable: TileableType):
+        from .....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
+        from .....tensor.core import TENSOR_TYPE
+
         params_fields = []
         fields = get_chunk_params(tileable.chunks[0])
         if isinstance(tileable, DATAFRAME_TYPE):

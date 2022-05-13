@@ -33,7 +33,7 @@ from ..utils import standardize_range_index, parse_index, is_cudf
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DataFrameShuffleProxy
 
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 _PSRS_DISTINCT_COL = "__PSRS_TMP_DISTINCT_COL"
 

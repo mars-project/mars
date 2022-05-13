@@ -17,8 +17,8 @@ import pytest
 from ....utils import lazy_import
 from .. import convert_dask_collection, mars_scheduler
 
-dask_installed = lazy_import("dask", globals=globals()) is not None
-mimesis_installed = lazy_import("mimesis", globals=globals()) is not None
+dask_installed = lazy_import("dask") is not None
+mimesis_installed = lazy_import("mimesis") is not None
 
 
 @pytest.mark.skipif(not dask_installed, reason="dask not installed")

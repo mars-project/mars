@@ -21,8 +21,6 @@ import uuid
 import numpy as np
 
 from ...core import tile
-from ...tensor.indexing.core import process_index, calc_shape
-from ...tensor.indexing.getitem import TensorIndex
 
 
 def indexing_to_chunk_indices(output_chunk):
@@ -55,6 +53,9 @@ def compute_output_of_indexing(tensor, tensor_index):
     """
     Compute the output information of `__{set,get}item__` on tensor for every chunk.
     """
+    from ...tensor.indexing.core import process_index, calc_shape
+    from ...tensor.indexing.getitem import TensorIndex
+
     tensor_index = process_index(tensor.ndim, tensor_index)
     output_shape = calc_shape(tensor.shape, tensor_index)
 

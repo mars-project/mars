@@ -16,8 +16,6 @@ import logging
 import warnings
 import functools
 
-from pkg_resources import iter_entry_points
-
 logger = logging.getLogger(__name__)
 
 
@@ -28,6 +26,8 @@ def init_extension_entrypoints():
     """Execute all `mars_extensions` entry points with the name `init`
     If extensions have already been initialized, this function does nothing.
     """
+    from pkg_resources import iter_entry_points
+
     for entry_point in iter_entry_points("mars_extensions", "init"):
         logger.info("Loading extension: %s", entry_point)
         try:

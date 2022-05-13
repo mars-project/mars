@@ -56,7 +56,6 @@ from ...services.storage import StorageAPI
 from ...services.task import AbstractTaskAPI, TaskAPI, TaskResult
 from ...services.task.execution.api import Fetcher
 from ...services.web import OscarWebAPI
-from ...tensor.utils import slice_split
 from ...typing import ClientType, BandType
 from ...utils import (
     implements,
@@ -1048,6 +1047,8 @@ class _IsolatedSession(AbstractAsyncSession):
     def _calc_chunk_indexes(
         cls, fetch_tileable: TileableType, indexes: List[Union[slice, Integral]]
     ) -> Dict[ChunkType, List[Union[slice, int]]]:
+        from ...tensor.utils import slice_split
+
         axis_to_slices = {
             axis: slice_split(ind, fetch_tileable.nsplits[axis])
             for axis, ind in enumerate(indexes)

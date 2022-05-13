@@ -18,10 +18,14 @@ from typing import Dict, List
 from ... import oscar as mo
 from ...resource import cuda_count, Resource
 
-try:
-    from IPython import get_ipython
-except ImportError:
-    get_ipython = None
+
+def _need_suspend_sigint() -> bool:
+    try:
+        from IPython import get_ipython
+
+        return get_ipython() is not None
+    except ImportError:
+        return False
 
 
 async def create_supervisor_actor_pool(
@@ -32,14 +36,13 @@ async def create_supervisor_actor_pool(
     subprocess_start_method: str = None,
     **kwargs,
 ):
-    suspend_sigint = get_ipython is not None and get_ipython() is not None
     return await mo.create_actor_pool(
         address,
         n_process=n_process,
         ports=ports,
         modules=modules,
         subprocess_start_method=subprocess_start_method,
-        suspend_sigint=suspend_sigint,
+        suspend_sigint=_need_suspend_sigint(),
         **kwargs,
     )
 
@@ -81,7 +84,6 @@ async def create_worker_actor_pool(
             envs.extend([dict() for _ in range(num_cpus)])
             labels.extend([band] * num_cpus)
 
-    suspend_sigint = get_ipython is not None and get_ipython() is not None
     return await mo.create_actor_pool(
         address,
         n_process=n_process,
@@ -91,6 +93,6 @@ async def create_worker_actor_pool(
         envs=envs,
         modules=modules,
         subprocess_start_method=subprocess_start_method,
-        suspend_sigint=suspend_sigint,
+        suspend_sigint=_need_suspend_sigint(),
         **kwargs,
     )

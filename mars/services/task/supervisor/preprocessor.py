@@ -23,10 +23,7 @@ from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, TileContext
 from ....core.graph.builder.chunk import Tiler, _TileableHandler
 from ....core.operand import Fetch
 from ....resource import Resource
-from ....typing import TileableType, ChunkType
-from ....optimization.logical.chunk import optimize as optimize_chunk_graph
-from ....optimization.logical.tileable import optimize as optimize_tileable_graph
-from ....typing import BandType
+from ....typing import BandType, TileableType, ChunkType
 from ...subtask import Subtask, SubtaskGraph
 from ..analyzer import GraphAnalyzer
 from ..core import Task
@@ -145,6 +142,10 @@ class TaskPreprocessor:
         optimized_graph: TileableGraph
 
         """
+        from ....optimization.logical.tileable import (
+            optimize as optimize_tileable_graph,
+        )
+
         if self._config.optimize_tileable_graph:
             # enable optimization
             self.tileable_optimization_records = optimize_tileable_graph(
@@ -179,6 +180,8 @@ class TaskPreprocessor:
         chunk_graph_generator: Generator
              Chunk graphs.
         """
+        from ....optimization.logical.chunk import optimize as optimize_chunk_graph
+
         self._fill_fetch_tileable_with_chunks(tileable_graph)
         # iterative chunk graph builder
         chunk_graph_builder = ChunkGraphBuilder(

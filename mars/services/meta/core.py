@@ -18,51 +18,24 @@ from typing import Any, Dict, List, Tuple, Union, Type
 import numpy as np
 import pandas as pd
 
-from ...core import OBJECT_TYPE, OBJECT_CHUNK_TYPE
-from ...dataframe.core import (
-    DtypesValue,
-    IndexValue,
-    DATAFRAME_TYPE,
-    SERIES_TYPE,
-    INDEX_TYPE,
-    DATAFRAME_GROUPBY_TYPE,
-    SERIES_GROUPBY_TYPE,
-    DATAFRAME_CHUNK_TYPE,
-    SERIES_CHUNK_TYPE,
-    INDEX_CHUNK_TYPE,
-    DATAFRAME_GROUPBY_CHUNK_TYPE,
-    SERIES_GROUPBY_CHUNK_TYPE,
-    CATEGORICAL_TYPE,
-    CATEGORICAL_CHUNK_TYPE,
-)
-from ...tensor.core import TensorOrder, TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...typing import BandType
-from ...utils import dataslots
+from ...utils import dataslots, TypeDispatcher
 
 PandasDtypeType = Union[np.dtype, pd.api.extensions.ExtensionDtype]
 
-_type_to_meta_class = dict()
+_meta_class_dispatcher = TypeDispatcher()
 
 
-def _register_type(object_types: Tuple):
-    def _call(meta):
-        for obj_type in object_types:
-            _type_to_meta_class[obj_type] = meta
-        return meta
+def register_meta_type(object_types: Tuple):
+    def _call(meta_type: Type["_CommonMeta"]):
+        _meta_class_dispatcher.register(object_types, meta_type)
+        return meta_type
 
     return _call
 
 
 def get_meta_type(object_type: Type) -> Type["_CommonMeta"]:
-    try:
-        return _type_to_meta_class[object_type]
-    except KeyError:
-        for m_type in object_type.__mro__:
-            try:
-                return _type_to_meta_class[m_type]
-            except KeyError:
-                continue
-        raise
+    return _meta_class_dispatcher.get_handler(object_type)
 
 
 @dataslots
@@ -88,79 +61,6 @@ class _TileableMeta(_CommonMeta):
     nsplits: Tuple[Tuple[int]] = None
 
 
-@_register_type(TENSOR_TYPE)
-@dataslots
-@dataclass
-class TensorMeta(_TileableMeta):
-    shape: Tuple[int] = None
-    dtype: np.dtype = None
-    order: TensorOrder = None
-
-
-@_register_type(DATAFRAME_TYPE)
-@dataslots
-@dataclass
-class DataFrameMeta(_TileableMeta):
-    shape: Tuple[int] = None
-    dtypes_value: DtypesValue = None
-    index_value: IndexValue = None
-
-
-@_register_type(SERIES_TYPE)
-@dataslots
-@dataclass
-class SeriesMeta(_TileableMeta):
-    shape: Tuple[int] = None
-    dtype: PandasDtypeType = None
-    index_value: IndexValue = None
-
-
-@_register_type(INDEX_TYPE)
-@dataslots
-@dataclass
-class IndexMeta(_TileableMeta):
-    shape: Tuple[int] = None
-    dtype: PandasDtypeType = None
-    index_value: IndexValue = None
-
-
-@_register_type(DATAFRAME_GROUPBY_TYPE)
-@dataslots
-@dataclass
-class DataFrameGroupByMeta(_TileableMeta):
-    shape: Tuple[int] = None
-    dtypes_value: DtypesValue = None
-    index_value: IndexValue = None
-    selection: List = None
-
-
-@_register_type(SERIES_GROUPBY_TYPE)
-@dataslots
-@dataclass
-class SeriesGroupByMeta(_TileableMeta):
-    shape: Tuple[int] = None
-    dtype: PandasDtypeType = None
-    index_value: IndexValue = None
-    selection: List = None
-
-
-@_register_type(CATEGORICAL_TYPE)
-@dataslots
-@dataclass
-class CategoricalMeta(_TileableMeta):
-    shape: Tuple[int] = None
-    dtype: PandasDtypeType = None
-    categories_value: IndexValue = None
-
-
-@_register_type(OBJECT_TYPE)
-@dataslots
-@dataclass
-class ObjectMeta(_TileableMeta):
-    pass
-
-
-@_register_type(OBJECT_CHUNK_TYPE)
 @dataslots
 @dataclass
 class _ChunkMeta(_CommonMeta):
@@ -175,75 +75,3 @@ class _ChunkMeta(_CommonMeta):
         if value.object_refs:
             self.object_refs = list(set(self.object_refs) | set(value.object_refs))
         return self
-
-
-@_register_type(TENSOR_CHUNK_TYPE)
-@dataslots
-@dataclass
-class TensorChunkMeta(_ChunkMeta):
-    shape: Tuple[int] = None
-    dtype: np.dtype = None
-    order: TensorOrder = None
-
-
-@_register_type(DATAFRAME_CHUNK_TYPE)
-@dataslots
-@dataclass
-class DataFrameChunkMeta(_ChunkMeta):
-    shape: Tuple[int] = None
-    dtypes_value: DtypesValue = None
-    index_value: IndexValue = None
-
-
-@_register_type(SERIES_CHUNK_TYPE)
-@dataslots
-@dataclass
-class SeriesChunkMeta(_ChunkMeta):
-    shape: Tuple[int] = None
-    dtype: PandasDtypeType = None
-    index_value: IndexValue = None
-
-
-@_register_type(INDEX_CHUNK_TYPE)
-@dataslots
-@dataclass
-class IndexChunkMeta(_ChunkMeta):
-    shape: Tuple[int] = None
-    dtype: PandasDtypeType = None
-    index_value: IndexValue = None
-
-
-@_register_type(DATAFRAME_GROUPBY_CHUNK_TYPE)
-@dataslots
-@dataclass
-class DataFrameGroupByChunkMeta(_ChunkMeta):
-    shape: Tuple[int] = None
-    dtypes_value: DtypesValue = None
-    index_value: IndexValue = None
-    selection: List = None
-
-
-@_register_type(SERIES_GROUPBY_CHUNK_TYPE)
-@dataslots
-@dataclass
-class SeriesGroupByChunkMeta(_ChunkMeta):
-    shape: Tuple[int] = None
-    dtype: PandasDtypeType = None
-    index_value: IndexValue = None
-    selection: List = None
-
-
-@_register_type(CATEGORICAL_CHUNK_TYPE)
-@dataslots
-@dataclass
-class CategoricalChunkMeta(_ChunkMeta):
-    shape: Tuple[int] = None
-    dtype: PandasDtypeType = None
-    categories_value: IndexValue = None
-
-
-@_register_type(OBJECT_CHUNK_TYPE)
-@dataslots
-@dataclass
-class ObjectChunkMeta(_ChunkMeta):
-    pass

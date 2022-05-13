@@ -18,7 +18,7 @@ from ...utils import lazy_import
 from .core import RuntimeOptimizer, register_optimizer
 
 
-cp = lazy_import("cupy", globals=globals(), rename="cp")
+cp = lazy_import("cupy", rename="cp")
 CP_INSTALLED = cp is not None
 
 CP_ELEMENTWISE_OP = {

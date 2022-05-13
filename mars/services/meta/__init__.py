@@ -20,15 +20,3 @@ from .api import (
     MockWorkerMetaAPI,
     WebMetaAPI,
 )
-from .core import (
-    TensorMeta,
-    DataFrameMeta,
-    SeriesMeta,
-    IndexMeta,
-    ObjectMeta,
-    TensorChunkMeta,
-    DataFrameChunkMeta,
-    SeriesChunkMeta,
-    IndexChunkMeta,
-    ObjectChunkMeta,
-)

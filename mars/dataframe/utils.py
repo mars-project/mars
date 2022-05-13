@@ -45,7 +45,7 @@ try:
 except ImportError:  # pragma: no cover
     pa = ModulePlaceholder("pyarrow")
 
-cudf = lazy_import("cudf", globals=globals(), rename="cudf")
+cudf = lazy_import("cudf", rename="cudf")
 
 
 def hash_index(index, size):

@@ -21,8 +21,8 @@ import numpy as np
 from ....serialization.aio import BUFFER_SIZES_NAME
 from ....utils import lazy_import
 
-cupy = lazy_import("cupy", globals=globals())
-cudf = lazy_import("cudf", globals=globals())
+cupy = lazy_import("cupy")
+cudf = lazy_import("cudf")
 
 CUDA_CHUNK_SIZE = 16 * 1024**2
 
