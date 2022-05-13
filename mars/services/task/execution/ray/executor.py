@@ -340,7 +340,7 @@ class RayTaskExecutor(TaskExecutor):
             finished_objects, _ = ray.wait(
                 self._cur_stage_output_object_refs,
                 num_returns=total,
-                timeout=0.1,
+                timeout=0,  # Avoid blocking the asyncio loop.
                 fetch_local=False,
             )
             stage_progress = (
