@@ -29,6 +29,7 @@ from mars.serialization.ray import register_ray_serializers, unregister_ray_seri
 from mars.utils import lazy_import
 
 ray = lazy_import("ray")
+MARS_CI_BACKEND = os.environ.get("MARS_CI_BACKEND", "mars")
 
 
 @pytest.fixture(scope="module")
@@ -167,7 +168,11 @@ def _new_test_session(_stop_isolation):
     from .deploy.oscar.tests.session import new_test_session
 
     sess = new_test_session(
-        address="test://127.0.0.1", init_local=True, default=True, timeout=300
+        address="test://127.0.0.1",
+        backend=MARS_CI_BACKEND,
+        init_local=True,
+        default=True,
+        timeout=300,
     )
     with option_context({"show_progress": False}):
         try:
@@ -181,7 +186,12 @@ def _new_integrated_test_session(_stop_isolation):
     from .deploy.oscar.tests.session import new_test_session
 
     sess = new_test_session(
-        address="127.0.0.1", init_local=True, n_worker=2, default=True, timeout=300
+        address="127.0.0.1",
+        backend=MARS_CI_BACKEND,
+        init_local=True,
+        n_worker=2,
+        default=True,
+        timeout=300,
     )
     with option_context({"show_progress": False}):
         try:
@@ -213,6 +223,7 @@ def _new_gpu_test_session(_stop_isolation):  # pragma: no cover
 
     sess = new_test_session(
         address="127.0.0.1",
+        backend=MARS_CI_BACKEND,
         init_local=True,
         n_worker=1,
         n_cpu=1,

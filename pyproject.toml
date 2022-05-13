@@ -13,3 +13,8 @@ include = '\.pyi?$'
 extend-exclude = '''
 ^/mars/(_version.py|lib/tblib/.*)
 '''
+
+[tool.pytest.ini_options]
+markers = [
+    "ray_dag: marks tests for ray backend",
+]
