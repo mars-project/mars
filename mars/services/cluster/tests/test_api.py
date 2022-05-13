@@ -15,6 +15,7 @@
 import asyncio
 
 import pytest
+import pytest_asyncio
 
 from .... import oscar as mo
 from ....utils import get_next_port
@@ -25,7 +26,7 @@ from ..api.web import web_handlers
 from ..core import NodeStatus
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pool():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
     await pool.start()

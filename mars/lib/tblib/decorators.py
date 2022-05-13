@@ -29,19 +29,14 @@ def return_error(func, exc_type=Exception):
     return return_exceptions_wrapper
 
 
-returns_error = (
-    return_errors
-) = returns_errors = return_error  # cause I make too many typos
+returns_error = return_errors = returns_errors = return_error  # cause I make too many typos
 
 
 @return_error
 def apply_with_return_error(args):
     """
     args is a tuple where the first argument is a callable.
-
     eg::
-
         apply_with_return_error((func, 1, 2, 3)) - this will call func(1, 2, 3)
-
     """
     return args[0](*args[1:])

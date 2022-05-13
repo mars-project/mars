@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pytest
+import pytest_asyncio
 
 from ....tests.core import require_ray
 from ....utils import lazy_import
@@ -26,7 +27,7 @@ from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
 ray = lazy_import("ray")
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def speculative_cluster():
     client = await new_cluster(
         "test_cluster",

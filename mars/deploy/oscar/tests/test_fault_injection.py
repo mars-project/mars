@@ -14,6 +14,7 @@
 
 import os
 import pytest
+import pytest_asyncio
 import traceback
 import numpy as np
 import pandas as pd
@@ -40,7 +41,7 @@ RERUN_SUBTASK_CONFIG_FILE = os.path.join(
 )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def fault_cluster(request):
     param = getattr(request, "param", {})
     start_method = os.environ.get("POOL_START_METHOD", None)

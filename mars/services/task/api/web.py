@@ -18,6 +18,7 @@ import json
 from typing import Callable, List, Optional, Union
 
 from ....core import TileableGraph, Tileable
+from ....lib.tbcode import load_traceback_code, dump_traceback_code
 from ....utils import serialize_serializable, deserialize_serializable
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from ..core import TaskResult, TaskStatus
@@ -27,7 +28,7 @@ from .core import AbstractTaskAPI
 def _json_serial_task_result(result: Optional[TaskResult]):
     if result is None:
         return {}
-    return {
+    res_json = {
         "task_id": result.task_id,
         "session_id": result.session_id,
         "stage_id": result.stage_id,
@@ -35,23 +36,22 @@ def _json_serial_task_result(result: Optional[TaskResult]):
         "end_time": result.end_time,
         "progress": result.progress,
         "status": result.status.value,
-        "error": base64.b64encode(serialize_serializable(result.error)).decode()
-        if result.error is not None
-        else None,
-        "traceback": base64.b64encode(serialize_serializable(result.traceback)).decode()
-        if result.traceback is not None
-        else None,
         "profiling": result.profiling,
     }
+    if result.error is not None:
+        res_json["error"] = base64.b64encode(serialize_serializable(result.error)).decode()
+        res_json["traceback"] = base64.b64encode(serialize_serializable(result.traceback)).decode()
+        res_json["traceback_code"] = dump_traceback_code(result.traceback)
+    return res_json
 
 
 def _json_deserial_task_result(d: dict) -> Optional[TaskResult]:
     if not d:
         return None
-    if d["error"] is not None:
+    if "error" in d:
         d["error"] = deserialize_serializable(base64.b64decode(d["error"]))
-    if d["traceback"] is not None:
         d["traceback"] = deserialize_serializable(base64.b64decode(d["traceback"]))
+        load_traceback_code(d.pop("traceback_code"))
     d["status"] = TaskStatus(d["status"])
     return TaskResult(**d)
 

@@ -76,21 +76,24 @@ def recursive_tile(
     q = [t for t in to_tile if t.is_coarse()]
     while q:
         t = q[-1]
-        cs = [c for c in t.inputs if c.is_coarse()]
-        if cs:
-            q.extend(cs)
-            continue
-        for obj in handler.tile(t.op.outputs):
-            to_update_inputs = []
-            chunks = []
-            for inp in t.op.inputs:
-                chunks.extend(inp.chunks)
-                if has_unknown_shape(inp):
-                    to_update_inputs.append(inp)
-            if obj is None:
-                yield chunks + to_update_inputs
-            else:
-                yield obj + to_update_inputs
+        if t.is_coarse():
+            # t may be put into q repeatedly,
+            # so we check if it's tiled or not
+            cs = [c for c in t.inputs if c.is_coarse()]
+            if cs:
+                q.extend(cs)
+                continue
+            for obj in handler.tile(t.op.outputs):
+                to_update_inputs = []
+                chunks = []
+                for inp in t.op.inputs:
+                    chunks.extend(inp.chunks)
+                    if has_unknown_shape(inp):
+                        to_update_inputs.append(inp)
+                if obj is None:
+                    yield chunks + to_update_inputs
+                else:
+                    yield obj + to_update_inputs
         q.pop()
 
     if not return_list:
