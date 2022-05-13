@@ -56,8 +56,8 @@ from ..reduction.aggregation import is_funcs_aggregate, normalize_reduction_func
 from ..utils import parse_index, build_concatenated_rows_frame, is_cudf
 from .core import DataFrameGroupByOperand
 
-cp = lazy_import("cupy", globals=globals(), rename="cp")
-cudf = lazy_import("cudf", globals=globals())
+cp = lazy_import("cupy", rename="cp")
+cudf = lazy_import("cudf")
 
 logger = logging.getLogger(__name__)
 

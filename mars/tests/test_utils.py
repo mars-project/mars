@@ -191,31 +191,55 @@ def test_lazy_import():
         __version__ = '0.1.0b1'
         """.strip()
     )
+    mock_mod2 = textwrap.dedent(
+        """
+        from mars.utils import lazy_import
+        mock_mod = lazy_import("mock_mod")
+
+        def get_version():
+            return mock_mod.__version__
+        """
+    )
 
     temp_dir = tempfile.mkdtemp(prefix="mars-utils-test-")
     sys.path += [temp_dir]
     try:
-        with open(os.path.join(temp_dir, "test_mod.py"), "w") as outf:
+        with open(os.path.join(temp_dir, "mock_mod.py"), "w") as outf:
             outf.write(mock_mod)
+        with open(os.path.join(temp_dir, "mock_mod2.py"), "w") as outf:
+            outf.write(mock_mod2)
 
         non_exist_mod = utils.lazy_import("non_exist_mod", locals=locals())
         assert non_exist_mod is None
 
+        non_exist_mod1 = utils.lazy_import("non_exist_mod1", placeholder=True)
+        with pytest.raises(AttributeError) as ex_data:
+            non_exist_mod1.meth()
+        assert "required" in str(ex_data.value)
+
         mod = utils.lazy_import(
-            "test_mod", globals=globals(), locals=locals(), rename="mod"
+            "mock_mod", globals=globals(), locals=locals(), rename="mod"
         )
         assert mod is not None
         assert mod.__version__ == "0.1.0b1"
 
         glob = globals().copy()
-        mod = utils.lazy_import("test_mod", globals=glob, locals=locals(), rename="mod")
+        mod = utils.lazy_import("mock_mod", globals=glob, locals=locals(), rename="mod")
         glob["mod"] = mod
         assert mod is not None
         assert mod.__version__ == "0.1.0b1"
         assert type(glob["mod"]).__name__ == "module"
+
+        import mock_mod2 as mod2
+
+        assert type(mod2.mock_mod).__name__ != "module"
+        assert mod2.get_version() == "0.1.0b1"
+        assert type(mod2.mock_mod).__name__ == "module"
     finally:
         shutil.rmtree(temp_dir)
         sys.path = old_sys_path
+        sys.modules.pop("mock_mod", None)
+        sys.modules.pop("mock_mod2", None)
 
 
 def test_chunks_indexer():

@@ -23,6 +23,11 @@ class AbstractMetaStore(ABC):
     name = None
 
     def __init__(self, session_id: str, **kw):
+        # make sure all meta types registered
+        from .. import metas
+
+        del metas
+
         self._session_id = session_id
 
     @classmethod

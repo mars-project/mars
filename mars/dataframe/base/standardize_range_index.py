@@ -22,7 +22,7 @@ from ...serialization.serializables import Int32Field, ListField, FieldTypes
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 
 class ChunkStandardizeRangeIndex(DataFrameOperand, DataFrameOperandMixin):

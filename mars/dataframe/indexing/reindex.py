@@ -39,7 +39,7 @@ from ..utils import validate_axis_style_args, parse_index
 from .index_lib import DataFrameReindexHandler
 
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 # under pandas<1.1, SparseArray ignores zeros on creation
 _pd_sparse_miss_zero = pd_release_version[:2] < (1, 1)

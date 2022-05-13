@@ -28,11 +28,8 @@ from ....contrib import raydataset as mdd
 ray = lazy_import("ray")
 # Ray Datasets is available in early preview at ray.data with Ray 1.6+
 # (and ray.experimental.data in Ray 1.5)
-ray_dataset = lazy_import("ray.data")
-try:
-    import xgboost_ray
-except ImportError:  # pragma: no cover
-    xgboost_ray = None
+ray_dataset = lazy_import("ray.data", rename="ray_dataset")
+xgboost_ray = lazy_import("xgboost_ray")
 try:
     import sklearn
 except ImportError:  # pragma: no cover

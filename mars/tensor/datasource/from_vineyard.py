@@ -18,16 +18,13 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialization.serializables import Int32Field, StringField
 from ...storage.base import StorageLevel
-from ...utils import calc_nsplits, has_unknown_shape
+from ...utils import calc_nsplits, has_unknown_shape, lazy_import
 from ...core.context import get_context
 from ..operands import TensorOperand, TensorOperandMixin
 from .core import TensorNoInput
 
-try:
-    import vineyard
-    from vineyard.data.utils import normalize_dtype
-except ImportError:
-    vineyard = None
+vineyard = lazy_import("vineyard")
+vy_data_utils = lazy_import("vineyard.data.utils", rename="vy_data_utils")
 
 
 def resolve_vineyard_socket(ctx, op):
@@ -94,7 +91,7 @@ class TensorFromVineyard(TensorNoInput):
             chunk_meta = meta["partitions_-%d" % idx]
             if not chunk_meta.islocal:
                 continue
-            dtype = normalize_dtype(
+            dtype = vy_data_utils.normalize_dtype(
                 chunk_meta["value_type_"], chunk_meta.get("value_type_meta_", None)
             )
             shape = tuple(json.loads(chunk_meta["shape_"]))

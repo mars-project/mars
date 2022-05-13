@@ -20,8 +20,8 @@ from typing import Dict, Iterable, List, Tuple
 from ....utils import lazy_import
 
 ray = lazy_import("ray")
-parallel_it = lazy_import("ray.util.iter")
-ml_dataset = lazy_import("ray.util.data")
+parallel_it = lazy_import("ray.util.iter", rename="parallel_it")
+ml_dataset = lazy_import("ray.util.data", rename="ml_dataset")
 
 
 class ChunkRefBatch:

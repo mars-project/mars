@@ -46,6 +46,10 @@ from mars.services.task import new_task_id
 from mars.utils import tokenize
 
 
+# do warmup
+serialize(None)
+
+
 class SerializableChild(Serializable):
     str_field = StringField("str_field")
     int_field = Int64Field("int_field")

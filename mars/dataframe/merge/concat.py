@@ -34,7 +34,7 @@ from ..utils import (
     validate_axis,
 )
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 
 class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):

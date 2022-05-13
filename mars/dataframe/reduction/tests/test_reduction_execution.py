@@ -33,7 +33,7 @@ from ...base import to_gpu
 
 pytestmark = pytest.mark.pd_compat
 
-cp = lazy_import("cupy", rename="cp", globals=globals())
+cp = lazy_import("cupy", rename="cp")
 _agg_size_as_series = pd_release_version >= (1, 3)
 _support_kw_agg = pd_release_version >= (1, 1)
 
