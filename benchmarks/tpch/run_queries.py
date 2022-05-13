@@ -158,7 +158,8 @@ def q01(lineitem: md.DataFrame):
             "L_ORDERKEY": "count",
         }
     )
-    total = total.sort_values(["L_RETURNFLAG", "L_LINESTATUS"])
+    # skip sort, Mars groupby enables sort
+    # total = total.sort_values(["L_RETURNFLAG", "L_LINESTATUS"])
     print(total.execute())
 
 
@@ -238,7 +239,9 @@ def q02(part, partsupp, supplier, nation, region):
             "P_MFGR",
         ],
     ]
-    min_values = merged_df.groupby("P_PARTKEY", as_index=False)["PS_SUPPLYCOST"].min()
+    min_values = merged_df.groupby("P_PARTKEY", as_index=False, sort=False)[
+        "PS_SUPPLYCOST"
+    ].min()
     min_values.columns = ["P_PARTKEY_CPY", "MIN_SUPPLYCOST"]
     merged_df = merged_df.merge(
         min_values,
@@ -286,9 +289,9 @@ def q03(lineitem, orders, customer):
     jn2 = jn1.merge(flineitem, left_on="O_ORDERKEY", right_on="L_ORDERKEY")
     jn2["TMP"] = jn2.L_EXTENDEDPRICE * (1 - jn2.L_DISCOUNT)
     total = (
-        jn2.groupby(["L_ORDERKEY", "O_ORDERDATE", "O_SHIPPRIORITY"], as_index=False)[
-            "TMP"
-        ]
+        jn2.groupby(
+            ["L_ORDERKEY", "O_ORDERDATE", "O_SHIPPRIORITY"], as_index=False, sort=False
+        )["TMP"]
         .sum()
         .sort_values(["TMP"], ascending=False)
     )
@@ -307,9 +310,9 @@ def q04(lineitem, orders):
     forders = orders[osel]
     jn = forders[forders["O_ORDERKEY"].isin(flineitem["L_ORDERKEY"])]
     total = (
-        jn.groupby("O_ORDERPRIORITY", as_index=False)["O_ORDERKEY"]
-        .count()
-        .sort_values(["O_ORDERPRIORITY"])
+        jn.groupby("O_ORDERPRIORITY", as_index=False)["O_ORDERKEY"].count()
+        # skip sort when Mars enables sort in groupby
+        # .sort_values(["O_ORDERPRIORITY"])
     )
     print(total.execute())
 
@@ -330,7 +333,7 @@ def q05(lineitem, orders, customer, nation, region, supplier):
         jn4, left_on=["S_SUPPKEY", "S_NATIONKEY"], right_on=["L_SUPPKEY", "N_NATIONKEY"]
     )
     jn5["TMP"] = jn5.L_EXTENDEDPRICE * (1.0 - jn5.L_DISCOUNT)
-    gb = jn5.groupby("N_NAME", as_index=False)["TMP"].sum()
+    gb = jn5.groupby("N_NAME", as_index=False, sort=False)["TMP"].sum()
     total = gb.sort_values("TMP", ascending=False)
     print(total.execute())
 
@@ -436,9 +439,10 @@ def q07(lineitem, supplier, orders, customer, nation):
     total = total.groupby(["SUPP_NATION", "CUST_NATION", "L_YEAR"], as_index=False).agg(
         REVENUE=md.NamedAgg(column="VOLUME", aggfunc="sum")
     )
-    total = total.sort_values(
-        by=["SUPP_NATION", "CUST_NATION", "L_YEAR"], ascending=[True, True, True]
-    )
+    # skip sort when Mars groupby does sort already
+    # total = total.sort_values(
+    #     by=["SUPP_NATION", "CUST_NATION", "L_YEAR"], ascending=[True, True, True]
+    # )
     print(total.execute())
 
 
@@ -520,7 +524,7 @@ def q09(lineitem, orders, part, nation, partsupp, supplier):
         (1 * jn5.PS_SUPPLYCOST) * jn5.L_QUANTITY
     )
     jn5["O_YEAR"] = jn5.O_ORDERDATE.dt.year
-    gb = jn5.groupby(["N_NAME", "O_YEAR"], as_index=False)["TMP"].sum()
+    gb = jn5.groupby(["N_NAME", "O_YEAR"], as_index=False, sort=False)["TMP"].sum()
     total = gb.sort_values(["N_NAME", "O_YEAR"], ascending=[True, False])
     print(total.execute())
 
@@ -548,6 +552,7 @@ def q10(lineitem, orders, customer, nation):
             "C_COMMENT",
         ],
         as_index=False,
+        sort=False,
     )["TMP"].sum()
     total = gb.sort_values("TMP", ascending=False)
     print(total.head(20).execute())
@@ -571,7 +576,7 @@ def q11(partsupp, supplier, nation):
     )
     ps_supp_n_merge = ps_supp_n_merge.loc[:, ["PS_PARTKEY", "TOTAL_COST"]]
     sum_val = ps_supp_n_merge["TOTAL_COST"].sum() * 0.0001
-    total = ps_supp_n_merge.groupby(["PS_PARTKEY"], as_index=False).agg(
+    total = ps_supp_n_merge.groupby(["PS_PARTKEY"], as_index=False, sort=False).agg(
         VALUE=md.NamedAgg(column="TOTAL_COST", aggfunc="sum")
     )
     total = total[total["VALUE"] > sum_val]
@@ -603,7 +608,8 @@ def q12(lineitem, orders):
 
     total = jn.groupby("L_SHIPMODE", as_index=False)["O_ORDERPRIORITY"].agg((g1, g2))
     total = total.reset_index()  # reset index to keep consistency with pandas
-    total = total.sort_values("L_SHIPMODE")
+    # skip sort when groupby does sort already
+    # total = total.sort_values("L_SHIPMODE")
     print(total.execute())
 
 
@@ -618,10 +624,10 @@ def q13(customer, orders):
         orders_filtered, left_on="C_CUSTKEY", right_on="O_CUSTKEY", how="left"
     )
     c_o_merged = c_o_merged.loc[:, ["C_CUSTKEY", "O_ORDERKEY"]]
-    count_df = c_o_merged.groupby(["C_CUSTKEY"], as_index=False).agg(
+    count_df = c_o_merged.groupby(["C_CUSTKEY"], as_index=False, sort=False).agg(
         C_COUNT=md.NamedAgg(column="O_ORDERKEY", aggfunc="count")
     )
-    total = count_df.groupby(["C_COUNT"], as_index=False).size()
+    total = count_df.groupby(["C_COUNT"], as_index=False, sort=False).size()
     total.columns = ["C_COUNT", "CUSTDIST"]
     total = total.sort_values(by=["CUSTDIST", "C_COUNT"], ascending=[False, False])
     print(total.execute())
@@ -660,7 +666,7 @@ def q15(lineitem, supplier):
     )
     lineitem_filtered = lineitem_filtered.loc[:, ["L_SUPPKEY", "REVENUE_PARTS"]]
     revenue_table = (
-        lineitem_filtered.groupby("L_SUPPKEY", as_index=False)
+        lineitem_filtered.groupby("L_SUPPKEY", as_index=False, sort=False)
         .agg(TOTAL_REVENUE=md.NamedAgg(column="REVENUE_PARTS", aggfunc="sum"))
         .rename(columns={"L_SUPPKEY": "SUPPLIER_NO"})
     )
@@ -699,7 +705,7 @@ def q16(part, partsupp, supplier):
     )
     total = total[total["S_SUPPKEY"].isna()]
     total = total.loc[:, ["P_BRAND", "P_TYPE", "P_SIZE", "PS_SUPPKEY"]]
-    total = total.groupby(["P_BRAND", "P_TYPE", "P_SIZE"], as_index=False)[
+    total = total.groupby(["P_BRAND", "P_TYPE", "P_SIZE"], as_index=False, sort=False)[
         "PS_SUPPKEY"
     ].nunique()
     total.columns = ["P_BRAND", "P_TYPE", "P_SIZE", "SUPPLIER_CNT"]
@@ -722,9 +728,9 @@ def q17(lineitem, part):
         :, ["L_QUANTITY", "L_EXTENDEDPRICE", "P_PARTKEY"]
     ]
     lineitem_filtered = lineitem.loc[:, ["L_PARTKEY", "L_QUANTITY"]]
-    lineitem_avg = lineitem_filtered.groupby(["L_PARTKEY"], as_index=False).agg(
-        avg=md.NamedAgg(column="L_QUANTITY", aggfunc="mean")
-    )
+    lineitem_avg = lineitem_filtered.groupby(
+        ["L_PARTKEY"], as_index=False, sort=False
+    ).agg(avg=md.NamedAgg(column="L_QUANTITY", aggfunc="mean"))
     lineitem_avg["avg"] = 0.2 * lineitem_avg["avg"]
     lineitem_avg = lineitem_avg.loc[:, ["L_PARTKEY", "avg"]]
     total = line_part_merge.merge(
@@ -737,13 +743,14 @@ def q17(lineitem, part):
 
 @tpc_query
 def q18(lineitem, orders, customer):
-    gb1 = lineitem.groupby("L_ORDERKEY", as_index=False)["L_QUANTITY"].sum()
+    gb1 = lineitem.groupby("L_ORDERKEY", as_index=False, sort=False)["L_QUANTITY"].sum()
     fgb1 = gb1[gb1.L_QUANTITY > 300]
     jn1 = fgb1.merge(orders, left_on="L_ORDERKEY", right_on="O_ORDERKEY")
     jn2 = jn1.merge(customer, left_on="O_CUSTKEY", right_on="C_CUSTKEY")
     gb2 = jn2.groupby(
         ["C_NAME", "C_CUSTKEY", "O_ORDERKEY", "O_ORDERDATE", "O_TOTALPRICE"],
         as_index=False,
+        sort=False,
     )["L_QUANTITY"].sum()
     total = gb2.sort_values(["O_TOTALPRICE", "O_ORDERDATE"], ascending=[False, True])
     print(total.head(100).execute())
@@ -865,9 +872,9 @@ def q20(lineitem, part, nation, partsupp, supplier):
         left_on=["PS_PARTKEY", "PS_SUPPKEY"],
         right_on=["L_PARTKEY", "L_SUPPKEY"],
     )
-    gb = jn2.groupby(["PS_PARTKEY", "PS_SUPPKEY", "PS_AVAILQTY"], as_index=False)[
-        "L_QUANTITY"
-    ].sum()
+    gb = jn2.groupby(
+        ["PS_PARTKEY", "PS_SUPPKEY", "PS_AVAILQTY"], as_index=False, sort=False
+    )["L_QUANTITY"].sum()
     gbsel = gb.PS_AVAILQTY > (0.5 * gb.L_QUANTITY)
     fgb = gb[gbsel]
     jn3 = fgb.merge(supplier, left_on="PS_SUPPKEY", right_on="S_SUPPKEY")
@@ -886,7 +893,7 @@ def q21(lineitem, orders, supplier, nation):
     # Keep all rows that have another row in linetiem with the same orderkey and different suppkey
     lineitem_orderkeys = (
         lineitem_filtered.loc[:, ["L_ORDERKEY", "L_SUPPKEY"]]
-        .groupby("L_ORDERKEY", as_index=False)["L_SUPPKEY"]
+        .groupby("L_ORDERKEY", as_index=False, sort=False)["L_SUPPKEY"]
         .nunique()
     )
     lineitem_orderkeys.columns = ["L_ORDERKEY", "nunique_col"]
@@ -905,9 +912,9 @@ def q21(lineitem, orders, supplier, nation):
     )
 
     # Not Exists: Check the exists condition isn't still satisfied on the output.
-    lineitem_orderkeys = lineitem_filtered.groupby("L_ORDERKEY", as_index=False)[
-        "L_SUPPKEY"
-    ].nunique()
+    lineitem_orderkeys = lineitem_filtered.groupby(
+        "L_ORDERKEY", as_index=False, sort=False
+    )["L_SUPPKEY"].nunique()
     lineitem_orderkeys.columns = ["L_ORDERKEY", "nunique_col"]
     lineitem_orderkeys = lineitem_orderkeys[lineitem_orderkeys["nunique_col"] == 1]
     lineitem_orderkeys = lineitem_orderkeys.loc[:, ["L_ORDERKEY"]]
@@ -936,7 +943,7 @@ def q21(lineitem, orders, supplier, nation):
         nation_filtered, left_on="S_NATIONKEY", right_on="N_NATIONKEY", how="inner"
     )
     total = total.loc[:, ["S_NAME"]]
-    total = total.groupby("S_NAME", as_index=False).size()
+    total = total.groupby("S_NAME", as_index=False, sort=False).size()
     total.columns = ["S_NAME", "NUMWAIT"]
     total = total.sort_values(by=["NUMWAIT", "S_NAME"], ascending=[False, True])
     print(total.execute())
@@ -966,9 +973,9 @@ def q22(customer, orders):
         customer_filtered, on="C_CUSTKEY", how="inner"
     )
     customer_selected = customer_selected.loc[:, ["CNTRYCODE", "C_ACCTBAL"]]
-    agg1 = customer_selected.groupby(["CNTRYCODE"], as_index=False).size()
+    agg1 = customer_selected.groupby(["CNTRYCODE"], as_index=False, sort=False).size()
     agg1.columns = ["CNTRYCODE", "NUMCUST"]
-    agg2 = customer_selected.groupby(["CNTRYCODE"], as_index=False).agg(
+    agg2 = customer_selected.groupby(["CNTRYCODE"], as_index=False, sort=False).agg(
         TOTACCTBAL=md.NamedAgg(column="C_ACCTBAL", aggfunc="sum")
     )
     total = agg1.merge(agg2, on="CNTRYCODE", how="inner")
