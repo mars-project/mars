@@ -24,9 +24,7 @@ import types
 from collections import defaultdict
 
 
-def dump_traceback_code(
-    tb: types.TracebackType, number_of_lines_of_context: int = 5
-):
+def dump_traceback_code(tb: types.TracebackType, number_of_lines_of_context: int = 5):
     """
     Dump codes before and after lines of tracebacks.
 
@@ -56,9 +54,7 @@ def dump_traceback_code(
                 dict(left=left_range, right=right_range, code=fragment)
             )
             results[file_name].update(
-                dict(
-                    size=cache_data[0], lines=len(cache_data[2])
-                )
+                dict(size=cache_data[0], lines=len(cache_data[2]))
             )
         tb = tb.tb_next
     return dict(results)
@@ -90,7 +86,10 @@ def load_traceback_code(code_frags: dict, cache: dict = None):
         if file_name not in cache:
             # keep field 1 (mtime) as None to ensure lazy cache
             cache[file_name] = (
-                profile["size"], None, [""] * profile["lines"], file_name
+                profile["size"],
+                None,
+                [""] * profile["lines"],
+                file_name,
             )
         for fragment in profile["fragments"]:
             left_range, right_range = fragment["left"], fragment["right"]

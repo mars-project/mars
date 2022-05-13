@@ -318,7 +318,7 @@ class ReceiverManagerActor(mo.StatelessActor):
                 raise
 
     async def do_write(self, message: TransferMessage):
-        # close may be a high cost operation, use create_task
+        # close may be a high-cost operation, use create_task
         close_tasks = []
         finished_keys = []
         session_id = message.session_id
