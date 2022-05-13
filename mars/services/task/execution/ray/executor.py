@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import functools
 import logging
 from typing import List, Dict, Any, Set
 from .....core import ChunkGraph, Chunk, TileContext
@@ -104,9 +105,6 @@ def execute_subtask(
     return output_values[0] if len(output_values) == 1 else output_values
 
 
-_ray_executor = ray.remote(execute_subtask) if ray else None
-
-
 @register_executor_cls
 class RayTaskExecutor(TaskExecutor):
     name = "ray"
@@ -126,6 +124,7 @@ class RayTaskExecutor(TaskExecutor):
         self._tile_context = tile_context
         self._task_context = task_context
         self._task_state_actor = task_state_actor
+        self._ray_executor = self._get_ray_executor()
 
         # api
         self._lifecycle_api = lifecycle_api
@@ -175,6 +174,12 @@ class RayTaskExecutor(TaskExecutor):
             LifecycleAPI.create(session_id, address),
             MetaAPI.create(session_id, address),
         )
+
+    @staticmethod
+    @functools.lru_cache(maxsize=1)
+    def _get_ray_executor():
+        # Export remote function once.
+        return ray.remote(execute_subtask)
 
     @classmethod
     async def _init_context(
@@ -228,7 +233,9 @@ class RayTaskExecutor(TaskExecutor):
             output_keys = self._get_subtask_output_keys(subtask_chunk_graph)
             output_meta_keys = result_meta_keys & output_keys
             output_count = len(output_keys) + bool(output_meta_keys)
-            output_object_refs = _ray_executor.options(num_returns=output_count).remote(
+            output_object_refs = self._ray_executor.options(
+                num_returns=output_count
+            ).remote(
                 subtask.task_id,
                 subtask.subtask_id,
                 serialize(subtask_chunk_graph),
@@ -271,7 +278,8 @@ class RayTaskExecutor(TaskExecutor):
                 chunk_to_meta[chunk] = ExecutionChunkResult(chunk_meta, object_ref)
 
         logger.info("Waiting for stage %s complete.", stage_id)
-        ray.wait(list(output_object_refs), fetch_local=False)
+        # Patched the asyncio.to_thread for Python < 3.9 at mars/lib/aio/__init__.py
+        await asyncio.to_thread(ray.wait, list(output_object_refs), fetch_local=False)
         # Just use `self._cur_stage_tile_progress` as current stage progress
         # because current stage is finished, its progress is 1.
         self._pre_all_stages_progress += self._cur_stage_tile_progress
