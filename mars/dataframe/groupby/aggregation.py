@@ -24,9 +24,9 @@ from scipy.stats import variation
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...core.custom_log import redirect_custom_log
 from ...core import ENTITY_TYPE, OutputType
-from ...core.context import get_context
+from ...core.custom_log import redirect_custom_log
+from ...core.context import get_context, Context
 from ...core.operand import OperandStage
 from ...serialization.serializables import (
     Int32Field,
@@ -65,7 +65,8 @@ cp = lazy_import("cupy", rename="cp")
 cudf = lazy_import("cudf")
 
 logger = logging.getLogger(__name__)
-
+CV_THRESHOLD = 0.2
+MEAN_RATIO_THRESHOLD = 2 / 3
 _support_get_group_without_as_index = pd_release_version[:2] > (1, 0)
 
 
@@ -783,11 +784,36 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _choose_tree_method(
-        cls, raw_sizes, agg_sizes, sample_count, total_count, chunk_store_limit
-    ):
+        cls,
+        raw_sizes: List[int],
+        agg_sizes: List[int],
+        sample_count: int,
+        total_count: int,
+        chunk_store_limit: int,
+        ctx: Context,
+    ) -> bool:
+        logger.debug(
+            "Start to choose method for Groupby, agg_sizes: %s, raw_sizes: %s, "
+            "sample_count: %s, total_count: %s, chunk_store_limit: %s",
+            agg_sizes,
+            raw_sizes,
+            sample_count,
+            total_count,
+            chunk_store_limit,
+        )
+        estimate_size = sum(agg_sizes) / sample_count * total_count
+        if (
+            len(ctx.get_worker_addresses()) > 1
+            and estimate_size > chunk_store_limit
+            and np.mean(agg_sizes) > 1024**2
+        ):
+            # for distributed, if estimate size could be potentially large,
+            # and each chunk size is large enough(>1M, small chunk means large error),
+            # we choose to use shuffle
+            return False
         # calculate the coefficient of variation of aggregation sizes,
-        # if the CV is less than 0.2 and the mean of agg_size/raw_size
-        # is less than 0.8, we suppose the single chunk's aggregation size
+        # if the CV is less than CV_THRESHOLD and the mean of agg_size/raw_size
+        # is less than MEAN_RATIO_THRESHOLD, we suppose the single chunk's aggregation size
         # almost equals to the tileable's, then use tree method
         # as combine aggregation results won't lead to a rapid expansion.
         ratios = [
@@ -796,12 +822,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         cv = variation(agg_sizes)
         mean_ratio = np.mean(ratios)
         if mean_ratio <= 1 / sample_count:
-            # if mean of ratio is less than 0.25, use tree
             return True
-        if cv <= 0.2 and mean_ratio <= 2 / 3:
+        if cv <= CV_THRESHOLD and mean_ratio <= MEAN_RATIO_THRESHOLD:
             # check CV and mean of ratio
             return True
-        elif sum(agg_sizes) / sample_count * total_count <= chunk_store_limit:
+        if estimate_size <= chunk_store_limit:
             # if estimated size less than `chunk_store_limit`, use tree.
             return True
         return False
@@ -835,9 +860,14 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         left_chunks = in_df.chunks[combine_size:]
         left_chunks = cls._gen_map_chunks(op, left_chunks, out_df, func_infos)
         if cls._choose_tree_method(
-            raw_sizes, agg_sizes, len(chunks), len(in_df.chunks), op.chunk_store_limit
+            raw_sizes,
+            agg_sizes,
+            len(chunks),
+            len(in_df.chunks),
+            op.chunk_store_limit,
+            ctx,
         ):
-            logger.debug("Choose tree method for groupby operand %s", op)
+            logger.info("Choose tree method for groupby operand %s", op)
             return cls._combine_tree(op, chunks + left_chunks, out_df, func_infos)
         else:
             # otherwise, use shuffle
@@ -847,7 +877,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 sample_chunks = cls._sample_chunks(op, chunks + left_chunks)
                 pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, agg_chunk_len)
 
-            logger.debug("Choose shuffle method for groupby operand %s", op)
+            logger.info("Choose shuffle method for groupby operand %s", op)
             return cls._perform_shuffle(
                 op, chunks + left_chunks, in_df, out_df, func_infos, pivot_chunk
             )
