@@ -17,12 +17,12 @@
 import argparse
 import functools
 import time
-from typing import Callable
+from typing import Callable, List, Optional, Set, Union
 
 import mars
 import mars.dataframe as md
 
-queries = None
+queries: Optional[Union[Set[str], List[str]]] = None
 
 
 def load_lineitem(data_folder: str) -> md.DataFrame:
@@ -976,7 +976,11 @@ def q22(customer, orders):
     print(total.execute())
 
 
-def run_queries(data_folder: str):
+def run_queries(data_folder: str, select: List[str] = None):
+    if select:
+        global queries
+        queries = select
+
     # Load the data
     t1 = time.time()
     lineitem = load_lineitem(data_folder)
