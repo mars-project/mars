@@ -38,6 +38,12 @@ class MapReduceOperand(Operand):
     reducer_ordinal = Int32Field("reducer_ordinal")
     reducer_phase = StringField("reducer_phase", default=None)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.stage == OperandStage.reduce:
+            # for reducer, we assign worker at first
+            self.scheduling_hint.reassign_worker = True
+
     def _new_chunks(self, inputs, kws=None, **kw):
         if getattr(self, "reducer_index", None) is None:
             index = None
