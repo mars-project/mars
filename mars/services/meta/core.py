@@ -26,13 +26,11 @@ PandasDtypeType = Union[np.dtype, pd.api.extensions.ExtensionDtype]
 _meta_class_dispatcher = TypeDispatcher()
 
 
-def register_meta_type(object_types: Tuple, meta_type: Type["_CommonMeta"] = None):
+def register_meta_type(object_types: Tuple):
     def _call(meta_type: Type["_CommonMeta"]):
         _meta_class_dispatcher.register(object_types, meta_type)
         return meta_type
 
-    if meta_type is not None:
-        _call(meta_type)
     return _call
 
 

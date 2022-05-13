@@ -61,6 +61,17 @@ class RayTaskState(RayRemoteObjectManager):
         return f"{cls.__name__}_{task_id}"
 
 
+_optimize_physical = None
+
+
+def _optimize_subtask_graph(subtask_graph):
+    global _optimize_physical
+
+    if _optimize_physical is None:
+        from .....optimization.physical import optimize as _optimize_physical
+    return _optimize_physical(subtask_graph)
+
+
 def execute_subtask(
     task_id: str,
     subtask_id: str,
@@ -69,8 +80,6 @@ def execute_subtask(
     input_keys: List[str],
     *inputs,
 ):
-    from .....optimization.physical import optimize
-
     logger.info("Begin to execute subtask: %s", subtask_id)
     ensure_coverage()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
@@ -79,7 +88,7 @@ def execute_subtask(
         RayTaskState.gen_name(task_id), zip(input_keys, inputs)
     )
     # optimize chunk graph.
-    subtask_chunk_graph = optimize(subtask_chunk_graph)
+    subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)
     # from data_key to results
     for chunk in subtask_chunk_graph.topological_iter():
         if chunk.key not in context:
