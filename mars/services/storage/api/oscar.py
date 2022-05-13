@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import sys
-from typing import Any, List, Type, TypeVar
+from typing import Any, List, Tuple, Type, TypeVar
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
@@ -163,7 +163,7 @@ class StorageAPI(AbstractStorageAPI):
     @mo.extensible
     async def fetch(
         self,
-        data_key: str,
+        data_key: Union[str, Tuple],
         level: StorageLevel = None,
         band_name: str = None,
         remote_address: str = None,
