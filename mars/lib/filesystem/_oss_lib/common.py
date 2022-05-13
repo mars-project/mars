@@ -17,12 +17,9 @@ import json
 import os
 
 from ..base import path_type, stringify_path
-from ....utils import ModulePlaceholder
+from ....utils import lazy_import
 
-try:
-    import oss2
-except ImportError:
-    oss2 = ModulePlaceholder("oss2")
+oss2 = lazy_import("oss2", placeholder=True)
 
 # OSS api time out
 _oss_time_out = 10

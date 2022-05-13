@@ -22,6 +22,7 @@ import uuid
 from datetime import date, datetime, timedelta, tzinfo
 from enum import Enum
 from functools import lru_cache, partial
+from weakref import WeakSet
 
 import numpy as np
 import pandas as pd
@@ -31,17 +32,13 @@ try:
     from pandas.tseries.offsets import Tick as PDTick
 except ImportError:
     PDTick = None
-try:
-    from sqlalchemy.sql import Selectable as SASelectable
-    from sqlalchemy.sql.sqltypes import TypeEngine as SATypeEngine
-except ImportError:
-    SASelectable, SATypeEngine = None, None
 
 from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes, \
     hash_from_buffer as mmh3_hash_from_buffer
 
 cdef bint _has_cupy = bool(pkgutil.find_loader('cupy'))
 cdef bint _has_cudf = bool(pkgutil.find_loader('cudf'))
+cdef bint _has_sqlalchemy = bool(pkgutil.find_loader('sqlalchemy'))
 
 
 cpdef str to_str(s, encoding='utf-8'):
@@ -83,6 +80,9 @@ cpdef unicode to_text(s, encoding='utf-8'):
         raise TypeError(f"Could not convert from {s} to unicode.")
 
 
+_type_dispatchers = WeakSet()
+
+
 cdef class TypeDispatcher:
     def __init__(self):
         self._handlers = dict()
@@ -90,22 +90,31 @@ cdef class TypeDispatcher:
         # store inherited handlers to facilitate unregistering
         self._inherit_handlers = dict()
 
+        _type_dispatchers.add(self)
+
     cpdef void register(self, object type_, object handler):
         if isinstance(type_, str):
             self._lazy_handlers[type_] = handler
+        elif isinstance(type_, tuple):
+            for t in type_:
+                self.register(t, handler)
         else:
             self._handlers[type_] = handler
 
     cpdef void unregister(self, object type_):
-        self._lazy_handlers.pop(type_, None)
-        self._handlers.pop(type_, None)
-        self._inherit_handlers.clear()
+        if isinstance(type_, tuple):
+            for t in type_:
+                self.unregister(t)
+        else:
+            self._lazy_handlers.pop(type_, None)
+            self._handlers.pop(type_, None)
+            self._inherit_handlers.clear()
 
     cdef _reload_lazy_handlers(self):
         for k, v in self._lazy_handlers.items():
             mod_name, obj_name = k.rsplit('.', 1)
             mod = importlib.import_module(mod_name, __name__)
-            self._handlers[getattr(mod, obj_name)] = v
+            self.register(getattr(mod, obj_name), v)
         self._lazy_handlers = dict()
 
     cpdef get_handler(self, object type_):
@@ -133,6 +142,11 @@ cdef class TypeDispatcher:
 
     def __call__(self, object obj, *args, **kwargs):
         return self.get_handler(type(obj))(obj, *args, **kwargs)
+
+    @staticmethod
+    def reload_all_lazy_handlers():
+        for dispatcher in _type_dispatchers:
+            (<TypeDispatcher>dispatcher)._reload_lazy_handlers()
 
 
 cdef inline build_canonical_bytes(tuple args, kwargs):
@@ -376,10 +390,13 @@ if _has_cudf:
 
 if PDTick is not None:
     tokenize_handler.register(PDTick, tokenize_pandas_tick)
-if SATypeEngine is not None:
-    tokenize_handler.register(SATypeEngine, tokenize_sqlalchemy_data_type)
-if SASelectable is not None:
-    tokenize_handler.register(SASelectable, tokenize_sqlalchemy_selectable)
+if _has_sqlalchemy:
+    tokenize_handler.register(
+        "sqlalchemy.sql.sqltypes.TypeEngine", tokenize_sqlalchemy_data_type
+    )
+    tokenize_handler.register(
+        "sqlalchemy.sql.Selectable", tokenize_sqlalchemy_selectable
+    )
 
 cpdef register_tokenizer(cls, handler):
     tokenize_handler.register(cls, handler)

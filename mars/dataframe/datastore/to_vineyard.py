@@ -19,15 +19,13 @@ from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...serialization.serializables import FieldTypes, StringField, TupleField
 from ...tensor.datastore.to_vineyard import resolve_vineyard_socket
+from ...utils import lazy_import
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
-try:
-    import vineyard
-    from vineyard.data.dataframe import make_global_dataframe
-    from vineyard.data.utils import to_json
-except ImportError:
-    vineyard = None
+vineyard = lazy_import("vineyard")
+vy_data_df = lazy_import("vineyard.data.dataframe", rename="vy_data_df")
+vy_data_utils = lazy_import("vineyard.data.utils", rename="vy_data_utils")
 
 
 class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
@@ -130,7 +128,7 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
                         new_meta.add_member(k, v)
                     else:
                         new_meta[k] = v
-            new_meta["partition_index_"] = to_json(op.inputs[0].index)
+            new_meta["partition_index_"] = vy_data_utils.to_json(op.inputs[0].index)
             df_id = client.create_metadata(new_meta).id
 
         client.persist(df_id)
@@ -185,7 +183,7 @@ class DataFrameToVinyardStoreMeta(DataFrameOperand, DataFrameOperandMixin):
         # # store the result object id to execution context
         chunks = [ctx[chunk.key][0][0] for chunk in op.inputs]
         ctx[op.outputs[0].key] = pd.DataFrame(
-            {0: [make_global_dataframe(client, chunks).id]}
+            {0: [vy_data_df.make_global_dataframe(client, chunks).id]}
         )
 
 

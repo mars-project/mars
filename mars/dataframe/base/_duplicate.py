@@ -26,7 +26,7 @@ from ...utils import ceildiv, has_unknown_shape, lazy_import
 from ..initializer import DataFrame as asdataframe
 from ..operands import DataFrameOperandMixin, DataFrameShuffleProxy
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 
 class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):

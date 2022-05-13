@@ -33,7 +33,7 @@ from ..utils import parse_index
 from .index_lib import DataFrameLocIndexesHandler
 
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 
 def process_loc_indexes(inp, indexes):

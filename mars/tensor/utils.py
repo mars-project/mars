@@ -35,7 +35,7 @@ from ..core import ExecutableTuple, recursive_tile
 from ..utils import lazy_import
 from ..lib.mmh3 import hash_from_buffer
 
-cp = lazy_import("cupy", globals=globals(), rename="cp")
+cp = lazy_import("cupy", rename="cp")
 
 
 def normalize_shape(shape):

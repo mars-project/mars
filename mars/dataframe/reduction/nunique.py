@@ -27,7 +27,7 @@ from ...utils import lazy_import
 from ..arrays import ArrowListArray, ArrowListDtype
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 
 class NuniqueReduction(CustomReduction):

@@ -47,6 +47,9 @@ class MockOperand(Operand, TensorOperandMixin):
 
 class TokenizeOperandSuite:
     def setup(self):
+        # do some warm up
+        tokenize(None)
+
         chunks = []
         for idx in range(1000):
             op = MockOperand(
