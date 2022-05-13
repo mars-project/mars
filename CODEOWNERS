@@ -1,34 +1,3 @@
 # Each line is a component followed by one or more owners.
 
-*                          @qinxuye @wjsi @hekaisheng
-/.github                   @wjsi @qinxuye @hekaisheng
-/bin                       @wjsi @qinxuye @hekaisheng
-/ci                        @wjsi @qinxuye @hekaisheng
-/docs                      @qinxuye @hekaisheng @wjsi
-/mars/                     @qinxuye @hekaisheng @wjsi
-/mars/core                 @qinxuye @hekaisheng @wjsi
-/mars/dataframe            @hekaisheng @qinxuye @wjsi
-/mars/deploy               @wjsi @hekaisheng @qinxuye
-/mars/deploy/oscar/ray*    @chaokunyang @fyrestone @qinxuye @hekaisheng @wjsi
-/mars/learn                @qinxuye @hekaisheng @wjsi
-/mars/lib                  @wjsi @qinxuye @hekaisheng
-/mars/optimization         @hekaisheng @qinxuye @wjsi
-/mars/oscar                @wjsi @qinxuye @hekaisheng
-/mars/oscar/backends/ray   @chaokunyang @fyrestone @qinxuye @hekaisheng @wjsi
-/mars/remote               @qinxuye @wjsi @hekaisheng
-/mars/serialization        @qinxuye @wjsi @hekaisheng
-/mars/services/            @wjsi @qinxuye @hekaisheng
-/mars/services/cluster     @wjsi @qinxuye @hekaisheng
-/mars/services/lifecycle   @wjsi @qinxuye @hekaisheng
-/mars/services/meta        @wjsi @qinxuye @hekaisheng
-/mars/services/scheduling  @wjsi @qinxuye @hekaisheng
-/mars/services/session     @wjsi @qinxuye @hekaisheng
-/mars/services/storage     @hekaisheng @qinxuye @wjsi
-/mars/services/subtask     @wjsi @qinxuye @hekaisheng
-/mars/services/task        @wjsi @qinxuye @hekaisheng
-/mars/services/web         @wjsi @qinxuye @hekaisheng
-/mars/storage              @hekaisheng @qinxuye @wjsi
-/mars/storage/vineyard.py  @sighingnow @qinxuye @hekaisheng @wjsi
-/mars/storage/ray.py       @chaokunyang @fyrestone @qinxuye @hekaisheng @wjsi
-/mars/tensor               @hekaisheng @qinxuye @wjsi
-/mars/tests                @wjsi @hekaisheng @qinxuye
+*                          @mars-project/mars-pmc-maintainers
