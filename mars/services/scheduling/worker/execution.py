@@ -394,8 +394,8 @@ class SubtaskExecutionActor(mo.StatelessActor):
             )
             if remote_mapper_keys:
                 await self.ref()._remove_mapper_data.tell(
-                        subtask.session_id, band_name, remote_mapper_keys
-                    )
+                    subtask.session_id, band_name, remote_mapper_keys
+                )
         except:  # noqa: E722  # pylint: disable=bare-except
             _fill_subtask_result_with_exception(subtask, subtask_info)
         finally:
