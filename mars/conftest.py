@@ -39,6 +39,7 @@ def ray_start_regular_shared(request):  # pragma: no cover
 
 @pytest.fixture(scope="module")
 def ray_start_regular_shared2(request):  # pragma: no cover
+    os.environ["RAY_kill_idle_workers_interval_ms"] = "0"
     param = getattr(request, "param", {})
     num_cpus = param.get("num_cpus", 64)
     total_memory_mb = num_cpus * 2 * 1024**2
@@ -50,6 +51,7 @@ def ray_start_regular_shared2(request):  # pragma: no cover
         yield ray.init(num_cpus=num_cpus, job_config=job_config)
     finally:
         ray.shutdown()
+        os.environ.pop("RAY_kill_idle_workers_interval_ms", None)
 
 
 @pytest.fixture
