@@ -58,7 +58,7 @@ class ObjectFetch(FetchMixin, ObjectOperandMixin, Fetch):
         return super()._new_tileables(inputs, kws=kws, **kw)
 
 
-register_fetch_class(OutputType.object, ObjectFetch, None)
+register_fetch_class(OutputType.object, ObjectFetch, None, None)
 
 
 class MergeDictOperand(ObjectOperand, ObjectOperandMixin):

@@ -14,6 +14,7 @@
 
 from ...core import OutputType, register_fetch_class
 from ...core.operand import Fetch, FetchShuffle, FetchMixin
+from ...core.operand.fetch import PushShuffle
 from ...serialization.serializables import FieldTypes, TupleField
 from ...utils import on_serialize_shape, on_deserialize_shape
 from ..operands import DataFrameOperandMixin
@@ -48,7 +49,7 @@ class DataFrameFetch(Fetch, DataFrameFetchMixin):
         return super()._new_tileables(inputs, kws=kws, **kw)
 
 
-class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
+class _DataFrameShuffle(DataFrameFetchMixin):
     # required fields
     _shape = TupleField(
         "shape",
@@ -61,11 +62,35 @@ class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
         super().__init__(_output_types=output_types, **kw)
 
 
-register_fetch_class(OutputType.dataframe, DataFrameFetch, DataFrameFetchShuffle)
+class DataFrameFetchShuffle(_DataFrameShuffle, FetchShuffle):
+    pass
+
+
+class DataFramePushShuffle(_DataFrameShuffle, PushShuffle):
+    pass
+
+
 register_fetch_class(
-    OutputType.dataframe_groupby, DataFrameFetch, DataFrameFetchShuffle
+    OutputType.dataframe, DataFrameFetch, DataFrameFetchShuffle, DataFramePushShuffle
 )
-register_fetch_class(OutputType.series, DataFrameFetch, DataFrameFetchShuffle)
-register_fetch_class(OutputType.series_groupby, DataFrameFetch, DataFrameFetchShuffle)
-register_fetch_class(OutputType.index, DataFrameFetch, DataFrameFetchShuffle)
-register_fetch_class(OutputType.categorical, DataFrameFetch, DataFrameFetchShuffle)
+register_fetch_class(
+    OutputType.dataframe_groupby,
+    DataFrameFetch,
+    DataFrameFetchShuffle,
+    DataFramePushShuffle,
+)
+register_fetch_class(
+    OutputType.series, DataFrameFetch, DataFrameFetchShuffle, DataFramePushShuffle
+)
+register_fetch_class(
+    OutputType.series_groupby,
+    DataFrameFetch,
+    DataFrameFetchShuffle,
+    DataFramePushShuffle,
+)
+register_fetch_class(
+    OutputType.index, DataFrameFetch, DataFrameFetchShuffle, DataFramePushShuffle
+)
+register_fetch_class(
+    OutputType.categorical, DataFrameFetch, DataFrameFetchShuffle, DataFramePushShuffle
+)

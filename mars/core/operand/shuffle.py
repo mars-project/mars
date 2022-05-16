@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import enum
+
+from .fetch import PushShuffle
 from ... import opcodes
 from ...serialization.serializables import (
     Int32Field,
@@ -26,7 +29,20 @@ class ShuffleProxy(VirtualOperand):
     _op_type_ = opcodes.SHUFFLE_PROXY
 
 
+class ShuffleType(enum.Enum):
+    # pull-based shuffle will wait all mappers finish before scheduling reducers.
+    PULL = 0
+    # push-based shuffle will push mapper data to reducers ASAP, so the shuffle execution
+    # will get better performance by IO, pipeline and locality improvement.
+    PUSH = 1
+
+
 class MapReduceOperand(Operand):
+    """
+    An operand for shuffle execution which partitions data by the value in each record’s partition key, and
+    send the partitioned data from all mappers to all reducers.
+    """
+
     reducer_index = TupleField("reducer_index", FieldTypes.uint64)
     mapper_id = Int32Field("mapper_id", default=0)
     reducer_phase = StringField("reducer_phase", default=None)
@@ -54,12 +70,22 @@ class MapReduceOperand(Operand):
                 elif isinstance(inp.op, FetchShuffle):
                     deps.extend([(k, self.reducer_index) for k in inp.op.source_keys])
                 else:
+                    # push-based shuffle doesn't store data keys.
+                    assert not isinstance(inp.op, PushShuffle)
                     deps.append(inp.key)
             return deps
         return super().get_dependent_data_keys()
 
     def _iter_mapper_key_idx_pairs(self, input_id=0, mapper_id=None):
+        # TODO(chaokunyang) add mapper key, mapper index, reducer index document.
+        # key is mapper chunk key, index is mapper chunk index.
         input_chunk = self.inputs[input_id]
+        if isinstance(input_chunk.op, PushShuffle):
+            # For push shuffle, since data are directly pushed to reducers, chunk key and index are not needed any more.
+            # Before reducer executing, all shuffle block of same reducers will be pushed to same reducers, identified
+            # by their index, so we use mapper index as key_idx_pairs.
+            # For operands such as PSRS(PSRSSortRegularSample -> PSRSShuffle -> PSRSAlign)
+            return ((i, i) for i in range(input_chunk.op.num_mappers))
         if isinstance(input_chunk.op, ShuffleProxy):
             keys = [inp.key for inp in input_chunk.inputs]
             idxes = [inp.index for inp in input_chunk.inputs]
@@ -105,3 +131,11 @@ class MapReduceOperand(Operand):
             ctx, input_id, mapper_id, pop=pop, skip_none=skip_none
         ):
             yield data
+
+    def execute(self, ctx, op):
+        """The mapper stage must ensure all mapper blocks are inserted into ctx in the order of reducers and no blocks
+        for some reducers are missing. This is needed by push-based shuffle, which shuffle block are identified by the
+        index instead of data keys.
+        For operands implementation simplicity, we can sort the `ctx` by key which are (chunk key, reducer index) tuple
+        and relax the insert order requirements.
+        """

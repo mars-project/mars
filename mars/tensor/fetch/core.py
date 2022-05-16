@@ -14,6 +14,7 @@
 
 from ...core import register_fetch_class, OutputType
 from ...core.operand import Fetch, FetchShuffle, FetchMixin
+from ...core.operand.fetch import PushShuffle
 from ...serialization.serializables import DataTypeField
 from ..operands import TensorOperandMixin
 
@@ -42,7 +43,7 @@ class TensorFetch(TensorFetchMixin, Fetch):
         return super()._new_tileables(inputs, kws=kws, **kw)
 
 
-class TensorFetchShuffle(TensorFetchMixin, FetchShuffle):
+class _TensorShuffle(TensorFetchMixin):
     _dtype = DataTypeField("dtype")
 
     def __init__(self, **kw):
@@ -55,5 +56,17 @@ class TensorFetchShuffle(TensorFetchMixin, FetchShuffle):
         return getattr(self, "_dtype", None)
 
 
-register_fetch_class(OutputType.tensor, TensorFetch, TensorFetchShuffle)
-register_fetch_class(OutputType.scalar, TensorFetch, TensorFetchShuffle)
+class TensorFetchShuffle(_TensorShuffle, FetchShuffle):
+    pass
+
+
+class TensorPushShuffle(_TensorShuffle, PushShuffle):
+    pass
+
+
+register_fetch_class(
+    OutputType.tensor, TensorFetch, TensorFetchShuffle, TensorPushShuffle
+)
+register_fetch_class(
+    OutputType.scalar, TensorFetch, TensorFetchShuffle, TensorPushShuffle
+)

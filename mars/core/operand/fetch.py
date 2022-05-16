@@ -13,7 +13,12 @@
 # limitations under the License.
 
 from ... import opcodes
-from ...serialization.serializables import FieldTypes, StringField, ListField
+from ...serialization.serializables import (
+    FieldTypes,
+    StringField,
+    ListField,
+    Int32Field,
+)
 from .base import Operand
 from .core import TileableOperandMixin
 
@@ -47,3 +52,15 @@ class FetchShuffle(Operand):
     source_keys = ListField("source_keys", FieldTypes.string)
     source_idxes = ListField("source_idxes", FieldTypes.tuple(FieldTypes.uint64))
     source_mappers = ListField("source_mappers", FieldTypes.uint16)
+
+
+class PushShuffle(Operand):
+    _op_type_ = opcodes.PUSH_SHUFFLE
+    num_mappers = Int32Field("num_mappers")
+    num_reducers = Int32Field("num_reducers")
+
+    @classmethod
+    def execute(cls, ctx, op):
+        """
+        Push operand needs nothing to do.
+        """

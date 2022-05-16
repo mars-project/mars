@@ -144,7 +144,9 @@ def _merge_config(full_config: Dict, config: Dict) -> Dict:
     return full_config
 
 
-def load_config(config: Union[str, Dict], default_config_file: str):
+def load_config(
+    config: Union[str, Dict], default_config_file: str, backend: str = None
+):
     """
     Load config based on the default_config.
     """
@@ -155,6 +157,8 @@ def load_config(config: Union[str, Dict], default_config_file: str):
     else:
         full_config = load_service_config_file(default_config_file)
         config = _merge_config(full_config, config)
+    if backend:
+        config["task"]["execution_config"]["backend"] = backend
     if config["scheduling"]["speculation"]["enabled"] is True:
         # if `initial_same_color_num` > 1, coloring based fusion will make subtask too heterogeneous such that
         # the speculative scheduler can't get enough homogeneous subtasks to calculate statistics
@@ -163,6 +167,10 @@ def load_config(config: Union[str, Dict], default_config_file: str):
             "ensure enough homogeneous subtasks to calculate statistics."
         )
         config["task"]["default_config"]["initial_same_color_num"] = 1
+    if backend == "ray":
+        from mars.core.operand.shuffle import ShuffleType
+
+        config["task"]["default_config"]["shuffle_type"] = ShuffleType.PUSH
     return config
 
 

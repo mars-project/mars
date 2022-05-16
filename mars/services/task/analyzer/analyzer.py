@@ -20,9 +20,10 @@ from typing import Dict, List, Tuple, Type, Union
 from ....config import Config
 from ....core import ChunkGraph, ChunkType, enter_mode
 from ....core.operand import Fetch, VirtualOperand, LogicKeyGenerator
+from ....core.operand.shuffle import ShuffleType, ShuffleProxy, MapReduceOperand
 from ....resource import Resource
 from ....typing import BandType
-from ....utils import build_fetch, tokenize
+from ....utils import build_fetch, build_fetch_shuffle, tokenize
 from ...subtask import SubtaskGraph, Subtask
 from ..core import Task, new_task_id
 from .assigner import AbstractGraphAssigner, GraphAssigner
@@ -32,6 +33,13 @@ logger = logging.getLogger(__name__)
 
 
 class GraphAnalyzer:
+    """
+    An subtask graph builder which build subtask graph for chunk graph based on passed band_resource.
+
+    If push shuffle is used, this builder will validate predecessors orders consistency of ShuffleProxy between
+    chunk graph and generated subtask graph.
+    """
+
     def __init__(
         self,
         chunk_graph: ChunkGraph,
@@ -43,10 +51,15 @@ class GraphAnalyzer:
         stage_id: str = None,
     ):
         self._chunk_graph = chunk_graph
+        self._final_result_chunks_set = set(self._chunk_graph.result_chunks)
         self._band_resource = band_resource
         self._task = task
         self._stage_id = stage_id
         self._config = config
+        self._shuffle_type = getattr(self._config, "shuffle_type", ShuffleType.PULL)
+        self._has_shuffle = any(
+            isinstance(c.op, MapReduceOperand) for c in self._chunk_graph
+        )
         self._fuse_enabled = task.fuse_enabled
         self._extra_config = task.extra_config
         self._chunk_to_subtasks = chunk_to_subtasks
@@ -91,9 +104,8 @@ class GraphAnalyzer:
             if not stack and start_chunks:
                 stack.appendleft(start_chunks.popleft())
 
-    @classmethod
     def _gen_input_chunks(
-        cls,
+        self,
         inp_chunks: List[ChunkType],
         chunk_to_fetch_chunk: Dict[ChunkType, ChunkType],
     ) -> List[ChunkType]:
@@ -105,6 +117,15 @@ class GraphAnalyzer:
             elif isinstance(inp_chunk.op, Fetch):
                 chunk_to_fetch_chunk[inp_chunk] = inp_chunk
                 inp_fetch_chunks.append(inp_chunk)
+            elif isinstance(inp_chunk.op, ShuffleProxy):
+                num_reducers = len(self._chunk_graph.successors(inp_chunk))
+                fetch_chunk = build_fetch_shuffle(
+                    inp_chunk,
+                    shuffle_type=self._shuffle_type,
+                    num_reducers=num_reducers,
+                ).data
+                chunk_to_fetch_chunk[inp_chunk] = fetch_chunk
+                inp_fetch_chunks.append(fetch_chunk)
             else:
                 fetch_chunk = build_fetch(inp_chunk).data
                 chunk_to_fetch_chunk[inp_chunk] = fetch_chunk
@@ -126,11 +147,9 @@ class GraphAnalyzer:
         chunk_to_subtask: Dict[ChunkType, Subtask],
         chunk_to_bands: Dict[ChunkType, BandType],
         chunk_to_fetch_chunk: Dict[ChunkType, ChunkType],
-    ) -> Tuple[Subtask, List[Subtask]]:
+    ) -> Tuple[Subtask, List[Subtask], List[ChunkType]]:
         # gen subtask and its input subtasks
-        final_result_chunks_set = set(self._chunk_graph.result_chunks)
         chunks_set = set(chunks)
-
         result_chunks = []
         result_chunks_set = set()
         chunk_graph = ChunkGraph(result_chunks)
@@ -212,7 +231,7 @@ class GraphAnalyzer:
                 # cannot be copied twice
                 assert src_chunk not in chunk_to_copied
                 chunk_to_copied[src_chunk] = out_chunk
-                if src_chunk in final_result_chunks_set:
+                if src_chunk in self._final_result_chunks_set:
                     if out_chunk not in result_chunks_set:
                         # add to result chunks
                         result_chunks.append(out_chunk)
@@ -232,6 +251,14 @@ class GraphAnalyzer:
             for c in chunk_graph.iter_indep(reverse=True)
             if c not in result_chunks_set
         )
+        if self._has_shuffle and self._shuffle_type == ShuffleType.PUSH:
+            shuffle_chunks = [
+                c for c in result_chunks if isinstance(c, MapReduceOperand)
+            ]
+            # ensure no shuffle mapper chunks fused into same subtask and subtask only produce mapper outputs
+            # which can be merged dynamically by the reducers.
+            assert len(shuffle_chunks) <= 1, shuffle_chunks
+
         expect_bands = (
             [self._to_band(expect_worker)]
             if bands_specified
@@ -275,7 +302,8 @@ class GraphAnalyzer:
             update_meta_chunks=update_meta_chunks,
             extra_config=self._extra_config,
         )
-        return subtask, inp_subtasks
+        proxy_chunks = [c for c in chunks if isinstance(c.op, ShuffleProxy)]
+        return subtask, inp_subtasks, proxy_chunks
 
     def _gen_logic_key(self, chunks: List[ChunkType]):
         return tokenize(
@@ -343,13 +371,18 @@ class GraphAnalyzer:
             for start_op in start_ops:
                 for start_chunk in op_key_to_chunks[start_op.key]:
                     init_chunk_to_bands[start_chunk] = chunk_to_bands[start_chunk]
+            if self._has_shuffle and self._shuffle_type == ShuffleType.PUSH:
+                # ensure no shuffle mapper chunks fused into same subtask.
+                initial_same_color_num = 1
+            else:
+                initial_same_color_num = getattr(
+                    self._config, "initial_same_color_num", None
+                )
             coloring = Coloring(
                 self._chunk_graph,
                 list(self._band_resource),
                 init_chunk_to_bands,
-                initial_same_color_num=getattr(
-                    self._config, "initial_same_color_num", None
-                ),
+                initial_same_color_num=initial_same_color_num,
                 as_broadcaster_successor_num=getattr(
                     self._config, "as_broadcaster_successor_num", None
                 ),
@@ -371,6 +404,7 @@ class GraphAnalyzer:
                 color_to_chunks[color].append(chunk)
 
         # gen subtask graph
+        proxy_chunks, proxy_subtasks = [], []
         subtask_graph = SubtaskGraph()
         chunk_to_fetch_chunk = dict()
         chunk_to_subtask = self._chunk_to_subtasks
@@ -387,12 +421,16 @@ class GraphAnalyzer:
             if all(isinstance(c.op, Fetch) for c in same_color_chunks):
                 # all fetch ops, no need to gen subtask
                 continue
-            subtask, inp_subtasks = self._gen_subtask_info(
+            subtask, inp_subtasks, subtask_proxy_chunks = self._gen_subtask_info(
                 same_color_chunks,
                 chunk_to_subtask,
                 chunk_to_bands,
                 chunk_to_fetch_chunk,
             )
+            if subtask_proxy_chunks:
+                assert len(subtask_proxy_chunks) == 1, subtask_proxy_chunks
+                proxy_chunks.append(subtask_proxy_chunks[0])
+                proxy_subtasks.append(subtask)
             subtask_graph.add_node(subtask)
             logic_key_to_subtasks[subtask.logic_key].append(subtask)
             for inp_subtask in inp_subtasks:
@@ -402,8 +440,24 @@ class GraphAnalyzer:
                 chunk_to_subtask[c] = subtask
             visited.update(same_color_chunks)
 
+        if self._shuffle_type == ShuffleType.PUSH:
+            self.validate_shuffle(proxy_chunks, proxy_subtasks, subtask_graph)
+
         for subtasks in logic_key_to_subtasks.values():
             for logic_index, subtask in enumerate(subtasks):
                 subtask.logic_index = logic_index
                 subtask.logic_parallelism = len(subtasks)
         return subtask_graph
+
+    def validate_shuffle(self, proxy_chunks, proxy_subtasks, subtask_graph):
+        for proxy_chunk, proxy_subtask in zip(proxy_chunks, proxy_subtasks):
+            mapper_subtasks = subtask_graph.predecessors(proxy_subtask)
+            mapper_chunks = self._chunk_graph.predecessors(proxy_chunk)
+            raw_chunk_keys = []
+            for subtask in mapper_subtasks:
+                assert len(subtask.chunk_graph.results) == 1
+                raw_chunk_keys.append(subtask.chunk_graph.results[0].key)
+            new_chunk_keys = [c.key for c in mapper_chunks]
+            assert (
+                raw_chunk_keys == new_chunk_keys
+            ), f"mappers order not consistent: {raw_chunk_keys} {new_chunk_keys}"

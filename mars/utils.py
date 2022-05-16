@@ -540,21 +540,29 @@ def estimate_pandas_size(
         return sample_size * len(pd_obj) // max_samples
 
 
-def build_fetch_chunk(
-    chunk: ChunkType, input_chunk_keys: List[str] = None, **kwargs
+def build_fetch_shuffle(
+    chunk: ChunkType, shuffle_type=None, num_reducers=None
 ) -> ChunkType:
     from .core.operand import ShuffleProxy
+    from mars.core.operand.shuffle import ShuffleType
 
     chunk_op = chunk.op
+    assert isinstance(chunk_op, ShuffleProxy)
     params = chunk.params.copy()
-
-    if isinstance(chunk_op, ShuffleProxy):
+    shuffle_type = shuffle_type or ShuffleType.PULL
+    if shuffle_type == ShuffleType.PUSH:
+        num_mappers = len(chunk.inputs)
+        assert num_reducers > 0, num_reducers
+        op = chunk_op.get_fetch_op_cls(chunk, shuffle_type)(
+            num_mappers=num_mappers,
+            num_reducers=num_reducers,
+            gpu=chunk.op.gpu,
+        )
+    else:
         # for shuffle nodes, we build FetchShuffle chunks
         # to replace ShuffleProxy
         source_keys, source_idxes, source_mappers = [], [], []
         for pinp in chunk.inputs:
-            if input_chunk_keys is not None and pinp.key not in input_chunk_keys:
-                continue
             source_keys.append(pinp.key)
             source_idxes.append(pinp.index)
             source_mappers.append(get_chunk_mapper_id(pinp))
@@ -564,10 +572,25 @@ def build_fetch_chunk(
             source_mappers=source_mappers,
             gpu=chunk.op.gpu,
         )
-    else:
-        # for non-shuffle nodes, we build Fetch chunks
-        # to replace original chunk
-        op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse, gpu=chunk.op.gpu)
+    return op.new_chunk(
+        None,
+        is_broadcaster=chunk.is_broadcaster,
+        kws=[params],
+        _key=chunk.key,
+        _id=chunk.id,
+    )
+
+
+def build_fetch_chunk(chunk: ChunkType, **kwargs) -> ChunkType:
+    from .core.operand import ShuffleProxy
+
+    chunk_op = chunk.op
+    params = chunk.params.copy()
+    if isinstance(chunk_op, ShuffleProxy):
+        return build_fetch_shuffle(chunk)
+    # for non-shuffle nodes, we build Fetch chunks
+    # to replace original chunk
+    op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse, gpu=chunk.op.gpu)
     return op.new_chunk(
         None,
         is_broadcaster=chunk.is_broadcaster,

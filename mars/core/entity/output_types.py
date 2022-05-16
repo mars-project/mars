@@ -49,8 +49,12 @@ def register_output_types(output_type, tileable_types, chunk_types):
     _OUTPUT_TYPE_TO_CHUNK_TYPES[output_type] = chunk_types
 
 
-def register_fetch_class(output_type, fetch_cls, fetch_shuffle_cls):
-    _OUTPUT_TYPE_TO_FETCH_CLS[output_type] = (fetch_cls, fetch_shuffle_cls)
+def register_fetch_class(output_type, fetch_cls, fetch_shuffle_cls, push_shuffle_cls):
+    _OUTPUT_TYPE_TO_FETCH_CLS[output_type] = (
+        fetch_cls,
+        fetch_shuffle_cls,
+        push_shuffle_cls,
+    )
 
 
 def get_tileable_types(output_type):
