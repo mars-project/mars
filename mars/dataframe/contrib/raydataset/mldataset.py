@@ -111,7 +111,6 @@ def to_ray_mldataset(df, num_shards: int = None):
             fetched_infos["band"], fetched_infos["object_refs"]
         )
     ]
-    print(f"fetched_infos {fetched_infos} \n {chunk_addr_refs}")
     group_to_obj_refs: Dict[str, List[ray.ObjectRef]] = _group_chunk_refs(
         chunk_addr_refs, num_shards
     )
