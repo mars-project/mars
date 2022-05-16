@@ -120,5 +120,5 @@ def test_sync_execute(config):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_session_progress(ray_start_regular_shared2, create_cluster):
-    test_local.test_session_progress(create_cluster)
+async def test_session_get_progress(ray_start_regular_shared2, create_cluster):
+    await test_local.test_session_get_progress(create_cluster)
