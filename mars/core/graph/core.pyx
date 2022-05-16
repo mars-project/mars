@@ -339,27 +339,37 @@ cdef class DirectedGraph:
                     continue
                 for input_chunk in (op.inputs or []):
                     if input_chunk.key not in visited:
-                        sio.write(f'"Chunk:{input_chunk.key[:trunc_key]}" {chunk_style}\n')
+                        sio.write(f'"Chunk:{self._gen_chunk_key(input_chunk, trunc_key)}" {chunk_style}\n')
                         visited.add(input_chunk.key)
                     if op.key not in visited:
                         sio.write(f'"{op_name}:{op.key[:trunc_key]}" {operand_style}\n')
                         visited.add(op.key)
-                    sio.write(f'"Chunk:{input_chunk.key[:trunc_key]}" -> "{op_name}:{op.key[:5]}"\n')
+                    sio.write(f'"Chunk:{self._gen_chunk_key(input_chunk, trunc_key)}" -> '
+                              f'"{op_name}:{op.key[:trunc_key]}"\n')
 
                 for output_chunk in (op.outputs or []):
                     if output_chunk.key not in visited:
                         tmp_chunk_style = chunk_style
                         if result_chunk_keys and output_chunk.key in result_chunk_keys:
                             tmp_chunk_style = '[shape=box,style=filled,fillcolor=cadetblue1]'
-                        sio.write(f'"Chunk:{output_chunk.key[:trunc_key]}" {tmp_chunk_style}\n')
+                        sio.write(f'"Chunk:{self._gen_chunk_key(output_chunk, trunc_key)}" {tmp_chunk_style}\n')
                         visited.add(output_chunk.key)
                     if op.key not in visited:
                         sio.write(f'"{op_name}:{op.key[:trunc_key]}" {operand_style}\n')
                         visited.add(op.key)
-                    sio.write(f'"{op_name}:{op.key[:trunc_key]}" -> "Chunk:{output_chunk.key[:5]}"\n')
+                    sio.write(f'"{op_name}:{op.key[:trunc_key]}" -> '
+                              f'"Chunk:{self._gen_chunk_key(output_chunk, trunc_key)}"\n')
 
         sio.write('}')
         return sio.getvalue()
+
+    @classmethod
+    def _gen_chunk_key(cls, chunk, trunc_key):
+        if "_" in chunk.key:
+            key, index = chunk.key.split("_", 1)
+            return "_".join([key[:trunc_key], index])
+        else:  # pragma: no cover
+            return chunk.key[:trunc_key]
 
     def _repr_svg_(self):  # pragma: no cover
         from graphviz import Source
