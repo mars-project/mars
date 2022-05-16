@@ -376,7 +376,7 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
                 slc[axis] = slice(out.shape[axis])
 
             result = result.iloc[tuple(slc)]
-            assert result.shape == out.shape
+            assert result.shape == out.shape, (result.shape, out.shape)
 
         ctx[out.key] = result
 

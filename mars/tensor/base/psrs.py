@@ -587,7 +587,7 @@ class PSRSConcatPivot(TensorOperand, TensorOperandMixin):
         with device(device_id):
             a = xp.concatenate(inputs, axis=op.axis)
             p = len(inputs)
-            assert a.shape[op.axis] == p * len(op.inputs)
+            assert a.shape[op.axis] == p * len(op.inputs), (a.shape, p, len(op.inputs))
 
             if op.kind is not None:
                 # sort
