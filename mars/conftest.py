@@ -22,7 +22,6 @@ import pytest_asyncio
 
 from mars.config import option_context
 from mars.core.mode import is_kernel_mode, is_build_mode
-from mars.lib.aio import stop_isolation
 from mars.oscar.backends.router import Router
 from mars.oscar.backends.ray.communication import RayServer
 from mars.serialization.ray import register_ray_serializers, unregister_ray_serializers
@@ -158,13 +157,7 @@ async def ray_create_mars_cluster(request):
 
 
 @pytest.fixture(scope="module")
-def _stop_isolation():
-    yield
-    stop_isolation()
-
-
-@pytest.fixture(scope="module")
-def _new_test_session(_stop_isolation):
+def _new_test_session():
     from .deploy.oscar.tests.session import new_test_session
 
     sess = new_test_session(
@@ -182,7 +175,7 @@ def _new_test_session(_stop_isolation):
 
 
 @pytest.fixture(scope="module")
-def _new_integrated_test_session(_stop_isolation):
+def _new_integrated_test_session():
     from .deploy.oscar.tests.session import new_test_session
 
     sess = new_test_session(
@@ -215,7 +208,7 @@ def _new_integrated_test_session(_stop_isolation):
 
 
 @pytest.fixture(scope="module")
-def _new_gpu_test_session(_stop_isolation):  # pragma: no cover
+def _new_gpu_test_session():  # pragma: no cover
     from .deploy.oscar.tests.session import new_test_session
     from .resource import cuda_count
 
