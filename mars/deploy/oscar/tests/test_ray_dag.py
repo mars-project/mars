@@ -122,3 +122,9 @@ def test_sync_execute(config):
 @pytest.mark.asyncio
 async def test_session_get_progress(ray_start_regular_shared2, create_cluster):
     await test_local.test_session_get_progress(create_cluster)
+
+
+@require_ray
+@pytest.mark.parametrize("config", [{"backend": "ray"}])
+def test_simple_execute(config):
+    test_local.test_simple_execute(config)

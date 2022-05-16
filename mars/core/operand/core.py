@@ -472,7 +472,7 @@ class TileableOperandMixin:
         del _op_type_to_size_estimator[cls]
 
 
-def execute(results: Dict[str, Any], op: OperandType):
+def execute(results: Dict[str, Any], op: OperandType, subtask_id=""):
     try:
         executor = _op_type_to_executor[type(op)]
     except KeyError:

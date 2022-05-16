@@ -82,8 +82,13 @@ def execute_subtask(
     *inputs,
 ):
     logger.info("Begin to execute subtask: %s", subtask_id)
+    print(">>> Begin to execute a subtask: ", subtask_id)
+    print("output_meta_keys: ", output_meta_keys)
+    print("input_keys: ", inputs)
+    print("inputs: ", inputs)
     ensure_coverage()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
+    print("subtask_chunk_graph: ", subtask_chunk_graph.to_dot())
     # inputs = [i[1] for i in inputs]
     context = RayExecutionWorkerContext(
         RayTaskState.gen_name(task_id), zip(input_keys, inputs)
@@ -98,6 +103,7 @@ def execute_subtask(
     output = {
         key: data for key, data, _ in iter_output_data(subtask_chunk_graph, context)
     }
+    print("output: ", output)
     output_values = []
     if output_meta_keys:
         output_meta = {}
@@ -111,6 +117,7 @@ def execute_subtask(
         output_values.append(output_meta)
     output_values.extend(output.values())
 
+    print("output values: ", output_values)
     logger.info("Finish executing subtask: %s", subtask_id)
     return output_values[0] if len(output_values) == 1 else output_values
 

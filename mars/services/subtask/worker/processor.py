@@ -186,7 +186,7 @@ class SubtaskProcessor:
         self, ctx: Dict[str, Any], op: OperandType
     ):  # noqa: R0201  # pylint: disable=no-self-use
         try:
-            return execute(ctx, op)
+            return execute(ctx, op, self.subtask.subtask_id)
         except BaseException as ex:
             # wrap exception in execution to avoid side effects
             raise ExecutionError(ex).with_traceback(ex.__traceback__) from None
