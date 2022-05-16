@@ -16,7 +16,7 @@ from collections.abc import Iterable
 from functools import partial
 
 from .. import opcodes
-from ..core import ENTITY_TYPE, TILEABLE_TYPE, ChunkData
+from ..core import ENTITY_TYPE, ChunkData
 from ..core.custom_log import redirect_custom_log
 from ..core.operand import ObjectOperand
 from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
@@ -33,7 +33,6 @@ from ..utils import (
     enter_current_session,
     find_objects,
     replace_objects,
-    get_chunk_params,
 )
 from .operands import RemoteOperandMixin
 
@@ -185,17 +184,6 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
             for inp, is_pure_dep in zip(op.inputs, op.pure_depends)
             if not is_pure_dep
         }
-        for to_search in [op.function_args, op.function_kwargs]:
-            tileables = find_objects(to_search, TILEABLE_TYPE)
-            for tileable in tileables:
-                chunks = tileable.chunks
-                fields = get_chunk_params(chunks[0]).keys()
-                metas = ctx.get_chunks_meta(
-                    [chunk.key for chunk in chunks], fields=fields
-                )
-                for chunk, meta in zip(chunks, metas):
-                    chunk.params = {field: meta[field] for field in fields}
-                tileable.refresh_params()
 
         function = op.function
         function_args = replace_objects(op.function_args, mapping)
