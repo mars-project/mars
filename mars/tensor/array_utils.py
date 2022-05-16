@@ -21,7 +21,7 @@ from ..lib import sparse
 from ..lib.sparse.core import issparse, get_dense_module
 from ..utils import lazy_import
 
-cp = lazy_import("cupy", globals=globals(), rename="cp")
+cp = lazy_import("cupy", rename="cp")
 
 
 def is_array(x):

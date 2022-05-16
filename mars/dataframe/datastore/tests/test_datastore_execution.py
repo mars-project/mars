@@ -35,10 +35,6 @@ try:
     import fastparquet
 except ImportError:
     fastparquet = None
-try:
-    import vineyard
-except ImportError:
-    vineyard = None
 
 from .... import dataframe as md
 from ....tests.core import flaky

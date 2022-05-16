@@ -23,6 +23,7 @@ import uuid
 import numpy as np
 import pandas as pd
 import pytest
+import pytest_asyncio
 
 try:
     import vineyard
@@ -103,7 +104,7 @@ if vineyard is not None:
 
 
 @pytest.mark.parametrize(indirect=True)
-@pytest.fixture(params=params)
+@pytest_asyncio.fixture(params=params)
 async def create_cluster(request):
     if request.param == "default":
         config = CONFIG_TEST_FILE
@@ -569,7 +570,7 @@ def test_no_default_session():
 
 
 @pytest.mark.asyncio
-async def test_session_progress(create_cluster):
+async def test_session_set_progress(create_cluster):
     session = get_default_async_session()
     assert session.address is not None
     assert session.session_id is not None
@@ -584,6 +585,36 @@ async def test_session_progress(create_cluster):
     info = await session.execute(r)
 
     for _ in range(20):
+        if 0 < info.progress() < 1:
+            break
+        await asyncio.sleep(0.1)
+    else:
+        raise Exception(f"progress test failed, actual value {info.progress()}.")
+
+    await info
+    assert info.result() is None
+    assert info.exception() is None
+    assert info.progress() == 1
+
+
+@pytest.mark.asyncio
+async def test_session_get_progress(create_cluster):
+    session = get_default_async_session()
+    assert session.address is not None
+    assert session.session_id is not None
+
+    raw = np.random.rand(100, 4)
+    t = mt.tensor(raw, chunk_size=5)
+
+    def f1(c):
+        time.sleep(0.5)
+        return c
+
+    t1 = t.sum()
+    r = t1.map_chunk(f1)
+    info = await session.execute(r)
+
+    for _ in range(100):
         if 0 < info.progress() < 1:
             break
         await asyncio.sleep(0.1)
@@ -822,7 +853,7 @@ def test_show_progress_raise_exception(m_log):
 min_task_runtime = 2
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def speculative_cluster():
     config = _load_config()
     config["scheduling"]["speculation"]["enabled"] = True

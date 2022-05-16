@@ -20,7 +20,7 @@ from .....utils import lazy_import
 from .. import run_pytorch_script
 
 
-torch_installed = lazy_import("torch", globals=globals()) is not None
+torch_installed = lazy_import("torch") is not None
 
 
 @pytest.mark.skipif(not torch_installed, reason="pytorch not installed")

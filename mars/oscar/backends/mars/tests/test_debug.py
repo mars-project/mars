@@ -21,6 +21,7 @@ from io import StringIO
 from typing import List
 
 import pytest
+import pytest_asyncio
 
 from ..... import oscar as mo
 from ....debug import reload_debug_opts_from_env, get_debug_options
@@ -62,7 +63,7 @@ class DebugActor(mo.Actor):
         await self.ref().wait(1)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pool():
     start_method = (
         os.environ.get("POOL_START_METHOD", "forkserver")

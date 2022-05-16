@@ -58,7 +58,6 @@ from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
 
 from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     to_binary,
@@ -336,26 +335,65 @@ def lazy_import(
     globals: Dict = None,  # pylint: disable=redefined-builtin
     locals: Dict = None,  # pylint: disable=redefined-builtin
     rename: str = None,
+    placeholder: bool = False,
 ):
     rename = rename or name
     prefix_name = name.split(".", 1)[0]
+    globals = globals or inspect.currentframe().f_back.f_globals
 
     class LazyModule(object):
+        def __init__(self):
+            self._on_loads = []
+
         def __getattr__(self, item):
             if item.startswith("_pytest") or item in ("__bases__", "__test__"):
                 raise AttributeError(item)
 
             real_mod = importlib.import_module(name, package=package)
-            if globals is not None and rename in globals:
+            if rename in globals:
                 globals[rename] = real_mod
             elif locals is not None:
                 locals[rename] = real_mod
-            return getattr(real_mod, item)
+            ret = getattr(real_mod, item)
+            for on_load_func in self._on_loads:
+                on_load_func()
+            # make sure on_load hooks only executed once
+            self._on_loads = []
+            return ret
+
+        def add_load_handler(self, func: Callable):
+            self._on_loads.append(func)
+            return func
 
     if pkgutil.find_loader(prefix_name) is not None:
         return LazyModule()
+    elif placeholder:
+        return ModulePlaceholder(prefix_name)
     else:
         return None
+
+
+def lazy_import_on_load(lazy_mod):
+    def wrapper(fun):
+        if lazy_mod is not None and hasattr(lazy_mod, "add_load_handler"):
+            lazy_mod.add_load_handler(fun)
+        return fun
+
+    return wrapper
+
+
+class ModulePlaceholder:
+    def __init__(self, mod_name: str):
+        self._mod_name = mod_name
+
+    def _raises(self):
+        raise AttributeError(f"{self._mod_name} is required but not installed.")
+
+    def __getattr__(self, key):
+        self._raises()
+
+    def __call__(self, *_args, **_kwargs):
+        self._raises()
 
 
 def serialize_serializable(serializable, compress: bool = False):
@@ -388,8 +426,9 @@ def deserialize_serializable(ser_serializable: bytes):
 
 
 def register_ray_serializer(obj_type, serializer=None, deserializer=None):
-    ray = lazy_import("ray")
-    if ray:
+    try:
+        import ray
+
         try:
             ray.register_custom_serializer(
                 obj_type, serializer=serializer, deserializer=deserializer
@@ -407,6 +446,8 @@ def register_ray_serializer(obj_type, serializer=None, deserializer=None):
                 ray.util.register_serializer(
                     obj_type, serializer=serializer, deserializer=deserializer
                 )
+    except ImportError:
+        pass
 
 
 def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
@@ -609,6 +650,8 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
     -------
     Data
     """
+    from sklearn.base import BaseEstimator
+
     from .dataframe.utils import is_dataframe, is_index, is_series, get_xdf
     from .lib.groupby_wrapper import GroupByWrapper
     from .tensor.array_utils import get_array_module, is_array
@@ -1423,20 +1466,6 @@ def get_chunk_key_to_data_keys(chunk_graph):
                             keys.append(key)
             chunk_key_to_data_keys[chunk.key] = keys
     return chunk_key_to_data_keys
-
-
-class ModulePlaceholder:
-    def __init__(self, mod_name: str):
-        self._mod_name = mod_name
-
-    def _raises(self):
-        raise AttributeError(f"{self._mod_name} is required but not installed.")
-
-    def __getattr__(self, key):
-        self._raises()
-
-    def __call__(self, *_args, **_kwargs):
-        self._raises()
 
 
 def merge_dict(dest: Dict, src: Dict, path=None, overwrite=True):

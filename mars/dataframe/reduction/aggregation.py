@@ -46,8 +46,8 @@ from .core import (
     ReductionAggStep,
 )
 
-cp = lazy_import("cupy", globals=globals(), rename="cp")
-cudf = lazy_import("cudf", globals=globals())
+cp = lazy_import("cupy", rename="cp")
+cudf = lazy_import("cudf")
 
 _agg_size_as_series = pd_release_version >= (1, 3, 0)
 

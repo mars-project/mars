@@ -18,6 +18,7 @@ import sys
 import numpy as np
 import pandas as pd
 import pytest
+import pytest_asyncio
 
 from .... import oscar as mo
 from ....resource import Resource
@@ -31,7 +32,7 @@ from .. import StorageAPI
 _is_windows = sys.platform.lower().startswith("win")
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pools():
     async def start_pool():
         start_method = (
@@ -120,7 +121,7 @@ async def test_storage_service(actor_pools):
     )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pools_with_gpu():
     async def start_pool():
         start_method = (

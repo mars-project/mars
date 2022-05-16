@@ -34,7 +34,7 @@ from ...operands import DataFrameOperand, DataFrameOperandMixin
 from ...core import DATAFRAME_TYPE
 from ...utils import build_empty_df, build_empty_series, parse_index
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 _with_pandas_issue_38908 = pd_release_version == (1, 2, 0)
 
 

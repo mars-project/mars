@@ -43,7 +43,7 @@ from ..rebalance import DataFrameRebalance
 
 pytestmark = pytest.mark.pd_compat
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 _explode_with_ignore_index = pd_release_version[:2] >= (1, 1)
 
@@ -774,6 +774,7 @@ def test_isin_execution(setup):
     pd.testing.assert_frame_equal(result, expected)
 
 
+@pytest.mark.ray_dag
 def test_cut_execution(setup):
     session = setup
 

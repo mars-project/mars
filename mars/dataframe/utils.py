@@ -45,7 +45,7 @@ try:
 except ImportError:  # pragma: no cover
     pa = ModulePlaceholder("pyarrow")
 
-cudf = lazy_import("cudf", globals=globals(), rename="cudf")
+cudf = lazy_import("cudf", rename="cudf")
 
 
 def hash_index(index, size):
@@ -1086,7 +1086,7 @@ def standardize_range_index(chunks: List[ChunkType], axis: int = 0):
     for c in chunks:
         prev_chunks = row_chunks[: c.index[axis]]
         op = ChunkStandardizeRangeIndex(
-            prev_keys=[p.key for p in prev_chunks], axis=axis
+            prev_shapes=[p.shape for p in prev_chunks], axis=axis
         )
         op.output_types = c.op.output_types
         params = c.params.copy()

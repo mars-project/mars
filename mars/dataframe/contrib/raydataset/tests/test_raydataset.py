@@ -16,6 +16,7 @@ import os
 import numpy as np
 import pandas as pd
 import pytest
+import pytest_asyncio
 
 from ..... import dataframe as md
 from .....deploy.oscar.ray import new_cluster
@@ -28,18 +29,15 @@ from ....contrib import raydataset as mdd
 ray = lazy_import("ray")
 # Ray Datasets is available in early preview at ray.data with Ray 1.6+
 # (and ray.experimental.data in Ray 1.5)
-ray_dataset = lazy_import("ray.data")
-try:
-    import xgboost_ray
-except ImportError:  # pragma: no cover
-    xgboost_ray = None
+ray_dataset = lazy_import("ray.data", rename="ray_dataset")
+xgboost_ray = lazy_import("xgboost_ray")
 try:
     import sklearn
 except ImportError:  # pragma: no cover
     sklearn = None
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def create_cluster(request):
     client = await new_cluster(
         supervisor_mem=256 * 1024**2,

@@ -49,7 +49,7 @@ from .core import (
 )
 
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 
 def _find_delimiter(f, block_size=2**16):

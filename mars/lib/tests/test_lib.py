@@ -21,6 +21,7 @@ import numpy as np
 from ...tests.core import assert_groupby_equal
 from ...utils import calc_data_size, estimate_pandas_size
 from ..groupby_wrapper import wrapped_groupby
+from ..tbcode import load_traceback_code, dump_traceback_code
 
 
 def test_groupby_wrapper():
@@ -113,3 +114,20 @@ def test_groupby_wrapper():
     )
     assert grouped.shape == (8,)
     assert grouped.is_frame is False
+
+
+def test_traceback_code():
+    def get_tb():
+        try:
+            raise ValueError
+        except ValueError:
+            return sys.exc_info()[-1]
+
+    tb = get_tb()
+    frags = dump_traceback_code(tb)
+
+    target_dict = dict()
+    load_traceback_code(frags, target_dict)
+    code_lines = target_dict[__file__][2]
+    assert "raise" in code_lines[tb.tb_lineno - 1]
+    assert len([line for line in code_lines if line]) == 5

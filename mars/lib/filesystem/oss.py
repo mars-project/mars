@@ -15,16 +15,13 @@
 from typing import List, Dict, Tuple, Iterator
 from urllib import parse
 
+from ...utils import implements, lazy_import
 from ._oss_lib import common as oc
 from ._oss_lib.glob import glob
-from ._oss_lib.handle import OSSIOBase, dict_to_url
+from ._oss_lib.handle import OSSIOBase
 from .base import FileSystem, path_type
-from ...utils import implements, ModulePlaceholder
 
-try:
-    import oss2
-except ImportError:
-    oss2 = ModulePlaceholder("oss2")
+oss2 = lazy_import("oss2", placeholder=True)
 
 _oss_time_out = 10
 
@@ -150,7 +147,7 @@ def build_oss_path(path: path_type, access_key_id, access_key_secret, end_point)
     if isinstance(path, (list, tuple)):
         path = path[0]
     param_dict = {"access_key_id": access_key_id, "end_point": end_point}
-    id_endpoint = dict_to_url(param_dict)
+    id_endpoint = oc.dict_to_url(param_dict)
     password = access_key_secret
     parse_result = parse.urlparse(path)
     new_path = (

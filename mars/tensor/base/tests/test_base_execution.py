@@ -1755,6 +1755,7 @@ def test_trapz_execution(setup):
             np.testing.assert_almost_equal(result, expected)
 
 
+@pytest.mark.ray_dag
 def test_shape(setup):
     raw = np.random.RandomState(0).rand(4, 3)
     x = mt.tensor(raw, chunk_size=2)

@@ -22,7 +22,7 @@ from ...utils import lazy_import
 from ..utils import parse_index, build_empty_df, build_empty_series, validate_axis
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 
 class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):

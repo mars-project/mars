@@ -28,8 +28,8 @@ from .core import StorageFileObject
 import numpy as np
 import pandas as pd
 
-cupy = lazy_import("cupy", globals=globals())
-cudf = lazy_import("cudf", globals=globals())
+cupy = lazy_import("cupy")
+cudf = lazy_import("cudf")
 
 
 _id_to_buffers = dict()

@@ -14,6 +14,7 @@
 
 import asyncio
 import pytest
+import pytest_asyncio
 from collections import defaultdict
 from typing import Tuple, List
 from ..... import oscar as mo
@@ -147,7 +148,7 @@ class MockSubtaskManagerActor(mo.Actor):
         return self._submitted_subtask_ids
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pool():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 

@@ -42,7 +42,7 @@ from .datasource.from_tensor import (
 )
 from .utils import is_index, is_cudf
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 
 class InitializerMeta(SerializableMeta):

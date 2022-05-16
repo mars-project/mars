@@ -19,7 +19,7 @@ from typing import Dict, List
 ray = lazy_import("ray")
 # Ray Datasets is available in early preview at ray.data with Ray 1.6+
 # (and ray.experimental.data in Ray 1.5)
-ray_dataset = lazy_import("ray.data")
+ray_dataset = lazy_import("ray.data", rename="ray_dataset")
 
 
 def to_ray_dataset(df, num_shards: int = None):

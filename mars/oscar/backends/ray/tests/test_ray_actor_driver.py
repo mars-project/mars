@@ -16,6 +16,7 @@ import collections
 import os
 
 import pytest
+import pytest_asyncio
 
 from ..... import oscar as mo
 from .....tests.core import require_ray
@@ -52,7 +53,7 @@ class DummyActor(mo.Actor):
         return self._index
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def mars_cluster():
     mo.setup_cluster(address_to_resources=TEST_ADDRESS_TO_RESOURCES)
     main_pool_handles = []  # Hold actor_handle to avoid actor being freed.

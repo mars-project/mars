@@ -17,6 +17,7 @@ import uuid
 import sys
 
 import pytest
+import pytest_asyncio
 import numpy as np
 
 from ....deploy.oscar.local import new_cluster
@@ -28,7 +29,7 @@ from ..utils import normalize_timestamp
 _is_windows = sys.platform.lower().startswith("win")
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def create_cluster():
     client = await new_cluster(n_worker=2, n_cpu=2, web=True)
     async with client:

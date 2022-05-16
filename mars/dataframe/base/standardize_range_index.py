@@ -22,21 +22,20 @@ from ...serialization.serializables import Int32Field, ListField, FieldTypes
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 
 
-cudf = lazy_import("cudf", globals=globals())
+cudf = lazy_import("cudf")
 
 
 class ChunkStandardizeRangeIndex(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.STANDARDIZE_RANGE_INDEX
 
     axis = Int32Field("axis")
-    prev_keys = ListField("prev_keys", FieldTypes.string)
+    prev_shapes = ListField("prev_shapes", FieldTypes.tuple)
 
     @classmethod
     def execute(cls, ctx, op: "ChunkStandardizeRangeIndex"):
         xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key].copy()
-        metas = ctx.get_chunks_meta(op.prev_keys, fields=["shape"])
-        index_start = sum([m["shape"][op.axis] for m in metas])
+        index_start = sum([shape[op.axis] for shape in op.prev_shapes])
         if op.axis == 0:
             in_data.index = xdf.RangeIndex(index_start, index_start + len(in_data))
         else:

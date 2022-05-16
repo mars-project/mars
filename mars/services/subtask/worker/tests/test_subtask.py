@@ -19,6 +19,7 @@ import time
 
 import numpy as np
 import pytest
+import pytest_asyncio
 
 from ..... import oscar as mo
 from ..... import tensor as mt
@@ -48,7 +49,7 @@ class FakeTaskManager(TaskManagerActor):
         return
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pool():
     start_method = (
         os.environ.get("POOL_START_METHOD", "forkserver")

@@ -19,6 +19,7 @@ import time
 from typing import Union
 
 import pytest
+import pytest_asyncio
 
 from ..... import oscar as mo
 from .....tests.core import mock
@@ -36,7 +37,7 @@ class MockBandSlotManagerActor(mo.Actor):
         self._restart_record = True
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def actor_pool():
     start_method = (
         os.environ.get("POOL_START_METHOD", "fork") if sys.platform != "win32" else None

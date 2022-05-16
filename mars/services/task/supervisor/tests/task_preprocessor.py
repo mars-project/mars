@@ -51,6 +51,9 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
         for key in _check_args:
             check_options[key] = kwargs.get(key, True)
         self._check_options = check_options
+        self._check_duplicated_operand_keys = bool(
+            kwargs.get("check_duplicated_operand_keys")
+        )
 
     def _get_done(self):
         return super()._get_done()
@@ -145,6 +148,13 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
         stage_id: str,
         op_to_bands: Dict[str, BandType] = None,
     ) -> SubtaskGraph:
+        # check if duplicated operand keys exist
+        if self._check_duplicated_operand_keys and len(
+            {c.key for c in chunk_graph}
+        ) < len(
+            chunk_graph
+        ):  # pragma: no cover
+            raise AssertionError("Duplicated operands exist")
         # record shapes generated in tile
         for n in chunk_graph:
             self._raw_chunk_shapes[n.key] = getattr(n, "shape", None)
