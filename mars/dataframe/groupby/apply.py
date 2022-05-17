@@ -65,7 +65,7 @@ class GroupByApply(
     @classmethod
     @redirect_custom_log
     @enter_current_session
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "GroupByApply"):
         in_data = ctx[op.inputs[0].key]
         out = op.outputs[0]
         if not in_data:
@@ -101,7 +101,7 @@ class GroupByApply(
         ctx[out.key] = applied
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "GroupByApply"):
         in_groupby = op.inputs[0]
         out_df = op.outputs[0]
 

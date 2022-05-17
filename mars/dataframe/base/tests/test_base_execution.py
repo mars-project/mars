@@ -38,6 +38,7 @@ from ...datasource.series import from_pandas as from_pandas_series
 from ...datasource.index import from_pandas as from_pandas_index
 from .. import to_gpu, to_cpu
 from ..bloom_filter import filter_by_bloom_filter
+from ..shift import _with_column_freq_bug
 from ..to_numeric import to_numeric
 from ..rebalance import DataFrameRebalance
 
@@ -46,6 +47,7 @@ pytestmark = pytest.mark.pd_compat
 cudf = lazy_import("cudf")
 
 _explode_with_ignore_index = pd_release_version[:2] >= (1, 1)
+_interval_range_inclusive_arg = pd_release_version[:2] >= (1, 5)
 
 
 @require_cudf
@@ -785,7 +787,10 @@ def test_cut_execution(setup):
     raw = rs.random(15) * 1000
     s = pd.Series(raw, index=[f"i{i}" for i in range(15)])
     bins = [10, 100, 500]
-    ii = pd.interval_range(10, 500, 3)
+    if _interval_range_inclusive_arg:
+        ii = pd.interval_range(10, 500, 3, inclusive="right")
+    else:
+        ii = pd.interval_range(10, 500, 3)
     labels = ["a", "b"]
 
     t = tensor(raw, chunk_size=4)
@@ -1137,7 +1142,7 @@ def test_shift_execution(setup):
 
     for periods in (2, -2, 6, -6):
         for axis in (0, 1):
-            for fill_value in (None, 0, 1.0):
+            for fill_value in (no_default, 0, 1.0):
                 r = df.shift(periods=periods, axis=axis, fill_value=fill_value)
 
                 try:
@@ -1161,6 +1166,9 @@ def test_shift_execution(setup):
     for periods in (2, -2):
         for axis in (0, 1):
             for fill_value in (no_default, 0, 1.0):
+                if _with_column_freq_bug:
+                    fill_value = None
+
                 r = df2.shift(
                     periods=periods, freq="D", axis=axis, fill_value=fill_value
                 )

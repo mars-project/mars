@@ -44,35 +44,20 @@ cudf = lazy_import("cudf")
 class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY
 
-    _by = AnyField("by", on_serialize=lambda x: x.data if isinstance(x, Entity) else x)
-    _level = AnyField("level")
-    _as_index = BoolField("as_index")
-    _sort = BoolField("sort")
-    _group_keys = BoolField("group_keys")
+    by = AnyField(
+        "by",
+        on_serialize=lambda x: x.data if isinstance(x, Entity) else x,
+        default=None,
+    )
+    level = AnyField("level", default=None)
+    as_index = BoolField("as_index", default=None)
+    sort = BoolField("sort", default=None)
+    group_keys = BoolField("group_keys", default=None)
 
-    _shuffle_size = Int32Field("shuffle_size")
+    shuffle_size = Int32Field("shuffle_size", default=None)
 
-    def __init__(
-        self,
-        by=None,
-        level=None,
-        as_index=None,
-        sort=None,
-        group_keys=None,
-        shuffle_size=None,
-        output_types=None,
-        **kw
-    ):
-        super().__init__(
-            _by=by,
-            _level=level,
-            _as_index=as_index,
-            _sort=sort,
-            _group_keys=group_keys,
-            _shuffle_size=shuffle_size,
-            _output_types=output_types,
-            **kw
-        )
+    def __init__(self, output_types=None, **kw):
+        super().__init__(_output_types=output_types, **kw)
         if output_types:
             if self.stage in (OperandStage.map, OperandStage.reduce):
                 if output_types[0] in (
@@ -91,30 +76,6 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
                 elif output_types[0] == OutputType.series:
                     output_types = [OutputType.series_groupby]
             self.output_types = output_types
-
-    @property
-    def by(self):
-        return self._by
-
-    @property
-    def level(self):
-        return self._level
-
-    @property
-    def as_index(self):
-        return self._as_index
-
-    @property
-    def sort(self):
-        return self._sort
-
-    @property
-    def group_keys(self):
-        return self._group_keys
-
-    @property
-    def shuffle_size(self):
-        return self._shuffle_size
 
     @property
     def is_dataframe_obj(self):
@@ -174,12 +135,12 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
         inputs_iter = iter(self._inputs[1:])
         if len(inputs) > 1:
             by = []
-            for k in self._by:
+            for k in self.by:
                 if isinstance(k, (SERIES_TYPE, SERIES_CHUNK_TYPE)):
                     by.append(next(inputs_iter))
                 else:
                     by.append(k)
-            self._by = by
+            self.by = by
 
     def __call__(self, df):
         params = df.params.copy()
@@ -232,7 +193,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
         return inp, by
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "DataFrameGroupByOperand"):
         in_df = op.inputs[0]
         by = op.by
 
@@ -267,7 +228,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
         for chunk in in_df.chunks:
             map_op = op.copy().reset_key()
             map_op.stage = OperandStage.map
-            map_op._shuffle_size = chunk_shape[0]
+            map_op.shuffle_size = chunk_shape[0]
             map_op._output_types = [output_type]
             chunk_inputs = [chunk]
             if len(op.inputs) > 1:
@@ -281,7 +242,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
                         chunk_inputs.append(by_chunk)
                     else:
                         chunk_by.append(k)
-                map_op._by = chunk_by
+                map_op.by = chunk_by
             map_chunks.append(
                 map_op.new_chunk(
                     chunk_inputs, shape=(np.nan, np.nan), index=chunk.index
@@ -297,7 +258,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
         out_indices = list(itertools.product(*(range(s) for s in chunk_shape)))
         for ordinal, out_idx in enumerate(out_indices):
             reduce_op = op.copy().reset_key()
-            reduce_op._by = None
+            reduce_op.by = None
             reduce_op._output_types = [output_type]
             reduce_op.stage = OperandStage.reduce
             reduce_op.reducer_ordinal = ordinal
@@ -314,7 +275,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
             groupby_op = op.copy().reset_key()
             if series_in_by:
                 # set by to None, cuz data of by will be passed from map to reduce to groupby
-                groupby_op._by = None
+                groupby_op.by = None
             if is_dataframe_obj:
                 new_shape = (np.nan, in_df.shape[1])
             else:
@@ -348,7 +309,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
         return new_op.new_tileables(new_inputs, **params)
 
     @classmethod
-    def execute_map(cls, ctx, op):
+    def execute_map(cls, ctx, op: "DataFrameGroupByOperand"):
         is_dataframe_obj = op.is_dataframe_obj
         by = op.by
         chunk = op.outputs[0]

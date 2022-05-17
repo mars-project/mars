@@ -522,9 +522,7 @@ def test_read_csv_execution(setup):
         pd.testing.assert_frame_equal(pdf, result)
 
         # dtypes is inferred as expected
-        pd.testing.assert_series_equal(
-            mdf.dtypes, pd.Series(["float64", "object", "int64"], index=df.columns)
-        )
+        pd.testing.assert_series_equal(mdf.dtypes, df.dtypes)
 
     # test compression
     with tempfile.TemporaryDirectory() as tempdir:

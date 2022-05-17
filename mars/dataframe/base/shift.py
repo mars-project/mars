@@ -24,6 +24,7 @@ from ..utils import parse_index, build_df, build_series, validate_axis
 
 _need_consolidate = pd.__version__ in ("1.1.0", "1.3.0", "1.3.1")
 _enable_no_default = pd_release_version[:2] > (1, 1)
+_with_column_freq_bug = pd_release_version[:2] >= (1, 2)
 
 
 class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
@@ -341,9 +342,6 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
             # thus we force to do consolidate
             obj._data._consolidate_inplace()
 
-        if not _enable_no_default and op.fill_value is no_default:
-            op.fill_value = None
-
         result = obj.shift(
             periods=periods, freq=op.freq, axis=axis, fill_value=op.fill_value
         )
@@ -435,14 +433,13 @@ def shift(df_or_series, periods=1, freq=None, axis=0, fill_value=no_default):
     axis = validate_axis(axis, df_or_series)
     if periods == 0:
         return df_or_series.copy()
-    if (
-        freq is not None
-        and axis == 1
-        and (fill_value is None or fill_value is no_default)
-    ):
-        # pandas shows strange behavior for axis=1 as is described
-        # in https://github.com/pandas-dev/pandas/issues/47039
-        freq = None
+    if fill_value is no_default:
+        if not _enable_no_default or (
+            _with_column_freq_bug and axis == 1 and freq is not None
+        ):
+            # pandas shift shows different behavior for axis=1 when freq is specified,
+            # see https://github.com/pandas-dev/pandas/issues/47039 for details.
+            fill_value = None
 
     op = DataFrameShift(periods=periods, freq=freq, axis=axis, fill_value=fill_value)
     return op(df_or_series)
