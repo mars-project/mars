@@ -15,8 +15,12 @@
 import copy
 import os
 
+import numpy as np
+import pandas as pd
 import pytest
 
+from .... import tensor as mt
+from .... import dataframe as md
 from ....tests.core import DICT_NOT_EMPTY, require_ray
 from ....utils import lazy_import
 from ..local import new_cluster
@@ -122,3 +126,22 @@ def test_sync_execute(config):
 @pytest.mark.asyncio
 async def test_session_get_progress(ray_start_regular_shared2, create_cluster):
     await test_local.test_session_get_progress(create_cluster)
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_shuffle(ray_start_regular_shared2, create_cluster):
+    df = md.DataFrame(mt.random.rand(300, 4, chunk_size=100), columns=list("abcd"))
+    # `describe` contains multiple shuffle.
+    df.describe().execute()
+
+    arr = np.random.RandomState(0).rand(31, 27)
+    t1 = mt.tensor(arr, chunk_size=10).reshape(27, 31)
+    t1.op.extra_params["_reshape_with_shuffle"] = True
+    np.testing.assert_almost_equal(arr.reshape(27, 31), t1.to_numpy())
+
+    np.testing.assert_equal(mt.bincount(mt.arange(5, 10)).to_numpy(), np.bincount(np.arange(5, 10)))
+
+    # `RayExecutionContext.get_chunk_meta` not supported, skip dataframe.groupby
+    # df["a"], df["b"] = (df["a"] * 5).astype(int), (df["b"] * 2).astype(int)
+    # df.groupby(["a", "b"]).apply(lambda pdf: pdf.sum()).execute()
