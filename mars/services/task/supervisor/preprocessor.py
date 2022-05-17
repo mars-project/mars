@@ -22,6 +22,7 @@ from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, TileContext
 from ....core.graph.builder.chunk import Tiler, _TileableHandler
 from ....core.operand import Fetch
+from ....core.operand.shuffle import ShuffleType
 from ....resource import Resource
 from ....typing import BandType, TileableType, ChunkType
 from ...subtask import Subtask, SubtaskGraph
@@ -211,6 +212,7 @@ class TaskPreprocessor:
         available_bands: Dict[BandType, Resource],
         stage_id: str = None,
         op_to_bands: Dict[str, BandType] = None,
+        shuffle_type: ShuffleType = None,
     ) -> SubtaskGraph:
         logger.debug("Start to gen subtask graph for task %s", self._task.task_id)
         task = self._task
@@ -221,6 +223,7 @@ class TaskPreprocessor:
             self._config,
             chunk_to_subtasks,
             stage_id=stage_id,
+            shuffle_type=shuffle_type,
         )
         graph = analyzer.gen_subtask_graph(op_to_bands)
         logger.debug(

@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Type, Union
 
 from ....core import ChunkGraph, Chunk, TileContext
+from ....core.operand.shuffle import ShuffleType
 from ....resource import Resource
 from ....typing import BandType
 from ....utils import merge_dict
@@ -38,9 +39,9 @@ class ExecutionConfig:
 
     name = None
 
-    def __init__(self, execution_config: Dict):
+    def __init__(self, config: Dict):
         """
-        An example of execution_config:
+        An example of config:
         {
             "backend": "mars",
             "mars": {
@@ -50,29 +51,33 @@ class ExecutionConfig:
             },
         }
         """
-        self._execution_config = execution_config
+        self._config = config
 
     def merge_from(self, execution_config: "ExecutionConfig") -> "ExecutionConfig":
         assert isinstance(execution_config, ExecutionConfig)
         assert self.backend == execution_config.backend
         merge_dict(
-            self._execution_config,
-            execution_config.get_execution_config(),
+            self._config,
+            execution_config.get_config_dict(),
         )
         return self
 
     @property
     def backend(self) -> str:
         """The backend from config."""
-        return self._execution_config["backend"]
+        return self._config["backend"]
 
-    def get_execution_config(self) -> Dict:
+    def get_config_dict(self) -> Dict:
         """Get the execution config dict."""
-        return self._execution_config
+        return self._config
 
     @abstractmethod
     def get_deploy_band_resources(self) -> List[Dict[str, Resource]]:
         """Get the band resources for deployment."""
+
+    @abstractmethod
+    def get_shuffle_type(self) -> ShuffleType:
+        """Get shuffle type for shuffle execution"""
 
     @classmethod
     def from_config(cls, config: Dict, backend: str = None) -> "ExecutionConfig":
@@ -164,6 +169,10 @@ class TaskExecutor(ABC):
             tile_context=tile_context,
             **kwargs,
         )
+
+    @abstractmethod
+    def get_execution_config(self) -> ExecutionConfig:
+        """Return execution config."""
 
     async def __aenter__(self):
         """Called when begin to execute the task."""

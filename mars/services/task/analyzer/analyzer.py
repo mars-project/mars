@@ -49,6 +49,7 @@ class GraphAnalyzer:
         chunk_to_subtasks: Dict[ChunkType, Subtask],
         graph_assigner_cls: Type[AbstractGraphAssigner] = None,
         stage_id: str = None,
+        shuffle_type: ShuffleType = ShuffleType.PULL,
     ):
         self._chunk_graph = chunk_graph
         self._final_result_chunks_set = set(self._chunk_graph.result_chunks)
@@ -56,7 +57,7 @@ class GraphAnalyzer:
         self._task = task
         self._stage_id = stage_id
         self._config = config
-        self._shuffle_type = getattr(self._config, "shuffle_type", ShuffleType.PULL)
+        self._shuffle_type = shuffle_type
         self._has_shuffle = any(
             isinstance(c.op, MapReduceOperand) for c in self._chunk_graph
         )

@@ -152,9 +152,7 @@ class LocalCluster:
         self._mem_bytes = mem_total() if mem_bytes == "auto" else mem_bytes
         self._cuda_devices = self._get_cuda_devices(cuda_devices, n_worker)
         self._subprocess_start_method = subprocess_start_method
-        self._config = load_config(
-            config, default_config_file=DEFAULT_CONFIG_FILE, backend=backend
-        )
+        self._config = load_config(config, default_config_file=DEFAULT_CONFIG_FILE)
         execution_config = ExecutionConfig.from_config(self._config, backend=backend)
         self._backend = execution_config.backend
         self._web = web

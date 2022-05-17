@@ -270,6 +270,9 @@ class RayTaskExecutor(TaskExecutor):
             MetaAPI.create(session_id, address),
         )
 
+    def get_execution_config(self):
+        return self._config
+
     @staticmethod
     @functools.lru_cache(maxsize=1)
     def _get_ray_executor():

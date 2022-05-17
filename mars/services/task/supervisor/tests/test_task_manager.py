@@ -83,7 +83,7 @@ async def actor_pool(request):
         await mo.create_actor(
             TaskConfigurationActor,
             dict(),
-            config.get_execution_config(),
+            config.get_config_dict(),
             uid=TaskConfigurationActor.default_uid(),
             address=pool.external_address,
         )

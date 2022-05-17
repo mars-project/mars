@@ -118,7 +118,7 @@ class MarsTaskExecutor(TaskExecutor):
             session_id, address
         )
         resource_evaluator = await ResourceEvaluator.create(
-            config.get_execution_config(),
+            config.get_config_dict(),
             session_id=task.session_id,
             task_id=task.task_id,
             cluster_api=cluster_api,
@@ -134,6 +134,9 @@ class MarsTaskExecutor(TaskExecutor):
             meta_api,
             resource_evaluator,
         )
+
+    def get_execution_config(self):
+        return self._config
 
     @classmethod
     @alru_cache(cache_exceptions=False)
