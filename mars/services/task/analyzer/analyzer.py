@@ -440,24 +440,8 @@ class GraphAnalyzer:
                 chunk_to_subtask[c] = subtask
             visited.update(same_color_chunks)
 
-        if self._shuffle_type == ShuffleType.PUSH:
-            self.validate_shuffle(proxy_chunks, proxy_subtasks, subtask_graph)
-
         for subtasks in logic_key_to_subtasks.values():
             for logic_index, subtask in enumerate(subtasks):
                 subtask.logic_index = logic_index
                 subtask.logic_parallelism = len(subtasks)
         return subtask_graph
-
-    def validate_shuffle(self, proxy_chunks, proxy_subtasks, subtask_graph):
-        for proxy_chunk, proxy_subtask in zip(proxy_chunks, proxy_subtasks):
-            mapper_subtasks = subtask_graph.predecessors(proxy_subtask)
-            mapper_chunks = self._chunk_graph.predecessors(proxy_chunk)
-            raw_chunk_keys = []
-            for subtask in mapper_subtasks:
-                assert len(subtask.chunk_graph.results) == 1
-                raw_chunk_keys.append(subtask.chunk_graph.results[0].key)
-            new_chunk_keys = [c.key for c in mapper_chunks]
-            assert (
-                raw_chunk_keys == new_chunk_keys
-            ), f"mappers order not consistent: {raw_chunk_keys} {new_chunk_keys}"

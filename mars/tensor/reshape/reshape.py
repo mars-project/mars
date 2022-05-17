@@ -466,9 +466,9 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
         for target_chunk_idx in itertools.product(
             *[range(dim_chunk_cnt) for dim_chunk_cnt in dim_chunk_counts]
         ):
-            ctx[chunk.key, tuple(target_chunk_idx)] = mapper_outputs.get(
-                (chunk.key, tuple(target_chunk_idx))
-            )
+            data_key = chunk.key, tuple(target_chunk_idx)
+            ctx[data_key] = mapper_outputs.get(data_key)
+        assert np.prod(dim_chunk_counts) == len(ctx) - 1
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "TensorReshape"):

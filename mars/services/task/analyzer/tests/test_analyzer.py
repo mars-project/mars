@@ -18,28 +18,59 @@ from ..... import dataframe as md
 from ..... import tensor as mt
 from .....config import Config
 from .....core import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-from .....core.operand.shuffle import ShuffleType
+from .....core.operand.fetch import PushShuffle
+from .....core.operand.shuffle import ShuffleType, ShuffleProxy
 from .....resource import Resource
 from ...core import Task
 from ..analyzer import GraphAnalyzer
 
 
 t1 = mt.random.RandomState(0).rand(31, 27, chunk_size=10)
+t2 = t1.reshape(27, 31)
+t2.op.extra_params["_reshape_with_shuffle"] = True
 df1 = md.DataFrame(t1, columns=[f"c{i}" for i in range(t1.shape[1])])
-df2 = df1.groupby("c1").apply(lambda pdf: None)
 
 
-@pytest.mark.parametrize(
-    "tileable", [df2, df1.describe(), t1.reshape(27, 31), mt.bincount(mt.arange(5, 10))]
-)
+@pytest.mark.parametrize("tileable", [df1.describe(), t1.reshape(27, 31)])
 @pytest.mark.parametrize("fuse", [True, False])
 def test_shuffle_graph(tileable, fuse):
-    tileable_graph = next(TileableGraphBuilder(TileableGraph([tileable])).build())
-    chunk_graph = next(ChunkGraphBuilder(tileable_graph).build())
-    all_bands = [(f"address_{i}", "numa-0") for i in range(5)]
-    band_resource = dict((band, Resource(num_cpus=1)) for band in all_bands)
-    task = Task("mock_task", "mock_session", fuse_enabled=fuse)
-    config = Config()
-    config.register_option("shuffle_type", ShuffleType.PUSH)
-    analyzer = GraphAnalyzer(chunk_graph, band_resource, task, config, dict())
-    analyzer.gen_subtask_graph()
+    # can't test df.groupby and mt.bincount, those chunk graph build depend on ctx.get_chunks_meta/get_chunks_result
+    [tileable_graph] = list(TileableGraphBuilder(TileableGraph([tileable])).build())
+    chunk_graphs = list(ChunkGraphBuilder(tileable_graph).build())
+    for chunk_graph in chunk_graphs:
+        if len(chunk_graph) == 0:
+            continue
+        all_bands = [(f"address_{i}", "numa-0") for i in range(5)]
+        band_resource = dict((band, Resource(num_cpus=1)) for band in all_bands)
+        task = Task("mock_task", "mock_session", fuse_enabled=fuse)
+        config = Config()
+        config.register_option("shuffle_type", ShuffleType.PUSH)
+        analyzer = GraphAnalyzer(chunk_graph, band_resource, task, config, dict())
+        subtask_graph = analyzer.gen_subtask_graph()
+        proxy_subtasks = []
+        for subtask in subtask_graph:
+            for c in subtask.chunk_graph.results:
+                if isinstance(c.op, ShuffleProxy):
+                    assert len(subtask.chunk_graph.results) == 1
+                    proxy_subtasks.append(subtask)
+        proxy_chunks = [
+            c
+            for subtask in proxy_subtasks
+            for c in chunk_graph
+            if subtask.chunk_graph.results[0].key == c.key
+        ]
+        assert len(proxy_subtasks) == len(proxy_chunks)
+        assert len(proxy_subtasks) > 0
+        for proxy_chunk, proxy_subtask in zip(proxy_chunks, proxy_subtasks):
+            reducer_subtasks = subtask_graph.successors(proxy_subtask)
+            for reducer_subtask in reducer_subtasks:
+                start_chunks = list(reducer_subtask.chunk_graph.iter_indep())
+                assert len(start_chunks) == 1
+                assert isinstance(start_chunks[0].op, PushShuffle)
+            reducer_chunks = chunk_graph.successors(proxy_chunk)
+            assert len(reducer_subtasks) == len(reducer_chunks)
+            mapper_subtasks = subtask_graph.predecessors(proxy_subtask)
+            for mapper_subtask in mapper_subtasks:
+                assert len(mapper_subtask.chunk_graph.results) == 1
+            mapper_chunks = chunk_graph.predecessors(proxy_chunk)
+            assert len(mapper_subtasks) == len(mapper_chunks)

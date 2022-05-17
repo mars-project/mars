@@ -16,6 +16,7 @@ from enum import Enum
 from typing import Iterable, List, Optional, Set, Tuple
 
 from ...core import ChunkGraph, DAG, ChunkData
+from ...core.operand.fetch import PushShuffle
 from ...resource import Resource
 from ...serialization.serializables.field_type import TupleType
 from ...serialization.serializables import (
@@ -197,6 +198,6 @@ class SubtaskGraph(DAG, Iterable[Subtask]):
         from ...core.operand import Fetch, FetchShuffle
 
         for node in node.chunk_graph:
-            if isinstance(node.op, (Fetch, FetchShuffle)):
+            if isinstance(node.op, (Fetch, FetchShuffle, PushShuffle)):
                 continue
             yield node.op
