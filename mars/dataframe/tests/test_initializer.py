@@ -24,24 +24,6 @@ cupy = lazy_import("cupy")
 cudf = lazy_import("cudf")
 
 
-def test_simple_tensor(setup):
-    t1 = mt.random.randint(10, size=(100, 10), chunk_size=50)
-    t2 = t1.sum(0)
-    r = t2.execute()
-    print("result: ", r)
-
-
-def test_simple_dataframe_join(setup):
-    df1 = md.DataFrame(np.random.randint(0, 3, size=(10, 4)),
-                       columns=list('ABCD'), chunk_size=5)
-    df2 = md.DataFrame(np.random.randint(0, 3, size=(10, 4)),
-                       columns=list('ABCD'), chunk_size=5)
-
-    r = md.merge(df1, df2, on='A').execute()
-    print("shape:\n", r.shape)
-    print("result:\n", r)
-
-
 def test_dataframe_initializer(setup):
     # from tensor
     raw = np.random.rand(100, 10)
