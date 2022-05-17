@@ -22,6 +22,7 @@ from ....utils import lazy_import
 from ..local import new_cluster
 from ..session import new_session
 from ..tests import test_local
+from ..tests.test_local import _cancel_when_tile, _cancel_when_execute
 from ..tests.session import new_test_session
 from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
@@ -125,6 +126,6 @@ async def test_session_get_progress(ray_start_regular_shared2, create_cluster):
 
 
 @require_ray
-@pytest.mark.parametrize("config", [{"backend": "ray"}])
-def test_simple_execute(config):
-    test_local.test_simple_execute(config)
+@pytest.mark.parametrize("test_func", [_cancel_when_execute, _cancel_when_tile])
+def test_cancel(ray_start_regular_shared2, create_cluster, test_func):
+    test_local.test_cancel(create_cluster, test_func)

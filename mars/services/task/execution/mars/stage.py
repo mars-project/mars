@@ -17,6 +17,7 @@ import itertools
 import logging
 import time
 from collections import defaultdict
+from datetime import datetime
 from typing import Dict, List
 
 from ..... import oscar as mo
@@ -244,11 +245,17 @@ class TaskStageProcessor:
 
     async def cancel(self):
         logger.info("Start to cancel stage %s of task %s.", self.stage_id, self.task)
+        print(
+            f">>> {datetime.now().isoformat()} Start to cancel stage: {self.stage_id}"
+        )
         if self._done.is_set():  # pragma: no cover
             # already finished, ignore cancel
             return
         self._cancelled.set()
         # cancel running subtasks
+        print(
+            f">>> {datetime.now().isoformat()} Cancelled subtasks: {len(list(self._submitted_subtask_ids))}"
+        )
         await self._scheduling_api.cancel_subtasks(list(self._submitted_subtask_ids))
         self._done.set()
 

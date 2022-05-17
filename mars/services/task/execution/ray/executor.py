@@ -73,6 +73,20 @@ def _optimize_subtask_graph(subtask_graph):
     return _optimize_physical(subtask_graph)
 
 
+async def _cancel_ray_task(obj_ref, kill_timeout: int = 3):
+    ray.cancel(obj_ref, force=False)
+    try:
+        await asyncio.to_thread(ray.get, obj_ref, timeout=kill_timeout)
+    except ray.exceptions.TaskCancelledError:
+        logger.info("Cancel ray task %s successfully.", obj_ref)
+    except BaseException as e:
+        logger.info(
+            "Failed to cancel ray task %s, try to force cancel the task by kill the actor.",
+            obj_ref,
+        )
+        ray.cancel(obj_ref, force=True)
+
+
 def execute_subtask(
     task_id: str,
     subtask_id: str,
@@ -82,13 +96,8 @@ def execute_subtask(
     *inputs,
 ):
     logger.info("Begin to execute subtask: %s", subtask_id)
-    print(">>> Begin to execute a subtask: ", subtask_id)
-    print("output_meta_keys: ", output_meta_keys)
-    print("input_keys: ", inputs)
-    print("inputs: ", inputs)
     ensure_coverage()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
-    print("subtask_chunk_graph: ", subtask_chunk_graph.to_dot())
     # inputs = [i[1] for i in inputs]
     context = RayExecutionWorkerContext(
         RayTaskState.gen_name(task_id), zip(input_keys, inputs)
@@ -103,7 +112,6 @@ def execute_subtask(
     output = {
         key: data for key, data, _ in iter_output_data(subtask_chunk_graph, context)
     }
-    print("output: ", output)
     output_values = []
     if output_meta_keys:
         output_meta = {}
@@ -117,7 +125,6 @@ def execute_subtask(
         output_values.append(output_meta)
     output_values.extend(output.values())
 
-    print("output values: ", output_values)
     logger.info("Finish executing subtask: %s", subtask_id)
     return output_values[0] if len(output_values) == 1 else output_values
 
@@ -155,6 +162,8 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_tile_progress = 0
         self._cur_stage_output_object_refs = []
         self._output_object_refs_nums = []
+        # For meta and data gc
+        self._cancelled = False
 
     @classmethod
     async def create(
@@ -372,11 +381,17 @@ class RayTaskExecutor(TaskExecutor):
         """Cancel execution."""
         subtask_num = len(self._output_object_refs_nums)
         if subtask_num > 0:
+            self._cancelled = True
             pos = 0
             for i in range(0, subtask_num):
                 if i > 0:
                     pos += self._output_object_refs_nums[i - 1]
-                ray.cancel(self._cur_stage_output_object_refs[pos], force=True)
+                await _cancel_ray_task(
+                    self._cur_stage_output_object_refs[pos],
+                    self._config.get_execution_config()
+                    .get("ray", {})
+                    .get("subtask_cancel_timeout", 3),
+                )
 
     async def _load_subtask_inputs(
         self, stage_id: str, subtask: Subtask, chunk_graph: ChunkGraph, context: Dict
