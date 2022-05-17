@@ -81,7 +81,8 @@ async def _cancel_ray_task(obj_ref, kill_timeout: int = 3):
         logger.info("Cancel ray task %s successfully.", obj_ref)
     except BaseException as e:
         logger.info(
-            "Failed to cancel ray task %s, try to force cancel the task by kill the actor.",
+            "Failed to cancel ray task %s with exception %s, try to force cancel the task by kill the actor.",
+            e,
             obj_ref,
         )
         ray.cancel(obj_ref, force=True)
