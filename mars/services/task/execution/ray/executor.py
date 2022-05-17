@@ -89,7 +89,7 @@ def execute_subtask(
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     subtask_digraph = subtask_chunk_graph.to_dot()
     logger.info(
-        "Begin to execute subtask %s", subtask_id, subtask_digraph
+        "Begin to execute subtask %s with graph %s.", subtask_id, subtask_digraph
     )
     # optimize chunk graph.
     subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)

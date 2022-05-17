@@ -140,7 +140,9 @@ async def test_shuffle(ray_start_regular_shared2, create_cluster):
     t1.op.extra_params["_reshape_with_shuffle"] = True
     np.testing.assert_almost_equal(arr.reshape(27, 31), t1.to_numpy())
 
-    np.testing.assert_equal(mt.bincount(mt.arange(5, 10)).to_numpy(), np.bincount(np.arange(5, 10)))
+    np.testing.assert_equal(
+        mt.bincount(mt.arange(5, 10)).to_numpy(), np.bincount(np.arange(5, 10))
+    )
 
     # `RayExecutionContext.get_chunk_meta` not supported, skip dataframe.groupby
     # df["a"], df["b"] = (df["a"] * 5).astype(int), (df["b"] * 2).astype(int)
