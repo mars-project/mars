@@ -21,79 +21,31 @@ from ... import opcodes
 from ...core import OutputType, recursive_tile
 from ...config import options
 from ...serialization.serializables import AnyField, BoolField, StringField, Int32Field
+from ...utils import no_default, pd_release_version
 from ..align import align_dataframe_series
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, validate_axis
+
+_drop_na_enable_no_default = pd_release_version[:2] >= (1, 5)
 
 
 class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.DROP_NA
 
-    _axis = AnyField("axis")
-    _how = StringField("how")
-    _thresh = Int32Field("thresh")
-    _subset = AnyField("subset")
-    _use_inf_as_na = BoolField("use_inf_as_na")
+    axis = AnyField("axis", default=None)
+    how = AnyField("how", default=None)
+    thresh = AnyField("thresh", default=None)
+    subset = AnyField("subset", default=None)
+    use_inf_as_na = BoolField("use_inf_as_na", default=None)
 
     # when True, dropna will be called on the input,
     # otherwise non-nan counts will be used
-    _drop_directly = BoolField("drop_directly")
+    drop_directly = BoolField("drop_directly", default=None)
     # size of subset, used when how == 'any'
-    _subset_size = Int32Field("subset_size")
+    subset_size = Int32Field("subset_size", default=None)
 
-    def __init__(
-        self,
-        axis=None,
-        how=None,
-        thresh=None,
-        subset=None,
-        use_inf_as_na=None,
-        drop_directly=None,
-        subset_size=None,
-        sparse=None,
-        output_types=None,
-        **kw
-    ):
-        super().__init__(
-            _axis=axis,
-            _how=how,
-            _thresh=thresh,
-            _subset=subset,
-            _use_inf_as_na=use_inf_as_na,
-            _drop_directly=drop_directly,
-            _subset_size=subset_size,
-            _output_types=output_types,
-            sparse=sparse,
-            **kw
-        )
-
-    @property
-    def axis(self) -> int:
-        return self._axis
-
-    @property
-    def how(self) -> str:
-        return self._how
-
-    @property
-    def thresh(self) -> int:
-        return self._thresh
-
-    @property
-    def subset(self) -> list:
-        return self._subset
-
-    @property
-    def use_inf_as_na(self) -> bool:
-        return self._use_inf_as_na
-
-    @property
-    def drop_directly(self) -> bool:
-        return self._drop_directly
-
-    @property
-    def subset_size(self) -> int:
-        return self._subset_size
+    def __init__(self, output_types=None, **kw):
+        super().__init__(_output_types=output_types, **kw)
 
     def __call__(self, df):
         new_shape = list(df.shape)
@@ -119,7 +71,7 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
             params["shape"] = tuple(new_shape)
 
             new_op = op.copy().reset_key()
-            new_op._drop_directly = True
+            new_op.drop_directly = True
             chunks.append(new_op.new_chunk([c], **params))
 
         new_nsplits = list(in_df.nsplits)
@@ -134,6 +86,10 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
     def tile(cls, op: "DataFrameDropNA"):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
+
+        if not _drop_na_enable_no_default:
+            op.how = None if op.how is no_default else op.how
+            op.thresh = None if op.thresh is no_default else op.thresh
 
         # series tiling will go here
         if len(in_df.chunk_shape) == 1 or in_df.chunk_shape[1] == 1:
@@ -162,8 +118,8 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
             )
 
             new_op = op.copy().reset_key()
-            new_op._drop_directly = False
-            new_op._subset_size = len(op.subset) if op.subset else len(in_df.dtypes)
+            new_op.drop_directly = False
+            new_op.subset_size = len(op.subset) if op.subset else len(in_df.dtypes)
             out_chunks.append(
                 new_op.new_chunk([df_chunk, series_chunk], index=out_idx, **kw)
             )
@@ -197,7 +153,11 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
             if op.how == "all":
                 in_counts = in_counts[in_counts > 0]
             else:
-                thresh = op.subset_size if op.thresh is None else op.thresh
+                if op.thresh is None or op.thresh is no_default:
+                    thresh = op.subset_size
+                else:
+                    thresh = op.thresh
+
                 in_counts = in_counts[in_counts >= thresh]
 
             ctx[op.outputs[0].key] = in_data.reindex(in_counts.index)
@@ -205,7 +165,9 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
             pd.reset_option("mode.use_inf_as_na")
 
 
-def df_dropna(df, axis=0, how="any", thresh=None, subset=None, inplace=False):
+def df_dropna(
+    df, axis=0, how=no_default, thresh=no_default, subset=None, inplace=False
+):
     """
     Remove missing values.
 
@@ -304,6 +266,16 @@ def df_dropna(df, axis=0, how="any", thresh=None, subset=None, inplace=False):
     axis = validate_axis(axis, df)
     if axis != 0:
         raise NotImplementedError("Does not support dropna on DataFrame when axis=1")
+    if (
+        _drop_na_enable_no_default
+        and (how is not no_default)
+        and (thresh is not no_default)
+    ):
+        raise TypeError(
+            "You cannot set both the how and thresh arguments at the same time."
+        )
+    if thresh is no_default and how is no_default:
+        how = "any"
 
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameDropNA(

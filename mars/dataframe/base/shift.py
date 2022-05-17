@@ -18,69 +18,45 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...serialization.serializables import KeyField, AnyField, Int8Field, Int64Field
-from ...utils import has_unknown_shape
+from ...utils import has_unknown_shape, no_default, pd_release_version
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, build_df, build_series, validate_axis
 
 _need_consolidate = pd.__version__ in ("1.1.0", "1.3.0", "1.3.1")
+_enable_no_default = pd_release_version[:2] > (1, 1)
 
 
 class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.SHIFT
 
-    _input = KeyField("input")
-    _periods = Int64Field("periods")
-    _freq = AnyField("freq")
-    _axis = Int8Field("axis")
-    _fill_value = AnyField("fill_value")
-
-    def __init__(self, periods=None, freq=None, axis=None, fill_value=None, **kw):
-        super().__init__(
-            _periods=periods, _freq=freq, _axis=axis, _fill_value=fill_value, **kw
-        )
-
-    @property
-    def input(self):
-        return self._input
-
-    @property
-    def periods(self):
-        return self._periods
-
-    @property
-    def freq(self):
-        return self._freq
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def fill_value(self):
-        return self._fill_value
+    input = KeyField("input")
+    periods = Int64Field("periods", default=None)
+    freq = AnyField("freq", default=None)
+    axis = Int8Field("axis", default=None)
+    fill_value = AnyField("fill_value", default=None)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        self._input = self._inputs[0]
+        self.input = self._inputs[0]
 
     def _call_dataframe(self, df):
         test_df = build_df(df)
         result_df = test_df.shift(
-            periods=self._periods,
-            freq=self._freq,
-            axis=self._axis,
-            fill_value=self._fill_value,
+            periods=self.periods,
+            freq=self.freq,
+            axis=self.axis,
+            fill_value=self.fill_value,
         )
 
-        if self._freq is None:
+        if self.freq is None:
             # shift data
             index_value = df.index_value
             columns_value = df.columns_value
         else:
             # shift index
-            if self._axis == 0:
+            if self.axis == 0:
                 index_value = self._get_index_value(
-                    df.index_value, self._periods, self._freq
+                    df.index_value, self.periods, self.freq
                 )
                 columns_value = df.columns_value
             else:
@@ -98,16 +74,16 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
     def _call_series(self, series):
         test_series = build_series(series)
         result_series = test_series.shift(
-            periods=self._periods,
-            freq=self._freq,
-            axis=self._axis,
-            fill_value=self._fill_value,
+            periods=self.periods,
+            freq=self.freq,
+            axis=self.axis,
+            fill_value=self.fill_value,
         )
 
         index_value = series.index_value
-        if self._freq is not None:
+        if self.freq is not None:
             # shift index
-            index_value = self._get_index_value(index_value, self._periods, self._freq)
+            index_value = self._get_index_value(index_value, self.periods, self.freq)
 
         return self.new_series(
             [series],
@@ -147,7 +123,7 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
             return parse_index(pd_index, periods, freq)
 
     @classmethod
-    def _tile_dataframe(cls, op):
+    def _tile_dataframe(cls, op: "DataFrameShift"):
         from ..indexing.iloc import DataFrameIlocGetItem
         from ..merge.concat import DataFrameConcat
 
@@ -264,7 +240,7 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
-    def _tile_series(cls, op):
+    def _tile_series(cls, op: "DataFrameShift"):
         from ..indexing.iloc import SeriesIlocGetItem
         from ..merge import DataFrameConcat
 
@@ -339,14 +315,14 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "DataFrameShift"):
         if op.output_types[0] == OutputType.dataframe:
             return (yield from cls._tile_dataframe(op))
         else:
             return (yield from cls._tile_series(op))
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "DataFrameShift"):
         axis = op.axis
         periods = op.periods
 
@@ -365,6 +341,9 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
             # thus we force to do consolidate
             obj._data._consolidate_inplace()
 
+        if not _enable_no_default and op.fill_value is no_default:
+            op.fill_value = None
+
         result = obj.shift(
             periods=periods, freq=op.freq, axis=axis, fill_value=op.fill_value
         )
@@ -381,7 +360,7 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
         ctx[out.key] = result
 
 
-def shift(df_or_series, periods=1, freq=None, axis=0, fill_value=None):
+def shift(df_or_series, periods=1, freq=None, axis=0, fill_value=no_default):
     """
     Shift index by desired number of periods with an optional time `freq`.
 
@@ -456,6 +435,14 @@ def shift(df_or_series, periods=1, freq=None, axis=0, fill_value=None):
     axis = validate_axis(axis, df_or_series)
     if periods == 0:
         return df_or_series.copy()
+    if (
+        freq is not None
+        and axis == 1
+        and (fill_value is None or fill_value is no_default)
+    ):
+        # pandas shows strange behavior for axis=1 as is described
+        # in https://github.com/pandas-dev/pandas/issues/47039
+        freq = None
 
     op = DataFrameShift(periods=periods, freq=freq, axis=axis, fill_value=fill_value)
     return op(df_or_series)

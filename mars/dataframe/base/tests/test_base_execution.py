@@ -31,7 +31,7 @@ from ....dataframe import DataFrame
 from ....tensor import arange, tensor
 from ....tensor.random import rand
 from ....tests.core import require_cudf
-from ....utils import lazy_import, pd_release_version
+from ....utils import lazy_import, pd_release_version, no_default
 from ... import eval as mars_eval, cut, qcut, get_dummies
 from ...datasource.dataframe import from_pandas as from_pandas_df
 from ...datasource.series import from_pandas as from_pandas_series
@@ -1160,7 +1160,7 @@ def test_shift_execution(setup):
     # test freq not None
     for periods in (2, -2):
         for axis in (0, 1):
-            for fill_value in (None, 0, 1.0):
+            for fill_value in (no_default, 0, 1.0):
                 r = df2.shift(
                     periods=periods, freq="D", axis=axis, fill_value=fill_value
                 )
