@@ -36,6 +36,7 @@ from .....utils import (
     lazy_import,
     get_chunk_params,
     ensure_coverage,
+    log_exception_wrapper,
 )
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
@@ -124,17 +125,13 @@ def execute_subtask(
 
     for chunk in subtask_chunk_graph.topological_iter():
         if chunk.key not in context:
-            try:
-                execute(context, chunk.op)
-            except Exception as e:  # pragma: no cover
-                # log exception in worker for better debugging.
-                logger.exception(
-                    "Execute operand %s of graph %s failed %s.",
-                    chunk.op,
-                    subtask_digraph,
-                    e,
-                )
-                raise e
+            wrapped_execute = log_exception_wrapper(
+                execute,
+                "Execute operand %s of graph %s failed.",
+                chunk.op,
+                subtask_digraph,
+            )
+            wrapped_execute(context, chunk.op)
 
     # `iter_output_data` must ensure values order since we only return values.
     # For non-mapper subtask, output context is chunk key to results

@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
-import inspect
 import logging
 from typing import Union, Dict, List
 
 from .....core.context import Context
-from .....utils import implements, lazy_import
+from .....utils import implements, lazy_import, sync_to_async
 from ....context import ThreadedServiceContext
 
 ray = lazy_import("ray")
@@ -41,20 +39,8 @@ class RayRemoteObjectManager:
     async def call_remote_object(self, name: str, attr: str, *args, **kwargs):
         remote_object = self._named_remote_objects[name]
         meth = getattr(remote_object, attr)
-        async_meth = self._sync_to_async(meth)
+        async_meth = sync_to_async(meth)
         return await async_meth(*args, **kwargs)
-
-    @staticmethod
-    @functools.lru_cache(100)
-    def _sync_to_async(func):
-        if inspect.iscoroutinefunction(func):
-            return func
-        else:
-
-            async def async_wrapper(*args, **kwargs):
-                return func(*args, **kwargs)
-
-            return async_wrapper
 
 
 class _RayRemoteObjectWrapper:

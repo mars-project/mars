@@ -1717,3 +1717,45 @@ def ensure_coverage():
             pass
         else:
             cleanup_on_sigterm()
+
+
+@functools.lru_cache(100)
+def sync_to_async(func):
+    if inspect.iscoroutinefunction(func):
+        return func
+    else:
+
+        async def async_wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return async_wrapper
+
+
+def log_exception_wrapper(func, *msg_args, ex_logger=None):
+    import inspect
+
+    if msg_args:
+        msg_tpl, *msg_args = msg_args
+    else:
+        msg_tpl, msg_args = None, []
+    if inspect.iscoroutinefunction(func):
+
+        @functools.wraps(func)
+        async def new_func(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except Exception:
+                (ex_logger or logger).exception(msg_tpl, *msg_args)
+                raise
+
+    else:
+
+        @functools.wraps(func)
+        def new_func(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception:
+                (ex_logger or logger).exception(msg_tpl, *msg_args)
+                raise
+
+    return new_func
