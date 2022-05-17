@@ -22,8 +22,8 @@ from ....utils import lazy_import
 from ..local import new_cluster
 from ..session import new_session
 from ..tests import test_local
-from ..tests.test_local import _cancel_when_tile, _cancel_when_execute
 from ..tests.session import new_test_session
+from ..tests.test_local import _cancel_when_tile, _cancel_when_execute
 from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
     get_output_filenames,
