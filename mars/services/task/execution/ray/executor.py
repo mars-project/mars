@@ -15,7 +15,7 @@
 import asyncio
 import functools
 import logging
-from typing import Dict, Any, Set
+from typing import Dict, Any, Set, Optional
 
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
@@ -104,7 +104,7 @@ def execute_subtask(
         assert len(start_chunks) == 1, start_chunks
         # the subtask is a reducer subtask
         num_mappers = len(inputs)
-        # single reducer may have multiple output chunks, see `PSRSshuffle._execute_reduce` and
+        # some reducer may have multiple output chunks, see `PSRSshuffle._execute_reduce` and
         # https://user-images.githubusercontent.com/12445254/168569524-f09e42a7-653a-4102-bdf0-cc1631b3168d.png
         reducer_chunks = subtask_chunk_graph.successors(start_chunks[0])
         reducer_operands = set(c.op for c in reducer_chunks)
@@ -133,9 +133,9 @@ def execute_subtask(
             )
             wrapped_execute(context, chunk.op)
 
+    # For non-mapper subtask, output context is chunk key to results.
+    # For mapper subtasks, output context is data key to results.
     # `iter_output_data` must ensure values order since we only return values.
-    # For non-mapper subtask, output context is chunk key to results
-    # For mapper subtasks, output context is data key to results
     output = {
         key: data for key, data, _ in iter_output_data(subtask_chunk_graph, context)
     }
@@ -143,7 +143,7 @@ def execute_subtask(
     if output_meta_keys:
         assert not is_mapper
         output_meta = {}
-        # for non-shuffle subtask, record meta in supervisor
+        # for non-shuffle subtask, record meta in supervisor.
         for chunk in subtask_chunk_graph.result_chunks:
             if chunk.key in output_meta_keys:
                 if isinstance(chunk.op, Fuse):
@@ -153,15 +153,35 @@ def execute_subtask(
         assert len(output_meta_keys) == len(output_meta)
         output_values.append(output_meta)
     output_values.extend(output.values())
+
+    # assert output keys order consistent
+    output_keys = list(output.keys())
+    if is_mapper:
+        chunk_keys, reducer_indices = zip(*output_keys)
+        assert len(set(chunk_keys)) == 1, chunk_keys
+        assert sorted(reducer_indices) == list(reducer_indices), (
+            reducer_indices,
+            sorted(reducer_indices),
+        )
+    else:
+        expect_output_keys, _, _ = _get_subtask_out_info(
+            subtask_chunk_graph, None, None
+        )
+        assert expect_output_keys == output_keys, (expect_output_keys, output_keys)
+
     logger.info("Finish executing subtask %s.", subtask_id)
     return output_values[0] if len(output_values) == 1 else output_values
 
 
-def _get_subtask_out_info(subtask: Subtask, shuffle_manager: ShuffleManager):
+def _get_subtask_out_info(
+    subtask_chunk_graph: ChunkGraph,
+    subtask: Optional[Subtask],
+    shuffle_manager: Optional[ShuffleManager],
+):
     # output_keys order should be consistent with remote `execute_subtask`,
     # because lists are returned instead of dict.
     output_keys = []
-    for chunk in subtask.chunk_graph.result_chunks:
+    for chunk in subtask_chunk_graph.result_chunks:
         if isinstance(
             chunk.op, VirtualOperand
         ):  # FIXME(chaokunyang) no need to check this?
@@ -171,8 +191,8 @@ def _get_subtask_out_info(subtask: Subtask, shuffle_manager: ShuffleManager):
             and chunk.op.stage == OperandStage.map
         ):
             assert (
-                len(subtask.chunk_graph.result_chunks) == 1
-            ), subtask.chunk_graph.result_chunks
+                len(subtask_chunk_graph.result_chunks) == 1
+            ), subtask_chunk_graph.result_chunks
             num_reducers = shuffle_manager.get_num_reducers(subtask)
             return [], num_reducers, True
         else:
@@ -312,7 +332,7 @@ class RayTaskExecutor(TaskExecutor):
             # because a subtask can have some outputs which is dependent by downstream, but other outputs are not.
             # see https://user-images.githubusercontent.com/12445254/168484663-a4caa3f4-0ccc-4cd7-bf20-092356815073.png
             output_keys, out_count, is_shuffle_mapper = _get_subtask_out_info(
-                subtask, shuffle_manager
+                subtask_chunk_graph, subtask, shuffle_manager
             )
             subtask_output_meta_keys = result_meta_keys & set(output_keys)
             if is_shuffle_mapper:

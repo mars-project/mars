@@ -77,14 +77,14 @@ class MapReduceOperand(Operand):
         return super().get_dependent_data_keys()
 
     def _iter_mapper_key_idx_pairs(self, input_id=0, mapper_id=None):
-        # TODO(chaokunyang) add mapper key, mapper index, reducer index document.
         # key is mapper chunk key, index is mapper chunk index.
         input_chunk = self.inputs[input_id]
         if isinstance(input_chunk.op, PushShuffle):
-            # For push shuffle, since data are directly pushed to reducers, chunk key and index are not needed any more.
-            # Before reducer executing, all shuffle block of same reducers will be pushed to same reducers, identified
-            # by their index, so we use mapper index as key_idx_pairs.
-            # For operands such as PSRS(PSRSSortRegularSample -> PSRSShuffle -> PSRSAlign)
+            # For push shuffle, all shuffle block of same reducers will be pushed to same reducers,
+            # identified by their index, before reducer executing.
+            # Since data are directly pushed to reducers, chunk key and index are not needed any more.
+            # so we mock index here.
+            # keep this in sync with ray executor `execute_subtask`.
             return ((i, i) for i in range(input_chunk.op.num_mappers))
         if isinstance(input_chunk.op, ShuffleProxy):
             keys = [inp.key for inp in input_chunk.inputs]
