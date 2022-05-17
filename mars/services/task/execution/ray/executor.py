@@ -119,7 +119,6 @@ class RayTaskExecutor(TaskExecutor):
         meta_api: MetaAPI,
     ):
         self._config = config
-        self._ray_config = self._config.get_execution_config().get("ray", {})
         self._task = task
         self._tile_context = tile_context
         self._ray_executor = ray_executor

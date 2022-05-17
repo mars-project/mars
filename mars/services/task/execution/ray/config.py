@@ -28,10 +28,8 @@ class RayExecutionConfig(ExecutionConfig):
 
     def __init__(self, execution_config: Dict):
         super().__init__(execution_config)
-        self._subtask_max_retries = (
-            self.get_execution_config()
-            .get("ray", {})
-            .get("subtask_max_retries", DEFAULT_SUBTASK_MAX_RETRIES)
+        self._subtask_max_retries = self._execution_config.get("ray", {}).get(
+            "subtask_max_retries", DEFAULT_SUBTASK_MAX_RETRIES
         )
 
     def get_band_resources(self):

@@ -380,11 +380,11 @@ async def test_fetch_infos(create_cluster):
     assert "level" in fetched_infos
     assert "memory_size" in fetched_infos
     assert "store_size" in fetched_infos
-    assert "band" in fetched_infos
+    assert "bands" in fetched_infos
 
-    fetched_infos = df.fetch_infos(fields=["object_id", "band"])
+    fetched_infos = df.fetch_infos(fields=["object_id", "bands"])
     assert "object_id" in fetched_infos
-    assert "band" in fetched_infos
+    assert "bands" in fetched_infos
     assert len(fetched_infos) == 2
 
     fetch_infos((df, df), fields=None)
@@ -394,7 +394,7 @@ async def test_fetch_infos(create_cluster):
     assert "level" in results_infos[0]
     assert "memory_size" in results_infos[0]
     assert "store_size" in results_infos[0]
-    assert "band" in results_infos[0]
+    assert "bands" in results_infos[0]
 
 
 async def _run_web_session_test(web_address):
