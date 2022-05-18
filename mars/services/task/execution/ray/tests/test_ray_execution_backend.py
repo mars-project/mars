@@ -50,6 +50,11 @@ class MockRayTaskExecutor(RayTaskExecutor):
         self._set_attrs = Counter()
         super().__init__(*args, **kwargs)
 
+    @staticmethod
+    def _get_ray_executor():
+        # Export remote function once.
+        return None
+
     def set_attr_counter(self):
         return self._set_attrs
 
