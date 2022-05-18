@@ -40,6 +40,15 @@ if sys.version_info[:2] < (3, 8):  # pragma: no cover
 else:
     import pickle  # nosec  # pylint: disable=import_pickle
 
+# resolve pandas pickle compatibility between <1.2 and >=1.3
+try:
+    from pandas.core.internals import blocks as pd_blocks
+    if not hasattr(pd_blocks, "new_block") and hasattr(pd_blocks, "make_block"):
+        # register missing func that would cause errors
+        pd_blocks.new_block = pd_blocks.make_block
+except (ImportError, AttributeError):
+    pass
+
 BUFFER_PICKLE_PROTOCOL = max(pickle.DEFAULT_PROTOCOL, 5)
 cdef bint HAS_PICKLE_BUFFER = pickle.HIGHEST_PROTOCOL >= 5
 cdef bint _PANDAS_HAS_MGR = hasattr(pd.Series([0]), "_mgr")
@@ -195,7 +204,8 @@ def buffered(func):
 
 
 def pickle_buffers(obj):
-    buffers = [None]
+    cdef list buffers = [None]
+
     if HAS_PICKLE_BUFFER:
 
         def buffer_cb(x):

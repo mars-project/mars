@@ -24,6 +24,7 @@ class ChunkGraphAssignerSuite:
     """
     Benchmark that times performance of chunk graph assigner
     """
+    repeat = 10
 
     def setup(self):
         num_rows = 10000
