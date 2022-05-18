@@ -806,9 +806,12 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             len(ctx.get_worker_addresses()) > 1
             and estimate_size > chunk_store_limit
             and np.mean(agg_sizes) > 1024**2
+            and total_count <= 256
         ):
             # for distributed, if estimate size could be potentially large,
             # and each chunk size is large enough(>1M, small chunk means large error),
+            # total count is relatively small(<=256, large number of chunks
+            # is not quite efficient for shuffle)
             # we choose to use shuffle
             return False
         # calculate the coefficient of variation of aggregation sizes,
