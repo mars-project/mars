@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
+
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
@@ -24,9 +26,12 @@ class ChunkGraphAssignerSuite:
     """
     Benchmark that times performance of chunk graph assigner
     """
+
     repeat = 10
 
     def setup(self):
+        random.seed()
+
         num_rows = 10000
         df1 = md.DataFrame(
             mt.random.rand(num_rows, 4, chunk_size=10), columns=list("abcd")
