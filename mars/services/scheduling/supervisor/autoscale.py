@@ -21,12 +21,12 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import List, Set, Dict, Optional, Any
 
-from ..errors import NoAvailableBand
 from .... import oscar as mo
 from ....typing import BandType
 from ....lib.aio import alru_cache
 from ...cluster.api import ClusterAPI
 from ...cluster.core import NodeRole, NodeStatus
+from ..errors import NoAvailableBand
 
 logger = logging.getLogger(__name__)
 
@@ -404,12 +404,19 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
                 worker_addresses,
                 idle_bands,
             )
-            await self._autoscaler.release_workers(worker_addresses)
-            logger.info(
-                "Finished offline workers %s in %.4f seconds",
-                worker_addresses,
-                time.time() - start_time,
-            )
+            try:
+                await self._autoscaler.release_workers(worker_addresses)
+                logger.info(
+                    "Finished offline workers %s in %.4f seconds",
+                    worker_addresses,
+                    time.time() - start_time,
+                )
+            except NoAvailableBand as e:
+                logger.warning(
+                    "No enough bands, offline workers %s failed with exception %s.",
+                    worker_addresses,
+                    e,
+                )
 
     async def stop(self):
         self._task.cancel()

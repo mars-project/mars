@@ -50,7 +50,7 @@ from ..ray import (
     new_cluster_in_ray,
     new_ray_session,
 )
-from ..session import get_default_session, new_session
+from ..session import get_default_session, new_session, get_default_async_session
 from ..tests import test_local
 from .modules.utils import (  # noqa: F401  # pylint: disable=unused-variable
     cleanup_third_party_modules_output,
@@ -702,17 +702,42 @@ async def test_ownership_when_scale_in(ray_large_cluster):
             uid=AutoscalerActor.default_uid(),
             address=client._cluster.supervisor_address,
         )
-        await asyncio.gather(*[autoscaler_ref.request_worker() for _ in range(2)])
-        df = md.DataFrame(mt.random.rand(100, 4, chunk_size=2), columns=list("abcd"))
-        print(df.execute())
-        assert await autoscaler_ref.get_dynamic_worker_nums() > 1
+        num_chunks, chunk_size = 10, 4
+        df = md.DataFrame(
+            mt.random.rand(num_chunks * chunk_size, 4, chunk_size=chunk_size),
+            columns=list("abcd"),
+        )
+        latch_actor1 = ray.remote(CountDownLatch).remote(1)
+        pid = os.getpid()
+
+        def f1(pdf, latch):
+            if os.getpid() != pid:
+                # type inference will call this function too
+                ray.get(latch.wait.remote())
+            return pdf
+
+        df = df.map_chunk(
+            f1,
+            args=(latch_actor1,),
+        )
+        session = get_default_async_session()
+        info_task = asyncio.create_task(session.execute(df))
+        while await autoscaler_ref.get_dynamic_worker_nums() <= 1:
+            print(f"Waiting workers to be created.")
+            await asyncio.sleep(1)
+        await latch_actor1.count_down.remote()
+        info = await info_task
+        await info
+        assert info.exception() is None
+        assert info.progress() == 1
+        print("df execute succeed.")
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
             dynamic_workers = await autoscaler_ref.get_dynamic_workers()
             print(f"Waiting workers {dynamic_workers} to be released.")
             await asyncio.sleep(1)
         # Test data on node of released worker can still be fetched
         pd_df = df.to_pandas()
-        groupby_sum_df = df.rechunk(40).groupby("a").sum()
+        groupby_sum_df = df.rechunk(chunk_size * 2).groupby("a").sum()
         print(groupby_sum_df.execute())
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
             dynamic_workers = await autoscaler_ref.get_dynamic_workers()
@@ -722,6 +747,21 @@ async def test_ownership_when_scale_in(ray_large_cluster):
         assert (
             groupby_sum_df.to_pandas().to_dict() == pd_df.groupby("a").sum().to_dict()
         )
+
+
+class CountDownLatch:
+    def __init__(self, cnt):
+        self.cnt = cnt
+
+    def count_down(self):
+        self.cnt -= 1
+
+    def get_count(self):
+        return self.cnt
+
+    async def wait(self):
+        while self.cnt != 0:
+            await asyncio.sleep(0.01)
 
 
 @require_ray
