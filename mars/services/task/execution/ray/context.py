@@ -15,6 +15,7 @@
 import functools
 import inspect
 import logging
+from dataclasses import asdict
 from typing import Union, Dict, List
 
 from .....core.context import Context
@@ -116,9 +117,10 @@ class _RayRemoteObjectContext:
 class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
     """The context for tiling."""
 
-    def __init__(self, task_context: Dict, *args, **kwargs):
+    def __init__(self, task_context: Dict, task_chunks_meta: Dict, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._task_context = task_context
+        self._task_chunks_meta = task_chunks_meta
 
     @implements(Context.get_chunks_result)
     def get_chunks_result(self, data_keys: List[str]) -> List:
@@ -126,6 +128,19 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
         object_refs = [self._task_context[key] for key in data_keys]
         result = ray.get(object_refs)
         logger.info("Got %s chunks result.", len(result))
+        return result
+
+    @implements(Context.get_chunks_meta)
+    def get_chunks_meta(
+        self, data_keys: List[str], fields: List[str] = None, error="raise"
+    ) -> List[Dict]:
+        result = []
+        # TODO(fyrestone): Support get_chunks_meta from meta service if needed.
+        for key in data_keys:
+            chunk_meta = self._task_chunks_meta[key]
+            meta = asdict(chunk_meta)
+            meta = {f: meta.get(f) for f in fields}
+            result.append(meta)
         return result
 
 
