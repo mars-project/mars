@@ -193,9 +193,9 @@ class RayTaskExecutor(TaskExecutor):
         self._available_band_resources = None
 
         # For progress
-        self._pre_all_stages_progress = 0.0
-        self._pre_all_stages_tile_progress = 0
-        self._cur_stage_tile_progress = 0
+        self._pre_all_stages_progress = 1
+        self._pre_all_stages_tile_progress = 1
+        self._cur_stage_tile_progress = 1
         self._cur_stage_output_object_refs = []
 
     @classmethod
