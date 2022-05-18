@@ -27,6 +27,7 @@ from .....core import (
     unregister,
 )
 from .....core.operand import Fetch
+from .....core.operand.shuffle import ShuffleType
 from .....resource import Resource
 from .....tests.core import _check_args, ObjectCheckMixin
 from .....typing import BandType, ChunkType
@@ -147,6 +148,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
         available_bands: Dict[BandType, Resource],
         stage_id: str,
         op_to_bands: Dict[str, BandType] = None,
+        shuffle_type: ShuffleType = None,
     ) -> SubtaskGraph:
         # check if duplicated operand keys exist
         if self._check_duplicated_operand_keys and len(

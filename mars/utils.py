@@ -1732,8 +1732,6 @@ def sync_to_async(func):
 
 
 def log_exception_wrapper(func, *msg_args, ex_logger=None):
-    import inspect
-
     if msg_args:
         msg_tpl, *msg_args = msg_args
     else:
