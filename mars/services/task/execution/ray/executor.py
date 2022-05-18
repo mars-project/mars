@@ -162,6 +162,10 @@ class RayTaskExecutor(TaskExecutor):
         self._pre_all_stages_tile_progress = 0
         self._cur_stage_tile_progress = 0
         self._cur_stage_output_object_refs = []
+        # This list records the output object ref number of subtasks, so with
+        # `self._cur_stage_output_object_refs` we can just call `ray.cancel`
+        # with one object ref to cancel a subtask instead of cancel all object
+        # refs. In this way we can reduce a lot of unnecessary calls of ray.
         self._output_object_refs_nums = []
         # For meta and data gc
         self._cancelled = False
@@ -254,6 +258,8 @@ class RayTaskExecutor(TaskExecutor):
             if not isinstance(chunk.op, Fetch)
         }
         for subtask in subtask_graph.topological_iter():
+            if self._cancelled is True:
+                raise asyncio.CancelledError()
             subtask_chunk_graph = subtask.chunk_graph
             key_to_input = await self._load_subtask_inputs(
                 stage_id, subtask, subtask_chunk_graph, task_context
@@ -276,6 +282,9 @@ class RayTaskExecutor(TaskExecutor):
             elif output_count == 1:
                 output_object_refs = [output_object_refs]
             self._cur_stage_output_object_refs.extend(output_object_refs)
+            # Note: `output_object_refs` is greater than 0, if not it won't run
+            # here. But there is a potential problem that we cannot cancel the
+            # subtask if output_count is 0.
             self._output_object_refs_nums.append(len(output_object_refs))
             if output_meta_keys:
                 meta_object_ref, *output_object_refs = output_object_refs
@@ -389,9 +398,7 @@ class RayTaskExecutor(TaskExecutor):
                     pos += self._output_object_refs_nums[i - 1]
                 await _cancel_ray_task(
                     self._cur_stage_output_object_refs[pos],
-                    self._config.get_execution_config()
-                    .get("ray", {})
-                    .get("subtask_cancel_timeout", 3),
+                    self._config.get_subtask_cancel_timeout(),
                 )
 
     async def _load_subtask_inputs(

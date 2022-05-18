@@ -31,3 +31,6 @@ class RayExecutionConfig(ExecutionConfig):
 
     def get_deploy_band_resources(self) -> List[Dict[str, Resource]]:
         return []
+
+    def get_subtask_cancel_timeout(self):
+        return self._execution_config.get("ray", {}).get("subtask_cancel_timeout", 3)
