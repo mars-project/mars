@@ -35,7 +35,7 @@ from ...serialization.serializables import (
     NamedTupleField,
 )
 from ...typing import TileableType
-from ...utils import has_unknown_shape
+from ...utils import has_unknown_shape, lazy_import
 from ..base.bloom_filter import filter_by_bloom_filter
 from ..core import DataFrame, Series, DataFrameChunk
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
@@ -46,6 +46,7 @@ from ..utils import (
     parse_index,
     hash_dataframe_on,
     infer_index_value,
+    is_cudf,
 )
 
 import logging
@@ -62,6 +63,8 @@ BLOOM_FILTER_OPTIONS = [
 ]
 BLOOM_FILTER_ON_OPTIONS = ["large", "small", "both"]
 DEFAULT_BLOOM_FILTER_ON = "large"
+
+cudf = lazy_import("cudf")
 
 
 class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
@@ -126,7 +129,8 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
                 row_df = input_idx_to_df.get((row_idx, 0), None)
                 if row_df is not None:
                     res.append(row_df)
-            ctx[chunk.key] = pd.concat(res, axis=0)
+            xdf = cudf if is_cudf(res[0]) else pd
+            ctx[chunk.key] = xdf.concat(res, axis=0)
 
     @classmethod
     def execute(cls, ctx, op):
