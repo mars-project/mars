@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from random import getrandbits
 from typing import AsyncGenerator
 
-from .._utils cimport to_str
+from .._utils cimport to_str, new_random_id
 from .core cimport ActorRef, LocalActorRef
 
 
 cpdef bytes new_actor_id():
-    return getrandbits(256).to_bytes(32, "little")
+    return new_random_id(32)
 
 
 def create_actor_ref(*args, **kwargs):
@@ -34,6 +33,7 @@ def create_actor_ref(*args, **kwargs):
 
     cdef str address
     cdef object uid
+    cdef ActorRef existing_ref
 
     address = to_str(kwargs.pop('address', None))
     uid = kwargs.pop('uid', None)
@@ -49,8 +49,9 @@ def create_actor_ref(*args, **kwargs):
     elif len(args) == 1:
         tp0 = type(args[0])
         if tp0 is ActorRef or tp0 is LocalActorRef:
-            uid = args[0].uid
-            address = to_str(address or args[0].address)
+            existing_ref = <ActorRef>(args[0])
+            uid = existing_ref.uid
+            address = to_str(address or existing_ref.address)
         else:
             uid = args[0]
 
