@@ -55,16 +55,16 @@ def test_merge():
             assert left.op.stage == OperandStage.reduce
             assert isinstance(right.op, DataFrameMergeAlign)
             assert right.op.stage == OperandStage.reduce
-            assert len(left.inputs[0].inputs) == 2
-            assert len(right.inputs[0].inputs) == 2
-            for lchunk in left.inputs[0].inputs:
+            assert len(left.inputs[0].inputs) == 4
+            assert len(right.inputs[0].inputs) == 4
+            for lchunk in left.inputs[0].inputs[:2]:
                 assert isinstance(lchunk.op, DataFrameMergeAlign)
                 assert lchunk.op.stage == OperandStage.map
                 assert lchunk.op.index_shuffle_size == 2
                 assert lchunk.op.shuffle_on == kw.get("on", None) or kw.get(
                     "left_on", None
                 )
-            for rchunk in right.inputs[0].inputs:
+            for rchunk in right.inputs[0].inputs[2:]:
                 assert isinstance(rchunk.op, DataFrameMergeAlign)
                 assert rchunk.op.stage == OperandStage.map
                 assert rchunk.op.index_shuffle_size == 2
@@ -127,8 +127,8 @@ def test_join():
             assert left.op.stage == OperandStage.reduce
             assert isinstance(right.op, DataFrameMergeAlign)
             assert right.op.stage == OperandStage.reduce
-            assert len(left.inputs[0].inputs) == 2
-            assert len(right.inputs[0].inputs) == 3
+            assert len(left.inputs[0].inputs) == 5
+            assert len(right.inputs[0].inputs) == 5
             for lchunk in left.inputs[0].inputs:
                 assert isinstance(lchunk.op, DataFrameMergeAlign)
                 assert lchunk.op.stage == OperandStage.map
@@ -175,14 +175,14 @@ def test_join_on():
             assert left.op.stage == OperandStage.reduce
             assert isinstance(right.op, DataFrameMergeAlign)
             assert right.op.stage == OperandStage.reduce
-            assert len(left.inputs[0].inputs) == 2
-            assert len(right.inputs[0].inputs) == 3
-            for lchunk in left.inputs[0].inputs:
+            assert len(left.inputs[0].inputs) == 5
+            assert len(right.inputs[0].inputs) == 5
+            for lchunk in left.inputs[0].inputs[:2]:
                 assert isinstance(lchunk.op, DataFrameMergeAlign)
                 assert lchunk.op.stage == OperandStage.map
                 assert lchunk.op.index_shuffle_size == 3
                 assert lchunk.op.shuffle_on == kw.get("on", None)
-            for rchunk in right.inputs[0].inputs:
+            for rchunk in right.inputs[0].inputs[2:]:
                 assert isinstance(rchunk.op, DataFrameMergeAlign)
                 assert rchunk.op.stage == OperandStage.map
                 assert rchunk.op.index_shuffle_size == 3
