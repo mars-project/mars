@@ -77,7 +77,7 @@ async def _cancel_ray_task(obj_ref, kill_timeout: int = 3):
     ray.cancel(obj_ref, force=False)
     try:
         await asyncio.to_thread(ray.get, obj_ref, timeout=kill_timeout)
-    except ray.exceptions.TaskCancelledError:
+    except ray.exceptions.TaskCancelledError:  # pragma: no cover
         logger.info("Cancel ray task %s successfully.", obj_ref)
     except BaseException as e:
         logger.info(
@@ -258,7 +258,7 @@ class RayTaskExecutor(TaskExecutor):
             if not isinstance(chunk.op, Fetch)
         }
         for subtask in subtask_graph.topological_iter():
-            if self._cancelled is True:
+            if self._cancelled is True:  # pragma: no cover
                 raise asyncio.CancelledError()
             subtask_chunk_graph = subtask.chunk_graph
             key_to_input = await self._load_subtask_inputs(
