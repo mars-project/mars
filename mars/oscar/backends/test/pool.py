@@ -20,7 +20,6 @@ from ..config import ActorPoolConfig
 from ..communication import gen_local_address, get_server_type, DummyServer
 from ..mars.pool import MainActorPool, SubActorPool, SubpoolStatus
 from ..pool import ActorPoolType
-from ..router import Router
 
 
 class TestMainActorPool(MainActorPool):
@@ -130,12 +129,11 @@ class TestSubActorPool(SubActorPool):
             actor_pool_config.reset_pool_external_address(
                 process_index, external_addresses
             )
-            kw["external_address"] = external_addresses[0]
-            kw["router"] = Router(
-                external_addresses,
-                gen_local_address(process_index),
-                actor_pool_config.external_to_internal_address_map,
-            )
+            cls._update_kw_addresses(actor_pool_config, process_index, kw)
+
+        # set default router
+        # actor context would be able to use exact client
+        cls._set_global_router(kw["router"])
 
         # create pool
         pool = cls(**kw)

@@ -639,6 +639,22 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         # append this router to global
         default_router.add_router(router)
 
+    @staticmethod
+    def _update_kw_addresses(
+        actor_pool_config: ActorPoolConfig, process_index: int, kw: Dict
+    ):
+        curr_pool_config = actor_pool_config.get_pool_config(process_index)
+        external_addresses = curr_pool_config["external_address"]
+        if kw["internal_address"] == kw["external_address"]:
+            # internal address may be the same as external address in Windows
+            kw["internal_address"] = external_addresses[0]
+        kw["external_address"] = external_addresses[0]
+        kw["router"] = Router(
+            external_addresses,
+            gen_local_address(process_index),
+            actor_pool_config.external_to_internal_address_map,
+        )
+
     @classmethod
     @implements(AbstractActorPool.create)
     async def create(cls, config: Dict) -> "ActorPoolType":
@@ -688,12 +704,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             actor_pool_config.reset_pool_external_address(
                 process_index, external_addresses
             )
-            kw["external_address"] = external_addresses[0]
-            kw["router"] = Router(
-                external_addresses,
-                gen_local_address(process_index),
-                actor_pool_config.external_to_internal_address_map,
-            )
+            cls._update_kw_addresses(actor_pool_config, process_index, kw)
 
         # set default router
         # actor context would be able to use exact client

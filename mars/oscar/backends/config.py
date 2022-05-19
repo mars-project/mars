@@ -90,12 +90,15 @@ class ActorPoolConfig:
         if not isinstance(external_address, list):
             external_address = [external_address]
         cur_pool_config = self._conf["pools"][process_index]
+        internal_address = cur_pool_config["internal_address"]
 
         mapping: Dict = self._conf["mapping"]
         for addr in cur_pool_config["external_address"]:
+            if internal_address == addr:
+                # internal address may be the same as external address in Windows
+                internal_address = external_address[0]
             mapping.pop(addr, None)
 
-        internal_address = cur_pool_config["internal_address"]
         cur_pool_config["external_address"] = external_address
         for addr in external_address:
             mapping[addr] = internal_address
