@@ -81,7 +81,8 @@ async def _cancel_ray_task(obj_ref, kill_timeout: int = 3):
         logger.info("Cancel ray task %s successfully.", obj_ref)
     except BaseException as e:
         logger.info(
-            "Failed to cancel ray task %s with exception %s, force cancel the task by killing the worker.",
+            "Failed to cancel ray task %s with exception %s, "
+            "force cancel the task by killing the worker.",
             e,
             obj_ref,
         )
@@ -168,6 +169,7 @@ class RayTaskExecutor(TaskExecutor):
         # refs. In this way we can reduce a lot of unnecessary calls of ray.
         self._output_object_refs_nums = []
         # For meta and data gc
+        self._execute_subtask_graph_task = None
         self._cancelled = False
 
     @classmethod
@@ -242,6 +244,10 @@ class RayTaskExecutor(TaskExecutor):
         tile_context: TileContext,
         context: Any = None,
     ) -> Dict[Chunk, ExecutionChunkResult]:
+        if self._cancelled is True:  # pragma: no cover
+            raise asyncio.CancelledError()
+        self._execute_subtask_graph_task = asyncio.current_task()
+
         logger.info("Stage %s start.", stage_id)
         task_context = self._task_context
         output_meta_object_refs = []
@@ -258,8 +264,6 @@ class RayTaskExecutor(TaskExecutor):
             if not isinstance(chunk.op, Fetch)
         }
         for subtask in subtask_graph.topological_iter():
-            if self._cancelled is True:  # pragma: no cover
-                raise asyncio.CancelledError()
             subtask_chunk_graph = subtask.chunk_graph
             key_to_input = await self._load_subtask_inputs(
                 stage_id, subtask, subtask_chunk_graph, task_context
@@ -389,9 +393,15 @@ class RayTaskExecutor(TaskExecutor):
 
     async def cancel(self):
         """Cancel execution."""
+        logger.info("Start to cancel task %s.", self._task)
+        self._cancelled = True
+        if (
+            self._execute_subtask_graph_task is not None
+            and not self._execute_subtask_graph_task.cancelled()
+        ):
+            self._execute_subtask_graph_task.cancel()
         subtask_num = len(self._output_object_refs_nums)
         if subtask_num > 0:
-            self._cancelled = True
             pos = 0
             for i in range(0, subtask_num):
                 if i > 0:
