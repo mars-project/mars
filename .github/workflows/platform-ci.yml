@@ -94,8 +94,10 @@ jobs:
               rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
             fi
             if [ -n "$WITH_RAY" ] || [ -n "$WITH_RAY_DAG" ]; then
-              pip install ray[default]==1.9.2
               pip install "xgboost_ray==0.1.5" "xgboost<1.6.0"
+              # Use standard ray releases when owership bug is fixed
+              pip uninstall ray
+              pip install ray-for-mars
             fi
             if [ -n "$RUN_DASK" ]; then
               pip install dask[complete] mimesis sklearn
