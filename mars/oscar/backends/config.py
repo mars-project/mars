@@ -60,8 +60,9 @@ class ActorPoolConfig:
             "logging_conf": logging_conf,
             "kwargs": kwargs or {},
         }
+
+        mapping: Dict = self._conf["mapping"]
         for addr in external_address:
-            mapping: Dict = self._conf["mapping"]
             mapping[addr] = internal_address
 
     def get_pool_config(self, process_index: int):
@@ -80,6 +81,24 @@ class ActorPoolConfig:
         raise ValueError(
             f"Cannot get process_index for {external_address}"
         )  # pragma: no cover
+
+    def reset_pool_external_address(
+        self,
+        process_index: int,
+        external_address: Union[str, List[str]],
+    ):
+        if not isinstance(external_address, list):
+            external_address = [external_address]
+        cur_pool_config = self._conf["pools"][process_index]
+
+        mapping: Dict = self._conf["mapping"]
+        for addr in cur_pool_config["external_address"]:
+            mapping.pop(addr, None)
+
+        internal_address = cur_pool_config["internal_address"]
+        cur_pool_config["external_address"] = external_address
+        for addr in external_address:
+            mapping[addr] = internal_address
 
     def get_external_addresses(self, label=None) -> List[str]:
         result = []
