@@ -103,7 +103,7 @@ def execute_subtask(
     if isinstance(start_chunks[0].op, PushShuffle):
         assert len(start_chunks) == 1, start_chunks
         # the subtask is a reducer subtask
-        num_mappers = len(inputs)
+        n_mapper = len(inputs)
         # some reducer may have multiple output chunks, see `PSRSshuffle._execute_reduce` and
         # https://user-images.githubusercontent.com/12445254/168569524-f09e42a7-653a-4102-bdf0-cc1631b3168d.png
         reducer_chunks = subtask_chunk_graph.successors(start_chunks[0])
@@ -116,7 +116,7 @@ def execute_subtask(
         reducer_operand = reducer_chunks[0].op
         reducer_index = reducer_operand.reducer_index
         # mock input keys, keep this in sync with `MapReducerOperand#_iter_mapper_key_idx_pairs`
-        input_keys = [(i, reducer_index) for i in range(num_mappers)]
+        input_keys = [(i, reducer_index) for i in range(n_mapper)]
     else:
         input_keys = [c.key for c in start_chunks if isinstance(c.op, Fetch)]
     context = RayExecutionWorkerContext(
@@ -193,8 +193,8 @@ def _get_subtask_out_info(
             assert (
                 len(subtask_chunk_graph.result_chunks) == 1
             ), subtask_chunk_graph.result_chunks
-            num_reducers = shuffle_manager.get_num_reducers(subtask)
-            return [], num_reducers, True
+            n_reducer = shuffle_manager.get_n_reducers(subtask)
+            return [], n_reducer, True
         else:
             output_keys.append(chunk.key)
     return output_keys, len(output_keys), False

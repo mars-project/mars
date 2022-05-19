@@ -15,9 +15,9 @@
 import numpy as np
 from typing import List, Iterable
 
-from mars.core.operand import ShuffleProxy, MapReduceOperand
-from ....subtask import Subtask
 from .....utils import lazy_import
+from ....subtask import Subtask
+from mars.core.operand import ShuffleProxy, MapReduceOperand
 
 ray = lazy_import("ray")
 
@@ -37,8 +37,9 @@ class ShuffleManager:
         for shuffle_index, proxy_subtask in enumerate(self._proxy_subtasks):
             mapper_subtasks = subtask_graph.predecessors(proxy_subtask)
             reducer_subtasks = subtask_graph.successors(proxy_subtask)
-            num_mapper, num_reducer = len(mapper_subtasks), len(reducer_subtasks)
-            mapper_output_arr = np.empty((num_mapper, num_reducer), dtype=object)
+            n_mapper = len(mapper_subtasks)
+            n_reducer = _get_reducer_operand(reducer_subtasks[0].chunk_graph).n_reducer
+            mapper_output_arr = np.empty((n_mapper, n_reducer), dtype=object)
             self.mapper_output_refs.append(mapper_output_arr)
             self.mapper_indices.update(
                 {
@@ -48,24 +49,23 @@ class ShuffleManager:
             )
             # reducers subtask should be sorted by reducer_index and MapReduceOperand.map should insert shuffle block
             # in reducers order, otherwise shuffle blocks will be sent to wrong reducers.
-            sorted_reducer_subtasks = self._sort_reducers(reducer_subtasks)
+            sorted_filled_reducer_subtasks = self._sort_fill_reducers(reducer_subtasks, n_reducer)
             self.reducer_indices.update(
                 {
-                    subtask: (shuffle_index, reducer_index)
-                    for reducer_index, subtask in enumerate(sorted_reducer_subtasks)
+                    subtask: (shuffle_index, reducer_ordinal)
+                    for reducer_ordinal, subtask in enumerate(sorted_filled_reducer_subtasks)
                 }
             )
 
     @staticmethod
-    def _sort_reducers(reducer_subtasks: Iterable[Subtask]):
-        def sort_key(subtask: Subtask):
-            return next(
-                c.op.reducer_index
-                for c in subtask.chunk_graph
-                if isinstance(c.op, MapReduceOperand)
-            )
-
-        return sorted(reducer_subtasks, key=sort_key)
+    def _sort_fill_reducers(reducer_subtasks: Iterable[Subtask], n_reducer: int):
+        # For operands such as `PSRSAlign`, sometimes `reducer_subtasks` might be less than `n_reducer`.
+        # fill missing reducers with `None`.
+        filled_reducers = {i: None for i in range(n_reducer)}
+        for subtask in reducer_subtasks:
+            reducer_ordinal = _get_reducer_operand(subtask.chunk_graph).reducer_ordinal
+            filled_reducers[reducer_ordinal] = subtask
+        return filled_reducers.values()
 
     def has_shuffle(self):
         return self.num_shuffles > 0
@@ -82,11 +82,14 @@ class ShuffleManager:
         shuffle_index, reducer_index = self.reducer_indices[subtask]
         return self.mapper_output_refs[shuffle_index][:, reducer_index]
 
-    def get_num_reducers(self, subtask):
+    def get_n_reducers(self, subtask):
         mapper_index = self.mapper_indices.get(subtask)
         if mapper_index:
             shuffle_index = mapper_index[0]
         else:
-            reducer_index = self.reducer_indices[subtask]
-            shuffle_index = reducer_index[0]
+            shuffle_index, _ = self.reducer_indices[subtask]
         return self.mapper_output_refs[shuffle_index].shape[1]
+
+
+def _get_reducer_operand(subtask_chunk_graph):
+    return next(c.op for c in subtask_chunk_graph if isinstance(c.op, MapReduceOperand))
