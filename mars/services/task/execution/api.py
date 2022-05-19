@@ -165,6 +165,9 @@ class TaskExecutor(ABC):
             **kwargs,
         )
 
+    def destroy(self):
+        """Destroy the executor."""
+
     async def __aenter__(self):
         """Called when begin to execute the task."""
 

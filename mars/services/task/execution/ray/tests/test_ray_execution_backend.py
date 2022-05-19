@@ -12,24 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import Counter
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from ...... import tensor as mt
 
+from ......core import TileContext
 from ......core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 from ......serialization import serialize
 from ......tests.core import require_ray, mock
 from ......utils import lazy_import, get_chunk_params
 from .....context import ThreadedServiceContext
-from ....core import new_task_id
+from ....core import new_task_id, Task
+from ..config import RayExecutionConfig
 from ..context import (
     RayExecutionContext,
     RayRemoteObjectManager,
     _RayRemoteObjectContext,
 )
-from ..executor import execute_subtask
+from ..executor import execute_subtask, RayTaskExecutor
 from ..fetcher import RayFetcher
 
 ray = lazy_import("ray")
@@ -39,6 +43,48 @@ def _gen_subtask_chunk_graph(t):
     graph = TileableGraph([t.data])
     next(TileableGraphBuilder(graph).build())
     return next(ChunkGraphBuilder(graph, fuse_enabled=False).build())
+
+
+class MockRayTaskExecutor(RayTaskExecutor):
+    def __init__(self, *args, **kwargs):
+        self._set_attrs = Counter()
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def _get_ray_executor():
+        # Export remote function once.
+        return None
+
+    def set_attr_counter(self):
+        return self._set_attrs
+
+    def __setattr__(self, key, value):
+        super().__setattr__(key, value)
+        self._set_attrs[key] += 1
+
+
+def test_ray_executor_destroy():
+    task = Task("mock_task", "mock_session")
+    config = RayExecutionConfig.from_execution_config({"backend": "mars"})
+    executor = MockRayTaskExecutor(
+        config=config,
+        task=task,
+        tile_context=TileContext(),
+        task_context={},
+        task_state_actor=None,
+        lifecycle_api=None,
+        meta_api=None,
+    )
+    counter = executor.set_attr_counter()
+    assert len(counter) > 0
+    keys = executor.__dict__.keys()
+    assert counter.keys() >= keys
+    counter.clear()
+    executor.destroy()
+    keys = set(keys) - {"_set_attrs"}
+    assert counter.keys() == keys, "Some keys are not reset in destroy()."
+    for k, v in counter.items():
+        assert v == 1
 
 
 def test_ray_execute_subtask_basic():
