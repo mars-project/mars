@@ -41,7 +41,7 @@ class RayFetcher(Fetcher):
         self._no_conditions = True
 
     @staticmethod
-    @functools.lru_cache(maxsize=None)
+    @functools.lru_cache(maxsize=None)  # Specify maxsize=None to make it faster
     def _remote_query_object_with_condition():
         # Export remote function once.
         return ray.remote(_query_object_with_condition)
