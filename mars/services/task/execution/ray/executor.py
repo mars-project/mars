@@ -15,6 +15,7 @@
 import asyncio
 import functools
 import logging
+from copy import deepcopy
 from typing import List, Dict, Any, Set
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
@@ -169,7 +170,7 @@ class RayTaskExecutor(TaskExecutor):
         # refs. In this way we can reduce a lot of unnecessary calls of ray.
         self._output_object_refs_nums = []
         # For meta and data gc
-        self._execute_subtask_graph_task = None
+        self._execute_subtask_graph_aiotask = None
         self._cancelled = False
 
     @classmethod
@@ -217,10 +218,13 @@ class RayTaskExecutor(TaskExecutor):
         self._available_band_resources = None
 
         # For progress
-        self._pre_all_stages_progress = 1
-        self._pre_all_stages_tile_progress = 1
-        self._cur_stage_tile_progress = 1
-        self._cur_stage_output_object_refs = []
+        self._pre_all_stages_progress = None
+        self._pre_all_stages_tile_progress = None
+        self._cur_stage_tile_progress = None
+        self._cur_stage_output_object_refs = None
+        self._output_object_refs_nums = None
+        self._execute_subtask_graph_aiotask = None
+        self._cancelled = None
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -267,7 +271,7 @@ class RayTaskExecutor(TaskExecutor):
     ) -> Dict[Chunk, ExecutionChunkResult]:
         if self._cancelled is True:  # pragma: no cover
             raise asyncio.CancelledError()
-        self._execute_subtask_graph_task = asyncio.current_task()
+        self._execute_subtask_graph_aiotask = asyncio.current_task()
 
         logger.info("Stage %s start.", stage_id)
         task_context = self._task_context
@@ -307,9 +311,6 @@ class RayTaskExecutor(TaskExecutor):
             elif output_count == 1:
                 output_object_refs = [output_object_refs]
             self._cur_stage_output_object_refs.extend(output_object_refs)
-            # Note: `output_object_refs` is greater than 0, if not it won't run
-            # here. But there is a potential problem that we cannot cancel the
-            # subtask if output_count is 0.
             self._output_object_refs_nums.append(len(output_object_refs))
             if output_meta_keys:
                 meta_object_ref, *output_object_refs = output_object_refs
@@ -417,19 +418,28 @@ class RayTaskExecutor(TaskExecutor):
         logger.info("Start to cancel task %s.", self._task)
         self._cancelled = True
         if (
-            self._execute_subtask_graph_task is not None
-            and not self._execute_subtask_graph_task.cancelled()
+            self._execute_subtask_graph_aiotask is not None
+            and not self._execute_subtask_graph_aiotask.cancelled()
         ):
-            self._execute_subtask_graph_task.cancel()
-        subtask_num = len(self._output_object_refs_nums)
+            self._execute_subtask_graph_aiotask.cancel()
+        timeout = self._config.get_subtask_cancel_timeout()
+        # It will throw an exception like `TaskCancelledError` or
+        # `WorkerCrashedError` when cancelling a ray task and `TaskProcessor`
+        # would catch the exception and run `self._finish` which will call
+        # the destroy method of `RayTaskExecutor` and clear its attributes.
+        # So here deep copy is necessary. If not it will cause array out of
+        # bounds exception and some ray tasks will never not be canceled.
+        output_object_refs_nums = deepcopy(self._output_object_refs_nums)
+        cur_stage_output_object_refs = deepcopy(self._cur_stage_output_object_refs)
+        subtask_num = len(output_object_refs_nums)
         if subtask_num > 0:
             pos = 0
             for i in range(0, subtask_num):
                 if i > 0:
-                    pos += self._output_object_refs_nums[i - 1]
+                    pos += output_object_refs_nums[i - 1]
                 await _cancel_ray_task(
-                    self._cur_stage_output_object_refs[pos],
-                    self._config.get_subtask_cancel_timeout(),
+                    cur_stage_output_object_refs[pos],
+                    timeout,
                 )
 
     async def _load_subtask_inputs(
