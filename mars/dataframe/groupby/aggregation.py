@@ -26,7 +26,7 @@ from ... import opcodes as OperandDef
 from ...config import options
 from ...core import ENTITY_TYPE, OutputType
 from ...core.custom_log import redirect_custom_log
-from ...core.context import get_context, Context
+from ...core.context import get_context
 from ...core.operand import OperandStage
 from ...serialization.serializables import (
     Int32Field,
@@ -352,7 +352,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         concat_pivot_chunk: ChunkType,
         in_df: TileableType,
     ):
-        # properties = dict(by=op.groupby_params["by"], gpu=op.is_gpu())
         out_df = op.outputs[0]
         map_chunks = []
         chunk_shape = (in_df.chunk_shape[0], 1)
@@ -411,10 +410,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return partition_sort_chunks
 
     @classmethod
-    def _gen_shuffle_chunks(cls, op, in_df, chunks):
+    def _gen_shuffle_chunks(cls, op, chunks):
         # generate map chunks
         map_chunks = []
-        chunk_shape = (in_df.chunk_shape[0], 1)
+        chunk_shape = (len(chunks), 1)
         for chunk in chunks:
             # no longer consider as_index=False for the intermediate phases,
             # will do reset_index at last if so
@@ -542,15 +541,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     ):
         # First, perform groupby and aggregation on each chunk.
         agg_chunks = cls._gen_map_chunks(op, in_df.chunks, out_df, func_infos)
-        pivot_chunk = None
-        if op.groupby_params["sort"] and len(in_df.chunks) > 1:
-            agg_chunk_len = len(agg_chunks)
-            sample_chunks = cls._sample_chunks(op, agg_chunks)
-            pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, agg_chunk_len)
-
-        return cls._perform_shuffle(
-            op, agg_chunks, in_df, out_df, func_infos, pivot_chunk
-        )
+        return cls._perform_shuffle(op, agg_chunks, in_df, out_df, func_infos)
 
     @classmethod
     def _gen_pivot_chunk(
@@ -579,7 +570,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         concat_pivot_chunk = concat_pivot_op.new_chunk(
             sample_chunks,
             shape=(agg_chunk_len,),
-            dtype=object,
+            dtype=np.dtype(object),
         )
         return concat_pivot_chunk
 
@@ -641,15 +632,16 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         in_df: TileableType,
         out_df: TileableType,
         func_infos: ReductionSteps,
-        pivot_chunk: ChunkType,
     ):
-        # Shuffle the aggregation chunk.
-        if pivot_chunk is not None:
+        if op.groupby_params["sort"] and len(in_df.chunks) > 1:
+            agg_chunk_len = len(agg_chunks)
+            sample_chunks = cls._sample_chunks(op, agg_chunks)
+            pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, agg_chunk_len)
             reduce_chunks = cls._gen_shuffle_chunks_with_pivot(
                 op, in_df, agg_chunks, pivot_chunk
             )
         else:
-            reduce_chunks = cls._gen_shuffle_chunks(op, in_df, agg_chunks)
+            reduce_chunks = cls._gen_shuffle_chunks(op, agg_chunks)
 
         # Combine groups
         agg_chunks = []
@@ -705,15 +697,26 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return cls._combine_tree(op, chunks, out_df, func_infos)
 
     @classmethod
-    def _combine_tree(
+    def _build_tree_chunks(
         cls,
         op: "DataFrameGroupByAgg",
         chunks: List[ChunkType],
-        out_df: TileableType,
         func_infos: ReductionSteps,
+        combine_size: int,
+        input_chunk_size: float = None,
+        chunk_store_limit: int = None,
     ):
-        combine_size = op.combine_size
-        while len(chunks) > combine_size:
+        out_df = op.outputs[0]
+        # if concat chunk's size is greater than chunk_store_limit,
+        # stop combining them.
+        check_size = False
+        if chunk_store_limit is not None:
+            assert input_chunk_size is not None
+            check_size = True
+        concat_chunk_size = input_chunk_size
+        while (concat_chunk_size < chunk_store_limit if check_size else True) and (
+            len(chunks) > combine_size
+        ):
             new_chunks = []
             for idx, i in enumerate(range(0, len(chunks), combine_size)):
                 chks = chunks[i : i + combine_size]
@@ -753,12 +756,26 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                     )
                 )
             chunks = new_chunks
+            if concat_chunk_size is not None:
+                concat_chunk_size *= combine_size
+        if concat_chunk_size:
+            return chunks, concat_chunk_size
+        else:
+            return chunks
 
+    @classmethod
+    def _build_out_tileable(
+        cls,
+        op: "DataFrameGroupByAgg",
+        out_df: TileableType,
+        combined_chunks: List[ChunkType],
+        func_infos: ReductionSteps,
+    ):
         concat_op = DataFrameConcat(output_types=out_df.op.output_types)
         if out_df.ndim == 2:
-            chk = concat_op.new_chunk(chunks, dtypes=chunks[0].dtypes)
+            chk = concat_op.new_chunk(combined_chunks, dtypes=combined_chunks[0].dtypes)
         else:
-            chk = concat_op.new_chunk(chunks, dtype=chunks[0].dtype)
+            chk = concat_op.new_chunk(combined_chunks, dtype=combined_chunks[0].dtype)
         chunk_op = op.copy().reset_key()
         chunk_op.tileable_op_key = op.key
         chunk_op.stage = OperandStage.agg
@@ -783,6 +800,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_tileables(op.inputs, **kw)
 
     @classmethod
+    def _combine_tree(
+        cls,
+        op: "DataFrameGroupByAgg",
+        chunks: List[ChunkType],
+        out_df: TileableType,
+        func_infos: ReductionSteps,
+    ):
+        combine_size = op.combine_size
+        chunks = cls._build_tree_chunks(op, chunks, func_infos, combine_size)
+        return cls._build_out_tileable(op, out_df, chunks, func_infos)
+
+    @classmethod
     def _choose_tree_method(
         cls,
         raw_sizes: List[int],
@@ -790,30 +819,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         sample_count: int,
         total_count: int,
         chunk_store_limit: int,
-        ctx: Context,
     ) -> bool:
-        logger.debug(
-            "Start to choose method for Groupby, agg_sizes: %s, raw_sizes: %s, "
-            "sample_count: %s, total_count: %s, chunk_store_limit: %s",
-            agg_sizes,
-            raw_sizes,
-            sample_count,
-            total_count,
-            chunk_store_limit,
-        )
         estimate_size = sum(agg_sizes) / sample_count * total_count
-        if (
-            len(ctx.get_worker_addresses()) > 1
-            and estimate_size > chunk_store_limit
-            and np.mean(agg_sizes) > 1024**2
-            and total_count <= 256
-        ):
-            # for distributed, if estimate size could be potentially large,
-            # and each chunk size is large enough(>1M, small chunk means large error),
-            # total count is relatively small(<=256, large number of chunks
-            # is not quite efficient for shuffle)
-            # we choose to use shuffle
-            return False
         # calculate the coefficient of variation of aggregation sizes,
         # if the CV is less than CV_THRESHOLD and the mean of agg_size/raw_size
         # is less than MEAN_RATIO_THRESHOLD, we suppose the single chunk's aggregation size
@@ -835,6 +842,91 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return False
 
     @classmethod
+    def _tile_auto_on_local(
+        cls,
+        op: "DataFrameGroupByAgg",
+        in_df: TileableType,
+        out_df: TileableType,
+        func_infos: ReductionSteps,
+        sample_map_chunks: List,
+        sample_raw_sizes: List,
+        sample_agg_sizes: List,
+    ):
+        combine_size = op.combine_size
+        left_chunks = in_df.chunks[combine_size:]
+        left_chunks = cls._gen_map_chunks(op, left_chunks, out_df, func_infos)
+        if cls._choose_tree_method(
+            sample_raw_sizes,
+            sample_agg_sizes,
+            len(sample_map_chunks),
+            len(in_df.chunks),
+            op.chunk_store_limit,
+        ):
+            logger.info("Choose tree method for groupby operand %s", op)
+            return cls._combine_tree(
+                op, sample_map_chunks + left_chunks, out_df, func_infos
+            )
+        else:
+            # otherwise, use shuffle
+            logger.info("Choose shuffle method for groupby operand %s", op)
+            return cls._perform_shuffle(
+                op,
+                sample_map_chunks + left_chunks,
+                in_df,
+                out_df,
+                func_infos,
+            )
+
+    @classmethod
+    def _tile_auto_on_distributed(
+        cls,
+        op: "DataFrameGroupByAgg",
+        in_df: TileableType,
+        out_df: TileableType,
+        func_infos: ReductionSteps,
+        sample_map_chunks: List[ChunkType],
+        sample_agg_sizes: List[int],
+    ):
+        combine_size = op.combine_size
+        left_chunks = cls._gen_map_chunks(
+            op, in_df.chunks[combine_size:], out_df, func_infos
+        )
+        input_size = sum(sample_agg_sizes) / len(sample_agg_sizes)
+        combine_chunk_limit = op.chunk_store_limit / 4
+        combined_chunks, concat_size = cls._build_tree_chunks(
+            op,
+            sample_map_chunks + left_chunks,
+            func_infos,
+            combine_size,
+            input_size,
+            combine_chunk_limit,
+        )
+        logger.debug(
+            "Combine map chunks to %s chunks for groupby operand %s",
+            len(combined_chunks),
+            op,
+        )
+        if concat_size <= combine_chunk_limit:
+            logger.debug(
+                "Choose tree method after combining chunks for groupby operand %s", op
+            )
+            return cls._build_out_tileable(op, out_df, combined_chunks, func_infos)
+        else:
+            logger.debug(
+                "Choose shuffle method after combining chunks for "
+                "groupby operand %s, chunk count is %s",
+                op,
+                len(combined_chunks),
+            )
+            return cls._perform_shuffle(
+                op,
+                combined_chunks,
+                in_df,
+                out_df,
+                func_infos,
+            )
+
+    @classmethod
     def _tile_auto(
         cls,
         op: "DataFrameGroupByAgg",
@@ -849,8 +941,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
         # collect the first combine_size chunks, run it
         # to get the size before and after agg
-        chunks = in_df.chunks[:combine_size]
-        chunks = cls._gen_map_chunks(op, chunks, out_df, func_infos)
+        chunks = cls._gen_map_chunks(
+            op, in_df.chunks[:combine_size], out_df, func_infos
+        )
         for chunk in chunks:
             chunk.op.size_recorder_name = size_recorder_name
         # yield to trigger execution
@@ -860,29 +953,24 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         # destroy size recorder
         ctx.destroy_remote_object(size_recorder_name)
 
-        left_chunks = in_df.chunks[combine_size:]
-        left_chunks = cls._gen_map_chunks(op, left_chunks, out_df, func_infos)
-        if cls._choose_tree_method(
-            raw_sizes,
+        logger.debug(
+            "Start to choose method for Groupby, agg_sizes: %s, raw_sizes: %s, "
+            "sample_count: %s, total_count: %s, chunk_store_limit: %s",
             agg_sizes,
-            len(chunks),
+            raw_sizes,
+            len(agg_sizes),
             len(in_df.chunks),
             op.chunk_store_limit,
-            ctx,
-        ):
-            logger.info("Choose tree method for groupby operand %s", op)
-            return cls._combine_tree(op, chunks + left_chunks, out_df, func_infos)
-        else:
-            # otherwise, use shuffle
-            pivot_chunk = None
-            if op.groupby_params["sort"] and len(in_df.chunks) > 1:
-                agg_chunk_len = len(chunks + left_chunks)
-                sample_chunks = cls._sample_chunks(op, chunks + left_chunks)
-                pivot_chunk = cls._gen_pivot_chunk(op, sample_chunks, agg_chunk_len)
+        )
 
-            logger.info("Choose shuffle method for groupby operand %s", op)
-            return cls._perform_shuffle(
-                op, chunks + left_chunks, in_df, out_df, func_infos, pivot_chunk
+        if len(ctx.get_worker_addresses()) <= 1:
+            # for one worker
+            return cls._tile_auto_on_local(
+                op, in_df, out_df, func_infos, chunks, raw_sizes, agg_sizes
+            )
+        else:
+            return cls._tile_auto_on_distributed(
+                op, in_df, out_df, func_infos, chunks, agg_sizes
             )
 
     @classmethod
@@ -895,13 +983,16 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         func_infos = cls._compile_funcs(op, in_df)
 
         if op.method == "auto":
+            logger.debug("Choose auto method for groupby operand %s", op)
             if len(in_df.chunks) <= op.combine_size:
                 return cls._tile_with_tree(op, in_df, out_df, func_infos)
             else:
                 return (yield from cls._tile_auto(op, in_df, out_df, func_infos))
         if op.method == "shuffle":
+            logger.debug("Choose shuffle method for groupby operand %s", op)
             return cls._tile_with_shuffle(op, in_df, out_df, func_infos)
         elif op.method == "tree":
+            logger.debug("Choose tree method for groupby operand %s", op)
             return cls._tile_with_tree(op, in_df, out_df, func_infos)
         else:  # pragma: no cover
             raise NotImplementedError
