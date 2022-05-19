@@ -15,7 +15,6 @@
 import asyncio
 import functools
 import logging
-from copy import deepcopy
 from typing import List, Dict, Any, Set
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
@@ -218,11 +217,11 @@ class RayTaskExecutor(TaskExecutor):
         self._available_band_resources = None
 
         # For progress
-        self._pre_all_stages_progress = None
-        self._pre_all_stages_tile_progress = None
-        self._cur_stage_tile_progress = None
-        self._cur_stage_output_object_refs = None
-        self._output_object_refs_nums = None
+        self._pre_all_stages_progress = 1
+        self._pre_all_stages_tile_progress = 1
+        self._cur_stage_tile_progress = 1
+        self._cur_stage_output_object_refs = []
+        self._output_object_refs_nums = []
         self._execute_subtask_graph_aiotask = None
         self._cancelled = None
 
@@ -414,8 +413,15 @@ class RayTaskExecutor(TaskExecutor):
         return self._pre_all_stages_progress + stage_progress
 
     async def cancel(self):
-        """Cancel execution."""
+        """
+        Cancel the task execution.
+
+        1. Try to cancel the `execute_subtask_graph`
+        2. Try to cancel the submitted subtasks by `ray.cancel`
+        """
         logger.info("Start to cancel task %s.", self._task)
+        if self._task is None:
+            return
         self._cancelled = True
         if (
             self._execute_subtask_graph_aiotask is not None
@@ -423,24 +429,17 @@ class RayTaskExecutor(TaskExecutor):
         ):
             self._execute_subtask_graph_aiotask.cancel()
         timeout = self._config.get_subtask_cancel_timeout()
-        # It will throw an exception like `TaskCancelledError` or
-        # `WorkerCrashedError` when cancelling a ray task and `TaskProcessor`
-        # would catch the exception and run `self._finish` which will call
-        # the destroy method of `RayTaskExecutor` and clear its attributes.
-        # So here deep copy is necessary. If not it will cause array out of
-        # bounds exception and some ray tasks will never not be canceled.
-        output_object_refs_nums = deepcopy(self._output_object_refs_nums)
-        cur_stage_output_object_refs = deepcopy(self._cur_stage_output_object_refs)
-        subtask_num = len(output_object_refs_nums)
+        subtask_num = len(self._output_object_refs_nums)
         if subtask_num > 0:
             pos = 0
+            obj_refs_to_be_cancelled_ = []
             for i in range(0, subtask_num):
                 if i > 0:
-                    pos += output_object_refs_nums[i - 1]
-                await _cancel_ray_task(
-                    cur_stage_output_object_refs[pos],
-                    timeout,
+                    pos += self._output_object_refs_nums[i - 1]
+                obj_refs_to_be_cancelled_.append(
+                    _cancel_ray_task(self._cur_stage_output_object_refs[pos], timeout)
                 )
+            await asyncio.gather(*obj_refs_to_be_cancelled_)
 
     async def _load_subtask_inputs(
         self, stage_id: str, subtask: Subtask, chunk_graph: ChunkGraph, context: Dict
