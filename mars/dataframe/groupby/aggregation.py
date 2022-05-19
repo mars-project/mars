@@ -320,7 +320,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             partition_shuffle_reduce = DataFrameGroupbySortShuffle(
                 stage=OperandStage.reduce,
                 reducer_index=(i, 0),
-                n_reducers=len(partition_chunks),
+                n_reducer=len(partition_chunks),
                 reducer_ordinal=i,
                 output_types=output_types,
                 **properties,
@@ -446,7 +446,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 stage=OperandStage.reduce,
                 output_types=[OutputType.dataframe_groupby],
                 reduce_ordinal=ordinal,
-                n_reducers=len(out_indices),
+                n_reducer=len(out_indices),
             )
             reduce_chunks.append(
                 reduce_op.new_chunk(

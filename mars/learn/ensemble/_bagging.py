@@ -133,7 +133,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
     feature_random_state = RandomStateField("feature_random_state")
 
     reducer_ratio: float = Float32Field("reducer_ratio")
-    n_reducers: int = Int64Field("n_reducers", default=None)
+    n_reducer: int = Int64Field("n_reducer", default=None)
     column_offset: int = Int64Field("column_offset", default=None)
 
     chunk_shape: Tuple[int] = TupleField("chunk_shape", FieldTypes.int64)
@@ -293,9 +293,9 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             and not op.bootstrap_features,
         ]
 
-        n_reducers = (
-            op.n_reducers
-            if op.n_reducers is not None
+        n_reducer = (
+            op.n_reducer
+            if op.n_reducer is not None
             else max(1, int(in_sample.chunk_shape[0] * op.reducer_ratio))
         )
 
@@ -321,7 +321,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             new_op.stage = OperandStage.map
             new_op.max_samples = max_samples_splits[:, chunk.index[0]]
             new_op.max_features = max_features_splits[:, chunk.index[1]]
-            new_op.n_reducers = n_reducers
+            new_op.n_reducer = n_reducer
             new_op.column_offset = int(column_cum_offset[chunk.index[1]])
 
             if chunk.index[0] != 0:
@@ -348,19 +348,19 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             map_chunks, dtype=np.dtype(int), shape=()
         )
 
-        remain_reducers = op.n_estimators % n_reducers
+        remain_reducers = op.n_estimators % n_reducer
         reduce_data_chunks = []
         reduce_labels_chunks = []
         reduce_weights_chunks = []
         reduce_feature_chunks = []
-        for idx in range(n_reducers):
+        for idx in range(n_reducer):
             new_op = op.copy().reset_key()
             new_op.random_state = None
             new_op.stage = OperandStage.reduce
             new_op.reduce_ordinal = idx
-            new_op.n_reducers = n_reducers
+            new_op.n_reducer = n_reducer
             new_op.chunk_shape = in_sample.chunk_shape
-            new_op.n_estimators = op.n_estimators // n_reducers
+            new_op.n_estimators = op.n_estimators // n_reducer
             if remain_reducers:
                 remain_reducers -= 1
                 new_op.n_estimators += 1
@@ -472,14 +472,14 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
         in_weights_data = ctx[in_weights.key] if op.with_weights else None
         out_samples = op.outputs[0]
 
-        remains = op.n_estimators % op.n_reducers
+        remains = op.n_estimators % op.n_reducer
         reducer_iters = [
-            itertools.repeat(idx, 1 + op.n_estimators // op.n_reducers)
+            itertools.repeat(idx, 1 + op.n_estimators // op.n_reducer)
             for idx in range(remains)
         ]
         reducer_iters += [
-            itertools.repeat(idx, op.n_estimators // op.n_reducers)
-            for idx in range(remains, op.n_reducers)
+            itertools.repeat(idx, op.n_estimators // op.n_reducer)
+            for idx in range(remains, op.n_reducer)
         ]
         reducer_iter = itertools.chain(*reducer_iters)
 
@@ -765,7 +765,7 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
     random_state = RandomStateField("random_state", default=None)
 
     reducer_ratio: float = Float32Field("reducer_ratio")
-    n_reducers: int = Int64Field("n_reducers")
+    n_reducer: int = Int64Field("n_reducer")
 
     labels: TileableType = ReferenceField("labels", default=None)
     weights: TileableType = ReferenceField("weights", default=None)
@@ -804,7 +804,7 @@ class BaggingFitOperand(LearnOperand, LearnOperandMixin):
             bootstrap_features=self.bootstrap_features,
             random_state=self.random_state,
             reducer_ratio=self.reducer_ratio,
-            n_reducers=self.n_reducers,
+            n_reducer=self.n_reducer,
             with_weights=self.weights is not None,
             with_labels=self.labels is not None,
             with_feature_indices=self.with_feature_indices,
@@ -1283,7 +1283,7 @@ class BaseBagging:
             bootstrap_features=self.bootstrap_features,
             random_state=self.random_state,
             reducer_ratio=self.reducers if isinstance(self.reducers, float) else None,
-            n_reducers=self.reducers if isinstance(self.reducers, int) else None,
+            n_reducer=self.reducers if isinstance(self.reducers, int) else None,
         )
         tileables = fit_op(X, y, sample_weight, feature_indices)
         ret = execute(*tileables, session=session, **(run_kwargs or dict()))

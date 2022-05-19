@@ -112,7 +112,7 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
             for ordinal, c in enumerate(map_chunks):
                 chunk_op = TensorPermutation(
                     stage=OperandStage.reduce,
-                    n_reducers=len(map_chunks),
+                    n_reducer=len(map_chunks),
                     reducer_ordinal=ordinal,
                     seed=reduce_seeds[c.index[op.axis]],
                     axis=op.axis,

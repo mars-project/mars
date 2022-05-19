@@ -138,11 +138,11 @@ class GraphAnalyzer:
                 chunk_to_fetch_chunk[inp_chunk] = inp_chunk
                 inp_fetch_chunks.append(inp_chunk)
             elif isinstance(inp_chunk.op, ShuffleProxy):
-                num_reducers = len(self._chunk_graph.successors(inp_chunk))
+                n_reducer = len(self._chunk_graph.successors(inp_chunk))
                 fetch_chunk = build_fetch_shuffle(
                     inp_chunk,
                     shuffle_type=self._shuffle_type,
-                    num_reducers=num_reducers,
+                    n_reducer=n_reducer,
                 ).data
                 chunk_to_fetch_chunk[inp_chunk] = fetch_chunk
                 inp_fetch_chunks.append(fetch_chunk)

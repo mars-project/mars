@@ -545,7 +545,7 @@ def estimate_pandas_size(
 
 
 def build_fetch_shuffle(
-    chunk: ChunkType, shuffle_type=None, num_reducers=None
+    chunk: ChunkType, shuffle_type=None, n_reducer=None
 ) -> ChunkType:
     from .core.operand import ShuffleProxy
     from mars.core.operand.shuffle import ShuffleType
@@ -555,11 +555,11 @@ def build_fetch_shuffle(
     params = chunk.params.copy()
     shuffle_type = shuffle_type or ShuffleType.PULL
     if shuffle_type == ShuffleType.PUSH:
-        num_mappers = len(chunk.inputs)
-        assert num_reducers > 0, num_reducers
+        n_mapper = len(chunk.inputs)
+        assert n_reducer > 0, n_reducer
         op = chunk_op.get_fetch_op_cls(chunk, shuffle_type)(
-            num_mappers=num_mappers,
-            num_reducers=num_reducers,
+            n_mapper=n_mapper,
+            n_reducer=n_reducer,
             gpu=chunk.op.gpu,
         )
     else:

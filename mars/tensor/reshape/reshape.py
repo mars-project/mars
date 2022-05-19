@@ -263,7 +263,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                     order=tensor.order,
                     index=chunk_idx,
                     reducer_ordinal=ordinal,
-                    n_reducers=len(out_indices),
+                    n_reducer=len(out_indices),
                 )
             )
 

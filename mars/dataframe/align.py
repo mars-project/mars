@@ -683,7 +683,7 @@ def _gen_series_chunks(splits, out_shape, left_or_right, series):
         for out_idx in range(out_shape[0]):
             reduce_op = DataFrameIndexAlign(
                 stage=OperandStage.reduce,
-                n_reducers=len(out_shape[0]),
+                n_reducer=len(out_shape[0]),
                 reducer_ordinal=out_idx,
                 i=out_idx,
                 sparse=proxy_chunk.issparse(),
@@ -822,7 +822,7 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
                 )
                 reduce_op = DataFrameIndexAlign(
                     stage=OperandStage.reduce,
-                    n_reducers=len(out_shape[shuffle_axis]),
+                    n_reducer=len(out_shape[shuffle_axis]),
                     reducer_ordinal=j,
                     i=j,
                     sparse=proxy_chunk.issparse(),
@@ -861,7 +861,7 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
         for ordinal, out_idx in enumerate(out_indices):
             reduce_op = DataFrameIndexAlign(
                 stage=OperandStage.reduce,
-                n_reducers=len(out_indices),
+                n_reducer=len(out_indices),
                 reducer_ordinal=ordinal,
                 i=out_idx,
                 sparse=proxy_chunk.issparse(),

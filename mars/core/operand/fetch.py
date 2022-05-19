@@ -56,8 +56,8 @@ class FetchShuffle(Operand):
 
 class PushShuffle(Operand):
     _op_type_ = opcodes.PUSH_SHUFFLE
-    num_mappers = Int32Field("num_mappers")
-    num_reducers = Int32Field("num_reducers")
+    n_mapper = Int32Field("n_mapper")
+    n_reducer = Int32Field("n_reducer")
 
     @classmethod
     def execute(cls, ctx, op):

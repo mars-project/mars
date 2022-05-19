@@ -787,7 +787,7 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
                 axes=axes,
                 dtype=proxy_chunk.dtype,
                 reducer_ordinal=ordinal,
-                n_reducers=len(out_indices),
+                n_reducer=len(out_indices),
             )
             # chunks of fancy indexes on each axis
             kws = [
@@ -934,7 +934,7 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
                     sparse=to_shuffle_chunks[0].issparse(),
                     reducer_index=(next(it),),
                     reducer_ordinal=ordinal,
-                    n_reducers=len(out_indices),
+                    n_reducer=len(out_indices),
                 )
                 reduce_chunk_shape = (
                     other_shape[:to_concat_axis]
