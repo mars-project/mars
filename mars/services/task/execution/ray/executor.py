@@ -224,7 +224,7 @@ class RayTaskExecutor(TaskExecutor):
         )
 
     @staticmethod
-    @functools.lru_cache(maxsize=1)
+    @functools.lru_cache(maxsize=None)
     def _get_ray_executor():
         # Export remote function once.
         return ray.remote(execute_subtask)
