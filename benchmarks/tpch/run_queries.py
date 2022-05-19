@@ -617,7 +617,7 @@ def q12(lineitem, orders):
 def q13(customer, orders):
     customer_filtered = customer.loc[:, ["C_CUSTKEY"]]
     orders_filtered = orders[
-        ~orders["O_COMMENT"].str.contains("special(\S|\s)*requests")
+        ~orders["O_COMMENT"].str.contains("special[\S|\s]*requests")
     ]
     orders_filtered = orders_filtered.loc[:, ["O_ORDERKEY", "O_CUSTKEY"]]
     c_o_merged = customer_filtered.merge(

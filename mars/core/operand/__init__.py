@@ -21,7 +21,7 @@ from .base import (
     LogicKeyGenerator,
 )
 from .core import TileableOperandMixin, execute, estimate_size
-from .fetch import Fetch, FetchMixin, FetchShuffle
+from .fetch import Fetch, FetchMixin, FetchShuffle, PushShuffle
 from .fuse import Fuse, FuseChunkMixin
 from .objects import (
     ObjectOperand,
@@ -31,4 +31,4 @@ from .objects import (
     ObjectFuseChunkMixin,
     MergeDictOperand,
 )
-from .shuffle import ShuffleProxy, MapReduceOperand
+from .shuffle import ShuffleProxy, MapReduceOperand, ShuffleType

@@ -14,7 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pickle
+
 import numpy as np
+import pytest
 import scipy.sparse as sps
 
 from ... import sparse as mls
@@ -47,11 +50,19 @@ def assert_array_equal(a, b, almost=False):
 
 
 def test_sparse_creation():
+    with pytest.raises(ValueError):
+        SparseNDArray()
+
     s = SparseNDArray(s1_data)
     assert s.ndim == 2
     assert isinstance(s, SparseMatrix)
     assert_array_equal(s.toarray(), s1_data.A)
     assert_array_equal(s.todense(), s1_data.A)
+
+    ss = pickle.loads(pickle.dumps(s))
+    assert s == ss
+    assert_array_equal(ss.toarray(), s1_data.A)
+    assert_array_equal(ss.todense(), s1_data.A)
 
     v = SparseNDArray(v1, shape=(3,))
     assert s.ndim
@@ -60,6 +71,12 @@ def test_sparse_creation():
     assert_array_equal(v.todense(), v1_data)
     assert_array_equal(v.toarray(), v1_data)
     assert_array_equal(v, v1_data)
+
+    vv = pickle.loads(pickle.dumps(v))
+    assert v == vv
+    assert_array_equal(vv.todense(), v1_data)
+    assert_array_equal(vv.toarray(), v1_data)
+    assert_array_equal(vv, v1_data)
 
 
 def test_sparse_add():

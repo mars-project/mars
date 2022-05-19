@@ -46,9 +46,13 @@ class SparseNDArray:
             return object.__new__(SparseMatrix)
 
         else:
-            from .coo import COONDArray
-
-            return object.__new__(COONDArray)
+            if cls is not SparseNDArray:
+                return object.__new__(cls)
+            else:
+                raise ValueError(
+                    f"The construct params of {cls.__name__} are invalid: "
+                    f"args={args}, kwargs={kwargs}"
+                )
 
     @property
     def raw(self):
@@ -228,6 +232,12 @@ class SparseArray(SparseNDArray):
             return lambda: SparseNDArray(self.spmatrix.get(), shape=self.shape)
 
         return super().__getattribute__(attr)
+
+    def __getstate__(self):
+        return self.spmatrix
+
+    def __setstate__(self, state):
+        self.spmatrix = state
 
     def astype(self, dtype, **_):
         dtype = np.dtype(dtype)

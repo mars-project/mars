@@ -43,8 +43,10 @@ class MapReduceOperand(Operand):
     send the partitioned data from all mappers to all reducers.
     """
 
-    reducer_index = TupleField("reducer_index", FieldTypes.uint64)
+    # for mapper
     mapper_id = Int32Field("mapper_id", default=0)
+    # for reducer
+    reducer_index = TupleField("reducer_index", FieldTypes.uint64)
     reducer_phase = StringField("reducer_phase", default=None)
 
     def _new_chunks(self, inputs, kws=None, **kw):

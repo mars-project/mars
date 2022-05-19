@@ -262,6 +262,27 @@ class RayTaskExecutor(TaskExecutor):
             meta_api,
         )
 
+    # noinspection DuplicatedCode
+    def destroy(self):
+        self._config = None
+        self._task = None
+        self._tile_context = None
+        self._task_context = None
+        self._task_state_actor = None
+        self._ray_executor = None
+
+        # api
+        self._lifecycle_api = None
+        self._meta_api = None
+
+        self._available_band_resources = None
+
+        # For progress
+        self._pre_all_stages_progress = 1
+        self._pre_all_stages_tile_progress = 1
+        self._cur_stage_tile_progress = 1
+        self._cur_stage_output_object_refs = []
+
     @classmethod
     @alru_cache(cache_exceptions=False)
     async def _get_apis(cls, session_id: str, address: str):

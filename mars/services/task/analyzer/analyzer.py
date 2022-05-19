@@ -19,10 +19,17 @@ from typing import Dict, List, Tuple, Type, Union
 
 from ....config import Config
 from ....core import ChunkGraph, ChunkType, enter_mode
-from ....core.operand import Fetch, VirtualOperand, LogicKeyGenerator
-from ....core.operand.shuffle import ShuffleType, ShuffleProxy, MapReduceOperand
+from ....core.operand import (
+    Fetch,
+    VirtualOperand,
+    LogicKeyGenerator,
+    MapReduceOperand,
+    OperandStage,
+    ShuffleType,
+    ShuffleProxy,
+)
 from ....resource import Resource
-from ....typing import BandType
+from ....typing import BandType, OperandType
 from ....utils import build_fetch, build_fetch_shuffle, tokenize
 from ...subtask import SubtaskGraph, Subtask
 from ..core import Task, new_task_id
@@ -30,6 +37,18 @@ from .assigner import AbstractGraphAssigner, GraphAssigner
 from .fusion import Coloring
 
 logger = logging.getLogger(__name__)
+
+
+def need_reassign_worker(op: OperandType) -> bool:
+    # NOTE(qinxuye): special process for reducer
+    # We'd better set reducer op's stage to reduce, however,
+    # in many case, we copy a reducer op from tileable op,
+    # then set stage as reducer one,
+    # it would be quite nasty to take over the __setattr__ and
+    # make reassign_worker True etc.
+    return op.reassign_worker or (
+        isinstance(op, MapReduceOperand) and op.stage == OperandStage.reduce
+    )
 
 
 class GraphAnalyzer:
@@ -323,8 +342,10 @@ class GraphAnalyzer:
         subtask_graph: SubtaskGraph
             Subtask graph.
         """
+        # reassign worker when specified reassign_worker = True
+        # or it's a reducer operands
         reassign_worker_ops = [
-            chunk.op for chunk in self._chunk_graph if chunk.op.reassign_worker
+            chunk.op for chunk in self._chunk_graph if need_reassign_worker(chunk.op)
         ]
         start_ops = (
             list(self._iter_start_ops(self._chunk_graph))

@@ -68,6 +68,8 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     tokenize_int,
     register_tokenizer,
     ceildiv,
+    reset_id_random_seed,
+    new_random_id,
     Timer,
 )
 from .lib.version import parse as parse_version
@@ -84,6 +86,8 @@ TypeDispatcher = TypeDispatcher
 tokenize = tokenize
 register_tokenizer = register_tokenizer
 ceildiv = ceildiv
+reset_id_random_seed = reset_id_random_seed
+new_random_id = new_random_id
 _create_task = asyncio.create_task
 
 
@@ -163,7 +167,7 @@ def on_serialize_nsplits(value: Tuple[Tuple[int]]):
         return None
     new_nsplits = []
     for dim_splits in value:
-        new_nsplits.append(tuple(None if np.isnan(v) else v for v in dim_splits))
+        new_nsplits.append(tuple(None if pd.isna(v) else v for v in dim_splits))
     return tuple(new_nsplits)
 
 

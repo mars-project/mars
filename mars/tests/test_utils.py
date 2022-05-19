@@ -612,6 +612,12 @@ def test_get_func_token_values():
     assert get_func_token_values(func) == [func]
 
 
+@pytest.mark.parametrize("id_length", [0, 5, 32, 63])
+def test_gen_random_id(id_length):
+    rnd_id = utils.new_random_id(id_length)
+    assert len(rnd_id) == id_length
+
+
 def test_log_exception_wrapper():
     log_file_name = "test_log_exception_wrapper.log"
 

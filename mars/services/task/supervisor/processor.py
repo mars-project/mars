@@ -431,6 +431,7 @@ class TaskProcessor:
                 f.write(dot)
 
     def _finish(self):
+        self._executor.destroy()
         self.done.set()
         if self._dump_subtask_graph:
             self.dump_subtask_graph()
