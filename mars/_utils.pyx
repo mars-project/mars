@@ -1,3 +1,4 @@
+# distutils: language = c++
 # Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,12 +23,16 @@ import uuid
 from datetime import date, datetime, timedelta, tzinfo
 from enum import Enum
 from functools import lru_cache, partial
+from random import getrandbits
 from weakref import WeakSet
 
 import numpy as np
 import pandas as pd
 import cloudpickle
 cimport cython
+from libc.stdint cimport uint_fast64_t
+from libc.stdlib cimport malloc, free
+from .lib.cython.libcpp cimport mt19937_64
 try:
     from pandas.tseries.offsets import Tick as PDTick
 except ImportError:
@@ -420,5 +425,46 @@ cdef class Timer:
         self.duration = time.time() - self._start
 
 
+cdef mt19937_64 _rnd_gen
+cdef bint _rnd_is_seed_set = False
+
+
+cpdef void reset_id_random_seed() except *:
+    cdef bytes seed_bytes
+    global _rnd_is_seed_set
+
+    seed_bytes = getrandbits(64).to_bytes(8, "little")
+    _rnd_gen.seed((<uint_fast64_t *><char *>seed_bytes)[0])
+    _rnd_is_seed_set = True
+
+
+cpdef bytes new_random_id(int byte_len):
+    cdef uint_fast64_t *res_ptr
+    cdef uint_fast64_t res_data[4]
+    cdef int i, qw_num = byte_len >> 3
+    cdef bytes res
+
+    if not _rnd_is_seed_set:
+        reset_id_random_seed()
+
+    if (qw_num << 3) < byte_len:
+        qw_num += 1
+
+    if qw_num <= 4:
+        # use stack memory to accelerate
+        res_ptr = res_data
+    else:
+        res_ptr = <uint_fast64_t *>malloc(qw_num << 3)
+
+    try:
+        for i in range(qw_num):
+            res_ptr[i] = _rnd_gen()
+        return <bytes>((<char *>&(res_ptr[0]))[:byte_len])
+    finally:
+        # free memory if allocated by malloc
+        if res_ptr != res_data:
+            free(res_ptr)
+
+
 __all__ = ['to_str', 'to_binary', 'to_text', 'TypeDispatcher', 'tokenize', 'tokenize_int',
-           'register_tokenizer', 'ceildiv', 'Timer']
+           'register_tokenizer', 'ceildiv', 'Timer', 'reset_id_random_seed', 'new_random_id']
