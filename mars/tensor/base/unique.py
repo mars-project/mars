@@ -236,6 +236,8 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 axis=op.axis,
                 reducer_index=(i,),
                 reducer_phase="agg",
+                reducer_ordinal=i,
+                n_reducers=aggregate_size,
             )
             kws = cls._gen_kws(op, inp, chunk=True, chunk_index=i)
             chunks = reduce_op.new_chunks(
@@ -254,6 +256,8 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
             for j, cs in enumerate(unique_on_chunk_sizes):
                 chunk_op = TensorUnique(
                     stage=OperandStage.reduce,
+                    reducer_ordinal=j,
+                    n_reducers=len(unique_on_chunk_sizes),
                     dtype=map_inverse_chunks[0].dtype,
                     reducer_index=(j,),
                     reducer_phase="inverse",

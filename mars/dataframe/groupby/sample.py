@@ -496,12 +496,14 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
         )
 
         reduce_chunks = []
-        for src_chunk in in_df.chunks:
+        for ordinal, src_chunk in enumerate(in_df.chunks):
             new_op = op.copy().reset_key()
             new_op._weights = None
             new_op._output_types = [OutputType.tensor]
             new_op.stage = OperandStage.reduce
             new_op.reducer_index = (src_chunk.index[0],)
+            new_op.reduce_ordinal = ordinal
+            new_op.n_reducers = len(in_df.chunks)
             new_op._input_nsplits = np.array(in_df.nsplits[0])
 
             reduce_chunks.append(

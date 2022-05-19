@@ -259,9 +259,12 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
 
         # gen reduce chunks
         reduce_chunks = []
-        for out_idx in itertools.product(*(range(s) for s in out_shape)):
+        out_indices = list(itertools.product(*(range(s) for s in out_shape)))
+        for ordinal, out_idx in enumerate(out_indices):
             reduce_op = DataFrameMergeAlign(
                 stage=OperandStage.reduce,
+                reduce_ordinal=ordinal,
+                n_reducers=len(out_indices),
                 sparse=proxy_chunk.issparse(),
                 output_types=[OutputType.dataframe],
             )
@@ -312,9 +315,13 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         # gen reduce chunks
         left_reduce_chunks = []
         right_reduce_chunks = []
-        for out_idx in itertools.product(*(range(s) for s in out_shape)):
+        out_indices = list(itertools.product(*(range(s) for s in out_shape)))
+        for ordinal, out_idx in enumerate(out_indices):
             reduce_op = DataFrameMergeAlign(
-                stage=OperandStage.reduce, sparse=proxy_chunk.issparse()
+                stage=OperandStage.reduce,
+                sparse=proxy_chunk.issparse(),
+                reduce_ordinal=ordinal,
+                n_reducers=len(out_indices),
             )
             left_param = {
                 "shape": (np.nan, np.nan),
