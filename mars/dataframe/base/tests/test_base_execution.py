@@ -225,6 +225,7 @@ def test_series_map_execution(setup):
     pd.testing.assert_index_equal(result, expected)
 
 
+@pytest.mark.ray_dag
 def test_describe_execution(setup):
     s_raw = pd.Series(np.random.rand(10))
 
@@ -1079,6 +1080,7 @@ def test_to_numeric_execution(setup):
     np.testing.assert_array_equal(r.execute().fetch(), pd.to_numeric(l))
 
 
+@pytest.mark.ray_dag
 def test_q_cut_execution(setup):
     rs = np.random.RandomState(0)
     raw = rs.random(15) * 1000
