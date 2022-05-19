@@ -30,6 +30,7 @@ from ....core import new_task_id, Task
 from ..config import RayExecutionConfig
 from ..context import (
     RayExecutionContext,
+    RayExecutionWorkerContext,
     RayRemoteObjectManager,
     _RayRemoteObjectContext,
 )
@@ -71,6 +72,7 @@ def test_ray_executor_destroy():
         task=task,
         tile_context=TileContext(),
         task_context={},
+        task_chunks_meta={},
         task_state_actor=None,
         lifecycle_api=None,
         meta_api=None,
@@ -104,7 +106,9 @@ def test_ray_execute_subtask_basic():
     assert len(r) == 2
     meta_dict, r = r
     assert len(meta_dict) == 1
-    assert meta_dict[test_get_meta_chunk.key] == get_chunk_params(test_get_meta_chunk)
+    assert meta_dict[test_get_meta_chunk.key][0] == get_chunk_params(
+        test_get_meta_chunk
+    )
     np.testing.assert_array_equal(r, raw_expect)
 
 
@@ -191,6 +195,23 @@ def test_get_chunks_result(ray_start_regular_shared2):
         pass
 
     with mock.patch.object(ThreadedServiceContext, "__init__", new=fake_init):
-        context = RayExecutionContext({"abc": o}, None)
+        context = RayExecutionContext({"abc": o}, {}, None)
         r = context.get_chunks_result(["abc"])
         assert r == [value]
+
+
+def test_ray_execution_worker_context():
+    context = RayExecutionWorkerContext(None)
+    with pytest.raises(NotImplementedError):
+        context.set_running_operand_key("mock_session_id", "mock_op_key")
+    with pytest.raises(NotImplementedError):
+        context.register_custom_log_path(
+            "mock_session_id",
+            "mock_tileable_op_key",
+            "mock_chunk_op_key",
+            "mock_worker_address",
+            "mock_log_path",
+        )
+
+    assert context.set_progress(0.1) is None
+    assert context.new_custom_log_dir() is None

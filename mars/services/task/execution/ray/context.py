@@ -19,6 +19,7 @@ from dataclasses import asdict
 from typing import Union, Dict, List
 
 from .....core.context import Context
+from .....storage.base import StorageLevel
 from .....utils import implements, lazy_import
 from ....context import ThreadedServiceContext
 
@@ -148,6 +149,42 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
 class RayExecutionWorkerContext(_RayRemoteObjectContext, dict):
     """The context for executing operands."""
 
-    @staticmethod
-    def new_custom_log_dir():
+    @classmethod
+    @implements(Context.new_custom_log_dir)
+    def new_custom_log_dir(cls):
+        logger.info(
+            "%s does not support register_custom_log_path / new_custom_log_dir",
+            cls.__name__,
+        )
         return None
+
+    @staticmethod
+    @implements(Context.register_custom_log_path)
+    def register_custom_log_path(
+        session_id: str,
+        tileable_op_key: str,
+        chunk_op_key: str,
+        worker_address: str,
+        log_path: str,
+    ):
+        raise NotImplementedError
+
+    @classmethod
+    @implements(Context.set_progress)
+    def set_progress(cls, progress: float):
+        logger.info(
+            "%s does not support set_running_operand_key / set_progress", cls.__name__
+        )
+
+    @staticmethod
+    @implements(Context.set_running_operand_key)
+    def set_running_operand_key(session_id: str, op_key: str):
+        raise NotImplementedError
+
+    @classmethod
+    @implements(Context.get_storage_info)
+    def get_storage_info(
+        cls, address: str = None, level: StorageLevel = StorageLevel.MEMORY
+    ):
+        logger.info("%s does not support get_storage_info", cls.__name__)
+        return {}
