@@ -815,6 +815,7 @@ def test_tile_execution(setup):
     np.testing.assert_equal(res, expected)
 
 
+@pytest.mark.ray_dag
 def test_isin_execution(setup):
     element = 2 * arange(4, chunk_size=1).reshape((2, 2))
     test_elements = [1, 2, 4, 8]
