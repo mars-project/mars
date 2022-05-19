@@ -307,7 +307,7 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
                     ax for j, ax in enumerate(inp_axes) if reduce_sizes[j] > 1
                 )
                 reduce_sizes_ = tuple(rs for rs in reduce_sizes if rs > 1)
-                for c in map_chunks:
+                for ordinal, c in enumerate(map_chunks):
                     chunk_op = LearnShuffle(
                         stage=OperandStage.reduce,
                         output_types=output_types,
@@ -318,6 +318,8 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
                             if reduce_sizes[j] > 1
                         ),
                         reduce_sizes=reduce_sizes_,
+                        reduce_ordinal=ordinal,
+                        n_reducers=len(map_chunks),
                     )
                     params = cls._calc_chunk_params(
                         c, inp_axes, inp.chunk_shape, oup, output_type, chunk_op, False

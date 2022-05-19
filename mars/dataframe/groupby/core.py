@@ -294,11 +294,14 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
 
         # generate reduce chunks
         reduce_chunks = []
-        for out_idx in itertools.product(*(range(s) for s in chunk_shape)):
+        out_indices = list(itertools.product(*(range(s) for s in chunk_shape)))
+        for ordinal, out_idx in enumerate(out_indices):
             reduce_op = op.copy().reset_key()
             reduce_op._by = None
             reduce_op._output_types = [output_type]
             reduce_op.stage = OperandStage.reduce
+            reduce_op.reduce_ordinal = ordinal
+            reduce_op.n_reducers = len(out_indices)
             reduce_chunks.append(
                 reduce_op.new_chunk(
                     [proxy_chunk], shape=(np.nan, np.nan), index=out_idx

@@ -251,9 +251,10 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
             dtype=in_tensor.dtype, _tensor_keys=[in_tensor.op.key]
         ).new_chunk(shuffle_inputs, shape=())
 
-        for chunk_shape, chunk_idx in zip(
-            itertools.product(*out_nsplits), itertools.product(*chunk_size_idxes)
-        ):
+        out_indices = list(
+            zip(itertools.product(*out_nsplits), itertools.product(*chunk_size_idxes))
+        )
+        for ordinal, (chunk_shape, chunk_idx) in enumerate(out_indices):
             chunk_op = TensorReshape(stage=OperandStage.reduce, dtype=tensor.dtype)
             shuffle_outputs.append(
                 chunk_op.new_chunk(
@@ -261,6 +262,8 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                     shape=chunk_shape,
                     order=tensor.order,
                     index=chunk_idx,
+                    reducer_ordinal=ordinal,
+                    n_reducers=len(out_indices),
                 )
             )
 
