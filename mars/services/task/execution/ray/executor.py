@@ -155,7 +155,7 @@ def execute_subtask(
     output_values.extend(output.values())
 
     # assert output keys order consistent
-    output_keys = list(output.keys())
+    output_keys = output.keys()
     if is_mapper:
         chunk_keys, reducer_indices = zip(*output_keys)
         assert len(set(chunk_keys)) == 1, chunk_keys
@@ -178,9 +178,10 @@ def _get_subtask_out_info(
     subtask: Optional[Subtask],
     shuffle_manager: Optional[ShuffleManager],
 ):
+    # output_keys might be duplicate in chunk graph, use dict to deduplicate.
     # output_keys order should be consistent with remote `execute_subtask`,
-    # because lists are returned instead of dict.
-    output_keys = []
+    # dict can preserve insert order.
+    output_keys = {}
     for chunk in subtask_chunk_graph.result_chunks:
         if isinstance(
             chunk.op, VirtualOperand
@@ -194,10 +195,10 @@ def _get_subtask_out_info(
                 len(subtask_chunk_graph.result_chunks) == 1
             ), subtask_chunk_graph.result_chunks
             n_reducer = shuffle_manager.get_n_reducers(subtask)
-            return [], n_reducer, True
+            return set(), n_reducer, True
         else:
-            output_keys.append(chunk.key)
-    return output_keys, len(output_keys), False
+            output_keys[chunk.key] = 1
+    return output_keys.keys(), len(output_keys), False
 
 
 @register_executor_cls
@@ -358,7 +359,7 @@ class RayTaskExecutor(TaskExecutor):
             output_keys, out_count, is_shuffle_mapper = _get_subtask_out_info(
                 subtask_chunk_graph, subtask, shuffle_manager
             )
-            subtask_output_meta_keys = result_meta_keys & set(output_keys)
+            subtask_output_meta_keys = result_meta_keys & output_keys
             if is_shuffle_mapper:
                 # shuffle meta won't be recorded in meta service.
                 output_count = out_count
@@ -373,6 +374,16 @@ class RayTaskExecutor(TaskExecutor):
                 subtask_output_meta_keys,
                 *input_object_refs,
             )
+            try:
+                ray.get(output_object_refs)
+            except Exception:
+                execute_subtask(
+                    subtask.task_id,
+                    subtask.subtask_id,
+                    serialize(subtask_chunk_graph),
+                    subtask_output_meta_keys,
+                    *ray.get(list(input_object_refs)),
+                )
             if output_count == 0:
                 continue
             elif output_count == 1:

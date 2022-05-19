@@ -49,11 +49,15 @@ class ShuffleManager:
             )
             # reducers subtask should be sorted by reducer_index and MapReduceOperand.map should insert shuffle block
             # in reducers order, otherwise shuffle blocks will be sent to wrong reducers.
-            sorted_filled_reducer_subtasks = self._sort_fill_reducers(reducer_subtasks, n_reducer)
+            sorted_filled_reducer_subtasks = self._sort_fill_reducers(
+                reducer_subtasks, n_reducer
+            )
             self.reducer_indices.update(
                 {
                     subtask: (shuffle_index, reducer_ordinal)
-                    for reducer_ordinal, subtask in enumerate(sorted_filled_reducer_subtasks)
+                    for reducer_ordinal, subtask in enumerate(
+                        sorted_filled_reducer_subtasks
+                    )
                 }
             )
 
