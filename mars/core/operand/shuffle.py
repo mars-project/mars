@@ -32,7 +32,7 @@ class MapReduceOperand(Operand):
     # for reducer
     reducer_index = TupleField("reducer_index", FieldTypes.uint64)
     # Total reducer nums, which also be shuffle blocks for single mapper.
-    n_reducers = TupleField("n_reducers", FieldTypes.uint64)
+    n_reducer = TupleField("n_reducer", FieldTypes.uint64)
     # The reducer ordinal in all reducers. It's different from reducer_index,
     # which might be a tuple.
     reducer_ordinal = TupleField("reducer_ordinal", FieldTypes.uint64)
