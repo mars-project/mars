@@ -215,3 +215,4 @@ def test_ray_execution_worker_context():
 
     assert context.set_progress(0.1) is None
     assert context.new_custom_log_dir() is None
+    assert context.get_storage_info("mock_address") == {}
