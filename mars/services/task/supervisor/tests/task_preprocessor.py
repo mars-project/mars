@@ -162,7 +162,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
             self._raw_chunk_shapes[n.key] = getattr(n, "shape", None)
         task = self._task
         analyzer = GraphAnalyzer(
-            chunk_graph, available_bands, task, self._config, chunk_to_subtasks
+            chunk_graph, available_bands, task, self._config, chunk_to_subtasks, shuffle_type=shuffle_type
         )
         subtask_graph = analyzer.gen_subtask_graph()
         results = set(

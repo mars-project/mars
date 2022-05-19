@@ -335,6 +335,7 @@ def test_where_execution(setup):
     np.testing.assert_array_equal(res, np.where(raw_x < 5, 2, -1))
 
 
+@pytest.mark.ray_dag
 def test_reshape_execution(setup):
     raw_data = np.random.rand(5, 10, 30)
     x = tensor(raw_data, chunk_size=8)
