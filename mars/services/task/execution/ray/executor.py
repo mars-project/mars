@@ -374,16 +374,6 @@ class RayTaskExecutor(TaskExecutor):
                 subtask_output_meta_keys,
                 *input_object_refs,
             )
-            try:
-                ray.get(output_object_refs)
-            except Exception:
-                execute_subtask(
-                    subtask.task_id,
-                    subtask.subtask_id,
-                    serialize(subtask_chunk_graph),
-                    subtask_output_meta_keys,
-                    *ray.get(list(input_object_refs)),
-                )
             if output_count == 0:
                 continue
             elif output_count == 1:
