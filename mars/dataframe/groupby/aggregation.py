@@ -443,7 +443,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             reduce_op = DataFrameGroupByOperand(
                 stage=OperandStage.reduce,
                 output_types=[OutputType.dataframe_groupby],
-                reduce_ordinal=ordinal,
+                reducer_ordinal=ordinal,
                 n_reducer=len(out_indices),
             )
             reduce_chunks.append(

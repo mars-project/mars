@@ -300,7 +300,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
             reduce_op._by = None
             reduce_op._output_types = [output_type]
             reduce_op.stage = OperandStage.reduce
-            reduce_op.reduce_ordinal = ordinal
+            reduce_op.reducer_ordinal = ordinal
             reduce_op.n_reducer = len(out_indices)
             reduce_chunks.append(
                 reduce_op.new_chunk(

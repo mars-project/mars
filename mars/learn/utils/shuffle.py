@@ -318,7 +318,7 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
                             if reduce_sizes[j] > 1
                         ),
                         reduce_sizes=reduce_sizes_,
-                        reduce_ordinal=ordinal,
+                        reducer_ordinal=ordinal,
                         n_reducer=len(map_chunks),
                     )
                     params = cls._calc_chunk_params(
