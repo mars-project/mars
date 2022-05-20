@@ -112,10 +112,8 @@ def _ray_large_cluster(request):  # pragma: no cover
     param = getattr(request, "param", {})
     num_nodes = param.get("num_nodes", 3)
     num_cpus = param.get("num_cpus", 16)
-    try:
-        from ray.cluster_utils import Cluster
-    except ModuleNotFoundError:
-        from ray._private.cluster_utils import Cluster
+    from ray.cluster_utils import Cluster
+
     cluster = Cluster()
     remote_nodes = []
     for i in range(num_nodes):
@@ -130,11 +128,14 @@ def _ray_large_cluster(request):  # pragma: no cover
             except TypeError:
                 job_config = None
             ray.init(address=cluster.address, job_config=job_config)
-    register_ray_serializers()
+    use_ray_serialization = param.get("use_ray_serialization", True)
+    if use_ray_serialization:
+        register_ray_serializers()
     try:
-        yield
+        yield cluster
     finally:
-        unregister_ray_serializers()
+        if use_ray_serialization:
+            unregister_ray_serializers()
         Router.set_instance(None)
         RayServer.clear()
         ray.shutdown()
@@ -176,6 +177,14 @@ async def ray_create_mars_cluster(request, check_router_cleaned):
             yield client
     finally:
         Router.set_instance(None)
+
+
+@pytest.fixture
+def stop_mars():
+    yield
+    import mars
+
+    mars.stop_server()
 
 
 @pytest.fixture(scope="module")
