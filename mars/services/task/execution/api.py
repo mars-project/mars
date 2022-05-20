@@ -17,10 +17,21 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Type, Union
 
 from ....core import ChunkGraph, Chunk, TileContext
+from ....core.operand import MapReduceOperand
 from ....resource import Resource
 from ....typing import BandType
 from ....utils import merge_dict
-from ...subtask import SubtaskGraph, SubtaskResult
+from ...subtask import SubtaskGraph, SubtaskResult, Subtask
+
+
+def _get_n_reducer(subtask: Subtask) -> int:
+    return len(
+        [
+            r
+            for r in subtask.chunk_graph
+            if isinstance(r.op, MapReduceOperand) and r.op.stage == OperandStage.reduce
+        ]
+    )
 
 
 class ExecutionConfig:

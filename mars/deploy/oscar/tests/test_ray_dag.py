@@ -129,3 +129,9 @@ async def test_session_get_progress(ray_start_regular_shared2, create_cluster):
 @pytest.mark.parametrize("test_func", [_cancel_when_execute, _cancel_when_tile])
 def test_cancel(ray_start_regular_shared2, create_cluster, test_func):
     test_local.test_cancel(create_cluster, test_func)
+
+
+@require_ray
+@pytest.mark.parametrize("config", [{"backend": "ray"}])
+def test_a_tensor_execution(config):
+    test_local.test_a_tensor_execution(config)

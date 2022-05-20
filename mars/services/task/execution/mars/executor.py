@@ -41,21 +41,11 @@ from ....meta.api import MetaAPI
 from ....scheduling import SchedulingAPI
 from ....subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
 from ...core import Task
-from ..api import ExecutionConfig, TaskExecutor, register_executor_cls
+from ..api import ExecutionConfig, TaskExecutor, register_executor_cls, _get_n_reducer
 from .resource import ResourceEvaluator
 from .stage import TaskStageProcessor
 
 logger = logging.getLogger(__name__)
-
-
-def _get_n_reducer(subtask: Subtask) -> int:
-    return len(
-        [
-            r
-            for r in subtask.chunk_graph
-            if isinstance(r.op, MapReduceOperand) and r.op.stage == OperandStage.reduce
-        ]
-    )
 
 
 @register_executor_cls
