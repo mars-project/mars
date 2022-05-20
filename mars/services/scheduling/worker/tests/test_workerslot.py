@@ -16,7 +16,7 @@ import asyncio
 import os
 import sys
 import time
-from typing import Tuple, Union
+from typing import Tuple
 
 import psutil
 import pytest
@@ -83,7 +83,7 @@ async def actor_pool(request):
             await slot_manager_ref.destroy()
 
 
-ActorPoolType = Tuple[mo.MainActorPoolType, Union[BandSlotManagerActor, mo.ActorRef]]
+ActorPoolType = Tuple[mo.MainActorPoolType, mo.ActorRefType[BandSlotManagerActor]]
 
 
 class TaskActor(mo.Actor):

@@ -15,7 +15,7 @@
 import asyncio
 import importlib
 import logging
-from typing import Dict, Optional, Type, Union
+from typing import Dict, Optional, Type
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
@@ -28,13 +28,13 @@ from .processor import SubtaskProcessor, SubtaskProcessorActor
 logger = logging.getLogger(__name__)
 
 
-SubtaskRunnerRef = Union["SubtaskRunnerActor", mo.ActorRef]
+SubtaskRunnerRef = mo.ActorRefType["SubtaskRunnerActor"]
 
 
 class SubtaskRunnerActor(mo.Actor):
-    _session_id_to_processors: Dict[str, Union[mo.ActorRef, SubtaskProcessorActor]]
-    _running_processor: Optional[Union[mo.ActorRef, SubtaskProcessorActor]]
-    _last_processor: Optional[Union[mo.ActorRef, SubtaskProcessorActor]]
+    _session_id_to_processors: Dict[str, mo.ActorRefType[SubtaskProcessorActor]]
+    _running_processor: Optional[mo.ActorRefType[SubtaskProcessorActor]]
+    _last_processor: Optional[mo.ActorRefType[SubtaskProcessorActor]]
 
     @classmethod
     def gen_uid(cls, band_name: str, slot_id: int):

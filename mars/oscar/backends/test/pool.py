@@ -131,10 +131,6 @@ class TestSubActorPool(SubActorPool):
             )
             cls._update_kw_addresses(actor_pool_config, process_index, kw)
 
-        # set default router
-        # actor context would be able to use exact client
-        cls._set_global_router(kw["router"])
-
         # create pool
         pool = cls(**kw)
         return pool

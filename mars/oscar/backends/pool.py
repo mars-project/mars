@@ -1048,7 +1048,6 @@ class MainActorPoolBase(ActorPoolBase):
         ) as processor:
             if message.address == self.external_address:
                 if message.control_message_type == ControlMessageType.sync_config:
-                    await super().handle_control_command(message)
                     # sync config, need to notify all sub pools
                     tasks = []
                     for addr in self.sub_processes:

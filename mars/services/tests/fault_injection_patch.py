@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union, Any, Dict
+from typing import Any, Dict
 
 from ... import oscar as mo
 from ...core import OperandType
@@ -35,7 +35,7 @@ class FaultInjectedSubtaskExecutionActor(SubtaskExecutionActor):
     @alru_cache(cache_exceptions=False)
     async def _get_fault_injection_manager_ref(
         self, supervisor_address: str, session_id: str, name: str
-    ) -> Union[mo.ActorRef, AbstractFaultInjectionManager]:
+    ) -> mo.ActorRefType[AbstractFaultInjectionManager]:
         session_api = await self._get_session_api(supervisor_address)
         return await session_api.get_remote_object(session_id, name)
 
@@ -68,8 +68,8 @@ class FaultInjectedSubtaskExecutionActor(SubtaskExecutionActor):
 class FaultInjectionSubtaskProcessor(SubtaskProcessor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._fault_injection_manager_ref: Union[
-            mo.ActorRef, AbstractFaultInjectionManager
+        self._fault_injection_manager_ref: mo.ActorRefType[
+            AbstractFaultInjectionManager
         ] = None
 
     async def run(self):

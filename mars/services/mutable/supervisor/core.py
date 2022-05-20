@@ -115,7 +115,7 @@ class MutableTensorActor(mo.Actor):
         self._chunk_actors = []
         # chunk to actor: {chunk index -> actor uid}
         self._chunk_to_actor: Dict[
-            Tuple, Union[MutableTensorChunkActor, mo.ActorRef]
+            Tuple, mo.ActorRefType[MutableTensorChunkActor]
         ] = dict()
 
     async def __post_create__(self):
