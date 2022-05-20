@@ -195,7 +195,8 @@ def test_get_chunks_result(ray_start_regular_shared2):
         pass
 
     with mock.patch.object(ThreadedServiceContext, "__init__", new=fake_init):
-        context = RayExecutionContext(None, {"abc": o}, {}, None)
+        config = RayExecutionConfig.from_execution_config({"backend": "mars"})
+        context = RayExecutionContext(config, {"abc": o}, {}, None)
         r = context.get_chunks_result(["abc"])
         assert r == [value]
 
