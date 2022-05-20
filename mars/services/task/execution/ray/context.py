@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import logging
+from dataclasses import asdict
 from typing import Union, Dict, List
 
 from .....core.context import Context
+from .....storage.base import StorageLevel
 from .....utils import implements, lazy_import, sync_to_async
 from ....context import ThreadedServiceContext
 
@@ -102,9 +104,10 @@ class _RayRemoteObjectContext:
 class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
     """The context for tiling."""
 
-    def __init__(self, task_context: Dict, *args, **kwargs):
+    def __init__(self, task_context: Dict, task_chunks_meta: Dict, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._task_context = task_context
+        self._task_chunks_meta = task_chunks_meta
 
     @implements(Context.get_chunks_result)
     def get_chunks_result(self, data_keys: List[str]) -> List:
@@ -114,11 +117,60 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
         logger.info("Got %s chunks result.", len(result))
         return result
 
+    @implements(Context.get_chunks_meta)
+    def get_chunks_meta(
+        self, data_keys: List[str], fields: List[str] = None, error="raise"
+    ) -> List[Dict]:
+        result = []
+        # TODO(fyrestone): Support get_chunks_meta from meta service if needed.
+        for key in data_keys:
+            chunk_meta = self._task_chunks_meta[key]
+            meta = asdict(chunk_meta)
+            meta = {f: meta.get(f) for f in fields}
+            result.append(meta)
+        return result
+
 
 # TODO(fyrestone): Implement more APIs for Ray.
 class RayExecutionWorkerContext(_RayRemoteObjectContext, dict):
     """The context for executing operands."""
 
-    @staticmethod
-    def new_custom_log_dir():
+    @classmethod
+    @implements(Context.new_custom_log_dir)
+    def new_custom_log_dir(cls):
+        logger.info(
+            "%s does not support register_custom_log_path / new_custom_log_dir",
+            cls.__name__,
+        )
         return None
+
+    @staticmethod
+    @implements(Context.register_custom_log_path)
+    def register_custom_log_path(
+        session_id: str,
+        tileable_op_key: str,
+        chunk_op_key: str,
+        worker_address: str,
+        log_path: str,
+    ):
+        raise NotImplementedError
+
+    @classmethod
+    @implements(Context.set_progress)
+    def set_progress(cls, progress: float):
+        logger.info(
+            "%s does not support set_running_operand_key / set_progress", cls.__name__
+        )
+
+    @staticmethod
+    @implements(Context.set_running_operand_key)
+    def set_running_operand_key(session_id: str, op_key: str):
+        raise NotImplementedError
+
+    @classmethod
+    @implements(Context.get_storage_info)
+    def get_storage_info(
+        cls, address: str = None, level: StorageLevel = StorageLevel.MEMORY
+    ):
+        logger.info("%s does not support get_storage_info", cls.__name__)
+        return {}

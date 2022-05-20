@@ -15,8 +15,9 @@
 import asyncio
 import functools
 import logging
-from typing import Dict, Any, Set, Optional
 
+from dataclasses import dataclass
+from typing import Dict, Any, Set, Optional
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
 from .....core.operand import (
@@ -33,6 +34,7 @@ from .....resource import Resource
 from .....serialization import serialize, deserialize
 from .....typing import BandType
 from .....utils import (
+    calc_data_size,
     lazy_import,
     get_chunk_params,
     ensure_coverage,
@@ -58,6 +60,11 @@ from .shuffle import ShuffleManager
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _RayChunkMeta:
+    memory_size: int
 
 
 class RayTaskState(RayRemoteObjectManager):
@@ -145,11 +152,14 @@ def execute_subtask(
         output_meta = {}
         # for non-shuffle subtask, record meta in supervisor.
         for chunk in subtask_chunk_graph.result_chunks:
-            if chunk.key in output_meta_keys:
+            chunk_key = chunk.key
+            if chunk_key in output_meta_keys and chunk_key not in output_meta:
                 if isinstance(chunk.op, Fuse):
                     # fuse op
                     chunk = chunk.chunk
-                output_meta[chunk.key] = get_chunk_params(chunk)
+                data = context[chunk_key]
+                memory_size = calc_data_size(data)
+                output_meta[chunk_key] = get_chunk_params(chunk), memory_size
         assert len(output_meta_keys) == len(output_meta)
         output_values.append(output_meta)
     output_values.extend(output.values())
@@ -211,6 +221,7 @@ class RayTaskExecutor(TaskExecutor):
         task: Task,
         tile_context: TileContext,
         task_context: Dict[str, "ray.ObjectRef"],
+        task_chunks_meta: Dict[str, _RayChunkMeta],
         task_state_actor: "ray.actor.ActorHandle",
         lifecycle_api: LifecycleAPI,
         meta_api: MetaAPI,
@@ -219,6 +230,7 @@ class RayTaskExecutor(TaskExecutor):
         self._task = task
         self._tile_context = tile_context
         self._task_context = task_context
+        self._task_chunks_meta = task_chunks_meta
         self._task_state_actor = task_state_actor
         self._ray_executor = self._get_ray_executor()
 
@@ -252,12 +264,16 @@ class RayTaskExecutor(TaskExecutor):
             .remote()
         )
         task_context = {}
-        await cls._init_context(task_context, task_state_actor, session_id, address)
+        task_chunks_meta = {}
+        await cls._init_context(
+            task_context, task_chunks_meta, task_state_actor, session_id, address
+        )
         return cls(
             config,
             task,
             tile_context,
             task_context,
+            task_chunks_meta,
             task_state_actor,
             lifecycle_api,
             meta_api,
@@ -269,6 +285,7 @@ class RayTaskExecutor(TaskExecutor):
         self._task = None
         self._tile_context = None
         self._task_context = None
+        self._task_chunks_meta = None
         self._task_state_actor = None
         self._ray_executor = None
 
@@ -296,7 +313,7 @@ class RayTaskExecutor(TaskExecutor):
         return self._config
 
     @staticmethod
-    @functools.lru_cache(maxsize=1)
+    @functools.lru_cache(maxsize=None)  # Specify maxsize=None to make it faster
     def _get_ray_executor():
         # Export remote function once.
         return ray.remote(execute_subtask)
@@ -305,6 +322,7 @@ class RayTaskExecutor(TaskExecutor):
     async def _init_context(
         cls,
         task_context: Dict[str, "ray.ObjectRef"],
+        task_chunks_meta: Dict[str, _RayChunkMeta],
         task_state_actor: "ray.actor.ActorHandle",
         session_id: str,
         address: str,
@@ -312,6 +330,7 @@ class RayTaskExecutor(TaskExecutor):
         loop = asyncio.get_running_loop()
         context = RayExecutionContext(
             task_context,
+            task_chunks_meta,
             task_state_actor,
             session_id,
             address,
@@ -365,8 +384,11 @@ class RayTaskExecutor(TaskExecutor):
                 output_count = out_count
             else:
                 output_count = out_count + bool(subtask_output_meta_keys)
+            subtask_max_retries = (
+                self._config.subtask_max_retries if subtask.retryable else 0
+            )
             output_object_refs = self._ray_executor.options(
-                num_returns=output_count
+                num_returns=output_count, max_retries=subtask_max_retries
             ).remote(
                 subtask.task_id,
                 subtask.subtask_id,
@@ -398,7 +420,9 @@ class RayTaskExecutor(TaskExecutor):
             logger.info("Getting %s metas of stage %s.", meta_count, stage_id)
             meta_list = await asyncio.gather(*output_meta_object_refs)
             for meta in meta_list:
-                key_to_meta.update(meta)
+                for key, (params, memory_size) in meta.items():
+                    key_to_meta[key] = params
+                    self._task_chunks_meta[key] = _RayChunkMeta(memory_size=memory_size)
             assert len(key_to_meta) == len(result_meta_keys)
             logger.info("Got %s metas of stage %s.", meta_count, stage_id)
 
@@ -409,9 +433,9 @@ class RayTaskExecutor(TaskExecutor):
             chunk_key = chunk.key
             object_ref = task_context[chunk_key]
             output_object_refs.add(object_ref)
-            chunk_meta = key_to_meta.get(chunk_key)
-            if chunk_meta is not None:
-                chunk_to_meta[chunk] = ExecutionChunkResult(chunk_meta, object_ref)
+            chunk_params = key_to_meta.get(chunk_key)
+            if chunk_params is not None:
+                chunk_to_meta[chunk] = ExecutionChunkResult(chunk_params, object_ref)
 
         logger.info("Waiting for stage %s complete.", stage_id)
         # Patched the asyncio.to_thread for Python < 3.9 at mars/lib/aio/__init__.py
@@ -424,36 +448,42 @@ class RayTaskExecutor(TaskExecutor):
         return chunk_to_meta
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None:
-            tileable_keys = []
-            update_metas = []
-            update_lifecycles = []
-            for tileable in self._task.tileable_graph.result_tileables:
-                tileable_keys.append(tileable.key)
-                tileable = tileable.data if hasattr(tileable, "data") else tileable
-                chunk_keys = []
-                for chunk in self._tile_context[tileable].chunks:
-                    chunk_keys.append(chunk.key)
-                    if chunk.key in self._task_context:
-                        # Some tileable graph may have result chunks that not be executed,
-                        # for example:
-                        # r, b = cut(series, bins, retbins=True)
-                        #     r_result = r.execute().fetch()
-                        #     b_result = b.execute().fetch() <- This is the case
-                        object_ref = self._task_context[chunk.key]
-                        update_metas.append(
-                            self._meta_api.set_chunk_meta.delay(
-                                chunk,
-                                bands=[],
-                                object_ref=object_ref,
-                            )
+        if exc_type is not None:
+            return
+
+        # Update info if no exception occurs.
+        tileable_keys = []
+        update_metas = []
+        update_lifecycles = []
+        for tileable in self._task.tileable_graph.result_tileables:
+            tileable_keys.append(tileable.key)
+            tileable = tileable.data if hasattr(tileable, "data") else tileable
+            chunk_keys = []
+            for chunk in self._tile_context[tileable].chunks:
+                chunk_key = chunk.key
+                chunk_keys.append(chunk_key)
+                if chunk_key in self._task_context:
+                    # Some tileable graph may have result chunks that not be executed,
+                    # for example:
+                    # r, b = cut(series, bins, retbins=True)
+                    #     r_result = r.execute().fetch()
+                    #     b_result = b.execute().fetch() <- This is the case
+                    object_ref = self._task_context[chunk_key]
+                    chunk_meta = self._task_chunks_meta[chunk_key]
+                    update_metas.append(
+                        self._meta_api.set_chunk_meta.delay(
+                            chunk,
+                            bands=[],
+                            object_ref=object_ref,
+                            memory_size=chunk_meta.memory_size,
                         )
-                    update_lifecycles.append(
-                        self._lifecycle_api.track.delay(tileable.key, chunk_keys)
                     )
-            await self._meta_api.set_chunk_meta.batch(*update_metas)
-            await self._lifecycle_api.track.batch(*update_lifecycles)
-            await self._lifecycle_api.incref_tileables(tileable_keys)
+                update_lifecycles.append(
+                    self._lifecycle_api.track.delay(tileable.key, chunk_keys)
+                )
+        await self._meta_api.set_chunk_meta.batch(*update_metas)
+        await self._lifecycle_api.track.batch(*update_lifecycles)
+        await self._lifecycle_api.incref_tileables(tileable_keys)
 
     async def get_available_band_resources(self) -> Dict[BandType, Resource]:
         if self._available_band_resources is None:

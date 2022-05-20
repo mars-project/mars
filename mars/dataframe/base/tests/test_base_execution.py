@@ -683,6 +683,7 @@ def test_datetime_method_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
 
+@pytest.mark.ray_dag
 def test_isin_execution(setup):
     # one chunk in multiple chunks
     a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
