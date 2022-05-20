@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import functools
 from collections import namedtuple
 from typing import Dict, List
 
@@ -23,16 +24,27 @@ ray = lazy_import("ray")
 _FetchInfo = namedtuple("FetchInfo", ["key", "object_ref", "conditions"])
 
 
+def _query_object_with_condition(o, conditions):
+    try:
+        return o.iloc[conditions]
+    except AttributeError:
+        return o[conditions]
+
+
 @register_fetcher_cls
 class RayFetcher(Fetcher):
     name = "ray"
     required_meta_keys = ("object_refs",)
 
     def __init__(self, **kwargs):
-        _make_query_function_remote()
-
         self._fetch_info_list = []
         self._no_conditions = True
+
+    @staticmethod
+    @functools.lru_cache(maxsize=None)  # Specify maxsize=None to make it faster
+    def _remote_query_object_with_condition():
+        # Export remote function once.
+        return ray.remote(_query_object_with_condition)
 
     async def append(self, chunk_key: str, chunk_meta: Dict, conditions: List = None):
         if conditions is not None:
@@ -51,24 +63,7 @@ class RayFetcher(Fetcher):
             if fetch_info.conditions is None:
                 refs[index] = fetch_info.object_ref
             else:
-                refs[index] = _remote_query_object_with_condition.remote(
+                refs[index] = self._remote_query_object_with_condition().remote(
                     fetch_info.object_ref, fetch_info.conditions
                 )
         return await asyncio.gather(*refs)
-
-
-def _query_object_with_condition(o, conditions):
-    try:
-        return o.iloc[conditions]
-    except AttributeError:
-        return o[conditions]
-
-
-_remote_query_object_with_condition = None
-
-
-def _make_query_function_remote():
-    global _remote_query_object_with_condition
-
-    if _remote_query_object_with_condition is None:
-        _remote_query_object_with_condition = ray.remote(_query_object_with_condition)
