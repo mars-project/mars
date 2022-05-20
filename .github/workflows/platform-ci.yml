@@ -96,7 +96,7 @@ jobs:
             if [ -n "$WITH_RAY" ] || [ -n "$WITH_RAY_DAG" ]; then
               pip install "xgboost_ray==0.1.5" "xgboost<1.6.0"
               # Use standard ray releases when owership bug is fixed
-              pip uninstall ray
+              pip uninstall -y ray
               pip install ray-for-mars
             fi
             if [ -n "$RUN_DASK" ]; then
