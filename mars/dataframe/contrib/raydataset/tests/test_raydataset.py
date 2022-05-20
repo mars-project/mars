@@ -60,7 +60,12 @@ async def test_convert_to_ray_dataset(
     with session:
         value = np.random.rand(10, 10)
         chunk_size, num_shards = test_option
-        df: md.DataFrame = md.DataFrame(value, chunk_size=chunk_size)
+        # ray dataset needs str columns
+        df: md.DataFrame = md.DataFrame(
+            value,
+            chunk_size=chunk_size,
+            columns=[f"c{i}" for i in range(value.shape[1])],
+        )
         df.execute()
 
         ds = mdd.to_ray_dataset(df, num_shards=num_shards)
@@ -162,7 +167,8 @@ async def test_mars_with_xgboost_sklearn_reg(ray_start_regular_shared, create_cl
     session = new_session(address=create_cluster.address, default=True)
     with session:
         np_X, np_y = make_regression(n_samples=1_0000, n_features=10)
-        X, y = md.DataFrame(np_X), md.DataFrame({"target": np_y})
+        columns = [f"c{i}" for i in range(np_X.shape[1])]
+        X, y = md.DataFrame(np_X, columns=columns), md.DataFrame({"target": np_y})
         df: md.DataFrame = md.concat([md.DataFrame(X), md.DataFrame(y)], axis=1)
         df.execute()
 
@@ -172,10 +178,10 @@ async def test_mars_with_xgboost_sklearn_reg(ray_start_regular_shared, create_cl
 
         import gc
 
-        gc.collect()  # Ensure MLDataset does hold mars dataframe to avoid gc.
+        gc.collect()  # Ensure Dataset does hold mars dataframe to avoid gc.
         ray_params = RayParams(num_actors=2, cpus_per_actor=1)
         reg = RayXGBRegressor(ray_params=ray_params, random_state=42)
         # train
         reg.fit(RayDMatrix(ds, "target"), y=None, ray_params=ray_params)
         reg.predict(RayDMatrix(ds, "target"))
-        reg.predict(pd.DataFrame(np_X))
+        reg.predict(pd.DataFrame(np_X, columns=columns))

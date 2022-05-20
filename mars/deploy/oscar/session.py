@@ -1161,7 +1161,14 @@ class _IsolatedSession(AbstractAsyncSession):
             return result
 
     async def fetch_infos(self, *tileables, fields, **kwargs) -> list:
-        available_fields = {"object_id", "level", "memory_size", "store_size", "band"}
+        available_fields = {
+            "object_id",
+            "object_refs",
+            "level",
+            "memory_size",
+            "store_size",
+            "bands",
+        }
         if fields is None:
             fields = available_fields
         else:
@@ -1175,34 +1182,22 @@ class _IsolatedSession(AbstractAsyncSession):
         if kwargs:  # pragma: no cover
             unexpected_keys = ", ".join(list(kwargs.keys()))
             raise TypeError(f"`fetch` got unexpected arguments: {unexpected_keys}")
-
+        # following fields needs to access storage API to get the meta.
+        _need_query_storage_fields = {"level", "memory_size", "store_size"}
+        _need_query_storage = bool(_need_query_storage_fields & fields)
         with enter_mode(build=True):
-            chunks = []
-            get_chunk_metas = []
-            fetch_infos_list = []
-            for tileable in tileables:
-                fetch_tileable, _ = self._get_to_fetch_tileable(tileable)
-                fetch_infos = []
-                for chunk in fetch_tileable.chunks:
-                    chunks.append(chunk)
-                    get_chunk_metas.append(
-                        self._meta_api.get_chunk_meta.delay(chunk.key, fields=["bands"])
-                    )
-                    fetch_infos.append(
-                        ChunkFetchInfo(tileable=tileable, chunk=chunk, indexes=None)
-                    )
-                fetch_infos_list.append(fetch_infos)
-            chunk_metas = await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
-            chunk_to_band = {
-                chunk: meta["bands"][0] for chunk, meta in zip(chunks, chunk_metas)
-            }
-
+            chunk_to_bands, fetch_infos_list, result = await self._query_meta_service(
+                tileables, fields, _need_query_storage
+            )
+            if not _need_query_storage:
+                assert result is not None
+                return result
             storage_api_to_gets = defaultdict(list)
             storage_api_to_fetch_infos = defaultdict(list)
             for fetch_info in itertools.chain(*fetch_infos_list):
                 chunk = fetch_info.chunk
-                band = chunk_to_band[chunk]
-                storage_api = await self._get_storage_api(band)
+                bands = chunk_to_bands[chunk]
+                storage_api = await self._get_storage_api(bands[0])
                 storage_api_to_gets[storage_api].append(
                     storage_api.get_infos.delay(chunk.key)
                 )
@@ -1219,7 +1214,7 @@ class _IsolatedSession(AbstractAsyncSession):
             for fetch_infos in fetch_infos_list:
                 fetched = defaultdict(list)
                 for fetch_info in fetch_infos:
-                    band = chunk_to_band[fetch_info.chunk]
+                    bands = chunk_to_bands[fetch_info.chunk]
                     # Currently there's only one item in the returned List from storage_api.get_infos()
                     data = fetch_info.data[0]
                     if "object_id" in fields:
@@ -1232,11 +1227,46 @@ class _IsolatedSession(AbstractAsyncSession):
                         fetched["store_size"].append(data.store_size)
                     # data.band misses ip info, e.g. 'numa-0'
                     # while band doesn't, e.g. (address0, 'numa-0')
-                    if "band" in fields:
-                        fetched["band"].append(band)
+                    if "bands" in fields:
+                        fetched["bands"].append(bands)
                 result.append(fetched)
 
             return result
+
+    async def _query_meta_service(self, tileables, fields, query_storage):
+        chunks = []
+        get_chunk_metas = []
+        fetch_infos_list = []
+        for tileable in tileables:
+            fetch_tileable, _ = self._get_to_fetch_tileable(tileable)
+            fetch_infos = []
+            for chunk in fetch_tileable.chunks:
+                chunks.append(chunk)
+                get_chunk_metas.append(
+                    self._meta_api.get_chunk_meta.delay(
+                        chunk.key,
+                        fields=["bands"] if query_storage else fields,
+                    )
+                )
+                fetch_infos.append(
+                    ChunkFetchInfo(tileable=tileable, chunk=chunk, indexes=None)
+                )
+            fetch_infos_list.append(fetch_infos)
+        chunk_metas = await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
+        if not query_storage:
+            result = []
+            chunk_to_meta = dict(zip(chunks, chunk_metas))
+            for fetch_infos in fetch_infos_list:
+                fetched = defaultdict(list)
+                for fetch_info in fetch_infos:
+                    for field in fields:
+                        fetched[field].append(chunk_to_meta[fetch_info.chunk][field])
+                result.append(fetched)
+            return {}, fetch_infos_list, result
+        chunk_to_bands = {
+            chunk: meta["bands"] for chunk, meta in zip(chunks, chunk_metas)
+        }
+        return chunk_to_bands, fetch_infos_list, None
 
     async def decref(self, *tileable_keys):
         logger.debug("Decref tileables on client: %s", tileable_keys)

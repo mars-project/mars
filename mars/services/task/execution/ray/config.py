@@ -18,9 +18,19 @@ from ..api import ExecutionConfig, register_config_cls
 from ..utils import get_band_resources_from_config
 
 
+# the default times to retry subtask.
+DEFAULT_SUBTASK_MAX_RETRIES = 3
+
+
 @register_config_cls
 class RayExecutionConfig(ExecutionConfig):
     name = "ray"
+
+    def __init__(self, execution_config: Dict):
+        super().__init__(execution_config)
+        self._subtask_max_retries = self._execution_config.get("ray", {}).get(
+            "subtask_max_retries", DEFAULT_SUBTASK_MAX_RETRIES
+        )
 
     def get_band_resources(self):
         """
@@ -31,3 +41,7 @@ class RayExecutionConfig(ExecutionConfig):
 
     def get_deploy_band_resources(self) -> List[Dict[str, Resource]]:
         return []
+
+    @property
+    def subtask_max_retries(self):
+        return self._subtask_max_retries
