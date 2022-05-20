@@ -1178,6 +1178,36 @@ def test_read_raydataset(ray_start_regular, ray_create_mars_cluster):
     mdf = md.read_ray_dataset(ds)
     assert df.equals(mdf.execute().fetch())
 
+    n = 10000
+    pdf = pd.DataFrame({"a": list(range(n)), "b": list(range(n, 2 * n))})
+    df = md.DataFrame(pdf)
+
+    # Convert mars dataframe to ray dataset
+    ds = md.to_ray_dataset(df)
+    pd.testing.assert_frame_equal(ds.to_pandas(), df.to_pandas())
+    ds2 = ds.filter(lambda row: row["a"] % 2 == 0)
+    assert ds2.take(5) == [{"a": 2 * i, "b": n + 2 * i} for i in range(5)]
+
+    # Convert ray dataset to mars dataframe
+    df2 = md.read_ray_dataset(ds2)
+    pd.testing.assert_frame_equal(
+        df2.head(5).to_pandas(),
+        pd.DataFrame({"a": list(range(0, 10, 2)), "b": list(range(n, n + 10, 2))}),
+    )
+
+    # Test Arrow Dataset
+    pdf2 = pd.DataFrame({c: range(5) for c in "abc"})
+    ds3 = ray.data.from_arrow([pa.Table.from_pandas(pdf2) for _ in range(3)])
+    df3 = md.read_ray_dataset(ds3)
+    pd.testing.assert_frame_equal(
+        df3.head(5).to_pandas(),
+        pdf2,
+    )
+
+    # Test simple datasets
+    with pytest.raises(NotImplementedError):
+        ray.data.range(10).to_mars()
+
 
 @require_ray
 def test_read_ray_mldataset(ray_start_regular, ray_create_mars_cluster):
