@@ -263,7 +263,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
         for ordinal, out_idx in enumerate(out_indices):
             reduce_op = DataFrameMergeAlign(
                 stage=OperandStage.reduce,
-                reduce_ordinal=ordinal,
+                reducer_ordinal=ordinal,
                 n_reducer=len(out_indices),
                 sparse=proxy_chunk.issparse(),
                 output_types=[OutputType.dataframe],
@@ -320,7 +320,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             reduce_op = DataFrameMergeAlign(
                 stage=OperandStage.reduce,
                 sparse=proxy_chunk.issparse(),
-                reduce_ordinal=ordinal,
+                reducer_ordinal=ordinal,
                 n_reducer=len(out_indices),
             )
             left_param = {

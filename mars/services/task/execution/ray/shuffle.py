@@ -67,7 +67,12 @@ class ShuffleManager:
         # fill missing reducers with `None`.
         filled_reducers = {i: None for i in range(n_reducer)}
         for subtask in reducer_subtasks:
-            reducer_ordinal = _get_reducer_operand(subtask.chunk_graph).reducer_ordinal
+            try:
+                reducer_ordinal = _get_reducer_operand(
+                    subtask.chunk_graph
+                ).reducer_ordinal
+            except Exception:
+                raise
             filled_reducers[reducer_ordinal] = subtask
         return filled_reducers.values()
 

@@ -357,7 +357,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             new_op = op.copy().reset_key()
             new_op.random_state = None
             new_op.stage = OperandStage.reduce
-            new_op.reduce_ordinal = idx
+            new_op.reducer_ordinal = idx
             new_op.n_reducer = n_reducer
             new_op.chunk_shape = in_sample.chunk_shape
             new_op.n_estimators = op.n_estimators // n_reducer
