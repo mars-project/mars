@@ -51,6 +51,7 @@ class MockReduction2(md.CustomReduction):
         return v1 + v2
 
 
+@pytest.mark.ray_dag
 def test_groupby(setup):
     rs = np.random.RandomState(0)
     data_size = 100
@@ -116,6 +117,7 @@ def test_groupby(setup):
     )
 
 
+@pytest.mark.ray_dag
 def test_groupby_getitem(setup):
     rs = np.random.RandomState(0)
     data_size = 100
@@ -324,6 +326,7 @@ def test_groupby_getitem(setup):
     )
 
 
+@pytest.mark.ray_dag
 def test_dataframe_groupby_agg(setup):
     agg_funs = [
         "std",
@@ -484,6 +487,7 @@ def test_dataframe_groupby_agg(setup):
     )
 
 
+@pytest.mark.ray_dag
 def test_dataframe_groupby_agg_sort(setup):
     agg_funs = [
         "std",
@@ -578,6 +582,7 @@ def test_dataframe_groupby_agg_sort(setup):
     assert r.op.groupby_params["as_index"] is True
 
 
+@pytest.mark.ray_dag
 def test_series_groupby_agg(setup):
     rs = np.random.RandomState(0)
     series1 = pd.Series(rs.rand(10))
@@ -653,6 +658,7 @@ def test_series_groupby_agg(setup):
     )
 
 
+@pytest.mark.ray_dag
 def test_groupby_agg_auto_method(setup):
     rs = np.random.RandomState(0)
     raw = pd.DataFrame(
@@ -734,6 +740,7 @@ def test_distributed_groupby_agg(setup_cluster):
     assert len(r._fetch_infos()["memory_size"]) > 1
 
 
+@pytest.mark.ray_dag
 def test_groupby_agg_str_cat(setup):
     agg_fun = lambda x: x.str.cat(sep="_", na_rep="NA")
 
@@ -804,6 +811,7 @@ def test_gpu_groupby_agg(setup_gpu):
     )
 
 
+@pytest.mark.ray_dag
 def test_groupby_apply(setup):
     df1 = pd.DataFrame(
         {
@@ -886,6 +894,7 @@ def test_groupby_apply(setup):
     )
 
 
+@pytest.mark.ray_dag
 def test_groupby_transform(setup):
     df1 = pd.DataFrame(
         {
@@ -962,6 +971,7 @@ def test_groupby_transform(setup):
     )
 
 
+@pytest.mark.ray_dag
 def test_groupby_cum(setup):
     df1 = pd.DataFrame(
         {
@@ -1001,6 +1011,7 @@ def test_groupby_cum(setup):
         )
 
 
+@pytest.mark.ray_dag
 def test_groupby_fill(setup):
     df1 = pd.DataFrame(
         [
@@ -1062,6 +1073,7 @@ def test_groupby_fill(setup):
     )
 
 
+@pytest.mark.ray_dag
 def test_groupby_head(setup):
     df1 = pd.DataFrame(
         {
@@ -1146,6 +1158,7 @@ def test_groupby_head(setup):
     )
 
 
+@pytest.mark.ray_dag
 def test_groupby_sample(setup):
     rs = np.random.RandomState(0)
     sample_count = 10
@@ -1254,6 +1267,7 @@ def test_groupby_sample(setup):
         r1.execute().fetch()
 
 
+@pytest.mark.ray_dag
 @pytest.mark.skipif(pa is None, reason="pyarrow not installed")
 def test_groupby_agg_with_arrow_dtype(setup):
     df1 = pd.DataFrame({"a": [1, 2, 1], "b": ["a", "b", "a"]})
@@ -1291,6 +1305,7 @@ def test_groupby_agg_with_arrow_dtype(setup):
     pd.testing.assert_series_equal(result, expected)
 
 
+@pytest.mark.ray_dag
 @pytest.mark.skipif(pa is None, reason="pyarrow not installed")
 def test_groupby_apply_with_arrow_dtype(setup):
     df1 = pd.DataFrame({"a": [1, 2, 1], "b": ["a", "b", "a"]})
@@ -1313,6 +1328,7 @@ def test_groupby_apply_with_arrow_dtype(setup):
     pd.testing.assert_series_equal(arrow_array_to_objects(result), expected)
 
 
+@pytest.mark.ray_dag
 def test_groupby_nunique(setup):
     rs = np.random.RandomState(0)
     data_size = 100
