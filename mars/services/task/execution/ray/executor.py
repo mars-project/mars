@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import asyncio
-import functools
 import logging
 
 from dataclasses import dataclass
 from typing import Dict, Any, Set, Optional
+
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
 from .....core.operand import (
@@ -42,6 +42,7 @@ from .....utils import (
 )
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
+from ....ray_utils import _ray_export_once
 from ....subtask import Subtask, SubtaskGraph
 from ....subtask.utils import iter_output_data
 from ...core import Task
@@ -232,7 +233,7 @@ class RayTaskExecutor(TaskExecutor):
         self._task_context = task_context
         self._task_chunks_meta = task_chunks_meta
         self._task_state_actor = task_state_actor
-        self._ray_executor = self._get_ray_executor()
+        self._ray_executor = _ray_export_once(execute_subtask)
 
         # api
         self._lifecycle_api = lifecycle_api
@@ -259,7 +260,7 @@ class RayTaskExecutor(TaskExecutor):
     ) -> "TaskExecutor":
         lifecycle_api, meta_api = await cls._get_apis(session_id, address)
         task_state_actor = (
-            ray.remote(RayTaskState)
+            _ray_export_once(RayTaskState)
             .options(name=RayTaskState.gen_name(task.task_id))
             .remote()
         )
@@ -311,12 +312,6 @@ class RayTaskExecutor(TaskExecutor):
 
     def get_execution_config(self):
         return self._config
-
-    @staticmethod
-    @functools.lru_cache(maxsize=None)  # Specify maxsize=None to make it faster
-    def _get_ray_executor():
-        # Export remote function once.
-        return ray.remote(execute_subtask)
 
     @classmethod
     async def _init_context(
