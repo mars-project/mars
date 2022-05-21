@@ -411,7 +411,7 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
                     worker_addresses,
                     time.time() - start_time,
                 )
-            except NoAvailableBand as e:
+            except NoAvailableBand as e:  # pragma: no cover
                 logger.warning(
                     "No enough bands, offline workers %s failed with exception %s.",
                     worker_addresses,
