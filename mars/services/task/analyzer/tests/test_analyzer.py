@@ -40,9 +40,14 @@ def test_shuffle_graph(tileable, fuse):
     all_bands = [(f"address_{i}", "numa-0") for i in range(5)]
     band_resource = dict((band, Resource(num_cpus=1)) for band in all_bands)
     task = Task("mock_task", "mock_session", fuse_enabled=fuse)
-    config = Config()
-    config.register_option("shuffle_type", ShuffleType.PUSH)
-    analyzer = GraphAnalyzer(chunk_graph, band_resource, task, config, dict())
+    analyzer = GraphAnalyzer(
+        chunk_graph,
+        band_resource,
+        task,
+        Config(),
+        dict(),
+        shuffle_type=ShuffleType.PUSH,
+    )
     subtask_graph = analyzer.gen_subtask_graph()
     proxy_subtasks = []
     for subtask in subtask_graph:
@@ -65,7 +70,7 @@ def test_shuffle_graph(tileable, fuse):
             assert len(start_chunks) == 1
             assert isinstance(start_chunks[0].op, PushShuffle)
         reducer_chunks = chunk_graph.successors(proxy_chunk)
-        # single reducer may have multiple output chunks, see `PSRSshuffle._execute_reduce
+        # single reducer may have multiple output chunks, see `PSRSShuffle._execute_reduce
         if len(reducer_subtasks) != len(reducer_chunks):
             assert len(reducer_subtasks) == len(set(c.op for c in reducer_chunks))
         mapper_subtasks = subtask_graph.predecessors(proxy_subtask)
