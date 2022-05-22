@@ -25,6 +25,36 @@ class TensorErf(TensorSpecialUnaryOp):
     _func_name = "erf"
 
 
+@_register_special_op
+@arithmetic_operand(sparse_mode="unary")
+class TensorErfc(TensorSpecialUnaryOp):
+    _func_name = "erfc"
+
+
+@_register_special_op
+@arithmetic_operand(sparse_mode="unary")
+class TensorErfcx(TensorSpecialUnaryOp):
+    _func_name = "erfcx"
+
+
+@_register_special_op
+@arithmetic_operand(sparse_mode="unary")
+class TensorErfi(TensorSpecialUnaryOp):
+    _func_name = "erfi"
+
+
+@_register_special_op
+@arithmetic_operand(sparse_mode="unary")
+class TensorErfinv(TensorSpecialUnaryOp):
+    _func_name = "erfinv"
+
+
+@_register_special_op
+@arithmetic_operand(sparse_mode="unary")
+class TensorErfcinv(TensorSpecialUnaryOp):
+    _func_name = "erfcinv"
+
+
 @implement_scipy(spspecial.erf)
 @infer_dtype(spspecial.erf)
 def erf(x, out=None, where=None, **kwargs):
@@ -74,4 +104,188 @@ def erf(x, out=None, where=None, **kwargs):
     >>> plt.show()
     """
     op = TensorErf(**kwargs)
+    return op(x, out=out, where=where)
+
+
+@implement_scipy(spspecial.erfc)
+@infer_dtype(spspecial.erfc)
+def erfc(x, out=None, where=None, **kwargs):
+    """
+    Returns the complementary error function for x
+
+    It is defined as ``1 - erf(x)``.
+
+    Parameters
+    ----------
+    x : Tensor
+        Input tensor.
+
+    out: Tensor or None
+        Optional output tensor for the complementary error function results.
+
+    Returns
+    -------
+    res : Scalar or Tensor
+        Results of the complementary error function for x.
+
+    See Also
+    --------
+    erfc, erfinv, erfcinv, wofz, erfcx, erfi
+
+    Examples
+    --------
+    >>> import mars.tensor as mt
+    >>> from mars.tensor import special
+    >>> # without optional tensor
+    >>> x = mt.linspace(-3, 3)
+    >>> special.erfc(x).execute()
+    >>> # with optional tensor
+    >>> out = mt.linspace(-3, 3)
+    >>> special.erfcx(x, out).execute()
+    >>> out
+    """
+    op = TensorErfc(**kwargs)
+    return op(x, out=out, where=where)
+
+
+@implement_scipy(spspecial.erfcx)
+@infer_dtype(spspecial.erfcx)
+def erfcx(x, out=None, where=None, **kwargs):
+    """
+    Returns the scaled complementary error function for x
+
+    It is defined as ``exp(x**2) * erfc(x)``.
+
+    Parameters
+    ----------
+    x : Tensor
+        Input tensor.
+
+    out: Tensor or None
+        Optional output tensor for the scaled complementary error function results.
+
+    Returns
+    -------
+    res : Scalar or Tensor
+        Results of the scaled complementary error function for x.
+
+    See Also
+    --------
+    erfc, erfinv, erfcinv, wofz, erfcx, erfi
+
+    Examples
+    --------
+    >>> import mars.tensor as mt
+    >>> from mars.tensor import special
+    >>> # without optional tensor
+    >>> x = mt.linspace(-3, 3)
+    >>> special.erfcx(x).execute()
+    >>> # with optional tensor
+    >>> out = mt.linspace(-3, 3)
+    >>> special.erfcx(x, out).execute()
+    >>> out
+    """
+    op = TensorErfcx(**kwargs)
+    return op(x, out=out, where=where)
+
+
+@implement_scipy(spspecial.erfi)
+@infer_dtype(spspecial.erfi)
+def erfi(x, out=None, where=None, **kwargs):
+    """
+    Returns the imaginary error function for x
+
+    It is defined as ``-i erf(i, x)``.
+
+    Parameters
+    ----------
+    x : Tensor
+        Input tensor.
+
+    out: Tensor or None
+        Optional output tensor for the imaginary error function results.
+
+    Returns
+    -------
+    res : Scalar or Tensor
+        Results of the imaginary error function for x.
+
+    See Also
+    --------
+    erfc, erfinv, erfcinv, wofz, erfcx, erfi
+
+    Examples
+    --------
+    >>> import mars.tensor as mt
+    >>> from mars.tensor import special
+    >>> # without optional tensor
+    >>> x = mt.linspace(-3, 3)
+    >>> special.erfi(x).execute()
+    >>> # with optional tensor
+    >>> out = mt.linspace(-3, 3)
+    >>> special.erfi(x, out).execute()
+    >>> out
+    """
+    op = TensorErfi(**kwargs)
+    return op(x, out=out, where=where)
+
+
+@implement_scipy(spspecial.erfinv)
+@infer_dtype(spspecial.erfinv)
+def erfinv(x, out=None, where=None, **kwargs):
+    """
+    Returns the inverse of the error function for x
+
+    Parameters
+    ----------
+    x : Tensor
+        Input tensor.
+
+    Returns
+    -------
+    res : Tensor
+        Results of the inverse of the error function for x.
+
+    See Also
+    --------
+    erfc, erfinv, erfcinv, wofz, erfcx, erfi
+
+    Examples
+    --------
+    >>> import mars.tensor as mt
+    >>> from mars.tensor import special
+    >>> x = mt.linspace(-3, 3)
+    >>> special.erfinv(x).execute()
+    """
+    op = TensorErfinv(**kwargs)
+    return op(x, out=out, where=where)
+
+
+@implement_scipy(spspecial.erfcinv)
+@infer_dtype(spspecial.erfcinv)
+def erfcinv(x, out=None, where=None, **kwargs):
+    """
+    Returns the inverse of the complementary error function for x
+
+    Parameters
+    ----------
+    x : Tensor
+        Input tensor.
+
+    Returns
+    -------
+    res : Tensor
+        Results of the inverse of the complementary error function for x.
+
+    See Also
+    --------
+    erfc, erfinv, erfcinv, wofz, erfcx, erfi
+    Examples
+    --------
+    >>> import mars.tensor as mt
+    >>> from mars.tensor import special
+    >>> x = mt.linspace(-3, 3)
+    >>> special.erfcinv(x).execute()
+    """
+    op = TensorErfcinv(**kwargs)
     return op(x, out=out, where=where)
