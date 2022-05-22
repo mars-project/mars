@@ -133,5 +133,5 @@ def test_cancel(ray_start_regular_shared2, create_cluster, test_func):
 
 @require_ray
 @pytest.mark.parametrize("config", [{"backend": "ray"}])
-def test_a_tensor_execution(config):
+def test_context_gc(config):
     test_local.test_a_tensor_execution(config)

@@ -64,7 +64,8 @@ class MockRayTaskExecutor(RayTaskExecutor):
         self._set_attrs[key] += 1
 
 
-def test_ray_executor_destroy():
+@pytest.mark.asyncio
+async def test_ray_executor_destroy():
     task = Task("mock_task", "mock_session")
     config = RayExecutionConfig.from_execution_config({"backend": "mars"})
     executor = MockRayTaskExecutor(
@@ -87,6 +88,7 @@ def test_ray_executor_destroy():
     assert counter.keys() == keys, "Some keys are not reset in destroy()."
     for k, v in counter.items():
         assert v == 1
+    assert await executor.get_progress() == 1.0
 
 
 def test_ray_execute_subtask_basic():

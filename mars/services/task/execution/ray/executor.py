@@ -21,7 +21,6 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import List, Dict, Any, Set
 
-from ....lifecycle import TileableNotTracked
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
 from .....core.operand import (
@@ -35,7 +34,7 @@ from .....core.operand import (
 from .....lib.aio import alru_cache
 from .....resource import Resource
 from .....serialization import serialize, deserialize
-from .....typing import BandType, TileableType
+from .....typing import BandType
 from .....utils import (
     calc_data_size,
     lazy_import,
@@ -76,13 +75,6 @@ class RayTaskState(RayRemoteObjectManager):
         return f"{cls.__name__}_{task_id}"
 
 
-@dataclass
-class _ExecutorStage:
-    stage_id: str
-    subtask_graph: SubtaskGraph
-    chunk_graph: ChunkGraph
-
-
 _optimize_physical = None
 
 
@@ -118,7 +110,6 @@ def execute_subtask(
     input_keys: List[str],
     *inputs,
 ):
-    print(">>> Begin to execute with inputs: ", inputs)
     logger.info("Begin to execute subtask: %s", subtask_id)
     ensure_coverage()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
@@ -126,9 +117,6 @@ def execute_subtask(
     context = RayExecutionWorkerContext(
         RayTaskState.gen_name(task_id), zip(input_keys, inputs)
     )
-    print(">>> context: ", context)
-    print("  >> input keys: ", input_keys)
-    print("  >> inputs: ", inputs)
     # optimize chunk graph.
     subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)
     # from data_key to results
@@ -189,35 +177,28 @@ class RayTaskExecutor(TaskExecutor):
         self._available_band_resources = None
 
         # For progress
+        self._cur_stage_subtask_graph = None
         self._pre_all_stages_progress = 0.0
         self._pre_all_stages_tile_progress = 0.0
+        self._cur_stage_progress = 0.0
         self._cur_stage_tile_progress = 0.0
         # TODO: Can self._cur_stage_subtask_to_output_object_refs replace
         # self._cur_stage_output_object_refs?
         self._cur_stage_subtask_to_output_object_refs = dict()
         self._cur_stage_output_object_refs = []
-        self._cur_stage_progress = 0.0
-        self._cur_unfinished_subtasks = set()
+        self._cur_stage_unfinished_subtasks = set()
 
         # For task cancel
         # This list records the output object ref number of subtasks, so with
         # `self._cur_stage_output_object_refs` we can just call `ray.cancel`
         # with one object ref to cancel a subtask instead of cancel all object
         # refs. In this way we can reduce a lot of unnecessary calls of ray.
-        self._output_object_refs_nums = []
+        self._cur_stage_output_object_refs_nums = []
         self._execute_subtask_graph_aiotask = None
         self._cancelled = False
 
         # For task context gc
-        self._stages = []
-        self._cur_subtask_graph = None
         self._subtask_running_monitor = None
-        self._processed_tileables = set()
-        # TODO: need to clear this set after the current stage is done
-        # All subtask IDs whose input chunk reference count is reduced.
-        self._decref_subtasks = set()
-        self._tileable_key_to_chunk_keys = dict()
-        self._tileable_ref_counts = defaultdict(lambda: 0)
         self._chunk_ref_counts = defaultdict(lambda: 0)
 
     @classmethod
@@ -270,22 +251,23 @@ class RayTaskExecutor(TaskExecutor):
         self._available_band_resources = None
 
         # For progress
-        self._pre_all_stages_progress = 1.0
-        self._pre_all_stages_tile_progress = 1.0
-        self._cur_stage_tile_progress = 1.0
-        self._cur_stage_output_object_refs = []
+        self._cur_stage_subtask_graph = None
+        self._pre_all_stages_progress = None
+        self._pre_all_stages_tile_progress = None
+        self._cur_stage_progress = 1.0
+        self._cur_stage_tile_progress = None
+        self._cur_stage_subtask_to_output_object_refs = None
+        self._cur_stage_output_object_refs = None
+        self._cur_stage_unfinished_subtasks = None
 
         # For task cancel
-        self._output_object_refs_nums = []
+        self._cur_stage_output_object_refs_nums = None
         self._execute_subtask_graph_aiotask = None
         self._cancelled = None
 
         # For task context gc
-        # TODO: add some needed
         self._subtask_running_monitor = None
-        self._tileable_key_to_chunk_keys = dict()
-        self._tileable_ref_counts = defaultdict(lambda: 0)
-        self._chunk_ref_counts = defaultdict(lambda: 0)
+        self._chunk_ref_counts = None
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -337,10 +319,8 @@ class RayTaskExecutor(TaskExecutor):
         self._execute_subtask_graph_aiotask = asyncio.current_task()
 
         logger.info("Stage %s start.", stage_id)
-        await self._incref_result_tileables()
         await self._incref_stage(stage_id, subtask_graph, chunk_graph)
-        self._stages.append(_ExecutorStage(stage_id, subtask_graph, chunk_graph))
-        self._cur_subtask_graph = subtask_graph
+        self._cur_stage_subtask_graph = subtask_graph
         task_context = self._task_context
         output_meta_object_refs = []
         self._pre_all_stages_tile_progress = (
@@ -376,7 +356,7 @@ class RayTaskExecutor(TaskExecutor):
                 list(key_to_input.keys()),
                 *key_to_input.values(),
             )
-            self._cur_unfinished_subtasks.add(subtask)
+            self._cur_stage_unfinished_subtasks.add(subtask)
             if output_count == 0:
                 continue
             elif output_count == 1:
@@ -385,7 +365,7 @@ class RayTaskExecutor(TaskExecutor):
                 output_object_refs
             )
             self._cur_stage_output_object_refs.extend(output_object_refs)
-            self._output_object_refs_nums.append(len(output_object_refs))
+            self._cur_stage_output_object_refs_nums.append(len(output_object_refs))
             if output_meta_keys:
                 meta_object_ref, *output_object_refs = output_object_refs
                 # TODO(fyrestone): Fetch(not get) meta object here.
@@ -427,19 +407,22 @@ class RayTaskExecutor(TaskExecutor):
         # Just use `self._cur_stage_tile_progress` as current stage progress
         # because current stage is finished, its progress is 1.
         self._pre_all_stages_progress += self._cur_stage_tile_progress
-        # TODO: need to clear stage attributes
+        self._decref_stage(stage_id, subtask_graph, chunk_graph)
+        self._cur_stage_subtask_to_output_object_refs.clear()
+        self._cur_stage_unfinished_subtasks.clear()
         self._cur_stage_output_object_refs.clear()
-        self._output_object_refs_nums.clear()
-        self._decref_subtasks.clear()
+        self._cur_stage_output_object_refs_nums.clear()
+        print(f">>> [Finished a stage] task context: {self._task_context}")
+        print(
+            f">>> [Finished a stage] task chunk meta: "
+            f"{self._task_chunks_meta}, {self._task_chunks_meta}"
+        )
         logger.info("Stage %s is complete.", stage_id)
         return chunk_to_meta
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             return
-
-        await self._decref_stages()
-        # TODO: Decrease result tileables if error or cancelled
 
         # Update info if no exception occurs.
         tileable_keys = []
@@ -511,13 +494,13 @@ class RayTaskExecutor(TaskExecutor):
         if self._subtask_running_monitor is not None:
             self._subtask_running_monitor.cancel()
         timeout = self._config.subtask_cancel_timeout
-        subtask_num = len(self._output_object_refs_nums)
+        subtask_num = len(self._cur_stage_output_object_refs_nums)
         if subtask_num > 0:
             pos = 0
             obj_refs_to_be_cancelled_ = []
             for i in range(0, subtask_num):
                 if i > 0:
-                    pos += self._output_object_refs_nums[i - 1]
+                    pos += self._cur_stage_output_object_refs_nums[i - 1]
                 obj_refs_to_be_cancelled_.append(
                     _cancel_ray_task(self._cur_stage_output_object_refs[pos], timeout)
                 )
@@ -598,12 +581,12 @@ class RayTaskExecutor(TaskExecutor):
     async def _get_newly_finished_subtasks(self, ready_objects: Set["ray.ObjectRef"]):
         finished_subtasks = set()
         if ready_objects is not None:
-            for subtask in self._cur_unfinished_subtasks:
+            for subtask in self._cur_stage_unfinished_subtasks:
                 if self._cur_stage_subtask_to_output_object_refs[subtask].issubset(
                     ready_objects
                 ):
                     finished_subtasks.add(subtask)
-            self._cur_unfinished_subtasks -= finished_subtasks
+            self._cur_stage_unfinished_subtasks -= finished_subtasks
         return finished_subtasks
 
     async def _check_subtask_results_periodically(self):
@@ -613,21 +596,25 @@ class RayTaskExecutor(TaskExecutor):
 
             from datetime import datetime
 
-            print(f">>> {datetime.now().isoformat()} Checking subtask results ...")
-
             ready_objects = await self._get_ready_objects()
             await self._calculate_progress(ready_objects)
+            print(
+                f">>> {datetime.now().isoformat()} Cur progress: {self._cur_stage_progress}"
+            )
             finished_subtasks = await self._get_newly_finished_subtasks(
                 set(ready_objects)
             )
-            coros = []
-            for subtask in finished_subtasks:
-                if subtask.subtask_id not in self._decref_subtasks:
-                    self._decref_subtasks.add(subtask.subtask_id)
-                    coros.append(self._decref_input_subtasks(subtask))
+            coros = [
+                self._decref_input_subtasks(subtask) for subtask in finished_subtasks
+            ]
             asyncio.gather(*coros)
-            print(">>> Finished: ", ready_objects)
-            print(">>> Cur progress: ", self._cur_stage_progress)
+
+            print(
+                f">>> Finished subtasks: {finished_subtasks}, task context: {self._task_context}"
+            )
+            print(
+                f">>> Finished subtasks: {finished_subtasks}, task chunk meta: {self._task_chunks_meta}"
+            )
 
             await asyncio.sleep(0.5)
 
@@ -638,24 +625,6 @@ class RayTaskExecutor(TaskExecutor):
                 f"`ref_counts` should have same size as `keys`, expect {len(keys)}, got {len(ref_counts)}"
             )
 
-    def __track(self, tileable_key: str, chunk_keys: List[str]):
-        if tileable_key not in self._tileable_key_to_chunk_keys:
-            self._tileable_key_to_chunk_keys[tileable_key] = []
-        chunk_keys_set = set(self._tileable_key_to_chunk_keys[tileable_key])
-        incref_chunk_keys = []
-        tileable_ref_count = self._tileable_ref_counts.get(tileable_key, 0)
-        for chunk_key in chunk_keys:
-            if chunk_key in chunk_keys_set:
-                continue
-            if tileable_ref_count > 0:
-                incref_chunk_keys.extend([chunk_key] * tileable_ref_count)
-            self._tileable_key_to_chunk_keys[tileable_key].append(chunk_key)
-        if incref_chunk_keys:
-            self.__incref_chunks(incref_chunk_keys)
-
-    async def _track(self, tileable_key: str, chunk_keys: List[str]):
-        return await asyncio.to_thread(self.__track, tileable_key, chunk_keys)
-
     def __incref_chunks(self, chunk_keys: List[str], counts: List[int] = None):
         counts = counts if counts is not None else itertools.repeat(1)
         for chunk_key, count in zip(chunk_keys, counts):
@@ -665,30 +634,7 @@ class RayTaskExecutor(TaskExecutor):
         self._check_ref_counts(chunk_keys, counts)
         return await asyncio.to_thread(self.__incref_chunks, chunk_keys, counts=counts)
 
-    def __incref_tileables(self, tileable_keys: List[str], counts: List[int] = None):
-        counts = counts if counts is not None else itertools.repeat(1)
-        for tileable_key, count in zip(tileable_keys, counts):
-            if tileable_key not in self._tileable_key_to_chunk_keys:
-                raise TileableNotTracked(f"tileable {tileable_key} not tracked before")
-            self._tileable_ref_counts[tileable_key] += count
-            incref_chunk_keys = self._tileable_key_to_chunk_keys[tileable_key]
-            logger.debug(
-                "Incref chunks %s while increfing tileable %s",
-                incref_chunk_keys,
-                tileable_key,
-            )
-            chunk_counts = None if count == 1 else [count] * len(incref_chunk_keys)
-            self.__incref_chunks(incref_chunk_keys, counts=chunk_counts)
-
-    async def _incref_tileables(
-        self, tileable_keys: List[str], counts: List[int] = None
-    ):
-        self._check_ref_counts(tileable_keys, counts)
-        return await asyncio.to_thread(
-            self.__incref_tileables, tileable_keys, counts=counts
-        )
-
-    def _get_remove_chunk_keys(self, chunk_keys: List[str], counts: List[int] = None):
+    def _get_removed_chunk_keys(self, chunk_keys: List[str], counts: List[int] = None):
         to_remove_chunk_keys = []
         counts = counts if counts is not None else itertools.repeat(1)
         for chunk_key, count in zip(chunk_keys, counts):
@@ -697,13 +643,13 @@ class RayTaskExecutor(TaskExecutor):
             assert ref_count >= 0, f"chunk key {chunk_key} will have negative ref count"
             self._chunk_ref_counts[chunk_key] = ref_count
             if ref_count == 0:
-                # remove
                 to_remove_chunk_keys.append(chunk_key)
         return to_remove_chunk_keys
 
     def _remove_chunks(self, to_remove_chunk_keys: List[str]):
         if not to_remove_chunk_keys:
             return
+        print(">>> Start to remove chunks: ", to_remove_chunk_keys)
         for chunk_key in to_remove_chunk_keys:
             self._task_context.pop(chunk_key, None)
             self._task_chunks_meta.pop(chunk_key, None)
@@ -711,73 +657,9 @@ class RayTaskExecutor(TaskExecutor):
     async def _decref_chunks(self, chunk_keys: List[str], counts: List[int] = None):
         self._check_ref_counts(chunk_keys, counts)
         to_remove_chunk_keys = await asyncio.to_thread(
-            self._get_remove_chunk_keys, chunk_keys, counts=counts
+            self._get_removed_chunk_keys, chunk_keys, counts=counts
         )
         self._remove_chunks(to_remove_chunk_keys)
-
-    def _get_decref_chunk_keys(
-        self, tileable_keys: List[str], counts: List[int] = None
-    ):
-        decref_chunk_keys = dict()
-        counts = counts if counts is not None else itertools.repeat(1)
-        for tileable_key, count in zip(tileable_keys, counts):
-            if tileable_key not in self._tileable_key_to_chunk_keys:
-                raise TileableNotTracked(f"tileable {tileable_key} not tracked before")
-            self._tileable_ref_counts[tileable_key] -= count
-
-            for chunk_key in self._tileable_key_to_chunk_keys[tileable_key]:
-                if chunk_key not in decref_chunk_keys:
-                    decref_chunk_keys[chunk_key] = count
-                else:
-                    decref_chunk_keys[chunk_key] += count
-        logger.debug(
-            "Decref chunks %s while decrefing tileables %s",
-            decref_chunk_keys,
-            tileable_keys,
-        )
-        return decref_chunk_keys
-
-    async def _decref_tileables(
-        self, tileable_keys: List[str], counts: List[int] = None
-    ):
-        self._check_ref_counts(tileable_keys, counts)
-        decref_chunk_key_to_counts = await asyncio.to_thread(
-            self._get_decref_chunk_keys, tileable_keys, counts=counts
-        )
-        to_remove_chunk_keys = await asyncio.to_thread(
-            self._get_remove_chunk_keys,
-            list(decref_chunk_key_to_counts),
-            counts=list(decref_chunk_key_to_counts.values()),
-        )
-        self._remove_chunks(to_remove_chunk_keys)
-
-    def _get_tiled(self, tileable: TileableType):
-        tileable = tileable.data if hasattr(tileable, "data") else tileable
-        return self._tile_context[tileable]
-
-    async def _incref_result_tileables(self):
-        processed = self._processed_tileables
-        tracks = [], []
-        for result_tileable in self._task.tileable_graph.result_tileables:
-            if result_tileable in processed:  # prama: no cover
-                continue
-            try:
-                tiled_tileable = self._get_tiled(result_tileable)
-                tracks[0].append(result_tileable.key)
-                tracks[1].append(
-                    (result_tileable.key, [c.key for c in tiled_tileable.chunks])
-                )
-                processed.add(result_tileable)
-            except KeyError:
-                # not tiled, skip
-                pass
-        if tracks:
-            coros = [
-                self._track(tileable_key, chunk_keys)
-                for tileable_key, chunk_keys in tracks[1]
-            ]
-            await asyncio.gather(*coros)
-            await self._incref_tileables(tracks[0])
 
     async def _incref_stage(
         self, stage_id: str, subtask_graph: SubtaskGraph, chunk_graph: ChunkGraph
@@ -795,22 +677,23 @@ class RayTaskExecutor(TaskExecutor):
                         n_reducer = _get_n_reducer(subtask)
                         for map_chunk in chk.inputs:
                             incref_chunk_key_to_counts[map_chunk.key] += n_reducer
-            result_chunks = chunk_graph.result_chunks
-            for c in result_chunks:
-                incref_chunk_key_to_counts[c.key] += 1
-            logger.debug(
-                "Incref chunks for stage %s: %s",
-                stage_id,
-                incref_chunk_key_to_counts,
-            )
-            await self._incref_chunks(
-                list(incref_chunk_key_to_counts),
-                counts=list(incref_chunk_key_to_counts.values()),
-            )
+        for c in chunk_graph.result_chunks:
+            incref_chunk_key_to_counts[c.key] += 1
+        logger.debug(
+            "Incref chunks for stage %s: %s",
+            stage_id,
+            incref_chunk_key_to_counts,
+        )
+        print(f">>> Incref chunks for stage {stage_id}: {incref_chunk_key_to_counts}")
+        await self._incref_chunks(
+            list(incref_chunk_key_to_counts),
+            counts=list(incref_chunk_key_to_counts.values()),
+        )
+        print(f">>> Incref chunks for stage {stage_id}: {self._chunk_ref_counts}")
 
     async def _decref_input_subtasks(self, subtask: Subtask):
         decref_chunk_key_to_counts = defaultdict(lambda: 0)
-        for in_subtask in self._cur_subtask_graph.iter_predecessors(subtask):
+        for in_subtask in self._cur_stage_subtask_graph.iter_predecessors(subtask):
             for result_chunk in in_subtask.chunk_graph.results:
                 # for reducer chunk, decref mapper chunks
                 if isinstance(result_chunk.op, ShuffleProxy):
@@ -823,25 +706,41 @@ class RayTaskExecutor(TaskExecutor):
             decref_chunk_key_to_counts,
             subtask.subtask_id,
         )
+        print(
+            f">>> Decref chunks {decref_chunk_key_to_counts} when subtask"
+            f" {subtask.subtask_id} finished."
+        )
         await self._decref_chunks(
             list(decref_chunk_key_to_counts),
             counts=list(decref_chunk_key_to_counts.values()),
         )
 
-    def _get_decref_stage_chunk_key_to_counts(self, stage: _ExecutorStage):
+    def _get_decref_stage_chunk_key_to_counts(
+        self, subtask_graph: SubtaskGraph, chunk_graph: ChunkGraph
+    ):
         decref_chunk_key_to_counts = defaultdict(lambda: 0)
         # TODO: when error or cancelled, should process subtask chunk graph chunks
-        for c in stage.chunk_graph.result_chunks:
+        for c in chunk_graph.result_chunks:
             decref_chunk_key_to_counts[c.key] += 1
         return decref_chunk_key_to_counts
 
-    async def _decref_stages(self):
-        for stage in self._stages:
-            decref_chunk_key_to_counts = self._get_decref_stage_chunk_key_to_counts(
-                stage
+    async def _decref_stage(
+        self, stage_id: str, subtask_graph: SubtaskGraph, chunk_graph: ChunkGraph
+    ):
+        decref_chunk_key_to_counts = self._get_decref_stage_chunk_key_to_counts(
+            stage_id, subtask_graph, chunk_graph
+        )
+        logger.debug(
+            "Decref chunks when stage %s finish: %s",
+            stage_id,
+            decref_chunk_key_to_counts,
+        )
+        print(
+            (
+                f"Decref chunks when stage {stage_id} finished: {decref_chunk_key_to_counts}"
             )
-            logger.debug(
-                "Decref chunks when stage %s finish: %s",
-                stage.stage_id,
-                decref_chunk_key_to_counts,
-            )
+        )
+        await self._decref_chunks(
+            list(decref_chunk_key_to_counts),
+            counts=list(decref_chunk_key_to_counts.values()),
+        )
