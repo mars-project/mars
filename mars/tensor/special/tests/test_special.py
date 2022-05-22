@@ -39,12 +39,6 @@ from ..err_fresnel import (
     TensorErfinv,
     erfcinv,
     TensorErfcinv,
-    wofz,
-    TensorWofz,
-    dawsn,
-    TensorDawsn,
-    fresnel,
-    TensorFresnel,
 )
 from ..gamma_funcs import (
     gammaln,
