@@ -22,6 +22,7 @@ from .....core.context import Context
 from .....storage.base import StorageLevel
 from .....utils import implements, lazy_import
 from ....context import ThreadedServiceContext
+from .config import RayExecutionConfig
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
@@ -118,8 +119,16 @@ class _RayRemoteObjectContext:
 class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
     """The context for tiling."""
 
-    def __init__(self, task_context: Dict, task_chunks_meta: Dict, *args, **kwargs):
+    def __init__(
+        self,
+        config: RayExecutionConfig,
+        task_context: Dict,
+        task_chunks_meta: Dict,
+        *args,
+        **kwargs
+    ):
         super().__init__(*args, **kwargs)
+        self._config = config
         self._task_context = task_context
         self._task_chunks_meta = task_chunks_meta
 
@@ -143,6 +152,11 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
             meta = {f: meta.get(f) for f in fields}
             result.append(meta)
         return result
+
+    @implements(Context.get_total_n_cpu)
+    def get_total_n_cpu(self) -> int:
+        # TODO(fyrestone): Support auto scaling.
+        return self._config.get_n_cpu() * self._config.get_n_worker()
 
 
 # TODO(fyrestone): Implement more APIs for Ray.
