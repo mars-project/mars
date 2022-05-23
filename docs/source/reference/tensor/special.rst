@@ -43,6 +43,11 @@ Error function
    :nosignatures:
 
    mars.tensor.special.erf
+   mars.tensor.special.erfc
+   mars.tensor.special.erfcx
+   mars.tensor.special.erfi
+   mars.tensor.special.erfinv
+   mars.tensor.special.erfcinv
 
 
 Ellipsoidal harmonics
