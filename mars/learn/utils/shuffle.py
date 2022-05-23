@@ -319,7 +319,7 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
                         ),
                         reduce_sizes=reduce_sizes_,
                         reducer_ordinal=ordinal,
-                        n_reducer=len(map_chunks),
+                        n_reducers=len(map_chunks),
                     )
                     params = cls._calc_chunk_params(
                         c, inp_axes, inp.chunk_shape, oup, output_type, chunk_op, False

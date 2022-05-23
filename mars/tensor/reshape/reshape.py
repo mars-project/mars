@@ -259,7 +259,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                 stage=OperandStage.reduce,
                 dtype=tensor.dtype,
                 reducer_ordinal=ordinal,
-                n_reducer=len(out_indices),
+                n_reducers=len(out_indices),
             )
             shuffle_outputs.append(
                 chunk_op.new_chunk(

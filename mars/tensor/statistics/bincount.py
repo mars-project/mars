@@ -135,7 +135,7 @@ class TensorBinCount(TensorMapReduceOperand, TensorOperandMixin):
             new_op = op.copy().reset_key()
             new_op.stage = OperandStage.reduce
             new_op.reducer_ordinal = chunk_idx
-            new_op.n_reducer = chunk_count
+            new_op.n_reducers = chunk_count
             new_op.chunk_count = chunk_count
             new_op.tileable_right_bound = tileable_right_bound
 

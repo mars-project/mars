@@ -162,7 +162,7 @@ class TensorIndexSetValue(TensorMapReduceOperand, TensorOperandMixin):
             )
             reducer_op = TensorIndexSetValue(
                 stage=OperandStage.reduce,
-                n_reducer=len(inp.chunks),
+                n_reducers=len(inp.chunks),
                 reducer_ordinal=ordinal,
                 dtype=input_chunk.dtype,
                 shuffle_axes=shuffle_axes,

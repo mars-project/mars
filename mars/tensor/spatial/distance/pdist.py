@@ -265,7 +265,7 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
                 stage=OperandStage.reduce,
                 dtype=out_tensor.dtype,
                 reducer_ordinal=p,
-                n_reducer=aggregate_size,
+                n_reducers=aggregate_size,
             )
             reduce_chunk = reduce_chunk_op.new_chunk(
                 [proxy_chunk], shape=(out_sizes[p],), order=out_tensor.order, index=(p,)
