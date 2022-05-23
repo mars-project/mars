@@ -15,7 +15,20 @@
 try:
     import scipy
 
-    from .err_fresnel import erf, TensorErf
+    from .err_fresnel import (
+        erf,
+        TensorErf,
+        erfc,
+        TensorErfc,
+        erfcx,
+        TensorErfcx,
+        erfi,
+        TensorErfi,
+        erfinv,
+        TensorErfinv,
+        erfcinv,
+        TensorErfcinv,
+    )
     from .gamma_funcs import (
         gamma,
         TensorGamma,
