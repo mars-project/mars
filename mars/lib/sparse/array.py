@@ -721,6 +721,11 @@ class SparseArray(SparseNDArray):
     poch = partialmethod(_scipy_binary, "poch")
 
     erf = partialmethod(_scipy_unary, "erf")
+    erfc = partialmethod(_scipy_unary, "erfc")
+    erfcx = partialmethod(_scipy_unary, "erfcx")
+    erfi = partialmethod(_scipy_unary, "erfi")
+    erfinv = partialmethod(_scipy_unary, "erfinv")
+    erfcinv = partialmethod(_scipy_unary, "erfcinv")
     entr = partialmethod(_scipy_unary, "entr")
 
     rel_entr = partialmethod(_scipy_binary, "rel_entr")
