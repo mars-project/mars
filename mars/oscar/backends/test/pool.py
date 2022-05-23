@@ -17,7 +17,7 @@ import multiprocessing
 from typing import List, Dict
 
 from ..config import ActorPoolConfig
-from ..communication import gen_local_address, get_server_type, DummyServer
+from ..communication import gen_local_address, DummyServer
 from ..mars.pool import MainActorPool, SubActorPool, SubpoolStatus
 from ..pool import ActorPoolType
 
@@ -112,32 +112,10 @@ class TestSubActorPool(SubActorPool):
             return pool.on_new_channel(channel)
 
         # create servers
-        external_address_set = set(external_addresses)
-        create_server_tasks = []
-        is_external_server = []
-        for addr in set(external_addresses + [gen_local_address(process_index)]):
-            server_type = get_server_type(addr)
-            task = asyncio.create_task(
-                server_type.create(dict(address=addr, handle_channel=handle_channel))
-            )
-            create_server_tasks.append(task)
-            is_external_server.append(addr in external_address_set)
-
-        await asyncio.gather(*create_server_tasks)
-        kw["servers"] = servers = [f.result() for f in create_server_tasks]
-
-        new_external_addresses = [
-            server.address
-            for server, is_ext in zip(servers, is_external_server)
-            if is_ext
-        ]
-
-        if set(external_addresses) != set(new_external_addresses):
-            external_addresses = new_external_addresses
-            actor_pool_config.reset_pool_external_address(
-                process_index, external_addresses
-            )
-            cls._update_kw_addresses(actor_pool_config, process_index, kw)
+        server_addresses = external_addresses + [gen_local_address(process_index)]
+        server_addresses = sorted(set(server_addresses))
+        servers = await cls._create_servers(server_addresses, handle_channel)
+        cls._update_stored_addresses(servers, server_addresses, actor_pool_config, kw)
 
         # create pool
         pool = cls(**kw)

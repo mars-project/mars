@@ -640,20 +640,55 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         default_router.add_router(router)
 
     @staticmethod
-    def _update_kw_addresses(
-        actor_pool_config: ActorPoolConfig, process_index: int, kw: Dict
+    def _update_stored_addresses(
+        servers: List[Server],
+        raw_addresses: List[str],
+        actor_pool_config: ActorPoolConfig,
+        kw: Dict,
     ):
+        process_index = kw["process_index"]
         curr_pool_config = actor_pool_config.get_pool_config(process_index)
         external_addresses = curr_pool_config["external_address"]
-        if kw["internal_address"] == kw["external_address"]:
-            # internal address may be the same as external address in Windows
-            kw["internal_address"] = external_addresses[0]
-        kw["external_address"] = external_addresses[0]
-        kw["router"] = Router(
-            external_addresses,
-            gen_local_address(process_index),
-            actor_pool_config.external_to_internal_address_map,
-        )
+        external_address_set = set(external_addresses)
+
+        kw["servers"] = servers
+
+        new_external_addresses = [
+            server.address
+            for server, raw_address in zip(servers, raw_addresses)
+            if raw_address in external_address_set
+        ]
+
+        if external_address_set != set(new_external_addresses):
+            external_addresses = new_external_addresses
+            actor_pool_config.reset_pool_external_address(
+                process_index, external_addresses
+            )
+            external_addresses = curr_pool_config["external_address"]
+            if kw["internal_address"] == kw["external_address"]:
+                # internal address may be the same as external address in Windows
+                kw["internal_address"] = external_addresses[0]
+            kw["external_address"] = external_addresses[0]
+            kw["router"] = Router(
+                external_addresses,
+                gen_local_address(process_index),
+                actor_pool_config.external_to_internal_address_map,
+            )
+
+    @classmethod
+    async def _create_servers(cls, addresses: List[str], channel_handler: Callable):
+        assert len(set(addresses)) == len(addresses)
+        # create servers
+        create_server_tasks = []
+        for addr in addresses:
+            server_type = get_server_type(addr)
+            task = asyncio.create_task(
+                server_type.create(dict(address=addr, handle_channel=channel_handler))
+            )
+            create_server_tasks.append(task)
+
+        await asyncio.gather(*create_server_tasks)
+        return [f.result() for f in create_server_tasks]
 
     @classmethod
     @implements(AbstractActorPool.create)
@@ -678,33 +713,13 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             return pool.on_new_channel(channel)
 
         # create servers
-        external_address_set = set(external_addresses)
-        create_server_tasks = []
-        is_external_server = []
-        for addr in set(
-            external_addresses + [internal_address, gen_local_address(process_index)]
-        ):
-            server_type = get_server_type(addr)
-            task = asyncio.create_task(
-                server_type.create(dict(address=addr, handle_channel=handle_channel))
-            )
-            create_server_tasks.append(task)
-            is_external_server.append(addr in external_address_set)
-
-        await asyncio.gather(*create_server_tasks)
-        kw["servers"] = servers = [f.result() for f in create_server_tasks]
-        new_external_addresses = [
-            server.address
-            for server, is_ext in zip(servers, is_external_server)
-            if is_ext
+        server_addresses = external_addresses + [
+            internal_address,
+            gen_local_address(process_index),
         ]
-
-        if set(external_addresses) != set(new_external_addresses):
-            external_addresses = new_external_addresses
-            actor_pool_config.reset_pool_external_address(
-                process_index, external_addresses
-            )
-            cls._update_kw_addresses(actor_pool_config, process_index, kw)
+        server_addresses = sorted(set(server_addresses))
+        servers = await cls._create_servers(server_addresses, handle_channel)
+        cls._update_stored_addresses(servers, server_addresses, actor_pool_config, kw)
 
         # set default router
         # actor context would be able to use exact client

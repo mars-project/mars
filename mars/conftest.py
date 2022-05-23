@@ -183,6 +183,7 @@ def _new_test_session():
             yield sess
         finally:
             sess.stop_server(isolation=False)
+            Router.set_instance(None)
 
 
 @pytest.fixture(scope="module")
@@ -204,6 +205,7 @@ def _new_integrated_test_session():
             try:
                 sess.stop_server(isolation=False)
             except concurrent.futures.TimeoutError:
+                Router.set_instance(None)
                 subprocesses = psutil.Process().children(recursive=True)
                 for proc in subprocesses:
                     proc.terminate()
@@ -240,6 +242,7 @@ def _new_gpu_test_session():  # pragma: no cover
             yield sess
         finally:
             sess.stop_server(isolation=False)
+            Router.set_instance(None)
 
 
 @pytest.fixture
