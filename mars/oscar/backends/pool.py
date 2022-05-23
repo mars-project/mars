@@ -290,14 +290,12 @@ class AbstractActorPool(ABC):
         global_router = Router.get_instance()
         global_router.remove_router(self._router)
         # update router
-        self._router.set_mapping(
-            actor_pool_config.external_to_internal_address_map
-        )
+        self._router.set_mapping(actor_pool_config.external_to_internal_address_map)
         # update global router
         global_router.add_router(self._router)
 
     async def handle_control_command(
-            self, message: ControlMessage
+        self, message: ControlMessage
     ) -> ResultMessageType:
         """
         Handle control command.
@@ -650,13 +648,6 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         if kw["internal_address"] == kw["external_address"]:
             # internal address may be the same as external address in Windows
             kw["internal_address"] = external_addresses[0]
-
-        logger.warning(
-            "TMP: EXTERNAL address updated from %s to %s",
-            kw["external_address"],
-            external_addresses[0],
-        )
-
         kw["external_address"] = external_addresses[0]
         kw["router"] = Router(
             external_addresses,

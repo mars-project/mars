@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import concurrent.futures
-import logging
 import os
 import subprocess
 
@@ -30,7 +29,6 @@ from mars.utils import lazy_import
 
 ray = lazy_import("ray")
 MARS_CI_BACKEND = os.environ.get("MARS_CI_BACKEND", "mars")
-logging.basicConfig(level=logging.DEBUG)
 
 
 @pytest.fixture(scope="module")

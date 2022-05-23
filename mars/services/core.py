@@ -17,7 +17,6 @@ import asyncio
 import enum
 import importlib
 import inspect
-import logging
 import warnings
 from typing import Dict, Iterable, List, Union
 
@@ -170,21 +169,14 @@ async def start_services(
 
         web_config["web_handlers"] = web_handlers
 
-    async def start_instance(inst):
-        logging.warning(f"TMP: before starting {inst!r}")
-        await inst.start()
-        logging.warning(f"TMP: after starting {inst!r}")
-
     for entries in svc_entries_list:
         instances = [svc_entry.get_instance(address, config) for svc_entry in entries]
-        await asyncio.gather(*[start_instance(inst) for inst in instances])
+        await asyncio.gather(*[inst.start() for inst in instances])
 
     if mark_ready and "cluster" in service_names:
         from .cluster import ClusterAPI
 
-        logging.warning(f"TMP: await ClusterAPI.create({address})")
         cluster_api = await ClusterAPI.create(address)
-        logging.warning("await cluster_api.mark_node_ready()")
         await cluster_api.mark_node_ready()
 
 
