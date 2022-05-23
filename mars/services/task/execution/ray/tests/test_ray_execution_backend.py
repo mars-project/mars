@@ -21,6 +21,7 @@ import pytest
 from ...... import tensor as mt
 
 from ......core import TileContext
+from ......core.context import get_context
 from ......core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 from ......serialization import serialize
 from ......tests.core import require_ray, mock
@@ -51,10 +52,17 @@ class MockRayTaskExecutor(RayTaskExecutor):
         self._set_attrs = Counter()
         super().__init__(*args, **kwargs)
 
+    @classmethod
+    async def _get_apis(cls, session_id: str, address: str):
+        return None, None
+
     @staticmethod
     def _get_ray_executor():
         # Export remote function once.
         return None
+
+    async def get_available_band_resources(self):
+        return {}
 
     def set_attr_counter(self):
         return self._set_attrs
@@ -62,6 +70,48 @@ class MockRayTaskExecutor(RayTaskExecutor):
     def __setattr__(self, key, value):
         super().__setattr__(key, value)
         self._set_attrs[key] += 1
+
+
+@pytest.mark.asyncio
+@mock.patch("mars.services.task.execution.ray.executor.RayTaskState.create")
+@mock.patch("mars.services.task.execution.ray.context.RayExecutionContext.init")
+@mock.patch("ray.get")
+async def test_ray_executor_create(
+    mock_ray_get, mock_execution_context_init, mock_task_state_actor_create
+):
+    task = Task("mock_task", "mock_session")
+
+    # Create RayTaskState actor as needed by default.
+    mock_config = RayExecutionConfig.from_execution_config({"backend": "ray"})
+    executor = await MockRayTaskExecutor.create(
+        mock_config,
+        session_id="mock_session_id",
+        address="mock_address",
+        task=task,
+        tile_context=TileContext(),
+    )
+    assert isinstance(executor, MockRayTaskExecutor)
+    assert mock_task_state_actor_create.call_count == 0
+    ctx = get_context()
+    assert isinstance(ctx, RayExecutionContext)
+    ctx.create_remote_object("abc", lambda: None)
+    assert mock_ray_get.call_count == 1
+    assert mock_task_state_actor_create.call_count == 1
+
+    # Create RayTaskState actor in advance if "create_task_state_actor_as_needed" == False
+    mock_config = RayExecutionConfig.from_execution_config(
+        {"backend": "ray", "ray": {"create_task_state_actor_as_needed": False}}
+    )
+    executor = await MockRayTaskExecutor.create(
+        mock_config,
+        session_id="mock_session_id",
+        address="mock_address",
+        task=task,
+        tile_context=TileContext(),
+    )
+    assert isinstance(executor, MockRayTaskExecutor)
+    assert mock_ray_get.call_count == 1
+    assert mock_task_state_actor_create.call_count == 2
 
 
 def test_ray_executor_destroy():
@@ -73,7 +123,6 @@ def test_ray_executor_destroy():
         tile_context=TileContext(),
         task_context={},
         task_chunks_meta={},
-        task_state_actor=None,
         lifecycle_api=None,
         meta_api=None,
     )
@@ -163,8 +212,9 @@ async def test_ray_remote_object(ray_start_regular_shared2):
         await manager.call_remote_object(name, "foo", 3, 4)
 
     # Test _RayRemoteObjectContext
-    remote_manager = ray.remote(RayRemoteObjectManager).remote()
-    context = _RayRemoteObjectContext(remote_manager)
+    context = _RayRemoteObjectContext(
+        lambda: ray.remote(RayRemoteObjectManager).remote()
+    )
     context.create_remote_object(name, _TestRemoteObject, 2)
     remote_object = context.get_remote_object(name)
     r = remote_object.foo(3, 4)
@@ -196,13 +246,13 @@ def test_get_chunks_result(ray_start_regular_shared2):
 
     with mock.patch.object(ThreadedServiceContext, "__init__", new=fake_init):
         mock_config = RayExecutionConfig.from_execution_config({"backend": "ray"})
-        context = RayExecutionContext(mock_config, {"abc": o}, {}, None)
+        context = RayExecutionContext(mock_config, {"abc": o}, {}, [], lambda: None)
         r = context.get_chunks_result(["abc"])
         assert r == [value]
 
 
 def test_ray_execution_worker_context():
-    context = RayExecutionWorkerContext(None)
+    context = RayExecutionWorkerContext(lambda: None)
     with pytest.raises(NotImplementedError):
         context.set_running_operand_key("mock_session_id", "mock_op_key")
     with pytest.raises(NotImplementedError):

@@ -50,3 +50,6 @@ class RayExecutionConfig(ExecutionConfig):
 
     def get_n_worker(self):
         return self._ray_execution_config["n_worker"]
+
+    def create_task_state_actor_as_needed(self):
+        return self._ray_execution_config.get("create_task_state_actor_as_needed", True)
