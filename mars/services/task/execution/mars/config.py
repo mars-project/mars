@@ -24,8 +24,12 @@ from ..utils import get_band_resources_from_config
 class MarsExecutionConfig(ExecutionConfig):
     name = "mars"
 
+    def __init__(self, execution_config: Dict):
+        super().__init__(execution_config)
+        self._mars_execution_config = execution_config[self.backend]
+
     def get_deploy_band_resources(self) -> List[Dict[str, Resource]]:
-        return get_band_resources_from_config(self._config)
+        return get_band_resources_from_config(self._mars_execution_config)
 
     def get_shuffle_type(self) -> ShuffleType:
         return ShuffleType.PULL

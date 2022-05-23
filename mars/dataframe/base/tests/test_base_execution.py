@@ -1930,6 +1930,7 @@ def test_cartesian_chunk_execution(setup):
     )
 
 
+@pytest.mark.ray_dag
 def test_rebalance_execution(setup):
     raw = pd.DataFrame(np.random.rand(10, 3), columns=list("abc"))
     df = from_pandas_df(raw)

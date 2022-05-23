@@ -353,55 +353,62 @@ def test_dataframe_groupby_agg(setup):
     mdf = md.DataFrame(raw, chunk_size=13)
 
     for method in ["tree", "shuffle"]:
-        r = mdf.groupby("c2").agg("size", method=method)
-        pd.testing.assert_series_equal(
-            r.execute().fetch().sort_index(), raw.groupby("c2").agg("size").sort_index()
-        )
-
-        for agg_fun in agg_funs:
-            if agg_fun == "size":
-                continue
-            r = mdf.groupby("c2").agg(agg_fun, method=method)
-            pd.testing.assert_frame_equal(
+        for sort in [True, False]:
+            r = mdf.groupby("c2").agg("size", method=method)
+            pd.testing.assert_series_equal(
                 r.execute().fetch().sort_index(),
-                raw.groupby("c2").agg(agg_fun).sort_index(),
+                raw.groupby("c2").agg("size").sort_index(),
             )
 
-        r = mdf.groupby("c2").agg(agg_funs, method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch().sort_index(),
-            raw.groupby("c2").agg(agg_funs).sort_index(),
-        )
+            for agg_fun in agg_funs:
+                if agg_fun == "size":
+                    continue
+                r = mdf.groupby("c2", sort=sort).agg(agg_fun, method=method)
+                pd.testing.assert_frame_equal(
+                    r.execute().fetch().sort_index(),
+                    raw.groupby("c2").agg(agg_fun).sort_index(),
+                )
 
-        agg = OrderedDict([("c1", ["min", "mean"]), ("c3", "std")])
-        r = mdf.groupby("c2").agg(agg, method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch().sort_index(), raw.groupby("c2").agg(agg).sort_index()
-        )
+            r = mdf.groupby("c2", sort=sort).agg(agg_funs, method=method)
+            pd.testing.assert_frame_equal(
+                r.execute().fetch().sort_index(),
+                raw.groupby("c2").agg(agg_funs).sort_index(),
+            )
 
-        agg = OrderedDict([("c1", "min"), ("c3", "sum")])
-        r = mdf.groupby("c2").agg(agg, method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch().sort_index(), raw.groupby("c2").agg(agg).sort_index()
-        )
+            agg = OrderedDict([("c1", ["min", "mean"]), ("c3", "std")])
+            r = mdf.groupby("c2", sort=sort).agg(agg, method=method)
+            pd.testing.assert_frame_equal(
+                r.execute().fetch().sort_index(),
+                raw.groupby("c2").agg(agg).sort_index(),
+            )
 
-        r = mdf.groupby("c2").agg({"c1": "min", "c3": "min"}, method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch().sort_index(),
-            raw.groupby("c2").agg({"c1": "min", "c3": "min"}).sort_index(),
-        )
+            agg = OrderedDict([("c1", "min"), ("c3", "sum")])
+            r = mdf.groupby("c2", sort=sort).agg(agg, method=method)
+            pd.testing.assert_frame_equal(
+                r.execute().fetch().sort_index(),
+                raw.groupby("c2").agg(agg).sort_index(),
+            )
 
-        r = mdf.groupby("c2").agg({"c1": "min"}, method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch().sort_index(),
-            raw.groupby("c2").agg({"c1": "min"}).sort_index(),
-        )
+            r = mdf.groupby("c2", sort=sort).agg(
+                {"c1": "min", "c3": "min"}, method=method
+            )
+            pd.testing.assert_frame_equal(
+                r.execute().fetch().sort_index(),
+                raw.groupby("c2").agg({"c1": "min", "c3": "min"}).sort_index(),
+            )
 
-        # test groupby series
-        r = mdf.groupby(mdf["c2"]).sum(method=method)
-        pd.testing.assert_frame_equal(
-            r.execute().fetch().sort_index(), raw.groupby(raw["c2"]).sum().sort_index()
-        )
+            r = mdf.groupby("c2", sort=sort).agg({"c1": "min"}, method=method)
+            pd.testing.assert_frame_equal(
+                r.execute().fetch().sort_index(),
+                raw.groupby("c2").agg({"c1": "min"}).sort_index(),
+            )
+
+            # test groupby series
+            r = mdf.groupby(mdf["c2"], sort=sort).sum(method=method)
+            pd.testing.assert_frame_equal(
+                r.execute().fetch().sort_index(),
+                raw.groupby(raw["c2"]).sum().sort_index(),
+            )
 
     r = mdf.groupby("c2").size(method="tree")
     pd.testing.assert_series_equal(r.execute().fetch(), raw.groupby("c2").size())
@@ -738,6 +745,37 @@ def test_distributed_groupby_agg(setup_cluster):
     pd.testing.assert_frame_equal(result, raw.groupby(0).sum())
     # test use shuffle
     assert len(r._fetch_infos()["memory_size"]) > 1
+
+    rs = np.random.RandomState(0)
+    raw = pd.DataFrame(
+        {
+            "c1": rs.randint(20, size=100),
+            "c2": rs.choice(["a", "b", "c"], (100,)),
+            "c3": rs.rand(100),
+        }
+    )
+    mdf = md.DataFrame(raw, chunk_size=20)
+    r = mdf.groupby("c2").sum().execute()
+    pd.testing.assert_frame_equal(r.fetch(), raw.groupby("c2").sum())
+    # test use tree
+    assert len(r._fetch_infos()["memory_size"]) == 1
+
+    rs = np.random.RandomState(0)
+    raw = pd.DataFrame(
+        {
+            "c1": rs.randint(20, size=100),
+            "c2": rs.choice(["a", "b", "c"], (100,)),
+            "c3": rs.rand(100),
+        }
+    )
+    mdf = md.DataFrame(raw, chunk_size=10)
+    with option_context({"chunk_store_limit": 2048}):
+        r = mdf.groupby("c2", sort=False).sum().execute()
+    pd.testing.assert_frame_equal(
+        r.fetch().sort_index(), raw.groupby("c2", sort=False).sum().sort_index()
+    )
+    # use tree and shuffle
+    assert len(r._fetch_infos()["memory_size"]) == 3
 
 
 @pytest.mark.ray_dag

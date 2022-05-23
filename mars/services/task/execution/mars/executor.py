@@ -41,7 +41,8 @@ from ....meta.api import MetaAPI
 from ....scheduling import SchedulingAPI
 from ....subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
 from ...core import Task
-from ..api import ExecutionConfig, TaskExecutor, register_executor_cls
+from ..api import TaskExecutor, register_executor_cls
+from .config import MarsExecutionConfig
 from .resource import ResourceEvaluator
 from .stage import TaskStageProcessor
 
@@ -68,7 +69,7 @@ class MarsTaskExecutor(TaskExecutor):
 
     def __init__(
         self,
-        config: ExecutionConfig,
+        config: MarsExecutionConfig,
         task: Task,
         tile_context: TileContext,
         cluster_api: ClusterAPI,
@@ -103,14 +104,14 @@ class MarsTaskExecutor(TaskExecutor):
     @classmethod
     async def create(
         cls,
-        config: ExecutionConfig,
+        config: MarsExecutionConfig,
         *,
         session_id: str,
         address: str,
         task: Task,
         tile_context: TileContext,
         **kwargs,
-    ) -> "TaskExecutor":
+    ) -> "MarsTaskExecutor":
         assert (
             len(kwargs) == 0
         ), f"Unexpected kwargs for {cls.__name__}.create: {kwargs}"

@@ -1787,6 +1787,7 @@ def test_shape(setup):
     assert result == expected
 
 
+@pytest.mark.ray_dag
 def test_rebalance_execution(setup):
     session = setup
 

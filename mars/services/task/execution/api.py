@@ -98,6 +98,7 @@ class ExecutionConfig:
         else:
             name = execution_config.setdefault("backend", "mars")
         config_cls = _name_to_config_cls[name]
+        execution_config.setdefault(name, {})
         return config_cls(execution_config)
 
     @classmethod

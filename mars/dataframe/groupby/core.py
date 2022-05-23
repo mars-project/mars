@@ -379,6 +379,8 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
             result = src.iloc[f]
             if src.index.names:
                 result.index.names = src.index.names
+            if isinstance(src.index, pd.MultiIndex):
+                result.index = result.index.remove_unused_levels()
             if is_cudf(result):  # pragma: no cover
                 result = result.copy()
             return result

@@ -30,23 +30,28 @@ class RayExecutionConfig(ExecutionConfig):
 
     def __init__(self, execution_config: Dict):
         super().__init__(execution_config)
-        self._subtask_max_retries = execution_config.get("ray", {}).get(
-            "subtask_max_retries", DEFAULT_SUBTASK_MAX_RETRIES
-        )
+        self._ray_execution_config = execution_config[self.backend]
 
     def get_band_resources(self):
         """
         Get the band resources from config for generating ray virtual
         resources.
         """
-        return get_band_resources_from_config(self._config)
+        return get_band_resources_from_config(self._ray_execution_config)
 
     def get_deploy_band_resources(self) -> List[Dict[str, Resource]]:
         return []
 
+    def get_subtask_max_retries(self):
+        return self._ray_execution_config.get(
+            "subtask_max_retries", DEFAULT_SUBTASK_MAX_RETRIES
+        )
+
+    def get_n_cpu(self):
+        return self._ray_execution_config["n_cpu"]
+
+    def get_n_worker(self):
+        return self._ray_execution_config["n_worker"]
+
     def get_shuffle_type(self) -> ShuffleType:
         return ShuffleType.PUSH
-
-    @property
-    def subtask_max_retries(self):
-        return self._subtask_max_retries
