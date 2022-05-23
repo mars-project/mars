@@ -22,7 +22,6 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
-import pytest_asyncio
 
 from ..... import dataframe as md
 from ..... import oscar as mo
@@ -47,7 +46,7 @@ from ...execution.api import Fetcher, ExecutionConfig
 from ..manager import TaskConfigurationActor, TaskManagerActor
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool(request):
     param = getattr(request, "param", {})
     backend = param.get("backend", "mars")

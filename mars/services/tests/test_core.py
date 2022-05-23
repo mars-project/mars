@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import pytest
-import pytest_asyncio
 from tornado import httpclient
 
 from ... import oscar as mo
@@ -27,7 +26,7 @@ from .. import (
 )
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool_context():
     pool = await mo.create_actor_pool(f"127.0.0.1:{get_next_port()}", n_process=0)
     await pool.start()

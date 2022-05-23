@@ -17,7 +17,6 @@ import time
 
 import numpy as np
 import pytest
-import pytest_asyncio
 
 from .... import oscar as mo
 from .... import tensor as mt
@@ -50,7 +49,7 @@ def _gen_subtask(t, session_id):
     return subtask
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pools():
     async def start_pool(is_worker: bool):
         if is_worker:
