@@ -665,10 +665,17 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
                 process_index, external_addresses
             )
             external_addresses = curr_pool_config["external_address"]
+
+            logger.debug(
+                "External address of process index %s updated to %s",
+                process_index,
+                external_addresses[0],
+            )
             if kw["internal_address"] == kw["external_address"]:
                 # internal address may be the same as external address in Windows
                 kw["internal_address"] = external_addresses[0]
             kw["external_address"] = external_addresses[0]
+
             kw["router"] = Router(
                 external_addresses,
                 gen_local_address(process_index),
