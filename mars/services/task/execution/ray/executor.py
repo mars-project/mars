@@ -295,7 +295,6 @@ class RayTaskExecutor(TaskExecutor):
         )
         await context.init()
         set_context(context)
-        print(">>> init context: ", context)
 
     async def execute_subtask_graph(
         self,
@@ -365,9 +364,6 @@ class RayTaskExecutor(TaskExecutor):
             task_context.update(zip(output_keys, output_object_refs))
         logger.info("Submitted %s subtasks of stage %s.", len(subtask_graph), stage_id)
 
-        print(">>> Subtask graph: ", subtask_graph.to_dot())
-        print(">>> Submitted subtasks: ", subtask_ids)
-
         self._subtask_running_monitor = asyncio.create_task(
             self._check_subtask_results_periodically(
                 self._config.subtask_check_interval
@@ -415,12 +411,6 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_subtask_to_output_object_refs.clear()
         self._cur_stage_unfinished_subtasks.clear()
         self._cur_stage_output_object_refs.clear()
-        print(
-            f">>> [Stage] Finished a stage {stage_id}"
-            f", task context: {self._task_context}"
-            f", task chunk meta: {self._task_chunks_meta}"
-            f", chunk ref counts: {self._chunk_ref_counts}"
-        )
         logger.info("Stage %s is complete.", stage_id)
         return chunk_to_meta
 
@@ -504,7 +494,6 @@ class RayTaskExecutor(TaskExecutor):
             output_object_refs,
         ) in self._cur_stage_subtask_to_output_object_refs.items():
             if output_object_refs:
-                print(">>> output_object_refs: ", output_object_refs)
                 to_be_cancelled_coros.append(
                     _cancel_ray_task(next(iter(output_object_refs)), timeout)
                 )
@@ -597,34 +586,17 @@ class RayTaskExecutor(TaskExecutor):
         while True:
             if self._cancelled:
                 return
-
             ready_objects = await self._get_ready_objects()
             await self._calculate_progress(ready_objects)
-
             finished_subtasks = await self._get_newly_finished_subtasks(
                 set(ready_objects)
             )
-            from datetime import datetime
-
-            print(
-                f">>> [Subtask] Finished subtasks"
-                f" {len(finished_subtasks)}: {finished_subtasks}"
-                f", task context: {self._task_context}"
-                f", task chunk meta: {self._task_chunks_meta}"
-            )
-            print(
-                f">>> {datetime.now().isoformat()} Cur progress: "
-                f"{self._cur_stage_progress}"
-            )
-
             coros = [
                 self._decref_input_subtasks(subtask) for subtask in finished_subtasks
             ]
             await asyncio.gather(*coros)
-
             if not self._cur_stage_unfinished_subtasks:
                 self._done.set()
-
             await asyncio.sleep(time_interval)
 
     @classmethod
@@ -658,7 +630,6 @@ class RayTaskExecutor(TaskExecutor):
     def _remove_chunks(self, to_remove_chunk_keys: List[str]):
         if not to_remove_chunk_keys:
             return
-        print(">>> Start to remove chunks: ", to_remove_chunk_keys)
         for chunk_key in to_remove_chunk_keys:
             self._task_context.pop(chunk_key, None)
             self._chunk_ref_counts.pop(chunk_key, None)
@@ -693,19 +664,9 @@ class RayTaskExecutor(TaskExecutor):
             stage_id,
             incref_chunk_key_to_counts,
         )
-        print()
-        print(
-            f">>> Before incref chunks for stage {stage_id} with"
-            f" incref chunk key to counts: {incref_chunk_key_to_counts}"
-            f", cur chunk ref counts: {self._chunk_ref_counts}"
-        )
         await self._incref_chunks(
             list(incref_chunk_key_to_counts),
             counts=list(incref_chunk_key_to_counts.values()),
-        )
-        print(
-            f">>> After incref chunks for stage {stage_id}"
-            f", cur chunk ref counts: {self._chunk_ref_counts}"
         )
 
     async def _decref_input_subtasks(self, subtask: Subtask):
@@ -722,10 +683,6 @@ class RayTaskExecutor(TaskExecutor):
             "Decref chunks %s when subtask %s finish",
             decref_chunk_key_to_counts,
             subtask.subtask_id,
-        )
-        print(
-            f">>> Decref input subtask chunks {decref_chunk_key_to_counts}"
-            f" when subtask {subtask} finished."
         )
         await self._decref_chunks(
             list(decref_chunk_key_to_counts),
