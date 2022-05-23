@@ -614,7 +614,10 @@ def test_auto_merge_chunks():
     assert len(df2.chunks) == 2
     assert isinstance(df2.chunks[0].op, DataFrameConcat)
     assert len(df2.chunks[0].op.inputs) == 3
-    assert df2.chunks[1] is df.chunks[-1]
+    assert isinstance(df2.chunks[1].op, DataFrameConcat)
+    assert len(df2.chunks[1].op.inputs) == 1
+    assert df2.chunks[1].shape == df.chunks[-1].shape
+    assert df2.chunks[1].index == (1, 0)
 
     # mock situation that df not executed
     df2 = auto_merge_chunks(FakeContext(False), df, 3 * memory_size)

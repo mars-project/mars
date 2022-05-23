@@ -1389,15 +1389,10 @@ def auto_merge_chunks(
         to_merge_chunks.append(chunk)
         acc_memory_size += chunk_memory_size
     # process the last chunk
-    if len(to_merge_chunks) > 1:
-        merged_chunk = _concat_chunks(to_merge_chunks, len(n_split))
-        out_chunks.append(merged_chunk)
-        n_split.append(merged_chunk.shape[0])
-    else:
-        assert len(to_merge_chunks) == 1
-        last_chunk = to_merge_chunks[0]
-        out_chunks.append(last_chunk)
-        n_split.append(last_chunk.shape[0])
+    assert len(to_merge_chunks) >= 1
+    merged_chunk = _concat_chunks(to_merge_chunks, len(n_split))
+    out_chunks.append(merged_chunk)
+    n_split.append(merged_chunk.shape[0])
 
     new_op = df_or_series.op.copy()
     params = df_or_series.params.copy()
