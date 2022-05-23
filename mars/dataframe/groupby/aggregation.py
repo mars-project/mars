@@ -714,7 +714,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             assert input_chunk_size is not None
             check_size = True
         concat_chunk_size = input_chunk_size
-        while (concat_chunk_size < chunk_store_limit if check_size else True) and (
+        while (not check_size or concat_chunk_size < chunk_store_limit) and (
             len(chunks) > combine_size
         ):
             new_chunks = []
