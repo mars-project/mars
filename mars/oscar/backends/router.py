@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import logging
 import threading
 from typing import Dict, List, Tuple, Type, Any, Optional
 
@@ -113,7 +115,15 @@ class Router:
         local_address = (
             self._curr_external_addresses[0] if self._curr_external_addresses else None
         )
-        client = await client_type.connect(address, local_address=local_address, **kw)
+        logging.warning(f"TMP: GET ADDR {address} FOR EXT_ADDR {external_address}")
+        try:
+            client = await asyncio.wait_for(
+                client_type.connect(address, local_address=local_address, **kw),
+                timeout=60
+            )
+        except asyncio.TimeoutError:
+            logging.exception("TMP: CONNECT TIMED OUT FOR ADDRESS %s", address)
+            raise
         if cached:
             self._cache[external_address, from_who] = client
         return client

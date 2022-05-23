@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import logging
 import multiprocessing
 from typing import List, Dict
 
@@ -20,6 +21,8 @@ from ..config import ActorPoolConfig
 from ..communication import gen_local_address, get_server_type, DummyServer
 from ..mars.pool import MainActorPool, SubActorPool, SubpoolStatus
 from ..pool import ActorPoolType
+
+logger = logging.getLogger(__name__)
 
 
 class TestMainActorPool(MainActorPool):
@@ -45,6 +48,7 @@ class TestMainActorPool(MainActorPool):
         start_method: str = None,
     ):
         status_queue = multiprocessing.Queue()
+        logger.warning("TMP: START SUB POOL %s", process_index)
         return (
             asyncio.create_task(
                 cls._create_sub_pool(actor_pool_config, process_index, status_queue)
@@ -60,6 +64,7 @@ class TestMainActorPool(MainActorPool):
             pool_task, queue = await t
             tasks.append(pool_task)
             status = await asyncio.to_thread(queue.get)
+            logger.warning("TMP: ADDRESS %s ADDED", status.external_addresses)
             addresses.append(status.external_addresses)
         return tasks, addresses
 
@@ -77,8 +82,14 @@ class TestMainActorPool(MainActorPool):
         status_queue.put(
             SubpoolStatus(status=0, external_addresses=[pool.external_address])
         )
+        logger.warning(
+            "TMP: SUBPOOL %s STARTED WITH ADDR %s", process_index, pool.external_address
+        )
         actor_config.reset_pool_external_address(process_index, [pool.external_address])
         await pool.join()
+
+    def _sync_pool_config(self, actor_pool_config: ActorPoolConfig):
+        pass
 
     async def kill_sub_pool(
         self, process: multiprocessing.Process, force: bool = False
@@ -141,3 +152,6 @@ class TestSubActorPool(SubActorPool):
             s for s in self._servers[:-1] if not isinstance(s, DummyServer)
         ]
         await super().stop()
+
+    def _sync_pool_config(self, actor_pool_config: ActorPoolConfig):
+        pass
