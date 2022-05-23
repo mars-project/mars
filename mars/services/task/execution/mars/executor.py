@@ -23,8 +23,6 @@ from .....core import ChunkGraph, TileContext
 from .....core.context import set_context
 from .....core.operand import (
     Fetch,
-    MapReduceOperand,
-    OperandStage,
     ShuffleProxy,
 )
 from .....lib.aio import alru_cache
