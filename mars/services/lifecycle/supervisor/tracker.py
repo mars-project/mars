@@ -86,10 +86,6 @@ class LifecycleTrackerActor(mo.Actor):
             self._chunk_ref_counts[chunk_key] += count
 
     async def incref_chunks(self, chunk_keys: List[str], counts: List[int] = None):
-        logger.debug(
-            "Increase reference count for chunks %s",
-            {ck: self._chunk_ref_counts[ck] for ck in chunk_keys},
-        )
         self._check_ref_counts(chunk_keys, counts)
         return await asyncio.to_thread(self._incref_chunks, chunk_keys, counts=counts)
 
@@ -108,10 +104,6 @@ class LifecycleTrackerActor(mo.Actor):
 
     async def decref_chunks(self, chunk_keys: List[str], counts: List[int] = None):
         self._check_ref_counts(chunk_keys, counts)
-        logger.debug(
-            "Decrease reference count for chunks %s",
-            {ck: self._chunk_ref_counts[ck] for ck in chunk_keys},
-        )
         to_remove_chunk_keys = await asyncio.to_thread(
             self._get_remove_chunk_keys, chunk_keys, counts=counts
         )
