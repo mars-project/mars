@@ -497,41 +497,6 @@ async def test_web_session(create_cluster, config):
 
 
 @pytest.mark.parametrize("config", [{"backend": "mars"}])
-def test_a_tensor_execution(config):
-    session = new_session(
-        backend=config["backend"], n_cpu=2, web=False, use_uvloop=False
-    )
-
-    # web not started
-    assert session._session.client.web_address is None
-    assert session.get_web_endpoint() is None
-
-    import time
-
-    def f(c):
-        time.sleep(1)
-        return c
-
-    with session:
-        # case 1: simple
-        # t1 = mt.random.randint(10, size=(100, 10), chunk_size=50)
-        # t2 = (t1 + 1).map_chunk(f)
-        # t3 = t2.sum(0)
-        # r = t3.execute()
-        # print("result: ", r)
-        # case 2: multiple inputs
-        t1 = mt.random.randint(10, size=(100, 10), chunk_size=100)
-        t2 = mt.random.randint(10, size=(100, 10), chunk_size=50)
-        t3 = t1 + t2
-        t4 = t3.sum(0)
-        r = t4.execute()
-        print("result: ", r)
-
-    session.stop_server()
-    assert get_default_async_session() is None
-
-
-@pytest.mark.parametrize("config", [{"backend": "mars"}])
 def test_sync_execute(config):
     session = new_session(
         backend=config["backend"], n_cpu=2, web=False, use_uvloop=False

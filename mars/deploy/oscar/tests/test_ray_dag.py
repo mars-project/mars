@@ -17,10 +17,12 @@ import os
 
 import pytest
 
+from .... import get_context
+from .... import tensor as mt
 from ....tests.core import DICT_NOT_EMPTY, require_ray
 from ....utils import lazy_import
 from ..local import new_cluster
-from ..session import new_session
+from ..session import new_session, get_default_async_session
 from ..tests import test_local
 from ..tests.session import new_test_session
 from ..tests.test_local import _cancel_when_tile, _cancel_when_execute
@@ -134,4 +136,25 @@ def test_cancel(ray_start_regular_shared2, create_cluster, test_func):
 @require_ray
 @pytest.mark.parametrize("config", [{"backend": "ray"}])
 def test_context_gc(config):
-    test_local.test_a_tensor_execution(config)
+    session = new_session(
+        backend=config["backend"], n_cpu=2, web=False, use_uvloop=False
+    )
+
+    assert session._session.client.web_address is None
+    assert session.get_web_endpoint() is None
+
+    with session:
+        t1 = mt.random.randint(10, size=(100, 10), chunk_size=100)
+        t2 = mt.random.randint(10, size=(100, 10), chunk_size=50)
+        t3 = t1 + t2
+        t4 = t3.sum(0)
+        r = t4.execute()
+        context = get_context()
+        assert len(context._task_context) == 1
+        assert len(context._task_chunks_meta) == 1
+        result = r.fetch()
+        assert result is not None
+        assert len(result) == 10
+
+    session.stop_server()
+    assert get_default_async_session() is None

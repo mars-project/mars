@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Type, Union
 
 from ....core import ChunkGraph, Chunk, TileContext
-from ....core.operand import MapReduceOperand
+from ....core.operand import MapReduceOperand, OperandStage
 from ....resource import Resource
 from ....typing import BandType
 from ....utils import merge_dict

@@ -22,6 +22,8 @@ from ..utils import get_band_resources_from_config
 DEFAULT_SUBTASK_MAX_RETRIES = 3
 # the default time to cancel a subtask.
 DEFAULT_SUBTASK_CANCEL_TIMEOUT = 5
+# the default time to check a subtask.
+DEFAULT_SUBTASK_CHECK_INTERVAL = 0.5
 
 
 @register_config_cls
@@ -35,6 +37,9 @@ class RayExecutionConfig(ExecutionConfig):
         )
         self._subtask_cancel_timeout = self._execution_config.get("ray", {}).get(
             "subtask_cancel_timeout", DEFAULT_SUBTASK_CANCEL_TIMEOUT
+        )
+        self._subtask_check_interval = self._execution_config.get("ray", {}).get(
+            "subtask_check_interval", DEFAULT_SUBTASK_CHECK_INTERVAL
         )
 
     def get_band_resources(self):
@@ -54,3 +59,7 @@ class RayExecutionConfig(ExecutionConfig):
     @property
     def subtask_cancel_timeout(self):
         return self._subtask_cancel_timeout
+
+    @property
+    def subtask_check_interval(self):
+        return self._subtask_check_interval
