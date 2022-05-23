@@ -510,7 +510,8 @@ def test_merge_with_bloom_filter(setup):
         df1.merge(
             df2,
             on="col2",
-            bloom_filter={"max_elements": 100, "error_rate": 0.01},
+            bloom_filter=True,
+            bloom_filter_options={"max_elements": 100, "error_rate": 0.01},
             auto_merge="none",
         )
         .execute()
@@ -598,6 +599,43 @@ def test_merge_with_bloom_filter(setup):
     )
 
 
+@pytest.mark.parametrize("filter", ["small", "large", "both"])
+def test_merge_with_bloom_filter_options(setup, filter):
+    ns = np.random.RandomState(0)
+    raw_df1 = pd.DataFrame(
+        {
+            "col1": ns.random(100),
+            "col2": ns.randint(0, 10, size=(100,)),
+            "col3": ns.randint(0, 10, size=(100,)),
+        }
+    )
+    raw_df2 = pd.DataFrame(
+        {
+            "col1": ns.random(100),
+            "col2": ns.randint(0, 10, size=(100,)),
+            "col3": ns.randint(0, 10, size=(100,)),
+        }
+    )
+
+    df1 = from_pandas(raw_df1, chunk_size=25)
+    df2 = from_pandas(raw_df2, chunk_size=30)
+    m = df1.merge(
+        df2,
+        on="col2",
+        auto_merge="none",
+        method="shuffle",
+        bloom_filter=True,
+        bloom_filter_options={"filter": filter, "apply_chunk_size_threshold": 0},
+    )
+
+    expected = raw_df1.merge(raw_df2, on="col2")
+    result = m.execute().fetch()
+    pd.testing.assert_frame_equal(
+        expected.sort_index().sort_values(by=["col1_x"]).reset_index(drop=True),
+        result.sort_index().sort_values(by=["col1_x"]).reset_index(drop=True),
+    )
+
+
 @pytest.mark.parametrize("auto_merge", ["none", "both", "before", "after"])
 def test_merge_on_duplicate_columns(setup, auto_merge):
     raw1 = pd.DataFrame(
@@ -613,7 +651,13 @@ def test_merge_on_duplicate_columns(setup, auto_merge):
     df1 = from_pandas(raw1, chunk_size=2)
     df2 = from_pandas(raw2, chunk_size=3)
 
-    r = df1.merge(df2, left_on="lkey", right_on="rkey", auto_merge=auto_merge)
+    r = df1.merge(
+        df2,
+        left_on="lkey",
+        right_on="rkey",
+        auto_merge=auto_merge,
+        auto_merge_threshold=0,
+    )
     result = r.execute().fetch()
     expected = raw1.merge(raw2, left_on="lkey", right_on="rkey")
     pd.testing.assert_frame_equal(expected, result)

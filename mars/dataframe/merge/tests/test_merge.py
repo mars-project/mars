@@ -14,6 +14,7 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from ....core import tile
 from ....core.operand import OperandStage
@@ -75,6 +76,28 @@ def test_merge():
             )
 
 
+def test_merge_invalid_parameters():
+    pdf1 = pd.DataFrame(
+        np.arange(20).reshape((4, 5)) + 1, columns=["a", "b", "c", "d", "e"]
+    )
+    pdf2 = pd.DataFrame(np.arange(20).reshape((5, 4)) + 1, columns=["a", "b", "x", "y"])
+
+    df1 = from_pandas(pdf1, chunk_size=2)
+    df2 = from_pandas(pdf2, chunk_size=3)
+
+    with pytest.raises(ValueError):
+        df1.merge(df2, bloom_filter="wrong")
+
+    with pytest.raises(TypeError):
+        df1.merge(df2, bloom_filter_options="wrong")
+
+    with pytest.raises(ValueError):
+        df1.merge(df2, bloom_filter_options={"wrong": 1})
+
+    with pytest.raises(ValueError):
+        df1.merge(df2, bloom_filter_options={"filter": "wrong"})
+
+
 def test_join():
     df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]], index=["a1", "a2", "a3"])
     df2 = pd.DataFrame([[1, 2, 3], [1, 5, 6], [7, 8, 9]], index=["a1", "b2", "b3"]) + 1
@@ -92,7 +115,7 @@ def test_join():
     ]
 
     for kw in parameters:
-        df = mdf1.join(mdf2, **kw)
+        df = mdf1.join(mdf2, auto_merge="none", bloom_filter=False, **kw)
         df = tile(df)
 
         assert df.chunk_shape == (3, 1)
@@ -140,7 +163,7 @@ def test_join_on():
     ]
 
     for kw in parameters:
-        df = mdf1.join(mdf2, **kw)
+        df = mdf1.join(mdf2, auto_merge="none", bloom_filter=False, **kw)
         df = tile(df)
 
         assert df.chunk_shape == (3, 1)
