@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from ... import OutputType
-from .. import Operand, TileableOperandMixin, execute, estimate_size
+from .. import Operand, TileableOperandMixin, execute, estimate_size, ShuffleProxy
 
 
 class MyOperand(Operand, TileableOperandMixin):
@@ -130,3 +131,20 @@ def test_post_execute(setup):
     assert (
         t2.execute(extra_config={"operand_executors": operand_executors}).fetch() == 2
     )
+
+
+def test_shuffle(setup):
+    import mars.dataframe as md
+
+    chunk_size, n_rows = 10, 100
+    df = md.DataFrame(
+        pd.DataFrame(np.random.rand(n_rows, 3), columns=list("abc")),
+        chunk_size=chunk_size,
+    )
+    chunk_graph = df.groupby(["a"]).apply(lambda x: x).build_graph(tile=True)
+    [proxy_chunk] = [c for c in chunk_graph if isinstance(c.op, ShuffleProxy)]
+    successors = chunk_graph.successors(proxy_chunk)
+    n_reducer = successors[0].op.n_reducers
+    assert n_reducer == len(successors), (n_reducer, len(successors))
+    assert len(set(c.op.n_reducers for c in successors)) == 1
+    assert sorted([c.op.reducer_ordinal for c in successors]) == list(range(n_reducer))
