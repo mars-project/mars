@@ -233,7 +233,7 @@ class RayTaskExecutor(TaskExecutor):
         self._task_context = task_context
         self._task_chunks_meta = task_chunks_meta
         self._task_state_actor = task_state_actor
-        self._ray_executor = _ray_export_once(execute_subtask)
+        self._ray_executor = self._get_ray_executor()
 
         # api
         self._lifecycle_api = lifecycle_api
@@ -315,8 +315,9 @@ class RayTaskExecutor(TaskExecutor):
             MetaAPI.create(session_id, address),
         )
 
-    def get_execution_config(self):
-        return self._config
+    @staticmethod
+    def _get_ray_executor():
+        return _ray_export_once(execute_subtask)
 
     @classmethod
     async def _init_context(
