@@ -17,6 +17,7 @@ import asyncio
 import enum
 import importlib
 import inspect
+import logging
 import warnings
 from typing import Dict, Iterable, List, Union
 
@@ -176,6 +177,7 @@ async def start_services(
     if mark_ready and "cluster" in service_names:
         from .cluster import ClusterAPI
 
+        logging.warning(f"TMP: MARK_NODE_READY FOR {address}")
         cluster_api = await ClusterAPI.create(address)
         await cluster_api.mark_node_ready()
 
