@@ -294,7 +294,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
 
         n_reducers = (
             op.n_reducers
-            if op.n_reducers is not None
+            if getattr(op, "n_reducers", None)
             else max(1, int(in_sample.chunk_shape[0] * op.reducer_ratio))
         )
 
