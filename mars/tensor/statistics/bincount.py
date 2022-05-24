@@ -181,6 +181,9 @@ class TensorBinCount(TensorMapReduceOperand, TensorOperandMixin):
             sliced = res.iloc[left_bound:right_bound]
             if len(sliced) > 0:
                 ctx[op.outputs[0].key, (target_idx,)] = sliced
+            else:
+                # ensure all mapper data are inserted context
+                ctx[op.outputs[0].key, (target_idx,)] = None
             left_bound = right_bound
 
     @classmethod
