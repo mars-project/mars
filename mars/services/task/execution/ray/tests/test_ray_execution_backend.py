@@ -112,6 +112,11 @@ async def test_ray_executor_create(
     assert isinstance(executor, MockRayTaskExecutor)
     assert mock_ray_get.call_count == 1
     assert mock_task_state_actor_create.call_count == 2
+    ctx = get_context()
+    assert isinstance(ctx, RayExecutionContext)
+    ctx.create_remote_object("abc", lambda: None)
+    assert mock_ray_get.call_count == 2
+    assert mock_task_state_actor_create.call_count == 2
 
 
 def test_ray_executor_destroy():
