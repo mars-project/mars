@@ -273,7 +273,8 @@ class ClusterStateActor(mo.StatelessActor):
         async def _reconstruct_worker():
             logger.info("Reconstruct worker %s", address)
             actor = ray.get_actor(address)
-            state = await actor.state.remote()
+            # set `max_retries=-1` to make task pending when actor is restarting
+            state = await actor.state.options(max_retries=-1).remote()
             if state == RayPoolState.SERVICE_READY:
                 logger.info("Worker %s is service ready.")
                 return
