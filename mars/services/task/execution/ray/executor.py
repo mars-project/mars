@@ -185,10 +185,7 @@ class RayTaskExecutor(TaskExecutor):
         self._execute_subtask_graph_aiotask = None
         self._done = asyncio.Event()
         self._cancelled = False
-
-        # For task context gc
         self._subtask_running_monitor = None
-        self._chunk_ref_counts = defaultdict(lambda: 0)
 
     @classmethod
     async def create(
@@ -251,10 +248,7 @@ class RayTaskExecutor(TaskExecutor):
         self._execute_subtask_graph_aiotask = None
         self._done = None
         self._cancelled = None
-
-        # For task context gc
         self._subtask_running_monitor = None
-        self._chunk_ref_counts = None
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -547,7 +541,7 @@ class RayTaskExecutor(TaskExecutor):
                 output_keys[chunk.key] = 1
         return output_keys.keys()
 
-    async def _get_ready_objects(self, subtask_graph: SubtaskGraph):
+    async def _get_ready_objects(self):
         unready_object_refs = []
         for subtask in self._cur_stage_unfinished_subtasks:
             unready_object_refs.extend(
@@ -555,7 +549,8 @@ class RayTaskExecutor(TaskExecutor):
             )
         total = len(unready_object_refs)
         if total > 0:
-            ready_objects, _ = ray.wait(
+            ready_objects, _ = await asyncio.to_thread(
+                ray.wait,
                 unready_object_refs,
                 num_returns=total,
                 timeout=0,  # Avoid blocking the asyncio loop.
@@ -572,9 +567,9 @@ class RayTaskExecutor(TaskExecutor):
         )
         self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
 
-    async def _get_newly_finished_subtasks(self, subtask_graph: SubtaskGraph):
+    async def _get_newly_finished_subtasks(self):
         finished_subtasks = set()
-        ready_objects = await self._get_ready_objects(subtask_graph)
+        ready_objects = await self._get_ready_objects()
         if ready_objects:
             for subtask in self._cur_stage_unfinished_subtasks:
                 if self._cur_stage_subtask_to_output_object_refs[subtask].issubset(
@@ -588,7 +583,6 @@ class RayTaskExecutor(TaskExecutor):
             return
         for chunk_key in to_remove_chunk_keys:
             self._task_context.pop(chunk_key, None)
-            self._chunk_ref_counts.pop(chunk_key, None)
 
     async def _check_subtask_results_periodically(
         self, subtask_graph: SubtaskGraph, time_interval: float
@@ -597,7 +591,7 @@ class RayTaskExecutor(TaskExecutor):
             if self._cancelled:
                 return
 
-            finished_subtasks = await self._get_newly_finished_subtasks(subtask_graph)
+            finished_subtasks = await self._get_newly_finished_subtasks()
             self._cur_stage_unfinished_subtasks -= finished_subtasks
             await self._calculate_progress(subtask_graph)
 

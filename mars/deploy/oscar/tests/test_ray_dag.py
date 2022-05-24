@@ -151,7 +151,6 @@ def test_context_gc(config):
         r = t4.execute()
         context = get_context()
         assert len(context._task_context) == 1
-        assert len(context._task_chunks_meta) == 1
         result = r.fetch()
         assert result is not None
         assert len(result) == 10
