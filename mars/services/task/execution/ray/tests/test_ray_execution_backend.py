@@ -20,10 +20,15 @@ from ...... import tensor as mt
 
 from ......core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 from ......serialization import serialize
-from ......tests.core import require_ray
+from ......tests.core import require_ray, mock
 from ......utils import lazy_import, get_chunk_params
+from .....context import ThreadedServiceContext
 from ....core import new_task_id
-from ..context import RayRemoteObjectManager, _RayRemoteObjectContext
+from ..context import (
+    RayExecutionContext,
+    RayRemoteObjectManager,
+    _RayRemoteObjectContext,
+)
 from ..executor import execute_subtask
 from ..fetcher import RayFetcher
 
@@ -119,3 +124,27 @@ async def test_ray_remote_object(ray_start_regular_shared2):
     context.destroy_remote_object(name)
     with pytest.raises(KeyError):
         remote_object.foo(3, 4)
+
+    class MyException(Exception):
+        pass
+
+    class _ErrorRemoteObject:
+        def __init__(self):
+            raise MyException()
+
+    with pytest.raises(MyException):
+        context.create_remote_object(name, _ErrorRemoteObject)
+
+
+@require_ray
+def test_get_chunks_result(ray_start_regular_shared2):
+    value = 123
+    o = ray.put(value)
+
+    def fake_init(self):
+        pass
+
+    with mock.patch.object(ThreadedServiceContext, "__init__", new=fake_init):
+        context = RayExecutionContext({"abc": o}, None)
+        r = context.get_chunks_result(["abc"])
+        assert r == [value]
