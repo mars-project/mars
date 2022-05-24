@@ -17,9 +17,10 @@ from typing import List, Dict
 from ....resource import Resource
 
 
-def get_band_resources_from_config(execution_config: Dict) -> List[Dict[str, Resource]]:
-    backend = execution_config["backend"]
-    config = execution_config[backend]
+def get_band_resources_from_config(
+    backend_execution_config: Dict,
+) -> List[Dict[str, Resource]]:
+    config = backend_execution_config
     n_worker: int = config["n_worker"]
     n_cpu: int = config["n_cpu"]
     mem_bytes: int = config["mem_bytes"]

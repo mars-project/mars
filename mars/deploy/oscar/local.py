@@ -52,6 +52,11 @@ DEFAULT_CONFIG_FILE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "config.yml"
 )
 
+# the default times to retry subtask.
+DEFAULT_SUBTASK_MAX_RETRIES = 3
+# the default time to cancel a subtask.
+DEFAULT_SUBTASK_CANCEL_TIMEOUT = 5
+
 
 def _load_config(config: Union[str, Dict] = None):
     return load_config(config, default_config_file=DEFAULT_CONFIG_FILE)
@@ -165,6 +170,12 @@ class LocalCluster:
                 n_cpu=self._n_cpu,
                 mem_bytes=self._mem_bytes,
                 cuda_devices=self._cuda_devices,
+                subtask_cancel_timeout=self._config.get("scheduling", {}).get(
+                    "subtask_cancel_timeout", DEFAULT_SUBTASK_CANCEL_TIMEOUT
+                ),
+                subtask_max_retries=self._config.get("scheduling", {}).get(
+                    "subtask_max_retries", DEFAULT_SUBTASK_MAX_RETRIES
+                ),
             )
         )
 

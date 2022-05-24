@@ -599,7 +599,12 @@ class SubtaskProcessorActor(mo.Actor):
         set_context(context)
 
     async def run(self, subtask: Subtask):
-        logger.info("Start to run subtask: %r on %s.", subtask, self.address)
+        logger.info(
+            "Start to run subtask: %r on %s. chunk graph contains %s",
+            subtask,
+            self.address,
+            [c for c in subtask.chunk_graph],
+        )
 
         assert subtask.session_id == self._session_id
 

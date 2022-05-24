@@ -17,11 +17,6 @@ from .....resource import Resource
 from ..api import ExecutionConfig, register_config_cls
 from ..utils import get_band_resources_from_config
 
-
-# the default times to retry subtask.
-DEFAULT_SUBTASK_MAX_RETRIES = 3
-# the default time to cancel a subtask.
-DEFAULT_SUBTASK_CANCEL_TIMEOUT = 5
 # the default time to check a subtask.
 DEFAULT_SUBTASK_CHECK_INTERVAL = 0.5
 
@@ -32,34 +27,31 @@ class RayExecutionConfig(ExecutionConfig):
 
     def __init__(self, execution_config: Dict):
         super().__init__(execution_config)
-        self._subtask_max_retries = self._execution_config.get("ray", {}).get(
-            "subtask_max_retries", DEFAULT_SUBTASK_MAX_RETRIES
-        )
-        self._subtask_cancel_timeout = self._execution_config.get("ray", {}).get(
-            "subtask_cancel_timeout", DEFAULT_SUBTASK_CANCEL_TIMEOUT
-        )
-        self._subtask_check_interval = self._execution_config.get("ray", {}).get(
-            "subtask_check_interval", DEFAULT_SUBTASK_CHECK_INTERVAL
-        )
+        self._ray_execution_config = execution_config[self.backend]
 
     def get_band_resources(self):
         """
         Get the band resources from config for generating ray virtual
         resources.
         """
-        return get_band_resources_from_config(self._execution_config)
+        return get_band_resources_from_config(self._ray_execution_config)
 
     def get_deploy_band_resources(self) -> List[Dict[str, Resource]]:
         return []
 
-    @property
-    def subtask_max_retries(self):
-        return self._subtask_max_retries
+    def get_subtask_max_retries(self):
+        return self._ray_execution_config.get("subtask_max_retries")
 
-    @property
-    def subtask_cancel_timeout(self):
-        return self._subtask_cancel_timeout
+    def get_n_cpu(self):
+        return self._ray_execution_config["n_cpu"]
 
-    @property
-    def subtask_check_interval(self):
-        return self._subtask_check_interval
+    def get_n_worker(self):
+        return self._ray_execution_config["n_worker"]
+
+    def get_subtask_cancel_timeout(self):
+        return self._ray_execution_config.get("subtask_cancel_timeout")
+
+    def get_subtask_check_interval(self):
+        return self._ray_execution_config.get(
+            "subtask_check_interval", DEFAULT_SUBTASK_CHECK_INTERVAL
+        )

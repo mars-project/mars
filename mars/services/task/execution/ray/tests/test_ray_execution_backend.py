@@ -67,9 +67,9 @@ class MockRayTaskExecutor(RayTaskExecutor):
 @pytest.mark.asyncio
 async def test_ray_executor_destroy():
     task = Task("mock_task", "mock_session")
-    config = RayExecutionConfig.from_execution_config({"backend": "mars"})
+    mock_config = RayExecutionConfig.from_execution_config({"backend": "ray"})
     executor = MockRayTaskExecutor(
-        config=config,
+        config=mock_config,
         task=task,
         tile_context=TileContext(),
         task_context={},
@@ -197,7 +197,8 @@ def test_get_chunks_result(ray_start_regular_shared2):
         pass
 
     with mock.patch.object(ThreadedServiceContext, "__init__", new=fake_init):
-        context = RayExecutionContext({"abc": o}, {}, None)
+        mock_config = RayExecutionConfig.from_execution_config({"backend": "ray"})
+        context = RayExecutionContext(mock_config, {"abc": o}, {}, None)
         r = context.get_chunks_result(["abc"])
         assert r == [value]
 
