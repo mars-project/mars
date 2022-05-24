@@ -178,7 +178,7 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = False
-        self._subtask_running_monitor = None
+        self._check_subtask_result_aiotask = None
 
     @classmethod
     async def create(
@@ -242,7 +242,7 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_first_output_object_ref_to_subtask = None
         self._execute_subtask_graph_aiotask = None
         self._cancelled = None
-        self._subtask_running_monitor = None
+        self._check_subtask_result_aiotask = None
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -307,6 +307,14 @@ class RayTaskExecutor(TaskExecutor):
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
         submitted_subtasks = []
         subtask_to_first_output_object_ref = dict()
+        self._check_subtask_result_aiotask = asyncio.create_task(
+            self._check_subtask_results_periodically(
+                subtask_graph,
+                submitted_subtasks,
+                subtask_to_first_output_object_ref,
+                self._config.get_subtask_check_interval(),
+            )
+        )
         result_meta_keys = {
             chunk.key
             for chunk in chunk_graph.result_chunks
@@ -348,15 +356,6 @@ class RayTaskExecutor(TaskExecutor):
             task_context.update(zip(output_keys, output_object_refs))
         logger.info("Submitted %s subtasks of stage %s.", len(subtask_graph), stage_id)
 
-        self._subtask_running_monitor = asyncio.create_task(
-            self._check_subtask_results_periodically(
-                subtask_graph,
-                submitted_subtasks,
-                subtask_to_first_output_object_ref,
-                self._config.get_subtask_check_interval(),
-            )
-        )
-
         key_to_meta = {}
         if len(output_meta_object_refs) > 0:
             # TODO(fyrestone): Optimize update meta by fetching partial meta.
@@ -396,7 +395,6 @@ class RayTaskExecutor(TaskExecutor):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             await self.cancel()
-            self._subtask_running_monitor.cancel()
             return
 
         # Update info if no exception occurs.
@@ -466,8 +464,8 @@ class RayTaskExecutor(TaskExecutor):
             and not self._execute_subtask_graph_aiotask.cancelled()
         ):
             self._execute_subtask_graph_aiotask.cancel()
-        if self._subtask_running_monitor is not None:
-            self._subtask_running_monitor.cancel()
+        if self._check_subtask_result_aiotask is not None:
+            self._check_subtask_result_aiotask.cancel()
         timeout = self._config.get_subtask_cancel_timeout()
         to_be_cancelled_coros = [
             _cancel_ray_task(object_ref, timeout)
@@ -559,10 +557,12 @@ class RayTaskExecutor(TaskExecutor):
         subtask_to_first_output_object_ref: Dict[Subtask, "ray.ObjectRef"],
         time_interval: float,
     ):
-        total = len(submitted_subtasks)
+        total = len(subtask_graph)
         if total == 0:
             return
-        unfinished_subtasks = set(submitted_subtasks)
+        unfinished_subtasks = set(
+            [subtask for subtask in subtask_graph.topological_iter()]
+        )
         while True:
             if self._cancelled:
                 return

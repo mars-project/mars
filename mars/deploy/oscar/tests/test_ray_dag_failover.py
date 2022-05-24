@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import asyncio
 import operator
 from functools import reduce
 
@@ -88,7 +88,7 @@ def test_basic_object_reconstruction(
         new_head5 = df2.head(5).to_pandas()
         pd.testing.assert_frame_equal(head5, new_head5)
     else:
-        with pytest.raises(ray.exceptions.RayTaskError):
+        with pytest.raises(asyncio.CancelledError):
             df2.head(5).to_pandas()
         with pytest.raises(ray.exceptions.ObjectLostError):
             ray.get(object_refs)
