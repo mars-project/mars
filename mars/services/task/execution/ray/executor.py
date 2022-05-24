@@ -80,6 +80,22 @@ def _optimize_subtask_graph(subtask_graph):
     return _optimize_physical(subtask_graph)
 
 
+async def _cancel_ray_task(obj_ref, kill_timeout: int = 3):
+    ray.cancel(obj_ref, force=False)
+    try:
+        await asyncio.to_thread(ray.get, obj_ref, timeout=kill_timeout)
+    except ray.exceptions.TaskCancelledError:  # pragma: no cover
+        logger.info("Cancel ray task %s successfully.", obj_ref)
+    except BaseException as e:
+        logger.info(
+            "Failed to cancel ray task %s with exception %s, "
+            "force cancel the task by killing the worker.",
+            e,
+            obj_ref,
+        )
+        ray.cancel(obj_ref, force=True)
+
+
 def execute_subtask(
     task_id: str,
     subtask_id: str,
@@ -159,6 +175,14 @@ class RayTaskExecutor(TaskExecutor):
         self._pre_all_stages_tile_progress = 0
         self._cur_stage_tile_progress = 0
         self._cur_stage_output_object_refs = []
+        # This list records the output object ref number of subtasks, so with
+        # `self._cur_stage_output_object_refs` we can just call `ray.cancel`
+        # with one object ref to cancel a subtask instead of cancel all object
+        # refs. In this way we can reduce a lot of unnecessary calls of ray.
+        self._output_object_refs_nums = []
+        # For meta and data gc
+        self._execute_subtask_graph_aiotask = None
+        self._cancelled = False
 
     @classmethod
     async def create(
@@ -219,6 +243,9 @@ class RayTaskExecutor(TaskExecutor):
         self._pre_all_stages_tile_progress = 1
         self._cur_stage_tile_progress = 1
         self._cur_stage_output_object_refs = []
+        self._output_object_refs_nums = []
+        self._execute_subtask_graph_aiotask = None
+        self._cancelled = None
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -267,6 +294,10 @@ class RayTaskExecutor(TaskExecutor):
         tile_context: TileContext,
         context: Any = None,
     ) -> Dict[Chunk, ExecutionChunkResult]:
+        if self._cancelled is True:  # pragma: no cover
+            raise asyncio.CancelledError()
+        self._execute_subtask_graph_aiotask = asyncio.current_task()
+
         logger.info("Stage %s start.", stage_id)
         task_context = self._task_context
         output_meta_object_refs = []
@@ -307,6 +338,7 @@ class RayTaskExecutor(TaskExecutor):
             elif output_count == 1:
                 output_object_refs = [output_object_refs]
             self._cur_stage_output_object_refs.extend(output_object_refs)
+            self._output_object_refs_nums.append(len(output_object_refs))
             if output_meta_keys:
                 meta_object_ref, *output_object_refs = output_object_refs
                 # TODO(fyrestone): Fetch(not get) meta object here.
@@ -345,6 +377,7 @@ class RayTaskExecutor(TaskExecutor):
         # because current stage is finished, its progress is 1.
         self._pre_all_stages_progress += self._cur_stage_tile_progress
         self._cur_stage_output_object_refs.clear()
+        self._output_object_refs_nums.clear()
         logger.info("Stage %s is complete.", stage_id)
         return chunk_to_meta
 
@@ -416,7 +449,33 @@ class RayTaskExecutor(TaskExecutor):
         return self._pre_all_stages_progress + stage_progress
 
     async def cancel(self):
-        """Cancel execution."""
+        """
+        Cancel the task execution.
+
+        1. Try to cancel the `execute_subtask_graph`
+        2. Try to cancel the submitted subtasks by `ray.cancel`
+        """
+        logger.info("Start to cancel task %s.", self._task)
+        if self._task is None:
+            return
+        self._cancelled = True
+        if (
+            self._execute_subtask_graph_aiotask is not None
+            and not self._execute_subtask_graph_aiotask.cancelled()
+        ):
+            self._execute_subtask_graph_aiotask.cancel()
+        timeout = self._config.get_subtask_cancel_timeout()
+        subtask_num = len(self._output_object_refs_nums)
+        if subtask_num > 0:
+            pos = 0
+            obj_refs_to_be_cancelled_ = []
+            for i in range(0, subtask_num):
+                if i > 0:
+                    pos += self._output_object_refs_nums[i - 1]
+                obj_refs_to_be_cancelled_.append(
+                    _cancel_ray_task(self._cur_stage_output_object_refs[pos], timeout)
+                )
+            await asyncio.gather(*obj_refs_to_be_cancelled_)
 
     async def _load_subtask_inputs(
         self, stage_id: str, subtask: Subtask, chunk_graph: ChunkGraph, context: Dict

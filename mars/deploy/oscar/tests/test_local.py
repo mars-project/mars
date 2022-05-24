@@ -633,8 +633,12 @@ async def test_session_get_progress(create_cluster):
 
 
 @pytest.fixture
-def setup_session():
-    session = new_session(n_cpu=2, use_uvloop=False)
+def setup_session(request):
+    param = getattr(request, "param", {})
+    config = param.get("config", {})
+    session = new_session(
+        backend=config.get("backend", "mars"), n_cpu=2, use_uvloop=False
+    )
     assert session.get_web_endpoint() is not None
 
     with session:
@@ -706,6 +710,11 @@ def test_decref(setup_session):
     _assert_storage_cleaned(session.session_id, worker_addr, StorageLevel.MEMORY)
 
 
+def _assert_worker_pool_storage_cleaned(session):
+    worker_addr = session._session.client._cluster._worker_pools[0].external_address
+    _assert_storage_cleaned(session.session_id, worker_addr, StorageLevel.MEMORY)
+
+
 def _cancel_when_execute(session, cancelled):
     def run():
         time.sleep(200)
@@ -720,8 +729,10 @@ def _cancel_when_execute(session, cancelled):
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
 
-    worker_addr = session._session.client._cluster._worker_pools[0].external_address
-    _assert_storage_cleaned(session.session_id, worker_addr, StorageLevel.MEMORY)
+
+def _cancel_assert_when_execute(session, cancelled):
+    _assert_worker_pool_storage_cleaned(session)
+    _cancel_when_execute(session, cancelled)
 
 
 class SlowTileAdd(TensorAdd):
@@ -745,9 +756,9 @@ def _cancel_when_tile(session, cancelled):
     assert len(ref_counts) == 0
 
 
-@pytest.mark.parametrize("test_func", [_cancel_when_execute, _cancel_when_tile])
-def test_cancel(setup_session, test_func):
-    session = setup_session
+@pytest.mark.parametrize("test_func", [_cancel_assert_when_execute, _cancel_when_tile])
+def test_cancel(create_cluster, test_func):
+    session = get_default_session()
 
     async def _new_cancel_event():
         return asyncio.Event()
