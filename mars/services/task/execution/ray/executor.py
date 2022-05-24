@@ -384,7 +384,6 @@ class RayTaskExecutor(TaskExecutor):
         logger.info("Waiting for stage %s complete.", stage_id)
         # Patched the asyncio.to_thread for Python < 3.9 at mars/lib/aio/__init__.py
         await asyncio.to_thread(ray.wait, list(output_object_refs), fetch_local=False)
-        await self._subtask_running_monitor
 
         # Just use `self._cur_stage_tile_progress` as current stage progress
         # because current stage is finished, its progress is 1.
