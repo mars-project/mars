@@ -72,6 +72,7 @@ class MockRayTaskExecutor(RayTaskExecutor):
         self._set_attrs[key] += 1
 
 
+@require_ray
 @pytest.mark.asyncio
 @mock.patch("mars.services.task.execution.ray.executor.RayTaskState.create")
 @mock.patch("mars.services.task.execution.ray.context.RayExecutionContext.init")
