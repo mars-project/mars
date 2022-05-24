@@ -36,6 +36,7 @@ from ....oscar.backends.ray.utils import (
     process_placement_to_address,
     kill_and_wait,
 )
+from ....oscar.backends.router import Router
 from ....oscar.errors import ReconstructWorkerError
 from ....serialization.ray import register_ray_serializers
 from ....services.cluster import ClusterAPI
@@ -105,8 +106,11 @@ async def create_cluster(request):
         worker_mem=1 * 1024**3,
         config=ray_config,
     )
-    async with client:
-        yield client, param
+    try:
+        async with client:
+            yield client, param
+    finally:
+        Router.set_instance(None)
 
 
 @require_ray

@@ -16,6 +16,7 @@ import pytest
 from tornado import httpclient
 
 from ... import oscar as mo
+from ...oscar.backends.router import Router
 from ...utils import get_next_port
 from .. import (
     NodeRole,
@@ -34,6 +35,7 @@ async def actor_pool_context():
         yield pool
     finally:
         await pool.stop()
+        Router.set_instance(None)
 
 
 @pytest.mark.asyncio

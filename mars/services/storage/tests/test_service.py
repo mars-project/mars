@@ -20,6 +20,7 @@ import pandas as pd
 import pytest
 
 from .... import oscar as mo
+from ....oscar.backends.router import Router
 from ....resource import Resource
 from ....serialization import AioDeserializer, AioSerializer
 from ....storage import StorageLevel
@@ -49,8 +50,11 @@ async def actor_pools():
         return pool
 
     worker_pool = await start_pool()
-    yield worker_pool
-    await worker_pool.stop()
+    try:
+        yield worker_pool
+    finally:
+        await worker_pool.stop()
+        Router.set_instance(None)
 
 
 @pytest.mark.asyncio
@@ -138,8 +142,11 @@ async def actor_pools_with_gpu():
         return pool
 
     worker_pool = await start_pool()
-    yield worker_pool
-    await worker_pool.stop()
+    try:
+        yield worker_pool
+    finally:
+        await worker_pool.stop()
+        Router.set_instance(None)
 
 
 @require_cupy

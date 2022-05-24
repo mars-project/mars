@@ -16,6 +16,7 @@ import os
 
 import pytest
 
+from ....oscar.backends.router import Router
 from ....oscar.errors import ServerClosed
 from ....services.tests.fault_injection_manager import (
     FaultInjectionError,
@@ -58,8 +59,11 @@ async def fault_cluster(request):
         worker_mem=1 * 1024**3,
         config=ray_config,
     )
-    async with client:
-        yield client
+    try:
+        async with client:
+            yield client
+    finally:
+        Router.set_instance(None)
 
 
 @require_ray

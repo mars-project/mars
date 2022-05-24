@@ -17,6 +17,7 @@ import asyncio
 import pytest
 
 from ..... import oscar as mo
+from .....oscar.backends.router import Router
 from .....resource import Resource
 from ....cluster import ClusterAPI, MockClusterAPI
 from ....session import MockSessionAPI
@@ -43,6 +44,7 @@ async def actor_pool():
         finally:
             await mo.destroy_actor(global_resource_ref)
             await MockClusterAPI.cleanup(pool.external_address)
+            Router.set_instance(None)
 
 
 @pytest.mark.asyncio
@@ -54,7 +56,6 @@ async def test_global_resource(actor_pool):
     band = (pool.external_address, "numa-0")
     band_resource = bands[band]
 
-    print(await global_resource_ref.get_idle_bands(0))
     assert band in await global_resource_ref.get_idle_bands(0)
     assert ["subtask0"] == await global_resource_ref.apply_subtask_resources(
         band, session_id, ["subtask0"], [Resource(num_cpus=1)]

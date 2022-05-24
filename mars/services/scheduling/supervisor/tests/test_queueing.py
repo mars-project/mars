@@ -16,6 +16,7 @@ import pytest
 from typing import Tuple, List
 
 from ..... import oscar as mo
+from .....oscar.backends.router import Router
 from .....resource import Resource
 from ....cluster import MockClusterAPI
 from ....subtask import Subtask
@@ -108,6 +109,7 @@ async def actor_pool():
         finally:
             await mo.destroy_actor(queueing_ref)
             await MockClusterAPI.cleanup(pool.external_address)
+            Router.set_instance(None)
 
 
 @pytest.mark.asyncio
