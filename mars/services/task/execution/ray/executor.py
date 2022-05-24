@@ -44,10 +44,10 @@ from ....subtask.utils import iter_input_data_keys, iter_output_data
 from ...core import Task
 from ..api import (
     TaskExecutor,
-    ExecutionConfig,
     ExecutionChunkResult,
     register_executor_cls,
 )
+from .config import RayExecutionConfig
 from .context import (
     RayExecutionContext,
     RayExecutionWorkerContext,
@@ -147,7 +147,7 @@ class RayTaskExecutor(TaskExecutor):
 
     def __init__(
         self,
-        config: ExecutionConfig,
+        config: RayExecutionConfig,
         task: Task,
         tile_context: TileContext,
         task_context: Dict[str, "ray.ObjectRef"],
@@ -187,14 +187,14 @@ class RayTaskExecutor(TaskExecutor):
     @classmethod
     async def create(
         cls,
-        config: ExecutionConfig,
+        config: RayExecutionConfig,
         *,
         session_id: str,
         address: str,
         task: Task,
         tile_context: TileContext,
         **kwargs,
-    ) -> "TaskExecutor":
+    ) -> "RayTaskExecutor":
         lifecycle_api, meta_api = await cls._get_apis(session_id, address)
         task_state_actor = (
             ray.remote(RayTaskState)
@@ -204,7 +204,12 @@ class RayTaskExecutor(TaskExecutor):
         task_context = {}
         task_chunks_meta = {}
         await cls._init_context(
-            task_context, task_chunks_meta, task_state_actor, session_id, address
+            config,
+            task_context,
+            task_chunks_meta,
+            task_state_actor,
+            session_id,
+            address,
         )
         return cls(
             config,
@@ -259,6 +264,7 @@ class RayTaskExecutor(TaskExecutor):
     @classmethod
     async def _init_context(
         cls,
+        config: RayExecutionConfig,
         task_context: Dict[str, "ray.ObjectRef"],
         task_chunks_meta: Dict[str, _RayChunkMeta],
         task_state_actor: "ray.actor.ActorHandle",
@@ -267,6 +273,7 @@ class RayTaskExecutor(TaskExecutor):
     ):
         loop = asyncio.get_running_loop()
         context = RayExecutionContext(
+            config,
             task_context,
             task_chunks_meta,
             task_state_actor,
@@ -306,6 +313,7 @@ class RayTaskExecutor(TaskExecutor):
             for chunk in chunk_graph.result_chunks
             if not isinstance(chunk.op, Fetch)
         }
+        subtask_max_retries = self._config.get_subtask_max_retries()
         for subtask in subtask_graph.topological_iter():
             subtask_chunk_graph = subtask.chunk_graph
             key_to_input = await self._load_subtask_inputs(
@@ -314,11 +322,9 @@ class RayTaskExecutor(TaskExecutor):
             output_keys = self._get_subtask_output_keys(subtask_chunk_graph)
             output_meta_keys = result_meta_keys & output_keys
             output_count = len(output_keys) + bool(output_meta_keys)
-            subtask_max_retries = (
-                self._config.subtask_max_retries if subtask.retryable else 0
-            )
+            max_retries = subtask_max_retries if subtask.retryable else 0
             output_object_refs = self._ray_executor.options(
-                num_returns=output_count, max_retries=subtask_max_retries
+                num_returns=output_count, max_retries=max_retries
             ).remote(
                 subtask.task_id,
                 subtask.subtask_id,
@@ -458,7 +464,7 @@ class RayTaskExecutor(TaskExecutor):
             and not self._execute_subtask_graph_aiotask.cancelled()
         ):
             self._execute_subtask_graph_aiotask.cancel()
-        timeout = self._config.subtask_cancel_timeout
+        timeout = self._config.get_subtask_cancel_timeout()
         subtask_num = len(self._output_object_refs_nums)
         if subtask_num > 0:
             pos = 0

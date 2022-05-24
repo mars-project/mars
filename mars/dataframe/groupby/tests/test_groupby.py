@@ -21,6 +21,7 @@ import pytest
 from ..sort import DataFrameGroupbySortShuffle
 from .... import dataframe as md
 from .... import opcodes
+from ....config import option_context
 from ....core import OutputType, tile
 from ....core.operand import OperandStage
 from ...core import DataFrameGroupBy, SeriesGroupBy, DataFrame
@@ -166,6 +167,29 @@ def test_groupby_agg():
     # test unknown method
     with pytest.raises(ValueError):
         mdf.groupby("c2").sum(method="not_exist")
+
+
+def test_groupby_auto_on_cluster():
+    rs = np.random.RandomState(0)
+    raw = pd.DataFrame(
+        {
+            "c1": rs.randint(20, size=100),
+            "c2": rs.choice(["a", "b", "c"], (100,)),
+            "c3": rs.rand(100),
+        }
+    )
+    # test DataFrameGroupByAgg._tile_auto_on_distributed
+    with option_context({"chunk_store_limit": 80}):
+        # chunk_store_limit is 30, each chunk's size is 8,
+        # will combine once, then shuffle 5 combined chunk
+        mdf = md.DataFrame(raw, chunk_size=5)
+        tiled_mdf = tile(mdf)
+        r = mdf.groupby("c2").sum()
+        func_infos = DataFrameGroupByAgg._compile_funcs(r.op, mdf)
+        tiled = DataFrameGroupByAgg._tile_auto_on_distributed(
+            r.op, tiled_mdf, r, func_infos, tiled_mdf.chunks[:4], [8] * 4
+        )[0]
+        assert len(tiled.chunks) == 5
 
 
 def test_groupby_apply():
