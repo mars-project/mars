@@ -154,7 +154,7 @@ class RayMainActorPool(MainActorPoolBase):
     async def recover_sub_pool(self, address: str):
         process = self.sub_processes[address]
         # set `max_retries=-1` to make task pending when actor is restarting
-        await process.state.options(max_retries=-1).remote()
+        await process.state.options(max_task_retries=-1).remote()
         await process.start.remote()
 
         if self._auto_recover == "actor":
