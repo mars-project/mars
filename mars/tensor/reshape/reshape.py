@@ -449,6 +449,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
 
         logger.debug("Reshape mapper: splitting for %s", chunk.key)
 
+        mapper_outputs = {}
         for t in np.unique(target):
             data_slice = slice(
                 np.searchsorted(target, t), np.searchsorted(target, t, "right")
@@ -463,7 +464,16 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                 t, target_chunk_idx[idx] = divmod(t, dim_chunk_count)
             target_chunk_idx.reverse()
 
-            ctx[chunk.key, tuple(target_chunk_idx)] = group_indices + (group_data,)
+            mapper_outputs[chunk.key, tuple(target_chunk_idx)] = group_indices + (
+                group_data,
+            )
+
+        # ensure all mapper data are inserted context in order and fill missing partition with None
+        for target_chunk_idx in itertools.product(
+            *[range(dim_chunk_cnt) for dim_chunk_cnt in dim_chunk_counts]
+        ):
+            data_key = chunk.key, tuple(target_chunk_idx)
+            ctx[data_key] = mapper_outputs.get(data_key)
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "TensorReshape"):
@@ -475,6 +485,9 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                 chunk.shape, dtype=chunk.dtype, order=chunk.order.value
             )
         for data_tuple in op.iter_mapper_data(ctx, skip_none=True):
+            if data_tuple is None:
+                # skip missing partition data
+                continue
             result_array[data_tuple[:-1]] = data_tuple[-1]
         ctx[chunk.key] = result_array
 
