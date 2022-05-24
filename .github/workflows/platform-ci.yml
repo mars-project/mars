@@ -98,6 +98,8 @@ jobs:
               # Use standard ray releases when ownership bug is fixed
               pip uninstall -y ray
               pip install https://s3-us-west-2.amazonaws.com/ray-wheels/master/c03d0432f3bb40f3c597b7fc450870ba5e34ad56/ray-3.0.0.dev0-cp38-cp38-manylinux2014_x86_64.whl
+              # Ray Datasets need pyarrow>=6.0.1
+              pip install "pyarrow>=6.0.1"
             fi
             if [ -n "$RUN_DASK" ]; then
               pip install dask[complete] mimesis sklearn
