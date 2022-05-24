@@ -15,11 +15,8 @@
 import asyncio
 import functools
 import logging
-
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import List, Dict, Any, Set
-
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
 from .....core.operand import (
@@ -178,12 +175,8 @@ class RayTaskExecutor(TaskExecutor):
         self._pre_all_stages_tile_progress = 0.0
         self._cur_stage_progress = 0.0
         self._cur_stage_tile_progress = 0.0
-        self._cur_stage_subtask_to_output_object_refs = dict()
-        self._cur_stage_output_object_refs = []
-        self._cur_stage_unfinished_subtasks = set()
-        self._cur_stage_submitted_subtasks = set()
+        self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
-        self._done = asyncio.Event()
         self._cancelled = False
         self._subtask_running_monitor = None
 
@@ -241,12 +234,8 @@ class RayTaskExecutor(TaskExecutor):
         self._pre_all_stages_tile_progress = None
         self._cur_stage_progress = 1.0
         self._cur_stage_tile_progress = None
-        self._cur_stage_subtask_to_output_object_refs = None
-        self._cur_stage_output_object_refs = None
-        self._cur_stage_unfinished_subtasks = None
-        self._cur_stage_submitted_subtasks = None
+        self._cur_stage_first_output_object_ref_to_subtask = None
         self._execute_subtask_graph_aiotask = None
-        self._done = None
         self._cancelled = None
         self._subtask_running_monitor = None
 
@@ -309,14 +298,14 @@ class RayTaskExecutor(TaskExecutor):
             self._tile_context.get_all_progress() - self._pre_all_stages_tile_progress
         )
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
+        submitted_subtasks = []
+        subtask_to_first_output_object_ref = dict()
         result_meta_keys = {
             chunk.key
             for chunk in chunk_graph.result_chunks
             if not isinstance(chunk.op, Fetch)
         }
-        subtask_ids = []
         for subtask in subtask_graph.topological_iter():
-            subtask_ids.append(subtask.subtask_id)
             subtask_chunk_graph = subtask.chunk_graph
             key_to_input = await self._load_subtask_inputs(
                 stage_id, subtask, subtask_chunk_graph, task_context
@@ -337,16 +326,15 @@ class RayTaskExecutor(TaskExecutor):
                 list(key_to_input.keys()),
                 *key_to_input.values(),
             )
-            self._cur_stage_unfinished_subtasks.add(subtask)
-            self._cur_stage_submitted_subtasks.add(subtask)
             if output_count == 0:
                 continue
             elif output_count == 1:
                 output_object_refs = [output_object_refs]
-            self._cur_stage_subtask_to_output_object_refs[subtask] = set(
-                output_object_refs
-            )
-            self._cur_stage_output_object_refs.extend(output_object_refs)
+            submitted_subtasks.append(subtask)
+            self._cur_stage_first_output_object_ref_to_subtask[
+                output_object_refs[0]
+            ] = subtask
+            subtask_to_first_output_object_ref[subtask] = output_object_refs[0]
             if output_meta_keys:
                 meta_object_ref, *output_object_refs = output_object_refs
                 # TODO(fyrestone): Fetch(not get) meta object here.
@@ -356,7 +344,10 @@ class RayTaskExecutor(TaskExecutor):
 
         self._subtask_running_monitor = asyncio.create_task(
             self._check_subtask_results_periodically(
-                subtask_graph, self._config.subtask_check_interval
+                subtask_graph,
+                submitted_subtasks,
+                subtask_to_first_output_object_ref,
+                self._config.subtask_check_interval,
             )
         )
 
@@ -365,12 +356,7 @@ class RayTaskExecutor(TaskExecutor):
             # TODO(fyrestone): Optimize update meta by fetching partial meta.
             meta_count = len(output_meta_object_refs)
             logger.info("Getting %s metas of stage %s.", meta_count, stage_id)
-            try:
-                meta_list = await asyncio.gather(*output_meta_object_refs)
-            except BaseException:
-                self._cancelled = True
-                self._subtask_running_monitor.cancel()
-                raise
+            meta_list = await asyncio.gather(*output_meta_object_refs)
             for meta in meta_list:
                 for key, (params, memory_size) in meta.items():
                     key_to_meta[key] = params
@@ -393,20 +379,18 @@ class RayTaskExecutor(TaskExecutor):
         # Patched the asyncio.to_thread for Python < 3.9 at mars/lib/aio/__init__.py
         await asyncio.to_thread(ray.wait, list(output_object_refs), fetch_local=False)
 
-        await self._done.wait()
-
         # Just use `self._cur_stage_tile_progress` as current stage progress
         # because current stage is finished, its progress is 1.
+        self._cur_stage_progress = 1
         self._pre_all_stages_progress += self._cur_stage_tile_progress
-        self._cur_stage_subtask_to_output_object_refs.clear()
-        self._cur_stage_output_object_refs.clear()
-        self._cur_stage_unfinished_subtasks.clear()
-        self._cur_stage_submitted_subtasks.clear()
+        self._cur_stage_first_output_object_ref_to_subtask.clear()
         logger.info("Stage %s is complete.", stage_id)
         return chunk_to_meta
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
+            await self.cancel()
+            self._subtask_running_monitor.cancel()
             return
 
         # Update info if no exception occurs.
@@ -468,7 +452,7 @@ class RayTaskExecutor(TaskExecutor):
         2. Try to cancel the submitted subtasks by `ray.cancel`
         """
         logger.info("Start to cancel task %s.", self._task)
-        if self._done.is_set():
+        if self._task is None:
             return
         self._cancelled = True
         if (
@@ -479,15 +463,10 @@ class RayTaskExecutor(TaskExecutor):
         if self._subtask_running_monitor is not None:
             self._subtask_running_monitor.cancel()
         timeout = self._config.subtask_cancel_timeout
-        to_be_cancelled_coros = []
-        for (
-            _,
-            output_object_refs,
-        ) in self._cur_stage_subtask_to_output_object_refs.items():
-            if output_object_refs:
-                to_be_cancelled_coros.append(
-                    _cancel_ray_task(next(iter(output_object_refs)), timeout)
-                )
+        to_be_cancelled_coros = [
+            _cancel_ray_task(object_ref, timeout)
+            for object_ref in self._cur_stage_first_output_object_ref_to_subtask.keys()
+        ]
         await asyncio.gather(*to_be_cancelled_coros)
 
     async def _load_subtask_inputs(
@@ -541,59 +520,54 @@ class RayTaskExecutor(TaskExecutor):
                 output_keys[chunk.key] = 1
         return output_keys.keys()
 
-    async def _get_ready_objects(self):
-        unready_object_refs = []
-        for subtask in self._cur_stage_unfinished_subtasks:
-            unready_object_refs.extend(
-                self._cur_stage_subtask_to_output_object_refs[subtask]
-            )
+    async def _get_newly_finished_subtasks(
+        self,
+        unfinished_subtasks: Set[Subtask],
+        subtask_to_first_output_object_ref: Dict[Subtask, "ray.ObjectRef"],
+    ):
+        unready_object_refs = [
+            subtask_to_first_output_object_ref[subtask]
+            for subtask in unfinished_subtasks
+        ]
         total = len(unready_object_refs)
+        ready_objects = []
         if total > 0:
             ready_objects, _ = await asyncio.to_thread(
                 ray.wait,
                 unready_object_refs,
                 num_returns=total,
-                timeout=0,  # Avoid blocking the asyncio loop.
+                timeout=0,
                 fetch_local=False,
             )
-            return ready_objects
-
-    async def _calculate_progress(self, subtask_graph: SubtaskGraph):
-        total = len(subtask_graph)
-        stage_progress = (
-            (total - len(self._cur_stage_unfinished_subtasks))
-            / total
-            * self._cur_stage_tile_progress
+        return set(
+            [
+                self._cur_stage_first_output_object_ref_to_subtask[object_ref]
+                for object_ref in ready_objects
+            ]
         )
-        self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
-
-    async def _get_newly_finished_subtasks(self):
-        finished_subtasks = set()
-        ready_objects = await self._get_ready_objects()
-        if ready_objects:
-            for subtask in self._cur_stage_unfinished_subtasks:
-                if self._cur_stage_subtask_to_output_object_refs[subtask].issubset(
-                    ready_objects
-                ):
-                    finished_subtasks.add(subtask)
-        return finished_subtasks
-
-    def _remove_chunks(self, to_remove_chunk_keys: List[str]):
-        if not to_remove_chunk_keys:
-            return
-        for chunk_key in to_remove_chunk_keys:
-            self._task_context.pop(chunk_key, None)
 
     async def _check_subtask_results_periodically(
-        self, subtask_graph: SubtaskGraph, time_interval: float
+        self,
+        subtask_graph: SubtaskGraph,
+        submitted_subtasks: List[Subtask],
+        subtask_to_first_output_object_ref: Dict[Subtask, "ray.ObjectRef"],
+        time_interval: float,
     ):
+        total = len(submitted_subtasks)
+        unfinished_subtasks = set(submitted_subtasks)
         while True:
             if self._cancelled:
                 return
 
-            finished_subtasks = await self._get_newly_finished_subtasks()
-            self._cur_stage_unfinished_subtasks -= finished_subtasks
-            await self._calculate_progress(subtask_graph)
+            finished_subtasks = await self._get_newly_finished_subtasks(
+                unfinished_subtasks, subtask_to_first_output_object_ref
+            )
+            unfinished_subtasks -= finished_subtasks
+            unfinished_number = len(unfinished_subtasks)
+            stage_progress = (
+                (total - unfinished_number) / total * self._cur_stage_tile_progress
+            )
+            self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
 
             # Why does here use finished subtasks instead of submitted subtasks?
             # If a submitted subtask fails, and we remove the chunks it depends,
@@ -601,14 +575,13 @@ class RayTaskExecutor(TaskExecutor):
             # be removed until a subtask runs to completion.
             for subtask in finished_subtasks:
                 for predecessor in subtask_graph.iter_predecessors(subtask):
-                    for successor in subtask_graph.iter_successors(predecessor):
-                        if successor not in self._cur_stage_submitted_subtasks:
-                            break
-                    else:
-                        self._remove_chunks(
-                            [chunk.key for chunk in predecessor.chunk_graph.results]
-                        )
+                    if all(
+                        successor in submitted_subtasks
+                        for successor in subtask_graph.iter_successors(predecessor)
+                    ):
+                        for chunk in predecessor.chunk_graph.results:
+                            self._task_context.pop(chunk.key, None)
 
-            if not self._cur_stage_unfinished_subtasks:
-                self._done.set()
+            if unfinished_number == 0:
+                return
             await asyncio.sleep(time_interval)

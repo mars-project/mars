@@ -14,6 +14,7 @@
 
 import copy
 import os
+import time
 
 import pytest
 
@@ -143,17 +144,22 @@ def test_context_gc(config):
     assert session._session.client.web_address is None
     assert session.get_web_endpoint() is None
 
+    def f1(c):
+        time.sleep(0.5)
+        return c
+
     with session:
         t1 = mt.random.randint(10, size=(100, 10), chunk_size=100)
         t2 = mt.random.randint(10, size=(100, 10), chunk_size=50)
         t3 = t1 + t2
         t4 = t3.sum(0)
-        r = t4.execute()
-        context = get_context()
-        assert len(context._task_context) == 1
+        t5 = t4.map_chunk(f1)
+        r = t5.execute()
         result = r.fetch()
         assert result is not None
         assert len(result) == 10
+        context = get_context()
+        assert len(context._task_context) < 5
 
     session.stop_server()
     assert get_default_async_session() is None
