@@ -14,7 +14,6 @@
 
 import asyncio
 import concurrent.futures as futures
-import logging
 import os
 import socket
 import sys
@@ -246,11 +245,7 @@ class SocketClient(Client):
     ) -> "Client":
         host, port = dest_address.split(":", 1)
         port = int(port)
-        try:
-            (reader, writer) = await asyncio.open_connection(host=host, port=port, **kwargs)
-        except ConnectionRefusedError:
-            logging.exception(f"TMP: CONNECT REFUSED FOR {host}:{port}")
-            raise
+        (reader, writer) = await asyncio.open_connection(host=host, port=port, **kwargs)
         channel = SocketChannel(
             reader, writer, local_address=local_address, dest_address=dest_address
         )

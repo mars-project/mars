@@ -232,7 +232,6 @@ class LocalCluster:
             metrics=self._config.get("metrics", {}),
         )
         self.supervisor_address = self._supervisor_pool.external_address
-        logger.warning(f"TMP: START SV-POOL WITH ADDR {self.supervisor_address}")
 
     async def _start_worker_pools(self):
         worker_modules = get_third_party_modules_from_config(
@@ -247,10 +246,8 @@ class LocalCluster:
                 metrics=self._config.get("metrics", {}),
             )
             self._worker_pools.append(worker_pool)
-        logger.warning(f"TMP: START W-POOLS WITH ADDR {[pool.external_address for pool in self._worker_pools]}")
 
     async def _start_service(self):
-        logger.warning(f"TMP: TO START SV WITH ADDR {self.supervisor_address}")
         self._web = await start_supervisor(
             self.supervisor_address, config=self._config, web=self._web
         )

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
+
 import threading
 from typing import Dict, List, Tuple, Type, Any, Optional
 
@@ -113,11 +113,7 @@ class Router:
         local_address = (
             self._curr_external_addresses[0] if self._curr_external_addresses else None
         )
-        try:
-            client = await client_type.connect(address, local_address=local_address, **kw)
-        except ConnectionRefusedError:
-            logging.exception(f"TMP: CONNECT REFUSED: {address}, EXT: {external_address} FROM_WHO: {from_who} LOCAL_ADDR: {local_address}")
-            raise
+        client = await client_type.connect(address, local_address=local_address, **kw)
         if cached:
             self._cache[external_address, from_who] = client
         return client
