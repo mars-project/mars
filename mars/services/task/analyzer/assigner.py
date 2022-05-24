@@ -15,12 +15,13 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from operator import itemgetter
-from typing import List, Dict, Set, Union
+from typing import List, Dict, Union
 
 import numpy as np
 
 from ....core import ChunkGraph, ChunkData
 from ....core.operand import Operand
+from ....lib.ordered_set import OrderedSet
 from ....resource import Resource
 from ....typing import BandType
 from ....utils import implements
@@ -77,8 +78,9 @@ class GraphAssigner(AbstractGraphAssigner):
         band_resource: Dict[BandType, Resource],
     ):
         super().__init__(chunk_graph, start_ops, band_resource)
-        self._undirected_chunk_graph = None
-        self._op_keys: Set[str] = {start_op.key for start_op in start_ops}
+        self._op_keys: OrderedSet[str] = OrderedSet(
+            [start_op.key for start_op in start_ops]
+        )
 
     def _calc_band_assign_limits(
         self, initial_count: int, occupied: Dict[BandType, int]
@@ -124,13 +126,15 @@ class GraphAssigner(AbstractGraphAssigner):
             pos = (pos + 1) % len(counts)
         return dict(zip(bands, counts))
 
+    @classmethod
     def _assign_by_bfs(
-        self,
+        cls,
+        undirected_chunk_graph: ChunkGraph,
         start: ChunkData,
         band: BandType,
         initial_sizes: Dict[BandType, int],
         spread_limits: Dict[BandType, float],
-        key_to_assign: Set[str],
+        key_to_assign: OrderedSet[str],
         assigned_record: Dict[str, Union[str, BandType]],
     ):
         """
@@ -140,11 +144,6 @@ class GraphAssigner(AbstractGraphAssigner):
         if initial_sizes[band] <= 0:
             return
 
-        graph = self._chunk_graph
-        if self._undirected_chunk_graph is None:
-            self._undirected_chunk_graph = graph.build_undirected()
-        undirected_chunk_graph = self._undirected_chunk_graph
-
         assigned = 0
         spread_range = 0
         for chunk in undirected_chunk_graph.bfs(start=start, visit_predicate="all"):
@@ -152,7 +151,8 @@ class GraphAssigner(AbstractGraphAssigner):
             if op_key in assigned_record:
                 continue
             spread_range += 1
-            # `op_key` may not be in `key_to_assign`, but we need to record it to avoid iterate the node repeatedly.
+            # `op_key` may not be in `key_to_assign`,
+            # but we need to record it to avoid iterate the node repeatedly.
             assigned_record[op_key] = band
             if op_key not in key_to_assign:
                 continue
@@ -161,8 +161,22 @@ class GraphAssigner(AbstractGraphAssigner):
                 break
         initial_sizes[band] -= assigned
 
+    def _build_undirected_chunk_graph(
+        self, chunk_to_assign: List[ChunkData]
+    ) -> ChunkGraph:
+        chunk_graph = self._chunk_graph.copy()
+        # remove edges for all chunk_to_assign which may contain chunks
+        # that need be reassigned
+        for chunk in chunk_to_assign:
+            if chunk_graph.count_predecessors(chunk) > 0:
+                for pred in list(chunk_graph.predecessors(chunk)):
+                    chunk_graph.remove_edge(pred, chunk)
+        return chunk_graph.build_undirected()
+
     @implements(AbstractGraphAssigner.assign)
-    def assign(self, cur_assigns: Dict[str, str] = None) -> Dict[ChunkData, BandType]:
+    def assign(
+        self, cur_assigns: Dict[str, BandType] = None
+    ) -> Dict[ChunkData, BandType]:
         graph = self._chunk_graph
         assign_result = dict()
         cur_assigns = cur_assigns or dict()
@@ -173,7 +187,7 @@ class GraphAssigner(AbstractGraphAssigner):
         for chunk in graph:
             op_key_to_chunks[chunk.op.key].append(chunk)
 
-        op_keys = set(self._op_keys)
+        op_keys = OrderedSet(self._op_keys)
         chunk_to_assign = [
             op_key_to_chunks[op_key][0]
             for op_key in op_keys
@@ -182,6 +196,9 @@ class GraphAssigner(AbstractGraphAssigner):
         assigned_counts = defaultdict(lambda: 0)
         for band in cur_assigns.values():
             assigned_counts[band] += 1
+
+        # build undirected graph
+        undirected_chunk_graph = self._build_undirected_chunk_graph(chunk_to_assign)
 
         # calculate the number of chunks to be assigned to each band
         # given number of bands and existing assignments
@@ -195,14 +212,20 @@ class GraphAssigner(AbstractGraphAssigner):
         spread_ranges = defaultdict(lambda: average_spread_range)
         # assign from other chunks to be assigned
         # TODO: sort by what?
-        sorted_candidates = [v for v in chunk_to_assign]
+        sorted_candidates = chunk_to_assign.copy()
         while max(band_quotas.values()):
             band = max(band_quotas, key=lambda k: band_quotas[k])
             cur = sorted_candidates.pop()
             while cur.op.key in cur_assigns:
                 cur = sorted_candidates.pop()
             self._assign_by_bfs(
-                cur, band, band_quotas, spread_ranges, op_keys, cur_assigns
+                undirected_chunk_graph,
+                cur,
+                band,
+                band_quotas,
+                spread_ranges,
+                op_keys,
+                cur_assigns,
             )
 
         key_to_assign = {n.op.key for n in chunk_to_assign} | initial_assigned_op_keys
