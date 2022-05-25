@@ -66,8 +66,8 @@ class SenderManagerActor(mo.StatelessActor):
         self,
         band_name: str = "numa-0",
         transfer_block_size: int = None,
-        data_manager_ref: Union[mo.ActorRef, DataManagerActor] = None,
-        storage_handler_ref: Union[mo.ActorRef, StorageHandlerActor] = None,
+        data_manager_ref: mo.ActorRefType[DataManagerActor] = None,
+        storage_handler_ref: mo.ActorRefType[StorageHandlerActor] = None,
     ):
         self._band_name = band_name
         self._data_manager_ref = data_manager_ref
@@ -93,7 +93,7 @@ class SenderManagerActor(mo.StatelessActor):
 
     async def _send_data(
         self,
-        receiver_ref: Union[mo.ActorRef],
+        receiver_ref: mo.ActorRefType["ReceiverManagerActor"],
         session_id: str,
         data_keys: List[str],
         level: StorageLevel,
@@ -167,8 +167,8 @@ class SenderManagerActor(mo.StatelessActor):
             "Begin to send data (%s, %s) to %s", session_id, data_keys, address
         )
         block_size = block_size or self._transfer_block_size
-        receiver_ref: Union[
-            ReceiverManagerActor, mo.ActorRef
+        receiver_ref: mo.ActorRefType[
+            ReceiverManagerActor
         ] = await self.get_receiver_ref(address, band_name)
         get_infos = []
         pin_tasks = []
@@ -246,7 +246,7 @@ class ReceiverManagerActor(mo.StatelessActor):
     def __init__(
         self,
         quota_refs: Dict,
-        storage_handler_ref: Union[mo.ActorRef, StorageHandlerActor] = None,
+        storage_handler_ref: mo.ActorRefType[StorageHandlerActor] = None,
     ):
         self._quota_refs = quota_refs
         self._storage_handler = storage_handler_ref

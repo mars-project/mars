@@ -15,7 +15,6 @@
 import asyncio
 
 import pytest
-import pytest_asyncio
 
 from ..... import oscar as mo
 from .....resource import Resource
@@ -24,7 +23,7 @@ from ....session import MockSessionAPI
 from ...supervisor import GlobalResourceManagerActor
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 
@@ -55,7 +54,6 @@ async def test_global_resource(actor_pool):
     band = (pool.external_address, "numa-0")
     band_resource = bands[band]
 
-    print(await global_resource_ref.get_idle_bands(0))
     assert band in await global_resource_ref.get_idle_bands(0)
     assert ["subtask0"] == await global_resource_ref.apply_subtask_resources(
         band, session_id, ["subtask0"], [Resource(num_cpus=1)]

@@ -16,7 +16,6 @@ import os
 import numpy as np
 import pandas as pd
 import pytest
-import pytest_asyncio
 
 from ..... import dataframe as md
 from .....deploy.oscar.ray import new_cluster
@@ -37,7 +36,7 @@ except ImportError:  # pragma: no cover
     sklearn = None
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def create_cluster(request):
     client = await new_cluster(
         supervisor_mem=256 * 1024**2,

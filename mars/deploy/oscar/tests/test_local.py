@@ -23,7 +23,6 @@ import uuid
 import numpy as np
 import pandas as pd
 import pytest
-import pytest_asyncio
 
 try:
     import vineyard
@@ -104,7 +103,7 @@ if vineyard is not None:
 
 
 @pytest.mark.parametrize(indirect=True)
-@pytest_asyncio.fixture(params=params)
+@pytest.fixture(params=params)
 async def create_cluster(request):
     if request.param == "default":
         config = CONFIG_TEST_FILE
@@ -641,11 +640,11 @@ def setup_session(request):
     )
     assert session.get_web_endpoint() is not None
 
-    with session:
-        with option_context({"show_progress": False}):
+    try:
+        with session, option_context({"show_progress": False}):
             yield session
-
-    session.stop_server()
+    finally:
+        session.stop_server()
 
 
 def test_decref(setup_session):
@@ -869,7 +868,7 @@ def test_show_progress_raise_exception(m_log):
 min_task_runtime = 2
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def speculative_cluster():
     config = _load_config()
     config["scheduling"]["speculation"]["enabled"] = True

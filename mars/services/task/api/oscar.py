@@ -25,7 +25,7 @@ from .core import AbstractTaskAPI
 
 class TaskAPI(AbstractTaskAPI):
     def __init__(
-        self, session_id: str, task_manager_ref: Union[TaskManagerActor, mo.ActorRef]
+        self, session_id: str, task_manager_ref: mo.ActorRefType[TaskManagerActor]
     ):
         self._session_id = session_id
         self._task_manager_ref = task_manager_ref
