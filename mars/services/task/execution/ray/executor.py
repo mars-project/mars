@@ -554,7 +554,7 @@ class RayTaskExecutor(TaskExecutor):
                 # Iterate the completed subtasks once.
                 subtask = completed_subtasks[i]
                 i += 1
-                logger.debug("GC collect: %s", subtask)
+                logger.debug("Collect GC: %s", subtask)
                 for pred in subtask_graph.iter_predecessors(subtask):
                     while not all(
                         succ in completed_subtasks
@@ -593,7 +593,7 @@ class RayTaskExecutor(TaskExecutor):
                 len(completed_subtasks) / total * self._cur_stage_tile_progress
             )
             self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
-            # Collect GC, use for ... in ... to avoid raising StopIteration.
+            # Collect GC, use `for ... in ...` to avoid raising StopIteration.
             for _ in collect_gc:
                 break
             # Fast to next loop and give it a chance to update object_ref_to_subtask.
