@@ -149,29 +149,22 @@ async def test_web_api(actor_pool):
             f"http://localhost:{web_port}/api/test/test_id/subtest_error"
         )
 
-    with pytest.raises(TimeoutError):
-        await client.fetch(
-            f"http://localhost:{web_port}/api/test/test_id/subtest_delay",
-            request_timeout=0.5,
-        )
-
     # test multiple request into long immutable requests
-    coros = [
-        client.fetch(
-            f"http://localhost:{web_port}/api/test/test_id/subtest_delay_cache"
-        ),
-        client.fetch(
-            f"http://localhost:{web_port}/api/test/test_id/subtest_delay_cache"
-        ),
-    ]
-    tasks = [asyncio.create_task(coro) for coro in coros]
-    await asyncio.sleep(0.1)
+    req_uri = f"http://localhost:{web_port}/api/test/test_id/subtest_delay_cache"
+    tasks = [asyncio.create_task(client.fetch(req_uri)) for _ in range(2)]
+    await asyncio.sleep(0.5)
     assert TestAPIHandler._call_counter == 0
     assert len(TestAPIHandler._uri_to_futures) == 1
 
     await asyncio.gather(*tasks)
     assert TestAPIHandler._call_counter == 1
     assert len(TestAPIHandler._uri_to_futures) == 0
+
+    with pytest.raises(TimeoutError):
+        await client.fetch(
+            f"http://localhost:{web_port}/api/test/test_id/subtest_delay",
+            request_timeout=0.5,
+        )
 
     res = await client.fetch(f"http://localhost:{web_port}/api/extra_test")
     assert "Test" in res.body.decode()

@@ -71,6 +71,8 @@ def web_api(
                         func, self, *args, **kwargs
                     )
                 return res
+            except GeneratorExit:
+                raise
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                 exc_type, exc, tb = sys.exc_info()
                 err_msg = (
