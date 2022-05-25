@@ -64,7 +64,7 @@ def web_api(
             try:
                 if not inspect.iscoroutinefunction(func):
                     return func(self, *args, **kwargs)
-                elif not cache_blocking:
+                elif not cache_blocking or self.request.method.lower() != "get":
                     res = await func(self, *args, **kwargs)
                 else:
                     res = await self._create_or_get_url_future(
