@@ -578,7 +578,7 @@ async def test_release_worker_during_reconstructing_worker(
     class FakeActor:
         state = FakeActorMethod()
 
-    def _get_actor(*args):
+    def _get_actor(*args, **kwargs):
         return FakeActor
 
     async def _stop_worker(*args):
