@@ -44,7 +44,7 @@ T = TypeVar("T")
 
 # SetLike[T] is either a set of elements of type T, or a sequence, which
 # we will convert to an OrderedSet by adding its elements in order.
-SetLike = Union[AbstractSet[T], Sequence[T]]
+SetLike = Union[AbstractSet[T], Sequence[T], Iterable[T]]
 OrderedSetInitializer = Union[AbstractSet[T], Sequence[T], Iterable[T]]
 
 

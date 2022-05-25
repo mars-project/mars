@@ -27,6 +27,7 @@ from .....core.operand import (
     execute,
 )
 from .....lib.aio import alru_cache
+from .....lib.ordered_set import OrderedSet
 from .....resource import Resource
 from .....serialization import serialize, deserialize
 from .....typing import BandType
@@ -305,15 +306,13 @@ class RayTaskExecutor(TaskExecutor):
             self._tile_context.get_all_progress() - self._pre_all_stages_tile_progress
         )
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
-        submitted_subtasks = []
-        subtask_to_first_output_object_ref = dict()
         self._check_subtask_result_aiotask = asyncio.create_task(
-            self._check_subtask_results_periodically(
-                subtask_graph,
-                submitted_subtasks,
-                subtask_to_first_output_object_ref,
-                self._config.get_subtask_check_interval(),
+            self._update_progress_and_collect_gc(
+                subtask_graph, self._config.get_subtask_check_interval()
             )
+        )
+        self._check_subtask_result_aiotask.add_done_callback(
+            lambda fut: logger.error("%s", fut.result())
         )
         result_meta_keys = {
             chunk.key
@@ -344,11 +343,9 @@ class RayTaskExecutor(TaskExecutor):
                 continue
             elif output_count == 1:
                 output_object_refs = [output_object_refs]
-            submitted_subtasks.append(subtask)
             self._cur_stage_first_output_object_ref_to_subtask[
                 output_object_refs[0]
             ] = subtask
-            subtask_to_first_output_object_ref[subtask] = output_object_refs[0]
             if output_meta_keys:
                 meta_object_ref, *output_object_refs = output_object_refs
                 # TODO(fyrestone): Fetch(not get) meta object here.
@@ -524,72 +521,62 @@ class RayTaskExecutor(TaskExecutor):
                 output_keys[chunk.key] = 1
         return output_keys.keys()
 
-    async def _get_newly_finished_subtasks(
-        self,
-        unfinished_subtasks: Set[Subtask],
-        subtask_to_first_output_object_ref: Dict[Subtask, "ray.ObjectRef"],
+    async def _update_progress_and_collect_gc(
+        self, subtask_graph: SubtaskGraph, time_interval: float
     ):
-        unready_object_refs = [
-            subtask_to_first_output_object_ref[subtask]
-            for subtask in unfinished_subtasks
-        ]
-        total = len(unready_object_refs)
-        ready_objects = []
-        if total > 0:
+        object_ref_to_subtask = self._cur_stage_first_output_object_ref_to_subtask
+        total = len(subtask_graph)
+        finish_subtasks = OrderedSet()
+
+        def gc():
+            """
+            Consume the finish subtasks and collect GC.
+            """
+            i = 0
+
+            while i < total:
+                while i >= len(finish_subtasks):
+                    yield
+                # Iterate the finish subtasks once.
+                subtask = finish_subtasks[i]
+                i += 1
+                logger.debug("GC collect: %s", subtask)
+                for pred in subtask_graph.iter_predecessors(subtask):
+                    while not all(
+                        succ in finish_subtasks
+                        for succ in subtask_graph.iter_successors(pred)
+                    ):
+                        yield
+                    for chunk in pred.chunk_graph.results:
+                        self._task_context.pop(chunk.key, None)
+                        break
+
+            # TODO(fyrestone): Check the remaining self._task_context.keys()
+            # in the result subtasks
+
+        collect_gc = gc()
+
+        while len(finish_subtasks) != total:
+            if len(object_ref_to_subtask) <= 0:
+                await asyncio.sleep(time_interval)
+
+            # Only wait for unfinished subtask object refs.
             ready_objects, _ = await asyncio.to_thread(
                 ray.wait,
-                unready_object_refs,
-                num_returns=total,
+                list(object_ref_to_subtask.keys()),
+                num_returns=len(object_ref_to_subtask),
                 timeout=0,
                 fetch_local=False,
             )
-        return set(
-            [
-                self._cur_stage_first_output_object_ref_to_subtask[object_ref]
-                for object_ref in ready_objects
-            ]
-        )
-
-    async def _check_subtask_results_periodically(
-        self,
-        subtask_graph: SubtaskGraph,
-        submitted_subtasks: List[Subtask],
-        subtask_to_first_output_object_ref: Dict[Subtask, "ray.ObjectRef"],
-        time_interval: float,
-    ):
-        total = len(subtask_graph)
-        if total == 0:
-            return
-        unfinished_subtasks = set(
-            [subtask for subtask in subtask_graph.topological_iter()]
-        )
-        while True:
-            if self._cancelled:
-                return
-
-            finished_subtasks = await self._get_newly_finished_subtasks(
-                unfinished_subtasks, subtask_to_first_output_object_ref
-            )
-            unfinished_subtasks -= finished_subtasks
-            unfinished_number = len(unfinished_subtasks)
+            # Pop the finish subtasks from object_ref_to_subtask.
+            finish_subtasks.update(map(object_ref_to_subtask.pop, ready_objects))
+            # Update progress.
             stage_progress = (
-                (total - unfinished_number) / total * self._cur_stage_tile_progress
+                len(finish_subtasks) / total * self._cur_stage_tile_progress
             )
             self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
-
-            # Why does here use finished subtasks instead of submitted subtasks?
-            # If a submitted subtask fails, and we remove the chunks it depends,
-            # then we could not rerun it. We can guarantee the chunks will not
-            # be removed until a subtask runs to completion.
-            for subtask in finished_subtasks:
-                for predecessor in subtask_graph.iter_predecessors(subtask):
-                    if all(
-                        successor in submitted_subtasks
-                        for successor in subtask_graph.iter_successors(predecessor)
-                    ):
-                        for chunk in predecessor.chunk_graph.results:
-                            self._task_context.pop(chunk.key, None)
-
-            if unfinished_number == 0:
-                return
-            await asyncio.sleep(time_interval)
+            # Collect GC, use for ... in ... to avoid raising StopIteration.
+            for _ in collect_gc:
+                break
+            # Fast to next loop and give it a chance to update object_ref_to_subtask.
+            await asyncio.sleep(0)
