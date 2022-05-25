@@ -20,7 +20,6 @@ import pytest
 from ..... import dataframe as md
 from .....deploy.oscar.ray import new_cluster
 from .....deploy.oscar.session import new_session
-from .....oscar.backends.router import Router
 from .....tests.core import require_ray
 from .....utils import lazy_import
 from ....contrib import raydataset as mdd
@@ -45,11 +44,8 @@ async def create_cluster(request):
         worker_cpu=1,
         worker_mem=256 * 1024**2,
     )
-    try:
-        async with client:
-            yield client
-    finally:
-        Router.set_instance(None)
+    async with client:
+        yield client
 
 
 @require_ray

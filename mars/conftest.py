@@ -36,6 +36,16 @@ def auto_cleanup(request):
     request.addfinalizer(clear_all_alru_caches)
 
 
+@pytest.fixture(scope="module", autouse=True)
+def check_router_cleaned(request):
+    def route_checker():
+        if Router.get_instance() is not None:
+            assert len(Router.get_instance()._mapping) == 0
+            assert len(Router.get_instance()._local_mapping) == 0
+
+    request.addfinalizer(route_checker)
+
+
 @pytest.fixture(scope="module")
 def ray_start_regular_shared(request):  # pragma: no cover
     yield from _ray_start_regular(request)
@@ -144,7 +154,7 @@ def stop_ray(request):  # pragma: no cover
 
 
 @pytest.fixture
-async def ray_create_mars_cluster(request):
+async def ray_create_mars_cluster(request, check_router_cleaned):
     from mars.deploy.oscar.ray import new_cluster, _load_config
 
     ray_config = _load_config()
@@ -177,11 +187,10 @@ def stop_mars():
         import mars
 
         mars.stop_server()
-        Router.set_instance(None)
 
 
 @pytest.fixture(scope="module")
-def _new_test_session():
+def _new_test_session(check_router_cleaned):
     from .deploy.oscar.tests.session import new_test_session
 
     sess = new_test_session(
@@ -200,7 +209,7 @@ def _new_test_session():
 
 
 @pytest.fixture(scope="module")
-def _new_integrated_test_session():
+def _new_integrated_test_session(check_router_cleaned):
     from .deploy.oscar.tests.session import new_test_session
 
     sess = new_test_session(
@@ -234,7 +243,7 @@ def _new_integrated_test_session():
 
 
 @pytest.fixture(scope="module")
-def _new_gpu_test_session():  # pragma: no cover
+def _new_gpu_test_session(check_router_cleaned):  # pragma: no cover
     from .deploy.oscar.tests.session import new_test_session
     from .resource import cuda_count
 

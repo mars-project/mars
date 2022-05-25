@@ -30,7 +30,6 @@ from ..... import tensor as mt
 from .....core import Tileable, TileableGraph, TileableGraphBuilder
 from .....core.operand import Fetch
 from .....oscar.backends.allocate_strategy import MainPool
-from .....oscar.backends.router import Router
 from .....resource import Resource
 from .....storage import StorageLevel
 from .....utils import Timer, merge_chunks
@@ -101,7 +100,6 @@ async def actor_pool(request):
             await MockStorageAPI.cleanup(pool.external_address)
             await MockClusterAPI.cleanup(pool.external_address)
             await MockMutableAPI.cleanup(session_id, pool.external_address)
-            Router.set_instance(None)
 
 
 async def _merge_data(

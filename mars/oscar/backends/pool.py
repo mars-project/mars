@@ -1202,6 +1202,10 @@ class MainActorPoolBase(ActorPoolBase):
 
     @implements(AbstractActorPool.stop)
     async def stop(self):
+        global_router = Router.get_instance()
+        if global_router is not None:
+            global_router.remove_router(self._router)
+
         # turn off auto recover to avoid errors
         self._auto_recover = False
         self._stopped.set()

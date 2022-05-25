@@ -20,7 +20,6 @@ import pandas as pd
 
 from .... import dataframe as md
 from .... import tensor as mt
-from ....oscar.backends.router import Router
 from ....oscar.errors import ServerClosed
 from ....remote import spawn
 from ....services.tests.fault_injection_manager import (
@@ -51,11 +50,8 @@ async def fault_cluster(request):
         n_worker=2,
         n_cpu=2,
     )
-    try:
-        async with client:
-            yield client
-    finally:
-        Router.set_instance(None)
+    async with client:
+        yield client
 
 
 async def create_fault_injection_manager(

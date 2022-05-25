@@ -17,7 +17,6 @@ import pytest
 from collections import defaultdict
 from typing import Tuple, List
 from ..... import oscar as mo
-from .....oscar.backends.router import Router
 from .....resource import Resource
 from ....cluster import ClusterAPI
 from ....cluster.core import NodeRole, NodeStatus
@@ -187,7 +186,6 @@ async def actor_pool():
             yield pool, session_id, cluster_api, queueing_ref, slots_ref, manager_ref
         finally:
             await mo.destroy_actor(queueing_ref)
-            Router.set_instance(None)
 
 
 async def _queue_subtasks(num_subtasks, expect_bands, queueing_ref):

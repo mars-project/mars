@@ -20,7 +20,6 @@ import time
 import pytest
 
 from ..... import oscar as mo
-from .....oscar.backends.router import Router
 from .....tests.core import mock
 from .....utils import get_next_port
 from ...worker import QuotaActor, MemQuotaActor, BandSlotManagerActor
@@ -49,7 +48,6 @@ async def actor_pool():
         yield pool
     finally:
         await pool.stop()
-        Router.set_instance(None)
 
 
 @pytest.mark.asyncio

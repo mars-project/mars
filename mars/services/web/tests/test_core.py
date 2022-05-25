@@ -20,7 +20,6 @@ import pytest
 from tornado import httpclient
 
 from .... import oscar as mo
-from ....oscar.backends.router import Router
 from ....utils import get_next_port
 from .. import WebActor, web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from ..api.web import MarsApiEntryHandler
@@ -70,21 +69,18 @@ async def actor_pool():
     pool = await mo.create_actor_pool(
         "127.0.0.1", n_process=0, subprocess_start_method=start_method
     )
-    try:
-        async with pool:
-            web_config = {
-                "host": "127.0.0.1",
-                "port": get_next_port(),
-                "web_handlers": {
-                    "/api": MarsApiEntryHandler,
-                    TestAPIHandler.get_root_pattern(): TestAPIHandler,
-                },
-                "extra_discovery_modules": ["mars.services.web.tests.extra_handler"],
-            }
-            await mo.create_actor(WebActor, web_config, address=pool.external_address)
-            yield pool, web_config["port"]
-    finally:
-        Router.set_instance(None)
+    async with pool:
+        web_config = {
+            "host": "127.0.0.1",
+            "port": get_next_port(),
+            "web_handlers": {
+                "/api": MarsApiEntryHandler,
+                TestAPIHandler.get_root_pattern(): TestAPIHandler,
+            },
+            "extra_discovery_modules": ["mars.services.web.tests.extra_handler"],
+        }
+        await mo.create_actor(WebActor, web_config, address=pool.external_address)
+        yield pool, web_config["port"]
 
 
 class SimpleWebClient(MarsWebAPIClientMixin):
