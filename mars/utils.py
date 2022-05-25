@@ -1698,3 +1698,41 @@ def ensure_coverage():
             pass
         else:
             cleanup_on_sigterm()
+
+
+def retry_callable(
+    callable_,
+    ex_type: type = Exception,
+    wait_interval=1,
+    max_retries=-1,
+    sync: bool = None,
+):
+    if inspect.iscoroutinefunction(callable_) or sync is False:
+
+        @functools.wraps(callable)
+        async def retry_call(*args, **kwargs):
+            num_retried = 0
+            while max_retries < 0 or num_retried < max_retries:
+                num_retried += 1
+                try:
+                    return await callable_(*args, **kwargs)
+                except ex_type:
+                    await asyncio.sleep(wait_interval)
+
+    else:
+
+        @functools.wraps(callable)
+        def retry_call(*args, **kwargs):
+            num_retried = 0
+            ex = None
+            while max_retries < 0 or num_retried < max_retries:
+                num_retried += 1
+                try:
+                    return callable_(*args, **kwargs)
+                except ex_type as e:
+                    ex = e
+                    time.sleep(wait_interval)
+            assert ex is not None
+            raise ex
+
+    return retry_call
