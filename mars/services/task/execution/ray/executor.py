@@ -312,7 +312,7 @@ class RayTaskExecutor(TaskExecutor):
             # Make sure the monitor task is cancelled.
             monitor_task.cancel()
             # Just use `self._cur_stage_tile_progress` as current stage progress
-            # because current stage is finished, its progress is 1.0.
+            # because current stage is completed, its progress is 1.0.
             self._cur_stage_progress = 1.0
             self._pre_all_stages_progress += self._cur_stage_tile_progress
             self._cur_stage_first_output_object_ref_to_subtask.clear()
@@ -535,29 +535,29 @@ class RayTaskExecutor(TaskExecutor):
     ):
         object_ref_to_subtask = self._cur_stage_first_output_object_ref_to_subtask
         total = len(subtask_graph)
-        finish_subtasks = OrderedSet()
+        completed_subtasks = OrderedSet()
 
         def gc():
             """
-            Consume the finish subtasks and collect GC.
+            Consume the completed subtasks and collect GC.
 
             GC the output object refs of the subtask which successors are submitted
-            (not finish as above) can reduce the memory peaks, but we can't cancel and
-            rerun slow subtasks because the input object refs of running subtasks may
-            be deleted.
+            (not completed as above) can reduce the memory peaks, but we can't cancel
+            and rerun slow subtasks because the input object refs of running subtasks
+            may be deleted.
             """
             i = 0
 
             while i < total:
-                while i >= len(finish_subtasks):
+                while i >= len(completed_subtasks):
                     yield
-                # Iterate the finish subtasks once.
-                subtask = finish_subtasks[i]
+                # Iterate the completed subtasks once.
+                subtask = completed_subtasks[i]
                 i += 1
                 logger.debug("GC collect: %s", subtask)
                 for pred in subtask_graph.iter_predecessors(subtask):
                     while not all(
-                        succ in finish_subtasks
+                        succ in completed_subtasks
                         for succ in subtask_graph.iter_successors(pred)
                     ):
                         yield
@@ -570,11 +570,11 @@ class RayTaskExecutor(TaskExecutor):
 
         collect_gc = gc()
 
-        while len(finish_subtasks) != total:
+        while len(completed_subtasks) != total:
             if len(object_ref_to_subtask) <= 0:
                 await asyncio.sleep(interval_seconds)
 
-            # Only wait for unfinished subtask object refs.
+            # Only wait for unready subtask object refs.
             ready_objects, _ = await asyncio.to_thread(
                 ray.wait,
                 list(object_ref_to_subtask.keys()),
@@ -586,11 +586,11 @@ class RayTaskExecutor(TaskExecutor):
                 await asyncio.sleep(interval_seconds)
                 continue
 
-            # Pop the finish subtasks from object_ref_to_subtask.
-            finish_subtasks.update(map(object_ref_to_subtask.pop, ready_objects))
+            # Pop the completed subtasks from object_ref_to_subtask.
+            completed_subtasks.update(map(object_ref_to_subtask.pop, ready_objects))
             # Update progress.
             stage_progress = (
-                len(finish_subtasks) / total * self._cur_stage_tile_progress
+                len(completed_subtasks) / total * self._cur_stage_tile_progress
             )
             self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
             # Collect GC, use for ... in ... to avoid raising StopIteration.
