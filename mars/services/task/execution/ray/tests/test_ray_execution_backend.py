@@ -243,7 +243,7 @@ async def test_ray_remote_object(ray_start_regular_shared2):
 
 
 @require_ray
-def test_get_chunks_result(ray_start_regular_shared2):
+def test_ray_execution_context(ray_start_regular_shared2):
     value = 123
     o = ray.put(value)
 
@@ -252,9 +252,15 @@ def test_get_chunks_result(ray_start_regular_shared2):
 
     with mock.patch.object(ThreadedServiceContext, "__init__", new=fake_init):
         mock_config = RayExecutionConfig.from_execution_config({"backend": "ray"})
-        context = RayExecutionContext(mock_config, {"abc": o}, {}, [], lambda: None)
+        mock_worker_addresses = ["mock_worker_address"]
+        context = RayExecutionContext(
+            mock_config, {"abc": o}, {}, mock_worker_addresses, lambda: None
+        )
         r = context.get_chunks_result(["abc"])
         assert r == [value]
+
+        r = context.get_worker_addresses()
+        assert r == mock_worker_addresses
 
 
 def test_ray_execution_worker_context():
