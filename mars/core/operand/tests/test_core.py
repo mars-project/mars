@@ -134,10 +134,10 @@ def test_post_execute(setup):
 
 
 def test_shuffle(setup):
-    import mars.dataframe as md
+    from ....dataframe import DataFrame
 
     chunk_size, n_rows = 10, 100
-    df = md.DataFrame(
+    df = DataFrame(
         pd.DataFrame(np.random.rand(n_rows, 3), columns=list("abc")),
         chunk_size=chunk_size,
     )

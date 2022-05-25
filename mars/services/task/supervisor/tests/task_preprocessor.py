@@ -183,7 +183,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
             if proxy_chunks:
                 assert len(proxy_chunks) == 1, proxy_chunks
                 proxy_chunk_key = proxy_chunks[0].key
-                [proxy_chunk] = [c for c in chunk_graph if c.key == proxy_chunk_key]
+                proxy_chunk = next(c for c in chunk_graph if c.key == proxy_chunk_key)
                 reducer_chunks = chunk_graph.successors(proxy_chunk)
                 n_reducers_list = [c.op.n_reducers for c in reducer_chunks]
                 n_reducers = n_reducers_list[0]
