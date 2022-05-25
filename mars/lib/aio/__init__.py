@@ -26,17 +26,3 @@ if sys.version_info[:2] < (3, 9):
     from ._threads import to_thread
 
     asyncio.to_thread = to_thread
-
-
-if sys.version_info[:2] < (3, 7):
-    # patch run and get_running_loop etc for python 3.6
-    from ._runners import get_running_loop, run
-
-    asyncio.run = run
-    asyncio.get_running_loop = get_running_loop
-    asyncio.create_task = asyncio.ensure_future
-
-    # patch async generator
-    from async_generator import asynccontextmanager
-
-    contextlib.asynccontextmanager = asynccontextmanager

@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from types import TracebackType
 from typing import List
 
-from ....utils import get_next_port, dataslots, ensure_coverage, reset_id_random_seed
+from ....utils import dataslots, ensure_coverage, reset_id_random_seed
 from ..config import ActorPoolConfig
 from ..message import CreateActorMessage
 from ..pool import MainActorPoolBase, SubActorPoolBase, _register_message_handler
@@ -70,6 +70,7 @@ logger = logging.getLogger(__name__)
 class SubpoolStatus:
     # for status, 0 is succeeded, 1 is failed
     status: int = None
+    external_addresses: List[str] = None
     error: BaseException = None
     traceback: TracebackType = None
 
@@ -94,7 +95,7 @@ class MainActorPool(MainActorPoolBase):
                     )
                 sub_ports = ports
             else:
-                sub_ports = [get_next_port() for _ in range(n_process)]
+                sub_ports = [0] * n_process
         else:
             host = address
             if ports and len(ports) != n_process + 1:
@@ -106,7 +107,7 @@ class MainActorPool(MainActorPoolBase):
                     f"n_process + 1: {n_process + 1}"
                 )
             elif not ports:
-                ports = [get_next_port() for _ in range(n_process + 1)]
+                ports = [0] * (n_process + 1)
             port = ports[0]
             sub_ports = ports[1:]
         return [f"{host}:{port}" for port in [port] + sub_ports]
@@ -149,13 +150,15 @@ class MainActorPool(MainActorPoolBase):
     @classmethod
     async def wait_sub_pools_ready(cls, create_pool_tasks: List[asyncio.Task]):
         processes = []
+        ext_addresses = []
         for task in create_pool_tasks:
             process, status = await task
             if status.status == 1:
                 # start sub pool failed
                 raise status.error.with_traceback(status.traceback)
             processes.append(process)
-        return processes
+            ext_addresses.append(status.external_addresses)
+        return processes, ext_addresses
 
     @classmethod
     def _start_sub_pool(
@@ -204,13 +207,17 @@ class MainActorPool(MainActorPoolBase):
     ):
         process_status = None
         try:
-            env = actor_config.get_pool_config(process_index)["env"]
+            cur_pool_config = actor_config.get_pool_config(process_index)
+            env = cur_pool_config["env"]
             if env:
                 os.environ.update(env)
             pool = await SubActorPool.create(
                 {"actor_pool_config": actor_config, "process_index": process_index}
             )
-            process_status = SubpoolStatus(status=0)
+            external_addresses = cur_pool_config["external_address"]
+            process_status = SubpoolStatus(
+                status=0, external_addresses=external_addresses
+            )
             await pool.start()
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
             _, error, tb = sys.exc_info()
@@ -255,7 +262,7 @@ class MainActorPool(MainActorPoolBase):
         task = asyncio.create_task(
             self.start_sub_pool(self._config, process_index, "spawn")
         )
-        self.sub_processes[address] = (await self.wait_sub_pools_ready([task]))[0]
+        self.sub_processes[address] = (await self.wait_sub_pools_ready([task]))[0][0]
 
         if self._auto_recover == "actor":
             # need to recover all created actors

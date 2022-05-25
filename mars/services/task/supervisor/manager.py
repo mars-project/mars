@@ -18,7 +18,7 @@ import logging
 import time
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, List, Type
 
 from .... import oscar as mo
 from ....core import TileableGraph, TileableType, enter_mode, TileContext
@@ -60,14 +60,14 @@ class TaskConfigurationActor(mo.Actor):
 @dataclass
 class ResultTileableInfo:
     tileable: TileableType
-    processor_ref: Union[TaskProcessorActor, mo.ActorRef]
+    processor_ref: mo.ActorRefType[TaskProcessorActor]
 
 
 class TaskManagerActor(mo.Actor):
     _task_name_to_parent_task_id: Dict[str, str]
     _task_name_to_task_ids: Dict[str, List[str]]
 
-    _task_id_to_processor_ref: Dict[str, Union[TaskProcessorActor, mo.ActorRef]]
+    _task_id_to_processor_ref: Dict[str, mo.ActorRefType[TaskProcessorActor]]
     _tileable_key_to_info: Dict[str, List[ResultTileableInfo]]
 
     def __init__(self, session_id: str):

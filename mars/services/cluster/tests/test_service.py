@@ -18,6 +18,7 @@ import os
 import pytest
 
 from .... import oscar as mo
+from ....oscar.backends.router import Router
 from ....storage import StorageLevel
 from ... import start_services, stop_services, NodeRole
 from .. import ClusterAPI, WorkerSlotInfo, QuotaInfo, StorageInfo, DiskInfo
@@ -31,8 +32,11 @@ async def actor_pools():
         return pool
 
     sv_pool, worker_pool = await asyncio.gather(start_pool(), start_pool())
-    yield sv_pool, worker_pool
-    await asyncio.gather(sv_pool.stop(), worker_pool.stop())
+    try:
+        yield sv_pool, worker_pool
+    finally:
+        await asyncio.gather(sv_pool.stop(), worker_pool.stop())
+        Router.set_instance(None)
 
 
 @pytest.mark.asyncio

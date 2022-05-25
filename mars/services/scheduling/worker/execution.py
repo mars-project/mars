@@ -20,7 +20,7 @@ import pprint
 import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 from .... import oscar as mo
 from ....core import ExecutionError
@@ -171,13 +171,13 @@ class SubtaskExecutionActor(mo.StatelessActor):
     @alru_cache(cache_exceptions=False)
     async def _get_slot_manager_ref(
         self, band: str
-    ) -> Union[mo.ActorRef, BandSlotManagerActor]:
+    ) -> mo.ActorRefType[BandSlotManagerActor]:
         return await mo.actor_ref(
             BandSlotManagerActor.gen_uid(band), address=self.address
         )
 
     @alru_cache(cache_exceptions=False)
-    async def _get_band_quota_ref(self, band: str) -> Union[mo.ActorRef, QuotaActor]:
+    async def _get_band_quota_ref(self, band: str) -> mo.ActorRefType[QuotaActor]:
         return await mo.actor_ref(QuotaActor.gen_uid(band), address=self.address)
 
     async def _prepare_input_data(self, subtask: Subtask, band_name: str):

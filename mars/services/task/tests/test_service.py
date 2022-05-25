@@ -25,6 +25,7 @@ from .... import remote as mr
 from .... import tensor as mt
 from ....core import TileableGraph, TileableGraphBuilder, TileStatus, recursive_tile
 from ....core.context import get_context
+from ....oscar.backends.router import Router
 from ....resource import Resource
 from ....tensor.core import TensorOrder
 from ....tensor.operands import TensorOperand, TensorOperandMixin
@@ -60,6 +61,7 @@ async def actor_pools():
         yield sv_pool, worker_pool
     finally:
         await asyncio.gather(sv_pool.stop(), worker_pool.stop())
+        Router.set_instance(None)
 
 
 async def _start_services(
@@ -128,6 +130,7 @@ async def start_test_service(actor_pools, request):
         await MockStorageAPI.cleanup(worker_pool.external_address)
         await stop_services(NodeRole.WORKER, config, worker_pool.external_address)
         await stop_services(NodeRole.SUPERVISOR, config, sv_pool.external_address)
+        Router.set_instance(None)
 
 
 class MockTaskProcessor(TaskProcessor):
@@ -158,6 +161,7 @@ async def start_test_service_with_mock(actor_pools, request):
         await MockStorageAPI.cleanup(worker_pool.external_address)
         await stop_services(NodeRole.WORKER, config, worker_pool.external_address)
         await stop_services(NodeRole.SUPERVISOR, config, sv_pool.external_address)
+        Router.set_instance(None)
 
 
 @pytest.mark.asyncio

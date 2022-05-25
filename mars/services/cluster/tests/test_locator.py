@@ -20,6 +20,7 @@ from typing import List
 import pytest
 
 from .... import oscar as mo
+from ....oscar.backends.router import Router
 from ....utils import Timer
 from ....tests.core import flaky
 from ..core import NodeRole, NodeStatus
@@ -63,8 +64,11 @@ async def actor_pool():
         address=pool.external_address,
     )
 
-    yield pool
-    await pool.stop()
+    try:
+        yield pool
+    finally:
+        await pool.stop()
+        Router.set_instance(None)
 
 
 @pytest.mark.asyncio

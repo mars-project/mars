@@ -24,6 +24,7 @@ from .... import oscar as mo
 from .... import remote as mr
 from .... import tensor as mt
 from ....core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from ....oscar.backends.router import Router
 from ....resource import Resource
 from ... import start_services, stop_services, NodeRole
 from ...session import SessionAPI
@@ -158,6 +159,7 @@ async def actor_pools():
         )
 
         await asyncio.gather(sv_pool.stop(), worker_pool.stop())
+        Router.set_instance(None)
 
 
 async def _get_subtask_summaries_by_web(sv_pool_address, session_id, task_id=None):

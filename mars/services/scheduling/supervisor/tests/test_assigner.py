@@ -18,6 +18,7 @@ import pytest
 
 from ..... import oscar as mo
 from .....core import ChunkGraph
+from .....oscar.backends.router import Router
 from .....tensor.fetch import TensorFetch
 from .....tensor.arithmetic import TensorTreeAdd
 from ....cluster import ClusterAPI
@@ -119,9 +120,11 @@ async def actor_pool(request):
             address=pool.external_address,
         )
 
-        yield pool, session_id, assigner_ref, cluster_api, meta_api
-
-        await mo.destroy_actor(assigner_ref)
+        try:
+            yield pool, session_id, assigner_ref, cluster_api, meta_api
+        finally:
+            await mo.destroy_actor(assigner_ref)
+            Router.set_instance(None)
 
 
 @pytest.mark.asyncio

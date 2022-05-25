@@ -22,6 +22,7 @@ import pytest
 
 from .... import oscar as mo
 from ....oscar.backends.allocate_strategy import IdleLabel
+from ....oscar.backends.router import Router
 from ....storage import StorageLevel
 from ..core import DataManagerActor, StorageManagerActor, StorageQuotaActor
 from ..errors import DataNotExist
@@ -51,9 +52,12 @@ async def actor_pools():
 
     worker_pool_1 = await start_pool()
     worker_pool_2 = await start_pool()
-    yield worker_pool_1, worker_pool_2
-    await worker_pool_1.stop()
-    await worker_pool_2.stop()
+    try:
+        yield worker_pool_1, worker_pool_2
+    finally:
+        await worker_pool_1.stop()
+        await worker_pool_2.stop()
+        Router.set_instance(None)
 
 
 @pytest.fixture

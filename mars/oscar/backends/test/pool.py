@@ -17,7 +17,7 @@ import multiprocessing
 from typing import List, Dict
 
 from ..config import ActorPoolConfig
-from ..communication import gen_local_address, get_server_type, DummyServer
+from ..communication import gen_local_address, DummyServer
 from ..mars.pool import MainActorPool, SubActorPool, SubpoolStatus
 from ..pool import ActorPoolType
 
@@ -45,13 +45,23 @@ class TestMainActorPool(MainActorPool):
         start_method: str = None,
     ):
         status_queue = multiprocessing.Queue()
-        return asyncio.create_task(
-            cls._create_sub_pool(actor_pool_config, process_index, status_queue)
+        return (
+            asyncio.create_task(
+                cls._create_sub_pool(actor_pool_config, process_index, status_queue)
+            ),
+            status_queue,
         )
 
     @classmethod
     async def wait_sub_pools_ready(cls, create_pool_tasks: List[asyncio.Task]):
-        return [await t for t in create_pool_tasks]
+        addresses = []
+        tasks = []
+        for t in create_pool_tasks:
+            pool_task, queue = await t
+            tasks.append(pool_task)
+            status = await asyncio.to_thread(queue.get)
+            addresses.append(status.external_addresses)
+        return tasks, addresses
 
     @classmethod
     async def _create_sub_pool(
@@ -64,8 +74,15 @@ class TestMainActorPool(MainActorPool):
             {"actor_pool_config": actor_config, "process_index": process_index}
         )
         await pool.start()
-        status_queue.put(SubpoolStatus(0))
+        status_queue.put(
+            SubpoolStatus(status=0, external_addresses=[pool.external_address])
+        )
+        actor_config.reset_pool_external_address(process_index, [pool.external_address])
         await pool.join()
+
+    def _sync_pool_config(self, actor_pool_config: ActorPoolConfig):
+        # test pool does not create routers, thus can skip this step
+        pass
 
     async def kill_sub_pool(
         self, process: multiprocessing.Process, force: bool = False
@@ -77,12 +94,16 @@ class TestMainActorPool(MainActorPool):
 
 
 class TestSubActorPool(SubActorPool):
+    def _sync_pool_config(self, actor_pool_config: ActorPoolConfig):
+        # test pool does not create routers, thus can skip this step
+        pass
+
     @classmethod
     async def create(cls, config: Dict) -> ActorPoolType:
         kw = dict()
         cls._parse_config(config, kw)
         process_index: int = kw["process_index"]
-        actor_pool_config = kw["config"]
+        actor_pool_config = kw["config"]  # type: ActorPoolConfig
         external_addresses = actor_pool_config.get_pool_config(process_index)[
             "external_address"
         ]
@@ -91,15 +112,10 @@ class TestSubActorPool(SubActorPool):
             return pool.on_new_channel(channel)
 
         # create servers
-        create_server_tasks = []
-        for addr in set(external_addresses + [gen_local_address(process_index)]):
-            server_type = get_server_type(addr)
-            task = asyncio.create_task(
-                server_type.create(dict(address=addr, handle_channel=handle_channel))
-            )
-            create_server_tasks.append(task)
-        await asyncio.gather(*create_server_tasks)
-        kw["servers"] = [f.result() for f in create_server_tasks]
+        server_addresses = external_addresses + [gen_local_address(process_index)]
+        server_addresses = sorted(set(server_addresses))
+        servers = await cls._create_servers(server_addresses, handle_channel)
+        cls._update_stored_addresses(servers, server_addresses, actor_pool_config, kw)
 
         # create pool
         pool = cls(**kw)

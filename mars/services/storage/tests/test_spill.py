@@ -21,6 +21,7 @@ import numpy as np
 import pytest
 
 from .... import oscar as mo
+from ....oscar.backends.router import Router
 from ....storage import StorageLevel, PlasmaStorage
 from ....utils import calc_data_size
 from ..core import StorageManagerActor, StorageQuotaActor, build_data_info
@@ -53,8 +54,11 @@ async def actor_pool():
         return pool
 
     worker_pool = await start_pool()
-    yield worker_pool
-    await worker_pool.stop()
+    try:
+        yield worker_pool
+    finally:
+        await worker_pool.stop()
+        Router.set_instance(None)
 
 
 def _build_storage_config():
