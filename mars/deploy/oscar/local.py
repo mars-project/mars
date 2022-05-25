@@ -25,6 +25,7 @@ import numpy as np
 from ... import oscar as mo
 from ...core.entrypoints import init_extension_entrypoints
 from ...lib.aio import get_isolation, stop_isolation
+from ...oscar.backends.router import Router
 from ...resource import cpu_count, cuda_count, mem_total
 from ...services import NodeRole
 from ...services.task.execution.api import ExecutionConfig
@@ -128,6 +129,7 @@ async def stop_cluster(cluster: ClusterType):
     isolation = get_isolation()
     coro = cluster.stop()
     await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(coro, isolation.loop))
+    Router.set_instance(None)
 
 
 class LocalCluster:
@@ -287,6 +289,7 @@ class LocalCluster:
         await self._supervisor_pool.stop()
         AbstractSession.reset_default()
         self._exiting_check_task.cancel()
+        Router.set_instance(None)
 
 
 class LocalClient:

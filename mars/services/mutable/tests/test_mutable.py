@@ -21,7 +21,6 @@ import numpy as np
 
 from ....deploy.oscar.local import new_cluster
 from ....deploy.oscar.session import AsyncSession, SyncSession
-from ....oscar.backends.router import Router
 from ..core import MutableTensor
 from ..utils import normalize_timestamp
 
@@ -32,11 +31,8 @@ _is_windows = sys.platform.lower().startswith("win")
 @pytest.fixture
 async def create_cluster():
     client = await new_cluster(n_worker=2, n_cpu=2, web=True)
-    try:
-        async with client:
-            yield client
-    finally:
-        Router.set_instance(None)
+    async with client:
+        yield client
 
 
 @pytest.mark.skipif(_is_windows, reason="FIXME")

@@ -15,7 +15,6 @@
 import pytest
 
 from .... import oscar as mo
-from ....oscar.backends.router import Router
 from ..procinfo import ProcessInfoManagerActor
 
 
@@ -24,12 +23,8 @@ async def actor_pool():
     pool = await mo.create_actor_pool(
         "127.0.0.1", n_process=2, labels=["main", "numa-0", "gpu-0"]
     )
-    await pool.start()
-    try:
+    async with pool:
         yield pool
-    finally:
-        await pool.stop()
-        Router.set_instance(None)
 
 
 @pytest.mark.asyncio

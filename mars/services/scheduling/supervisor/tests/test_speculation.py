@@ -24,7 +24,6 @@ from ...errors import NoAvailableBand
 from ...supervisor import GlobalResourceManagerActor
 from ..manager import SubtaskScheduleInfo
 from ..speculation import SpeculativeScheduler
-from .....oscar.backends.router import Router
 
 
 class MockSubtaskQueueingActor(mo.Actor):
@@ -76,7 +75,6 @@ async def actor_pool():
         finally:
             await mo.destroy_actor(queue_ref)
             await MockClusterAPI.cleanup(pool.external_address)
-            Router.set_instance(None)
 
 
 @pytest.mark.asyncio
