@@ -36,7 +36,7 @@ from ...services.cluster.backends.base import (
     AbstractClusterBackend,
 )
 from ...services import NodeRole
-from ...utils import lazy_import
+from ...utils import lazy_import, retry_callable
 from ..utils import (
     load_config,
     get_third_party_modules_from_config,
@@ -273,8 +273,10 @@ class ClusterStateActor(mo.StatelessActor):
         async def _reconstruct_worker():
             logger.info("Reconstruct worker %s", address)
             actor = ray.get_actor(address)
-            # set `max_retries=-1` to make task pending when actor is restarting
-            state = await actor.state.options(max_task_retries=-1).remote()
+            # ray call will error when actor is restarting
+            state = await retry_callable(
+                actor.state.remote, ex_type=ray.exceptions.RayActorError, sync=False
+            )()
             if state == RayPoolState.SERVICE_READY:
                 logger.info("Worker %s is service ready.")
                 return

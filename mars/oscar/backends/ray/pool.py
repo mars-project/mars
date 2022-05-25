@@ -28,7 +28,7 @@ from typing import List, Optional
 
 from ... import ServerClosed
 from ....serialization.ray import register_ray_serializers
-from ....utils import lazy_import, ensure_coverage
+from ....utils import lazy_import, ensure_coverage, retry_callable
 from ..config import ActorPoolConfig
 from ..message import CreateActorMessage
 from ..pool import (
@@ -153,8 +153,10 @@ class RayMainActorPool(MainActorPoolBase):
 
     async def recover_sub_pool(self, address: str):
         process = self.sub_processes[address]
-        # set `max_retries=-1` to make task pending when actor is restarting
-        await process.state.options(max_task_retries=-1).remote()
+        # ray call will error when actor is restarting
+        await retry_callable(
+            process.state.remote, ex_type=ray.exceptions.RayActorError, sync=False
+        )()
         await process.start.remote()
 
         if self._auto_recover == "actor":

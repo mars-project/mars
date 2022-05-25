@@ -18,6 +18,7 @@ import copy
 import logging
 import multiprocessing
 import os
+import random
 import shutil
 import sys
 import tempfile
@@ -616,3 +617,37 @@ def test_get_func_token_values():
 def test_gen_random_id(id_length):
     rnd_id = utils.new_random_id(id_length)
     assert len(rnd_id) == id_length
+
+
+@pytest.mark.asyncio
+async def test_retry_callable():
+    assert utils.retry_callable(lambda x: x)(1) == 1
+    assert utils.retry_callable(lambda x: 0)(1) == 0
+
+    class CustomException(BaseException):
+        pass
+
+    def f1(x):
+        nonlocal num_retried
+        num_retried += 1
+        if num_retried == 3:
+            return x
+        raise CustomException
+
+    num_retried = 0
+    with pytest.raises(CustomException):
+        utils.retry_callable(f1)(1)
+    assert utils.retry_callable(f1, ex_type=CustomException)(1) == 1
+    num_retried = 0
+    with pytest.raises(CustomException):
+        utils.retry_callable(f1, max_retries=2, ex_type=CustomException)(1)
+    num_retried = 0
+    assert utils.retry_callable(f1, max_retries=3, ex_type=CustomException)(1) == 1
+
+    async def f2(x):
+        return f1(x)
+
+    num_retried = 0
+    with pytest.raises(CustomException):
+        await utils.retry_callable(f2)(1)
+    assert await utils.retry_callable(f2, ex_type=CustomException)(1) == 1
