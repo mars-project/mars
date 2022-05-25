@@ -119,9 +119,10 @@ async def actor_pool(request):
             address=pool.external_address,
         )
 
-        yield pool, session_id, assigner_ref, cluster_api, meta_api
-
-        await mo.destroy_actor(assigner_ref)
+        try:
+            yield pool, session_id, assigner_ref, cluster_api, meta_api
+        finally:
+            await mo.destroy_actor(assigner_ref)
 
 
 @pytest.mark.asyncio

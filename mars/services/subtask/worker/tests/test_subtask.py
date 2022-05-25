@@ -26,7 +26,6 @@ from ..... import remote as mr
 from .....core import ExecutionError
 from .....core.context import get_context
 from .....core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-
 from .....resource import Resource
 from .....utils import Timer
 from ....cluster import MockClusterAPI

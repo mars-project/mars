@@ -18,10 +18,10 @@ import os
 import sys
 import tempfile
 import pkgutil
-import pytest
 
 import numpy as np
 import pandas as pd
+import pytest
 import scipy.sparse as sps
 
 from ...lib.filesystem import LocalFileSystem

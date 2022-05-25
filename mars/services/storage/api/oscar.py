@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import sys
-from typing import Any, List, Type, TypeVar, Union
+from typing import Any, List, Type, TypeVar
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
@@ -33,8 +33,8 @@ APIType = TypeVar("APIType", bound="StorageAPI")
 
 
 class StorageAPI(AbstractStorageAPI):
-    _storage_handler_ref: Union[StorageHandlerActor, mo.ActorRef]
-    _data_manager_ref: Union[DataManagerActor, mo.ActorRef]
+    _storage_handler_ref: mo.ActorRefType[StorageHandlerActor]
+    _data_manager_ref: mo.ActorRefType[DataManagerActor]
 
     def __init__(self, address: str, session_id: str, band_name: str):
         self._address = address

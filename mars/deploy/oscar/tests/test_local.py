@@ -631,11 +631,11 @@ def setup_session():
     session = new_session(n_cpu=2, use_uvloop=False)
     assert session.get_web_endpoint() is not None
 
-    with session:
-        with option_context({"show_progress": False}):
+    try:
+        with session, option_context({"show_progress": False}):
             yield session
-
-    session.stop_server()
+    finally:
+        session.stop_server()
 
 
 def test_decref(setup_session):

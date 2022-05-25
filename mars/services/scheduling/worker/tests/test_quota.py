@@ -16,7 +16,6 @@ import asyncio
 import os
 import sys
 import time
-from typing import Union
 
 import pytest
 
@@ -24,8 +23,6 @@ from ..... import oscar as mo
 from .....tests.core import mock
 from .....utils import get_next_port
 from ...worker import QuotaActor, MemQuotaActor, BandSlotManagerActor
-
-QuotaActorRef = Union[QuotaActor, mo.ActorRef]
 
 
 class MockBandSlotManagerActor(mo.Actor):
@@ -47,8 +44,10 @@ async def actor_pool():
         subprocess_start_method=start_method,
     )
     await pool.start()
-    yield pool
-    await pool.stop()
+    try:
+        yield pool
+    finally:
+        await pool.stop()
 
 
 @pytest.mark.asyncio
@@ -59,7 +58,7 @@ async def test_quota(actor_pool):
         300,
         uid=QuotaActor.gen_uid("cpu-0"),
         address=actor_pool.external_address,
-    )  # type: QuotaActorRef
+    )  # type: mo.ActorRefType[QuotaActor]
 
     # test quota options with non-existing keys
     await quota_ref.hold_quotas(["non_exist"])
@@ -118,7 +117,7 @@ async def test_batch_quota_allocation(actor_pool):
         300,
         uid=QuotaActor.gen_uid("cpu-0"),
         address=actor_pool.external_address,
-    )  # type: QuotaActorRef
+    )  # type: mo.ActorRefType[QuotaActor]
 
     end_time = []
 
@@ -160,7 +159,7 @@ async def test_mem_quota_allocation(actor_pool, enable_kill_slot):
         enable_kill_slot=enable_kill_slot,
         uid=MemQuotaActor.gen_uid("cpu-0"),
         address=actor_pool.external_address,
-    )  # type: Union[QuotaActorRef, mo.ActorRef]
+    )  # type: mo.ActorRefType[QuotaActor]
 
     with mock.patch("mars.resource.virtual_memory", new=lambda: mock_mem_stat):
         time_recs = [time.time()]

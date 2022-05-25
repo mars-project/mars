@@ -31,8 +31,10 @@ async def actor_pools():
         return pool
 
     sv_pool, worker_pool = await asyncio.gather(start_pool(), start_pool())
-    yield sv_pool, worker_pool
-    await asyncio.gather(sv_pool.stop(), worker_pool.stop())
+    try:
+        yield sv_pool, worker_pool
+    finally:
+        await asyncio.gather(sv_pool.stop(), worker_pool.stop())
 
 
 @pytest.mark.asyncio

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Dict, List, Any, Union
+from typing import Dict, List, Any
 
 from .... import oscar as mo
 from ....core import ChunkType
@@ -29,9 +29,7 @@ from .core import AbstractMetaAPI
 
 
 class BaseMetaAPI(AbstractMetaAPI):
-    def __init__(
-        self, session_id: str, meta_store: Union[AbstractMetaStore, mo.ActorRef]
-    ):
+    def __init__(self, session_id: str, meta_store: mo.ActorRefType[AbstractMetaStore]):
         # make sure all meta types registered
         from .. import metas
 

@@ -53,8 +53,10 @@ async def actor_pool():
         return pool
 
     worker_pool = await start_pool()
-    yield worker_pool
-    await worker_pool.stop()
+    try:
+        yield worker_pool
+    finally:
+        await worker_pool.stop()
 
 
 def _build_storage_config():

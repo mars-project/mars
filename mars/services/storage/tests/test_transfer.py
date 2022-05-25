@@ -51,9 +51,11 @@ async def actor_pools():
 
     worker_pool_1 = await start_pool()
     worker_pool_2 = await start_pool()
-    yield worker_pool_1, worker_pool_2
-    await worker_pool_1.stop()
-    await worker_pool_2.stop()
+    try:
+        yield worker_pool_1, worker_pool_2
+    finally:
+        await worker_pool_1.stop()
+        await worker_pool_2.stop()
 
 
 @pytest.fixture

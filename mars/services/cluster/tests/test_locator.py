@@ -55,16 +55,13 @@ class MockNodeInfoCollectorActor(mo.Actor):
 @pytest.fixture
 async def actor_pool():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
-    await pool.start()
-
-    await mo.create_actor(
-        MockNodeInfoCollectorActor,
-        uid=NodeInfoCollectorActor.default_uid(),
-        address=pool.external_address,
-    )
-
-    yield pool
-    await pool.stop()
+    async with pool:
+        await mo.create_actor(
+            MockNodeInfoCollectorActor,
+            uid=NodeInfoCollectorActor.default_uid(),
+            address=pool.external_address,
+        )
+        yield pool
 
 
 @pytest.mark.asyncio

@@ -326,18 +326,18 @@ cdef class CollectionSerializer(Serializer):
         cdef list obj_to_propagate = []
         cdef list obj_list = list(obj)
         cdef int64_t idx
+        cdef object item
 
         for idx in range(len(obj_list)):
             item = obj_list[idx]
-            item_type = type(item)
 
-            if (
-                (item_type is bytes or item_type is str)
-                and len(<str>item) < _MAX_STR_PRIMITIVE_LEN
-            ):
+            if type(item) is bytes and len(<bytes>item) < _MAX_STR_PRIMITIVE_LEN:
                 # treat short strings as primitives
                 continue
-            elif item_type in _primitive_types:
+            elif type(item) is str and len(<str>item) < _MAX_STR_PRIMITIVE_LEN:
+                # treat short strings as primitives
+                continue
+            elif type(item) in _primitive_types:
                 continue
 
             obj_list[idx] = None
@@ -433,6 +433,7 @@ cdef class DictSerializer(CollectionSerializer):
         context[obj_id] = obj
 
         obj_type = type(obj)
+
         if obj_type is not dict and obj_type not in self._inspected_inherits:
             inspect_init = inspect.getfullargspec(obj_type.__init__)
             if (
@@ -450,9 +451,7 @@ cdef class DictSerializer(CollectionSerializer):
 
         key_obj, key_bufs, _ = self._serial_iterable(obj.keys())
         value_obj, value_bufs, _ = self._serial_iterable(obj.values())
-        if type(obj) is not dict:
-            obj_type = type(obj)
-        else:
+        if obj_type is dict:
             obj_type = None
         ser_obj = (key_obj[:-1], value_obj[:-1], len(key_bufs), obj_type)
         return ser_obj, key_bufs + value_bufs, False

@@ -49,8 +49,10 @@ async def actor_pools():
         return pool
 
     worker_pool = await start_pool()
-    yield worker_pool
-    await worker_pool.stop()
+    try:
+        yield worker_pool
+    finally:
+        await worker_pool.stop()
 
 
 @pytest.mark.asyncio
@@ -138,8 +140,10 @@ async def actor_pools_with_gpu():
         return pool
 
     worker_pool = await start_pool()
-    yield worker_pool
-    await worker_pool.stop()
+    try:
+        yield worker_pool
+    finally:
+        await worker_pool.stop()
 
 
 @require_cupy

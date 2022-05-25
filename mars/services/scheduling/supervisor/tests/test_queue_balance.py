@@ -182,9 +182,10 @@ async def actor_pool():
             address=pool.external_address,
         )
 
-        yield pool, session_id, cluster_api, queueing_ref, slots_ref, manager_ref
-
-        await mo.destroy_actor(queueing_ref)
+        try:
+            yield pool, session_id, cluster_api, queueing_ref, slots_ref, manager_ref
+        finally:
+            await mo.destroy_actor(queueing_ref)
 
 
 async def _queue_subtasks(num_subtasks, expect_bands, queueing_ref):
