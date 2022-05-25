@@ -206,10 +206,10 @@ class DummyClient(Client):
         server = DummyServer.get_instance(dest_address)
         if server is None:  # pragma: no cover
             raise RuntimeError(
-                "DummyServer needs to be created first before DummyClient"
+                f"DummyServer {dest_address} needs to be created first before DummyClient"
             )
         if server.stopped:  # pragma: no cover
-            raise ConnectionError("Dummy server closed")
+            raise ConnectionError(f"Dummy server {dest_address} closed")
 
         q1, q2 = asyncio.Queue(), asyncio.Queue()
         closed = asyncio.Event()

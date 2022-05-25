@@ -14,10 +14,10 @@
 
 import asyncio
 import pytest
-import pytest_asyncio
 from collections import defaultdict
 from typing import Tuple, List
 from ..... import oscar as mo
+from .....oscar.backends.router import Router
 from .....resource import Resource
 from ....cluster import ClusterAPI
 from ....cluster.core import NodeRole, NodeStatus
@@ -148,7 +148,7 @@ class MockSubtaskManagerActor(mo.Actor):
         return self._submitted_subtask_ids
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 
@@ -183,9 +183,11 @@ async def actor_pool():
             address=pool.external_address,
         )
 
-        yield pool, session_id, cluster_api, queueing_ref, slots_ref, manager_ref
-
-        await mo.destroy_actor(queueing_ref)
+        try:
+            yield pool, session_id, cluster_api, queueing_ref, slots_ref, manager_ref
+        finally:
+            await mo.destroy_actor(queueing_ref)
+            Router.set_instance(None)
 
 
 async def _queue_subtasks(num_subtasks, expect_bands, queueing_ref):

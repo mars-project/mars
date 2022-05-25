@@ -14,13 +14,13 @@
 
 import os
 import pytest
-import pytest_asyncio
 import traceback
 import numpy as np
 import pandas as pd
 
 from .... import dataframe as md
 from .... import tensor as mt
+from ....oscar.backends.router import Router
 from ....oscar.errors import ServerClosed
 from ....remote import spawn
 from ....services.tests.fault_injection_manager import (
@@ -41,7 +41,7 @@ RERUN_SUBTASK_CONFIG_FILE = os.path.join(
 )
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def fault_cluster(request):
     param = getattr(request, "param", {})
     start_method = os.environ.get("POOL_START_METHOD", None)
@@ -51,8 +51,11 @@ async def fault_cluster(request):
         n_worker=2,
         n_cpu=2,
     )
-    async with client:
-        yield client
+    try:
+        async with client:
+            yield client
+    finally:
+        Router.set_instance(None)
 
 
 async def create_fault_injection_manager(

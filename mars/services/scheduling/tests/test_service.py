@@ -18,13 +18,13 @@ from collections import defaultdict
 
 import numpy as np
 import pytest
-import pytest_asyncio
 
 from ..api.web import WebSchedulingAPI
 from .... import oscar as mo
 from .... import remote as mr
 from .... import tensor as mt
 from ....core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from ....oscar.backends.router import Router
 from ....resource import Resource
 from ... import start_services, stop_services, NodeRole
 from ...session import SessionAPI
@@ -90,7 +90,7 @@ def _approx_resource(actual, expect):
     )
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pools():
     async def start_pool(is_worker: bool):
         if is_worker:
@@ -159,6 +159,7 @@ async def actor_pools():
         )
 
         await asyncio.gather(sv_pool.stop(), worker_pool.stop())
+        Router.set_instance(None)
 
 
 async def _get_subtask_summaries_by_web(sv_pool_address, session_id, task_id=None):

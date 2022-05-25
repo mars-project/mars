@@ -30,7 +30,7 @@ class MutableAPI(AbstractMutableAPI):
     def __init__(
         self,
         address: str,
-        mutable_mananger: Union[MutableObjectManagerActor, mo.ActorRef],
+        mutable_mananger: mo.ActorRefType[MutableObjectManagerActor],
     ):
         self._address = address
         self._mutable_manager_ref = mutable_mananger
@@ -46,7 +46,7 @@ class MutableAPI(AbstractMutableAPI):
     @alru_cache(cache_exceptions=False)
     async def _get_mutable_tensor_ref(
         self, name: str
-    ) -> Union[MutableTensorActor, mo.ActorRef]:
+    ) -> mo.ActorRefType[MutableTensorActor]:
         return await self._mutable_manager_ref.get_mutable_tensor(name)
 
     async def create_mutable_tensor(

@@ -23,13 +23,23 @@
 # THE SOFTWARE.
 
 import asyncio
+import os
+import weakref
 from collections import OrderedDict
 from functools import _CacheInfo, _make_key, partial, wraps
 
 
 __version__ = "1.0.2"
 
-__all__ = ("alru_cache",)
+__all__ = ("alru_cache", "clear_all_alru_caches")
+
+_is_ci = (os.environ.get("CI") or "0").lower() in ("1", "true")
+_all_wrapped = weakref.WeakSet()
+
+
+def clear_all_alru_caches():
+    for wrapped in _all_wrapped:
+        wrapped.cache_clear()
 
 
 def unpartial(fn):
@@ -206,6 +216,8 @@ def alru_cache(
         wrapped.close = partial(_close, wrapped)
         wrapped.open = partial(_open, wrapped)
 
+        if _is_ci:
+            _all_wrapped.add(wrapped)
         return wrapped
 
     if fn is None:
