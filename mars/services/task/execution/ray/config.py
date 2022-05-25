@@ -17,7 +17,7 @@ from .....resource import Resource
 from ..api import ExecutionConfig, register_config_cls
 from ..utils import get_band_resources_from_config
 
-# The default interval seconds to update progress and collect GC.
+# The default interval seconds to update progress and collect garbage.
 DEFAULT_SUBTASK_MONITOR_INTERVAL = 1
 
 
@@ -54,7 +54,7 @@ class RayExecutionConfig(ExecutionConfig):
     def get_subtask_monitor_interval(self):
         """
         The interval seconds for the monitor task to update progress and
-        collect GC.
+        collect garbage.
         """
         return self._ray_execution_config.get(
             "subtask_monitor_interval", DEFAULT_SUBTASK_MONITOR_INTERVAL

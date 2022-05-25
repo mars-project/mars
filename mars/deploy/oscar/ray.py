@@ -29,6 +29,7 @@ from ...oscar.backends.ray.utils import (
     process_address_to_placement,
 )
 from ...oscar.backends.ray.pool import RayPoolState
+from ...oscar.backends.router import Router
 from ...oscar.errors import ReconstructWorkerError
 from ...resource import Resource
 from ...services.cluster.backends.base import (
@@ -569,6 +570,7 @@ class RayCluster:
             finally:
                 AbstractSession.reset_default()
                 RayActorDriver.stop_cluster()
+                Router.set_instance(None)
             self._stopped = True
 
 

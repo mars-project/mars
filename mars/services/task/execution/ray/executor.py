@@ -300,9 +300,9 @@ class RayTaskExecutor(TaskExecutor):
             except asyncio.CancelledError:
                 pass
 
-        # Create a monitor task to update progress and collect GC.
+        # Create a monitor task to update progress and collect garbage.
         monitor_task = asyncio.create_task(
-            self._update_progress_and_collect_gc(
+            self._update_progress_and_collect_garbage(
                 subtask_graph, self._config.get_subtask_monitor_interval()
             )
         )
@@ -530,7 +530,7 @@ class RayTaskExecutor(TaskExecutor):
                 output_keys[chunk.key] = 1
         return output_keys.keys()
 
-    async def _update_progress_and_collect_gc(
+    async def _update_progress_and_collect_garbage(
         self, subtask_graph: SubtaskGraph, interval_seconds: float
     ):
         object_ref_to_subtask = self._cur_stage_first_output_object_ref_to_subtask
@@ -539,7 +539,7 @@ class RayTaskExecutor(TaskExecutor):
 
         def gc():
             """
-            Consume the completed subtasks and collect GC.
+            Consume the completed subtasks and collect garbage.
 
             GC the output object refs of the subtask which successors are submitted
             (not completed as above) can reduce the memory peaks, but we can't cancel
@@ -554,7 +554,7 @@ class RayTaskExecutor(TaskExecutor):
                 # Iterate the completed subtasks once.
                 subtask = completed_subtasks[i]
                 i += 1
-                logger.debug("Collect GC: %s", subtask)
+                logger.debug("GC: %s", subtask)
                 for pred in subtask_graph.iter_predecessors(subtask):
                     while not all(
                         succ in completed_subtasks
@@ -568,7 +568,7 @@ class RayTaskExecutor(TaskExecutor):
             # TODO(fyrestone): Check the remaining self._task_context.keys()
             # in the result subtasks
 
-        collect_gc = gc()
+        collect_garbage = gc()
 
         while len(completed_subtasks) != total:
             if len(object_ref_to_subtask) <= 0:
@@ -593,8 +593,8 @@ class RayTaskExecutor(TaskExecutor):
                 len(completed_subtasks) / total * self._cur_stage_tile_progress
             )
             self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
-            # Collect GC, use `for ... in ...` to avoid raising StopIteration.
-            for _ in collect_gc:
+            # Collect garbage, use `for ... in ...` to avoid raising StopIteration.
+            for _ in collect_garbage:
                 break
             # Fast to next loop and give it a chance to update object_ref_to_subtask.
             await asyncio.sleep(0)

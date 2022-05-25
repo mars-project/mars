@@ -35,7 +35,6 @@ from .... import remote as mr
 from ....config import option_context
 from ....core.context import get_context
 from ....lib.aio import new_isolation
-from ....oscar.backends.router import Router
 from ....storage import StorageLevel
 from ....services.storage import StorageAPI
 from ....tensor.arithmetic.add import TensorAdd
@@ -120,13 +119,10 @@ async def create_cluster(request):
         n_cpu=2,
         use_uvloop=False,
     )
-    try:
-        async with client:
-            if request.param == "default":
-                assert client.session.client is not None
-            yield client, request.param
-    finally:
-        Router.set_instance(None)
+    async with client:
+        if request.param == "default":
+            assert client.session.client is not None
+        yield client, request.param
 
 
 def _assert_storage_cleaned(session_id: str, addr: str, level: StorageLevel):
@@ -649,7 +645,6 @@ def setup_session(request):
             yield session
     finally:
         session.stop_server()
-        Router.set_instance(None)
 
 
 def test_decref(setup_session):
@@ -892,11 +887,8 @@ async def speculative_cluster():
         n_cpu=10,
         use_uvloop=False,
     )
-    try:
-        async with client:
-            yield client
-    finally:
-        Router.set_instance(None)
+    async with client:
+        yield client
 
 
 @pytest.mark.timeout(timeout=500)
