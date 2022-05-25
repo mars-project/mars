@@ -394,7 +394,10 @@ class RayTaskExecutor(TaskExecutor):
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
-            await self.cancel()
+            try:
+                await self.cancel()
+            except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+                pass
             return
 
         # Update info if no exception occurs.
@@ -456,13 +459,10 @@ class RayTaskExecutor(TaskExecutor):
         2. Try to cancel the submitted subtasks by `ray.cancel`
         """
         logger.info("Start to cancel task %s.", self._task)
-        if self._task is None:
+        if self._task is None or self._cancelled is True:
             return
         self._cancelled = True
-        if (
-            self._execute_subtask_graph_aiotask is not None
-            and not self._execute_subtask_graph_aiotask.cancelled()
-        ):
+        if self._execute_subtask_graph_aiotask is not None:
             self._execute_subtask_graph_aiotask.cancel()
         if self._check_subtask_result_aiotask is not None:
             self._check_subtask_result_aiotask.cancel()
