@@ -179,7 +179,6 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = False
-        self._check_subtask_result_aiotask = None
 
     @classmethod
     async def create(
@@ -236,14 +235,13 @@ class RayTaskExecutor(TaskExecutor):
         self._available_band_resources = None
 
         # For progress and task cancel
-        self._pre_all_stages_progress = None
-        self._pre_all_stages_tile_progress = None
+        self._pre_all_stages_progress = 1.0
+        self._pre_all_stages_tile_progress = 1.0
         self._cur_stage_progress = 1.0
-        self._cur_stage_tile_progress = None
-        self._cur_stage_first_output_object_ref_to_subtask = None
+        self._cur_stage_tile_progress = 1.0
+        self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = None
-        self._check_subtask_result_aiotask = None
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -294,7 +292,33 @@ class RayTaskExecutor(TaskExecutor):
     ) -> Dict[Chunk, ExecutionChunkResult]:
         if self._cancelled is True:  # pragma: no cover
             raise asyncio.CancelledError()
+
+        def _on_monitor_task_done(fut):
+            # Print the error of monitor task.
+            try:
+                fut.result()
+            except asyncio.CancelledError:
+                pass
+
+        # Create a monitor task to update progress and collect GC.
+        monitor_task = asyncio.create_task(
+            self._update_progress_and_collect_gc(
+                subtask_graph, self._config.get_subtask_check_interval()
+            )
+        )
+        monitor_task.add_done_callback(_on_monitor_task_done)
+
+        def _on_execute_task_done(fut):
+            # Make sure the monitor task is cancelled.
+            monitor_task.cancel()
+            # Just use `self._cur_stage_tile_progress` as current stage progress
+            # because current stage is finished, its progress is 1.0.
+            self._cur_stage_progress = 1.0
+            self._pre_all_stages_progress += self._cur_stage_tile_progress
+            self._cur_stage_first_output_object_ref_to_subtask.clear()
+
         self._execute_subtask_graph_aiotask = asyncio.current_task()
+        self._execute_subtask_graph_aiotask.add_done_callback(_on_execute_task_done)
 
         logger.info("Stage %s start.", stage_id)
         task_context = self._task_context
@@ -306,14 +330,6 @@ class RayTaskExecutor(TaskExecutor):
             self._tile_context.get_all_progress() - self._pre_all_stages_tile_progress
         )
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
-        self._check_subtask_result_aiotask = asyncio.create_task(
-            self._update_progress_and_collect_gc(
-                subtask_graph, self._config.get_subtask_check_interval()
-            )
-        )
-        self._check_subtask_result_aiotask.add_done_callback(
-            lambda fut: logger.error("%s", fut.result())
-        )
         result_meta_keys = {
             chunk.key
             for chunk in chunk_graph.result_chunks
@@ -381,11 +397,6 @@ class RayTaskExecutor(TaskExecutor):
         # Patched the asyncio.to_thread for Python < 3.9 at mars/lib/aio/__init__.py
         await asyncio.to_thread(ray.wait, list(output_object_refs), fetch_local=False)
 
-        # Just use `self._cur_stage_tile_progress` as current stage progress
-        # because current stage is finished, its progress is 1.
-        self._cur_stage_progress = 1
-        self._pre_all_stages_progress += self._cur_stage_tile_progress
-        self._cur_stage_first_output_object_ref_to_subtask.clear()
         logger.info("Stage %s is complete.", stage_id)
         return chunk_to_meta
 
@@ -461,8 +472,6 @@ class RayTaskExecutor(TaskExecutor):
         self._cancelled = True
         if self._execute_subtask_graph_aiotask is not None:
             self._execute_subtask_graph_aiotask.cancel()
-        if self._check_subtask_result_aiotask is not None:
-            self._check_subtask_result_aiotask.cancel()
         timeout = self._config.get_subtask_cancel_timeout()
         to_be_cancelled_coros = [
             _cancel_ray_task(object_ref, timeout)
@@ -531,6 +540,11 @@ class RayTaskExecutor(TaskExecutor):
         def gc():
             """
             Consume the finish subtasks and collect GC.
+
+            GC the output object refs of the subtask which successors are submitted
+            (not finish as above) can reduce the memory peaks, but we can't cancel and
+            rerun slow subtasks because the input object refs of running subtasks may
+            be deleted.
             """
             i = 0
 
@@ -568,6 +582,10 @@ class RayTaskExecutor(TaskExecutor):
                 timeout=0,
                 fetch_local=False,
             )
+            if len(ready_objects) == 0:
+                await asyncio.sleep(time_interval)
+                continue
+
             # Pop the finish subtasks from object_ref_to_subtask.
             finish_subtasks.update(map(object_ref_to_subtask.pop, ready_objects))
             # Update progress.
