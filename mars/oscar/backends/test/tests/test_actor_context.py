@@ -18,7 +18,6 @@ import sys
 import pytest
 
 from ..... import oscar as mo
-from ...router import Router
 
 
 class DummyActor(mo.Actor):
@@ -46,12 +45,8 @@ async def actor_pool_context():
     pool = await mo.create_actor_pool(
         "test://127.0.0.1", n_process=2, subprocess_start_method=start_method
     )
-    await pool.start()
-    try:
+    async with pool:
         yield pool
-    finally:
-        await pool.stop()
-        Router.set_instance(None)
 
 
 @pytest.mark.asyncio

@@ -19,7 +19,6 @@ from typing import List, Tuple, Set
 import pytest
 
 from ..... import oscar as mo
-from .....oscar.backends.router import Router
 from .....typing import BandType
 from ....cluster import MockClusterAPI
 from ....subtask import Subtask, SubtaskResult, SubtaskStatus
@@ -138,7 +137,6 @@ async def actor_pool():
         finally:
             await mo.destroy_actor(slots_ref)
             await MockClusterAPI.cleanup(pool.external_address)
-            Router.set_instance(None)
 
 
 @pytest.mark.asyncio

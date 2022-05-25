@@ -24,7 +24,6 @@ import pandas as pd
 
 from ..... import oscar as mo
 from .....oscar import ServerClosed
-from .....oscar.backends.router import Router
 from .....oscar.errors import NoFreeSlot, SlotStateError
 from .....oscar.backends.allocate_strategy import IdleLabel
 from .....resource import Resource
@@ -81,7 +80,6 @@ async def actor_pool(request):
             yield pool, slot_manager_ref
         finally:
             await slot_manager_ref.destroy()
-            Router.set_instance(None)
 
 
 ActorPoolType = Tuple[mo.MainActorPoolType, mo.ActorRefType[BandSlotManagerActor]]

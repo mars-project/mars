@@ -20,7 +20,6 @@ from typing import List
 import pytest
 
 from .... import oscar as mo
-from ....oscar.backends.router import Router
 from ....utils import Timer
 from ....tests.core import flaky
 from ..core import NodeRole, NodeStatus
@@ -56,19 +55,13 @@ class MockNodeInfoCollectorActor(mo.Actor):
 @pytest.fixture
 async def actor_pool():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
-    await pool.start()
-
-    await mo.create_actor(
-        MockNodeInfoCollectorActor,
-        uid=NodeInfoCollectorActor.default_uid(),
-        address=pool.external_address,
-    )
-
-    try:
+    async with pool:
+        await mo.create_actor(
+            MockNodeInfoCollectorActor,
+            uid=NodeInfoCollectorActor.default_uid(),
+            address=pool.external_address,
+        )
         yield pool
-    finally:
-        await pool.stop()
-        Router.set_instance(None)
 
 
 @pytest.mark.asyncio

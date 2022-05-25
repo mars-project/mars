@@ -33,7 +33,6 @@ from .....core import (
     TileableGraphBuilder,
     OutputType,
 )
-from .....oscar.backends.router import Router
 from .....remote.core import RemoteFunction
 from .....resource import Resource
 from .....tensor.fetch import TensorFetch
@@ -224,7 +223,6 @@ async def actor_pool(request):
             await MockSubtaskAPI.cleanup(pool.external_address)
             await MockClusterAPI.cleanup(pool.external_address)
             await MockMutableAPI.cleanup(session_id, pool.external_address)
-            Router.set_instance(None)
 
 
 @pytest.mark.asyncio
