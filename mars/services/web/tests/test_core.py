@@ -29,6 +29,7 @@ from ..api.web import MarsApiEntryHandler
 class TestAPIHandler(MarsServiceWebAPIHandler):
     __test__ = False
     _root_pattern = "/api/test/(?P<test_id>[^/]+)"
+    _call_counter = 0
 
     @web_api("", method="get")
     def get_method_root(self, test_id):
@@ -58,6 +59,12 @@ class TestAPIHandler(MarsServiceWebAPIHandler):
     async def get_with_timeout(self, test_id):
         await asyncio.sleep(100)
         raise ValueError(test_id)
+
+    @web_api("subtest_delay_cache", method="get", cache_blocking=True)
+    async def get_with_blocking_cache(self, test_id):
+        await asyncio.sleep(1)
+        type(self)._call_counter += 1
+        self.write(test_id)
 
 
 @pytest.fixture
@@ -147,6 +154,24 @@ async def test_web_api(actor_pool):
             f"http://localhost:{web_port}/api/test/test_id/subtest_delay",
             request_timeout=0.5,
         )
+
+    # test multiple request into long immutable requests
+    coros = [
+        client.fetch(
+            f"http://localhost:{web_port}/api/test/test_id/subtest_delay_cache"
+        ),
+        client.fetch(
+            f"http://localhost:{web_port}/api/test/test_id/subtest_delay_cache"
+        ),
+    ]
+    tasks = [asyncio.create_task(coro) for coro in coros]
+    await asyncio.sleep(0.1)
+    assert TestAPIHandler._call_counter == 0
+    assert len(TestAPIHandler._uri_to_futures) == 1
+
+    await asyncio.gather(*tasks)
+    assert TestAPIHandler._call_counter == 1
+    assert len(TestAPIHandler._uri_to_futures) == 0
 
     res = await client.fetch(f"http://localhost:{web_port}/api/extra_test")
     assert "Test" in res.body.decode()
