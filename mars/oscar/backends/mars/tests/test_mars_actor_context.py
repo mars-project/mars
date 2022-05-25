@@ -22,7 +22,6 @@ from collections import deque
 
 import pandas as pd
 import pytest
-import pytest_asyncio
 
 from ..... import oscar as mo
 from .....oscar.core import ActorRef, LocalActorRef
@@ -242,7 +241,7 @@ class PromiseTestActor(mo.Actor):
 
 
 @pytest.mark.parametrize(indirect=True)
-@pytest_asyncio.fixture(params=[False, True])
+@pytest.fixture(params=[False, True])
 async def actor_pool(request):
     start_method = (
         os.environ.get("POOL_START_METHOD", "forkserver")

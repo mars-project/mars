@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import pytest
-import pytest_asyncio
 
+from ....oscar.backends.router import Router
 from ....tests.core import require_ray
 from ....utils import lazy_import
 from ..ray import new_cluster
@@ -27,7 +27,7 @@ from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
 ray = lazy_import("ray")
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def speculative_cluster():
     client = await new_cluster(
         "test_cluster",
@@ -49,8 +49,11 @@ async def speculative_cluster():
             },
         },
     )
-    async with client:
-        yield client
+    try:
+        async with client:
+            yield client
+    finally:
+        Router.set_instance(None)
 
 
 @pytest.mark.parametrize("ray_large_cluster", [{"num_nodes": 2}], indirect=True)

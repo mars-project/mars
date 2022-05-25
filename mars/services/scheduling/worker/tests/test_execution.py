@@ -23,7 +23,6 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 import pytest
-import pytest_asyncio
 
 from ..... import oscar as mo
 from ..... import remote as mr
@@ -34,6 +33,7 @@ from .....core import (
     TileableGraphBuilder,
     OutputType,
 )
+from .....oscar.backends.router import Router
 from .....remote.core import RemoteFunction
 from .....resource import Resource
 from .....tensor.fetch import TensorFetch
@@ -146,7 +146,7 @@ class MockTaskManager(mo.Actor):
         return self._results
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool(request):
     n_slots, enable_kill = request.param
     pool = await mo.create_actor_pool(
@@ -224,6 +224,7 @@ async def actor_pool(request):
             await MockSubtaskAPI.cleanup(pool.external_address)
             await MockClusterAPI.cleanup(pool.external_address)
             await MockMutableAPI.cleanup(session_id, pool.external_address)
+            Router.set_instance(None)
 
 
 @pytest.mark.asyncio

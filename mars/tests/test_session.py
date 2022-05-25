@@ -35,6 +35,7 @@ from .. import dataframe as md
 from .. import remote as mr
 from ..config import option_context
 from ..deploy.utils import load_service_config_file
+from ..oscar.backends.router import Router
 from ..session import execute, fetch, fetch_log
 
 
@@ -54,6 +55,7 @@ def setup():
             yield sess
         finally:
             sess.stop_server()
+            Router.set_instance(None)
 
 
 def test_session_async_execute(setup):

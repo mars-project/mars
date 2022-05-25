@@ -26,7 +26,6 @@ from functools import reduce
 import numpy as np
 import pandas as pd
 import pytest
-import pytest_asyncio
 
 import mars
 from .... import oscar as mo
@@ -37,6 +36,7 @@ from ....oscar.backends.ray.utils import (
     process_placement_to_address,
     kill_and_wait,
 )
+from ....oscar.backends.router import Router
 from ....oscar.errors import ReconstructWorkerError
 from ....serialization.ray import register_ray_serializers
 from ....services.cluster import ClusterAPI
@@ -93,7 +93,7 @@ EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_calls"] = {}
 EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_subtasks"] = {}
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def create_cluster(request):
     param = getattr(request, "param", {})
     ray_config = _load_config(CONFIG_FILE)
@@ -106,8 +106,11 @@ async def create_cluster(request):
         worker_mem=1 * 1024**3,
         config=ray_config,
     )
-    async with client:
-        yield client, param
+    try:
+        async with client:
+            yield client, param
+    finally:
+        Router.set_instance(None)
 
 
 @require_ray

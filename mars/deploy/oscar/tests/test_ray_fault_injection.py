@@ -15,8 +15,8 @@
 import os
 
 import pytest
-import pytest_asyncio
 
+from ....oscar.backends.router import Router
 from ....oscar.errors import ServerClosed
 from ....services.tests.fault_injection_manager import (
     FaultInjectionError,
@@ -46,7 +46,7 @@ SUBTASK_RERUN_CONFIG = {
 }
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def fault_cluster(request):
     param = getattr(request, "param", {})
     ray_config = _load_config(RAY_CONFIG_FILE)
@@ -59,8 +59,11 @@ async def fault_cluster(request):
         worker_mem=1 * 1024**3,
         config=ray_config,
     )
-    async with client:
-        yield client
+    try:
+        async with client:
+            yield client
+    finally:
+        Router.set_instance(None)
 
 
 @require_ray

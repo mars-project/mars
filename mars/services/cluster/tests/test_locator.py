@@ -18,9 +18,9 @@ import tempfile
 from typing import List
 
 import pytest
-import pytest_asyncio
 
 from .... import oscar as mo
+from ....oscar.backends.router import Router
 from ....utils import Timer
 from ....tests.core import flaky
 from ..core import NodeRole, NodeStatus
@@ -53,7 +53,7 @@ class MockNodeInfoCollectorActor(mo.Actor):
             self._node_infos[node] = NodeStatus.STARTING
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
     await pool.start()
@@ -64,8 +64,11 @@ async def actor_pool():
         address=pool.external_address,
     )
 
-    yield pool
-    await pool.stop()
+    try:
+        yield pool
+    finally:
+        await pool.stop()
+        Router.set_instance(None)
 
 
 @pytest.mark.asyncio

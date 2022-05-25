@@ -48,9 +48,9 @@ class StorageHandlerActor(mo.Actor):
     def __init__(
         self,
         storage_init_params: Dict,
-        data_manager_ref: Union[DataManagerActor, mo.ActorRef],
+        data_manager_ref: mo.ActorRefType[DataManagerActor],
         spill_manager_refs,
-        quota_refs: Dict[StorageLevel, Union[StorageQuotaActor, mo.ActorRef]],
+        quota_refs: Dict[StorageLevel, mo.ActorRefType[StorageQuotaActor]],
         band_name: str = "numa-0",
     ):
         from .spill import SpillManagerActor
@@ -58,7 +58,7 @@ class StorageHandlerActor(mo.Actor):
         self._storage_init_params = storage_init_params
         self._data_manager_ref = data_manager_ref
         self._spill_manager_refs: Dict[
-            StorageLevel, Union[SpillManagerActor, mo.ActorRef]
+            StorageLevel, mo.ActorRefType[SpillManagerActor]
         ] = spill_manager_refs
         self._quota_refs = quota_refs
         self._band_name = band_name
@@ -413,7 +413,7 @@ class StorageHandlerActor(mo.Actor):
         remote_band: BandType,
         error: str,
     ):
-        remote_manager_ref: Union[mo.ActorRef, DataManagerActor] = await mo.actor_ref(
+        remote_manager_ref: mo.ActorRefType[DataManagerActor] = await mo.actor_ref(
             uid=DataManagerActor.default_uid(), address=remote_band[0]
         )
         get_data_infos = []
@@ -455,7 +455,7 @@ class StorageHandlerActor(mo.Actor):
         from .transfer import SenderManagerActor
 
         logger.debug("Begin to fetch %s from band %s", data_keys, remote_band)
-        sender_ref: Union[mo.ActorRef, SenderManagerActor] = await mo.actor_ref(
+        sender_ref: mo.ActorRefType[SenderManagerActor] = await mo.actor_ref(
             address=remote_band[0], uid=SenderManagerActor.gen_uid(remote_band[1])
         )
         await sender_ref.send_batch_data(

@@ -15,21 +15,24 @@
 import asyncio
 
 import pytest
-import pytest_asyncio
 
 from .... import oscar as mo
+from ....oscar.backends.router import Router
 from ... import NodeRole
 from ..supervisor.locator import SupervisorPeerLocatorActor
 from ..supervisor.node_info import NodeInfoCollectorActor
 from ..uploader import NodeInfoUploaderActor
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
     await pool.start()
-    yield pool
-    await pool.stop()
+    try:
+        yield pool
+    finally:
+        await pool.stop()
+        Router.set_instance(None)
 
 
 @pytest.mark.asyncio

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Union
+from typing import Dict, List
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
@@ -24,7 +24,7 @@ class LifecycleAPI(AbstractLifecycleAPI):
     def __init__(
         self,
         session_id: str,
-        lifecycle_tracker_ref: Union[LifecycleTrackerActor, mo.ActorRef],
+        lifecycle_tracker_ref: mo.ActorRefType[LifecycleTrackerActor],
     ):
         self._session_id = session_id
         self._lifecycle_tracker_ref = lifecycle_tracker_ref

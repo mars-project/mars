@@ -16,15 +16,15 @@ import asyncio
 import os
 
 import pytest
-import pytest_asyncio
 
 from .... import oscar as mo
+from ....oscar.backends.router import Router
 from ....storage import StorageLevel
 from ... import start_services, stop_services, NodeRole
 from .. import ClusterAPI, WorkerSlotInfo, QuotaInfo, StorageInfo, DiskInfo
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pools():
     async def start_pool():
         pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
@@ -32,8 +32,11 @@ async def actor_pools():
         return pool
 
     sv_pool, worker_pool = await asyncio.gather(start_pool(), start_pool())
-    yield sv_pool, worker_pool
-    await asyncio.gather(sv_pool.stop(), worker_pool.stop())
+    try:
+        yield sv_pool, worker_pool
+    finally:
+        await asyncio.gather(sv_pool.stop(), worker_pool.stop())
+        Router.set_instance(None)
 
 
 @pytest.mark.asyncio

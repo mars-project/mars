@@ -149,7 +149,7 @@ class RayMainActorPool(MainActorPoolBase):
 
     @classmethod
     async def wait_sub_pools_ready(cls, create_pool_tasks: List[asyncio.Task]):
-        return [await t for t in create_pool_tasks]
+        return [await t for t in create_pool_tasks], None
 
     async def recover_sub_pool(self, address: str):
         process = self.sub_processes[address]

@@ -15,6 +15,11 @@ extend-exclude = '''
 '''
 
 [tool.pytest.ini_options]
+asyncio_mode = "auto"
 markers = [
-    "ray_dag: marks tests for ray backend",
+    "cuda: mark a test as a cuda case.",
+    "hadoop: mark test as a hadoop case.",
+    "ray: mark test as a ray case.",
+    "pd_compat: mark test as a pandas-compatibility test.",
+    "ray_dag: marks tests for ray backend.",
 ]

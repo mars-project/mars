@@ -16,11 +16,11 @@ import os
 import numpy as np
 import pandas as pd
 import pytest
-import pytest_asyncio
 
 from ..... import dataframe as md
 from .....deploy.oscar.ray import new_cluster
 from .....deploy.oscar.session import new_session
+from .....oscar.backends.router import Router
 from .....tests.core import require_ray
 from .....utils import lazy_import
 from ....contrib import raydataset as mdd
@@ -37,7 +37,7 @@ except ImportError:  # pragma: no cover
     sklearn = None
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def create_cluster(request):
     client = await new_cluster(
         supervisor_mem=256 * 1024**2,
@@ -45,8 +45,11 @@ async def create_cluster(request):
         worker_cpu=1,
         worker_mem=256 * 1024**2,
     )
-    async with client:
-        yield client
+    try:
+        async with client:
+            yield client
+    finally:
+        Router.set_instance(None)
 
 
 @require_ray

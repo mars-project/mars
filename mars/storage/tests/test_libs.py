@@ -18,11 +18,10 @@ import os
 import sys
 import tempfile
 import pkgutil
-import pytest
-import pytest_asyncio
 
 import numpy as np
 import pandas as pd
+import pytest
 import scipy.sparse as sps
 
 from ...lib.filesystem import LocalFileSystem
@@ -66,7 +65,7 @@ if ray is not None:
 @pytest.mark.parametrize(
     "ray_start_regular", [{"enable": ray is not None}], indirect=True
 )
-@pytest_asyncio.fixture(params=params)
+@pytest.fixture(params=params)
 async def storage_context(ray_start_regular, request):
     if request.param == "filesystem":
         tempdir = tempfile.mkdtemp()

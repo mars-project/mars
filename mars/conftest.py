@@ -18,10 +18,10 @@ import subprocess
 
 import psutil
 import pytest
-import pytest_asyncio
 
 from mars.config import option_context
 from mars.core.mode import is_kernel_mode, is_build_mode
+from mars.lib.aio.lru import clear_all_alru_caches
 from mars.oscar.backends.router import Router
 from mars.oscar.backends.ray.communication import RayServer
 from mars.serialization.ray import register_ray_serializers, unregister_ray_serializers
@@ -29,6 +29,11 @@ from mars.utils import lazy_import
 
 ray = lazy_import("ray")
 MARS_CI_BACKEND = os.environ.get("MARS_CI_BACKEND", "mars")
+
+
+@pytest.fixture(autouse=True)
+def auto_cleanup(request):
+    request.addfinalizer(clear_all_alru_caches)
 
 
 @pytest.fixture(scope="module")
@@ -50,6 +55,7 @@ def ray_start_regular_shared2(request):  # pragma: no cover
         yield ray.init(num_cpus=num_cpus, job_config=job_config)
     finally:
         ray.shutdown()
+        Router.set_instance(None)
         os.environ.pop("RAY_kill_idle_workers_interval_ms", None)
 
 
@@ -134,9 +140,10 @@ def stop_ray(request):  # pragma: no cover
     yield
     if ray.is_initialized():
         ray.shutdown()
+    Router.set_instance(None)
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def ray_create_mars_cluster(request):
     from mars.deploy.oscar.ray import new_cluster, _load_config
 
@@ -155,16 +162,22 @@ async def ray_create_mars_cluster(request):
         worker_mem=worker_mem,
         config=ray_config,
     )
-    async with client:
-        yield client
+    try:
+        async with client:
+            yield client
+    finally:
+        Router.set_instance(None)
 
 
 @pytest.fixture
 def stop_mars():
-    yield
-    import mars
+    try:
+        yield
+    finally:
+        import mars
 
-    mars.stop_server()
+        mars.stop_server()
+        Router.set_instance(None)
 
 
 @pytest.fixture(scope="module")
@@ -183,6 +196,7 @@ def _new_test_session():
             yield sess
         finally:
             sess.stop_server(isolation=False)
+            Router.set_instance(None)
 
 
 @pytest.fixture(scope="module")
@@ -204,6 +218,7 @@ def _new_integrated_test_session():
             try:
                 sess.stop_server(isolation=False)
             except concurrent.futures.TimeoutError:
+                Router.set_instance(None)
                 subprocesses = psutil.Process().children(recursive=True)
                 for proc in subprocesses:
                     proc.terminate()
@@ -240,6 +255,7 @@ def _new_gpu_test_session():  # pragma: no cover
             yield sess
         finally:
             sess.stop_server(isolation=False)
+            Router.set_instance(None)
 
 
 @pytest.fixture

@@ -19,9 +19,9 @@ import tempfile
 
 import numpy as np
 import pytest
-import pytest_asyncio
 
 from .... import oscar as mo
+from ....oscar.backends.router import Router
 from ....storage import StorageLevel, PlasmaStorage
 from ....utils import calc_data_size
 from ..core import StorageManagerActor, StorageQuotaActor, build_data_info
@@ -35,7 +35,7 @@ if sys.platform.lower().startswith("win"):
 MEMORY_SIZE = 100 * 1024
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool():
     async def start_pool():
         start_method = (
@@ -54,8 +54,11 @@ async def actor_pool():
         return pool
 
     worker_pool = await start_pool()
-    yield worker_pool
-    await worker_pool.stop()
+    try:
+        yield worker_pool
+    finally:
+        await worker_pool.stop()
+        Router.set_instance(None)
 
 
 def _build_storage_config():
@@ -72,7 +75,7 @@ def _build_storage_config():
     return storage_configs
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def create_actors(actor_pool):
     storage_configs = _build_storage_config()
     manager_ref = await mo.create_actor(
@@ -156,7 +159,7 @@ class DelayPutStorageHandler(StorageHandlerActor):
         return data_info
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def create_actors_with_delay(actor_pool):
     storage_configs = _build_storage_config()
     manager_ref = await mo.create_actor(

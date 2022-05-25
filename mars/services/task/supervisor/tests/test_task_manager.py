@@ -22,7 +22,6 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
-import pytest_asyncio
 
 from ..... import dataframe as md
 from ..... import oscar as mo
@@ -31,6 +30,7 @@ from ..... import tensor as mt
 from .....core import Tileable, TileableGraph, TileableGraphBuilder
 from .....core.operand import Fetch
 from .....oscar.backends.allocate_strategy import MainPool
+from .....oscar.backends.router import Router
 from .....resource import Resource
 from .....storage import StorageLevel
 from .....utils import Timer, merge_chunks
@@ -47,7 +47,7 @@ from ...execution.api import Fetcher, ExecutionConfig
 from ..manager import TaskConfigurationActor, TaskManagerActor
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool(request):
     param = getattr(request, "param", {})
     backend = param.get("backend", "mars")
@@ -101,6 +101,7 @@ async def actor_pool(request):
             await MockStorageAPI.cleanup(pool.external_address)
             await MockClusterAPI.cleanup(pool.external_address)
             await MockMutableAPI.cleanup(session_id, pool.external_address)
+            Router.set_instance(None)
 
 
 async def _merge_data(

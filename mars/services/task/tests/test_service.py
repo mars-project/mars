@@ -18,7 +18,6 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
-import pytest_asyncio
 
 from .... import dataframe as md
 from .... import oscar as mo
@@ -26,6 +25,7 @@ from .... import remote as mr
 from .... import tensor as mt
 from ....core import TileableGraph, TileableGraphBuilder, TileStatus, recursive_tile
 from ....core.context import get_context
+from ....oscar.backends.router import Router
 from ....resource import Resource
 from ....tensor.core import TensorOrder
 from ....tensor.operands import TensorOperand, TensorOperandMixin
@@ -41,7 +41,7 @@ from ..supervisor.processor import TaskProcessor
 from ..errors import TaskNotExist
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pools():
     async def start_pool(is_worker: bool):
         if is_worker:
@@ -61,6 +61,7 @@ async def actor_pools():
         yield sv_pool, worker_pool
     finally:
         await asyncio.gather(sv_pool.stop(), worker_pool.stop())
+        Router.set_instance(None)
 
 
 async def _start_services(
@@ -117,7 +118,7 @@ async def _start_services(
 
 
 @pytest.mark.parametrize(indirect=True)
-@pytest_asyncio.fixture(params=[False, True])
+@pytest.fixture(params=[False, True])
 async def start_test_service(actor_pools, request):
     sv_pool, worker_pool = actor_pools
 
@@ -129,6 +130,7 @@ async def start_test_service(actor_pools, request):
         await MockStorageAPI.cleanup(worker_pool.external_address)
         await stop_services(NodeRole.WORKER, config, worker_pool.external_address)
         await stop_services(NodeRole.SUPERVISOR, config, sv_pool.external_address)
+        Router.set_instance(None)
 
 
 class MockTaskProcessor(TaskProcessor):
@@ -142,7 +144,7 @@ class MockTaskProcessor(TaskProcessor):
 
 
 @pytest.mark.parametrize(indirect=True)
-@pytest_asyncio.fixture(params=[True])
+@pytest.fixture(params=[True])
 async def start_test_service_with_mock(actor_pools, request):
     sv_pool, worker_pool = actor_pools
 
@@ -159,6 +161,7 @@ async def start_test_service_with_mock(actor_pools, request):
         await MockStorageAPI.cleanup(worker_pool.external_address)
         await stop_services(NodeRole.WORKER, config, worker_pool.external_address)
         await stop_services(NodeRole.SUPERVISOR, config, sv_pool.external_address)
+        Router.set_instance(None)
 
 
 @pytest.mark.asyncio

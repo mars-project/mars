@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import pytest
-import pytest_asyncio
 from typing import Tuple, List
 
 from ..... import oscar as mo
+from .....oscar.backends.router import Router
 from .....resource import Resource
 from ....cluster import MockClusterAPI
 from ....subtask import Subtask
@@ -71,7 +71,7 @@ class MockSubtaskManagerActor(mo.Actor):
         return self._subtask_ids, self._bands
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 
@@ -109,6 +109,7 @@ async def actor_pool():
         finally:
             await mo.destroy_actor(queueing_ref)
             await MockClusterAPI.cleanup(pool.external_address)
+            Router.set_instance(None)
 
 
 @pytest.mark.asyncio
