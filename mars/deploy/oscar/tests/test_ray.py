@@ -518,7 +518,7 @@ async def test_reconstruct_worker(ray_large_cluster):
         worker_sub_pool_pid = await worker_sub_pool_actor.getpid.remote()
 
         # kill worker main pool
-        await kill_and_wait(ray.get_actor(worker), timeout=60)
+        await kill_and_wait(ray.get_actor(worker))
 
         # duplicated reconstruct worker request can be handled.
         await asyncio.gather(
@@ -579,7 +579,7 @@ async def test_release_worker_during_reconstructing_worker(
     class FakeActor:
         state = FakeActorMethod()
 
-    def _get_actor(*args):
+    def _get_actor(*args, **kwargs):
         return FakeActor
 
     async def _stop_worker(*args):
@@ -637,6 +637,7 @@ async def test_auto_scale_out(ray_large_cluster, init_workers: int):
         assert await autoscaler_ref.get_dynamic_worker_nums() > 0
 
 
+@pytest.mark.timeout(timeout=600)
 @pytest.mark.parametrize(
     "ray_large_cluster", [{"num_nodes": 2, "num_cpus": 4}], indirect=True
 )
@@ -677,7 +678,7 @@ async def test_auto_scale_in(ray_large_cluster):
         assert await autoscaler_ref.get_dynamic_worker_nums() == 2
 
 
-@pytest.mark.timeout(timeout=300)
+@pytest.mark.timeout(timeout=1000)
 @pytest.mark.parametrize("ray_large_cluster", [{"num_nodes": 4}], indirect=True)
 @require_ray
 @pytest.mark.asyncio
@@ -701,41 +702,17 @@ async def test_ownership_when_scale_in(ray_large_cluster):
             uid=AutoscalerActor.default_uid(),
             address=client._cluster.supervisor_address,
         )
-        num_chunks, chunk_size = 20, 4
-        df = md.DataFrame(
-            mt.random.rand(num_chunks * chunk_size, 4, chunk_size=chunk_size),
-            columns=list("abcd"),
-        )
-        latch_actor = ray.remote(CountDownLatch).remote(1)
-        pid = os.getpid()
-
-        def f1(pdf, latch):
-            if os.getpid() != pid:
-                # type inference will call this function too
-                ray.get(latch.wait.remote())
-            return pdf
-
-        df = df.map_chunk(
-            f1,
-            args=(latch_actor,),
-        )
-        info = df.execute(wait=False)
-        while await autoscaler_ref.get_dynamic_worker_nums() <= 1:
-            print(f"Waiting workers to be created.")
-            await asyncio.sleep(1)
-        await latch_actor.count_down.remote()
-        await info
-        assert info.exception() is None
-        assert info.progress() == 1
-        print("df execute succeed.")
-
+        await asyncio.gather(*[autoscaler_ref.request_worker() for _ in range(2)])
+        df = md.DataFrame(mt.random.rand(100, 4, chunk_size=2), columns=list("abcd"))
+        print(df.execute())
+        assert await autoscaler_ref.get_dynamic_worker_nums() > 1
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
             dynamic_workers = await autoscaler_ref.get_dynamic_workers()
             print(f"Waiting workers {dynamic_workers} to be released.")
             await asyncio.sleep(1)
         # Test data on node of released worker can still be fetched
-        pd_df = df.fetch()
-        groupby_sum_df = df.rechunk(chunk_size * 2).groupby("a").sum()
+        pd_df = df.to_pandas()
+        groupby_sum_df = df.rechunk(40).groupby("a").sum()
         print(groupby_sum_df.execute())
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
             dynamic_workers = await autoscaler_ref.get_dynamic_workers()
@@ -745,21 +722,6 @@ async def test_ownership_when_scale_in(ray_large_cluster):
         assert (
             groupby_sum_df.to_pandas().to_dict() == pd_df.groupby("a").sum().to_dict()
         )
-
-
-class CountDownLatch:
-    def __init__(self, cnt):
-        self.cnt = cnt
-
-    def count_down(self):
-        self.cnt -= 1
-
-    def get_count(self):
-        return self.cnt
-
-    async def wait(self):
-        while self.cnt != 0:
-            await asyncio.sleep(0.01)
 
 
 @require_ray
