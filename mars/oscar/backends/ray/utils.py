@@ -14,6 +14,7 @@
 
 import asyncio
 import enum
+import functools
 import logging
 import os
 import posixpath
@@ -201,3 +202,15 @@ def report_event(severity, label, message):
             else severity
         )
         ray.report_event(severity, label, message)
+
+
+@functools.lru_cache(maxsize=None)
+def has_actor_max_task_retries() -> bool:
+    try:
+        from ray._private import ray_option_utils
+
+        if "max_task_retries" in ray_option_utils.actor_options:
+            return True
+    except ImportError:
+        pass
+    return False

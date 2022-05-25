@@ -41,6 +41,7 @@ from ..pool import (
 from ..router import Router
 from .communication import ChannelID, RayServer, RayChannelException
 from .utils import (
+    has_actor_max_task_retries,
     process_address_to_placement,
     process_placement_to_address,
     get_placement_group,
@@ -153,8 +154,9 @@ class RayMainActorPool(MainActorPoolBase):
 
     async def recover_sub_pool(self, address: str):
         process = self.sub_processes[address]
-        # set `max_retries=-1` to make task pending when actor is restarting
-        await process.state.options(max_task_retries=-1).remote()
+        if has_actor_max_task_retries():
+            # set `max_retries=-1` to wait until task succeed so that actor is restarted
+            await process.state.options(max_task_retries=-1).remote()
         await process.start.remote()
 
         if self._auto_recover == "actor":

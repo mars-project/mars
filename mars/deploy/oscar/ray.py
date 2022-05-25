@@ -24,6 +24,7 @@ from ...core.entrypoints import init_extension_entrypoints
 from ...metrics import init_metrics
 from ...oscar.backends.ray.driver import RayActorDriver
 from ...oscar.backends.ray.utils import (
+    has_actor_max_task_retries,
     process_placement_to_address,
     node_placement_to_address,
     process_address_to_placement,
@@ -274,8 +275,11 @@ class ClusterStateActor(mo.StatelessActor):
         async def _reconstruct_worker():
             logger.info("Reconstruct worker %s", address)
             actor = ray.get_actor(address)
-            # set `max_retries=-1` to make task pending when actor is restarting
-            state = await actor.state.options(max_task_retries=-1).remote()
+            if has_actor_max_task_retries():
+                # set `max_retries=-1` to make task pending when actor is restarting
+                state = await actor.state.options(max_task_retries=-1).remote()
+            else:
+                state = await actor.state.remote()
             if state == RayPoolState.SERVICE_READY:
                 logger.info("Worker %s is service ready.")
                 return
