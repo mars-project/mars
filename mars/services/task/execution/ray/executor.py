@@ -303,7 +303,7 @@ class RayTaskExecutor(TaskExecutor):
         # Create a monitor task to update progress and collect GC.
         monitor_task = asyncio.create_task(
             self._update_progress_and_collect_gc(
-                subtask_graph, self._config.get_subtask_check_interval()
+                subtask_graph, self._config.get_subtask_monitor_interval()
             )
         )
         monitor_task.add_done_callback(_on_monitor_task_done)
@@ -531,7 +531,7 @@ class RayTaskExecutor(TaskExecutor):
         return output_keys.keys()
 
     async def _update_progress_and_collect_gc(
-        self, subtask_graph: SubtaskGraph, time_interval: float
+        self, subtask_graph: SubtaskGraph, interval_seconds: float
     ):
         object_ref_to_subtask = self._cur_stage_first_output_object_ref_to_subtask
         total = len(subtask_graph)
@@ -572,7 +572,7 @@ class RayTaskExecutor(TaskExecutor):
 
         while len(finish_subtasks) != total:
             if len(object_ref_to_subtask) <= 0:
-                await asyncio.sleep(time_interval)
+                await asyncio.sleep(interval_seconds)
 
             # Only wait for unfinished subtask object refs.
             ready_objects, _ = await asyncio.to_thread(
@@ -583,7 +583,7 @@ class RayTaskExecutor(TaskExecutor):
                 fetch_local=False,
             )
             if len(ready_objects) == 0:
-                await asyncio.sleep(time_interval)
+                await asyncio.sleep(interval_seconds)
                 continue
 
             # Pop the finish subtasks from object_ref_to_subtask.

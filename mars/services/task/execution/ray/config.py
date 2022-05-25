@@ -17,8 +17,8 @@ from .....resource import Resource
 from ..api import ExecutionConfig, register_config_cls
 from ..utils import get_band_resources_from_config
 
-# the default time to check a subtask.
-DEFAULT_SUBTASK_CHECK_INTERVAL = 0.5
+# The default interval seconds to update progress and collect GC.
+DEFAULT_SUBTASK_MONITOR_INTERVAL = 1
 
 
 @register_config_cls
@@ -51,7 +51,11 @@ class RayExecutionConfig(ExecutionConfig):
     def get_subtask_cancel_timeout(self):
         return self._ray_execution_config.get("subtask_cancel_timeout")
 
-    def get_subtask_check_interval(self):
+    def get_subtask_monitor_interval(self):
+        """
+        The interval seconds for the monitor task to update progress and
+        collect GC.
+        """
         return self._ray_execution_config.get(
-            "subtask_check_interval", DEFAULT_SUBTASK_CHECK_INTERVAL
+            "subtask_monitor_interval", DEFAULT_SUBTASK_MONITOR_INTERVAL
         )

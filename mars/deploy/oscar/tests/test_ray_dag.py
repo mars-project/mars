@@ -142,7 +142,11 @@ def test_cancel(ray_start_regular_shared2, create_cluster, test_func):
 @pytest.mark.parametrize("config", [{"backend": "ray"}])
 def test_context_gc(config):
     session = new_session(
-        backend=config["backend"], n_cpu=2, web=False, use_uvloop=False
+        backend=config["backend"],
+        n_cpu=2,
+        web=False,
+        use_uvloop=False,
+        config={"task.execution_config.ray.subtask_monitor_interval": 0},
     )
 
     assert session._session.client.web_address is None
