@@ -26,7 +26,7 @@ async def test_meta_service():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
     worker_pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 
-    async with pool:
+    async with pool, worker_pool:
         config = {
             "services": ["cluster", "session", "meta"],
             "cluster": {
