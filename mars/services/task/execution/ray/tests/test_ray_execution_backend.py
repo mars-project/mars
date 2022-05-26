@@ -35,7 +35,7 @@ from ..context import (
     RayRemoteObjectManager,
     _RayRemoteObjectContext,
 )
-from ..executor import execute_subtask, RayTaskExecutor
+from ..executor import execute_subtask, RayTaskExecutor, RayTaskState
 from ..fetcher import RayFetcher
 
 ray = lazy_import("ray")
@@ -99,7 +99,7 @@ async def test_ray_executor_create(
     assert mock_ray_get.call_count == 1
     assert mock_task_state_actor_create.call_count == 1
 
-    # Create RayTaskState actor in advance if "create_task_state_actor_as_needed" == False
+    # Create RayTaskState actor in advance if create_task_state_actor_as_needed is False
     mock_config = RayExecutionConfig.from_execution_config(
         {"backend": "ray", "ray": {"create_task_state_actor_as_needed": False}}
     )
@@ -218,9 +218,8 @@ async def test_ray_remote_object(ray_start_regular_shared2):
         await manager.call_remote_object(name, "foo", 3, 4)
 
     # Test _RayRemoteObjectContext
-    context = _RayRemoteObjectContext(
-        lambda: ray.remote(RayRemoteObjectManager).remote()
-    )
+    test_task_id = "test_task_id"
+    context = _RayRemoteObjectContext(lambda: RayTaskState.create(test_task_id))
     context.create_remote_object(name, _TestRemoteObject, 2)
     remote_object = context.get_remote_object(name)
     r = remote_object.foo(3, 4)
@@ -240,6 +239,9 @@ async def test_ray_remote_object(ray_start_regular_shared2):
 
     with pytest.raises(MyException):
         context.create_remote_object(name, _ErrorRemoteObject)
+
+    handle = RayTaskState.get_handle(test_task_id)
+    assert handle is not None
 
 
 @require_ray
