@@ -91,7 +91,7 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         )
         self.write(task_id)
 
-    @web_api("", method="get")
+    @web_api("", method="get", cache_blocking=True)
     async def get_task_results(self, session_id: str):
         progress = bool(int(self.get_argument("progress", "0")))
         oscar_api = await self._get_oscar_task_api(session_id)
@@ -99,14 +99,17 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         self.write(json.dumps({"tasks": [_json_serial_task_result(r) for r in res]}))
 
     @web_api(
-        "(?P<task_id>[^/]+)", method="get", arg_filter={"action": "fetch_tileables"}
+        "(?P<task_id>[^/]+)",
+        method="get",
+        arg_filter={"action": "fetch_tileables"},
+        cache_blocking=True,
     )
     async def get_fetch_tileables(self, session_id: str, task_id: str):
         oscar_api = await self._get_oscar_task_api(session_id)
         res = await oscar_api.get_fetch_tileables(task_id)
         self.write(serialize_serializable(res))
 
-    @web_api("(?P<task_id>[^/]+)", method="get")
+    @web_api("(?P<task_id>[^/]+)", method="get", cache_blocking=True)
     async def get_task_result(self, session_id: str, task_id: str):
         oscar_api = await self._get_oscar_task_api(session_id)
         res = await oscar_api.get_task_result(task_id)
@@ -116,19 +119,24 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         "(?P<task_id>[^/]+)/tileable_graph",
         method="get",
         arg_filter={"action": "get_tileable_graph_as_json"},
+        cache_blocking=True,
     )
     async def get_tileable_graph_as_json(self, session_id: str, task_id: str):
         oscar_api = await self._get_oscar_task_api(session_id)
         res = await oscar_api.get_tileable_graph_as_json(task_id)
         self.write(json.dumps(res))
 
-    @web_api("(?P<task_id>[^/]+)/tileable_detail", method="get")
+    @web_api("(?P<task_id>[^/]+)/tileable_detail", method="get", cache_blocking=True)
     async def get_tileable_details(self, session_id: str, task_id: str):
         oscar_api = await self._get_oscar_task_api(session_id)
         res = await oscar_api.get_tileable_details(task_id)
         self.write(json.dumps(res))
 
-    @web_api("(?P<task_id>[^/]+)/(?P<tileable_id>[^/]+)/subtask", method="get")
+    @web_api(
+        "(?P<task_id>[^/]+)/(?P<tileable_id>[^/]+)/subtask",
+        method="get",
+        cache_blocking=True,
+    )
     async def get_tileable_subtasks(
         self, session_id: str, task_id: str, tileable_id: str
     ):
@@ -139,7 +147,12 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         )
         self.write(json.dumps(res))
 
-    @web_api("(?P<task_id>[^/]+)", method="get", arg_filter={"action": "progress"})
+    @web_api(
+        "(?P<task_id>[^/]+)",
+        method="get",
+        arg_filter={"action": "progress"},
+        cache_blocking=True,
+    )
     async def get_task_progress(self, session_id: str, task_id: str):
         oscar_api = await self._get_oscar_task_api(session_id)
         res = await oscar_api.get_task_progress(task_id)
