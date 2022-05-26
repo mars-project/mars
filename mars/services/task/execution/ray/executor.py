@@ -404,7 +404,7 @@ class RayTaskExecutor(TaskExecutor):
         if exc_type is not None:
             try:
                 await self.cancel()
-            except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+            except:  # pylint: disable=bare-except
                 pass
             return
 
@@ -537,6 +537,8 @@ class RayTaskExecutor(TaskExecutor):
         total = len(subtask_graph)
         completed_subtasks = OrderedSet()
 
+        deletion_seq = []
+
         def gc():
             """
             Consume the completed subtasks and collect garbage.
@@ -547,6 +549,7 @@ class RayTaskExecutor(TaskExecutor):
             may be deleted.
             """
             i = 0
+            garbaged_subtasks = set()
 
             while i < total:
                 while i >= len(completed_subtasks):
@@ -555,15 +558,24 @@ class RayTaskExecutor(TaskExecutor):
                 subtask = completed_subtasks[i]
                 i += 1
                 logger.debug("GC: %s", subtask)
+
+                # Note: There may be a scenario in which delayed gc occurs.
+                # When a subtask has more than one predecessor, like A, B,
+                # and in the `for ... in ...` loop we get A firstly while
+                # B's successors are completed, A's not. Then we cannot remove
+                # B's results chunks before A's.
                 for pred in subtask_graph.iter_predecessors(subtask):
                     while not all(
                         succ in completed_subtasks
                         for succ in subtask_graph.iter_successors(pred)
                     ):
                         yield
+                    if pred in garbaged_subtasks:
+                        continue
                     for chunk in pred.chunk_graph.results:
                         self._task_context.pop(chunk.key, None)
-                        break
+                    deletion_seq.append(len(pred.chunk_graph.results))
+                    garbaged_subtasks.add(pred)
 
             # TODO(fyrestone): Check the remaining self._task_context.keys()
             # in the result subtasks
@@ -598,3 +610,5 @@ class RayTaskExecutor(TaskExecutor):
                 break
             # Fast to next loop and give it a chance to update object_ref_to_subtask.
             await asyncio.sleep(0)
+
+        return deletion_seq
