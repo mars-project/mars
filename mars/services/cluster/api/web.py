@@ -44,7 +44,7 @@ class ClusterWebAPIHandler(MarsServiceWebAPIHandler):
             res[node_addr] = res_dict
         return res
 
-    @web_api("nodes", method=["get", "post"])
+    @web_api("nodes", method=["get", "post"], cache_blocking=True)
     async def get_nodes_info(self):
         watch = bool(int(self.get_argument("watch", "0")))
         env = bool(int(self.get_argument("env", "0")))
@@ -104,7 +104,7 @@ class ClusterWebAPIHandler(MarsServiceWebAPIHandler):
             result["nodes"] = self._convert_node_dict(nodes)
         self.write(json.dumps(result))
 
-    @web_api("bands", method="get")
+    @web_api("bands", method="get", cache_blocking=True)
     async def get_all_bands(self):
         role_arg = self.get_argument("role", None)
         role = NodeRole(int(role_arg)) if role_arg is not None else None
@@ -135,19 +135,19 @@ class ClusterWebAPIHandler(MarsServiceWebAPIHandler):
                 )
             )
 
-    @web_api("versions", method="get")
+    @web_api("versions", method="get", cache_blocking=True)
     async def get_mars_versions(self):
         cluster_api = await self._get_cluster_api()
         self.write(json.dumps(list(await cluster_api.get_mars_versions())))
 
-    @web_api("pools", method="get")
+    @web_api("pools", method="get", cache_blocking=True)
     async def get_node_pool_configs(self):
         cluster_api = await self._get_cluster_api()
         address = self.get_argument("address", "") or None
         pools = list(await cluster_api.get_node_pool_configs(address))
         self.write(json.dumps({"pools": pools}))
 
-    @web_api("stacks", method="get")
+    @web_api("stacks", method="get", cache_blocking=True)
     async def get_node_thread_stacks(self):
         cluster_api = await self._get_cluster_api()
         address = self.get_argument("address", "") or None
