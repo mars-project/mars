@@ -15,8 +15,9 @@
 import asyncio
 import functools
 import logging
+import operator
 from dataclasses import dataclass
-from typing import List, Dict, Any, Set
+from typing import List, Dict, Any, Set, Callable
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
 from .....core.operand import (
@@ -66,8 +67,22 @@ class _RayChunkMeta:
 
 class RayTaskState(RayRemoteObjectManager):
     @classmethod
-    def gen_name(cls, task_id: str):
+    def _gen_name(cls, task_id: str):
         return f"{cls.__name__}_{task_id}"
+
+    @classmethod
+    def get_handle(cls, task_id: str):
+        """Get the RayTaskState actor handle."""
+        name = cls._gen_name(task_id)
+        logger.info("Getting %s handle.", name)
+        return ray.get_actor(name)
+
+    @classmethod
+    def create(cls, task_id: str):
+        """Create a RayTaskState actor."""
+        name = cls._gen_name(task_id)
+        logger.info("Creating %s.", name)
+        return ray.remote(cls).options(name=name).remote()
 
 
 _optimize_physical = None
@@ -110,7 +125,7 @@ def execute_subtask(
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     # inputs = [i[1] for i in inputs]
     context = RayExecutionWorkerContext(
-        RayTaskState.gen_name(task_id), zip(input_keys, inputs)
+        lambda: RayTaskState.get_handle(task_id), zip(input_keys, inputs)
     )
     # optimize chunk graph.
     subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)
@@ -153,7 +168,6 @@ class RayTaskExecutor(TaskExecutor):
         tile_context: TileContext,
         task_context: Dict[str, "ray.ObjectRef"],
         task_chunks_meta: Dict[str, _RayChunkMeta],
-        task_state_actor: "ray.actor.ActorHandle",
         lifecycle_api: LifecycleAPI,
         meta_api: MetaAPI,
     ):
@@ -162,7 +176,6 @@ class RayTaskExecutor(TaskExecutor):
         self._tile_context = tile_context
         self._task_context = task_context
         self._task_chunks_meta = task_chunks_meta
-        self._task_state_actor = task_state_actor
         self._ray_executor = self._get_ray_executor()
 
         # api
@@ -192,31 +205,39 @@ class RayTaskExecutor(TaskExecutor):
         **kwargs,
     ) -> "RayTaskExecutor":
         lifecycle_api, meta_api = await cls._get_apis(session_id, address)
-        task_state_actor = (
-            ray.remote(RayTaskState)
-            .options(name=RayTaskState.gen_name(task.task_id))
-            .remote()
-        )
         task_context = {}
         task_chunks_meta = {}
-        await cls._init_context(
-            config,
-            task_context,
-            task_chunks_meta,
-            task_state_actor,
-            session_id,
-            address,
-        )
-        return cls(
+
+        executor = cls(
             config,
             task,
             tile_context,
             task_context,
             task_chunks_meta,
-            task_state_actor,
             lifecycle_api,
             meta_api,
         )
+        available_band_resources = await executor.get_available_band_resources()
+        worker_addresses = list(
+            map(operator.itemgetter(0), available_band_resources.keys())
+        )
+        if config.create_task_state_actor_as_needed():
+            create_task_state_actor = lambda: RayTaskState.create(  # noqa: E731
+                task_id=task.task_id
+            )
+        else:
+            actor_handle = RayTaskState.create(task_id=task.task_id)
+            create_task_state_actor = lambda: actor_handle  # noqa: E731
+        await cls._init_context(
+            config,
+            task_context,
+            task_chunks_meta,
+            create_task_state_actor,
+            worker_addresses,
+            session_id,
+            address,
+        )
+        return executor
 
     # noinspection DuplicatedCode
     def destroy(self):
@@ -225,7 +246,6 @@ class RayTaskExecutor(TaskExecutor):
         self._tile_context = None
         self._task_context = None
         self._task_chunks_meta = None
-        self._task_state_actor = None
         self._ray_executor = None
 
         # api
@@ -263,7 +283,8 @@ class RayTaskExecutor(TaskExecutor):
         config: RayExecutionConfig,
         task_context: Dict[str, "ray.ObjectRef"],
         task_chunks_meta: Dict[str, _RayChunkMeta],
-        task_state_actor: "ray.actor.ActorHandle",
+        create_task_state_actor: Callable[[], "ray.actor.ActorHandle"],
+        worker_addresses: List[str],
         session_id: str,
         address: str,
     ):
@@ -272,7 +293,8 @@ class RayTaskExecutor(TaskExecutor):
             config,
             task_context,
             task_chunks_meta,
-            task_state_actor,
+            worker_addresses,
+            create_task_state_actor,
             session_id,
             address,
             address,
@@ -449,7 +471,9 @@ class RayTaskExecutor(TaskExecutor):
             idx = 0
             for band_resource in band_resources:
                 for band, resource in band_resource.items():
-                    virtual_band_resources[(f"ray_virtual://{idx}", band)] = resource
+                    virtual_band_resources[
+                        (f"ray_virtual_address_{idx}:0", band)
+                    ] = resource
                     idx += 1
             self._available_band_resources = virtual_band_resources
 
