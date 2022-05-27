@@ -108,13 +108,11 @@ class TensorElementWiseWithInputs(TensorElementWise):
 
 
 def _handle_out_dtype(val, dtype):
-    try:
-        if val.dtype != dtype:
-            return val.astype(dtype)
-        return val
-    except AttributeError:
-        assert isinstance(val, tuple)
-        return list(val)
+    if not isinstance(val, np.ndarray):
+        return np.asarray(val)
+    if val.dtype != dtype:
+        return val.astype(dtype)
+    return val
 
 
 class TensorBinOpMixin(TensorElementWiseWithInputs):

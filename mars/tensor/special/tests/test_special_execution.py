@@ -36,6 +36,7 @@ from ... import special as mt_special
         "erfcx",
         "erfi",
         "erfinv",
+        "fresnel",
         "entr",
     ],
 )
