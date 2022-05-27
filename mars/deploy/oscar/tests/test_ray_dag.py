@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import copy
 import os
 import time
@@ -25,17 +24,10 @@ from ....config import Config
 from ....core import (
     ChunkGraphBuilder,
     Tileable,
-    TileContext,
-    ChunkGraph,
-    Chunk,
 )
-from ....core.operand import Fetch
 from ....resource import Resource
-from ....serialization import serialize
-from ....services.subtask import SubtaskGraph
 from ....services.task import Task
 from ....services.task.analyzer import GraphAnalyzer
-from ....services.task.execution import RayTaskExecutor, RayExecutionConfig
 from ....tests.core import DICT_NOT_EMPTY, require_ray
 from ....utils import lazy_import
 from ..local import new_cluster
@@ -163,7 +155,7 @@ def test_cancel(ray_start_regular_shared2, create_cluster, test_func):
 
 @require_ray
 @pytest.mark.parametrize("config", [{"backend": "ray"}])
-def test_basic_context_gc(config):
+def test_executor_context_gc(config):
     session = new_session(
         backend=config["backend"],
         n_cpu=2,
@@ -194,96 +186,3 @@ def test_basic_context_gc(config):
 
     session.stop_server()
     assert get_default_async_session() is None
-
-
-class MockRayTaskExecutor(RayTaskExecutor):
-    async def submit_subtask_graph(
-        self,
-        stage_id: str,
-        subtask_graph: SubtaskGraph,
-        chunk_graph: ChunkGraph,
-    ):
-        monitor_task = asyncio.create_task(
-            self._update_progress_and_collect_garbage(
-                subtask_graph, self._config.get_subtask_monitor_interval()
-            )
-        )
-
-        result_meta_keys = {
-            chunk.key
-            for chunk in chunk_graph.result_chunks
-            if not isinstance(chunk.op, Fetch)
-        }
-
-        for subtask in subtask_graph.topological_iter():
-            subtask_chunk_graph = subtask.chunk_graph
-            task_context = self._task_context
-            key_to_input = await self._load_subtask_inputs(
-                stage_id, subtask, subtask_chunk_graph, task_context
-            )
-            output_keys = self._get_subtask_output_keys(subtask_chunk_graph)
-            output_meta_keys = result_meta_keys & output_keys
-            output_count = len(output_keys) + bool(output_meta_keys)
-            output_object_refs = self._ray_executor.options(
-                num_returns=output_count
-            ).remote(
-                subtask.task_id,
-                subtask.subtask_id,
-                serialize(subtask_chunk_graph),
-                output_meta_keys,
-                list(key_to_input.keys()),
-                *key_to_input.values(),
-            )
-            if output_count == 0:
-                continue
-            elif output_count == 1:
-                output_object_refs = [output_object_refs]
-            self._cur_stage_first_output_object_ref_to_subtask[
-                output_object_refs[0]
-            ] = subtask
-            if output_meta_keys:
-                meta_object_ref, *output_object_refs = output_object_refs
-            task_context.update(zip(output_keys, output_object_refs))
-
-        return monitor_task
-
-
-class MockTileContext(TileContext):
-    def get_all_progress(self) -> float:
-        return 1.0
-
-
-@require_ray
-@pytest.mark.asyncio
-async def test_detail_context_gc():
-    t1 = mt.random.randint(10, size=(100, 10), chunk_size=100)
-    t2 = mt.random.randint(10, size=(100, 10), chunk_size=50)
-    t3 = t2 + t1
-    t4 = t3.sum(0)
-    chunk_graph, subtask_graph = _build_subtask_graph(t4)
-
-    task = Task("mock_task", "mock_session", fuse_enabled=True)
-    mock_config = RayExecutionConfig.from_execution_config(
-        {"backend": "ray", "ray": {"subtask_monitor_interval": 0}}
-    )
-    tile_context = MockTileContext()
-    task_context = dict()
-    task_chunks_meta = dict()
-    executor = MockRayTaskExecutor(
-        config=mock_config,
-        task=task,
-        tile_context=tile_context,
-        task_context=task_context,
-        task_chunks_meta=task_chunks_meta,
-        task_state_actor=None,
-        lifecycle_api=None,
-        meta_api=None,
-    )
-
-    monitor_task = await executor.submit_subtask_graph(
-        "mock_stage", subtask_graph, chunk_graph
-    )
-    sequence = await monitor_task
-
-    assert len(task_context) == 1
-    assert sequence == [1, 2, 1, 1, 1]

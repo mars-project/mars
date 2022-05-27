@@ -537,8 +537,6 @@ class RayTaskExecutor(TaskExecutor):
         total = len(subtask_graph)
         completed_subtasks = OrderedSet()
 
-        deletion_seq = []
-
         def gc():
             """
             Consume the completed subtasks and collect garbage.
@@ -549,7 +547,7 @@ class RayTaskExecutor(TaskExecutor):
             may be deleted.
             """
             i = 0
-            garbaged_subtasks = set()
+            gc_subtasks = set()
 
             while i < total:
                 while i >= len(completed_subtasks):
@@ -565,17 +563,16 @@ class RayTaskExecutor(TaskExecutor):
                 # B's successors are completed, A's not. Then we cannot remove
                 # B's results chunks before A's.
                 for pred in subtask_graph.iter_predecessors(subtask):
+                    if pred in gc_subtasks:
+                        continue
                     while not all(
                         succ in completed_subtasks
                         for succ in subtask_graph.iter_successors(pred)
                     ):
                         yield
-                    if pred in garbaged_subtasks:
-                        continue
                     for chunk in pred.chunk_graph.results:
                         self._task_context.pop(chunk.key, None)
-                    deletion_seq.append(len(pred.chunk_graph.results))
-                    garbaged_subtasks.add(pred)
+                    gc_subtasks.add(pred)
 
             # TODO(fyrestone): Check the remaining self._task_context.keys()
             # in the result subtasks
@@ -610,5 +607,3 @@ class RayTaskExecutor(TaskExecutor):
                 break
             # Fast to next loop and give it a chance to update object_ref_to_subtask.
             await asyncio.sleep(0)
-
-        return deletion_seq
