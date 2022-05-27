@@ -52,6 +52,9 @@ def test_unary_execution(setup, func):
     result = r.execute().fetch()
     expected = sp_func(raw)
 
+    if isinstance(expected, tuple):
+        expected = np.asarray(expected)
+
     np.testing.assert_array_equal(result, expected)
 
     # test sparse
