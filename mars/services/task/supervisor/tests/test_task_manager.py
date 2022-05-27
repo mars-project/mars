@@ -27,6 +27,7 @@ from ..... import dataframe as md
 from ..... import oscar as mo
 from ..... import remote as mr
 from ..... import tensor as mt
+from .....conftest import MARS_CI_BACKEND
 from .....core import Tileable, TileableGraph, TileableGraphBuilder
 from .....core.operand import Fetch
 from .....oscar.backends.allocate_strategy import MainPool
@@ -47,9 +48,8 @@ from ..manager import TaskConfigurationActor, TaskManagerActor
 
 
 @pytest.fixture
-async def actor_pool(request):
-    param = getattr(request, "param", {})
-    backend = param.get("backend", "mars")
+async def actor_pool():
+    backend = MARS_CI_BACKEND
     start_method = (
         os.environ.get("POOL_START_METHOD", "forkserver")
         if sys.platform != "win32"
@@ -126,6 +126,7 @@ async def _merge_data(
 
 
 @pytest.mark.asyncio
+@pytest.mark.ray_dag
 async def test_run_task(actor_pool):
     (
         execution_backend,
@@ -171,6 +172,7 @@ async def test_run_task(actor_pool):
 
 
 @pytest.mark.asyncio
+@pytest.mark.ray_dag
 async def test_run_tasks_with_same_name(actor_pool):
     (
         execution_backend,
@@ -212,6 +214,7 @@ async def test_run_tasks_with_same_name(actor_pool):
 
 
 @pytest.mark.asyncio
+@pytest.mark.ray_dag
 async def test_error_task(actor_pool):
     (
         execution_backend,
@@ -288,6 +291,7 @@ async def test_cancel_task(actor_pool):
 
 
 @pytest.mark.asyncio
+@pytest.mark.ray_dag
 async def test_iterative_tiling(actor_pool):
     (
         execution_backend,
@@ -505,6 +509,7 @@ async def test_shuffle(actor_pool):
 
 
 @pytest.mark.asyncio
+@pytest.mark.ray_dag
 async def test_numexpr(actor_pool):
     (
         execution_backend,
@@ -551,6 +556,7 @@ async def test_numexpr(actor_pool):
 
 
 @pytest.mark.asyncio
+@pytest.mark.ray_dag
 async def test_optimization(actor_pool):
     (
         execution_backend,
