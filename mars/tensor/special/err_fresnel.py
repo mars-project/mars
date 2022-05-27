@@ -55,6 +55,12 @@ class TensorErfcinv(TensorSpecialUnaryOp):
     _func_name = "erfcinv"
 
 
+@_register_special_op
+@arithmetic_operand(sparse_mode="unary")
+class TensorFresnel(TensorSpecialUnaryOp):
+    _func_name = "fresnel"
+
+
 @implement_scipy(spspecial.erf)
 @infer_dtype(spspecial.erf)
 def erf(x, out=None, where=None, **kwargs):
@@ -139,4 +145,11 @@ def erfinv(x, out=None, where=None, **kwargs):
 @infer_dtype(spspecial.erfcinv)
 def erfcinv(x, out=None, where=None, **kwargs):
     op = TensorErfcinv(**kwargs)
+    return op(x, out=out, where=where)
+
+
+@implement_scipy(spspecial.fresnel)
+@infer_dtype(spspecial.fresnel)
+def fresnel(x, out=None, where=None, **kwargs):
+    op = TensorFresnel(**kwargs)
     return op(x, out=out, where=where)

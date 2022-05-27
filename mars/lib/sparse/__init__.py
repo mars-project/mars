@@ -271,6 +271,8 @@ erfi = partial(_call_unary, "erfi")
 erfinv = partial(_call_unary, "erfinv")
 erfcinv = partial(_call_unary, "erfcinv")
 
+fresnel = partial(_call_unary, "fresnel")
+
 jv = partial(_call_bin, "jv")
 jve = partial(_call_bin, "jve")
 yn = partial(_call_bin, "yn")

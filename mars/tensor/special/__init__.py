@@ -28,6 +28,8 @@ try:
         TensorErfinv,
         erfcinv,
         TensorErfcinv,
+        fresnel,
+        TensorFresnel,
     )
     from .gamma_funcs import (
         gamma,
