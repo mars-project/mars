@@ -13,19 +13,12 @@
 # limitations under the License.
 
 import asyncio
-from dataclasses import dataclass
 import logging
-from typing import Dict, Union, Any, List
+from dataclasses import dataclass
+from typing import Dict, List
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
-from ...serialization.serializables import (
-    Serializable,
-    StringField,
-    ReferenceField,
-    AnyField,
-    ListField,
-)
 from ...storage import StorageLevel
 from ...utils import dataslots
 from .core import DataManagerActor, WrappedStorageFileObject
@@ -35,30 +28,6 @@ DEFAULT_TRANSFER_BLOCK_SIZE = 4 * 1024**2
 
 
 logger = logging.getLogger(__name__)
-
-
-class TransferMessage(Serializable):
-    data: Any = AnyField("data")
-    session_id: str = StringField("session_id")
-    data_keys: List[str] = ListField("data_keys")
-    level: StorageLevel = ReferenceField("level", StorageLevel)
-    eof_marks: List[bool] = ListField("eof_marks")
-
-    def __init__(
-        self,
-        data: List = None,
-        session_id: str = None,
-        data_keys: List[Union[str, tuple]] = None,
-        level: StorageLevel = None,
-        eof_marks: List[bool] = None,
-    ):
-        super().__init__(
-            data=data,
-            session_id=session_id,
-            data_keys=data_keys,
-            level=level,
-            eof_marks=eof_marks,
-        )
 
 
 class SenderManagerActor(mo.StatelessActor):
