@@ -19,10 +19,13 @@ import cloudpickle
 import numpy as np
 from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
 
-from ..utils import estimate_pandas_size, pd_release_version
+from ..utils import estimate_pandas_size, pd_release_version, no_default
 
 _HAS_SQUEEZE = pd_release_version < (1, 1, 0)
 _HAS_DROPNA = pd_release_version >= (1, 1, 0)
+_GROUP_KEYS_NO_DEFAULT = pd_release_version >= (1, 5, 0)
+
+_default_group_keys = no_default if _GROUP_KEYS_NO_DEFAULT else True
 
 
 class GroupByWrapper:
@@ -38,7 +41,7 @@ class GroupByWrapper:
         selection=None,
         as_index=True,
         sort=True,
-        group_keys=True,
+        group_keys=_default_group_keys,
         squeeze=False,
         observed=False,
         dropna=True,
@@ -251,7 +254,7 @@ def wrapped_groupby(
     level=None,
     as_index=True,
     sort=True,
-    group_keys=True,
+    group_keys=_default_group_keys,
     squeeze=False,
     observed=False,
     dropna=True,

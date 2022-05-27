@@ -33,7 +33,12 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.DROP_NA
 
     axis = AnyField("axis", default=None)
-    how = AnyField("how", default=None)
+    how = StringField(
+        "how",
+        default=None,
+        on_serialize=lambda x: None if x is no_default else x,
+        on_deserialize=lambda x: no_default if x is None else x,
+    )
     thresh = AnyField("thresh", default=None)
     subset = AnyField("subset", default=None)
     use_inf_as_na = BoolField("use_inf_as_na", default=None)

@@ -24,7 +24,7 @@ from ..utils import parse_index, build_df, build_series, validate_axis
 
 _need_consolidate = pd.__version__ in ("1.1.0", "1.3.0", "1.3.1")
 _enable_no_default = pd_release_version[:2] > (1, 1)
-_with_column_freq_bug = pd_release_version[:2] >= (1, 2)
+_with_column_freq_bug = (1, 2, 0) <= pd_release_version < (1, 4, 3)
 
 
 class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
