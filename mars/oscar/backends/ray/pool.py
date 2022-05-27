@@ -130,14 +130,27 @@ class RayMainActorPool(MainActorPoolBase):
             f"process_index {process_index} is not consistent with index {_process_index} "
             f"in external_address {external_address}"
         )
+        actor_handle = config["kwargs"]["sub_pool_handles"][external_address]
+        state = await retry_callable(
+            actor_handle.state.remote, ex_type=ray.exceptions.RayActorError, sync=False
+        )()
+        if state is RayPoolState.SERVICE_READY:  # pragma: no cover
+            logger.info("Ray sub pool %s is alive, kill it first.", external_address)
+            await kill_and_wait(actor_handle, no_restart=False)
+            # Wait sub pool process restarted.
+            await retry_callable(
+                actor_handle.state.remote,
+                ex_type=ray.exceptions.RayActorError,
+                sync=False,
+            )()
         logger.info("Start to start ray sub pool %s.", external_address)
         create_sub_pool_timeout = 120
-        actor_handle = config["kwargs"]["sub_pool_handles"][external_address]
-        done, _ = await asyncio.wait(
-            [actor_handle.set_actor_pool_config.remote(actor_pool_config)],
-            timeout=create_sub_pool_timeout,
-        )
-        if not done:  # pragma: no cover
+        try:
+            await asyncio.wait_for(
+                actor_handle.set_actor_pool_config.remote(actor_pool_config),
+                timeout=create_sub_pool_timeout,
+            )
+        except asyncio.TimeoutError:  # pragma: no cover
             msg = (
                 f"Can not start ray sub pool {external_address} in {create_sub_pool_timeout} seconds.",
             )
@@ -305,7 +318,7 @@ class RayMainPool(RayPoolBase):
         await self._actor_pool.start_monitor()
 
     async def alive(self):
-        await asyncio.sleep(30)
+        await asyncio.sleep(300)
         return self._start_timestamp
 
 
