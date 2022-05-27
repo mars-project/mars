@@ -537,6 +537,7 @@ PickleSerializer.register(object)
 for _primitive in _primitive_types:
     PrimitiveSerializer.register(_primitive)
 BytesSerializer.register(bytes)
+BytesSerializer.register(memoryview)
 StrSerializer.register(str)
 ListSerializer.register(list)
 TupleSerializer.register(tuple)
