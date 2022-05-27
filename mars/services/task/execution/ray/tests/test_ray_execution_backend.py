@@ -18,22 +18,20 @@ import pytest
 import numpy as np
 
 from collections import Counter
-from ....analyzer import GraphAnalyzer
-from .....subtask import SubtaskGraph
+
 from ...... import tensor as mt
 from ......config import Config
-
 from ......core import TileContext, ChunkGraph
 from ......core.context import get_context
 from ......core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-
 from ......core.operand import Fetch
-
 from ......resource import Resource
 from ......serialization import serialize
 from ......tests.core import require_ray, mock
 from ......utils import lazy_import, get_chunk_params
 from .....context import ThreadedServiceContext
+from .....subtask import SubtaskGraph
+from ....analyzer import GraphAnalyzer
 from ....core import new_task_id, Task
 from ..config import RayExecutionConfig
 from ..context import (
@@ -73,6 +71,11 @@ class MockRayTaskExecutor(RayTaskExecutor):
     @classmethod
     async def _get_apis(cls, session_id: str, address: str):
         return None, None
+
+    @staticmethod
+    def _get_ray_executor():
+        # Export remote function once.
+        return None
 
     async def get_available_band_resources(self):
         return {}
@@ -383,6 +386,7 @@ async def test_executor_context_gc():
         lifecycle_api=None,
         meta_api=None,
     )
+    executor._ray_executor = RayTaskExecutor._get_ray_executor()
     monitor_task = await executor.submit_subtask_graph(
         "mock_stage", subtask_graph, chunk_graph
     )

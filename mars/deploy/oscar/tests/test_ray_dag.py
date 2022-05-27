@@ -20,14 +20,6 @@ import pytest
 
 from .... import get_context
 from .... import tensor as mt
-from ....config import Config
-from ....core import (
-    ChunkGraphBuilder,
-    Tileable,
-)
-from ....resource import Resource
-from ....services.task import Task
-from ....services.task.analyzer import GraphAnalyzer
 from ....tests.core import DICT_NOT_EMPTY, require_ray
 from ....utils import lazy_import
 from ..local import new_cluster
@@ -63,17 +55,6 @@ EXPECT_PROFILING_STRUCTURE = {
 }
 EXPECT_PROFILING_STRUCTURE_NO_SLOW = copy.deepcopy(EXPECT_PROFILING_STRUCTURE)
 EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_calls"] = {}
-
-
-def _build_subtask_graph(t: Tileable):
-    tileable_graph = t.build_graph(tile=False)
-    chunk_graph = next(ChunkGraphBuilder(tileable_graph).build())
-    bands = [(f"address_{i}", "numa-0") for i in range(4)]
-    band_resource = dict((band, Resource(num_cpus=1)) for band in bands)
-    task = Task("mock_task", "mock_session", tileable_graph)
-    analyzer = GraphAnalyzer(chunk_graph, band_resource, task, Config(), dict())
-    subtask_graph = analyzer.gen_subtask_graph()
-    return chunk_graph, subtask_graph
 
 
 @pytest.mark.parametrize(indirect=True)

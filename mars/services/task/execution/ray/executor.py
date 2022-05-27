@@ -426,7 +426,7 @@ class RayTaskExecutor(TaskExecutor):
         if exc_type is not None:
             try:
                 await self.cancel()
-            except:  # pylint: disable=bare-except
+            except BaseException:  # noqa: E722  # nosec  # pylint: disable=bare-except
                 pass
             return
 
@@ -604,7 +604,7 @@ class RayTaskExecutor(TaskExecutor):
         collect_garbage = gc()
 
         while len(completed_subtasks) != total:
-            if len(object_ref_to_subtask) <= 0:
+            if len(object_ref_to_subtask) <= 0:  # pragma: no cover
                 await asyncio.sleep(interval_seconds)
 
             # Only wait for unready subtask object refs.
