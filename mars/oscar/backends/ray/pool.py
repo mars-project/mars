@@ -318,7 +318,7 @@ class RayMainPool(RayPoolBase):
         await self._actor_pool.start_monitor()
 
     async def alive(self):
-        await asyncio.sleep(300)
+        await asyncio.sleep(30)
         return self._start_timestamp
 
 
