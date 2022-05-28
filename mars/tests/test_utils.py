@@ -18,7 +18,6 @@ import copy
 import logging
 import multiprocessing
 import os
-import random
 import shutil
 import sys
 import tempfile
