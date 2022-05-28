@@ -45,7 +45,7 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
     function_args = ListField("function_args")
     function_kwargs = DictField("function_kwargs")
     retry_when_fail = BoolField("retry_when_fail")
-    n_output = Int32Field("n_output")
+    n_output = Int32Field("n_output", default=None)
 
     @property
     def output_limit(self):
