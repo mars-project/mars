@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from numpy import float64
 import scipy.special as spspecial
 
 from ..arithmetic.utils import arithmetic_operand
