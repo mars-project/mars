@@ -186,7 +186,7 @@ def test_groupby_auto_on_cluster():
         tiled_mdf = tile(mdf)
         r = mdf.groupby("c2").sum()
         func_infos = DataFrameGroupByAgg._compile_funcs(r.op, mdf)
-        tiled = DataFrameGroupByAgg._tile_auto_on_distributed(
+        tiled = DataFrameGroupByAgg._build_tree_and_shuffle_chunks(
             r.op, tiled_mdf, r, func_infos, tiled_mdf.chunks[:4], [8] * 4
         )[0]
         assert len(tiled.chunks) == 5

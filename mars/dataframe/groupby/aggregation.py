@@ -20,7 +20,6 @@ from typing import Callable, Dict, List
 
 import numpy as np
 import pandas as pd
-from scipy.stats import variation
 
 from ... import opcodes as OperandDef
 from ...config import options
@@ -812,73 +811,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return cls._build_out_tileable(op, out_df, chunks, func_infos)
 
     @classmethod
-    def _choose_tree_method(
-        cls,
-        raw_sizes: List[int],
-        agg_sizes: List[int],
-        sample_count: int,
-        total_count: int,
-        chunk_store_limit: int,
-    ) -> bool:
-        estimate_size = sum(agg_sizes) / sample_count * total_count
-        # calculate the coefficient of variation of aggregation sizes,
-        # if the CV is less than CV_THRESHOLD and the mean of agg_size/raw_size
-        # is less than MEAN_RATIO_THRESHOLD, we suppose the single chunk's aggregation size
-        # almost equals to the tileable's, then use tree method
-        # as combine aggregation results won't lead to a rapid expansion.
-        ratios = [
-            agg_size / raw_size for agg_size, raw_size in zip(agg_sizes, raw_sizes)
-        ]
-        cv = variation(agg_sizes)
-        mean_ratio = np.mean(ratios)
-        if mean_ratio <= 1 / sample_count:
-            return True
-        if cv <= CV_THRESHOLD and mean_ratio <= MEAN_RATIO_THRESHOLD:
-            # check CV and mean of ratio
-            return True
-        if estimate_size <= chunk_store_limit:
-            # if estimated size less than `chunk_store_limit`, use tree.
-            return True
-        return False
-
-    @classmethod
-    def _tile_auto_on_local(
-        cls,
-        op: "DataFrameGroupByAgg",
-        in_df: TileableType,
-        out_df: TileableType,
-        func_infos: ReductionSteps,
-        sample_map_chunks: List,
-        sample_raw_sizes: List,
-        sample_agg_sizes: List,
-    ):
-        combine_size = op.combine_size
-        left_chunks = in_df.chunks[combine_size:]
-        left_chunks = cls._gen_map_chunks(op, left_chunks, out_df, func_infos)
-        if cls._choose_tree_method(
-            sample_raw_sizes,
-            sample_agg_sizes,
-            len(sample_map_chunks),
-            len(in_df.chunks),
-            op.chunk_store_limit,
-        ):
-            logger.info("Choose tree method for groupby operand %s", op)
-            return cls._combine_tree(
-                op, sample_map_chunks + left_chunks, out_df, func_infos
-            )
-        else:
-            # otherwise, use shuffle
-            logger.info("Choose shuffle method for groupby operand %s", op)
-            return cls._perform_shuffle(
-                op,
-                sample_map_chunks + left_chunks,
-                in_df,
-                out_df,
-                func_infos,
-            )
-
-    @classmethod
-    def _tile_auto_on_distributed(
+    def _build_tree_and_shuffle_chunks(
         cls,
         op: "DataFrameGroupByAgg",
         in_df: TileableType,
@@ -963,15 +896,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             op.chunk_store_limit,
         )
 
-        if len(ctx.get_worker_addresses()) <= 1:
-            # for one worker
-            return cls._tile_auto_on_local(
-                op, in_df, out_df, func_infos, chunks, raw_sizes, agg_sizes
-            )
-        else:
-            return cls._tile_auto_on_distributed(
-                op, in_df, out_df, func_infos, chunks, agg_sizes
-            )
+        return cls._build_tree_and_shuffle_chunks(
+            op, in_df, out_df, func_infos, chunks, agg_sizes
+        )
 
     @classmethod
     def tile(cls, op: "DataFrameGroupByAgg"):
