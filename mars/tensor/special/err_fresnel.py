@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from numpy import float64
 import scipy.special as spspecial
 
 from ..arithmetic.utils import arithmetic_operand
@@ -53,6 +54,13 @@ class TensorErfinv(TensorSpecialUnaryOp):
 @arithmetic_operand(sparse_mode="unary")
 class TensorErfcinv(TensorSpecialUnaryOp):
     _func_name = "erfcinv"
+
+
+@_register_special_op
+@arithmetic_operand(sparse_mode="unary", multi_outputs=True)
+class TensorFresnel(TensorSpecialUnaryOp):
+    _func_name = "fresnel"
+    _n_outputs = 2
 
 
 @implement_scipy(spspecial.erf)
@@ -139,4 +147,11 @@ def erfinv(x, out=None, where=None, **kwargs):
 @infer_dtype(spspecial.erfcinv)
 def erfcinv(x, out=None, where=None, **kwargs):
     op = TensorErfcinv(**kwargs)
+    return op(x, out=out, where=where)
+
+
+@implement_scipy(spspecial.fresnel)
+@infer_dtype(spspecial.fresnel)
+def fresnel(x, out=None, where=None, **kwargs):
+    op = TensorFresnel(**kwargs)
     return op(x, out=out, where=where)
