@@ -578,7 +578,7 @@ async def test_release_worker_during_reconstructing_worker(
     class FakeActor:
         state = FakeActorMethod()
 
-    def _get_actor(*args):
+    def _get_actor(*args, **kwargs):
         return FakeActor
 
     async def _stop_worker(*args):
@@ -677,7 +677,8 @@ async def test_auto_scale_in(ray_large_cluster):
         assert await autoscaler_ref.get_dynamic_worker_nums() == 2
 
 
-@pytest.mark.timeout(timeout=1000)
+@pytest.mark.skip("Enable it when ray ownership bug is fixed")
+@pytest.mark.timeout(timeout=200)
 @pytest.mark.parametrize("ray_large_cluster", [{"num_nodes": 4}], indirect=True)
 @require_ray
 @pytest.mark.asyncio
