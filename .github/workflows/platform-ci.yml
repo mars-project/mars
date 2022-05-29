@@ -144,7 +144,7 @@ jobs:
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG --durations=0 --timeout=600 -v -s -m ray
+            pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s -m ray
             coverage report
           fi
           if [ -n "$WITH_RAY_DAG" ]; then
