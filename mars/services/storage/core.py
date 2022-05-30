@@ -20,7 +20,6 @@ from typing import Dict, List, Optional, Union, Tuple
 
 from ... import oscar as mo
 from ...lib.aio import AioFileObject
-from ...oscar import ActorRef
 from ...oscar.backends.allocate_strategy import IdleLabel, NoIdleSlot
 from ...resource import cuda_card_stats
 from ...storage import StorageLevel, get_storage_backend
@@ -57,7 +56,7 @@ class WrappedStorageFileObject(AioFileObject):
         size: int,
         session_id: str,
         data_key: str,
-        data_manager: Union[ActorRef, "DataManagerActor"],
+        data_manager: mo.ActorRefType["DataManagerActor"],
         storage_handler: StorageBackend,
     ):
         self._object_id = file.object_id
@@ -92,7 +91,7 @@ class WrappedStorageFileObject(AioFileObject):
 class StorageQuotaActor(mo.Actor):
     def __init__(
         self,
-        data_manager: Union[mo.ActorRef, "DataManagerActor"],
+        data_manager: mo.ActorRefType["DataManagerActor"],
         level: StorageLevel,
         total_size: Optional[Union[int, float]],
     ):
@@ -344,7 +343,7 @@ class StorageManagerActor(mo.StatelessActor):
     and create all the necessary actors for storage service.
     """
 
-    _data_manager: Union[mo.ActorRef, DataManagerActor]
+    _data_manager: mo.ActorRefType[DataManagerActor]
 
     def __init__(
         self, storage_configs: Dict, transfer_block_size: int = None, **kwargs

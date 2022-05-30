@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import TypeVar, Union
+
 # import aio to ensure patch enabled for Python 3.6
 from ..lib import aio
 
@@ -49,3 +51,6 @@ from .utils import create_actor_ref
 from .backends import mars, ray, test
 
 del mars, ray, test
+
+_T = TypeVar("_T")
+ActorRefType = Union[ActorRef, _T]

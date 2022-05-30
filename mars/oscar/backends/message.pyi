@@ -70,6 +70,7 @@ class ControlMessage(_MessageBase):
         control_message_type: ControlMessageType = None,
         content: Any = None,
         protocol: int = DEFAULT_PROTOCOL,
+        message_trace: list = None,
     ): ...
 
 class ResultMessage(_MessageBase):

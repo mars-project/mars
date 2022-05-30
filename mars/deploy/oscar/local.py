@@ -25,6 +25,7 @@ import numpy as np
 from ... import oscar as mo
 from ...core.entrypoints import init_extension_entrypoints
 from ...lib.aio import get_isolation, stop_isolation
+from ...oscar.backends.router import Router
 from ...resource import cpu_count, cuda_count, mem_total
 from ...services import NodeRole
 from ...services.task.execution.api import ExecutionConfig
@@ -51,6 +52,11 @@ atexit.register(stop_isolation)
 DEFAULT_CONFIG_FILE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "config.yml"
 )
+
+# the default times to retry subtask.
+DEFAULT_SUBTASK_MAX_RETRIES = 3
+# the default time to cancel a subtask.
+DEFAULT_SUBTASK_CANCEL_TIMEOUT = 5
 
 
 def _load_config(config: Union[str, Dict] = None):
@@ -123,6 +129,7 @@ async def stop_cluster(cluster: ClusterType):
     isolation = get_isolation()
     coro = cluster.stop()
     await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(coro, isolation.loop))
+    Router.set_instance(None)
 
 
 class LocalCluster:
@@ -165,6 +172,12 @@ class LocalCluster:
                 n_cpu=self._n_cpu,
                 mem_bytes=self._mem_bytes,
                 cuda_devices=self._cuda_devices,
+                subtask_cancel_timeout=self._config.get("scheduling", {}).get(
+                    "subtask_cancel_timeout", DEFAULT_SUBTASK_CANCEL_TIMEOUT
+                ),
+                subtask_max_retries=self._config.get("scheduling", {}).get(
+                    "subtask_max_retries", DEFAULT_SUBTASK_MAX_RETRIES
+                ),
             )
         )
 
@@ -276,6 +289,7 @@ class LocalCluster:
         await self._supervisor_pool.stop()
         AbstractSession.reset_default()
         self._exiting_check_task.cancel()
+        Router.set_instance(None)
 
 
 class LocalClient:

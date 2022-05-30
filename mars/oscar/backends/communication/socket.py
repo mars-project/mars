@@ -215,9 +215,14 @@ class SocketServer(_BaseSocketServer):
                 reader, writer, local_address=server.address
             )
 
+        port = port if port != 0 else None
         aio_server = await asyncio.start_server(
             handle_connection, host=host, port=port, **config
         )
+
+        # get port of the socket if not specified
+        if not port:
+            port = aio_server.sockets[0].getsockname()[1]
 
         if _is_windows:
             for sock in aio_server.sockets:

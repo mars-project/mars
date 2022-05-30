@@ -19,7 +19,6 @@ import time
 
 import numpy as np
 import pytest
-import pytest_asyncio
 
 from ..... import oscar as mo
 from ..... import tensor as mt
@@ -27,7 +26,6 @@ from ..... import remote as mr
 from .....core import ExecutionError
 from .....core.context import get_context
 from .....core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-
 from .....resource import Resource
 from .....utils import Timer
 from ....cluster import MockClusterAPI
@@ -49,7 +47,7 @@ class FakeTaskManager(TaskManagerActor):
         return
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool():
     start_method = (
         os.environ.get("POOL_START_METHOD", "forkserver")

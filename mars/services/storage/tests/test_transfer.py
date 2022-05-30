@@ -19,7 +19,6 @@ import sys
 import numpy as np
 import pandas as pd
 import pytest
-import pytest_asyncio
 
 from .... import oscar as mo
 from ....oscar.backends.allocate_strategy import IdleLabel
@@ -32,7 +31,7 @@ from ..transfer import ReceiverManagerActor, SenderManagerActor
 _is_windows = sys.platform.lower().startswith("win")
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pools():
     async def start_pool():
         start_method = (
@@ -52,12 +51,14 @@ async def actor_pools():
 
     worker_pool_1 = await start_pool()
     worker_pool_2 = await start_pool()
-    yield worker_pool_1, worker_pool_2
-    await worker_pool_1.stop()
-    await worker_pool_2.stop()
+    try:
+        yield worker_pool_1, worker_pool_2
+    finally:
+        await worker_pool_1.stop()
+        await worker_pool_2.stop()
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def create_actors(actor_pools):
     worker_pool_1, worker_pool_2 = actor_pools
 

@@ -26,7 +26,6 @@ from functools import reduce
 import numpy as np
 import pandas as pd
 import pytest
-import pytest_asyncio
 
 import mars
 from .... import oscar as mo
@@ -93,7 +92,7 @@ EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_calls"] = {}
 EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_subtasks"] = {}
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def create_cluster(request):
     param = getattr(request, "param", {})
     ray_config = _load_config(CONFIG_FILE)
@@ -678,7 +677,8 @@ async def test_auto_scale_in(ray_large_cluster):
         assert await autoscaler_ref.get_dynamic_worker_nums() == 2
 
 
-@pytest.mark.timeout(timeout=1000)
+@pytest.mark.skip("Enable it when ray ownership bug is fixed")
+@pytest.mark.timeout(timeout=200)
 @pytest.mark.parametrize("ray_large_cluster", [{"num_nodes": 4}], indirect=True)
 @require_ray
 @pytest.mark.asyncio

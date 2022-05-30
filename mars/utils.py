@@ -1733,6 +1733,6 @@ def retry_callable(
                     ex = e
                     time.sleep(wait_interval)
             assert ex is not None
-            raise ex
+            raise ex  # pylint: disable-msg=E0702
 
     return retry_call

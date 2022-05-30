@@ -15,7 +15,6 @@
 import os
 
 import pytest
-import pytest_asyncio
 
 from ....oscar.errors import ServerClosed
 from ....services.tests.fault_injection_manager import (
@@ -46,7 +45,7 @@ SUBTASK_RERUN_CONFIG = {
 }
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def fault_cluster(request):
     param = getattr(request, "param", {})
     ray_config = _load_config(RAY_CONFIG_FILE)

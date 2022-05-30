@@ -65,11 +65,13 @@ class Router:
 
     def set_mapping(self, mapping: Dict[str, str]):
         self._mapping = mapping
+        self._cache_local = threading.local()
 
     def add_router(self, router: "Router"):
         self._curr_external_addresses.extend(router._curr_external_addresses)
         self._local_mapping.update(router._local_mapping)
         self._mapping.update(router._mapping)
+        self._cache_local = threading.local()
 
     def remove_router(self, router: "Router"):
         for external_address in router._curr_external_addresses:
@@ -81,6 +83,7 @@ class Router:
             self._local_mapping.pop(addr, None)
         for addr in router._mapping:
             self._mapping.pop(addr, None)
+        self._cache_local = threading.local()
 
     @property
     def external_address(self):

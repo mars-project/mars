@@ -45,9 +45,8 @@ async def actor_pool_context():
     pool = await mo.create_actor_pool(
         "test://127.0.0.1", n_process=2, subprocess_start_method=start_method
     )
-    await pool.start()
-    yield pool
-    await pool.stop()
+    async with pool:
+        yield pool
 
 
 @pytest.mark.asyncio

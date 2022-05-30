@@ -94,7 +94,7 @@ jobs:
               rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
             fi
             if [ -n "$WITH_RAY" ] || [ -n "$WITH_RAY_DAG" ]; then
-              pip install "xgboost_ray==0.1.5" "xgboost<1.6.0"
+              pip install "xgboost_ray==0.1.5" "xgboost<1.6.0" "protobuf<4"
               # Use standard ray releases when ownership bug is fixed
               pip uninstall -y ray
               pip install https://s3-us-west-2.amazonaws.com/ray-wheels/master/c03d0432f3bb40f3c597b7fc450870ba5e34ad56/ray-3.0.0.dev0-cp38-cp38-manylinux2014_x86_64.whl
@@ -148,12 +148,12 @@ jobs:
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG --durations=0 --timeout=240 -v -s -m ray
+            pytest $PYTEST_CONFIG --durations=0 --timeout=150 -v -s -m ray
             coverage report
           fi
           if [ -n "$WITH_RAY_DAG" ]; then
             export MARS_CI_BACKEND=ray
-            pytest $PYTEST_CONFIG --durations=0 --timeout=240 -v -s -m ray_dag
+            pytest $PYTEST_CONFIG --durations=0 --timeout=600 -v -s -m ray_dag
             coverage report
           fi
           if [ -n "$RUN_DASK" ]; then

@@ -284,6 +284,16 @@ class AbstractActorPool(ABC):
             result or error message
         """
 
+    def _sync_pool_config(self, actor_pool_config: ActorPoolConfig):
+        self._config = actor_pool_config
+        # remove router from global one
+        global_router = Router.get_instance()
+        global_router.remove_router(self._router)
+        # update router
+        self._router.set_mapping(actor_pool_config.external_to_internal_address_map)
+        # update global router
+        global_router.add_router(self._router)
+
     async def handle_control_command(
         self, message: ControlMessage
     ) -> ResultMessageType:
@@ -307,17 +317,7 @@ class AbstractActorPool(ABC):
             if message.control_message_type == ControlMessageType.stop:
                 await self.stop()
             elif message.control_message_type == ControlMessageType.sync_config:
-                actor_pool_config: ActorPoolConfig = message.content
-                self._config = actor_pool_config
-                # remove router from global one
-                global_router = Router.get_instance()
-                global_router.remove_router(self._router)
-                # update router
-                self._router.set_mapping(
-                    actor_pool_config.external_to_internal_address_map
-                )
-                # update global router
-                global_router.add_router(self._router)
+                self._sync_pool_config(message.content)
             elif message.control_message_type == ControlMessageType.get_config:
                 if message.content == "main_pool_address":
                     main_process_index = self._config.get_process_indexes()[0]
@@ -639,6 +639,64 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         # append this router to global
         default_router.add_router(router)
 
+    @staticmethod
+    def _update_stored_addresses(
+        servers: List[Server],
+        raw_addresses: List[str],
+        actor_pool_config: ActorPoolConfig,
+        kw: Dict,
+    ):
+        process_index = kw["process_index"]
+        curr_pool_config = actor_pool_config.get_pool_config(process_index)
+        external_addresses = curr_pool_config["external_address"]
+        external_address_set = set(external_addresses)
+
+        kw["servers"] = servers
+
+        new_external_addresses = [
+            server.address
+            for server, raw_address in zip(servers, raw_addresses)
+            if raw_address in external_address_set
+        ]
+
+        if external_address_set != set(new_external_addresses):
+            external_addresses = new_external_addresses
+            actor_pool_config.reset_pool_external_address(
+                process_index, external_addresses
+            )
+            external_addresses = curr_pool_config["external_address"]
+
+            logger.debug(
+                "External address of process index %s updated to %s",
+                process_index,
+                external_addresses[0],
+            )
+            if kw["internal_address"] == kw["external_address"]:
+                # internal address may be the same as external address in Windows
+                kw["internal_address"] = external_addresses[0]
+            kw["external_address"] = external_addresses[0]
+
+            kw["router"] = Router(
+                external_addresses,
+                gen_local_address(process_index),
+                actor_pool_config.external_to_internal_address_map,
+            )
+
+    @classmethod
+    async def _create_servers(cls, addresses: List[str], channel_handler: Callable):
+        assert len(set(addresses)) == len(addresses)
+        # create servers
+        create_server_tasks = []
+        for addr in addresses:
+            server_type = get_server_type(addr)
+            task = asyncio.create_task(
+                server_type.create(dict(address=addr, handle_channel=channel_handler))
+            )
+            create_server_tasks.append(task)
+
+        await asyncio.gather(*create_server_tasks)
+        return [f.result() for f in create_server_tasks]
+
     @classmethod
     @implements(AbstractActorPool.create)
     async def create(cls, config: Dict) -> "ActorPoolType":
@@ -646,38 +704,33 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         kw = dict()
         cls._parse_config(config, kw)
         process_index: int = kw["process_index"]
-        actor_pool_config = kw["config"]
-        external_addresses = actor_pool_config.get_pool_config(process_index)[
-            "external_address"
-        ]
+        actor_pool_config = kw["config"]  # type: ActorPoolConfig
+        cur_pool_config = actor_pool_config.get_pool_config(process_index)
+        external_addresses = cur_pool_config["external_address"]
         internal_address = kw["internal_address"]
 
         # import predefined modules
-        modules = actor_pool_config.get_pool_config(process_index)["modules"] or []
+        modules = cur_pool_config["modules"] or []
         for mod in modules:
             __import__(mod, globals(), locals(), [])
         # make sure all lazy imports loaded
         TypeDispatcher.reload_all_lazy_handlers()
 
-        # set default router
-        # actor context would be able to use exact client
-        cls._set_global_router(kw["router"])
-
         def handle_channel(channel):
             return pool.on_new_channel(channel)
 
         # create servers
-        create_server_tasks = []
-        for addr in set(
-            external_addresses + [internal_address, gen_local_address(process_index)]
-        ):
-            server_type = get_server_type(addr)
-            task = asyncio.create_task(
-                server_type.create(dict(address=addr, handle_channel=handle_channel))
-            )
-            create_server_tasks.append(task)
-        await asyncio.gather(*create_server_tasks)
-        kw["servers"] = [f.result() for f in create_server_tasks]
+        server_addresses = external_addresses + [
+            internal_address,
+            gen_local_address(process_index),
+        ]
+        server_addresses = sorted(set(server_addresses))
+        servers = await cls._create_servers(server_addresses, handle_channel)
+        cls._update_stored_addresses(servers, server_addresses, actor_pool_config, kw)
+
+        # set default router
+        # actor context would be able to use exact client
+        cls._set_global_router(kw["router"])
 
         # create pool
         pool = cls(**kw)
@@ -758,6 +811,14 @@ class SubActorPoolBase(ActorPoolBase):
             # sync back to main actor pool
             await self.notify_main_pool_to_destroy(message)
         return result
+
+    @implements(AbstractActorPool.handle_control_command)
+    async def handle_control_command(
+        self, message: ControlMessage
+    ) -> ResultMessageType:
+        if message.control_message_type == ControlMessageType.sync_config:
+            self._main_address = message.address
+        return await super().handle_control_command(message)
 
     @staticmethod
     def _parse_config(config: Dict, kw: Dict) -> Dict:
@@ -1014,7 +1075,7 @@ class MainActorPoolBase(ActorPoolBase):
                     for addr in self.sub_processes:
                         control_message = ControlMessage(
                             new_message_id(),
-                            addr,
+                            message.address,
                             message.control_message_type,
                             message.content,
                             protocol=message.protocol,
@@ -1086,8 +1147,10 @@ class MainActorPoolBase(ActorPoolBase):
         if "process_index" not in config:
             config["process_index"] = actor_pool_config.get_process_indexes()[0]
         curr_process_index = config.get("process_index")
+        old_config_addresses = set(actor_pool_config.get_external_addresses())
 
         tasks = []
+        subpool_process_idxes = []
         # create sub actor pools
         n_sub_pool = actor_pool_config.n_pool - 1
         if n_sub_pool > 0:
@@ -1101,8 +1164,15 @@ class MainActorPoolBase(ActorPoolBase):
                 await asyncio.sleep(0)
                 # await create_pool_task
                 tasks.append(create_pool_task)
+                subpool_process_idxes.append(process_index)
 
-        processes = await cls.wait_sub_pools_ready(tasks)
+        processes, ext_addresses = await cls.wait_sub_pools_ready(tasks)
+        if ext_addresses:
+            for process_index, ext_address in zip(subpool_process_idxes, ext_addresses):
+                actor_pool_config.reset_pool_external_address(
+                    process_index, ext_address
+                )
+
         # create main actor pool
         pool: MainActorPoolType = await super().create(config)
         addresses = actor_pool_config.get_external_addresses()[1:]
@@ -1112,6 +1182,17 @@ class MainActorPoolBase(ActorPoolBase):
         ), f"addresses {addresses}, processes {processes}"
         for addr, proc in zip(addresses, processes):
             pool.attach_sub_process(addr, proc)
+
+        new_config_addresses = set(actor_pool_config.get_external_addresses())
+        if old_config_addresses != new_config_addresses:
+            control_message = ControlMessage(
+                message_id=new_message_id(),
+                address=pool.external_address,
+                control_message_type=ControlMessageType.sync_config,
+                content=actor_pool_config,
+            )
+            await pool.handle_control_command(control_message)
+
         return pool
 
     async def start_monitor(self):
@@ -1121,6 +1202,10 @@ class MainActorPoolBase(ActorPoolBase):
 
     @implements(AbstractActorPool.stop)
     async def stop(self):
+        global_router = Router.get_instance()
+        if global_router is not None:
+            global_router.remove_router(self._router)
+
         # turn off auto recover to avoid errors
         self._auto_recover = False
         self._stopped.set()

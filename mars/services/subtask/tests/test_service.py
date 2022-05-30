@@ -17,13 +17,11 @@ import time
 
 import numpy as np
 import pytest
-import pytest_asyncio
 
 from .... import oscar as mo
 from .... import tensor as mt
 from .... import remote as mr
 from ....core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-
 from ....resource import Resource
 from ....utils import Timer
 from ... import start_services, stop_services, NodeRole
@@ -50,7 +48,7 @@ def _gen_subtask(t, session_id):
     return subtask
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pools():
     async def start_pool(is_worker: bool):
         if is_worker:
@@ -65,9 +63,11 @@ async def actor_pools():
         await pool.start()
         return pool
 
-    sv_pool, worker_pool = await asyncio.gather(start_pool(False), start_pool(True))
-    yield sv_pool, worker_pool
-    await asyncio.gather(sv_pool.stop(), worker_pool.stop())
+    try:
+        sv_pool, worker_pool = await asyncio.gather(start_pool(False), start_pool(True))
+        yield sv_pool, worker_pool
+    finally:
+        await asyncio.gather(sv_pool.stop(), worker_pool.stop())
 
 
 @pytest.mark.asyncio
