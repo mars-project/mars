@@ -505,15 +505,16 @@ class ChunkDtypesField(SeriesField):
             cache[tileable_key, index] = dtypes
             return dtypes
 
-    def __get__(self, instance, owner):
+    def __get__(self, instance, owner=None):
         if not issubclass(owner, LazyMetaChunkData):  # pragma: no cover
             return super().__get__(instance, owner)
 
-        values = instance._FIELD_VALUES
-        dtypes = values.get("_dtypes", None)
-        if dtypes is not None:
-            # been set before
-            return dtypes
+        try:
+            value = self._member_descriptor.__get__(instance, owner)
+            if value is not None:
+                return value
+        except AttributeError:
+            pass
 
         if instance.index is None:
             return super().__get__(instance, owner)
@@ -522,7 +523,7 @@ class ChunkDtypesField(SeriesField):
         index = instance.index[1]
         dtypes = self._gen_chunk_dtypes(instance, index)
         # cache dtypes
-        values["_dtypes"] = dtypes
+        self._member_descriptor.__set__(instance, dtypes)
         return dtypes
 
 
@@ -557,15 +558,16 @@ class ChunkIndexValueField(ReferenceField):
             cache[tileable_key, index] = index_value
             return index_value
 
-    def __get__(self, instance, owner):
+    def __get__(self, instance, owner=None):
         if not issubclass(owner, LazyMetaChunkData):  # pragma: no cover
             return super().__get__(instance, owner)
 
-        values = instance._FIELD_VALUES
-        index_value = values.get("_index_value", None)
-        if index_value is not None:
-            # been set before
-            return index_value
+        try:
+            value = self._member_descriptor.__get__(instance, owner)
+            if value is not None:
+                return value
+        except AttributeError:
+            pass
 
         if instance.index is None:
             return super().__get__(instance, owner)
@@ -574,7 +576,7 @@ class ChunkIndexValueField(ReferenceField):
         index = instance.index[0]
         index_value = self._gen_chunk_index_value(instance, index)
         # cache index_value
-        values["_index_value"] = index_value
+        self._member_descriptor.__set__(instance, index_value)
         return index_value
 
 
@@ -605,15 +607,16 @@ class ChunkColumnsValueField(ReferenceField):
             cache[tileable_key, index] = columns_value
             return columns_value
 
-    def __get__(self, instance, owner):
+    def __get__(self, instance, owner=None):
         if not issubclass(owner, LazyMetaChunkData):  # pragma: no cover
             return super().__get__(instance, owner)
 
-        values = instance._FIELD_VALUES
-        columns_value = values.get("_columns_value", None)
-        if columns_value is not None:
-            # been set before
-            return columns_value
+        try:
+            value = self._member_descriptor.__get__(instance, owner)
+            if value is not None:
+                return value
+        except AttributeError:
+            pass
 
         if instance.index is None:
             return super().__get__(instance, owner)
@@ -622,7 +625,7 @@ class ChunkColumnsValueField(ReferenceField):
         index = instance.index[1]
         columns_value = self._gen_chunk_columns_value(instance, index)
         # cache columns_value
-        values["_columns_value"] = columns_value
+        self._member_descriptor.__set__(instance, columns_value)
         return columns_value
 
 

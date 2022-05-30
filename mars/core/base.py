@@ -64,7 +64,7 @@ class Base(Serializable):
 
     @property
     def _values_(self):
-        return [self._FIELD_VALUES.get(k) for k in self._copy_tags_]
+        return [self._FIELDS[k].get(self) for k in self._copy_tags_]
 
     def __mars_tokenize__(self):
         try:
@@ -91,19 +91,13 @@ class Base(Serializable):
         return self.copy_to(type(self)(_key=self.key))
 
     def copy_to(self, target: "Base"):
-        new_values = dict()
-        values = self._FIELD_VALUES
         for k in self._FIELDS:
             if k in self._no_copy_attrs_:
                 continue
-            if k in values:
-                new_values[k] = values[k]
-            else:
-                try:
-                    new_values[k] = getattr(self, k)
-                except AttributeError:
-                    continue
-        target._FIELD_VALUES.update(new_values)
+            try:
+                setattr(target, k, getattr(self, k))
+            except AttributeError:
+                continue
         return target
 
     def copy_from(self, obj):
@@ -119,12 +113,14 @@ class Base(Serializable):
 
     def to_kv(self, exclude_fields: Tuple[str], accept_value_types: Tuple[Type]):
         fields = self._FIELDS
-        field_values = self._FIELD_VALUES
-        return {
-            fields[attr_name].tag: value
-            for attr_name, value in field_values.items()
-            if attr_name not in exclude_fields and isinstance(value, accept_value_types)
-        }
+        kv = {}
+        no_value = object()
+        for attr_name, field in fields.items():
+            if attr_name not in exclude_fields:
+                value = getattr(self, attr_name, no_value)
+                if value is not no_value and isinstance(value, accept_value_types):
+                    kv[field.tag] = value
+        return kv
 
 
 def buffered_base(func):

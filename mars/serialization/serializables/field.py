@@ -37,7 +37,7 @@ class Field(ABC):
         "_tag",
         "_default_value",
         "_default_factory",
-        "_attr_name",
+        "_member_descriptor",
         "_on_serialize",
         "_on_deserialize",
     )
@@ -45,7 +45,6 @@ class Field(ABC):
     _tag: str
     _default_value: Any
     _default_factory: Optional[Callable]
-    _attr_name: str  # attribute name that set to
 
     def __init__(
         self,
@@ -54,7 +53,6 @@ class Field(ABC):
         default_factory: Optional[Callable] = None,
         on_serialize: Callable[[Any], Any] = None,
         on_deserialize: Callable[[Any], Any] = None,
-        attr_name: str = None,
     ):
         if (
             default is not no_default and default_factory is not None
@@ -66,7 +64,7 @@ class Field(ABC):
         self._default_factory = default_factory
         self._on_serialize = on_serialize
         self._on_deserialize = on_deserialize
-        self._attr_name = attr_name
+        self._member_descriptor = None
 
     @property
     def tag(self):
@@ -82,7 +80,7 @@ class Field(ABC):
 
     @property
     def attr_name(self):
-        return self._attr_name
+        return self._member_descriptor.__name__
 
     @property
     @abstractmethod
@@ -96,23 +94,29 @@ class Field(ABC):
              Field type.
         """
 
-    def __get__(self, instance, owner):
-        tag_to_values = instance._FIELD_VALUES
+    def get(self, instance):
+        """Get the value from instance without side effect in __get__."""
         try:
-            return tag_to_values[self._attr_name]
-        except KeyError:
+            return self._member_descriptor.__get__(instance, None)
+        except AttributeError:
+            return None
+
+    def __get__(self, instance, owner=None):
+        try:
+            return self._member_descriptor.__get__(instance, owner)
+        except AttributeError:
             if self._default_value is not no_default:
-                val = tag_to_values[self._attr_name] = self._default_value
+                val = self._default_value
+                self._member_descriptor.__set__(instance, val)
                 return val
             elif self._default_factory is not None:
-                val = tag_to_values[self._attr_name] = self._default_factory()
+                val = self._default_factory()
+                self._member_descriptor.__set__(instance, val)
                 return val
             else:
-                raise AttributeError(
-                    f"'{type(instance)}' has no attribute {self._attr_name}"
-                )
+                raise
 
-    def __set__(self, instance, value):
+    def __set__(self, instance, value) -> None:
         if _is_ci:  # pragma: no branch
             from ...core import is_kernel_mode
 
@@ -125,18 +129,13 @@ class Field(ABC):
                     field_type.validate(to_check_value)
                 except (TypeError, ValueError) as e:
                     raise type(e)(
-                        f"Failed to set `{self._attr_name}` for {type(instance).__name__} "
+                        f"Failed to set `{self.attr_name}` for {type(instance).__name__} "
                         f"when environ CI=true is set: {str(e)}"
                     )
-        instance._FIELD_VALUES[self._attr_name] = value
+        self._member_descriptor.__set__(instance, value)
 
-    def __delete__(self, instance):
-        try:
-            del instance._FIELD_VALUES[self._attr_name]
-        except KeyError:
-            raise AttributeError(
-                f"'{type(instance)}' has no attribute {self._attr_name}"
-            ) from None
+    def __delete__(self, instance) -> None:
+        self._member_descriptor.__delete__(instance)
 
 
 class AnyField(Field):
@@ -526,14 +525,11 @@ class ReferenceField(Field):
                         to_check_value = self._on_serialize(to_check_value)
                     field_type.validate(to_check_value)
                 except (TypeError, ValueError) as e:
-                    if not self._attr_name:
-                        raise
-                    else:
-                        raise type(e)(
-                            f"Failed to set `{self._attr_name}` for {type(instance).__name__} "
-                            f"when environ CI=true is set: {e}"
-                        )
-            instance._FIELD_VALUES[self._attr_name] = value
+                    raise type(e)(
+                        f"Failed to set `{self.attr_name}` for {type(instance).__name__} "
+                        f"when environ CI=true is set: {e}"
+                    )
+            self._member_descriptor.__set__(instance, value)
         else:
             super().__set__(instance, value)
 
@@ -547,7 +543,6 @@ class OneOfField(Field):
         default: Any = no_default,
         on_serialize: Callable[[Any], Any] = None,
         on_deserialize: Callable[[Any], Any] = None,
-        attr_name: str = None,
         **tag_to_reference_types,
     ):
         super().__init__(
@@ -555,7 +550,6 @@ class OneOfField(Field):
             default=default,
             on_serialize=on_serialize,
             on_deserialize=on_deserialize,
-            attr_name=attr_name,
         )
         self._reference_fields = [
             ReferenceField(t, ref_type)
@@ -576,14 +570,13 @@ class OneOfField(Field):
         if not _is_ci:  # pragma: no cover
             return super().__set__(instance, value)
 
-        field_values = instance._FIELD_VALUES
         for reference_field in self._reference_fields:
             try:
                 to_check_value = value
                 if to_check_value is not None and self._on_serialize:
                     to_check_value = self._on_serialize(to_check_value)
                 reference_field.get_field_type(instance).validate(to_check_value)
-                field_values[self._attr_name] = value
+                self._member_descriptor.__set__(instance, value)
                 return
             except TypeError:
                 continue
@@ -596,7 +589,7 @@ class OneOfField(Field):
             )
         )
         raise TypeError(
-            f"Failed to set `{self._attr_name}` for {type(instance).__name__} "
+            f"Failed to set `{self.attr_name}` for {type(instance).__name__} "
             f"when environ CI=true is set: type of instance cannot match any "
             f"of {valid_types}, got {type(value).__name__}"
         )
