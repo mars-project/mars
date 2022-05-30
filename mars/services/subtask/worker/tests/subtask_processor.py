@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from collections import defaultdict
 from typing import Any, Dict
 
 from .....core import OperandType
 from .....tests.core import _check_args, ObjectCheckMixin
+from ...utils import iter_output_data
 from ...worker.processor import SubtaskProcessor
 
 
@@ -80,6 +81,27 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
                     # both shuffle mapper and reducer
                     continue
                 self.assert_object_consistent(out, ctx[out.key])
+
+    async def _store_data(self, *args, **kwargs):
+        # `iter_output_data` must ensure values order since we only return values.
+        shuffle_output = {
+            key: data
+            for key, data, is_shuffle in iter_output_data(
+                self.subtask.chunk_graph, self._datastore
+            )
+            if is_shuffle
+        }
+        # assert output keys order consistent
+        if shuffle_output:
+            mapper_reducer_indices = defaultdict(list)
+            for chunk_key, reducer_index in shuffle_output.keys():
+                mapper_reducer_indices[chunk_key].append(reducer_index)
+            for reducer_indices in mapper_reducer_indices.values():
+                assert sorted(reducer_indices) == list(reducer_indices), (
+                    reducer_indices,
+                    sorted(reducer_indices),
+                )
+        return await super()._store_data(*args, **kwargs)
 
     async def done(self):
         await super().done()

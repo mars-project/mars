@@ -15,8 +15,10 @@
 from typing import Any, Dict
 
 import numpy as np
+import pandas as pd
 import pytest
 
+from .... import dataframe as md
 from .... import tensor as mt
 from ....config import option_context
 from ....core import TileableType, OperandType
@@ -53,6 +55,29 @@ def test_checked_session(setup):
     b.execute()
 
     np.testing.assert_array_equal(sess.fetch(b), np.ones((10, 10)) + 1)
+
+    sess.stop_server()
+
+
+def test_shuffle(setup):
+    sess = new_test_session(default=True)
+
+    rs = np.random.RandomState(0)
+    raw = pd.DataFrame(rs.rand(100, 4), columns=list("abcd"))
+    df = md.DataFrame(raw, chunk_size=30)
+    pd.testing.assert_frame_equal(df.describe().to_pandas(), raw.describe())
+
+    a = mt.ones((31, 27), chunk_size=10)
+    b = a.reshape(27, 31)
+    b.op.extra_params["_reshape_with_shuffle"] = True
+    np.testing.assert_array_equal(b.to_numpy(), np.ones((27, 31)))
+
+    raw = rs.randint(0, 9, (100,))
+    raw[raw == 3] = 0
+    a = mt.tensor(raw, chunk_size=13)
+    result = mt.bincount(a, chunk_size_limit=5).execute().fetch()
+    expected = np.bincount(raw)
+    np.testing.assert_array_equal(result, expected)
 
     sess.stop_server()
 
