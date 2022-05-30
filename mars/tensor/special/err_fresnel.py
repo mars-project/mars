@@ -60,6 +60,7 @@ class TensorErfcinv(TensorSpecialUnaryOp):
 class TensorFresnel(TensorSpecialUnaryOp):
     _func_name = "fresnel"
     _n_outputs = 2
+    dtype = tuple
 
 
 @implement_scipy(spspecial.erf)
