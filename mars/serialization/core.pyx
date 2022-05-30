@@ -427,6 +427,9 @@ cdef class DictSerializer(CollectionSerializer):
         cdef tuple key_obj, value_obj
         cdef list key_bufs, value_bufs
 
+        if type(obj) is dict and len(<dict>obj) == 0:
+            return (), [], True
+
         obj_id = _fast_id(obj)
         if obj_id in context:
             return Placeholder(obj_id)
@@ -460,6 +463,8 @@ cdef class DictSerializer(CollectionSerializer):
         cdef int64_t i, num_key_bufs
         cdef list key_subs, value_subs, keys, values
 
+        if not serialized:
+            return {}
         if len(serialized) == 1:
             # serialized directly
             return serialized[0]
@@ -537,6 +542,7 @@ PickleSerializer.register(object)
 for _primitive in _primitive_types:
     PrimitiveSerializer.register(_primitive)
 BytesSerializer.register(bytes)
+BytesSerializer.register(memoryview)
 StrSerializer.register(str)
 ListSerializer.register(list)
 TupleSerializer.register(tuple)
