@@ -46,6 +46,7 @@ class SubtaskScheduleInfo:
     band_futures: Dict[BandType, asyncio.Future] = field(default_factory=dict)
     start_time: int = -1
     end_time: int = -1
+    cancel_pending: bool = False
     max_reschedules: int = 0
     num_reschedules: int = 0
     num_speculative_concurrent_run: int = 0
@@ -81,8 +82,10 @@ class SubtaskManagerActor(mo.Actor):
         self._subtask_max_reschedules = subtask_max_reschedules
         self._subtask_cancel_timeout = subtask_cancel_timeout
         self._speculation_config = speculation_config or {}
+
         self._queueing_ref = None
         self._global_resource_ref = None
+
         self._submitted_subtask_count = Metrics.counter(
             "mars.scheduling.submitted_subtask_count",
             "The count of submitted subtasks to all bands.",
@@ -93,13 +96,14 @@ class SubtaskManagerActor(mo.Actor):
             "The count of finished subtasks of all bands.",
             ("session_id", "task_id", "stage_id"),
         )
-        self._canceled_subtask_count = Metrics.counter(
+        self._cancelled_subtask_count = Metrics.counter(
             "mars.scheduling.canceled_subtask_count",
             "The count of canceled subtasks of all bands.",
             ("session_id", "task_id", "stage_id"),
         )
+
         logger.info(
-            "Created SubtaskManager with subtask_max_reschedules %s, "
+            "Created SubtaskManagerActor with subtask_max_reschedules %s, "
             "speculation_config %s",
             self._subtask_max_reschedules,
             speculation_config,
@@ -123,10 +127,17 @@ class SubtaskManagerActor(mo.Actor):
         )
         await self._speculation_execution_scheduler.start()
 
+        async def dump_running():
+            while True:
+                if self._subtask_infos:
+                    logger.warning("RUNNING: %r", list(self._subtask_infos))
+                await asyncio.sleep(5)
+
+        asyncio.create_task(dump_running())
+
     async def __pre_destroy__(self):
         await self._speculation_execution_scheduler.stop()
 
-    @alru_cache
     async def _get_task_api(self):
         return await TaskAPI.create(self._session_id, self.address)
 
@@ -171,18 +182,90 @@ class SubtaskManagerActor(mo.Actor):
 
         return await mo.actor_ref(SubtaskExecutionActor.default_uid(), address=band[0])
 
+    async def _handle_subtask_result(
+        self, info: SubtaskScheduleInfo, result: SubtaskResult, band: BandType
+    ):
+        subtask_id = info.subtask.subtask_id
+        async with redirect_subtask_errors(self, [info.subtask]):
+            try:
+                info.band_futures[band].set_result(result)
+                if result.error is not None:
+                    raise result.error.with_traceback(result.traceback)
+                logger.debug("Finished subtask %s with result %s.", subtask_id, result)
+            except (OSError, MarsError) as ex:
+                # TODO: We should handle ServerClosed Error.
+                if (
+                    info.subtask.retryable
+                    and info.num_reschedules < info.max_reschedules
+                ):
+                    logger.error(
+                        "Reschedule subtask %s due to %s",
+                        info.subtask.subtask_id,
+                        ex,
+                    )
+                    info.num_reschedules += 1
+                    await self._queueing_ref.add_subtasks(
+                        [info.subtask],
+                        [info.subtask.priority or tuple()],
+                        exclude_bands=set(info.band_futures.keys()),
+                    )
+                else:
+                    raise ex
+            except asyncio.CancelledError:
+                raise
+            except BaseException as ex:
+                if (
+                    info.subtask.retryable
+                    and info.num_reschedules < info.max_reschedules
+                ):
+                    logger.error(
+                        "Failed to reschedule subtask %s, "
+                        "num_reschedules: %s, max_reschedules: %s, unhandled exception: %s",
+                        info.subtask.subtask_id,
+                        info.num_reschedules,
+                        info.max_reschedules,
+                        ex,
+                    )
+                raise ex
+            finally:
+                # make sure slot is released before marking tasks as finished
+                await self._global_resource_ref.release_subtask_resource(
+                    band,
+                    info.subtask.session_id,
+                    info.subtask.subtask_id,
+                )
+                logger.debug(
+                    "Slot released for band %s after subtask %s",
+                    band,
+                    info.subtask.subtask_id,
+                )
+                # We should call submit_subtasks after the resource is released.
+                # If submit_subtasks runs before release_subtask_resource
+                # then the rescheduled subtask may not be submitted due to
+                # no available resource. The mars will hangs.
+                if info.num_reschedules > 0:
+                    await self._queueing_ref.submit_subtasks.tell()
+
     async def finish_subtasks(
         self,
-        subtask_ids: List[str],
+        subtask_results: List[SubtaskResult],
         bands: List[BandType] = None,
         schedule_next: bool = True,
     ):
+        subtask_ids = [result.subtask_id for result in subtask_results]
         logger.debug("Finished subtasks %s.", subtask_ids)
         band_tasks = defaultdict(lambda: 0)
         bands = bands or [None] * len(subtask_ids)
-        for subtask_id, subtask_band in zip(subtask_ids, bands):
+        for result, subtask_band in zip(subtask_results, bands):
+            subtask_id = result.subtask_id
             subtask_info = self._subtask_infos.get(subtask_id, None)
+
             if subtask_info is not None:
+                if subtask_band is not None:
+                    logger.warning("BEFORE await self._handle_subtask_result(subtask_info, result, subtask_band)")
+                    await self._handle_subtask_result(subtask_info, result, subtask_band)
+                    logger.warning("AFTER await self._handle_subtask_result(subtask_info, result, subtask_band)")
+
                 self._finished_subtask_count.record(
                     1,
                     {
@@ -192,14 +275,16 @@ class SubtaskManagerActor(mo.Actor):
                     },
                 )
                 self._subtask_summaries[subtask_id] = subtask_info.to_summary(
-                    is_finished=True
+                    is_finished=True, is_cancelled=result.status == SubtaskStatus.cancelled
                 )
                 subtask_info.end_time = time.time()
                 self._speculation_execution_scheduler.finish_subtask(subtask_info)
                 #  Cancel subtask on other bands.
                 aio_task = subtask_info.band_futures.pop(subtask_band, None)
                 if aio_task:
+                    logger.warning("BEFORE await aio_task")
                     await aio_task
+                    logger.warning("AFTER await aio_task")
                     if schedule_next:
                         band_tasks[subtask_band] += 1
                 if subtask_info.band_futures:
@@ -219,15 +304,9 @@ class SubtaskManagerActor(mo.Actor):
                 if schedule_next:
                     for band in subtask_info.band_futures.keys():
                         band_tasks[band] += 1
-        await self._queueing_ref.remove_queued_subtasks(subtask_ids)
+            # await self._queueing_ref.remove_queued_subtasks(subtask_ids)
         if band_tasks:
-            tasks = []
-            for band, subtask_count in band_tasks.items():
-                task = asyncio.ensure_future(
-                    self._queueing_ref.submit_subtasks.tell(band, subtask_count)
-                )
-                tasks.append(task)
-            await asyncio.wait(tasks)
+            await self._queueing_ref.submit_subtasks.tell(dict(band_tasks))
 
     def _get_subtasks_by_ids(self, subtask_ids: List[str]) -> List[Optional[Subtask]]:
         subtasks = []
@@ -238,106 +317,65 @@ class SubtaskManagerActor(mo.Actor):
                 subtasks.append(None)
         return subtasks
 
+    @mo.extensible
     async def submit_subtask_to_band(self, subtask_id: str, band: BandType):
-        if subtask_id not in self._subtask_infos:  # pragma: no cover
-            logger.info(
-                "Subtask %s is not in added subtasks set, it may be finished or canceled, skip it.",
-                subtask_id,
-            )
-            return
-        async with redirect_subtask_errors(
-            self, self._get_subtasks_by_ids([subtask_id])
-        ):
+        raise NotImplementedError
+
+    @submit_subtask_to_band.batch
+    async def batch_submit_subtask_to_band(self, args_list, kwargs_list):
+        band_to_subtask_ids = defaultdict(list)
+        res_release_delays = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            subtask_id, band = self.submit_subtask_to_band.bind(*args, **kwargs)
             try:
+                info = self._subtask_infos[subtask_id]
+                if info.cancel_pending:
+                    res_release_delays.append(
+                        self._global_resource_ref.release_subtask_resource.delay(
+                            band, info.subtask.session_id, info.subtask.subtask_id
+                        )
+                    )
+                    continue
+            except KeyError:  # pragma: no cover
+                logger.info(
+                    "Subtask %s is not in added subtasks set, it may be finished or canceled, skip it.",
+                    subtask_id,
+                )
+                continue
+            band_to_subtask_ids[band].append(subtask_id)
+
+        if res_release_delays:
+            await self._global_resource_ref.release_subtask_resource.batch(*res_release_delays)
+
+        for band, subtask_ids in band_to_subtask_ids.items():
+            asyncio.create_task(self._submit_subtasks_to_band(band, subtask_ids))
+
+    async def _submit_subtasks_to_band(self, band: BandType, subtask_ids: List[str]):
+        execution_ref = await self._get_execution_ref(band)
+        delays = []
+
+        async with redirect_subtask_errors(
+            self, self._get_subtasks_by_ids(subtask_ids)
+        ):
+            for subtask_id in subtask_ids:
                 subtask_info = self._subtask_infos[subtask_id]
-                execution_ref = await self._get_execution_ref(band)
-                extra_config = subtask_info.subtask.extra_config
-                enable_profiling = MARS_ENABLE_PROFILING or (
-                    extra_config and extra_config.get("enable_profiling")
-                )
-                profiling_context = (
-                    ProfilingContext(subtask_info.subtask.task_id)
-                    if enable_profiling
-                    else None
-                )
+                subtask = subtask_info.subtask
                 self._submitted_subtask_count.record(
                     1,
                     {
                         "session_id": self._session_id,
-                        "task_id": subtask_info.subtask.task_id,
-                        "stage_id": subtask_info.subtask.stage_id,
+                        "task_id": subtask.task_id,
+                        "stage_id": subtask.stage_id,
                     },
                 )
                 logger.debug("Start run subtask %s in band %s.", subtask_id, band)
-                with Timer() as timer:
-                    task = asyncio.create_task(
-                        execution_ref.run_subtask.options(
-                            profiling_context=profiling_context
-                        ).send(subtask_info.subtask, band[1], self.address)
-                    )
-                    subtask_info.band_futures[band] = task
-                    subtask_info.start_time = time.time()
-                    self._speculation_execution_scheduler.add_subtask(subtask_info)
-                    result = yield task
-                ProfilingData.collect_subtask(
-                    subtask_info.subtask, band, timer.duration
+                delays.append(
+                    execution_ref.run_subtask.delay(subtask, band[1], self.address)
                 )
-                task_api = await self._get_task_api()
-                logger.debug("Finished subtask %s with result %s.", subtask_id, result)
-                await task_api.set_subtask_result(result)
-            except (OSError, MarsError) as ex:
-                # TODO: We should handle ServerClosed Error.
-                if (
-                    subtask_info.subtask.retryable
-                    and subtask_info.num_reschedules < subtask_info.max_reschedules
-                ):
-                    logger.error(
-                        "Reschedule subtask %s due to %s",
-                        subtask_info.subtask.subtask_id,
-                        ex,
-                    )
-                    subtask_info.num_reschedules += 1
-                    await self._queueing_ref.add_subtasks(
-                        [subtask_info.subtask],
-                        [subtask_info.subtask.priority or tuple()],
-                        exclude_bands=set(subtask_info.band_futures.keys()),
-                    )
-                else:
-                    raise ex
-            except asyncio.CancelledError:
-                raise
-            except Exception as ex:
-                if (
-                    subtask_info.subtask.retryable
-                    and subtask_info.num_reschedules < subtask_info.max_reschedules
-                ):
-                    logger.error(
-                        "Failed to reschedule subtask %s, "
-                        "num_reschedules: %s, max_reschedules: %s, unhandled exception: %s",
-                        subtask_info.subtask.subtask_id,
-                        subtask_info.num_reschedules,
-                        subtask_info.max_reschedules,
-                        ex,
-                    )
-                raise ex
-            finally:
-                # make sure slot is released before marking tasks as finished
-                await self._global_resource_ref.release_subtask_resource(
-                    band,
-                    subtask_info.subtask.session_id,
-                    subtask_info.subtask.subtask_id,
-                )
-                logger.debug(
-                    "Slot released for band %s after subtask %s",
-                    band,
-                    subtask_info.subtask.subtask_id,
-                )
-                # We should call submit_subtasks after the resource is released.
-                # If submit_subtasks runs before release_subtask_resource
-                # then the rescheduled subtask may not be submitted due to
-                # no available resource. The mars will hangs.
-                if subtask_info.num_reschedules > 0:
-                    await self._queueing_ref.submit_subtasks.tell()
+                subtask_info.band_futures[band] = asyncio.Future()
+                subtask_info.start_time = time.time()
+                self._speculation_execution_scheduler.add_subtask(subtask_info)
+            await execution_ref.run_subtask.batch(*delays, send=False)
 
     async def cancel_subtasks(
         self, subtask_ids: List[str], kill_timeout: Union[float, int] = None
@@ -380,19 +418,20 @@ class SubtaskManagerActor(mo.Actor):
                 )
                 continue
 
-            subtask_info = self._subtask_infos[subtask_id]
-            raw_tasks_to_cancel = list(subtask_info.band_futures.values())
+            info = self._subtask_infos[subtask_id]
+            info.cancel_pending = True
+            raw_tasks_to_cancel = list(info.band_futures.values())
 
             if not raw_tasks_to_cancel:
                 queued_subtask_ids.append(subtask_id)
                 single_cancel_tasks.append(
                     asyncio.create_task(
-                        cancel_single_task(subtask_info.subtask, [], [])
+                        cancel_single_task(info.subtask, [], [])
                     )
                 )
             else:
                 cancel_tasks = []
-                for band in subtask_info.band_futures.keys():
+                for band in info.band_futures.keys():
                     execution_ref = await self._get_execution_ref(band)
                     cancel_tasks.append(
                         asyncio.create_task(
@@ -404,7 +443,7 @@ class SubtaskManagerActor(mo.Actor):
                 single_cancel_tasks.append(
                     asyncio.create_task(
                         cancel_single_task(
-                            subtask_info.subtask, raw_tasks_to_cancel, cancel_tasks
+                            info.subtask, raw_tasks_to_cancel, cancel_tasks
                         )
                     )
                 )
@@ -415,21 +454,21 @@ class SubtaskManagerActor(mo.Actor):
             yield asyncio.wait(single_cancel_tasks)
 
         for subtask_id in subtask_ids:
-            subtask_info = self._subtask_infos.pop(subtask_id, None)
-            if subtask_info is not None:
-                self._subtask_summaries[subtask_id] = subtask_info.to_summary(
+            info = self._subtask_infos.pop(subtask_id, None)
+            if info is not None:
+                self._subtask_summaries[subtask_id] = info.to_summary(
                     is_finished=True, is_cancelled=True
                 )
-                self._canceled_subtask_count.record(
+                self._cancelled_subtask_count.record(
                     1,
                     {
                         "session_id": self._session_id,
-                        "task_id": subtask_info.subtask.task_id,
-                        "stage_id": subtask_info.subtask.stage_id,
+                        "task_id": info.subtask.task_id,
+                        "stage_id": info.subtask.stage_id,
                     },
                 )
         await self._queueing_ref.submit_subtasks.tell()
-        logger.info("Subtasks %s canceled.", subtask_ids)
+        logger.info("Subtasks %s cancelled.", subtask_ids)
 
     def get_schedule_summaries(self, task_id: Optional[str] = None):
         if task_id is not None:

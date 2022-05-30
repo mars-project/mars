@@ -15,6 +15,7 @@
 import asyncio
 import base64
 import json
+import logging
 from typing import Callable, List, Optional, Union
 
 from ....core import TileableGraph, Tileable
@@ -253,7 +254,11 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
         path = f"{self._address}/api/session/{self._session_id}/task/{task_id}"
         params = dict(action="progress")
         res = await self._request_url("GET", path, params=params)
-        return float(res.body.decode())
+        try:
+            return float(res.body.decode())
+        except ValueError:
+            logging.exception("Failed to handle content %r", res.body)
+            raise
 
     async def get_last_idle_time(self) -> Union[float, None]:
         path = f"{self._address}/api/session/{self._session_id}/task"

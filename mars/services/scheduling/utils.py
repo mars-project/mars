@@ -15,10 +15,11 @@
 import asyncio
 import contextlib
 import sys
+from typing import Iterable
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
-from ..subtask import SubtaskResult, SubtaskStatus
+from ..subtask import Subtask, SubtaskResult, SubtaskStatus
 from ..task import TaskAPI
 
 
@@ -28,7 +29,7 @@ async def _get_task_api(actor: mo.Actor):
 
 
 @contextlib.asynccontextmanager
-async def redirect_subtask_errors(actor: mo.Actor, subtasks):
+async def redirect_subtask_errors(actor: mo.Actor, subtasks: Iterable[Subtask]):
     try:
         yield
     except:  # noqa: E722  # pylint: disable=bare-except

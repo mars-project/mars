@@ -24,6 +24,7 @@ from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....metrics import Metrics
 from ....resource import ZeroResource
+from ....typing import BandType
 from ....utils import dataslots
 from ...subtask import Subtask
 from ...task import TaskAPI
@@ -48,6 +49,7 @@ class SubtaskQueueingActor(mo.Actor):
     _stid_to_bands: DefaultDict[str, List[Tuple]]
     _stid_to_items: Dict[str, HeapItem]
     _band_queues: DefaultDict[Tuple, List[HeapItem]]
+    _submit_requests: List[Optional[Dict[BandType, int]]]
 
     @classmethod
     def gen_uid(cls, session_id: str):
@@ -61,6 +63,10 @@ class SubtaskQueueingActor(mo.Actor):
         # so that we can ensure band queue is busy if the band queue is not empty.
         self._band_queues = defaultdict(list)
 
+        self._submit_requests = []
+        self._submit_request_event = asyncio.Event()
+        self._submit_request_task = None
+
         self._cluster_api = None
         self._slots_ref = None
         self._assigner_ref = None
@@ -69,7 +75,6 @@ class SubtaskQueueingActor(mo.Actor):
         self._band_watch_task = None
         self._max_enqueue_id = 0
 
-        self._periodical_submit_task = None
         self._submit_period = submit_period or _DEFAULT_SUBMIT_PERIOD
         self._submitted_subtask_number = Metrics.gauge(
             "mars.band.submitted_subtask_number",
@@ -133,23 +138,13 @@ class SubtaskQueueingActor(mo.Actor):
             AssignerActor.gen_uid(self._session_id), address=self.address
         )
 
-        if self._submit_period > 0:
-            self._periodical_submit_task = self.ref().periodical_submit.tell_delay(
-                delay=self._submit_period
-            )
+        self._submit_request_task = asyncio.create_task(self._submission_task_func())
 
     async def __pre_destroy__(self):
         self._band_watch_task.cancel()
-        if self._periodical_submit_task is not None:  # pragma: no branch
-            self._periodical_submit_task.cancel()
+        if self._submit_request_task is not None:  # pragma: no branch
+            self._submit_request_task.cancel()
 
-    async def periodical_submit(self):
-        await self.ref().submit_subtasks.tell()
-        self._periodical_submit_task = self.ref().periodical_submit.tell_delay(
-            delay=self._submit_period
-        )
-
-    @alru_cache
     async def _get_task_api(self):
         return await TaskAPI.create(self._session_id, self.address)
 
@@ -180,114 +175,171 @@ class SubtaskQueueingActor(mo.Actor):
             self._max_enqueue_id += 1
             heapq.heappush(self._band_queues[band], heap_item)
             logger.debug(
-                "Subtask %s enqueued to band %s excluded from %s.",
+                "Subtask %s enqueued to band %s. exclude_bands=%s.",
                 subtask.subtask_id,
                 band,
                 exclude_bands,
             )
         logger.debug("%d subtasks enqueued", len(subtasks))
 
-    async def submit_subtasks(self, band: Tuple = None, limit: Optional[int] = None):
-        logger.debug("Submitting subtasks with limit %s", limit)
+    def submit_subtasks(self, band_to_limit: Dict[BandType, int] = None):
+        self._submit_requests.append(band_to_limit)
+        self._submit_request_event.set()
 
-        if not limit and band not in self._band_to_resource:
+    async def _submission_task_func(self):
+        while True:
+            try:
+                periodical_triggered = False
+                if not self._submit_requests:  # pragma: no branch
+                    try:
+                        if self._submit_period:
+                            await asyncio.wait_for(
+                                self._submit_request_event.wait(), self._submit_period
+                            )
+                        else:
+                            await self._submit_request_event.wait()
+
+                        self._submit_request_event.clear()
+                    except asyncio.TimeoutError:
+                        periodical_triggered = True
+
+                requests = self._submit_requests
+                self._submit_requests = []
+                if not periodical_triggered and not requests:  # pragma: no cover
+                    continue
+
+                merged_band_to_limit = dict()
+                for req in requests:
+                    if req is None:
+                        merged_band_to_limit = None
+                        break
+                    merged_band_to_limit.update(req)
+                await self._submit_subtask_request(merged_band_to_limit)
+            except asyncio.CancelledError:
+                break
+
+    async def _submit_subtask_request(self, band_to_limit: Dict[BandType, int] = None):
+        if band_to_limit:
+            logger.debug(
+                "TMP_QUEUE_PROBE: Submitting subtasks with limits: %r", band_to_limit
+            )
+
+        if not self._band_to_resource or any(
+            not limit and band not in self._band_to_resource
+            for band, limit in band_to_limit or ()
+        ):
             self._band_to_resource = await self._cluster_api.get_all_bands()
 
-        bands = [band] if band is not None else list(self._band_to_resource.keys())
-        submit_aio_tasks = []
-        manager_ref = await self._get_manager_ref()
+        if not band_to_limit:
+            band_to_limit = {band: None for band in self._band_to_resource.keys()}
 
         apply_delays = []
         submit_items_list = []
         submitted_bands = []
 
-        for band in bands:
-            band_limit = limit or (
-                self._band_to_resource[band].num_cpus
-                or self._band_to_resource[band].num_gpus
-            )
-            task_queue = self._band_queues[band]
-            submit_items = dict()
-            while (
-                self._ensure_top_item_valid(task_queue)
-                and len(submit_items) < band_limit
-            ):
-                item = heapq.heappop(task_queue)
-                submit_items[item.subtask.subtask_id] = item
-
-            subtask_ids = list(submit_items)
-            if not subtask_ids:
-                continue
-
-            submitted_bands.append(band)
-            submit_items_list.append(submit_items)
-
-            # Before hbo, when a manager finish a subtask, it will schedule one subtask successfully because
-            # there is a slot idle. But now we have memory requirements, so the subtask may apply resource
-            # from supervisor failed. In such cases, those subtasks will never got scheduled.
-            # TODO We can use `_periodical_submit_task` to submit those subtasks.
-            subtask_resources = [
-                item.subtask.required_resource for item in submit_items.values()
-            ]
-            apply_delays.append(
-                self._slots_ref.apply_subtask_resources.delay(
-                    band, self._session_id, subtask_ids, subtask_resources
+        def _load_items_to_submit():
+            for band, limit in band_to_limit.items():
+                band_limit = limit or (
+                    self._band_to_resource[band].num_cpus
+                    or self._band_to_resource[band].num_gpus
                 )
-            )
+                task_queue = self._band_queues[band]
+                submit_items = dict()
+                while (
+                    self._ensure_top_item_valid(task_queue)
+                    and len(submit_items) < band_limit
+                ):
+                    item = heapq.heappop(task_queue)
+                    submit_items[item.subtask.subtask_id] = item
+
+                subtask_ids = list(submit_items)
+                if not subtask_ids:
+                    continue
+
+                submitted_bands.append(band)
+                submit_items_list.append(submit_items)
+
+                # Before hbo, when a manager finish a subtask, it will schedule one subtask successfully because
+                # there is a slot idle. But now we have memory requirements, so the subtask may apply resource
+                # from supervisor failed. In such cases, those subtasks will never got scheduled.
+                # TODO We can use `_periodical_submit_task` to submit those subtasks.
+                subtask_resources = [
+                    item.subtask.required_resource for item in submit_items.values()
+                ]
+                apply_delays.append(
+                    self._slots_ref.apply_subtask_resources.delay(
+                        band, self._session_id, subtask_ids, subtask_resources
+                    )
+                )
+
+        await asyncio.to_thread(_load_items_to_submit)
+
+        logger.debug("TMP_QUEUE_PROBE: Finished picking top subtasks")
 
         async with redirect_subtask_errors(
             self,
-            [
+            (
                 item.subtask
                 for submit_items in submit_items_list
                 for item in submit_items.values()
-            ],
+            ),
         ):
             submitted_ids_list = await self._slots_ref.apply_subtask_resources.batch(
                 *apply_delays
             )
 
-        for band, submit_items, submitted_ids in zip(
-            submitted_bands, submit_items_list, submitted_ids_list
-        ):
-            subtask_ids = list(submit_items)
-            task_queue = self._band_queues[band]
+        logger.debug(
+            "TMP_QUEUE_PROBE: Finished band resource allocation, %d subtasks submitted",
+            sum(len(ids) for ids in submitted_ids_list),
+        )
 
-            async with redirect_subtask_errors(
-                self, [item.subtask for item in submit_items.values()]
+        manager_ref = await self._get_manager_ref()
+        submit_delays = []
+
+        def _gather_submissions():
+            for band, submit_items, submitted_ids in zip(
+                submitted_bands, submit_items_list, submitted_ids_list
             ):
-                non_submitted_ids = [k for k in submit_items if k not in submitted_ids]
+                subtask_ids = list(submit_items)
+                task_queue = self._band_queues[band]
+                submitted_id_set = set(submitted_ids)
+
+                non_submitted_ids = [
+                    k for k in submit_items if k not in submitted_id_set
+                ]
                 tags = {
                     "session_id": self._session_id,
                     "band": band[0] if band else "",
                 }
                 self._submitted_subtask_number.record(len(submitted_ids), tags)
                 self._unsubmitted_subtask_number.record(len(non_submitted_ids), tags)
-                if submitted_ids:
+
+                if not submitted_ids:
+                    if non_submitted_ids:
+                        logger.debug("No slots available on band %s", band)
+                else:
                     for stid in subtask_ids:
-                        if stid not in submitted_ids:
+                        if stid not in submitted_id_set:
                             continue
                         item = submit_items[stid]
                         logger.debug("Submit subtask %r to band %r", item.subtask, band)
-                        submit_aio_tasks.append(
-                            asyncio.create_task(
-                                manager_ref.submit_subtask_to_band.tell(
-                                    item.subtask.subtask_id, band
-                                )
+                        submit_delays.append(
+                            manager_ref.submit_subtask_to_band.delay(
+                                item.subtask.subtask_id, band
                             )
                         )
-                        await asyncio.sleep(0)
                         self.remove_queued_subtasks([item.subtask.subtask_id])
-                else:
-                    logger.debug("No slots available")
 
-            for stid in non_submitted_ids:
-                # TODO if subtasks submit failed due to lacking memory/cpu/gpu resources, lower the priority so that
-                # other subtasks can be submitted.
-                heapq.heappush(task_queue, submit_items[stid])
+                for stid in non_submitted_ids:
+                    # TODO if subtasks submit failed due to lacking memory/cpu/gpu resources, lower the priority so that
+                    # other subtasks can be submitted.
+                    heapq.heappush(task_queue, submit_items[stid])
 
-        if submit_aio_tasks:
-            yield asyncio.gather(*submit_aio_tasks)
+        await asyncio.to_thread(_gather_submissions)
+
+        logger.debug("TMP_QUEUE_PROBE: Start subtask submission in batch")
+        await manager_ref.submit_subtask_to_band.batch(*submit_delays)
+        logger.debug("TMP_QUEUE_PROBE: Finished subtask submission")
 
     def _ensure_top_item_valid(self, task_queue):
         """Clean invalid subtask item from the queue to ensure that when the queue is not empty,

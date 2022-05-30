@@ -16,7 +16,7 @@ from typing import List, Optional, Tuple, Type, TypeVar, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ...subtask import Subtask
+from ...subtask import Subtask, SubtaskResult
 from ..core import SubtaskScheduleSummary
 from .core import AbstractSchedulingAPI
 
@@ -112,7 +112,7 @@ class SchedulingAPI(AbstractSchedulingAPI):
 
     async def finish_subtasks(
         self,
-        subtask_ids: List[str],
+        subtask_results: List[SubtaskResult],
         bands: List[Tuple] = None,
         schedule_next: bool = True,
     ):
@@ -129,7 +129,7 @@ class SchedulingAPI(AbstractSchedulingAPI):
         schedule_next
             whether to schedule succeeding subtasks
         """
-        await self._manager_ref.finish_subtasks(subtask_ids, bands, schedule_next)
+        await self._manager_ref.finish_subtasks(subtask_results, bands, schedule_next)
 
 
 class MockSchedulingAPI(SchedulingAPI):

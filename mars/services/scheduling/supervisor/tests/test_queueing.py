@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 
 import pytest
 from typing import Tuple, List
@@ -57,16 +58,20 @@ class MockAssignerActor(mo.Actor):
         return [(self.address, "numa-0")] * len(subtasks)
 
 
-class MockSubtaskManagerActor(mo.Actor):
+class MockSubtaskManagerActor(mo.StatelessActor):
     def __init__(self):
         self._subtask_ids, self._bands = [], []
+        self._event = asyncio.Event()
 
     @mo.extensible
     def submit_subtask_to_band(self, subtask_id: str, band: Tuple):
         self._subtask_ids.append(subtask_id)
         self._bands.append(band)
+        self._event.set()
 
-    def dump_data(self):
+    async def dump_data(self):
+        await asyncio.wait_for(self._event.wait(), timeout=10)
+        self._event.clear()
         return self._subtask_ids, self._bands
 
 
@@ -123,7 +128,7 @@ async def test_subtask_queueing(actor_pool):
     assert await queueing_ref.all_bands_busy()
     await queueing_ref.submit_subtasks()
     # queue: [2 1 0]
-    commited_subtask_ids, _commited_bands = await manager_ref.dump_data()
+    commited_subtask_ids, _committed_bands = await manager_ref.dump_data()
     assert commited_subtask_ids == ["4", "3"]
 
     await queueing_ref.remove_queued_subtasks(["1"])
@@ -135,6 +140,6 @@ async def test_subtask_queueing(actor_pool):
     # queue: [0(3) 2]
     await queueing_ref.submit_subtasks()
     # queue: []
-    commited_subtasks, _commited_bands = await manager_ref.dump_data()
+    commited_subtasks, _committed_bands = await manager_ref.dump_data()
     assert commited_subtasks == ["4", "3", "0", "2"]
     assert not await queueing_ref.all_bands_busy()

@@ -14,7 +14,7 @@
 
 import asyncio
 from collections import defaultdict
-from typing import List, Tuple, Set
+from typing import List, Dict, Tuple, Set
 
 import pytest
 
@@ -22,6 +22,7 @@ from ..... import oscar as mo
 from .....typing import BandType
 from ....cluster import MockClusterAPI
 from ....subtask import Subtask, SubtaskResult, SubtaskStatus
+from ....task import TaskAPI
 from ....task.supervisor.manager import TaskManagerActor
 from ...supervisor import (
     SubtaskQueueingActor,
@@ -35,8 +36,12 @@ class MockTaskManagerActor(mo.Actor):
     def __init__(self):
         self._results = dict()
 
-    def set_subtask_result(self, result: SubtaskResult):
+    async def set_subtask_result(self, result: SubtaskResult):
         self._results[result.subtask_id] = result
+        manager_ref = await mo.actor_ref(
+            uid=SubtaskManagerActor.gen_uid(result.session_id), address=self.address
+        )
+        await manager_ref.finish_subtasks([result], result.bands)
 
     def get_result(self, subtask_id: str) -> SubtaskResult:
         return self._results[subtask_id]
@@ -59,7 +64,7 @@ class MockSubtaskQueueingActor(mo.Actor):
         for subtask, priority in zip(subtasks, priorities):
             self._subtasks[subtask.subtask_id] = (subtask, priority)
 
-    def submit_subtasks(self, band: BandType, limit: int):
+    def submit_subtasks(self, band_to_limit: Dict[BandType, int] = None):
         pass
 
     def remove_queued_subtasks(self, subtask_ids: List[str]):
@@ -78,14 +83,47 @@ class MockSubtaskExecutionActor(mo.StatelessActor):
     async def set_run_subtask_event(self, subtask_id, event):
         self._run_subtask_events[subtask_id] = event
 
+    @mo.extensible
     async def run_subtask(
         self, subtask: Subtask, band_name: str, supervisor_address: str
     ):
         self._run_subtask_events[subtask.subtask_id].set()
-        task = self._subtask_aiotasks[subtask.subtask_id][
-            band_name
-        ] = asyncio.create_task(asyncio.sleep(20))
-        return await task
+
+        async def task_fun():
+            task_api = await TaskAPI.create(subtask.session_id, supervisor_address)
+            try:
+                await asyncio.sleep(20)
+            except asyncio.CancelledError as ex:
+                await task_api.set_subtask_result(
+                    SubtaskResult(
+                        subtask_id=subtask.subtask_id,
+                        session_id=subtask.session_id,
+                        task_id=subtask.task_id,
+                        stage_id=subtask.stage_id,
+                        bands=[(self.address, band_name)],
+                        status=SubtaskStatus.cancelled,
+                        progress=1.0,
+                        error=ex,
+                        traceback=ex.__traceback__,
+                    )
+                )
+                raise
+            else:
+                await task_api.set_subtask_result(
+                    SubtaskResult(
+                        subtask_id=subtask.subtask_id,
+                        session_id=subtask.session_id,
+                        task_id=subtask.task_id,
+                        stage_id=subtask.stage_id,
+                        status=SubtaskStatus.succeeded,
+                        bands=[(self.address, band_name)],
+                        progress=1.0,
+                    )
+                )
+
+        self._subtask_aiotasks[subtask.subtask_id][band_name] = asyncio.create_task(
+            task_fun()
+        )
 
     def cancel_subtask(self, subtask_id: str, kill_timeout: int = 5):
         for task in self._subtask_aiotasks[subtask_id].values():
@@ -93,7 +131,7 @@ class MockSubtaskExecutionActor(mo.StatelessActor):
 
     async def wait_subtask(self, subtask_id: str, band_name: str):
         try:
-            yield self._subtask_aiotasks[subtask_id][band_name]
+            await self._subtask_aiotasks[subtask_id][band_name]
         except asyncio.CancelledError:
             pass
 
@@ -158,12 +196,12 @@ async def test_subtask_manager(actor_pool):
     await execution_ref.set_run_subtask_event(subtask1.subtask_id, run_subtask1_event)
     await execution_ref.set_run_subtask_event(subtask2.subtask_id, run_subtask2_event)
 
-    submit1 = asyncio.create_task(
+    asyncio.create_task(
         manager_ref.submit_subtask_to_band(
             subtask1.subtask_id, (pool.external_address, "gpu-0")
         )
     )
-    submit2 = asyncio.create_task(
+    asyncio.create_task(
         manager_ref.submit_subtask_to_band(
             subtask2.subtask_id, (pool.external_address, "gpu-1")
         )
@@ -179,10 +217,6 @@ async def test_subtask_manager(actor_pool):
         ),
         timeout=10,
     )
-    with pytest.raises(asyncio.CancelledError):
-        await submit1
-    with pytest.raises(asyncio.CancelledError):
-        await submit2
     assert (
         await task_manager_ref.get_result(subtask1.subtask_id)
     ).status == SubtaskStatus.cancelled

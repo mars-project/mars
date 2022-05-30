@@ -35,6 +35,7 @@ from ...cluster import ClusterAPI
 from ...meta import MetaAPI
 from ...storage import StorageAPI
 from ...subtask import Subtask, SubtaskAPI, SubtaskResult, SubtaskStatus
+from ...task import TaskAPI
 from .workerslot import BandSlotManagerActor
 from .quota import QuotaActor
 
@@ -367,6 +368,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
             task_id=subtask.task_id,
             stage_id=subtask.stage_id,
             status=SubtaskStatus.pending,
+            bands=[(self.address, band_name)]
         )
         try:
             logger.debug("Preparing data for subtask %s", subtask.subtask_id)
@@ -408,6 +410,11 @@ class SubtaskExecutionActor(mo.StatelessActor):
             finally:
                 # pop the subtask info at the end is to cancel the job.
                 self._subtask_info.pop(subtask.subtask_id, None)
+
+        task_api = await TaskAPI.create(
+            subtask.session_id, subtask_info.supervisor_address
+        )
+        await task_api.set_subtask_result(subtask_info.result)
         return subtask_info.result
 
     async def _retry_run_subtask(
@@ -515,15 +522,17 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     e, wrap_name="_UnretryableException", message=message
                 )
 
+    @mo.extensible
     async def run_subtask(
         self, subtask: Subtask, band_name: str, supervisor_address: str
     ):
-        if subtask.subtask_id in self._subtask_info:  # pragma: no cover
-            raise Exception(
-                f"Subtask {subtask.subtask_id} is already running on this band[{self.address}]."
-            )
+        subtask_id = subtask.subtask_id
+        assert (
+            subtask_id not in self._subtask_info
+        ), f"Subtask {subtask_id} is already running on this band[{self.address}]."
+
         logger.debug(
-            "Start to schedule subtask %s on %s.", subtask.subtask_id, self.address
+            "Start to schedule subtask %s on %s.", subtask_id, self.address
         )
         self._submitted_subtask_count.record(1, {"band": self.address})
         with mo.debug.no_message_trace():
@@ -541,14 +550,18 @@ class SubtaskExecutionActor(mo.StatelessActor):
         if subtask_max_retries is None:
             subtask_max_retries = self._subtask_max_retries
 
-        self._subtask_info[subtask.subtask_id] = SubtaskExecutionInfo(
+        self._subtask_info[subtask_id] = SubtaskExecutionInfo(
             task, band_name, supervisor_address, max_retries=subtask_max_retries
         )
-        result = await task
-        self._subtask_info.pop(subtask.subtask_id, None)
-        self._finished_subtask_count.record(1, {"band": self.address})
-        logger.debug("Subtask %s finished with result %s", subtask.subtask_id, result)
-        return result
+
+        def _finalize_subtask(fut: asyncio.Future):
+            res = fut.result()
+
+            self._subtask_info.pop(subtask_id, None)
+            self._finished_subtask_count.record(1, {"band": self.address})
+            logger.debug("Subtask %s finished with result %s", subtask_id, res)
+
+        task.add_done_callback(_finalize_subtask)
 
     async def cancel_subtask(self, subtask_id: str, kill_timeout: Optional[int] = 5):
         try:

@@ -19,7 +19,6 @@ from collections import defaultdict
 import numpy as np
 import pytest
 
-from ..api.web import WebSchedulingAPI
 from .... import oscar as mo
 from .... import remote as mr
 from .... import tensor as mt
@@ -33,6 +32,7 @@ from ...task import new_task_id
 from ...task.supervisor.manager import TaskManagerActor
 from ...web import WebActor
 from .. import SchedulingAPI
+from ..api.web import WebSchedulingAPI
 from ..supervisor import GlobalResourceManagerActor
 
 
@@ -42,11 +42,17 @@ class FakeTaskManager(TaskManagerActor):
         self._events = defaultdict(list)
         self._results = dict()
 
-    def set_subtask_result(self, subtask_result: SubtaskResult):
+    async def set_subtask_result(self, subtask_result: SubtaskResult):
+        scheduling_api = await SchedulingAPI.create(
+            subtask_result.session_id, self.address
+        )
         self._results[subtask_result.subtask_id] = subtask_result
         for event in self._events[subtask_result.subtask_id]:
             event.set()
         self._events.pop(subtask_result.subtask_id, None)
+        await scheduling_api.finish_subtasks(
+            [subtask_result], subtask_result.bands
+        )
 
     def _return_result(self, subtask_id: str):
         result = self._results[subtask_id]
@@ -184,7 +190,6 @@ async def test_schedule_success(actor_pools):
     subtask.expect_bands = [(worker_pool.external_address, "numa-0")]
     await scheduling_api.add_subtasks([subtask], [(0,)])
     await task_manager_ref.wait_subtask_result(subtask.subtask_id)
-    await scheduling_api.finish_subtasks([subtask.subtask_id])
 
     result_key = next(subtask.chunk_graph.iter_indep(reverse=True)).key
     result = await storage_api.get(result_key)
@@ -220,17 +225,17 @@ async def test_schedule_queue(actor_pools):
 
     async def _waiter_fun(subtask_id):
         await task_manager_ref.wait_subtask_result(subtask_id)
-        await scheduling_api.finish_subtasks([subtask_id])
         finish_ids.append(subtask_id)
         finish_time.append(time.time())
 
     subtasks = []
     wait_tasks = []
+    band = (worker_pool.external_address, "numa-0")
     for task_id in range(6):
         a = mr.spawn(_remote_fun, args=(0.5 + 0.01 * task_id,))
         subtask = _gen_subtask(a, session_id)
         subtask.subtask_id = f"test_schedule_queue_subtask_{task_id}"
-        subtask.expect_bands = [(worker_pool.external_address, "numa-0")]
+        subtask.expect_bands = [band]
         subtask.priority = (4 - task_id,)
         wait_tasks.append(asyncio.create_task(_waiter_fun(subtask.subtask_id)))
         subtasks.append(subtask)
@@ -291,15 +296,15 @@ async def test_schedule_cancel(actor_pools):
 
     async def _waiter_fun(subtask_id):
         await task_manager_ref.wait_subtask_result(subtask_id)
-        await scheduling_api.finish_subtasks([subtask_id])
 
     subtasks = []
     wait_tasks = []
+    band = (worker_pool.external_address, "numa-0")
     for task_id in range(6):
         a = mr.spawn(_remote_fun, args=(1 - 0.01 * task_id,))
         subtask = _gen_subtask(a, session_id)
         subtask.subtask_id = f"test_schedule_queue_subtask_{task_id}"
-        subtask.expect_bands = [(worker_pool.external_address, "numa-0")]
+        subtask.expect_bands = [band]
         subtask.priority = (4 - task_id,)
         wait_tasks.append(asyncio.create_task(_waiter_fun(subtask.subtask_id)))
         subtasks.append(subtask)

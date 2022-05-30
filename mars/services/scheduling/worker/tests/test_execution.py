@@ -44,7 +44,7 @@ from ....meta import MockMetaAPI, MockWorkerMetaAPI
 from ....session import MockSessionAPI
 from ....storage import MockStorageAPI
 from ....storage.handler import StorageHandlerActor
-from ....subtask import MockSubtaskAPI, Subtask, SubtaskStatus
+from ....subtask import MockSubtaskAPI, Subtask, SubtaskStatus, SubtaskResult
 from ....task.supervisor.manager import TaskManagerActor
 from ....mutable import MockMutableAPI
 from ...supervisor import GlobalResourceManagerActor
@@ -136,13 +136,23 @@ class MockGlobalResourceManagerActor(
 
 class MockTaskManager(mo.Actor):
     def __init__(self):
-        self._results = []
+        self._results = dict()
+        self._subtask_futures = dict()
 
-    def set_subtask_result(self, result):
-        self._results.append(result)
+    def set_subtask_result(self, result: SubtaskResult):
+        self._results[result.subtask_id] = result
+        if result.subtask_id in self._subtask_futures:
+            self._subtask_futures[result.subtask_id].set_result(result)
+
+    async def wait_subtask(self, subtask_id: str):
+        if subtask_id in self._results:
+            return self._results[subtask_id]
+        if subtask_id not in self._subtask_futures:
+            self._subtask_futures[subtask_id] = asyncio.Future()
+        return self._subtask_futures[subtask_id]
 
     def get_results(self):
-        return self._results
+        return list(self._results.values())
 
 
 @pytest.fixture
@@ -229,6 +239,9 @@ async def actor_pool(request):
 @pytest.mark.parametrize("actor_pool", [(1, True)], indirect=True)
 async def test_execute_tensor(actor_pool):
     pool, session_id, meta_api, worker_meta_api, storage_api, execution_ref = actor_pool
+    task_manager_ref = await mo.actor_ref(
+        TaskManagerActor.gen_uid(session_id), address=pool.external_address
+    )
 
     data1 = np.random.rand(10, 10)
     data2 = np.random.rand(10, 10)
@@ -268,6 +281,7 @@ async def test_execute_tensor(actor_pool):
 
     subtask = Subtask("test_subtask", session_id=session_id, chunk_graph=chunk_graph)
     await execution_ref.run_subtask(subtask, "numa-0", pool.external_address)
+    await task_manager_ref.wait_subtask(subtask.subtask_id)
 
     # check if results are correct
     result = await storage_api.get(result_chunk.key)
@@ -306,6 +320,9 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     pool, session_id, meta_api, worker_meta_api, storage_api, execution_ref = actor_pool
     delay_fetch_event = asyncio.Event()
     delay_wait_event = asyncio.Event()
+    task_manager_ref = await mo.actor_ref(
+        TaskManagerActor.gen_uid(session_id), address=pool.external_address
+    )
 
     # config for different phases
     ref_to_delay = None
@@ -361,7 +378,7 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     subtask = Subtask(
         f"test_subtask_{uuid.uuid4()}", session_id=session_id, chunk_graph=chunk_graph
     )
-    aiotask = asyncio.create_task(
+    asyncio.create_task(
         execution_ref.run_subtask(subtask, "numa-0", pool.external_address)
     )
     if ref_to_delay:
@@ -375,7 +392,9 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
             execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1),
             timeout=30,
         )
-        r = await asyncio.wait_for(aiotask, timeout=30)
+        r = await asyncio.wait_for(
+            task_manager_ref.wait_subtask(subtask.subtask_id), timeout=30
+        )
         assert r.status == SubtaskStatus.cancelled
     assert timer.duration < 15
 
@@ -403,6 +422,9 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
 @pytest.mark.parametrize("actor_pool", [(1, True)], indirect=True)
 async def test_execute_with_pure_deps(actor_pool):
     pool, session_id, meta_api, worker_meta_api, storage_api, execution_ref = actor_pool
+    task_manager_ref = await mo.actor_ref(
+        TaskManagerActor.gen_uid(session_id), address=pool.external_address
+    )
 
     dep = TensorFetch(key="input1", dtype=np.dtype(int)).new_chunk([])
 
@@ -424,6 +446,9 @@ async def test_execute_with_pure_deps(actor_pool):
     )
     # subtask shall run well without data of `dep` available
     await execution_ref.run_subtask(subtask, "numa-0", pool.external_address)
+    await asyncio.wait_for(
+        task_manager_ref.wait_subtask(subtask.subtask_id), timeout=30
+    )
     res = await storage_api.get(remote_result.key)
     assert res == session_id
 
@@ -476,6 +501,9 @@ async def test_cancel_without_kill(actor_pool):
     executed_file = os.path.join(
         tempfile.gettempdir(), f"mars_test_cancel_without_kill_{os.getpid()}.tmp"
     )
+    task_manager_ref = await mo.actor_ref(
+        TaskManagerActor.gen_uid(session_id), address=pool.external_address
+    )
 
     def delay_fun(delay):
         import mars
@@ -499,7 +527,7 @@ async def test_cancel_without_kill(actor_pool):
     subtask = Subtask(
         f"test_subtask_{uuid.uuid4()}", session_id=session_id, chunk_graph=chunk_graph
     )
-    aiotask = asyncio.create_task(
+    asyncio.create_task(
         execution_ref.run_subtask(subtask, "numa-0", pool.external_address)
     )
     await asyncio.sleep(0.5)
@@ -508,7 +536,7 @@ async def test_cancel_without_kill(actor_pool):
         execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1),
         timeout=30,
     )
-    r = await asyncio.wait_for(aiotask, timeout=30)
+    r = await asyncio.wait_for(task_manager_ref.wait_subtask(subtask.subtask_id), timeout=30)
     assert r.status == SubtaskStatus.cancelled
 
     remote_result = RemoteFunction(
@@ -523,6 +551,7 @@ async def test_cancel_without_kill(actor_pool):
     await asyncio.wait_for(
         execution_ref.run_subtask(subtask, "numa-0", pool.external_address), timeout=30
     )
+    await asyncio.wait_for(task_manager_ref.wait_subtask(subtask.subtask_id), timeout=30)
 
     # check if slots not killed (or slot assignment may be cancelled)
     if os.path.exists(executed_file):

@@ -62,32 +62,31 @@ class MockNodeInfoCollectorActor(NodeInfoCollectorActor):
 class FakeClusterAPI(ClusterAPI):
     @classmethod
     async def create(cls, address: str, **kw):
-        dones, _ = await asyncio.wait(
-            [
-                mo.create_actor(
-                    SupervisorPeerLocatorActor,
-                    "fixed",
-                    address,
-                    uid=SupervisorPeerLocatorActor.default_uid(),
-                    address=address,
-                ),
-                mo.create_actor(
-                    MockNodeInfoCollectorActor,
-                    with_gpu=kw.get("with_gpu", False),
-                    uid=NodeInfoCollectorActor.default_uid(),
-                    address=address,
-                ),
-                mo.create_actor(
-                    NodeInfoUploaderActor,
-                    NodeRole.WORKER,
-                    interval=kw.get("upload_interval"),
-                    band_to_resource=kw.get("band_to_resource"),
-                    use_gpu=kw.get("use_gpu", False),
-                    uid=NodeInfoUploaderActor.default_uid(),
-                    address=address,
-                ),
-            ]
-        )
+        coros = [
+            mo.create_actor(
+                SupervisorPeerLocatorActor,
+                "fixed",
+                address,
+                uid=SupervisorPeerLocatorActor.default_uid(),
+                address=address,
+            ),
+            mo.create_actor(
+                MockNodeInfoCollectorActor,
+                with_gpu=kw.get("with_gpu", False),
+                uid=NodeInfoCollectorActor.default_uid(),
+                address=address,
+            ),
+            mo.create_actor(
+                NodeInfoUploaderActor,
+                NodeRole.WORKER,
+                interval=kw.get("upload_interval"),
+                band_to_resource=kw.get("band_to_resource"),
+                use_gpu=kw.get("use_gpu", False),
+                uid=NodeInfoUploaderActor.default_uid(),
+                address=address,
+            ),
+        ]
+        dones, _ = await asyncio.wait([asyncio.create_task(coro) for coro in coros])
 
         for task in dones:
             try:
