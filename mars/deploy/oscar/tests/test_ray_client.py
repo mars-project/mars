@@ -25,7 +25,7 @@ ray = lazy_import("ray")
 
 
 @require_ray
-def test_ray_client(ray_start_regular):
+def test_ray_client():
     server_code = """import time
 import ray.util.client.server.server as ray_client_server
 
@@ -62,7 +62,7 @@ while True:
             _check_ready()
 
             # Avoid blocking the subprocess when the stdout pipe is full.
-            t = threading.Thread(target=_check_ready, args=(True,))
+            t = threading.Thread(target=_check_ready, args=(True,), daemon=True)
             t.start()
 
             ray.init(f"ray://{address}")
