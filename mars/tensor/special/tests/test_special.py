@@ -40,8 +40,6 @@ from ..err_fresnel import (
     TensorErfinv,
     erfcinv,
     TensorErfcinv,
-    fresnel,
-    TensorFresnel,
 )
 from ..gamma_funcs import (
     gammaln,
@@ -255,25 +253,6 @@ def test_erfcinv():
     assert r.nsplits == t.nsplits
     for c in r.chunks:
         assert isinstance(c.op, TensorErfcinv)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-
-def test_fresnel():
-    raw = np.random.rand(10, 8, 5)
-    t = tensor(raw, chunk_size=3)
-
-    r = fresnel(t)
-    expect = np.asarray(scipy_fresnel(raw))
-
-    assert r.shape == raw.shape
-    assert r.dtype == expect.dtype
-
-    t, r = tile(t, r)
-
-    assert r.nsplits == t.nsplits
-    for c in r.chunks:
-        assert isinstance(c.op, TensorFresnel)
         assert c.index == c.inputs[0].index
         assert c.shape == c.inputs[0].shape
 
