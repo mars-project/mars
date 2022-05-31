@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import operator
+from functools import reduce
 
 from ....utils import lazy_import
 from .mldataset import _rechunk_if_needed
@@ -59,5 +61,6 @@ def to_ray_dataset(df, num_shards: int = None):
 
 
 def get_chunk_refs(df):
-    fetched_infos: Dict[str, List] = df.fetch_infos(fields=["object_id"])
-    return fetched_infos["object_id"]
+    fetched_infos: Dict[str, List] = df.fetch_infos(["object_refs"])
+    object_refs = reduce(operator.concat, fetched_infos["object_refs"])
+    return object_refs

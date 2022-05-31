@@ -163,6 +163,10 @@ def load_config(config: Union[str, Dict], default_config_file: str):
             "ensure enough homogeneous subtasks to calculate statistics."
         )
         config["task"]["default_config"]["initial_same_color_num"] = 1
+    ray_execution_config = config["task"]["execution_config"].setdefault("ray", {})
+    subtask_max_retries = config["scheduling"].get("subtask_max_retries")
+    if subtask_max_retries is not None:
+        ray_execution_config.setdefault("subtask_max_retries", subtask_max_retries)
     return config
 
 
