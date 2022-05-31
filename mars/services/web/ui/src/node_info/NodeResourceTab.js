@@ -189,7 +189,7 @@ export default class NodeResourceTab extends React.Component {
             </TableRow>
           </TableHead>
           <TableBody>
-            {this.state.detail.iowait &&
+            {Boolean(this.state.detail.iowait) &&
               <TableRow>
                 <TableCell>IO Wait</TableCell>
                 <TableCell>{this.state.detail.iowait}</TableCell>
@@ -219,7 +219,7 @@ export default class NodeResourceTab extends React.Component {
             </TableRow>
           </TableBody>
         </Table>
-        {this.state.detail.disk.partitions &&
+        {Boolean(this.state.detail.disk.partitions) &&
           <React.Fragment>
             <Title component="h3">Disks</Title>
             <Table>
@@ -235,7 +235,7 @@ export default class NodeResourceTab extends React.Component {
             </Table>
           </React.Fragment>
         }
-        {Object.keys(this.state.detail.quota).length &&
+        {Object.keys(this.state.detail.quota).length > 0 &&
           <React.Fragment>
             <Title component="h3">Quota</Title>
             <Table>
@@ -266,7 +266,7 @@ export default class NodeResourceTab extends React.Component {
             </Table>
           </React.Fragment>
         }
-        {Object.keys(this.state.detail.slot).length &&
+        {Object.keys(this.state.detail.slot).length > 0 &&
           <React.Fragment>
             <Title component="h3">Slot</Title>
             <Table>
@@ -287,7 +287,7 @@ export default class NodeResourceTab extends React.Component {
             </Table>
           </React.Fragment>
         }
-        {Object.keys(this.state.detail.storage).length &&
+        {Object.keys(this.state.detail.storage).length > 0 &&
           <React.Fragment>
             <Title component="h3">Storage</Title>
             <Table>
