@@ -22,13 +22,12 @@ import pytest
 import mars
 from .... import dataframe as md
 from .... import tensor as mt
-from ....tests.core import require_ray
 from ....utils import lazy_import
 
 ray = lazy_import("ray")
 
 
-@require_ray
+@pytest.mark.ray_dag
 @pytest.mark.parametrize(
     "ray_large_cluster",
     [{"num_nodes": 0, "use_ray_serialization": False}],
