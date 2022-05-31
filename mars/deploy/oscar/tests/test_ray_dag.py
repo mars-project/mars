@@ -122,6 +122,7 @@ def test_sync_execute(config):
     test_local.test_sync_execute(config)
 
 
+@pytest.mark.skip("Enable when ray progress got fixed")
 @pytest.mark.ray_dag
 @pytest.mark.asyncio
 async def test_session_get_progress(ray_start_regular_shared2, create_cluster):
