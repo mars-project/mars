@@ -1162,6 +1162,7 @@ class _IsolatedSession(AbstractAsyncSession):
 
     async def fetch_infos(self, *tileables, fields, **kwargs) -> list:
         available_fields = {
+            "data_key",
             "object_id",
             "object_refs",
             "level",
@@ -1217,6 +1218,8 @@ class _IsolatedSession(AbstractAsyncSession):
                     bands = chunk_to_bands[fetch_info.chunk]
                     # Currently there's only one item in the returned List from storage_api.get_infos()
                     data = fetch_info.data[0]
+                    if "data_key" in fields:
+                        fetched["data_key"].append(fetch_info.chunk.key)
                     if "object_id" in fields:
                         fetched["object_id"].append(data.object_id)
                     if "level" in fields:
@@ -1245,7 +1248,7 @@ class _IsolatedSession(AbstractAsyncSession):
                 get_chunk_metas.append(
                     self._meta_api.get_chunk_meta.delay(
                         chunk.key,
-                        fields=["bands"] if query_storage else fields,
+                        fields=["bands"] if query_storage else fields - {"data_key"},
                     )
                 )
                 fetch_infos.append(
@@ -1259,7 +1262,9 @@ class _IsolatedSession(AbstractAsyncSession):
             for fetch_infos in fetch_infos_list:
                 fetched = defaultdict(list)
                 for fetch_info in fetch_infos:
-                    for field in fields:
+                    if "data_key" in fields:
+                        fetched["data_key"].append(fetch_info.chunk.key)
+                    for field in fields - {"data_key"}:
                         fetched[field].append(chunk_to_meta[fetch_info.chunk][field])
                 result.append(fetched)
             return {}, fetch_infos_list, result

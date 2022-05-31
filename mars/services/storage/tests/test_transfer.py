@@ -150,9 +150,9 @@ async def test_simple_transfer(create_actors):
 
 # test for cancelling happens when writing
 class MockReceiverManagerActor(ReceiverManagerActor):
-    async def do_write(self, message):
+    async def do_write(self, *args, **kw):
         await asyncio.sleep(3)
-        await super().do_write(message)
+        await super().do_write(*args, **kw)
 
 
 class MockSenderManagerActor(SenderManagerActor):
