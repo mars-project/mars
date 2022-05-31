@@ -176,7 +176,7 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
     tileable_op_key = StringField("tileable_op_key", default=None)
     extra_params = DictField("extra_params", key_type=FieldTypes.string)
     # scheduling hint
-    scheduling_hint = ReferenceField("scheduling_hint", default=None)
+    scheduling_hint = ReferenceField("scheduling_hint", SchedulingHint, default=None)
 
     _inputs = ListField(
         "inputs", FieldTypes.reference(EntityData), default_factory=list

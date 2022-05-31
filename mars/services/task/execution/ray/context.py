@@ -138,12 +138,12 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
         self._worker_addresses = worker_addresses
 
     @implements(Context.get_chunks_result)
-    def get_chunks_result(self, data_keys: List[str]) -> List:
+    def get_chunks_result(self, data_keys: List[str], fetch_only: bool = False) -> List:
         logger.info("Getting %s chunks result.", len(data_keys))
         object_refs = [self._task_context[key] for key in data_keys]
         result = ray.get(object_refs)
         logger.info("Got %s chunks result.", len(result))
-        return result
+        return result if not fetch_only else None
 
     @implements(Context.get_chunks_meta)
     def get_chunks_meta(
