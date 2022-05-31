@@ -17,8 +17,9 @@ import inspect
 import logging
 import sys
 import weakref
-cimport cython
 from typing import AsyncGenerator
+
+cimport cython
 
 from .context cimport get_context
 from .errors import Return, ActorNotExist
@@ -33,7 +34,7 @@ logger = logging.getLogger(__name__)
 cdef:
     bint _log_unhandled_errors = False
     bint _log_cycle_send = False
-    object _local_pool_map = weakref.WeakValueDictionary()
+    dict _local_pool_map = dict()
     object _actor_method_wrapper
 
 
@@ -54,7 +55,8 @@ cdef _get_local_actor(address, uid):
     # disabled the local actor proxy if the debug option is on.
     if _log_cycle_send:
         return None
-    pool = _local_pool_map.get(address)
+    pool_ref = _local_pool_map.get(address)
+    pool = None if pool_ref is None else pool_ref()
     if pool is not None:
         actor = pool._actors.get(uid)
         if actor is not None:
@@ -66,7 +68,9 @@ def register_local_pool(address, pool):
     """
     Register local actor pool for local actor lookup.
     """
-    _local_pool_map[address] = pool
+    _local_pool_map[address] = weakref.ref(
+        pool, lambda _: _local_pool_map.pop(address, None)
+    )
 
 
 cpdef create_local_actor_ref(address, uid):
@@ -177,22 +181,34 @@ cdef class ActorRefMethod:
 
     def batch(self, *delays, send=True):
         cdef:
-            list args_list = list()
-            list kwargs_list = list()
+            long n_delays = len(delays)
+            bint has_kw = False
+            list args_list
+            list kwargs_list
+            _DelayedArgument delay
+
+        args_list = [None] * n_delays
+        kwargs_list = [None] * n_delays
 
         last_method = None
-        for delay in delays:
+        for idx in range(n_delays):
+            delay = delays[idx]
             method, _call_method, args, kwargs = delay.arguments
             if last_method is not None and method != last_method:
                 raise ValueError('Does not support calling multiple methods in batch')
             last_method = method
 
-            args_list.append(args)
-            kwargs_list.append(kwargs)
+            args_list[idx] = args
+            kwargs_list[idx] = kwargs
+            if kwargs:
+                has_kw = True
+
+        if not has_kw:
+            kwargs_list = None
         if last_method is None:
             last_method = self.method_name
 
-        message = (last_method, CALL_METHOD_BATCH, (args_list, kwargs_list), {})
+        message = (last_method, CALL_METHOD_BATCH, (args_list, kwargs_list), None)
         return get_context().send(self.ref, message, wait_response=send, **self._options)
 
     def tell_delay(self, *args, delay=None, ignore_conn_fail=True, **kwargs):
@@ -488,10 +504,10 @@ cdef class _BaseActor:
                     with debug_async_timeout('actor_lock_timeout',
                                              "Batch method %s of actor %s hold lock timeout, batch size %s.",
                                              method, self.uid, len(args)):
-                        delays = []
-                        for s_args, s_kwargs in zip(*args):
-                            delays.append(func.delay(*s_args, **s_kwargs))
-                        result = func.batch(*delays)
+                        args_list, kwargs_list = args
+                        if kwargs_list is None:
+                            kwargs_list = [{}] * len(args_list)
+                        result = func.call_with_lists(args_list, kwargs_list)
                         if asyncio.iscoroutine(result):
                             result = await result
             else:  # pragma: no cover

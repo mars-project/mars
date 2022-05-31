@@ -55,7 +55,7 @@ class CustomList(list):
         "abcd",
         ["uvw", ("mno", "sdaf"), 4, 6.7],
         CustomList([3, 4, CustomList([5, 6])]),
-        {"abc": 5.6, "def": [3.4], "gh": None},
+        {"abc": 5.6, "def": [3.4], "gh": None, "ijk": {}},
         OrderedDict([("abcd", 5.6)]),
         defaultdict(lambda: 0, [("abcd", 0)]),
     ],

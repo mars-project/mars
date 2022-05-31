@@ -13,6 +13,8 @@
 # limitations under the License.
 
 cdef class Serializer:
+    cdef int _serializer_id
+
     cpdef serial(self, object obj, dict context)
     cpdef deserial(self, tuple serialized, dict context, list subs)
     cpdef on_deserial_error(
