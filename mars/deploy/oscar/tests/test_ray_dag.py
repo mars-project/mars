@@ -67,6 +67,7 @@ async def create_cluster(request):
         n_worker=2,
         n_cpu=2,
         use_uvloop=False,
+        config={"task.execution_config.ray.subtask_monitor_interval": 0},
     )
     async with client:
         assert client.session.client is not None
