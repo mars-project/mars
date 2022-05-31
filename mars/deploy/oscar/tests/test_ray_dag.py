@@ -20,7 +20,7 @@ import pytest
 
 from .... import get_context
 from .... import tensor as mt
-from ....tests.core import DICT_NOT_EMPTY
+from ....tests.core import DICT_NOT_EMPTY, require_ray
 from ....utils import lazy_import
 from ..local import new_cluster
 from ..session import new_session, get_default_async_session
@@ -73,14 +73,14 @@ async def create_cluster(request):
         yield client, {}
 
 
-@pytest.mark.ray_dag
+@require_ray
 @pytest.mark.parametrize("backend", ["ray"])
 @pytest.mark.parametrize("_new_session", [new_session, new_test_session])
-def test_new_session_backend(_new_session, backend):
+def test_new_session_backend(ray_start_regular_shared2, _new_session, backend):
     test_local.test_new_session_backend(_new_session, backend)
 
 
-@pytest.mark.ray_dag
+@require_ray
 @pytest.mark.parametrize(
     "config",
     [
@@ -106,38 +106,38 @@ def test_new_session_backend(_new_session, backend):
     ],
 )
 @pytest.mark.asyncio
-async def test_execute(create_cluster, config):
+async def test_execute(ray_start_regular_shared2, create_cluster, config):
     await test_local.test_execute(create_cluster, config)
 
 
-@pytest.mark.ray_dag
+@require_ray
 @pytest.mark.asyncio
-async def test_iterative_tiling(create_cluster):
+async def test_iterative_tiling(ray_start_regular_shared2, create_cluster):
     await test_local.test_iterative_tiling(create_cluster)
 
 
-@pytest.mark.ray_dag
+@require_ray
 @pytest.mark.parametrize("config", [{"backend": "ray"}])
-def test_sync_execute(config):
+def test_sync_execute(ray_start_regular_shared2, config):
     test_local.test_sync_execute(config)
 
 
+@require_ray
 @pytest.mark.skip("Enable when ray progress got fixed")
-@pytest.mark.ray_dag
 @pytest.mark.asyncio
-async def test_session_get_progress(create_cluster):
+async def test_session_get_progress(ray_start_regular_shared2, create_cluster):
     await test_local.test_session_get_progress(create_cluster)
 
 
-@pytest.mark.ray_dag
+@require_ray
 @pytest.mark.parametrize("test_func", [_cancel_when_execute, _cancel_when_tile])
-def test_cancel(create_cluster, test_func):
+def test_cancel(ray_start_regular_shared2, create_cluster, test_func):
     test_local.test_cancel(create_cluster, test_func)
 
 
-@pytest.mark.ray_dag
+@require_ray
 @pytest.mark.parametrize("config", [{"backend": "ray"}])
-def test_executor_context_gc(config):
+def test_executor_context_gc(ray_start_regular_shared2, config):
     session = new_session(
         backend=config["backend"],
         n_cpu=2,

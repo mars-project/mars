@@ -152,13 +152,27 @@ jobs:
             coverage report
           fi
           if [ -n "$WITH_RAY_DEPLOY" ]; then
-            pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/ -m ray
-            coverage report
+            pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray.py -m ray
+            mv .coverage build/.coverage.test_ray.file
+            pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray_client.py -m ray
+            mv .coverage build/.coverage.test_ray_client.file
+            pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray_fault_injection.py -m ray
+            mv .coverage build/.coverage.test_ray_fault_injection.file
+            pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray_scheduling.py -m ray
+            mv .coverage build/.coverage.test_ray_scheduling.file
+          
+            coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY_DAG" ]; then
             export MARS_CI_BACKEND=ray
-            pytest $PYTEST_CONFIG --durations=0 --timeout=600 -v -s -m ray_dag
-            coverage report
+            pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s -m ray_dag
+            mv .coverage build/.coverage.ray_dag.file
+            pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray_dag.py
+            mv .coverage build/.coverage.test_ray_dag.file
+            pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray_dag_failover.py
+            mv .coverage build/.coverage.test_ray_dag_failover.file
+            
+            coverage combine build/ && coverage report
           fi
           if [ -n "$RUN_DASK" ]; then
             pytest $PYTEST_CONFIG mars/contrib/dask/tests/test_dask.py
