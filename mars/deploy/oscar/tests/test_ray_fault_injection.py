@@ -52,7 +52,6 @@ async def fault_cluster(request):
     ray_config.update(FAULT_INJECTION_CONFIG)
     ray_config.update(param.get("config", {}))
     client = await new_cluster(
-        "test_cluster",
         worker_num=2,
         worker_cpu=2,
         worker_mem=1 * 1024**3,

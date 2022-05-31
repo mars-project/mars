@@ -20,6 +20,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 from functools import reduce
 
 import numpy as np
@@ -88,7 +89,6 @@ async def create_cluster(request):
     ray_config = _load_config(CONFIG_FILE)
     ray_config.update(param.get("config", {}))
     client = await new_cluster(
-        "test_cluster",
         supervisor_mem=1 * 1024**3,
         worker_num=2,
         worker_cpu=2,
@@ -378,8 +378,8 @@ async def test_load_third_party_modules(ray_start_regular_shared, config_excepti
     config["third_party_modules"] = third_party_modules_config
     with expected_exception:
         await new_cluster(
-            worker_num=2,
-            worker_cpu=2,
+            worker_num=1,
+            worker_cpu=1,
             worker_mem=1 * 1024**3,
             config=config,
         )
@@ -423,8 +423,8 @@ async def test_load_third_party_modules_from_config(
 ):
     client = await new_cluster(
         supervisor_mem=1 * 1024**3,
-        worker_num=2,
-        worker_cpu=2,
+        worker_num=1,
+        worker_cpu=1,
         worker_mem=1 * 1024**3,
         config=CONFIG_THIRD_PARTY_MODULES_TEST_FILE,
     )
