@@ -32,10 +32,6 @@ from ....tests.core import require_ray
 from ....utils import lazy_import
 from ..ray import new_cluster, _load_config
 from ..tests import test_local
-from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
-    cleanup_third_party_modules_output,
-    get_output_filenames,
-)
 
 ray = lazy_import("ray")
 
