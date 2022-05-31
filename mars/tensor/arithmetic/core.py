@@ -379,9 +379,10 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
                 else:
                     ret = cls._execute_cpu(op, xp, inputs[0], **kw)
 
-                if not cls._multi_outputs:
+                try:
                     ctx[op.outputs[0].key] = _handle_out_dtype(ret, op.dtype)
-                else:
+                except AttributeError:
+                    assert cls._multi_outputs
                     ctx[op.outputs[0].key] = tuple([_handle_out_dtype(output, op.dtype) for output in ret])
 
 
