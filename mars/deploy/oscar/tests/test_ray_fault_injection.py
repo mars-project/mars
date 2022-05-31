@@ -96,7 +96,7 @@ async def fault_cluster(request):
 )
 @pytest.mark.asyncio
 async def test_fault_inject_subtask_processor(
-    ray_start_regular, fault_cluster, fault_and_exception
+    ray_start_regular_shared, fault_cluster, fault_and_exception
 ):
     await test_fault_injection.test_fault_inject_subtask_processor(
         fault_cluster, fault_and_exception
@@ -128,7 +128,7 @@ async def test_fault_inject_subtask_processor(
     ],
 )
 @pytest.mark.asyncio
-async def test_rerun_subtask(ray_start_regular, fault_cluster, fault_config):
+async def test_rerun_subtask(ray_start_regular_shared, fault_cluster, fault_config):
     await test_fault_injection.test_rerun_subtask(fault_cluster, fault_config)
 
 
@@ -148,7 +148,9 @@ async def test_rerun_subtask(ray_start_regular, fault_cluster, fault_config):
     ],
 )
 @pytest.mark.asyncio
-async def test_rerun_subtask_describe(ray_start_regular, fault_cluster, fault_config):
+async def test_rerun_subtask_describe(
+    ray_start_regular_shared, fault_cluster, fault_config
+):
     await test_fault_injection.test_rerun_subtask_describe(fault_cluster, fault_config)
 
 
@@ -174,7 +176,9 @@ async def test_rerun_subtask_describe(ray_start_regular, fault_cluster, fault_co
     ],
 )
 @pytest.mark.asyncio
-async def test_rerun_subtask_fail(ray_start_regular, fault_cluster, fault_config):
+async def test_rerun_subtask_fail(
+    ray_start_regular_shared, fault_cluster, fault_config
+):
     await test_fault_injection.test_rerun_subtask_fail(fault_cluster, fault_config)
 
 
@@ -200,5 +204,5 @@ async def test_rerun_subtask_fail(ray_start_regular, fault_cluster, fault_config
     ],
 )
 @pytest.mark.asyncio
-async def test_retryable(ray_start_regular, fault_cluster, fault_config):
+async def test_retryable(ray_start_regular_shared, fault_cluster, fault_config):
     await test_fault_injection.test_retryable(fault_cluster, fault_config)
