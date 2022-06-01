@@ -232,6 +232,8 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             reduce_op._method = "shuffle"
             reduce_op.stage = OperandStage.reduce
             reduce_op.reducer_phase = "drop_duplicates"
+            reduce_op.n_reducers = len(map_chunks)
+            reduce_op.reducer_ordinal = i
             reduce_op._shuffle_size = inp.chunk_shape[0]
             reduce_op._output_types = op.output_types
             reduce_chunk_params = map_chunks[0].params
@@ -250,6 +252,8 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             put_back_op.stage = OperandStage.reduce
             put_back_op.reducer_phase = "put_back"
             put_back_op.reducer_index = (i,)
+            put_back_op.n_reducers = len(map_chunks)
+            put_back_op.reducer_ordinal = i
             if out.ndim == 2:
                 put_back_chunk_params = map_chunks[i].params
             else:

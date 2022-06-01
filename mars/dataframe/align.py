@@ -683,6 +683,8 @@ def _gen_series_chunks(splits, out_shape, left_or_right, series):
         for out_idx in range(out_shape[0]):
             reduce_op = DataFrameIndexAlign(
                 stage=OperandStage.reduce,
+                n_reducers=out_shape[0],
+                reducer_ordinal=out_idx,
                 i=out_idx,
                 sparse=proxy_chunk.issparse(),
                 output_types=[OutputType.series],
@@ -820,6 +822,8 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
                 )
                 reduce_op = DataFrameIndexAlign(
                     stage=OperandStage.reduce,
+                    n_reducers=out_shape[shuffle_axis],
+                    reducer_ordinal=j,
                     i=j,
                     sparse=proxy_chunk.issparse(),
                     output_types=[OutputType.dataframe],
@@ -853,9 +857,12 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
         ).new_chunk(map_chunks, shape=())
 
         # gen reduce chunks
-        for out_idx in itertools.product(*(range(s) for s in out_shape)):
+        out_indices = list(itertools.product(*(range(s) for s in out_shape)))
+        for ordinal, out_idx in enumerate(out_indices):
             reduce_op = DataFrameIndexAlign(
                 stage=OperandStage.reduce,
+                n_reducers=len(out_indices),
+                reducer_ordinal=ordinal,
                 i=out_idx,
                 sparse=proxy_chunk.issparse(),
                 output_types=[OutputType.dataframe],
