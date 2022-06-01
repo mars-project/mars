@@ -40,7 +40,7 @@ class RayExecutionConfig(ExecutionConfig):
         return []
 
     def get_subtask_max_retries(self):
-        return self._ray_execution_config.get("subtask_max_retries")
+        return self._ray_execution_config["subtask_max_retries"]
 
     def get_n_cpu(self):
         return self._ray_execution_config["n_cpu"]
@@ -49,7 +49,7 @@ class RayExecutionConfig(ExecutionConfig):
         return self._ray_execution_config["n_worker"]
 
     def get_subtask_cancel_timeout(self):
-        return self._ray_execution_config.get("subtask_cancel_timeout")
+        return self._ray_execution_config["subtask_cancel_timeout"]
 
     def create_task_state_actor_as_needed(self):
         # Whether create RayTaskState actor as needed.
