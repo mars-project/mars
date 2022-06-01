@@ -78,7 +78,13 @@ async def actor_pool():
         await MockMutableAPI.create(session_id, pool.external_address)
 
         # create configuration
-        config = ExecutionConfig.from_params(backend=backend, n_worker=1, n_cpu=2)
+        config = ExecutionConfig.from_params(
+            backend=backend,
+            n_worker=1,
+            n_cpu=2,
+            subtask_max_retries=3,
+            subtask_cancel_timeout=3,
+        )
         await mo.create_actor(
             TaskConfigurationActor,
             dict(),
