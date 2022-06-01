@@ -608,14 +608,15 @@ async def test_session_get_progress(create_cluster):
     assert session.session_id is not None
 
     raw = np.random.rand(100, 4)
-    t = mt.tensor(raw, chunk_size=5)
+    t = mt.tensor(raw, chunk_size=50)
 
     def f1(c):
         time.sleep(0.5)
         return c
 
     t1 = t.sum()
-    r = t1.map_chunk(f1)
+    t2 = t1.map_chunk(f1)
+    r = t2.map_chunk(f1)
     info = await session.execute(r)
 
     for _ in range(100):
