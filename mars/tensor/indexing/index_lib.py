@@ -778,11 +778,16 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
         )
         chunk_index_to_fancy_index_chunks = OrderedDict()
         chunk_index_to_raw_positions = OrderedDict()
-        for chunk_index in itertools.product(
-            *(range(tileable.chunk_shape[ax]) for ax in axes)
-        ):
+        out_indices = list(
+            itertools.product(*(range(tileable.chunk_shape[ax]) for ax in axes))
+        )
+        for ordinal, chunk_index in enumerate(out_indices):
             reduce_op = FancyIndexingDistribute(
-                stage=OperandStage.reduce, axes=axes, dtype=proxy_chunk.dtype
+                stage=OperandStage.reduce,
+                axes=axes,
+                dtype=proxy_chunk.dtype,
+                reducer_ordinal=ordinal,
+                n_reducers=len(out_indices),
             )
             # chunks of fancy indexes on each axis
             kws = [
@@ -916,9 +921,10 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
             ).new_chunk(to_shuffle_chunks, shape=(), order=TensorOrder.C_ORDER)
 
             it = itertools.count()
-            for reduce_index in itertools.product(
-                *(range(s) for s in fancy_indexes[0].chunk_shape)
-            ):
+            out_indices = list(
+                itertools.product(*(range(s) for s in fancy_indexes[0].chunk_shape))
+            )
+            for ordinal, reduce_index in enumerate(out_indices):
                 fancy_index_chunk = fancy_indexes[0].cix[reduce_index]
                 concat_reduce_op = FancyIndexingConcat(
                     stage=OperandStage.reduce,
@@ -927,6 +933,8 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
                     dtype=proxy_chunk.dtype,
                     sparse=to_shuffle_chunks[0].issparse(),
                     reducer_index=(next(it),),
+                    reducer_ordinal=ordinal,
+                    n_reducers=len(out_indices),
                 )
                 reduce_chunk_shape = (
                     other_shape[:to_concat_axis]
