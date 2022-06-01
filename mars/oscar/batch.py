@@ -133,29 +133,25 @@ class _ExtensibleWrapper(_ExtensibleCallable):
 
     @staticmethod
     def _gen_args_kwargs_list(delays):
-        args_list = list()
-        kwargs_list = list()
-        for delay in delays:
-            args_list.append(delay.args)
-            kwargs_list.append(delay.kwargs)
+        args_list = [delay.args for delay in delays]
+        kwargs_list = [delay.kwargs for delay in delays]
         return args_list, kwargs_list
 
-    async def _async_batch(self, *delays):
+    async def _async_batch(self, args_list, kwargs_list):
         # when there is only one call in batch, calling one-pass method
         # will be more efficient
-        if len(delays) == 0:
+        if len(args_list) == 0:
             return []
-        elif len(delays) == 1:
-            d = delays[0]
-            return [await self._async_call(*d.args, **d.kwargs)]
+        elif len(args_list) == 1:
+            return [await self._async_call(*args_list[0], **kwargs_list[0])]
         elif self.batch_func:
-            args_list, kwargs_list = self._gen_args_kwargs_list(delays)
             return await self.batch_func(args_list, kwargs_list)
         else:
             # this function has no batch implementation
             # call it separately
             tasks = [
-                asyncio.create_task(self.func(*d.args, **d.kwargs)) for d in delays
+                asyncio.create_task(self.func(*args, **kwargs))
+                for args, kwargs in zip(args_list, kwargs_list)
             ]
             try:
                 return await asyncio.gather(*tasks)
@@ -163,22 +159,28 @@ class _ExtensibleWrapper(_ExtensibleCallable):
                 _ = [task.cancel() for task in tasks]
                 return await asyncio.gather(*tasks)
 
-    def _sync_batch(self, *delays):
-        if delays == 0:
+    def _sync_batch(self, args_list, kwargs_list):
+        if len(args_list) == 0:
             return []
         elif self.batch_func:
-            args_list, kwargs_list = self._gen_args_kwargs_list(delays)
             return self.batch_func(args_list, kwargs_list)
         else:
             # this function has no batch implementation
             # call it separately
-            return [self.func(*d.args, **d.kwargs) for d in delays]
+            return [
+                self.func(*args, **kwargs)
+                for args, kwargs in zip(args_list, kwargs_list)
+            ]
 
     def batch(self, *delays):
+        args_list, kwargs_list = self._gen_args_kwargs_list(delays)
+        return self.call_with_lists(args_list, kwargs_list)
+
+    def call_with_lists(self, args_list, kwargs_list):
         if self.is_async:
-            return self._async_batch(*delays)
+            return self._async_batch(args_list, kwargs_list)
         else:
-            return self._sync_batch(*delays)
+            return self._sync_batch(args_list, kwargs_list)
 
     def bind(self, *args, **kwargs):
         if self.bind_func is None:

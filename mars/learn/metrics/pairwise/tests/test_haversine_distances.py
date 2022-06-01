@@ -54,7 +54,7 @@ def test_haversine_distances_execution(setup, x, y, use_sklearn):
 
     result = distance.execute().fetch()
     expected = sk_haversine_distances(raw_x, raw_y)
-    np.testing.assert_array_equal(result, expected)
+    np.testing.assert_almost_equal(result, expected)
 
     # test x is y
     distance = haversine_distances(x)
@@ -62,4 +62,4 @@ def test_haversine_distances_execution(setup, x, y, use_sklearn):
 
     result = distance.execute().fetch()
     expected = sk_haversine_distances(raw_x, raw_x)
-    np.testing.assert_array_equal(result, expected)
+    np.testing.assert_almost_equal(result, expected)

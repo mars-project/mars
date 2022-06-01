@@ -62,13 +62,13 @@ export default class NodeEnvTab extends React.Component {
             <TableCell>Endpoint</TableCell>
             <TableCell>{this.props.endpoint}</TableCell>
           </TableRow>
-          {this.state.k8s_pod_name &&
+          {Boolean(this.state.k8s_pod_name) &&
             <TableRow>
               <TableCell>Kubernetes Pod</TableCell>
               <TableCell>{this.state.k8s_pod_name}</TableCell>
             </TableRow>
           }
-          {this.state.yarn_container_id &&
+          {Boolean(this.state.yarn_container_id) &&
             <TableRow>
               <TableCell>Yarn Container ID</TableCell>
               <TableCell>{this.state.yarn_container_id}</TableCell>
@@ -78,7 +78,7 @@ export default class NodeEnvTab extends React.Component {
             <TableCell>Platform</TableCell>
             <TableCell>{this.state.platform}</TableCell>
           </TableRow>
-          {this.state.cuda_info &&
+          {Boolean(this.state.cuda_info) &&
             <TableRow>
               <TableCell>CUDA</TableCell>
               <TableCell>

@@ -66,6 +66,10 @@ cdef int32_t _SERIALIZER_ID_PRIME = 32749
 cdef class Serializer:
     serializer_id = None
 
+    def __cinit__(self):
+        # make the value can be referenced with C code
+        self._serializer_id = self.serializer_id
+
     cpdef serial(self, object obj, dict context):
         """
         Returns intermediate serialization result of certain object.
@@ -158,7 +162,6 @@ cdef class Serializer:
 
     @classmethod
     def register(cls, obj_type):
-        inst = cls()
         if (
             cls.serializer_id is None
             or cls.serializer_id == getattr(super(cls, cls), "serializer_id", None)
@@ -166,6 +169,8 @@ cdef class Serializer:
             # a class should have its own serializer_id
             # inherited serializer_id not acceptable
             cls.serializer_id = cls.calc_default_serializer_id()
+
+        inst = cls()
         _serial_dispatcher.register(obj_type, inst)
         if _deserializers.get(cls.serializer_id) is not None:
             assert type(_deserializers[cls.serializer_id]) is cls
@@ -321,10 +326,16 @@ cdef class StrSerializer(Serializer):
 cdef class CollectionSerializer(Serializer):
     obj_type = None
 
+    cdef object _obj_type
+
+    def __cinit__(self):
+        # make the value can be referenced with C code
+        self._obj_type = self.obj_type
+
     cpdef tuple _serial_iterable(self, obj: Any):
         cdef list idx_to_propagate = []
         cdef list obj_to_propagate = []
-        cdef list obj_list = list(obj)
+        cdef list obj_list = <list>obj if type(obj) is list else list(obj)
         cdef int64_t idx
         cdef object item
 
@@ -340,11 +351,14 @@ cdef class CollectionSerializer(Serializer):
             elif type(item) in _primitive_types:
                 continue
 
+            if obj is obj_list:
+                obj_list = list(obj)
+
             obj_list[idx] = None
             idx_to_propagate.append(idx)
             obj_to_propagate.append(item)
 
-        if self.obj_type is not None and type(obj) is not self.obj_type:
+        if self._obj_type is not None and type(obj) is not self._obj_type:
             obj_type = type(obj)
         else:
             obj_type = None
@@ -420,12 +434,18 @@ def _dict_value_replacer(context, ret, key, real_value):
 
 cdef class DictSerializer(CollectionSerializer):
     serializer_id = 6
-    _inspected_inherits = set()
+    cdef set _inspected_inherits
+
+    def __cinit__(self):
+        self._inspected_inherits = set()
 
     cpdef serial(self, obj: Any, dict context):
         cdef uint64_t obj_id
         cdef tuple key_obj, value_obj
         cdef list key_bufs, value_bufs
+
+        if type(obj) is dict and len(<dict>obj) == 0:
+            return (), [], True
 
         obj_id = _fast_id(obj)
         if obj_id in context:
@@ -460,6 +480,8 @@ cdef class DictSerializer(CollectionSerializer):
         cdef int64_t i, num_key_bufs
         cdef list key_subs, value_subs, keys, values
 
+        if not serialized:
+            return {}
         if len(serialized) == 1:
             # serialized directly
             return serialized[0]
@@ -537,6 +559,7 @@ PickleSerializer.register(object)
 for _primitive in _primitive_types:
     PrimitiveSerializer.register(_primitive)
 BytesSerializer.register(bytes)
+BytesSerializer.register(memoryview)
 StrSerializer.register(str)
 ListSerializer.register(list)
 TupleSerializer.register(tuple)
@@ -588,7 +611,7 @@ cdef tuple _serial_single(
             # REMEMBER to change _COMMON_HEADER_LEN when content of
             # this header changed
             common_header = (
-                serializer.serializer_id, ordered_id, len(subs), final
+                serializer._serializer_id, ordered_id, len(subs), final
             )
             break
         else:
