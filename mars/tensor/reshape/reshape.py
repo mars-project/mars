@@ -485,7 +485,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                 chunk.shape, dtype=chunk.dtype, order=chunk.order.value
             )
         for data_tuple in op.iter_mapper_data(ctx, skip_none=True):
-            if data_tuple is None:
+            if data_tuple is None:  # pragma: no cover
                 # skip missing partition data
                 continue
             result_array[data_tuple[:-1]] = data_tuple[-1]
