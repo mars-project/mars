@@ -118,11 +118,12 @@ async def test_iterative_tiling(ray_start_regular_shared2, create_cluster):
 
 @require_ray
 @pytest.mark.parametrize("config", [{"backend": "ray"}])
-def test_sync_execute(config):
+def test_sync_execute(ray_start_regular_shared2, config):
     test_local.test_sync_execute(config)
 
 
 @require_ray
+@pytest.mark.skip("Enable when ray progress got fixed")
 @pytest.mark.asyncio
 async def test_session_get_progress(ray_start_regular_shared2, create_cluster):
     await test_local.test_session_get_progress(create_cluster)
@@ -136,7 +137,7 @@ def test_cancel(ray_start_regular_shared2, create_cluster, test_func):
 
 @require_ray
 @pytest.mark.parametrize("config", [{"backend": "ray"}])
-def test_executor_context_gc(config):
+def test_executor_context_gc(ray_start_regular_shared2, config):
     session = new_session(
         backend=config["backend"],
         n_cpu=2,
