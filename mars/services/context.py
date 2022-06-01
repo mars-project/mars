@@ -139,9 +139,10 @@ class ThreadedServiceContext(Context):
                 data_key, fields=["bands"], error=error
             )
             get_metas.append(meta)
-        metas = await self._meta_api.get_chunk_meta.batch(*get_metas)
+        supervisor_metas = await self._meta_api.get_chunk_meta.batch(*get_metas)
+        key_to_supervisor_metas = dict(zip(data_keys, supervisor_metas))
         api_to_keys_calls = defaultdict(lambda: (list(), list()))
-        for data_key, meta in zip(data_keys, metas):
+        for data_key, meta in zip(data_keys, supervisor_metas):
             addr = meta["bands"][0][0]
             worker_meta_api = await WorkerMetaAPI.create(self.session_id, addr)
             keys, calls = api_to_keys_calls[worker_meta_api]
@@ -158,6 +159,7 @@ class ThreadedServiceContext(Context):
         key_to_meta = dict()
         for (keys, _), metas in zip(api_to_keys_calls.values(), all_metas):
             for k, meta in zip(keys, metas):
+                meta["bands"] = key_to_supervisor_metas[k]["bands"]
                 key_to_meta[k] = meta
         return [key_to_meta[k] for k in data_keys]
 
@@ -177,9 +179,26 @@ class ThreadedServiceContext(Context):
                 results[chunk_key] = chunk_data
         return [results[key] for key in data_keys]
 
+    async def _fetch_chunks(self, data_keys: List[str]):
+        metas = await self._get_chunks_meta(data_keys, fields=["bands"])
+        bands = [meta["bands"][0] for meta in metas]
+
+        storage_api = await StorageAPI.create(self.session_id, self.local_address)
+        fetches = []
+        for data_key, (address, band_name) in zip(data_keys, bands):
+            fetches.append(
+                storage_api.fetch.delay(
+                    data_key, remote_address=address, band_name=band_name
+                )
+            )
+        await storage_api.fetch.batch(*fetches)
+
     @implements(Context.get_chunks_result)
-    def get_chunks_result(self, data_keys: List[str]) -> List:
-        return self._call(self._get_chunks_result(data_keys))
+    def get_chunks_result(self, data_keys: List[str], fetch_only: bool = False) -> List:
+        if not fetch_only:
+            return self._call(self._get_chunks_result(data_keys))
+        else:
+            return self._call(self._fetch_chunks(data_keys))
 
     @implements(Context.get_chunks_meta)
     def get_chunks_meta(
