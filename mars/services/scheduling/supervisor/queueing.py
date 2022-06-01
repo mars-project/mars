@@ -220,9 +220,7 @@ class SubtaskQueueingActor(mo.Actor):
 
     async def _submit_subtask_request(self, band_to_limit: Dict[BandType, int] = None):
         if band_to_limit:
-            logger.debug(
-                "TMP_QUEUE_PROBE: Submitting subtasks with limits: %r", band_to_limit
-            )
+            logger.debug("Submitting subtasks with limits: %r", band_to_limit)
 
         if not self._band_to_resource or any(
             not limit and band not in self._band_to_resource
@@ -274,8 +272,6 @@ class SubtaskQueueingActor(mo.Actor):
 
         await asyncio.to_thread(_load_items_to_submit)
 
-        logger.debug("TMP_QUEUE_PROBE: Finished picking top subtasks")
-
         async with redirect_subtask_errors(
             self,
             (
@@ -287,11 +283,6 @@ class SubtaskQueueingActor(mo.Actor):
             submitted_ids_list = await self._slots_ref.apply_subtask_resources.batch(
                 *apply_delays
             )
-
-        logger.debug(
-            "TMP_QUEUE_PROBE: Finished band resource allocation, %d subtasks submitted",
-            sum(len(ids) for ids in submitted_ids_list),
-        )
 
         manager_ref = await self._get_manager_ref()
         submit_delays = []
@@ -336,10 +327,7 @@ class SubtaskQueueingActor(mo.Actor):
                     heapq.heappush(task_queue, submit_items[stid])
 
         await asyncio.to_thread(_gather_submissions)
-
-        logger.debug("TMP_QUEUE_PROBE: Start subtask submission in batch")
         await manager_ref.submit_subtask_to_band.batch(*submit_delays)
-        logger.debug("TMP_QUEUE_PROBE: Finished subtask submission")
 
     def _ensure_top_item_valid(self, task_queue):
         """Clean invalid subtask item from the queue to ensure that when the queue is not empty,

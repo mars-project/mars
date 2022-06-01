@@ -185,6 +185,7 @@ def test_new_session_backend(_new_session, backend):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(vineyard is None, reason="vineyard not installed")
 async def test_vineyard_operators(create_cluster):
     param = create_cluster[1]
     if param != "vineyard":

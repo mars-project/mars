@@ -96,7 +96,10 @@ class SchedulingAPI(AbstractSchedulingAPI):
         )
 
     async def cancel_subtasks(
-        self, subtask_ids: List[str], kill_timeout: Union[float, int] = None
+        self,
+        subtask_ids: List[str],
+        kill_timeout: Union[float, int] = None,
+        wait: bool = False,
     ):
         """
         Cancel pending and running subtasks.
@@ -108,7 +111,14 @@ class SchedulingAPI(AbstractSchedulingAPI):
         kill_timeout
             timeout seconds to kill actor process forcibly
         """
-        await self._manager_ref.cancel_subtasks(subtask_ids, kill_timeout=kill_timeout)
+        if wait:
+            await self._manager_ref.cancel_subtasks(
+                subtask_ids, kill_timeout=kill_timeout
+            )
+        else:
+            await self._manager_ref.cancel_subtasks.tell(
+                subtask_ids, kill_timeout=kill_timeout
+            )
 
     async def finish_subtasks(
         self,
@@ -122,8 +132,8 @@ class SchedulingAPI(AbstractSchedulingAPI):
 
         Parameters
         ----------
-        subtask_ids
-            ids of subtasks to mark as finished
+        subtask_results
+            results of subtasks, must in finished states
         bands
             bands of subtasks to mark as finished
         schedule_next

@@ -22,11 +22,9 @@ from typing import Dict, List, Optional, Tuple, Union
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....metrics import Metrics
-from ....oscar.backends.context import ProfilingContext
 from ....oscar.errors import MarsError
-from ....oscar.profiling import ProfilingData, MARS_ENABLE_PROFILING
 from ....typing import BandType
-from ....utils import dataslots, Timer
+from ....utils import dataslots
 from ...subtask import Subtask, SubtaskResult, SubtaskStatus
 from ...task import TaskAPI
 from ..core import SubtaskScheduleSummary
@@ -127,14 +125,6 @@ class SubtaskManagerActor(mo.Actor):
         )
         await self._speculation_execution_scheduler.start()
 
-        async def dump_running():
-            while True:
-                if self._subtask_infos:
-                    logger.warning("RUNNING: %r", list(self._subtask_infos))
-                await asyncio.sleep(5)
-
-        asyncio.create_task(dump_running())
-
     async def __pre_destroy__(self):
         await self._speculation_execution_scheduler.stop()
 
@@ -186,7 +176,7 @@ class SubtaskManagerActor(mo.Actor):
         self, info: SubtaskScheduleInfo, result: SubtaskResult, band: BandType
     ):
         subtask_id = info.subtask.subtask_id
-        async with redirect_subtask_errors(self, [info.subtask]):
+        async with redirect_subtask_errors(self, [info.subtask], reraise=False):
             try:
                 info.band_futures[band].set_result(result)
                 if result.error is not None:
@@ -262,9 +252,9 @@ class SubtaskManagerActor(mo.Actor):
 
             if subtask_info is not None:
                 if subtask_band is not None:
-                    logger.warning("BEFORE await self._handle_subtask_result(subtask_info, result, subtask_band)")
-                    await self._handle_subtask_result(subtask_info, result, subtask_band)
-                    logger.warning("AFTER await self._handle_subtask_result(subtask_info, result, subtask_band)")
+                    await self._handle_subtask_result(
+                        subtask_info, result, subtask_band
+                    )
 
                 self._finished_subtask_count.record(
                     1,
@@ -275,16 +265,15 @@ class SubtaskManagerActor(mo.Actor):
                     },
                 )
                 self._subtask_summaries[subtask_id] = subtask_info.to_summary(
-                    is_finished=True, is_cancelled=result.status == SubtaskStatus.cancelled
+                    is_finished=True,
+                    is_cancelled=result.status == SubtaskStatus.cancelled,
                 )
                 subtask_info.end_time = time.time()
                 self._speculation_execution_scheduler.finish_subtask(subtask_info)
                 #  Cancel subtask on other bands.
                 aio_task = subtask_info.band_futures.pop(subtask_band, None)
                 if aio_task:
-                    logger.warning("BEFORE await aio_task")
                     await aio_task
-                    logger.warning("AFTER await aio_task")
                     if schedule_next:
                         band_tasks[subtask_band] += 1
                 if subtask_info.band_futures:
@@ -304,7 +293,6 @@ class SubtaskManagerActor(mo.Actor):
                 if schedule_next:
                     for band in subtask_info.band_futures.keys():
                         band_tasks[band] += 1
-            # await self._queueing_ref.remove_queued_subtasks(subtask_ids)
         if band_tasks:
             await self._queueing_ref.submit_subtasks.tell(dict(band_tasks))
 
@@ -345,7 +333,9 @@ class SubtaskManagerActor(mo.Actor):
             band_to_subtask_ids[band].append(subtask_id)
 
         if res_release_delays:
-            await self._global_resource_ref.release_subtask_resource.batch(*res_release_delays)
+            await self._global_resource_ref.release_subtask_resource.batch(
+                *res_release_delays
+            )
 
         for band, subtask_ids in band_to_subtask_ids.items():
             asyncio.create_task(self._submit_subtasks_to_band(band, subtask_ids))
@@ -386,29 +376,22 @@ class SubtaskManagerActor(mo.Actor):
             subtask_ids,
             kill_timeout,
         )
-        queued_subtask_ids = []
-        single_cancel_tasks = []
 
         task_api = await self._get_task_api()
 
-        async def cancel_single_task(subtask, raw_tasks, cancel_tasks):
-            if cancel_tasks:
-                await asyncio.wait(cancel_tasks)
-            if raw_tasks:
-                dones, _ = await asyncio.wait(raw_tasks)
-            else:
-                dones = []
-            if not dones or all(fut.cancelled() for fut in dones):
-                await task_api.set_subtask_result(
-                    SubtaskResult(
-                        subtask_id=subtask.subtask_id,
-                        session_id=subtask.session_id,
-                        task_id=subtask.task_id,
-                        stage_id=subtask.stage_id,
-                        status=SubtaskStatus.cancelled,
-                    )
-                )
+        async def cancel_task_in_band(band):
+            cancel_delays = band_to_cancel_delays.get(band) or []
+            execution_ref = await self._get_execution_ref(band)
+            if cancel_delays:
+                await execution_ref.cancel_subtask.batch(*cancel_delays)
+            band_futures = band_to_futures.get(band)
+            if band_futures:
+                await asyncio.wait(band_futures)
 
+        queued_subtask_ids = []
+        cancel_tasks = []
+        band_to_cancel_delays = defaultdict(list)
+        band_to_futures = defaultdict(list)
         for subtask_id in subtask_ids:
             if subtask_id not in self._subtask_infos:
                 # subtask may already finished or not submitted at all
@@ -423,35 +406,33 @@ class SubtaskManagerActor(mo.Actor):
             raw_tasks_to_cancel = list(info.band_futures.values())
 
             if not raw_tasks_to_cancel:
+                # not submitted yet: mark subtasks as cancelled
+                result = SubtaskResult(
+                    subtask_id=info.subtask.subtask_id,
+                    session_id=info.subtask.session_id,
+                    task_id=info.subtask.task_id,
+                    stage_id=info.subtask.stage_id,
+                    status=SubtaskStatus.cancelled,
+                )
+                cancel_tasks.append(task_api.set_subtask_result(result))
                 queued_subtask_ids.append(subtask_id)
-                single_cancel_tasks.append(
-                    asyncio.create_task(
-                        cancel_single_task(info.subtask, [], [])
-                    )
-                )
             else:
-                cancel_tasks = []
-                for band in info.band_futures.keys():
+                for band, future in info.band_futures.items():
                     execution_ref = await self._get_execution_ref(band)
-                    cancel_tasks.append(
-                        asyncio.create_task(
-                            execution_ref.cancel_subtask(
-                                subtask_id, kill_timeout=kill_timeout
-                            )
-                        )
+                    band_to_cancel_delays[band].append(
+                        execution_ref.cancel_subtask.delay(subtask_id, kill_timeout)
                     )
-                single_cancel_tasks.append(
-                    asyncio.create_task(
-                        cancel_single_task(
-                            info.subtask, raw_tasks_to_cancel, cancel_tasks
-                        )
-                    )
-                )
+                    band_to_futures[band].append(future)
+
+        for band in band_to_futures:
+            cancel_tasks.append(asyncio.create_task(cancel_task_in_band(band)))
+
         if queued_subtask_ids:
             # Don't use `finish_subtasks` because it may remove queued
             await self._queueing_ref.remove_queued_subtasks(queued_subtask_ids)
-        if single_cancel_tasks:
-            yield asyncio.wait(single_cancel_tasks)
+
+        if cancel_tasks:
+            yield asyncio.gather(*cancel_tasks)
 
         for subtask_id in subtask_ids:
             info = self._subtask_infos.pop(subtask_id, None)

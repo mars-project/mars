@@ -50,9 +50,7 @@ class FakeTaskManager(TaskManagerActor):
         for event in self._events[subtask_result.subtask_id]:
             event.set()
         self._events.pop(subtask_result.subtask_id, None)
-        await scheduling_api.finish_subtasks(
-            [subtask_result], subtask_result.bands
-        )
+        await scheduling_api.finish_subtasks([subtask_result], subtask_result.bands)
 
     def _return_result(self, subtask_id: str):
         result = self._results[subtask_id]

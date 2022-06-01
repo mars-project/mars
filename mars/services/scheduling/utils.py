@@ -29,7 +29,9 @@ async def _get_task_api(actor: mo.Actor):
 
 
 @contextlib.asynccontextmanager
-async def redirect_subtask_errors(actor: mo.Actor, subtasks: Iterable[Subtask]):
+async def redirect_subtask_errors(
+    actor: mo.Actor, subtasks: Iterable[Subtask], reraise: bool = True
+):
     try:
         yield
     except:  # noqa: E722  # pylint: disable=bare-except
@@ -60,4 +62,5 @@ async def redirect_subtask_errors(actor: mo.Actor, subtasks: Iterable[Subtask]):
             )
         tasks = [asyncio.ensure_future(coro) for coro in coros]
         await asyncio.wait(tasks)
-        raise
+        if reraise:
+            raise

@@ -184,7 +184,8 @@ class TaskStageProcessor:
                     )
                     # if error or cancel, cancel all submitted subtasks
                     await self._scheduling_api.cancel_subtasks(
-                        list(self._submitted_subtask_ids)
+                        list(self._submitted_subtask_ids),
+                        wait=False,
                     )
                 self._schedule_done()
                 cost_time_secs = self.result.end_time - self.result.start_time

@@ -181,7 +181,8 @@ class SubtaskResult(Serializable):
         if result and result.bands:
             bands = self.bands or []
             self.bands = sorted(set(bands + result.bands))
-            self.execution_start_time = result.execution_start_time
+            if hasattr(result, "execution_start_time"):
+                self.execution_start_time = result.execution_start_time
             if hasattr(result, "execution_end_time"):
                 self.execution_end_time = result.execution_end_time
         return self

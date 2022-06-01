@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import time
 from collections import defaultdict
 from typing import List, Dict, Tuple, Set
 
@@ -91,40 +92,33 @@ class MockSubtaskExecutionActor(mo.StatelessActor):
 
         async def task_fun():
             task_api = await TaskAPI.create(subtask.session_id, supervisor_address)
+            result = SubtaskResult(
+                subtask_id=subtask.subtask_id,
+                session_id=subtask.session_id,
+                task_id=subtask.task_id,
+                stage_id=subtask.stage_id,
+                bands=[(self.address, band_name)],
+                progress=1.0,
+                execution_start_time=time.time(),
+            )
             try:
                 await asyncio.sleep(20)
             except asyncio.CancelledError as ex:
-                await task_api.set_subtask_result(
-                    SubtaskResult(
-                        subtask_id=subtask.subtask_id,
-                        session_id=subtask.session_id,
-                        task_id=subtask.task_id,
-                        stage_id=subtask.stage_id,
-                        bands=[(self.address, band_name)],
-                        status=SubtaskStatus.cancelled,
-                        progress=1.0,
-                        error=ex,
-                        traceback=ex.__traceback__,
-                    )
-                )
+                result.status = SubtaskStatus.cancelled
+                result.error = ex
+                result.traceback = ex.__traceback__
+                await task_api.set_subtask_result(result)
                 raise
             else:
-                await task_api.set_subtask_result(
-                    SubtaskResult(
-                        subtask_id=subtask.subtask_id,
-                        session_id=subtask.session_id,
-                        task_id=subtask.task_id,
-                        stage_id=subtask.stage_id,
-                        status=SubtaskStatus.succeeded,
-                        bands=[(self.address, band_name)],
-                        progress=1.0,
-                    )
-                )
+                result.status = SubtaskStatus.succeeded
+                result.execution_end_time = time.time()
+                await task_api.set_subtask_result(result)
 
         self._subtask_aiotasks[subtask.subtask_id][band_name] = asyncio.create_task(
             task_fun()
         )
 
+    @mo.extensible
     def cancel_subtask(self, subtask_id: str, kill_timeout: int = 5):
         for task in self._subtask_aiotasks[subtask_id].values():
             task.cancel()

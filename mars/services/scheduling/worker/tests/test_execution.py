@@ -536,7 +536,9 @@ async def test_cancel_without_kill(actor_pool):
         execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1),
         timeout=30,
     )
-    r = await asyncio.wait_for(task_manager_ref.wait_subtask(subtask.subtask_id), timeout=30)
+    r = await asyncio.wait_for(
+        task_manager_ref.wait_subtask(subtask.subtask_id), timeout=30
+    )
     assert r.status == SubtaskStatus.cancelled
 
     remote_result = RemoteFunction(
@@ -551,7 +553,9 @@ async def test_cancel_without_kill(actor_pool):
     await asyncio.wait_for(
         execution_ref.run_subtask(subtask, "numa-0", pool.external_address), timeout=30
     )
-    await asyncio.wait_for(task_manager_ref.wait_subtask(subtask.subtask_id), timeout=30)
+    await asyncio.wait_for(
+        task_manager_ref.wait_subtask(subtask.subtask_id), timeout=30
+    )
 
     # check if slots not killed (or slot assignment may be cancelled)
     if os.path.exists(executed_file):
