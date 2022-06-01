@@ -133,7 +133,6 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
     feature_random_state = RandomStateField("feature_random_state")
 
     reducer_ratio: float = Float32Field("reducer_ratio")
-    n_reducers: int = Int64Field("n_reducers", default=None)
     column_offset: int = Int64Field("column_offset", default=None)
 
     chunk_shape: Tuple[int] = TupleField("chunk_shape", FieldTypes.int64)
@@ -295,7 +294,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
 
         n_reducers = (
             op.n_reducers
-            if op.n_reducers is not None
+            if getattr(op, "n_reducers", None)
             else max(1, int(in_sample.chunk_shape[0] * op.reducer_ratio))
         )
 
@@ -357,6 +356,8 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             new_op = op.copy().reset_key()
             new_op.random_state = None
             new_op.stage = OperandStage.reduce
+            new_op.reducer_ordinal = idx
+            new_op.n_reducers = n_reducers
             new_op.chunk_shape = in_sample.chunk_shape
             new_op.n_estimators = op.n_estimators // n_reducers
             if remain_reducers:
