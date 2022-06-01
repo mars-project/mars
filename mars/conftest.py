@@ -165,7 +165,6 @@ async def ray_create_mars_cluster(request, check_router_cleaned):
     worker_mem = param.get("worker_mem", 256 * 1024**2)
     ray_config.update(param.get("config", {}))
     client = await new_cluster(
-        "test_cluster",
         supervisor_mem=supervisor_mem,
         worker_num=worker_num,
         worker_cpu=worker_cpu,
