@@ -79,7 +79,7 @@ async def _log_timeout(timeout, msg, *args, **kwargs):
         await asyncio.sleep(timeout * rnd)
         rnd += 1
         logger.warning(
-            msg + "(timeout for %.4f seconds).",
+            msg + " (timeout for %.4f seconds).",
             *args,
             time.time() - start_time,
             **kwargs,

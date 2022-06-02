@@ -407,6 +407,7 @@ def test_quiet_stdio():
         print("LINE 2", file=sys.stderr, end="\n")
     finally:
         sys.stdout, sys.stderr = old_stdout, old_stderr
+        executor.shutdown(False)
 
     assert stdout_w.content == "LINE T\nLINE 1\n"
     assert stderr_w.content == "LINE 2\n"

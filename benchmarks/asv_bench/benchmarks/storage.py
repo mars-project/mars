@@ -91,6 +91,9 @@ class TransferPackageSuite:
     def setup(self):
         mars.new_session(n_worker=2, n_cpu=8)
 
+    def teardown(self):
+        mars.stop_server()
+
     def time_1_to_1(self):
         return mr.spawn(send_1_to_1).execute().fetch()
 
