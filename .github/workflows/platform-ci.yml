@@ -154,6 +154,8 @@ jobs:
           if [ -n "$WITH_RAY_DEPLOY" ]; then
             pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray.py -m ray
             mv .coverage build/.coverage.test_ray.file
+            pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray_cluster_standalone.py -m ray
+            mv .coverage build/.coverage.test_ray_cluster_standalone.file
             pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray_client.py -m ray
             mv .coverage build/.coverage.test_ray_client.file
             pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray_fault_injection.py -m ray

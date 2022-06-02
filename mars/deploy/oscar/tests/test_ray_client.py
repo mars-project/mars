@@ -17,7 +17,7 @@ import sys
 import tempfile
 import threading
 
-from .test_ray import new_ray_session_test
+from .test_ray_cluster_standalone import new_ray_session_test
 from ....tests.core import require_ray
 from ....utils import lazy_import
 
