@@ -738,6 +738,13 @@ class SparseArray(SparseNDArray):
     erfcinv = partialmethod(_scipy_unary, "erfcinv")
     entr = partialmethod(_scipy_unary, "entr")
 
+    ellipk = partialmethod(_scipy_unary, "ellipk")
+    ellipkm1 = partialmethod(_scipy_unary, "ellipkm1")
+    ellipkinc = partialmethod(_scipy_binary, "ellipkinc")
+    ellipe = partialmethod(_scipy_unary, "ellipe")
+    ellipeinc = partialmethod(_scipy_binary, "ellipeinc")
+    elliprc = partialmethod(_scipy_binary, "elliprc")
+
     rel_entr = partialmethod(_scipy_binary, "rel_entr")
     kl_div = partialmethod(_scipy_binary, "kl_div")
     xlogy = partialmethod(_scipy_binary, "xlogy")

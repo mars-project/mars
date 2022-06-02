@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import numpy as np
+import scipy
+import pytest
 from scipy.special import (
     gammaln as scipy_gammaln,
     erf as scipy_erf,
@@ -21,6 +23,16 @@ from scipy.special import (
     erfi as scipy_erfi,
     erfinv as scipy_erfinv,
     erfcinv as scipy_erfcinv,
+    ellipk as scipy_ellipk,
+    ellipkm1 as scipy_ellipkm1,
+    ellipkinc as scipy_ellipkinc,
+    ellipe as scipy_ellipe,
+    ellipeinc as scipy_ellipeinc,
+    elliprc as scipy_elliprc,
+    elliprd as scipy_elliprd,
+    elliprf as scipy_elliprf,
+    elliprg as scipy_elliprg,
+    elliprj as scipy_elliprj,
     betainc as scipy_betainc,
 )
 
@@ -45,6 +57,28 @@ from ..gamma_funcs import (
     TensorGammaln,
     betainc,
     TensorBetaInc,
+)
+from ..ellip_func_integrals import (
+    ellipk,
+    TensorEllipk,
+    ellipkm1,
+    TensorEllipkm1,
+    ellipkinc,
+    TensorEllipkinc,
+    ellipe,
+    TensorEllipe,
+    ellipeinc,
+    TensorEllipeinc,
+    elliprc,
+    TensorElliprc,
+    elliprd,
+    TensorElliprd,
+    elliprf,
+    TensorElliprf,
+    elliprg,
+    TensorElliprg,
+    elliprj,
+    TensorElliprj,
 )
 
 
@@ -291,3 +325,232 @@ def test_beta_inc():
         assert isinstance(c.op, TensorBetaInc)
         assert c.index == c.inputs[0].index
         assert c.shape == c.inputs[0].shape
+
+
+def test_ellipk():
+    raw = np.random.rand(10, 8, 5)
+    t = tensor(raw, chunk_size=3)
+
+    r = ellipk(t)
+    expect = scipy_ellipk(raw)
+
+    assert r.shape == raw.shape
+    assert r.dtype == expect.dtype
+
+    t, r = tile(t, r)
+
+    assert r.nsplits == t.nsplits
+    for c in r.chunks:
+        assert isinstance(c.op, TensorEllipk)
+        assert c.index == c.inputs[0].index
+        assert c.shape == c.inputs[0].shape
+
+
+def test_ellipkm1():
+    raw = np.random.rand(10, 8, 5)
+    t = tensor(raw, chunk_size=3)
+
+    r = ellipkm1(t)
+    expect = scipy_ellipkm1(raw)
+
+    assert r.shape == raw.shape
+    assert r.dtype == expect.dtype
+
+    t, r = tile(t, r)
+
+    assert r.nsplits == t.nsplits
+    for c in r.chunks:
+        assert isinstance(c.op, TensorEllipkm1)
+        assert c.index == c.inputs[0].index
+        assert c.shape == c.inputs[0].shape
+
+
+def test_ellipkinc():
+    raw1 = np.random.rand(4, 3, 2)
+    raw2 = np.random.rand(4, 3, 2)
+    a = tensor(raw1, chunk_size=3)
+    b = tensor(raw2, chunk_size=3)
+
+    r = ellipkinc(a, b)
+    expect = scipy_ellipkinc(raw1, raw2)
+
+    assert r.shape == raw1.shape
+    assert r.dtype == expect.dtype
+
+    tiled_a, r = tile(a, r)
+
+    assert r.nsplits == tiled_a.nsplits
+    for chunk in r.chunks:
+        assert isinstance(chunk.op, TensorEllipkinc)
+        assert chunk.index == chunk.inputs[0].index
+        assert chunk.shape == chunk.inputs[0].shape
+
+
+def test_ellipe():
+    raw = np.random.rand(10, 8, 5)
+    t = tensor(raw, chunk_size=3)
+
+    r = ellipe(t)
+    expect = scipy_ellipe(raw)
+
+    assert r.shape == raw.shape
+    assert r.dtype == expect.dtype
+
+    t, r = tile(t, r)
+
+    assert r.nsplits == t.nsplits
+    for c in r.chunks:
+        assert isinstance(c.op, TensorEllipe)
+        assert c.index == c.inputs[0].index
+        assert c.shape == c.inputs[0].shape
+
+
+def test_ellipeinc():
+    raw1 = np.random.rand(4, 3, 2)
+    raw2 = np.random.rand(4, 3, 2)
+    a = tensor(raw1, chunk_size=3)
+    b = tensor(raw2, chunk_size=3)
+
+    r = ellipeinc(a, b)
+    expect = scipy_ellipeinc(raw1, raw2)
+
+    assert r.shape == raw1.shape
+    assert r.dtype == expect.dtype
+
+    tiled_a, r = tile(a, r)
+
+    assert r.nsplits == tiled_a.nsplits
+    for chunk in r.chunks:
+        assert isinstance(chunk.op, TensorEllipeinc)
+        assert chunk.index == chunk.inputs[0].index
+        assert chunk.shape == chunk.inputs[0].shape
+
+
+@pytest.mark.skipif(
+    scipy.__version__ < "1.8.0", reason="function not implemented in scipy."
+)
+def test_elliprc():
+    raw1 = np.random.rand(4, 3, 2)
+    raw2 = np.random.rand(4, 3, 2)
+    a = tensor(raw1, chunk_size=3)
+    b = tensor(raw2, chunk_size=3)
+
+    r = elliprc(a, b)
+    expect = scipy_elliprc(raw1, raw2)
+
+    assert r.shape == raw1.shape
+    assert r.dtype == expect.dtype
+
+    tiled_a, r = tile(a, r)
+
+    assert r.nsplits == tiled_a.nsplits
+    for chunk in r.chunks:
+        assert isinstance(chunk.op, TensorElliprc)
+        assert chunk.index == chunk.inputs[0].index
+        assert chunk.shape == chunk.inputs[0].shape
+
+
+@pytest.mark.skipif(
+    scipy.__version__ < "1.8.0", reason="function not implemented in scipy."
+)
+def test_elliprd():
+    raw1 = np.random.rand(4, 3, 2)
+    raw2 = np.random.rand(4, 3, 2)
+    raw3 = np.random.rand(4, 3, 2)
+    a = tensor(raw1, chunk_size=3)
+    b = tensor(raw2, chunk_size=3)
+    c = tensor(raw3, chunk_size=3)
+
+    r = elliprd(a, b, c)
+    expect = scipy_elliprd(raw1, raw2, raw3)
+
+    assert r.shape == raw1.shape
+    assert r.dtype == expect.dtype
+
+    tiled_a, r = tile(a, r)
+
+    assert r.nsplits == tiled_a.nsplits
+    for chunk in r.chunks:
+        assert isinstance(chunk.op, TensorElliprd)
+        assert chunk.index == chunk.inputs[0].index
+        assert chunk.shape == chunk.inputs[0].shape
+
+
+@pytest.mark.skipif(
+    scipy.__version__ < "1.8.0", reason="function not implemented in scipy."
+)
+def test_elliprf():
+    raw1 = np.random.rand(4, 3, 2)
+    raw2 = np.random.rand(4, 3, 2)
+    raw3 = np.random.rand(4, 3, 2)
+    a = tensor(raw1, chunk_size=3)
+    b = tensor(raw2, chunk_size=3)
+    c = tensor(raw3, chunk_size=3)
+
+    r = elliprf(a, b, c)
+    expect = scipy_elliprf(raw1, raw2, raw3)
+
+    assert r.shape == raw1.shape
+    assert r.dtype == expect.dtype
+
+    tiled_a, r = tile(a, r)
+
+    assert r.nsplits == tiled_a.nsplits
+    for chunk in r.chunks:
+        assert isinstance(chunk.op, TensorElliprf)
+        assert chunk.index == chunk.inputs[0].index
+        assert chunk.shape == chunk.inputs[0].shape
+
+
+@pytest.mark.skipif(
+    scipy.__version__ < "1.8.0", reason="function not implemented in scipy."
+)
+def test_elliprg():
+    raw1 = np.random.rand(4, 3, 2)
+    raw2 = np.random.rand(4, 3, 2)
+    raw3 = np.random.rand(4, 3, 2)
+    a = tensor(raw1, chunk_size=3)
+    b = tensor(raw2, chunk_size=3)
+    c = tensor(raw3, chunk_size=3)
+
+    r = elliprg(a, b, c)
+    expect = scipy_elliprg(raw1, raw2, raw3)
+
+    assert r.shape == raw1.shape
+    assert r.dtype == expect.dtype
+
+    tiled_a, r = tile(a, r)
+
+    assert r.nsplits == tiled_a.nsplits
+    for chunk in r.chunks:
+        assert isinstance(chunk.op, TensorElliprg)
+        assert chunk.index == chunk.inputs[0].index
+        assert chunk.shape == chunk.inputs[0].shape
+
+
+@pytest.mark.skipif(
+    scipy.__version__ < "1.8.0", reason="function not implemented in scipy."
+)
+def test_elliprj():
+    raw1 = np.random.rand(4, 3, 2)
+    raw2 = np.random.rand(4, 3, 2)
+    raw3 = np.random.rand(4, 3, 2)
+    raw4 = np.random.rand(4, 3, 2)
+    a = tensor(raw1, chunk_size=3)
+    b = tensor(raw2, chunk_size=3)
+    c = tensor(raw3, chunk_size=3)
+    d = tensor(raw4, chunk_size=3)
+
+    r = elliprj(a, b, c, d)
+    expect = scipy_elliprj(raw1, raw2, raw3, raw4)
+
+    assert r.shape == raw1.shape
+    assert r.dtype == expect.dtype
+
+    tiled_a, r = tile(a, r)
+
+    assert r.nsplits == tiled_a.nsplits
+    for chunk in r.chunks:
+        assert isinstance(chunk.op, TensorElliprj)
+        assert chunk.index == chunk.inputs[0].index
+        assert chunk.shape == chunk.inputs[0].shape
