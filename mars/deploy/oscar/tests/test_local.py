@@ -15,6 +15,7 @@
 import asyncio
 import copy
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -927,39 +928,45 @@ def test_naive_code_file():
     code_file = """
     import mars
     import mars.tensor as mt
+    import os
 
     mars.new_session()
     try:
-        print(mt.ones((10, 10)).sum().execute())
+        result_path = os.environ["RESULTPATH"]
+        with open(result_path, "w") as outf:
+            outf.write(str(mt.ones((10, 10)).sum().execute()))
     finally:
         mars.stop_server()
     """
 
-    fd, script_name = tempfile.mkstemp(suffix=".py", text=True)
-    pid = None
-    try:
-        with os.fdopen(fd, "w") as file_obj:
-            file_obj.write(textwrap.dedent(code_file))
-
-        env = os.environ.copy()
-        env["PYTHONPATH"] = os.path.pathsep.join(sys.path)
-        proc = subprocess.Popen(
-            [sys.executable, script_name], env=env, stdout=subprocess.PIPE
-        )
-        pid = proc.pid
-        proc.wait(120)
-        assert 100 == int(float(proc.stdout.read().decode()))
-    except subprocess.TimeoutExpired:
+    with tempfile.TemporaryDirectory() as temp_dir:
         try:
-            procs = [psutil.Process(pid)]
-            procs.extend(procs[0].children(True))
-            for proc in reversed(procs):
-                try:
-                    proc.kill()
-                except psutil.NoSuchProcess:
-                    pass
-        except psutil.NoSuchProcess:
-            pass
-        raise
-    finally:
-        os.unlink(script_name)
+            script_path = os.path.join(temp_dir, "test_file.py")
+            result_path = os.path.join(temp_dir, "result.txt")
+
+            with open(script_path, "w") as file_obj:
+                file_obj.write(textwrap.dedent(code_file))
+
+            env = os.environ.copy()
+            env["PYTHONPATH"] = os.path.pathsep.join(sys.path)
+            env["RESULTPATH"] = result_path
+            proc = subprocess.Popen(
+                [sys.executable, script_path], env=env, stdout=subprocess.PIPE
+            )
+            pid = proc.pid
+            proc.wait(120)
+
+            with open(result_path, "r") as inp_file:
+                assert 100 == int(float(inp_file.read()))
+        except subprocess.TimeoutExpired:
+            try:
+                procs = [psutil.Process(pid)]
+                procs.extend(procs[0].children(True))
+                for proc in reversed(procs):
+                    try:
+                        proc.kill()
+                    except psutil.NoSuchProcess:
+                        pass
+            except psutil.NoSuchProcess:
+                pass
+            raise

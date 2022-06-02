@@ -102,3 +102,4 @@ if __name__ == "__main__":
     suite = TransferPackageSuite()
     suite.setup()
     print(suite.time_1_to_1())
+    suite.teardown()
