@@ -21,7 +21,6 @@ from functools import reduce
 import numpy as np
 import pytest
 
-import mars
 from .... import tensor as mt
 from .... import dataframe as md
 from ....oscar.errors import ReconstructWorkerError
@@ -32,8 +31,6 @@ from ..ray import (
     _load_config,
     ClusterStateActor,
     new_cluster,
-    new_cluster_in_ray,
-    new_ray_session,
 )
 from ..session import get_default_session, new_session
 from ..tests import test_local
@@ -188,47 +185,6 @@ def _sync_web_session_test(web_address):
     b = a.execute(show_progress=False)
     assert b is a
     return True
-
-
-@require_ray
-def test_new_cluster_in_ray(stop_ray):
-    cluster = new_cluster_in_ray(worker_num=2)
-    mt.random.RandomState(0).rand(100, 5).sum().execute()
-    cluster.session.execute(mt.random.RandomState(0).rand(100, 5).sum())
-    mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
-    session = new_ray_session(address=cluster.address, session_id="abcd", default=True)
-    session.execute(mt.random.RandomState(0).rand(100, 5).sum())
-    mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
-    cluster.stop()
-
-
-@require_ray
-def test_new_ray_session(stop_ray):
-    new_ray_session_test()
-
-
-def new_ray_session_test():
-    session = new_ray_session(session_id="abc", worker_num=2)
-    mt.random.RandomState(0).rand(100, 5).sum().execute()
-    session.execute(mt.random.RandomState(0).rand(100, 5).sum())
-    mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
-    session = new_ray_session(session_id="abcd", worker_num=2, default=True)
-    session.execute(mt.random.RandomState(0).rand(100, 5).sum())
-    mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
-    df = md.DataFrame(mt.random.rand(100, 4), columns=list("abcd"))
-    # Convert mars dataframe to ray dataset
-    ds = md.to_ray_dataset(df)
-    print(ds.schema(), ds.count())
-    ds.filter(lambda row: row["a"] > 0.5).show(5)
-    # Convert ray dataset to mars dataframe
-    df2 = md.read_ray_dataset(ds)
-    print(df2.head(5).execute())
-    # Test ray cluster exists after session got gc.
-    del session
-    import gc
-
-    gc.collect()
-    mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
 
 
 @require_ray
