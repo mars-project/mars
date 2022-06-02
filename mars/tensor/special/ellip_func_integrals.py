@@ -44,12 +44,6 @@ class TensorEllipkinc(TensorSpecialBinOp):
 
 @_register_special_op
 @arithmetic_operand(sparse_mode="unary")
-class TensorEllipkm1(TensorSpecialUnaryOp):
-    _func_name = "ellipkm1"
-
-
-@_register_special_op
-@arithmetic_operand(sparse_mode="unary")
 class TensorEllipe(TensorSpecialUnaryOp):
     _func_name = "ellipe"
 
