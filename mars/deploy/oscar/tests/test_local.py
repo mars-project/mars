@@ -15,7 +15,6 @@
 import asyncio
 import copy
 import os
-import shutil
 import subprocess
 import sys
 import threading
@@ -950,9 +949,7 @@ def test_naive_code_file():
             env = os.environ.copy()
             env["PYTHONPATH"] = os.path.pathsep.join(sys.path)
             env["RESULTPATH"] = result_path
-            proc = subprocess.Popen(
-                [sys.executable, script_path], env=env, stdout=subprocess.PIPE
-            )
+            proc = subprocess.Popen([sys.executable, script_path], env=env)
             pid = proc.pid
             proc.wait(120)
 
