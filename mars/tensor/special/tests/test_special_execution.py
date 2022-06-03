@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ....lib.version import parse as parse_version
 import numpy as np
 import pytest
 import scipy
@@ -105,7 +106,7 @@ def test_unary_execution(setup, func):
         pytest.param(
             "elliprc",
             marks=pytest.mark.skipif(
-                scipy.__version__ < "1.8.0", reason="function not implemented in scipy."
+                parse_version(scipy.__version__) < parse_version("1.8.0"), reason="function not implemented in scipy."
             ),
         ),
     ],
@@ -150,19 +151,19 @@ def test_binary_execution(setup, func):
         pytest.param(
             "elliprd",
             marks=pytest.mark.skipif(
-                scipy.__version__ < "1.8.0", reason="function not implemented in scipy."
+                parse_version(scipy.__version__) < parse_version("1.8.0"), reason="function not implemented in scipy."
             ),
         ),
         pytest.param(
             "elliprf",
             marks=pytest.mark.skipif(
-                scipy.__version__ < "1.8.0", reason="function not implemented in scipy."
+                parse_version(scipy.__version__) < parse_version("1.8.0"), reason="function not implemented in scipy."
             ),
         ),
         pytest.param(
             "elliprg",
             marks=pytest.mark.skipif(
-                scipy.__version__ < "1.8.0", reason="function not implemented in scipy."
+                parse_version(scipy.__version__) < parse_version("1.8.0"), reason="function not implemented in scipy."
             ),
         ),
     ],
@@ -209,7 +210,7 @@ def test_triple_execution(setup, func):
         pytest.param(
             "elliprj",
             marks=pytest.mark.skipif(
-                scipy.__version__ < "1.8.0", reason="function not implemented in scipy."
+                parse_version(scipy.__version__) < parse_version("1.8.0"), reason="function not implemented in scipy."
             ),
         ),
     ],
