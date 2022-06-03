@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....lib.version import parse as parse_version
 import numpy as np
 import scipy
 import pytest
@@ -37,6 +36,7 @@ from scipy.special import (
     betainc as scipy_betainc,
 )
 
+from ....lib.version import parse as parse_version
 from ....core import tile
 from ... import tensor
 from ..err_fresnel import (
