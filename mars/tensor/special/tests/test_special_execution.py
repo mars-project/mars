@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....lib.version import parse as parse_version
 import numpy as np
 import pytest
 import scipy
 import scipy.sparse as sps
 import scipy.special as spspecial
 
+from ....lib.version import parse as parse_version
 from ... import tensor
 from ... import special as mt_special
 
