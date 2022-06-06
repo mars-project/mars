@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import logging
 from typing import Dict, List
 from .....resource import Resource
 from ..api import ExecutionConfig, register_config_cls
 from ..utils import get_band_resources_from_config
 
+
+logger = logging.getLogger(__name__)
+
+IN_RAY_CI = os.environ.get("MARS_CI_BACKEND", "mars") == "ray"
 # The default interval seconds to update progress and collect garbage.
-DEFAULT_SUBTASK_MONITOR_INTERVAL = 1
+DEFAULT_SUBTASK_MONITOR_INTERVAL = 0 if IN_RAY_CI else 1
 
 
 @register_config_cls

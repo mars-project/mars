@@ -16,6 +16,7 @@ import asyncio
 import functools
 import logging
 import operator
+import sys
 from dataclasses import dataclass
 from typing import List, Dict, Any, Set, Callable
 from .....core import ChunkGraph, Chunk, TileContext
@@ -49,7 +50,7 @@ from ..api import (
     ExecutionChunkResult,
     register_executor_cls,
 )
-from .config import RayExecutionConfig
+from .config import RayExecutionConfig, IN_RAY_CI
 from .context import (
     RayExecutionContext,
     RayExecutionWorkerContext,
@@ -314,35 +315,54 @@ class RayTaskExecutor(TaskExecutor):
     ) -> Dict[Chunk, ExecutionChunkResult]:
         if self._cancelled is True:  # pragma: no cover
             raise asyncio.CancelledError()
+        logger.info("Stage %s start.", stage_id)
+        # Make sure each stage use a clean dict.
+        self._cur_stage_first_output_object_ref_to_subtask = dict()
 
-        def _on_monitor_task_done(fut):
+        def _on_monitor_aiotask_done(fut):
             # Print the error of monitor task.
             try:
                 fut.result()
             except asyncio.CancelledError:
                 pass
+            except Exception:  # pragma: no cover
+                logger.exception(
+                    "The monitor task of stage %s is done with exception.", stage_id
+                )
+                if IN_RAY_CI:  # pragma: no cover
+                    logger.warning(
+                        "The process will be exit due to the monitor task exception "
+                        "when MARS_CI_BACKEND=ray."
+                    )
+                    sys.exit(-1)
 
+        result_meta_keys = {
+            chunk.key
+            for chunk in chunk_graph.result_chunks
+            if not isinstance(chunk.op, Fetch)
+        }
         # Create a monitor task to update progress and collect garbage.
-        monitor_task = asyncio.create_task(
+        monitor_aiotask = asyncio.create_task(
             self._update_progress_and_collect_garbage(
-                subtask_graph, self._config.get_subtask_monitor_interval()
+                stage_id,
+                subtask_graph,
+                result_meta_keys,
+                self._config.get_subtask_monitor_interval(),
             )
         )
-        monitor_task.add_done_callback(_on_monitor_task_done)
+        monitor_aiotask.add_done_callback(_on_monitor_aiotask_done)
 
-        def _on_execute_task_done(fut):
+        def _on_execute_aiotask_done(_):
             # Make sure the monitor task is cancelled.
-            monitor_task.cancel()
+            monitor_aiotask.cancel()
             # Just use `self._cur_stage_tile_progress` as current stage progress
             # because current stage is completed, its progress is 1.0.
             self._cur_stage_progress = 1.0
             self._pre_all_stages_progress += self._cur_stage_tile_progress
-            self._cur_stage_first_output_object_ref_to_subtask.clear()
 
         self._execute_subtask_graph_aiotask = asyncio.current_task()
-        self._execute_subtask_graph_aiotask.add_done_callback(_on_execute_task_done)
+        self._execute_subtask_graph_aiotask.add_done_callback(_on_execute_aiotask_done)
 
-        logger.info("Stage %s start.", stage_id)
         task_context = self._task_context
         output_meta_object_refs = []
         self._pre_all_stages_tile_progress = (
@@ -352,11 +372,6 @@ class RayTaskExecutor(TaskExecutor):
             self._tile_context.get_all_progress() - self._pre_all_stages_tile_progress
         )
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
-        result_meta_keys = {
-            chunk.key
-            for chunk in chunk_graph.result_chunks
-            if not isinstance(chunk.op, Fetch)
-        }
         subtask_max_retries = self._config.get_subtask_max_retries()
         for subtask in subtask_graph.topological_iter():
             subtask_chunk_graph = subtask.chunk_graph
@@ -555,7 +570,11 @@ class RayTaskExecutor(TaskExecutor):
         return output_keys.keys()
 
     async def _update_progress_and_collect_garbage(
-        self, subtask_graph: SubtaskGraph, interval_seconds: float
+        self,
+        stage_id: str,
+        subtask_graph: SubtaskGraph,
+        result_meta_keys: Set[str],
+        interval_seconds: float,
     ):
         object_ref_to_subtask = self._cur_stage_first_output_object_ref_to_subtask
         total = len(subtask_graph)
@@ -579,7 +598,7 @@ class RayTaskExecutor(TaskExecutor):
                 # Iterate the completed subtasks once.
                 subtask = completed_subtasks[i]
                 i += 1
-                logger.debug("GC: %s", subtask)
+                logger.debug("GC[stage=%s]: %s", stage_id, subtask)
 
                 # Note: There may be a scenario in which delayed gc occurs.
                 # When a subtask has more than one predecessor, like A, B,
@@ -595,7 +614,15 @@ class RayTaskExecutor(TaskExecutor):
                     ):
                         yield
                     for chunk in pred.chunk_graph.results:
-                        self._task_context.pop(chunk.key, None)
+                        chunk_key = chunk.key
+                        # We need to check the GC chunk key is not in the
+                        # result meta keys, because there are some special
+                        # cases that the result meta keys are not the leaves.
+                        #
+                        # example: test_cut_execution
+                        if chunk_key not in result_meta_keys:
+                            logger.debug("GC[stage=%s]: %s", stage_id, chunk)
+                            self._task_context.pop(chunk_key, None)
                     gc_subtasks.add(pred)
 
             # TODO(fyrestone): Check the remaining self._task_context.keys()
@@ -603,7 +630,7 @@ class RayTaskExecutor(TaskExecutor):
 
         collect_garbage = gc()
 
-        while len(completed_subtasks) != total:
+        while len(completed_subtasks) < total:
             if len(object_ref_to_subtask) <= 0:  # pragma: no cover
                 await asyncio.sleep(interval_seconds)
 
