@@ -319,7 +319,7 @@ class RayTaskExecutor(TaskExecutor):
         # Make sure each stage use a clean dict.
         self._cur_stage_first_output_object_ref_to_subtask = dict()
 
-        def _on_monitor_task_done(fut):
+        def _on_monitor_aiotask_done(fut):
             # Print the error of monitor task.
             try:
                 fut.result()
@@ -327,9 +327,13 @@ class RayTaskExecutor(TaskExecutor):
                 pass
             except Exception:
                 logger.exception(
-                    "The monitor task of stage %s done with exception.", stage_id
+                    "The monitor task of stage %s is done with exception.", stage_id
                 )
-                if IN_RAY_CI:
+                if IN_RAY_CI:  # pragma: no cover
+                    logger.warning(
+                        "The process will be exit due to the monitor task exception "
+                        "when MARS_CI_BACKEND=ray."
+                    )
                     sys.exit(-1)
 
         result_meta_keys = {
@@ -338,7 +342,7 @@ class RayTaskExecutor(TaskExecutor):
             if not isinstance(chunk.op, Fetch)
         }
         # Create a monitor task to update progress and collect garbage.
-        monitor_task = asyncio.create_task(
+        monitor_aiotask = asyncio.create_task(
             self._update_progress_and_collect_garbage(
                 stage_id,
                 subtask_graph,
@@ -346,18 +350,18 @@ class RayTaskExecutor(TaskExecutor):
                 self._config.get_subtask_monitor_interval(),
             )
         )
-        monitor_task.add_done_callback(_on_monitor_task_done)
+        monitor_aiotask.add_done_callback(_on_monitor_aiotask_done)
 
-        def _on_execute_task_done(fut):
+        def _on_execute_aiotask_done(_):
             # Make sure the monitor task is cancelled.
-            monitor_task.cancel()
+            monitor_aiotask.cancel()
             # Just use `self._cur_stage_tile_progress` as current stage progress
             # because current stage is completed, its progress is 1.0.
             self._cur_stage_progress = 1.0
             self._pre_all_stages_progress += self._cur_stage_tile_progress
 
         self._execute_subtask_graph_aiotask = asyncio.current_task()
-        self._execute_subtask_graph_aiotask.add_done_callback(_on_execute_task_done)
+        self._execute_subtask_graph_aiotask.add_done_callback(_on_execute_aiotask_done)
 
         task_context = self._task_context
         output_meta_object_refs = []
@@ -626,7 +630,7 @@ class RayTaskExecutor(TaskExecutor):
 
         collect_garbage = gc()
 
-        while len(completed_subtasks) != total:
+        while len(completed_subtasks) < total:
             if len(object_ref_to_subtask) <= 0:  # pragma: no cover
                 await asyncio.sleep(interval_seconds)
 
