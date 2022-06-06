@@ -101,6 +101,10 @@ class Field(ABC):
         except AttributeError:
             return None
 
+    def set(self, instance, value):
+        """Set the value to instance without side effect in __set__."""
+        self._member_descriptor.__set__(instance, value)
+
     def __get__(self, instance, owner=None):
         try:
             return self._member_descriptor.__get__(instance, owner)

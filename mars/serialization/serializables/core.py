@@ -198,15 +198,15 @@ class SerializableSerializer(Serializer):
         if type(value) is Placeholder:
             if field.on_deserialize:
                 value.callbacks.append(
-                    lambda v: field.__set__(obj, field.on_deserialize(v))
+                    lambda v: field.set(obj, field.on_deserialize(v))
                 )
             else:
-                value.callbacks.append(lambda v: field.__set__(obj, v))
+                value.callbacks.append(lambda v: field.set(obj, v))
         else:
             if field.on_deserialize:
-                field.__set__(obj, field.on_deserialize(value))
+                field.set(obj, field.on_deserialize(value))
             else:
-                field.__set__(obj, value)
+                field.set(obj, value)
 
     def deserial(self, serialized: Tuple, context: Dict, subs: List) -> Serializable:
         obj_class, primitives = serialized
