@@ -325,7 +325,7 @@ class RayTaskExecutor(TaskExecutor):
                 fut.result()
             except asyncio.CancelledError:
                 pass
-            except Exception:
+            except Exception:  # pragma: no cover
                 logger.exception(
                     "The monitor task of stage %s is done with exception.", stage_id
                 )
