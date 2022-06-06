@@ -15,16 +15,13 @@ import copy
 import os
 import operator
 import weakref
-from collections import OrderedDict
-from functools import partial
-from typing import Any, Dict, List, Type, Tuple
+from typing import Dict, List, Type, Tuple
 
 import cloudpickle
 
-from ...core.mode import is_kernel_mode, is_build_mode
 from ...utils import no_default
 from ..core import Serializer, Placeholder, buffered
-from .field import Field, OneOfField
+from .field import Field
 from .field_type import (
     PrimitiveFieldType,
     ListType,
@@ -207,7 +204,7 @@ class SerializableSerializer(Serializer):
                 value.callbacks.append(lambda v: field.__set__(obj, v))
         else:
             if field.on_deserialize:
-                field.__set__(obj, field.on_deserialize(v))
+                field.__set__(obj, field.on_deserialize(value))
             else:
                 field.__set__(obj, value)
 
