@@ -93,17 +93,20 @@ class MockRayTaskExecutor(RayTaskExecutor):
         subtask_graph: SubtaskGraph,
         chunk_graph: ChunkGraph,
     ):
-        monitor_task = asyncio.create_task(
-            self._update_progress_and_collect_garbage(
-                subtask_graph, self._config.get_subtask_monitor_interval()
-            )
-        )
-
         result_meta_keys = {
             chunk.key
             for chunk in chunk_graph.result_chunks
             if not isinstance(chunk.op, Fetch)
         }
+
+        monitor_task = asyncio.create_task(
+            self._update_progress_and_collect_garbage(
+                stage_id,
+                subtask_graph,
+                result_meta_keys,
+                self._config.get_subtask_monitor_interval(),
+            )
+        )
 
         for subtask in subtask_graph.topological_iter():
             subtask_chunk_graph = subtask.chunk_graph
