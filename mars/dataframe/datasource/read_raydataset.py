@@ -125,7 +125,7 @@ def read_ray_dataset(ds, columns=None, incremental_index=False, **kwargs):
             dtypes = schema.empty_table().to_pandas().dtypes
         else:
             raise NotImplementedError(f"Unsupported format of schema {schema}")
-    except ImportError:
+    except ImportError:  # pragma: no cover
         dtypes = schema.empty_table().to_pandas().dtypes
     index_value = parse_index(pd.RangeIndex(-1))
     columns_value = parse_index(dtypes.index, store_data=True)
