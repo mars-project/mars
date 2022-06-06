@@ -15,13 +15,17 @@
 import asyncio
 import copy
 import os
+import subprocess
+import sys
 import threading
 import tempfile
+import textwrap
 import time
 import uuid
 
 import numpy as np
 import pandas as pd
+import psutil
 import pytest
 
 try:
@@ -906,3 +910,49 @@ async def test_task_speculation_execution(speculative_cluster):
         .fetch()
         == pd.Series(list(range(series_size))).apply(lambda x: x * x).sum()
     )
+
+
+def test_naive_code_file():
+    code_file = """
+    import mars
+    import mars.tensor as mt
+    import os
+
+    mars.new_session()
+    try:
+        result_path = os.environ["RESULTPATH"]
+        with open(result_path, "w") as outf:
+            outf.write(str(mt.ones((10, 10)).sum().execute()))
+    finally:
+        mars.stop_server()
+    """
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            script_path = os.path.join(temp_dir, "test_file.py")
+            result_path = os.path.join(temp_dir, "result.txt")
+
+            with open(script_path, "w") as file_obj:
+                file_obj.write(textwrap.dedent(code_file))
+
+            env = os.environ.copy()
+            env["PYTHONPATH"] = os.path.pathsep.join(sys.path)
+            env["RESULTPATH"] = result_path
+            proc = subprocess.Popen([sys.executable, script_path], env=env)
+            pid = proc.pid
+            proc.wait(120)
+
+            with open(result_path, "r") as inp_file:
+                assert 100 == int(float(inp_file.read()))
+        except subprocess.TimeoutExpired:
+            try:
+                procs = [psutil.Process(pid)]
+                procs.extend(procs[0].children(True))
+                for proc in reversed(procs):
+                    try:
+                        proc.kill()
+                    except psutil.NoSuchProcess:
+                        pass
+            except psutil.NoSuchProcess:
+                pass
+            raise

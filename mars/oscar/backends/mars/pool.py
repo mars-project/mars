@@ -14,12 +14,14 @@
 
 import asyncio
 import concurrent.futures as futures
+import contextlib
 import logging.config
 import multiprocessing
 import os
 import random
 import signal
 import sys
+import threading
 import uuid
 from dataclasses import dataclass
 from types import TracebackType
@@ -63,6 +65,37 @@ elif sys.version_info[:2] == (3, 6):  # pragma: no cover
     BaseProcess.kill = _mp_kill
 
 logger = logging.getLogger(__name__)
+_init_main_suspended_local = threading.local()
+
+
+def _patch_spawn_get_preparation_data():
+    try:
+        from multiprocessing import spawn as mp_spawn
+
+        _raw_get_preparation_data = mp_spawn.get_preparation_data
+
+        def _patched_get_preparation_data(*args, **kw):
+            ret = _raw_get_preparation_data(*args, **kw)
+            if getattr(_init_main_suspended_local, "value", False):
+                # make sure user module is not imported when start Mars cluster
+                ret.pop("init_main_from_name", None)
+                ret.pop("init_main_from_path", None)
+            return ret
+
+        _patched_get_preparation_data._mars_patched = True
+        if not getattr(mp_spawn.get_preparation_data, "_mars_patched", False):
+            mp_spawn.get_preparation_data = _patched_get_preparation_data
+    except (ImportError, AttributeError):  # pragma: no cover
+        pass
+
+
+@contextlib.contextmanager
+def _suspend_init_main():
+    try:
+        _init_main_suspended_local.value = True
+        yield
+    finally:
+        _init_main_suspended_local.value = False
 
 
 @dataslots
@@ -131,21 +164,25 @@ class MainActorPool(MainActorPoolBase):
         def start_pool_in_process():
             ctx = multiprocessing.get_context(method=start_method)
             status_queue = ctx.Queue()
-            process = ctx.Process(
-                target=cls._start_sub_pool,
-                args=(actor_pool_config, process_index, status_queue),
-                name=f"MarsActorPool{process_index}",
-            )
-            process.daemon = True
-            process.start()
+
+            with _suspend_init_main():
+                process = ctx.Process(
+                    target=cls._start_sub_pool,
+                    args=(actor_pool_config, process_index, status_queue),
+                    name=f"MarsActorPool{process_index}",
+                )
+                process.daemon = True
+                process.start()
+
             # wait for sub actor pool to finish starting
             process_status = status_queue.get()
             return process, process_status
 
+        _patch_spawn_get_preparation_data()
         loop = asyncio.get_running_loop()
-        executor = futures.ThreadPoolExecutor(1)
-        create_pool_task = loop.run_in_executor(executor, start_pool_in_process)
-        return await create_pool_task
+        with futures.ThreadPoolExecutor(1) as executor:
+            create_pool_task = loop.run_in_executor(executor, start_pool_in_process)
+            return await create_pool_task
 
     @classmethod
     async def wait_sub_pools_ready(cls, create_pool_tasks: List[asyncio.Task]):
@@ -240,8 +277,11 @@ class MainActorPool(MainActorPoolBase):
                 pass
             process.terminate()
             wait_pool = futures.ThreadPoolExecutor(1)
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(wait_pool, process.join, 3)
+            try:
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(wait_pool, process.join, 3)
+            finally:
+                wait_pool.shutdown(False)
         process.kill()
         await asyncio.to_thread(process.join, 5)
 
