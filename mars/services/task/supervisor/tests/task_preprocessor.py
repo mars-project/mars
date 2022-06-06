@@ -26,7 +26,7 @@ from .....core import (
     register,
     unregister,
 )
-from .....core.operand import Fetch
+from .....core.operand import Fetch, ShuffleProxy
 from .....resource import Resource
 from .....tests.core import _check_args, ObjectCheckMixin
 from .....typing import BandType, ChunkType
@@ -177,4 +177,20 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
                 subtask.extra_config["check_keys"] = [
                     c.key for c in subtask.chunk_graph.results if c in results
                 ]
+            proxy_chunks = [
+                c for c in subtask.chunk_graph if isinstance(c.op, ShuffleProxy)
+            ]
+            if proxy_chunks:
+                assert len(proxy_chunks) == 1, proxy_chunks
+                proxy_chunk_key = proxy_chunks[0].key
+                proxy_chunk = next(c for c in chunk_graph if c.key == proxy_chunk_key)
+                reducer_chunks = chunk_graph.successors(proxy_chunk)
+                n_reducers_list = [c.op.n_reducers for c in reducer_chunks]
+                n_reducers = n_reducers_list[0]
+                reducer_ordinals = [c.op.reducer_ordinal for c in reducer_chunks]
+                assert set(reducer_ordinals).issubset(list(range(n_reducers))), (
+                    reducer_ordinals,
+                    n_reducers,
+                )
+                assert len(set(n_reducers_list)) == 1, n_reducers_list
         return subtask_graph

@@ -60,6 +60,7 @@ EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_calls"] = {}
 @pytest.mark.parametrize(indirect=True)
 @pytest.fixture
 async def create_cluster(request):
+    param = getattr(request, "param", {})
     start_method = os.environ.get("POOL_START_METHOD", None)
     client = await new_cluster(
         subprocess_start_method=start_method,
@@ -67,6 +68,7 @@ async def create_cluster(request):
         n_worker=2,
         n_cpu=2,
         use_uvloop=False,
+        config=param.get("config", None),
     )
     async with client:
         assert client.session.client is not None
@@ -123,7 +125,11 @@ def test_sync_execute(ray_start_regular_shared2, config):
 
 
 @require_ray
-@pytest.mark.skip("Enable when ray progress got fixed")
+@pytest.mark.parametrize(
+    "create_cluster",
+    [{"config": {"task.execution_config.ray.subtask_monitor_interval": 0}}],
+    indirect=True,
+)
 @pytest.mark.asyncio
 async def test_session_get_progress(ray_start_regular_shared2, create_cluster):
     await test_local.test_session_get_progress(create_cluster)

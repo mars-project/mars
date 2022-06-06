@@ -62,6 +62,24 @@ Ellipsoidal harmonics
    mars.tensor.special.ellip_normal
 
 
+Elliptic functions and integrals
+---------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   mars.tensor.special.ellipk
+   mars.tensor.special.ellipkm1
+   mars.tensor.special.ellipkinc
+   mars.tensor.special.ellipe
+   mars.tensor.special.ellipeinc
+   mars.tensor.special.elliprc
+   mars.tensor.special.elliprf
+   mars.tensor.special.elliprg
+   mars.tensor.special.elliprj
+
+
 Gamma and related functions
 ---------------------------
 

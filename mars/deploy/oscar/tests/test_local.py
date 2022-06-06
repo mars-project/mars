@@ -15,13 +15,17 @@
 import asyncio
 import copy
 import os
+import subprocess
+import sys
 import threading
 import tempfile
+import textwrap
 import time
 import uuid
 
 import numpy as np
 import pandas as pd
+import psutil
 import pytest
 
 try:
@@ -608,14 +612,15 @@ async def test_session_get_progress(create_cluster):
     assert session.session_id is not None
 
     raw = np.random.rand(100, 4)
-    t = mt.tensor(raw, chunk_size=5)
+    t = mt.tensor(raw, chunk_size=50)
 
     def f1(c):
         time.sleep(0.5)
         return c
 
     t1 = t.sum()
-    r = t1.map_chunk(f1)
+    t2 = t1.map_chunk(f1)
+    r = t2.map_chunk(f1)
     info = await session.execute(r)
 
     for _ in range(100):
@@ -916,3 +921,49 @@ async def test_task_speculation_execution(speculative_cluster):
         .fetch()
         == pd.Series(list(range(series_size))).apply(lambda x: x * x).sum()
     )
+
+
+def test_naive_code_file():
+    code_file = """
+    import mars
+    import mars.tensor as mt
+    import os
+
+    mars.new_session()
+    try:
+        result_path = os.environ["RESULTPATH"]
+        with open(result_path, "w") as outf:
+            outf.write(str(mt.ones((10, 10)).sum().execute()))
+    finally:
+        mars.stop_server()
+    """
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            script_path = os.path.join(temp_dir, "test_file.py")
+            result_path = os.path.join(temp_dir, "result.txt")
+
+            with open(script_path, "w") as file_obj:
+                file_obj.write(textwrap.dedent(code_file))
+
+            env = os.environ.copy()
+            env["PYTHONPATH"] = os.path.pathsep.join(sys.path)
+            env["RESULTPATH"] = result_path
+            proc = subprocess.Popen([sys.executable, script_path], env=env)
+            pid = proc.pid
+            proc.wait(120)
+
+            with open(result_path, "r") as inp_file:
+                assert 100 == int(float(inp_file.read()))
+        except subprocess.TimeoutExpired:
+            try:
+                procs = [psutil.Process(pid)]
+                procs.extend(procs[0].children(True))
+                for proc in reversed(procs):
+                    try:
+                        proc.kill()
+                    except psutil.NoSuchProcess:
+                        pass
+            except psutil.NoSuchProcess:
+                pass
+            raise

@@ -14,9 +14,11 @@
 
 import numpy as np
 import pytest
+import scipy
 import scipy.sparse as sps
 import scipy.special as spspecial
 
+from ....lib.version import parse as parse_version
 from ... import tensor
 from ... import special as mt_special
 
@@ -37,6 +39,9 @@ from ... import special as mt_special
         "erfi",
         "erfinv",
         "entr",
+        "ellipk",
+        "ellipkm1",
+        "ellipe",
     ],
 )
 def test_unary_execution(setup, func):
@@ -96,6 +101,15 @@ def test_unary_execution(setup, func):
         "hankel2",
         "hankel2e",
         "hyp0f1",
+        "ellipkinc",
+        "ellipeinc",
+        pytest.param(
+            "elliprc",
+            marks=pytest.mark.skipif(
+                parse_version(scipy.__version__) < parse_version("1.8.0"),
+                reason="function not implemented in scipy.",
+            ),
+        ),
     ],
 )
 def test_binary_execution(setup, func):
@@ -128,7 +142,36 @@ def test_binary_execution(setup, func):
     np.testing.assert_array_equal(result.toarray(), expected)
 
 
-@pytest.mark.parametrize("func", ["betainc", "betaincinv", "hyp1f1", "hyperu"])
+@pytest.mark.parametrize(
+    "func",
+    [
+        "betainc",
+        "betaincinv",
+        "hyp1f1",
+        "hyperu",
+        pytest.param(
+            "elliprd",
+            marks=pytest.mark.skipif(
+                parse_version(scipy.__version__) < parse_version("1.8.0"),
+                reason="function not implemented in scipy.",
+            ),
+        ),
+        pytest.param(
+            "elliprf",
+            marks=pytest.mark.skipif(
+                parse_version(scipy.__version__) < parse_version("1.8.0"),
+                reason="function not implemented in scipy.",
+            ),
+        ),
+        pytest.param(
+            "elliprg",
+            marks=pytest.mark.skipif(
+                parse_version(scipy.__version__) < parse_version("1.8.0"),
+                reason="function not implemented in scipy.",
+            ),
+        ),
+    ],
+)
 def test_triple_execution(setup, func):
     sp_func = getattr(spspecial, func)
     mt_func = getattr(mt_special, func)
@@ -163,7 +206,20 @@ def test_triple_execution(setup, func):
     np.testing.assert_array_equal(result.toarray(), expected)
 
 
-@pytest.mark.parametrize("func", ["hyp2f1", "ellip_normal"])
+@pytest.mark.parametrize(
+    "func",
+    [
+        "hyp2f1",
+        "ellip_normal",
+        pytest.param(
+            "elliprj",
+            marks=pytest.mark.skipif(
+                parse_version(scipy.__version__) < parse_version("1.8.0"),
+                reason="function not implemented in scipy.",
+            ),
+        ),
+    ],
+)
 def test_quadruple_execution(setup, func):
     sp_func = getattr(spspecial, func)
     mt_func = getattr(mt_special, func)

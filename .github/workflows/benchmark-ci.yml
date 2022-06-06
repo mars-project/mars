@@ -62,5 +62,5 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: Benchmarks log
-          path: benchmarks/asv_bench/benchmarks.log
+          path: benchmarks/asv_bench/results
         if: failure()

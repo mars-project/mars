@@ -14,6 +14,7 @@
 
 import itertools
 
+import cloudpickle
 import numpy as np
 import pandas as pd
 
@@ -89,7 +90,19 @@ class TransferPackageSuite:
     """
 
     def setup(self):
+        try:
+            # make sure all submodules will serial functions instead of refs
+            cloudpickle.register_pickle_by_value(__import__("benchmarks.storage"))
+        except (AttributeError, ImportError):
+            pass
         mars.new_session(n_worker=2, n_cpu=8)
+
+    def teardown(self):
+        mars.stop_server()
+        try:
+            cloudpickle.unregister_pickle_by_value(__import__("benchmarks.storage"))
+        except (AttributeError, ImportError):
+            pass
 
     def time_1_to_1(self):
         return mr.spawn(send_1_to_1).execute().fetch()
@@ -99,3 +112,4 @@ if __name__ == "__main__":
     suite = TransferPackageSuite()
     suite.setup()
     print(suite.time_1_to_1())
+    suite.teardown()

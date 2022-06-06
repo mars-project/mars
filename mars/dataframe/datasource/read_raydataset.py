@@ -112,17 +112,21 @@ class DataFrameReadRayDataset(
 def read_ray_dataset(ds, columns=None, incremental_index=False, **kwargs):
     assert isinstance(ds, real_ray_dataset.Dataset)
     refs = ds.to_pandas_refs()
+    schema = ds.schema()
 
     import pyarrow as pa
-    from ray.data.impl.pandas_block import PandasBlockSchema
 
-    schema = ds.schema()
-    if isinstance(schema, PandasBlockSchema):
-        dtypes = pd.Series(schema.types, index=schema.names)
-    elif isinstance(schema, pa.Schema):
+    try:
+        from ray.data.impl.pandas_block import PandasBlockSchema
+
+        if isinstance(schema, PandasBlockSchema):
+            dtypes = pd.Series(schema.types, index=schema.names)
+        elif isinstance(schema, pa.Schema):
+            dtypes = schema.empty_table().to_pandas().dtypes
+        else:
+            raise NotImplementedError(f"Unsupported format of schema {schema}")
+    except ImportError:  # pragma: no cover
         dtypes = schema.empty_table().to_pandas().dtypes
-    else:
-        raise NotImplementedError(f"Unsupported format of schema {schema}")
     index_value = parse_index(pd.RangeIndex(-1))
     columns_value = parse_index(dtypes.index, store_data=True)
     op = DataFrameReadRayDataset(
