@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import logging
 import os
 
 import numpy as np
@@ -35,6 +36,8 @@ from ..ray import new_cluster, _load_config
 from ..tests import test_local
 
 ray = lazy_import("ray")
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -225,7 +228,7 @@ async def test_auto_scale_in(ray_large_cluster):
         )
         while await autoscaler_ref.get_dynamic_worker_nums() > 2:
             dynamic_workers = await autoscaler_ref.get_dynamic_workers()
-            print(f"Waiting workers {dynamic_workers} to be released.")
+            logger.info(f"Waiting %s workers to be released.", dynamic_workers)
             await asyncio.sleep(1)
         await asyncio.sleep(1)
         assert await autoscaler_ref.get_dynamic_worker_nums() == 2
@@ -275,25 +278,25 @@ async def test_ownership_when_scale_in(ray_large_cluster):
         )
         info = df.execute(wait=False)
         while await autoscaler_ref.get_dynamic_worker_nums() <= 1:
-            print(f"Waiting workers to be created.")
+            logger.info("Waiting workers to be created.")
             await asyncio.sleep(1)
         await latch_actor.count_down.remote()
         await info
         assert info.exception() is None
         assert info.progress() == 1
-        print("df execute succeed.")
+        logger.info("df execute succeed.")
 
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
             dynamic_workers = await autoscaler_ref.get_dynamic_workers()
-            print(f"Waiting workers {dynamic_workers} to be released.")
+            logger.info("Waiting workers %s to be released.", dynamic_workers)
             await asyncio.sleep(1)
         # Test data on node of released worker can still be fetched
         pd_df = df.fetch()
         groupby_sum_df = df.rechunk(chunk_size * 2).groupby("a").sum()
-        print(groupby_sum_df.execute())
+        logger.info(groupby_sum_df.execute())
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
             dynamic_workers = await autoscaler_ref.get_dynamic_workers()
-            print(f"Waiting workers {dynamic_workers} to be released.")
+            logger.info(f"Waiting workers %s to be released.", dynamic_workers)
             await asyncio.sleep(1)
         assert df.to_pandas().to_dict() == pd_df.to_dict()
         assert (
