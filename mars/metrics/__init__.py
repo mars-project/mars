@@ -13,5 +13,5 @@
 # limitations under the License.
 
 from .api import Metrics
-from .api import init_metrics
+from .api import init_metrics, shutdown_metrics
 from .api import record_time_cost_percentile, Percentile
