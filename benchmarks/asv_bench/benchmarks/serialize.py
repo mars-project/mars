@@ -40,6 +40,8 @@ from mars.serialization.serializables import (
     Timedelta64Field,
     TupleField,
     DictField,
+    Complex64Field,
+    Complex128Field,
 )
 from mars.services.subtask import Subtask, SubtaskResult, SubtaskStatus
 from mars.services.task import new_task_id
@@ -72,11 +74,13 @@ class MySerializable(Serializable):
     _int64_val = Int64Field("f3")
     _float32_val = Float32Field("f4")
     _float64_val = Float64Field("f5")
-    _string_val = StringField("f6")
-    _datetime64_val = Datetime64Field("f7")
-    _timedelta64_val = Timedelta64Field("f8")
-    _datatype_val = DataTypeField("f9")
-    _slice_val = SliceField("f10")
+    _complex64_val = Complex64Field("f6")
+    _complex128_val = Complex128Field("f7")
+    _string_val = StringField("f8")
+    _datetime64_val = Datetime64Field("f9")
+    _timedelta64_val = Timedelta64Field("f10")
+    _datatype_val = DataTypeField("f11")
+    _slice_val = SliceField("f12")
     _list_val = ListField("list_val", FieldTypes.int64)
     _tuple_val = TupleField("tuple_val", FieldTypes.string)
     _dict_val = DictField("dict_val", FieldTypes.string, FieldTypes.bytes)
