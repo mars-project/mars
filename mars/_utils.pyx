@@ -44,6 +44,9 @@ from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes, \
 cdef bint _has_cupy = bool(pkgutil.find_loader('cupy'))
 cdef bint _has_cudf = bool(pkgutil.find_loader('cudf'))
 cdef bint _has_sqlalchemy = bool(pkgutil.find_loader('sqlalchemy'))
+cdef bint _has_interval_array_inclusive = hasattr(
+    pd.arrays.IntervalArray, "inclusive"
+)
 
 
 cpdef str to_str(s, encoding='utf-8'):
@@ -303,7 +306,10 @@ cdef list tokenize_pandas_tick(ob):
 
 
 cdef list tokenize_pandas_interval_arrays(ob):
-    return iterative_tokenize([ob.left, ob.right, ob.closed])
+    if _has_interval_array_inclusive:
+        return iterative_tokenize([ob.left, ob.right, ob.inclusive])
+    else:
+        return iterative_tokenize([ob.left, ob.right, ob.closed])
 
 
 cdef list tokenize_sqlalchemy_data_type(ob):

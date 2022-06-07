@@ -38,7 +38,7 @@ from ...datasource.series import from_pandas as from_pandas_series
 from ...datasource.index import from_pandas as from_pandas_index
 from .. import to_gpu, to_cpu
 from ..bloom_filter import filter_by_bloom_filter
-from ..shift import _with_column_freq_bug
+from ..shift import _enable_no_default, _with_column_freq_bug
 from ..to_numeric import to_numeric
 from ..rebalance import DataFrameRebalance
 
@@ -1132,6 +1132,10 @@ def test_q_cut_execution(setup):
 
 @pytest.mark.ray_dag
 def test_shift_execution(setup):
+    fill_value_default = no_default
+    if not _enable_no_default or _with_column_freq_bug:
+        fill_value_default = None
+
     # test dataframe
     rs = np.random.RandomState(0)
     raw = pd.DataFrame(
@@ -1142,7 +1146,7 @@ def test_shift_execution(setup):
 
     for periods in (2, -2, 6, -6):
         for axis in (0, 1):
-            for fill_value in (no_default, 0, 1.0):
+            for fill_value in (fill_value_default, 0, 1.0):
                 r = df.shift(periods=periods, axis=axis, fill_value=fill_value)
 
                 try:
@@ -1165,10 +1169,7 @@ def test_shift_execution(setup):
     # test freq not None
     for periods in (2, -2):
         for axis in (0, 1):
-            for fill_value in (no_default, 0, 1.0):
-                if _with_column_freq_bug:
-                    fill_value = None
-
+            for fill_value in (fill_value_default, 0, 1.0):
                 r = df2.shift(
                     periods=periods, freq="D", axis=axis, fill_value=fill_value
                 )
@@ -1198,7 +1199,7 @@ def test_shift_execution(setup):
 
     series = from_pandas_series(s, chunk_size=5)
     for periods in (0, 2, -2, 6, -6):
-        for fill_value in (None, 0, 1.0):
+        for fill_value in (fill_value_default, 0, 1.0):
             r = series.shift(periods=periods, fill_value=fill_value)
 
             try:
@@ -1215,7 +1216,7 @@ def test_shift_execution(setup):
     # test freq not None
     series2 = from_pandas_series(s2, chunk_size=5)
     for periods in (2, -2):
-        for fill_value in (None, 0, 1.0):
+        for fill_value in (fill_value_default, 0, 1.0):
             r = series2.shift(periods=periods, freq="D", fill_value=fill_value)
 
             try:
