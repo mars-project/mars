@@ -99,6 +99,9 @@ class StorageHandlerActor(mo.Actor):
                 res = sliced_value
         raise mo.Return(res)
 
+    def get_client(self, level: StorageLevel):
+        return self._clients[level]
+
     @mo.extensible
     async def get(
         self,

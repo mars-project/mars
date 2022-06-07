@@ -15,13 +15,13 @@
 import asyncio
 import logging
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Tuple, Union
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
 from ...storage import StorageLevel
 from ...utils import dataslots
-from .core import DataManagerActor, WrappedStorageFileObject
+from .core import DataManagerActor, WrappedStorageFileObject, DataInfo
 from .handler import StorageHandlerActor
 
 DEFAULT_TRANSFER_BLOCK_SIZE = 4 * 1024**2
@@ -65,6 +65,7 @@ class SenderManagerActor(mo.StatelessActor):
         receiver_ref: mo.ActorRefType["ReceiverManagerActor"],
         session_id: str,
         data_keys: List[str],
+        data_infos: List[DataInfo],
         level: StorageLevel,
         block_size: int,
     ):
@@ -93,11 +94,12 @@ class SenderManagerActor(mo.StatelessActor):
 
         sender = BufferedSender()
         open_reader_tasks = []
-        for data_key in data_keys:
+        storage_client = await self._storage_handler.get_client(level)
+        for info in data_infos:
             open_reader_tasks.append(
-                self._storage_handler.open_reader.delay(session_id, data_key)
+                storage_client.open_reader(info.object_id)
             )
-        readers = await self._storage_handler.open_reader.batch(*open_reader_tasks)
+        readers = await asyncio.gather(*open_reader_tasks)
 
         for data_key, reader in zip(data_keys, readers):
             while True:
@@ -116,7 +118,58 @@ class SenderManagerActor(mo.StatelessActor):
                     break
         await sender.flush()
 
-    @mo.extensible
+    async def _send(
+        self,
+        session_id: str,
+        data_keys: List[Union[str, Tuple]],
+        data_infos: List[DataInfo],
+        data_sizes: List[int],
+        block_size: int,
+        address: str,
+        band_name: str,
+        level: StorageLevel,
+    ):
+        receiver_ref: mo.ActorRefType[ReceiverManagerActor] = await self.get_receiver_ref(address, band_name)
+        is_transferring_list = await receiver_ref.open_writers(
+            session_id, data_keys, data_sizes, level
+        )
+        to_send_keys = []
+        to_send_infos = []
+        to_wait_keys = []
+        for data_key, is_transferring, info in zip(
+            data_keys, is_transferring_list, data_infos
+        ):
+            if is_transferring:
+                to_wait_keys.append(data_key)
+            else:
+                to_send_keys.append(data_key)
+                to_send_infos.append(info)
+
+        if to_send_keys:
+            await self._send_data(
+                receiver_ref, session_id, to_send_keys, to_send_infos, level, block_size
+            )
+        if to_wait_keys:
+            await receiver_ref.wait_transfer_done(session_id, to_wait_keys)
+
+    async def _send_small_objects(
+        self,
+        session_id: str,
+        data_keys: List[Union[str, Tuple]],
+        data_infos: List[DataInfo],
+        address: str,
+        band_name: str,
+        level: StorageLevel,
+    ):
+        # simple get all objects and send them all to receiver
+        storage_client = await self._storage_handler.get_client(level)
+        get_tasks = [
+            storage_client.get(info.object_id) for info in data_infos
+        ]
+        data_list = list(await asyncio.gather(*get_tasks))
+        receiver_ref: mo.ActorRefType[ReceiverManagerActor] = await self.get_receiver_ref(address, band_name)
+        await receiver_ref.put_small_objects(session_id, data_keys, data_list, level)
+
     async def send_batch_data(
         self,
         session_id: str,
@@ -125,15 +178,13 @@ class SenderManagerActor(mo.StatelessActor):
         level: StorageLevel,
         band_name: str = "numa-0",
         block_size: int = None,
+        is_small_objects=None,
         error: str = "raise",
     ):
         logger.debug(
             "Begin to send data (%s, %s) to %s", session_id, data_keys, address
         )
         block_size = block_size or self._transfer_block_size
-        receiver_ref: mo.ActorRefType[
-            ReceiverManagerActor
-        ] = await self.get_receiver_ref(address, band_name)
         get_infos = []
         pin_tasks = []
         for data_key in data_keys:
@@ -162,23 +213,29 @@ class SenderManagerActor(mo.StatelessActor):
         data_sizes = [info.store_size for info in infos]
         if level is None:
             level = infos[0].level
-        is_transferring_list = await receiver_ref.open_writers(
-            session_id, data_keys, data_sizes, level
-        )
-        to_send_keys = []
-        to_wait_keys = []
-        for data_key, is_transferring in zip(data_keys, is_transferring_list):
-            if is_transferring:
-                to_wait_keys.append(data_key)
-            else:
-                to_send_keys.append(data_key)
-
-        if to_send_keys:
-            await self._send_data(
-                receiver_ref, session_id, to_send_keys, level, block_size
+        total_size = sum(data_sizes)
+        if is_small_objects is None:
+            is_small_objects = total_size <= block_size
+        if is_small_objects:
+            logger.debug(
+                "Choose send_small_objects method for sending data of %s bytes",
+                total_size,
             )
-        if to_wait_keys:
-            await receiver_ref.wait_transfer_done(session_id, to_wait_keys)
+            await self._send_small_objects(
+                session_id, data_keys, infos, address, band_name, level
+            )
+        else:
+            logger.debug("Choose block method for sending data of %s bytes", total_size)
+            await self._send(
+                session_id,
+                data_keys,
+                infos,
+                data_sizes,
+                block_size,
+                address,
+                band_name,
+                level,
+            )
         unpin_tasks = []
         for data_key in data_keys:
             unpin_tasks.append(
@@ -231,6 +288,15 @@ class ReceiverManagerActor(mo.StatelessActor):
         self._writing_infos[(session_id, data_key)].ref_counts -= 1
         if self._writing_infos[(session_id, data_key)].ref_counts == 0:
             del self._writing_infos[(session_id, data_key)]
+
+    async def put_small_objects(
+        self, session_id: str, data_keys: List[str], objects: List, level: StorageLevel
+    ):
+        tasks = [
+            self._storage_handler.put.delay(session_id, data_key, obj, level)
+            for data_key, obj in zip(data_keys, objects)
+        ]
+        await self._storage_handler.put.batch(*tasks)
 
     async def create_writers(
         self,

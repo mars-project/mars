@@ -102,50 +102,84 @@ async def test_simple_transfer(create_actors):
     storage_handler1 = await mo.actor_ref(
         uid=StorageHandlerActor.gen_uid("numa-0"), address=worker_address_1
     )
+    data_manager1 = await mo.actor_ref(
+        uid=DataManagerActor.default_uid(), address=worker_address_1
+    )
     storage_handler2 = await mo.actor_ref(
         uid=StorageHandlerActor.gen_uid("numa-0"), address=worker_address_2
+    )
+    data_manager2 = await mo.actor_ref(
+        uid=DataManagerActor.default_uid(), address=worker_address_2
     )
 
     await storage_handler1.put(session_id, "data_key1", data1, StorageLevel.MEMORY)
     await storage_handler1.put(session_id, "data_key2", data2, StorageLevel.MEMORY)
     await storage_handler2.put(session_id, "data_key3", data2, StorageLevel.MEMORY)
 
-    sender_actor = await mo.actor_ref(
+    # sender_actor1 use default block_size
+    sender_actor1 = await mo.actor_ref(
         address=worker_address_1, uid=SenderManagerActor.gen_uid("numa-0")
     )
-
-    # send data to worker2 from worker1
-    await sender_actor.send_batch_data(
-        session_id,
-        ["data_key1"],
-        worker_address_2,
-        StorageLevel.MEMORY,
-        block_size=1000,
+    # send_actor2 set block_size to 0
+    sender_actor2 = await mo.create_actor(
+        SenderManagerActor,
+        "numa-0",
+        0,
+        data_manager1,
+        storage_handler1,
+        uid=SenderManagerActor.gen_uid("mock"),
+        address=worker_address_1,
     )
 
-    await sender_actor.send_batch_data(
-        session_id,
-        ["data_key2"],
-        worker_address_2,
-        StorageLevel.MEMORY,
-        block_size=1000,
-    )
+    for i, sender_actor in enumerate([sender_actor1, sender_actor2]):
+        # send data to worker2 from worker1
+        await sender_actor.send_batch_data(
+            session_id,
+            ["data_key1"],
+            worker_address_2,
+            StorageLevel.MEMORY,
+            block_size=1000,
+        )
 
-    get_data1 = await storage_handler2.get(session_id, "data_key1")
-    np.testing.assert_array_equal(data1, get_data1)
+        await sender_actor.send_batch_data(
+            session_id,
+            ["data_key2"],
+            worker_address_2,
+            StorageLevel.MEMORY,
+            block_size=1000,
+        )
 
-    get_data2 = await storage_handler2.get(session_id, "data_key2")
-    pd.testing.assert_frame_equal(data2, get_data2)
+        get_data1 = await storage_handler2.get(session_id, "data_key1")
+        np.testing.assert_array_equal(data1, get_data1)
+
+        get_data2 = await storage_handler2.get(session_id, "data_key2")
+        pd.testing.assert_frame_equal(data2, get_data2)
+        await storage_handler2.delete(session_id, "data_key1")
+        await storage_handler2.delete(session_id, "data_key2")
 
     # send data to worker1 from worker2
-    sender_actor = await mo.actor_ref(
+    sender_actor1 = await mo.actor_ref(
         address=worker_address_2, uid=SenderManagerActor.gen_uid("numa-0")
     )
-    await sender_actor.send_batch_data(
-        session_id, ["data_key3"], worker_address_1, StorageLevel.MEMORY
+    # send_actor2 set block_size to 0
+    sender_actor2 = await mo.create_actor(
+        SenderManagerActor,
+        "numa-0",
+        0,
+        data_manager2,
+        storage_handler2,
+        uid=SenderManagerActor.gen_uid("mock"),
+        address=worker_address_2,
     )
-    get_data3 = await storage_handler1.get(session_id, "data_key3")
-    pd.testing.assert_frame_equal(data2, get_data3)
+    for i, sender_actor in enumerate([sender_actor1, sender_actor2]):
+        # send data to worker1 from worker2
+        data_key = f"data_key3"
+        await sender_actor.send_batch_data(
+            session_id, [data_key], worker_address_1, StorageLevel.MEMORY
+        )
+        get_data3 = await storage_handler1.get(session_id, data_key)
+        pd.testing.assert_frame_equal(data2, get_data3)
+        await storage_handler1.delete(session_id, "data_key3")
 
 
 # test for cancelling happens when writing
@@ -232,7 +266,7 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
 
     send_task = asyncio.create_task(
         sender_actor.send_batch_data(
-            "mock", ["data_key1"], worker_address_2, StorageLevel.MEMORY
+            "mock", ["data_key1"], worker_address_2, StorageLevel.MEMORY, is_small_objects=False
         )
     )
 
@@ -250,7 +284,7 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
 
     send_task = asyncio.create_task(
         sender_actor.send_batch_data(
-            "mock", ["data_key1"], worker_address_2, StorageLevel.MEMORY
+            "mock", ["data_key1"], worker_address_2, StorageLevel.MEMORY, is_small_objects=False
         )
     )
     await send_task
@@ -261,12 +295,12 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
     if mock_sender is MockSenderManagerActor:
         send_task1 = asyncio.create_task(
             sender_actor.send_batch_data(
-                "mock", ["data_key2"], worker_address_2, StorageLevel.MEMORY
+                "mock", ["data_key2"], worker_address_2, StorageLevel.MEMORY, is_small_objects=False
             )
         )
         send_task2 = asyncio.create_task(
             sender_actor.send_batch_data(
-                "mock", ["data_key2"], worker_address_2, StorageLevel.MEMORY
+                "mock", ["data_key2"], worker_address_2, StorageLevel.MEMORY, is_small_objects=False
             )
         )
         await asyncio.sleep(0.5)
