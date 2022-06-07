@@ -64,7 +64,9 @@ class RayActorDriver(BaseActorDriver):
         pg_name = cls._cluster_info["pg_name"]
         pg = cls._cluster_info["pg_group"]
         for index, bundle_spec in enumerate(pg.bundle_specs):
-            n_process = int(bundle_spec["CPU"]) + 1
+            # Main pool took a process.
+            # If supervisor is created in the same node with worker, it will take a process too.
+            n_process = int(bundle_spec["CPU"]) + 2
             for process_index in reversed(range(n_process)):
                 address = process_placement_to_address(
                     pg_name, index, process_index=process_index
