@@ -21,8 +21,8 @@ from ... import oscar as mo
 from ...lib.aio import alru_cache
 from ...storage import StorageLevel
 from ...utils import dataslots
-from .core import DataManagerActor, WrappedStorageFileObject, DataInfo
-from .handler import StorageHandlerActor
+from .core import DataManagerActor, DataInfo
+from .handler import StorageHandlerActor, WrappedStorageFileObject
 
 DEFAULT_TRANSFER_BLOCK_SIZE = 4 * 1024**2
 
@@ -96,9 +96,7 @@ class SenderManagerActor(mo.StatelessActor):
         open_reader_tasks = []
         storage_client = await self._storage_handler.get_client(level)
         for info in data_infos:
-            open_reader_tasks.append(
-                storage_client.open_reader(info.object_id)
-            )
+            open_reader_tasks.append(storage_client.open_reader(info.object_id))
         readers = await asyncio.gather(*open_reader_tasks)
 
         for data_key, reader in zip(data_keys, readers):
@@ -129,7 +127,9 @@ class SenderManagerActor(mo.StatelessActor):
         band_name: str,
         level: StorageLevel,
     ):
-        receiver_ref: mo.ActorRefType[ReceiverManagerActor] = await self.get_receiver_ref(address, band_name)
+        receiver_ref: mo.ActorRefType[
+            ReceiverManagerActor
+        ] = await self.get_receiver_ref(address, band_name)
         is_transferring_list = await receiver_ref.open_writers(
             session_id, data_keys, data_sizes, level
         )
@@ -163,11 +163,11 @@ class SenderManagerActor(mo.StatelessActor):
     ):
         # simple get all objects and send them all to receiver
         storage_client = await self._storage_handler.get_client(level)
-        get_tasks = [
-            storage_client.get(info.object_id) for info in data_infos
-        ]
+        get_tasks = [storage_client.get(info.object_id) for info in data_infos]
         data_list = list(await asyncio.gather(*get_tasks))
-        receiver_ref: mo.ActorRefType[ReceiverManagerActor] = await self.get_receiver_ref(address, band_name)
+        receiver_ref: mo.ActorRefType[
+            ReceiverManagerActor
+        ] = await self.get_receiver_ref(address, band_name)
         await receiver_ref.put_small_objects(session_id, data_keys, data_list, level)
 
     async def send_batch_data(
@@ -358,9 +358,9 @@ class ReceiverManagerActor(mo.StatelessActor):
             if data:
                 await writer.write(data)
             if is_eof:
-                close_tasks.append(writer.close())
+                close_tasks.append(self._storage_handler.close_writer.delay(writer))
                 finished_keys.append(data_key)
-        await asyncio.gather(*close_tasks)
+        await self._storage_handler.close_writer.batch(*close_tasks)
         async with self._lock:
             for data_key in finished_keys:
                 event = self._writing_infos[(session_id, data_key)].event

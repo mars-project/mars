@@ -266,7 +266,11 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
 
     send_task = asyncio.create_task(
         sender_actor.send_batch_data(
-            "mock", ["data_key1"], worker_address_2, StorageLevel.MEMORY, is_small_objects=False
+            "mock",
+            ["data_key1"],
+            worker_address_2,
+            StorageLevel.MEMORY,
+            is_small_objects=False,
         )
     )
 
@@ -284,7 +288,11 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
 
     send_task = asyncio.create_task(
         sender_actor.send_batch_data(
-            "mock", ["data_key1"], worker_address_2, StorageLevel.MEMORY, is_small_objects=False
+            "mock",
+            ["data_key1"],
+            worker_address_2,
+            StorageLevel.MEMORY,
+            is_small_objects=False,
         )
     )
     await send_task
@@ -295,12 +303,20 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
     if mock_sender is MockSenderManagerActor:
         send_task1 = asyncio.create_task(
             sender_actor.send_batch_data(
-                "mock", ["data_key2"], worker_address_2, StorageLevel.MEMORY, is_small_objects=False
+                "mock",
+                ["data_key2"],
+                worker_address_2,
+                StorageLevel.MEMORY,
+                is_small_objects=False,
             )
         )
         send_task2 = asyncio.create_task(
             sender_actor.send_batch_data(
-                "mock", ["data_key2"], worker_address_2, StorageLevel.MEMORY, is_small_objects=False
+                "mock",
+                ["data_key2"],
+                worker_address_2,
+                StorageLevel.MEMORY,
+                is_small_objects=False,
             )
         )
         await asyncio.sleep(0.5)

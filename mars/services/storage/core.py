@@ -19,12 +19,10 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Union, Tuple
 
 from ... import oscar as mo
-from ...lib.aio import AioFileObject
 from ...oscar.backends.allocate_strategy import IdleLabel, NoIdleSlot
 from ...resource import cuda_card_stats
 from ...storage import StorageLevel, get_storage_backend
-from ...storage.base import ObjectInfo, StorageBackend
-from ...storage.core import StorageFileObject
+from ...storage.base import ObjectInfo
 from ...utils import dataslots
 from .errors import DataNotExist, StorageFull
 
@@ -42,50 +40,6 @@ def build_data_info(storage_info: ObjectInfo, level, size, band_name=None):
     else:
         store_size = storage_info.size
     return DataInfo(storage_info.object_id, level, size, store_size, band_name)
-
-
-class WrappedStorageFileObject(AioFileObject):
-    """
-    Wrap to hold ref after write close
-    """
-
-    def __init__(
-        self,
-        file: StorageFileObject,
-        level: StorageLevel,
-        size: int,
-        session_id: str,
-        data_key: str,
-        data_manager: mo.ActorRefType["DataManagerActor"],
-        storage_handler: StorageBackend,
-    ):
-        self._object_id = file.object_id
-        super().__init__(file)
-        self._size = size
-        self._level = level
-        self._session_id = session_id
-        self._data_key = data_key
-        self._data_manager = data_manager
-        self._storage_handler = storage_handler
-
-    def __getattr__(self, item):
-        return getattr(self._file, item)
-
-    async def clean_up(self):
-        self._file.close()
-
-    async def close(self):
-        self._file.close()
-        if self._object_id is None:
-            # for some backends like vineyard,
-            # object id is generated after write close
-            self._object_id = self._file.object_id
-        if "w" in self._file.mode:
-            object_info = await self._storage_handler.object_info(self._object_id)
-            data_info = build_data_info(object_info, self._level, self._size)
-            await self._data_manager.put_data_info(
-                self._session_id, self._data_key, data_info, object_info
-            )
 
 
 class StorageQuotaActor(mo.Actor):
