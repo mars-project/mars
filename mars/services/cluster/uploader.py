@@ -99,8 +99,15 @@ class NodeInfoUploaderActor(mo.Actor):
 
     async def mark_node_ready(self):
         self._upload_enabled = True
-        # upload info in time to reduce latency
-        await self.upload_node_info(status=NodeStatus.READY)
+
+        while True:
+            try:
+                # upload info in time to reduce latency
+                await self.upload_node_info(status=NodeStatus.READY)
+                break
+            except (mo.ActorNotExist, ConnectionError):  # pragma: no cover
+                await asyncio.sleep(1)
+
         self._node_ready_event.set()
 
     def is_node_ready(self):

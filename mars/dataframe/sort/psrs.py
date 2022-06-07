@@ -239,7 +239,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
                 kind=kind,
                 reducer_index=(i,),
                 reducer_ordinal=i,
-                n_reducer=len(partition_chunks),
+                n_reducers=len(partition_chunks),
                 output_types=op.output_types,
                 **cls._collect_op_properties(op)
             )

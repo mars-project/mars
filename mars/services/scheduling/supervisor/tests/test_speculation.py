@@ -16,7 +16,6 @@ import asyncio
 from typing import List, Tuple, Set
 
 import pytest
-import pytest_asyncio
 
 from ..... import oscar as mo
 from ....cluster import MockClusterAPI
@@ -55,7 +54,7 @@ class MockSubtaskQueueingActor(mo.Actor):
         return self._exceptions
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 
@@ -71,9 +70,11 @@ async def actor_pool():
             MockSubtaskQueueingActor,
             address=pool.external_address,
         )
-        yield pool, cluster_api, session_id, slots_ref, queue_ref
-        await mo.destroy_actor(queue_ref)
-        await MockClusterAPI.cleanup(pool.external_address)
+        try:
+            yield pool, cluster_api, session_id, slots_ref, queue_ref
+        finally:
+            await mo.destroy_actor(queue_ref)
+            await MockClusterAPI.cleanup(pool.external_address)
 
 
 @pytest.mark.asyncio

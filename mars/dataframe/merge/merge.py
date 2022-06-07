@@ -264,7 +264,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             reduce_op = DataFrameMergeAlign(
                 stage=OperandStage.reduce,
                 reducer_ordinal=ordinal,
-                n_reducer=len(out_indices),
+                n_reducers=len(out_indices),
                 sparse=proxy_chunk.issparse(),
                 output_types=[OutputType.dataframe],
             )
@@ -321,7 +321,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                 stage=OperandStage.reduce,
                 sparse=proxy_chunk.issparse(),
                 reducer_ordinal=ordinal,
-                n_reducer=len(out_indices),
+                n_reducers=len(out_indices),
             )
             left_param = {
                 "shape": (np.nan, np.nan),

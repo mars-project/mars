@@ -259,7 +259,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                 stage=OperandStage.reduce,
                 dtype=tensor.dtype,
                 reducer_ordinal=ordinal,
-                n_reducer=len(out_indices),
+                n_reducers=len(out_indices),
             )
             shuffle_outputs.append(
                 chunk_op.new_chunk(
@@ -468,7 +468,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                 group_data,
             )
 
-        # ensure all mapper data are inserted context in order and fill missing partition with None
+        # ensure all mapper data are inserted context and fill missing partition with None
         for target_chunk_idx in itertools.product(
             *[range(dim_chunk_cnt) for dim_chunk_cnt in dim_chunk_counts]
         ):

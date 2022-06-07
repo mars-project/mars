@@ -117,7 +117,7 @@ class Context(ABC):
         """
 
     @abstractmethod
-    def get_chunks_result(self, data_keys: List[str]) -> List:
+    def get_chunks_result(self, data_keys: List[str], fetch_only: bool = False) -> List:
         """
         Get result of chunks.
 
@@ -125,11 +125,13 @@ class Context(ABC):
         ----------
         data_keys : list
             Data keys.
+        fetch_only : bool
+            If fetch_only, only fetch data but not return.
 
         Returns
         -------
         results : list
-            Result of chunks
+            Result of chunks if not fetch_only, else return None
         """
 
     @abstractmethod

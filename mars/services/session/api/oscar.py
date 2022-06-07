@@ -25,7 +25,7 @@ from .core import AbstractSessionAPI
 
 class SessionAPI(AbstractSessionAPI):
     def __init__(
-        self, address: str, session_manager: Union[SessionManagerActor, mo.ActorRef]
+        self, address: str, session_manager: mo.ActorRefType[SessionManagerActor]
     ):
         self._address = address
         self._session_manager_ref = session_manager
@@ -89,9 +89,7 @@ class SessionAPI(AbstractSessionAPI):
         return await self._session_manager_ref.get_last_idle_time(session_id)
 
     @alru_cache(cache_exceptions=False)
-    async def _get_session_ref(
-        self, session_id: str
-    ) -> Union[SessionActor, mo.ActorRef]:
+    async def _get_session_ref(self, session_id: str) -> mo.ActorRefType[SessionActor]:
         return await self._session_manager_ref.get_session_ref(session_id)
 
     async def create_remote_object(
@@ -111,7 +109,7 @@ class SessionAPI(AbstractSessionAPI):
     @alru_cache(cache_exceptions=False)
     async def _get_custom_log_meta_ref(
         self, session_id: str
-    ) -> Union[CustomLogMetaActor, mo.ActorRef]:
+    ) -> mo.ActorRefType[CustomLogMetaActor]:
         session = await self._get_session_ref(session_id)
         return await mo.actor_ref(
             mo.ActorRef(session.address, CustomLogMetaActor.gen_uid(session_id))

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import pytest
-import pytest_asyncio
 from typing import Tuple, List
 
 from ..... import oscar as mo
@@ -71,7 +70,7 @@ class MockSubtaskManagerActor(mo.Actor):
         return self._subtask_ids, self._bands
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 

@@ -41,57 +41,19 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
     _op_type_ = opcodes.REMOTE_FUNCATION
     _op_module_ = "remote"
 
-    _function = FunctionField("function")
-    _function_args = ListField("function_args")
-    _function_kwargs = DictField("function_kwargs")
-    _retry_when_fail = BoolField("retry_when_fail")
-    _n_output = Int32Field("n_output")
-
-    def __init__(
-        self,
-        function=None,
-        function_args=None,
-        function_kwargs=None,
-        retry_when_fail=None,
-        n_output=None,
-        **kw,
-    ):
-        super().__init__(
-            _function=function,
-            _function_args=function_args,
-            _function_kwargs=function_kwargs,
-            _retry_when_fail=retry_when_fail,
-            _n_output=n_output,
-            **kw,
-        )
-
-    @property
-    def function(self):
-        return self._function
-
-    @property
-    def function_args(self):
-        return self._function_args
-
-    @property
-    def function_kwargs(self):
-        return self._function_kwargs
-
-    @property
-    def retry_when_fail(self):
-        return self._retry_when_fail
-
-    @property
-    def n_output(self):
-        return self._n_output
+    function = FunctionField("function")
+    function_args = ListField("function_args")
+    function_kwargs = DictField("function_kwargs")
+    retry_when_fail = BoolField("retry_when_fail")
+    n_output = Int32Field("n_output", default=None)
 
     @property
     def output_limit(self):
-        return self._n_output or 1
+        return self.n_output or 1
 
     @property
     def retryable(self) -> bool:
-        return self._retry_when_fail
+        return self.retry_when_fail
 
     @classmethod
     def _no_prepare(cls, tileable):
@@ -116,12 +78,12 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
                         mapping[raw_inp] = build_fetch_tileable(raw_inp)
                 else:
                     mapping[raw_inp] = next(function_inputs)
-        self._function_args = replace_objects(self._function_args, mapping)
-        self._function_kwargs = replace_objects(self._function_kwargs, mapping)
+        self.function_args = replace_objects(self.function_args, mapping)
+        self.function_kwargs = replace_objects(self.function_kwargs, mapping)
 
     def __call__(self):
         find_inputs = partial(find_objects, types=ENTITY_TYPE)
-        inputs = find_inputs(self._function_args) + find_inputs(self._function_kwargs)
+        inputs = find_inputs(self.function_args) + find_inputs(self.function_kwargs)
         if self.n_output is None:
             return self.new_tileable(inputs)
         else:
@@ -209,7 +171,7 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
                 ctx[out.key] = r
 
 
-def spawn(func, args=(), kwargs=None, retry_when_fail=False, n_output=None):
+def spawn(func, args=(), kwargs=None, retry_when_fail=False, n_output=None, **kw):
     """
     Spawn a function and return a Mars Object which can be executed later.
 
@@ -316,5 +278,8 @@ def spawn(func, args=(), kwargs=None, retry_when_fail=False, n_output=None):
         function_kwargs=kwargs,
         retry_when_fail=retry_when_fail,
         n_output=n_output,
+        **kw,
     )
+    if op.extra_params:
+        raise ValueError(f"Unexpected kw: {list(op.extra_params)[0]}")
     return op()

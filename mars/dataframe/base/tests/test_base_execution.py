@@ -776,7 +776,6 @@ def test_isin_execution(setup):
     pd.testing.assert_frame_equal(result, expected)
 
 
-@pytest.mark.ray_dag
 def test_cut_execution(setup):
     session = setup
 

@@ -14,7 +14,7 @@
 
 import logging
 from dataclasses import asdict
-from typing import Union, Dict, List
+from typing import Dict, List, Callable
 
 from .....core.context import Context
 from .....storage.base import StorageLevel
@@ -63,18 +63,21 @@ class _RayRemoteObjectWrapper:
 
 class _RayRemoteObjectContext:
     def __init__(
-        self, actor_name_or_handle: Union[str, "ray.actor.ActorHandle"], *args, **kwargs
+        self,
+        get_or_create_actor: Callable[[], "ray.actor.ActorHandle"],
+        *args,
+        **kwargs
     ):
         super().__init__(*args, **kwargs)
-        self._actor_name_or_handle = actor_name_or_handle
+        self._get_or_create_actor = get_or_create_actor
         self._task_state_actor = None
 
     def _get_task_state_actor(self) -> "ray.actor.ActorHandle":
+        # Get the RayTaskState actor, this is more clear and faster than wraps
+        # the `get_or_create_actor` by lru_cache in __init__ because this method
+        # is called as needed.
         if self._task_state_actor is None:
-            if isinstance(self._actor_name_or_handle, ray.actor.ActorHandle):
-                self._task_state_actor = self._actor_name_or_handle
-            else:
-                self._task_state_actor = ray.get_actor(self._actor_name_or_handle)
+            self._task_state_actor = self._get_or_create_actor()
         return self._task_state_actor
 
     @implements(Context.create_remote_object)
@@ -110,6 +113,7 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
         config: RayExecutionConfig,
         task_context: Dict,
         task_chunks_meta: Dict,
+        worker_addresses: List[str],
         *args,
         **kwargs
     ):
@@ -117,14 +121,15 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
         self._config = config
         self._task_context = task_context
         self._task_chunks_meta = task_chunks_meta
+        self._worker_addresses = worker_addresses
 
     @implements(Context.get_chunks_result)
-    def get_chunks_result(self, data_keys: List[str]) -> List:
+    def get_chunks_result(self, data_keys: List[str], fetch_only: bool = False) -> List:
         logger.info("Getting %s chunks result.", len(data_keys))
         object_refs = [self._task_context[key] for key in data_keys]
         result = ray.get(object_refs)
         logger.info("Got %s chunks result.", len(result))
-        return result
+        return result if not fetch_only else None
 
     @implements(Context.get_chunks_meta)
     def get_chunks_meta(
@@ -143,6 +148,11 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
     def get_total_n_cpu(self) -> int:
         # TODO(fyrestone): Support auto scaling.
         return self._config.get_n_cpu() * self._config.get_n_worker()
+
+    @implements(Context.get_worker_addresses)
+    def get_worker_addresses(self) -> List[str]:
+        # Returns virtual worker addresses.
+        return self._worker_addresses
 
 
 # TODO(fyrestone): Implement more APIs for Ray.

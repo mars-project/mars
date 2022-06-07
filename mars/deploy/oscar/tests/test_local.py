@@ -15,15 +15,18 @@
 import asyncio
 import copy
 import os
+import subprocess
+import sys
 import threading
 import tempfile
+import textwrap
 import time
 import uuid
 
 import numpy as np
 import pandas as pd
+import psutil
 import pytest
-import pytest_asyncio
 
 try:
     import vineyard
@@ -104,7 +107,7 @@ if vineyard is not None:
 
 
 @pytest.mark.parametrize(indirect=True)
-@pytest_asyncio.fixture(params=params)
+@pytest.fixture(params=params)
 async def create_cluster(request):
     if request.param == "default":
         config = CONFIG_TEST_FILE
@@ -609,14 +612,15 @@ async def test_session_get_progress(create_cluster):
     assert session.session_id is not None
 
     raw = np.random.rand(100, 4)
-    t = mt.tensor(raw, chunk_size=5)
+    t = mt.tensor(raw, chunk_size=50)
 
     def f1(c):
         time.sleep(0.5)
         return c
 
     t1 = t.sum()
-    r = t1.map_chunk(f1)
+    t2 = t1.map_chunk(f1)
+    r = t2.map_chunk(f1)
     info = await session.execute(r)
 
     for _ in range(100):
@@ -633,15 +637,19 @@ async def test_session_get_progress(create_cluster):
 
 
 @pytest.fixture
-def setup_session():
-    session = new_session(n_cpu=2, use_uvloop=False)
+def setup_session(request):
+    param = getattr(request, "param", {})
+    config = param.get("config", {})
+    session = new_session(
+        backend=config.get("backend", "mars"), n_cpu=2, use_uvloop=False
+    )
     assert session.get_web_endpoint() is not None
 
-    with session:
-        with option_context({"show_progress": False}):
+    try:
+        with session, option_context({"show_progress": False}):
             yield session
-
-    session.stop_server()
+    finally:
+        session.stop_server()
 
 
 def test_decref(setup_session):
@@ -706,6 +714,11 @@ def test_decref(setup_session):
     _assert_storage_cleaned(session.session_id, worker_addr, StorageLevel.MEMORY)
 
 
+def _assert_worker_pool_storage_cleaned(session):
+    worker_addr = session._session.client._cluster._worker_pools[0].external_address
+    _assert_storage_cleaned(session.session_id, worker_addr, StorageLevel.MEMORY)
+
+
 def _cancel_when_execute(session, cancelled):
     def run():
         time.sleep(200)
@@ -720,8 +733,10 @@ def _cancel_when_execute(session, cancelled):
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
 
-    worker_addr = session._session.client._cluster._worker_pools[0].external_address
-    _assert_storage_cleaned(session.session_id, worker_addr, StorageLevel.MEMORY)
+
+def _cancel_assert_when_execute(session, cancelled):
+    _assert_worker_pool_storage_cleaned(session)
+    _cancel_when_execute(session, cancelled)
 
 
 class SlowTileAdd(TensorAdd):
@@ -745,9 +760,9 @@ def _cancel_when_tile(session, cancelled):
     assert len(ref_counts) == 0
 
 
-@pytest.mark.parametrize("test_func", [_cancel_when_execute, _cancel_when_tile])
-def test_cancel(setup_session, test_func):
-    session = setup_session
+@pytest.mark.parametrize("test_func", [_cancel_assert_when_execute, _cancel_when_tile])
+def test_cancel(create_cluster, test_func):
+    session = get_default_session()
 
     async def _new_cancel_event():
         return asyncio.Event()
@@ -858,7 +873,7 @@ def test_show_progress_raise_exception(m_log):
 min_task_runtime = 2
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def speculative_cluster():
     config = _load_config()
     config["scheduling"]["speculation"]["enabled"] = True
@@ -906,3 +921,49 @@ async def test_task_speculation_execution(speculative_cluster):
         .fetch()
         == pd.Series(list(range(series_size))).apply(lambda x: x * x).sum()
     )
+
+
+def test_naive_code_file():
+    code_file = """
+    import mars
+    import mars.tensor as mt
+    import os
+
+    mars.new_session()
+    try:
+        result_path = os.environ["RESULTPATH"]
+        with open(result_path, "w") as outf:
+            outf.write(str(mt.ones((10, 10)).sum().execute()))
+    finally:
+        mars.stop_server()
+    """
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            script_path = os.path.join(temp_dir, "test_file.py")
+            result_path = os.path.join(temp_dir, "result.txt")
+
+            with open(script_path, "w") as file_obj:
+                file_obj.write(textwrap.dedent(code_file))
+
+            env = os.environ.copy()
+            env["PYTHONPATH"] = os.path.pathsep.join(sys.path)
+            env["RESULTPATH"] = result_path
+            proc = subprocess.Popen([sys.executable, script_path], env=env)
+            pid = proc.pid
+            proc.wait(120)
+
+            with open(result_path, "r") as inp_file:
+                assert 100 == int(float(inp_file.read()))
+        except subprocess.TimeoutExpired:
+            try:
+                procs = [psutil.Process(pid)]
+                procs.extend(procs[0].children(True))
+                for proc in reversed(procs):
+                    try:
+                        proc.kill()
+                    except psutil.NoSuchProcess:
+                        pass
+            except psutil.NoSuchProcess:
+                pass
+            raise

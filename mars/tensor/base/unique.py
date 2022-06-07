@@ -237,7 +237,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 reducer_index=(i,),
                 reducer_phase="agg",
                 reducer_ordinal=i,
-                n_reducer=aggregate_size,
+                n_reducers=aggregate_size,
             )
             kws = cls._gen_kws(op, inp, chunk=True, chunk_index=i)
             chunks = reduce_op.new_chunks(
@@ -257,7 +257,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 chunk_op = TensorUnique(
                     stage=OperandStage.reduce,
                     reducer_ordinal=j,
-                    n_reducer=len(unique_on_chunk_sizes),
+                    n_reducers=len(unique_on_chunk_sizes),
                     dtype=map_inverse_chunks[0].dtype,
                     reducer_index=(j,),
                     reducer_phase="inverse",
@@ -299,7 +299,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
         (ar,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
         )
-        n_reducer = op.aggregate_size
+        n_reducers = op.aggregate_size
 
         with device(device_id):
             results = xp.unique(
@@ -327,13 +327,13 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
             )
             if unique_ar.size > 0:
                 unique_reducers = dense_xp.asarray(
-                    hash_on_axis(unique_ar, op.axis, n_reducer)
+                    hash_on_axis(unique_ar, op.axis, n_reducers)
                 )
             else:
                 unique_reducers = dense_xp.empty_like(unique_ar)
             ind_ar = dense_xp.arange(ar.shape[op.axis])
 
-            for reducer in range(n_reducer):
+            for reducer in range(n_reducers):
                 res = []
                 cond = unique_reducers == reducer
                 # unique

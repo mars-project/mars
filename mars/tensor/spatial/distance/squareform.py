@@ -233,7 +233,7 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
                 stage=OperandStage.reduce,
                 dtype=out.dtype,
                 reducer_ordinal=ordinal,
-                n_reducer=len(out_indices),
+                n_reducers=len(out_indices),
             )
             reduce_chunk = reduce_chunk_op.new_chunk(
                 [proxy_chunk], shape=out_shape, index=out_idx, order=out.order

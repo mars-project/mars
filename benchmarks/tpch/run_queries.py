@@ -25,71 +25,55 @@ import mars.dataframe as md
 queries: Optional[Union[Set[str], List[str]]] = None
 
 
-def load_lineitem(data_folder: str) -> md.DataFrame:
+def load_lineitem(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
     data_path = data_folder + "/lineitem.pq"
-    df = md.read_parquet(
-        data_path,
-    )
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
     df["L_SHIPDATE"] = md.to_datetime(df.L_SHIPDATE, format="%Y-%m-%d")
     df["L_RECEIPTDATE"] = md.to_datetime(df.L_RECEIPTDATE, format="%Y-%m-%d")
     df["L_COMMITDATE"] = md.to_datetime(df.L_COMMITDATE, format="%Y-%m-%d")
     return df
 
 
-def load_part(data_folder: str) -> md.DataFrame:
+def load_part(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
     data_path = data_folder + "/part.pq"
-    df = md.read_parquet(
-        data_path,
-    )
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
     return df
 
 
-def load_orders(data_folder: str) -> md.DataFrame:
+def load_orders(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
     data_path = data_folder + "/orders.pq"
-    df = md.read_parquet(
-        data_path,
-    )
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
     df["O_ORDERDATE"] = md.to_datetime(df.O_ORDERDATE, format="%Y-%m-%d")
     return df
 
 
-def load_customer(data_folder: str) -> md.DataFrame:
+def load_customer(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
     data_path = data_folder + "/customer.pq"
-    df = md.read_parquet(
-        data_path,
-    )
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
     return df
 
 
-def load_nation(data_folder: str) -> md.DataFrame:
+def load_nation(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
     data_path = data_folder + "/nation.pq"
-    df = md.read_parquet(
-        data_path,
-    )
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
     return df
 
 
-def load_region(data_folder: str) -> md.DataFrame:
+def load_region(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
     data_path = data_folder + "/region.pq"
-    df = md.read_parquet(
-        data_path,
-    )
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
     return df
 
 
-def load_supplier(data_folder: str) -> md.DataFrame:
+def load_supplier(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
     data_path = data_folder + "/supplier.pq"
-    df = md.read_parquet(
-        data_path,
-    )
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
     return df
 
 
-def load_partsupp(data_folder: str) -> md.DataFrame:
+def load_partsupp(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
     data_path = data_folder + "/partsupp.pq"
-    df = md.read_parquet(
-        data_path,
-    )
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
     return df
 
 
@@ -301,7 +285,6 @@ def q03(lineitem, orders, customer):
 
 @tpc_query
 def q04(lineitem, orders):
-    t1 = time.time()
     date1 = md.Timestamp("1993-11-01")
     date2 = md.Timestamp("1993-08-01")
     lsel = lineitem.L_COMMITDATE < lineitem.L_RECEIPTDATE
@@ -617,7 +600,7 @@ def q12(lineitem, orders):
 def q13(customer, orders):
     customer_filtered = customer.loc[:, ["C_CUSTKEY"]]
     orders_filtered = orders[
-        ~orders["O_COMMENT"].str.contains("special[\S|\s]*requests")
+        ~orders["O_COMMENT"].str.contains(r"special[\S|\s]*requests")
     ]
     orders_filtered = orders_filtered.loc[:, ["O_ORDERKEY", "O_CUSTKEY"]]
     c_o_merged = customer_filtered.merge(
@@ -696,7 +679,7 @@ def q16(part, partsupp, supplier):
     )
     total = total.loc[:, ["P_BRAND", "P_TYPE", "P_SIZE", "PS_SUPPKEY"]]
     supplier_filtered = supplier[
-        supplier["S_COMMENT"].str.contains("Customer(\S|\s)*Complaints")
+        supplier["S_COMMENT"].str.contains(r"Customer(\S|\s)*Complaints")
     ]
     supplier_filtered = supplier_filtered.loc[:, ["S_SUPPKEY"]].drop_duplicates()
     # left merge to select only PS_SUPPKEY values not in supplier_filtered
@@ -983,21 +966,23 @@ def q22(customer, orders):
     print(total.execute())
 
 
-def run_queries(data_folder: str, select: List[str] = None):
+def run_queries(
+    data_folder: str, select: List[str] = None, use_arrow_dtype: bool = None
+):
     if select:
         global queries
         queries = select
 
     # Load the data
     t1 = time.time()
-    lineitem = load_lineitem(data_folder)
-    orders = load_orders(data_folder)
-    customer = load_customer(data_folder)
-    nation = load_nation(data_folder)
-    region = load_region(data_folder)
-    supplier = load_supplier(data_folder)
-    part = load_part(data_folder)
-    partsupp = load_partsupp(data_folder)
+    lineitem = load_lineitem(data_folder, use_arrow_dtype=use_arrow_dtype)
+    orders = load_orders(data_folder, use_arrow_dtype=use_arrow_dtype)
+    customer = load_customer(data_folder, use_arrow_dtype=use_arrow_dtype)
+    nation = load_nation(data_folder, use_arrow_dtype=use_arrow_dtype)
+    region = load_region(data_folder, use_arrow_dtype=use_arrow_dtype)
+    supplier = load_supplier(data_folder, use_arrow_dtype=use_arrow_dtype)
+    part = load_part(data_folder, use_arrow_dtype=use_arrow_dtype)
+    partsupp = load_partsupp(data_folder, use_arrow_dtype=use_arrow_dtype)
     mars.execute([lineitem, orders, customer, nation, region, supplier, part, partsupp])
     print("Reading time (s): ", time.time() - t1)
 
@@ -1049,14 +1034,25 @@ def main():
             "all tests will be executed"
         ),
     )
+    parser.add_argument(
+        "--use-arrow-dtype",
+        type=str,
+        choices=["true", "false"],
+        help=("Use arrow dtype to read parquet"),
+    )
     args = parser.parse_args()
     folder = args.folder
     endpoint = args.endpoint
+    use_arrow_dtype = args.use_arrow_dtype
+    if use_arrow_dtype == "true":
+        use_arrow_dtype = True
+    elif use_arrow_dtype == "false":
+        use_arrow_dtype = False
     queries = (
         set(x.lower().strip() for x in args.query.split(",")) if args.query else None
     )
     mars.new_session(endpoint)
-    run_queries(folder)
+    run_queries(folder, use_arrow_dtype=use_arrow_dtype)
 
 
 if __name__ == "__main__":

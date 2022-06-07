@@ -14,18 +14,20 @@
 
 import asyncio
 import concurrent.futures as futures
+import contextlib
 import logging.config
 import multiprocessing
 import os
 import random
 import signal
 import sys
+import threading
 import uuid
 from dataclasses import dataclass
 from types import TracebackType
 from typing import List
 
-from ....utils import get_next_port, dataslots, ensure_coverage, reset_id_random_seed
+from ....utils import dataslots, ensure_coverage, reset_id_random_seed
 from ..config import ActorPoolConfig
 from ..message import CreateActorMessage
 from ..pool import MainActorPoolBase, SubActorPoolBase, _register_message_handler
@@ -63,6 +65,37 @@ elif sys.version_info[:2] == (3, 6):  # pragma: no cover
     BaseProcess.kill = _mp_kill
 
 logger = logging.getLogger(__name__)
+_init_main_suspended_local = threading.local()
+
+
+def _patch_spawn_get_preparation_data():
+    try:
+        from multiprocessing import spawn as mp_spawn
+
+        _raw_get_preparation_data = mp_spawn.get_preparation_data
+
+        def _patched_get_preparation_data(*args, **kw):
+            ret = _raw_get_preparation_data(*args, **kw)
+            if getattr(_init_main_suspended_local, "value", False):
+                # make sure user module is not imported when start Mars cluster
+                ret.pop("init_main_from_name", None)
+                ret.pop("init_main_from_path", None)
+            return ret
+
+        _patched_get_preparation_data._mars_patched = True
+        if not getattr(mp_spawn.get_preparation_data, "_mars_patched", False):
+            mp_spawn.get_preparation_data = _patched_get_preparation_data
+    except (ImportError, AttributeError):  # pragma: no cover
+        pass
+
+
+@contextlib.contextmanager
+def _suspend_init_main():
+    try:
+        _init_main_suspended_local.value = True
+        yield
+    finally:
+        _init_main_suspended_local.value = False
 
 
 @dataslots
@@ -70,6 +103,7 @@ logger = logging.getLogger(__name__)
 class SubpoolStatus:
     # for status, 0 is succeeded, 1 is failed
     status: int = None
+    external_addresses: List[str] = None
     error: BaseException = None
     traceback: TracebackType = None
 
@@ -94,7 +128,7 @@ class MainActorPool(MainActorPoolBase):
                     )
                 sub_ports = ports
             else:
-                sub_ports = [get_next_port() for _ in range(n_process)]
+                sub_ports = [0] * n_process
         else:
             host = address
             if ports and len(ports) != n_process + 1:
@@ -106,7 +140,7 @@ class MainActorPool(MainActorPoolBase):
                     f"n_process + 1: {n_process + 1}"
                 )
             elif not ports:
-                ports = [get_next_port() for _ in range(n_process + 1)]
+                ports = [0] * (n_process + 1)
             port = ports[0]
             sub_ports = ports[1:]
         return [f"{host}:{port}" for port in [port] + sub_ports]
@@ -130,32 +164,38 @@ class MainActorPool(MainActorPoolBase):
         def start_pool_in_process():
             ctx = multiprocessing.get_context(method=start_method)
             status_queue = ctx.Queue()
-            process = ctx.Process(
-                target=cls._start_sub_pool,
-                args=(actor_pool_config, process_index, status_queue),
-                name=f"MarsActorPool{process_index}",
-            )
-            process.daemon = True
-            process.start()
+
+            with _suspend_init_main():
+                process = ctx.Process(
+                    target=cls._start_sub_pool,
+                    args=(actor_pool_config, process_index, status_queue),
+                    name=f"MarsActorPool{process_index}",
+                )
+                process.daemon = True
+                process.start()
+
             # wait for sub actor pool to finish starting
             process_status = status_queue.get()
             return process, process_status
 
+        _patch_spawn_get_preparation_data()
         loop = asyncio.get_running_loop()
-        executor = futures.ThreadPoolExecutor(1)
-        create_pool_task = loop.run_in_executor(executor, start_pool_in_process)
-        return await create_pool_task
+        with futures.ThreadPoolExecutor(1) as executor:
+            create_pool_task = loop.run_in_executor(executor, start_pool_in_process)
+            return await create_pool_task
 
     @classmethod
     async def wait_sub_pools_ready(cls, create_pool_tasks: List[asyncio.Task]):
         processes = []
+        ext_addresses = []
         for task in create_pool_tasks:
             process, status = await task
             if status.status == 1:
                 # start sub pool failed
                 raise status.error.with_traceback(status.traceback)
             processes.append(process)
-        return processes
+            ext_addresses.append(status.external_addresses)
+        return processes, ext_addresses
 
     @classmethod
     def _start_sub_pool(
@@ -204,13 +244,17 @@ class MainActorPool(MainActorPoolBase):
     ):
         process_status = None
         try:
-            env = actor_config.get_pool_config(process_index)["env"]
+            cur_pool_config = actor_config.get_pool_config(process_index)
+            env = cur_pool_config["env"]
             if env:
                 os.environ.update(env)
             pool = await SubActorPool.create(
                 {"actor_pool_config": actor_config, "process_index": process_index}
             )
-            process_status = SubpoolStatus(status=0)
+            external_addresses = cur_pool_config["external_address"]
+            process_status = SubpoolStatus(
+                status=0, external_addresses=external_addresses
+            )
             await pool.start()
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
             _, error, tb = sys.exc_info()
@@ -233,8 +277,11 @@ class MainActorPool(MainActorPoolBase):
                 pass
             process.terminate()
             wait_pool = futures.ThreadPoolExecutor(1)
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(wait_pool, process.join, 3)
+            try:
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(wait_pool, process.join, 3)
+            finally:
+                wait_pool.shutdown(False)
         process.kill()
         await asyncio.to_thread(process.join, 5)
 
@@ -255,7 +302,7 @@ class MainActorPool(MainActorPoolBase):
         task = asyncio.create_task(
             self.start_sub_pool(self._config, process_index, "spawn")
         )
-        self.sub_processes[address] = (await self.wait_sub_pools_ready([task]))[0]
+        self.sub_processes[address] = (await self.wait_sub_pools_ready([task]))[0][0]
 
         if self._auto_recover == "actor":
             # need to recover all created actors

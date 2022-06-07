@@ -13,3 +13,4 @@ include mars/services/web/static/*
 global-exclude .DS_Store
 include versioneer.py
 include mars/_version.py
+global-exclude conftest.py

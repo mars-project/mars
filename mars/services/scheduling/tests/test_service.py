@@ -18,7 +18,6 @@ from collections import defaultdict
 
 import numpy as np
 import pytest
-import pytest_asyncio
 
 from ..api.web import WebSchedulingAPI
 from .... import oscar as mo
@@ -90,7 +89,7 @@ def _approx_resource(actual, expect):
     )
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pools():
     async def start_pool(is_worker: bool):
         if is_worker:

@@ -14,15 +14,19 @@
 
 import copy
 import os
+import time
 
 import pytest
 
+from .... import get_context
+from .... import tensor as mt
 from ....tests.core import DICT_NOT_EMPTY, require_ray
 from ....utils import lazy_import
 from ..local import new_cluster
-from ..session import new_session
+from ..session import new_session, get_default_async_session
 from ..tests import test_local
 from ..tests.session import new_test_session
+from ..tests.test_local import _cancel_when_tile, _cancel_when_execute
 from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
     get_output_filenames,
@@ -56,6 +60,7 @@ EXPECT_PROFILING_STRUCTURE_NO_SLOW["supervisor"]["slow_calls"] = {}
 @pytest.mark.parametrize(indirect=True)
 @pytest.fixture
 async def create_cluster(request):
+    param = getattr(request, "param", {})
     start_method = os.environ.get("POOL_START_METHOD", None)
     client = await new_cluster(
         subprocess_start_method=start_method,
@@ -63,6 +68,7 @@ async def create_cluster(request):
         n_worker=2,
         n_cpu=2,
         use_uvloop=False,
+        config=param.get("config", None),
     )
     async with client:
         assert client.session.client is not None
@@ -114,14 +120,60 @@ async def test_iterative_tiling(ray_start_regular_shared2, create_cluster):
 
 @require_ray
 @pytest.mark.parametrize("config", [{"backend": "ray"}])
-def test_sync_execute(config):
+def test_sync_execute(ray_start_regular_shared2, config):
     test_local.test_sync_execute(config)
 
 
 @require_ray
+@pytest.mark.parametrize(
+    "create_cluster",
+    [{"config": {"task.execution_config.ray.subtask_monitor_interval": 0}}],
+    indirect=True,
+)
 @pytest.mark.asyncio
 async def test_session_get_progress(ray_start_regular_shared2, create_cluster):
     await test_local.test_session_get_progress(create_cluster)
+
+
+@require_ray
+@pytest.mark.parametrize("test_func", [_cancel_when_execute, _cancel_when_tile])
+def test_cancel(ray_start_regular_shared2, create_cluster, test_func):
+    test_local.test_cancel(create_cluster, test_func)
+
+
+@require_ray
+@pytest.mark.parametrize("config", [{"backend": "ray"}])
+def test_executor_context_gc(ray_start_regular_shared2, config):
+    session = new_session(
+        backend=config["backend"],
+        n_cpu=2,
+        web=False,
+        use_uvloop=False,
+        config={"task.execution_config.ray.subtask_monitor_interval": 0},
+    )
+
+    assert session._session.client.web_address is None
+    assert session.get_web_endpoint() is None
+
+    def f1(c):
+        time.sleep(0.5)
+        return c
+
+    with session:
+        t1 = mt.random.randint(10, size=(100, 10), chunk_size=100)
+        t2 = mt.random.randint(10, size=(100, 10), chunk_size=50)
+        t3 = t2 + t1
+        t4 = t3.sum(0)
+        t5 = t4.map_chunk(f1)
+        r = t5.execute()
+        result = r.fetch()
+        assert result is not None
+        assert len(result) == 10
+        context = get_context()
+        assert len(context._task_context) < 5
+
+    session.stop_server()
+    assert get_default_async_session() is None
 
 
 @require_ray

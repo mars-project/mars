@@ -49,7 +49,10 @@ class _WebApiDef(NamedTuple):
 
 
 def web_api(
-    sub_pattern: str, method: Union[str, List[str]], arg_filter: Optional[Dict] = None
+    sub_pattern: str,
+    method: Union[str, List[str]],
+    arg_filter: Optional[Dict] = None,
+    cache_blocking: bool = False,
 ):
     if not sub_pattern.endswith("$"):  # pragma: no branch
         sub_pattern += "$"
@@ -57,12 +60,19 @@ def web_api(
 
     def wrapper(func):
         @functools.wraps(func)
-        async def wrapped(self, *args, **kwargs):
+        async def wrapped(self: "MarsServiceWebAPIHandler", *args, **kwargs):
             try:
-                res = func(self, *args, **kwargs)
-                if inspect.isawaitable(res):
-                    res = await res
+                if not inspect.iscoroutinefunction(func):
+                    return func(self, *args, **kwargs)
+                elif not cache_blocking or self.request.method.lower() != "get":
+                    res = await func(self, *args, **kwargs)
+                else:
+                    res = await self._create_or_get_url_future(
+                        func, self, *args, **kwargs
+                    )
                 return res
+            except GeneratorExit:
+                raise
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                 exc_type, exc, tb = sys.exc_info()
                 err_msg = (
@@ -102,8 +112,9 @@ async def _get_api_by_key(
 
 
 class MarsServiceWebAPIHandler(MarsRequestHandler):
-    _root_pattern = None
-    _method_to_handlers = None
+    _root_pattern: str = None
+    _method_to_handlers: Dict[str, Dict[Callable, _WebApiDef]] = None
+    _uri_to_futures: Dict[str, asyncio.Task] = None
 
     def __init__(self, *args, **kwargs):
         self._collect_services()
@@ -118,6 +129,21 @@ class MarsServiceWebAPIHandler(MarsRequestHandler):
             address=self._supervisor_addr,
             with_key_arg=with_key_arg,
         )
+
+    def _create_or_get_url_future(self, func, *args, **kw):
+        if self._uri_to_futures is None:
+            type(self)._uri_to_futures = dict()
+
+        uri = self.request.uri
+        if uri in self._uri_to_futures:
+            return self._uri_to_futures[uri]
+
+        def _future_remover(_fut):
+            self._uri_to_futures.pop(uri, None)
+
+        task = self._uri_to_futures[uri] = asyncio.create_task(func(*args, **kw))
+        task.add_done_callback(_future_remover)
+        return task
 
     @classmethod
     def _collect_services(cls):
@@ -144,9 +170,7 @@ class MarsServiceWebAPIHandler(MarsRequestHandler):
 
     @functools.lru_cache(100)
     def _route_sub_path(self, http_method: str, sub_path: str):
-        handlers = self._method_to_handlers[
-            http_method.lower()
-        ]  # type: Dict[Callable, _WebApiDef]
+        handlers = self._method_to_handlers[http_method.lower()]
         method, kwargs = None, None
         for handler_method, web_api_def in handlers.items():
             match = web_api_def.sub_pattern_compiled.match(sub_path)

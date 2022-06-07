@@ -277,7 +277,7 @@ class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
                 order=op.order,
                 kind=kind,
                 reducer_index=(i,),
-                n_reducer=len(partition_chunks),
+                n_reducers=len(partition_chunks),
                 reducer_ordinal=i,
                 dtype=partition_chunk.dtype,
                 gpu=partition_chunk.op.gpu,
@@ -378,7 +378,7 @@ class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
                 axis=op.axis,
                 reducer_index=(i,),
                 reducer_ordinal=i,
-                n_reducer=len(align_map_chunks),
+                n_reducers=len(align_map_chunks),
                 dtype=align_map_chunk.dtype,
                 gpu=align_map_chunk.op.gpu,
             )
@@ -591,7 +591,7 @@ class PSRSConcatPivot(TensorOperand, TensorOperandMixin):
         with device(device_id):
             a = xp.concatenate(inputs, axis=op.axis)
             p = len(inputs)
-            assert a.shape[op.axis] == p * len(op.inputs), (a.shape, p, len(op.inputs))
+            assert a.shape[op.axis] == p * len(op.inputs)
 
             if op.kind is not None:
                 # sort

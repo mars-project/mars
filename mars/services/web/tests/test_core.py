@@ -17,7 +17,6 @@ import os
 import sys
 
 import pytest
-import pytest_asyncio
 from tornado import httpclient
 
 from .... import oscar as mo
@@ -29,6 +28,7 @@ from ..api.web import MarsApiEntryHandler
 class TestAPIHandler(MarsServiceWebAPIHandler):
     __test__ = False
     _root_pattern = "/api/test/(?P<test_id>[^/]+)"
+    _call_counter = 0
 
     @web_api("", method="get")
     def get_method_root(self, test_id):
@@ -59,8 +59,14 @@ class TestAPIHandler(MarsServiceWebAPIHandler):
         await asyncio.sleep(100)
         raise ValueError(test_id)
 
+    @web_api("subtest_delay_cache", method="get", cache_blocking=True)
+    async def get_with_blocking_cache(self, test_id):
+        await asyncio.sleep(1)
+        type(self)._call_counter += 1
+        self.write(test_id)
 
-@pytest_asyncio.fixture
+
+@pytest.fixture
 async def actor_pool():
     start_method = (
         os.environ.get("POOL_START_METHOD", "forkserver")
@@ -138,6 +144,17 @@ async def test_web_api(actor_pool):
         await client.fetch(
             f"http://localhost:{web_port}/api/test/test_id/subtest_error"
         )
+
+    # test multiple request into long immutable requests
+    req_uri = f"http://localhost:{web_port}/api/test/test_id/subtest_delay_cache"
+    tasks = [asyncio.create_task(client.fetch(req_uri)) for _ in range(2)]
+    await asyncio.sleep(0.5)
+    assert TestAPIHandler._call_counter == 0
+    assert len(TestAPIHandler._uri_to_futures) == 1
+
+    await asyncio.gather(*tasks)
+    assert TestAPIHandler._call_counter == 1
+    assert len(TestAPIHandler._uri_to_futures) == 0
 
     with pytest.raises(TimeoutError):
         await client.fetch(

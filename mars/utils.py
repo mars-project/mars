@@ -1761,3 +1761,41 @@ def log_exception_wrapper(func, *msg_args, ex_logger=None):
                 raise
 
     return new_func
+
+
+def retry_callable(
+    callable_,
+    ex_type: type = Exception,
+    wait_interval=1,
+    max_retries=-1,
+    sync: bool = None,
+):
+    if inspect.iscoroutinefunction(callable_) or sync is False:
+
+        @functools.wraps(callable)
+        async def retry_call(*args, **kwargs):
+            num_retried = 0
+            while max_retries < 0 or num_retried < max_retries:
+                num_retried += 1
+                try:
+                    return await callable_(*args, **kwargs)
+                except ex_type:
+                    await asyncio.sleep(wait_interval)
+
+    else:
+
+        @functools.wraps(callable)
+        def retry_call(*args, **kwargs):
+            num_retried = 0
+            ex = None
+            while max_retries < 0 or num_retried < max_retries:
+                num_retried += 1
+                try:
+                    return callable_(*args, **kwargs)
+                except ex_type as e:
+                    ex = e
+                    time.sleep(wait_interval)
+            assert ex is not None
+            raise ex  # pylint: disable-msg=E0702
+
+    return retry_call

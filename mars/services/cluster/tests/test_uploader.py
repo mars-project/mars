@@ -15,7 +15,6 @@
 import asyncio
 
 import pytest
-import pytest_asyncio
 
 from .... import oscar as mo
 from ... import NodeRole
@@ -24,12 +23,11 @@ from ..supervisor.node_info import NodeInfoCollectorActor
 from ..uploader import NodeInfoUploaderActor
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def actor_pool():
     pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
-    await pool.start()
-    yield pool
-    await pool.stop()
+    async with pool:
+        yield pool
 
 
 @pytest.mark.asyncio

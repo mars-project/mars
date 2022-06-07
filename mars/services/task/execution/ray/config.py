@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import logging
 from typing import Dict, List
-
-from .....core.operand.shuffle import ShuffleType
 from .....resource import Resource
 from ..api import ExecutionConfig, register_config_cls
 from ..utils import get_band_resources_from_config
 
 
-# the default times to retry subtask.
-DEFAULT_SUBTASK_MAX_RETRIES = 3
+logger = logging.getLogger(__name__)
+
+IN_RAY_CI = os.environ.get("MARS_CI_BACKEND", "mars") == "ray"
+# The default interval seconds to update progress and collect garbage.
+DEFAULT_SUBTASK_MONITOR_INTERVAL = 0 if IN_RAY_CI else 1
 
 
 @register_config_cls
@@ -43,9 +46,7 @@ class RayExecutionConfig(ExecutionConfig):
         return []
 
     def get_subtask_max_retries(self):
-        return self._ray_execution_config.get(
-            "subtask_max_retries", DEFAULT_SUBTASK_MAX_RETRIES
-        )
+        return self._ray_execution_config["subtask_max_retries"]
 
     def get_n_cpu(self):
         return self._ray_execution_config["n_cpu"]
@@ -53,5 +54,22 @@ class RayExecutionConfig(ExecutionConfig):
     def get_n_worker(self):
         return self._ray_execution_config["n_worker"]
 
-    def get_shuffle_type(self) -> ShuffleType:
-        return ShuffleType.PUSH
+    def get_subtask_cancel_timeout(self):
+        return self._ray_execution_config["subtask_cancel_timeout"]
+
+    def create_task_state_actor_as_needed(self):
+        # Whether create RayTaskState actor as needed.
+        #   - True (default):
+        #     Create RayTaskState actor only when create_remote_object is called.
+        #   - False:
+        #     Create RayTaskState actor in advance when the RayTaskExecutor is created.
+        return self._ray_execution_config.get("create_task_state_actor_as_needed", True)
+
+    def get_subtask_monitor_interval(self):
+        """
+        The interval seconds for the monitor task to update progress and
+        collect garbage.
+        """
+        return self._ray_execution_config.get(
+            "subtask_monitor_interval", DEFAULT_SUBTASK_MONITOR_INTERVAL
+        )

@@ -15,9 +15,12 @@
 import asyncio
 import logging
 
+import operator
+import sys
 from dataclasses import dataclass
 from typing import Dict, Any, Set, Optional
 
+from typing import List, Dict, Any, Set, Callable
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
 from .....core.operand import (
@@ -30,6 +33,7 @@ from .....core.operand import (
 )
 from .....core.operand.fetch import PushShuffle, FetchShuffle
 from .....lib.aio import alru_cache
+from .....lib.ordered_set import OrderedSet
 from .....resource import Resource
 from .....serialization import serialize, deserialize
 from .....typing import BandType
@@ -51,7 +55,7 @@ from ..api import (
     ExecutionChunkResult,
     register_executor_cls,
 )
-from .config import RayExecutionConfig
+from .config import RayExecutionConfig, IN_RAY_CI
 from .context import (
     RayExecutionContext,
     RayExecutionWorkerContext,
@@ -70,8 +74,22 @@ class _RayChunkMeta:
 
 class RayTaskState(RayRemoteObjectManager):
     @classmethod
-    def gen_name(cls, task_id: str):
+    def _gen_name(cls, task_id: str):
         return f"{cls.__name__}_{task_id}"
+
+    @classmethod
+    def get_handle(cls, task_id: str):
+        """Get the RayTaskState actor handle."""
+        name = cls._gen_name(task_id)
+        logger.info("Getting %s handle.", name)
+        return ray.get_actor(name)
+
+    @classmethod
+    def create(cls, task_id: str):
+        """Create a RayTaskState actor."""
+        name = cls._gen_name(task_id)
+        logger.info("Creating %s.", name)
+        return ray.remote(cls).options(name=name).remote()
 
 
 _optimize_physical = None
@@ -83,6 +101,22 @@ def _optimize_subtask_graph(subtask_graph):
     if _optimize_physical is None:
         from .....optimization.physical import optimize as _optimize_physical
     return _optimize_physical(subtask_graph)
+
+
+async def _cancel_ray_task(obj_ref, kill_timeout: int = 3):
+    await asyncio.to_thread(ray.cancel, obj_ref, force=False)
+    try:
+        await asyncio.to_thread(ray.get, obj_ref, timeout=kill_timeout)
+    except ray.exceptions.TaskCancelledError:  # pragma: no cover
+        logger.info("Cancel ray task %s successfully.", obj_ref)
+    except BaseException as e:
+        logger.info(
+            "Failed to cancel ray task %s with exception %s, "
+            "force cancel the task by killing the worker.",
+            e,
+            obj_ref,
+        )
+        await asyncio.to_thread(ray.cancel, obj_ref, force=True)
 
 
 def execute_subtask(
@@ -128,7 +162,7 @@ def execute_subtask(
     else:
         input_keys = [c.key for c in start_chunks if isinstance(c.op, Fetch)]
     context = RayExecutionWorkerContext(
-        RayTaskState.gen_name(task_id), zip(input_keys, inputs)
+        lambda: RayTaskState.get_handle(task_id), zip(input_keys, inputs)
     )
 
     for chunk in subtask_chunk_graph.topological_iter():
@@ -223,7 +257,6 @@ class RayTaskExecutor(TaskExecutor):
         tile_context: TileContext,
         task_context: Dict[str, "ray.ObjectRef"],
         task_chunks_meta: Dict[str, _RayChunkMeta],
-        task_state_actor: "ray.actor.ActorHandle",
         lifecycle_api: LifecycleAPI,
         meta_api: MetaAPI,
     ):
@@ -232,7 +265,6 @@ class RayTaskExecutor(TaskExecutor):
         self._tile_context = tile_context
         self._task_context = task_context
         self._task_chunks_meta = task_chunks_meta
-        self._task_state_actor = task_state_actor
         self._ray_executor = self._get_ray_executor()
 
         # api
@@ -241,11 +273,14 @@ class RayTaskExecutor(TaskExecutor):
 
         self._available_band_resources = None
 
-        # For progress
+        # For progress and task cancel
         self._pre_all_stages_progress = 0.0
-        self._pre_all_stages_tile_progress = 0
-        self._cur_stage_tile_progress = 0
-        self._cur_stage_output_object_refs = []
+        self._pre_all_stages_tile_progress = 0.0
+        self._cur_stage_progress = 0.0
+        self._cur_stage_tile_progress = 0.0
+        self._cur_stage_first_output_object_ref_to_subtask = dict()
+        self._execute_subtask_graph_aiotask = None
+        self._cancelled = False
 
     @classmethod
     async def create(
@@ -266,24 +301,37 @@ class RayTaskExecutor(TaskExecutor):
         )
         task_context = {}
         task_chunks_meta = {}
-        await cls._init_context(
-            config,
-            task_context,
-            task_chunks_meta,
-            task_state_actor,
-            session_id,
-            address,
-        )
-        return cls(
+
+        executor = cls(
             config,
             task,
             tile_context,
             task_context,
             task_chunks_meta,
-            task_state_actor,
             lifecycle_api,
             meta_api,
         )
+        available_band_resources = await executor.get_available_band_resources()
+        worker_addresses = list(
+            map(operator.itemgetter(0), available_band_resources.keys())
+        )
+        if config.create_task_state_actor_as_needed():
+            create_task_state_actor = lambda: RayTaskState.create(  # noqa: E731
+                task_id=task.task_id
+            )
+        else:
+            actor_handle = RayTaskState.create(task_id=task.task_id)
+            create_task_state_actor = lambda: actor_handle  # noqa: E731
+        await cls._init_context(
+            config,
+            task_context,
+            task_chunks_meta,
+            create_task_state_actor,
+            worker_addresses,
+            session_id,
+            address,
+        )
+        return executor
 
     # noinspection DuplicatedCode
     def destroy(self):
@@ -292,7 +340,6 @@ class RayTaskExecutor(TaskExecutor):
         self._tile_context = None
         self._task_context = None
         self._task_chunks_meta = None
-        self._task_state_actor = None
         self._ray_executor = None
 
         # api
@@ -301,11 +348,14 @@ class RayTaskExecutor(TaskExecutor):
 
         self._available_band_resources = None
 
-        # For progress
-        self._pre_all_stages_progress = 1
-        self._pre_all_stages_tile_progress = 1
-        self._cur_stage_tile_progress = 1
-        self._cur_stage_output_object_refs = []
+        # For progress and task cancel
+        self._pre_all_stages_progress = 1.0
+        self._pre_all_stages_tile_progress = 1.0
+        self._cur_stage_progress = 1.0
+        self._cur_stage_tile_progress = 1.0
+        self._cur_stage_first_output_object_ref_to_subtask = dict()
+        self._execute_subtask_graph_aiotask = None
+        self._cancelled = None
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -325,7 +375,8 @@ class RayTaskExecutor(TaskExecutor):
         config: RayExecutionConfig,
         task_context: Dict[str, "ray.ObjectRef"],
         task_chunks_meta: Dict[str, _RayChunkMeta],
-        task_state_actor: "ray.actor.ActorHandle",
+        create_task_state_actor: Callable[[], "ray.actor.ActorHandle"],
+        worker_addresses: List[str],
         session_id: str,
         address: str,
     ):
@@ -334,7 +385,8 @@ class RayTaskExecutor(TaskExecutor):
             config,
             task_context,
             task_chunks_meta,
-            task_state_actor,
+            worker_addresses,
+            create_task_state_actor,
             session_id,
             address,
             address,
@@ -352,7 +404,56 @@ class RayTaskExecutor(TaskExecutor):
         tile_context: TileContext,
         context: Any = None,
     ) -> Dict[Chunk, ExecutionChunkResult]:
+        if self._cancelled is True:  # pragma: no cover
+            raise asyncio.CancelledError()
         logger.info("Stage %s start.", stage_id)
+        # Make sure each stage use a clean dict.
+        self._cur_stage_first_output_object_ref_to_subtask = dict()
+
+        def _on_monitor_aiotask_done(fut):
+            # Print the error of monitor task.
+            try:
+                fut.result()
+            except asyncio.CancelledError:
+                pass
+            except Exception:  # pragma: no cover
+                logger.exception(
+                    "The monitor task of stage %s is done with exception.", stage_id
+                )
+                if IN_RAY_CI:  # pragma: no cover
+                    logger.warning(
+                        "The process will be exit due to the monitor task exception "
+                        "when MARS_CI_BACKEND=ray."
+                    )
+                    sys.exit(-1)
+
+        result_meta_keys = {
+            chunk.key
+            for chunk in chunk_graph.result_chunks
+            if not isinstance(chunk.op, Fetch)
+        }
+        # Create a monitor task to update progress and collect garbage.
+        monitor_aiotask = asyncio.create_task(
+            self._update_progress_and_collect_garbage(
+                stage_id,
+                subtask_graph,
+                result_meta_keys,
+                self._config.get_subtask_monitor_interval(),
+            )
+        )
+        monitor_aiotask.add_done_callback(_on_monitor_aiotask_done)
+
+        def _on_execute_aiotask_done(_):
+            # Make sure the monitor task is cancelled.
+            monitor_aiotask.cancel()
+            # Just use `self._cur_stage_tile_progress` as current stage progress
+            # because current stage is completed, its progress is 1.0.
+            self._cur_stage_progress = 1.0
+            self._pre_all_stages_progress += self._cur_stage_tile_progress
+
+        self._execute_subtask_graph_aiotask = asyncio.current_task()
+        self._execute_subtask_graph_aiotask.add_done_callback(_on_execute_aiotask_done)
+
         task_context = self._task_context
         output_meta_object_refs = []
         self._pre_all_stages_tile_progress = (
@@ -392,7 +493,7 @@ class RayTaskExecutor(TaskExecutor):
                 self._config.subtask_max_retries if subtask.retryable else 0
             )
             output_object_refs = self._ray_executor.options(
-                num_returns=output_count, max_retries=max_retries
+                num_returns=output_count, max_retries=subtask_max_retries
             ).remote(
                 subtask.task_id,
                 subtask.subtask_id,
@@ -405,6 +506,9 @@ class RayTaskExecutor(TaskExecutor):
             elif output_count == 1:
                 output_object_refs = [output_object_refs]
             self._cur_stage_output_object_refs.extend(output_object_refs)
+            self._cur_stage_first_output_object_ref_to_subtask[
+                output_object_refs[0]
+            ] = subtask
             if subtask_output_meta_keys:
                 assert not is_shuffle_mapper
                 meta_object_ref, *output_object_refs = output_object_refs
@@ -444,15 +548,16 @@ class RayTaskExecutor(TaskExecutor):
         logger.info("Waiting for stage %s complete.", stage_id)
         # Patched the asyncio.to_thread for Python < 3.9 at mars/lib/aio/__init__.py
         await asyncio.to_thread(ray.wait, list(output_object_refs), fetch_local=False)
-        # Just use `self._cur_stage_tile_progress` as current stage progress
-        # because current stage is finished, its progress is 1.
-        self._pre_all_stages_progress += self._cur_stage_tile_progress
-        self._cur_stage_output_object_refs.clear()
+
         logger.info("Stage %s is complete.", stage_id)
         return chunk_to_meta
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
+            try:
+                await self.cancel()
+            except BaseException:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                pass
             return
 
         # Update info if no exception occurs.
@@ -496,7 +601,9 @@ class RayTaskExecutor(TaskExecutor):
             idx = 0
             for band_resource in band_resources:
                 for band, resource in band_resource.items():
-                    virtual_band_resources[(f"ray_virtual://{idx}", band)] = resource
+                    virtual_band_resources[
+                        (f"ray_virtual_address_{idx}:0", band)
+                    ] = resource
                     idx += 1
             self._available_band_resources = virtual_band_resources
 
@@ -504,22 +611,27 @@ class RayTaskExecutor(TaskExecutor):
 
     async def get_progress(self) -> float:
         """Get the execution progress."""
-        stage_progress = 0.0
-        total = len(self._cur_stage_output_object_refs)
-        if total > 0:
-            finished_objects, _ = ray.wait(
-                self._cur_stage_output_object_refs,
-                num_returns=total,
-                timeout=0,  # Avoid blocking the asyncio loop.
-                fetch_local=False,
-            )
-            stage_progress = (
-                len(finished_objects) / total * self._cur_stage_tile_progress
-            )
-        return self._pre_all_stages_progress + stage_progress
+        return self._cur_stage_progress
 
     async def cancel(self):
-        """Cancel execution."""
+        """
+        Cancel the task execution.
+
+        1. Try to cancel the `execute_subtask_graph`
+        2. Try to cancel the submitted subtasks by `ray.cancel`
+        """
+        logger.info("Start to cancel task %s.", self._task)
+        if self._task is None or self._cancelled is True:
+            return
+        self._cancelled = True
+        if self._execute_subtask_graph_aiotask is not None:
+            self._execute_subtask_graph_aiotask.cancel()
+        timeout = self._config.get_subtask_cancel_timeout()
+        to_be_cancelled_coros = [
+            _cancel_ray_task(object_ref, timeout)
+            for object_ref in self._cur_stage_first_output_object_ref_to_subtask.keys()
+        ]
+        await asyncio.gather(*to_be_cancelled_coros)
 
     async def _load_subtask_inputs(
         self,
@@ -573,3 +685,93 @@ class RayTaskExecutor(TaskExecutor):
                 input_object_refs[index] = object_ref
                 context[start_chunks[index].key] = object_ref
         return input_object_refs
+
+    async def _update_progress_and_collect_garbage(
+        self,
+        stage_id: str,
+        subtask_graph: SubtaskGraph,
+        result_meta_keys: Set[str],
+        interval_seconds: float,
+    ):
+        object_ref_to_subtask = self._cur_stage_first_output_object_ref_to_subtask
+        total = len(subtask_graph)
+        completed_subtasks = OrderedSet()
+
+        def gc():
+            """
+            Consume the completed subtasks and collect garbage.
+
+            GC the output object refs of the subtask which successors are submitted
+            (not completed as above) can reduce the memory peaks, but we can't cancel
+            and rerun slow subtasks because the input object refs of running subtasks
+            may be deleted.
+            """
+            i = 0
+            gc_subtasks = set()
+
+            while i < total:
+                while i >= len(completed_subtasks):
+                    yield
+                # Iterate the completed subtasks once.
+                subtask = completed_subtasks[i]
+                i += 1
+                logger.debug("GC[stage=%s]: %s", stage_id, subtask)
+
+                # Note: There may be a scenario in which delayed gc occurs.
+                # When a subtask has more than one predecessor, like A, B,
+                # and in the `for ... in ...` loop we get A firstly while
+                # B's successors are completed, A's not. Then we cannot remove
+                # B's results chunks before A's.
+                for pred in subtask_graph.iter_predecessors(subtask):
+                    if pred in gc_subtasks:
+                        continue
+                    while not all(
+                        succ in completed_subtasks
+                        for succ in subtask_graph.iter_successors(pred)
+                    ):
+                        yield
+                    for chunk in pred.chunk_graph.results:
+                        chunk_key = chunk.key
+                        # We need to check the GC chunk key is not in the
+                        # result meta keys, because there are some special
+                        # cases that the result meta keys are not the leaves.
+                        #
+                        # example: test_cut_execution
+                        if chunk_key not in result_meta_keys:
+                            logger.debug("GC[stage=%s]: %s", stage_id, chunk)
+                            self._task_context.pop(chunk_key, None)
+                    gc_subtasks.add(pred)
+
+            # TODO(fyrestone): Check the remaining self._task_context.keys()
+            # in the result subtasks
+
+        collect_garbage = gc()
+
+        while len(completed_subtasks) < total:
+            if len(object_ref_to_subtask) <= 0:  # pragma: no cover
+                await asyncio.sleep(interval_seconds)
+
+            # Only wait for unready subtask object refs.
+            ready_objects, _ = await asyncio.to_thread(
+                ray.wait,
+                list(object_ref_to_subtask.keys()),
+                num_returns=len(object_ref_to_subtask),
+                timeout=0,
+                fetch_local=False,
+            )
+            if len(ready_objects) == 0:
+                await asyncio.sleep(interval_seconds)
+                continue
+
+            # Pop the completed subtasks from object_ref_to_subtask.
+            completed_subtasks.update(map(object_ref_to_subtask.pop, ready_objects))
+            # Update progress.
+            stage_progress = (
+                len(completed_subtasks) / total * self._cur_stage_tile_progress
+            )
+            self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
+            # Collect garbage, use `for ... in ...` to avoid raising StopIteration.
+            for _ in collect_garbage:
+                break
+            # Fast to next loop and give it a chance to update object_ref_to_subtask.
+            await asyncio.sleep(0)
