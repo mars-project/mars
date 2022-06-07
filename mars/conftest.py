@@ -40,8 +40,11 @@ def auto_cleanup(request):
 def check_router_cleaned(request):
     def route_checker():
         if Router.get_instance() is not None:
-            assert len(Router.get_instance()._mapping) == 0
-            assert len(Router.get_instance()._local_mapping) == 0
+            try:
+                assert len(Router.get_instance()._mapping) == 0
+                assert len(Router.get_instance()._local_mapping) == 0
+            finally:
+                Router.set_instance(None)
 
     request.addfinalizer(route_checker)
 

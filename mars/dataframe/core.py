@@ -286,7 +286,7 @@ class IndexValue(Serializable):
             sortorder = getattr(self, "_sortorder", None)
             if data is None:
                 return pd.MultiIndex.from_arrays(
-                    [np.array([], dtype=dtype) for dtype in self._dtypes],
+                    [pd.array([], dtype=dtype) for dtype in self._dtypes],
                     sortorder=sortorder,
                     names=self._names,
                 )

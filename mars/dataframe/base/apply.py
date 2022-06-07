@@ -161,7 +161,7 @@ class ApplyOperand(
                 result = input_data.apply(
                     op.func, convert_dtype=op.convert_dtype, args=op.args, **op.kwds
                 )
-            except TypeError:
+            except TypeError:  # pragma: no cover
                 if isinstance(input_data.values, ArrowArray):
                     input_data = pd.Series(
                         input_data.to_numpy(),
@@ -171,7 +171,7 @@ class ApplyOperand(
                     result = input_data.apply(
                         op.func, convert_dtype=op.convert_dtype, args=op.args, **op.kwds
                     )
-                else:  # pragma: no cover
+                else:
                     raise
         ctx[out.key] = result
 
