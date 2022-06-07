@@ -95,11 +95,12 @@ class Base(Serializable):
         return self.copy_to(type(self)(_key=self.key))
 
     def copy_to(self, target: "Base"):
+        target_fields = target._FIELDS
         for k in self._FIELDS:
             if k in self._no_copy_attrs_:
                 continue
             try:
-                setattr(target, k, getattr(self, k))
+                target_fields[k].set(target, getattr(self, k))
             except AttributeError:
                 continue
         return target
