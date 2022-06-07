@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import random
+import tracemalloc
 
 import mars.tensor as mt
 import mars.dataframe as md
@@ -30,6 +31,7 @@ class ChunkGraphAssignerSuite:
     repeat = 10
 
     def setup(self):
+        tracemalloc.start()
         random.seed()
 
         num_rows = 10000
@@ -45,6 +47,8 @@ class ChunkGraphAssignerSuite:
         graph = TileableGraph([merged_df.data])
         next(TileableGraphBuilder(graph).build())
         self.chunk_graph = next(ChunkGraphBuilder(graph, fuse_enabled=False).build())
+        self.mem_size, self.mem_peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
 
     def time_assigner(self):
         start_ops = list(GraphAnalyzer._iter_start_ops(self.chunk_graph))
@@ -55,3 +59,26 @@ class ChunkGraphAssignerSuite:
         assigner = GraphAssigner(self.chunk_graph, start_ops, band_resource)
         assigned_result = assigner.assign(current_assign)
         assert len(assigned_result) == len(start_ops)
+
+    def peakmem_setup(self):
+        """peakmem includes the memory used by setup.
+        Peakmem benchmarks measure the maximum amount of RAM used by a
+        function. However, this maximum also includes the memory used
+        by ``setup`` (as of asv 0.2.1; see [1]_)
+        Measuring an empty peakmem function might allow us to disambiguate
+        between the memory used by setup and the memory used by slic (see
+        ``peakmem_slic_basic``, below).
+        References
+        ----------
+        .. [1]: https://asv.readthedocs.io/en/stable/writing_benchmarks.html#peak-memory
+        """
+        pass
+
+    def mem_chunk_graph(self):
+        return self.chunk_graph
+
+    def track_traced_mem_size(self):
+        return self.mem_size
+
+    def track_traced_mem_peak(self):
+        return self.mem_peak
