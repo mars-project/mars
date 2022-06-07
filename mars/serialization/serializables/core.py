@@ -93,6 +93,7 @@ class SerializableMeta(type):
                 v.name = field.name
                 v.get = field.get
                 v.set = field.set
+                v.__delete__ = field.__delete__
             all_fields[k] = v
 
         # Make field order deterministic to serialize it as list instead of dict.
@@ -122,6 +123,7 @@ class SerializableMeta(type):
             field.name = member_descriptor.__name__
             field.get = member_descriptor.__get__
             field.set = member_descriptor.__set__
+            field.__delete__ = member_descriptor.__delete__
             setattr(clz, name, field)
 
         return clz

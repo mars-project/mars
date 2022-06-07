@@ -42,6 +42,7 @@ class Field(ABC):
         "name",  # The __name__ of member_descriptor
         "get",  # The __get__ of member_descriptor
         "set",  # The __set__ of member_descriptor
+        "__delete__",  # The __delete__ of member_descriptor
     )
 
     _tag: str
