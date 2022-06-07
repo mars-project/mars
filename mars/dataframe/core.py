@@ -510,7 +510,7 @@ class ChunkDtypesField(SeriesField):
             return super().__get__(instance, owner)
 
         try:
-            value = self._member_descriptor.__get__(instance, owner)
+            value = self.get(instance, owner)
             if value is not None:
                 return value
         except AttributeError:
@@ -523,7 +523,7 @@ class ChunkDtypesField(SeriesField):
         index = instance.index[1]
         dtypes = self._gen_chunk_dtypes(instance, index)
         # cache dtypes
-        self._member_descriptor.__set__(instance, dtypes)
+        self.set(instance, dtypes)
         return dtypes
 
 
@@ -563,7 +563,7 @@ class ChunkIndexValueField(ReferenceField):
             return super().__get__(instance, owner)
 
         try:
-            value = self._member_descriptor.__get__(instance, owner)
+            value = self.get(instance, owner)
             if value is not None:
                 return value
         except AttributeError:
@@ -576,7 +576,7 @@ class ChunkIndexValueField(ReferenceField):
         index = instance.index[0]
         index_value = self._gen_chunk_index_value(instance, index)
         # cache index_value
-        self._member_descriptor.__set__(instance, index_value)
+        self.set(instance, index_value)
         return index_value
 
 
@@ -612,7 +612,7 @@ class ChunkColumnsValueField(ReferenceField):
             return super().__get__(instance, owner)
 
         try:
-            value = self._member_descriptor.__get__(instance, owner)
+            value = self.get(instance, owner)
             if value is not None:
                 return value
         except AttributeError:
@@ -625,7 +625,7 @@ class ChunkColumnsValueField(ReferenceField):
         index = instance.index[1]
         columns_value = self._gen_chunk_columns_value(instance, index)
         # cache columns_value
-        self._member_descriptor.__set__(instance, columns_value)
+        self.set(instance, columns_value)
         return columns_value
 
 

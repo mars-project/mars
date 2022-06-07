@@ -90,7 +90,9 @@ class SerializableMeta(type):
             if field is None:
                 properties_field_slot_names.append(k)
             else:
-                v._member_descriptor = field._member_descriptor
+                v.attr_name = field.attr_name
+                v.get = field.get
+                v.set = field.set
             all_fields[k] = v
 
         # Make field order deterministic to serialize it as list instead of dict.
@@ -117,8 +119,9 @@ class SerializableMeta(type):
         for name in properties_field_slot_names:
             member_descriptor = getattr(clz, name)
             field = all_fields[name]
-            assert field._member_descriptor is None
-            field._member_descriptor = member_descriptor
+            field.attr_name = member_descriptor.__name__
+            field.get = member_descriptor.__get__
+            field.set = member_descriptor.__set__
             setattr(clz, name, field)
 
         return clz
@@ -134,13 +137,14 @@ class Serializable(metaclass=SerializableMeta):
     _NON_PRIMITIVE_FIELDS: List[str]
 
     def __init__(self, *args, **kwargs):
+        fields = self._FIELDS
         if args:  # pragma: no cover
-            values = dict(zip(self._FIELDS, args))
+            values = dict(zip(fields, args))
             values.update(kwargs)
         else:
             values = kwargs
         for k, v in values.items():
-            setattr(self, k, v)
+            fields[k].set(self, v)
 
     def __repr__(self):
         values = ", ".join(
@@ -169,7 +173,7 @@ class SerializableSerializer(Serializer):
         values = []
         for field in fields:
             try:
-                value = field._member_descriptor.__get__(obj)
+                value = field.get(obj)
                 if field.on_serialize:
                     value = field.on_serialize(value)
             except AttributeError:

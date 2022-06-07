@@ -64,7 +64,13 @@ class Base(Serializable):
 
     @property
     def _values_(self):
-        return [self._FIELDS[k].get(self) for k in self._copy_tags_]
+        values = []
+        for k in self._copy_tags_:
+            try:
+                values.append(self._FIELDS[k].get(self))
+            except AttributeError:
+                values.append(None)
+        return values
 
     def __mars_tokenize__(self):
         try:

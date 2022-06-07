@@ -37,9 +37,11 @@ class Field(ABC):
         "_tag",
         "_default_value",
         "_default_factory",
-        "_member_descriptor",
         "_on_serialize",
         "_on_deserialize",
+        "attr_name",
+        "get",
+        "set",
     )
 
     _tag: str
@@ -64,7 +66,6 @@ class Field(ABC):
         self._default_factory = default_factory
         self._on_serialize = on_serialize
         self._on_deserialize = on_deserialize
-        self._member_descriptor = None
 
     @property
     def tag(self):
@@ -79,10 +80,6 @@ class Field(ABC):
         return self._on_deserialize
 
     @property
-    def attr_name(self):
-        return self._member_descriptor.__name__
-
-    @property
     @abstractmethod
     def field_type(self) -> AbstractFieldType:
         """
@@ -94,28 +91,17 @@ class Field(ABC):
              Field type.
         """
 
-    def get(self, instance):
-        """Get the value from instance without side effect in __get__."""
-        try:
-            return self._member_descriptor.__get__(instance, None)
-        except AttributeError:
-            return None
-
-    def set(self, instance, value):
-        """Set the value to instance without side effect in __set__."""
-        self._member_descriptor.__set__(instance, value)
-
     def __get__(self, instance, owner=None):
         try:
-            return self._member_descriptor.__get__(instance, owner)
+            return self.get(instance, owner)
         except AttributeError:
             if self._default_value is not no_default:
                 val = self._default_value
-                self._member_descriptor.__set__(instance, val)
+                self.set(instance, val)
                 return val
             elif self._default_factory is not None:
                 val = self._default_factory()
-                self._member_descriptor.__set__(instance, val)
+                self.set(instance, val)
                 return val
             else:
                 raise
@@ -136,10 +122,7 @@ class Field(ABC):
                         f"Failed to set `{self.attr_name}` for {type(instance).__name__} "
                         f"when environ CI=true is set: {str(e)}"
                     )
-        self._member_descriptor.__set__(instance, value)
-
-    def __delete__(self, instance) -> None:
-        self._member_descriptor.__delete__(instance)
+        self.set(instance, value)
 
 
 class AnyField(Field):
@@ -533,7 +516,7 @@ class ReferenceField(Field):
                         f"Failed to set `{self.attr_name}` for {type(instance).__name__} "
                         f"when environ CI=true is set: {e}"
                     )
-            self._member_descriptor.__set__(instance, value)
+            self.set(instance, value)
         else:
             super().__set__(instance, value)
 
@@ -580,7 +563,7 @@ class OneOfField(Field):
                 if to_check_value is not None and self._on_serialize:
                     to_check_value = self._on_serialize(to_check_value)
                 reference_field.get_field_type(instance).validate(to_check_value)
-                self._member_descriptor.__set__(instance, value)
+                self.set(instance, value)
                 return
             except TypeError:
                 continue
