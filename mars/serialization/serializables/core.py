@@ -90,7 +90,7 @@ class SerializableMeta(type):
             if field is None:
                 properties_field_slot_names.append(k)
             else:
-                v.attr_name = field.attr_name
+                v.name = field.name
                 v.get = field.get
                 v.set = field.set
             all_fields[k] = v
@@ -115,11 +115,11 @@ class SerializableMeta(type):
         properties["__slots__"] = tuple(slots)
 
         clz = type.__new__(mcs, name, bases, properties)
-        # Replace slot member_descriptor with field.
+        # Bind slot member_descriptor with field.
         for name in properties_field_slot_names:
             member_descriptor = getattr(clz, name)
             field = all_fields[name]
-            field.attr_name = member_descriptor.__name__
+            field.name = member_descriptor.__name__
             field.get = member_descriptor.__get__
             field.set = member_descriptor.__set__
             setattr(clz, name, field)

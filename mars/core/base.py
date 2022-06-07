@@ -55,9 +55,7 @@ class Base(Serializable):
             return getattr(cls, member)
         except AttributeError:
             slots = sorted(
-                f.attr_name
-                for k, f in self._FIELDS.items()
-                if k not in self._no_copy_attrs_
+                f.name for k, f in self._FIELDS.items() if k not in self._no_copy_attrs_
             )
             setattr(cls, member, slots)
             return slots
@@ -121,9 +119,9 @@ class Base(Serializable):
         fields = self._FIELDS
         kv = {}
         no_value = object()
-        for attr_name, field in fields.items():
-            if attr_name not in exclude_fields:
-                value = getattr(self, attr_name, no_value)
+        for name, field in fields.items():
+            if name not in exclude_fields:
+                value = getattr(self, name, no_value)
                 if value is not no_value and isinstance(value, accept_value_types):
                     kv[field.tag] = value
         return kv

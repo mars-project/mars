@@ -39,9 +39,9 @@ class Field(ABC):
         "_default_factory",
         "_on_serialize",
         "_on_deserialize",
-        "attr_name",
-        "get",
-        "set",
+        "name",  # The __name__ of member_descriptor
+        "get",  # The __get__ of member_descriptor
+        "set",  # The __set__ of member_descriptor
     )
 
     _tag: str
@@ -119,7 +119,7 @@ class Field(ABC):
                     field_type.validate(to_check_value)
                 except (TypeError, ValueError) as e:
                     raise type(e)(
-                        f"Failed to set `{self.attr_name}` for {type(instance).__name__} "
+                        f"Failed to set `{self.name}` for {type(instance).__name__} "
                         f"when environ CI=true is set: {str(e)}"
                     )
         self.set(instance, value)
@@ -513,7 +513,7 @@ class ReferenceField(Field):
                     field_type.validate(to_check_value)
                 except (TypeError, ValueError) as e:
                     raise type(e)(
-                        f"Failed to set `{self.attr_name}` for {type(instance).__name__} "
+                        f"Failed to set `{self.name}` for {type(instance).__name__} "
                         f"when environ CI=true is set: {e}"
                     )
             self.set(instance, value)
@@ -576,7 +576,7 @@ class OneOfField(Field):
             )
         )
         raise TypeError(
-            f"Failed to set `{self.attr_name}` for {type(instance).__name__} "
+            f"Failed to set `{self.name}` for {type(instance).__name__} "
             f"when environ CI=true is set: type of instance cannot match any "
             f"of {valid_types}, got {type(value).__name__}"
         )
