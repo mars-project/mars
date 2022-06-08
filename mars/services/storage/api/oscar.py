@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import sys
-from typing import Any, List, Tuple, Type, TypeVar
+from typing import Any, List, Tuple, Type, TypeVar, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
