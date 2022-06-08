@@ -23,7 +23,6 @@ from ..... import oscar as mo
 from .....typing import BandType
 from ....cluster import MockClusterAPI
 from ....subtask import Subtask, SubtaskResult, SubtaskStatus
-from ....task import TaskAPI
 from ....task.supervisor.manager import TaskManagerActor
 from ...supervisor import (
     SubtaskQueueingActor,
@@ -91,7 +90,10 @@ class MockSubtaskExecutionActor(mo.StatelessActor):
         self._run_subtask_events[subtask.subtask_id].set()
 
         async def task_fun():
-            task_api = await TaskAPI.create(subtask.session_id, supervisor_address)
+            manager_ref = await mo.actor_ref(
+                uid=SubtaskManagerActor.gen_uid(subtask.session_id),
+                address=supervisor_address,
+            )
             result = SubtaskResult(
                 subtask_id=subtask.subtask_id,
                 session_id=subtask.session_id,
@@ -107,12 +109,12 @@ class MockSubtaskExecutionActor(mo.StatelessActor):
                 result.status = SubtaskStatus.cancelled
                 result.error = ex
                 result.traceback = ex.__traceback__
-                await task_api.set_subtask_result(result)
+                await manager_ref.set_subtask_result.tell(result, (self.address, band_name))
                 raise
             else:
                 result.status = SubtaskStatus.succeeded
                 result.execution_end_time = time.time()
-                await task_api.set_subtask_result(result)
+                await manager_ref.set_subtask_result.tell(result, (self.address, band_name))
 
         self._subtask_aiotasks[subtask.subtask_id][band_name] = asyncio.create_task(
             task_fun()

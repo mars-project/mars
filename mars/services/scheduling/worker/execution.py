@@ -36,7 +36,6 @@ from ...cluster import ClusterAPI
 from ...meta import MetaAPI
 from ...storage import StorageAPI
 from ...subtask import Subtask, SubtaskAPI, SubtaskResult, SubtaskStatus
-from ...task import TaskAPI
 from .quota import QuotaActor
 from .workerslot import BandSlotManagerActor
 
@@ -176,6 +175,17 @@ class SubtaskExecutionActor(mo.StatelessActor):
     ) -> mo.ActorRefType[BandSlotManagerActor]:
         return await mo.actor_ref(
             BandSlotManagerActor.gen_uid(band), address=self.address
+        )
+
+    @classmethod
+    @alru_cache(cache_exceptions=False)
+    async def _get_manager_ref(
+        cls, session_id: str, supervisor_address: str
+    ) -> mo.ActorRefType[BandSlotManagerActor]:
+        from ..supervisor import SubtaskManagerActor
+
+        return await mo.actor_ref(
+            SubtaskManagerActor.gen_uid(session_id), address=supervisor_address
         )
 
     @alru_cache(cache_exceptions=False)
@@ -415,10 +425,12 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 # pop the subtask info at the end is to cancel the job.
                 self._subtask_info.pop(subtask.subtask_id, None)
 
-        task_api = await TaskAPI.create(
+        manager_ref = await self._get_manager_ref(
             subtask.session_id, subtask_info.supervisor_address
         )
-        await task_api.set_subtask_result(subtask_info.result)
+        await manager_ref.set_subtask_result.tell(
+            subtask_info.result, (self.address, subtask_info.band_name)
+        )
         return subtask_info.result
 
     async def _retry_run_subtask(
@@ -557,8 +569,10 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 )
                 _fill_subtask_result_with_exception(subtask, band_name, res)
 
-                task_api = await TaskAPI.create(subtask.session_id, supervisor_address)
-                await task_api.set_subtask_result(res)
+                manager_ref = await self._get_manager_ref(
+                    subtask.session_id, supervisor_address
+                )
+                await manager_ref.set_subtask_result.tell(res, (self.address, band_name))
             finally:
                 self._subtask_info.pop(subtask_id, None)
                 self._finished_subtask_count.record(1, {"band": self.address})

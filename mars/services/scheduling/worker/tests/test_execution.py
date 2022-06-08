@@ -37,6 +37,7 @@ from .....remote.core import RemoteFunction
 from .....resource import Resource
 from .....tensor.fetch import TensorFetch
 from .....tensor.arithmetic import TensorTreeAdd
+from .....typing import BandType
 from .....utils import Timer
 from ....cluster import MockClusterAPI
 from ....lifecycle import MockLifecycleAPI
@@ -47,7 +48,7 @@ from ....storage.handler import StorageHandlerActor
 from ....subtask import MockSubtaskAPI, Subtask, SubtaskStatus, SubtaskResult
 from ....task.supervisor.manager import TaskManagerActor
 from ....mutable import MockMutableAPI
-from ...supervisor import GlobalResourceManagerActor
+from ...supervisor import GlobalResourceManagerActor, SubtaskManagerActor
 from ...worker import SubtaskExecutionActor, QuotaActor, BandSlotManagerActor
 
 
@@ -155,6 +156,19 @@ class MockTaskManager(mo.Actor):
         return list(self._results.values())
 
 
+class MockSubtaskManagerActor(mo.Actor):
+    def __init__(self, session_id: str):
+        self._session_id = session_id
+
+    async def __post_create__(self):
+        self._task_manager_ref = await mo.actor_ref(
+            uid=TaskManagerActor.gen_uid(self._session_id), address=self.address
+        )
+
+    async def set_subtask_result(self, result: SubtaskResult, band: BandType):
+        await self._task_manager_ref.set_subtask_result.tell(result)
+
+
 @pytest.fixture
 async def actor_pool(request):
     n_slots, enable_kill = request.param
@@ -221,9 +235,17 @@ async def actor_pool(request):
             address=pool.external_address,
         )
 
+        subtask_manager_ref = await mo.create_actor(
+            MockSubtaskManagerActor,
+            session_id,
+            uid=SubtaskManagerActor.gen_uid(session_id),
+            address=pool.external_address,
+        )
+
         try:
             yield pool, session_id, meta_api, worker_meta_api, storage_api, execution_ref
         finally:
+            await mo.destroy_actor(subtask_manager_ref)
             await mo.destroy_actor(task_manager_ref)
             await mo.destroy_actor(band_slot_ref)
             await mo.destroy_actor(global_resource_ref)

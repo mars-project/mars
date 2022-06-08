@@ -172,10 +172,13 @@ class SubtaskManagerActor(mo.Actor):
 
         return await mo.actor_ref(SubtaskExecutionActor.default_uid(), address=band[0])
 
-    async def _handle_subtask_result(
-        self, info: SubtaskScheduleInfo, result: SubtaskResult, band: BandType
+    async def set_subtask_result(
+        self, result: SubtaskResult, band: BandType
     ):
+        info = self._subtask_infos[result.subtask_id]
         subtask_id = info.subtask.subtask_id
+        notify_task_service = True
+
         async with redirect_subtask_errors(self, [info.subtask], reraise=False):
             try:
                 info.band_futures[band].set_result(result)
@@ -199,6 +202,7 @@ class SubtaskManagerActor(mo.Actor):
                         [info.subtask.priority or tuple()],
                         exclude_bands=set(info.band_futures.keys()),
                     )
+                    notify_task_service = False
                 else:
                     raise ex
             except asyncio.CancelledError:
@@ -236,6 +240,10 @@ class SubtaskManagerActor(mo.Actor):
                 if info.num_reschedules > 0:
                     await self._queueing_ref.submit_subtasks.tell()
 
+        if notify_task_service:
+            task_api = await self._get_task_api()
+            await task_api.set_subtask_result(result)
+
     async def finish_subtasks(
         self,
         subtask_results: List[SubtaskResult],
@@ -251,11 +259,6 @@ class SubtaskManagerActor(mo.Actor):
             subtask_info = self._subtask_infos.get(subtask_id, None)
 
             if subtask_info is not None:
-                if subtask_band is not None:
-                    await self._handle_subtask_result(
-                        subtask_info, result, subtask_band
-                    )
-
                 self._finished_subtask_count.record(
                     1,
                     {
@@ -273,7 +276,7 @@ class SubtaskManagerActor(mo.Actor):
                 #  Cancel subtask on other bands.
                 aio_task = subtask_info.band_futures.pop(subtask_band, None)
                 if aio_task:
-                    await aio_task
+                    yield aio_task
                     if schedule_next:
                         band_tasks[subtask_band] += 1
                 if subtask_info.band_futures:

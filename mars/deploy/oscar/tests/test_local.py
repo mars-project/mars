@@ -93,8 +93,8 @@ EXPECT_PROFILING_STRUCTURE = {
         "serialization": {},
         "most_calls": DICT_NOT_EMPTY,
         "slow_calls": DICT_NOT_EMPTY,
-        "band_subtasks": DICT_NOT_EMPTY,
-        "slow_subtasks": DICT_NOT_EMPTY,
+        # "band_subtasks": DICT_NOT_EMPTY,
+        # "slow_subtasks": DICT_NOT_EMPTY,
     }
 }
 EXPECT_PROFILING_STRUCTURE_NO_SLOW = copy.deepcopy(EXPECT_PROFILING_STRUCTURE)
