@@ -26,6 +26,7 @@ from ....typing import BandType
 from ....lib.aio import alru_cache
 from ...cluster.api import ClusterAPI
 from ...cluster.core import NodeRole, NodeStatus
+from ..errors import NoAvailableBand
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +132,10 @@ class AutoscalerActor(mo.Actor):
             self._dynamic_workers.remove(address)
             logger.info("Released worker %s.", address)
 
-        await asyncio.gather(*[release_worker(address) for address in addresses])
+        # Release workers one by one to ensure others workers which the current is moving data to
+        # is not being releasing.
+        for address in addresses:
+            await release_worker(address)
 
     def get_dynamic_workers(self) -> Set[str]:
         return self._dynamic_workers
@@ -214,7 +218,7 @@ class AutoscalerActor(mo.Actor):
             if (b[1] == band[1] and b != band and b not in excluded_bands)
         )
         if not bands:  # pragma: no cover
-            raise RuntimeError(
+            raise NoAvailableBand(
                 f"No bands to migrate data to, "
                 f"all available bands is {all_bands}, "
                 f"current band is {band}, "
@@ -400,14 +404,19 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
                 worker_addresses,
                 idle_bands,
             )
-            # Release workers one by one to ensure others workers which the current is moving data to
-            # is not being releasing.
-            await self._autoscaler.release_workers(worker_addresses)
-            logger.info(
-                "Finished offline workers %s in %.4f seconds",
-                worker_addresses,
-                time.time() - start_time,
-            )
+            try:
+                await self._autoscaler.release_workers(worker_addresses)
+                logger.info(
+                    "Finished offline workers %s in %.4f seconds",
+                    worker_addresses,
+                    time.time() - start_time,
+                )
+            except NoAvailableBand as e:  # pragma: no cover
+                logger.warning(
+                    "No enough bands, offline workers %s failed with exception %s.",
+                    worker_addresses,
+                    e,
+                )
 
     async def stop(self):
         self._task.cancel()
