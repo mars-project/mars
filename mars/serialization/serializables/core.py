@@ -166,7 +166,6 @@ class Serializable(metaclass=SerializableMeta):
                 copied_fields[k].set(copied, value)
             except AttributeError:
                 continue
-
         return copied
 
 
