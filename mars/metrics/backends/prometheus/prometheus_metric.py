@@ -43,7 +43,7 @@ class PrometheusMetricMixin(AbstractMetric):
             self._metric = (
                 pc.Gauge(self._name, self._description, self._tag_keys) if pc else None
             )
-        except ValueError:
+        except ValueError:  # pragma: no cover
             self._metric = None
 
     def _record(self, value=1, tags: Optional[Dict[str, str]] = None):

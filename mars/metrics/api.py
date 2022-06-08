@@ -39,6 +39,8 @@ def init_metrics(backend="console", config: Dict[str, Any] = None):
     global _init
     if _init is True:
         return
+
+    backend = backend or "console"
     if backend not in _backends_cls:
         raise NotImplementedError(f"Do not support metric backend {backend}")
     global _metric_backend
