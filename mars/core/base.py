@@ -63,9 +63,10 @@ class Base(Serializable):
     @property
     def _values_(self):
         values = []
+        fields = self._FIELDS
         for k in self._copy_tags_:
             try:
-                values.append(self._FIELDS[k].get(self))
+                values.append(fields[k].get(self))
             except AttributeError:
                 values.append(None)
         return values
@@ -96,13 +97,17 @@ class Base(Serializable):
 
     def copy_to(self, target: "Base"):
         target_fields = target._FIELDS
-        for k in self._FIELDS:
-            if k in self._no_copy_attrs_:
+        no_copy_attrs = self._no_copy_attrs_
+        for k, field in self._FIELDS.items():
+            if k in no_copy_attrs:
                 continue
             try:
-                target_fields[k].set(target, getattr(self, k))
+                # Slightly faster than getattr.
+                value = field.__get__(self, k)
+                target_fields[k].set(target, value)
             except AttributeError:
                 continue
+
         return target
 
     def copy_from(self, obj):

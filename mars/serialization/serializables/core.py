@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
 import os
 import operator
 import weakref
@@ -158,7 +157,16 @@ class Serializable(metaclass=SerializableMeta):
         return "{}({})".format(self.__class__.__name__, values)
 
     def copy(self) -> "Serializable":
-        copied = copy.copy(self)
+        copied = type(self)()
+        copied_fields = copied._FIELDS
+        for k, field in self._FIELDS.items():
+            try:
+                # Slightly faster than getattr.
+                value = field.get(self, k)
+                copied_fields[k].set(copied, value)
+            except AttributeError:
+                continue
+
         return copied
 
 

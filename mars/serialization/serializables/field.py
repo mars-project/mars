@@ -502,7 +502,7 @@ class ReferenceField(Field):
         return self._field_type
 
     def __set__(self, instance, value):
-        if _is_ci and self._field_type is None:
+        if _is_ci:
             from ...core import is_kernel_mode
 
             if not is_kernel_mode():
@@ -517,9 +517,7 @@ class ReferenceField(Field):
                         f"Failed to set `{self.name}` for {type(instance).__name__} "
                         f"when environ CI=true is set: {e}"
                     )
-            self.set(instance, value)
-        else:
-            super().__set__(instance, value)
+        self.set(instance, value)
 
 
 class OneOfField(Field):
@@ -556,7 +554,7 @@ class OneOfField(Field):
 
     def __set__(self, instance, value):
         if not _is_ci:  # pragma: no cover
-            return super().__set__(instance, value)
+            return self.set(instance, value)
 
         for reference_field in self._reference_fields:
             try:
