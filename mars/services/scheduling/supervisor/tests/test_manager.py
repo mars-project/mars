@@ -109,12 +109,16 @@ class MockSubtaskExecutionActor(mo.StatelessActor):
                 result.status = SubtaskStatus.cancelled
                 result.error = ex
                 result.traceback = ex.__traceback__
-                await manager_ref.set_subtask_result.tell(result, (self.address, band_name))
+                await manager_ref.set_subtask_result.tell(
+                    result, (self.address, band_name)
+                )
                 raise
             else:
                 result.status = SubtaskStatus.succeeded
                 result.execution_end_time = time.time()
-                await manager_ref.set_subtask_result.tell(result, (self.address, band_name))
+                await manager_ref.set_subtask_result.tell(
+                    result, (self.address, band_name)
+                )
 
         self._subtask_aiotasks[subtask.subtask_id][band_name] = asyncio.create_task(
             task_fun()

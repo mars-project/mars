@@ -172,9 +172,7 @@ class SubtaskManagerActor(mo.Actor):
 
         return await mo.actor_ref(SubtaskExecutionActor.default_uid(), address=band[0])
 
-    async def set_subtask_result(
-        self, result: SubtaskResult, band: BandType
-    ):
+    async def set_subtask_result(self, result: SubtaskResult, band: BandType):
         info = self._subtask_infos[result.subtask_id]
         subtask_id = info.subtask.subtask_id
         notify_task_service = True
@@ -346,6 +344,7 @@ class SubtaskManagerActor(mo.Actor):
     async def _submit_subtasks_to_band(self, band: BandType, subtask_ids: List[str]):
         execution_ref = await self._get_execution_ref(band)
         delays = []
+        task_stage_count = defaultdict(lambda: 0)
 
         async with redirect_subtask_errors(
             self, self._get_subtasks_by_ids(subtask_ids)
@@ -353,21 +352,30 @@ class SubtaskManagerActor(mo.Actor):
             for subtask_id in subtask_ids:
                 subtask_info = self._subtask_infos[subtask_id]
                 subtask = subtask_info.subtask
-                self._submitted_subtask_count.record(
-                    1,
-                    {
-                        "session_id": self._session_id,
-                        "task_id": subtask.task_id,
-                        "stage_id": subtask.stage_id,
-                    },
-                )
-                logger.debug("Start run subtask %s in band %s.", subtask_id, band)
+                task_stage_count[(subtask.task_id, subtask.stage_id)] += 1
                 delays.append(
                     execution_ref.run_subtask.delay(subtask, band[1], self.address)
                 )
                 subtask_info.band_futures[band] = asyncio.Future()
                 subtask_info.start_time = time.time()
                 self._speculation_execution_scheduler.add_subtask(subtask_info)
+
+            for (task_id, stage_id), cnt in task_stage_count.items():
+                self._submitted_subtask_count.record(
+                    cnt,
+                    {
+                        "session_id": self._session_id,
+                        "task_id": task_id,
+                        "stage_id": stage_id,
+                    },
+                )
+
+            logger.debug(
+                "Start run %d subtasks %r in band %s.",
+                len(subtask_ids),
+                subtask_ids,
+                band,
+            )
             await execution_ref.run_subtask.batch(*delays, send=False)
 
     async def cancel_subtasks(

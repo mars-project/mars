@@ -572,7 +572,9 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 manager_ref = await self._get_manager_ref(
                     subtask.session_id, supervisor_address
                 )
-                await manager_ref.set_subtask_result.tell(res, (self.address, band_name))
+                await manager_ref.set_subtask_result.tell(
+                    res, (self.address, band_name)
+                )
             finally:
                 self._subtask_info.pop(subtask_id, None)
                 self._finished_subtask_count.record(1, {"band": self.address})
