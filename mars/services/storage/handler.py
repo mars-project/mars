@@ -130,22 +130,23 @@ class StorageHandlerActor(mo.Actor):
                 if client.level & level:
                     clients[level] = client
 
-    async def _get_data(self, data_info, conditions):
+    @mo.extensible
+    async def get_data_by_info(self, data_info: DataInfo, conditions: List = None):
         if conditions is None:
-            res = yield self._clients[data_info.level].get(data_info.object_id)
+            res = await self._clients[data_info.level].get(data_info.object_id)
         else:
             try:
-                res = yield self._clients[data_info.level].get(
+                res = await self._clients[data_info.level].get(
                     data_info.object_id, conditions=conditions
                 )
             except NotImplementedError:
-                data = yield self._clients[data_info.level].get(data_info.object_id)
+                data = await self._clients[data_info.level].get(data_info.object_id)
                 try:
                     sliced_value = data.iloc[tuple(conditions)]
                 except AttributeError:
                     sliced_value = data[tuple(conditions)]
                 res = sliced_value
-        raise mo.Return(res)
+        return res
 
     def get_client(self, level: StorageLevel):
         return self._clients[level]
@@ -162,7 +163,7 @@ class StorageHandlerActor(mo.Actor):
             data_info = await self._data_manager_ref.get_data_info(
                 session_id, data_key, self._band_name
             )
-            data = yield self._get_data(data_info, conditions)
+            data = yield self.get_data_by_info(data_info, conditions)
             raise mo.Return(data)
         except DataNotExist:
             if error == "raise":
@@ -194,7 +195,7 @@ class StorageHandlerActor(mo.Actor):
             if data_info is None:
                 results.append(None)
             else:
-                result = yield self._get_data(data_info, conditions)
+                result = yield self.get_data_by_info(data_info, conditions)
                 results.append(result)
         raise mo.Return(results)
 
@@ -366,11 +367,15 @@ class StorageHandlerActor(mo.Actor):
             await self._quota_refs[level].release_quota(size)
 
     @mo.extensible
+    async def open_reader_by_info(self, data_info: DataInfo) -> StorageFileObject:
+        return await self._clients[data_info.level].open_reader(data_info.object_id)
+
+    @mo.extensible
     async def open_reader(self, session_id: str, data_key: str) -> StorageFileObject:
         data_info = await self._data_manager_ref.get_data_info(
             session_id, data_key, self._band_name
         )
-        reader = await self._clients[data_info.level].open_reader(data_info.object_id)
+        reader = await self.open_reader_by_info(data_info)
         return reader
 
     @open_reader.batch
@@ -384,10 +389,7 @@ class StorageHandlerActor(mo.Actor):
             )
         data_infos = await self._data_manager_ref.get_data_info.batch(*get_data_infos)
         return await asyncio.gather(
-            *[
-                self._clients[data_info.level].open_reader(data_info.object_id)
-                for data_info in data_infos
-            ]
+            *[self.open_reader_by_info(data_info) for data_info in data_infos]
         )
 
     @mo.extensible
