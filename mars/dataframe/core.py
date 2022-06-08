@@ -513,7 +513,7 @@ class ChunkDtypesField(SeriesField):
             value = self.get(instance, owner)
             if value is not None:
                 return value
-        except AttributeError:
+        except AttributeError:  # pragma: no cover
             pass
 
         if instance.index is None:
@@ -566,7 +566,7 @@ class ChunkIndexValueField(ReferenceField):
             value = self.get(instance, owner)
             if value is not None:
                 return value
-        except AttributeError:
+        except AttributeError:  # pragma: no cover
             pass
 
         if instance.index is None:
@@ -615,7 +615,7 @@ class ChunkColumnsValueField(ReferenceField):
             value = self.get(instance, owner)
             if value is not None:
                 return value
-        except AttributeError:
+        except AttributeError:  # pragma: no cover
             pass
 
         if instance.index is None:
