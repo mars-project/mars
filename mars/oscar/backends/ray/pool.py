@@ -307,6 +307,7 @@ class RayMainPool(RayPoolBase):
         )
         self._set_ray_server(self._actor_pool)
         self._state = RayPoolState.POOL_READY
+        logger.info("Started main pool %s with %s processes.", address, n_process)
 
     async def mark_service_ready(self):
         results = []
@@ -336,10 +337,14 @@ class RaySubPool(RayPoolBase):
         self._actor_pool_config = actor_pool_config
 
     async def start(self):
-        logger.info("Start to init sub pool.")
         # create mars pool outside the constructor is to avoid ray actor creation failed.
         # ray can't get the creation exception.
         main_pool_address, process_index = self._args
+        logger.info(
+            "Start to init sub pool %s for main pool %s.",
+            process_index,
+            main_pool_address,
+        )
         main_pool = ray.get_actor(main_pool_address)
         self._check_alive_task = asyncio.create_task(
             self.check_main_pool_alive(main_pool)
@@ -347,9 +352,10 @@ class RaySubPool(RayPoolBase):
         if self._actor_pool_config is None:
             self._actor_pool_config = await main_pool.actor_pool.remote("_config")
         pool_config = self._actor_pool_config.get_pool_config(process_index)
+        sub_pool_address = pool_config["external_address"]
         assert (
             self._state == RayPoolState.INIT
-        ), f"The pool {pool_config['external_address']} is already started, current state is {self._state}"
+        ), f"The pool {sub_pool_address} is already started, current state is {self._state}"
         env = pool_config["env"]
         if env:  # pragma: no cover
             os.environ.update(env)
@@ -363,6 +369,7 @@ class RaySubPool(RayPoolBase):
         await self._actor_pool.start()
         asyncio.create_task(self._actor_pool.join())
         self._state = RayPoolState.POOL_READY
+        logger.info("Started sub pool %s.", sub_pool_address)
 
     def mark_service_ready(self):
         self._state = RayPoolState.SERVICE_READY
