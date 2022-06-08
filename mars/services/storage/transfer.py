@@ -299,7 +299,7 @@ class ReceiverManagerActor(mo.StatelessActor):
         for data_key, data in zip(data_keys, objects):
             open_writers.append(
                 self._storage_handler.open_writer.delay(
-                    session_id, data_key, len(data), level, request_quota=False
+                    session_id, data_key, len(data), level
                 )
             )
         writers = await self._storage_handler.open_writer.batch(*open_writers)
