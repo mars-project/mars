@@ -22,6 +22,7 @@ from ..api import (
     _percentile_builder,
     Percentile,
     record_time_cost_percentile,
+    shutdown_metrics,
 )
 
 
@@ -33,16 +34,22 @@ def init():
 def test_init_metrics():
     init_metrics()
     assert api._metric_backend == "console"
+    shutdown_metrics()
     init_metrics("console")
     assert api._metric_backend == "console"
+    shutdown_metrics()
     init_metrics(backend="console")
     assert api._metric_backend == "console"
+    shutdown_metrics()
     init_metrics("prometheus")
     assert api._metric_backend == "prometheus"
+    shutdown_metrics()
     init_metrics(backend="prometheus", config={"port": 0})
     assert api._metric_backend == "prometheus"
+    shutdown_metrics()
     init_metrics("ray")
     assert api._metric_backend == "ray"
+    shutdown_metrics()
     with pytest.raises(NotImplementedError):
         init_metrics("not_exist")
 
