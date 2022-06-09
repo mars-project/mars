@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.9.0rc2+18.g21929ced5\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-04-24 12:19+0800\n"
+"POT-Creation-Date: 2022-06-08 14:41+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -53,8 +53,8 @@ msgstr "``Meter`` 是一组事件发生的速率。 我们可以将其用作 qps
 
 #: ../../source/development/metrics.rst:16
 msgid ""
-"``Histogram`` is a type of statistics which records the average value of"
-" a window data."
+"``Histogram`` is a type of statistics which records the average value of "
+"a window data."
 msgstr "``Histogram`` 是一种统计类型，它记录窗口数据的平均值。"
 
 #: ../../source/development/metrics.rst:18
@@ -66,8 +66,9 @@ msgid ""
 "**Note**: If ``tag_keys`` is declared, ``tags`` must be specified when "
 "invoking ``record`` method and tags' keys must be consistent with "
 "``tag_keys``."
-msgstr "**注意**：如果声明了 ``tag_keys``，调用 ``record`` 方法时必须指定 ``tags`` "
-"参数，并且 ``tags`` 的 keys 必须跟 ``tag_keys`` 保持一致。"
+msgstr ""
+"**注意**：如果声明了 ``tag_keys``，调用 ``record`` 方法时必须指定 ``tags`` 参数，并且 ``tags`` 的"
+" keys 必须跟 ``tag_keys`` 保持一致。"
 
 #: ../../source/development/metrics.rst:54
 msgid "Three different Backends"
@@ -89,40 +90,93 @@ msgstr "``prometheus`` 一个开源系统监控和报警工具包。"
 msgid "``ray`` is a metric backend which just runs on ray engine."
 msgstr "``ray`` 是一种运行在 ray 引擎上的 metric 后端。"
 
-#: ../../source/development/metrics.rst:62
-msgid ""
-"We can choose a metric backend by configuring ``metrics.backend`` in "
-"``mars/deploy/oscar/base_config.yml`` or its descendant files."
-msgstr "我们可以通过配置 ``mars/deploy/oscar/base_config.yml`` 或它的继承文件中的 "
-"``metrics.backend`` 来选择一种 metric 后端。"
+#: ../../source/development/metrics.rst:63
+msgid "Console"
+msgstr ""
 
-#: ../../source/development/metrics.rst:66
+#: ../../source/development/metrics.rst:65
+msgid ""
+"The default metric backend is ``console``. It just logs the value when "
+"log level is ``debug``."
+msgstr "默认的 metric 后端是 ``console``. 它只是在日志级别为 ``debug`` 时打印出 metric 的值。"
+
+#: ../../source/development/metrics.rst:69
+msgid "Prometheus"
+msgstr ""
+
+#: ../../source/development/metrics.rst:71
+msgid ""
+"Firstly, we should download Prometheus. For details, please refer to "
+"`Prometheus Getting Started "
+"<https://prometheus.io/docs/prometheus/latest/getting_started/>`_."
+msgstr ""
+"首先，我们需要下载 Prometheus。具体的可以参考 `Prometheus Getting Started "
+"<https://prometheus.io/docs/prometheus/latest/getting_started/>`_."
+
+#: ../../source/development/metrics.rst:75
+msgid ""
+"Secondly, we can new a Mars session by configuring Prometheus backend as "
+"follows:"
+msgstr "其次，我们可以如下配置 Prometheus 后端来启动一个 Mars session："
+
+#: ../../source/development/metrics.rst:93
+msgid ""
+"Thirdly, we should config Prometheus, more configurations please refer to"
+" `Prometheus Configuration "
+"<https://prometheus.io/docs/prometheus/latest/configuration/configuration/>`_."
+msgstr ""
+"第三，我们要配置 Prometheus，更多的配置可以参考  `Prometheus Configuration "
+"<https://prometheus.io/docs/prometheus/latest/configuration/configuration/>`_."
+
+#: ../../source/development/metrics.rst:108
+msgid "Then start Prometheus:"
+msgstr "接着，启动 Prometheus："
+
+#: ../../source/development/metrics.rst:130
+msgid "Fourthly, run a Mars task:"
+msgstr "第四，执行一个 Mars task："
+
+#: ../../source/development/metrics.rst:145
+msgid "Finally, we can check metrics in Prometheus web http://localhost:9090."
+msgstr "最后，我们可以在 Prometheus 的网页端 http://localhost:9090 查看 metrics。"
+
+#: ../../source/development/metrics.rst:148
+msgid "Ray"
+msgstr ""
+
+#: ../../source/development/metrics.rst:150
+msgid ""
+"We could config ``metrics.backend`` when creating a Ray cluster or new a "
+"session."
+msgstr "我们可以在创建 Ray cluster 时或新建 session 时配置 ``metrics.backend``。"
+
+#: ../../source/development/metrics.rst:153
 msgid "Metrics Naming Convention"
 msgstr "Metrics 命名约定"
 
-#: ../../source/development/metrics.rst:68
+#: ../../source/development/metrics.rst:155
 msgid "We propose a naming convention for metrics as follows:"
 msgstr "我们提出一种如下的 metrics 命名约定："
 
-#: ../../source/development/metrics.rst:70
+#: ../../source/development/metrics.rst:157
 msgid "``namespace.[component].metric_name[_units]``"
 msgstr ""
 
-#: ../../source/development/metrics.rst:72
+#: ../../source/development/metrics.rst:159
 msgid "``namespace`` could be ``mars``."
 msgstr "``namespace`` 可以是 ``mars``。"
 
-#: ../../source/development/metrics.rst:73
-msgid "``component`` could be `supervisor`, `worker` or `band` etc, and can be "
+#: ../../source/development/metrics.rst:160
+msgid ""
+"``component`` could be `supervisor`, `worker` or `band` etc, and can be "
 "omitted."
 msgstr "``component`` 可以是 `supervisor`，`worker` 或 `band` 等等，也可以省略这个参数。"
 
-#: ../../source/development/metrics.rst:74
+#: ../../source/development/metrics.rst:161
 msgid ""
 "``units`` is the metric unit which may be seconds when recording time, or"
 " ``_count`` when metric type is ``Counter``, ``_number`` when metric type"
 " is ``Gauge`` if there is no suitable unit."
-msgstr "``units`` 是 metric 的单位，当记录的是时间时，可以用 seconds，当没有合适的单位"
-"时，``Counter`` 类型的 metric 可以用 ``_count``，``Gauge`` 类型的 metric 可以用 "
-"``_number``。"
-
+msgstr ""
+"``units`` 是 metric 的单位，当记录的是时间时，可以用 seconds，当没有合适的单位时，``Counter`` 类型的 "
+"metric 可以用 ``_count``，``Gauge`` 类型的 metric 可以用 ``_number``。"

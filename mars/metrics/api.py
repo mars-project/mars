@@ -26,6 +26,7 @@ from .backends.ray import ray_metric
 
 logger = logging.getLogger(__name__)
 
+_init = False
 _metric_backend = "console"
 _backends_cls = {
     "console": console_metric,
@@ -35,6 +36,10 @@ _backends_cls = {
 
 
 def init_metrics(backend="console", config: Dict[str, Any] = None):
+    global _init
+    if _init is True:
+        return
+
     backend = backend or "console"
     if backend not in _backends_cls:
         raise NotImplementedError(f"Do not support metric backend {backend}")
@@ -43,15 +48,27 @@ def init_metrics(backend="console", config: Dict[str, Any] = None):
     if _metric_backend == "prometheus":
         try:
             from prometheus_client import start_http_server
+            from ..utils import get_next_port
 
             port = config.get("port", 0) if config else 0
+            port = port or get_next_port()
             start_http_server(port)
-            logger.info("Finished startup prometheus http server and port is %d", port)
+            logger.warning(
+                "Finished startup prometheus http server and port is %d", port
+            )
         except ImportError:
             logger.warning(
                 "Failed to start prometheus http server because there is no prometheus_client"
             )
+    _init = True
     logger.info("Finished initialize the metrics with backend %s", _metric_backend)
+
+
+def shutdown_metrics():
+    global _metric_backend
+    _metric_backend = "console"
+    global _init
+    _init = False
 
 
 class Metrics:
