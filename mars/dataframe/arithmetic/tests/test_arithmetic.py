@@ -1523,12 +1523,15 @@ def test_arithmetic_lazy_chunk_meta():
     df2 = tile(df2)
 
     chunk = df2.chunks[0].data
-    assert chunk._FIELD_VALUES.get("_dtypes") is None
+    assert chunk._FIELDS["_dtypes"].get(chunk) is None
     pd.testing.assert_series_equal(chunk.dtypes, df.dtypes)
-    assert chunk._FIELD_VALUES.get("_index_value") is None
+    assert chunk._FIELDS["_dtypes"].get(chunk) is not None
+    assert chunk._FIELDS["_index_value"].get(chunk) is None
     pd.testing.assert_index_equal(chunk.index_value.to_pandas(), pd.RangeIndex(3))
-    assert chunk._FIELD_VALUES.get("_columns_value") is None
+    assert chunk._FIELDS["_index_value"].get(chunk) is not None
+    assert chunk._FIELDS["_columns_value"].get(chunk) is None
     pd.testing.assert_index_equal(chunk.columns_value.to_pandas(), pd.RangeIndex(3))
+    assert chunk._FIELDS["_columns_value"].get(chunk) is not None
 
 
 def test_datetime_arithmetic():

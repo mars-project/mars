@@ -201,7 +201,7 @@ def test_serializable(set_environ):
 
 def _assert_serializable_eq(my_serializable, my_serializable2):
     for field_name, field in my_serializable._FIELDS.items():
-        if field.tag not in my_serializable._FIELD_VALUES:
+        if not hasattr(my_serializable, field.tag):
             continue
         expect_value = getattr(my_serializable, field_name)
         actual_value = getattr(my_serializable2, field_name)
