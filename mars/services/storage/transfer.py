@@ -60,9 +60,9 @@ class SenderManagerActor(mo.StatelessActor):
             address=address, uid=ReceiverManagerActor.gen_uid(band_name)
         )
 
-    async def _open_readers(self, data_keys: List[str], data_infos: List[DataInfo]):
+    async def _open_readers(self, data_infos: List[DataInfo]):
         open_reader_tasks = []
-        for data_key, info in zip(data_keys, data_infos):
+        for info in data_infos:
             open_reader_tasks.append(
                 self._storage_handler.open_reader_by_info.delay(info)
             )
@@ -101,7 +101,7 @@ class SenderManagerActor(mo.StatelessActor):
                     await self.flush()
 
         sender = BufferedSender()
-        readers = await self._open_readers(data_keys, data_infos)
+        readers = await self._open_readers(data_infos)
 
         for data_key, reader in zip(data_keys, readers):
             while True:
@@ -166,7 +166,7 @@ class SenderManagerActor(mo.StatelessActor):
         level: StorageLevel,
     ):
         # simple get all objects and send them all to receiver
-        readers = await self._open_readers(data_keys, data_infos)
+        readers = await self._open_readers(data_infos)
         data_list = await asyncio.gather(*(reader.read() for reader in readers))
         receiver_ref: mo.ActorRefType[
             ReceiverManagerActor
