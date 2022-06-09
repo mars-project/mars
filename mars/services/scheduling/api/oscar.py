@@ -16,7 +16,7 @@ from typing import List, Optional, Tuple, Type, TypeVar, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ...subtask import Subtask, SubtaskResult
+from ...subtask import Subtask
 from ..core import SubtaskScheduleSummary
 from .core import AbstractSchedulingAPI
 
@@ -99,7 +99,6 @@ class SchedulingAPI(AbstractSchedulingAPI):
         self,
         subtask_ids: List[str],
         kill_timeout: Union[float, int] = None,
-        wait: bool = False,
     ):
         """
         Cancel pending and running subtasks.
@@ -111,18 +110,11 @@ class SchedulingAPI(AbstractSchedulingAPI):
         kill_timeout
             timeout seconds to kill actor process forcibly
         """
-        if wait:
-            await self._manager_ref.cancel_subtasks(
-                subtask_ids, kill_timeout=kill_timeout
-            )
-        else:
-            await self._manager_ref.cancel_subtasks.tell(
-                subtask_ids, kill_timeout=kill_timeout
-            )
+        await self._manager_ref.cancel_subtasks(subtask_ids, kill_timeout=kill_timeout)
 
     async def finish_subtasks(
         self,
-        subtask_results: List[SubtaskResult],
+        subtask_ids: List[str],
         bands: List[Tuple] = None,
         schedule_next: bool = True,
     ):
@@ -132,14 +124,14 @@ class SchedulingAPI(AbstractSchedulingAPI):
 
         Parameters
         ----------
-        subtask_results
+        subtask_ids
             results of subtasks, must in finished states
         bands
             bands of subtasks to mark as finished
         schedule_next
             whether to schedule succeeding subtasks
         """
-        await self._manager_ref.finish_subtasks(subtask_results, bands, schedule_next)
+        await self._manager_ref.finish_subtasks.tell(subtask_ids, bands, schedule_next)
 
 
 class MockSchedulingAPI(SchedulingAPI):

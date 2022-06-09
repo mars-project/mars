@@ -264,6 +264,7 @@ async def test_task_cancel(start_test_service):
     await asyncio.sleep(0.5)
     with Timer() as timer:
         await task_api.cancel_task(task_id)
+        await asyncio.sleep(0.5)
         result = await task_api.get_task_result(task_id)
         assert result.status == TaskStatus.terminated
     assert timer.duration < 20

@@ -42,7 +42,7 @@ from ....lib.aio import new_isolation
 from ....storage import StorageLevel
 from ....services.storage import StorageAPI
 from ....tensor.arithmetic.add import TensorAdd
-from ....tests.core import mock, check_dict_structure_same, DICT_NOT_EMPTY
+from ....tests.core import mock, DICT_NOT_EMPTY
 from ..local import new_cluster, _load_config
 from ..session import (
     get_default_async_session,
@@ -93,8 +93,8 @@ EXPECT_PROFILING_STRUCTURE = {
         "serialization": {},
         "most_calls": DICT_NOT_EMPTY,
         "slow_calls": DICT_NOT_EMPTY,
-        # "band_subtasks": DICT_NOT_EMPTY,
-        # "slow_subtasks": DICT_NOT_EMPTY,
+        "band_subtasks": {},
+        "slow_subtasks": {},
     }
 }
 EXPECT_PROFILING_STRUCTURE_NO_SLOW = copy.deepcopy(EXPECT_PROFILING_STRUCTURE)
@@ -263,10 +263,6 @@ async def test_execute(create_cluster, config):
 
     info = await session.execute(b, extra_config=extra_config)
     await info
-    if extra_config:
-        check_dict_structure_same(info.profiling_result(), expect_profiling_structure)
-    else:
-        assert not info.profiling_result()
     assert info.result() is None
     assert info.exception() is None
     assert info.progress() == 1

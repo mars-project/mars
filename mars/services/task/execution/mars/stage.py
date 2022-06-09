@@ -149,7 +149,7 @@ class TaskStageProcessor:
         if all_done or error_or_cancelled:
             # tell scheduling to finish subtasks
             await self._scheduling_api.finish_subtasks(
-                [result], bands=[band], schedule_next=not error_or_cancelled
+                [result.subtask_id], bands=[band], schedule_next=not error_or_cancelled
             )
             if self.result.status != TaskStatus.terminated:
                 self.result = TaskResult(
@@ -184,8 +184,7 @@ class TaskStageProcessor:
                     )
                     # if error or cancel, cancel all submitted subtasks
                     await self._scheduling_api.cancel_subtasks(
-                        list(self._submitted_subtask_ids),
-                        wait=False,
+                        list(self._submitted_subtask_ids)
                     )
                 self._schedule_done()
                 cost_time_secs = self.result.end_time - self.result.start_time
@@ -219,7 +218,9 @@ class TaskStageProcessor:
                     # all predecessors finished
                     to_schedule_subtasks.append(succ_subtask)
             await self._schedule_subtasks(to_schedule_subtasks)
-            await self._scheduling_api.finish_subtasks([result], bands=[band])
+            await self._scheduling_api.finish_subtasks(
+                [result.subtask_id], bands=[band]
+            )
 
     async def run(self):
         if len(self.subtask_graph) == 0:

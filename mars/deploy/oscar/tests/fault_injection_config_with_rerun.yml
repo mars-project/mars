@@ -7,3 +7,5 @@ scheduling:
 storage:
   # shared-memory38 may lose object if the process crash after put success.
   backends: [plasma]
+  plasma:
+    store_memory: 32M

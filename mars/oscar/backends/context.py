@@ -123,9 +123,14 @@ class MarsActorContext(BaseActorContext):
         message = DestroyActorMessage(
             new_message_id(), actor_ref, protocol=DEFAULT_PROTOCOL
         )
-        future = await self._call(actor_ref.address, message, wait=False)
-        result = await self._wait(future, actor_ref.address, message)
-        return self._process_result_message(result)
+        try:
+            future = await self._call(actor_ref.address, message, wait=False)
+            result = await self._wait(future, actor_ref.address, message)
+            return self._process_result_message(result)
+        except ConnectionRefusedError:
+            # when remote server already destroyed,
+            # we assume all actors destroyed already
+            pass
 
     async def kill_actor(self, actor_ref: ActorRef, force: bool = True):
         # get main_pool_address

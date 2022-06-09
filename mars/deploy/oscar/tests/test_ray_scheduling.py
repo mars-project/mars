@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import asyncio
 import logging
 import os
@@ -28,6 +29,7 @@ from ....oscar.backends.ray.utils import (
     process_placement_to_address,
     kill_and_wait,
 )
+from ....oscar.backends.router import Router
 from ....services.cluster import ClusterAPI
 from ....services.scheduling.supervisor.autoscale import AutoscalerActor
 from ....tests.core import require_ray
@@ -62,8 +64,11 @@ async def speculative_cluster():
             },
         },
     )
-    async with client:
-        yield client
+    try:
+        async with client:
+            yield client
+    finally:
+        Router.set_instance(None)
 
 
 @pytest.mark.parametrize("ray_large_cluster", [{"num_nodes": 2}], indirect=True)
