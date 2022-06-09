@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import socket
+
 from typing import Optional, Dict
 
 from ....utils import lazy_import
@@ -28,16 +31,28 @@ pc = lazy_import("prometheus_client", rename="pc")
 
 class PrometheusMetricMixin(AbstractMetric):
     def _init(self):
-        self._metric = (
-            pc.Gauge(self._name, self._description, self._tag_keys) if pc else None
+        # Prometheus metric name must match the regex `[a-zA-Z_:][a-zA-Z0-9_:]*`
+        # `.` is a common character in metrics, so here replace it with `:`
+        self._name = self._name.replace(".", ":")
+        self._tag_keys = self._tag_keys + (
+            "host",
+            "pid",
         )
+        self._tags = {"host": socket.gethostname(), "pid": os.getpid()}
+        try:
+            self._metric = (
+                pc.Gauge(self._name, self._description, self._tag_keys) if pc else None
+            )
+        except ValueError:  # pragma: no cover
+            self._metric = None
 
     def _record(self, value=1, tags: Optional[Dict[str, str]] = None):
         if self._metric:
-            if tags:
-                self._metric.labels(**tags).set(value)
+            if tags is not None:
+                tags.update(self._tags)
             else:
-                self._metric.set(value)
+                tags = self._tags
+            self._metric.labels(**tags).set(value)
 
 
 class Counter(PrometheusMetricMixin, AbstractCounter):
