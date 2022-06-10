@@ -27,11 +27,19 @@ from ..array_utils import (
 
 
 _func_name_to_special_cls = {}
+_tuple_func_to_res = {}
 
 
 def _register_special_op(cls):
     if cls._func_name is not None:
-        _func_name_to_special_cls[cls._func_name] = cls
+        if getattr(cls, "_output_index", None) is None:
+            _func_name_to_special_cls[cls._func_name] = cls
+        else:
+            if cls._func_name not in _func_name_to_special_cls:
+                _func_name_to_special_cls[cls._func_name] = [
+                    None for _ in range(cls._func_outputs)
+                ]
+            _func_name_to_special_cls[cls._func_name][cls._output_index] = cls
     return cls
 
 
@@ -41,7 +49,13 @@ class TensorSpecialOperandMixin:
 
     def __new__(cls, *args, **kwargs):
         if cls._func_name is not None:
-            return object.__new__(_func_name_to_special_cls[cls._func_name])
+            if getattr(cls, "_output_index", None) is None:
+                return object.__new__(_func_name_to_special_cls[cls._func_name])
+            else:
+                return object.__new__(
+                    _func_name_to_special_cls[cls._func_name][cls._output_index]
+                )
+
         return super().__new__(cls, *args, **kwargs)
 
     @classmethod
@@ -109,6 +123,58 @@ class TensorSpecialMultiOp(TensorSpecialOperandMixin, TensorMultiOp):
                 else:
                     ret = cls._execute_cpu(op, xp, *args, **kw)
 
+                if ret.dtype != op.dtype:
+                    ret = ret.astype(op.dtype)
+                ctx[op.outputs[0].key] = ret
+
+
+class TensorTupleElementOp(TensorSpecialUnaryOp):
+    @classmethod
+    def execute(cls, ctx, op):
+        input_keys = [c.key for c in op.inputs]
+        inputs, device_id, xp = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
+
+        with device(device_id):
+            kw = {"casting": op.casting} if op.out else {}
+
+            if op.out and op.where:
+                input_keys = input_keys[:-2]
+                inputs, kw["out"], kw["where"] = (
+                    inputs[:-2],
+                    inputs[-2].copy(),
+                    inputs[-1],
+                )
+            elif op.out:
+                input_keys = input_keys[:-1]
+                inputs, kw["out"] = inputs[:-1], inputs[-1].copy()
+            elif op.where:
+                input_keys = input_keys[:-1]
+                inputs, kw["where"] = inputs[:-1], inputs[-1]
+
+            with np.errstate(**op.err):
+                is_func_ret_cached = False
+                if (
+                    cls._func_name in _tuple_func_to_res
+                    and input_keys[0] in _tuple_func_to_res[cls._func_name]
+                ):
+                    is_func_ret_cached = True
+                    ret = _tuple_func_to_res[cls._func_name][input_keys[0]]
+                elif op.is_gpu():
+                    ret = cls._execute_gpu(op, xp, inputs[0], **kw)
+                else:
+                    ret = cls._execute_cpu(op, xp, inputs[0], **kw)
+
+                # during a single execution, if we use multiple components of the same
+                # scipy calculation, we can store the overall result after the first computation.
+                if not is_func_ret_cached:
+                    if cls._func_name not in _tuple_func_to_res:
+                        _tuple_func_to_res[cls._func_name] = {}
+                    if input_keys[0] not in _tuple_func_to_res[cls._func_name]:
+                        _tuple_func_to_res[cls._func_name][input_keys[0]] = ret
+
+                ret = ret[cls._output_index]
                 if ret.dtype != op.dtype:
                     ret = ret.astype(op.dtype)
                 ctx[op.outputs[0].key] = ret
