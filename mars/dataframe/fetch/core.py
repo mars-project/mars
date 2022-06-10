@@ -48,7 +48,7 @@ class DataFrameFetch(Fetch, DataFrameFetchMixin):
         return super()._new_tileables(inputs, kws=kws, **kw)
 
 
-class _DataFrameShuffle(DataFrameFetchMixin):
+class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
     # required fields
     _shape = TupleField(
         "shape",
@@ -61,21 +61,11 @@ class _DataFrameShuffle(DataFrameFetchMixin):
         super().__init__(_output_types=output_types, **kw)
 
 
-class DataFrameFetchShuffle(_DataFrameShuffle, FetchShuffle):
-    pass
-
-
 register_fetch_class(OutputType.dataframe, DataFrameFetch, DataFrameFetchShuffle)
 register_fetch_class(
-    OutputType.dataframe_groupby,
-    DataFrameFetch,
-    DataFrameFetchShuffle,
+    OutputType.dataframe_groupby, DataFrameFetch, DataFrameFetchShuffle
 )
 register_fetch_class(OutputType.series, DataFrameFetch, DataFrameFetchShuffle)
-register_fetch_class(
-    OutputType.series_groupby,
-    DataFrameFetch,
-    DataFrameFetchShuffle,
-)
+register_fetch_class(OutputType.series_groupby, DataFrameFetch, DataFrameFetchShuffle)
 register_fetch_class(OutputType.index, DataFrameFetch, DataFrameFetchShuffle)
 register_fetch_class(OutputType.categorical, DataFrameFetch, DataFrameFetchShuffle)

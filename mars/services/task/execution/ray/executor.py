@@ -127,13 +127,11 @@ def execute_subtask(
     *inputs,
 ):
     """The function used for execute subtask in ray task.
-    If subtask is shuffle mapper, no chunk meta will be returner, otherwise return chunk mata."""
+    If subtask is shuffle mapper, no chunk meta will be returned, otherwise return chunk mata."""
     ensure_coverage()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     subtask_digraph = subtask_chunk_graph.to_dot()
-    logger.info(
-        "Begin to execute subtask %s with graph %s.", subtask_id, subtask_digraph
-    )
+    logger.info("Begin to execute subtask: %s", subtask_id)
     # optimize chunk graph.
     subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)
     start_chunks = list(subtask_chunk_graph.iter_indep())

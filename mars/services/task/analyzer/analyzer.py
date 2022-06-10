@@ -167,7 +167,7 @@ class GraphAnalyzer:
         chunk_to_subtask: Dict[ChunkType, Subtask],
         chunk_to_bands: Dict[ChunkType, BandType],
         chunk_to_fetch_chunk: Dict[ChunkType, ChunkType],
-    ) -> Tuple[Subtask, List[Subtask], List[ChunkType]]:
+    ) -> Tuple[Subtask, List[Subtask]]:
         # gen subtask and its input subtasks
         chunks_set = set(chunks)
         result_chunks = []
@@ -271,17 +271,6 @@ class GraphAnalyzer:
             for c in chunk_graph.iter_indep(reverse=True)
             if c not in result_chunks_set
         )
-        if (
-            self._has_shuffle
-            and self._shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX
-        ):
-            shuffle_chunks = [
-                c for c in result_chunks if isinstance(c, MapReduceOperand)
-            ]
-            # ensure no shuffle mapper chunks fused into same subtask and subtask only produce mapper outputs
-            # which can be merged dynamically by the reducers.
-            assert len(shuffle_chunks) <= 1, shuffle_chunks
-
         expect_bands = (
             [self._to_band(expect_worker)]
             if bands_specified
@@ -325,8 +314,20 @@ class GraphAnalyzer:
             update_meta_chunks=update_meta_chunks,
             extra_config=self._extra_config,
         )
-        proxy_chunks = [c for c in chunks if isinstance(c.op, ShuffleProxy)]
-        return subtask, inp_subtasks, proxy_chunks
+
+        if (
+            self._has_shuffle
+            and self._shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX
+        ):
+            shuffle_chunks = [
+                c for c in result_chunks if isinstance(c, MapReduceOperand)
+            ]
+            # ensure no shuffle mapper chunks fused into same subtask and subtask only produce mapper outputs
+            # which can be merged dynamically by the reducers.
+            assert len(shuffle_chunks) <= 1, shuffle_chunks
+            proxy_chunks = [c for c in chunks if isinstance(c.op, ShuffleProxy)]
+            assert len(proxy_chunks) <= 1, proxy_chunks
+        return subtask, inp_subtasks
 
     def _gen_logic_key(self, chunks: List[ChunkType]):
         return tokenize(
@@ -432,7 +433,6 @@ class GraphAnalyzer:
                 color_to_chunks[color].append(chunk)
 
         # gen subtask graph
-        proxy_chunks, proxy_subtasks = [], []
         subtask_graph = SubtaskGraph()
         chunk_to_fetch_chunk = dict()
         chunk_to_subtask = self._chunk_to_subtasks
@@ -449,16 +449,12 @@ class GraphAnalyzer:
             if all(isinstance(c.op, Fetch) for c in same_color_chunks):
                 # all fetch ops, no need to gen subtask
                 continue
-            subtask, inp_subtasks, subtask_proxy_chunks = self._gen_subtask_info(
+            subtask, inp_subtasks = self._gen_subtask_info(
                 same_color_chunks,
                 chunk_to_subtask,
                 chunk_to_bands,
                 chunk_to_fetch_chunk,
             )
-            if subtask_proxy_chunks:
-                assert len(subtask_proxy_chunks) == 1, subtask_proxy_chunks
-                proxy_chunks.append(subtask_proxy_chunks[0])
-                proxy_subtasks.append(subtask)
             subtask_graph.add_node(subtask)
             logic_key_to_subtasks[subtask.logic_key].append(subtask)
             for inp_subtask in inp_subtasks:

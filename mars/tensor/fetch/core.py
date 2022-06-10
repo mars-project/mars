@@ -42,7 +42,7 @@ class TensorFetch(TensorFetchMixin, Fetch):
         return super()._new_tileables(inputs, kws=kws, **kw)
 
 
-class _TensorShuffle(TensorFetchMixin):
+class TensorFetchShuffle(TensorFetchMixin, FetchShuffle):
     _dtype = DataTypeField("dtype")
 
     def __init__(self, **kw):
@@ -53,10 +53,6 @@ class _TensorShuffle(TensorFetchMixin):
     @property
     def dtype(self):
         return getattr(self, "_dtype", None)
-
-
-class TensorFetchShuffle(_TensorShuffle, FetchShuffle):
-    pass
 
 
 register_fetch_class(OutputType.tensor, TensorFetch, TensorFetchShuffle)

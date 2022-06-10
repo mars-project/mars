@@ -20,7 +20,11 @@ from typing import Dict
 from ....serialization.ray import register_ray_serializers, unregister_ray_serializers
 from ....utils import lazy_import
 from ...driver import BaseActorDriver
-from .utils import process_placement_to_address, addresses_to_placement_group_info, kill_and_wait
+from .utils import (
+    process_placement_to_address,
+    addresses_to_placement_group_info,
+    kill_and_wait,
+)
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)

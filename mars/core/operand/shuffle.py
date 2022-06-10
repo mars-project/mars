@@ -29,14 +29,6 @@ class ShuffleProxy(VirtualOperand):
     _op_type_ = opcodes.SHUFFLE_PROXY
 
 
-class ShuffleType(enum.Enum):
-    # pull-based shuffle will wait all mappers finish before scheduling reducers.
-    PULL = 0
-    # push-based shuffle will push mapper data to reducers ASAP, so the shuffle execution
-    # will get better performance by IO, pipeline and locality improvement.
-    PUSH = 1
-
-
 class MapReduceOperand(Operand):
     """
     An operand for shuffle execution which partitions data by the value in each record’s partition key, and
@@ -75,7 +67,7 @@ class MapReduceOperand(Operand):
                         [(chunk.key, self.reducer_index) for chunk in inp.inputs or ()]
                     )
                 elif isinstance(inp.op, FetchShuffle):
-                    # fetch shuffle y index doesn't store data keys.
+                    # fetch shuffle by index doesn't store data keys, so it won't get into this function.
                     assert inp.op.shuffle_fetch_type == ShuffleFetchType.FETCH_BY_KEY
                     deps.extend([(k, self.reducer_index) for k in inp.op.source_keys])
                 else:
