@@ -270,7 +270,10 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameSetitem"):
-        target = ctx[op.target.key].copy()
+        target = ctx[op.target.key]
+        # only deep copy when updating
+        deep = bool(set(op.indexes) & set(target.columns))
+        target = ctx[op.target.key].copy(deep=deep)
         value = ctx[op.value.key] if not np.isscalar(op.value) else op.value
         try:
 
