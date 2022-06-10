@@ -14,7 +14,6 @@
 
 from ...core import register_fetch_class, OutputType
 from ...core.operand import Fetch, FetchShuffle, FetchMixin
-from ...core.operand.fetch import PushShuffle
 from ...serialization.serializables import DataTypeField
 from ..operands import TensorOperandMixin
 
@@ -60,13 +59,5 @@ class TensorFetchShuffle(_TensorShuffle, FetchShuffle):
     pass
 
 
-class TensorPushShuffle(_TensorShuffle, PushShuffle):
-    pass
-
-
-register_fetch_class(
-    OutputType.tensor, TensorFetch, TensorFetchShuffle, TensorPushShuffle
-)
-register_fetch_class(
-    OutputType.scalar, TensorFetch, TensorFetchShuffle, TensorPushShuffle
-)
+register_fetch_class(OutputType.tensor, TensorFetch, TensorFetchShuffle)
+register_fetch_class(OutputType.scalar, TensorFetch, TensorFetchShuffle)

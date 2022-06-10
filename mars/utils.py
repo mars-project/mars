@@ -545,37 +545,36 @@ def estimate_pandas_size(
 
 
 def build_fetch_shuffle(
-    chunk: ChunkType, shuffle_type=None, n_reducer=None
+    chunk: ChunkType, n_reducers=None, shuffle_fetch_type=None
 ) -> ChunkType:
     from .core.operand import ShuffleProxy
-    from mars.core.operand.shuffle import ShuffleType
+    from .core.operand import ShuffleFetchType
 
     chunk_op = chunk.op
     assert isinstance(chunk_op, ShuffleProxy)
     params = chunk.params.copy()
-    shuffle_type = shuffle_type or ShuffleType.PULL
-    if shuffle_type == ShuffleType.PUSH:
-        n_mapper = len(chunk.inputs)
-        assert n_reducer > 0, n_reducer
-        op = chunk_op.get_fetch_op_cls(chunk, shuffle_type)(
-            n_mapper=n_mapper,
-            n_reducer=n_reducer,
-            gpu=chunk.op.gpu,
-        )
-    else:
-        # for shuffle nodes, we build FetchShuffle chunks
-        # to replace ShuffleProxy
-        source_keys, source_idxes, source_mappers = [], [], []
-        for pinp in chunk.inputs:
-            source_keys.append(pinp.key)
-            source_idxes.append(pinp.index)
-            source_mappers.append(get_chunk_mapper_id(pinp))
-        op = chunk_op.get_fetch_op_cls(chunk)(
-            source_keys=source_keys,
-            source_idxes=source_idxes,
-            source_mappers=source_mappers,
-            gpu=chunk.op.gpu,
-        )
+    n_mappers = len(chunk.inputs)
+    assert n_reducers > 0, n_reducers
+    # for shuffle nodes, we build FetchShuffle chunks
+    # to replace ShuffleProxy
+    source_keys, source_idxes, source_mappers = [], [], []
+    for pinp in chunk.inputs:
+        source_keys.append(pinp.key)
+        source_idxes.append(pinp.index)
+        source_mappers.append(get_chunk_mapper_id(pinp))
+    shuffle_fetch_type = shuffle_fetch_type or ShuffleFetchType.FETCH_BY_KEY
+    if shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX:
+        # skip data keys info for `FETCH_BY_INDEX`
+        source_keys, source_idxes, source_mappers = None, None, None
+    op = chunk_op.get_fetch_op_cls(chunk)(
+        source_keys=source_keys,
+        source_idxes=source_idxes,
+        source_mappers=source_mappers,
+        n_mappers=n_mappers,
+        n_reducers=n_reducers,
+        shuffle_fetch_type=shuffle_fetch_type,
+        gpu=chunk.op.gpu,
+    )
     return op.new_chunk(
         None,
         is_broadcaster=chunk.is_broadcaster,

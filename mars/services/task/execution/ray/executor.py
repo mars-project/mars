@@ -31,7 +31,7 @@ from .....core.operand import (
     execute,
     OperandStage,
 )
-from .....core.operand.fetch import PushShuffle, FetchShuffle
+from .....core.operand.fetch import FetchShuffle
 from .....lib.aio import alru_cache
 from .....lib.ordered_set import OrderedSet
 from .....resource import Resource
@@ -142,10 +142,10 @@ def execute_subtask(
         isinstance(maybe_mapper_chunk.op, MapReduceOperand)
         and maybe_mapper_chunk.op.stage == OperandStage.map
     )
-    if isinstance(start_chunks[0].op, PushShuffle):
+    if isinstance(start_chunks[0].op, FetchShuffle):
         assert len(start_chunks) == 1, start_chunks
         # the subtask is a reducer subtask
-        n_mapper = len(inputs)
+        n_mappers = len(inputs)
         # some reducer may have multiple output chunks, see `PSRSshuffle._execute_reduce` and
         # https://user-images.githubusercontent.com/12445254/168569524-f09e42a7-653a-4102-bdf0-cc1631b3168d.png
         reducer_chunks = subtask_chunk_graph.successors(start_chunks[0])
@@ -158,7 +158,7 @@ def execute_subtask(
         reducer_operand = reducer_chunks[0].op
         reducer_index = reducer_operand.reducer_index
         # mock input keys, keep this in sync with `MapReducerOperand#_iter_mapper_key_idx_pairs`
-        input_keys = [(i, reducer_index) for i in range(n_mapper)]
+        input_keys = [(i, reducer_index) for i in range(n_mappers)]
     else:
         input_keys = [c.key for c in start_chunks if isinstance(c.op, Fetch)]
     context = RayExecutionWorkerContext(
@@ -239,8 +239,8 @@ def _get_subtask_out_info(
             assert (
                 len(subtask_chunk_graph.result_chunks) == 1
             ), subtask_chunk_graph.result_chunks
-            n_reducer = shuffle_manager.get_n_reducers(subtask)
-            return set(), n_reducer, True
+            n_reducers = shuffle_manager.get_n_reducers(subtask)
+            return set(), n_reducers, True
         else:
             output_keys[chunk.key] = 1
     return output_keys.keys(), len(output_keys), False
@@ -294,11 +294,6 @@ class RayTaskExecutor(TaskExecutor):
         **kwargs,
     ) -> "RayTaskExecutor":
         lifecycle_api, meta_api = await cls._get_apis(session_id, address)
-        task_state_actor = (
-            _ray_export_once(RayTaskState)
-            .options(name=RayTaskState.gen_name(task.task_id))
-            .remote()
-        )
         task_context = {}
         task_chunks_meta = {}
 
@@ -332,6 +327,9 @@ class RayTaskExecutor(TaskExecutor):
             address,
         )
         return executor
+
+    def get_execution_config(self):
+        return self._config
 
     # noinspection DuplicatedCode
     def destroy(self):
@@ -489,9 +487,7 @@ class RayTaskExecutor(TaskExecutor):
                 output_count = out_count
             else:
                 output_count = out_count + bool(subtask_output_meta_keys)
-            subtask_max_retries = (
-                self._config.subtask_max_retries if subtask.retryable else 0
-            )
+            subtask_max_retries = subtask_max_retries if subtask.retryable else 0
             output_object_refs = self._ray_executor.options(
                 num_returns=output_count, max_retries=subtask_max_retries
             ).remote(
@@ -505,7 +501,6 @@ class RayTaskExecutor(TaskExecutor):
                 continue
             elif output_count == 1:
                 output_object_refs = [output_object_refs]
-            self._cur_stage_output_object_refs.extend(output_object_refs)
             self._cur_stage_first_output_object_ref_to_subtask[
                 output_object_refs[0]
             ] = subtask
@@ -664,12 +659,10 @@ class RayTaskExecutor(TaskExecutor):
                     key_to_get_meta[index] = self._meta_api.get_chunk_meta.delay(
                         chunk_key, fields=["object_refs"]
                     )
-            elif isinstance(start_chunk.op, PushShuffle):
+            elif isinstance(start_chunk.op, FetchShuffle):
                 assert len(start_chunks) == 1, start_chunks
                 # shuffle meta won't be recorded in meta service, query it from shuffle manager.
                 return shuffle_manager.get_reducer_input_refs(subtask)
-            else:
-                assert not isinstance(start_chunk.op, FetchShuffle), start_chunk
 
         if key_to_get_meta:
             logger.info(

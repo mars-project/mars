@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import enum
 
 from ... import opcodes
 from ...serialization.serializables import (
@@ -18,6 +19,7 @@ from ...serialization.serializables import (
     StringField,
     ListField,
     Int32Field,
+    AnyField,
 )
 from .base import Operand
 from .core import TileableOperandMixin
@@ -52,15 +54,11 @@ class FetchShuffle(Operand):
     source_keys = ListField("source_keys", FieldTypes.string)
     source_idxes = ListField("source_idxes", FieldTypes.tuple(FieldTypes.uint64))
     source_mappers = ListField("source_mappers", FieldTypes.uint16)
+    n_mappers = Int32Field("n_mappers")
+    n_reducers = Int32Field("n_reducers")
+    shuffle_fetch_type = AnyField("shuffle_fetch_type")
 
 
-class PushShuffle(Operand):
-    _op_type_ = opcodes.PUSH_SHUFFLE
-    n_mapper = Int32Field("n_mapper")
-    n_reducer = Int32Field("n_reducer")
-
-    @classmethod
-    def execute(cls, ctx, op):
-        """
-        Push operand needs nothing to do.
-        """
+class ShuffleFetchType(enum.Enum):
+    FETCH_BY_KEY = 0
+    FETCH_BY_INDEX = 1

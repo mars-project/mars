@@ -37,9 +37,11 @@ class ShuffleManager:
         for shuffle_index, proxy_subtask in enumerate(self._proxy_subtasks):
             mapper_subtasks = subtask_graph.predecessors(proxy_subtask)
             reducer_subtasks = subtask_graph.successors(proxy_subtask)
-            n_mapper = len(mapper_subtasks)
-            n_reducer = _get_reducer_operand(reducer_subtasks[0].chunk_graph).n_reducer
-            mapper_output_arr = np.empty((n_mapper, n_reducer), dtype=object)
+            n_mappers = len(mapper_subtasks)
+            n_reducers = _get_reducer_operand(
+                reducer_subtasks[0].chunk_graph
+            ).n_reducers
+            mapper_output_arr = np.empty((n_mappers, n_reducers), dtype=object)
             self.mapper_output_refs.append(mapper_output_arr)
             self.mapper_indices.update(
                 {
@@ -50,7 +52,7 @@ class ShuffleManager:
             # reducers subtask should be sorted by reducer_index and MapReduceOperand.map should insert shuffle block
             # in reducers order, otherwise shuffle blocks will be sent to wrong reducers.
             sorted_filled_reducer_subtasks = self._sort_fill_reducers(
-                reducer_subtasks, n_reducer
+                reducer_subtasks, n_reducers
             )
             self.reducer_indices.update(
                 {
@@ -62,10 +64,10 @@ class ShuffleManager:
             )
 
     @staticmethod
-    def _sort_fill_reducers(reducer_subtasks: Iterable[Subtask], n_reducer: int):
-        # For operands such as `PSRSAlign`, sometimes `reducer_subtasks` might be less than `n_reducer`.
+    def _sort_fill_reducers(reducer_subtasks: Iterable[Subtask], n_reducers: int):
+        # For operands such as `PSRSAlign`, sometimes `reducer_subtasks` might be less than `n_reducers`.
         # fill missing reducers with `None`.
-        filled_reducers = {i: None for i in range(n_reducer)}
+        filled_reducers = {i: None for i in range(n_reducers)}
         for subtask in reducer_subtasks:
             try:
                 reducer_ordinal = _get_reducer_operand(

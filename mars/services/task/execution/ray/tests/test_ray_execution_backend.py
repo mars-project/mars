@@ -19,6 +19,7 @@ import numpy as np
 
 from collections import Counter
 
+from ..shuffle import ShuffleManager
 from ...... import tensor as mt
 from ......config import Config
 from ......core import TileContext, ChunkGraph
@@ -40,7 +41,12 @@ from ..context import (
     RayRemoteObjectManager,
     _RayRemoteObjectContext,
 )
-from ..executor import execute_subtask, RayTaskExecutor, RayTaskState
+from ..executor import (
+    execute_subtask,
+    RayTaskExecutor,
+    RayTaskState,
+    _get_subtask_out_info,
+)
 from ..fetcher import RayFetcher
 
 ray = lazy_import("ray")
@@ -107,16 +113,23 @@ class MockRayTaskExecutor(RayTaskExecutor):
                 self._config.get_subtask_monitor_interval(),
             )
         )
-
+        shuffle_manager = ShuffleManager(subtask_graph)
         for subtask in subtask_graph.topological_iter():
             subtask_chunk_graph = subtask.chunk_graph
             task_context = self._task_context
-            key_to_input = await self._load_subtask_inputs(
-                stage_id, subtask, subtask_chunk_graph, task_context
+            input_object_refs = await self._load_subtask_inputs(
+                stage_id, subtask, task_context, shuffle_manager
             )
-            output_keys = self._get_subtask_output_keys(subtask_chunk_graph)
+            output_keys, out_count, is_shuffle_mapper = _get_subtask_out_info(
+                subtask_chunk_graph, subtask, shuffle_manager
+            )
+
             output_meta_keys = result_meta_keys & output_keys
-            output_count = len(output_keys) + bool(output_meta_keys)
+            if is_shuffle_mapper:
+                # shuffle meta won't be recorded in meta service.
+                output_count = out_count
+            else:
+                output_count = out_count + bool(output_meta_keys)
             output_object_refs = self._ray_executor.options(
                 num_returns=output_count
             ).remote(
@@ -124,8 +137,7 @@ class MockRayTaskExecutor(RayTaskExecutor):
                 subtask.subtask_id,
                 serialize(subtask_chunk_graph),
                 output_meta_keys,
-                list(key_to_input.keys()),
-                *key_to_input.values(),
+                *input_object_refs,
             )
             if output_count == 0:
                 continue

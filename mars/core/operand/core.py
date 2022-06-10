@@ -437,20 +437,13 @@ class TileableOperandMixin:
     ) -> TileableType:
         raise NotImplementedError
 
-    def get_fetch_op_cls(self, obj: ChunkType, shuffle_type=None):
-        from .shuffle import ShuffleProxy, ShuffleType
+    def get_fetch_op_cls(self, obj: ChunkType):
+        from .shuffle import ShuffleProxy
 
         output_types = get_output_types(obj, unknown_as=OutputType.object)
-        fetch_cls, fetch_shuffle_cls, push_shuffle_cls = get_fetch_class(
-            output_types[0]
-        )
+        fetch_cls, fetch_shuffle_cls = get_fetch_class(output_types[0])
         if isinstance(self, ShuffleProxy):
-            shuffle_type = shuffle_type or ShuffleType.PULL
-            cls = (
-                fetch_shuffle_cls
-                if shuffle_type == ShuffleType.PULL
-                else push_shuffle_cls
-            )
+            cls = fetch_shuffle_cls
         else:
             cls = fetch_cls
 

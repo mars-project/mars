@@ -144,7 +144,7 @@ def test_shuffle(setup):
     chunk_graph = df.groupby(["a"]).apply(lambda x: x).build_graph(tile=True)
     [proxy_chunk] = [c for c in chunk_graph if isinstance(c.op, ShuffleProxy)]
     successors = chunk_graph.successors(proxy_chunk)
-    n_reducer = successors[0].op.n_reducers
-    assert n_reducer == len(successors), (n_reducer, len(successors))
+    n_reducers = successors[0].op.n_reducers
+    assert n_reducers == len(successors), (n_reducers, len(successors))
     assert len(set(c.op.n_reducers for c in successors)) == 1
-    assert sorted([c.op.reducer_ordinal for c in successors]) == list(range(n_reducer))
+    assert sorted([c.op.reducer_ordinal for c in successors]) == list(range(n_reducers))

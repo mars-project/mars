@@ -14,7 +14,6 @@
 
 from ...core import OutputType, register_fetch_class
 from ...core.operand import Fetch, FetchShuffle, FetchMixin
-from ...core.operand.fetch import PushShuffle
 from ...serialization.serializables import FieldTypes, TupleField
 from ...utils import on_serialize_shape, on_deserialize_shape
 from ..operands import DataFrameOperandMixin
@@ -66,31 +65,17 @@ class DataFrameFetchShuffle(_DataFrameShuffle, FetchShuffle):
     pass
 
 
-class DataFramePushShuffle(_DataFrameShuffle, PushShuffle):
-    pass
-
-
-register_fetch_class(
-    OutputType.dataframe, DataFrameFetch, DataFrameFetchShuffle, DataFramePushShuffle
-)
+register_fetch_class(OutputType.dataframe, DataFrameFetch, DataFrameFetchShuffle)
 register_fetch_class(
     OutputType.dataframe_groupby,
     DataFrameFetch,
     DataFrameFetchShuffle,
-    DataFramePushShuffle,
 )
-register_fetch_class(
-    OutputType.series, DataFrameFetch, DataFrameFetchShuffle, DataFramePushShuffle
-)
+register_fetch_class(OutputType.series, DataFrameFetch, DataFrameFetchShuffle)
 register_fetch_class(
     OutputType.series_groupby,
     DataFrameFetch,
     DataFrameFetchShuffle,
-    DataFramePushShuffle,
 )
-register_fetch_class(
-    OutputType.index, DataFrameFetch, DataFrameFetchShuffle, DataFramePushShuffle
-)
-register_fetch_class(
-    OutputType.categorical, DataFrameFetch, DataFrameFetchShuffle, DataFramePushShuffle
-)
+register_fetch_class(OutputType.index, DataFrameFetch, DataFrameFetchShuffle)
+register_fetch_class(OutputType.categorical, DataFrameFetch, DataFrameFetchShuffle)

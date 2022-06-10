@@ -18,8 +18,8 @@ from ..... import dataframe as md
 from ..... import tensor as mt
 from .....config import Config
 from .....core import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-from .....core.operand.fetch import PushShuffle
-from .....core.operand.shuffle import ShuffleType, ShuffleProxy
+from .....core.operand.fetch import FetchShuffle
+from .....core.operand.shuffle import ShuffleFetchType, ShuffleProxy
 from .....resource import Resource
 from ...core import Task
 from ..analyzer import GraphAnalyzer
@@ -46,7 +46,7 @@ def test_shuffle_graph(tileable, fuse):
         task,
         Config(),
         dict(),
-        shuffle_type=ShuffleType.PUSH,
+        shuffle_fetch_type=ShuffleFetchType.FETCH_BY_INDEX,
     )
     subtask_graph = analyzer.gen_subtask_graph()
     proxy_subtasks = []
@@ -68,7 +68,9 @@ def test_shuffle_graph(tileable, fuse):
         for reducer_subtask in reducer_subtasks:
             start_chunks = list(reducer_subtask.chunk_graph.iter_indep())
             assert len(start_chunks) == 1
-            assert isinstance(start_chunks[0].op, PushShuffle)
+            assert (
+                start_chunks[0].op.shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX
+            )
         reducer_chunks = chunk_graph.successors(proxy_chunk)
         # single reducer may have multiple output chunks, see `PSRSShuffle._execute_reduce
         if len(reducer_subtasks) != len(reducer_chunks):

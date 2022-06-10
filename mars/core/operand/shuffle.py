@@ -14,7 +14,7 @@
 
 import enum
 
-from .fetch import PushShuffle
+from . import ShuffleFetchType, FetchShuffle
 from ... import opcodes
 from ...serialization.serializables import (
     Int32Field,
@@ -75,10 +75,10 @@ class MapReduceOperand(Operand):
                         [(chunk.key, self.reducer_index) for chunk in inp.inputs or ()]
                     )
                 elif isinstance(inp.op, FetchShuffle):
+                    # fetch shuffle y index doesn't store data keys.
+                    assert inp.op.shuffle_fetch_type == ShuffleFetchType.FETCH_BY_KEY
                     deps.extend([(k, self.reducer_index) for k in inp.op.source_keys])
                 else:
-                    # push-based shuffle doesn't store data keys.
-                    assert not isinstance(inp.op, PushShuffle)
                     deps.append(inp.key)
             return deps
         return super().get_dependent_data_keys()
@@ -86,13 +86,6 @@ class MapReduceOperand(Operand):
     def _iter_mapper_key_idx_pairs(self, input_id=0, mapper_id=None):
         # key is mapper chunk key, index is mapper chunk index.
         input_chunk = self.inputs[input_id]
-        if isinstance(input_chunk.op, PushShuffle):
-            # For push shuffle, all shuffle block of same reducers will be pushed to same reducers,
-            # identified by their index, before reducer executing.
-            # Since data are directly pushed to reducers, chunk key and index are not needed any more.
-            # so we mock index here.
-            # keep this in sync with ray executor `execute_subtask`.
-            return ((i, i) for i in range(input_chunk.op.n_mapper))
         if isinstance(input_chunk.op, ShuffleProxy):
             keys = [inp.key for inp in input_chunk.inputs]
             idxes = [inp.index for inp in input_chunk.inputs]
@@ -102,6 +95,13 @@ class MapReduceOperand(Operand):
                 else None
             )
         else:
+            assert isinstance(input_chunk.op, FetchShuffle), input_chunk.op
+            if input_chunk.op.shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX:
+                # For fetch shuffle by index, all shuffle block of same reducers are
+                # identified by their index. chunk key and index are not needed any more.
+                # so we mock index here.
+                # keep this in sync with ray executor `execute_subtask`.
+                return ((i, i) for i in range(input_chunk.op.n_mappers))
             keys = input_chunk.op.source_keys
             idxes = input_chunk.op.source_idxes
             mappers = input_chunk.op.source_mappers
@@ -140,9 +140,9 @@ class MapReduceOperand(Operand):
             yield data
 
     def execute(self, ctx, op):
-        """The mapper stage must ensure all mapper blocks are inserted into ctx in the order of reducers and no blocks
-        for some reducers are missing. This is needed by push-based shuffle, which shuffle block are identified by the
-        index instead of data keys.
+        """The mapper stage must ensure all mapper blocks are inserted into ctx and no blocks
+        for some reducers are missing. This is needed by shuffle fetch by index,
+        which shuffle block are identified by the  index instead of data keys.
         For operands implementation simplicity, we can sort the `ctx` by key which are (chunk key, reducer index) tuple
         and relax the insert order requirements.
         """

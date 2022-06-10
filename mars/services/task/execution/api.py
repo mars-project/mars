@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Type, Union
 
 from ....core import ChunkGraph, Chunk, TileContext
-from ....core.operand.shuffle import ShuffleType
+from ....core.operand.shuffle import ShuffleFetchType
 from ....resource import Resource
 from ....typing import BandType
 from ....utils import merge_dict
@@ -76,8 +76,8 @@ class ExecutionConfig:
         """Get the band resources for deployment."""
 
     @abstractmethod
-    def get_shuffle_type(self) -> ShuffleType:
-        """Get shuffle type for shuffle execution"""
+    def get_shuffle_fetch_type(self) -> ShuffleFetchType:
+        """Get shuffle fetch type for shuffle execution"""
 
     @classmethod
     def from_config(cls, config: Dict, backend: str = None) -> "ExecutionConfig":

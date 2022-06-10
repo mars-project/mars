@@ -25,7 +25,7 @@ from ....core.operand import (
     LogicKeyGenerator,
     MapReduceOperand,
     OperandStage,
-    ShuffleType,
+    ShuffleFetchType,
     ShuffleProxy,
 )
 from ....resource import Resource
@@ -68,7 +68,7 @@ class GraphAnalyzer:
         chunk_to_subtasks: Dict[ChunkType, Subtask],
         graph_assigner_cls: Type[AbstractGraphAssigner] = None,
         stage_id: str = None,
-        shuffle_type: ShuffleType = ShuffleType.PULL,
+        shuffle_fetch_type: ShuffleFetchType = ShuffleFetchType.FETCH_BY_KEY,
     ):
         self._chunk_graph = chunk_graph
         self._final_result_chunks_set = set(self._chunk_graph.result_chunks)
@@ -76,7 +76,7 @@ class GraphAnalyzer:
         self._task = task
         self._stage_id = stage_id
         self._config = config
-        self._shuffle_type = shuffle_type
+        self._shuffle_fetch_type = shuffle_fetch_type
         self._has_shuffle = any(
             isinstance(c.op, MapReduceOperand) for c in self._chunk_graph
         )
@@ -138,11 +138,11 @@ class GraphAnalyzer:
                 chunk_to_fetch_chunk[inp_chunk] = inp_chunk
                 inp_fetch_chunks.append(inp_chunk)
             elif isinstance(inp_chunk.op, ShuffleProxy):
-                n_reducer = len(self._chunk_graph.successors(inp_chunk))
+                n_reducers = len(self._chunk_graph.successors(inp_chunk))
                 fetch_chunk = build_fetch_shuffle(
                     inp_chunk,
-                    shuffle_type=self._shuffle_type,
-                    n_reducer=n_reducer,
+                    n_reducers=n_reducers,
+                    shuffle_fetch_type=self._shuffle_fetch_type,
                 ).data
                 chunk_to_fetch_chunk[inp_chunk] = fetch_chunk
                 inp_fetch_chunks.append(fetch_chunk)
@@ -271,7 +271,10 @@ class GraphAnalyzer:
             for c in chunk_graph.iter_indep(reverse=True)
             if c not in result_chunks_set
         )
-        if self._has_shuffle and self._shuffle_type == ShuffleType.PUSH:
+        if (
+            self._has_shuffle
+            and self._shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX
+        ):
             shuffle_chunks = [
                 c for c in result_chunks if isinstance(c, MapReduceOperand)
             ]
@@ -393,7 +396,10 @@ class GraphAnalyzer:
             for start_op in start_ops:
                 for start_chunk in op_key_to_chunks[start_op.key]:
                     init_chunk_to_bands[start_chunk] = chunk_to_bands[start_chunk]
-            if self._has_shuffle and self._shuffle_type == ShuffleType.PUSH:
+            if (
+                self._has_shuffle
+                and self._shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX
+            ):
                 # ensure no shuffle mapper chunks fused into same subtask.
                 initial_same_color_num = 1
             else:
