@@ -20,7 +20,7 @@ from typing import Dict
 from ....serialization.ray import register_ray_serializers, unregister_ray_serializers
 from ....utils import lazy_import
 from ...driver import BaseActorDriver
-from .utils import process_placement_to_address, addresses_to_placement_group_info
+from .utils import process_placement_to_address, addresses_to_placement_group_info, kill_and_wait
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ class RayActorDriver(BaseActorDriver):
                         # https://github.com/ray-project/ray/issues/7815
                         ray_actor = ray.get_actor(address)
                         ray.get(ray_actor.cleanup.remote())
-                    ray.kill(ray.get_actor(address))
+                    kill_and_wait(ray.get_actor(address), no_restart=True)
                 except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                     pass
         ray.util.remove_placement_group(pg)
