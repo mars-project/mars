@@ -140,18 +140,24 @@ class TensorTupleElementOp(TensorSpecialUnaryOp):
             kw = {"casting": op.casting} if op.out else {}
 
             if op.out and op.where:
-                input_keys = input_keys[:-2]
-                inputs, kw["out"], kw["where"] = (
+                input_keys, inputs, kw["out"], kw["where"] = (
+                    input_keys[:-2],
                     inputs[:-2],
                     inputs[-2].copy(),
                     inputs[-1],
                 )
             elif op.out:
-                input_keys = input_keys[:-1]
-                inputs, kw["out"] = inputs[:-1], inputs[-1].copy()
+                input_keys, inputs, kw["out"] = (
+                    input_keys[:-1],
+                    inputs[:-1],
+                    inputs[-1].copy(),
+                )
             elif op.where:
-                input_keys = input_keys[:-1]
-                inputs, kw["where"] = inputs[:-1], inputs[-1]
+                input_keys, inputs, kw["where"] = (
+                    input_keys[:-1],
+                    inputs[:-1],
+                    inputs[-1],
+                )
 
             with np.errstate(**op.err):
                 is_func_ret_cached = False
