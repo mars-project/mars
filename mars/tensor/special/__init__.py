@@ -151,3 +151,7 @@ try:
     )
 except ImportError:  # pragma: no cover
     pass
+
+_names_to_del = [_name for _name, _val in globals().items() if _val is None]
+[globals().pop(_name) for _name in _names_to_del]
+del _names_to_del

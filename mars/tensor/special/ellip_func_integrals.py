@@ -154,4 +154,4 @@ try:
 except AttributeError:
     # These functions are not implemented before scipy v1.8 so
     # spsecial.func may cause AttributeError
-    pass
+    elliprc = elliprd = elliprf = elliprg = elliprj = None

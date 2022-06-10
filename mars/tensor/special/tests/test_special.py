@@ -28,11 +28,6 @@ from scipy.special import (
     ellipkinc as scipy_ellipkinc,
     ellipe as scipy_ellipe,
     ellipeinc as scipy_ellipeinc,
-    elliprc as scipy_elliprc,
-    elliprd as scipy_elliprd,
-    elliprf as scipy_elliprf,
-    elliprg as scipy_elliprg,
-    elliprj as scipy_elliprj,
     betainc as scipy_betainc,
 )
 
@@ -70,16 +65,6 @@ from ..ellip_func_integrals import (
     TensorEllipe,
     ellipeinc,
     TensorEllipeinc,
-    elliprc,
-    TensorElliprc,
-    elliprd,
-    TensorElliprd,
-    elliprf,
-    TensorElliprf,
-    elliprg,
-    TensorElliprg,
-    elliprj,
-    TensorElliprj,
 )
 
 
@@ -432,6 +417,9 @@ def test_ellipeinc():
     reason="function not implemented in scipy.",
 )
 def test_elliprc():
+    from scipy.special import elliprc as scipy_elliprc
+    from ..ellip_func_integrals import elliprc, TensorElliprc
+
     raw1 = np.random.rand(4, 3, 2)
     raw2 = np.random.rand(4, 3, 2)
     a = tensor(raw1, chunk_size=3)
@@ -457,6 +445,9 @@ def test_elliprc():
     reason="function not implemented in scipy.",
 )
 def test_elliprd():
+    from scipy.special import elliprd as scipy_elliprd
+    from ..ellip_func_integrals import elliprd, TensorElliprd
+
     raw1 = np.random.rand(4, 3, 2)
     raw2 = np.random.rand(4, 3, 2)
     raw3 = np.random.rand(4, 3, 2)
@@ -484,6 +475,9 @@ def test_elliprd():
     reason="function not implemented in scipy.",
 )
 def test_elliprf():
+    from scipy.special import elliprf as scipy_elliprf
+    from ..ellip_func_integrals import elliprf, TensorElliprf
+
     raw1 = np.random.rand(4, 3, 2)
     raw2 = np.random.rand(4, 3, 2)
     raw3 = np.random.rand(4, 3, 2)
@@ -511,6 +505,9 @@ def test_elliprf():
     reason="function not implemented in scipy.",
 )
 def test_elliprg():
+    from scipy.special import elliprg as scipy_elliprg
+    from ..ellip_func_integrals import elliprg, TensorElliprg
+
     raw1 = np.random.rand(4, 3, 2)
     raw2 = np.random.rand(4, 3, 2)
     raw3 = np.random.rand(4, 3, 2)
@@ -538,6 +535,9 @@ def test_elliprg():
     reason="function not implemented in scipy.",
 )
 def test_elliprj():
+    from scipy.special import elliprj as scipy_elliprj
+    from ..ellip_func_integrals import elliprj, TensorElliprj
+
     raw1 = np.random.rand(4, 3, 2)
     raw2 = np.random.rand(4, 3, 2)
     raw3 = np.random.rand(4, 3, 2)
