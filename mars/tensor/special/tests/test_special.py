@@ -28,11 +28,12 @@ from scipy.special import (
     ellipkinc as scipy_ellipkinc,
     ellipe as scipy_ellipe,
     ellipeinc as scipy_ellipeinc,
+    fresnel as scipy_fresnel,
     betainc as scipy_betainc,
 )
 
 from ....lib.version import parse as parse_version
-from ....core import tile
+from ....core import tile, ExecutableTuple
 from ... import tensor
 from ..err_fresnel import (
     erf,
@@ -47,6 +48,9 @@ from ..err_fresnel import (
     TensorErfinv,
     erfcinv,
     TensorErfcinv,
+    fresnel,
+    TensorFresnelS,
+    TensorFresnelC,
 )
 from ..gamma_funcs import (
     gammaln,
@@ -274,6 +278,32 @@ def test_erfcinv():
         assert isinstance(c.op, TensorErfcinv)
         assert c.index == c.inputs[0].index
         assert c.shape == c.inputs[0].shape
+
+
+def test_fresnel():
+    raw = np.random.rand(10, 8, 5)
+    t = tensor(raw, chunk_size=3)
+
+    r = fresnel(t)
+    expect = scipy_fresnel(raw)
+
+    assert isinstance(r, ExecutableTuple)
+    assert len(r) == 2
+
+    for i in range(len(r)):
+        assert r[i].shape == expect[i].shape
+        assert r[i].dtype == expect[i].dtype
+
+        t, r_i = tile(t, r[i])
+
+        assert r_i.nsplits == t.nsplits
+        for c in r_i.chunks:
+            if i == 0:
+                assert isinstance(c.op, TensorFresnelS)
+            else:
+                assert isinstance(c.op, TensorFresnelC)
+            assert c.index == c.inputs[0].index
+            assert c.shape == c.inputs[0].shape
 
 
 def test_beta_inc():
