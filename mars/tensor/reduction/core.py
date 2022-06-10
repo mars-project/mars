@@ -586,7 +586,11 @@ class TensorCumReductionMixin(TensorReductionMixin):
                 to_cum_chunks.append(sliced_chunk)
             to_cum_chunks.append(chunk)
 
-            bin_op = bin_op_type(args=to_cum_chunks, dtype=chunk.dtype)
+            # GH#3132: some chunks of to_cum_chunks may be empty,
+            # so we tell tree_add&tree_multiply to ignore them
+            bin_op = bin_op_type(
+                args=to_cum_chunks, dtype=chunk.dtype, ignore_empty_input=True
+            )
             output_chunk = bin_op.new_chunk(
                 to_cum_chunks,
                 shape=chunk.shape,

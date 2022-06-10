@@ -18,6 +18,7 @@ import numpy as np
 from functools import reduce
 
 from ... import opcodes as OperandDef
+from ...serialization.serializables import BoolField
 from ..array_utils import device, as_same_device
 from ..datasource import scalar
 from ..utils import infer_dtype
@@ -88,6 +89,8 @@ class TensorTreeMultiply(TensorMultiOp):
     _op_type_ = OperandDef.TREE_MULTIPLY
     _func_name = "multiply"
 
+    ignore_empty_input = BoolField("ignore_empty_input", default=False)
+
     def __init__(self, sparse=False, **kw):
         super().__init__(sparse=sparse, **kw)
 
@@ -106,6 +109,8 @@ class TensorTreeMultiply(TensorMultiOp):
         inputs, device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
         )
+        if op.ignore_empty_input:
+            inputs = [inp for inp in inputs if not hasattr(inp, "size") or inp.size > 0]
 
         with device(device_id):
             ctx[op.outputs[0].key] = reduce(xp.multiply, inputs)
