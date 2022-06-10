@@ -189,38 +189,6 @@ def _sync_web_session_test(web_address):
 
 @require_ray
 @pytest.mark.parametrize(
-    "test_option",
-    [
-        [True, 0, ["ray://test_cluster/1/0", "ray://test_cluster/2/0"]],
-        [False, 0, ["ray://test_cluster/0/1", "ray://test_cluster/1/0"]],
-        [True, 2, ["ray://test_cluster/1/0", "ray://test_cluster/2/0"]],
-        [False, 5, ["ray://test_cluster/0/6", "ray://test_cluster/1/0"]],
-    ],
-)
-@pytest.mark.asyncio
-async def test_optional_supervisor_node(ray_start_regular_shared, test_option):
-    import logging
-
-    logging.basicConfig(level=logging.INFO)
-    supervisor_standalone, supervisor_sub_pool_num, worker_addresses = test_option
-    config = _load_config()
-    config["cluster"]["ray"]["supervisor"]["standalone"] = supervisor_standalone
-    config["cluster"]["ray"]["supervisor"]["sub_pool_num"] = supervisor_sub_pool_num
-    client = await new_cluster(
-        "test_cluster",
-        supervisor_mem=1 * 1024**3,
-        worker_num=2,
-        worker_cpu=2,
-        worker_mem=1 * 1024**3,
-        config=config,
-    )
-    async with client:
-        assert client.address == "ray://test_cluster/0/0"
-        assert client._cluster._worker_addresses == worker_addresses
-
-
-@require_ray
-@pytest.mark.parametrize(
     "config",
     [
         [
