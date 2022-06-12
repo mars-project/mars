@@ -159,7 +159,6 @@ def erfcinv(x, out=None, where=None, **kwargs):
     return op(x, out=out, where=where)
 
 
-# TODO: try to reduce implementation code
 @implement_scipy(spspecial.fresnel)
 @infer_dtype(spspecial.fresnel, multi_outputs=True)
 def fresnel(x, out=None, where=None, **kwargs):
