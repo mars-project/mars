@@ -295,9 +295,9 @@ def test_fresnel():
         assert r[i].dtype == expect[i].dtype
 
         if i == 0:
-            assert isinstance(r[i], TensorFresnelS)
+            assert isinstance(r[i].op, TensorFresnelS)
         if i == 1:
-            assert isinstance(r[i], TensorFresnelC)
+            assert isinstance(r[i].op, TensorFresnelC)
 
 
 def test_beta_inc():
