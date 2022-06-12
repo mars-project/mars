@@ -603,7 +603,9 @@ def reshape(a, newshape, order="C"):
 
     tensor_order = get_order(order, a.order, available_options="CFA")
 
-    if a.shape == newshape and tensor_order == a.order:
+    if a.shape == newshape and (
+        a.ndim <= 1 or (a.ndim > 1 and tensor_order == a.order)
+    ):
         # does not need to reshape
         return a
     return _reshape(

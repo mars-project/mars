@@ -497,6 +497,16 @@ def test_cum_reduction(setup):
         np.cumsum(np.array(list("abcdefghi"), dtype=object)),
     )
 
+    # test empty chunks
+    raw = np.random.rand(100)
+    arr = tensor(raw, chunk_size=((0, 100),))
+    res = arr.cumsum().execute().fetch()
+    expected = raw.cumsum()
+    np.testing.assert_allclose(res, expected)
+    res = arr.cumprod().execute().fetch()
+    expected = raw.cumprod()
+    np.testing.assert_allclose(res, expected)
+
 
 def test_nan_cum_reduction(setup):
     raw = np.random.randint(5, size=(8, 8, 8)).astype(float)
