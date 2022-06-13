@@ -742,7 +742,7 @@ def is_index_value_identical(left: TileableType, right: TileableType) -> bool:
         is_identical = True
     else:
         target_chunk_index_values = [
-            c.index_value for c in left.chunks if c.index[1] == 0
+            c.index_value for c in left.chunks if len(c.index) <= 1 or c.index[1] == 0
         ]
         value_chunk_index_values = [v.index_value for v in right.chunks]
         is_identical = len(target_chunk_index_values) == len(
