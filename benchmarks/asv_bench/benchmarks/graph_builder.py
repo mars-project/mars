@@ -30,3 +30,10 @@ class ChunkGraphBuilderSuite:
     def time_filter(self):
         df = self.df[self.df["a"] < 0.8]
         build_graph([df], tile=True)
+
+    def time_setitem(self):
+        df2 = self.df.copy()
+        df2["k"] = df2["c"]
+        df2["l"] = df2["a"] * (1 - df2["d"])
+        df2["m"] = df2["e"] * (1 + df2["d"]) * (1 - df2["h"])
+        build_graph([df2], tile=True)

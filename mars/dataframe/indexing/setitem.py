@@ -24,7 +24,7 @@ from ...utils import pd_release_version
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, DataFrame
 from ..initializer import DataFrame as asframe, Series as asseries
 from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import parse_index
+from ..utils import parse_index, is_index_value_identical
 
 # in pandas 1.0.x, __setitem__ with a list with missing items are not allowed
 _allow_set_missing_list = pd_release_version[:2] >= (1, 1)
@@ -161,16 +161,7 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
             rechunk_arg = {}
 
             # check if all chunk's index_value are identical
-            target_chunk_index_values = [
-                c.index_value for c in target.chunks if c.index[1] == 0
-            ]
-            value_chunk_index_values = [v.index_value for v in value.chunks]
-            is_identical = len(target_chunk_index_values) == len(
-                value_chunk_index_values
-            ) and all(
-                c.key == v.key
-                for c, v in zip(target_chunk_index_values, value_chunk_index_values)
-            )
+            is_identical = is_index_value_identical(target, value)
             if not is_identical:
                 # do rechunk
                 if any(np.isnan(s) for s in target.nsplits[0]) or any(
@@ -202,8 +193,8 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
 
         out_chunks = []
         nsplits = [list(ns) for ns in target.nsplits]
-
         nsplits[1][-1] += len(append_cols)
+        nsplits = tuple(tuple(ns) for ns in nsplits)
 
         column_chunk_shape = target.chunk_shape[1]
         for c in target.chunks:
@@ -239,26 +230,27 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
 
                     chunk_inputs = [c, value_chunk]
 
-                dtypes, shape, columns_value = c.dtypes, c.shape, c.columns_value
-
+                shape = c.shape
                 if append_cols and c.index[-1] == column_chunk_shape - 1:
                     # some columns appended at the last column of chunks
                     shape = (shape[0], shape[1] + len(append_cols))
-                    dtypes = pd.concat([dtypes, out.dtypes.iloc[-len(append_cols) :]])
-                    columns_value = parse_index(dtypes.index, store_data=True)
 
                 result_chunk = chunk_op.new_chunk(
                     chunk_inputs,
                     shape=shape,
-                    dtypes=dtypes,
-                    index_value=c.index_value,
-                    columns_value=columns_value,
                     index=c.index,
+                )
+                result_chunk._set_tileable_meta(
+                    tileable_key=out.key,
+                    nsplits=nsplits,
+                    index_value=out.index_value,
+                    columns_value=out.columns_value,
+                    dtypes=out.dtypes,
                 )
             out_chunks.append(result_chunk)
 
         params = out.params
-        params["nsplits"] = tuple(tuple(ns) for ns in nsplits)
+        params["nsplits"] = nsplits
         params["chunks"] = out_chunks
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=[params])
@@ -272,11 +264,15 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op: "DataFrameSetitem"):
         target = ctx[op.target.key]
         # only deep copy when updating
-        deep = bool(set(op.indexes) & set(target.columns))
+        indexes = (
+            (op.indexes,)
+            if not isinstance(op.indexes, (tuple, list, set))
+            else op.indexes
+        )
+        deep = bool(set(indexes) & set(target.columns))
         target = ctx[op.target.key].copy(deep=deep)
         value = ctx[op.value.key] if not np.isscalar(op.value) else op.value
         try:
-
             target[op.indexes] = value
         except KeyError:
             if _allow_set_missing_list:  # pragma: no cover

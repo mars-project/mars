@@ -732,6 +732,28 @@ def build_concatenated_rows_frame(df):
     )
 
 
+def is_index_value_identical(left: TileableType, right: TileableType) -> bool:
+    if (
+        left.index_value.key == right.index_value.key
+        and not np.isnan(sum(left.nsplits[0]))
+        and not np.isnan(sum(right.nsplits[0]))
+        and left.nsplits[0] == right.nsplits[0]
+    ):
+        is_identical = True
+    else:
+        target_chunk_index_values = [
+            c.index_value for c in left.chunks if c.index[1] == 0
+        ]
+        value_chunk_index_values = [v.index_value for v in right.chunks]
+        is_identical = len(target_chunk_index_values) == len(
+            value_chunk_index_values
+        ) and all(
+            c.key == v.key
+            for c, v in zip(target_chunk_index_values, value_chunk_index_values)
+        )
+    return is_identical
+
+
 def _filter_range_index(pd_range_index, min_val, min_val_close, max_val, max_val_close):
     if is_pd_range_empty(pd_range_index):
         return pd_range_index
