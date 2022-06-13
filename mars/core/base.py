@@ -55,16 +55,21 @@ class Base(Serializable):
             return getattr(cls, member)
         except AttributeError:
             slots = sorted(
-                f.attr_name
-                for k, f in self._FIELDS.items()
-                if k not in self._no_copy_attrs_
+                f.name for k, f in self._FIELDS.items() if k not in self._no_copy_attrs_
             )
             setattr(cls, member, slots)
             return slots
 
     @property
     def _values_(self):
-        return [self._FIELD_VALUES.get(k) for k in self._copy_tags_]
+        values = []
+        fields = self._FIELDS
+        for k in self._copy_tags_:
+            try:
+                values.append(fields[k].get(self))
+            except AttributeError:
+                values.append(None)
+        return values
 
     def __mars_tokenize__(self):
         try:
@@ -91,19 +96,18 @@ class Base(Serializable):
         return self.copy_to(type(self)(_key=self.key))
 
     def copy_to(self, target: "Base"):
-        new_values = dict()
-        values = self._FIELD_VALUES
-        for k in self._FIELDS:
-            if k in self._no_copy_attrs_:
+        target_fields = target._FIELDS
+        no_copy_attrs = self._no_copy_attrs_
+        for k, field in self._FIELDS.items():
+            if k in no_copy_attrs:
                 continue
-            if k in values:
-                new_values[k] = values[k]
-            else:
-                try:
-                    new_values[k] = getattr(self, k)
-                except AttributeError:
-                    continue
-        target._FIELD_VALUES.update(new_values)
+            try:
+                # Slightly faster than getattr.
+                value = field.__get__(self, k)
+                target_fields[k].set(target, value)
+            except AttributeError:
+                continue
+
         return target
 
     def copy_from(self, obj):
@@ -119,12 +123,14 @@ class Base(Serializable):
 
     def to_kv(self, exclude_fields: Tuple[str], accept_value_types: Tuple[Type]):
         fields = self._FIELDS
-        field_values = self._FIELD_VALUES
-        return {
-            fields[attr_name].tag: value
-            for attr_name, value in field_values.items()
-            if attr_name not in exclude_fields and isinstance(value, accept_value_types)
-        }
+        kv = {}
+        no_value = object()
+        for name, field in fields.items():
+            if name not in exclude_fields:
+                value = getattr(self, name, no_value)
+                if value is not no_value and isinstance(value, accept_value_types):
+                    kv[field.tag] = value
+        return kv
 
 
 def buffered_base(func):

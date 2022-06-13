@@ -334,8 +334,8 @@ class RayTaskExecutor(TaskExecutor):
         self._config = None
         self._task = None
         self._tile_context = None
-        self._task_context = None
-        self._task_chunks_meta = None
+        self._task_context = {}
+        self._task_chunks_meta = {}
         self._ray_executor = None
 
         # api

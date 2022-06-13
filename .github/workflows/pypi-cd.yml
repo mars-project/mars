@@ -66,6 +66,7 @@ jobs:
       - name: Release to pypi
         shell: bash
         env:
+          PYPI_USR: ${{ secrets.PYPI_USERNAME }}
           PYPI_PWD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           if [[ "$GITHUB_REPOSITORY" == "mars-project/mars" ]]; then
@@ -78,7 +79,7 @@ jobs:
           echo "    pypi"               >> ~/.pypirc
           echo "[pypi]"                 >> ~/.pypirc
           echo "repository=$PYPI_REPO"  >> ~/.pypirc
-          echo "username=pyodps"        >> ~/.pypirc
+          echo "username=$PYPI_USR"     >> ~/.pypirc
           echo "password=$PYPI_PWD"     >> ~/.pypirc
           python -m pip install twine
           python -m twine upload -r pypi --skip-existing wheelhouse/*
