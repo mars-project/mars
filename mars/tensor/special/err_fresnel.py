@@ -14,10 +14,13 @@
 
 import scipy.special as spspecial
 
-from ...core import ExecutableTuple
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
-from .core import TensorSpecialUnaryOp, TensorTupleElementOp, _register_special_op
+from .core import (
+    TensorSpecialUnaryOp,
+    TensorTupleOp,
+    _register_special_op,
+)
 
 
 @_register_special_op
@@ -57,19 +60,9 @@ class TensorErfcinv(TensorSpecialUnaryOp):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode="unary")
-class TensorFresnelS(TensorTupleElementOp):
+class TensorFresnel(TensorTupleOp):
     _func_name = "fresnel"
     _func_outputs = 2
-    _output_index = 0
-
-
-@_register_special_op
-@arithmetic_operand(sparse_mode="unary")
-class TensorFresnelC(TensorTupleElementOp):
-    _func_name = "fresnel"
-    _func_outputs = 2
-    _output_index = 1
 
 
 @implement_scipy(spspecial.erf)
@@ -161,10 +154,6 @@ def erfcinv(x, out=None, where=None, **kwargs):
 
 @implement_scipy(spspecial.fresnel)
 @infer_dtype(spspecial.fresnel, multi_outputs=True)
-def fresnel(x, out=None, where=None, **kwargs):
-    op_s = TensorFresnelS(**kwargs)
-    op_c = TensorFresnelC(**kwargs)
-
-    return ExecutableTuple(
-        [op_s(x, out=out, where=where), op_c(x, out=out, where=where)]
-    )
+def fresnel(x, out=None, **kwargs):
+    op = TensorFresnel(**kwargs)
+    return op(x, out=out)

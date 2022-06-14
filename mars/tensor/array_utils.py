@@ -16,6 +16,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 
 import numpy as np
+from scipy import special as spspecial
 
 from ..lib import sparse
 from ..lib.sparse.core import issparse, get_dense_module
