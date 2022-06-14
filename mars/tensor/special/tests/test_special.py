@@ -292,7 +292,7 @@ def test_fresnel():
     for i in range(len(r)):
         assert r[i].shape == expect[i].shape
         assert r[i].dtype == expect[i].dtype
-        assert isinstance(r[i], TensorFresnel)
+        assert isinstance(r[i].op, TensorFresnel)
 
     non_tuple_out = tensor(raw, chunk_size=3)
     with pytest.raises(TypeError):
