@@ -310,11 +310,11 @@ def test_fresnel():
     for i in range(len(r_out)):
         assert r_out[i].shape == expect[i].shape
         assert r_out[i].dtype == expect[i].dtype
-        assert isinstance(r_out[i], TensorFresnel)
+        assert isinstance(r_out[i].op, TensorFresnel)
 
         assert out[i].shape == expect[i].shape
         assert out[i].dtype == expect[i].dtype
-        assert isinstance(out[i], TensorFresnel)
+        assert isinstance(out[i].op, TensorFresnel)
 
 
 def test_beta_inc():
