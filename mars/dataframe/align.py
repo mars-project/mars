@@ -837,18 +837,26 @@ def align_dataframe_dataframe(left, right, axis=None):
 
     splits = _MinMaxSplitInfo(index_splits, columns_splits)
     out_left_chunk_shape = (
-        len(index_chunk_shape or list(itertools.chain(*index_splits._left_split))),
-        len(column_chunk_shape or list(itertools.chain(*columns_splits._left_split))),
+        len(index_chunk_shape or list(itertools.chain(*index_splits._left_split)))
+        if index_splits is not None
+        else left.chunk_shape[0],
+        len(column_chunk_shape or list(itertools.chain(*columns_splits._left_split)))
+        if columns_splits is not None
+        else left.chunk_shape[1],
     )
     if axis is None:
         out_right_chunk_shape = out_left_chunk_shape
     else:
         out_right_chunk_shape = (
-            len(index_chunk_shape or list(itertools.chain(*index_splits._right_split))),
+            len(index_chunk_shape or list(itertools.chain(*index_splits._right_split)))
+            if index_splits is not None
+            else right.chunk_shape[0],
             len(
                 column_chunk_shape
                 or list(itertools.chain(*columns_splits._right_split))
-            ),
+            )
+            if columns_splits is not None
+            else right.chunk_shape[1],
         )
     left_chunks = _gen_dataframe_chunks(splits, out_left_chunk_shape, 0, left)
     right_chunks = _gen_dataframe_chunks(splits, out_right_chunk_shape, 1, right)
@@ -867,7 +875,8 @@ def align_dataframe_dataframe(left, right, axis=None):
 
     nsplits = [index_nsplits, columns_nsplits]
 
-    return nsplits, out_left_chunk_shape, left_chunks, right_chunks
+    out_chunk_shapes = (out_left_chunk_shape, out_right_chunk_shape)
+    return nsplits, out_chunk_shapes, left_chunks, right_chunks
 
 
 def align_dataframe_series(left, right, axis="columns"):

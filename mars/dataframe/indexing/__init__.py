@@ -31,7 +31,9 @@ def _install():
     from .where import mask, where
     from .set_axis import df_set_axis, series_set_axis
     from .sample import sample
-    from .add_prefix import df_add_prefix, series_add_prefix
+    from .add_prefix_suffix import df_add_prefix, series_add_prefix
+    from .add_prefix_suffix import df_add_suffix, series_add_suffix
+    from .align import align
 
     for cls in DATAFRAME_TYPE + SERIES_TYPE:
         setattr(cls, "iloc", cache_readonly(iloc))
@@ -56,6 +58,8 @@ def _install():
         setattr(cls, "rename", df_rename)
         setattr(cls, "set_axis", df_set_axis)
         setattr(cls, "add_prefix", df_add_prefix)
+        setattr(cls, "add_suffix", df_add_suffix)
+        setattr(cls, "align", align)
 
     for cls in SERIES_TYPE:
         setattr(cls, "__getitem__", series_getitem)
@@ -63,6 +67,8 @@ def _install():
         setattr(cls, "rename", series_rename)
         setattr(cls, "set_axis", series_set_axis)
         setattr(cls, "add_prefix", series_add_prefix)
+        setattr(cls, "add_suffix", series_add_suffix)
+        setattr(cls, "align", align)
 
     for cls in INDEX_TYPE:
         setattr(cls, "__getitem__", index_getitem)

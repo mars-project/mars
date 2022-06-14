@@ -2151,22 +2151,3 @@ def test_bloom_filter(setup):
     pd.testing.assert_frame_equal(
         filtered_r[filtered_r["col1"] <= 10], raw1[raw1["col1"] <= 10]
     )
-
-
-def test_align_execution(setup):
-    rs = np.random.RandomState(0)
-    raw_df1 = pd.DataFrame(rs.rand(10, 10), columns=list("ABCDEFGHIJ"))
-    # raw_df2 = pd.DataFrame(rs.rand(10, 10), columns=list("ABCDEFGHIJ"))
-    raw_s1 = pd.Series(rs.rand(10), index=[2, 3, 6, 7, 8, 9, 10, 13, 15, 17])
-
-    # test dataframe vs series
-    df1 = from_pandas_df(raw_df1, chunk_size=5)
-    s1 = from_pandas_series(raw_s1, chunk_size=4)
-
-    r1, r2 = mars.fetch(
-        mars.execute(*df1.align(s1, axis=0), extra_config={"check_nsplits": False}),
-        extra_config={"check_shape": False},
-    )
-    exp1, exp2 = raw_df1.align(raw_s1, axis=0)
-    pd.testing.assert_frame_equal(r1, exp1)
-    pd.testing.assert_series_equal(r2, exp2)

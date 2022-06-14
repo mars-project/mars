@@ -15,6 +15,7 @@
 import os
 import tempfile
 
+import mars
 import numpy as np
 import pandas as pd
 import pytest
@@ -1603,7 +1604,7 @@ def test_sample_execution(setup):
     pd.testing.assert_series_equal(r1.execute().fetch(), r2.execute().fetch())
 
 
-def test_add_prefix(setup):
+def test_add_prefix_suffix(setup):
     rs = np.random.RandomState(0)
     raw = pd.DataFrame(rs.rand(10, 4), columns=["A", "B", "C", "D"])
     df = md.DataFrame(raw, chunk_size=3)
@@ -1611,8 +1612,121 @@ def test_add_prefix(setup):
     r = df.add_prefix("col_")
     pd.testing.assert_frame_equal(r.execute().fetch(), raw.add_prefix("col_"))
 
+    r = df.add_suffix("_col")
+    pd.testing.assert_frame_equal(r.execute().fetch(), raw.add_suffix("_col"))
+
     raw = pd.Series(rs.rand(10), name="series")
     series = md.Series(raw, chunk_size=3)
 
     r = series.add_prefix("item_")
     pd.testing.assert_series_equal(r.execute().fetch(), raw.add_prefix("item_"))
+
+    r = series.add_suffix("_item")
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.add_suffix("_item"))
+
+
+def test_align_execution(setup):
+    rs = np.random.RandomState(0)
+    raw_df1 = pd.DataFrame(
+        rs.rand(10, 10), columns=list("ABCDEFGHIJ"), index=pd.RangeIndex(10)
+    )
+    raw_df2 = pd.DataFrame(
+        rs.rand(10, 10),
+        columns=list("ACDFGIJKLM"),
+        index=[2, 3, 6, 7, 8, 9, 10, 13, 15, 17],
+    )
+    raw_s1 = pd.Series(rs.rand(10), index=[2, 3, 6, 7, 8, 9, 10, 13, 15, 17])
+    raw_s2 = pd.Series(rs.rand(10), index=pd.RangeIndex(10))
+    raw_s3 = raw_s4 = raw_df2.iloc[0, :]
+    raw_s5 = raw_df1.iloc[0, :]
+
+    df1 = md.DataFrame(raw_df1, chunk_size=5)
+    df2 = md.DataFrame(raw_df2, chunk_size=4)
+    s1 = md.Series(raw_s1, chunk_size=4)
+    s2 = md.Series(raw_s2, chunk_size=4)
+    s3 = md.Series(raw_s3, chunk_size=4)
+    s4 = df2.iloc[0, :]
+    s5 = df1.iloc[0, :]
+
+    # test dataframe vs dataframe
+    r1, r2 = mars.fetch(
+        mars.execute(*df1.align(df1), extra_config={"check_nsplits": False})
+    )
+    pd.testing.assert_frame_equal(r1, raw_df1)
+    pd.testing.assert_frame_equal(r2, raw_df1)
+
+    r1, r2 = mars.fetch(
+        mars.execute(*df1.align(df2), extra_config={"check_nsplits": False})
+    )
+    exp1, exp2 = raw_df1.align(raw_df2)
+    pd.testing.assert_frame_equal(r1, exp1)
+    pd.testing.assert_frame_equal(r2, exp2)
+
+    r1, r2 = mars.fetch(
+        mars.execute(*df1.align(df2, axis=0), extra_config={"check_nsplits": False})
+    )
+    exp1, exp2 = raw_df1.align(raw_df2, axis=0)
+    pd.testing.assert_frame_equal(r1.sort_index(axis=1), exp1)
+    pd.testing.assert_frame_equal(r2.sort_index(axis=1), exp2)
+
+    r2, r1 = mars.fetch(
+        mars.execute(*df2.align(df1, axis=0), extra_config={"check_nsplits": False})
+    )
+    exp2, exp1 = raw_df2.align(raw_df1, axis=0)
+    pd.testing.assert_frame_equal(r1.sort_index(axis=1), exp1)
+    pd.testing.assert_frame_equal(r2.sort_index(axis=1), exp2)
+
+    r1, r2 = mars.fetch(
+        mars.execute(*df1.align(df2, axis=1), extra_config={"check_nsplits": False})
+    )
+    exp1, exp2 = raw_df1.align(raw_df2, axis=1)
+    pd.testing.assert_frame_equal(r1.sort_index(), exp1)
+    pd.testing.assert_frame_equal(r2.sort_index(), exp2)
+
+    # test dataframe vs series
+    with pytest.raises(ValueError):
+        # must specify align axis
+        df1.align(s1)
+
+    r1, r2 = mars.fetch(
+        mars.execute(*df1.align(s1, axis=0), extra_config={"check_nsplits": False})
+    )
+    exp1, exp2 = raw_df1.align(raw_s1, axis=0)
+    pd.testing.assert_frame_equal(r1.sort_index(), exp1)
+    pd.testing.assert_series_equal(r2.sort_index(), exp2)
+
+    r1, r2 = mars.fetch(
+        mars.execute(*df1.align(s3, axis=1), extra_config={"check_nsplits": False})
+    )
+    exp1, exp2 = raw_df1.align(raw_s3, axis=1)
+    pd.testing.assert_frame_equal(r1.sort_index(axis=1), exp1)
+    pd.testing.assert_series_equal(r2.sort_index(), exp2)
+
+    r1, r2 = mars.fetch(
+        mars.execute(*df1.align(s4, axis=1), extra_config={"check_nsplits": False})
+    )
+    exp1, exp2 = raw_df1.align(raw_s4, axis=1)
+    pd.testing.assert_frame_equal(r1.sort_index(axis=1), exp1)
+    pd.testing.assert_series_equal(r2.sort_index(), exp2)
+
+    r1, r2 = mars.fetch(
+        mars.execute(*s1.align(df1, axis=0), extra_config={"check_nsplits": False})
+    )
+    exp1, exp2 = raw_s1.align(raw_df1, axis=0)
+    pd.testing.assert_series_equal(r1.sort_index(), exp1)
+    pd.testing.assert_frame_equal(r2.sort_index(), exp2)
+
+    # test series vs series
+    r1, r2 = mars.fetch(
+        mars.execute(*s1.align(s2), extra_config={"check_nsplits": False})
+    )
+    exp1, exp2 = raw_s1.align(raw_s2)
+    pd.testing.assert_series_equal(r1.sort_index(), exp1)
+    pd.testing.assert_series_equal(r2.sort_index(), exp2)
+
+    r1, r2 = mars.fetch(
+        mars.execute(*s4.align(s5), extra_config={"check_nsplits": False})
+    )
+    exp1, exp2 = raw_s4.align(raw_s5)
+    pd.testing.assert_series_equal(r1.sort_index(), exp1)
+    pd.testing.assert_series_equal(r2.sort_index(), exp2)

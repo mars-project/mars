@@ -19,6 +19,7 @@ from ... import opcodes
 from ...core import ENTITY_TYPE, recursive_tile
 from ...serialization.serializables import BoolField, AnyField, KeyField, Int32Field
 from ...tensor.utils import filter_inputs
+from ...utils import has_unknown_shape
 from ..core import SERIES_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_df, validate_axis, parse_index
@@ -165,6 +166,13 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_pearson_align(cls, left, right, axis):
+        if left.ndim == right.ndim:
+            left, right = yield from recursive_tile(left.align(right))
+        else:
+            left, right = yield from recursive_tile(left.align(right, axis=axis))
+        if has_unknown_shape(left, right):
+            yield left.chunks + right.chunks + [left, right]
+
         nna_left = left.notna().astype(np.float_)
         nna_right = right.notna().astype(np.float_)
 
@@ -217,7 +225,7 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
         right = op.other
 
         _check_supported_methods(op.method)
-        result = cls._tile_pearson_align(left, right, axis=op.axis)
+        result = yield from cls._tile_pearson_align(left, right, axis=op.axis)
         if op.drop:
             result = result.dropna(axis=op.axis)
         return [(yield from recursive_tile(result))]
