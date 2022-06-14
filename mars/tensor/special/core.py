@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import scipy.special as spspecial
 
 from ...core import ExecutableTuple
 from ... import opcodes
@@ -19,7 +20,6 @@ from ..datasource import tensor as astensor
 from ..arithmetic.core import TensorUnaryOp, TensorBinOp, TensorMultiOp
 from ..array_utils import (
     np,
-    spspecial,
     cp,
     issparse,
     sparse,
