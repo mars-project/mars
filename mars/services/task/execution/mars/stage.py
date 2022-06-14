@@ -33,6 +33,16 @@ from ..api import ExecutionChunkResult
 
 logger = logging.getLogger(__name__)
 
+_address_to_meta_api = defaultdict(dict)
+
+
+async def _get_meta_api(session_id: str, address: str):
+    meta_api = _address_to_meta_api[session_id].get(address)
+    if meta_api is None:
+        meta_api = await WorkerMetaAPI.create(session_id, address)
+        _address_to_meta_api[session_id][address] = meta_api
+    return meta_api
+
 
 class TaskStageProcessor:
     def __init__(
@@ -275,7 +285,7 @@ class TaskStageProcessor:
         worker_meta_api_to_chunk_delays = defaultdict(dict)
         for c in update_meta_chunks:
             address = chunk_to_result[c].meta["bands"][0][0]
-            meta_api = await WorkerMetaAPI.create(session_id, address)
+            meta_api = await _get_meta_api(session_id, address)
             call = meta_api.get_chunk_meta.delay(
                 c.key, fields=list(get_chunk_params(c).keys())
             )
@@ -284,7 +294,7 @@ class TaskStageProcessor:
             chunks = [c.data for c in tileable.chunks]
             for c, params_fields in zip(chunks, self._get_params_fields(tileable)):
                 address = chunk_to_result[c].meta["bands"][0][0]
-                meta_api = await WorkerMetaAPI.create(session_id, address)
+                meta_api = await _get_meta_api(session_id, address)
                 call = meta_api.get_chunk_meta.delay(c.key, fields=params_fields)
                 worker_meta_api_to_chunk_delays[meta_api][c] = call
         coros = []
