@@ -17,7 +17,9 @@
 import numpy as np
 
 from ....utils import ignore_warning
-from ...datasource import tensor
+from ...datasource import tensor, arange
+from ...reduction import sum as mt_sum
+from ...arithmetic import abs as mt_abs
 
 
 def test_base_execution(setup):
@@ -32,6 +34,23 @@ def test_base_execution(setup):
     res3 = arr3.execute().fetch()
     res3_cmp = arr4.execute().fetch()
     np.testing.assert_array_equal(res3, res3_cmp)
+
+    a = arange(10)
+    b = arange(10) * 0.1
+    raw_a = np.arange(10)
+    raw_b = np.arange(10) * 0.1
+    c = a * b - 4.1 * a > 2.5 * b
+    res4_cmp = raw_a * raw_b - 4.1 * raw_a > 2.5 * raw_b
+    res4 = c.execute().fetch()
+    np.testing.assert_array_equal(res4, res4_cmp)
+
+    c = mt_sum(1) * (-1)
+    r = c.execute().fetch()
+    assert r == -1
+
+    c = -mt_abs(mt_sum(mt_abs(-1)))
+    r = c.execute().fetch()
+    assert r == -1
 
 
 def _gen_pairs(seq):
@@ -85,9 +104,21 @@ def test_bin_execution(setup):
         lshift,
         rshift,
         ldexp,
+        logical_and,
+        logical_or,
     )
 
-    _sp_bin_ufunc = [mod, fmod, bitand, bitor, bitxor, lshift, rshift]
+    _sp_bin_ufunc = [
+        mod,
+        fmod,
+        bitand,
+        bitor,
+        bitxor,
+        lshift,
+        rshift,
+        logical_and,
+        logical_or,
+    ]
     _new_bin_ufunc = list(BIN_UFUNC - set(_sp_bin_ufunc) - {ldexp})
 
     tested = set()

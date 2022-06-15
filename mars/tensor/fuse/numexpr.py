@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import threading
+from collections import defaultdict
+from itertools import count
 
 try:
     import numexpr as ne
@@ -26,7 +26,6 @@ except ImportError:
     NUMEXPR_INSTALLED = False
 import numpy as np
 
-from ...serialization.serializables import DataTypeField
 from ..operands import TensorFuse
 from .. import arithmetic, reduction
 from ..array_utils import as_same_device
@@ -35,33 +34,23 @@ from .core import TensorFuseChunkMixin
 
 class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
     _op_type_ = None  # no opcode, cannot be serialized
-    dtype = DataTypeField("dtype")
-
-    if sys.platform == "win32":
-        # since we found thread-safe problem for ne.evaluate
-        # thus add a lock for windows
-        _lock = threading.Lock()
-    else:
-        _lock = None
-
-    # use for numexpr-fused operand
-    def __init__(self, dtype=None, **kw):
-        super().__init__(dtype=dtype, **kw)
 
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         inputs = as_same_device([ctx[c.key] for c in op.inputs], device=op.device)
-        for c, i in zip(op.inputs, inputs):
-            exec("V_" + c.key + " = i")
-        expr = _evaluate(chunk)
-        if cls._lock is not None:
-            cls._lock.acquire()
+        counter = count()
+        # Unified the var names to V_0, V_1, ... for better cache hit.
+        key_to_var = defaultdict(lambda: f"V_{counter.__next__()}")
+        local_dict = {key_to_var[c.key]: i for c, i in zip(op.inputs, inputs)}
+        expr = _evaluate(chunk).format_map(key_to_var)
+        # The numexpr.evaluate is thread safe: https://github.com/pydata/numexpr/pull/200
         try:
-            res = ne.evaluate(expr)
-        finally:
-            if cls._lock is not None:
-                cls._lock.release()
+            res = ne.evaluate(expr, local_dict=local_dict, global_dict={})
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to evaluate numexpr {repr(expr)} on local dict {local_dict}."
+            ) from e
         res = _maybe_keepdims(chunk, res)
         if chunk.ndim == 0 and res.ndim == 1 and res.size == 0:
             res = res.dtype.type(0)
@@ -69,8 +58,6 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
 
 
 # execution part
-_VAR_FLAG = "V_"
-
 NE_UNARYOP_TO_STRING = {
     arithmetic.TensorNegative: "-",
     arithmetic.TensorAbs: "abs",
@@ -93,6 +80,9 @@ NE_UNARYOP_TO_STRING = {
     arithmetic.TensorArcsinh: "arcsinh",
     arithmetic.TensorArccosh: "arccosh",
     arithmetic.TensorArctanh: "arctanh",
+    arithmetic.TensorFloor: "floor",
+    arithmetic.TensorCeil: "ceil",
+    arithmetic.TensorNot: "~",
 }
 
 
@@ -111,6 +101,8 @@ NE_BINOP_TO_STRING = {
     arithmetic.TensorLessEqual: "<=",
     arithmetic.TensorGreaterThan: ">",
     arithmetic.TensorGreaterEqual: ">=",
+    arithmetic.TensorAnd: "and",
+    arithmetic.TensorOr: "or",
 }
 
 NE_TREE_OP_TO_STRING = {
@@ -126,50 +118,50 @@ NE_REDUCTION_TO_STRING = {
 }
 
 
+class _Default(dict):
+    def __missing__(self, key):
+        return f"{{{key}}}"
+
+
 def _handle_unary(chunk):
     if len(chunk.inputs) != 1:
         raise ValueError("unary operand inputs should be 1")
     data = chunk.inputs[0]
     unary_op = NE_UNARYOP_TO_STRING[type(chunk.op)]
-    _expr = f"{unary_op}({_VAR_FLAG + data.key})"
-    return _expr
+    return f"{unary_op}({{{data.key}}})"
 
 
 def _decompose(chunk):
-    expr = _VAR_FLAG + chunk.key
+    expr = f"{{{chunk.key}}}"
     for node in reversed(chunk.composed):
         _expr = _evaluate(node)
-        expr = expr.replace(_VAR_FLAG + node.key, f"({_expr})")
+        expr = expr.format_map(_Default([(node.key, f"({_expr})")]))
     return expr
 
 
 def _handle_bin(chunk):
-    lhs = (
-        str(chunk.op.lhs) if np.isscalar(chunk.op.lhs) else _VAR_FLAG + chunk.op.lhs.key
-    )
-    rhs = (
-        str(chunk.op.rhs) if np.isscalar(chunk.op.rhs) else _VAR_FLAG + chunk.op.rhs.key
-    )
-    reverse = getattr(chunk.op, "reverse", False)
-    op = NE_BINOP_TO_STRING[type(chunk.op)]
+    op = chunk.op
+    lhs = str(op.lhs) if np.isscalar(op.lhs) else f"{{{op.lhs.key}}}"
+    rhs = str(op.rhs) if np.isscalar(op.rhs) else f"{{{op.rhs.key}}}"
+    reverse = getattr(op, "reverse", False)
+    op = NE_BINOP_TO_STRING[type(op)]
     if reverse:
         exprs = [rhs, lhs]
     else:
         exprs = [lhs, rhs]
-
     return op.join(exprs)
 
 
 def _handle_tree(chunk):
     op = NE_TREE_OP_TO_STRING[type(chunk.op)]
-    return op.join(_VAR_FLAG + c.key for c in chunk.inputs)
+    return op.join(f"{{{c.key}}}" for c in chunk.inputs)
 
 
 def _wrap_bool(data):
     if data.dtype == np.bool_:
-        return lambda x: f"where({x}, 1, 0)"
+        return f"where({{{data.key}}}, 1, 0)"
 
-    return lambda x: x
+    return f"{{{data.key}}}"
 
 
 def _handle_reduction(chunk):
@@ -178,27 +170,27 @@ def _handle_reduction(chunk):
     op_str = NE_REDUCTION_TO_STRING[type(chunk.op)]
     # TODO(hks): delete it if numexpr.sum fixed
     if len(ax) == data.ndim:
-        _expr = f"{op_str}({_wrap_bool(data)(_VAR_FLAG + data.key)})"
+        return f"{op_str}({_wrap_bool(data)})"
     elif len(ax) == 1:
-        _expr = f"{op_str}({_wrap_bool(data)(_VAR_FLAG + data.key)},axis={ax[0]})"
+        return f"{op_str}({_wrap_bool(data)},axis={ax[0]})"
     else:
         raise ValueError("numexpr cannot encode axis")
-    return _expr
 
 
 def _evaluate(chunk):
-    if type(chunk.op) in NE_UNARYOP_TO_STRING:
+    op_type = type(chunk.op)
+    if op_type in NE_UNARYOP_TO_STRING:
         return _handle_unary(chunk)
-    elif type(chunk.op) in NE_BINOP_TO_STRING:
+    elif op_type in NE_BINOP_TO_STRING:
         return _handle_bin(chunk)
-    elif type(chunk.op) in NE_TREE_OP_TO_STRING:
+    elif op_type in NE_TREE_OP_TO_STRING:
         return _handle_tree(chunk)
-    elif type(chunk.op) in NE_REDUCTION_TO_STRING:
+    elif op_type in NE_REDUCTION_TO_STRING:
         return _handle_reduction(chunk)
-    elif type(chunk.op) == TensorNeFuseChunk:
+    elif op_type is TensorNeFuseChunk:
         return _decompose(chunk)
     else:
-        raise TypeError(f"unsupported operator in numexpr: {type(chunk.op).__name__}")
+        raise TypeError(f"unsupported operator in numexpr: {op_type.__name__}")
 
 
 def _maybe_keepdims(chunk, res):
