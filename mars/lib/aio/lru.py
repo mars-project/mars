@@ -152,7 +152,7 @@ def _cache_miss(wrapped, key):
 
 def alru_cache(
     fn=None,
-    maxsize=128,
+    maxsize=1024,
     typed=False,
     *,
     cache_exceptions=True,
