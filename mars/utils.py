@@ -557,15 +557,15 @@ def build_fetch_shuffle(
     assert n_reducers > 0, n_reducers
     # for shuffle nodes, we build FetchShuffle chunks
     # to replace ShuffleProxy
-    source_keys, source_idxes, source_mappers = [], [], []
-    for pinp in chunk.inputs:
-        source_keys.append(pinp.key)
-        source_idxes.append(pinp.index)
-        source_mappers.append(get_chunk_mapper_id(pinp))
-    shuffle_fetch_type = shuffle_fetch_type or ShuffleFetchType.FETCH_BY_KEY
-    if shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX:
+    if shuffle_fetch_type is ShuffleFetchType.FETCH_BY_INDEX:
         # skip data keys info for `FETCH_BY_INDEX`
         source_keys, source_idxes, source_mappers = None, None, None
+    else:
+        source_keys, source_idxes, source_mappers = [], [], []
+        for pinp in chunk.inputs:
+            source_keys.append(pinp.key)
+            source_idxes.append(pinp.index)
+            source_mappers.append(get_chunk_mapper_id(pinp))
     op = chunk_op.get_fetch_op_cls(chunk)(
         source_keys=source_keys,
         source_idxes=source_idxes,
@@ -589,8 +589,7 @@ def build_fetch_chunk(chunk: ChunkType, **kwargs) -> ChunkType:
 
     chunk_op = chunk.op
     params = chunk.params.copy()
-    if isinstance(chunk_op, ShuffleProxy):
-        return build_fetch_shuffle(chunk)
+    assert not isinstance(chunk_op, ShuffleProxy)
     # for non-shuffle nodes, we build Fetch chunks
     # to replace original chunk
     op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse, gpu=chunk.op.gpu)
