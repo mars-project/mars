@@ -319,5 +319,5 @@ def test_unary_tuple_execution(setup, func):
     result = r.execute().fetch()
     expected = sp_func(raw)
 
-    for i in range(len(result)):
-        np.testing.assert_array_equal(result[i], expected[i])
+    for actual_output, expected_output in zip(result, expected):
+        np.testing.assert_array_equal(actual_output, expected_output)

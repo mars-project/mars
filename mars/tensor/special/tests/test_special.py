@@ -298,6 +298,10 @@ def test_fresnel():
     with pytest.raises(TypeError):
         r = fresnel(t, non_tuple_out)
 
+    mismatch_size_tuple = ExecutableTuple([t])
+    with pytest.raises(TypeError):
+        r = fresnel(t, mismatch_size_tuple)
+
     out = ExecutableTuple([t, t])
     r_out = fresnel(t, out=out)
 
@@ -307,14 +311,14 @@ def test_fresnel():
     assert len(out) == 2
     assert len(r_out) == 2
 
-    for i in range(len(r_out)):
-        assert r_out[i].shape == expect[i].shape
-        assert r_out[i].dtype == expect[i].dtype
-        assert isinstance(r_out[i].op, TensorFresnel)
+    for r_output, expected_output, out_output in zip(r, expect, out):
+        assert r_output.shape == expected_output.shape
+        assert r_output.dtype == expected_output.dtype
+        assert isinstance(r_output.op, TensorFresnel)
 
-        assert out[i].shape == expect[i].shape
-        assert out[i].dtype == expect[i].dtype
-        assert isinstance(out[i].op, TensorFresnel)
+        assert out_output.shape == expected_output.shape
+        assert out_output.dtype == expected_output.dtype
+        assert isinstance(out_output.op, TensorFresnel)
 
 
 def test_beta_inc():

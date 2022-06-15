@@ -62,7 +62,7 @@ class TensorErfcinv(TensorSpecialUnaryOp):
 @_register_special_op
 class TensorFresnel(TensorTupleOp):
     _func_name = "fresnel"
-    _func_outputs = 2
+    _n_outputs = 2
 
 
 @implement_scipy(spspecial.erf)

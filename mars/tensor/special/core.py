@@ -120,15 +120,20 @@ class TensorSpecialMultiOp(TensorSpecialOperandMixin, TensorMultiOp):
 class TensorTupleOp(TensorSpecialUnaryOp):
     @property
     def output_limit(self):
-        return self._func_outputs
+        return self._n_outputs
 
     def __call__(self, x, out=None):
         x = astensor(x)
 
-        if out is not None and not isinstance(out, ExecutableTuple):
-            raise TypeError(
-                f"out should be ExecutableTuple object, got {type(out)} instead"
-            )
+        if out is not None:
+            if not isinstance(out, ExecutableTuple):
+                raise TypeError(
+                    f"out should be ExecutableTuple object, got {type(out)} instead"
+                )
+            if len(out) != self._n_outputs:
+                raise TypeError(
+                    f"out shoud be an ExecutableTuple object with {self._n_outputs} elements, got {len(out)} instead"
+                )
 
         func = getattr(spspecial, self._func_name)
         res = func(np.ones(x.shape, dtype=x.dtype))
@@ -137,18 +142,18 @@ class TensorTupleOp(TensorSpecialUnaryOp):
             kws=[
                 {
                     "side": f"{self._func_name}[{i}]",
-                    "dtype": res[i].dtype,
-                    "shape": res[i].shape,
+                    "dtype": output.dtype,
+                    "shape": output.shape,
                 }
-                for i in range(len(res))
+                for i, output in enumerate(res)
             ],
         )
 
         if out is None:
             return ExecutableTuple(res_tensors)
 
-        for i in range(len(res_tensors)):
-            out[i].data = res_tensors[i].data
+        for res_tensor, out_tensor in zip(res_tensors, out):
+            out_tensor.data = res_tensor.data
         return out
 
     @classmethod
@@ -164,5 +169,5 @@ class TensorTupleOp(TensorSpecialUnaryOp):
                 else:
                     ret = cls._execute_cpu(op, xp, inputs[0])
 
-                for i in range(len(op.outputs)):
-                    ctx[op.outputs[i].key] = ret[i]
+                for output, ret_element in zip(op.outputs, ret):
+                    ctx[output.key] = ret_element
