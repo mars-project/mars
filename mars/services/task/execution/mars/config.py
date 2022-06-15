@@ -14,7 +14,6 @@
 
 from typing import Dict, List
 
-from .....core.operand import ShuffleFetchType
 from .....core.operand.shuffle import ShuffleFetchType
 from .....resource import Resource
 from ..api import ExecutionConfig, register_config_cls

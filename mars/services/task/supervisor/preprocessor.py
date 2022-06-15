@@ -22,7 +22,6 @@ from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, TileContext
 from ....core.graph.builder.chunk import Tiler, _TileableHandler
 from ....core.operand import Fetch, ShuffleFetchType
-from ....core.operand.shuffle import ShuffleFetchType
 from ....resource import Resource
 from ....typing import BandType, TileableType, ChunkType
 from ...subtask import Subtask, SubtaskGraph

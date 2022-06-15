@@ -31,4 +31,4 @@ from .objects import (
     ObjectFuseChunkMixin,
     MergeDictOperand,
 )
-from .shuffle import ShuffleProxy, MapReduceOperand, ShuffleFetchType
+from .shuffle import ShuffleProxy, MapReduceOperand

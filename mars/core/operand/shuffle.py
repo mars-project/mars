@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import enum
-
 from . import ShuffleFetchType, FetchShuffle
 from ... import opcodes
 from ...serialization.serializables import (
