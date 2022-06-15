@@ -25,7 +25,7 @@ from ....core.operand import Fetch
 from ....typing import TileableType
 from ....utils import build_fetch
 from ...subtask import SubtaskResult, SubtaskStatus, SubtaskGraph
-from ..core import Task, TaskStatus
+from ..core import Task, TaskStatus, MapReduceInfo
 from ..execution.api import TaskExecutor
 from .preprocessor import TaskPreprocessor
 from .processor import TaskProcessor
@@ -416,6 +416,10 @@ class TaskProcessorActor(mo.Actor, _TaskInfoProcessorMixin):
         )
         if self._cur_processor is not None:
             await self._cur_processor.set_subtask_result(subtask_result)
+
+    async def get_map_reduce_info(self, map_reduce_id: int) -> MapReduceInfo:
+        for processor in self._task_id_to_processor.values():
+            return processor.get_map_reduce_info(map_reduce_id)
 
     def is_done(self) -> bool:
         for processor in self._task_id_to_processor.values():

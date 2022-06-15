@@ -17,7 +17,7 @@ import logging
 import sys
 import time
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Set, Type
+from typing import Any, Dict, List, Optional, Set, Type, Tuple
 
 from .... import oscar as mo
 from ....core import ChunkGraph, OperandType, enter_mode, ExecutionError
@@ -27,6 +27,7 @@ from ....core.operand import (
     FetchShuffle,
     execute,
 )
+from ....lib.aio import alru_cache
 from ....metrics import Metrics
 from ....optimization.physical import optimize
 from ....typing import BandType, ChunkType
@@ -424,6 +425,58 @@ class SubtaskProcessor:
         # set result data size
         self.result.data_size = result_data_size
 
+    @classmethod
+    @alru_cache(cache_exceptions=False)
+    async def _gen_reducer_index_to_bands(
+        cls, session_id: str, supervisor_address: str, task_id: str, map_reduce_id: int
+    ) -> Dict[Tuple[int], BandType]:
+        task_api = await TaskAPI.create(session_id, supervisor_address)
+        map_reduce_info = await task_api.get_map_reduce_info(task_id, map_reduce_id)
+        assert len(map_reduce_info.reducer_indexes) == len(
+            map_reduce_info.reducer_bands
+        )
+        return {
+            reducer_index: band
+            for reducer_index, band in zip(
+                map_reduce_info.reducer_indexes, map_reduce_info.reducer_bands
+            )
+        }
+
+    async def _push_mapper_data(self):
+        storage_api_to_fetch_tasks = defaultdict(list)
+        skip = True
+        for result_chunk in self._chunk_graph.result_chunks:
+            map_reduce_id = getattr(result_chunk.op, "extra_params", dict()).get(
+                "analyzer_map_reduce_id"
+            )
+            if map_reduce_id is None:
+                continue
+            skip = False
+            reducer_index_to_bands = await self._gen_reducer_index_to_bands(
+                self._session_id,
+                self._supervisor_address,
+                self.subtask.task_id,
+                map_reduce_id,
+            )
+            for reducer_index, band in reducer_index_to_bands.items():
+                # mapper key is a tuple
+                address, band_name = band
+                storage_api = await StorageAPI.create(
+                    self._session_id, address, band_name
+                )
+                fetch_task = storage_api.fetch.delay(
+                    (result_chunk.key, reducer_index),
+                    band_name=self._band[1],
+                    remote_address=self._band[0],
+                )
+                storage_api_to_fetch_tasks[storage_api].append(fetch_task)
+        if skip:
+            return
+        batch_tasks = []
+        for storage_api, tasks in storage_api_to_fetch_tasks.items():
+            batch_tasks.append(storage_api.fetch.batch(*tasks))
+        await asyncio.gather(*batch_tasks)
+
     async def done(self):
         if self.result.status == SubtaskStatus.running:
             self.result.status = SubtaskStatus.succeeded
@@ -516,6 +569,9 @@ class SubtaskProcessor:
             pass
         return self.result
 
+    async def post_run(self):
+        await self._push_mapper_data()
+
     async def report_progress_periodically(self, interval=0.5, eps=0.001):
         last_progress = self.result.progress
         while not self.result.status.is_done:
@@ -598,7 +654,7 @@ class SubtaskProcessorActor(mo.Actor):
         await context.init()
         set_context(context)
 
-    async def run(self, subtask: Subtask):
+    async def run(self, subtask: Subtask, wait_post_run: bool = False):
         logger.info(
             "Start to run subtask: %r on %s. chunk graph contains %s",
             subtask,
@@ -624,9 +680,17 @@ class SubtaskProcessorActor(mo.Actor):
         try:
             result = yield self._running_aio_task
             logger.info("Finished subtask: %s", subtask.subtask_id)
+            # post run with actor tell which will not block
+            if not wait_post_run:
+                await self.ref().post_run.tell(processor)
+            else:
+                await self.post_run(processor)
             raise mo.Return(result)
         finally:
             self._processor = self._running_aio_task = None
+
+    async def post_run(self, processor: SubtaskProcessor):
+        await processor.post_run()
 
     async def wait(self):
         return self._processor.is_done.wait()

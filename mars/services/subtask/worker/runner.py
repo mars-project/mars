@@ -89,7 +89,7 @@ class SubtaskRunnerActor(mo.Actor):
         [address] = await self._cluster_api.get_supervisors_by_keys([session_id])
         return address
 
-    async def run_subtask(self, subtask: Subtask):
+    async def run_subtask(self, subtask: Subtask, wait_post_run: bool = False):
         if self._running_processor is not None:  # pragma: no cover
             running_subtask_id = await self._running_processor.get_running_subtask_id()
             # current subtask is still running
@@ -122,7 +122,9 @@ class SubtaskRunnerActor(mo.Actor):
         processor = self._session_id_to_processors[session_id]
         try:
             self._running_processor = self._last_processor = processor
-            result = yield self._running_processor.run(subtask)
+            result = yield self._running_processor.run(
+                subtask, wait_post_run=wait_post_run
+            )
         finally:
             self._running_processor = None
         raise mo.Return(result)

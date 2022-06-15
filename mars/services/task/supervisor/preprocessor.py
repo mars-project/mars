@@ -26,7 +26,7 @@ from ....resource import Resource
 from ....typing import BandType, TileableType, ChunkType
 from ...subtask import Subtask, SubtaskGraph
 from ..analyzer import GraphAnalyzer
-from ..core import Task
+from ..core import Task, MapReduceInfo
 
 logger = logging.getLogger(__name__)
 
@@ -112,9 +112,11 @@ class TaskPreprocessor:
         "chunk_optimization_records_list",
         "_cancelled",
         "_done",
+        "map_reduce_id_to_infos",
     )
 
     tile_context: TileContext
+    map_reduce_id_to_infos: Dict[int, MapReduceInfo]
 
     def __init__(
         self,
@@ -129,6 +131,7 @@ class TaskPreprocessor:
         self.tile_context = tiled_context
         self.tileable_optimization_records = None
         self.chunk_optimization_records_list = []
+        self.map_reduce_id_to_infos = dict()
 
         self._cancelled = asyncio.Event()
         self._done = asyncio.Event()
@@ -221,6 +224,7 @@ class TaskPreprocessor:
             self._config,
             chunk_to_subtasks,
             stage_id=stage_id,
+            map_reduce_id_to_infos=self.map_reduce_id_to_infos,
         )
         graph = analyzer.gen_subtask_graph(op_to_bands)
         logger.debug(
@@ -247,6 +251,9 @@ class TaskPreprocessor:
     def get_tiled(self, tileable: TileableType):
         tileable = tileable.data if hasattr(tileable, "data") else tileable
         return self.tile_context[tileable]
+
+    def get_map_reduce_info(self, map_reduce_id: int) -> MapReduceInfo:
+        return self.map_reduce_id_to_infos[map_reduce_id]
 
     def __await__(self):
         return self._done.wait().__await__()
