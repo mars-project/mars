@@ -132,7 +132,7 @@ class TensorTupleOp(TensorSpecialUnaryOp):
                 )
             if len(out) != self._n_outputs:
                 raise TypeError(
-                    f"out shoud be an ExecutableTuple object with {self._n_outputs} elements, got {len(out)} instead"
+                    f"out should be an ExecutableTuple object with {self._n_outputs} elements, got {len(out)} instead"
                 )
 
         func = getattr(spspecial, self._func_name)
