@@ -237,7 +237,7 @@ class BaseMetaAPI(AbstractMetaAPI):
 
 class MetaAPI(BaseMetaAPI):
     @classmethod
-    @alru_cache(cache_exceptions=False)
+    @alru_cache(maxsize=1024, cache_exceptions=False)
     async def create(cls, session_id: str, address: str) -> "MetaAPI":
         """
         Create Meta API.
