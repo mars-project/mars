@@ -163,13 +163,15 @@ def execute_subtask(
 
     for chunk in subtask_chunk_graph.topological_iter():
         if chunk.key not in context:
-            wrapped_execute = log_exception_wrapper(
-                execute,
-                "Execute operand %s of graph %s failed.",
-                chunk.op,
-                subtask_chunk_graph.to_dot(),
-            )
-            wrapped_execute(context, chunk.op)
+            try:
+                execute(chunk.op, subtask_chunk_graph.to_dot())
+            except Exception:
+                logger.exception(
+                    "Execute operand %s of graph %s failed.",
+                    chunk.op,
+                    subtask_chunk_graph.to_dot(),
+                )
+                raise
 
     # For non-mapper subtask, output context is chunk key to results.
     # For mapper subtasks, output context is data key to results.
