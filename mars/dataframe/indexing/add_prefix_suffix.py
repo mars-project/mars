@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import textwrap
-
 from functools import partial
 
 
@@ -105,7 +104,7 @@ def series_add_suffix(series, suffix):
     return series.rename(index=f)
 
 
-df_add_prefix.__doc__ = _get_prefix_suffix_docs(False)
-series_add_prefix.__doc__ = _get_prefix_suffix_docs(False)
+df_add_prefix.__doc__ = _get_prefix_suffix_docs(True)
+series_add_prefix.__doc__ = df_add_prefix.__doc__
 df_add_suffix.__doc__ = _get_prefix_suffix_docs(False)
-series_add_suffix.__doc__ = _get_prefix_suffix_docs(False)
+series_add_suffix.__doc__ = df_add_suffix.__doc__

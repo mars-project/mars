@@ -72,6 +72,10 @@ class DataFrameAlign(DataFrameOperand, DataFrameOperandMixin):
                 return self._call_dataframe_dataframe(lhs, rhs)
         else:
             if lhs.ndim == 1:
+                # join order need to be reversed if not symmetric
+                asym_joins = {"left", "right"} - {self.join}
+                if len(asym_joins) == 1:  # self.join in {"left", "right"}
+                    self.join = asym_joins.pop()
                 # need to put dataframe first
                 self._output_types = get_output_types(rhs, lhs)
                 return self._call_dataframe_series(rhs, lhs)[::-1]
@@ -409,9 +413,8 @@ def align(
 
     Notes
     -----
-    Currently methods other than `outer` are not supported in Mars.
-    Arguments `level`, `fill_value`, `method`, `limit`, `fill_axis`
-    and `broadcast_axis` are not supported either.
+    Currently arguments `level`, `fill_value`, `method`, `limit`, `fill_axis`
+    and `broadcast_axis` are not supported.
 
     Returns
     -------
@@ -489,9 +492,6 @@ def align(
     broadcast_axis = (
         validate_axis(broadcast_axis) if broadcast_axis is not None else None
     )
-
-    if join != "outer":
-        raise NotImplementedError("Non-outer join method not supported")
 
     locals_vals = locals()
     for var_name in ["level", "fill_value", "method", "broadcast_axis", "limit"]:
