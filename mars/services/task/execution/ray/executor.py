@@ -130,7 +130,6 @@ def execute_subtask(
     If subtask is shuffle mapper, no chunk meta will be returned, otherwise return chunk mata."""
     ensure_coverage()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
-    subtask_digraph = subtask_chunk_graph.to_dot()
     logger.info("Begin to execute subtask: %s", subtask_id)
     # optimize chunk graph.
     subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)
@@ -148,11 +147,10 @@ def execute_subtask(
         # https://user-images.githubusercontent.com/12445254/168569524-f09e42a7-653a-4102-bdf0-cc1631b3168d.png
         reducer_chunks = subtask_chunk_graph.successors(start_chunks[0])
         reducer_operands = set(c.op for c in reducer_chunks)
-        assert len(reducer_operands) == 1, (
-            reducer_operands,
-            reducer_chunks,
-            subtask_digraph,
-        )
+        if len(reducer_operands) != 1:
+            raise ValueError(
+                f"Subtask {subtask_id} has more than 1 reduce operands: {subtask_chunk_graph.to_dot()}"
+            )
         reducer_operand = reducer_chunks[0].op
         reducer_index = reducer_operand.reducer_index
         # mock input keys, keep this in sync with `MapReducerOperand#_iter_mapper_key_idx_pairs`
@@ -169,7 +167,7 @@ def execute_subtask(
                 execute,
                 "Execute operand %s of graph %s failed.",
                 chunk.op,
-                subtask_digraph,
+                subtask_chunk_graph.to_dot(),
             )
             wrapped_execute(context, chunk.op)
 
@@ -647,8 +645,6 @@ class RayTaskExecutor(TaskExecutor):
         start_chunks = list(subtask.chunk_graph.iter_indep())
         for index, start_chunk in enumerate(start_chunks):
             if isinstance(start_chunk.op, Fetch):
-                # don't skip `pure_depend_keys`, otherwise pure_depend subtask execution order can't be ensured,
-                # since those ray tasks don't has dependencies on other subtasks.
                 chunk_key = start_chunk.key
                 if chunk_key in context:
                     input_object_refs.append(context[chunk_key])
