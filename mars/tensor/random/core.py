@@ -313,6 +313,9 @@ def _on_serialize_random_state(rs):
 
 
 def _on_deserialize_random_state(tup):
+    if tup is None:
+        return None
+
     rs = np.random.RandomState()
     rs.set_state(tup)
     return rs
