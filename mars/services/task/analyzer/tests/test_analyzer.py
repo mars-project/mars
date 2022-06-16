@@ -17,8 +17,6 @@ import pytest
 from ..... import dataframe as md
 from ..... import tensor as mt
 from .....config import Config
-from .....core import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-from .....core.operand.fetch import FetchShuffle
 from .....core.operand.shuffle import ShuffleFetchType, ShuffleProxy
 from .....resource import Resource
 from ...core import Task
