@@ -18,7 +18,7 @@ import logging
 import operator
 import sys
 from dataclasses import dataclass
-from typing import Dict, Any, Set, Optional
+from typing import Optional
 
 from typing import List, Dict, Any, Set, Callable
 from .....core import ChunkGraph, Chunk, TileContext
@@ -42,7 +42,6 @@ from .....utils import (
     lazy_import,
     get_chunk_params,
     ensure_coverage,
-    log_exception_wrapper,
 )
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
@@ -133,7 +132,7 @@ def execute_subtask(
     logger.info("Begin to execute subtask: %s", subtask_id)
     # optimize chunk graph.
     subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)
-    start_chunks = list(subtask_chunk_graph.iter_indep())
+    start_chunks = _get_start_chunks(subtask_chunk_graph)
     maybe_mapper_chunk = subtask_chunk_graph.result_chunks[0]
     is_mapper = (
         isinstance(maybe_mapper_chunk.op, MapReduceOperand)
@@ -214,6 +213,10 @@ def execute_subtask(
 
     logger.info("Finish executing subtask %s.", subtask_id)
     return output_values[0] if len(output_values) == 1 else output_values
+
+
+def _get_start_chunks(chunk_graph):
+    return sorted(list(chunk_graph.iter_indep()))
 
 
 def _get_subtask_out_info(
@@ -644,10 +647,13 @@ class RayTaskExecutor(TaskExecutor):
         # for non-shuffle chunks, chunk key will be used for indexing object refs.
         # for shuffle chunks, mapper subtasks will have only one mapper chunk, and all outputs for mapper
         # subtask will be shuffle blocks, the downstream reducers will receive inputs in the mappers order.
-        start_chunks = list(subtask.chunk_graph.iter_indep())
+        start_chunks = _get_start_chunks(subtask.chunk_graph)
         for index, start_chunk in enumerate(start_chunks):
             if isinstance(start_chunk.op, Fetch):
                 chunk_key = start_chunk.key
+                # pure_depend data is not used, skip it.
+                if chunk_key in subtask.pure_depend_keys:
+                    input_object_refs.append(None)
                 if chunk_key in context:
                     input_object_refs.append(context[chunk_key])
                 else:
