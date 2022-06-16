@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import random
 
 import pytest
 
@@ -97,6 +98,27 @@ def test_dag():
             all(dag_copy.has_successor(pred, n) for pred in dag_copy.predecessors(n))
             is True
         )
+
+
+def test_indep():
+    dag = DAG()
+    for i in range(1, 101):
+        dag.add_node(i)
+        dag.add_node(-i)
+    for i in range(101, 201):
+        dag.add_node(i)
+        dag.add_node(-i)
+        dag.add_edge(i - 100, i)
+        dag.add_edge(-(i - 100), -i)
+    assert len(list(dag.iter_indep())) == 200
+    assert list(dag.sorted_indep()) == sorted(list(dag.iter_indep()))
+    assert list(dag.sorted_indep(key=lambda x: -x)) == sorted(
+        dag.iter_indep(), key=lambda x: -x
+    )
+    assert list(dag.sorted_indep(reverse=True)) == sorted(dag.iter_indep(reverse=True))
+    assert list(
+        dag.sorted_indep(reverse=True, key=lambda x: -x, sort_reverse=True)
+    ) == sorted(dag.iter_indep(reverse=True), key=lambda x: -x, reverse=True)
 
 
 @flaky(max_runs=3)

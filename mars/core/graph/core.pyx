@@ -16,6 +16,7 @@
 import logging
 from collections import deque
 from io import StringIO
+from typing import Callable
 
 
 logger = logging.getLogger(__name__)
@@ -169,6 +170,13 @@ cdef class DirectedGraph:
         for n, p in preds.items():
             if len(p) == 0:
                 yield n
+
+    def sorted_indep(self, bint reverse=False, key: Callable = None, sort_reverse=False):
+        cdef dict preds
+        preds = self._predecessors if not reverse else self._successors
+        nodes = [n for n, p in preds.items() if len(p) == 0]
+        nodes.sort(key=key, reverse=sort_reverse)
+        return nodes
 
     cpdef int count_indep(self, reverse=False):
         cdef:
