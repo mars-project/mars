@@ -35,7 +35,7 @@ Bessel functions
    mars.tensor.special.hankel2e
 
 
-Error function
+Error functions and fresnel integrals
 --------------
 
 .. autosummary::
@@ -48,6 +48,7 @@ Error function
    mars.tensor.special.erfi
    mars.tensor.special.erfinv
    mars.tensor.special.erfcinv
+   mars.tensor.special.fresnel
 
 
 Ellipsoidal harmonics

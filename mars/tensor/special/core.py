@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import scipy.special as spspecial
 
+from ...core import ExecutableTuple
 from ... import opcodes
+from ..datasource import tensor as astensor
 from ..arithmetic.core import TensorUnaryOp, TensorBinOp, TensorMultiOp
 from ..array_utils import (
     np,
@@ -112,3 +115,59 @@ class TensorSpecialMultiOp(TensorSpecialOperandMixin, TensorMultiOp):
                 if ret.dtype != op.dtype:
                     ret = ret.astype(op.dtype)
                 ctx[op.outputs[0].key] = ret
+
+
+class TensorTupleOp(TensorSpecialUnaryOp):
+    @property
+    def output_limit(self):
+        return self._n_outputs
+
+    def __call__(self, x, out=None):
+        x = astensor(x)
+
+        if out is not None:
+            if not isinstance(out, ExecutableTuple):
+                raise TypeError(
+                    f"out should be ExecutableTuple object, got {type(out)} instead"
+                )
+            if len(out) != self._n_outputs:
+                raise TypeError(
+                    f"out should be an ExecutableTuple object with {self._n_outputs} elements, got {len(out)} instead"
+                )
+
+        func = getattr(spspecial, self._func_name)
+        res = func(np.ones(x.shape, dtype=x.dtype))
+        res_tensors = self.new_tensors(
+            [x],
+            kws=[
+                {
+                    "side": f"{self._func_name}[{i}]",
+                    "dtype": output.dtype,
+                    "shape": output.shape,
+                }
+                for i, output in enumerate(res)
+            ],
+        )
+
+        if out is None:
+            return ExecutableTuple(res_tensors)
+
+        for res_tensor, out_tensor in zip(res_tensors, out):
+            out_tensor.data = res_tensor.data
+        return out
+
+    @classmethod
+    def execute(cls, ctx, op):
+        inputs, device_id, xp = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
+
+        with device(device_id):
+            with np.errstate(**op.err):
+                if op.is_gpu():
+                    ret = cls._execute_gpu(op, xp, inputs[0])
+                else:
+                    ret = cls._execute_cpu(op, xp, inputs[0])
+
+                for output, ret_element in zip(op.outputs, ret):
+                    ctx[output.key] = ret_element
