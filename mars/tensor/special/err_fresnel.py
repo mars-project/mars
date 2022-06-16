@@ -16,7 +16,11 @@ import scipy.special as spspecial
 
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
-from .core import TensorSpecialUnaryOp, _register_special_op
+from .core import (
+    TensorSpecialUnaryOp,
+    TensorTupleOp,
+    _register_special_op,
+)
 
 
 @_register_special_op
@@ -53,6 +57,12 @@ class TensorErfinv(TensorSpecialUnaryOp):
 @arithmetic_operand(sparse_mode="unary")
 class TensorErfcinv(TensorSpecialUnaryOp):
     _func_name = "erfcinv"
+
+
+@_register_special_op
+class TensorFresnel(TensorTupleOp):
+    _func_name = "fresnel"
+    _n_outputs = 2
 
 
 @implement_scipy(spspecial.erf)
@@ -140,3 +150,10 @@ def erfinv(x, out=None, where=None, **kwargs):
 def erfcinv(x, out=None, where=None, **kwargs):
     op = TensorErfcinv(**kwargs)
     return op(x, out=out, where=where)
+
+
+@implement_scipy(spspecial.fresnel)
+@infer_dtype(spspecial.fresnel, multi_outputs=True)
+def fresnel(x, out=None, **kwargs):
+    op = TensorFresnel(**kwargs)
+    return op(x, out=out)
