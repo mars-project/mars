@@ -16,6 +16,7 @@ import copy
 import itertools
 import random
 from collections.abc import Iterable
+from typing import Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
@@ -269,18 +270,18 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
     _op_code_ = opcodes.RAND_SAMPLE
     _op_module_ = "dataframe.groupby"
 
-    groupby_params = DictField("groupby_params")
-    size = Int64Field("size")
-    frac = Float32Field("frac")
-    replace = BoolField("replace")
-    weights = KeyField("weights")
-    seed = Int32Field("seed")
-    _random_state = RandomStateField("random_state")
-    errors = StringField("errors")
+    groupby_params = DictField("groupby_params", default=None)
+    size = Int64Field("size", default=None)
+    frac = Float32Field("frac", default=None)
+    replace = BoolField("replace", default=None)
+    weights = KeyField("weights", default=None)
+    seed = Int32Field("seed", default=None)
+    _random_state = RandomStateField("random_state", default=None)
+    errors = StringField("errors", default=None)
 
     # for chunks
     # num of instances for chunks
-    input_nsplits = NDArrayField("input_nsplits")
+    input_nsplits = NDArrayField("input_nsplits", default=None)
 
     def __init__(self, random_state=None, **kw):
         super().__init__(_random_state=random_state, **kw)
@@ -507,12 +508,12 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
 
 def groupby_sample(
     groupby,
-    n=None,
-    frac=None,
-    replace=False,
-    weights=None,
-    random_state=None,
-    errors="ignore",
+    n: Optional[int] = None,
+    frac: Optional[float] = None,
+    replace: bool = False,
+    weights: Union[Sequence, pd.Series, None] = None,
+    random_state: Optional[np.random.RandomState] = None,
+    errors: str = "ignore",
 ):
     """
     Return a random sample of items from each group.
@@ -610,6 +611,9 @@ def groupby_sample(
     rs = copy.deepcopy(
         random_state.to_numpy() if hasattr(random_state, "to_numpy") else random_state
     )
+    if not isinstance(rs, np.random.RandomState):  # pragma: no cover
+        rs = np.random.RandomState(rs)
+
     op = GroupBySample(
         size=n,
         frac=frac,
