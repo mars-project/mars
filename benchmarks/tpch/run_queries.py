@@ -1051,8 +1051,12 @@ def main():
     queries = (
         set(x.lower().strip() for x in args.query.split(",")) if args.query else None
     )
-    mars.new_session(endpoint)
-    run_queries(folder, use_arrow_dtype=use_arrow_dtype)
+    sess = mars.new_session(endpoint)
+    try:
+        run_queries(folder, use_arrow_dtype=use_arrow_dtype)
+    finally:
+        if endpoint is None:
+            sess.stop_server()
 
 
 if __name__ == "__main__":

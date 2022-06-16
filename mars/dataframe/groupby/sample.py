@@ -16,6 +16,7 @@ import copy
 import itertools
 import random
 from collections.abc import Iterable
+from typing import Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
@@ -74,74 +75,25 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
     _op_code_ = opcodes.GROUPBY_SAMPLE_ILOC
     _op_module_ = "dataframe.groupby"
 
-    _groupby_params = DictField("groupby_params")
-    _size = Int64Field("size")
-    _frac = Float32Field("frac")
-    _replace = BoolField("replace")
-    _weights = KeyField("weights")
-    _seed = Int32Field("seed")
-    _random_state = RandomStateField("random_state")
-    _errors = StringField("errors")
+    groupby_params = DictField("groupby_params", default=None)
+    size = Int64Field("size", default=None)
+    frac = Float32Field("frac", default=None)
+    replace = BoolField("replace", default=None)
+    weights = KeyField("weights", default=None)
+    seed = Int32Field("seed", default=None)
+    _random_state = RandomStateField("random_state", default=None)
+    errors = StringField("errors", default=None)
 
-    _random_col_id = Int32Field("random_col_id")
+    random_col_id = Int32Field("random_col_id", default=None)
 
     # for chunks
     # num of instances for chunks
-    _left_iloc_bound = Int64Field("left_iloc_bound")
+    left_iloc_bound = Int64Field("left_iloc_bound", default=None)
 
-    def __init__(
-        self,
-        groupby_params=None,
-        size=None,
-        frac=None,
-        replace=None,
-        weights=None,
-        random_state=None,
-        seed=None,
-        errors=None,
-        left_iloc_bound=None,
-        random_col_id=None,
-        **kw
-    ):
-        super().__init__(
-            _groupby_params=groupby_params,
-            _size=size,
-            _frac=frac,
-            _seed=seed,
-            _replace=replace,
-            _weights=weights,
-            _random_state=random_state,
-            _errors=errors,
-            _left_iloc_bound=left_iloc_bound,
-            _random_col_id=random_col_id,
-            **kw
-        )
-        if self._random_col_id is None:
-            self._random_col_id = random.randint(10000, 99999)
-
-    @property
-    def groupby_params(self):
-        return self._groupby_params
-
-    @property
-    def size(self):
-        return self._size
-
-    @property
-    def frac(self):
-        return self._frac
-
-    @property
-    def replace(self):
-        return self._replace
-
-    @property
-    def weights(self):
-        return self._weights
-
-    @property
-    def seed(self):
-        return self._seed
+    def __init__(self, random_state=None, **kw):
+        super().__init__(_random_state=random_state, **kw)
+        if self.random_col_id is None:
+            self.random_col_id = random.randint(10000, 99999)
 
     @property
     def random_state(self):
@@ -149,24 +101,12 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
             self._random_state = np.random.RandomState(self.seed)
         return self._random_state
 
-    @property
-    def errors(self):
-        return self._errors
-
-    @property
-    def left_iloc_bound(self):
-        return self._left_iloc_bound
-
-    @property
-    def random_col_id(self):
-        return self._random_col_id
-
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         input_iter = iter(inputs)
         next(input_iter)
         if isinstance(self.weights, ENTITY_TYPE):
-            self._weights = next(input_iter)
+            self.weights = next(input_iter)
 
     def __call__(self, df):
         self._output_types = [OutputType.tensor]
@@ -211,9 +151,9 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
         left_ilocs = np.array((0,) + in_df.nsplits[0]).cumsum()
         for inp_chunk, weight_chunk in zip(in_df.chunks, weights_iter):
             new_op = op.copy().reset_key()
-            new_op._left_iloc_bound = int(left_ilocs[inp_chunk.index[0]])
+            new_op.left_iloc_bound = int(left_ilocs[inp_chunk.index[0]])
             new_op.stage = OperandStage.map
-            new_op._output_types = [OutputType.dataframe]
+            new_op.output_types = [OutputType.dataframe]
 
             inp_chunks = [inp_chunk]
             if weight_chunk is not None:
@@ -252,9 +192,9 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
         for group_chunk, seed in zip(grouped.chunks, seeds):
             new_op = op.copy().reset_key()
             new_op.stage = OperandStage.reduce
-            new_op._weights = None
+            new_op.weights = None
             new_op._random_state = None
-            new_op._seed = seed
+            new_op.seed = seed
 
             result_chunks.append(
                 new_op.new_chunk(
@@ -330,87 +270,32 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
     _op_code_ = opcodes.RAND_SAMPLE
     _op_module_ = "dataframe.groupby"
 
-    _groupby_params = DictField("groupby_params")
-    _size = Int64Field("size")
-    _frac = Float32Field("frac")
-    _replace = BoolField("replace")
-    _weights = KeyField("weights")
-    _seed = Int32Field("seed")
-    _random_state = RandomStateField("random_state")
-    _errors = StringField("errors")
+    groupby_params = DictField("groupby_params", default=None)
+    size = Int64Field("size", default=None)
+    frac = Float32Field("frac", default=None)
+    replace = BoolField("replace", default=None)
+    weights = KeyField("weights", default=None)
+    seed = Int32Field("seed", default=None)
+    _random_state = RandomStateField("random_state", default=None)
+    errors = StringField("errors", default=None)
 
     # for chunks
     # num of instances for chunks
-    _input_nsplits = NDArrayField("input_nsplits")
+    input_nsplits = NDArrayField("input_nsplits", default=None)
 
-    def __init__(
-        self,
-        groupby_params=None,
-        size=None,
-        frac=None,
-        replace=None,
-        weights=None,
-        random_state=None,
-        seed=None,
-        errors=None,
-        input_nsplits=None,
-        **kw
-    ):
-        super().__init__(
-            _groupby_params=groupby_params,
-            _size=size,
-            _frac=frac,
-            _seed=seed,
-            _replace=replace,
-            _weights=weights,
-            _random_state=random_state,
-            _errors=errors,
-            _input_nsplits=input_nsplits,
-            **kw
-        )
-
-    @property
-    def groupby_params(self):
-        return self._groupby_params
-
-    @property
-    def size(self):
-        return self._size
-
-    @property
-    def frac(self):
-        return self._frac
-
-    @property
-    def replace(self):
-        return self._replace
-
-    @property
-    def weights(self):
-        return self._weights
-
-    @property
-    def seed(self):
-        return self._seed
+    def __init__(self, random_state=None, **kw):
+        super().__init__(_random_state=random_state, **kw)
 
     @property
     def random_state(self):
         return self._random_state
-
-    @property
-    def errors(self):
-        return self._errors
-
-    @property
-    def input_nsplits(self):
-        return self._input_nsplits
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         input_iter = iter(inputs)
         next(input_iter)
         if isinstance(self.weights, ENTITY_TYPE):
-            self._weights = next(input_iter)
+            self.weights = next(input_iter)
 
     def __call__(self, groupby):
         df = groupby
@@ -481,9 +366,9 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
         for c in sampled_iloc.chunks:
             new_op = op.copy().reset_key()
             new_op.stage = OperandStage.map
-            new_op._weights = None
-            new_op._output_types = [OutputType.tensor]
-            new_op._input_nsplits = np.array(in_df.nsplits[0])
+            new_op.weights = None
+            new_op.output_types = [OutputType.tensor]
+            new_op.input_nsplits = np.array(in_df.nsplits[0])
 
             map_chunks.append(
                 new_op.new_chunk(
@@ -498,13 +383,13 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
         reduce_chunks = []
         for ordinal, src_chunk in enumerate(in_df.chunks):
             new_op = op.copy().reset_key()
-            new_op._weights = None
-            new_op._output_types = [OutputType.tensor]
+            new_op.weights = None
+            new_op.output_types = [OutputType.tensor]
             new_op.stage = OperandStage.reduce
             new_op.reducer_index = (src_chunk.index[0],)
             new_op.reducer_ordinal = ordinal
             new_op.n_reducers = len(in_df.chunks)
-            new_op._input_nsplits = np.array(in_df.nsplits[0])
+            new_op.input_nsplits = np.array(in_df.nsplits[0])
 
             reduce_chunks.append(
                 new_op.new_chunk(
@@ -623,12 +508,12 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
 
 def groupby_sample(
     groupby,
-    n=None,
-    frac=None,
-    replace=False,
-    weights=None,
-    random_state=None,
-    errors="ignore",
+    n: Optional[int] = None,
+    frac: Optional[float] = None,
+    replace: bool = False,
+    weights: Union[Sequence, pd.Series, None] = None,
+    random_state: Optional[np.random.RandomState] = None,
+    errors: str = "ignore",
 ):
     """
     Return a random sample of items from each group.
@@ -726,6 +611,9 @@ def groupby_sample(
     rs = copy.deepcopy(
         random_state.to_numpy() if hasattr(random_state, "to_numpy") else random_state
     )
+    if not isinstance(rs, np.random.RandomState):  # pragma: no cover
+        rs = np.random.RandomState(rs)
+
     op = GroupBySample(
         size=n,
         frac=frac,

@@ -28,11 +28,12 @@ from scipy.special import (
     ellipkinc as scipy_ellipkinc,
     ellipe as scipy_ellipe,
     ellipeinc as scipy_ellipeinc,
+    fresnel as scipy_fresnel,
     betainc as scipy_betainc,
 )
 
 from ....lib.version import parse as parse_version
-from ....core import tile
+from ....core import tile, ExecutableTuple
 from ... import tensor
 from ..err_fresnel import (
     erf,
@@ -47,6 +48,8 @@ from ..err_fresnel import (
     TensorErfinv,
     erfcinv,
     TensorErfcinv,
+    fresnel,
+    TensorFresnel,
 )
 from ..gamma_funcs import (
     gammaln,
@@ -274,6 +277,48 @@ def test_erfcinv():
         assert isinstance(c.op, TensorErfcinv)
         assert c.index == c.inputs[0].index
         assert c.shape == c.inputs[0].shape
+
+
+def test_fresnel():
+    raw = np.random.rand(10, 8, 5)
+    t = tensor(raw, chunk_size=3)
+
+    r = fresnel(t)
+    expect = scipy_fresnel(raw)
+
+    assert isinstance(r, ExecutableTuple)
+    assert len(r) == 2
+
+    for i in range(len(r)):
+        assert r[i].shape == expect[i].shape
+        assert r[i].dtype == expect[i].dtype
+        assert isinstance(r[i].op, TensorFresnel)
+
+    non_tuple_out = tensor(raw, chunk_size=3)
+    with pytest.raises(TypeError):
+        r = fresnel(t, non_tuple_out)
+
+    mismatch_size_tuple = ExecutableTuple([t])
+    with pytest.raises(TypeError):
+        r = fresnel(t, mismatch_size_tuple)
+
+    out = ExecutableTuple([t, t])
+    r_out = fresnel(t, out=out)
+
+    assert isinstance(out, ExecutableTuple)
+    assert isinstance(r_out, ExecutableTuple)
+
+    assert len(out) == 2
+    assert len(r_out) == 2
+
+    for r_output, expected_output, out_output in zip(r, expect, out):
+        assert r_output.shape == expected_output.shape
+        assert r_output.dtype == expected_output.dtype
+        assert isinstance(r_output.op, TensorFresnel)
+
+        assert out_output.shape == expected_output.shape
+        assert out_output.dtype == expected_output.dtype
+        assert isinstance(out_output.op, TensorFresnel)
 
 
 def test_beta_inc():

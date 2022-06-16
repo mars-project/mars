@@ -39,6 +39,7 @@ from .utils import (
     build_split_idx_to_origin_idx,
     filter_index_value,
     hash_index,
+    is_index_value_identical,
 )
 
 
@@ -974,6 +975,10 @@ def align_dataframe_series(left, right, axis="columns"):
 
 
 def align_series_series(left, right):
+    if is_index_value_identical(left, right):
+        # index identical, skip align
+        return left.nsplits, left.chunk_shape, left.chunks, right.chunks
+
     left_index_chunks = [c.index_value for c in left.chunks]
     right_index_chunks = [c.index_value for c in right.chunks]
 
@@ -988,9 +993,6 @@ def align_series_series(left, right):
 
     left_chunks = _gen_series_chunks(splits, out_chunk_shape, 0, left)
     right_chunks = _gen_series_chunks(splits, out_chunk_shape, 1, right)
-    if _is_index_identical(left_index_chunks, right_index_chunks):
-        index_nsplits = left.nsplits[0]
-    else:
-        index_nsplits = [np.nan for _ in range(out_chunk_shape[0])]
+    index_nsplits = [np.nan for _ in range(out_chunk_shape[0])]
     nsplits = [index_nsplits]
     return nsplits, out_chunk_shape, left_chunks, right_chunks

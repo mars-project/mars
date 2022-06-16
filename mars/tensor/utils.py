@@ -229,7 +229,7 @@ def inject_dtype(dtype):
     return inner
 
 
-def infer_dtype(np_func, empty=True, reverse=False, check=True):
+def infer_dtype(np_func, multi_outputs=False, empty=True, reverse=False, check=True):
     def make_arg(arg):
         if empty:
             return np.empty((1,) * max(1, arg.ndim), dtype=arg.dtype)
@@ -267,7 +267,10 @@ def infer_dtype(np_func, empty=True, reverse=False, check=True):
                 # that implements __tensor_ufunc__
                 try:
                     with np.errstate(all="ignore"):
-                        dtype = np_func(*args, **np_kw).dtype
+                        if multi_outputs:
+                            dtype = np_func(*args, **np_kw)[0].dtype
+                        else:
+                            dtype = np_func(*args, **np_kw).dtype
                 except:  # noqa: E722
                     dtype = None
 

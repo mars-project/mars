@@ -18,6 +18,8 @@ import numpy as np
 import pytest
 
 from ....core import tile
+from ....serialization import serialize, deserialize
+from ....serialization.serializables import Serializable
 from ...datasource import tensor as from_ndarray
 from .. import (
     beta,
@@ -31,6 +33,23 @@ from .. import (
     shuffle,
     RandomState,
 )
+from ..core import RandomStateField
+
+
+class ObjWithRandomStateField(Serializable):
+    random_state = RandomStateField("random_state")
+
+
+@pytest.mark.parametrize("rs", [None, np.random.RandomState()])
+def test_serial_random_state_field(rs):
+    res = deserialize(*serialize(ObjWithRandomStateField(rs)))
+    if rs is None:
+        assert res.random_state is None
+    else:
+        original_state = rs.get_state()
+        new_state = res.random_state.get_state()
+        assert original_state[0] == new_state[0]
+        np.testing.assert_array_equal(original_state[1], new_state[1])
 
 
 def test_random():

@@ -163,7 +163,7 @@ def execute_subtask(
     for chunk in subtask_chunk_graph.topological_iter():
         if chunk.key not in context:
             try:
-                execute(chunk.op, subtask_chunk_graph.to_dot())
+                execute(context, chunk.op)
             except Exception:
                 logger.exception(
                     "Execute operand %s of graph %s failed.",
@@ -216,7 +216,7 @@ def execute_subtask(
 
 
 def _get_start_chunks(chunk_graph):
-    return sorted(list(chunk_graph.iter_indep()))
+    return sorted(list(chunk_graph.iter_indep()), key=lambda c: c.key)
 
 
 def _get_subtask_out_info(
