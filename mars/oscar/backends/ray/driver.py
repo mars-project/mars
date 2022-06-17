@@ -20,11 +20,7 @@ from typing import Dict
 from ....serialization.ray import register_ray_serializers, unregister_ray_serializers
 from ....utils import lazy_import
 from ...driver import BaseActorDriver
-from .utils import (
-    process_placement_to_address,
-    addresses_to_placement_group_info,
-    kill_and_wait,
-)
+from .utils import process_placement_to_address, addresses_to_placement_group_info
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
@@ -76,13 +72,21 @@ class RayActorDriver(BaseActorDriver):
                     pg_name, index, process_index=process_index
                 )
                 try:
+                    ray_actor = ray.get_actor(address)
                     if "COV_CORE_SOURCE" in os.environ:  # pragma: no cover
                         # must clean up first, or coverage info lost.
                         # must save the local reference until this is fixed:
                         # https://github.com/ray-project/ray/issues/7815
-                        ray_actor = ray.get_actor(address)
                         ray.get(ray_actor.cleanup.remote())
-                    kill_and_wait(ray.get_actor(address), no_restart=True)
+                    ray.kill(ray_actor, no_restart=True)
+                    while True:
+                        try:
+                            ray.get(ray_actor.wait.remote(30))
+                            logger.warning(
+                                "Waiting actor %s to be killed.", ray_actor
+                            )  # pragma: no cover
+                        except ray.exceptions.RayActorError:
+                            break
                 except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                     pass
         ray.util.remove_placement_group(pg)
