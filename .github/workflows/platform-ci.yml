@@ -18,14 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.8-kubernetes, 3.8-hadoop, 3.8-ray, 3.8-ray-deploy, 3.8-ray-dag, 3.8-vineyard, 3.8-dask]
+        python-version: [3.8-ray-deploy]
         include:
-          - { os: ubuntu-latest, python-version: 3.8-ray, no-common-tests: 1,
-              no-deploy: 1, with-ray: "with ray" }
           - { os: ubuntu-latest, python-version: 3.8-ray-deploy, no-common-tests: 1,
               no-deploy: 1, with-ray-deploy: "with ray deploy" }
-          - { os: ubuntu-latest, python-version: 3.8-ray-dag, no-common-tests: 1,
-              no-deploy: 1, with-ray-dag: "with ray dag" }
 
     steps:
       - name: Check out code

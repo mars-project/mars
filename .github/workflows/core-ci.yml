@@ -1,94 +1,94 @@
-name: Mars CI Core
-
-on:
-  push:
-    branches:
-      - '*'
-  pull_request:
-    types: ['opened', 'reopened', 'synchronize']
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        python-version: [3.7, 3.8, 3.9, 3.9-cython]
-        include:
-          - { os: ubuntu-latest, python-version: 3.9-cython, no-common-tests: 1,
-              no-deploy: 1, with-cython: 1 }
-
-    steps:
-    - name: Check out code
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 2
-
-    - name: Set up conda ${{ matrix.python-version }}
-      env:
-        PYTHON: ${{ matrix.python-version }}
-      shell: bash
-      run: |
-        source ./ci/install-conda.sh
-        python -m pip install --upgrade pip setuptools wheel coverage;
-
-    - name: Install dependencies
-      env:
-        WITH_HADOOP: ${{ matrix.with-hadoop }}
-        WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
-        NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
-        WITH_CYTHON: ${{ matrix.with-cython }}
-      shell: bash
-      run: |
-        source ./ci/reload-env.sh
-        export DEFAULT_VENV=$VIRTUAL_ENV
-
-        if [[ ! "$PYTHON" =~ "3.6" ]]; then
-          conda install -n test --quiet --yes -c conda-forge python=$PYTHON numba
-        fi
-
-        # todo remove this when fastparquet release new version
-        if [[ "$PYTHON" =~ "3.6" ]]; then
-          pip install numpy\<1.20.0
-        fi
-
-        source ./ci/rewrite-cov-config.sh
-
-        pip install numpy scipy cython oss2
-        pip install -e ".[dev,extra]"
-        pip install virtualenv flaky
-
-        if [ -z "$NO_COMMON_TESTS" ]; then
-          if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
-            pip install h5py zarr matplotlib prometheus-client requests
-            conda install -n test --quiet --yes -c conda-forge python=$PYTHON \
-              "tiledb-py>=0.4.3,<0.6.0" "tiledb<2.0.0" || true
-          fi
-
-          conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
-        fi
-        conda list -n test
-
-    - name: Test with pytest
-      env:
-        WITH_HADOOP: ${{ matrix.with-hadoop }}
-        WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
-        WITH_CYTHON: ${{ matrix.with-cython }}
-        NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
-        NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 1
-        CHANGE_MINIKUBE_NONE_USER: true
-      shell: bash
-      run: |
-        source ./ci/reload-env.sh
-        source ./.github/workflows/run-tests.sh
-        coverage xml
-
-    - name: Report coverage data
-      shell: bash
-      run: |
-        bash <(curl -s https://codecov.io/bash)
+#name: Mars CI Core
+#
+#on:
+#  push:
+#    branches:
+#      - '*'
+#  pull_request:
+#    types: ['opened', 'reopened', 'synchronize']
+#
+#concurrency:
+#  group: ${{ github.workflow }}-${{ github.ref }}
+#  cancel-in-progress: true
+#
+#jobs:
+#  build:
+#    runs-on: ${{ matrix.os }}
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        os: [ubuntu-latest]
+#        python-version: [3.7, 3.8, 3.9, 3.9-cython]
+#        include:
+#          - { os: ubuntu-latest, python-version: 3.9-cython, no-common-tests: 1,
+#              no-deploy: 1, with-cython: 1 }
+#
+#    steps:
+#    - name: Check out code
+#      uses: actions/checkout@v2
+#      with:
+#        fetch-depth: 2
+#
+#    - name: Set up conda ${{ matrix.python-version }}
+#      env:
+#        PYTHON: ${{ matrix.python-version }}
+#      shell: bash
+#      run: |
+#        source ./ci/install-conda.sh
+#        python -m pip install --upgrade pip setuptools wheel coverage;
+#
+#    - name: Install dependencies
+#      env:
+#        WITH_HADOOP: ${{ matrix.with-hadoop }}
+#        WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
+#        NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
+#        WITH_CYTHON: ${{ matrix.with-cython }}
+#      shell: bash
+#      run: |
+#        source ./ci/reload-env.sh
+#        export DEFAULT_VENV=$VIRTUAL_ENV
+#
+#        if [[ ! "$PYTHON" =~ "3.6" ]]; then
+#          conda install -n test --quiet --yes -c conda-forge python=$PYTHON numba
+#        fi
+#
+#        # todo remove this when fastparquet release new version
+#        if [[ "$PYTHON" =~ "3.6" ]]; then
+#          pip install numpy\<1.20.0
+#        fi
+#
+#        source ./ci/rewrite-cov-config.sh
+#
+#        pip install numpy scipy cython oss2
+#        pip install -e ".[dev,extra]"
+#        pip install virtualenv flaky
+#
+#        if [ -z "$NO_COMMON_TESTS" ]; then
+#          if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
+#            pip install h5py zarr matplotlib prometheus-client requests
+#            conda install -n test --quiet --yes -c conda-forge python=$PYTHON \
+#              "tiledb-py>=0.4.3,<0.6.0" "tiledb<2.0.0" || true
+#          fi
+#
+#          conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
+#        fi
+#        conda list -n test
+#
+#    - name: Test with pytest
+#      env:
+#        WITH_HADOOP: ${{ matrix.with-hadoop }}
+#        WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
+#        WITH_CYTHON: ${{ matrix.with-cython }}
+#        NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
+#        NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 1
+#        CHANGE_MINIKUBE_NONE_USER: true
+#      shell: bash
+#      run: |
+#        source ./ci/reload-env.sh
+#        source ./.github/workflows/run-tests.sh
+#        coverage xml
+#
+#    - name: Report coverage data
+#      shell: bash
+#      run: |
+#        bash <(curl -s https://codecov.io/bash)
