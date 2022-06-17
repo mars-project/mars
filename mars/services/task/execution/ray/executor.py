@@ -18,7 +18,6 @@ import logging
 import operator
 import sys
 from dataclasses import dataclass
-from typing import Optional
 
 from typing import List, Dict, Any, Set, Callable
 from .....core import ChunkGraph, Chunk, TileContext
