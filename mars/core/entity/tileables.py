@@ -118,15 +118,17 @@ class OperandTilesHandler:
         chunks = [c for c in chunks or [] if c not in _checked_chunks]
         if not chunks:
             return
-        from mars.core.operand import MapReduceOperand
-        from mars.core.operand import OperandStage
+        from ...core.operand import MapReduceOperand, ShuffleProxy, OperandStage
 
         reduce_chunks = defaultdict(list)
         for c in chunks:
             _checked_chunks.add(c)
             if isinstance(c.op, MapReduceOperand) and c.op.stage == OperandStage.reduce:
-                assert len(c.inputs) == 1, c.inputs
-                reduce_chunks[c.inputs[0]].append(c)
+                shuffle_proxies = [
+                    c for c in c.inputs if isinstance(c.op, ShuffleProxy)
+                ]
+                assert len(shuffle_proxies) == 1, (c.inputs, shuffle_proxies)
+                reduce_chunks[shuffle_proxies[0]].append(c)
             else:
                 cls._check_shuffle_reduce_chunks(c.inputs)
         for _, reduce_chunks in reduce_chunks.items():

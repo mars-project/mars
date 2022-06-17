@@ -15,9 +15,9 @@
 import numpy as np
 from typing import List, Iterable
 
+from .....core.operand import ShuffleProxy, MapReduceOperand, OperandStage
 from .....utils import lazy_import
 from ....subtask import Subtask
-from mars.core.operand import ShuffleProxy, MapReduceOperand, OperandStage
 
 ray = lazy_import("ray")
 
