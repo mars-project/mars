@@ -65,7 +65,7 @@ class MapReduceOperand(Operand):
                         [(chunk.key, self.reducer_index) for chunk in inp.inputs or ()]
                     )
                 elif isinstance(inp.op, FetchShuffle):
-                    # fetch shuffle by index doesn't store data keys, so it won't get into this function.
+                    # fetch shuffle by index doesn't store data keys, so it won't run into this function.
                     assert inp.op.shuffle_fetch_type == ShuffleFetchType.FETCH_BY_KEY
                     deps.extend([(k, self.reducer_index) for k in inp.op.source_keys])
                 else:
@@ -89,7 +89,7 @@ class MapReduceOperand(Operand):
             if input_chunk.op.shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX:
                 # For fetch shuffle by index, all shuffle block of same reducers are
                 # identified by their index. chunk key and index are not needed any more.
-                # so we mock index here.
+                # so just mock index here.
                 # keep this in sync with ray executor `execute_subtask`.
                 return ((i, i) for i in range(input_chunk.op.n_mappers))
             keys = input_chunk.op.source_keys

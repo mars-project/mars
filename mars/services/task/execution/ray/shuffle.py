@@ -17,7 +17,7 @@ from typing import List, Iterable
 
 from .....utils import lazy_import
 from ....subtask import Subtask
-from mars.core.operand import ShuffleProxy, MapReduceOperand
+from mars.core.operand import ShuffleProxy, MapReduceOperand, OperandStage
 
 ray = lazy_import("ray")
 
@@ -51,7 +51,7 @@ class ShuffleManager:
             )
             # reducers subtask should be sorted by reducer_index and MapReduceOperand.map should insert shuffle block
             # in reducers order, otherwise shuffle blocks will be sent to wrong reducers.
-            sorted_filled_reducer_subtasks = self._sort_fill_reducers(
+            sorted_filled_reducer_subtasks = self._get_sorted_filled_reducers(
                 reducer_subtasks, n_reducers
             )
             self.reducer_indices.update(
@@ -64,19 +64,16 @@ class ShuffleManager:
             )
 
     @staticmethod
-    def _sort_fill_reducers(reducer_subtasks: Iterable[Subtask], n_reducers: int):
+    def _get_sorted_filled_reducers(
+        reducer_subtasks: Iterable[Subtask], n_reducers: int
+    ):
         # For operands such as `PSRSAlign`, sometimes `reducer_subtasks` might be less than `n_reducers`.
         # fill missing reducers with `None`.
-        filled_reducers = {i: None for i in range(n_reducers)}
+        filled_reducers = list(range(n_reducers))
         for subtask in reducer_subtasks:
-            try:
-                reducer_ordinal = _get_reducer_operand(
-                    subtask.chunk_graph
-                ).reducer_ordinal
-            except Exception:
-                raise
+            reducer_ordinal = _get_reducer_operand(subtask.chunk_graph).reducer_ordinal
             filled_reducers[reducer_ordinal] = subtask
-        return filled_reducers.values()
+        return filled_reducers
 
     def has_shuffle(self):
         return self.num_shuffles > 0
@@ -103,4 +100,8 @@ class ShuffleManager:
 
 
 def _get_reducer_operand(subtask_chunk_graph):
-    return next(c.op for c in subtask_chunk_graph if isinstance(c.op, MapReduceOperand))
+    return next(
+        c.op
+        for c in subtask_chunk_graph
+        if isinstance(c.op, MapReduceOperand) and c.op.stage == OperandStage.reduce
+    )

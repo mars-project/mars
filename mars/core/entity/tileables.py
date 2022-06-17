@@ -15,8 +15,11 @@
 import builtins
 import inspect
 import itertools
+import os
+import weakref
+from collections import defaultdict
 from operator import attrgetter
-from typing import List, Callable, Generator
+from typing import List, Callable, Generator, Tuple
 from weakref import WeakSet, WeakKeyDictionary
 
 import numpy as np
@@ -29,6 +32,9 @@ from ..mode import enter_mode
 from .chunks import Chunk
 from .core import EntityData, Entity
 from .executable import _ExecutableMixin
+
+_is_ci = (os.environ.get("CI") or "0").lower() in ("1", "true")
+_checked_chunks = weakref.WeakSet()
 
 
 class NotSupportTile(Exception):
@@ -81,6 +87,7 @@ class OperandTilesHandler:
                 # without iterative tiling
                 tiled_result = tile_handler(op)
         finally:
+            cls._check_shuffle(tiled_result)
             op.post_tile(op, tiled_result)
 
         if not isinstance(tiled_result, list):
@@ -91,6 +98,51 @@ class OperandTilesHandler:
             raise TypeError(f"tiled result cannot be generator when tiling {op}")
         cls._assign_to(tiled_results, tileables)
         return tileables
+
+    @classmethod
+    def _check_shuffle(cls, tiled_results):
+        if not _is_ci:
+            return
+        if tiled_results is None:
+            tiled_results = []
+        if not isinstance(tiled_results, (List, Tuple)):
+            tiled_results = [tiled_results]
+        for tiled in tiled_results:
+            cls._check_shuffle_reduce_chunks(tiled.chunks)
+
+    @classmethod
+    def _check_shuffle_reduce_chunks(cls, chunks: List):
+        """Check shuffle reduce chunks sorted reducer_index consistent with reducer_ordinal. So shuffle mapper blocks
+        can be sorted by reducer_index, and the reducer can fetch mapper data by reducer_ordinal.
+        """
+        chunks = [c for c in chunks or [] if c not in _checked_chunks]
+        if not chunks:
+            return
+        from mars.core.operand import MapReduceOperand
+        from mars.core.operand import OperandStage
+
+        reduce_chunks = defaultdict(list)
+        for c in chunks:
+            _checked_chunks.add(c)
+            if isinstance(c.op, MapReduceOperand) and c.op.stage == OperandStage.reduce:
+                assert len(c.inputs) == 1, c.inputs
+                reduce_chunks[c.inputs[0]].append(c)
+            else:
+                cls._check_shuffle_reduce_chunks(c.inputs)
+        for _, reduce_chunks in reduce_chunks.items():
+            sorted_chunks_by_indices = sorted(
+                reduce_chunks, key=lambda c: c.op.reducer_index
+            )
+            sorted_chunks_by__ordinals = sorted(
+                reduce_chunks, key=lambda c: c.op.reducer_ordinal
+            )
+            for c1, c2 in zip(sorted_chunks_by_indices, sorted_chunks_by__ordinals):
+                assert c1.op.reducer_index == c2.op.reducer_index, (
+                    sorted_chunks_by_indices,
+                    sorted_chunks_by__ordinals,
+                )
+            for c in reduce_chunks:
+                cls._check_shuffle_reduce_chunks(c.inputs)
 
     @classmethod
     def _assign_to(
