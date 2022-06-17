@@ -131,17 +131,19 @@ class OperandTilesHandler:
                 reduce_chunks[shuffle_proxies[0]].append(c)
             else:
                 cls._check_shuffle_reduce_chunks(c.inputs)
+        # Those `reduce_chunks` may not be all reducer subtasks for a shuffle, but check the order here is
+        # enough for ensuring sorted mapper blocks consistent with reducer_ordinal.
         for _, reduce_chunks in reduce_chunks.items():
             sorted_chunks_by_indices = sorted(
                 reduce_chunks, key=lambda c: c.op.reducer_index
             )
-            sorted_chunks_by__ordinals = sorted(
+            sorted_chunks_by_ordinals = sorted(
                 reduce_chunks, key=lambda c: c.op.reducer_ordinal
             )
-            for c1, c2 in zip(sorted_chunks_by_indices, sorted_chunks_by__ordinals):
+            for c1, c2 in zip(sorted_chunks_by_indices, sorted_chunks_by_ordinals):
                 assert c1.op.reducer_index == c2.op.reducer_index, (
                     sorted_chunks_by_indices,
-                    sorted_chunks_by__ordinals,
+                    sorted_chunks_by_ordinals,
                 )
             for c in reduce_chunks:
                 cls._check_shuffle_reduce_chunks(c.inputs)

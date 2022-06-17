@@ -120,12 +120,15 @@ class MockRayTaskExecutor(RayTaskExecutor):
             input_object_refs = await self._load_subtask_inputs(
                 stage_id, subtask, task_context, shuffle_manager
             )
-            output_keys, out_count, is_shuffle_mapper = _get_subtask_out_info(
-                subtask_chunk_graph, subtask, shuffle_manager
+            is_mapper, n_reducers = shuffle_manager.is_mapper(subtask), None
+            if is_mapper:
+                n_reducers = shuffle_manager.get_n_reducers(subtask)
+            output_keys, out_count = _get_subtask_out_info(
+                subtask_chunk_graph, is_mapper, n_reducers
             )
 
             output_meta_keys = result_meta_keys & output_keys
-            if is_shuffle_mapper:
+            if is_mapper:
                 # shuffle meta won't be recorded in meta service.
                 output_count = out_count
             else:

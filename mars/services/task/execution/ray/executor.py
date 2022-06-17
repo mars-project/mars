@@ -27,9 +27,7 @@ from .....core.operand import (
     Fetch,
     Fuse,
     VirtualOperand,
-    MapReduceOperand,
     execute,
-    OperandStage,
 )
 from .....core.operand.fetch import FetchShuffle
 from .....lib.aio import alru_cache
@@ -123,6 +121,7 @@ def execute_subtask(
     subtask_id: str,
     subtask_chunk_graph: ChunkGraph,
     output_meta_keys: Set[str],
+    is_mapper,
     *inputs,
 ):
     """
@@ -138,6 +137,9 @@ def execute_subtask(
         chunk graph for subtask
     output_meta_keys: Set[str]
         will be None if subtask is a shuffle mapper.
+    is_mapper: bool
+        Whether current subtask is a shuffle mapper. Note that shuffle reducers such as `DataFrameDropDuplicates`
+        can be a mapper at the same time.
     inputs:
         inputs for current subtask
 
@@ -151,11 +153,6 @@ def execute_subtask(
     # optimize chunk graph.
     subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)
     start_chunks = _get_start_chunks(subtask_chunk_graph)
-    maybe_mapper_chunk = subtask_chunk_graph.result_chunks[0]
-    is_mapper = (
-        isinstance(maybe_mapper_chunk.op, MapReduceOperand)
-        and maybe_mapper_chunk.op.stage == OperandStage.map
-    )
     if isinstance(start_chunks[0].op, FetchShuffle):
         assert len(start_chunks) == 1, start_chunks
         # the subtask is a reducer subtask
@@ -196,6 +193,15 @@ def execute_subtask(
     output = {
         key: data for key, data, _ in iter_output_data(subtask_chunk_graph, context)
     }
+    # assert output keys order consistent
+    if is_mapper:
+        chunk_keys, reducer_indices = zip(*output.keys())
+        assert len(set(chunk_keys)) == 1, chunk_keys
+        # sorted reducer_index's consistency with reducer_ordinal is checked in
+        # `OperandTilesHandler._check_shuffle_reduce_chunks`.
+        # So sort keys by reducer_index to ensure mapper outputs consist with reducer_ordinal,
+        # then downstream can fetch shuffle blocks by reducer_ordinal.
+        output = dict(sorted(output.items(), key=lambda item: item[0][1]))
     output_values = []
     if output_meta_keys:
         assert not is_mapper
@@ -214,21 +220,10 @@ def execute_subtask(
         output_values.append(output_meta)
     output_values.extend(output.values())
 
-    # assert output keys order consistent
-    output_keys = output.keys()
-    if is_mapper:
-        chunk_keys, reducer_indices = zip(*output_keys)
-        assert len(set(chunk_keys)) == 1, chunk_keys
-        assert sorted(reducer_indices) == list(reducer_indices), (
-            reducer_indices,
-            sorted(reducer_indices),
-        )
-    else:
-        expect_output_keys, _, _ = _get_subtask_out_info(
-            subtask_chunk_graph, None, None
-        )
+    if not is_mapper:
+        expect_output_keys, _ = _get_subtask_out_info(subtask_chunk_graph, False)
+        output_keys = output.keys()
         assert expect_output_keys == output_keys, (expect_output_keys, output_keys)
-
     logger.info("Finish executing subtask %s.", subtask_id)
     return output_values[0] if len(output_values) == 1 else output_values
 
@@ -238,9 +233,7 @@ def _get_start_chunks(chunk_graph):
 
 
 def _get_subtask_out_info(
-    subtask_chunk_graph: ChunkGraph,
-    subtask: Optional[Subtask],
-    shuffle_manager: Optional[ShuffleManager],
+    subtask_chunk_graph: ChunkGraph, is_mapper: bool, n_reducers: int = None
 ):
     # output_keys might be duplicate in chunk graph, use dict to deduplicate.
     # output_keys order should be consistent with remote `execute_subtask`,
@@ -251,18 +244,15 @@ def _get_subtask_out_info(
             chunk.op, VirtualOperand
         ):  # FIXME(chaokunyang) no need to check this?
             continue
-        elif (
-            isinstance(chunk.op, MapReduceOperand)
-            and chunk.op.stage == OperandStage.map
-        ):
+        elif is_mapper:
             assert (
                 len(subtask_chunk_graph.result_chunks) == 1
             ), subtask_chunk_graph.result_chunks
-            n_reducers = shuffle_manager.get_n_reducers(subtask)
-            return set(), n_reducers, True
+            assert n_reducers is not None
+            return set(), n_reducers
         else:
             output_keys[chunk.key] = 1
-    return output_keys.keys(), len(output_keys), False
+    return output_keys.keys(), len(output_keys)
 
 
 @register_executor_cls
@@ -497,11 +487,14 @@ class RayTaskExecutor(TaskExecutor):
             # can't use `subtask_graph.count_successors(subtask) == 0` to check whether output meta,
             # because a subtask can have some outputs which is dependent by downstream, but other outputs are not.
             # see https://user-images.githubusercontent.com/12445254/168484663-a4caa3f4-0ccc-4cd7-bf20-092356815073.png
-            output_keys, out_count, is_shuffle_mapper = _get_subtask_out_info(
-                subtask_chunk_graph, subtask, shuffle_manager
+            is_mapper, n_reducers = shuffle_manager.is_mapper(subtask), None
+            if is_mapper:
+                n_reducers = shuffle_manager.get_n_reducers(subtask)
+            output_keys, out_count = _get_subtask_out_info(
+                subtask_chunk_graph, is_mapper, n_reducers
             )
             subtask_output_meta_keys = result_meta_keys & output_keys
-            if is_shuffle_mapper:
+            if is_mapper:
                 # shuffle meta won't be recorded in meta service.
                 output_count = out_count
             else:
@@ -514,6 +507,7 @@ class RayTaskExecutor(TaskExecutor):
                 subtask.subtask_id,
                 serialize(subtask_chunk_graph),
                 subtask_output_meta_keys,
+                is_mapper,
                 *input_object_refs,
             )
             if output_count == 0:
@@ -524,11 +518,11 @@ class RayTaskExecutor(TaskExecutor):
                 output_object_refs[0]
             ] = subtask
             if subtask_output_meta_keys:
-                assert not is_shuffle_mapper
+                assert not is_mapper
                 meta_object_ref, *output_object_refs = output_object_refs
                 # TODO(fyrestone): Fetch(not get) meta object here.
                 output_meta_object_refs.append(meta_object_ref)
-            if is_shuffle_mapper:
+            if is_mapper:
                 shuffle_manager.add_mapper_output_refs(subtask, output_object_refs)
             else:
                 subtask_outputs = zip(output_keys, output_object_refs)
