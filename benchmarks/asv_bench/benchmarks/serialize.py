@@ -45,8 +45,7 @@ from mars.serialization.serializables import (
 )
 from mars.services.subtask import Subtask, SubtaskResult, SubtaskStatus
 from mars.services.task import new_task_id
-from mars.utils import tokenize
-
+from mars.utils import tokenize, build_fetch_shuffle
 
 # do warmup
 serialize(None)
@@ -193,7 +192,6 @@ class SerializeFetchShuffleSuite:
         from mars.core import OutputType
         from mars.core.operand import OperandStage
         from mars.dataframe.operands import DataFrameShuffleProxy
-        from mars.utils import build_fetch
 
         source_chunks = []
         for i in range(1000):
@@ -208,7 +206,7 @@ class SerializeFetchShuffleSuite:
             output_types=[OutputType.dataframe]
         ).new_chunk(source_chunks)
 
-        fetch_chunk = build_fetch(shuffle_chunk)
+        fetch_chunk = build_fetch_shuffle(shuffle_chunk, n_reducers=10)
 
         self.test_fetch_chunks = []
         for i in range(1000):
