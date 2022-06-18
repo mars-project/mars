@@ -140,6 +140,7 @@ class MockRayTaskExecutor(RayTaskExecutor):
                 subtask.subtask_id,
                 serialize(subtask_chunk_graph),
                 output_meta_keys,
+                is_mapper,
                 *input_object_refs,
             )
             if output_count == 0:
@@ -376,7 +377,7 @@ def test_ray_execution_worker_context():
 
 @require_ray
 @pytest.mark.asyncio
-async def test_executor_context_gc():
+async def test_executor_context_gc(ray_start_regular_shared2):
     popped_seq = []
 
     class MockTaskContext(dict):

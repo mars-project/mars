@@ -194,7 +194,7 @@ def execute_subtask(
     }
     # assert output keys order consistent
     if is_mapper:
-        chunk_keys, reducer_indices = zip(*output.keys())
+        chunk_keys = set(k[0] for k in output.keys())
         assert len(set(chunk_keys)) == 1, chunk_keys
         # sorted reducer_index's consistency with reducer_ordinal is checked in
         # `OperandTilesHandler._check_shuffle_reduce_chunks`.
