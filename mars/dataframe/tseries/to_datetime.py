@@ -33,7 +33,7 @@ from ..utils import parse_index
 class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.TO_DATETIME
 
-    _arg = KeyField("arg")
+    arg = KeyField("arg")
     _errors = StringField("errors")
     _dayfirst = BoolField("dayfirst")
     _yearfirst = BoolField("yearfirst")
@@ -72,10 +72,6 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
             _cache=cache,
             **kw,
         )
-
-    @property
-    def arg(self):
-        return self._arg
 
     @property
     def errors(self):
@@ -127,7 +123,7 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        self._arg = self._inputs[0]
+        self.arg = self._inputs[0]
 
     def __call__(self, arg):
         if is_scalar(arg):

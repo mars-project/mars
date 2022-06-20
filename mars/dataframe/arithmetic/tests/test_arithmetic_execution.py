@@ -479,6 +479,12 @@ def test_dataframe_and_scalar(setup, func_name, func_opts):
     result6 = getattr(df, func_opts.rfunc_name)(1).execute().fetch()
     pd.testing.assert_frame_equal(expected2, result6)
 
+    # test pandas series and dataframe
+    pdf2 = pd.DataFrame(np.random.rand(10, 10))
+    expected = func_opts.func(pdf2, pdf)
+    result = func_opts.func(pdf2, df).execute().fetch()
+    pd.testing.assert_frame_equal(expected, result)
+
 
 @pytest.mark.parametrize("func_name, func_opts", binary_functions.items())
 def test_with_shuffle_on_string_index(setup, func_name, func_opts):

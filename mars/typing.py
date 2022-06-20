@@ -12,7 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Tuple, TypeVar
+try:
+    from typing import Tuple, TypeVar
+except ImportError:  # pragma: no cover
+    # in some scenario (for instance, pycharm debug), `mars.typing`
+    # could be mistakenly imported as builtin typing. Code below
+    # resolves this issue.
+    import os
+    import sys
+
+    _orig_sys_path = list(sys.path)
+    _mars_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    try:
+        sys.path = [p for p in sys.path if not p.startswith(_mars_path)]
+        sys.modules.pop("typing", None)
+        from typing import Tuple, TypeVar
+    finally:
+        sys.path = _orig_sys_path
+        del _orig_sys_path, _mars_path
 
 OperandType = TypeVar("OperandType")
 TileableType = TypeVar("TileableType")
