@@ -336,7 +336,7 @@ def test_fresnel_zeros():
     for r_i, expect_i in zip(r, expect):
         assert r_i.shape == expect_i.shape
         assert r_i.dtype == expect_i.dtype
-        assert isinstance(r_i.op, TensorFresnel)
+        assert isinstance(r_i.op, TensorFresnelZeros)
 
 
 def test_beta_inc():
