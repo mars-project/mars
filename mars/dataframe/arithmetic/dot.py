@@ -29,26 +29,20 @@ from ..utils import parse_index
 class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DOT
 
-    _lhs = KeyField("lhs")
-    _rhs = AnyField("rhs")
+    lhs = KeyField("lhs")
+    rhs = AnyField("rhs")
 
-    def __init__(self, output_types=None, lhs=None, rhs=None, **kw):
-        super().__init__(_output_types=output_types, _lhs=lhs, _rhs=rhs, **kw)
-
-    @property
-    def lhs(self):
-        return self._lhs
-
-    @property
-    def rhs(self):
-        return self._rhs
+    def __init__(self, output_types=None, **kw):
+        super().__init__(_output_types=output_types, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        self._lhs = self._inputs[0]
-        self._rhs = self._inputs[1]
+        self.lhs = self._inputs[0]
+        self.rhs = self._inputs[1]
 
     def __call__(self, lhs, rhs):
+        lhs = self._process_input(lhs)
+        rhs = self._process_input(rhs)
         if not isinstance(rhs, (DATAFRAME_TYPE, SERIES_TYPE)):
             rhs = astensor(rhs)
             test_rhs = rhs
@@ -171,9 +165,14 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
         return [tiled]
 
 
-def dot(df_or_seris, other):
-    op = DataFrameDot(lhs=df_or_seris, rhs=other)
-    return op(df_or_seris, other)
+def dot(df_or_series, other):
+    op = DataFrameDot(lhs=df_or_series, rhs=other)
+    return op(df_or_series, other)
+
+
+def rdot(df_or_series, other):
+    op = DataFrameDot(lhs=other, rhs=df_or_series)
+    return op(other, df_or_series)
 
 
 dot.__frame_doc__ = """

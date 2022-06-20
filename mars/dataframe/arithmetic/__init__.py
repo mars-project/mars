@@ -14,7 +14,14 @@
 
 import functools
 
-from ..core import DATAFRAME_TYPE, is_build_mode
+import pandas as pd
+
+try:
+    from pandas.core.arraylike import OpsMixin as PdOpsMixin
+except ImportError:  # pragma: no cover
+    PdOpsMixin = None
+
+from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, is_build_mode
 from ..utils import wrap_notimplemented_exception
 from ..ufunc.tensor import register_tensor_ufunc
 from .abs import abs_, DataFrameAbs
@@ -61,7 +68,7 @@ from .sqrt import DataFrameSqrt
 from .exp import DataFrameExp
 from .exp2 import DataFrameExp2
 from .expm1 import DataFrameExpm1
-from .dot import dot
+from .dot import dot, rdot
 
 
 def _wrap_eq():
@@ -95,9 +102,42 @@ def _wrap_comparison(func):
     return call
 
 
-def _install():
-    from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
+_reverse_magic_names = {
+    "eq": "eq",
+    "ne": "ne",
+    "lt": "ge",
+    "le": "gt",
+    "gt": "le",
+    "ge": "lt",
+}
 
+
+def _wrap_pandas_magics(cls, magic_name: str):
+    magic_func_name = f"__{magic_name}__"
+    magic_rfunc_name = _reverse_magic_names.get(magic_name, f"__r{magic_name}__")
+    try:
+        raw_method = getattr(cls, magic_func_name)
+    except AttributeError:
+        return
+
+    @functools.wraps(raw_method)
+    def wrapped(self, other):
+        if not isinstance(other, (DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE)):
+            return raw_method(self, other)
+
+        try:
+            val = getattr(other, magic_rfunc_name)(self)
+        except AttributeError:  # pragma: no cover
+            return raw_method(self, other)
+
+        if val is NotImplemented:  # pragma: no cover
+            return raw_method(self, other)
+        return val
+
+    setattr(cls, magic_func_name, wrapped)
+
+
+def _install():
     def _register_method(cls, name, func, wrapper=None):
         if wrapper is None:
 
@@ -260,6 +300,7 @@ def _install():
         _register_bin_method(entity, "le", le)
 
         setattr(entity, "__matmul__", dot)
+        setattr(entity, "__rmatmul__", rdot)
         _register_method(entity, "dot", dot)
 
         setattr(entity, "__and__", wrap_notimplemented_exception(bitand))
@@ -275,6 +316,36 @@ def _install():
 
     for entity in INDEX_TYPE:
         setattr(entity, "__eq__", _wrap_eq())
+
+    if PdOpsMixin is not None and not hasattr(
+        pd, "_mars_df_arith_wrapped"
+    ):  # pragma: no branch
+        # wrap pandas magic functions to intercept reverse operands
+        for magic_name in [
+            "add",
+            "sub",
+            "mul",
+            "div",
+            "truediv",
+            "floordiv",
+            "mod",
+            "pow",
+            "and",
+            "or",
+            "xor",
+            "eq",
+            "ne",
+            "lt",
+            "le",
+            "gt",
+            "ge",
+        ]:
+            _wrap_pandas_magics(PdOpsMixin, magic_name)
+
+        for pd_cls in (pd.DataFrame, pd.Series):
+            _wrap_pandas_magics(pd_cls, "matmul")
+
+        pd._mars_df_arith_wrapped = True
 
 
 _install()
