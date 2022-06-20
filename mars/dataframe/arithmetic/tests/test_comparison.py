@@ -24,8 +24,10 @@ from ...initializer import DataFrame, Series
 
 
 def test_comp(setup):
-    df1 = DataFrame(pd.DataFrame(np.random.rand(4, 3)))
-    df2 = DataFrame(pd.DataFrame(np.random.rand(4, 3)))
+    raw_df1 = pd.DataFrame(np.random.rand(4, 3))
+    raw_df2 = pd.DataFrame(np.random.rand(4, 3))
+    df1 = DataFrame(raw_df1)
+    df2 = DataFrame(raw_df2)
 
     with enter_mode(build=True):
         assert not df1.data == df2.data
@@ -40,6 +42,10 @@ def test_comp(setup):
         operator.ge,
     ]:
         eq_df = op(df1, df2)
+        pd.testing.assert_index_equal(
+            eq_df.index_value.to_pandas(), df1.index_value.to_pandas()
+        )
+        eq_df = op(raw_df1, df2)
         pd.testing.assert_index_equal(
             eq_df.index_value.to_pandas(), df1.index_value.to_pandas()
         )

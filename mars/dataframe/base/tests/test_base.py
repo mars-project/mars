@@ -674,6 +674,8 @@ def test_datetime_method():
         assert c.shape == (2,) if i == 0 else (1,)
 
     with pytest.raises(AttributeError):
+        _ = from_pandas_series(pd.Series([1])).dt
+    with pytest.raises(AttributeError):
         _ = series.dt.non_exist
 
     assert "ceil" in dir(series.dt)
