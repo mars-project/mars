@@ -40,6 +40,12 @@ def test_dot_execution(setup):
     expected = df1_raw @ df2_raw
     pd.testing.assert_frame_equal(result, expected)
 
+    # test reversed @
+    r = df1_raw @ df2
+    result = r.execute().fetch()
+    expected = df1_raw @ df2_raw
+    pd.testing.assert_frame_equal(result, expected)
+
     series1 = Series(s1_raw, chunk_size=5)
 
     # df.dot(series)

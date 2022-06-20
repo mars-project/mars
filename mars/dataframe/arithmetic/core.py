@@ -22,7 +22,6 @@ import pandas as pd
 from ...core import ENTITY_TYPE, CHUNK_TYPE, recursive_tile
 from ...serialization.serializables import AnyField
 from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, ChunkData, Chunk
-from ...tensor.datasource import tensor as astensor
 from ...utils import classproperty, get_dtype
 from ..align import (
     align_series_series,
@@ -36,7 +35,6 @@ from ..core import (
     SERIES_CHUNK_TYPE,
     is_chunk_meta_lazy,
 )
-from ..initializer import Series, DataFrame
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..ufunc.tensor import TensorUfuncMixin
 from ..utils import (
@@ -638,18 +636,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 kw[prop] = value
 
         return super()._new_chunks(inputs, shape=shape, kws=kws, **kw)
-
-    @staticmethod
-    def _process_input(x):
-        if isinstance(x, (DATAFRAME_TYPE, SERIES_TYPE)) or pd.api.types.is_scalar(x):
-            return x
-        elif isinstance(x, pd.Series):
-            return Series(x)
-        elif isinstance(x, pd.DataFrame):
-            return DataFrame(x)
-        elif isinstance(x, (list, tuple, np.ndarray, TENSOR_TYPE)):
-            return astensor(x)
-        raise NotImplementedError
 
     def _check_inputs(self, x1, x2):
         if isinstance(x1, TENSOR_TYPE) or isinstance(x2, TENSOR_TYPE):
