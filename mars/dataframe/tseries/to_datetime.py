@@ -34,91 +34,23 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.TO_DATETIME
 
     arg = KeyField("arg")
-    _errors = StringField("errors")
-    _dayfirst = BoolField("dayfirst")
-    _yearfirst = BoolField("yearfirst")
-    _utc = BoolField("utc")
-    _format = StringField("format")
-    _exact = BoolField("exact")
-    _unit = StringField("unit")
-    _infer_datetime_format = BoolField("infer_datetime_format")
-    _origin = AnyField("origin")
-    _cache = BoolField("cache")
-
-    def __init__(
-        self,
-        errors=None,
-        dayfirst=None,
-        yearfirst=None,
-        utc=None,
-        format=None,
-        exact=None,
-        unit=None,
-        infer_datetime_format=None,
-        origin=None,
-        cache=None,
-        **kw,
-    ):
-        super().__init__(
-            _errors=errors,
-            _dayfirst=dayfirst,
-            _yearfirst=yearfirst,
-            _utc=utc,
-            _format=format,
-            _exact=exact,
-            _unit=unit,
-            _infer_datetime_format=infer_datetime_format,
-            _origin=origin,
-            _cache=cache,
-            **kw,
-        )
-
-    @property
-    def errors(self):
-        return self._errors
-
-    @property
-    def dayfirst(self):
-        return self._dayfirst
-
-    @property
-    def yearfirst(self):
-        return self._yearfirst
-
-    @property
-    def utc(self):
-        return self._utc
-
-    @property
-    def format(self):
-        return self._format
-
-    @property
-    def exact(self):
-        return self._exact
-
-    @property
-    def unit(self):
-        return self._unit
-
-    @property
-    def infer_datetime_format(self):
-        return self._infer_datetime_format
-
-    @property
-    def origin(self):
-        return self._origin
-
-    @property
-    def cache(self):
-        return self._cache
+    errors = StringField("errors", default=None)
+    dayfirst = BoolField("dayfirst", default=None)
+    yearfirst = BoolField("yearfirst", default=None)
+    utc = BoolField("utc", default=None)
+    format = StringField("format", default=None)
+    exact = BoolField("exact", default=None)
+    unit = StringField("unit", default=None)
+    infer_datetime_format = BoolField("infer_datetime_format", default=None)
+    origin = AnyField("origin", default=None)
+    cache = BoolField("cache", default=None)
 
     @property
     def _params(self):
         return tuple(
             getattr(self, k)
             for k in self._keys_
-            if k not in self._no_copy_attrs_ and k != "_arg" and hasattr(self, k)
+            if k not in self._no_copy_attrs_ and k != "arg" and hasattr(self, k)
         )
 
     def _set_inputs(self, inputs):
@@ -129,16 +61,16 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
         if is_scalar(arg):
             ret = pd.to_datetime(
                 arg,
-                errors=self._errors,
-                dayfirst=self._dayfirst,
-                yearfirst=self._yearfirst,
-                utc=self._utc,
-                format=self._format,
-                exact=self._exact,
-                unit=self._unit,
-                infer_datetime_format=self._infer_datetime_format,
-                origin=self._origin,
-                cache=self._cache,
+                errors=self.errors,
+                dayfirst=self.dayfirst,
+                yearfirst=self.yearfirst,
+                utc=self.utc,
+                format=self.format,
+                exact=self.exact,
+                unit=self.unit,
+                infer_datetime_format=self.infer_datetime_format,
+                origin=self.origin,
+                cache=self.cache,
             )
             return astensor(ret)
 
