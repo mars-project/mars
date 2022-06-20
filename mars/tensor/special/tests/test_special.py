@@ -325,7 +325,7 @@ def test_fresnel():
 
 
 def test_fresnel_zeros():
-    raw = np.random.randint(10, size=1)[0]
+    raw = np.random.randint(1, 10, size=1)[0]
 
     r = fresnel_zeros(raw)
     expect = scipy_fresnel_zeros(raw)
