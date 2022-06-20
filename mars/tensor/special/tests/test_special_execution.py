@@ -333,7 +333,7 @@ def test_unary_scalar_input_tuple_execution(setup, func):
     sp_func = getattr(spspecial, func)
     mt_func = getattr(mt_special, func)
 
-    raw = np.random.randint(10, size=1)[0]
+    raw = np.random.randint(1, 10, size=1)[0]
 
     r = mt_func(raw)
 
