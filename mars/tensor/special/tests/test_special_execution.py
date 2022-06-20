@@ -299,3 +299,25 @@ def test_quintuple_execution(setup, func):
 
     expected = sp_func(raw1.toarray(), raw2, raw3, raw4, raw5)
     np.testing.assert_array_equal(result.toarray(), expected)
+
+
+@pytest.mark.parametrize(
+    "func",
+    [
+        "fresnel",
+    ],
+)
+def test_unary_tuple_execution(setup, func):
+    sp_func = getattr(spspecial, func)
+    mt_func = getattr(mt_special, func)
+
+    raw = np.random.rand(10, 8, 6)
+    a = tensor(raw, chunk_size=3)
+
+    r = mt_func(a)
+
+    result = r.execute().fetch()
+    expected = sp_func(raw)
+
+    for actual_output, expected_output in zip(result, expected):
+        np.testing.assert_array_equal(actual_output, expected_output)
