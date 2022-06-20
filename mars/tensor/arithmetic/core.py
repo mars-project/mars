@@ -353,7 +353,6 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
             kw["order"] = op.order
         return cls._get_func(xp)(inp, **kw)
 
-
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
