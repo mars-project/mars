@@ -183,7 +183,7 @@ class SerializableSerializer(Serializer):
         for field in fields:
             try:
                 value = field.get(obj)
-                if field.on_serialize:
+                if field.on_serialize is not None:
                     value = field.on_serialize(value)
             except AttributeError:
                 # Most field values are not None, serialize by list is more efficient than dict.
@@ -209,14 +209,14 @@ class SerializableSerializer(Serializer):
         if value is no_default:
             return
         if type(value) is Placeholder:
-            if field.on_deserialize:
+            if field.on_deserialize is not None:
                 value.callbacks.append(
                     lambda v: field.set(obj, field.on_deserialize(v))
                 )
             else:
                 value.callbacks.append(lambda v: field.set(obj, v))
         else:
-            if field.on_deserialize:
+            if field.on_deserialize is not None:
                 field.set(obj, field.on_deserialize(value))
             else:
                 field.set(obj, value)
