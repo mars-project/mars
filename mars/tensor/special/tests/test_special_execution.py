@@ -307,7 +307,7 @@ def test_quintuple_execution(setup, func):
         "fresnel",
     ],
 )
-def test_unary_tuple_execution(setup, func):
+def test_unary_array_input_tuple_execution(setup, func):
     sp_func = getattr(spspecial, func)
     mt_func = getattr(mt_special, func)
 
@@ -315,6 +315,27 @@ def test_unary_tuple_execution(setup, func):
     a = tensor(raw, chunk_size=3)
 
     r = mt_func(a)
+
+    result = r.execute().fetch()
+    expected = sp_func(raw)
+
+    for actual_output, expected_output in zip(result, expected):
+        np.testing.assert_array_equal(actual_output, expected_output)
+
+
+@pytest.mark.parametrize(
+    "func",
+    [
+        "fresnel_zeros",
+    ],
+)
+def test_unary_scalar_input_tuple_execution(setup, func):
+    sp_func = getattr(spspecial, func)
+    mt_func = getattr(mt_special, func)
+
+    raw = np.random.randint(10, size=1)[0]
+
+    r = mt_func(raw)
 
     result = r.execute().fetch()
     expected = sp_func(raw)

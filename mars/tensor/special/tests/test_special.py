@@ -29,6 +29,7 @@ from scipy.special import (
     ellipe as scipy_ellipe,
     ellipeinc as scipy_ellipeinc,
     fresnel as scipy_fresnel,
+    fresnel_zeros as scipy_fresnel_zeros,
     betainc as scipy_betainc,
 )
 
@@ -50,6 +51,8 @@ from ..err_fresnel import (
     TensorErfcinv,
     fresnel,
     TensorFresnel,
+    fresnel_zeros,
+    TensorFresnelZeros,
 )
 from ..gamma_funcs import (
     gammaln,
@@ -289,10 +292,10 @@ def test_fresnel():
     assert isinstance(r, ExecutableTuple)
     assert len(r) == 2
 
-    for i in range(len(r)):
-        assert r[i].shape == expect[i].shape
-        assert r[i].dtype == expect[i].dtype
-        assert isinstance(r[i].op, TensorFresnel)
+    for r_i, expect_i in zip(r, expect):
+        assert r_i.shape == expect_i.shape
+        assert r_i.dtype == expect_i.dtype
+        assert isinstance(r_i.op, TensorFresnel)
 
     non_tuple_out = tensor(raw, chunk_size=3)
     with pytest.raises(TypeError):
@@ -319,6 +322,21 @@ def test_fresnel():
         assert out_output.shape == expected_output.shape
         assert out_output.dtype == expected_output.dtype
         assert isinstance(out_output.op, TensorFresnel)
+
+
+def test_fresnel_zeros():
+    raw = np.random.randint(10, size=1)[0]
+
+    r = fresnel_zeros(raw)
+    expect = scipy_fresnel_zeros(raw)
+
+    assert isinstance(r, ExecutableTuple)
+    assert len(r) == 2
+
+    for r_i, expect_i in zip(r, expect):
+        assert r_i.shape == expect_i.shape
+        assert r_i.dtype == expect_i.dtype
+        assert isinstance(r_i.op, TensorFresnel)
 
 
 def test_beta_inc():

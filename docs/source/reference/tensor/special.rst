@@ -49,6 +49,7 @@ Error functions and fresnel integrals
    mars.tensor.special.erfinv
    mars.tensor.special.erfcinv
    mars.tensor.special.fresnel
+   mars.tensor.special.fresnel_zeros
 
 
 Ellipsoidal harmonics

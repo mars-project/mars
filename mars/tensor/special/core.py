@@ -123,7 +123,7 @@ class TensorTupleOp(TensorSpecialUnaryOp):
         return self._n_outputs
 
     def __call__(self, x, out=None):
-        x = astensor(x)
+        x_t = astensor(x)
 
         if out is not None:
             if not isinstance(out, ExecutableTuple):
@@ -136,9 +136,14 @@ class TensorTupleOp(TensorSpecialUnaryOp):
                 )
 
         func = getattr(spspecial, self._func_name)
-        res = func(np.ones(x.shape, dtype=x.dtype))
+
+        if isinstance(x, np.ScalarType):
+            res = func(x)
+        else:
+            res = func(np.ones(x_t.shape, dtype=x_t.dtype))
+
         res_tensors = self.new_tensors(
-            [x],
+            [x_t],
             kws=[
                 {
                     "side": f"{self._func_name}[{i}]",
