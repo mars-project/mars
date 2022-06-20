@@ -166,14 +166,14 @@ class TensorTupleOp(TensorSpecialUnaryOp):
         if op.order != "K":
             kw["order"] = op.order
 
-        if inp.ndim == 0: # scalar input
+        if inp.ndim == 0:  # scalar input
             return cls._get_func(xp)(np.ndarray.item(inp), **kw)
         else:
             return cls._get_func(xp)(inp, **kw)
 
     @classmethod
     def _execute_gpu(cls, op, xp, inp, **kw):
-        if inp.ndim == 0: # scalar input
+        if inp.ndim == 0:  # scalar input
             r = cls._get_func(xp)(np.ndarray.item(inp), **kw)
         else:
             r = cls._get_func(xp)(inp, **kw)
