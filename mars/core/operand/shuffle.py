@@ -55,20 +55,16 @@ class MapReduceOperand(Operand):
         stage = self.stage
         assert stage is not None
         if stage == OperandStage.reduce:
-            # Operands such as `TensorIndexSetValue` will have multiple inputs
+            # Operands such as `TensorIndexSetValue` will have multiple inputs, some won't be ProxyChunk
             proxy_operands = [c.op for c in inputs if isinstance(c.op, ShuffleProxy)]
             if proxy_operands:
                 proxy = proxy_operands[0]
                 self.reducer_ordinal = proxy.n_reducers
                 proxy.n_reducers += 1
-                self.n_reducers = proxy.n_reducers
             else:
                 from mars.core.operand import FetchShuffle
 
-                fetch_shuffle_operands = [
-                    c.op for c in inputs if isinstance(c.op, FetchShuffle)
-                ]
-                assert fetch_shuffle_operands, inputs
+                assert any(isinstance(c.op, FetchShuffle) for c in inputs), inputs
         return super()._new_chunks(inputs, kws, **kw)
 
     def get_dependent_data_keys(self):
