@@ -19,7 +19,7 @@ from ...serialization.serializables import (
     StringField,
     ListField,
     Int32Field,
-    AnyField,
+    ReferenceField,
 )
 from .base import Operand
 from .core import TileableOperandMixin
@@ -56,7 +56,7 @@ class FetchShuffle(Operand):
     source_mappers = ListField("source_mappers", FieldTypes.uint16)
     n_mappers = Int32Field("n_mappers")
     n_reducers = Int32Field("n_reducers")
-    shuffle_fetch_type = AnyField("shuffle_fetch_type")
+    shuffle_fetch_type = ReferenceField("shuffle_fetch_type")
 
 
 class ShuffleFetchType(enum.Enum):

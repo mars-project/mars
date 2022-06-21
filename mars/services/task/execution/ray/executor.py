@@ -228,7 +228,7 @@ def execute_subtask(
 
 
 def _get_start_chunks(chunk_graph):
-    return sorted(list(chunk_graph.iter_indep()), key=lambda c: c.key)
+    return sorted(chunk_graph.iter_indep(), key=operator.attrgetter("key"))
 
 
 def _get_subtask_out_info(
@@ -665,7 +665,7 @@ class RayTaskExecutor(TaskExecutor):
                 # pure_depend data is not used, skip it.
                 if chunk_key in subtask.pure_depend_keys:
                     input_object_refs.append(None)
-                if chunk_key in context:
+                elif chunk_key in context:
                     input_object_refs.append(context[chunk_key])
                 else:
                     input_object_refs.append(None)
