@@ -226,13 +226,10 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
         reduce_chunks = []
         out_shape_iter = itertools.product(*chunk_size)
         out_indices = list(itertools.product(*(range(len(cs)) for cs in chunk_size)))
-        for ordinal, (out_idx, out_shape) in enumerate(
-            zip(out_indices, out_shape_iter)
-        ):
+        for out_idx, out_shape in zip(out_indices, out_shape_iter):
             reduce_chunk_op = TensorSquareform(
                 stage=OperandStage.reduce,
                 dtype=out.dtype,
-                reducer_ordinal=ordinal,
                 n_reducers=len(out_indices),
             )
             reduce_chunk = reduce_chunk_op.new_chunk(

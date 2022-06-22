@@ -24,6 +24,13 @@ from .base import Operand, VirtualOperand, OperandStage
 
 class ShuffleProxy(VirtualOperand):
     _op_type_ = opcodes.SHUFFLE_PROXY
+    n_mappers = Int32Field("n_mappers", default=0)
+    # `n_reducers` will be updated in `MapReduceOperand._new_chunks`
+    n_reducers = Int32Field("n_reducers", default=0)
+
+    def _new_chunks(self, inputs, kws=None, **kw):
+        self.n_mappers = len(inputs)
+        return super()._new_chunks(inputs, kws, **kw)
 
 
 class MapReduceOperand(Operand):
@@ -35,6 +42,7 @@ class MapReduceOperand(Operand):
     n_reducers = Int32Field("n_reducers")
     # The reducer ordinal in all reducers. It's different from reducer_index,
     # which might be a tuple.
+    # `reducer_ordinal` will be set in `_new_chunks`.
     reducer_ordinal = Int32Field("reducer_ordinal")
     reducer_phase = StringField("reducer_phase", default=None)
 
@@ -44,7 +52,23 @@ class MapReduceOperand(Operand):
             if kws:
                 index = kws[0].get("index")
             self.reducer_index = index or kw.get("index")
+        stage = self.stage
+        assert stage is not None
+        if stage == OperandStage.reduce:
+            # Operands such as `TensorIndexSetValue` will have multiple inputs
+            proxy_operands = [c.op for c in inputs if isinstance(c.op, ShuffleProxy)]
+            if proxy_operands:
+                proxy = proxy_operands[0]
+                self.reducer_ordinal = proxy.n_reducers
+                proxy.n_reducers += 1
+                self.n_reducers = proxy.n_reducers
+            else:
+                from mars.core.operand import FetchShuffle
 
+                fetch_shuffle_operands = [
+                    c.op for c in inputs if isinstance(c.op, FetchShuffle)
+                ]
+                assert fetch_shuffle_operands, inputs
         return super()._new_chunks(inputs, kws, **kw)
 
     def get_dependent_data_keys(self):

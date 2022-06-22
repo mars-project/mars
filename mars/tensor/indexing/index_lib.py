@@ -18,7 +18,7 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict, namedtuple
 from enum import Enum
 from operator import itemgetter
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Any
 from numbers import Integral
 
 import numpy as np
@@ -778,15 +778,14 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
         )
         chunk_index_to_fancy_index_chunks = OrderedDict()
         chunk_index_to_raw_positions = OrderedDict()
-        out_indices = list(
+        out_indices: List[Tuple[Any]] = list(
             itertools.product(*(range(tileable.chunk_shape[ax]) for ax in axes))
         )
-        for ordinal, chunk_index in enumerate(out_indices):
+        for chunk_index in out_indices:
             reduce_op = FancyIndexingDistribute(
                 stage=OperandStage.reduce,
                 axes=axes,
                 dtype=proxy_chunk.dtype,
-                reducer_ordinal=ordinal,
                 n_reducers=len(out_indices),
             )
             # chunks of fancy indexes on each axis
@@ -933,7 +932,6 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
                     dtype=proxy_chunk.dtype,
                     sparse=to_shuffle_chunks[0].issparse(),
                     reducer_index=(next(it),),
-                    reducer_ordinal=ordinal,
                     n_reducers=len(out_indices),
                 )
                 reduce_chunk_shape = (
