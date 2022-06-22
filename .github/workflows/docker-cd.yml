@@ -1,73 +1,73 @@
-name: Mars CD for DockerHub
-
-on:
-  schedule:
-    - cron: '0 18 * * *'
-  push:
-    tags:
-      - '*'
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-      - name: Build and push Docker image
-        shell: bash
-        env:
-          DOCKER_ORG: ${{ secrets.DOCKERHUB_USERNAME }}
-        if: ${{ github.repository == 'mars-project/mars' }}
-        run: |
-          source ./ci/reload-env.sh
-
-          if [[ -n "$GIT_TAG" ]]; then
-            BRANCHES="$GIT_TAG"
-            echo "Will handle tag $BRANCHES"
-          else
-            MAINBRANCH=$(git rev-parse --abbrev-ref HEAD)
-            BRANCHES=$(git branch -r --list 'origin/v*' | sed 's/ *origin\///g')
-            BRANCHES="$MAINBRANCH $BRANCHES"
-          
-            echo "Will handle branches:"
-            for branch in $BRANCHES; do
-              echo "  $branch"
-            done
-          fi
-
-          if [[ "$DOCKER_ORG" == "marsuploader" ]]; then
-            export DOCKER_ORG="marsproject"
-          fi
-
-          for branch in $BRANCHES; do
-            if [[ -n "$GIT_TAG" ]]; then
-              export IMAGE_TAG="$GIT_TAG"
-            else
-              echo ""
-              git checkout $branch
-              git log --pretty=format:"%h - %an, %cd : %s" --since=25.hours
-
-              # consider schedule delay of Github Actions, some margin needed.
-              if [[ ! "$(git log --since=25.hours)" ]]; then
-                echo "No recent commits on branch $branch found, will skip building image."
-                continue
-              fi
-
-              export IMAGE_TAG="nightly-$branch"
-            fi
-            bash bin/kube-image-tool.sh -o "$DOCKER_ORG" -t "$IMAGE_TAG" build
-            docker push "$DOCKER_ORG/mars:$IMAGE_TAG"
-          done
+#name: Mars CD for DockerHub
+#
+#on:
+#  schedule:
+#    - cron: '0 18 * * *'
+#  push:
+#    tags:
+#      - '*'
+#
+#concurrency:
+#  group: ${{ github.workflow }}-${{ github.ref }}
+#  cancel-in-progress: true
+#
+#jobs:
+#  build:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Check out code
+#        uses: actions/checkout@v3
+#        with:
+#          fetch-depth: 0
+#
+#      - name: Log in to Docker Hub
+#        uses: docker/login-action@v1
+#        with:
+#          username: ${{ secrets.DOCKERHUB_USERNAME }}
+#          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+#
+#      - name: Build and push Docker image
+#        shell: bash
+#        env:
+#          DOCKER_ORG: ${{ secrets.DOCKERHUB_USERNAME }}
+#        if: ${{ github.repository == 'mars-project/mars' }}
+#        run: |
+#          source ./ci/reload-env.sh
+#
+#          if [[ -n "$GIT_TAG" ]]; then
+#            BRANCHES="$GIT_TAG"
+#            echo "Will handle tag $BRANCHES"
+#          else
+#            MAINBRANCH=$(git rev-parse --abbrev-ref HEAD)
+#            BRANCHES=$(git branch -r --list 'origin/v*' | sed 's/ *origin\///g')
+#            BRANCHES="$MAINBRANCH $BRANCHES"
+#
+#            echo "Will handle branches:"
+#            for branch in $BRANCHES; do
+#              echo "  $branch"
+#            done
+#          fi
+#
+#          if [[ "$DOCKER_ORG" == "marsuploader" ]]; then
+#            export DOCKER_ORG="marsproject"
+#          fi
+#
+#          for branch in $BRANCHES; do
+#            if [[ -n "$GIT_TAG" ]]; then
+#              export IMAGE_TAG="$GIT_TAG"
+#            else
+#              echo ""
+#              git checkout $branch
+#              git log --pretty=format:"%h - %an, %cd : %s" --since=25.hours
+#
+#              # consider schedule delay of Github Actions, some margin needed.
+#              if [[ ! "$(git log --since=25.hours)" ]]; then
+#                echo "No recent commits on branch $branch found, will skip building image."
+#                continue
+#              fi
+#
+#              export IMAGE_TAG="nightly-$branch"
+#            fi
+#            bash bin/kube-image-tool.sh -o "$DOCKER_ORG" -t "$IMAGE_TAG" build
+#            docker push "$DOCKER_ORG/mars:$IMAGE_TAG"
+#          done

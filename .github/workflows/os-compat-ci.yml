@@ -1,91 +1,91 @@
-name: Mars CI for OS compatibility
-
-on:
-  push:
-    branches:
-      - '*'
-  pull_request:
-    types: ['opened', 'reopened', 'synchronize']
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macOS-latest, windows-latest]
-        python-version: [3.7, 3.8]
-
-    steps:
-    - name: Check out code
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 2
-
-    - name: Set up conda ${{ matrix.python-version }}
-      env:
-        PYTHON: ${{ matrix.python-version }}
-      shell: bash
-      run: |
-        source ./ci/install-conda.sh
-        python -m pip install --upgrade pip setuptools wheel coverage;
-
-    - name: Install dependencies
-      env:
-        WITH_HADOOP: ${{ matrix.with-hadoop }}
-        WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
-        NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
-      shell: bash
-      run: |
-        source ./ci/reload-env.sh
-        export DEFAULT_VENV=$VIRTUAL_ENV
-
-        source ./ci/rewrite-cov-config.sh
-
-        pip install numpy scipy cython oss2
-        pip install -e ".[dev,extra]"
-        pip install virtualenv flaky
-        conda list -n test
-
-    - name: Test with pytest
-      env:
-        WITH_HADOOP: ${{ matrix.with-hadoop }}
-        WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
-        WITH_CYTHON: ${{ matrix.with-cython }}
-        NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
-        NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 1
-        CHANGE_MINIKUBE_NONE_USER: true
-      shell: bash
-      run: |
-        source ./ci/reload-env.sh
-
-        mkdir -p build
-        if [[ $UNAME == "darwin" ]]; then
-          python -m pytest $PYTEST_CONFIG --forked --timeout=1500 \
-            mars/oscar mars/services mars/storage mars/lib mars/tests
-          mv .coverage build/.coverage.dist.file
-        elif [[ $UNAME == "windows" ]]; then
-          python -m pytest $PYTEST_CONFIG --force-flaky --max-runs=10 --timeout=1500 \
-            mars/oscar
-          mv .coverage build/.coverage.oscar.file
-
-          python -m pytest $PYTEST_CONFIG --force-flaky --max-runs=10 --timeout=1500 \
-            mars/services
-          mv .coverage build/.coverage.services.file
-
-          # skip mars/tests temporarily, as it may cause test stuck and needs more inspection
-          python -m pytest $PYTEST_CONFIG --force-flaky --max-runs=10 --timeout=1500 \
-            mars/storage mars/lib  # mars/tests
-          mv .coverage build/.coverage.misc.file
-        fi
-        coverage combine build/ && coverage report
-        coverage xml
-
-    - name: Report coverage data
-      shell: bash
-      run: |
-        bash <(curl -s https://codecov.io/bash)
+#name: Mars CI for OS compatibility
+#
+#on:
+#  push:
+#    branches:
+#      - '*'
+#  pull_request:
+#    types: ['opened', 'reopened', 'synchronize']
+#
+#concurrency:
+#  group: ${{ github.workflow }}-${{ github.ref }}
+#  cancel-in-progress: true
+#
+#jobs:
+#  build:
+#    runs-on: ${{ matrix.os }}
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        os: [macOS-latest, windows-latest]
+#        python-version: [3.7, 3.8]
+#
+#    steps:
+#    - name: Check out code
+#      uses: actions/checkout@v2
+#      with:
+#        fetch-depth: 2
+#
+#    - name: Set up conda ${{ matrix.python-version }}
+#      env:
+#        PYTHON: ${{ matrix.python-version }}
+#      shell: bash
+#      run: |
+#        source ./ci/install-conda.sh
+#        python -m pip install --upgrade pip setuptools wheel coverage;
+#
+#    - name: Install dependencies
+#      env:
+#        WITH_HADOOP: ${{ matrix.with-hadoop }}
+#        WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
+#        NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
+#      shell: bash
+#      run: |
+#        source ./ci/reload-env.sh
+#        export DEFAULT_VENV=$VIRTUAL_ENV
+#
+#        source ./ci/rewrite-cov-config.sh
+#
+#        pip install numpy scipy cython oss2
+#        pip install -e ".[dev,extra]"
+#        pip install virtualenv flaky
+#        conda list -n test
+#
+#    - name: Test with pytest
+#      env:
+#        WITH_HADOOP: ${{ matrix.with-hadoop }}
+#        WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
+#        WITH_CYTHON: ${{ matrix.with-cython }}
+#        NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
+#        NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 1
+#        CHANGE_MINIKUBE_NONE_USER: true
+#      shell: bash
+#      run: |
+#        source ./ci/reload-env.sh
+#
+#        mkdir -p build
+#        if [[ $UNAME == "darwin" ]]; then
+#          python -m pytest $PYTEST_CONFIG --forked --timeout=1500 \
+#            mars/oscar mars/services mars/storage mars/lib mars/tests
+#          mv .coverage build/.coverage.dist.file
+#        elif [[ $UNAME == "windows" ]]; then
+#          python -m pytest $PYTEST_CONFIG --force-flaky --max-runs=10 --timeout=1500 \
+#            mars/oscar
+#          mv .coverage build/.coverage.oscar.file
+#
+#          python -m pytest $PYTEST_CONFIG --force-flaky --max-runs=10 --timeout=1500 \
+#            mars/services
+#          mv .coverage build/.coverage.services.file
+#
+#          # skip mars/tests temporarily, as it may cause test stuck and needs more inspection
+#          python -m pytest $PYTEST_CONFIG --force-flaky --max-runs=10 --timeout=1500 \
+#            mars/storage mars/lib  # mars/tests
+#          mv .coverage build/.coverage.misc.file
+#        fi
+#        coverage combine build/ && coverage report
+#        coverage xml
+#
+#    - name: Report coverage data
+#      shell: bash
+#      run: |
+#        bash <(curl -s https://codecov.io/bash)
