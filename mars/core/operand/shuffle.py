@@ -52,9 +52,7 @@ class MapReduceOperand(Operand):
             if kws:
                 index = kws[0].get("index")
             self.reducer_index = index or kw.get("index")
-        stage = self.stage
-        assert stage is not None
-        if stage == OperandStage.reduce:
+        if self.stage == OperandStage.reduce:
             # Operands such as `TensorIndexSetValue` will have multiple inputs, some won't be ProxyChunk
             proxy_operands = [c.op for c in inputs if isinstance(c.op, ShuffleProxy)]
             if proxy_operands:
