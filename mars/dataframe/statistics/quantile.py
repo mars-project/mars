@@ -286,9 +286,7 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                     interpolation=op.interpolation,
                     handle_non_numeric=not op.numeric_only,
                 )
-                r = series_from_tensor(
-                    tr, index=op.input.index, name=tr.op.q.item()
-                )
+                r = series_from_tensor(tr, index=op.input.index, name=tr.op.q.item())
         else:
             assert df.ndim == 2
             if op.axis == 0:
