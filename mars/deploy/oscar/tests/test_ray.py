@@ -42,9 +42,6 @@ from .modules.utils import (  # noqa: F401  # pylint: disable=unused-variable
 ray = lazy_import("ray")
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "local_test_with_ray_config.yml")
-CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
-    os.path.dirname(__file__), "ray_test_with_third_parity_modules_config.yml"
-)
 
 EXPECT_PROFILING_STRUCTURE = {
     "supervisor": {
@@ -219,84 +216,6 @@ async def test_web_session(ray_start_regular_shared, create_cluster, config):
     web_address = client.web_address
     assert await ray.remote(_run_web_session).remote(web_address)
     assert await ray.remote(_sync_web_session_test).remote(web_address)
-
-
-@require_ray
-@pytest.mark.parametrize(
-    "config_exception",
-    [
-        [set(), pytest.raises(TypeError, match="set")],
-        [
-            {"supervisor": ["not_exists_for_supervisor"]},
-            pytest.raises(ModuleNotFoundError, match="not_exists_for_supervisor"),
-        ],
-        [
-            {"worker": ["not_exists_for_worker"]},
-            pytest.raises(ModuleNotFoundError, match="not_exists_for_worker"),
-        ],
-    ],
-)
-@pytest.mark.asyncio
-async def test_load_third_party_modules(ray_start_regular_shared, config_exception):
-    third_party_modules_config, expected_exception = config_exception
-    config = _load_config()
-
-    config["third_party_modules"] = third_party_modules_config
-    with expected_exception:
-        await new_cluster(
-            worker_num=1,
-            worker_cpu=1,
-            worker_mem=1 * 1024**3,
-            config=config,
-        )
-
-
-@require_ray
-@pytest.mark.parametrize(
-    "create_cluster",
-    [
-        {
-            "config": {
-                "third_party_modules": {
-                    "worker": ["mars.deploy.oscar.tests.modules.replace_op"]
-                },
-            },
-        }
-    ],
-    indirect=True,
-)
-@pytest.mark.asyncio
-def test_load_third_party_modules2(ray_start_regular_shared, create_cluster):
-    client = create_cluster[0]
-    assert client.session
-    session = new_session(address=client.address)
-    with session:
-        raw = np.random.RandomState(0).rand(10, 10)
-        a = mt.tensor(raw, chunk_size=5)
-        b = a + 1
-        b.execute(show_progress=False)
-        result = b.fetch()
-
-        np.testing.assert_equal(raw - 1, result)
-
-    assert get_default_session() is None
-
-
-@require_ray
-@pytest.mark.asyncio
-async def test_load_third_party_modules_from_config(
-    ray_start_regular_shared, cleanup_third_party_modules_output  # noqa: F811
-):
-    client = await new_cluster(
-        supervisor_mem=1 * 1024**3,
-        worker_num=1,
-        worker_cpu=1,
-        worker_mem=1 * 1024**3,
-        config=CONFIG_THIRD_PARTY_MODULES_TEST_FILE,
-    )
-    async with client:
-        # 1 supervisor, 1 worker main pools, 1 worker sub pools.
-        assert len(get_output_filenames()) == 3
 
 
 @require_ray
