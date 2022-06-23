@@ -162,6 +162,42 @@ class TensorTupleOp(TensorSpecialUnaryOp):
         return out
 
     @classmethod
+    def tile(cls, op):
+        in_tensor = op.input
+
+        if in_tensor.ndim != 0:
+            return (yield from super().tile(op))
+        else:
+            in_chunk = in_tensor.chunks[0]
+            chunk_op = op.copy().reset_key()
+
+            output_chunks = chunk_op.new_chunks(
+                [in_chunk],
+                kws=[
+                    {
+                        "side": f"{output}[{i}]",
+                        "dtype": output.dtype,
+                        "index": 0,
+                        "shape": output.shape,
+                        "order": output.order,
+                    }
+                    for i, output in enumerate(op.outputs)
+                ],
+            )
+
+            new_op = op.copy()
+            kws = [
+                {
+                    "chunks": [output_chunk],
+                    "nsplits": tuple((s,) for s in output.shape),
+                    "dtype": output.dtype,
+                    "shape": output.shape,
+                }
+                for output, output_chunk in zip(op.outputs, output_chunks)
+            ]
+            return new_op.new_tensors(op.inputs, kws=kws)
+
+    @classmethod
     def _execute_cpu(cls, op, xp, inp, **kw):
         if op.order != "K":
             kw["order"] = op.order
