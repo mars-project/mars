@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import functools
 import logging
 
 import operator
@@ -42,7 +43,6 @@ from .....utils import (
 )
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
-from ....ray_utils import _ray_export_once
 from ....subtask import Subtask, SubtaskGraph
 from ....subtask.utils import iter_output_data
 from ...core import Task
@@ -372,8 +372,10 @@ class RayTaskExecutor(TaskExecutor):
         )
 
     @staticmethod
+    @functools.lru_cache(maxsize=None)  # Specify maxsize=None to make it faster
     def _get_ray_executor():
-        return _ray_export_once(execute_subtask)
+        # Export remote function once.
+        return ray.remote(execute_subtask)
 
     @classmethod
     async def _init_context(
