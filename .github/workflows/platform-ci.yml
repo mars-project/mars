@@ -75,11 +75,11 @@ jobs:
           else
             pip install virtualenv flaky
             if [ -n "$WITH_KUBERNETES" ]; then
-              ./.github/workflows/install-minikube.sh
+              ./ci/install-minikube.sh
               pip install kubernetes
             fi
             if [ -n "$WITH_HADOOP" ]; then
-              ./.github/workflows/install-hadoop.sh
+              ./ci/install-hadoop.sh
               echo "import coverage; coverage.process_startup()" > \
                 $(python -c "import site; print(site.getsitepackages()[-1])")/coverage.pth
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein conda-pack
