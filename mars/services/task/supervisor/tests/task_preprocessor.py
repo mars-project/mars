@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import itertools
+from collections import defaultdict
 from functools import partial
-from typing import Callable, Dict
+from typing import Callable, Dict, List
 
 import numpy as np
 
@@ -150,6 +151,14 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
         op_to_bands: Dict[str, BandType] = None,
         shuffle_fetch_type: ShuffleFetchType = None,
     ) -> SubtaskGraph:
+        checked_chunks = set()
+        for tileable in self.tileable_graph:
+            try:
+                tiled = self.get_tiled(tileable)
+                self._check_shuffle_reduce_chunks(tiled.chunks, checked_chunks)
+            except KeyError:
+                pass
+
         # check if duplicated operand keys exist
         if self._check_duplicated_operand_keys and len(
             {c.key for c in chunk_graph}
@@ -211,3 +220,39 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
                     n_reducers,
                 )
         return subtask_graph
+
+    @classmethod
+    def _check_shuffle_reduce_chunks(cls, chunks: List, checked_chunks):
+        """Check shuffle reduce chunks sorted reducer_index consistent with reducer_ordinal. So shuffle mapper blocks
+        can be sorted by reducer_index, and the reducer can fetch mapper data by reducer_ordinal.
+        """
+        chunks = [c for c in chunks or [] if c not in checked_chunks]
+        if not chunks:
+            return
+        from .....core.operand import MapReduceOperand, ShuffleProxy, OperandStage
+
+        reduce_chunks = defaultdict(list)
+        for c in chunks:
+            checked_chunks.add(c)
+            if isinstance(c.op, MapReduceOperand) and c.op.stage == OperandStage.reduce:
+                shuffle_proxies = [
+                    c for c in c.inputs if isinstance(c.op, ShuffleProxy)
+                ]
+                assert len(shuffle_proxies) == 1, (c.inputs, shuffle_proxies)
+                reduce_chunks[shuffle_proxies[0]].append(c)
+            else:
+                cls._check_shuffle_reduce_chunks(c.inputs, checked_chunks)
+        for _, reduce_chunks in reduce_chunks.items():
+            sorted_chunks_by_indices = sorted(
+                reduce_chunks, key=lambda c: c.op.reducer_index
+            )
+            sorted_chunks_by_ordinals = sorted(
+                reduce_chunks, key=lambda c: c.op.reducer_ordinal
+            )
+            for c1, c2 in zip(sorted_chunks_by_indices, sorted_chunks_by_ordinals):
+                assert c1.op.reducer_index == c2.op.reducer_index, (
+                    sorted_chunks_by_indices,
+                    sorted_chunks_by_ordinals,
+                )
+            for c in reduce_chunks:
+                cls._check_shuffle_reduce_chunks(c.inputs, checked_chunks)
