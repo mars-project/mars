@@ -18,7 +18,6 @@ from ...core import ExecutableTuple
 from ... import opcodes
 from ..datasource import tensor as astensor
 from ..arithmetic.core import (
-    TensorElementWise,
     TensorUnaryOp,
     TensorBinOp,
     TensorMultiOp,
@@ -142,7 +141,7 @@ class TensorTupleOp(TensorSpecialUnaryOp):
 
         func = getattr(spspecial, self._func_name)
 
-        if isinstance(x, np.ScalarType):
+        if np.isscalar(x):
             res = func(x)
         else:
             res = func(np.ones(x_t.shape, dtype=x_t.dtype))
@@ -171,7 +170,7 @@ class TensorTupleOp(TensorSpecialUnaryOp):
         in_tensor = op.input
 
         if in_tensor.ndim != 0:
-            return (yield from TensorElementWise.tile(op))
+            return (yield from super().tile(op))
         else:
             in_chunk = in_tensor.chunks[0]
             chunk_op = op.copy().reset_key()
