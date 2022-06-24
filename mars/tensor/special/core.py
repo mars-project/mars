@@ -17,7 +17,12 @@ import scipy.special as spspecial
 from ...core import ExecutableTuple
 from ... import opcodes
 from ..datasource import tensor as astensor
-from ..arithmetic.core import TensorElementWise, TensorUnaryOp, TensorBinOp, TensorMultiOp
+from ..arithmetic.core import (
+    TensorElementWise,
+    TensorUnaryOp,
+    TensorBinOp,
+    TensorMultiOp,
+)
 from ..array_utils import (
     np,
     cp,
