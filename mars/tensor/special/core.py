@@ -204,7 +204,7 @@ class TensorTupleOp(TensorSpecialUnaryOp):
     @classmethod
     def _execute_cpu(cls, op, xp, inp, **kw):
         if op.order != "K":
-            kw["order"] = op.order
+            kw["order"] = op.order  # pragma: no cover
 
         if inp.ndim == 0:  # scalar input
             return cls._get_func(xp)(np.ndarray.item(inp), **kw)
