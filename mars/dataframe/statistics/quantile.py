@@ -272,7 +272,7 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                 stack_op = TensorStack(axis=0, dtype=dtype)
                 tr = stack_op(ts)
                 r = series_from_tensor(
-                    tr, index=df.index_value.to_pandas(), name=np.asscalar(ts[0].op.q)
+                    tr, index=df.index_value.to_pandas(), name=ts[0].op.q.item()
                 )
             else:
                 assert op.axis == 1
@@ -286,9 +286,7 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                     interpolation=op.interpolation,
                     handle_non_numeric=not op.numeric_only,
                 )
-                r = series_from_tensor(
-                    tr, index=op.input.index, name=np.asscalar(tr.op.q)
-                )
+                r = series_from_tensor(tr, index=op.input.index, name=tr.op.q.item())
         else:
             assert df.ndim == 2
             if op.axis == 0:

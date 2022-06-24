@@ -31,40 +31,15 @@ from ..operands import (
 class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.APPEND
 
-    _ignore_index = BoolField("ignore_index")
-    _verify_integrity = BoolField("verify_integrity")
-    _sort = BoolField("sort")
+    ignore_index = BoolField("ignore_index")
+    verify_integrity = BoolField("verify_integrity")
+    sort = BoolField("sort")
 
-    def __init__(
-        self,
-        ignore_index=None,
-        verify_integrity=None,
-        sort=None,
-        output_types=None,
-        **kw,
-    ):
-        super().__init__(
-            _ignore_index=ignore_index,
-            _verify_integrity=verify_integrity,
-            _sort=sort,
-            _output_types=output_types,
-            **kw,
-        )
-
-    @property
-    def ignore_index(self):
-        return self._ignore_index
-
-    @property
-    def verify_integrity(self):
-        return self._verify_integrity
-
-    @property
-    def sort(self):
-        return self._sort
+    def __init__(self, output_types=None, **kw):
+        super().__init__(_output_types=output_types, **kw)
 
     @classmethod
-    def _tile_dataframe(cls, op):
+    def _tile_dataframe(cls, op: "DataFrameAppend"):
         out_df = op.outputs[0]
         inputs = op.inputs
         first_df, others = inputs[0], inputs[1:]
@@ -110,7 +85,7 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
         )
 
     @classmethod
-    def _tile_series(cls, op):
+    def _tile_series(cls, op: "DataFrameAppend"):
         out_series = op.outputs[0]
         inputs = op.inputs
         first_series, others = inputs[0], inputs[1:]
@@ -151,7 +126,7 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
         )
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "DataFrameAppend"):
         if op.output_types[0] == OutputType.dataframe:
             return (yield from cls._tile_dataframe(op))
         else:
@@ -222,7 +197,7 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
         )
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "DataFrameAppend"):
         first, others = ctx[op.inputs[0].key], [ctx[inp.key] for inp in op.inputs[1:]]
         r = first.append(others, verify_integrity=op.verify_integrity, sort=op.sort)
         ctx[op.outputs[0].key] = r

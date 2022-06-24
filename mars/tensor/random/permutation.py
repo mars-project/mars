@@ -109,11 +109,10 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
                 dtype=out_tensor.dtype, _tensor_keys=[in_tensor.key]
             ).new_chunk(map_chunks, shape=())
 
-            for ordinal, c in enumerate(map_chunks):
+            for c in map_chunks:
                 chunk_op = TensorPermutation(
                     stage=OperandStage.reduce,
                     n_reducers=len(map_chunks),
-                    reducer_ordinal=ordinal,
                     seed=reduce_seeds[c.index[op.axis]],
                     axis=op.axis,
                 )

@@ -200,4 +200,14 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
                     n_reducers,
                 )
                 assert len(set(n_reducers_list)) == 1, n_reducers_list
+                mapper_chunks = chunk_graph.predecessors(proxy_chunk)
+                assert proxy_chunk.op.n_mappers == len(mapper_chunks), (
+                    proxy_chunk.op.n_mappers,
+                    mapper_chunks,
+                )
+                # If some reducer data are not used by downstream, then it won't be included in the chunk graph.
+                assert proxy_chunk.op.n_reducers >= n_reducers, (
+                    proxy_chunk.op.n_reducers,
+                    n_reducers,
+                )
         return subtask_graph
