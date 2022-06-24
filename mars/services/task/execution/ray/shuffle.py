@@ -43,9 +43,7 @@ class ShuffleManager:
             mapper_subtasks = subtask_graph.predecessors(proxy_subtask)
             reducer_subtasks = subtask_graph.successors(proxy_subtask)
             n_mappers = len(mapper_subtasks)
-            n_reducers = _get_reducer_operand(
-                reducer_subtasks[0].chunk_graph
-            ).n_reducers
+            n_reducers = proxy_subtask.chunk_graph.results[0].op.n_reducers
             mapper_output_arr = np.empty((n_mappers, n_reducers), dtype=object)
             self.mapper_output_refs.append(mapper_output_arr)
             self.mapper_indices.update(
@@ -74,7 +72,7 @@ class ShuffleManager:
     ):
         # For operands such as `PSRSAlign`, sometimes `reducer_subtasks` might be less than `n_reducers`.
         # fill missing reducers with `None`.
-        filled_reducers = list(range(n_reducers))
+        filled_reducers = [None] * n_reducers
         for subtask in reducer_subtasks:
             reducer_ordinal = _get_reducer_operand(subtask.chunk_graph).reducer_ordinal
             filled_reducers[reducer_ordinal] = subtask
@@ -139,10 +137,7 @@ class ShuffleManager:
         if mapper_index:
             shuffle_index = mapper_index[0]
         else:
-            try:
-                shuffle_index, _ = self.reducer_indices[subtask]
-            except Exception as e:
-                raise Exception((subtask.chunk_graph.to_dot())) from e
+            shuffle_index, _ = self.reducer_indices[subtask]
         return self.mapper_output_refs[shuffle_index].shape[1]
 
     def is_mapper(self, subtask):
