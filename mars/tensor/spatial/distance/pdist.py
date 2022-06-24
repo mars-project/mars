@@ -264,7 +264,6 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
             reduce_chunk_op = TensorPdist(
                 stage=OperandStage.reduce,
                 dtype=out_tensor.dtype,
-                reducer_ordinal=p,
                 n_reducers=aggregate_size,
             )
             reduce_chunk = reduce_chunk_op.new_chunk(

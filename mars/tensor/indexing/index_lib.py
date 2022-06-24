@@ -781,12 +781,11 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
         out_indices = list(
             itertools.product(*(range(tileable.chunk_shape[ax]) for ax in axes))
         )
-        for ordinal, chunk_index in enumerate(out_indices):
+        for chunk_index in out_indices:
             reduce_op = FancyIndexingDistribute(
                 stage=OperandStage.reduce,
                 axes=axes,
                 dtype=proxy_chunk.dtype,
-                reducer_ordinal=ordinal,
                 n_reducers=len(out_indices),
             )
             # chunks of fancy indexes on each axis
@@ -933,7 +932,6 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
                     dtype=proxy_chunk.dtype,
                     sparse=to_shuffle_chunks[0].issparse(),
                     reducer_index=(next(it),),
-                    reducer_ordinal=ordinal,
                     n_reducers=len(out_indices),
                 )
                 reduce_chunk_shape = (

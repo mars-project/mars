@@ -155,7 +155,7 @@ class TensorIndexSetValue(TensorMapReduceOperand, TensorOperandMixin):
 
         reducer_chunks = []
         offsets_on_axis = [np.cumsum([0] + list(split)) for split in input_nsplits]
-        for ordinal, input_chunk in enumerate(inp.chunks):
+        for input_chunk in inp.chunks:
             chunk_offsets = tuple(
                 offsets_on_axis[axis][input_chunk.index[axis]]
                 for axis in range(len(inp.shape))
@@ -163,7 +163,6 @@ class TensorIndexSetValue(TensorMapReduceOperand, TensorOperandMixin):
             reducer_op = TensorIndexSetValue(
                 stage=OperandStage.reduce,
                 n_reducers=len(inp.chunks),
-                reducer_ordinal=ordinal,
                 dtype=input_chunk.dtype,
                 shuffle_axes=shuffle_axes,
                 chunk_offsets=chunk_offsets,
