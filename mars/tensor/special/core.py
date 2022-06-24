@@ -212,7 +212,7 @@ class TensorTupleOp(TensorSpecialUnaryOp):
             return cls._get_func(xp)(inp, **kw)
 
     @classmethod
-    def _execute_gpu(cls, op, xp, inp, **kw): # pragma: no cover
+    def _execute_gpu(cls, op, xp, inp, **kw):  # pragma: no cover
         if inp.ndim == 0:  # scalar input
             r = cls._get_func(xp)(np.ndarray.item(inp), **kw)
         else:
