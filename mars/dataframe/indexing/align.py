@@ -17,7 +17,7 @@ from typing import Any, Optional, Union
 import numpy as np
 
 from ... import opcodes
-from ...core import get_output_types
+from ...core import get_output_types, recursive_tile
 from ...serialization.serializables import (
     AnyField,
     KeyField,
@@ -327,6 +327,22 @@ class DataFrameAlign(DataFrameOperand, DataFrameOperandMixin):
         return nsplits, l_chunks, r_chunks
 
     @classmethod
+    def _tile_with_fillna(cls, tileable: TileableType):
+        op = tileable.op
+        if op.method is None:
+            return tileable
+        axis = op.fill_axis if tileable.ndim == 2 else 0
+        tileable = tileable.fillna(method=op.method, limit=op.limit, axis=axis)
+        return (yield from recursive_tile(tileable))
+
+    @classmethod
+    def _make_direct_output_kws(cls, left: TileableType, right: TileableType):
+        kws = [left.params, right.params]
+        kws[0].update(dict(chunks=left.chunks, nsplits=left.nsplits))
+        kws[1].update(dict(chunks=right.chunks, nsplits=right.nsplits))
+        return kws
+
+    @classmethod
     def tile(cls, op: "DataFrameAlign"):
         try:
             if op.lhs.ndim == op.rhs.ndim:
@@ -339,22 +355,29 @@ class DataFrameAlign(DataFrameOperand, DataFrameOperandMixin):
             else:
                 nsplits, left_chunks, right_chunks = cls._tile_dataframe_series(op)
         except _NoNeedToAlign:
-            kws = [op.lhs.params, op.rhs.params]
-            kws[0].update(dict(chunks=op.lhs.chunks, nsplits=op.lhs.nsplits))
-            kws[1].update(dict(chunks=op.rhs.chunks, nsplits=op.rhs.nsplits))
-            return op.copy().new_tileables(op.inputs, kws=kws)
+            kws = cls._make_direct_output_kws(op.lhs, op.rhs)
+        else:
+            kws = [
+                cls._build_tiled_kw(op, 0, left_chunks, nsplits),
+                cls._build_tiled_kw(op, 1, right_chunks, nsplits),
+            ]
+        new_left, new_right = op.copy().new_tileables(op.inputs, kws=kws)
 
-        kws = [
-            cls._build_tiled_kw(op, 0, left_chunks, nsplits),
-            cls._build_tiled_kw(op, 1, right_chunks, nsplits),
-        ]
-        return op.copy().new_tileables(op.inputs, kws=kws)
+        new_left_filled = yield from cls._tile_with_fillna(new_left)
+        new_right_filled = yield from cls._tile_with_fillna(new_right)
+        if new_left_filled is not new_left or new_right_filled is not new_right:
+            kws = cls._make_direct_output_kws(new_left_filled, new_right_filled)
+            new_left, new_right = op.copy().new_tileables(op.inputs, kws=kws)
+
+        return [new_left, new_right]
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameAlign"):
         lhs_val = ctx[op.lhs.key]
         rhs_val = ctx[op.rhs.key]
-        l_res, r_res = lhs_val.align(rhs_val, axis=op.axis, join=op.join)
+        l_res, r_res = lhs_val.align(
+            rhs_val, axis=op.axis, join=op.join, fill_value=op.fill_value
+        )
         ctx[op.outputs[0].key] = l_res
         ctx[op.outputs[1].key] = r_res
 
@@ -413,8 +436,7 @@ def align(
 
     Notes
     -----
-    Currently arguments `level`, `fill_value`, `method`, `limit`, `fill_axis`
-    and `broadcast_axis` are not supported.
+    Currently arguments `level` and `broadcast_axis` are not supported.
 
     Returns
     -------
@@ -489,12 +511,13 @@ def align(
     4  600.0  700.0  800.0  900.0 NaN
     """
     axis = validate_axis(axis) if axis is not None else None
+    fill_axis = validate_axis(fill_axis) if fill_axis is not None else None
     broadcast_axis = (
         validate_axis(broadcast_axis) if broadcast_axis is not None else None
     )
 
     locals_vals = locals()
-    for var_name in ["level", "fill_value", "method", "broadcast_axis", "limit"]:
+    for var_name in ["level", "broadcast_axis"]:
         if locals_vals[var_name] is not None:
             raise NotImplementedError(f"Non-none {var_name} not supported")
 
@@ -507,7 +530,7 @@ def align(
         level=level,
         copy=copy,
         fill_value=fill_value,
-        metohd=method,
+        method=method,
         limit=limit,
         fill_axis=fill_axis,
         broadcast_axis=broadcast_axis,

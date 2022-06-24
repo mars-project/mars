@@ -1625,7 +1625,7 @@ def test_add_prefix_suffix(setup):
     pd.testing.assert_series_equal(r.execute().fetch(), raw.add_suffix("_item"))
 
 
-@pytest.mark.parametrize("join", ["inner", "outer", "left", "right"])
+@pytest.mark.parametrize("join", ["outer", "left"])
 def test_align_execution(setup, join):
     rs = np.random.RandomState(0)
     raw_df1 = pd.DataFrame(
@@ -1674,10 +1674,11 @@ def test_align_execution(setup, join):
 
     r2, r1 = mars.fetch(
         mars.execute(
-            *df2.align(df1, join=join, axis=0), extra_config={"check_nsplits": False}
+            *df2.align(df1, join=join, axis=0, fill_value=0.0),
+            extra_config={"check_nsplits": False},
         )
     )
-    exp2, exp1 = raw_df2.align(raw_df1, join=join, axis=0)
+    exp2, exp1 = raw_df2.align(raw_df1, join=join, axis=0, fill_value=0.0)
     pd.testing.assert_frame_equal(r1.sort_index(axis=1), exp1)
     pd.testing.assert_frame_equal(r2.sort_index(axis=1), exp2)
 
@@ -1697,10 +1698,11 @@ def test_align_execution(setup, join):
 
     r1, r2 = mars.fetch(
         mars.execute(
-            *df1.align(s1, join=join, axis=0), extra_config={"check_nsplits": False}
+            *df1.align(s1, join=join, axis=0, method="ffill"),
+            extra_config={"check_nsplits": False},
         )
     )
-    exp1, exp2 = raw_df1.align(raw_s1, join=join, axis=0)
+    exp1, exp2 = raw_df1.align(raw_s1, join=join, axis=0, method="ffill")
     pd.testing.assert_frame_equal(r1.sort_index(), exp1)
     pd.testing.assert_series_equal(r2.sort_index(), exp2)
 
