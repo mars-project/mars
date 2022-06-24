@@ -1708,6 +1708,16 @@ def test_align_execution(setup, join):
 
     r1, r2 = mars.fetch(
         mars.execute(
+            *df1.align(s1, join=join, axis=0, broadcast_axis=1),
+            extra_config={"check_nsplits": False},
+        )
+    )
+    exp1, exp2 = raw_df1.align(raw_s1, join=join, axis=0, broadcast_axis=1)
+    pd.testing.assert_frame_equal(r1.sort_index(), exp1)
+    pd.testing.assert_frame_equal(r2.sort_index(), exp2)
+
+    r1, r2 = mars.fetch(
+        mars.execute(
             *df1.align(s3, join=join, axis=1), extra_config={"check_nsplits": False}
         )
     )

@@ -17,7 +17,7 @@ from typing import Any, Optional, Union
 import numpy as np
 
 from ... import opcodes
-from ...core import get_output_types, recursive_tile
+from ...core import get_output_types, recursive_tile, OutputType
 from ...serialization.serializables import (
     AnyField,
     KeyField,
@@ -64,7 +64,11 @@ class DataFrameAlign(DataFrameOperand, DataFrameOperandMixin):
         self.rhs = inputs[1]
 
     def __call__(self, lhs: TileableType, rhs: TileableType):
-        self._output_types = get_output_types(lhs, rhs)
+        if self.broadcast_axis != 1 or lhs.ndim == rhs.ndim:
+            self._output_types = get_output_types(lhs, rhs)
+        else:
+            self._output_types = [OutputType.dataframe, OutputType.dataframe]
+
         if lhs.ndim == rhs.ndim:
             if lhs.ndim == 1:
                 return self._call_series_series(lhs, rhs)
@@ -120,7 +124,7 @@ class DataFrameAlign(DataFrameOperand, DataFrameOperandMixin):
 
     def _call_dataframe_series(self, lhs: TileableType, rhs: TileableType):
         l_shape = list(lhs.shape)
-        if self.axis == 0:
+        if self.axis == 0 or self.broadcast_axis == 1:
             dtypes = lhs.dtypes
             col_val = lhs.columns_value
             l_idx_val = r_idx_val = self._merge_index(
@@ -149,11 +153,19 @@ class DataFrameAlign(DataFrameOperand, DataFrameOperandMixin):
             "shape": tuple(l_shape),
             "columns_value": col_val,
         }
-        r_kws = {
-            "index_value": r_idx_val,
-            "shape": (r_size,),
-            "dtype": rhs.dtype,
-        }
+        if self.broadcast_axis == 1:
+            r_kws = {
+                "index_value": r_idx_val,
+                "dtypes": dtypes,
+                "shape": tuple(l_shape),
+                "columns_value": col_val,
+            }
+        else:
+            r_kws = {
+                "index_value": r_idx_val,
+                "shape": (r_size,),
+                "dtype": rhs.dtype,
+            }
         return self.new_tileables([lhs, rhs], kws=[l_kws, r_kws])
 
     def _call_series_series(self, lhs: TileableType, rhs: TileableType):
@@ -289,7 +301,7 @@ class DataFrameAlign(DataFrameOperand, DataFrameOperandMixin):
         cls._check_align_needed(op, left_chunks, right_chunks)
 
         left_chunk_array = np.array(left_chunks, dtype="O").reshape(left_chunk_shape)
-        axis = op.axis
+        axis = op.axis if op.broadcast_axis != 1 else 0
         l_chunks, r_chunks = [], []
         iterator = np.nditer(left_chunk_array, flags=["refs_ok", "multi_index"])
         for c_obj in iterator:
@@ -299,13 +311,16 @@ class DataFrameAlign(DataFrameOperand, DataFrameOperandMixin):
             right_chunk = right_chunks[l_index[axis]]
             kws = [c.params, right_chunk.params]
             kws[0]["index"] = l_index
-            kws[1]["index"] = (l_index[axis],)
+            if op.broadcast_axis != 1:
+                kws[1]["index"] = (l_index[axis],)
+            else:
+                kws[1]["index"] = l_index
 
             chunk_op = op.copy().reset_key()
             l_chunk, r_chunk = chunk_op.new_chunks([c, right_chunk], kws=kws)
 
             l_chunks.append(l_chunk)
-            if l_index[1 - axis] == 0:
+            if op.broadcast_axis == 1 or l_index[1 - axis] == 0:
                 r_chunks.append(r_chunk)
 
         return nsplits, l_chunks, r_chunks
@@ -376,7 +391,11 @@ class DataFrameAlign(DataFrameOperand, DataFrameOperandMixin):
         lhs_val = ctx[op.lhs.key]
         rhs_val = ctx[op.rhs.key]
         l_res, r_res = lhs_val.align(
-            rhs_val, axis=op.axis, join=op.join, fill_value=op.fill_value
+            rhs_val,
+            axis=op.axis,
+            join=op.join,
+            fill_value=op.fill_value,
+            broadcast_axis=op.broadcast_axis,
         )
         ctx[op.outputs[0].key] = l_res
         ctx[op.outputs[1].key] = r_res
@@ -436,7 +455,7 @@ def align(
 
     Notes
     -----
-    Currently arguments `level` and `broadcast_axis` are not supported.
+    Currently argument `level` is not supported.
 
     Returns
     -------
@@ -516,11 +535,8 @@ def align(
         validate_axis(broadcast_axis) if broadcast_axis is not None else None
     )
 
-    locals_vals = locals()
-    for var_name in ["level", "broadcast_axis"]:
-        if locals_vals[var_name] is not None:
-            raise NotImplementedError(f"Non-none {var_name} not supported")
-
+    if level is not None:
+        raise NotImplementedError(f"Argument `level` not supported")
     if df.ndim != other.ndim and axis is None:
         raise ValueError("Must specify axis=0 or 1")
 
