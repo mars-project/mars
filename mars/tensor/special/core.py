@@ -17,7 +17,7 @@ import scipy.special as spspecial
 from ...core import ExecutableTuple
 from ... import opcodes
 from ..datasource import tensor as astensor
-from ..arithmetic.core import TensorUnaryOp, TensorBinOp, TensorMultiOp
+from ..arithmetic.core import TensorElementWise, TensorUnaryOp, TensorBinOp, TensorMultiOp
 from ..array_utils import (
     np,
     cp,
@@ -166,7 +166,7 @@ class TensorTupleOp(TensorSpecialUnaryOp):
         in_tensor = op.input
 
         if in_tensor.ndim != 0:
-            return (yield from super().tile(op))
+            return (yield from TensorElementWise.tile(op))
         else:
             in_chunk = in_tensor.chunks[0]
             chunk_op = op.copy().reset_key()
