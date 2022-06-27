@@ -51,7 +51,7 @@ def msg_to_simple_str(msg):  # pragma: no cover
     """An helper that prints message structure without generate a big str."""
     from ..message import SendMessage, _MessageBase
 
-    if type(msg) == _ArgWrapper:
+    if type(msg) == ArgWrapper:
         msg = msg.message
     if isinstance(msg, SendMessage):
         return f"{str(type(msg).__name__)}(actor_ref={msg.actor_ref}, content={msg_to_simple_str(msg.content)})"
@@ -89,11 +89,11 @@ _register_ray_serializers_once = functools.lru_cache(1)(register_ray_serializers
 
 def _argwrapper_unpickler(serialized_message):
     _register_ray_serializers_once()
-    return _ArgWrapper(deserialize(*serialized_message))
+    return ArgWrapper(deserialize(*serialized_message))
 
 
 @dataclass
-class _ArgWrapper:
+class ArgWrapper:
     message: Any = None
 
     def __init__(self, message):
@@ -131,7 +131,7 @@ def _init_ray_metrics():
     )
 
     def _serialize(self, value):
-        if type(value) is _ArgWrapper:  # pylint: disable=unidiomatic-typecheck
+        if type(value) is ArgWrapper:  # pylint: disable=unidiomatic-typecheck
             message = value.message
             with Timer() as timer:
                 serialized_object = _ray_serialize(self, value)
@@ -176,7 +176,7 @@ def _init_ray_metrics():
                 f"Deserialization took {duration} seconds for "
                 f"{bytes_length} sized msg {msg_to_simple_str(value)}",
             )
-        if type(value) is _ArgWrapper:  # pylint: disable=unidiomatic-typecheck
+        if type(value) is ArgWrapper:  # pylint: disable=unidiomatic-typecheck
             message = value.message
             try:
                 if message.profiling_context is not None:
@@ -315,7 +315,7 @@ class RayClientChannel(RayChannelBase):
             raise ChannelClosed("Channel already closed, cannot send message")
         # Put ray object ref to todo queue
         task = self._peer_actor.__on_ray_recv__.remote(
-            self.channel_id, _ArgWrapper(message)
+            self.channel_id, ArgWrapper(message)
         )
         self._submit_task(message, task)
         await asyncio.sleep(0)
@@ -390,7 +390,7 @@ class RayServerChannel(RayChannelBase):
         result_message = await self._out_queue.get()
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed("Channel already closed")
-        return _ArgWrapper(result_message)
+        return ArgWrapper(result_message)
 
     @implements(Channel.close)
     async def close(self):

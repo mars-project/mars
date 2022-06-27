@@ -35,7 +35,7 @@ except ImportError:  # pragma: no cover
 @require_ray
 @pytest.mark.parametrize(
     "ray_large_cluster",
-    [{"num_nodes": 0, "use_ray_serialization": False}],
+    [{"num_nodes": 0}],
     indirect=True,
 )
 @pytest.mark.parametrize("reconstruction_enabled", [True, False])

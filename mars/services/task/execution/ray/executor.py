@@ -20,7 +20,7 @@ import operator
 import sys
 from dataclasses import dataclass
 
-from typing import List, Dict, Any, Set, Callable
+from typing import List, Dict, Any, Set, Callable, Union
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
 from .....core.operand import (
@@ -32,6 +32,7 @@ from .....core.operand import (
 from .....core.operand.fetch import FetchShuffle
 from .....lib.aio import alru_cache
 from .....lib.ordered_set import OrderedSet
+from .....oscar.backends.ray.communication import ArgWrapper
 from .....resource import Resource
 from .....serialization import serialize, deserialize
 from .....typing import BandType
@@ -123,7 +124,7 @@ async def _cancel_ray_task(obj_ref, kill_timeout: int = 3):
 
 def execute_subtask(
     subtask_id: str,
-    subtask_chunk_graph: ChunkGraph,
+    subtask_chunk_graph: Union[ChunkGraph, ArgWrapper],
     output_meta_keys: Set[str],
     is_mapper,
     *inputs,
@@ -150,7 +151,8 @@ def execute_subtask(
         subtask outputs and meta for outputs if `output_meta_keys` is provided.
     """
     ensure_coverage()
-    subtask_chunk_graph = deserialize(*subtask_chunk_graph)
+    if isinstance(subtask_chunk_graph, ArgWrapper):
+        subtask_chunk_graph = subtask_chunk_graph.message
     logger.info("Begin to execute subtask: %s", subtask_id)
     # optimize chunk graph.
     subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)
@@ -518,7 +520,7 @@ class RayTaskExecutor(TaskExecutor):
                 max_retries=subtask_max_retries,
             ).remote(
                 subtask.subtask_id,
-                serialize(subtask_chunk_graph),
+                ArgWrapper(subtask_chunk_graph),
                 subtask_output_meta_keys,
                 is_mapper,
                 *input_object_refs,
