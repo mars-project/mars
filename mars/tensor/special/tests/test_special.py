@@ -23,6 +23,11 @@ from scipy.special import (
     erfi as scipy_erfi,
     erfinv as scipy_erfinv,
     erfcinv as scipy_erfcinv,
+    wofz as scipy_wofz,
+    dawsn as scipy_dawsn,
+    modfresnelp as scipy_modfresnelp,
+    modfresnelm as scipy_modfresnelm,
+    voigt_profile as scipy_voigt_profile,
     ellipk as scipy_ellipk,
     ellipkm1 as scipy_ellipkm1,
     ellipkinc as scipy_ellipkinc,
@@ -48,8 +53,18 @@ from ..err_fresnel import (
     TensorErfinv,
     erfcinv,
     TensorErfcinv,
+    wofz,
+    TensorWofz,
+    dawsn,
+    TensorDawsn,
     fresnel,
     TensorFresnel,
+    modfresnelp,
+    TensorModFresnelP,
+    modfresnelm,
+    TensorModFresnelM,
+    voigt_profile,
+    TensorVoigtProfile,
 )
 from ..gamma_funcs import (
     gammaln,
@@ -279,6 +294,44 @@ def test_erfcinv():
         assert c.shape == c.inputs[0].shape
 
 
+def test_wofz():
+    raw = np.random.rand(10, 8, 5)
+    t = tensor(raw, chunk_size=3)
+
+    r = wofz(t)
+    expect = scipy_wofz(raw)
+
+    assert r.shape == raw.shape
+    assert r.dtype == expect.dtype
+
+    t, r = tile(t, r)
+
+    assert r.nsplits == t.nsplits
+    for c in r.chunks:
+        assert isinstance(c.op, TensorWofz)
+        assert c.index == c.inputs[0].index
+        assert c.shape == c.inputs[0].shape
+
+
+def test_dawsn():
+    raw = np.random.rand(10, 8, 5)
+    t = tensor(raw, chunk_size=3)
+
+    r = dawsn(t)
+    expect = scipy_dawsn(raw)
+
+    assert r.shape == raw.shape
+    assert r.dtype == expect.dtype
+
+    t, r = tile(t, r)
+
+    assert r.nsplits == t.nsplits
+    for c in r.chunks:
+        assert isinstance(c.op, TensorDawsn)
+        assert c.index == c.inputs[0].index
+        assert c.shape == c.inputs[0].shape
+
+
 def test_fresnel():
     raw = np.random.rand(10, 8, 5)
     t = tensor(raw, chunk_size=3)
@@ -289,10 +342,10 @@ def test_fresnel():
     assert isinstance(r, ExecutableTuple)
     assert len(r) == 2
 
-    for i in range(len(r)):
-        assert r[i].shape == expect[i].shape
-        assert r[i].dtype == expect[i].dtype
-        assert isinstance(r[i].op, TensorFresnel)
+    for r_i, expect_i in zip(r, expect):
+        assert r_i.shape == expect_i.shape
+        assert r_i.dtype == expect_i.dtype
+        assert isinstance(r_i.op, TensorFresnel)
 
     non_tuple_out = tensor(raw, chunk_size=3)
     with pytest.raises(TypeError):
@@ -319,6 +372,113 @@ def test_fresnel():
         assert out_output.shape == expected_output.shape
         assert out_output.dtype == expected_output.dtype
         assert isinstance(out_output.op, TensorFresnel)
+
+
+def test_modfresnelp():
+    raw = np.random.rand(10, 8, 5)
+    t = tensor(raw, chunk_size=3)
+
+    r = modfresnelp(t)
+    expect = scipy_modfresnelp(raw)
+
+    assert isinstance(r, ExecutableTuple)
+    assert len(r) == 2
+
+    for r_i, expect_i in zip(r, expect):
+        assert r_i.shape == expect_i.shape
+        assert r_i.dtype == expect_i.dtype
+        assert isinstance(r_i.op, TensorModFresnelP)
+
+    non_tuple_out = tensor(raw, chunk_size=3)
+    with pytest.raises(TypeError):
+        r = modfresnelp(t, non_tuple_out)
+
+    mismatch_size_tuple = ExecutableTuple([t])
+    with pytest.raises(TypeError):
+        r = modfresnelp(t, mismatch_size_tuple)
+
+    out = ExecutableTuple([t, t])
+    r_out = modfresnelp(t, out=out)
+
+    assert isinstance(out, ExecutableTuple)
+    assert isinstance(r_out, ExecutableTuple)
+
+    assert len(out) == 2
+    assert len(r_out) == 2
+
+    for r_output, expected_output, out_output in zip(r, expect, out):
+        assert r_output.shape == expected_output.shape
+        assert r_output.dtype == expected_output.dtype
+        assert isinstance(r_output.op, TensorModFresnelP)
+
+        assert out_output.shape == expected_output.shape
+        assert out_output.dtype == expected_output.dtype
+        assert isinstance(out_output.op, TensorModFresnelP)
+
+
+def test_modfresnelm():
+    raw = np.random.rand(10, 8, 5)
+    t = tensor(raw, chunk_size=3)
+
+    r = modfresnelm(t)
+    expect = scipy_modfresnelm(raw)
+
+    assert isinstance(r, ExecutableTuple)
+    assert len(r) == 2
+
+    for r_i, expect_i in zip(r, expect):
+        assert r_i.shape == expect_i.shape
+        assert r_i.dtype == expect_i.dtype
+        assert isinstance(r_i.op, TensorModFresnelM)
+
+    non_tuple_out = tensor(raw, chunk_size=3)
+    with pytest.raises(TypeError):
+        r = modfresnelm(t, non_tuple_out)
+
+    mismatch_size_tuple = ExecutableTuple([t])
+    with pytest.raises(TypeError):
+        r = modfresnelm(t, mismatch_size_tuple)
+
+    out = ExecutableTuple([t, t])
+    r_out = modfresnelm(t, out=out)
+
+    assert isinstance(out, ExecutableTuple)
+    assert isinstance(r_out, ExecutableTuple)
+
+    assert len(out) == 2
+    assert len(r_out) == 2
+
+    for r_output, expected_output, out_output in zip(r, expect, out):
+        assert r_output.shape == expected_output.shape
+        assert r_output.dtype == expected_output.dtype
+        assert isinstance(r_output.op, TensorModFresnelM)
+
+        assert out_output.shape == expected_output.shape
+        assert out_output.dtype == expected_output.dtype
+        assert isinstance(out_output.op, TensorModFresnelM)
+
+
+def test_voigt_profile():
+    raw1 = np.random.rand(4, 3, 2)
+    raw2 = np.random.rand(4, 3, 2)
+    raw3 = np.random.rand(4, 3, 2)
+    a = tensor(raw1, chunk_size=3)
+    b = tensor(raw2, chunk_size=3)
+    c = tensor(raw3, chunk_size=3)
+
+    r = voigt_profile(a, b, c)
+    expect = scipy_voigt_profile(raw1, raw2, raw3)
+
+    assert r.shape == raw1.shape
+    assert r.dtype == expect.dtype
+
+    tiled_a, r = tile(a, r)
+
+    assert r.nsplits == tiled_a.nsplits
+    for chunk in r.chunks:
+        assert isinstance(chunk.op, TensorVoigtProfile)
+        assert chunk.index == chunk.inputs[0].index
+        assert chunk.shape == chunk.inputs[0].shape
 
 
 def test_beta_inc():
