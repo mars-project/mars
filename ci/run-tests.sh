@@ -8,12 +8,12 @@ if [ -n "$WITH_CYTHON" ]; then
     mars/tests \
     mars/core/graph \
     mars/serialization
-  python .github/workflows/remove_tracer_errors.py
+  python ci/remove_tracer_errors.py
   coverage combine
   mv .coverage build/.coverage.non-oscar.file
 
   coverage run --rcfile=setup.cfg -m pytest $PYTEST_CONFIG_WITHOUT_COV mars/oscar
-  python .github/workflows/remove_tracer_errors.py
+  python ci/remove_tracer_errors.py
   coverage combine
   mv .coverage build/.coverage.oscar_ctx.file
 
