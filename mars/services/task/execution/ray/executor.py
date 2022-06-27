@@ -34,7 +34,7 @@ from .....lib.aio import alru_cache
 from .....lib.ordered_set import OrderedSet
 from .....oscar.backends.ray.communication import ArgWrapper
 from .....resource import Resource
-from .....serialization import serialize, deserialize
+from .....serialization.ray import register_ray_serializers, unregister_ray_serializers
 from .....typing import BandType
 from .....utils import (
     calc_data_size,
@@ -313,6 +313,7 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = False
+        register_ray_serializers()
 
     @classmethod
     async def create(
@@ -379,6 +380,7 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = None
+        unregister_ray_serializers()
 
     @classmethod
     @alru_cache(cache_exceptions=False)

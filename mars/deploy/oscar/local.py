@@ -27,7 +27,6 @@ from ...core.entrypoints import init_extension_entrypoints
 from ...lib.aio import get_isolation, stop_isolation
 from ...oscar.backends.router import Router
 from ...resource import cpu_count, cuda_count, mem_total
-from ...serialization.ray import register_ray_serializers, unregister_ray_serializers
 from ...services import NodeRole
 from ...services.task.execution.api import ExecutionConfig
 from ...typing import ClusterType, ClientType
@@ -163,8 +162,6 @@ class LocalCluster:
         self._config = load_config(config, default_config_file=DEFAULT_CONFIG_FILE)
         execution_config = ExecutionConfig.from_config(self._config, backend=backend)
         self._backend = execution_config.backend
-        if self._backend == "ray":
-            register_ray_serializers()
         self._web = web
         self._n_supervisor_process = n_supervisor_process
 
@@ -293,8 +290,6 @@ class LocalCluster:
         AbstractSession.reset_default()
         self._exiting_check_task.cancel()
         Router.set_instance(None)
-        if self._backend == "ray":
-            unregister_ray_serializers()
 
 
 class LocalClient:
