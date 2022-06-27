@@ -1733,34 +1733,6 @@ def sync_to_async(func):
         return async_wrapper
 
 
-def log_exception_wrapper(func, *msg_args, ex_logger=None):
-    if msg_args:
-        msg_tpl, *msg_args = msg_args
-    else:
-        msg_tpl, msg_args = None, []
-    if inspect.iscoroutinefunction(func):
-
-        @functools.wraps(func)
-        async def new_func(*args, **kwargs):
-            try:
-                return await func(*args, **kwargs)
-            except Exception:
-                (ex_logger or logger).exception(msg_tpl, *msg_args)
-                raise
-
-    else:
-
-        @functools.wraps(func)
-        def new_func(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except Exception:
-                (ex_logger or logger).exception(msg_tpl, *msg_args)
-                raise
-
-    return new_func
-
-
 def retry_callable(
     callable_,
     ex_type: type = Exception,
