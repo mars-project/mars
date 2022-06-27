@@ -72,13 +72,21 @@ class RayActorDriver(BaseActorDriver):
                     pg_name, index, process_index=process_index
                 )
                 try:
+                    ray_actor = ray.get_actor(address)
                     if "COV_CORE_SOURCE" in os.environ:  # pragma: no cover
                         # must clean up first, or coverage info lost.
                         # must save the local reference until this is fixed:
                         # https://github.com/ray-project/ray/issues/7815
-                        ray_actor = ray.get_actor(address)
                         ray.get(ray_actor.cleanup.remote())
-                    ray.kill(ray.get_actor(address))
+                    ray.kill(ray_actor, no_restart=True)
+                    while True:
+                        try:
+                            ray.get(ray_actor.wait.remote(30))
+                            logger.warning(
+                                "Waiting actor %s to be killed.", ray_actor
+                            )  # pragma: no cover
+                        except ray.exceptions.RayActorError:
+                            break
                 except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                     pass
         ray.util.remove_placement_group(pg)

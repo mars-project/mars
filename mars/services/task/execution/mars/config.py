@@ -13,6 +13,8 @@
 # limitations under the License.
 
 from typing import Dict, List
+
+from .....core.operand.shuffle import ShuffleFetchType
 from .....resource import Resource
 from ..api import ExecutionConfig, register_config_cls
 from ..utils import get_band_resources_from_config
@@ -28,3 +30,6 @@ class MarsExecutionConfig(ExecutionConfig):
 
     def get_deploy_band_resources(self) -> List[Dict[str, Resource]]:
         return get_band_resources_from_config(self._mars_execution_config)
+
+    def get_shuffle_fetch_type(self) -> ShuffleFetchType:
+        return ShuffleFetchType.FETCH_BY_KEY

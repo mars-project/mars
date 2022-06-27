@@ -15,6 +15,8 @@
 import os
 import logging
 from typing import Dict, List
+
+from .....core.operand import ShuffleFetchType
 from .....resource import Resource
 from ..api import ExecutionConfig, register_config_cls
 from ..utils import get_band_resources_from_config
@@ -73,3 +75,6 @@ class RayExecutionConfig(ExecutionConfig):
         return self._ray_execution_config.get(
             "subtask_monitor_interval", DEFAULT_SUBTASK_MONITOR_INTERVAL
         )
+
+    def get_shuffle_fetch_type(self) -> ShuffleFetchType:
+        return ShuffleFetchType.FETCH_BY_INDEX
