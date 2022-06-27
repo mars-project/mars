@@ -320,7 +320,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 stage=OperandStage.reduce,
                 reducer_index=(i, 0),
                 n_reducers=len(partition_chunks),
-                reducer_ordinal=i,
                 output_types=output_types,
                 **properties,
             )
@@ -439,11 +438,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         # generate reduce chunks
         reduce_chunks = []
         out_indices = list(itertools.product(*(range(s) for s in chunk_shape)))
-        for ordinal, out_idx in enumerate(out_indices):
+        for out_idx in out_indices:
             reduce_op = DataFrameGroupByOperand(
                 stage=OperandStage.reduce,
                 output_types=[OutputType.dataframe_groupby],
-                reducer_ordinal=ordinal,
                 n_reducers=len(out_indices),
             )
             reduce_chunks.append(
