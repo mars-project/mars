@@ -145,6 +145,8 @@ Reindexing / selection / label manipulation
    :toctree: generated/
 
    DataFrame.add_prefix
+   DataFrame.add_suffix
+   DataFrame.align
    DataFrame.drop
    DataFrame.drop_duplicates
    DataFrame.duplicated

@@ -144,6 +144,8 @@ Reindexing / selection / label manipulation
    :toctree: generated/
 
    Series.add_prefix
+   Series.add_suffix
+   Series.align
    Series.drop
    Series.drop_duplicates
    Series.duplicated
