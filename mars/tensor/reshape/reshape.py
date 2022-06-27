@@ -469,7 +469,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
 
         # ensure all mapper data are inserted context and fill missing partition with None
         for target_chunk_idx in itertools.product(
-            *[range(dim_chunk_cnt) for dim_chunk_cnt in dim_chunk_counts]
+            *(range(dim_chunk_cnt) for dim_chunk_cnt in dim_chunk_counts)
         ):
             data_key = chunk.key, tuple(target_chunk_idx)
             ctx[data_key] = mapper_outputs.get(data_key)

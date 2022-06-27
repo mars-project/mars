@@ -133,16 +133,16 @@ class ShuffleManager:
         n_reducers : int
             The number of shuffle blocks that a mapper operand outputs.
         """
-        mapper_index = self.mapper_indices.get(subtask)
-        if mapper_index:
-            shuffle_index = mapper_index[0]
+        index = self.mapper_indices.get(subtask) or self.reducer_indices.get(subtask)
+        if index is None:
+            raise Exception(f"The {subtask} should be a mapper or a reducer.")
         else:
-            shuffle_index, _ = self.reducer_indices[subtask]
-        return self.mapper_output_refs[shuffle_index].shape[1]
+            shuffle_index, _ = index
+            return self.mapper_output_refs[shuffle_index].shape[1]
 
     def is_mapper(self, subtask):
         """
-        Check whether a subtask is a mapper subtask. Note the even this a mapper subtask, it can be a reducer sutbask
+        Check whether a subtask is a mapper subtask. Note the even this a mapper subtask, it can be a reducer subtask
         at the same time such as `DuplicateOperand`, see
         https://user-images.githubusercontent.com/12445254/174305282-f7c682a9-0346-47fe-a34c-1e384e6a1775.svg
         """
