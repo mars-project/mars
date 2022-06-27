@@ -336,6 +336,7 @@ def test_where_execution(setup):
     np.testing.assert_array_equal(res, np.where(raw_x < 5, 2, -1))
 
 
+@pytest.mark.ray_dag
 def test_reshape_execution(setup):
     raw_data = np.random.rand(5, 10, 30)
     x = tensor(raw_data, chunk_size=8)
@@ -1146,6 +1147,7 @@ def test_to_cpu_execution(setup_gpu):
     np.testing.assert_array_equal(res, raw)
 
 
+@pytest.mark.ray_dag
 def test_sort_execution(setup):
     # only 1 chunk when axis = -1
     raw = np.random.rand(100, 10)
@@ -1315,6 +1317,7 @@ def test_sort_execution(setup):
     np.testing.assert_array_equal(res, np.sort(raw[raw < 1]))
 
 
+@pytest.mark.ray_dag
 def test_sort_indices_execution(setup):
     # only 1 chunk when axis = -1
     raw = np.random.rand(100, 10)
@@ -1342,6 +1345,7 @@ def test_sort_indices_execution(setup):
     np.testing.assert_array_equal(sr, raw[si])
 
 
+@pytest.mark.ray_dag
 def test_argsort(setup):
     # only 1 chunk when axis = -1
     raw = np.random.rand(100, 10)
@@ -1369,6 +1373,7 @@ def test_argsort(setup):
     np.testing.assert_array_equal(np.sort(raw, axis=0), raw[r])
 
 
+@pytest.mark.ray_dag
 def test_partition_execution(setup):
     # only 1 chunk when axis = -1
     raw = np.random.rand(100, 10)
@@ -1525,6 +1530,7 @@ def test_partition_execution(setup):
     np.testing.assert_array_equal(res[:, kth_res], sort_res[:, kth_res])
 
 
+@pytest.mark.ray_dag
 def test_partition_indices_execution(setup):
     # only 1 chunk when axis = -1
     raw = np.random.rand(100, 10)
@@ -1556,6 +1562,7 @@ def test_partition_indices_execution(setup):
     np.testing.assert_array_equal(np.sort(raw)[kth], pr[kth])
 
 
+@pytest.mark.ray_dag
 def test_argpartition_execution(setup):
     # only 1 chunk when axis = -1
     raw = np.random.rand(100, 10)

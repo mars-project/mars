@@ -174,3 +174,10 @@ def test_executor_context_gc(ray_start_regular_shared2, config):
 
     session.stop_server()
     assert get_default_async_session() is None
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_execute_describe(ray_start_regular_shared2, create_cluster):
+    # `describe` contains multiple shuffle.
+    await test_local.test_execute_describe(create_cluster)

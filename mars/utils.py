@@ -544,34 +544,55 @@ def estimate_pandas_size(
         return sample_size * len(pd_obj) // max_samples
 
 
-def build_fetch_chunk(
-    chunk: ChunkType, input_chunk_keys: List[str] = None, **kwargs
+def build_fetch_shuffle(
+    chunk: ChunkType, n_reducers=None, shuffle_fetch_type=None
 ) -> ChunkType:
+    from .core.operand import ShuffleProxy
+    from .core.operand import ShuffleFetchType
+
+    chunk_op = chunk.op
+    assert isinstance(chunk_op, ShuffleProxy)
+    params = chunk.params.copy()
+    n_mappers = len(chunk.inputs)
+    assert n_reducers > 0, n_reducers
+    # for shuffle nodes, we build FetchShuffle chunks
+    # to replace ShuffleProxy
+    if shuffle_fetch_type is ShuffleFetchType.FETCH_BY_INDEX:
+        # skip data keys info for `FETCH_BY_INDEX`
+        source_keys, source_idxes, source_mappers = None, None, None
+    else:
+        source_keys, source_idxes, source_mappers = [], [], []
+        for pinp in chunk.inputs:
+            source_keys.append(pinp.key)
+            source_idxes.append(pinp.index)
+            source_mappers.append(get_chunk_mapper_id(pinp))
+    op = chunk_op.get_fetch_op_cls(chunk)(
+        source_keys=source_keys,
+        source_idxes=source_idxes,
+        source_mappers=source_mappers,
+        n_mappers=n_mappers,
+        n_reducers=n_reducers,
+        shuffle_fetch_type=shuffle_fetch_type,
+        gpu=chunk.op.gpu,
+    )
+    return op.new_chunk(
+        None,
+        is_broadcaster=chunk.is_broadcaster,
+        kws=[params],
+        _key=chunk.key,
+        _id=chunk.id,
+    )
+
+
+def build_fetch_chunk(chunk: ChunkType, **kwargs) -> ChunkType:
     from .core.operand import ShuffleProxy
 
     chunk_op = chunk.op
     params = chunk.params.copy()
-
-    if isinstance(chunk_op, ShuffleProxy):
-        # for shuffle nodes, we build FetchShuffle chunks
-        # to replace ShuffleProxy
-        source_keys, source_idxes, source_mappers = [], [], []
-        for pinp in chunk.inputs:
-            if input_chunk_keys is not None and pinp.key not in input_chunk_keys:
-                continue
-            source_keys.append(pinp.key)
-            source_idxes.append(pinp.index)
-            source_mappers.append(get_chunk_mapper_id(pinp))
-        op = chunk_op.get_fetch_op_cls(chunk)(
-            source_keys=source_keys,
-            source_idxes=source_idxes,
-            source_mappers=source_mappers,
-            gpu=chunk.op.gpu,
-        )
-    else:
-        # for non-shuffle nodes, we build Fetch chunks
-        # to replace original chunk
-        op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse, gpu=chunk.op.gpu)
+    assert not isinstance(chunk_op, ShuffleProxy)
+    # for non-shuffle nodes, we build Fetch chunks
+    # to replace original chunk
+    op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse, gpu=chunk.op.gpu)
     return op.new_chunk(
         None,
         is_broadcaster=chunk.is_broadcaster,
@@ -1698,6 +1719,18 @@ def ensure_coverage():
             pass
         else:
             cleanup_on_sigterm()
+
+
+@functools.lru_cache(100)
+def sync_to_async(func):
+    if inspect.iscoroutinefunction(func):
+        return func
+    else:
+
+        async def async_wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return async_wrapper
 
 
 def retry_callable(

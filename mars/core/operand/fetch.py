@@ -11,9 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import enum
 
 from ... import opcodes
-from ...serialization.serializables import FieldTypes, StringField, ListField
+from ...serialization.serializables import (
+    FieldTypes,
+    StringField,
+    ListField,
+    Int32Field,
+    ReferenceField,
+)
 from .base import Operand
 from .core import TileableOperandMixin
 
@@ -47,3 +54,11 @@ class FetchShuffle(Operand):
     source_keys = ListField("source_keys", FieldTypes.string)
     source_idxes = ListField("source_idxes", FieldTypes.tuple(FieldTypes.uint64))
     source_mappers = ListField("source_mappers", FieldTypes.uint16)
+    n_mappers = Int32Field("n_mappers")
+    n_reducers = Int32Field("n_reducers")
+    shuffle_fetch_type = ReferenceField("shuffle_fetch_type")
+
+
+class ShuffleFetchType(enum.Enum):
+    FETCH_BY_KEY = 0
+    FETCH_BY_INDEX = 1

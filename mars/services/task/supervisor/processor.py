@@ -208,6 +208,9 @@ class TaskProcessor:
             )
         except (KeyError, IndexError):
             fetch_op_to_bands = {}
+        shuffle_fetch_type = (
+            self._executor.get_execution_config().get_shuffle_fetch_type()
+        )
         with Timer() as timer:
             subtask_graph = await asyncio.to_thread(
                 self._preprocessor.analyze,
@@ -216,6 +219,7 @@ class TaskProcessor:
                 available_bands,
                 stage_id=stage_id,
                 op_to_bands=fetch_op_to_bands,
+                shuffle_fetch_type=shuffle_fetch_type,
             )
         stage_profiler.set(f"gen_subtask_graph({len(subtask_graph)})", timer.duration)
         logger.info(
