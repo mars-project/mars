@@ -323,7 +323,7 @@ class TensorIndexSetValue(TensorMapReduceOperand, TensorOperandMixin):
             for axis in range(input_data.ndim):
                 if axis in op.shuffle_axes:
                     indexes.append(next(index_iter) - op.chunk_offsets[axis])
-            input_data[indexes] = value
+            input_data[tuple(indexes)] = value
 
         ctx[op.outputs[0].key] = input_data
 
