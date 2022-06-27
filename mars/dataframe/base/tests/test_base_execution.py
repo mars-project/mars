@@ -2145,12 +2145,12 @@ def test_pct_change_execution(setup):
 
 @pytest.mark.ray_dag
 def test_bloom_filter(setup):
-    ns = np.random.RandomState(0)
+    rs = np.random.RandomState(0)
     raw1 = pd.DataFrame(
-        {"col1": ns.randint(0, 100, size=(100,)), "col2": ns.random(100)}
+        {"col1": rs.randint(0, 100, size=(100,)), "col2": rs.random(100)}
     )
     raw2 = pd.DataFrame(
-        {"col1": ns.randint(0, 10, size=(100,)), "col2": ns.random(100)}
+        {"col1": rs.randint(0, 10, size=(100,)), "col2": rs.random(100)}
     )
 
     df1 = from_pandas_df(raw1, chunk_size=10)

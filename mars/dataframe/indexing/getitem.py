@@ -381,9 +381,10 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                     in_df, mask, axis="index"
                 )
             elif isinstance(mask, DATAFRAME_TYPE):
-                nsplits, out_shape, df_chunks, mask_chunks = align_dataframe_dataframe(
+                nsplits, out_shapes, df_chunks, mask_chunks = align_dataframe_dataframe(
                     in_df, mask
                 )
+                out_shape = out_shapes[0]
             else:
                 # tensor
                 nsplits = in_df.nsplits
