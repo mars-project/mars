@@ -332,7 +332,7 @@ cdef class CollectionSerializer(Serializer):
         # make the value can be referenced with C code
         self._obj_type = self.obj_type
 
-    cpdef tuple _serial_iterable(self, obj: Any):
+    cdef tuple _serial_iterable(self, obj: Any):
         cdef list idx_to_propagate = []
         cdef list obj_to_propagate = []
         cdef list obj_list = <list>obj if type(obj) is list else list(obj)
@@ -373,7 +373,7 @@ cdef class CollectionSerializer(Serializer):
 
         return self._serial_iterable(obj)
 
-    cpdef list _deserial_iterable(self, tuple serialized, list subs):
+    cdef list _deserial_iterable(self, tuple serialized, list subs):
         cdef list res_list, idx_to_propagate
         cdef int64_t i
 

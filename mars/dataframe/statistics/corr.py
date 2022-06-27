@@ -19,6 +19,7 @@ from ... import opcodes
 from ...core import ENTITY_TYPE, recursive_tile
 from ...serialization.serializables import BoolField, AnyField, KeyField, Int32Field
 from ...tensor.utils import filter_inputs
+from ...utils import has_unknown_shape
 from ..core import SERIES_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_df, validate_axis, parse_index
@@ -27,50 +28,18 @@ from ..utils import build_empty_df, validate_axis, parse_index
 class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.CORR
 
-    _other = KeyField("other")
-    _method = AnyField("method")
-    _min_periods = Int32Field("min_periods")
-    _axis = Int32Field("axis")
-    _drop = BoolField("drop")
-
-    def __init__(
-        self, other=None, method=None, min_periods=None, axis=None, drop=None, **kw
-    ):
-        super().__init__(
-            _other=other,
-            _method=method,
-            _min_periods=min_periods,
-            _axis=axis,
-            _drop=drop,
-            **kw,
-        )
-
-    @property
-    def other(self):
-        return self._other
-
-    @property
-    def method(self):
-        return self._method
-
-    @property
-    def min_periods(self):
-        return self._min_periods
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def drop(self):
-        return self._drop
+    other = KeyField("other", default=None)
+    method = AnyField("method", default=None)
+    min_periods = Int32Field("min_periods", default=None)
+    axis = Int32Field("axis", default=None)
+    drop = BoolField("drop", default=None)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
         next(inputs_iter)
-        if isinstance(self._other, ENTITY_TYPE):
-            self._other = next(inputs_iter)
+        if isinstance(self.other, ENTITY_TYPE):
+            self.other = next(inputs_iter)
 
     def __call__(self, df_or_series):
         if isinstance(df_or_series, SERIES_TYPE):
@@ -87,7 +56,7 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
                 return obj
 
             df_or_series = _filter_numeric(df_or_series)
-            self._other = _filter_numeric(self._other)
+            self.other = _filter_numeric(self.other)
 
             inputs = filter_inputs([df_or_series, self.other])
             if self.axis is None:
@@ -165,6 +134,13 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_pearson_align(cls, left, right, axis):
+        if left.ndim == right.ndim:
+            left, right = yield from recursive_tile(left.align(right))
+        else:
+            left, right = yield from recursive_tile(left.align(right, axis=axis))
+        if has_unknown_shape(left, right):
+            yield left.chunks + right.chunks + [left, right]
+
         nna_left = left.notna().astype(np.float_)
         nna_right = right.notna().astype(np.float_)
 
@@ -217,7 +193,7 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
         right = op.other
 
         _check_supported_methods(op.method)
-        result = cls._tile_pearson_align(left, right, axis=op.axis)
+        result = yield from cls._tile_pearson_align(left, right, axis=op.axis)
         if op.drop:
             result = result.dropna(axis=op.axis)
         return [(yield from recursive_tile(result))]

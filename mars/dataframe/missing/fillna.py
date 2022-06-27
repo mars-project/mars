@@ -325,7 +325,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         nsplits, out_shape, left_chunks, right_chunks = align_dataframe_dataframe(
             in_df, in_value
         )
-        out_chunk_indexes = itertools.product(*(range(s) for s in out_shape))
+        out_chunk_indexes = itertools.product(*(range(s) for s in out_shape[0]))
 
         out_chunks = []
         for idx, left_chunk, right_chunk in zip(
