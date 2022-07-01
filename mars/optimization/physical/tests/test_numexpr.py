@@ -326,7 +326,7 @@ def test_numexpr():
         graph(@: node, R: Reduction Chunk, #: fused_node):
 
         @ --> @ --> R   ========>  #
-        
+
         fuse stopped at R, because reduction should be the last in the numexpr stack.
         """
     chunks = [
@@ -347,13 +347,13 @@ def test_numexpr():
     r"""
         graph(@: node, R: Reduction Chunk, #: fused_node):
 
-        @ 
+        @
           \                                        R
             R     R                               /
           /  \   /         =============>  # --> #     R
         @      R     R                            \   /
              /   \  /                               @ --> R
-            @     @ --> R       
+            @     @ --> R
 
         fuse stopped at R, because reduction should be the last in the numexpr stack.
         """
