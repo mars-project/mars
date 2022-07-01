@@ -17,7 +17,7 @@ import functools
 import logging
 import numpy as np
 
-from typing import List
+from typing import List, Set
 
 from ...core import ChunkType, ChunkGraph
 from ...tensor import arithmetic
@@ -116,6 +116,7 @@ def _can_fuse(node: ChunkType):
 def _collect_fuse(
     graph: ChunkGraph,
     node: ChunkType,
+    graph_results: Set[ChunkType],
     cached_can_fuse,
 ):
     fuse_graph = ChunkGraph()
@@ -143,7 +144,7 @@ def _collect_fuse(
         # Skip the successors of tail reduction node.
         if node is tail_reduction_node:
             continue
-        is_tail = graph.count_successors(node) == 0
+        is_tail = graph.count_successors(node) == 0 or node in graph_results
         for n in graph.iter_successors(node):
             can_fuse = cached_can_fuse(n)
             if can_fuse is False:
@@ -192,7 +193,7 @@ class NumexprRuntimeOptimizer(RuntimeOptimizer):
                 continue
             can_fuse = cached_can_fuse(node)
             if can_fuse is True:
-                fuse = _collect_fuse(graph, node, cached_can_fuse)
+                fuse = _collect_fuse(graph, node, graph_results, cached_can_fuse)
                 if len(fuse.graph) > 1:
                     explored.update(fuse.graph)
                     if len(fuse.tails) == 1:
