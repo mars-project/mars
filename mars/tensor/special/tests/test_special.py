@@ -186,92 +186,8 @@ def test_unary_tuple_operand(func, tensor_cls):
 @pytest.mark.parametrize(
     "func,tensor_cls",
     [
-        ("betanic", TensorBetaInc),
+        ("betainc", TensorBetaInc),
         ("voigt_profile", TensorVoigtProfile),
-    ],
-)
-def test_triple_operand(func, tensor_cls):
-    sp_func = getattr(spsecial, func)
-    mt_func = getattr(mt_special, func)
-
-    raw1 = np.random.rand(4, 3, 2)
-    raw2 = np.random.rand(4, 3, 2)
-    raw3 = np.random.rand(4, 3, 2)
-    a = tensor(raw1, chunk_size=3)
-    b = tensor(raw2, chunk_size=3)
-    c = tensor(raw3, chunk_size=3)
-
-    r = mt_func(a, b, c)
-    expect = sp_func(raw1, raw2, raw3)
-
-    assert r.shape == raw1.shape
-    assert r.dtype == expect.dtype
-
-    tiled_a, r = tile(a, r)
-
-    assert r.nsplits == tiled_a.nsplits
-    for chunk in r.chunks:
-        assert isinstance(chunk.op, tensor_cls)
-        assert chunk.index == chunk.inputs[0].index
-        assert chunk.shape == chunk.inputs[0].shape
-
-    mt_func(a, b, c, out=a)
-    expect = sp_func(raw1, raw2, raw3)
-
-    assert a.shape == raw1.shape
-    assert a.dtype == expect.dtype
-
-    b, tiled_a = tile(b, a)
-
-    assert tiled_a.nsplits == b.nsplits
-    for c in r.chunks:
-        assert isinstance(c.op, tensor_cls)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-
-@pytest.mark.parametrize(
-    "func,tensor_cls",
-    [
-        ("ellipkinc", TensorEllipkinc),
-        ("ellipeinc", TensorEllipeinc),
-        pytest.param(
-            "elliprc",
-            TensorElliprc,
-            marks=pytest.mark.skipif(
-                parse_version(scipy.__version__) < parse_version("1.8.0"),
-                reason="function not implemented in scipy.",
-            ),
-        ),
-    ],
-)
-def test_binary_operand(func, tensor_cls):
-    sp_func = getattr(spsecial, func)
-    mt_func = getattr(mt_special, func)
-
-    raw1 = np.random.rand(4, 3, 2)
-    raw2 = np.random.rand(4, 3, 2)
-    a = tensor(raw1, chunk_size=3)
-    b = tensor(raw2, chunk_size=3)
-
-    r = mt_func(a, b)
-    expect = sp_func(raw1, raw2)
-
-    assert r.shape == raw1.shape
-    assert r.dtype == expect.dtype
-
-    tiled_a, r = tile(a, r)
-
-    assert r.nsplits == tiled_a.nsplits
-    for chunk in r.chunks:
-        assert isinstance(chunk.op, tensor_cls)
-        assert chunk.index == chunk.inputs[0].index
-        assert chunk.shape == chunk.inputs[0].shape
-
-
-@pytest.mark.parametrize(
-    "func,tensor_cls",
-    [
         pytest.param(
             "elliprd",
             TensorElliprd,
@@ -311,6 +227,45 @@ def test_triple_operand(func, tensor_cls):
 
     r = mt_func(a, b, c)
     expect = sp_func(raw1, raw2, raw3)
+
+    assert r.shape == raw1.shape
+    assert r.dtype == expect.dtype
+
+    tiled_a, r = tile(a, r)
+
+    assert r.nsplits == tiled_a.nsplits
+    for chunk in r.chunks:
+        assert isinstance(chunk.op, tensor_cls)
+        assert chunk.index == chunk.inputs[0].index
+        assert chunk.shape == chunk.inputs[0].shape
+
+
+@pytest.mark.parametrize(
+    "func,tensor_cls",
+    [
+        ("ellipkinc", TensorEllipkinc),
+        ("ellipeinc", TensorEllipeinc),
+        pytest.param(
+            "elliprc",
+            TensorElliprc,
+            marks=pytest.mark.skipif(
+                parse_version(scipy.__version__) < parse_version("1.8.0"),
+                reason="function not implemented in scipy.",
+            ),
+        ),
+    ],
+)
+def test_binary_operand(func, tensor_cls):
+    sp_func = getattr(spsecial, func)
+    mt_func = getattr(mt_special, func)
+
+    raw1 = np.random.rand(4, 3, 2)
+    raw2 = np.random.rand(4, 3, 2)
+    a = tensor(raw1, chunk_size=3)
+    b = tensor(raw2, chunk_size=3)
+
+    r = mt_func(a, b)
+    expect = sp_func(raw1, raw2)
 
     assert r.shape == raw1.shape
     assert r.dtype == expect.dtype
