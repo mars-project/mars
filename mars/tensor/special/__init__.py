@@ -28,8 +28,18 @@ try:
         TensorErfinv,
         erfcinv,
         TensorErfcinv,
+        wofz,
+        TensorWofz,
+        dawsn,
+        TensorDawsn,
         fresnel,
         TensorFresnel,
+        modfresnelp,
+        TensorModFresnelP,
+        modfresnelm,
+        TensorModFresnelM,
+        voigt_profile,
+        TensorVoigtProfile,
     )
     from .gamma_funcs import (
         gamma,

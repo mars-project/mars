@@ -38,6 +38,9 @@ from ... import special as mt_special
         "erfcx",
         "erfi",
         "erfinv",
+        "erfcinv",
+        "wofz",
+        "dawsn",
         "entr",
         "ellipk",
         "ellipkm1",
@@ -149,6 +152,7 @@ def test_binary_execution(setup, func):
         "betaincinv",
         "hyp1f1",
         "hyperu",
+        "voigt_profile",
         pytest.param(
             "elliprd",
             marks=pytest.mark.skipif(
@@ -305,6 +309,8 @@ def test_quintuple_execution(setup, func):
     "func",
     [
         "fresnel",
+        "modfresnelp",
+        "modfresnelm",
     ],
 )
 def test_unary_tuple_execution(setup, func):
