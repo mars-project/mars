@@ -18,6 +18,7 @@ from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
 from .core import (
     TensorSpecialUnaryOp,
+    TensorSpecialMultiOp,
     TensorTupleOp,
     _register_special_op,
 )
@@ -60,9 +61,39 @@ class TensorErfcinv(TensorSpecialUnaryOp):
 
 
 @_register_special_op
+@arithmetic_operand(sparse_mode="unary")
+class TensorWofz(TensorSpecialUnaryOp):
+    _func_name = "wofz"
+
+
+@_register_special_op
+@arithmetic_operand(sparse_mode="unary")
+class TensorDawsn(TensorSpecialUnaryOp):
+    _func_name = "dawsn"
+
+
+@_register_special_op
 class TensorFresnel(TensorTupleOp):
     _func_name = "fresnel"
     _n_outputs = 2
+
+
+@_register_special_op
+class TensorModFresnelP(TensorTupleOp):
+    _func_name = "modfresnelp"
+    _n_outputs = 2
+
+
+@_register_special_op
+class TensorModFresnelM(TensorTupleOp):
+    _func_name = "modfresnelm"
+    _n_outputs = 2
+
+
+@_register_special_op
+class TensorVoigtProfile(TensorSpecialMultiOp):
+    _ARG_COUNT = 3
+    _func_name = "voigt_profile"
 
 
 @implement_scipy(spspecial.erf)
@@ -152,8 +183,43 @@ def erfcinv(x, out=None, where=None, **kwargs):
     return op(x, out=out, where=where)
 
 
+@implement_scipy(spspecial.wofz)
+@infer_dtype(spspecial.wofz)
+def wofz(x, out=None, where=None, **kwargs):
+    op = TensorWofz(**kwargs)
+    return op(x, out=out, where=where)
+
+
+@implement_scipy(spspecial.dawsn)
+@infer_dtype(spspecial.dawsn)
+def dawsn(x, out=None, where=None, **kwargs):
+    op = TensorDawsn(**kwargs)
+    return op(x, out=out, where=where)
+
+
 @implement_scipy(spspecial.fresnel)
 @infer_dtype(spspecial.fresnel, multi_outputs=True)
 def fresnel(x, out=None, **kwargs):
     op = TensorFresnel(**kwargs)
     return op(x, out=out)
+
+
+@implement_scipy(spspecial.modfresnelp)
+@infer_dtype(spspecial.modfresnelp, multi_outputs=True)
+def modfresnelp(x, out=None, **kwargs):
+    op = TensorModFresnelP(**kwargs)
+    return op(x, out=out)
+
+
+@implement_scipy(spspecial.modfresnelm)
+@infer_dtype(spspecial.modfresnelm, multi_outputs=True)
+def modfresnelm(x, out=None, **kwargs):
+    op = TensorModFresnelM(**kwargs)
+    return op(x, out=out)
+
+
+@implement_scipy(spspecial.voigt_profile)
+@infer_dtype(spspecial.voigt_profile)
+def voigt_profile(x, sigma, gamma, **kwargs):
+    op = TensorVoigtProfile(**kwargs)
+    return op(x, sigma, gamma)

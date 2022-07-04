@@ -736,6 +736,8 @@ class SparseArray(SparseNDArray):
     erfi = partialmethod(_scipy_unary, "erfi")
     erfinv = partialmethod(_scipy_unary, "erfinv")
     erfcinv = partialmethod(_scipy_unary, "erfcinv")
+    wofz = partialmethod(_scipy_unary, "wofz")
+    dawsn = partialmethod(_scipy_unary, "dawsn")
     entr = partialmethod(_scipy_unary, "entr")
 
     ellipk = partialmethod(_scipy_unary, "ellipk")
