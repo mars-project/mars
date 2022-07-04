@@ -15,68 +15,70 @@
 import numpy as np
 import scipy
 import pytest
-from scipy.special import (
-    gammaln as scipy_gammaln,
-    erf as scipy_erf,
-    erfc as scipy_erfc,
-    erfcx as scipy_erfcx,
-    erfi as scipy_erfi,
-    erfinv as scipy_erfinv,
-    erfcinv as scipy_erfcinv,
-    ellipk as scipy_ellipk,
-    ellipkm1 as scipy_ellipkm1,
-    ellipkinc as scipy_ellipkinc,
-    ellipe as scipy_ellipe,
-    ellipeinc as scipy_ellipeinc,
-    fresnel as scipy_fresnel,
-    betainc as scipy_betainc,
-)
+import scipy.special as spsecial
 
 from ....lib.version import parse as parse_version
 from ....core import tile, ExecutableTuple
 from ... import tensor
+from ... import special as mt_special
 from ..err_fresnel import (
-    erf,
     TensorErf,
-    erfc,
     TensorErfc,
-    erfcx,
     TensorErfcx,
-    erfi,
     TensorErfi,
-    erfinv,
     TensorErfinv,
-    erfcinv,
     TensorErfcinv,
-    fresnel,
+    TensorWofz,
+    TensorDawsn,
     TensorFresnel,
+    TensorModFresnelP,
+    TensorModFresnelM,
+    TensorVoigtProfile,
 )
 from ..gamma_funcs import (
-    gammaln,
     TensorGammaln,
-    betainc,
     TensorBetaInc,
 )
 from ..ellip_func_integrals import (
-    ellipk,
+    TensorElliprc,
+    TensorElliprd,
+    TensorElliprf,
+    TensorElliprg,
+    TensorElliprj,
     TensorEllipk,
-    ellipkm1,
     TensorEllipkm1,
-    ellipkinc,
     TensorEllipkinc,
-    ellipe,
     TensorEllipe,
-    ellipeinc,
     TensorEllipeinc,
 )
 
 
-def test_gammaln():
+@pytest.mark.parametrize(
+    "func,tensor_cls",
+    [
+        ("gammaln", TensorGammaln),
+        ("erf", TensorErf),
+        ("erfinv", TensorErfinv),
+        ("erfcinv", TensorErfcinv),
+        ("wofz", TensorWofz),
+        ("dawsn", TensorDawsn),
+        ("ellipk", TensorEllipk),
+        ("ellipkm1", TensorEllipkm1),
+        ("ellipe", TensorEllipe),
+        ("erfc", TensorErfc),
+        ("erfcx", TensorErfcx),
+        ("erfi", TensorErfi),
+    ],
+)
+def test_unary_operand_no_out(func, tensor_cls):
+    sp_func = getattr(spsecial, func)
+    mt_func = getattr(mt_special, func)
+
     raw = np.random.rand(10, 8, 5)
     t = tensor(raw, chunk_size=3)
 
-    r = gammaln(t)
-    expect = scipy_gammaln(raw)
+    r = mt_func(t)
+    expect = sp_func(raw)
 
     assert r.shape == raw.shape
     assert r.dtype == expect.dtype
@@ -85,50 +87,29 @@ def test_gammaln():
 
     assert r.nsplits == t.nsplits
     for c in r.chunks:
-        assert isinstance(c.op, TensorGammaln)
+        assert isinstance(c.op, tensor_cls)
         assert c.index == c.inputs[0].index
         assert c.shape == c.inputs[0].shape
 
 
-def test_elf():
+@pytest.mark.parametrize(
+    "func,tensor_cls",
+    [
+        ("erfc", TensorErfc),
+        ("erfcx", TensorErfcx),
+        ("erfi", TensorErfi),
+    ],
+)
+def test_unary_operand_out(func, tensor_cls):
+    sp_func = getattr(spsecial, func)
+    mt_func = getattr(mt_special, func)
+
     raw = np.random.rand(10, 8, 5)
     t = tensor(raw, chunk_size=3)
-
-    r = erf(t)
-    expect = scipy_erf(raw)
-
-    assert r.shape == raw.shape
-    assert r.dtype == expect.dtype
-
-    t, r = tile(t, r)
-
-    assert r.nsplits == t.nsplits
-    for c in r.chunks:
-        assert isinstance(c.op, TensorErf)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-
-def test_erfc():
-    raw = np.random.rand(10, 8, 5)
-    t = tensor(raw, chunk_size=3)
-
-    r_without_optional = erfc(t)
-    expect = scipy_erfc(raw)
-
-    assert r_without_optional.shape == raw.shape
-    assert r_without_optional.dtype == expect.dtype
-
-    t_without_optional, r_without_optional = tile(t, r_without_optional)
-
-    assert r_without_optional.nsplits == t_without_optional.nsplits
-    for c in r_without_optional.chunks:
-        assert isinstance(c.op, TensorErfc)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
 
     out = tensor(raw, chunk_size=3)
-    r_with_optional = erfc(t, out)
+    r_with_optional = mt_func(t, out)
+    expect = sp_func(raw)
 
     assert out.shape == raw.shape
     assert out.dtype == expect.dtype
@@ -140,7 +121,7 @@ def test_erfc():
 
     assert out.nsplits == t_optional_out.nsplits
     for c in out.chunks:
-        assert isinstance(c.op, TensorErfc)
+        assert isinstance(c.op, tensor_cls)
         assert c.index == c.inputs[0].index
         assert c.shape == c.inputs[0].shape
 
@@ -148,350 +129,94 @@ def test_erfc():
 
     assert r_with_optional.nsplits == t_optional_r.nsplits
     for c in r_with_optional.chunks:
-        assert isinstance(c.op, TensorErfc)
+        assert isinstance(c.op, tensor_cls)
         assert c.index == c.inputs[0].index
         assert c.shape == c.inputs[0].shape
 
 
-def test_erfcx():
+@pytest.mark.parametrize(
+    "func,tensor_cls",
+    [
+        ("fresnel", TensorFresnel),
+        ("modfresnelp", TensorModFresnelP),
+        ("modfresnelm", TensorModFresnelM),
+    ],
+)
+def test_unary_tuple_operand(func, tensor_cls):
+    sp_func = getattr(spsecial, func)
+    mt_func = getattr(mt_special, func)
+
     raw = np.random.rand(10, 8, 5)
     t = tensor(raw, chunk_size=3)
 
-    r_without_optional = erfcx(t)
-    expect = scipy_erfcx(raw)
-
-    assert r_without_optional.shape == raw.shape
-    assert r_without_optional.dtype == expect.dtype
-
-    t_without_optional, r_without_optional = tile(t, r_without_optional)
-
-    assert r_without_optional.nsplits == t_without_optional.nsplits
-    for c in r_without_optional.chunks:
-        assert isinstance(c.op, TensorErfcx)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-    out = tensor(raw, chunk_size=3)
-    r_with_optional = erfcx(t, out)
-
-    assert out.shape == raw.shape
-    assert out.dtype == expect.dtype
-
-    assert r_with_optional.shape == raw.shape
-    assert r_with_optional.dtype == expect.dtype
-
-    t_optional_out, out = tile(t, out)
-
-    assert out.nsplits == t_optional_out.nsplits
-    for c in out.chunks:
-        assert isinstance(c.op, TensorErfcx)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-    t_optional_r, r_with_optional = tile(t, r_with_optional)
-
-    assert r_with_optional.nsplits == t_optional_r.nsplits
-    for c in r_with_optional.chunks:
-        assert isinstance(c.op, TensorErfcx)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-
-def test_erfi():
-    raw = np.random.rand(10, 8, 5)
-    t = tensor(raw, chunk_size=3)
-
-    r_without_optional = erfi(t)
-    expect = scipy_erfi(raw)
-
-    assert r_without_optional.shape == raw.shape
-    assert r_without_optional.dtype == expect.dtype
-
-    t_without_optional, r_without_optional = tile(t, r_without_optional)
-
-    assert r_without_optional.nsplits == t_without_optional.nsplits
-    for c in r_without_optional.chunks:
-        assert isinstance(c.op, TensorErfi)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-    out = tensor(raw, chunk_size=3)
-    r_with_optional = erfi(t, out)
-
-    assert out.shape == raw.shape
-    assert out.dtype == expect.dtype
-
-    assert r_with_optional.shape == raw.shape
-    assert r_with_optional.dtype == expect.dtype
-
-    t_optional_out, out = tile(t, out)
-
-    assert out.nsplits == t_optional_out.nsplits
-    for c in out.chunks:
-        assert isinstance(c.op, TensorErfi)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-    t_optional_r, r_with_optional = tile(t, r_with_optional)
-
-    assert r_with_optional.nsplits == t_optional_r.nsplits
-    for c in r_with_optional.chunks:
-        assert isinstance(c.op, TensorErfi)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-
-def test_erfinv():
-    raw = np.random.rand(10, 8, 5)
-    t = tensor(raw, chunk_size=3)
-
-    r = erfinv(t)
-    expect = scipy_erfinv(raw)
-
-    assert r.shape == raw.shape
-    assert r.dtype == expect.dtype
-
-    t, r = tile(t, r)
-
-    assert r.nsplits == t.nsplits
-    for c in r.chunks:
-        assert isinstance(c.op, TensorErfinv)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-
-def test_erfcinv():
-    raw = np.random.rand(10, 8, 5)
-    t = tensor(raw, chunk_size=3)
-
-    r = erfcinv(t)
-    expect = scipy_erfcinv(raw)
-
-    assert r.shape == raw.shape
-    assert r.dtype == expect.dtype
-
-    t, r = tile(t, r)
-
-    assert r.nsplits == t.nsplits
-    for c in r.chunks:
-        assert isinstance(c.op, TensorErfcinv)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-
-def test_fresnel():
-    raw = np.random.rand(10, 8, 5)
-    t = tensor(raw, chunk_size=3)
-
-    r = fresnel(t)
-    expect = scipy_fresnel(raw)
+    r = mt_func(t)
+    expect = sp_func(raw)
 
     assert isinstance(r, ExecutableTuple)
-    assert len(r) == 2
 
-    for i in range(len(r)):
-        assert r[i].shape == expect[i].shape
-        assert r[i].dtype == expect[i].dtype
-        assert isinstance(r[i].op, TensorFresnel)
+    for r_i, expect_i in zip(r, expect):
+        assert r_i.shape == expect_i.shape
+        assert r_i.dtype == expect_i.dtype
+        assert isinstance(r_i.op, tensor_cls)
 
     non_tuple_out = tensor(raw, chunk_size=3)
     with pytest.raises(TypeError):
-        r = fresnel(t, non_tuple_out)
+        r = mt_func(t, non_tuple_out)
 
     mismatch_size_tuple = ExecutableTuple([t])
     with pytest.raises(TypeError):
-        r = fresnel(t, mismatch_size_tuple)
+        r = mt_func(t, mismatch_size_tuple)
 
     out = ExecutableTuple([t, t])
-    r_out = fresnel(t, out=out)
+    r_out = mt_func(t, out=out)
 
     assert isinstance(out, ExecutableTuple)
     assert isinstance(r_out, ExecutableTuple)
 
-    assert len(out) == 2
-    assert len(r_out) == 2
-
     for r_output, expected_output, out_output in zip(r, expect, out):
         assert r_output.shape == expected_output.shape
         assert r_output.dtype == expected_output.dtype
-        assert isinstance(r_output.op, TensorFresnel)
+        assert isinstance(r_output.op, tensor_cls)
 
         assert out_output.shape == expected_output.shape
         assert out_output.dtype == expected_output.dtype
-        assert isinstance(out_output.op, TensorFresnel)
+        assert isinstance(out_output.op, tensor_cls)
 
 
-def test_beta_inc():
-    raw1 = np.random.rand(4, 3, 2)
-    raw2 = np.random.rand(4, 3, 2)
-    raw3 = np.random.rand(4, 3, 2)
-    a = tensor(raw1, chunk_size=3)
-    b = tensor(raw2, chunk_size=3)
-    c = tensor(raw3, chunk_size=3)
-
-    r = betainc(a, b, c)
-    expect = scipy_betainc(raw1, raw2, raw3)
-
-    assert r.shape == raw1.shape
-    assert r.dtype == expect.dtype
-
-    tiled_a, r = tile(a, r)
-
-    assert r.nsplits == tiled_a.nsplits
-    for chunk in r.chunks:
-        assert isinstance(chunk.op, TensorBetaInc)
-        assert chunk.index == chunk.inputs[0].index
-        assert chunk.shape == chunk.inputs[0].shape
-
-    betainc(a, b, c, out=a)
-    expect = scipy_betainc(raw1, raw2, raw3)
-
-    assert a.shape == raw1.shape
-    assert a.dtype == expect.dtype
-
-    b, tiled_a = tile(b, a)
-
-    assert tiled_a.nsplits == b.nsplits
-    for c in r.chunks:
-        assert isinstance(c.op, TensorBetaInc)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-
-def test_ellipk():
-    raw = np.random.rand(10, 8, 5)
-    t = tensor(raw, chunk_size=3)
-
-    r = ellipk(t)
-    expect = scipy_ellipk(raw)
-
-    assert r.shape == raw.shape
-    assert r.dtype == expect.dtype
-
-    t, r = tile(t, r)
-
-    assert r.nsplits == t.nsplits
-    for c in r.chunks:
-        assert isinstance(c.op, TensorEllipk)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-
-def test_ellipkm1():
-    raw = np.random.rand(10, 8, 5)
-    t = tensor(raw, chunk_size=3)
-
-    r = ellipkm1(t)
-    expect = scipy_ellipkm1(raw)
-
-    assert r.shape == raw.shape
-    assert r.dtype == expect.dtype
-
-    t, r = tile(t, r)
-
-    assert r.nsplits == t.nsplits
-    for c in r.chunks:
-        assert isinstance(c.op, TensorEllipkm1)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-
-def test_ellipkinc():
-    raw1 = np.random.rand(4, 3, 2)
-    raw2 = np.random.rand(4, 3, 2)
-    a = tensor(raw1, chunk_size=3)
-    b = tensor(raw2, chunk_size=3)
-
-    r = ellipkinc(a, b)
-    expect = scipy_ellipkinc(raw1, raw2)
-
-    assert r.shape == raw1.shape
-    assert r.dtype == expect.dtype
-
-    tiled_a, r = tile(a, r)
-
-    assert r.nsplits == tiled_a.nsplits
-    for chunk in r.chunks:
-        assert isinstance(chunk.op, TensorEllipkinc)
-        assert chunk.index == chunk.inputs[0].index
-        assert chunk.shape == chunk.inputs[0].shape
-
-
-def test_ellipe():
-    raw = np.random.rand(10, 8, 5)
-    t = tensor(raw, chunk_size=3)
-
-    r = ellipe(t)
-    expect = scipy_ellipe(raw)
-
-    assert r.shape == raw.shape
-    assert r.dtype == expect.dtype
-
-    t, r = tile(t, r)
-
-    assert r.nsplits == t.nsplits
-    for c in r.chunks:
-        assert isinstance(c.op, TensorEllipe)
-        assert c.index == c.inputs[0].index
-        assert c.shape == c.inputs[0].shape
-
-
-def test_ellipeinc():
-    raw1 = np.random.rand(4, 3, 2)
-    raw2 = np.random.rand(4, 3, 2)
-    a = tensor(raw1, chunk_size=3)
-    b = tensor(raw2, chunk_size=3)
-
-    r = ellipeinc(a, b)
-    expect = scipy_ellipeinc(raw1, raw2)
-
-    assert r.shape == raw1.shape
-    assert r.dtype == expect.dtype
-
-    tiled_a, r = tile(a, r)
-
-    assert r.nsplits == tiled_a.nsplits
-    for chunk in r.chunks:
-        assert isinstance(chunk.op, TensorEllipeinc)
-        assert chunk.index == chunk.inputs[0].index
-        assert chunk.shape == chunk.inputs[0].shape
-
-
-@pytest.mark.skipif(
-    parse_version(scipy.__version__) < parse_version("1.8.0"),
-    reason="function not implemented in scipy.",
+@pytest.mark.parametrize(
+    "func,tensor_cls",
+    [
+        ("betainc", TensorBetaInc),
+        ("voigt_profile", TensorVoigtProfile),
+        pytest.param(
+            "elliprd",
+            TensorElliprd,
+            marks=pytest.mark.skipif(
+                parse_version(scipy.__version__) < parse_version("1.8.0"),
+                reason="function not implemented in scipy.",
+            ),
+        ),
+        pytest.param(
+            "elliprf",
+            TensorElliprf,
+            marks=pytest.mark.skipif(
+                parse_version(scipy.__version__) < parse_version("1.8.0"),
+                reason="function not implemented in scipy.",
+            ),
+        ),
+        pytest.param(
+            "elliprg",
+            TensorElliprg,
+            marks=pytest.mark.skipif(
+                parse_version(scipy.__version__) < parse_version("1.8.0"),
+                reason="function not implemented in scipy.",
+            ),
+        ),
+    ],
 )
-def test_elliprc():
-    from scipy.special import elliprc as scipy_elliprc
-    from ..ellip_func_integrals import elliprc, TensorElliprc
-
-    raw1 = np.random.rand(4, 3, 2)
-    raw2 = np.random.rand(4, 3, 2)
-    a = tensor(raw1, chunk_size=3)
-    b = tensor(raw2, chunk_size=3)
-
-    r = elliprc(a, b)
-    expect = scipy_elliprc(raw1, raw2)
-
-    assert r.shape == raw1.shape
-    assert r.dtype == expect.dtype
-
-    tiled_a, r = tile(a, r)
-
-    assert r.nsplits == tiled_a.nsplits
-    for chunk in r.chunks:
-        assert isinstance(chunk.op, TensorElliprc)
-        assert chunk.index == chunk.inputs[0].index
-        assert chunk.shape == chunk.inputs[0].shape
-
-
-@pytest.mark.skipif(
-    parse_version(scipy.__version__) < parse_version("1.8.0"),
-    reason="function not implemented in scipy.",
-)
-def test_elliprd():
-    from scipy.special import elliprd as scipy_elliprd
-    from ..ellip_func_integrals import elliprd, TensorElliprd
+def test_triple_operand(func, tensor_cls):
+    sp_func = getattr(spsecial, func)
+    mt_func = getattr(mt_special, func)
 
     raw1 = np.random.rand(4, 3, 2)
     raw2 = np.random.rand(4, 3, 2)
@@ -500,8 +225,8 @@ def test_elliprd():
     b = tensor(raw2, chunk_size=3)
     c = tensor(raw3, chunk_size=3)
 
-    r = elliprd(a, b, c)
-    expect = scipy_elliprd(raw1, raw2, raw3)
+    r = mt_func(a, b, c)
+    expect = sp_func(raw1, raw2, raw3)
 
     assert r.shape == raw1.shape
     assert r.dtype == expect.dtype
@@ -510,28 +235,37 @@ def test_elliprd():
 
     assert r.nsplits == tiled_a.nsplits
     for chunk in r.chunks:
-        assert isinstance(chunk.op, TensorElliprd)
+        assert isinstance(chunk.op, tensor_cls)
         assert chunk.index == chunk.inputs[0].index
         assert chunk.shape == chunk.inputs[0].shape
 
 
-@pytest.mark.skipif(
-    parse_version(scipy.__version__) < parse_version("1.8.0"),
-    reason="function not implemented in scipy.",
+@pytest.mark.parametrize(
+    "func,tensor_cls",
+    [
+        ("ellipkinc", TensorEllipkinc),
+        ("ellipeinc", TensorEllipeinc),
+        pytest.param(
+            "elliprc",
+            TensorElliprc,
+            marks=pytest.mark.skipif(
+                parse_version(scipy.__version__) < parse_version("1.8.0"),
+                reason="function not implemented in scipy.",
+            ),
+        ),
+    ],
 )
-def test_elliprf():
-    from scipy.special import elliprf as scipy_elliprf
-    from ..ellip_func_integrals import elliprf, TensorElliprf
+def test_binary_operand(func, tensor_cls):
+    sp_func = getattr(spsecial, func)
+    mt_func = getattr(mt_special, func)
 
     raw1 = np.random.rand(4, 3, 2)
     raw2 = np.random.rand(4, 3, 2)
-    raw3 = np.random.rand(4, 3, 2)
     a = tensor(raw1, chunk_size=3)
     b = tensor(raw2, chunk_size=3)
-    c = tensor(raw3, chunk_size=3)
 
-    r = elliprf(a, b, c)
-    expect = scipy_elliprf(raw1, raw2, raw3)
+    r = mt_func(a, b)
+    expect = sp_func(raw1, raw2)
 
     assert r.shape == raw1.shape
     assert r.dtype == expect.dtype
@@ -540,48 +274,27 @@ def test_elliprf():
 
     assert r.nsplits == tiled_a.nsplits
     for chunk in r.chunks:
-        assert isinstance(chunk.op, TensorElliprf)
+        assert isinstance(chunk.op, tensor_cls)
         assert chunk.index == chunk.inputs[0].index
         assert chunk.shape == chunk.inputs[0].shape
 
 
-@pytest.mark.skipif(
-    parse_version(scipy.__version__) < parse_version("1.8.0"),
-    reason="function not implemented in scipy.",
+@pytest.mark.parametrize(
+    "func,tensor_cls",
+    [
+        pytest.param(
+            "elliprj",
+            TensorElliprj,
+            marks=pytest.mark.skipif(
+                parse_version(scipy.__version__) < parse_version("1.8.0"),
+                reason="function not implemented in scipy.",
+            ),
+        ),
+    ],
 )
-def test_elliprg():
-    from scipy.special import elliprg as scipy_elliprg
-    from ..ellip_func_integrals import elliprg, TensorElliprg
-
-    raw1 = np.random.rand(4, 3, 2)
-    raw2 = np.random.rand(4, 3, 2)
-    raw3 = np.random.rand(4, 3, 2)
-    a = tensor(raw1, chunk_size=3)
-    b = tensor(raw2, chunk_size=3)
-    c = tensor(raw3, chunk_size=3)
-
-    r = elliprg(a, b, c)
-    expect = scipy_elliprg(raw1, raw2, raw3)
-
-    assert r.shape == raw1.shape
-    assert r.dtype == expect.dtype
-
-    tiled_a, r = tile(a, r)
-
-    assert r.nsplits == tiled_a.nsplits
-    for chunk in r.chunks:
-        assert isinstance(chunk.op, TensorElliprg)
-        assert chunk.index == chunk.inputs[0].index
-        assert chunk.shape == chunk.inputs[0].shape
-
-
-@pytest.mark.skipif(
-    parse_version(scipy.__version__) < parse_version("1.8.0"),
-    reason="function not implemented in scipy.",
-)
-def test_elliprj():
-    from scipy.special import elliprj as scipy_elliprj
-    from ..ellip_func_integrals import elliprj, TensorElliprj
+def test_quadruple_operand(func, tensor_cls):
+    sp_func = getattr(spsecial, func)
+    mt_func = getattr(mt_special, func)
 
     raw1 = np.random.rand(4, 3, 2)
     raw2 = np.random.rand(4, 3, 2)
@@ -592,8 +305,8 @@ def test_elliprj():
     c = tensor(raw3, chunk_size=3)
     d = tensor(raw4, chunk_size=3)
 
-    r = elliprj(a, b, c, d)
-    expect = scipy_elliprj(raw1, raw2, raw3, raw4)
+    r = mt_func(a, b, c, d)
+    expect = sp_func(raw1, raw2, raw3, raw4)
 
     assert r.shape == raw1.shape
     assert r.dtype == expect.dtype
@@ -602,6 +315,6 @@ def test_elliprj():
 
     assert r.nsplits == tiled_a.nsplits
     for chunk in r.chunks:
-        assert isinstance(chunk.op, TensorElliprj)
+        assert isinstance(chunk.op, tensor_cls)
         assert chunk.index == chunk.inputs[0].index
         assert chunk.shape == chunk.inputs[0].shape
