@@ -17,9 +17,9 @@
 import numpy as np
 
 from ....utils import ignore_warning
+from ...arithmetic import abs as mt_abs
 from ...datasource import tensor, arange
 from ...reduction import sum as mt_sum
-from ...arithmetic import abs as mt_abs
 
 
 def test_base_execution(setup):

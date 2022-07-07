@@ -15,9 +15,9 @@
 import dataclasses
 import functools
 import logging
-import numpy as np
-
 from typing import List, Set
+
+import numpy as np
 
 from ...core import ChunkType, ChunkGraph
 from ...tensor import arithmetic
