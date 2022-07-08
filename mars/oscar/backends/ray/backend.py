@@ -17,6 +17,7 @@ from typing import Dict
 from ....utils import lazy_import, Timer
 from ...backend import BaseActorBackend, register_backend
 from ..context import MarsActorContext
+from ..router import Router
 from .driver import RayActorDriver
 from .pool import RayMainPool
 from .utils import process_address_to_placement, get_placement_group
@@ -48,6 +49,10 @@ class RayActorBackend(BaseActorBackend):
         kwargs.pop("n_io_process", 0)
         pg_name, bundle_index, _ = process_address_to_placement(address)
         from .pool import RayMainActorPool
+
+        # get default router or create an empty one
+        default_router = Router.get_instance_or_empty()
+        Router.set_instance(default_router)
 
         pool_addresses = RayMainActorPool.get_external_addresses(address, n_process)
         assert pool_addresses[0] == address
