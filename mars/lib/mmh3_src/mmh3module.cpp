@@ -291,9 +291,12 @@ mmh3_hash_bytes(PyObject *self, PyObject *args, PyObject *keywds)
         Py_DECREF(target_mview);
     }
 
-    char bytes[16];
+    unsigned char bytes[16];
     memcpy(bytes, result, 16);
-    return PyBytes_FromStringAndSize(bytes, 16);
+    // Make the first char of hex be a letter, then the Mars chunk key can be a valid Python identifier:
+    // https://docs.python.org/3/reference/lexical_analysis.html#identifiers
+    bytes[0] |= 0xC0;
+    return PyBytes_FromStringAndSize((char*)bytes, 16);
 }
 
 struct module_state {
