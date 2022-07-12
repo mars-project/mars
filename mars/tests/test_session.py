@@ -210,6 +210,7 @@ def test_without_fuse(setup):
     np.testing.assert_array_equal(r1, r2)
 
 
+@pytest.mark.ray_dag
 def test_fetch_slices(setup):
     arr1 = mt.random.rand(10, 8, chunk_size=3)
     r1 = arr1.execute().fetch()
