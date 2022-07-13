@@ -98,6 +98,7 @@ def test_mixed_config(setup):
     np.testing.assert_array_equal(r.execute(), np.ones((10, 10)) * 10)
 
 
+@pytest.mark.ray_dag
 def test_index(setup):
     with option_context({"eager_mode": True}):
         a = mt.random.rand(10, 5, chunk_size=5)
