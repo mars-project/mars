@@ -275,13 +275,13 @@ async def test_ray_fetcher(ray_start_regular_shared2):
     fetcher = RayFetcher()
     await fetcher.append("pd_key", {"object_refs": [pd_object_ref]})
     await fetcher.append("np_key", {"object_refs": [np_object_ref]})
-    await fetcher.append("pd_key", {"object_refs": [pd_object_ref]}, [1, 3])
-    await fetcher.append("np_key", {"object_refs": [np_object_ref]}, [1, 3])
+    await fetcher.append("pd_key", {"object_refs": [pd_object_ref]}, [slice(1, 3, 1)])
+    await fetcher.append("np_key", {"object_refs": [np_object_ref]}, [slice(1, 3, 1)])
     results = await fetcher.get()
     pd.testing.assert_frame_equal(results[0], pd_value)
     np.testing.assert_array_equal(results[1], np_value)
-    pd.testing.assert_frame_equal(results[2], pd_value.iloc[[1, 3]])
-    np.testing.assert_array_equal(results[3], np_value[[1, 3]])
+    pd.testing.assert_frame_equal(results[2], pd_value.iloc[1:3])
+    np.testing.assert_array_equal(results[3], np_value[1:3])
 
 
 @require_ray
