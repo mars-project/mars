@@ -95,7 +95,9 @@ def _discover_pyx():
             if not fn.endswith(".pyx"):
                 continue
             full_fn = os.path.relpath(os.path.join(root, fn), repo_root)
-            include_dirs, source = ext_include_source_map.get(full_fn, [[], []])
+            include_dirs, source = ext_include_source_map.get(
+                full_fn.replace(os.path.sep, "/"), [[], []]
+            )
             mod_name = full_fn.replace(".pyx", "").replace(os.path.sep, ".")
             exts[mod_name] = Extension(
                 mod_name,
