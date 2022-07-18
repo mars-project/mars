@@ -1623,12 +1623,15 @@ _func_token_cache = weakref.WeakKeyDictionary()
 
 
 def get_func_token(func):
-    token = _func_token_cache.get(func)
-    if token is None:
-        fields = get_func_token_values(func)
-        token = tokenize(*fields)
-        _func_token_cache[func] = token
-    return token
+    try:
+        token = _func_token_cache.get(func)
+        if token is None:
+            fields = get_func_token_values(func)
+            token = tokenize(*fields)
+            _func_token_cache[func] = token
+        return token
+    except TypeError:  # cannot create weak reference to func like 'numpy.ufunc'
+        return tokenize(*get_func_token_values(func))
 
 
 def get_func_token_values(func):
