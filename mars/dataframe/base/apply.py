@@ -30,7 +30,7 @@ from ...serialization.serializables import (
     DictField,
     FunctionField,
 )
-from ...utils import enter_current_session, quiet_stdio, get_func_token_values
+from ...utils import enter_current_session, quiet_stdio, get_func_token
 from ..arrays import ArrowArray
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import (
@@ -56,7 +56,7 @@ class ApplyOperandLogicKeyGeneratorMixin(OperatorLogicKeyGeneratorMixin):
             self._elementwise,
         ]
         if self.func:
-            return token_values + get_func_token_values(self.func)
+            return token_values + [get_func_token(self.func)]
         else:  # pragma: no cover
             return token_values
 
