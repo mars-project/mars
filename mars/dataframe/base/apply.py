@@ -30,7 +30,7 @@ from ...serialization.serializables import (
     DictField,
     FunctionField,
 )
-from ...utils import enter_current_session, quiet_stdio, get_func_token
+from ...utils import enter_current_session, quiet_stdio, get_func_token, tokenize
 from ..arrays import ArrowArray
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import (
@@ -101,6 +101,13 @@ class ApplyOperand(
             _elementwise=elementwise,
             **kw,
         )
+
+    def _update_key(self):
+        values = [v for v in self._values_ if v is not self.func] + [
+            get_func_token(self.func)
+        ]
+        self._obj_set("_key", tokenize(type(self).__name__, *values))
+        return self
 
     @property
     def func(self):
