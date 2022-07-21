@@ -161,6 +161,18 @@ try:
         elliprj,
         TensorElliprj,
     )
+    from .airy import (
+        airy,
+        TensorAiry,
+        airye,
+        TensorAirye,
+        ai_zeros,
+        TensorAiZeros,
+        bi_zeros,
+        TensorBiZeros,
+        itairy,
+        TensorItairy,
+    )
 except ImportError:  # pragma: no cover
     pass
 

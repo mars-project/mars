@@ -768,6 +768,12 @@ class SparseArray(SparseNDArray):
 
     hyp0f1 = partialmethod(_scipy_binary, "hyp0f1")
 
+    airy = partialmethod(_scipy_unary, "airy")
+    airye = partialmethod(_scipy_unary, "airye")
+    ai_zeros = partialmethod(_scipy_unary, "ai_zeros")
+    bi_zeros = partialmethod(_scipy_unary, "bi_zeros")
+    itairy = partialmethod(_scipy_unary, "itairy")
+
     def __eq__(self, other):
         try:
             naked_other = naked(other)

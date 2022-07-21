@@ -51,7 +51,13 @@ from ..ellip_func_integrals import (
     TensorEllipe,
     TensorEllipeinc,
 )
-
+from ..airy import (
+    TensorAiry,
+    TensorAirye,
+    TensorAiZeros,
+    TensorBiZeros,
+    TensorItairy,
+)
 
 @pytest.mark.parametrize(
     "func,tensor_cls",

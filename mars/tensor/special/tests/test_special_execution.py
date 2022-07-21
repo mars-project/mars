@@ -45,6 +45,11 @@ from ... import special as mt_special
         "ellipk",
         "ellipkm1",
         "ellipe",
+        "airy",
+        "airye",
+        "ai_zeros",
+        "bi_zeros",
+        "itairy"
     ],
 )
 def test_unary_execution(setup, func):
