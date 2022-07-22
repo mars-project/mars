@@ -16,20 +16,20 @@ import scipy.special as spspecial
 
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
-from .core import TensorSpecialUnaryOp, _register_special_op
+from .core import TensorSpecialUnaryOp, TensorTupleOp, _register_special_op
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode="unary")
-class TensorAiry(TensorSpecialUnaryOp):
+class TensorAiry(TensorTupleOp):
     _func_name = "airy"
+    _n_outputs = 4
 
 
 @implement_scipy(spspecial.airy)
 @infer_dtype(spspecial.airy, multi_outputs=True)
-def airy(z, **kwargs):
+def airy(z, out=None, **kwargs):
     op = TensorAiry(**kwargs)
-    return op(z)
+    return op(z, out=out)
 
 
 @_register_special_op
