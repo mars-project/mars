@@ -1,0 +1,11 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/mars/services/web/ui"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "type: enhancement"
+      - "mod: web"
+      - "to be backported"
+
