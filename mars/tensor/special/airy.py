@@ -27,9 +27,9 @@ class TensorAiry(TensorTupleOp):
 
 @implement_scipy(spspecial.airy)
 @infer_dtype(spspecial.airy, multi_outputs=True)
-def airy(z, out = None,  **kwargs):
+def airy(z, out=None, **kwargs):
     op = TensorAiry(**kwargs)
-    return op(z, out = out)
+    return op(z, out=out)
 
 
 @_register_special_op
@@ -40,9 +40,9 @@ class TensorAirye(TensorTupleOp):
 
 @implement_scipy(spspecial.airye)
 @infer_dtype(spspecial.airye, multi_outputs=True)
-def airye(z, out = None, **kwargs):
+def airye(z, out=None, **kwargs):
     op = TensorAirye(**kwargs)
-    return op(z, out = out)
+    return op(z, out=out)
 
 
 @_register_special_op
@@ -53,6 +53,6 @@ class TensorItairy(TensorTupleOp):
 
 @implement_scipy(spspecial.itairy)
 @infer_dtype(spspecial.itairy, multi_outputs=True)
-def itairy(x, out = None, **kwargs):
+def itairy(x, out=None, **kwargs):
     op = TensorItairy(**kwargs)
-    return op(x, out = out)
+    return op(x, out=out)

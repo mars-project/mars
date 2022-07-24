@@ -313,6 +313,7 @@ airy = partial(_call_unary, "airy")
 airye = partial(_call_unary, "airye")
 itairy = partial(_call_unary, "itairy")
 
+
 def equal(a, b, **_):
     try:
         return a == b
