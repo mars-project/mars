@@ -21,7 +21,7 @@ from .core import TensorTupleOp, _register_special_op
 @_register_special_op
 class TensorAiry(TensorTupleOp):
     _func_name = "airy"
-    _n_outputs = 2
+    _n_outputs = 4
 
 
 @implement_scipy(spspecial.airy)
@@ -34,7 +34,7 @@ def airy(z, out=None, **kwargs):
 @_register_special_op
 class TensorAirye(TensorTupleOp):
     _func_name = "airye"
-    _n_outputs = 2
+    _n_outputs = 4
 
 
 @implement_scipy(spspecial.airye)
@@ -47,7 +47,7 @@ def airye(z, out=None, **kwargs):
 @_register_special_op
 class TensorItairy(TensorTupleOp):
     _func_name = "itairy"
-    _n_outputs = 2
+    _n_outputs = 4
 
 
 @implement_scipy(spspecial.itairy)
