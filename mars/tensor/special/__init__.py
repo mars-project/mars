@@ -166,10 +166,6 @@ try:
         TensorAiry,
         airye,
         TensorAirye,
-        ai_zeros,
-        TensorAiZeros,
-        bi_zeros,
-        TensorBiZeros,
         itairy,
         TensorItairy,
     )

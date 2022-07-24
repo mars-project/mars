@@ -22,63 +22,37 @@ from .core import TensorSpecialUnaryOp, TensorTupleOp, _register_special_op
 @_register_special_op
 class TensorAiry(TensorTupleOp):
     _func_name = "airy"
-    _n_outputs = 4
+    _n_outputs = 2
 
 
 @implement_scipy(spspecial.airy)
 @infer_dtype(spspecial.airy, multi_outputs=True)
-def airy(z, out=None, **kwargs):
+def airy(z, out = None,  **kwargs):
     op = TensorAiry(**kwargs)
-    return op(z, out=out)
+    return op(z, out = out)
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode="unary")
-class TensorAirye(TensorSpecialUnaryOp):
+class TensorAirye(TensorTupleOp):
     _func_name = "airye"
+    _n_outputs = 2
 
 
 @implement_scipy(spspecial.airye)
 @infer_dtype(spspecial.airye, multi_outputs=True)
-def airye(z, **kwargs):
+def airye(z, out = None, **kwargs):
     op = TensorAirye(**kwargs)
-    return op(z)
+    return op(z, out = out)
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode="unary")
-class TensorAiZeros(TensorSpecialUnaryOp):
-    _func_name = "ai_zeros"
-
-
-@implement_scipy(spspecial.ai_zeros)
-@infer_dtype(spspecial.ai_zeros, multi_outputs=True)
-def ai_zeros(nt, **kwargs):
-    op = TensorAiZeros(**kwargs)
-    return op(nt)
-
-
-@_register_special_op
-@arithmetic_operand(sparse_mode="unary")
-class TensorBiZeros(TensorSpecialUnaryOp):
-    _func_name = "bi_zeros"
-
-
-@implement_scipy(spspecial.bi_zeros)
-@infer_dtype(spspecial.bi_zeros, multi_outputs=True)
-def bi_zeros(nt, **kwargs):
-    op = TensorBiZeros(**kwargs)
-    return op(nt)
-
-
-@_register_special_op
-@arithmetic_operand(sparse_mode="unary")
-class TensorItairy(TensorSpecialUnaryOp):
+class TensorItairy(TensorTupleOp):
     _func_name = "itairy"
+    _n_outputs = 2
 
 
 @implement_scipy(spspecial.itairy)
 @infer_dtype(spspecial.itairy, multi_outputs=True)
-def itairy(x, **kwargs):
+def itairy(x, out = None, **kwargs):
     op = TensorItairy(**kwargs)
-    return op(x)
+    return op(x, out = out)

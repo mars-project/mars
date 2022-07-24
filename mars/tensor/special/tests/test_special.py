@@ -54,11 +54,8 @@ from ..ellip_func_integrals import (
 from ..airy import (
     TensorAiry,
     TensorAirye,
-    TensorAiZeros,
-    TensorBiZeros,
     TensorItairy,
 )
-
 @pytest.mark.parametrize(
     "func,tensor_cls",
     [
@@ -146,6 +143,9 @@ def test_unary_operand_out(func, tensor_cls):
         ("fresnel", TensorFresnel),
         ("modfresnelp", TensorModFresnelP),
         ("modfresnelm", TensorModFresnelM),
+        ("airy", TensorAiry),
+        ("airye", TensorAirye),
+        ("itairy", TensorItairy),
     ],
 )
 def test_unary_tuple_operand(func, tensor_cls):

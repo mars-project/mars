@@ -309,6 +309,9 @@ elliprf = partial(call_sparse, "elliprf")
 elliprg = partial(call_sparse, "elliprg")
 elliprj = partial(call_sparse, "elliprj")
 
+airy = partial(_call_unary, "airy")
+airye = partial(_call_unary, "airye")
+itairy = partial(_call_unary, "itairy")
 
 def equal(a, b, **_):
     try:

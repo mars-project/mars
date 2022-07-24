@@ -45,10 +45,6 @@ from ... import special as mt_special
         "ellipk",
         "ellipkm1",
         "ellipe",
-        # "airye",
-        # "ai_zeros",
-        # "bi_zeros",
-        # "itairy"
     ],
 )
 def test_unary_execution(setup, func):
@@ -316,6 +312,8 @@ def test_quintuple_execution(setup, func):
         "modfresnelp",
         "modfresnelm",
         "airy",
+        "airye",
+        "itairy"
     ],
 )
 def test_unary_tuple_execution(setup, func):
