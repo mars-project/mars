@@ -14,9 +14,8 @@
 
 import scipy.special as spspecial
 
-from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
-from .core import TensorSpecialUnaryOp, TensorTupleOp, _register_special_op
+from .core import TensorTupleOp, _register_special_op
 
 
 @_register_special_op
