@@ -30,7 +30,8 @@ import numpy as np
 import pandas as pd
 import cloudpickle
 cimport cython
-from libc.stdint cimport uint_fast64_t
+from cpython cimport PyBytes_FromStringAndSize
+from libc.stdint cimport uint_fast64_t, uint32_t, uint8_t
 from libc.stdlib cimport malloc, free
 from .lib.cython.libcpp cimport mt19937_64
 try:
@@ -44,6 +45,18 @@ from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes, \
 cdef bint _has_cupy = bool(pkgutil.find_loader('cupy'))
 cdef bint _has_cudf = bool(pkgutil.find_loader('cudf'))
 cdef bint _has_sqlalchemy = bool(pkgutil.find_loader('sqlalchemy'))
+
+
+cdef extern from "MurmurHash3.h":
+    void MurmurHash3_x64_128(const void * key, Py_ssize_t len, uint32_t seed, void * out)
+
+
+cdef bytes _get_mars_key(const uint8_t[:] bufferview):
+    cdef const uint8_t *data = &bufferview[0]
+    cdef uint8_t out[16]
+    MurmurHash3_x64_128(data, len(bufferview), 0, out)
+    out[0] |= 0xC0
+    return PyBytes_FromStringAndSize(<char*>out, 16)
 
 
 cpdef str to_str(s, encoding='utf-8'):
@@ -161,7 +174,7 @@ cdef inline build_canonical_bytes(tuple args, kwargs):
 
 
 def tokenize(*args, **kwargs):
-    return mmh_hash_bytes(build_canonical_bytes(args, kwargs)).hex()
+    return _get_mars_key(build_canonical_bytes(args, kwargs)).hex()
 
 
 def tokenize_int(*args, **kwargs):

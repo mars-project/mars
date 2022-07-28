@@ -1726,11 +1726,10 @@ def sync_to_async(func):
     if inspect.iscoroutinefunction(func):
         return func
     else:
-
-        async def async_wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        return async_wrapper
+        # Wrap the sync call to thread to avoid blocking the
+        # asyncio event loop. e.g. acquiring a threading.Lock()
+        # in the sync call.
+        return functools.partial(asyncio.to_thread, func)
 
 
 def retry_callable(

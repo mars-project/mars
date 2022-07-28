@@ -64,6 +64,6 @@ class RayFetcher(Fetcher):
                 refs[index] = fetch_info.object_ref
             else:
                 refs[index] = self._remote_query_object_with_condition().remote(
-                    fetch_info.object_ref, fetch_info.conditions
+                    fetch_info.object_ref, tuple(fetch_info.conditions)
                 )
         return await asyncio.gather(*refs)

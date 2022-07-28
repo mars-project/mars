@@ -548,11 +548,16 @@ class RayTaskExecutor(TaskExecutor):
         output_object_refs = set()
         for chunk in chunk_graph.result_chunks:
             chunk_key = chunk.key
-            object_ref = task_context[chunk_key]
-            output_object_refs.add(object_ref)
-            chunk_params = key_to_meta.get(chunk_key)
-            if chunk_params is not None:
-                chunk_to_meta[chunk] = ExecutionChunkResult(chunk_params, object_ref)
+            # The result chunk may be in previous stage result,
+            # then the chunk does not have to be processed.
+            if chunk_key in task_context:
+                object_ref = task_context[chunk_key]
+                output_object_refs.add(object_ref)
+                chunk_params = key_to_meta.get(chunk_key)
+                if chunk_params is not None:
+                    chunk_to_meta[chunk] = ExecutionChunkResult(
+                        chunk_params, object_ref
+                    )
 
         logger.info("Waiting for stage %s complete.", stage_id)
         # Patched the asyncio.to_thread for Python < 3.9 at mars/lib/aio/__init__.py
