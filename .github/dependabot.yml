@@ -8,4 +8,6 @@ updates:
       - "type: enhancement"
       - "mod: web"
       - "to be backported"
+    # Disable version updates for npm dependencies
+    open-pull-requests-limit: 0
 
