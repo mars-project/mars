@@ -210,7 +210,7 @@ async def test_ray_executor_create(
     assert mock_task_state_actor_create.call_count == 2
 
 
-@pytest.mark.asynio
+@pytest.mark.asyncio
 async def test_ray_executor_destroy():
     task = Task("mock_task", "mock_session")
     mock_config = RayExecutionConfig.from_execution_config({"backend": "ray"})
