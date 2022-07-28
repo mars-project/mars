@@ -12,7 +12,7 @@
     ]
   },
   "dependencies": {
-    "@material-ui/core": "^4.0.0",
+    "@material-ui/core": "^4.12.4",
     "@material-ui/icons": "^4.0.0",
     "cytoscape": "^3.19.1",
     "cytoscape-dagre": "^2.3.2",
