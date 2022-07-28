@@ -27,6 +27,10 @@ from ..ray import (
 )
 
 ray = lazy_import("ray")
+try:
+    import ray.data as ray_dataset
+except ImportError:  # pragma: no cover
+    ray_dataset = None
 
 
 @require_ray
@@ -42,16 +46,21 @@ def test_new_cluster_in_ray(stop_ray):
 
 
 @require_ray
+@pytest.mark.skipif(ray_dataset is None, reason="Not support ray.data!")
 def test_new_ray_session(stop_ray):
     new_ray_session_test()
 
 
 def new_ray_session_test():
-    session = new_ray_session(session_id="abc", worker_num=2)
+    session = new_ray_session(
+        session_id="abc", worker_num=2, worker_mem=512 * 1024**2
+    )
     mt.random.RandomState(0).rand(100, 5).sum().execute()
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
-    session = new_ray_session(session_id="abcd", worker_num=2, default=True)
+    session = new_ray_session(
+        session_id="abcd", worker_num=2, default=True, worker_mem=512 * 1024**2
+    )
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
     df = md.DataFrame(mt.random.rand(100, 4), columns=list("abcd"))

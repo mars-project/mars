@@ -28,8 +28,11 @@ from ....contrib import raydataset as mdd
 ray = lazy_import("ray")
 # Ray Datasets is available in early preview at ray.data with Ray 1.6+
 # (and ray.experimental.data in Ray 1.5)
-ray_dataset = lazy_import("ray.data", rename="ray_dataset")
 xgboost_ray = lazy_import("xgboost_ray")
+try:
+    import ray.data as ray_dataset
+except ImportError:  # pragma: no cover
+    ray_dataset = None
 try:
     import sklearn
 except ImportError:  # pragma: no cover
@@ -50,6 +53,7 @@ async def create_cluster(request):
 
 @require_ray
 @pytest.mark.asyncio
+@pytest.mark.skipif(ray_dataset is None, reason="Not support ray.data!")
 @pytest.mark.parametrize("test_option", [[3, 3], [3, 2], [None, None]])
 async def test_convert_to_ray_dataset(
     ray_start_regular_shared, create_cluster, test_option
@@ -73,6 +77,7 @@ async def test_convert_to_ray_dataset(
 
 @require_ray
 @pytest.mark.asyncio
+@pytest.mark.skipif(ray_dataset is None, reason="Not support ray.data!")
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
 async def test_mars_with_xgboost(ray_start_regular_shared, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, train
@@ -114,6 +119,7 @@ async def test_mars_with_xgboost(ray_start_regular_shared, create_cluster):
 
 @require_ray
 @pytest.mark.asyncio
+@pytest.mark.skipif(ray_dataset is None, reason="Not support ray.data!")
 @pytest.mark.skipif(sklearn is None, reason="sklearn not installed")
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
 async def test_mars_with_xgboost_sklearn_clf(ray_start_regular_shared, create_cluster):
@@ -156,6 +162,7 @@ async def test_mars_with_xgboost_sklearn_clf(ray_start_regular_shared, create_cl
 
 @require_ray
 @pytest.mark.asyncio
+@pytest.mark.skipif(ray_dataset is None, reason="Not support ray.data!")
 @pytest.mark.skipif(sklearn is None, reason="sklearn not installed")
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
 async def test_mars_with_xgboost_sklearn_reg(ray_start_regular_shared, create_cluster):

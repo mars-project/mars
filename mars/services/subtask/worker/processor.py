@@ -132,8 +132,8 @@ class SubtaskProcessor:
             gets_params = {"error": "ignore"} if is_shuffle else {}
             gets.append(self._storage_api.get.delay(key, **gets_params))
         if keys:
-            logger.debug(
-                "Start getting input data, keys: %s, subtask id: %s",
+            logger.info(
+                "Start getting input data, keys: %.500s, subtask id: %s",
                 keys,
                 self.subtask.subtask_id,
             )
@@ -145,8 +145,8 @@ class SubtaskProcessor:
                     if accept_none or get is not None
                 }
             )
-            logger.debug(
-                "Finish getting input data keys: %s, subtask id: %s",
+            logger.info(
+                "Finish getting input data keys: %.500s, subtask id: %s",
                 keys,
                 self.subtask.subtask_id,
             )
