@@ -425,9 +425,15 @@ class RayCluster:
         self.web_address = None
 
     async def start(self):
-        logging.basicConfig(
-            format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO, force=True
-        )
+        try:
+            # Python 3.8 support force argument.
+            logging.basicConfig(
+                format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO, force=True
+            )
+        except ValueError:
+            logging.basicConfig(
+                format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO
+            )
         logger.info("Start cluster with config %s", self._config)
         # init metrics to guarantee metrics use in driver
         metric_configs = self._config.get("metrics", {})
@@ -498,6 +504,9 @@ class RayCluster:
         supervisor_modules = get_third_party_modules_from_config(
             self._config, NodeRole.SUPERVISOR
         )
+
+        # set global router an empty one.
+        Router.set_instance(Router(list(), None))
 
         # create supervisor actor pool
         supervisor_pool_coro = asyncio.create_task(
