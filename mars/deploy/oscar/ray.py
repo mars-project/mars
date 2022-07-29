@@ -430,7 +430,7 @@ class RayCluster:
             logging.basicConfig(
                 format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO, force=True
             )
-        except ValueError:
+        except ValueError:  # pragma: no cover
             logging.basicConfig(
                 format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO
             )
