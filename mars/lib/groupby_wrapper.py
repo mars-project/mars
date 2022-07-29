@@ -115,9 +115,6 @@ class GroupByWrapper:
             return self.__getitem__(item)
         return getattr(self.groupby_obj, item)
 
-    def __len__(self):
-        return len(self.groupby_obj)
-
     def __iter__(self):
         return self.groupby_obj.__iter__()
 
