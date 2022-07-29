@@ -59,7 +59,7 @@ async def start_supervisor(
 async def stop_supervisor(address: str, config: Dict = None):
     try:
         await stop_services(NodeRole.SUPERVISOR, address=address, config=config)
-    except (ConnectionRefusedError, ServerClosed):
+    except (ConnectionRefusedError, ServerClosed):  # pragma: no cover
         pass
 
 
@@ -93,5 +93,5 @@ async def start_worker(
 async def stop_worker(address: str, config: Dict = None):
     try:
         await stop_services(NodeRole.WORKER, address=address, config=config)
-    except (ConnectionRefusedError, ServerClosed):
+    except (ConnectionRefusedError, ServerClosed):  # pragma: no cover
         pass
