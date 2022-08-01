@@ -55,6 +55,8 @@ class ActorCaller:
 
     async def _listen(self, client: Client):
         while not client.closed:
+            message: Union[_MessageBase, None] = None
+            future = None
             try:
                 try:
                     message: _MessageBase = await client.recv()
@@ -80,6 +82,10 @@ class ActorCaller:
                 for future in message_futures.values():
                     future.set_exception(copy.copy(e))
             finally:
+                # message may have Ray ObjectRef, delete it early in case next loop doesn't run
+                # as soon as expected.
+                del message
+                del future
                 await asyncio.sleep(0)
 
         message_futures = self._client_to_message_futures.get(client)
