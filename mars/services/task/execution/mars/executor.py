@@ -196,7 +196,7 @@ class MarsTaskExecutor(TaskExecutor):
         return await stage_processor.run()
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        # clean ups
+        # clean-ups
         decrefs = []
         error_or_cancelled = False
         for stage_processor in self._stage_processors:
