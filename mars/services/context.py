@@ -193,6 +193,20 @@ class ThreadedServiceContext(Context):
             )
         await storage_api.fetch.batch(*fetches)
 
+    def supervisor_storage_put(self, key: str, object=None):
+        return self._call(self._supervisor_storage_put(key, object))
+
+    async def _supervisor_storage_put(self, key: str, object=None):
+        storage_api = await StorageAPI.create(self.session_id, self.supervisor_address)
+        return await storage_api.put(key, object)
+
+    def supervisor_storage_get(self, key: str):
+        return self._call(self._supervisor_storage_get(key))
+
+    async def _supervisor_storage_get(self, key: str):
+        storage_api = await StorageAPI.create(self.session_id, self.supervisor_address)
+        return await storage_api.get(key)
+
     @implements(Context.get_chunks_result)
     def get_chunks_result(self, data_keys: List[str], fetch_only: bool = False) -> List:
         if not fetch_only:

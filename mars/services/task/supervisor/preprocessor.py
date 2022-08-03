@@ -21,9 +21,12 @@ from typing import Callable, Dict, List, Iterable, Set
 from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, TileContext
 from ....core.graph.builder.chunk import Tiler, _TileableHandler
-from ....core.operand import Fetch, ShuffleFetchType
+from ....core.operand import Fetch, ShuffleFetchType, LogicKeyGenerator
+from ....dataframe.base.apply import ApplyOperand
+from ....dataframe.groupby.apply import GroupByApply
 from ....resource import Resource
 from ....typing import BandType, TileableType, ChunkType
+from ....utils import tokenize
 from ...subtask import Subtask, SubtaskGraph
 from ..analyzer import GraphAnalyzer
 from ..core import Task
@@ -110,6 +113,7 @@ class TaskPreprocessor:
         "_config",
         "tileable_optimization_records",
         "chunk_optimization_records_list",
+        "_logic_key_generator",
         "_cancelled",
         "_done",
     )
@@ -129,6 +133,7 @@ class TaskPreprocessor:
         self.tile_context = tiled_context
         self.tileable_optimization_records = None
         self.chunk_optimization_records_list = []
+        self._logic_key_generator = LogicKeyGenerator()
 
         self._cancelled = asyncio.Event()
         self._done = asyncio.Event()
@@ -191,6 +196,9 @@ class TaskPreprocessor:
             tiler_cls=self._get_tiler_cls(),
         )
         optimize = self._config.optimize_chunk_graph
+        for t in tileable_graph:
+            if isinstance(t.op, ApplyOperand) or isinstance(t.op, GroupByApply):
+                t.op.logic_key = tokenize(self._logic_key_generator.get_logic_key(t.op))
         for chunk_graph in chunk_graph_builder.build():
             if len(chunk_graph) == 0:
                 continue
