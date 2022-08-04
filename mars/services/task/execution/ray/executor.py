@@ -152,26 +152,39 @@ def execute_subtask(
     # optimize chunk graph.
     subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)
     start_chunks = _get_start_chunks(subtask_chunk_graph)
-    if isinstance(start_chunks[0].op, FetchShuffle):
-        assert len(start_chunks) == 1, start_chunks
-        # the subtask is a reducer subtask
-        n_mappers = len(inputs)
-        # some reducer may have multiple output chunks, see `PSRSshuffle._execute_reduce` and
-        # https://user-images.githubusercontent.com/12445254/168569524-f09e42a7-653a-4102-bdf0-cc1631b3168d.png
-        reducer_chunks = subtask_chunk_graph.successors(start_chunks[0])
-        reducer_operands = set(c.op for c in reducer_chunks)
-        if len(reducer_operands) != 1:
-            raise ValueError(
-                f"Subtask {subtask_id} has more than 1 reduce operands: {subtask_chunk_graph.to_dot()}"
+    input_data = {}
+    has_shuffle_chunk = False
+    input_keys = []
+    for start_chunk in start_chunks:
+        if isinstance(start_chunk.op, FetchShuffle):
+            assert not has_shuffle_chunk
+            has_shuffle_chunk = True
+            # the subtask is a reducer subtask
+            n_mappers = start_chunk.op.n_mappers
+            # some reducer may have multiple output chunks, see `PSRSshuffle._execute_reduce` and
+            # https://user-images.githubusercontent.com/12445254/168569524-f09e42a7-653a-4102-bdf0-cc1631b3168d.png
+            reducer_chunks = subtask_chunk_graph.successors(start_chunks[0])
+            reducer_operands = set(c.op for c in reducer_chunks)
+            if len(reducer_operands) != 1:
+                raise ValueError(
+                    f"Subtask {subtask_id} has more than 1 reduce operands: {subtask_chunk_graph.to_dot()}"
+                )
+            reducer_operand = reducer_chunks[0].op
+            reducer_index = reducer_operand.reducer_index
+            # mock input keys, keep this in sync with `MapReducerOperand#_iter_mapper_key_idx_pairs`
+            input_data.update(
+                {
+                    (i, reducer_index): block
+                    for i, block in enumerate(inputs[-n_mappers:])
+                }
             )
-        reducer_operand = reducer_chunks[0].op
-        reducer_index = reducer_operand.reducer_index
-        # mock input keys, keep this in sync with `MapReducerOperand#_iter_mapper_key_idx_pairs`
-        input_keys = [(i, reducer_index) for i in range(n_mappers)]
-    else:
-        input_keys = [c.key for c in start_chunks if isinstance(c.op, Fetch)]
+            inputs = inputs[:-n_mappers]
+        else:
+            if isinstance(start_chunk.op, Fetch):
+                input_keys.append(start_chunk.key)
+    input_data.update(zip(input_keys, inputs))
     context = RayExecutionWorkerContext(
-        lambda: RayTaskState.get_handle(task_id), zip(input_keys, inputs)
+        lambda: RayTaskState.get_handle(task_id), input_data
     )
 
     for chunk in subtask_chunk_graph.topological_iter():
@@ -228,7 +241,15 @@ def execute_subtask(
 
 
 def _get_start_chunks(chunk_graph):
-    return sorted(chunk_graph.iter_indep(), key=operator.attrgetter("key"))
+    start_chunks = []
+    shuffle_chunk = []
+    for start_chunk in chunk_graph.iter_indep():
+        if isinstance(start_chunk.op, FetchShuffle):
+            assert not shuffle_chunk, shuffle_chunk
+            shuffle_chunk.append(start_chunk)
+        else:
+            start_chunks.append(start_chunk)
+    return sorted(start_chunks, key=operator.attrgetter("key")) + shuffle_chunk
 
 
 def _get_subtask_out_info(
@@ -660,7 +681,8 @@ class RayTaskExecutor(TaskExecutor):
         It updates the context if the input object refs are fetched from
         the meta service.
         """
-        input_object_refs = []
+        normal_object_refs = []
+        shuffle_object_refs = []
         key_to_get_meta = {}
         # for non-shuffle chunks, chunk key will be used for indexing object refs.
         # for shuffle chunks, mapper subtasks will have only one mapper chunk, and all outputs for mapper
@@ -671,18 +693,19 @@ class RayTaskExecutor(TaskExecutor):
                 chunk_key = start_chunk.key
                 # pure_depend data is not used, skip it.
                 if chunk_key in subtask.pure_depend_keys:
-                    input_object_refs.append(None)
+                    normal_object_refs.append(None)
                 elif chunk_key in context:
-                    input_object_refs.append(context[chunk_key])
+                    normal_object_refs.append(context[chunk_key])
                 else:
-                    input_object_refs.append(None)
+                    normal_object_refs.append(None)
                     key_to_get_meta[index] = self._meta_api.get_chunk_meta.delay(
                         chunk_key, fields=["object_refs"]
                     )
             elif isinstance(start_chunk.op, FetchShuffle):
-                assert len(start_chunks) == 1, start_chunks
                 # shuffle meta won't be recorded in meta service, query it from shuffle manager.
-                return shuffle_manager.get_reducer_input_refs(subtask)
+                shuffle_object_refs = list(
+                    shuffle_manager.get_reducer_input_refs(subtask)
+                )
 
         if key_to_get_meta:
             logger.info(
@@ -695,9 +718,9 @@ class RayTaskExecutor(TaskExecutor):
             )
             for index, meta in zip(key_to_get_meta.keys(), meta_list):
                 object_ref = meta["object_refs"][0]
-                input_object_refs[index] = object_ref
+                normal_object_refs[index] = object_ref
                 context[start_chunks[index].key] = object_ref
-        return input_object_refs
+        return normal_object_refs + shuffle_object_refs
 
     async def _update_progress_and_collect_garbage(
         self,
