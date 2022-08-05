@@ -195,18 +195,6 @@ class MarsTaskExecutor(TaskExecutor):
         self._stage_tile_progresses.append(curr_tile_progress)
         return await stage_processor.run()
 
-        # TODO: manage closure GC through lifecycle API
-        # delete closure after use, considering mutliple operands with same logic key
-        # keys_to_delete = set()
-        # for chunk in chunk_graph.topological_iter():
-        #     if isinstance(chunk.op, ApplyOperand) and chunk.op.closure_clean_up:
-        #         keys_to_delete.add(chunk.op.logic_key)
-        # if keys_to_delete:
-        #     supervisor_address = await self._cluster_api.get_supervisors()
-        #     storage_api = await StorageAPI.create(self._session_id, supervisor_address[0])
-        #     for key in keys_to_delete:
-        #         await storage_api.delete(key)
-
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         # clean ups
         decrefs = []

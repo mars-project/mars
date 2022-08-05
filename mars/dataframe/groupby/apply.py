@@ -22,11 +22,11 @@ from ...core.context import get_context
 from ...core.custom_log import redirect_custom_log
 from ...services.task.execution.ray.context import RayExecutionContext
 from ...serialization.serializables import (
+    AnyField,
     BoolField,
     TupleField,
     DictField,
     FunctionField,
-    StringField,
 )
 from ...core.operand import OperatorLogicKeyGeneratorMixin
 from ...utils import enter_current_session, quiet_stdio, get_func_token_values
@@ -61,8 +61,8 @@ class GroupByApply(
     args = TupleField("args", default_factory=tuple)
     kwds = DictField("kwds", default_factory=dict)
     maybe_agg = BoolField("maybe_agg", default=None)
-    logic_key = StringField("logic_key", default=None)
-    closure_clean_up = BoolField("closure_clean_up", default=None)
+    func_key = AnyField("func_key", default=None)
+    func_clean_up = BoolField("func_clean_up", default=None)
 
     def __init__(self, output_types=None, **kw):
         super().__init__(_output_types=output_types, **kw)
@@ -71,7 +71,7 @@ class GroupByApply(
     @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op):
-        cls._restore_closure(op)
+        # cls._restore_closure(op)
         in_data = ctx[op.inputs[0].key]
         out = op.outputs[0]
         if not in_data:
@@ -108,7 +108,7 @@ class GroupByApply(
 
     @classmethod
     def tile(cls, op):
-        cls._clean_up_closure(op)
+        # cls._clean_up_closure(op)
         in_groupby = op.inputs[0]
         out_df = op.outputs[0]
 
@@ -159,44 +159,11 @@ class GroupByApply(
 
     @classmethod
     def _clean_up_closure(cls, op):
-        try:
-            closure = getattr(op.func, "__closure__")
-            op.closure_clean_up = closure is not None
-        except AttributeError:
-            closure = None
-            op.closure_clean_up = False
-        ctx = get_context()
-        if op.closure_clean_up and ctx is not None:
-            # TODO: support Ray Task mode
-            if isinstance(ctx, RayExecutionContext):
-                raise Exception(
-                    "Ray Task mode currently doesn't support closure clean up."
-                )
-            data_key = op.logic_key
-            cell_contents_list = []
-            ctx.supervisor_storage_put(data_key, closure)
-            # clean up closure contents
-            for cell in op.func.__closure__:
-                cell_contents_list.append(cell.cell_contents)
-                cell.cell_contents = None
-            # avoid cell_contents' value change to the corresponding variables
-            # through temporary serialization and deserialization
-            serialized_func = cloudpickle.dumps(op.func)
-            # restore the corresponding variables' values through references
-            # of cell_contents in op.func.__closure__
-            for cell, cell_content in zip(op.func.__closure__, cell_contents_list):
-                cell.cell_contents = cell_content
-            op.func = cloudpickle.loads(serialized_func)
+        pass
 
     @classmethod
     def _restore_closure(cls, op):
-        if op.closure_clean_up:
-            ctx = get_context()
-            if ctx is not None:
-                data_key = op.logic_key
-                closure = ctx.supervisor_storage_get(data_key)
-                for cell, saved_cell in zip(op.func.__closure__, closure):
-                    cell.cell_contents = saved_cell.cell_contents
+        pass
 
     def _infer_df_func_returns(
         self, in_groupby, in_df, dtypes=None, dtype=None, name=None, index=None

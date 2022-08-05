@@ -154,6 +154,9 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
         # Returns virtual worker addresses.
         return self._worker_addresses
 
+    def storage_put(self, obj):
+        return ray.put(obj)
+
 
 # TODO(fyrestone): Implement more APIs for Ray.
 class RayExecutionWorkerContext(_RayRemoteObjectContext, dict):
@@ -198,3 +201,7 @@ class RayExecutionWorkerContext(_RayRemoteObjectContext, dict):
     ):
         logger.info("%s does not support get_storage_info", cls.__name__)
         return {}
+
+    @classmethod
+    def storage_get(cls, obj_ref):
+        return ray.get(obj_ref)

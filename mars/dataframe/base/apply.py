@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import inspect
-import cloudpickle
 
 import numpy as np
 import pandas as pd
@@ -24,6 +23,7 @@ from ...core import OutputType, recursive_tile
 from ...core.context import get_context
 from ...core.custom_log import redirect_custom_log
 from ...core.operand import OperatorLogicKeyGeneratorMixin
+from ...services.context import ThreadedServiceContext
 from ...services.task.execution.ray.context import RayExecutionContext
 from ...serialization.serializables import (
     StringField,
@@ -76,7 +76,10 @@ class ApplyOperand(
     _result_type = StringField("result_type")
     _elementwise = BoolField("elementwise")
     _logic_key = StringField("logic_key")
-    _closure_clean_up = BoolField("closure_clean_up")
+    # func_key may be string or ObjectRef, while ray.ObjectRef
+    # shall be serialized by Ray rather than Mars
+    _func_key = AnyField("func_key")
+    _func_clean_up = BoolField("func_clean_up")
     _args = TupleField("args")
     _kwds = DictField("kwds")
 
@@ -92,7 +95,8 @@ class ApplyOperand(
         output_type=None,
         elementwise=None,
         logic_key=None,
-        closure_clean_up=None,
+        func_key=None,
+        func_clean_up=None,
         **kw,
     ):
         if output_type:
@@ -107,7 +111,8 @@ class ApplyOperand(
             _kwds=kwds,
             _elementwise=elementwise,
             _logic_key=logic_key,
-            _closure_clean_up=closure_clean_up,
+            _func_key=func_key,
+            _func_clean_up=func_clean_up,
             **kw,
         )
 
@@ -148,12 +153,20 @@ class ApplyOperand(
         self._logic_key = logic_key
 
     @property
-    def closure_clean_up(self):
-        return self._closure_clean_up
+    def func_key(self):
+        return self._func_key
 
-    @closure_clean_up.setter
-    def closure_clean_up(self, closure_clean_up):
-        self._closure_clean_up = closure_clean_up
+    @func_key.setter
+    def func_key(self, func_key):
+        self._func_key = func_key
+
+    @property
+    def func_clean_up(self):
+        return self._func_clean_up
+
+    @func_clean_up.setter
+    def func_clean_up(self, func_clean_up):
+        self._func_clean_up = func_clean_up
 
     @property
     def args(self):
@@ -167,7 +180,7 @@ class ApplyOperand(
     @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op):
-        cls._restore_closure(op)
+        cls._restore_func(ctx, op)
         input_data = ctx[op.inputs[0].key]
         out = op.outputs[0]
         if len(input_data) == 0:
@@ -310,52 +323,34 @@ class ApplyOperand(
 
     @classmethod
     def tile(cls, op):
-        cls._clean_up_closure(op)
+        # TODO: selectively clean up
+        cls._clean_up_func(op)
         if op.inputs[0].ndim == 2:
             return (yield from cls._tile_df(op))
         else:
             return cls._tile_series(op)
 
     @classmethod
-    def _clean_up_closure(cls, op):
-        try:
-            closure = getattr(op.func, "__closure__")
-            op.closure_clean_up = closure is not None
-        except AttributeError:
-            closure = None
-            op.closure_clean_up = False
+    def _clean_up_func(cls, op):
         ctx = get_context()
-        if op.closure_clean_up and ctx is not None:
-            # TODO: support Ray Task mode
+        func = op.func
+        if hasattr(func, "__closure__") and func.__closure__ is not None:
+            op.func_clean_up = True
+        if op.func_clean_up and ctx is not None:
+            op.logic_key = op.get_logic_key()
             if isinstance(ctx, RayExecutionContext):
-                raise Exception(
-                    "Ray Task mode currently doesn't support closure clean up."
-                )
-            data_key = op.logic_key
-            cell_contents_list = []
-            ctx.supervisor_storage_put(data_key, closure)
-            # clean up closure contents
-            for cell in op.func.__closure__:
-                cell_contents_list.append(cell.cell_contents)
-                cell.cell_contents = None
-            # avoid cell_contents' value change to the corresponding variables
-            # through temporary serialization and deserialization
-            serialized_func = cloudpickle.dumps(op.func)
-            # restore the corresponding variables' values through references
-            # of cell_contents in op.func.__closure__
-            for cell, cell_content in zip(op.func.__closure__, cell_contents_list):
-                cell.cell_contents = cell_content
-            op.func = cloudpickle.loads(serialized_func)
+                op.func_key = ctx.storage_put(op.func)
+            elif isinstance(ctx, ThreadedServiceContext):
+                op.func_key = op.logic_key
+                ctx.storage_put(op.func_key, op.func)
+            else:
+                raise Exception("unknown context: %s", type(ctx))
+            op.func = None
 
     @classmethod
-    def _restore_closure(cls, op):
-        if op.closure_clean_up:
-            ctx = get_context()
-            if ctx is not None:
-                data_key = op.logic_key
-                closure = ctx.supervisor_storage_get(data_key)
-                for cell, saved_cell in zip(op.func.__closure__, closure):
-                    cell.cell_contents = saved_cell.cell_contents
+    def _restore_func(cls, ctx, op):
+        if op.func_clean_up and ctx is not None:
+            op.func = ctx.storage_get(op.func_key)
 
     def _infer_df_func_returns(self, df, dtypes, dtype=None, name=None, index=None):
         if isinstance(self._func, np.ufunc):

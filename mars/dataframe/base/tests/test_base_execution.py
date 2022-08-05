@@ -440,7 +440,7 @@ def test_series_apply_execute(setup):
     pd.testing.assert_frame_equal(result, expected)
 
 
-def test_series_apply_enclosure_execute(setup):
+def test_series_apply_closure_execute(setup):
     idxes = [chr(ord("A") + i) for i in range(20)]
     s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
 

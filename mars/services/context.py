@@ -193,17 +193,17 @@ class ThreadedServiceContext(Context):
             )
         await storage_api.fetch.batch(*fetches)
 
-    def supervisor_storage_put(self, key: str, object=None):
-        return self._call(self._supervisor_storage_put(key, object))
+    def storage_put(self, key: str, obj: object):
+        return self._call(self._storage_put(key, obj))
 
-    async def _supervisor_storage_put(self, key: str, object=None):
+    async def _storage_put(self, key: str, obj: object):
         storage_api = await StorageAPI.create(self.session_id, self.supervisor_address)
-        return await storage_api.put(key, object)
+        return await storage_api.put(key, obj)
 
-    def supervisor_storage_get(self, key: str):
-        return self._call(self._supervisor_storage_get(key))
+    def storage_get(self, key: str):
+        return self._call(self._storage_get(key))
 
-    async def _supervisor_storage_get(self, key: str):
+    async def _storage_get(self, key: str):
         storage_api = await StorageAPI.create(self.session_id, self.supervisor_address)
         return await storage_api.get(key)
 
