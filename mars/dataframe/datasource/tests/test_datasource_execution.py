@@ -54,7 +54,7 @@ ray = lazy_import("ray")
 _date_range_use_inclusive = pd_release_version[:2] >= (1, 4)
 try:
     import ray.data as ray_dataset
-except Exception:
+except ImportError:
     ray_dataset = None
 
 

@@ -52,7 +52,7 @@ from ..series import from_pandas as from_pandas_series
 ray = lazy_import("ray")
 try:
     import ray.data as ray_dataset
-except Exception:
+except ImportError:
     ray_dataset = None
 
 

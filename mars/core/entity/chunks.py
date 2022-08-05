@@ -58,9 +58,6 @@ class ChunkData(EntityData):
 class Chunk(Entity):
     _allow_data_type_ = (ChunkData,)
 
-    def __str__(self):
-        return f"{type(self).__name__}({self._data.__str__()})"
-
     def __repr__(self):
         return f"{type(self).__name__}({self._data.__repr__()})"
 
