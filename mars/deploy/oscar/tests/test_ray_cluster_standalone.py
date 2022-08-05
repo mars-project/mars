@@ -27,10 +27,6 @@ from ..ray import (
 )
 
 ray = lazy_import("ray")
-try:
-    import ray.data as ray_dataset
-except ImportError:  # pragma: no cover
-    ray_dataset = None
 
 
 @require_ray
@@ -46,7 +42,6 @@ def test_new_cluster_in_ray(stop_ray):
 
 
 @require_ray
-@pytest.mark.skipif(ray_dataset is None, reason="Not support ray.data!")
 def test_new_ray_session(stop_ray):
     new_ray_session_test()
 
