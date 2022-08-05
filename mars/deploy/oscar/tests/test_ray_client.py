@@ -17,19 +17,14 @@ import sys
 import tempfile
 import threading
 
-import pytest
-
-try:
-    import ray.data as ray_dataset
-except ImportError:  # pragma: no cover
-    ray_dataset = None
-
 from .test_ray_cluster_standalone import new_ray_session_test
 from ....tests.core import require_ray
+from ....utils import lazy_import
+
+ray = lazy_import("ray")
 
 
 @require_ray
-@pytest.mark.skipif(ray_dataset is None, reason="Not support ray.data!")
 def test_ray_client():
     server_code = """import time
 import ray.util.client.server.server as ray_client_server

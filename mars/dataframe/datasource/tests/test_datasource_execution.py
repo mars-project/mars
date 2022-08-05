@@ -52,10 +52,6 @@ from ..from_records import from_records
 
 ray = lazy_import("ray")
 _date_range_use_inclusive = pd_release_version[:2] >= (1, 4)
-try:
-    import ray.data as ray_dataset
-except ImportError:
-    ray_dataset = None
 
 
 def test_from_pandas_dataframe_execution(setup):
@@ -1163,7 +1159,6 @@ def test_read_parquet_fast_parquet(setup):
         # assert sum(s[0] for s in size_res) > test_df.memory_usage(deep=True).sum()
 
 
-@pytest.mark.skipif(ray_dataset is None, reason="Not support ray.data!")
 @require_ray
 def test_read_raydataset(ray_start_regular, ray_create_mars_cluster):
     test_df1 = pd.DataFrame(
@@ -1214,7 +1209,6 @@ def test_read_raydataset(ray_start_regular, ray_create_mars_cluster):
         ray.data.range(10).to_mars()
 
 
-@pytest.mark.skipif(ray_dataset is None, reason="Not support ray.data!")
 @require_ray
 def test_read_ray_mldataset(ray_start_regular, ray_create_mars_cluster):
     test_dfs = [

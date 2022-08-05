@@ -50,10 +50,6 @@ from ..series import from_pandas as from_pandas_series
 
 
 ray = lazy_import("ray")
-try:
-    import ray.data as ray_dataset
-except ImportError:
-    ray_dataset = None
 
 
 def test_from_pandas_dataframe():
@@ -521,7 +517,6 @@ def test_read_sql():
             read_sql_query("select * from " + table_name, uri, partition_col="b")
 
 
-@pytest.mark.skipif(ray_dataset is None, reason="Not support ray.data!")
 @require_ray
 def test_read_raydataset(ray_start_regular):
     test_df1 = pd.DataFrame(
