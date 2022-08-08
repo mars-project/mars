@@ -160,7 +160,7 @@ def execute_subtask(
         # https://user-images.githubusercontent.com/12445254/168569524-f09e42a7-653a-4102-bdf0-cc1631b3168d.png
         reducer_chunks = subtask_chunk_graph.successors(start_chunks[0])
         reducer_operands = set(c.op for c in reducer_chunks)
-        if len(reducer_operands) != 1:
+        if len(reducer_operands) != 1:  # pragma: no cover
             raise ValueError(
                 f"Subtask {subtask_id} has more than 1 reduce operands: {subtask_chunk_graph.to_dot()}"
             )
