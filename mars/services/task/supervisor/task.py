@@ -415,7 +415,7 @@ class TaskProcessorActor(mo.Actor, _TaskInfoProcessorMixin):
             "Set subtask %s with result %s.", subtask_result.subtask_id, subtask_result
         )
         if self._cur_processor is not None:
-            await self._cur_processor.set_subtask_result(subtask_result)
+            yield self._cur_processor.set_subtask_result(subtask_result)
 
     def is_done(self) -> bool:
         for processor in self._task_id_to_processor.values():
