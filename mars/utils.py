@@ -1626,15 +1626,15 @@ def get_func_token(func):
     try:
         token = _func_token_cache.get(func)
         if token is None:
-            fields = get_func_token_values(func)
+            fields = _get_func_token_values(func)
             token = tokenize(*fields)
             _func_token_cache[func] = token
         return token
     except TypeError:  # cannot create weak reference to func like 'numpy.ufunc'
-        return tokenize(*get_func_token_values(func))
+        return tokenize(*_get_func_token_values(func))
 
 
-def get_func_token_values(func):
+def _get_func_token_values(func):
     if hasattr(func, "__code__"):
         tokens = [func.__code__.co_code]
         if func.__closure__ is not None:
@@ -1647,7 +1647,7 @@ def get_func_token_values(func):
             tokens.extend([func.args, func.keywords])
             func = func.func
         if hasattr(func, "__code__"):
-            tokens.extend(get_func_token_values(func))
+            tokens.extend(_get_func_token_values(func))
         elif isinstance(func, types.BuiltinFunctionType):
             tokens.extend([func.__module__, func.__name__])
         else:
