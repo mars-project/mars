@@ -14,13 +14,11 @@
 
 import numpy as np
 import pandas as pd
-import cloudpickle
 
 from ... import opcodes
 from ...core import OutputType
 from ...core.context import get_context
 from ...core.custom_log import redirect_custom_log
-from ...services.task.execution.ray.context import RayExecutionContext
 from ...serialization.serializables import (
     AnyField,
     BoolField,

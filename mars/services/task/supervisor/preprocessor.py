@@ -21,7 +21,7 @@ from typing import Callable, Dict, List, Iterable, Set
 from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, TileContext
 from ....core.graph.builder.chunk import Tiler, _TileableHandler
-from ....core.operand import Fetch, ShuffleFetchType, LogicKeyGenerator
+from ....core.operand import Fetch, ShuffleFetchType
 from ....resource import Resource
 from ....typing import BandType, TileableType, ChunkType
 from ...subtask import Subtask, SubtaskGraph
@@ -110,7 +110,6 @@ class TaskPreprocessor:
         "_config",
         "tileable_optimization_records",
         "chunk_optimization_records_list",
-        "_logic_key_generator",
         "_cancelled",
         "_done",
     )
@@ -130,7 +129,6 @@ class TaskPreprocessor:
         self.tile_context = tiled_context
         self.tileable_optimization_records = None
         self.chunk_optimization_records_list = []
-        self._logic_key_generator = LogicKeyGenerator()
 
         self._cancelled = asyncio.Event()
         self._done = asyncio.Event()
