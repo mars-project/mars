@@ -48,7 +48,10 @@ from ..utils import (
     make_dtype,
     build_empty_df,
     build_empty_series,
+    lazy_import,
 )
+
+vineyard = lazy_import("vineyard")
 
 
 class ApplyOperandLogicKeyGeneratorMixin(OperatorLogicKeyGeneratorMixin):
@@ -341,7 +344,13 @@ class ApplyOperand(
 
         ctx = get_context()
         func = op.func
-        if hasattr(func, "__closure__") and func.__closure__ is not None:
+        # note: Vineyard internally uses `pickle` which fails to pickle
+        # cell objects and corresponding functions.
+        if (
+            hasattr(func, "__closure__")
+            and func.__closure__ is not None
+            and vineyard is None
+        ):
             counted_bytes = 0
             for cell in func.__closure__:
                 # note: another applicable way of measurements is df.memory_usage(index=True, deep=False).sum()
