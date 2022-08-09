@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import inspect
+import logging
 import os
 import sys
 
@@ -52,6 +53,7 @@ from ..utils import (
 )
 
 vineyard = lazy_import("vineyard")
+logger = logging.getLogger(__name__)
 
 
 class ApplyOperandLogicKeyGeneratorMixin(OperatorLogicKeyGeneratorMixin):
@@ -341,16 +343,17 @@ class ApplyOperand(
         )
         if closure_clean_up_bytes_threshold == -1:
             return
+        # note: Vineyard internally uses `pickle` which fails to pickle
+        # cell objects and corresponding functions.
+        if vineyard is not None:
+            logger.warning(
+                "Func cleanup currently does not support vineyard and is currently disabled."
+            )
+            return
 
         ctx = get_context()
         func = op.func
-        # note: Vineyard internally uses `pickle` which fails to pickle
-        # cell objects and corresponding functions.
-        if (
-            hasattr(func, "__closure__")
-            and func.__closure__ is not None
-            and vineyard is None
-        ):
+        if hasattr(func, "__closure__") and func.__closure__ is not None:
             counted_bytes = 0
             for cell in func.__closure__:
                 # note: another applicable way of measurements is df.memory_usage(index=True, deep=False).sum()

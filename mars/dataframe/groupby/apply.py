@@ -20,7 +20,6 @@ from ...core import OutputType
 from ...core.context import get_context
 from ...core.custom_log import redirect_custom_log
 from ...serialization.serializables import (
-    AnyField,
     BoolField,
     TupleField,
     DictField,
@@ -59,8 +58,6 @@ class GroupByApply(
     args = TupleField("args", default_factory=tuple)
     kwds = DictField("kwds", default_factory=dict)
     maybe_agg = BoolField("maybe_agg", default=None)
-    func_key = AnyField("func_key", default=None)
-    func_clean_up = BoolField("func_clean_up", default=None)
 
     def __init__(self, output_types=None, **kw):
         super().__init__(_output_types=output_types, **kw)
@@ -69,7 +66,6 @@ class GroupByApply(
     @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op):
-        # cls._restore_closure(op)
         in_data = ctx[op.inputs[0].key]
         out = op.outputs[0]
         if not in_data:
@@ -106,7 +102,6 @@ class GroupByApply(
 
     @classmethod
     def tile(cls, op):
-        # cls._clean_up_closure(op)
         in_groupby = op.inputs[0]
         out_df = op.outputs[0]
 
@@ -154,14 +149,6 @@ class GroupByApply(
             # may be an aggregation operation
             yield ret.chunks  # trigger execution for chunks
             return [auto_merge_chunks(get_context(), ret)]
-
-    @classmethod
-    def _clean_up_closure(cls, op):
-        pass
-
-    @classmethod
-    def _restore_closure(cls, op):
-        pass
 
     def _infer_df_func_returns(
         self, in_groupby, in_df, dtypes=None, dtype=None, name=None, index=None
