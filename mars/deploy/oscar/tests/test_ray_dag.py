@@ -189,7 +189,7 @@ async def test_execute_describe(ray_start_regular_shared2, create_cluster):
 @require_ray
 @pytest.mark.parametrize("method", ["broadcast", None])
 @pytest.mark.parametrize("auto_merge", ["before", "after"])
-def test_merge_groupby(ray_start_regular_shared2, method, auto_merge):
+def test_merge_groupby(ray_start_regular_shared2, create_cluster, method, auto_merge):
     rs = np.random.RandomState(0)
     raw1 = pd.DataFrame({"a": rs.randint(3, size=100), "b": rs.rand(100)})
     raw2 = pd.DataFrame({"a": rs.randint(3, size=10), "c": rs.rand(10)})
