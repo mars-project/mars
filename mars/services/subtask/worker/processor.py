@@ -133,7 +133,7 @@ class SubtaskProcessor:
             gets.append(self._storage_api.get.delay(key, **gets_params))
         if keys:
             logger.debug(
-                "Start getting input data, keys: %s, subtask id: %s",
+                "Start getting input data, keys: %.500s, subtask id: %s",
                 keys,
                 self.subtask.subtask_id,
             )
@@ -146,7 +146,7 @@ class SubtaskProcessor:
                 }
             )
             logger.debug(
-                "Finish getting input data keys: %s, subtask id: %s",
+                "Finish getting input data keys: %.500s, subtask id: %s",
                 keys,
                 self.subtask.subtask_id,
             )

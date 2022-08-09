@@ -614,7 +614,7 @@ def dataframe_getitem(df, item):
         )
     else:
         if item not in columns_set:
-            raise KeyError(f"{item} not in columns")
+            raise KeyError(f"{item} not in columns {columns_set}")
         op = DataFrameIndex(col_names=item)
     return op(df)
 
