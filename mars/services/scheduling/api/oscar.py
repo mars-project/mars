@@ -25,13 +25,19 @@ APIType = TypeVar("APIType", bound="SchedulingAPI")
 
 class SchedulingAPI(AbstractSchedulingAPI):
     def __init__(
-        self, session_id: str, address: str, manager_ref=None, queueing_ref=None
+        self,
+        session_id: str,
+        address: str,
+        manager_ref=None,
+        queueing_ref=None,
+        autoscaler_ref=None,
     ):
         self._session_id = session_id
         self._address = address
 
         self._manager_ref = manager_ref
         self._queueing_ref = queueing_ref
+        self._autoscaler = autoscaler_ref
 
     @classmethod
     @alru_cache
@@ -47,7 +53,17 @@ class SchedulingAPI(AbstractSchedulingAPI):
             SubtaskQueueingActor.gen_uid(session_id), address=address
         )
 
-        scheduling_api = SchedulingAPI(session_id, address, manager_ref, queueing_ref)
+        from ...cluster import ClusterAPI
+        from ..supervisor.autoscale import AutoscalerActor
+
+        cluster_api = await ClusterAPI.create(address)
+        supervisor_address = (await cluster_api.get_supervisors())[0]
+        autoscaler = await mo.actor_ref(
+            AutoscalerActor.default_uid(), address=supervisor_address
+        )
+        scheduling_api = SchedulingAPI(
+            session_id, address, manager_ref, queueing_ref, autoscaler
+        )
         return scheduling_api
 
     async def get_subtask_schedule_summaries(
@@ -130,6 +146,15 @@ class SchedulingAPI(AbstractSchedulingAPI):
             whether to schedule succeeding subtasks
         """
         await self._manager_ref.finish_subtasks(subtask_ids, bands, schedule_next)
+
+    async def disable_autoscale_in(self):
+        """Disable autoscale in"""
+        await self._autoscaler.disable_autoscale_in()
+
+    async def try_enable_autoscale_in(self):
+        """Try to enable autoscale in, the autoscale-in will be enabled only when last call corresponding
+        `disable_autoscale_in` has been invoked."""
+        await self._autoscaler.try_enable_autoscale_in()
 
 
 class MockSchedulingAPI(SchedulingAPI):

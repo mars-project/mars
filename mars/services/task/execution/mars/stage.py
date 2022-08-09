@@ -223,6 +223,17 @@ class TaskStageProcessor:
             )
 
     async def run(self):
+        try:
+            if self.subtask_graph.num_shuffles() > 0:
+                # disable scale-in when shuffle is executing so that we can skip
+                # store shuffle meta in supervisor.
+                await self._scheduling_api.disable_autoscale_in()
+            return await self._run()
+        finally:
+            if self.subtask_graph.num_shuffles() > 0:
+                await self._scheduling_api.try_enable_autoscale_in()
+
+    async def _run(self):
         if len(self.subtask_graph) == 0:
             # no subtask to schedule, set status to done
             self._schedule_done()

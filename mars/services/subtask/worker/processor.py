@@ -373,7 +373,8 @@ class SubtaskProcessor:
                 mapper_keys = get_mapper_data_keys(chunk_key, data_key_to_store_size)
                 store_size = sum(data_key_to_store_size[k] for k in mapper_keys)
                 memory_size = sum(data_key_to_memory_size[k] for k in mapper_keys)
-                object_ref = [data_key_to_object_id[k] for k in mapper_keys]
+                # Skip meta for shuffle
+                object_ref = None
             # for worker, if chunk in update_meta_chunks
             # save meta including dtypes_value etc, otherwise,
             # save basic meta only
@@ -451,6 +452,9 @@ class SubtaskProcessor:
         unpinned = False
         try:
             raw_result_chunks = list(self._chunk_graph.result_chunks)
+            print(
+                f"self._chunk_graph, self._engines {self._chunk_graph, self._engines, task_options.runtime_engines}"
+            )
             chunk_graph = optimize(self._chunk_graph, self._engines)
             self._chunk_key_to_data_keys = get_chunk_key_to_data_keys(chunk_graph)
             report_progress = asyncio.create_task(self.report_progress_periodically())
