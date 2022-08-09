@@ -183,7 +183,7 @@ async def test_execute_describe(ray_start_regular_shared2, create_cluster):
     await test_local.test_execute_describe(create_cluster)
 
 
-@require_ray
-@pytest.mark.asyncio
-async def test_execute_apply_closure(ray_start_regular_shared2, create_cluster):
-    await test_local.test_execute_apply_closure(create_cluster)
+# @require_ray
+# @pytest.mark.asyncio
+# async def test_execute_apply_closure(ray_start_regular_shared2, create_cluster):
+#     await test_local.test_execute_apply_closure(create_cluster)

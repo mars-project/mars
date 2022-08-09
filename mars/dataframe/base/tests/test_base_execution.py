@@ -387,8 +387,8 @@ def test_data_frame_apply_closure_execute(setup):
     df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
     df = from_pandas_df(df_raw, chunk_size=5)
 
-    x = pd.Series([i for i in range(10000)])
-    y = pd.Series([i for i in range(10000)])
+    x = pd.Series([i for i in range(10**5)])
+    y = pd.Series([i for i in range(10**5)])
 
     def closure(z):
         return pd.concat([x, y], ignore_index=True)

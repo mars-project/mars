@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import inspect
+import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -96,7 +98,7 @@ class ApplyOperand(
         elementwise=None,
         logic_key=None,
         func_key=None,
-        func_clean_up=None,
+        func_clean_up=False,
         **kw,
     ):
         if output_type:
@@ -323,7 +325,6 @@ class ApplyOperand(
 
     @classmethod
     def tile(cls, op):
-        # TODO: selectively clean up
         cls._clean_up_func(op)
         if op.inputs[0].ndim == 2:
             return (yield from cls._tile_df(op))
@@ -332,10 +333,22 @@ class ApplyOperand(
 
     @classmethod
     def _clean_up_func(cls, op):
+        closure_clean_up_bytes_threshold = int(
+            os.getenv("MARS_CLOSURE_CLEAN_UP_BYTES_THRESHOLD", 10**5)
+        )
+        if closure_clean_up_bytes_threshold == -1:
+            return
+
         ctx = get_context()
         func = op.func
         if hasattr(func, "__closure__") and func.__closure__ is not None:
-            op.func_clean_up = True
+            counted_bytes = 0
+            for cell in func.__closure__:
+                # note: another applicable way of measurements is df.memory_usage(index=True, deep=False).sum()
+                counted_bytes += sys.getsizeof(cell.cell_contents)
+                if counted_bytes >= closure_clean_up_bytes_threshold:
+                    op.func_clean_up = True
+                    break
         if op.func_clean_up and ctx is not None:
             op.logic_key = op.get_logic_key()
             if isinstance(ctx, RayExecutionContext):
