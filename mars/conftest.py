@@ -24,7 +24,7 @@ from mars.core.mode import is_kernel_mode, is_build_mode
 from mars.lib.aio.lru import clear_all_alru_caches
 from mars.oscar.backends.router import Router
 from mars.oscar.backends.ray.communication import RayServer
-from mars.serialization.ray import unregister_ray_serializers
+from mars.serialization.ray import _unregister_ray_serializers
 from mars.utils import lazy_import
 
 ray = lazy_import("ray")
@@ -89,7 +89,7 @@ def _ray_start_regular(request):  # pragma: no cover
             yield ray.init(num_cpus=num_cpus, job_config=job_config)
         finally:
             ray.shutdown()
-            unregister_ray_serializers()
+            _unregister_ray_serializers()
             Router.set_instance(None)
             RayServer.clear()
             if "COV_CORE_SOURCE" in os.environ:
@@ -130,7 +130,7 @@ def _ray_large_cluster(request):  # pragma: no cover
     try:
         yield cluster
     finally:
-        unregister_ray_serializers()
+        _unregister_ray_serializers()
         Router.set_instance(None)
         RayServer.clear()
         ray.shutdown()
