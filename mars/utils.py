@@ -27,6 +27,8 @@ import logging
 import numbers
 import operator
 import os
+import weakref
+
 import cloudpickle as pickle
 import pkgutil
 import random
@@ -1617,7 +1619,22 @@ def wrap_exception(
     return new_exc_type().with_traceback(traceback)
 
 
-def get_func_token_values(func):
+_func_token_cache = weakref.WeakKeyDictionary()
+
+
+def get_func_token(func):
+    try:
+        token = _func_token_cache.get(func)
+        if token is None:
+            fields = _get_func_token_values(func)
+            token = tokenize(*fields)
+            _func_token_cache[func] = token
+        return token
+    except TypeError:  # cannot create weak reference to func like 'numpy.ufunc'
+        return tokenize(*_get_func_token_values(func))
+
+
+def _get_func_token_values(func):
     if hasattr(func, "__code__"):
         tokens = [func.__code__.co_code]
         if func.__closure__ is not None:
@@ -1630,7 +1647,7 @@ def get_func_token_values(func):
             tokens.extend([func.args, func.keywords])
             func = func.func
         if hasattr(func, "__code__"):
-            tokens.extend(get_func_token_values(func))
+            tokens.extend(_get_func_token_values(func))
         elif isinstance(func, types.BuiltinFunctionType):
             tokens.extend([func.__module__, func.__name__])
         else:
