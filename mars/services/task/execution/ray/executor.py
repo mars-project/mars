@@ -489,6 +489,7 @@ class RayTaskExecutor(TaskExecutor):
         }
         shuffle_manager = ShuffleManager(subtask_graph)
         subtask_max_retries = self._config.get_subtask_max_retries()
+        subtask_num_cpus = self._config.get_subtask_num_cpus()
         for subtask in subtask_graph.topological_iter():
             if subtask.virtual:
                 continue
@@ -513,7 +514,9 @@ class RayTaskExecutor(TaskExecutor):
                 output_count = out_count + bool(subtask_output_meta_keys)
             subtask_max_retries = subtask_max_retries if subtask.retryable else 0
             output_object_refs = self._ray_executor.options(
-                num_returns=output_count, max_retries=subtask_max_retries
+                num_cpus=subtask_num_cpus,
+                num_returns=output_count,
+                max_retries=subtask_max_retries,
             ).remote(
                 subtask.task_id,
                 subtask.subtask_id,
