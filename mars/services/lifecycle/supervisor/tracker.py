@@ -114,7 +114,9 @@ class LifecycleTrackerActor(mo.Actor):
         if not to_remove_chunk_keys:
             return
         # get meta
-        logger.debug("Remove chunks %s with a refcount of zero", to_remove_chunk_keys)
+        logger.debug(
+            "Remove chunks %.500s with a refcount of zero", to_remove_chunk_keys
+        )
         get_metas = []
         for to_remove_chunk_key in to_remove_chunk_keys:
             get_metas.append(
@@ -184,7 +186,7 @@ class LifecycleTrackerActor(mo.Actor):
             incref_chunk_keys = self._tileable_key_to_chunk_keys[tileable_key]
             # incref chunks for this tileable
             logger.debug(
-                "Incref chunks %s while increfing tileable %s",
+                "Incref chunks %.500s while increfing tileable %s",
                 incref_chunk_keys,
                 tileable_key,
             )
@@ -215,7 +217,7 @@ class LifecycleTrackerActor(mo.Actor):
                 else:
                     decref_chunk_keys[chunk_key] += count
         logger.debug(
-            "Decref chunks %s while decrefing tileables %s",
+            "Decref chunks %.500s while decrefing tileables %s",
             decref_chunk_keys,
             tileable_keys,
         )
