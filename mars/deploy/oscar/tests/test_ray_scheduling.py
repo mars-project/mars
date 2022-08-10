@@ -293,7 +293,9 @@ async def test_ownership_when_scale_in(ray_large_cluster):
             await asyncio.sleep(1)
         # Test data on node of released worker can still be fetched
         pd_df = df.fetch()
-        groupby_sum_df = df.rechunk(chunk_size * 2).groupby("a").sum()
+        groupby_sum_df = (
+            df.rechunk(chunk_size * 2).groupby("a").apply(lambda pdf: pdf.sum())
+        )
         logger.info(groupby_sum_df.execute())
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
             dynamic_workers = await autoscaler_ref.get_dynamic_workers()
@@ -301,7 +303,8 @@ async def test_ownership_when_scale_in(ray_large_cluster):
             await asyncio.sleep(1)
         assert df.to_pandas().to_dict() == pd_df.to_dict()
         assert (
-            groupby_sum_df.to_pandas().to_dict() == pd_df.groupby("a").sum().to_dict()
+            groupby_sum_df.to_pandas().to_dict()
+            == pd_df.groupby("a").apply(lambda pdf: pdf.sum()).to_dict()
         )
 
 
