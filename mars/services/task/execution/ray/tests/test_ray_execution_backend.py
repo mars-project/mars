@@ -23,7 +23,6 @@ from ......config import Config
 from ......core import TileContext
 from ......core.context import get_context
 from ......core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-from ......core.operand import Fetch
 from ......lib.aio.isolation import new_isolation, stop_isolation
 from ......resource import Resource
 from ......serialization import serialize
@@ -44,7 +43,6 @@ from ..executor import (
     RayTaskExecutor,
     RayTaskState,
     _RayChunkMeta,
-    _get_subtask_out_info,
 )
 from ..fetcher import RayFetcher
 
