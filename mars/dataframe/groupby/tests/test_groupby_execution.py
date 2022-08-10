@@ -933,6 +933,7 @@ def test_groupby_apply(setup):
 
 
 def test_groupby_apply_closure(setup):
+    # DataFrame
     df1 = pd.DataFrame(
         {
             "a": [3, 4, 5, 3, 5, 4, 1, 2, 3],
@@ -957,6 +958,7 @@ def test_groupby_apply_closure(setup):
         df1.groupby("b").apply(apply_closure_df).sort_index(),
     )
 
+    # Series
     series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
     ms1 = md.Series(series1, chunk_size=3)
 

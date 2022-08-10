@@ -367,12 +367,13 @@ async def test_execute_describe(create_cluster):
 # cell objects and corresponding functions.
 @pytest.mark.asyncio
 async def test_execute_apply_closure(create_cluster):
+    # DataFrame
     cols = [chr(ord("A") + i) for i in range(10)]
     raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
     df = md.DataFrame(raw, chunk_size=5)
 
-    x1 = pd.Series([i for i in range(10**5)])
-    y1 = pd.Series([i for i in range(10**5)])
+    x1 = pd.Series([i for i in range(10**4)])
+    y1 = pd.Series([i for i in range(10**4)])
 
     def dataframe_closure(z1):
         return pd.concat([x1, y1], ignore_index=True)
@@ -389,6 +390,7 @@ async def test_execute_apply_closure(create_cluster):
     df_expected = raw.apply(dataframe_closure, axis=1)
     pd.testing.assert_frame_equal(df_result, df_expected)
 
+    # Series
     idxes = [chr(ord("A") + i) for i in range(20)]
     s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
 

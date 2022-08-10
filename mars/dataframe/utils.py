@@ -1437,7 +1437,7 @@ def clean_up_func(op):
     closure_clean_up_bytes_threshold = int(
         os.getenv("MARS_CLOSURE_CLEAN_UP_BYTES_THRESHOLD", 10**4)
     )
-    if closure_clean_up_bytes_threshold == -1:
+    if closure_clean_up_bytes_threshold == -1:  # pragma: no cover
         return
     # note: Vineyard internally uses `pickle` which fails to pickle
     # cell objects and corresponding functions.
@@ -1458,13 +1458,13 @@ def clean_up_func(op):
                 op.func_clean_up = True
                 break
     if op.func_clean_up and ctx is not None:
-        if isinstance(ctx, RayExecutionContext):
+        if isinstance(ctx, RayExecutionContext):  # pragma: no cover
             op.func_key = ctx.storage_put(op.func)
         elif isinstance(ctx, ThreadedServiceContext):
             assert op.logic_key is not None
             op.func_key = op.logic_key
             ctx.storage_put(op.func_key, op.func)
-        else:
+        else:  # pragma: no cover
             raise Exception("unknown context type: %s", type(ctx))
         op.func = None
 
