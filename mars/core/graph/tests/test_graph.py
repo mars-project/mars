@@ -184,6 +184,10 @@ def test_tileable_graph_logic_key():
     graph8 = df1.apply(lambda x: x.max() - x.min()).build_graph(tile=False)
     graph9 = df2.apply(lambda x: x.max() - x.min()).build_graph(tile=False)
     assert graph8.logic_key != graph9.logic_key
+    assert (
+        graph8.result_tileables[0].op.logic_key
+        == graph9.result_tileables[0].op.logic_key
+    )
     pieces1 = [df1[:3], df1[3:7], df1[7:]]
     graph10 = md.concat(pieces1).build_graph(tile=False)
     pieces2 = [df2[:3], df2[3:7], df2[7:]]
@@ -195,3 +199,14 @@ def test_tileable_graph_logic_key():
     graph14 = df2.groupby("A").sum().build_graph(tile=False)
     graph15 = df3.groupby("A").sum().build_graph(tile=False)
     assert graph14.logic_key != graph15.logic_key
+    graph16 = (
+        df2.groupby("A").apply(lambda x: x.max() - x.min()).build_graph(tile=False)
+    )
+    graph17 = (
+        df3.groupby("A").apply(lambda x: x.max() - x.min()).build_graph(tile=False)
+    )
+    assert graph16.logic_key != graph17.logic_key
+    assert (
+        graph16.result_tileables[0].op.logic_key
+        == graph17.result_tileables[0].op.logic_key
+    )

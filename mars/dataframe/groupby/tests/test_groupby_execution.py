@@ -932,7 +932,7 @@ def test_groupby_apply(setup):
     )
 
 
-def test_groupby_closure_apply(setup):
+def test_groupby_apply_closure(setup):
     df1 = pd.DataFrame(
         {
             "a": [3, 4, 5, 3, 5, 4, 1, 2, 3],

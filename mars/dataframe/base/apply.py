@@ -13,9 +13,6 @@
 # limitations under the License.
 
 import inspect
-import logging
-import os
-import sys
 
 import numpy as np
 import pandas as pd
@@ -23,11 +20,8 @@ import pandas as pd
 from ... import opcodes
 from ...config import options
 from ...core import OutputType, recursive_tile
-from ...core.context import get_context
 from ...core.custom_log import redirect_custom_log
 from ...core.operand import OperatorLogicKeyGeneratorMixin
-from ...services.context import ThreadedServiceContext
-from ...services.task.execution.ray.context import RayExecutionContext
 from ...serialization.serializables import (
     StringField,
     AnyField,
@@ -49,11 +43,9 @@ from ..utils import (
     make_dtype,
     build_empty_df,
     build_empty_series,
-    lazy_import,
+    clean_up_func,
+    restore_func,
 )
-
-vineyard = lazy_import("vineyard")
-logger = logging.getLogger(__name__)
 
 
 class ApplyOperandLogicKeyGeneratorMixin(OperatorLogicKeyGeneratorMixin):
@@ -187,7 +179,7 @@ class ApplyOperand(
     @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op):
-        cls._restore_func(ctx, op)
+        restore_func(ctx, op)
         input_data = ctx[op.inputs[0].key]
         out = op.outputs[0]
         if len(input_data) == 0:
@@ -330,52 +322,11 @@ class ApplyOperand(
 
     @classmethod
     def tile(cls, op):
-        cls._clean_up_func(op)
+        clean_up_func(op)
         if op.inputs[0].ndim == 2:
             return (yield from cls._tile_df(op))
         else:
             return cls._tile_series(op)
-
-    @classmethod
-    def _clean_up_func(cls, op):
-        closure_clean_up_bytes_threshold = int(
-            os.getenv("MARS_CLOSURE_CLEAN_UP_BYTES_THRESHOLD", 10**5)
-        )
-        if closure_clean_up_bytes_threshold == -1:
-            return
-        # note: Vineyard internally uses `pickle` which fails to pickle
-        # cell objects and corresponding functions.
-        if vineyard is not None:
-            logger.warning(
-                "Func cleanup currently does not support vineyard and is currently disabled."
-            )
-            return
-
-        ctx = get_context()
-        func = op.func
-        if hasattr(func, "__closure__") and func.__closure__ is not None:
-            counted_bytes = 0
-            for cell in func.__closure__:
-                # note: another applicable way of measurements is df.memory_usage(index=True, deep=False).sum()
-                counted_bytes += sys.getsizeof(cell.cell_contents)
-                if counted_bytes >= closure_clean_up_bytes_threshold:
-                    op.func_clean_up = True
-                    break
-        if op.func_clean_up and ctx is not None:
-            op.logic_key = op.get_logic_key()
-            if isinstance(ctx, RayExecutionContext):
-                op.func_key = ctx.storage_put(op.func)
-            elif isinstance(ctx, ThreadedServiceContext):
-                op.func_key = op.logic_key
-                ctx.storage_put(op.func_key, op.func)
-            else:
-                raise Exception("unknown context: %s", type(ctx))
-            op.func = None
-
-    @classmethod
-    def _restore_func(cls, ctx, op):
-        if op.func_clean_up and ctx is not None:
-            op.func = ctx.storage_get(op.func_key)
 
     def _infer_df_func_returns(self, df, dtypes, dtype=None, name=None, index=None):
         if isinstance(self._func, np.ufunc):

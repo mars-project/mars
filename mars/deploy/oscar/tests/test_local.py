@@ -371,8 +371,8 @@ async def test_execute_apply_closure(create_cluster):
     raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
     df = md.DataFrame(raw, chunk_size=5)
 
-    x1 = pd.Series([i for i in range(10000)])
-    y1 = pd.Series([i for i in range(10000)])
+    x1 = pd.Series([i for i in range(10**5)])
+    y1 = pd.Series([i for i in range(10**5)])
 
     def dataframe_closure(z1):
         return pd.concat([x1, y1], ignore_index=True)

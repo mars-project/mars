@@ -22,7 +22,6 @@ from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, TileContext
 from ....core.graph.builder.chunk import Tiler, _TileableHandler
 from ....core.operand import Fetch, ShuffleFetchType
-from ....dataframe.base.apply import ApplyOperand
 from ....resource import Resource
 from ....typing import BandType, TileableType, ChunkType
 from ...subtask import Subtask, SubtaskGraph
@@ -193,7 +192,7 @@ class TaskPreprocessor:
         )
         optimize = self._config.optimize_chunk_graph
         for t in tileable_graph:
-            if isinstance(t.op, ApplyOperand):
+            if hasattr(t.op, "logic_key") and t.op.logic_key is None:
                 t.op.logic_key = t.op.get_logic_key()
         for chunk_graph in chunk_graph_builder.build():
             if len(chunk_graph) == 0:

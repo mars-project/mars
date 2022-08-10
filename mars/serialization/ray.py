@@ -47,7 +47,3 @@ def unregister_ray_serializers():
     RaySerializer.unregister(object)
     PickleSerializer.register(object)
     ExceptionSerializer.register(Exception)
-
-
-# Temporarily registered globally for ray task mode
-# register_ray_serializers()

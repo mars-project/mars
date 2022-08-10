@@ -85,10 +85,13 @@ class TileableGraph(EntityGraph, Iterable[Tileable]):
         if not hasattr(self, "_logic_key") or self._logic_key is None:
             token_keys = []
             for node in self.bfs():
+                logic_key = node.op.get_logic_key()
+                if hasattr(node.op, "logic_key") and node.op.logic_key is None:
+                    node.op.logic_key = logic_key
                 token_keys.append(
-                    tokenize(node.op.get_logic_key(), **node.extra_params)
+                    tokenize(logic_key, **node.extra_params)
                     if node.extra_params
-                    else node.op.get_logic_key()
+                    else logic_key
                 )
             self._logic_key = tokenize(*token_keys)
         return self._logic_key
