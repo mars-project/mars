@@ -316,20 +316,20 @@ class GraphAnalyzer:
         )
 
         is_shuffle_proxy = False
-        if (
-            self._has_shuffle
-            and self._shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX
-        ):
-            shuffle_chunks = [
-                c for c in result_chunks if isinstance(c, MapReduceOperand)
-            ]
-            # ensure no shuffle mapper chunks fused into same subtask and subtask only produce mapper outputs
-            # which can be merged dynamically by the reducers.
-            assert len(shuffle_chunks) <= 1, shuffle_chunks
-            proxy_chunks = [c for c in chunks if isinstance(c.op, ShuffleProxy)]
-            assert len(proxy_chunks) <= 1, proxy_chunks
+        if self._has_shuffle:
+            shuffle_chunks, proxy_chunks = [], []
+            for c in result_chunks:
+                if isinstance(c.op, MapReduceOperand):
+                    shuffle_chunks.append(c)
+                elif isinstance(c.op, ShuffleProxy):
+                    proxy_chunks.append(c)
             if proxy_chunks:
+                assert len(proxy_chunks) <= 1, proxy_chunks
                 is_shuffle_proxy = True
+            if self._shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX:
+                # ensure no shuffle mapper chunks fused into same subtask and subtask only produce mapper outputs
+                # which can be merged dynamically by the reducers.
+                assert len(shuffle_chunks) <= 1, shuffle_chunks
         return subtask, inp_subtasks, is_shuffle_proxy
 
     def _gen_logic_key(self, chunks: List[ChunkType]):
