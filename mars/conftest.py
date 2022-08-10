@@ -24,7 +24,11 @@ from mars.core.mode import is_kernel_mode, is_build_mode
 from mars.lib.aio.lru import clear_all_alru_caches
 from mars.oscar.backends.router import Router
 from mars.oscar.backends.ray.communication import RayServer
-from mars.serialization.ray import _unregister_ray_serializers
+from mars.serialization.ray import (
+    _unregister_ray_serializers,
+    try_register_ray_serializers,
+    try_unregister_ray_serializers,
+)
 from mars.utils import lazy_import
 
 ray = lazy_import("ray")
@@ -146,6 +150,19 @@ def stop_ray(request):  # pragma: no cover
     if ray.is_initialized():
         ray.shutdown()
     Router.set_instance(None)
+
+
+@pytest.fixture
+def with_ray_serializers():  # pragma: no cover
+    try_register_ray_serializers()
+    yield
+    try_unregister_ray_serializers()
+
+
+@pytest.fixture
+def unregister_ray_serializers():  # pragma: no cover
+    yield
+    try_unregister_ray_serializers()
 
 
 @pytest.fixture

@@ -24,8 +24,8 @@ from ......core import TileContext
 from ......core.context import get_context
 from ......core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 from ......lib.aio.isolation import new_isolation, stop_isolation
+from ......oscar.backends.ray.communication import ArgWrapper
 from ......resource import Resource
-from ......serialization import serialize
 from ......tests.core import require_ray, mock
 from ......utils import lazy_import, get_chunk_params
 from .....context import ThreadedServiceContext
@@ -124,6 +124,7 @@ async def test_ray_executor_create(
     assert mock_task_state_actor_create.call_count == 1
 
 
+@require_ray
 @pytest.mark.asyncio
 async def test_ray_executor_destroy():
     task = Task("mock_task", "mock_session")
@@ -150,7 +151,8 @@ async def test_ray_executor_destroy():
     assert await executor.get_progress() == 1.0
 
 
-def test_ray_execute_subtask_basic():
+@require_ray
+def test_ray_execute_subtask_basic(with_ray_serializers):
     raw = np.ones((10, 10))
     raw_expect = raw + 1
     a = mt.ones((10, 10), chunk_size=10)
@@ -158,11 +160,14 @@ def test_ray_execute_subtask_basic():
 
     subtask_id = new_task_id()
     subtask_chunk_graph = _gen_subtask_chunk_graph(b)
-    r = execute_subtask(subtask_id, serialize(subtask_chunk_graph), set(), False)
+    r = execute_subtask(subtask_id, ArgWrapper(subtask_chunk_graph), set(), False)
     np.testing.assert_array_equal(r, raw_expect)
     test_get_meta_chunk = subtask_chunk_graph.result_chunks[0]
     r = execute_subtask(
-        subtask_id, serialize(subtask_chunk_graph), {test_get_meta_chunk.key}, False
+        subtask_id,
+        ArgWrapper(subtask_chunk_graph),
+        {test_get_meta_chunk.key},
+        False,
     )
     assert len(r) == 2
     meta_dict, r = r
