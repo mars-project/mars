@@ -144,12 +144,6 @@ def _merge_config(full_config: Dict, config: Dict) -> Dict:
     return full_config
 
 
-# the default times to retry subtask.
-DEFAULT_SUBTASK_MAX_RETRIES = 3
-# the default time to cancel a subtask.
-DEFAULT_SUBTASK_CANCEL_TIMEOUT = 5
-
-
 def load_config(config: Union[str, Dict], default_config_file: str):
     """
     Load config based on the default_config.
@@ -170,16 +164,9 @@ def load_config(config: Union[str, Dict], default_config_file: str):
         )
         config["task"]["default_config"]["initial_same_color_num"] = 1
     ray_execution_config = config["task"]["execution_config"].setdefault("ray", {})
-    config["scheduling"].setdefault(
-        "subtask_cancel_timeout", DEFAULT_SUBTASK_CANCEL_TIMEOUT
-    )
-    ray_execution_config.setdefault(
-        "subtask_cancel_timeout", config["scheduling"]["subtask_cancel_timeout"]
-    )
-    config["scheduling"].setdefault("subtask_max_retries", DEFAULT_SUBTASK_MAX_RETRIES)
-    ray_execution_config.setdefault(
-        "subtask_max_retries", config["scheduling"]["subtask_max_retries"]
-    )
+    subtask_max_retries = config["scheduling"].get("subtask_max_retries")
+    if subtask_max_retries is not None:
+        ray_execution_config.setdefault("subtask_max_retries", subtask_max_retries)
     return config
 
 
