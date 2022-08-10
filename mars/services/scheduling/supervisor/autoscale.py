@@ -39,7 +39,6 @@ class AutoscalerActor(mo.Actor):
         self.queueing_refs = dict()
         self.global_resource_ref = None
         self._dynamic_workers: Set[str] = set()
-        self._released_worker_lock = asyncio.Lock()
         self._autoscale_in_disable_counter = 0
         self._autoscale_in_disable_event = asyncio.Event()
         self._autoscale_in_disable_event.set()
@@ -100,20 +99,16 @@ class AutoscalerActor(mo.Actor):
             )
 
     async def disable_autoscale_in(self):
-        try:
-            await self._released_worker_lock.acquire()
-            self._autoscale_in_disable_counter += 1
-            if self._autoscale_in_disable_event.is_set():
-                self._autoscale_in_disable_event.clear()
-        finally:
-            self._released_worker_lock.release()
+        self._autoscale_in_disable_counter += 1
+        if self._autoscale_in_disable_event.is_set() and self._enabled:
+            logger.info("Disabled autoscale_in")
 
     async def try_enable_autoscale_in(self):
         self._autoscale_in_disable_counter -= 1
-        if self._autoscale_in_disable_counter == 0:
-            self._autoscale_in_disable_event.set()
+        if self._autoscale_in_disable_counter == 0 and self._enabled:
+            logger.info("Enabled autoscale_in")
 
-    async def release_workers(self, addresses: List[str]):
+    async def release_workers(self, addresses: List[str]) -> List[str]:
         """
         Release a group of worker nodes.
         Parameters
@@ -121,46 +116,44 @@ class AutoscalerActor(mo.Actor):
         addresses : List[str]
             The addresses of the specified node.
         """
-        try:
-            await self._released_worker_lock.acquire()
-            await self._autoscale_in_disable_event.wait()
-            workers_bands = {
-                address: await self.get_worker_bands(address) for address in addresses
-            }
-            logger.info(
-                "Start to release workers %s which have bands %s.",
-                addresses,
-                workers_bands,
+        if self._autoscale_in_disable_counter > 0:
+            return []
+        workers_bands = {
+            address: await self.get_worker_bands(address) for address in addresses
+        }
+        logger.info(
+            "Start to release workers %s which have bands %s.",
+            addresses,
+            workers_bands,
+        )
+        for address in addresses:
+            await self._cluster_api.set_node_status(
+                node=address, role=NodeRole.WORKER, status=NodeStatus.STOPPING
             )
-            for address in addresses:
-                await self._cluster_api.set_node_status(
-                    node=address, role=NodeRole.WORKER, status=NodeStatus.STOPPING
-                )
-            # Ensure global_slot_manager get latest bands timely, so that we can invoke `wait_band_idle`
-            # to ensure there won't be new tasks scheduled to the stopping worker.
-            await self.global_resource_ref.refresh_bands()
-            excluded_bands = set(b for bands in workers_bands.values() for b in bands)
+        # Ensure global_slot_manager get latest bands timely, so that we can invoke `wait_band_idle`
+        # to ensure there won't be new tasks scheduled to the stopping worker.
+        await self.global_resource_ref.refresh_bands()
+        excluded_bands = set(b for bands in workers_bands.values() for b in bands)
 
-            async def release_worker(address):
-                logger.info("Start to release worker %s.", address)
-                worker_bands = workers_bands[address]
-                await asyncio.gather(
-                    *[
-                        self.global_resource_ref.wait_band_idle(band)
-                        for band in worker_bands
-                    ]
-                )
-                await self._migrate_data_of_bands(worker_bands, excluded_bands)
-                await self._cluster_api.release_worker(address)
-                self._dynamic_workers.remove(address)
-                logger.info("Released worker %s.", address)
+        async def release_worker(address):
+            logger.info("Start to release worker %s.", address)
+            worker_bands = workers_bands[address]
+            await asyncio.gather(
+                *[
+                    self.global_resource_ref.wait_band_idle(band)
+                    for band in worker_bands
+                ]
+            )
+            await self._migrate_data_of_bands(worker_bands, excluded_bands)
+            await self._cluster_api.release_worker(address)
+            self._dynamic_workers.remove(address)
+            logger.info("Released worker %s.", address)
 
-            # Release workers one by one to ensure others workers which the current is moving data to
-            # is not being releasing.
-            for address in addresses:
-                await release_worker(address)
-        finally:
-            self._released_worker_lock.release()
+        # Release workers one by one to ensure others workers which the current is moving data to
+        # is not being releasing.
+        for address in addresses:
+            await release_worker(address)
+        return addresses
 
     def get_dynamic_workers(self) -> Set[str]:
         return self._dynamic_workers
@@ -430,7 +423,9 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
                 idle_bands,
             )
             try:
-                await self._autoscaler.release_workers(worker_addresses)
+                worker_addresses = await self._autoscaler.release_workers(
+                    worker_addresses
+                )
                 logger.info(
                     "Finished offline workers %s in %.4f seconds",
                     worker_addresses,
