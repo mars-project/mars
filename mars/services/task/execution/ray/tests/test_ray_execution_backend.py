@@ -24,7 +24,6 @@ from ......core import TileContext
 from ......core.context import get_context
 from ......core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 from ......lib.aio.isolation import new_isolation, stop_isolation
-from ......oscar.backends.ray.communication import ArgWrapper
 from ......resource import Resource
 from ......tests.core import require_ray, mock
 from ......utils import lazy_import, get_chunk_params
@@ -152,7 +151,7 @@ async def test_ray_executor_destroy():
 
 
 @require_ray
-def test_ray_execute_subtask_basic(with_ray_serializers):
+def test_ray_execute_subtask_basic():
     raw = np.ones((10, 10))
     raw_expect = raw + 1
     a = mt.ones((10, 10), chunk_size=10)
@@ -160,12 +159,15 @@ def test_ray_execute_subtask_basic(with_ray_serializers):
 
     subtask_id = new_task_id()
     subtask_chunk_graph = _gen_subtask_chunk_graph(b)
-    r = execute_subtask(subtask_id, ArgWrapper(subtask_chunk_graph), set(), False)
+    r = execute_subtask(
+        subtask_id, serialize(subtask_chunk_graph), False, set(), False
+    )
     np.testing.assert_array_equal(r, raw_expect)
     test_get_meta_chunk = subtask_chunk_graph.result_chunks[0]
     r = execute_subtask(
         subtask_id,
-        ArgWrapper(subtask_chunk_graph),
+        serialize(subtask_chunk_graph),
+        False,
         {test_get_meta_chunk.key},
         False,
     )

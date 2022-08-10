@@ -20,7 +20,7 @@ import operator
 import sys
 from dataclasses import dataclass
 
-from typing import List, Dict, Any, Set, Callable, Union
+from typing import List, Dict, Any, Set, Callable
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
 from .....core.operand import (
@@ -32,8 +32,8 @@ from .....core.operand import (
 from .....core.operand.fetch import FetchShuffle
 from .....lib.aio import alru_cache
 from .....lib.ordered_set import OrderedSet
-from .....oscar.backends.ray.communication import ArgWrapper
 from .....resource import Resource
+from .....serialization import serialize, deserialize
 from .....serialization.ray import (
     try_register_ray_serializers,
     try_unregister_ray_serializers,
@@ -127,7 +127,8 @@ async def _cancel_ray_task(obj_ref, kill_timeout: int = 3):
 
 def execute_subtask(
     subtask_id: str,
-    subtask_chunk_graph: Union[ChunkGraph, ArgWrapper],
+    subtask_chunk_graph,
+    use_ray_serialization: bool,
     output_meta_keys: Set[str],
     is_mapper,
     *inputs,
@@ -141,6 +142,8 @@ def execute_subtask(
         id of subtask
     subtask_chunk_graph: ChunkGraph
         chunk graph for subtask
+    use_ray_serialization: bool
+        use ray serialization
     output_meta_keys: Set[str]
         will be None if subtask is a shuffle mapper.
     is_mapper: bool
@@ -154,8 +157,11 @@ def execute_subtask(
         subtask outputs and meta for outputs if `output_meta_keys` is provided.
     """
     ensure_coverage()
-    if isinstance(subtask_chunk_graph, ArgWrapper):
-        subtask_chunk_graph = subtask_chunk_graph.message
+    if use_ray_serialization:
+        try_register_ray_serializers()
+    else:
+        try_unregister_ray_serializers()
+    subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     logger.info("Begin to execute subtask: %s", subtask_id)
     # optimize chunk graph.
     subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)
@@ -316,7 +322,9 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = False
-        try_register_ray_serializers()
+        self._use_ray_serialization = self._config.use_ray_serialization()
+        if self._use_ray_serialization:
+            try_register_ray_serializers()
 
     @classmethod
     async def create(
@@ -383,7 +391,8 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = None
-        try_unregister_ray_serializers()
+        if self._use_ray_serialization:
+            try_unregister_ray_serializers()
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -525,7 +534,8 @@ class RayTaskExecutor(TaskExecutor):
                 max_retries=subtask_max_retries,
             ).remote(
                 subtask.subtask_id,
-                ArgWrapper(subtask_chunk_graph),
+                serialize(subtask_chunk_graph),
+                self._use_ray_serialization,
                 subtask_output_meta_keys,
                 is_mapper,
                 *input_object_refs,
