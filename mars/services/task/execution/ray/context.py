@@ -158,7 +158,7 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
             if missing_keys:
                 missing_meta = self._call(
                     self._get_chunks_meta_from_service(
-                        data_keys, fields=fields, error=error
+                        missing_keys, fields=fields, error=error
                     )
                 )
                 for idx, meta in zip(missing_key_indexes, missing_meta):
