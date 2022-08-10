@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import pandas as pd
 import pytest
 import numpy as np
 
 from collections import Counter
 
-from ..shuffle import ShuffleManager
 from ...... import tensor as mt
 from ......config import Config
-from ......core import TileContext, ChunkGraph
+from ......core import TileContext
 from ......core.context import get_context
 from ......core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 from ......core.operand import Fetch
@@ -32,7 +30,6 @@ from ......serialization import serialize
 from ......tests.core import require_ray, mock
 from ......utils import lazy_import, get_chunk_params
 from .....context import ThreadedServiceContext
-from .....subtask import SubtaskGraph
 from ....analyzer import GraphAnalyzer
 from ....core import new_task_id, Task
 from ..config import RayExecutionConfig
@@ -94,69 +91,6 @@ class MockRayTaskExecutor(RayTaskExecutor):
     def __setattr__(self, key, value):
         super().__setattr__(key, value)
         self._set_attrs[key] += 1
-
-    async def submit_subtask_graph(
-        self,
-        stage_id: str,
-        subtask_graph: SubtaskGraph,
-        chunk_graph: ChunkGraph,
-    ):
-        result_meta_keys = {
-            chunk.key
-            for chunk in chunk_graph.result_chunks
-            if not isinstance(chunk.op, Fetch)
-        }
-
-        monitor_task = asyncio.create_task(
-            self._update_progress_and_collect_garbage(
-                stage_id,
-                subtask_graph,
-                result_meta_keys,
-                self._config.get_subtask_monitor_interval(),
-            )
-        )
-        shuffle_manager = ShuffleManager(subtask_graph)
-        for subtask in subtask_graph.topological_iter():
-            subtask_chunk_graph = subtask.chunk_graph
-            task_context = self._task_context
-            input_object_refs = await self._load_subtask_inputs(
-                stage_id, subtask, task_context, shuffle_manager
-            )
-            is_mapper, n_reducers = shuffle_manager.is_mapper(subtask), None
-            if is_mapper:
-                n_reducers = shuffle_manager.get_n_reducers(subtask)
-            output_keys, out_count = _get_subtask_out_info(
-                subtask_chunk_graph, is_mapper, n_reducers
-            )
-
-            output_meta_keys = result_meta_keys & output_keys
-            if is_mapper:
-                # shuffle meta won't be recorded in meta service.
-                output_count = out_count
-            else:
-                output_count = out_count + bool(output_meta_keys)
-            output_object_refs = self._ray_executor.options(
-                num_returns=output_count
-            ).remote(
-                subtask.task_id,
-                subtask.subtask_id,
-                serialize(subtask_chunk_graph),
-                output_meta_keys,
-                is_mapper,
-                *input_object_refs,
-            )
-            if output_count == 0:
-                continue
-            elif output_count == 1:
-                output_object_refs = [output_object_refs]
-            self._cur_stage_first_output_object_ref_to_subtask[
-                output_object_refs[0]
-            ] = subtask
-            if output_meta_keys:
-                meta_object_ref, *output_object_refs = output_object_refs
-            task_context.update(zip(output_keys, output_object_refs))
-
-        return monitor_task
 
 
 class MockTileContext(TileContext):
@@ -403,6 +337,55 @@ def test_ray_execution_worker_context():
 
 @require_ray
 @pytest.mark.asyncio
+async def test_ray_execution_config(ray_start_regular_shared2):
+    t1 = mt.random.randint(10, size=(100, 10), chunk_size=100)
+    chunk_graph, subtask_graph = _gen_subtask_graph(t1)
+
+    real_executor = RayTaskExecutor._get_ray_executor()
+
+    class MockExecutor:
+        opt = {}
+
+        @classmethod
+        def options(cls, *args, **kwargs):
+            cls.opt = kwargs
+            return real_executor.options(*args, **kwargs)
+
+    task = Task("mock_task", "mock_session")
+    mock_config = RayExecutionConfig.from_execution_config(
+        {
+            "backend": "ray",
+            "ray": {
+                "subtask_monitor_interval": 0,
+                "subtask_max_retries": 4,
+                "subtask_num_cpus": 0.8,
+                "n_cpu": 1,
+                "n_worker": 1,
+                "subtask_cancel_timeout": 1,
+            },
+        }
+    )
+    tile_context = MockTileContext()
+    executor = MockRayTaskExecutor(
+        config=mock_config,
+        task=task,
+        tile_context=tile_context,
+        task_context={},
+        task_chunks_meta={},
+        lifecycle_api=None,
+        meta_api=None,
+    )
+    executor._ray_executor = MockExecutor
+    await executor.execute_subtask_graph(
+        "mock_stage", subtask_graph, chunk_graph, tile_context
+    )
+
+    assert MockExecutor.opt["num_cpus"] == 0.8
+    assert MockExecutor.opt["max_retries"] == 4
+
+
+@require_ray
+@pytest.mark.asyncio
 async def test_executor_context_gc(ray_start_regular_shared2):
     popped_seq = []
 
@@ -418,7 +401,16 @@ async def test_executor_context_gc(ray_start_regular_shared2):
     chunk_graph, subtask_graph = _gen_subtask_graph(t4)
     task = Task("mock_task", "mock_session", fuse_enabled=True)
     mock_config = RayExecutionConfig.from_execution_config(
-        {"backend": "ray", "ray": {"subtask_monitor_interval": 0}}
+        {
+            "backend": "ray",
+            "ray": {
+                "subtask_monitor_interval": 0,
+                "subtask_max_retries": 0,
+                "n_cpu": 1,
+                "n_worker": 1,
+                "subtask_cancel_timeout": 1,
+            },
+        }
     )
     tile_context = MockTileContext()
     task_context = MockTaskContext()
@@ -432,10 +424,9 @@ async def test_executor_context_gc(ray_start_regular_shared2):
         meta_api=None,
     )
     executor._ray_executor = RayTaskExecutor._get_ray_executor()
-    monitor_task = await executor.submit_subtask_graph(
-        "mock_stage", subtask_graph, chunk_graph
+    await executor.execute_subtask_graph(
+        "mock_stage", subtask_graph, chunk_graph, tile_context
     )
-    await monitor_task
 
     assert len(task_context) == 1
     assert len(popped_seq) == 6
