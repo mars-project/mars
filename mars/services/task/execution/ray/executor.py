@@ -322,8 +322,7 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = False
-        self._use_ray_serialization = self._config.use_ray_serialization()
-        if self._use_ray_serialization:
+        if self._config.use_ray_serialization():
             try_register_ray_serializers()
 
     @classmethod
@@ -370,7 +369,6 @@ class RayTaskExecutor(TaskExecutor):
 
     # noinspection DuplicatedCode
     def destroy(self):
-        self._config = None
         self._task = None
         self._tile_context = None
         self._task_context = {}
@@ -391,8 +389,9 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = None
-        if self._use_ray_serialization:
+        if self._config.use_ray_serialization():
             try_unregister_ray_serializers()
+        self._config = None
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -505,6 +504,7 @@ class RayTaskExecutor(TaskExecutor):
         shuffle_manager = ShuffleManager(subtask_graph)
         subtask_max_retries = self._config.get_subtask_max_retries()
         subtask_num_cpus = self._config.get_subtask_num_cpus()
+        use_ray_serialization = self._config.use_ray_serialization()
         for subtask in subtask_graph.topological_iter():
             if subtask.virtual:
                 continue
@@ -535,7 +535,7 @@ class RayTaskExecutor(TaskExecutor):
             ).remote(
                 subtask.subtask_id,
                 serialize(subtask_chunk_graph),
-                self._use_ray_serialization,
+                use_ray_serialization,
                 subtask_output_meta_keys,
                 is_mapper,
                 *input_object_refs,
