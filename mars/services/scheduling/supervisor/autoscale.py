@@ -40,8 +40,6 @@ class AutoscalerActor(mo.Actor):
         self.global_resource_ref = None
         self._dynamic_workers: Set[str] = set()
         self._autoscale_in_disable_counter = 0
-        self._autoscale_in_disable_event = asyncio.Event()
-        self._autoscale_in_disable_event.set()
 
     async def __post_create__(self):
         strategy = self._autoscale_conf.get("strategy")
@@ -100,7 +98,7 @@ class AutoscalerActor(mo.Actor):
 
     async def disable_autoscale_in(self):
         self._autoscale_in_disable_counter += 1
-        if self._autoscale_in_disable_event.is_set() and self._enabled:
+        if self._enabled:
             logger.info("Disabled autoscale_in")
 
     async def try_enable_autoscale_in(self):
