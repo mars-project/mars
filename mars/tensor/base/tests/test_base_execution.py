@@ -985,6 +985,7 @@ def test_searchsorted_execution(setup):
             np.testing.assert_array_equal(res, expected)
 
 
+# TODO https://github.com/mars-project/mars/issues/3221
 # @pytest.mark.ray_dag
 def test_unique_execution(setup):
     rs = np.random.RandomState(0)

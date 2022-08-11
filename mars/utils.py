@@ -561,12 +561,11 @@ def build_fetch_shuffle(
     # to replace ShuffleProxy
     if shuffle_fetch_type is ShuffleFetchType.FETCH_BY_INDEX:
         # skip data keys info for `FETCH_BY_INDEX`
-        source_keys, source_idxes, source_mappers = None, None, None
+        source_keys = None
     else:
         source_keys = [pinp.key for pinp in chunk.inputs]
     op = chunk_op.get_fetch_op_cls(chunk)(
         source_keys=source_keys,
-        source_idxes=source_idxes,
         n_mappers=n_mappers,
         n_reducers=n_reducers,
         shuffle_fetch_type=shuffle_fetch_type,

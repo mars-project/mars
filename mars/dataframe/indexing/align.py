@@ -388,9 +388,13 @@ class DataFrameAlign(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameAlign"):
-        idx, lhs_val = ctx[op.lhs.key]
-        idx, rhs_val = ctx[op.rhs.key]
-        # raise Exception(f"lhs_val {type(lhs_val)} {type(rhs_val)}")
+        lhs_val, rhs_val = ctx[op.lhs.key], ctx[op.rhs.key]
+        if type(lhs_val) is tuple:
+            # align needs shuffle
+            lhs_val = lhs_val[1]
+        if type(rhs_val) is tuple:
+            # align needs shuffle
+            rhs_val = rhs_val[1]
         l_res, r_res = lhs_val.align(
             rhs_val,
             axis=op.axis,
