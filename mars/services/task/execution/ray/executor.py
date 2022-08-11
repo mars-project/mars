@@ -69,23 +69,32 @@ class _RayChunkMeta:
 
 
 class RayTaskState(RayRemoteObjectManager):
-    @classmethod
-    def _gen_name(cls, task_id: str):
-        return f"{cls.__name__}_{task_id}"
+    handle = None
 
     @classmethod
-    def get_handle(cls, task_id: str):
+    def get_handle(cls):
         """Get the RayTaskState actor handle."""
-        name = cls._gen_name(task_id)
-        logger.info("Getting %s handle.", name)
-        return ray.get_actor(name)
+        logger.info("Getting RayTaskState handle.")
+        return ray.get_actor(cls.__name__)
 
     @classmethod
-    def create(cls, task_id: str):
+    def create(cls):
         """Create a RayTaskState actor."""
-        name = cls._gen_name(task_id)
-        logger.info("Creating %s.", name)
-        return ray.remote(cls).options(name=name).remote()
+        logger.info("Creating RayTaskState actor.")
+        name = cls.__name__
+        try:
+            cls.handle = ray.get_actor(name)
+            return cls.handle
+        except ValueError:
+            # Attempt to create it (may race with other attempts).
+            try:
+                cls.handle = ray.remote(cls).options(name=name).remote()
+                return cls.handle
+            except ValueError:
+                # We lost the creation race, ignore.
+                pass
+            cls.handle = ray.get_actor(name)
+            return cls.handle
 
 
 _optimize_physical = None
@@ -116,7 +125,6 @@ async def _cancel_ray_task(obj_ref, kill_timeout: int = 3):
 
 
 def execute_subtask(
-    task_id: str,
     subtask_id: str,
     subtask_chunk_graph: ChunkGraph,
     output_meta_keys: Set[str],
@@ -128,8 +136,6 @@ def execute_subtask(
 
     Parameters
     ----------
-    task_id: str
-        id of task
     subtask_id: str
         id of subtask
     subtask_chunk_graph: ChunkGraph
@@ -173,9 +179,7 @@ def execute_subtask(
         inputs = inputs[:-n_mappers]
     input_keys = [start_chunk.key for start_chunk in fetch_chunks]
     input_data.update(zip(input_keys, inputs))
-    context = RayExecutionWorkerContext(
-        lambda: RayTaskState.get_handle(task_id), input_data
-    )
+    context = RayExecutionWorkerContext(RayTaskState.get_handle, input_data)
 
     for chunk in subtask_chunk_graph.topological_iter():
         if chunk.key not in context:
@@ -330,18 +334,11 @@ class RayTaskExecutor(TaskExecutor):
         worker_addresses = list(
             map(operator.itemgetter(0), available_band_resources.keys())
         )
-        if config.create_task_state_actor_as_needed():
-            create_task_state_actor = lambda: RayTaskState.create(  # noqa: E731
-                task_id=task.task_id
-            )
-        else:
-            actor_handle = RayTaskState.create(task_id=task.task_id)
-            create_task_state_actor = lambda: actor_handle  # noqa: E731
         await cls._init_context(
             config,
             task_context,
             task_chunks_meta,
-            create_task_state_actor,
+            RayTaskState.create,
             worker_addresses,
             session_id,
             address,
@@ -519,7 +516,6 @@ class RayTaskExecutor(TaskExecutor):
                 num_returns=output_count,
                 max_retries=subtask_max_retries,
             ).remote(
-                subtask.task_id,
                 subtask.subtask_id,
                 serialize(subtask_chunk_graph),
                 subtask_output_meta_keys,
