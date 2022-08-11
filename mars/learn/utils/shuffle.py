@@ -401,12 +401,12 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
             for ax, to_hash_ind in zip(axes, to_hash_inds):
                 slc = (slice(None),) * ax + (to_hash_ind == index[ax],)
                 selected = _safe_slice(selected, slc, op.output_types[0])
-            ctx[out.key, tuple(index)] = selected
+            ctx[out.key, tuple(index)] = (ctx[op].index, selected)
 
     @classmethod
     def execute_reduce(cls, ctx, op: "LearnShuffle"):
         inputs_grid = np.empty(op.reduce_sizes, dtype=object)
-        for input_index, inp in op.iter_mapper_data_with_index(ctx):
+        for input_index, inp in op.iter_mapper_data(ctx):
             reduce_index = tuple(input_index[ax] for ax in op.axes)
             inputs_grid[reduce_index] = inp
         ret = cls._concat_grid(inputs_grid, op.axes, op.output_types[0])

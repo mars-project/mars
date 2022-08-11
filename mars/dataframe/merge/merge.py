@@ -74,6 +74,8 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
     shuffle_on = AnyField("shuffle_on")
 
     input = KeyField("input")
+    # for mapper
+    mapper_id = Int32Field("mapper_id", default=0)
 
     def __init__(self, output_types=None, **kw):
         super().__init__(_output_types=output_types, **kw)
@@ -113,16 +115,24 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
         for index_idx, index_filter in enumerate(filters):
             reducer_index = (index_idx, chunk.index[1])
             if index_filter is not None and index_filter is not list():
-                ctx[chunk.key, reducer_index] = df.iloc[index_filter]
+                ctx[chunk.key, reducer_index] = (
+                    op.mapper_id,
+                    ctx[op].index,
+                    df.iloc[index_filter],
+                )
             else:
-                ctx[chunk.key, reducer_index] = None
+                ctx[chunk.key, reducer_index] = (op.mapper_id, ctx[op].index, None)
 
     @classmethod
     def execute_reduce(cls, ctx, op: "DataFrameMergeAlign"):
         for i, chunk in enumerate(op.outputs):
-            input_idx_to_df = dict(
-                op.iter_mapper_data_with_index(ctx, mapper_id=i, skip_none=True)
-            )
+            input_idx_to_df = {
+                partition_index: data
+                for mapper_id, partition_index, data in op.iter_mapper_data(
+                    ctx, skip_none=True
+                )
+                if mapper_id == i
+            }
             row_idxes = sorted({idx[0] for idx in input_idx_to_df})
             res = []
             for row_idx in row_idxes:

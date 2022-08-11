@@ -284,7 +284,9 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
                 map_op._by = chunk_by
             map_chunks.append(
                 map_op.new_chunk(
-                    chunk_inputs, shape=(np.nan, np.nan), index=chunk.index
+                    chunk_inputs,
+                    shape=(np.nan, np.nan),
+                    index=chunk.index,
                 )
             )
 
@@ -410,17 +412,21 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
                     )
             else:
                 if isinstance(df, tuple):
-                    ctx[chunk.key, reducer_index] = tuple(
-                        _take_index(x, index_filter) for x in df
-                    ) + (deliver_by,)
+                    ctx[chunk.key, reducer_index] = (
+                        ctx[op].index,
+                        tuple(_take_index(x, index_filter) for x in df) + (deliver_by,),
+                    )
                 else:
-                    ctx[chunk.key, reducer_index] = _take_index(df, index_filter)
+                    ctx[chunk.key, reducer_index] = (
+                        ctx[op].index,
+                        _take_index(df, index_filter),
+                    )
 
     @classmethod
     def execute_reduce(cls, ctx, op: "DataFrameGroupByOperand"):
         xdf = cudf if op.gpu else pd
         chunk = op.outputs[0]
-        input_idx_to_df = dict(op.iter_mapper_data_with_index(ctx))
+        input_idx_to_df = dict(op.iter_mapper_data(ctx))
         row_idxes = sorted(input_idx_to_df.keys())
 
         res = []

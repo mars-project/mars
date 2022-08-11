@@ -180,6 +180,7 @@ def execute_subtask(
     for chunk in subtask_chunk_graph.topological_iter():
         if chunk.key not in context:
             try:
+                context[chunk.op] = chunk
                 execute(context, chunk.op)
             except Exception:
                 logger.exception(

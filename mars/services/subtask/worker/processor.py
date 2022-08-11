@@ -206,6 +206,7 @@ class SubtaskProcessor:
                     chunk,
                     self.subtask.subtask_id,
                 )
+                self._datastore[chunk.op] = chunk
                 future = asyncio.create_task(
                     await self._async_execute_operand(self._datastore, chunk.op)
                 )

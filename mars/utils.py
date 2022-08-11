@@ -563,15 +563,10 @@ def build_fetch_shuffle(
         # skip data keys info for `FETCH_BY_INDEX`
         source_keys, source_idxes, source_mappers = None, None, None
     else:
-        source_keys, source_idxes, source_mappers = [], [], []
-        for pinp in chunk.inputs:
-            source_keys.append(pinp.key)
-            source_idxes.append(pinp.index)
-            source_mappers.append(get_chunk_mapper_id(pinp))
+        source_keys = [pinp.key for pinp in chunk.inputs]
     op = chunk_op.get_fetch_op_cls(chunk)(
         source_keys=source_keys,
         source_idxes=source_idxes,
-        source_mappers=source_mappers,
         n_mappers=n_mappers,
         n_reducers=n_reducers,
         shuffle_fetch_type=shuffle_fetch_type,
@@ -637,19 +632,6 @@ def build_fetch(entity: EntityType) -> EntityType:
         return build_fetch_tileable(entity)
     else:
         raise TypeError(f"Type {type(entity)} not supported")
-
-
-def get_chunk_mapper_id(chunk: ChunkType) -> str:
-    op = chunk.op
-    try:
-        return op.mapper_id
-    except AttributeError:
-        from .core.operand import Fuse
-
-        if isinstance(op, Fuse):
-            return chunk.composed[-1].op.mapper_id
-        else:  # pragma: no cover
-            raise
 
 
 def get_chunk_reducer_index(chunk: ChunkType) -> Tuple[int]:

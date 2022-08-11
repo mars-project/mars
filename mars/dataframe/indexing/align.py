@@ -388,8 +388,9 @@ class DataFrameAlign(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameAlign"):
-        lhs_val = ctx[op.lhs.key]
-        rhs_val = ctx[op.rhs.key]
+        idx, lhs_val = ctx[op.lhs.key]
+        idx, rhs_val = ctx[op.rhs.key]
+        # raise Exception(f"lhs_val {type(lhs_val)} {type(rhs_val)}")
         l_res, r_res = lhs_val.align(
             rhs_val,
             axis=op.axis,
