@@ -84,16 +84,14 @@ class RayTaskState(RayRemoteObjectManager):
         name = cls.__name__
         try:
             cls.handle = ray.get_actor(name)
-            return cls.handle
         except ValueError:
             # Attempt to create it (may race with other attempts).
             try:
                 cls.handle = ray.remote(cls).options(name=name).remote()
-                return cls.handle
             except ValueError:  # pragma: no cover
                 # We lost the creation race, ignore.
                 cls.handle = ray.get_actor(name)
-                return cls.handle
+        return cls.handle
 
 
 _optimize_physical = None
