@@ -104,3 +104,6 @@ class TaskAPI(AbstractTaskAPI):
 
     async def get_last_idle_time(self) -> Union[float, None]:
         return await self._task_manager_ref.get_last_idle_time()
+
+    async def remove_tileables(self, tileable_keys: List[str]):
+        return await self._task_manager_ref.remove_tileables(tileable_keys)

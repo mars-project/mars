@@ -326,3 +326,6 @@ class TaskManagerActor(mo.Actor):
             else:
                 self._last_idle_time = time.time()
         return self._last_idle_time
+
+    async def remove_tileables(self, tileable_keys: List[str]):
+        yield asyncio.to_thread(map, self._tileable_key_to_info.pop, tileable_keys)
