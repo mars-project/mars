@@ -17,6 +17,7 @@ import time
 
 import pytest
 
+from .....serialization.ray import try_unregister_ray_serializers
 from .....utils import lazy_import
 from .....tests.core import require_ray
 from ...mars.tests import test_mars_actor_context
@@ -75,6 +76,7 @@ async def actor_pool_context():
     ray.util.remove_placement_group(pg)
     Router.set_instance(None)
     RayServer.clear()
+    try_unregister_ray_serializers()
 
 
 @require_ray
