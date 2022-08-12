@@ -15,7 +15,10 @@
 import asyncio
 import importlib
 import logging
+import os
+import sys
 import time
+import weakref
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Dict, List, Type
@@ -32,6 +35,7 @@ from .processor import TaskProcessor
 from .task import TaskProcessorActor
 
 logger = logging.getLogger(__name__)
+_is_ci = (os.environ.get("CI") or "0").lower() in ("1", "true")
 
 
 class TaskConfigurationActor(mo.Actor):
@@ -57,10 +61,15 @@ class TaskConfigurationActor(mo.Actor):
         }
 
 
+class _TaskResultTileableRef:
+    pass
+
+
 @dataclass
 class ResultTileableInfo:
     tileable: TileableType
     processor_ref: mo.ActorRefType[TaskProcessorActor]
+    ref_holder: _TaskResultTileableRef
 
 
 class TaskManagerActor(mo.Actor):
@@ -174,8 +183,44 @@ class TaskManagerActor(mo.Actor):
             self._task_preprocessor_cls,
         )
 
+        no_result_tileable_ref = asyncio.Event()
+
+        async def _remove_task_processor_actor():
+            # TODO(fyrestone): Clean task name to task ids.
+            await asyncio.gather(processor_ref.wait(), no_result_tileable_ref.wait())
+            self._task_id_to_processor_ref.pop(task_id, None)
+            try:
+                await processor_ref.destroy()
+            except Exception:
+                # multiple task id may share one TaskProcessorActor instance, the processor_ref
+                # will be called multiple times after these all the tasks are finish.
+                pass
+
+        task = asyncio.create_task(_remove_task_processor_actor())
+
+        def _on_remove_task_processor_actor_aiotask_done(fut):
+            # Print the error of monitor task.
+            try:
+                fut.result()
+            except asyncio.CancelledError:
+                pass
+            except Exception:  # pragma: no cover
+                logger.exception(
+                    "The _remove_task_processor_actor is done with exception, task id: %s, processor_ref.",
+                    task_id,
+                    processor_ref,
+                )
+                if _is_ci:
+                    sys.exit(-1)
+
+        task.add_done_callback(_on_remove_task_processor_actor_aiotask_done)
+
+        task_ref = _TaskResultTileableRef()
+        weakref.finalize(task_ref, no_result_tileable_ref.set)
         for tileable in graph.result_tileables:
-            info = ResultTileableInfo(tileable=tileable, processor_ref=processor_ref)
+            info = ResultTileableInfo(
+                tileable=tileable, processor_ref=processor_ref, ref_holder=task_ref
+            )
             self._tileable_key_to_info[tileable.key].append(info)
 
         return task_id
@@ -328,4 +373,6 @@ class TaskManagerActor(mo.Actor):
         return self._last_idle_time
 
     async def remove_tileables(self, tileable_keys: List[str]):
-        yield asyncio.to_thread(map, self._tileable_key_to_info.pop, tileable_keys)
+        # TODO(fyrestone) yield
+        for key in tileable_keys:
+            self._tileable_key_to_info.pop(key, None)
