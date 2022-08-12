@@ -62,7 +62,7 @@ def test_shuffle_graph(tileable, fuse):
     ]
     assert len(proxy_subtasks) == len(proxy_chunks)
     assert len(proxy_subtasks) > 0
-    assert len(proxy_subtasks) == len(subtask_graph.get_proxy_subtasks())
+    assert len(proxy_subtasks) == len(subtask_graph.get_shuffle_proxy_subtasks())
     for proxy_chunk, proxy_subtask in zip(proxy_chunks, proxy_subtasks):
         reducer_subtasks = subtask_graph.successors(proxy_subtask)
         for reducer_subtask in reducer_subtasks:

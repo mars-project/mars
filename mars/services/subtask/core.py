@@ -205,11 +205,11 @@ class SubtaskGraph(DAG, Iterable[Subtask]):
                 continue
             yield node.op
 
-    def add_proxy_subtask(self, proxy_subtask):
+    def add_shuffle_proxy_subtask(self, proxy_subtask):
         self._proxy_subtasks.append(proxy_subtask)
 
     def num_shuffles(self) -> int:
         return len(self._proxy_subtasks)
 
-    def get_proxy_subtasks(self):
+    def get_shuffle_proxy_subtasks(self):
         return self._proxy_subtasks

@@ -29,7 +29,7 @@ class ShuffleManager:
 
     def __init__(self, subtask_graph: SubtaskGraph):
         self.subtask_graph = subtask_graph
-        self._proxy_subtasks = subtask_graph.get_proxy_subtasks()
+        self._proxy_subtasks = subtask_graph.get_shuffle_proxy_subtasks()
         self.num_shuffles = subtask_graph.num_shuffles()
         self.mapper_output_refs = []
         self.mapper_indices = {}
