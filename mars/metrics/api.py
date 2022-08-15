@@ -61,7 +61,7 @@ def init_metrics(backend="console", config: Dict[str, Any] = None):
                 "Failed to start prometheus http server because there is no prometheus_client"
             )
     _init = True
-    logger.info("Finished initialize the metrics with backend %s", _metric_backend)
+    logger.info("Finished initialize the metrics of backend: %s.", _metric_backend)
 
 
 def shutdown_metrics():
@@ -69,6 +69,14 @@ def shutdown_metrics():
     _metric_backend = "console"
     global _init
     _init = False
+    logger.info("Shutdown metrics of backend: %s.", _metric_backend)
+
+
+def _check_metrics_valid():
+    if _init is False:
+        raise RuntimeError(
+            "Metrics are not initialized, please call `init_metrics()` first."
+        )
 
 
 class Metrics:
@@ -98,18 +106,46 @@ class Metrics:
 
     @staticmethod
     def counter(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
+        _check_metrics_valid()
+        logger.info(
+            "Initializing a counter whose name: %s, tag keys: %s, backend: %s",
+            name,
+            tag_keys,
+            _metric_backend,
+        )
         return _backends_cls[_metric_backend].Counter(name, description, tag_keys)
 
     @staticmethod
     def gauge(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
+        _check_metrics_valid()
+        logger.info(
+            "Initializing a gauge whose name: %s, tag keys: %s, backend: %s",
+            name,
+            tag_keys,
+            _metric_backend,
+        )
         return _backends_cls[_metric_backend].Gauge(name, description, tag_keys)
 
     @staticmethod
     def meter(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
+        _check_metrics_valid()
+        logger.info(
+            "Initializing a meter whose name: %s, tag keys: %s, backend: %s",
+            name,
+            tag_keys,
+            _metric_backend,
+        )
         return _backends_cls[_metric_backend].Meter(name, description, tag_keys)
 
     @staticmethod
     def histogram(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
+        _check_metrics_valid()
+        logger.info(
+            "Initializing a histogram whose name: %s, tag keys: %s, backend: %s",
+            name,
+            tag_keys,
+            _metric_backend,
+        )
         return _backends_cls[_metric_backend].Histogram(name, description, tag_keys)
 
 

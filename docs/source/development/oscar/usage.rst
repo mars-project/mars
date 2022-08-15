@@ -26,7 +26,7 @@ Actor Definition
         def method_a(self, arg_1, arg_2, **kw_1):  # user-defined function
             pass
 
-        async def method_b(self, arg_1, arg_2, **kw_1)  # user-defined async function
+        async def method_b(self, arg_1, arg_2, **kw_1):  # user-defined async function
             pass
 
 
@@ -38,7 +38,7 @@ Creating Actors
     import mars.oscar as mo
 
     actor_ref = await mo.create_actor(
-        MyActor, 1, 2, a=1, b=2
+        MyActor, 1, 2, a=1, b=2,
         address='<ip>:<port>', uid='UniqueActorName')
 
 

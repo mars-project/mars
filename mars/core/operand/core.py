@@ -40,9 +40,7 @@ _op_type_to_executor: Dict[Type[OperandType], Callable] = dict()
 _op_type_to_size_estimator: Dict[Type[OperandType], Callable] = dict()
 
 
-op_executed_number = Metrics.counter(
-    "mars.operand.executed_number", "The number of executed operands.", ("op",)
-)
+op_executed_number = None
 
 
 class TileableOperandMixin:
@@ -490,7 +488,18 @@ def execute(results: Dict[str, Any], op: OperandType):
             try:
                 result = executor(results, op)
                 succeeded = True
-                op_executed_number.record(1, {"op": op.__class__.__name__})
+                global op_executed_number
+                if op_executed_number is None:
+                    op_executed_number = Metrics.counter(
+                        "mars.operand.executed_number",
+                        "The number of executed operands.",
+                        ("op",),
+                    )
+                if op.stage is not None:
+                    op_name = f"{op.__class__.__name__}:{op.stage.name}"
+                else:
+                    op_name = op.__class__.__name__
+                op_executed_number.record(1, {"op": op_name})
                 return result
             except UFuncTypeError as e:  # pragma: no cover
                 raise TypeError(str(e)).with_traceback(sys.exc_info()[2]) from None

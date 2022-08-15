@@ -19,14 +19,7 @@ from ..ray_metric import Counter, Gauge, Meter, Histogram
 @require_ray
 def test_record():
     c = Counter("test_counter")
-    from .. import ray_metric
-
-    original_value = ray_metric._ray_gauge_set_available
-    ray_metric._ray_gauge_set_available = True
     assert c.record(1) is None
-    ray_metric._ray_gauge_set_available = False
-    assert c.record(1) is None
-    ray_metric._ray_gauge_set_available = original_value
 
 
 @require_ray
