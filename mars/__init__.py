@@ -22,3 +22,6 @@ from .deploy.oscar import new_cluster_in_ray, new_ray_session
 from . import _version
 
 __version__ = _version.get_versions()["version"]
+
+from . import _version
+__version__ = _version.get_versions()['version']
