@@ -15,20 +15,17 @@
 import asyncio
 import contextlib
 import sys
+from typing import Iterable
 
 from ... import oscar as mo
-from ...lib.aio import alru_cache
-from ..subtask import SubtaskResult, SubtaskStatus
+from ..subtask import Subtask, SubtaskResult, SubtaskStatus
 from ..task import TaskAPI
 
 
-@alru_cache
-async def _get_task_api(actor: mo.Actor):
-    return await TaskAPI.create(getattr(actor, "_session_id"), actor.address)
-
-
 @contextlib.asynccontextmanager
-async def redirect_subtask_errors(actor: mo.Actor, subtasks):
+async def redirect_subtask_errors(
+    actor: mo.Actor, subtasks: Iterable[Subtask], reraise: bool = True
+):
     try:
         yield
     except:  # noqa: E722  # pylint: disable=bare-except
@@ -38,7 +35,7 @@ async def redirect_subtask_errors(actor: mo.Actor, subtasks):
             if isinstance(error, asyncio.CancelledError)
             else SubtaskStatus.errored
         )
-        task_api = await _get_task_api(actor)
+        task_api = await TaskAPI.create(getattr(actor, "_session_id"), actor.address)
         coros = []
         for subtask in subtasks:
             if subtask is None:  # pragma: no cover
@@ -59,4 +56,5 @@ async def redirect_subtask_errors(actor: mo.Actor, subtasks):
             )
         tasks = [asyncio.ensure_future(coro) for coro in coros]
         await asyncio.wait(tasks)
-        raise
+        if reraise:
+            raise

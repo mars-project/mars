@@ -67,11 +67,12 @@ async def test_global_resource(actor_pool):
         band, session_id, ["subtask1"], [Resource(num_cpus=1)]
     )
 
-    wait_coro = global_resource_ref.wait_band_idle(band)
-    (done, pending) = await asyncio.wait([wait_coro], timeout=0.5)
+    wait_task = asyncio.create_task(global_resource_ref.wait_band_idle(band))
+    (done, pending) = await asyncio.wait([wait_task], timeout=0.5)
     assert not done
     await global_resource_ref.release_subtask_resource(band, session_id, "subtask0")
-    (done, pending) = await asyncio.wait([wait_coro], timeout=0.5)
+    wait_task = asyncio.create_task(global_resource_ref.wait_band_idle(band))
+    (done, pending) = await asyncio.wait([wait_task], timeout=0.5)
     assert done
     assert band in await global_resource_ref.get_idle_bands(0)
     assert ["subtask1"] == await global_resource_ref.apply_subtask_resources(

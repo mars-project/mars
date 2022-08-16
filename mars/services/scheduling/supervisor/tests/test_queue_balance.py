@@ -62,31 +62,30 @@ class MockNodeInfoCollectorActor(NodeInfoCollectorActor):
 class FakeClusterAPI(ClusterAPI):
     @classmethod
     async def create(cls, address: str, **kw):
-        dones, _ = await asyncio.wait(
-            [
-                mo.create_actor(
-                    SupervisorPeerLocatorActor,
-                    "fixed",
-                    address,
-                    uid=SupervisorPeerLocatorActor.default_uid(),
-                    address=address,
-                ),
-                mo.create_actor(
-                    MockNodeInfoCollectorActor,
-                    uid=NodeInfoCollectorActor.default_uid(),
-                    address=address,
-                ),
-                mo.create_actor(
-                    NodeInfoUploaderActor,
-                    NodeRole.WORKER,
-                    interval=kw.get("upload_interval"),
-                    band_to_resource=kw.get("band_to_resource"),
-                    use_gpu=kw.get("use_gpu", False),
-                    uid=NodeInfoUploaderActor.default_uid(),
-                    address=address,
-                ),
-            ]
-        )
+        coros = [
+            mo.create_actor(
+                SupervisorPeerLocatorActor,
+                "fixed",
+                address,
+                uid=SupervisorPeerLocatorActor.default_uid(),
+                address=address,
+            ),
+            mo.create_actor(
+                MockNodeInfoCollectorActor,
+                uid=NodeInfoCollectorActor.default_uid(),
+                address=address,
+            ),
+            mo.create_actor(
+                NodeInfoUploaderActor,
+                NodeRole.WORKER,
+                interval=kw.get("upload_interval"),
+                band_to_resource=kw.get("band_to_resource"),
+                use_gpu=kw.get("use_gpu", False),
+                uid=NodeInfoUploaderActor.default_uid(),
+                address=address,
+            ),
+        ]
+        dones, _ = await asyncio.wait([asyncio.create_task(coro) for coro in coros])
 
         for task in dones:
             try:
@@ -217,20 +216,23 @@ async def test_subtask_queueing(actor_pool):
     )
 
     # 9 subtasks on ('address0', 'numa-0')
-    await queueing_ref.submit_subtasks(band=("address0", "numa-0"), limit=10)
+    await queueing_ref.submit_subtasks({("address0", "numa-0"): 10})
+    await asyncio.sleep(0.2)
     commited_subtask_ids = (await manager_ref.dump_data())[("address0", "numa-0")]
     assert (
         len(commited_subtask_ids) == 9
-    ), f"commited_subtask_ids {commited_subtask_ids}"
+    ), f"committed_subtask_ids {commited_subtask_ids}"
 
     # 0 subtasks on ('address1', 'numa-0')
-    await queueing_ref.submit_subtasks(band=("address1", "numa-0"), limit=10)
+    await queueing_ref.submit_subtasks({("address1", "numa-0"): 10})
+    await asyncio.sleep(0.2)
     commited_subtask_ids = (await manager_ref.dump_data())[("address0", "numa-0")]
     assert (
         len(commited_subtask_ids) == 9
-    ), f"commited_subtask_ids {commited_subtask_ids}"
+    ), f"committed_subtask_ids {commited_subtask_ids}"
 
     # 9 subtasks on ('address2', 'numa-0')
-    await queueing_ref.submit_subtasks(band=("address2", "numa-0"), limit=10)
+    await queueing_ref.submit_subtasks({("address2", "numa-0"): 10})
+    await asyncio.sleep(0.2)
     submitted_subtask_ids = await manager_ref.dump_data()
     assert sum(len(v) for v in submitted_subtask_ids.values()) == 18

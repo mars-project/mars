@@ -47,9 +47,19 @@ def _terminate(pid: int):
             continue
 
 
+@pytest.fixture
+def config_log():
+    import logging
+    logging.basicConfig(level=logging.WARNING)
+    try:
+        yield
+    finally:
+        logging.basicConfig(level=logging.DEBUG)
+
+
 @flaky(max_runs=3)
 @pytest.mark.asyncio
-async def test_cluster():
+async def test_cluster(config_log):
     port = get_next_port()
     web_port = get_next_port()
     supervisor_addr = f"127.0.0.1:{port}"
