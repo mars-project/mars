@@ -18,6 +18,7 @@ from typing import Dict, List, Callable
 
 from .....core.context import Context
 from .....storage.base import StorageLevel
+from .....typing import ChunkType
 from .....utils import implements, lazy_import, sync_to_async
 from ....context import ThreadedServiceContext
 from .config import RayExecutionConfig
@@ -159,6 +160,10 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
 class RayExecutionWorkerContext(_RayRemoteObjectContext, dict):
     """The context for executing operands."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._current_chunk = None
+
     @classmethod
     @implements(Context.new_custom_log_dir)
     def new_custom_log_dir(cls):
@@ -198,3 +203,11 @@ class RayExecutionWorkerContext(_RayRemoteObjectContext, dict):
     ):
         logger.info("%s does not support get_storage_info", cls.__name__)
         return {}
+
+    def set_current_chunk(self, chunk: ChunkType):
+        """Set current executing chunk."""
+        self._current_chunk = chunk
+
+    def get_current_chunk(self) -> ChunkType:
+        """Set current executing chunk."""
+        return self._current_chunk

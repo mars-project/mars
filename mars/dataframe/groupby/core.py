@@ -401,11 +401,16 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
                     else:
                         filtered_by.append(v)
                 if isinstance(df, tuple):
-                    ctx[chunk.key, reducer_index] = ctx[op].index, tuple(
+                    ctx[
+                        chunk.key, reducer_index
+                    ] = ctx.get_current_chunk().index, tuple(
                         _take_index(x, index_filter) for x in df
-                    ) + (filtered_by, deliver_by)
+                    ) + (
+                        filtered_by,
+                        deliver_by,
+                    )
                 else:
-                    ctx[chunk.key, reducer_index] = ctx[op].index, (
+                    ctx[chunk.key, reducer_index] = ctx.get_current_chunk().index, (
                         _take_index(df, index_filter),
                         filtered_by,
                         deliver_by,
@@ -413,12 +418,12 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
             else:
                 if isinstance(df, tuple):
                     ctx[chunk.key, reducer_index] = (
-                        ctx[op].index,
+                        ctx.get_current_chunk().index,
                         tuple(_take_index(x, index_filter) for x in df) + (deliver_by,),
                     )
                 else:
                     ctx[chunk.key, reducer_index] = (
-                        ctx[op].index,
+                        ctx.get_current_chunk().index,
                         _take_index(df, index_filter),
                     )
 

@@ -537,8 +537,8 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             ),
         ) in result_store.items():
             ctx[out_samples.key, (reducer_id, 0)] = (
-                ctx[op].key,
-                ctx[op].index,
+                ctx.get_current_chunk().key,
+                ctx.get_current_chunk().index,
                 tuple(samples + labels + weights + feature_idx_array),
             )
 

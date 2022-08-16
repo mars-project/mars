@@ -401,7 +401,7 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
             for ax, to_hash_ind in zip(axes, to_hash_inds):
                 slc = (slice(None),) * ax + (to_hash_ind == index[ax],)
                 selected = _safe_slice(selected, slc, op.output_types[0])
-            ctx[out.key, tuple(index)] = (ctx[op].index, selected)
+            ctx[out.key, tuple(index)] = (ctx.get_current_chunk().index, selected)
 
     @classmethod
     def execute_reduce(cls, ctx, op: "LearnShuffle"):

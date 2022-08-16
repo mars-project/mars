@@ -248,7 +248,10 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
                 ctx[chunk.key] = df.loc[filters[0][0]]
             else:
                 for index_idx, index_filter in enumerate(filters[0]):
-                    ctx[chunk.key, (index_idx,)] = ctx[op].index, df.loc[index_filter]
+                    ctx[chunk.key, (index_idx,)] = (
+                        ctx.get_current_chunk().index,
+                        df.loc[index_filter],
+                    )
             return
 
         if op.column_shuffle_size == -1:
@@ -274,7 +277,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
             for column_idx, column_filter in enumerate(filters[1]):
                 shuffle_index = (chunk.index[0], column_idx)
                 ctx[chunk.key, shuffle_index] = (
-                    ctx[op].index,
+                    ctx.get_current_chunk().index,
                     df.loc[filters[0][0], column_filter],
                 )
         elif len(filters[1]) == 1:
@@ -282,7 +285,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
             for index_idx, index_filter in enumerate(filters[0]):
                 shuffle_index = (index_idx, chunk.index[1])
                 ctx[chunk.key, shuffle_index] = (
-                    ctx[op].index,
+                    ctx.get_current_chunk().index,
                     df.loc[index_filter, filters[1][0]],
                 )
         else:
@@ -296,7 +299,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
             for out_idx, out_index_column in zip(out_idxes, out_index_columns):
                 index_filter, column_filter = out_index_column
                 ctx[chunk.key, out_idx] = (
-                    ctx[op].index,
+                    ctx.get_current_chunk().index,
                     df.loc[index_filter, column_filter],
                 )
 

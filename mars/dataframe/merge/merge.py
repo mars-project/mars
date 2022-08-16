@@ -117,11 +117,15 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
             if index_filter is not None and index_filter is not list():
                 ctx[chunk.key, reducer_index] = (
                     op.mapper_id,
-                    ctx[op].index,
+                    ctx.get_current_chunk().index,
                     df.iloc[index_filter],
                 )
             else:
-                ctx[chunk.key, reducer_index] = (op.mapper_id, ctx[op].index, None)
+                ctx[chunk.key, reducer_index] = (
+                    op.mapper_id,
+                    ctx.get_current_chunk().index,
+                    None,
+                )
 
     @classmethod
     def execute_reduce(cls, ctx, op: "DataFrameMergeAlign"):
