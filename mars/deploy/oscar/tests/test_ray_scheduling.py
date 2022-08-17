@@ -52,6 +52,7 @@ async def speculative_cluster():
             "scheduling": {
                 "speculation": {
                     "enabled": True,
+                    "dry": False,
                     "interval": 0.5,
                     "threshold": 0.2,
                     "min_task_runtime": 2,
@@ -67,7 +68,7 @@ async def speculative_cluster():
 
 
 @pytest.mark.parametrize("ray_large_cluster", [{"num_nodes": 2}], indirect=True)
-@pytest.mark.timeout(timeout=1000)
+@pytest.mark.timeout(timeout=500)
 @require_ray
 @pytest.mark.asyncio
 async def test_task_speculation_execution(ray_large_cluster, speculative_cluster):
@@ -208,7 +209,7 @@ async def test_auto_scale_in(ray_large_cluster):
     client = await new_cluster(
         worker_num=0,
         worker_cpu=2,
-        worker_mem=200 * 102**2,
+        worker_mem=200 * 1024**2,
         supervisor_mem=1 * 1024**3,
         config=config,
     )
@@ -242,7 +243,7 @@ async def test_ownership_when_scale_in(ray_large_cluster):
     client = await new_cluster(
         worker_num=0,
         worker_cpu=2,
-        worker_mem=200 * 1024**2,
+        worker_mem=1 * 1024**3,
         supervisor_mem=200 * 1024**2,
         config={
             "scheduling.autoscale.enabled": True,

@@ -14,6 +14,7 @@
 
 import asyncio
 import copy
+import logging
 from typing import Dict, Union
 
 from ...oscar.profiling import ProfilingData
@@ -25,6 +26,7 @@ from .router import Router
 
 
 ResultMessageType = Union[ResultMessage, ErrorMessage]
+logger = logging.getLogger(__name__)
 
 
 class ActorCaller:
@@ -41,6 +43,14 @@ class ActorCaller:
         if client not in self._clients:
             self._clients[client] = asyncio.create_task(self._listen(client))
             self._client_to_message_futures[client] = dict()
+            client_count = len(self._clients)
+            if client_count >= 100:  # pragma: no cover
+                if (client_count - 100) % 10 == 0:  # pragma: no cover
+                    logger.warning(
+                        "Actor caller has created too many clients (%s >= 100), "
+                        "the global router may not be set.",
+                        client_count,
+                    )
         return client
 
     async def _listen(self, client: Client):
@@ -70,6 +80,16 @@ class ActorCaller:
                 for future in message_futures.values():
                     future.set_exception(copy.copy(e))
             finally:
+                # message may have Ray ObjectRef, delete it early in case next loop doesn't run
+                # as soon as expected.
+                try:
+                    del message
+                except NameError:
+                    pass
+                try:
+                    del future
+                except NameError:
+                    pass
                 await asyncio.sleep(0)
 
         message_futures = self._client_to_message_futures.get(client)

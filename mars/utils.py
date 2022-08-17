@@ -27,6 +27,8 @@ import logging
 import numbers
 import operator
 import os
+import weakref
+
 import cloudpickle as pickle
 import pkgutil
 import random
@@ -559,17 +561,11 @@ def build_fetch_shuffle(
     # to replace ShuffleProxy
     if shuffle_fetch_type is ShuffleFetchType.FETCH_BY_INDEX:
         # skip data keys info for `FETCH_BY_INDEX`
-        source_keys, source_idxes, source_mappers = None, None, None
+        source_keys = None
     else:
-        source_keys, source_idxes, source_mappers = [], [], []
-        for pinp in chunk.inputs:
-            source_keys.append(pinp.key)
-            source_idxes.append(pinp.index)
-            source_mappers.append(get_chunk_mapper_id(pinp))
+        source_keys = [pinp.key for pinp in chunk.inputs]
     op = chunk_op.get_fetch_op_cls(chunk)(
         source_keys=source_keys,
-        source_idxes=source_idxes,
-        source_mappers=source_mappers,
         n_mappers=n_mappers,
         n_reducers=n_reducers,
         shuffle_fetch_type=shuffle_fetch_type,
@@ -635,19 +631,6 @@ def build_fetch(entity: EntityType) -> EntityType:
         return build_fetch_tileable(entity)
     else:
         raise TypeError(f"Type {type(entity)} not supported")
-
-
-def get_chunk_mapper_id(chunk: ChunkType) -> str:
-    op = chunk.op
-    try:
-        return op.mapper_id
-    except AttributeError:
-        from .core.operand import Fuse
-
-        if isinstance(op, Fuse):
-            return chunk.composed[-1].op.mapper_id
-        else:  # pragma: no cover
-            raise
 
 
 def get_chunk_reducer_index(chunk: ChunkType) -> Tuple[int]:
@@ -1617,7 +1600,22 @@ def wrap_exception(
     return new_exc_type().with_traceback(traceback)
 
 
-def get_func_token_values(func):
+_func_token_cache = weakref.WeakKeyDictionary()
+
+
+def get_func_token(func):
+    try:
+        token = _func_token_cache.get(func)
+        if token is None:
+            fields = _get_func_token_values(func)
+            token = tokenize(*fields)
+            _func_token_cache[func] = token
+        return token
+    except TypeError:  # cannot create weak reference to func like 'numpy.ufunc'
+        return tokenize(*_get_func_token_values(func))
+
+
+def _get_func_token_values(func):
     if hasattr(func, "__code__"):
         tokens = [func.__code__.co_code]
         if func.__closure__ is not None:
@@ -1630,7 +1628,7 @@ def get_func_token_values(func):
             tokens.extend([func.args, func.keywords])
             func = func.func
         if hasattr(func, "__code__"):
-            tokens.extend(get_func_token_values(func))
+            tokens.extend(_get_func_token_values(func))
         elif isinstance(func, types.BuiltinFunctionType):
             tokens.extend([func.__module__, func.__name__])
         else:

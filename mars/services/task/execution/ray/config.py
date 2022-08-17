@@ -50,6 +50,9 @@ class RayExecutionConfig(ExecutionConfig):
     def get_subtask_max_retries(self):
         return self._ray_execution_config["subtask_max_retries"]
 
+    def get_subtask_num_cpus(self):
+        return self._ray_execution_config.get("subtask_num_cpus", 1)
+
     def get_n_cpu(self):
         return self._ray_execution_config["n_cpu"]
 

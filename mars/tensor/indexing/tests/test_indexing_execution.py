@@ -307,6 +307,7 @@ def test_mixed_indexing_execution(setup):
     np.testing.assert_array_equal(res, expected)
 
 
+@pytest.mark.ray_dag
 def test_setitem_fancy_index_execution(setup):
     rs = np.random.RandomState(0)
 

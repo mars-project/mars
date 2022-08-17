@@ -30,7 +30,7 @@ from ...serialization.serializables import (
     DictField,
     FunctionField,
 )
-from ...utils import enter_current_session, quiet_stdio, get_func_token_values
+from ...utils import enter_current_session, quiet_stdio, get_func_token, tokenize
 from ..arrays import ArrowArray
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import (
@@ -58,7 +58,7 @@ class ApplyOperandLogicKeyGeneratorMixin(OperatorLogicKeyGeneratorMixin):
             self._elementwise,
         ]
         if self.func:
-            return token_values + get_func_token_values(self.func)
+            return token_values + [get_func_token(self.func)]
         else:  # pragma: no cover
             return token_values
 
@@ -114,6 +114,13 @@ class ApplyOperand(
             _need_clean_up_func=need_clean_up_func,
             **kw,
         )
+
+    def _update_key(self):
+        values = [v for v in self._values_ if v is not self.func] + [
+            get_func_token(self.func)
+        ]
+        self._obj_set("_key", tokenize(type(self).__name__, *values))
+        return self
 
     @property
     def func(self):

@@ -344,7 +344,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
         if subtask_info.cancelling:
             raise asyncio.CancelledError
 
-    async def _remove_mapper_data(
+    async def remove_mapper_data(
         self, session_id: str, band_name: str, remote_mapper_keys: List
     ):
         storage_api = await StorageAPI.create(
@@ -393,7 +393,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 subtask, band_name, subtask_api, batch_quota_req
             )
             if remote_mapper_keys:
-                await self.ref()._remove_mapper_data.tell(
+                await self.ref().remove_mapper_data.tell(
                     subtask.session_id, band_name, remote_mapper_keys
                 )
         except:  # noqa: E722  # pylint: disable=bare-except

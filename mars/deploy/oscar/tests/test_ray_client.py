@@ -64,8 +64,19 @@ while True:
             # Avoid blocking the subprocess when the stdout pipe is full.
             t = threading.Thread(target=_check_ready, args=(True,), daemon=True)
             t.start()
+            try:
+                import ray
 
-            ray.init(f"ray://{address}")
+                ray.client(address).connect()  # Ray 1.4
+            except Exception:
+                try:
+                    from ray.util.client import ray
+
+                    ray.connect(address)  # Ray 1.2
+                except Exception:
+                    import ray
+
+                    ray.init(f"ray://{address}")  # Ray latest
             ray._inside_client_test = True
             try:
                 new_ray_session_test()

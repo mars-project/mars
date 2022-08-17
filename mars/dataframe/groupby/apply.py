@@ -28,7 +28,7 @@ from ...serialization.serializables import (
     StringField,
 )
 from ...core.operand import OperatorLogicKeyGeneratorMixin
-from ...utils import enter_current_session, quiet_stdio, get_func_token_values
+from ...utils import enter_current_session, quiet_stdio, get_func_token, tokenize
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import (
     auto_merge_chunks,
@@ -47,7 +47,7 @@ class GroupByApplyLogicKeyGeneratorMixin(OperatorLogicKeyGeneratorMixin):
     def _get_logic_key_token_values(self):
         token_values = super()._get_logic_key_token_values()
         if self.func:
-            return token_values + get_func_token_values(self.func)
+            return token_values + [get_func_token(self.func)]
         else:  # pragma: no cover
             return token_values
 
@@ -68,6 +68,13 @@ class GroupByApply(
 
     def __init__(self, output_types=None, **kw):
         super().__init__(_output_types=output_types, **kw)
+
+    def _update_key(self):
+        values = [v for v in self._values_ if v is not self.func] + [
+            get_func_token(self.func)
+        ]
+        self._obj_set("_key", tokenize(type(self).__name__, *values))
+        return self
 
     @classmethod
     @redirect_custom_log

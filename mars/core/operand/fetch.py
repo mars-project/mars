@@ -52,8 +52,6 @@ class FetchShuffle(Operand):
     _op_type_ = opcodes.FETCH_SHUFFLE
 
     source_keys = ListField("source_keys", FieldTypes.string)
-    source_idxes = ListField("source_idxes", FieldTypes.tuple(FieldTypes.uint64))
-    source_mappers = ListField("source_mappers", FieldTypes.uint16)
     n_mappers = Int32Field("n_mappers")
     n_reducers = Int32Field("n_reducers")
     shuffle_fetch_type = ReferenceField("shuffle_fetch_type")

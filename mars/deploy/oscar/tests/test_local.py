@@ -941,6 +941,7 @@ min_task_runtime = 2
 async def speculative_cluster():
     config = _load_config()
     config["scheduling"]["speculation"]["enabled"] = True
+    config["scheduling"]["speculation"]["dry"] = False
     config["scheduling"]["speculation"]["interval"] = 0.5
     config["scheduling"]["speculation"]["threshold"] = 0.2
     config["scheduling"]["speculation"]["min_task_runtime"] = min_task_runtime
