@@ -283,12 +283,10 @@ class TaskProcessorActor(mo.Actor, _TaskInfoProcessorMixin):
         self,
         session_id: str,
         task_id: str,
-        task_name: str = None,
         task_processor_cls: Type[TaskPreprocessor] = None,
     ):
         self.session_id = session_id
         self.task_id = task_id
-        self.task_name = task_name
 
         self._task_processor_cls = self._get_task_processor_cls(task_processor_cls)
         self._task_id_to_processor = dict()

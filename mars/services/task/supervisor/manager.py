@@ -73,9 +73,6 @@ class ResultTileableInfo:
 
 
 class TaskManagerActor(mo.Actor):
-    _task_name_to_parent_task_id: Dict[str, str]
-    _task_name_to_task_ids: Dict[str, List[str]]
-
     _task_id_to_processor_ref: Dict[str, mo.ActorRefType[TaskProcessorActor]]
     _tileable_key_to_info: Dict[str, List[ResultTileableInfo]]
 
@@ -87,9 +84,6 @@ class TaskManagerActor(mo.Actor):
         self._task_processor_cls = None
         self._task_preprocessor_cls = None
         self._last_idle_time = None
-
-        self._task_name_to_parent_task_id = dict()
-        self._task_name_to_task_ids = defaultdict(list)
 
         self._task_id_to_processor_ref = dict()
         self._tileable_key_to_info = defaultdict(list)
@@ -125,40 +119,24 @@ class TaskManagerActor(mo.Actor):
     async def submit_tileable_graph(
         self,
         graph: TileableGraph,
-        task_name: str = None,
         fuse_enabled: bool = None,
         extra_config: dict = None,
     ) -> str:
         self._last_idle_time = None
-        if task_name is None:
-            # new task without task name
-            task_id = task_name = new_task_id()
-            parent_task_id = new_task_id()
-        elif task_name in self._task_name_to_parent_task_id:
-            # task with the same name submitted before
-            parent_task_id = self._task_name_to_parent_task_id[task_name]
-            task_id = new_task_id()
-        else:
-            # new task with task_name
-            task_id = new_task_id()
-            parent_task_id = new_task_id()
+        # new task with task_name
+        task_id = new_task_id()
+        parent_task_id = new_task_id()
 
         uid = TaskProcessorActor.gen_uid(self._session_id, parent_task_id)
-        if task_name not in self._task_name_to_parent_task_id:
-            # gen main task which mean each submission from user
-            processor_ref = await mo.create_actor(
-                TaskProcessorActor,
-                self._session_id,
-                parent_task_id,
-                task_name=task_name,
-                task_processor_cls=self._task_processor_cls,
-                address=self.address,
-                uid=uid,
-            )
-            self._task_name_to_parent_task_id[task_name] = parent_task_id
-        else:
-            processor_ref = await mo.actor_ref(mo.ActorRef(self.address, uid))
-        self._task_name_to_task_ids[task_name].append(task_id)
+        # gen main task which mean each submission from user
+        processor_ref = await mo.create_actor(
+            TaskProcessorActor,
+            self._session_id,
+            parent_task_id,
+            task_processor_cls=self._task_processor_cls,
+            address=self.address,
+            uid=uid,
+        )
         self._task_id_to_processor_ref[task_id] = processor_ref
 
         if fuse_enabled is None:
@@ -168,7 +146,6 @@ class TaskManagerActor(mo.Actor):
             task_id,
             self._session_id,
             graph,
-            task_name,
             parent_task_id=parent_task_id,
             fuse_enabled=fuse_enabled,
             extra_config=extra_config,
@@ -206,7 +183,8 @@ class TaskManagerActor(mo.Actor):
                 pass
             except Exception:  # pragma: no cover
                 logger.exception(
-                    "The _remove_task_processor_actor is done with exception, task id: %s, processor_ref.",
+                    "The _remove_task_processor_actor is done with exception, "
+                    "task id: %s, processor ref: %s.",
                     task_id,
                     processor_ref,
                 )

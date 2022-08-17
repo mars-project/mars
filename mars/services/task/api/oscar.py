@@ -59,13 +59,12 @@ class TaskAPI(AbstractTaskAPI):
     async def submit_tileable_graph(
         self,
         graph: TileableGraph,
-        task_name: str = None,
         fuse_enabled: bool = None,
         extra_config: dict = None,
     ) -> str:
         try:
             return await self._task_manager_ref.submit_tileable_graph(
-                graph, task_name, fuse_enabled=fuse_enabled, extra_config=extra_config
+                graph, fuse_enabled=fuse_enabled, extra_config=extra_config
             )
         except mo.ActorNotExist:
             raise RuntimeError("Session closed already")

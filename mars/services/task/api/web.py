@@ -74,7 +74,6 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
             deserialize_serializable(self.request.body) if self.request.body else None
         )
 
-        task_name = body_args.get("task_name", None) or None
         fuse_enabled = body_args.get("fuse")
 
         graph = body_args["graph"]
@@ -85,7 +84,6 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         oscar_api = await self._get_oscar_task_api(session_id)
         task_id = await oscar_api.submit_tileable_graph(
             graph,
-            task_name=task_name,
             fuse_enabled=fuse_enabled,
             extra_config=extra_config,
         )
@@ -212,7 +210,6 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
     async def submit_tileable_graph(
         self,
         graph: TileableGraph,
-        task_name: str = None,
         fuse_enabled: bool = True,
         extra_config: dict = None,
     ) -> str:
@@ -222,7 +219,6 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
         )
         body = serialize_serializable(
             {
-                "task_name": task_name if task_name else "",
                 "fuse": fuse_enabled,
                 "graph": graph,
                 "extra_config": extra_config_ser,
