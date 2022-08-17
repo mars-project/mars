@@ -13,19 +13,21 @@
 # limitations under the License.
 
 import asyncio
+import functools
 import importlib
 import logging
 import os
 import sys
 import time
 import weakref
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from typing import Any, Dict, List, Type
 
 from .... import oscar as mo
 from ....core import TileableGraph, TileableType, enter_mode, TileContext
 from ....core.operand import Fetch
+from ....utils import add_aiotask_done_check_callback
 from ...subtask import SubtaskResult, SubtaskGraph
 from ..config import task_options
 from ..core import Task, new_task_id, TaskStatus
@@ -34,8 +36,9 @@ from .preprocessor import TaskPreprocessor
 from .processor import TaskProcessor
 from .task import TaskProcessorActor
 
+MARS_RESERVED_FINISH_TASKS = int(os.environ.get("MARS_RESERVED_FINISH_TASKS", 10))
+
 logger = logging.getLogger(__name__)
-_is_ci = (os.environ.get("CI") or "0").lower() in ("1", "true")
 
 
 class TaskConfigurationActor(mo.Actor):
@@ -61,7 +64,7 @@ class TaskConfigurationActor(mo.Actor):
         }
 
 
-class _TaskResultTileableRef:
+class _RefHolder:
     pass
 
 
@@ -69,7 +72,7 @@ class _TaskResultTileableRef:
 class ResultTileableInfo:
     tileable: TileableType
     processor_ref: mo.ActorRefType[TaskProcessorActor]
-    ref_holder: _TaskResultTileableRef
+    ref_holder: _RefHolder
 
 
 class TaskManagerActor(mo.Actor):
@@ -87,6 +90,7 @@ class TaskManagerActor(mo.Actor):
 
         self._task_id_to_processor_ref = dict()
         self._tileable_key_to_info = defaultdict(list)
+        self._reserved_finish_tasks = deque(maxlen=MARS_RESERVED_FINISH_TASKS)
 
     async def __post_create__(self):
         # get config
@@ -160,41 +164,22 @@ class TaskManagerActor(mo.Actor):
             self._task_preprocessor_cls,
         )
 
-        no_result_tileable_ref = asyncio.Event()
-
-        async def _remove_task_processor_actor():
-            # TODO(fyrestone): Clean task name to task ids.
-            await asyncio.gather(processor_ref.wait(), no_result_tileable_ref.wait())
-            self._task_id_to_processor_ref.pop(task_id, None)
-            try:
-                await processor_ref.destroy()
-            except Exception:
-                # multiple task id may share one TaskProcessorActor instance, the processor_ref
-                # will be called multiple times after these all the tasks are finish.
-                pass
-
-        task = asyncio.create_task(_remove_task_processor_actor())
-
-        def _on_remove_task_processor_actor_aiotask_done(fut):
-            # Print the error of monitor task.
-            try:
-                fut.result()
-            except asyncio.CancelledError:
-                pass
-            except Exception:  # pragma: no cover
-                logger.exception(
-                    "The _remove_task_processor_actor is done with exception, "
-                    "task id: %s, processor ref: %s.",
+        def _on_finalize():
+            # The loop may be closed before the weakref is dead.
+            if loop.is_running():
+                aiotask = loop.create_task(
+                    self._move_task_to_reserved(loop, task_id, processor_ref)
+                )
+                add_aiotask_done_check_callback(
+                    aiotask,
+                    "_move_task_to_reserved failed, task id: %s, processor ref: %s",
                     task_id,
                     processor_ref,
                 )
-                if _is_ci:
-                    sys.exit(-1)
 
-        task.add_done_callback(_on_remove_task_processor_actor_aiotask_done)
-
-        task_ref = _TaskResultTileableRef()
-        weakref.finalize(task_ref, no_result_tileable_ref.set)
+        loop = asyncio.get_running_loop()
+        task_ref = _RefHolder()
+        weakref.finalize(task_ref, _on_finalize)
         for tileable in graph.result_tileables:
             info = ResultTileableInfo(
                 tileable=tileable, processor_ref=processor_ref, ref_holder=task_ref
@@ -202,6 +187,22 @@ class TaskManagerActor(mo.Actor):
             self._tileable_key_to_info[tileable.key].append(info)
 
         return task_id
+
+    async def _move_task_to_reserved(self, loop, task_id, processor_ref):
+        await processor_ref.wait()
+
+        ref_holder = _RefHolder()
+        self._reserved_finish_tasks.append(ref_holder)
+
+        def _remove_task():
+            self._task_id_to_processor_ref.pop(task_id, None)
+            if loop.is_running():
+                aiotask = loop.create_task(processor_ref.destroy())
+                add_aiotask_done_check_callback(
+                    aiotask, "destroy processor ref %s failed.", processor_ref
+                )
+
+        weakref.finalize(ref_holder, _remove_task)
 
     async def get_subtask_graphs(self, task_id: str) -> List[SubtaskGraph]:
         try:

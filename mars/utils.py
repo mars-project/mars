@@ -91,6 +91,7 @@ ceildiv = ceildiv
 reset_id_random_seed = reset_id_random_seed
 new_random_id = new_random_id
 _create_task = asyncio.create_task
+_is_ci = (os.environ.get("CI") or "0").lower() in ("1", "true")
 
 
 # fix encoding conversion problem under windows
@@ -1766,3 +1767,20 @@ def retry_callable(
             raise ex  # pylint: disable-msg=E0702
 
     return retry_call
+
+
+def add_aiotask_done_check_callback(
+    aiotask: asyncio.Task, exception_formatter: str, *args
+):
+    def _on_mars_aiotask_done(fut):
+        # Print the error of task.
+        try:
+            fut.result()
+        except asyncio.CancelledError:
+            pass
+        except Exception:  # pragma: no cover
+            logger.exception(exception_formatter, *args)
+            if _is_ci:
+                sys.exit(-1)
+
+    aiotask.add_done_callback(_on_mars_aiotask_done)
