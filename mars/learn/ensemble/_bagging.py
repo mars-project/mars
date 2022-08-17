@@ -536,8 +536,10 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
                 feature_idx_array,
             ),
         ) in result_store.items():
-            ctx[out_samples.key, (reducer_id, 0)] = tuple(
-                samples + labels + weights + feature_idx_array
+            ctx[out_samples.key, (reducer_id, 0)] = (
+                ctx.get_current_chunk().key,
+                ctx.get_current_chunk().index,
+                tuple(samples + labels + weights + feature_idx_array),
             )
 
     @classmethod
@@ -545,10 +547,6 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
         out_data, out_labels, out_weights, out_feature_indices = _extract_bagging_io(
             op.outputs, op, output=True
         )
-
-        input_keys = op.inputs[0].op.source_keys
-        input_idxes = op.inputs[0].op.source_idxes
-
         sample_holder = [
             np.empty(op.chunk_shape, dtype=object) for _ in range(op.n_estimators)
         ]
@@ -571,10 +569,13 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             else None
         )
 
-        for input_key, input_idx in zip(input_keys, input_idxes):
+        input_indexes = [
+            (source_key, idx) for source_key, idx, _ in op.iter_mapper_data(ctx)
+        ]
+        for input_key, input_idx in input_indexes:
             add_feature_index = input_idx[0] == 0
             add_label_weight = input_idx[1] == op.chunk_shape[1] - 1
-            chunk_data = ctx[input_key, out_data.index]
+            chunk_data = ctx[input_key, out_data.index][-1]
 
             num_groups = 1
             if add_feature_index and op.with_feature_indices:

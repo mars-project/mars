@@ -350,11 +350,14 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 # counts
                 if counts_ar is not None:
                     res.append(counts_ar[cond])
-                ctx[op.outputs[0].key, (reducer,)] = tuple(res)
+                ctx[op.outputs[0].key, (reducer,)] = (
+                    ctx.get_current_chunk().index,
+                    tuple(res),
+                )
 
     @classmethod
     def _execute_agg_reduce(cls, ctx, op: "TensorUnique"):
-        input_indexes, input_data = zip(*list(op.iter_mapper_data_with_index(ctx)))
+        input_indexes, input_data = zip(*list(op.iter_mapper_data(ctx)))
 
         inputs = list(zip(*input_data))
         flatten, device_id, xp = as_same_device(
