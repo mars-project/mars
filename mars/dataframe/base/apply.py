@@ -78,7 +78,7 @@ class ApplyOperand(
     # func_key may be string or ObjectRef, while ray.ObjectRef
     # shall be serialized by Ray rather than Mars
     _func_key = AnyField("func_key")
-    _func_clean_up = BoolField("func_clean_up")
+    _need_clean_up_func = BoolField("need_clean_up_func")
     _args = TupleField("args")
     _kwds = DictField("kwds")
 
@@ -95,7 +95,7 @@ class ApplyOperand(
         elementwise=None,
         logic_key=None,
         func_key=None,
-        func_clean_up=False,
+        need_clean_up_func=False,
         **kw,
     ):
         if output_type:
@@ -111,7 +111,7 @@ class ApplyOperand(
             _elementwise=elementwise,
             _logic_key=logic_key,
             _func_key=func_key,
-            _func_clean_up=func_clean_up,
+            _need_clean_up_func=need_clean_up_func,
             **kw,
         )
 
@@ -160,12 +160,12 @@ class ApplyOperand(
         self._func_key = func_key
 
     @property
-    def func_clean_up(self):
-        return self._func_clean_up
+    def need_clean_up_func(self):
+        return self._need_clean_up_func
 
-    @func_clean_up.setter
-    def func_clean_up(self, func_clean_up):
-        self._func_clean_up = func_clean_up
+    @need_clean_up_func.setter
+    def need_clean_up_func(self, need_clean_up_func: bool):
+        self._need_clean_up_func = need_clean_up_func
 
     @property
     def args(self):

@@ -64,7 +64,7 @@ class GroupByApply(
     maybe_agg = BoolField("maybe_agg", default=None)
     logic_key = StringField("logic_key", default=None)
     func_key = AnyField("func_key", default=None)
-    func_clean_up = BoolField("func_clean_up", default=False)
+    need_clean_up_func = BoolField("need_clean_up_func", default=False)
 
     def __init__(self, output_types=None, **kw):
         super().__init__(_output_types=output_types, **kw)

@@ -1439,15 +1439,19 @@ def clean_up_func(op):
     )
     if closure_clean_up_bytes_threshold == -1:  # pragma: no cover
         return
+    ctx = get_context()
+    if ctx is None:
+        return
     # note: Vineyard internally uses `pickle` which fails to pickle
     # cell objects and corresponding functions.
     if vineyard is not None:
-        logger.warning(
-            "Func cleanup currently does not support vineyard and is currently disabled."
-        )
-        return
+        storage_backend = ctx.get_storage_info()
+        if storage_backend.get("name", None) == "vineyard":
+            logger.warning(
+                "Func cleanup is currently disabled when vineyard is used as storage backend."
+            )
+            return
 
-    ctx = get_context()
     func = op.func
     if hasattr(func, "__closure__") and func.__closure__ is not None:
         counted_bytes = 0
@@ -1455,11 +1459,15 @@ def clean_up_func(op):
             # note: another applicable way of measurements is df.memory_usage(index=True, deep=False).sum()
             counted_bytes += sys.getsizeof(cell.cell_contents)
             if counted_bytes >= closure_clean_up_bytes_threshold:
-                op.func_clean_up = True
+                op.need_clean_up_func = True
                 break
-    if op.func_clean_up and ctx is not None:
+    if op.need_clean_up_func:
+        # note: when used in ray task mode, data key is ray.ObjectRef which is returned
+        # after func being put into storage.
         if isinstance(ctx, RayExecutionContext):  # pragma: no cover
             op.func_key = ctx.storage_put(op.func)
+        # note: when used in normal mode, data key is logic key while the returned data_info
+        # is not used as key.
         elif isinstance(ctx, ThreadedServiceContext):
             assert op.logic_key is not None
             op.func_key = op.logic_key
@@ -1470,5 +1478,5 @@ def clean_up_func(op):
 
 
 def restore_func(ctx: Context, op):
-    if op.func_clean_up and ctx is not None:
+    if op.need_clean_up_func and ctx is not None:
         op.func = ctx.storage_get(op.func_key)
