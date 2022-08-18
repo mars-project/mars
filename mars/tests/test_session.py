@@ -515,7 +515,6 @@ def test_cache_tileable(setup):
 
 @pytest.mark.parametrize("method", ["shuffle", "broadcast", None])
 @pytest.mark.parametrize("auto_merge", ["after", "before"])
-@pytest.mark.ray_dag
 def test_merge_groupby(setup, method, auto_merge):
     rs = np.random.RandomState(0)
     raw1 = pd.DataFrame({"a": rs.randint(3, size=100), "b": rs.rand(100)})
