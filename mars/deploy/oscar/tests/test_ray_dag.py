@@ -184,23 +184,3 @@ def test_executor_context_gc(ray_start_regular_shared2, config):
 async def test_execute_describe(ray_start_regular_shared2, create_cluster):
     # `describe` contains multiple shuffle.
     await test_local.test_execute_describe(create_cluster)
-
-
-@require_ray
-@pytest.mark.parametrize("method", ["broadcast", None])
-@pytest.mark.parametrize("auto_merge", ["before", "after"])
-def test_merge_groupby(ray_start_regular_shared2, create_cluster, method, auto_merge):
-    rs = np.random.RandomState(0)
-    raw1 = pd.DataFrame({"a": rs.randint(3, size=100), "b": rs.rand(100)})
-    raw2 = pd.DataFrame({"a": rs.randint(3, size=10), "c": rs.rand(10)})
-    df1 = md.DataFrame(raw1, chunk_size=10).execute()
-    df2 = md.DataFrame(raw2, chunk_size=10).execute()
-    # do not trigger auto merge
-    df3 = df1.merge(
-        df2, on="a", auto_merge_threshold=8, method=method, auto_merge=auto_merge
-    )
-    df4 = df3.groupby("a").sum()
-
-    result = df4.execute().fetch()
-    expected = raw1.merge(raw2, on="a").groupby("a").sum()
-    pd.testing.assert_frame_equal(result, expected)
