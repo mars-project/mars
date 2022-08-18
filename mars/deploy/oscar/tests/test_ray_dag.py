@@ -16,11 +16,8 @@ import copy
 import os
 import time
 
-import numpy as np
-import pandas as pd
 import pytest
 
-from .... import dataframe as md
 from .... import get_context
 from .... import tensor as mt
 from ....tests.core import DICT_NOT_EMPTY, require_ray
