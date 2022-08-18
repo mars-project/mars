@@ -233,7 +233,7 @@ def array(x, dtype=None, copy=True, order="K", ndmin=None, chunk_size=None):
         Notes section. The default order is 'K'.
     ndmin : int, optional
         Specifies the minimum number of dimensions that the resulting
-        array should have.  Ones will be pre-pended to the shape as
+        array should have.  Ones will be prepended to the shape as
         needed to meet this requirement.
     chunk_size: int, tuple, optional
         Specifies chunk size for each dimension.
