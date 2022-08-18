@@ -85,7 +85,6 @@ class NumExprExecutionSuite:
     def time_numexpr_subtask_execution(self):
         for asv_subtask_info in self.asv_subtasks:
             execute_subtask(
-                "",
                 asv_subtask_info.subtask_id,
                 asv_subtask_info.serialized_subtask_chunk_graph,
                 set(),
