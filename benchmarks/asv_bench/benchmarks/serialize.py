@@ -47,7 +47,7 @@ from mars.services.subtask import Subtask, SubtaskResult, SubtaskStatus
 from mars.services.task import new_task_id
 from mars.utils import tokenize
 
-# do warmup
+# do warm up
 serialize(None)
 
 
