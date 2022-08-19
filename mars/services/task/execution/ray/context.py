@@ -155,7 +155,7 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
         # Returns virtual worker addresses.
         return self._worker_addresses
 
-    def storage_put(self, key: str, obj):  # pragma: no cover
+    def storage_put(self, key: str = None, obj=None):  # pragma: no cover
         return ray.put(obj)
 
 
