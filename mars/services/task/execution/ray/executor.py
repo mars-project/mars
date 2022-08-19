@@ -227,11 +227,6 @@ def execute_subtask(
         output_values.append(output_meta)
     output_values.extend(normal_output.values())
     output_values.extend(mapper_output.values())
-
-    if not is_mapper:
-        expect_output_keys, _ = _get_subtask_out_info(subtask_chunk_graph, False)
-        output_keys = normal_output.keys()
-        assert expect_output_keys == output_keys, (expect_output_keys, output_keys)
     logger.info("Finish executing subtask %s.", subtask_id)
     return output_values[0] if len(output_values) == 1 else output_values
 
@@ -553,9 +548,9 @@ class RayTaskExecutor(TaskExecutor):
                 output_meta_object_refs.append(meta_object_ref)
             if is_mapper:
                 shuffle_manager.add_mapper_output_refs(
-                    subtask, output_object_refs[len(subtask_output_meta_keys) :]
+                    subtask, output_object_refs[-n_reducers:]
                 )
-                output_object_refs = output_object_refs[: len(subtask_output_meta_keys)]
+                output_object_refs = output_object_refs[:-n_reducers]
             subtask_outputs = zip(output_keys, output_object_refs)
             task_context.update(subtask_outputs)
         logger.info("Submitted %s subtasks of stage %s.", len(subtask_graph), stage_id)
