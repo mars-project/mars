@@ -13,11 +13,8 @@
 # limitations under the License.
 
 import asyncio
-import functools
 import importlib
 import logging
-import os
-import sys
 import time
 import weakref
 from collections import defaultdict, deque
@@ -35,8 +32,6 @@ from ..errors import TaskNotExist
 from .preprocessor import TaskPreprocessor
 from .processor import TaskProcessor
 from .task import TaskProcessorActor
-
-MARS_RESERVED_FINISH_TASKS = int(os.environ.get("MARS_RESERVED_FINISH_TASKS", 10))
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +72,7 @@ class ResultTileableInfo:
 
 class TaskManagerActor(mo.Actor):
     _task_id_to_processor_ref: Dict[str, mo.ActorRefType[TaskProcessorActor]]
-    _tileable_key_to_info: Dict[str, List[ResultTileableInfo]]
+    _result_tileable_key_to_info: Dict[str, List[ResultTileableInfo]]
 
     def __init__(self, session_id: str):
         self._session_id = session_id
@@ -89,8 +84,7 @@ class TaskManagerActor(mo.Actor):
         self._last_idle_time = None
 
         self._task_id_to_processor_ref = dict()
-        self._tileable_key_to_info = defaultdict(list)
-        self._reserved_finish_tasks = deque(maxlen=MARS_RESERVED_FINISH_TASKS)
+        self._result_tileable_key_to_info = defaultdict(list)
 
     async def __post_create__(self):
         # get config
@@ -110,6 +104,9 @@ class TaskManagerActor(mo.Actor):
             task_conf["task_preprocessor_cls"],
         )
         self._task_preprocessor_cls = self._get_task_preprocessor_cls()
+        reserved_finish_tasks = task_conf["task_options"].reserved_finish_tasks
+        logger.info("Task manager reserves %s finish tasks.", reserved_finish_tasks)
+        self._reserved_finish_tasks = deque(maxlen=reserved_finish_tasks)
 
     async def __pre_destroy__(self):
         for processor_ref in self._task_id_to_processor_ref.values():
@@ -129,14 +126,13 @@ class TaskManagerActor(mo.Actor):
         self._last_idle_time = None
         # new task with task_name
         task_id = new_task_id()
-        parent_task_id = new_task_id()
 
-        uid = TaskProcessorActor.gen_uid(self._session_id, parent_task_id)
+        uid = TaskProcessorActor.gen_uid(self._session_id, task_id)
         # gen main task which mean each submission from user
         processor_ref = await mo.create_actor(
             TaskProcessorActor,
             self._session_id,
-            parent_task_id,
+            task_id,
             task_processor_cls=self._task_processor_cls,
             address=self.address,
             uid=uid,
@@ -150,7 +146,6 @@ class TaskManagerActor(mo.Actor):
             task_id,
             self._session_id,
             graph,
-            parent_task_id=parent_task_id,
             fuse_enabled=fuse_enabled,
             extra_config=extra_config,
         )
@@ -184,7 +179,7 @@ class TaskManagerActor(mo.Actor):
             info = ResultTileableInfo(
                 tileable=tileable, processor_ref=processor_ref, ref_holder=task_ref
             )
-            self._tileable_key_to_info[tileable.key].append(info)
+            self._result_tileable_key_to_info[tileable.key].append(info)
 
         return task_id
 
@@ -242,7 +237,7 @@ class TaskManagerActor(mo.Actor):
         tiled_context = TileContext()
         for tileable in graph:
             if isinstance(tileable.op, Fetch) and tileable.is_coarse():
-                info = self._tileable_key_to_info[tileable.key][-1]
+                info = self._result_tileable_key_to_info[tileable.key][-1]
                 tiled_context[tileable] = await info.processor_ref.get_result_tileable(
                     tileable.key
                 )
@@ -354,4 +349,4 @@ class TaskManagerActor(mo.Actor):
     async def remove_tileables(self, tileable_keys: List[str]):
         # TODO(fyrestone) yield
         for key in tileable_keys:
-            self._tileable_key_to_info.pop(key, None)
+            self._result_tileable_key_to_info.pop(key, None)

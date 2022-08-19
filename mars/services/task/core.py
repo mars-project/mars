@@ -39,7 +39,6 @@ class TaskStatus(Enum):
 class Task(Serializable):
     task_id: str = StringField("task_id")
     session_id: str = StringField("session_id")
-    parent_task_id: str = StringField("parent_task_id")
     tileable_graph: TileableGraph = ReferenceField("tileable_graph", TileableGraph)
     fuse_enabled: bool = BoolField("fuse_enabled")
     rerun_time: int = Int32Field("rerun_time")
@@ -50,7 +49,6 @@ class Task(Serializable):
         task_id: str = None,
         session_id: str = None,
         tileable_graph: TileableGraph = None,
-        parent_task_id: str = None,
         fuse_enabled: bool = True,
         rerun_time: int = 0,
         extra_config: dict = None,
@@ -58,7 +56,6 @@ class Task(Serializable):
         super().__init__(
             task_id=task_id,
             session_id=session_id,
-            parent_task_id=parent_task_id,
             tileable_graph=tileable_graph,
             fuse_enabled=fuse_enabled,
             rerun_time=rerun_time,

@@ -327,6 +327,8 @@ class TaskProcessorActor(mo.Actor, _TaskInfoProcessorMixin):
     @classmethod
     def _get_task_processor_cls(cls, task_processor_cls):
         if task_processor_cls is not None:  # pragma: no cover
+            if isinstance(task_processor_cls, type):
+                return task_processor_cls
             assert isinstance(task_processor_cls, str)
             module, name = task_processor_cls.rsplit(".", 1)
             return getattr(importlib.import_module(module), name)

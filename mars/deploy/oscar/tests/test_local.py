@@ -22,6 +22,7 @@ import tempfile
 import textwrap
 import time
 import uuid
+import weakref
 
 import numpy as np
 import pandas as pd
@@ -41,6 +42,7 @@ from ....core.context import get_context
 from ....lib.aio import new_isolation
 from ....storage import StorageLevel
 from ....services.storage import StorageAPI
+from ....services.task.supervisor.task import TaskProcessor
 from ....tensor.arithmetic.add import TensorAdd
 from ....tests.core import mock, check_dict_structure_same, DICT_NOT_EMPTY
 from ..local import new_cluster, _load_config
@@ -641,7 +643,7 @@ def setup_session(request):
     param = getattr(request, "param", {})
     config = param.get("config", {})
     session = new_session(
-        backend=config.get("backend", "mars"), n_cpu=2, use_uvloop=False
+        backend=config.get("backend", "mars"), n_cpu=2, use_uvloop=False, config=config
     )
     assert session.get_web_endpoint() is not None
 
@@ -652,6 +654,39 @@ def setup_session(request):
         session.stop_server()
 
 
+WeakTaskProcessorRefs = weakref.WeakSet()
+
+
+class CheckRefTaskProcessor(TaskProcessor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        WeakTaskProcessorRefs.add(self)
+
+    @staticmethod
+    def check_ref_count(count):
+        for _ in range(10):
+            if len(WeakTaskProcessorRefs) == count:
+                break
+            time.sleep(1)
+        else:
+            raise Exception(
+                f"Check TaskProcessor weakref failed, expect {count} instances, "
+                f"but got {WeakTaskProcessorRefs}"
+            )
+
+
+@pytest.mark.parametrize(
+    "setup_session",
+    [
+        {
+            "config": {
+                "task.default_config.reserved_finish_tasks": 2,
+                "task.task_processor_cls": CheckRefTaskProcessor,
+            }
+        }
+    ],
+    indirect=True,
+)
 def test_decref(setup_session):
     session = setup_session
 
@@ -664,6 +699,8 @@ def test_decref(setup_session):
     b.execute()
     c.execute()
     d.execute()
+
+    CheckRefTaskProcessor.check_ref_count(4)
 
     del a
     ref_counts = session._get_ref_counts()
@@ -678,6 +715,8 @@ def test_decref(setup_session):
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
 
+    CheckRefTaskProcessor.check_ref_count(2)
+
     rs = np.random.RandomState(0)
     pdf = pd.DataFrame({"a": rs.randint(10, size=10), "b": rs.rand(10)})
     df = md.DataFrame(pdf, chunk_size=5)
@@ -686,9 +725,13 @@ def test_decref(setup_session):
     expected = pdf.groupby("a").agg("mean")
     pd.testing.assert_frame_equal(result, expected)
 
+    CheckRefTaskProcessor.check_ref_count(3)
+
     del df, df2
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
+
+    CheckRefTaskProcessor.check_ref_count(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
         file_path = os.path.join(tempdir, "test.csv")
