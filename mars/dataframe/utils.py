@@ -1461,6 +1461,7 @@ def clean_up_func(op):
             if counted_bytes >= closure_clean_up_bytes_threshold:
                 op.need_clean_up_func = True
                 break
+    # note: op.func_key is set to not None only when op.need_clean_up_func is True.
     if op.need_clean_up_func:
         # note: when used in ray task mode, data key is ray.ObjectRef which is returned
         # after func being put into storage.
@@ -1479,4 +1480,6 @@ def clean_up_func(op):
 
 def restore_func(ctx: Context, op):
     if op.need_clean_up_func and ctx is not None:
+        assert op.func_key is not None
+        assert op.func is None
         op.func = ctx.storage_get(op.func_key)

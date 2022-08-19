@@ -653,22 +653,10 @@ def test_auto_merge_chunks():
     assert len(s2.chunks[1].op.inputs) == 2
 
 
-async def set_up_context(session_id, address):
-    loop = asyncio.get_running_loop()
-    context = ThreadedServiceContext(session_id, address, address, address, loop=loop)
-    await context.init()
-    set_context(context)
-
-
+# TODO: maybe async test with pytest.mark.asyncio
 def test_clean_up_and_restore_func(setup):
-    asyncio.run(clean_up_and_restore_func(setup=setup))
-
-
-async def clean_up_and_restore_func(setup):
-    await set_up_context(setup.session_id, setup.address)
-    ctx = get_context()
-    assert ctx is not None
-    assert isinstance(ctx, ThreadedServiceContext)
+    session_id = setup.session_id
+    address = setup.address
 
     cols = [chr(ord("A") + i) for i in range(10)]
     df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
@@ -693,23 +681,31 @@ async def clean_up_and_restore_func(setup):
     op_large = r_large.op
     op_large.logic_key = op_large.get_logic_key()
 
-    loop = asyncio.get_event_loop()
-    thread_pool = ThreadPoolExecutor(max_workers=1)
-    # no need to clean up
-    await loop.run_in_executor(thread_pool, clean_up_func, op_small)
-    assert op_small.need_clean_up_func is False
-    assert op_small.logic_key is not None
-    assert op_small.func_key is None
-    assert op_small.func is not None
+    asyncio.run(clean_up_and_restore_func(session_id, address, op_small, op_large))
 
-    # need to clean up
-    await loop.run_in_executor(thread_pool, clean_up_func, op_large)
-    assert op_large.need_clean_up_func is True
-    assert op_large.logic_key is not None
-    assert op_large.func_key == op_large.logic_key
-    assert op_large.func is None
 
-    # need to restore
-    assert op_large.func_key is not None
-    await loop.run_in_executor(thread_pool, restore_func, ctx, op_large)
-    assert op_large.func is not None
+async def clean_up_and_restore_func(session_id, address, op_small, op_large):
+    loop = asyncio.get_running_loop()
+    ctx = ThreadedServiceContext(session_id, address, address, address, loop=loop)
+    await ctx.init()
+    set_context(ctx)
+
+    with ThreadPoolExecutor(max_workers=1) as thread_pool:
+        # no need to clean up
+        await loop.run_in_executor(thread_pool, clean_up_func, op_small)
+        assert op_small.need_clean_up_func is False
+        assert op_small.logic_key is not None
+        assert op_small.func_key is None
+        assert op_small.func is not None
+
+        # need to clean up
+        await loop.run_in_executor(thread_pool, clean_up_func, op_large)
+        assert op_large.need_clean_up_func is True
+        assert op_large.logic_key is not None
+        assert op_large.func_key == op_large.logic_key
+        assert op_large.func is None
+
+        # need to restore
+        assert op_large.func_key is not None
+        await loop.run_in_executor(thread_pool, restore_func, ctx, op_large)
+        assert op_large.func is not None
