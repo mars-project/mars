@@ -193,27 +193,24 @@ def execute_subtask(
     # For non-mapper subtask, output context is chunk key to results.
     # For mapper subtasks, output context is data key to results.
     # `iter_output_data` must ensure values order since we only return values.
-    output = {
-        key: data for key, data, _ in iter_output_data(subtask_chunk_graph, context)
-    }
-    output_values = []
+    normal_output = {}
     mapper_output = {}
+    for key, data, is_mapper_block in iter_output_data(subtask_chunk_graph, context):
+        if is_mapper_block:
+            mapper_output[key] = data
+        else:
+            normal_output[key] = data
+    output_values = []
     # assert output keys order consistent
     if is_mapper:
         # mapper may produce outputs which isn't shuffle blocks, such as TensorUnique._execute_agg_reduce.
-        mapper_main_keys = set()
-        for k, v in output.items():
-            if k not in output_meta_keys:
-                mapper_output[k] = v
-                mapper_main_keys.add(k[0])
+        mapper_main_keys = set(k[0] for k in mapper_output.keys())
         assert len(mapper_main_keys) == 1, mapper_main_keys
         # sorted reducer_index's consistency with reducer_ordinal is checked in
         # `OperandTilesHandler._check_shuffle_reduce_chunks`.
         # So sort keys by reducer_index to ensure mapper outputs consist with reducer_ordinal,
         # then downstream can fetch shuffle blocks by reducer_ordinal.
         mapper_output = dict(sorted(mapper_output.items(), key=lambda item: item[0][1]))
-        for mapper_key in mapper_output.keys():
-            output.pop(mapper_key)
     if output_meta_keys:
         output_meta = {}
         # for non-shuffle subtask, record meta in supervisor.
@@ -228,12 +225,12 @@ def execute_subtask(
                 output_meta[chunk_key] = get_chunk_params(chunk), memory_size
         assert len(output_meta_keys) == len(output_meta)
         output_values.append(output_meta)
-    output_values.extend(output.values())
+    output_values.extend(normal_output.values())
     output_values.extend(mapper_output.values())
 
     if not is_mapper:
         expect_output_keys, _ = _get_subtask_out_info(subtask_chunk_graph, False)
-        output_keys = output.keys()
+        output_keys = normal_output.keys()
         assert expect_output_keys == output_keys, (expect_output_keys, output_keys)
     logger.info("Finish executing subtask %s.", subtask_id)
     return output_values[0] if len(output_values) == 1 else output_values
@@ -259,29 +256,28 @@ def _get_subtask_out_info(
     # dict can preserve insert order.
     output_keys = {}
     shuffle_chunk = None
+    if is_mapper:
+        assert n_reducers is not None
+        if len(subtask_chunk_graph.result_chunks) == 1:
+            return set(), n_reducers
+        for chunk in subtask_chunk_graph.result_chunks:
+            if not chunk.is_mapper:
+                output_keys[chunk.key] = 1
+                # mapper may produce outputs which isn't shuffle blocks, such as TensorUnique._execute_agg_reduce
+                # which is  mapper too, but some outputs are not mapper blocks:
+                # https://user-images.githubusercontent.com/12445254/184132642-a19259fd-43d6-4a27-a033-4aaa97d7586e.svg
+            else:
+                assert shuffle_chunk is None, (shuffle_chunk, chunk)
+                shuffle_chunk = chunk
+        return output_keys.keys(), len(output_keys) + n_reducers
     for chunk in subtask_chunk_graph.result_chunks:
         if isinstance(
             chunk.op, VirtualOperand
         ):  # FIXME(chaokunyang) no need to check this?
             continue
-        elif is_mapper:
-            if len(subtask_chunk_graph.result_chunks) == 1:
-                return set(), n_reducers
-            elif not chunk.is_mapper:
-                output_keys[chunk.key] = 1
-            else:
-                assert shuffle_chunk is None, (shuffle_chunk, chunk)
-                shuffle_chunk = chunk
         else:
             output_keys[chunk.key] = 1
-    output_count = len(output_keys)
-    if is_mapper:
-        assert n_reducers is not None
-        # mapper may produce outputs which isn't shuffle blocks, such as TensorUnique._execute_agg_reduce which is
-        # mapper too, but some outputs are not mapper blocks:
-        # https://user-images.githubusercontent.com/12445254/184132642-a19259fd-43d6-4a27-a033-4aaa97d7586e.svg
-        output_count += n_reducers
-    return output_keys.keys(), output_count
+    return output_keys.keys(), len(output_keys)
 
 
 @register_executor_cls
