@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import operator
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor
 from numbers import Integral
 from typing import List, Dict
 
@@ -26,10 +24,7 @@ import pytest
 from ...config import option_context
 from ...core import tile
 from ...utils import Timer
-from ...services.context import ThreadedServiceContext
-from ...core.context import get_context, set_context
 from ..core import IndexValue
-from ..datasource.dataframe import from_pandas as from_pandas_df
 from ..initializer import DataFrame, Series, Index
 from ..utils import (
     decide_dataframe_chunk_sizes,
@@ -46,8 +41,6 @@ from ..utils import (
     build_concatenated_rows_frame,
     merge_index_value,
     auto_merge_chunks,
-    clean_up_func,
-    restore_func,
 )
 
 
@@ -651,61 +644,3 @@ def test_auto_merge_chunks():
     assert isinstance(s2.chunks[1].op, DataFrameConcat)
     assert s2.chunks[1].name == "a"
     assert len(s2.chunks[1].op.inputs) == 2
-
-
-# TODO: maybe async test with pytest.mark.asyncio
-def test_clean_up_and_restore_func(setup):
-    session_id = setup.session_id
-    address = setup.address
-
-    cols = [chr(ord("A") + i) for i in range(10)]
-    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
-    df = from_pandas_df(df_raw, chunk_size=5)
-
-    x_small = pd.Series([i for i in range(10)])
-    y_small = pd.Series([i for i in range(10)])
-    x_large = pd.Series([i for i in range(10**4)])
-    y_large = pd.Series([i for i in range(10**4)])
-
-    def closure_small(z):
-        return pd.concat([x_small, y_small], ignore_index=True)
-
-    def closure_large(z):
-        return pd.concat([x_large, y_large], ignore_index=True)
-
-    r_small = df.apply(closure_small, axis=1)
-    op_small = r_small.op
-    op_small.logic_key = op_small.get_logic_key()
-
-    r_large = df.apply(closure_large, axis=1)
-    op_large = r_large.op
-    op_large.logic_key = op_large.get_logic_key()
-
-    asyncio.run(clean_up_and_restore_func(session_id, address, op_small, op_large))
-
-
-async def clean_up_and_restore_func(session_id, address, op_small, op_large):
-    loop = asyncio.get_running_loop()
-    ctx = ThreadedServiceContext(session_id, address, address, address, loop=loop)
-    await ctx.init()
-    set_context(ctx)
-
-    with ThreadPoolExecutor(max_workers=1) as thread_pool:
-        # no need to clean up
-        await loop.run_in_executor(thread_pool, clean_up_func, op_small)
-        assert op_small.need_clean_up_func is False
-        assert op_small.logic_key is not None
-        assert op_small.func_key is None
-        assert op_small.func is not None
-
-        # need to clean up
-        await loop.run_in_executor(thread_pool, clean_up_func, op_large)
-        assert op_large.need_clean_up_func is True
-        assert op_large.logic_key is not None
-        assert op_large.func_key == op_large.logic_key
-        assert op_large.func is None
-
-        # need to restore
-        assert op_large.func_key is not None
-        await loop.run_in_executor(thread_pool, restore_func, ctx, op_large)
-        assert op_large.func is not None
