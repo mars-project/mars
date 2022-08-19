@@ -123,26 +123,6 @@ async def test_ray_executor_create(
     assert mock_ray_get.call_count == 1
     assert mock_task_state_actor_create.call_count == 1
 
-    # Create RayTaskState actor in advance if create_task_state_actor_as_needed is False
-    mock_config = RayExecutionConfig.from_execution_config(
-        {"backend": "ray", "ray": {"create_task_state_actor_as_needed": False}}
-    )
-    executor = await MockRayTaskExecutor.create(
-        mock_config,
-        session_id="mock_session_id",
-        address="mock_address",
-        task=task,
-        tile_context=TileContext(),
-    )
-    assert isinstance(executor, MockRayTaskExecutor)
-    assert mock_ray_get.call_count == 1
-    assert mock_task_state_actor_create.call_count == 2
-    ctx = get_context()
-    assert isinstance(ctx, RayExecutionContext)
-    ctx.create_remote_object("abc", lambda: None)
-    assert mock_ray_get.call_count == 2
-    assert mock_task_state_actor_create.call_count == 2
-
 
 @pytest.mark.asyncio
 async def test_ray_executor_destroy():
@@ -178,11 +158,11 @@ def test_ray_execute_subtask_basic():
 
     subtask_id = new_task_id()
     subtask_chunk_graph = _gen_subtask_chunk_graph(b)
-    r = execute_subtask("", subtask_id, serialize(subtask_chunk_graph), set(), False)
+    r = execute_subtask(subtask_id, serialize(subtask_chunk_graph), set(), False)
     np.testing.assert_array_equal(r, raw_expect)
     test_get_meta_chunk = subtask_chunk_graph.result_chunks[0]
     r = execute_subtask(
-        "", subtask_id, serialize(subtask_chunk_graph), {test_get_meta_chunk.key}, False
+        subtask_id, serialize(subtask_chunk_graph), {test_get_meta_chunk.key}, False
     )
     assert len(r) == 2
     meta_dict, r = r
@@ -225,11 +205,21 @@ async def test_ray_remote_object(ray_start_regular_shared2):
         def __init__(self, i):
             self._i = i
 
+        def value(self):
+            return self._i
+
         def foo(self, a, b):
             return self._i + a + b
 
         async def bar(self, a, b):
             return self._i * a * b
+
+    # Test RayTaskState reference
+    state = RayTaskState.create()
+    await state.create_remote_object.remote("aaa", _TestRemoteObject, 123)
+    assert await state.call_remote_object.remote("aaa", "value") == 123
+    state = RayTaskState.create()
+    assert await state.call_remote_object.remote("aaa", "value") == 123
 
     # Test RayRemoteObjectManager
     name = "abc"
@@ -244,8 +234,7 @@ async def test_ray_remote_object(ray_start_regular_shared2):
         await manager.call_remote_object(name, "foo", 3, 4)
 
     # Test _RayRemoteObjectContext
-    test_task_id = "test_task_id"
-    context = _RayRemoteObjectContext(lambda: RayTaskState.create(test_task_id))
+    context = _RayRemoteObjectContext(lambda: RayTaskState.create())
     context.create_remote_object(name, _TestRemoteObject, 2)
     remote_object = context.get_remote_object(name)
     r = remote_object.foo(3, 4)
@@ -266,7 +255,7 @@ async def test_ray_remote_object(ray_start_regular_shared2):
     with pytest.raises(MyException):
         context.create_remote_object(name, _ErrorRemoteObject)
 
-    handle = RayTaskState.get_handle(test_task_id)
+    handle = RayTaskState.get_handle()
     assert handle is not None
 
 
