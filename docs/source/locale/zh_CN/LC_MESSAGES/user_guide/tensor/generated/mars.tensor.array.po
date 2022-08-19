@@ -135,7 +135,7 @@ msgstr ""
 #: mars.tensor.array:34 of
 msgid ""
 "Specifies the minimum number of dimensions that the resulting array "
-"should have.  Ones will be pre-pended to the shape as needed to meet this"
+"should have.  Ones will be prepended to the shape as needed to meet this"
 " requirement."
 msgstr ""
 
