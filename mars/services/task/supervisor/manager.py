@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Type
 from .... import oscar as mo
 from ....core import TileableGraph, TileableType, enter_mode, TileContext
 from ....core.operand import Fetch
+from ....oscar.errors import ServerClosed
 from ....utils import add_aiotask_done_check_callback
 from ...subtask import SubtaskResult, SubtaskGraph
 from ..config import task_options
@@ -184,15 +185,24 @@ class TaskManagerActor(mo.Actor):
         return task_id
 
     async def _move_task_to_reserved(self, loop, task_id, processor_ref):
-        await processor_ref.wait()
+        try:
+            await processor_ref.wait()
+        except (ServerClosed, ConnectionRefusedError):
+            pass
 
         ref_holder = _RefHolder()
         self._reserved_finish_tasks.append(ref_holder)
 
+        async def _destroy_actor():
+            try:
+                await processor_ref.destroy()
+            except (ServerClosed, ConnectionRefusedError):
+                pass
+
         def _remove_task():
             self._task_id_to_processor_ref.pop(task_id, None)
             if loop.is_running():
-                aiotask = loop.create_task(processor_ref.destroy())
+                aiotask = loop.create_task(_destroy_actor())
                 add_aiotask_done_check_callback(
                     aiotask, "destroy processor ref %s failed.", processor_ref
                 )
