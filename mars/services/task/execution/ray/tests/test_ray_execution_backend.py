@@ -23,6 +23,7 @@ from ......config import Config
 from ......core import TileContext
 from ......core.context import get_context
 from ......core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from ......lib.aio.isolation import new_isolation, stop_isolation
 from ......resource import Resource
 from ......serialization import serialize
 from ......tests.core import require_ray, mock
@@ -41,6 +42,7 @@ from ..executor import (
     execute_subtask,
     RayTaskExecutor,
     RayTaskState,
+    _RayChunkMeta,
 )
 from ..fetcher import RayFetcher
 
@@ -276,17 +278,41 @@ def test_ray_execution_context(ray_start_regular_shared2):
     def fake_init(self):
         pass
 
-    with mock.patch.object(ThreadedServiceContext, "__init__", new=fake_init):
+    async def fake_get_chunks_meta_from_service(
+        self, data_keys, fields=None, error="raise"
+    ):
+        mock_meta = {"meta_1": {fields[0]: 1}, "meta_3": {fields[0]: 3}}
+        return [mock_meta[k] for k in data_keys]
+
+    with mock.patch.object(
+        ThreadedServiceContext, "__init__", new=fake_init
+    ), mock.patch.object(
+        RayExecutionContext,
+        "_get_chunks_meta_from_service",
+        new=fake_get_chunks_meta_from_service,
+    ):
         mock_config = RayExecutionConfig.from_execution_config({"backend": "ray"})
         mock_worker_addresses = ["mock_worker_address"]
-        context = RayExecutionContext(
-            mock_config, {"abc": o}, {}, mock_worker_addresses, lambda: None
-        )
-        r = context.get_chunks_result(["abc"])
-        assert r == [value]
+        isolation = new_isolation("test", threaded=True)
+        try:
+            context = RayExecutionContext(
+                mock_config, {"abc": o}, {}, mock_worker_addresses, lambda: None
+            )
+            context._loop = isolation.loop
+            r = context.get_chunks_result(["abc"])
+            assert r == [value]
 
-        r = context.get_worker_addresses()
-        assert r == mock_worker_addresses
+            r = context.get_worker_addresses()
+            assert r == mock_worker_addresses
+
+            r = context.get_chunks_meta(["meta_1"], fields=["memory_size"])
+            assert r == [{"memory_size": 1}]
+
+            context._task_chunks_meta["meta_1"] = _RayChunkMeta(memory_size=2)
+            r = context.get_chunks_meta(["meta_1", "meta_3"], fields=["memory_size"])
+            assert r == [{"memory_size": 2}, {"memory_size": 3}]
+        finally:
+            stop_isolation("test")
 
 
 def test_ray_execution_worker_context():
