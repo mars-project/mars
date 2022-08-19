@@ -347,6 +347,6 @@ class TaskManagerActor(mo.Actor):
         return self._last_idle_time
 
     async def remove_tileables(self, tileable_keys: List[str]):
-        # TODO(fyrestone) yield
+        # TODO(fyrestone) yield if needed.
         for key in tileable_keys:
             self._result_tileable_key_to_info.pop(key, None)
