@@ -21,6 +21,9 @@ class ChunkData(EntityData):
     __slots__ = ()
 
     is_broadcaster = BoolField("is_broadcaster", default=False)
+    # If the operand is a shuffle mapper, this flag indicates whether the current chunk is mapper chunk when
+    # the operand produce multiple chunks such as TensorUnique.
+    is_mapper = BoolField("is_mapper", default=False)
     # optional fields
     _index = TupleField("index", FieldTypes.uint32)
 

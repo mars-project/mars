@@ -21,6 +21,7 @@ import pytest
 
 from .... import get_context
 from .... import tensor as mt
+from ....tests import test_session
 from ....tests.core import DICT_NOT_EMPTY, require_ray
 from ....utils import lazy_import
 from ..local import new_cluster
@@ -182,6 +183,14 @@ def test_executor_context_gc(ray_start_regular_shared2, config):
 async def test_execute_describe(ray_start_regular_shared2, create_cluster):
     # `describe` contains multiple shuffle.
     await test_local.test_execute_describe(create_cluster)
+
+
+@require_ray
+@pytest.mark.parametrize("method", ["shuffle", "broadcast", None])
+@pytest.mark.parametrize("auto_merge", ["after", "before"])
+def test_merge_groupby(ray_start_regular_shared2, setup, method, auto_merge):
+    # add ray_dag decorator to the test_merge_groupby makes the raylet crash.
+    test_session.test_merge_groupby(setup, method, auto_merge)
 
 
 # Before PR #3165 is merged, func cleanup is temporarily disabled under ray task mode.

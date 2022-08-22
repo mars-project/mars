@@ -68,7 +68,7 @@ def test_linear_regression(setup):
     assert_array_almost_equal(reg.intercept_, model.intercept_)
     assert_array_almost_equal(reg.predict(X), model.predict(X))
 
-    # Extra case #1: singluar matrix, degenerate input
+    # Extra case #1: singular matrix, degenerate input
     error_msg = re.escape("Does not support sigular matrix!")
 
     X = [[1]]
@@ -78,7 +78,7 @@ def test_linear_regression(setup):
     with pytest.raises(NotImplementedError, match=error_msg):
         reg.fit(X, Y)
 
-    # # Extra case #2: algebrically singluar matrix but algorithmically not
+    # # Extra case #2: algebrically singular matrix but algorithmically not
     # # Works locally but not work in github checks
     # # May be because the inverse is super large
     # X = [[1, 1.5], [1.8, 2]]
