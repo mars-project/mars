@@ -74,8 +74,10 @@ def shutdown_metrics():
 
 def _check_metrics_valid():
     if _init is False:
-        raise RuntimeError(
-            "Metrics are not initialized, please call `init_metrics()` first."
+        logger.warning(
+            "Metrics' backend is not initialized explicitly, use `console` "
+            "backend by default. You can call like `init_metrics(backend="
+            "'prometheus')` before using metrics."
         )
 
 
