@@ -1442,7 +1442,12 @@ def clean_up_func(op):
     ctx = get_context()
     if ctx is None:
         return
-    # note: Vineyard internally uses `pickle` which fails to pickle
+    # Before PR #3165 is merged, func cleanup is temporarily disabled under ray task mode.
+    # https://github.com/mars-project/mars/pull/3165
+    if isinstance(ctx, RayExecutionContext):
+        logger.warning("Func cleanup is currently disabled under ray task mode.")
+        return
+    # Note: Vineyard internally uses `pickle` which fails to pickle
     # cell objects and corresponding functions.
     if vineyard is not None:
         storage_backend = ctx.get_storage_info()
@@ -1456,21 +1461,22 @@ def clean_up_func(op):
     if hasattr(func, "__closure__") and func.__closure__ is not None:
         counted_bytes = 0
         for cell in func.__closure__:
-            # note: another applicable way of measurements is df.memory_usage(index=True, deep=False).sum()
             counted_bytes += sys.getsizeof(cell.cell_contents)
             if counted_bytes >= closure_clean_up_bytes_threshold:
                 op.need_clean_up_func = True
                 break
-    # note: op.func_key is set to not None only when op.need_clean_up_func is True.
+    # Note: op.func_key is set to not None only when op.need_clean_up_func is True.
     if op.need_clean_up_func:
-        # note: when used in ray task mode, data key is ray.ObjectRef which is returned
+        # Note: when used in ray task mode, data key is ray.ObjectRef which is returned
         # after func being put into storage.
-        if isinstance(ctx, RayExecutionContext):  # pragma: no cover
-            op.func_key = ctx.storage_put(op.func)
-        # note: when used in normal mode, data key is logic key while the returned data_info
+        # if isinstance(ctx, RayExecutionContext):
+        #     op.func_key = ctx.storage_put(None, op.func)
+        # Note: when used in normal mode, data key is logic key while the returned data_info
         # is not used as key.
-        elif isinstance(ctx, ThreadedServiceContext):
-            assert op.logic_key is not None
+        if isinstance(ctx, ThreadedServiceContext):
+            assert (
+                op.logic_key is not None
+            ), "Logic key wasn't calculated before cleaning up func."
             op.func_key = op.logic_key
             ctx.storage_put(op.func_key, op.func)
         else:  # pragma: no cover
@@ -1480,6 +1486,10 @@ def clean_up_func(op):
 
 def restore_func(ctx: Context, op):
     if op.need_clean_up_func and ctx is not None:
-        assert op.func_key is not None
-        assert op.func is None
+        assert (
+            op.func_key is not None
+        ), "Func key wasn't properly set while cleaning up func."
+        assert (
+            op.func is None
+        ), "While restoring func, op.func should be None to ensure that cleanup was executed."
         op.func = ctx.storage_get(op.func_key)

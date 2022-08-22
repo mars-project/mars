@@ -155,9 +155,6 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
         # Returns virtual worker addresses.
         return self._worker_addresses
 
-    def storage_put(self, key: str = None, obj=None):  # pragma: no cover
-        return ray.put(obj)
-
 
 # TODO(fyrestone): Implement more APIs for Ray.
 class RayExecutionWorkerContext(_RayRemoteObjectContext, dict):
@@ -206,10 +203,6 @@ class RayExecutionWorkerContext(_RayRemoteObjectContext, dict):
     ):
         logger.info("%s does not support get_storage_info", cls.__name__)
         return {}
-
-    @classmethod
-    def storage_get(cls, obj_ref):  # pragma: no cover
-        return ray.get(obj_ref)
 
     def set_current_chunk(self, chunk: ChunkType):
         """Set current executing chunk."""

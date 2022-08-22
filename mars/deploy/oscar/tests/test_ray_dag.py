@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import logging
 import os
 import time
 
@@ -181,3 +182,13 @@ def test_executor_context_gc(ray_start_regular_shared2, config):
 async def test_execute_describe(ray_start_regular_shared2, create_cluster):
     # `describe` contains multiple shuffle.
     await test_local.test_execute_describe(create_cluster)
+
+
+# Before PR #3165 is merged, func cleanup is temporarily disabled under ray task mode.
+# https://github.com/mars-project/mars/pull/3165
+@require_ray
+@pytest.mark.asyncio
+async def test_execute_apply_closure(ray_start_regular_shared2, create_cluster, caplog):
+    with caplog.at_level(logging.WARNING):
+        await test_local.test_execute_apply_closure(create_cluster)
+    assert "Func cleanup is currently disabled under ray task mode." in caplog.text
