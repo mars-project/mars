@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import contextlib
 import importlib
 import logging
 import time
@@ -185,21 +186,19 @@ class TaskManagerActor(mo.Actor):
         return task_id
 
     async def _move_task_to_reserved(self, loop, task_id, processor_ref):
-        try:
+        with contextlib.suppress(ServerClosed, ConnectionRefusedError):
             await processor_ref.wait()
-        except (ServerClosed, ConnectionRefusedError):
-            pass
 
+        logger.debug("Move task %s to reserved.", task_id)
         ref_holder = _RefHolder()
         self._reserved_finish_tasks.append(ref_holder)
 
         async def _destroy_actor():
-            try:
+            with contextlib.suppress(ServerClosed, ConnectionRefusedError):
                 await processor_ref.destroy()
-            except (ServerClosed, ConnectionRefusedError):
-                pass
 
         def _remove_task():
+            logger.debug("Remove task %s.", task_id)
             self._task_id_to_processor_ref.pop(task_id, None)
             if loop.is_running():
                 aiotask = loop.create_task(_destroy_actor())
@@ -247,7 +246,9 @@ class TaskManagerActor(mo.Actor):
         tiled_context = TileContext()
         for tileable in graph:
             if isinstance(tileable.op, Fetch) and tileable.is_coarse():
-                info = self._result_tileable_key_to_info[tileable.key][-1]
+                info_list = self._result_tileable_key_to_info[tileable.key]
+                assert info_list, f"The tileable {tileable.key} has no info."
+                info = info_list[-1]
                 tiled_context[tileable] = await info.processor_ref.get_result_tileable(
                     tileable.key
                 )
@@ -358,5 +359,6 @@ class TaskManagerActor(mo.Actor):
 
     async def remove_tileables(self, tileable_keys: List[str]):
         # TODO(fyrestone) yield if needed.
+        logger.debug("Remove tileables: %s", tileable_keys)
         for key in tileable_keys:
             self._result_tileable_key_to_info.pop(key, None)
