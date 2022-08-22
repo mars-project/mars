@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Type
 from .... import oscar as mo
 from ....core import TileableGraph, TileableType, enter_mode, TileContext
 from ....core.operand import Fetch
-from ....oscar.errors import ServerClosed
+from ....oscar.errors import ServerClosed, ActorNotExist
 from ....utils import add_aiotask_done_check_callback
 from ...subtask import SubtaskResult, SubtaskGraph
 from ..config import task_options
@@ -181,12 +181,18 @@ class TaskManagerActor(mo.Actor):
             info = ResultTileableInfo(
                 tileable=tileable, processor_ref=processor_ref, ref_holder=task_ref
             )
+            logger.debug(
+                "Add tileable info, task id: %s, tileable key: %s",
+                task_id,
+                tileable.key,
+            )
             self._result_tileable_key_to_info[tileable.key].append(info)
 
         return task_id
 
     async def _move_task_to_reserved(self, loop, task_id, processor_ref):
-        with contextlib.suppress(ServerClosed, ConnectionRefusedError):
+        # TODO(fyrestone): Find a better way to wait and destroy the processor actor.
+        with contextlib.suppress(ActorNotExist, ServerClosed, ConnectionRefusedError):
             await processor_ref.wait()
 
         logger.debug("Move task %s to reserved.", task_id)
@@ -194,7 +200,9 @@ class TaskManagerActor(mo.Actor):
         self._reserved_finish_tasks.append(ref_holder)
 
         async def _destroy_actor():
-            with contextlib.suppress(ServerClosed, ConnectionRefusedError):
+            with contextlib.suppress(
+                ActorNotExist, ServerClosed, ConnectionRefusedError
+            ):
                 await processor_ref.destroy()
 
         def _remove_task():
@@ -359,6 +367,6 @@ class TaskManagerActor(mo.Actor):
 
     async def remove_tileables(self, tileable_keys: List[str]):
         # TODO(fyrestone) yield if needed.
-        logger.debug("Remove tileables: %s", tileable_keys)
+        logger.debug("Remove tileable info: %s", tileable_keys)
         for key in tileable_keys:
             self._result_tileable_key_to_info.pop(key, None)

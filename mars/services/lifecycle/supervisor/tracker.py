@@ -228,6 +228,17 @@ class LifecycleTrackerActor(mo.Actor):
         )
         return decref_chunk_keys
 
+    def _get_remove_tileable_keys(self, tileable_keys: List[str]) -> List[str]:
+        to_remove_tileable_keys = []
+        for tileable_key in tileable_keys:
+            if self._tileable_ref_counts[tileable_key] <= 0:
+                if all(
+                    self._chunk_ref_counts[chunk_key] <= 0
+                    for chunk_key in self._tileable_key_to_chunk_keys[tileable_key]
+                ):
+                    to_remove_tileable_keys.append(tileable_key)
+        return to_remove_tileable_keys
+
     async def decref_tileables(
         self, tileable_keys: List[str], counts: List[int] = None
     ):
@@ -241,7 +252,7 @@ class LifecycleTrackerActor(mo.Actor):
             counts=list(decref_chunk_key_to_counts.values()),
         )
         to_remove_tileable_keys = await asyncio.to_thread(
-            list, (key for key in tileable_keys if self._tileable_ref_counts[key] <= 0)
+            self._get_remove_tileable_keys, tileable_keys
         )
         coros = []
         if to_remove_chunk_keys:
