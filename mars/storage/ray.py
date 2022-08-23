@@ -179,7 +179,6 @@ class RayStorage(StorageBackend):
                 1000,
             ),
         ]
-        logger.info("Ray support batch_put API: %s", _support_batch_put)
 
     @classmethod
     @implements(StorageBackend.setup)
