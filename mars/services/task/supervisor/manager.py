@@ -169,7 +169,7 @@ class TaskManagerActor(mo.Actor):
                 )
                 add_aiotask_done_check_callback(
                     aiotask,
-                    "_move_task_to_reserved failed, task id: %s, processor ref: %s",
+                    "Move task to reserved failed, task id: %s, processor ref: %s",
                     task_id,
                     processor_ref,
                 )
@@ -211,7 +211,7 @@ class TaskManagerActor(mo.Actor):
             if loop.is_running():
                 aiotask = loop.create_task(_destroy_actor())
                 add_aiotask_done_check_callback(
-                    aiotask, "destroy processor ref %s failed.", processor_ref
+                    aiotask, "Destroy processor ref %s failed.", processor_ref
                 )
 
         weakref.finalize(ref_holder, _remove_task)
@@ -369,4 +369,14 @@ class TaskManagerActor(mo.Actor):
         # TODO(fyrestone) yield if needed.
         logger.debug("Remove tileable info: %s", tileable_keys)
         for key in tileable_keys:
-            self._result_tileable_key_to_info.pop(key, None)
+            info_list = self._result_tileable_key_to_info.pop(key, [])
+            if info_list:
+                processor_is_done = await asyncio.gather(
+                    *(info.processor_ref.is_done() for info in info_list)
+                )
+                not_done_info = [
+                    info
+                    for info, is_done in zip(info_list, processor_is_done)
+                    if not is_done
+                ]
+                self._result_tileable_key_to_info[key] = not_done_info

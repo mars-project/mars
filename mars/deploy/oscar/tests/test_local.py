@@ -14,6 +14,7 @@
 
 import asyncio
 import copy
+import gc
 import os
 import subprocess
 import sys
@@ -662,6 +663,11 @@ class CheckRefTaskProcessor(TaskProcessor):
         super().__init__(*args, **kwargs)
         WeakTaskProcessorRefs.add(self)
 
+    async def run(self):
+        # Trigger tileable gc before execute.
+        gc.collect()
+        return await super().run()
+
     @staticmethod
     def check_ref_count(count):
         for _ in range(10):
@@ -752,6 +758,22 @@ def test_decref(setup_session):
 
         ref_counts = session._get_ref_counts()
         assert len(ref_counts) == 0
+
+    for a in ((1, 1, 1, 2, 2, 3), [1, 1, 1, 2, 2, 3]):
+        splits = mt.split(a, (3, 5))
+        assert len(splits) == 3
+        splits0 = splits[0].execute().fetch()
+        np.testing.assert_array_equal(splits0, (1, 1, 1))
+        splits1 = splits[1].execute().fetch()
+        np.testing.assert_array_equal(splits1, (2, 2))
+        splits2 = splits[2].execute().fetch()
+        np.testing.assert_array_equal(splits2, (3,))
+
+    del splits, splits0, splits1, splits2
+
+    gc.collect()
+    ref_counts = session._get_ref_counts()
+    assert len(ref_counts) == 0
 
     worker_addr = session._session.client._cluster._worker_pools[0].external_address
     _assert_storage_cleaned(session.session_id, worker_addr, StorageLevel.MEMORY)
