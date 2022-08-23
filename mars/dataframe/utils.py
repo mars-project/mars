@@ -32,7 +32,6 @@ from ..config import options
 from ..core import Entity, ExecutableTuple
 from ..core.context import Context, get_context
 from ..lib.mmh3 import hash as mmh_hash
-from ..services.context import ThreadedServiceContext
 from ..services.task.execution.ray.context import RayExecutionContext
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
 from ..typing import ChunkType, TileableType
@@ -1465,22 +1464,12 @@ def clean_up_func(op):
             if counted_bytes >= closure_clean_up_bytes_threshold:
                 op.need_clean_up_func = True
                 break
-    # Note: op.func_key is set to not None only when op.need_clean_up_func is True.
+    # Note: op.func_key is set only when op.need_clean_up_func is True.
     if op.need_clean_up_func:
-        # Note: when used in ray task mode, data key is ray.ObjectRef which is returned
-        # after func being put into storage.
-        # if isinstance(ctx, RayExecutionContext):
-        #     op.func_key = ctx.storage_put(None, op.func)
-        # Note: when used in normal mode, data key is logic key while the returned data_info
-        # is not used as key.
-        if isinstance(ctx, ThreadedServiceContext):
-            assert (
-                op.logic_key is not None
-            ), "Logic key wasn't calculated before cleaning up func."
-            op.func_key = op.logic_key
-            ctx.storage_put(op.func_key, op.func)
-        else:  # pragma: no cover
-            raise Exception("unknown context type: %s", type(ctx))
+        assert (
+            op.logic_key is not None
+        ), "Logic key wasn't calculated before cleaning up func."
+        op.func_key = ctx.storage_put(op.func)
         op.func = None
 
 

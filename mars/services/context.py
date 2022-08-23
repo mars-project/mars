@@ -23,7 +23,7 @@ from ..lib.aio import new_isolation
 from ..core.context import Context
 from ..storage.base import StorageLevel
 from ..typing import BandType, SessionType
-from ..utils import implements, is_ray_address
+from ..utils import implements, is_ray_address, new_random_id
 from .cluster import ClusterAPI, NodeRole
 from .session import SessionAPI
 from .storage import StorageAPI
@@ -193,8 +193,10 @@ class ThreadedServiceContext(Context):
             )
         await storage_api.fetch.batch(*fetches)
 
-    def storage_put(self, key: str, obj: object):
-        return self._call(self._storage_put(key, obj))
+    def storage_put(self, obj: object):
+        key = new_random_id(32)
+        self._call(self._storage_put(key=key, obj=obj))
+        return key
 
     async def _storage_put(self, key: str, obj: object):
         storage_api = await StorageAPI.create(self.session_id, self.supervisor_address)
