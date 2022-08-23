@@ -1776,7 +1776,7 @@ def add_aiotask_done_check_callback(
         # Print the error of task.
         try:
             fut.result()
-        except asyncio.CancelledError:
+        except asyncio.CancelledError:  # pragma: no cover
             pass
         except Exception:  # pragma: no cover
             logger.exception(exception_formatter, *args)
