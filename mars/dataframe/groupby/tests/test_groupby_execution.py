@@ -932,6 +932,43 @@ def test_groupby_apply(setup):
     )
 
 
+def test_groupby_apply_closure(setup):
+    # DataFrame
+    df1 = pd.DataFrame(
+        {
+            "a": [3, 4, 5, 3, 5, 4, 1, 2, 3],
+            "b": [1, 3, 4, 5, 6, 5, 4, 4, 4],
+            "c": list("aabaaddce"),
+        }
+    )
+
+    x, y = 10, 11
+
+    def apply_closure_df(df):
+        return df["a"].max() * x
+
+    def apply_closure_series(s):
+        return s.mean() * y
+
+    mdf = md.DataFrame(df1, chunk_size=3)
+
+    applied = mdf.groupby("b").apply(apply_closure_df)
+    pd.testing.assert_series_equal(
+        applied.execute().fetch().sort_index(),
+        df1.groupby("b").apply(apply_closure_df).sort_index(),
+    )
+
+    # Series
+    series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
+    ms1 = md.Series(series1, chunk_size=3)
+
+    applied = ms1.groupby(lambda x: x % 3).apply(apply_closure_series)
+    pd.testing.assert_series_equal(
+        applied.execute().fetch().sort_index(),
+        series1.groupby(lambda x: x % 3).apply(apply_closure_series).sort_index(),
+    )
+
+
 @pytest.mark.ray_dag
 def test_groupby_transform(setup):
     df1 = pd.DataFrame(

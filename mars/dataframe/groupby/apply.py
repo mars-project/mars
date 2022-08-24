@@ -20,10 +20,12 @@ from ...core import OutputType
 from ...core.context import get_context
 from ...core.custom_log import redirect_custom_log
 from ...serialization.serializables import (
+    AnyField,
     BoolField,
     TupleField,
     DictField,
     FunctionField,
+    StringField,
 )
 from ...core.operand import OperatorLogicKeyGeneratorMixin
 from ...utils import enter_current_session, quiet_stdio, get_func_token, tokenize
@@ -36,6 +38,8 @@ from ..utils import (
     validate_output_types,
     make_dtypes,
     make_dtype,
+    clean_up_func,
+    restore_func,
 )
 
 
@@ -58,6 +62,9 @@ class GroupByApply(
     args = TupleField("args", default_factory=tuple)
     kwds = DictField("kwds", default_factory=dict)
     maybe_agg = BoolField("maybe_agg", default=None)
+    logic_key = StringField("logic_key", default=None)
+    func_key = AnyField("func_key", default=None)
+    need_clean_up_func = BoolField("need_clean_up_func", default=False)
 
     def __init__(self, output_types=None, **kw):
         super().__init__(_output_types=output_types, **kw)
@@ -73,6 +80,7 @@ class GroupByApply(
     @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op):
+        restore_func(ctx, op)
         in_data = ctx[op.inputs[0].key]
         out = op.outputs[0]
         if not in_data:
@@ -109,6 +117,7 @@ class GroupByApply(
 
     @classmethod
     def tile(cls, op):
+        clean_up_func(op)
         in_groupby = op.inputs[0]
         out_df = op.outputs[0]
 

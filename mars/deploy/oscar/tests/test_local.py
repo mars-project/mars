@@ -363,6 +363,70 @@ async def test_execute_describe(create_cluster):
                 )
 
 
+# Note: Vineyard internally uses `pickle` which fails to pickle
+# cell objects and corresponding functions.
+@pytest.mark.asyncio
+async def test_execute_apply_closure(create_cluster):
+    # DataFrame
+    cols = [chr(ord("A") + i) for i in range(10)]
+    raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df = md.DataFrame(raw, chunk_size=5)
+
+    x1 = pd.Series([i for i in range(10**4)])
+    y1 = pd.Series([i for i in range(10**4)])
+
+    def dataframe_closure(z1):
+        return pd.concat([x1, y1], ignore_index=True)
+
+    session = get_default_async_session()
+    df_r = df.apply(dataframe_closure, axis=1)
+    df_info = await session.execute(df_r)
+    await df_info
+    assert df_info.result() is None
+    assert df_info.exception() is None
+    assert df_info.progress() == 1
+
+    df_result = await session.fetch(df_r)
+    df_expected = raw.apply(dataframe_closure, axis=1)
+    pd.testing.assert_frame_equal(df_result, df_expected)
+
+    # Series
+    idxes = [chr(ord("A") + i) for i in range(20)]
+    s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
+
+    series = md.Series(s_raw, chunk_size=5)
+
+    x2, y2 = 1, 2
+
+    def series_closure(z2):
+        return [z2 + x2, z2 + y2]
+
+    series_r = series.apply(series_closure, convert_dtype=False)
+    series_info = await session.execute(series_r)
+    await series_info
+    assert series_info.result() is None
+    assert series_info.exception() is None
+    assert series_info.progress() == 1
+
+    series_result = await session.fetch(series_r)
+    series_expected = s_raw.apply(series_closure, convert_dtype=False)
+    pd.testing.assert_series_equal(series_result, series_expected)
+
+    if (
+        not isinstance(session._isolated_session, _IsolatedWebSession)
+        and session.client
+    ):
+        worker_pools = session.client._cluster._worker_pools
+        await session.destroy()
+        for worker_pool in worker_pools:
+            if hasattr(worker_pool, "external_address"):
+                _assert_storage_cleaned(
+                    session.session_id,
+                    worker_pool.external_address,
+                    StorageLevel.MEMORY,
+                )
+
+
 @pytest.mark.asyncio
 async def test_sync_execute_in_async(create_cluster):
     a = mt.ones((10, 10))

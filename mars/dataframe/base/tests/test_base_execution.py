@@ -382,6 +382,23 @@ def test_data_frame_apply_execute(setup):
         options.chunk_store_limit = old_chunk_store_limit
 
 
+def test_data_frame_apply_closure_execute(setup):
+    cols = [chr(ord("A") + i) for i in range(10)]
+    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df = from_pandas_df(df_raw, chunk_size=5)
+
+    x = pd.Series([i for i in range(10**4)])
+    y = pd.Series([i for i in range(10**4)])
+
+    def closure(z):
+        return pd.concat([x, y], ignore_index=True)
+
+    r = df.apply(closure, axis=1)
+    result = r.execute().fetch()
+    expected = df_raw.apply(closure, axis=1)
+    pd.testing.assert_frame_equal(result, expected)
+
+
 def test_series_apply_execute(setup):
     idxes = [chr(ord("A") + i) for i in range(20)]
     s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
@@ -421,6 +438,23 @@ def test_series_apply_execute(setup):
     result = r.execute().fetch()
     expected = s_raw2.apply(pd.Series)
     pd.testing.assert_frame_equal(result, expected)
+
+
+def test_series_apply_closure_execute(setup):
+    idxes = [chr(ord("A") + i) for i in range(20)]
+    s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
+
+    series = from_pandas_series(s_raw, chunk_size=5)
+
+    x, y = 1, 2
+
+    def closure(z):
+        return [z + x, z + y]
+
+    r = series.apply(closure, convert_dtype=False)
+    result = r.execute().fetch()
+    expected = s_raw.apply(closure, convert_dtype=False)
+    pd.testing.assert_series_equal(result, expected)
 
 
 @pytest.mark.skipif(pa is None, reason="pyarrow not installed")

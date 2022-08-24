@@ -43,6 +43,8 @@ from ..utils import (
     make_dtype,
     build_empty_df,
     build_empty_series,
+    clean_up_func,
+    restore_func,
 )
 
 
@@ -72,6 +74,11 @@ class ApplyOperand(
     _raw = BoolField("raw")
     _result_type = StringField("result_type")
     _elementwise = BoolField("elementwise")
+    _logic_key = StringField("logic_key")
+    # func_key may be string or ObjectRef, while ray.ObjectRef
+    # shall be serialized by Ray rather than Mars
+    _func_key = AnyField("func_key")
+    _need_clean_up_func = BoolField("need_clean_up_func")
     _args = TupleField("args")
     _kwds = DictField("kwds")
 
@@ -86,6 +93,9 @@ class ApplyOperand(
         kwds=None,
         output_type=None,
         elementwise=None,
+        logic_key=None,
+        func_key=None,
+        need_clean_up_func=False,
         **kw,
     ):
         if output_type:
@@ -99,6 +109,9 @@ class ApplyOperand(
             _args=args,
             _kwds=kwds,
             _elementwise=elementwise,
+            _logic_key=logic_key,
+            _func_key=func_key,
+            _need_clean_up_func=need_clean_up_func,
             **kw,
         )
 
@@ -112,6 +125,10 @@ class ApplyOperand(
     @property
     def func(self):
         return self._func
+
+    @func.setter
+    def func(self, func):
+        self._func = func
 
     @property
     def axis(self):
@@ -134,6 +151,30 @@ class ApplyOperand(
         return self._elementwise
 
     @property
+    def logic_key(self):
+        return self._logic_key
+
+    @logic_key.setter
+    def logic_key(self, logic_key):
+        self._logic_key = logic_key
+
+    @property
+    def func_key(self):
+        return self._func_key
+
+    @func_key.setter
+    def func_key(self, func_key):
+        self._func_key = func_key
+
+    @property
+    def need_clean_up_func(self):
+        return self._need_clean_up_func
+
+    @need_clean_up_func.setter
+    def need_clean_up_func(self, need_clean_up_func: bool):
+        self._need_clean_up_func = need_clean_up_func
+
+    @property
     def args(self):
         return getattr(self, "_args", None) or ()
 
@@ -145,6 +186,7 @@ class ApplyOperand(
     @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op):
+        restore_func(ctx, op)
         input_data = ctx[op.inputs[0].key]
         out = op.outputs[0]
         if len(input_data) == 0:
@@ -287,6 +329,7 @@ class ApplyOperand(
 
     @classmethod
     def tile(cls, op):
+        clean_up_func(op)
         if op.inputs[0].ndim == 2:
             return (yield from cls._tile_df(op))
         else:

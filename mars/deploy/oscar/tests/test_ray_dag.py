@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import logging
 import os
 import time
 
@@ -190,3 +191,13 @@ async def test_execute_describe(ray_start_regular_shared2, create_cluster):
 def test_merge_groupby(ray_start_regular_shared2, setup, method, auto_merge):
     # add ray_dag decorator to the test_merge_groupby makes the raylet crash.
     test_session.test_merge_groupby(setup, method, auto_merge)
+
+
+# Before PR #3165 is merged, func cleanup is temporarily disabled under ray task mode.
+# https://github.com/mars-project/mars/pull/3165
+@require_ray
+@pytest.mark.asyncio
+async def test_execute_apply_closure(ray_start_regular_shared2, create_cluster, caplog):
+    with caplog.at_level(logging.WARNING):
+        await test_local.test_execute_apply_closure(create_cluster)
+    assert "Func cleanup is currently disabled under ray task mode." in caplog.text
