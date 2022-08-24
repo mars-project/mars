@@ -48,12 +48,6 @@ async def test_iterative_tiling(ray_start_regular_shared2, create_cluster):
     await test_local.test_iterative_tiling(create_cluster)
 
 
-@require_ray
-@pytest.mark.parametrize("config", [{"backend": "ray"}])
-def test_sync_execute(ray_start_regular_shared2, create_cluster, config):
-    test_local.test_sync_execute(config)
-
-
 @pytest.mark.asyncio
 @require_ray
 async def test_execute_describe(ray_start_regular_shared2, create_cluster):
