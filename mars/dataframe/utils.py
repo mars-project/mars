@@ -1457,10 +1457,19 @@ def clean_up_func(op):
             return
 
     func = op.func
+    counted_bytes = 0
+    # Note: In most cases, func is just a function with closure, while chances are that 
+    # func is a callable that doesn't have __closure__ attribute.
     if hasattr(func, "__closure__") and func.__closure__ is not None:
-        counted_bytes = 0
         for cell in func.__closure__:
             counted_bytes += sys.getsizeof(cell.cell_contents)
+            if counted_bytes >= closure_clean_up_bytes_threshold:
+                op.need_clean_up_func = True
+                break
+    elif callable(func):
+        assert hasattr(func, "__dict__")
+        for k, v in func.__dict__.items():
+            counted_bytes += sum([sys.getsizeof(k), sys.getsizeof(v)])
             if counted_bytes >= closure_clean_up_bytes_threshold:
                 op.need_clean_up_func = True
                 break

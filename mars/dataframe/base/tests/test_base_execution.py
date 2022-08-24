@@ -398,6 +398,20 @@ def test_data_frame_apply_closure_execute(setup):
     expected = df_raw.apply(closure, axis=1)
     pd.testing.assert_frame_equal(result, expected)
 
+    class callable_df:
+        def __init__(self, multiplier: int = 1):
+            self.x = pd.Series([i for i in range(10**multiplier)])
+            self.y = pd.Series([i for i in range(10**multiplier)])
+
+        def __call__(self, pdf):
+            return pd.concat([self.x, self.y], ignore_index=True)
+
+    cdf_large = callable_df(multiplier=4)
+    r = df.apply(cdf_large, axis=1)
+    result = r.execute().fetch()
+    expected = df_raw.apply(cdf_large, axis=1)
+    pd.testing.assert_frame_equal(result, expected)
+
 
 def test_series_apply_execute(setup):
     idxes = [chr(ord("A") + i) for i in range(20)]
@@ -454,6 +468,20 @@ def test_series_apply_closure_execute(setup):
     r = series.apply(closure, convert_dtype=False)
     result = r.execute().fetch()
     expected = s_raw.apply(closure, convert_dtype=False)
+    pd.testing.assert_series_equal(result, expected)
+
+    class callable_series:
+        def __init__(self):
+            self.x = 1
+            self.y = 2
+
+        def __call__(self, z):
+            return [z + self.x, z + self.y]
+
+    cs = callable_series()
+    r = series.apply(cs, convert_dtype=False)
+    result = r.execute().fetch()
+    expected = s_raw.apply(cs, convert_dtype=False)
     pd.testing.assert_series_equal(result, expected)
 
 
@@ -1883,6 +1911,54 @@ def test_map_chunk_execution(setup):
     result = r.execute().fetch()
     expected = raw_s + 1 + np.arange(10) // 5
     pd.testing.assert_series_equal(result, expected)
+
+
+def test_map_chunk_closure_execute(setup):
+    raw = pd.DataFrame(
+        np.random.randint(10**3, size=(10, 5)), columns=[f"col{i}" for i in range(5)]
+    )
+
+    df = from_pandas_df(raw, chunk_size=5)
+    num = 1
+    dic = {i: -i for i in range(10**3)}
+
+    def f1(pdf):
+        return pdf + num
+
+    r = df.map_chunk(f1)
+
+    result = r.execute().fetch()
+    expected = raw + num
+    pd.testing.assert_frame_equal(result, expected)
+
+    def f2(pdf):
+        ret = pd.DataFrame(columns=["col1", "col2"])
+        ret["col1"] = pdf["col1"].apply(lambda x: dic.get(x, 0))
+        ret["col2"] = pdf["col2"]
+        return ret
+
+    r = df.map_chunk(f2, output_type="dataframe")
+
+    result = r.execute().fetch()
+    expected = f2(raw)
+    pd.testing.assert_frame_equal(result, expected)
+
+    class callable_df:
+        def __init__(self, multiplier: int = 1):
+            self.dic = {i: -i for i in range(10**multiplier)}
+
+        def __call__(self, pdf):
+            ret = pd.DataFrame(columns=["col1", "col2"])
+            ret["col1"] = pdf["col1"].apply(lambda x: self.dic.get(x, 0))
+            ret["col2"] = pdf["col2"]
+            return ret
+
+    cdf = callable_df(multiplier=4)
+    r = df.map_chunk(cdf, output_type="dataframe")
+
+    result = r.execute().fetch()
+    expected = cdf(raw)
+    pd.testing.assert_frame_equal(result, expected)
 
 
 @pytest.mark.ray_dag

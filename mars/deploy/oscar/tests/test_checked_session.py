@@ -162,11 +162,28 @@ def test_clean_up_and_restore_func(setup):
     def closure_large(z):
         return pd.concat([x_large, y_large], ignore_index=True)
 
+    class callable_df:
+        def __init__(self, multiplier: int = 1):
+            self.x = pd.Series([i for i in range(10**multiplier)])
+            self.y = pd.Series([i for i in range(10**multiplier)])
+
+        def __call__(self, pdf):
+            return pd.concat([self.x, self.y], ignore_index=True)
+
+    cdf_small = callable_df(multiplier=1)
+    cdf_large = callable_df(multiplier=4)
+
     # no need to clean up func, func_key won't be set
     r_small = df.apply(closure_small, axis=1)
     r_small.execute()
     # need to clean up func, func_key will be set
     r_large = df.apply(closure_large, axis=1)
     r_large.execute()
+    # no need to clean up callable, func_key won't be set
+    r_callable = df.apply(cdf_small, axis=1)
+    r_callable.execute()
+    # need to clean up callable, func_key will be set
+    r_callable = df.apply(cdf_large, axis=1)
+    r_callable.execute()
 
     sess.stop_server()
