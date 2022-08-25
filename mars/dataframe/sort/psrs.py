@@ -592,7 +592,6 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
     @classmethod
     def _execute_dataframe_map(cls, ctx, op):
         a, pivots = [ctx[c.key] for c in op.inputs]
-        print("_execute_dataframe_map", pivots)
         out = op.outputs[0]
 
         if len(a) == 0:
