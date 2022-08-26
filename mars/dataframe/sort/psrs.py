@@ -550,6 +550,17 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
 
     @staticmethod
     def _calc_poses(src_cols, pivots, ascending=True):
+        # The pivots are immutable if it is got from shared memory, e.g. Ray object store.
+        # Pandas < 1.4 has item setting bug and pandas >= 1.4 has fixed it.
+        #
+        # Here, almost all the cases that the pivots are got from shared memory.
+        #
+        # `pivots[col] = -pivots[col]` will automatically replace the col with a new copy
+        # `-pivots[col]` in pandas >= 1.4, but it will try to inplace set col in pandas < 1.4
+        #
+        # So, we use assign here to walk around incorrect inplace set item bug in pandas < 1.4.
+        # Please refer to: https://github.com/mars-project/mars/issues/3215
+        # related issue: https://github.com/pandas-dev/pandas/pull/43406
         copy_cols = {}
         if isinstance(ascending, list):
             for asc, col in zip(ascending, pivots.columns):
@@ -557,20 +568,11 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
                 if not asc:
                     if pd.api.types.is_numeric_dtype(pivots.dtypes[col]):
                         # for numeric dtypes, convert to negative is more efficient
-                        try:
-                            pivots[col] = -pivots[col]
-                        except ValueError:
-                            # When using ray backend, the numpy array of the pivots is immutable
-                            # if it is got from the object store. Pandas 1.3.x has item setting
-                            # bug. Pandas >= 1.4 has fixed the bug.
-                            #
-                            # Please refer to: https://github.com/mars-project/mars/issues/3215
-                            # related issue: https://github.com/pandas-dev/pandas/pull/43406
-                            copy_cols[col] = -pivots[col]
+                        copy_cols[col] = -pivots[col]
                         src_cols[col] = -src_cols[col]
                     else:
                         # for other types, convert to ReversedValue
-                        pivots[col] = pivots[col].map(
+                        copy_cols[col] = pivots[col].map(
                             lambda x: x
                             if type(x) is _ReversedValue
                             else _ReversedValue(x)
