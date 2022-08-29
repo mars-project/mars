@@ -26,7 +26,7 @@ from .... import oscar as mo
 from ....core import TileableGraph, TileableType, enter_mode, TileContext
 from ....core.operand import Fetch
 from ....oscar.errors import ServerClosed, ActorNotExist
-from ....utils import add_aiotask_done_check_callback
+from ....utils import aiotask_wrapper, _is_ci
 from ...subtask import SubtaskResult, SubtaskGraph
 from ..config import task_options
 from ..core import Task, new_task_id, TaskStatus
@@ -164,14 +164,8 @@ class TaskManagerActor(mo.Actor):
         def _on_finalize():
             # The loop may be closed before the weakref is dead.
             if loop.is_running():
-                aiotask = loop.create_task(
+                loop.create_task(
                     self._move_task_to_reserved(loop, task_id, processor_ref)
-                )
-                add_aiotask_done_check_callback(
-                    aiotask,
-                    "Move task to reserved failed, task id: %s, processor ref: %s",
-                    task_id,
-                    processor_ref,
                 )
 
         loop = asyncio.get_running_loop()
@@ -190,6 +184,7 @@ class TaskManagerActor(mo.Actor):
 
         return task_id
 
+    @aiotask_wrapper(exit_if_exception=_is_ci)
     async def _move_task_to_reserved(self, loop, task_id, processor_ref):
         # TODO(fyrestone): Find a better way to wait and destroy the processor actor.
         with contextlib.suppress(ActorNotExist, ServerClosed, ConnectionRefusedError):
@@ -199,6 +194,7 @@ class TaskManagerActor(mo.Actor):
         ref_holder = _RefHolder()
         self._reserved_finish_tasks.append(ref_holder)
 
+        @aiotask_wrapper(exit_if_exception=_is_ci)
         async def _destroy_actor():
             with contextlib.suppress(
                 ActorNotExist, ServerClosed, ConnectionRefusedError
@@ -209,10 +205,7 @@ class TaskManagerActor(mo.Actor):
             logger.debug("Remove task %s.", task_id)
             self._task_id_to_processor_ref.pop(task_id, None)
             if loop.is_running():
-                aiotask = loop.create_task(_destroy_actor())
-                add_aiotask_done_check_callback(
-                    aiotask, "Destroy processor ref %s failed.", processor_ref
-                )
+                loop.create_task(_destroy_actor())
 
         weakref.finalize(ref_holder, _remove_task)
 
