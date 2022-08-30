@@ -12,6 +12,10 @@ from libcpp cimport bool as c_bool
 cimport cython
 
 
+cdef extern from "Python.h":
+    const char* PyUnicode_AsUTF8AndSize(object obj, Py_ssize_t *l) except NULL
+
+
 cdef int32_t _max_buffer_size = 2 ** 31 - 1
 
 @cython.final
@@ -27,6 +31,7 @@ cdef class Buffer:
         Py_ssize_t shape[1]
         Py_ssize_t stride[1]
         public int reader_index, writer_index
+        char *errors
 
     def __init__(self,  data not None, int offset=0, length=None):
         self.data = data
@@ -87,28 +92,6 @@ cdef class Buffer:
         self.reader_index += 1
         return value
 
-    cpdef inline write_nullable_bool(self, value):
-        self.grow(1)
-        if value is None:
-            (self.c_buffer + self.writer_index)[0] = -1
-        else:
-            if value:
-                (self.c_buffer + self.writer_index)[0] = 1
-            else:
-                (self.c_buffer + self.writer_index)[0] = 0
-        self.writer_index += 1
-
-    cpdef inline read_nullable_bool(self):
-        value = self.get_int8(self.reader_index)
-        if value == -1:
-            return None
-        elif value == 0:
-            return False
-        elif value == 1:
-            return True
-        else:
-            raise Exception(f"Unexpected value: {value}, should be in {{-1,0,1}}")
-
     cpdef inline unsafe_put_int8(self, uint32_t offset, int8_t v):
         (<int8_t *>(self.c_buffer + offset))[0] = v
 
@@ -151,13 +134,6 @@ cdef class Buffer:
         cdef int64_t x = (<int64_t *> (&v))[0]
         self.unsafe_put_int64(offset, x)
 
-    cpdef inline put_binary(self, uint32_t offset, v, int32_t src_offset, int32_t length):
-        if length == 0:  # access an emtpy buffer may raise out-of-bound exception.
-            return
-        self.check_bound(offset, length - src_offset)
-        cdef uint8_t* ptr = _get_address(v)
-        memcpy(self.c_buffer + offset, ptr + src_offset, length)
-
     cpdef inline int16_t get_int16(self, uint32_t offset):
         self.check_bound(offset, 2)
         cdef uint8_t* arr = self.c_buffer + offset
@@ -187,14 +163,6 @@ cdef class Buffer:
     cpdef inline double get_float64(self, uint32_t offset):
         cdef int64_t v = self.get_int64(offset)
         return (<double *> (&v))[0]
-
-    cpdef inline bytes get_binary(self, uint32_t offset, uint32_t nbytes):
-        if nbytes == 0:
-            return b""
-        self.check_bound(offset, nbytes)
-        cdef unsigned char* binary_data = self.c_buffer + offset
-        # FIXME slice may cause memory leak.
-        return binary_data[:nbytes]
 
     cpdef inline write_int8(self, value):
         self.grow(1)
@@ -388,18 +356,6 @@ cdef class Buffer:
                             result |= (b & 0x7F) << 28
             return result
 
-    cpdef inline write_nullable_varint32(self, value):
-        if value is None:
-            return self.write_flagged_varint32(False, 0)
-        else:
-            return self.write_flagged_varint32(True, value)
-
-    cpdef inline read_nullable_varint32(self):
-        if self.read_varint32_flag():
-            return self.read_flagged_varint()
-        else:
-            return None
-
     cpdef inline write_varint64(self, int64_t v):
         cdef:
             uint64_t value = v
@@ -524,30 +480,50 @@ cdef class Buffer:
                                             result |= b << 56
             return result
 
-    cpdef inline write_binary(self, value, src_offset=0, length=None):
-        if length is None:
-            length = len(value) - src_offset
+    cpdef inline write_bytes(self, bytes value):
+        cdef const unsigned char[:] data = value
+        cdef int32_t length = data.nbytes
         self.write_varint32(length)
-        self.grow(length)
-        self.put_binary(self.writer_index, value, src_offset, length)
-        self.writer_index += length
+        if length > 0:
+            self.grow(length)
+            memcpy(self.c_buffer + self.writer_index, &data[0], length)
+            self.writer_index += length
 
-    cpdef inline bytes read_binary(self):
+    cpdef inline bytes read_bytes(self):
         cdef int32_t length = self.read_varint32()
-        value = self.get_binary(self.reader_index, length)
+        value = self.get_bytes(self.reader_index, length)
         self.reader_index += length
         return value
 
+    cpdef inline bytes get_bytes(self, uint32_t offset, uint32_t nbytes):
+        if nbytes == 0:
+            return b""
+        self.check_bound(offset, nbytes)
+        cdef unsigned char* binary_data = self.c_buffer + offset
+        return binary_data[:nbytes]
+
+    cdef inline write_binary(self, const uint8_t *data, int32_t length):
+        self.write_varint32(length)
+        self.grow(length)
+        memcpy(self.c_buffer + self.writer_index, data, length)
+        self.writer_index += length
+
+    cdef inline int32_t read_binary(self, uint8_t** buf):
+        cdef int32_t length = self.read_varint32()
+        buf[0] = self.c_buffer + self.reader_index
+        self.reader_index += length
+        return length
+
     cpdef inline write_string(self, value):
-        if PyUnicode_Check(value):
-            encoded = PyUnicode_AsEncodedString(value, "UTF-8", "encode to utf-8 error")
-            self.write_binary(encoded)
-        else:
-            raise TypeError("value should be unicode, but get type of {}"
-                            .format(type(value)))
+        cdef Py_ssize_t length
+        cdef const char * buf = PyUnicode_AsUTF8AndSize(value, &length)
+        self.write_binary(<const uint8_t *>buf, length)
 
     cpdef inline str read_string(self):
-        return self.read_binary().decode("UTF-8")
+        cdef uint8_t* buf
+        cdef int32_t length = self.read_binary(&buf)
+        str_obj = PyUnicode_DecodeUTF8(<const char *>buf, length, self.errors)
+        return str_obj
 
     cpdef inline int8_t read_int8(self):
         value = self.get_int8(self.reader_index)
@@ -564,17 +540,17 @@ cdef class Buffer:
         self.reader_index += 4
         return value
 
-    cpdef int64_t read_int64(self):
+    cpdef inline int64_t read_int64(self):
         value = self.get_int64(self.reader_index)
         self.reader_index += 8
         return value
 
-    cpdef float read_float32(self):
+    cpdef inline float read_float32(self):
         value = self.get_float32(self.reader_index)
         self.reader_index += 4
         return value
 
-    cpdef double read_float64(self):
+    cpdef inline double read_float64(self):
         value = self.get_float64(self.reader_index)
         self.reader_index += 8
         return value
@@ -582,91 +558,78 @@ cdef class Buffer:
     cpdef readline(self, size=None):
         raise NotImplementedError
 
-    cpdef write_nullable(self, value, write_action: Callable):
-        if value is None:
-            self.write_bool(False)
-        else:
-            self.write_bool(True)
-            write_action(self, value)
-
-    cpdef read_nullable(self, read_action: Callable):
-        if self.read_bool():
-            return read_action(self)
-        else:
-            return None
-
     # Fast path for common composite types to avoid dynamic methods invoke cost.
-    cpdef write_int32_list(self, list value):
+    cpdef inline write_int32_list(self, list value):
         self.write_varint32(len(value))
         for item in value:
             self.write_varint32(item)
 
-    cpdef list read_int32_list(self):
+    cpdef inline list read_int32_list(self):
         length = self.read_varint32()
         cdef list value = []
         for _ in range(length):
             value.append(self.read_varint32())
         return value
 
-    cpdef write_int64_list(self, list value):
+    cpdef inline write_int64_list(self, list value):
         self.write_varint32(len(value))
         for item in value:
             self.write_varint64(item)
 
-    cpdef list read_int64_list(self):
+    cpdef inline list read_int64_list(self):
         length = self.read_varint32()
         value = list()
         for _ in range(length):
             value.append(self.read_varint64())
         return value
 
-    cpdef write_float64_list(self, list value):
+    cpdef inline write_float64_list(self, list value):
         self.write_varint32(len(value))
         for item in value:
             self.write_float64(item)
 
-    cpdef list read_float64_list(self):
+    cpdef inline list read_float64_list(self):
         length = self.read_varint32()
         value = list()
         for _ in range(length):
             value.append(self.read_float64())
         return value
 
-    cpdef write_string_list(self, list value):
+    cpdef inline write_string_list(self, list value):
         self.write_varint32(len(value))
         for item in value:
             self.write_string(item)
 
-    cpdef list read_string_list(self):
+    cpdef inline list read_string_list(self):
         length = self.read_varint32()
         value = list()
         for _ in range(length):
             value.append(self.read_string())
         return value
 
-    cpdef write_int32_tuple(self, tuple value):
+    cpdef inline write_int32_tuple(self, tuple value):
         self.write_varint32(len(value))
         for item in value:
             self.write_varint32(item)
 
-    cpdef tuple read_int32_tuple(self):
+    cpdef inline tuple read_int32_tuple(self):
         return tuple(self.read_int32_list())
 
-    cpdef write_string_tuple(self, tuple value):
+    cpdef inline write_string_tuple(self, tuple value):
         self.write_varint32(len(value))
         for item in value:
             self.write_string(item)
 
-    cpdef tuple read_string_tuple(self):
+    cpdef inline tuple read_string_tuple(self):
         return tuple(self.read_string_list())
 
-    cpdef write_string_string_dict(self, dict value):
+    cpdef inline write_string_string_dict(self, dict value):
         self.write_varint32(len(value))
         for k, v in value.items():
             self.write_string(k)
             self.write_string(v)
 
-    cpdef dict read_string_string_dict(self):
+    cpdef inline dict read_string_string_dict(self):
         length = self.read_varint32()
         cdef dict value = {}
         for _ in range(length):
@@ -674,6 +637,106 @@ cdef class Buffer:
             v = self.read_string()
             value[k] = v
         return value
+
+    cpdef inline write_nullable_bool(self, value):
+        self.grow(1)
+        if value is None:
+            (self.c_buffer + self.writer_index)[0] = -1
+        else:
+            if value:
+                (self.c_buffer + self.writer_index)[0] = 1
+            else:
+                (self.c_buffer + self.writer_index)[0] = 0
+        self.writer_index += 1
+
+    cpdef inline read_nullable_bool(self):
+        value = self.get_int8(self.reader_index)
+        if value == -1:
+            return None
+        elif value == 0:
+            return False
+        elif value == 1:
+            return True
+        else:
+            raise Exception(f"Unexpected value: {value}, should be in {{-1,0,1}}")
+
+    cpdef inline write_nullable_varint32(self, value):
+        if value is None:
+            return self.write_flagged_varint32(False, 0)
+        else:
+            return self.write_flagged_varint32(True, value)
+
+    cpdef inline read_nullable_varint32(self):
+        if self.read_varint32_flag():
+            return self.read_flagged_varint()
+        else:
+            return None
+
+    # Inline nullable type writing to reduce python function invoke cost.
+    cpdef inline write_nullable_varint64(self, value):
+        if value is None:
+            self.write_int8(0)
+        else:
+            self.write_int8(1)
+            return self.write_varint64(value)
+
+    cpdef inline read_nullable_varint64(self):
+        if self.read_int8() == 0:
+            return None
+        else:
+            return self.read_varint64()
+
+    cpdef inline write_nullable_bytes(self, value):
+        if value is None:
+            self.write_int8(0)
+        else:
+            self.write_int8(1)
+            return self.write_bytes(value)
+
+    cpdef inline read_nullable_bytes(self):
+        if self.read_int8() == 0:
+            return None
+        else:
+            return self.read_bytes()
+
+    cpdef inline write_nullable_string(self, value):
+        if value is None:
+            self.write_int8(0)
+        else:
+            self.write_int8(1)
+            return self.write_string(value)
+
+    cpdef inline read_nullable_string(self):
+        if self.read_int8() == 0:
+            return None
+        else:
+            return self.read_string()
+
+    cpdef inline write_nullable_float32(self, value):
+        if value is None:
+            self.write_int8(0)
+        else:
+            self.write_int8(1)
+            return self.write_float32(value)
+
+    cpdef inline read_nullable_float32(self):
+        if self.read_int8() == 0:
+            return None
+        else:
+            return self.read_float32()
+
+    cpdef inline write_nullable_float64(self, value):
+        if value is None:
+            self.write_int8(0)
+        else:
+            self.write_int8(1)
+            return self.write_float64(value)
+
+    cpdef inline read_nullable_float64(self):
+        if self.read_int8() == 0:
+            return None
+        else:
+            return self.read_float64()
 
     def __len__(self):
         return self._size
@@ -720,7 +783,386 @@ cdef class Buffer:
         )
 
 
-cdef uint8_t* _get_address(v):
+# functools.partial needs to pack and unpack arguments, which is costly.
+cdef class Serializer:
+    cdef readonly c_bool nullable
+
+    def __init__(self,  c_bool nullable = False):
+        self.nullable = nullable
+
+    cpdef write(self, Buffer buffer, value):
+        pass
+
+    cpdef read(self, Buffer buffer):
+        pass
+
+
+cdef class PrimitiveSerializer(Serializer):
+    cdef:
+        readonly object writer
+        readonly object reader
+
+    def __init__(self,  writer not None, reader not None):
+        super().__init__(False)
+        self.writer = writer
+        self.reader = reader
+
+    cpdef write(self, Buffer buffer, value):
+        self.writer(buffer, value)
+
+    cpdef read(self, Buffer buffer):
+        return self.reader(buffer)
+
+
+cdef class NullableSerializer(Serializer):
+    cdef:
+        object writer
+        object reader
+
+    def __init__(self,  writer not None, reader not None):
+        super().__init__(True)
+        self.writer = writer
+        self.reader = reader
+
+    cpdef write(self, Buffer buffer, value):
+        if value is None:
+            buffer.write_int8(0)
+        else:
+            buffer.write_int8(1)
+            self.writer(buffer, value)
+
+    cpdef read(self, Buffer buffer):
+        if buffer.read_int8() == 0:
+            return None
+        else:
+            return self.reader(buffer)
+
+
+cdef class StringSerializer(PrimitiveSerializer):
+    cpdef write(self, Buffer buffer, value):
+        buffer.write_nullable_string(value)
+
+    cpdef read(self, Buffer buffer):
+        return buffer.read_nullable_string()
+
+
+cdef class CollectionSerializer(Serializer):
+    cdef:
+        readonly Serializer element_serializer
+
+    def __init__(self, c_bool nullable, c_bool element_nullable, Serializer element_serializer = None):
+        super().__init__(nullable)
+        self.nullable = nullable
+        self.element_nullable = element_nullable
+        self.element_serializer = element_serializer
+
+    cdef inline c_bool write_header(self, Buffer buffer, value):
+        if self.nullable:
+            if value is None:
+                buffer.write_int8(0)
+                return True
+            else:
+                buffer.write_int8(1)
+        buffer.write_varint32(len(value))
+        return False
+
+
+cdef class ListSerializer(CollectionSerializer):
+    cpdef write(self, Buffer buffer, value):
+        if self.write_header(buffer, value):
+            return
+        element_serializer = self.element_serializer
+        for v in value:
+            element_serializer.write(buffer, value)
+
+    cpdef read(self, Buffer buffer):
+        if self.nullable:
+            if buffer.read_int8() == 0:
+                return None
+        length = buffer.read_varint32()
+        cdef list value = []
+        element_serializer = self.element_serializer
+        for _ in range(length):
+            value.append(element_serializer.read(buffer))
+        return value
+
+
+cdef class Int32CollectionSerializer(CollectionSerializer):
+    cpdef read(self, Buffer buffer):
+        if self.nullable:
+            if buffer.read_int8() == 0:
+                return None
+        length = buffer.read_varint32()
+        cdef list value = []
+        if self.element_nullable:
+            for _ in range(length):
+                value.append(buffer.read_nullable_varint32())
+        else:
+            for _ in range(length):
+                value.append(buffer.read_varint32())
+        return value
+
+cdef class Int64CollectionSerializer(CollectionSerializer):
+    cpdef read(self, Buffer buffer):
+        if self.nullable:
+            if buffer.read_int8() == 0:
+                return None
+        length = buffer.read_varint32()
+        cdef list value = []
+        if self.element_nullable:
+            for _ in range(length):
+                value.append(buffer.read_nullable_varint64())
+        else:
+            for _ in range(length):
+                value.append(buffer.read_varint64())
+        return value
+
+
+cdef class Float64CollectionSerializer(CollectionSerializer):
+    cpdef read(self, Buffer buffer):
+        if self.nullable:
+            if buffer.read_int8() == 0:
+                return None
+        length = buffer.read_varint32()
+        cdef list value = []
+        if self.element_nullable:
+            for _ in range(length):
+                value.append(buffer.read_nullable_float64())
+        else:
+            for _ in range(length):
+                value.append(buffer.read_float64())
+        return value
+
+
+cdef class StringCollectionSerializer(CollectionSerializer):
+    cpdef read(self, Buffer buffer):
+        if self.nullable:
+            if buffer.read_int8() == 0:
+                return None
+        length = buffer.read_varint32()
+        cdef list value = []
+        if self.element_nullable:
+            for _ in range(length):
+                value.append(buffer.read_nullable_string())
+        else:
+            for _ in range(length):
+                value.append(buffer.read_string())
+        return value
+
+
+cdef class Int32ListSerializer(Int32CollectionSerializer):
+    cpdef write(self, Buffer buffer, v):
+        if self.write_header(buffer, v):
+            return
+        cdef list value = v
+        if self.element_nullable:
+            for item in value:
+                buffer.write_nullable_varint32(item)
+        else:
+            for item in value:
+                buffer.write_varint32(item)
+
+
+cdef class Int64ListSerializer(Int64CollectionSerializer):
+    cpdef write(self, Buffer buffer, v):
+        if self.write_header(buffer, v):
+            return
+        cdef list value = v
+        if self.element_nullable:
+            for item in value:
+                buffer.write_nullable_varint64(item)
+        else:
+            for item in value:
+                buffer.write_varint64(item)
+
+
+cdef class Float64ListSerializer(Float64CollectionSerializer):
+    cpdef write(self, Buffer buffer, v):
+        if self.write_header(buffer, v):
+            return
+        cdef list value = v
+        if self.element_nullable:
+            for item in value:
+                buffer.write_nullable_float64(item)
+        else:
+            for item in value:
+                buffer.write_float64(item)
+
+
+cdef class StringListSerializer(StringCollectionSerializer):
+    cpdef write(self, Buffer buffer, v):
+        if self.write_header(buffer, v):
+            return
+        cdef list value = v
+        if self.element_nullable:
+            for item in value:
+                buffer.write_nullable_string(item)
+        else:
+            for item in value:
+                buffer.write_string(item)
+
+
+cdef class Int32TupleSerializer(Int32CollectionSerializer):
+    cpdef write(self, Buffer buffer, v):
+        if self.write_header(buffer, v):
+            return
+        cdef tuple value = v
+        if self.element_nullable:
+            for item in value:
+                buffer.write_nullable_varint32(item)
+        else:
+            for item in value:
+                buffer.write_varint32(item)
+
+    cpdef read(self, Buffer buffer):
+        return tuple(super().read(buffer))
+
+
+cdef class Int64TupleSerializer(Int64CollectionSerializer):
+    cpdef write(self, Buffer buffer, v):
+        if self.write_header(buffer, v):
+            return
+        cdef tuple value = v
+        if self.element_nullable:
+            for item in value:
+                buffer.write_nullable_varint64(item)
+        else:
+            for item in value:
+                buffer.write_varint64(item)
+
+    cpdef read(self, Buffer buffer):
+        return tuple(super().read(buffer))
+
+
+cdef class Float64TupleSerializer(Float64CollectionSerializer):
+    cpdef write(self, Buffer buffer, v):
+        if self.write_header(buffer, v):
+            return
+        cdef tuple value = v
+        if self.element_nullable:
+            for item in value:
+                buffer.write_nullable_float64(item)
+        else:
+            for item in value:
+                buffer.write_float64(item)
+
+    cpdef read(self, Buffer buffer):
+        return tuple(super().read(buffer))
+
+
+cdef class StringTupleSerializer(StringListSerializer):
+    cpdef write(self, Buffer buffer, v):
+        if self.write_header(buffer, v):
+            return
+        cdef tuple value = v
+        if self.element_nullable:
+            for item in value:
+                buffer.write_nullable_string(item)
+        else:
+            for item in value:
+                buffer.write_string(item)
+
+    cpdef read(self, Buffer buffer):
+        return tuple(super().read(buffer))
+
+
+cdef class DictSerializer(Serializer):
+    cdef:
+        readonly Serializer key_serializer
+        readonly Serializer value_serializer
+        readonly c_bool key_nullable
+        readonly c_bool value_nullable
+
+    def __init__(self, c_bool nullable, c_bool key_nullable, c_bool value_nullable,
+                 Serializer key_serializer, Serializer value_serializer):
+        super().__init__(nullable)
+        self.key_serializer = key_serializer
+        self.value_serializer = value_serializer
+        self.key_nullable = key_nullable
+        self.value_nullable = value_nullable
+
+    cdef inline c_bool write_header(self, Buffer buffer, value):
+        if self.nullable:
+            if value is None:
+                buffer.write_int8(0)
+                return True
+            else:
+                buffer.write_int8(1)
+        buffer.write_varint32(len(value))
+        return False
+
+    cpdef write(self, Buffer buffer, v):
+        if self.write_header(buffer, v):
+            return
+        cdef dict value = v
+        key_serializer = self.key_serializer
+        value_serializer = self.value_serializer
+        for k, v in value.items():
+            key_serializer.write(buffer, k,)
+            value_serializer.write(buffer, v)
+
+    cpdef read(self, Buffer buffer):
+        if self.nullable:
+            if buffer.read_int8() == 0:
+                return None
+        length = buffer.read_varint32()
+        cdef dict value = {}
+        key_serializer = self.key_serializer
+        value_serializer = self.value_serializer
+        for _ in range(length):
+            k = key_serializer.read(buffer)
+            v = value_serializer.read(buffer)
+            value[k] = v
+        return value
+
+
+cdef class StringKVDictSerializer(DictSerializer):
+    def __init__(self, c_bool nullable, c_bool key_nullable, c_bool value_nullable):
+        super().__init__(nullable, key_nullable, value_nullable,
+                         StringSerializer(key_nullable), StringSerializer(value_nullable))
+
+    cpdef write(self, Buffer buffer, v):
+        if self.write_header(buffer, v):
+            return
+        cdef dict value = v
+        if not self.key_nullable and not self.value_nullable:
+            for k, v in value.items():
+                buffer.write_string(k)
+                buffer.write_string(v)
+        elif not self.key_nullable:
+            for k, v in value.items():
+                buffer.write_string(k)
+                buffer.write_nullable_string(v)
+        else:
+            for k, v in value.items():
+                buffer.write_nullable_string(k)
+                buffer.write_nullable_string(v)
+
+    cpdef read(self, Buffer buffer):
+        if self.nullable:
+            if buffer.read_int8() == 0:
+                return None
+        length = buffer.read_varint32()
+        cdef dict value = {}
+        if not self.key_nullable and not self.value_nullable:
+            for _ in range(length):
+                k = buffer.read_string()
+                v = buffer.read_string()
+                value[k] = v
+        elif not self.key_nullable:
+            for k, v in value.items():
+                k = buffer.read_string()
+                v = buffer.read_nullable_string()
+                value[k] = v
+        else:
+            for k, v in value.items():
+                k = buffer.read_nullable_string()
+                v = buffer.read_nullable_string()
+                value[k] = v
+        return value
+
+
+cdef inline uint8_t* _get_address(v):
     view = memoryview(v)
     dtype = view.format
     cdef:
