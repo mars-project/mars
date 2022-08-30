@@ -41,13 +41,13 @@ class MapReduceOperand(Operand):
     """
 
     # for reducer
-    reducer_index = TupleField("reducer_index", FieldTypes.uint64)
+    reducer_index = TupleField("reducer_index", FieldTypes.uint64, nullable=False)
     # Total reducer nums, which also be shuffle blocks for single mapper.
-    n_reducers = Int32Field("n_reducers")
+    n_reducers = Int32Field("n_reducers", nullable=False)
     # The reducer ordinal in all reducers. It's different from reducer_index,
     # which might be a tuple.
     # `reducer_ordinal` will be set in `_new_chunks`.
-    reducer_ordinal = Int32Field("reducer_ordinal")
+    reducer_ordinal = Int32Field("reducer_ordinal", nullable=False)
     reducer_phase = StringField("reducer_phase", default=None)
 
     def _new_chunks(self, inputs, kws=None, **kw):

@@ -45,10 +45,10 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY
 
     _by = AnyField("by", on_serialize=lambda x: x.data if isinstance(x, Entity) else x)
-    _level = AnyField("level")
-    _as_index = BoolField("as_index")
-    _sort = BoolField("sort")
-    _group_keys = BoolField("group_keys")
+    _level = AnyField("level", nullable=False)
+    _as_index = BoolField("as_index", nullable=False)
+    _sort = BoolField("sort", nullable=False)
+    _group_keys = BoolField("group_keys", nullable=False)
 
     _shuffle_size = Int32Field("shuffle_size")
 
