@@ -1433,10 +1433,8 @@ def auto_merge_chunks(
 
 
 def clean_up_func(op):
-    closure_clean_up_bytes_threshold = int(
-        os.getenv("MARS_CLOSURE_CLEAN_UP_BYTES_THRESHOLD", 10**4)
-    )
-    if closure_clean_up_bytes_threshold == -1:  # pragma: no cover
+    threshold = int(os.getenv("MARS_CLOSURE_CLEAN_UP_BYTES_THRESHOLD", 10**4))
+    if threshold == -1:  # pragma: no cover
         return
     ctx = get_context()
     if ctx is None:
@@ -1456,30 +1454,47 @@ def clean_up_func(op):
             )
             return
 
-    func = op.func
-    counted_bytes = 0
-    # Note: In most cases, func is just a function with closure, while chances are that 
-    # func is a callable that doesn't have __closure__ attribute.
-    if hasattr(func, "__closure__") and func.__closure__ is not None:
-        for cell in func.__closure__:
-            counted_bytes += sys.getsizeof(cell.cell_contents)
-            if counted_bytes >= closure_clean_up_bytes_threshold:
-                op.need_clean_up_func = True
-                break
-    elif callable(func):
-        assert hasattr(func, "__dict__")
-        for k, v in func.__dict__.items():
-            counted_bytes += sum([sys.getsizeof(k), sys.getsizeof(v)])
-            if counted_bytes >= closure_clean_up_bytes_threshold:
-                op.need_clean_up_func = True
-                break
     # Note: op.func_key is set only when op.need_clean_up_func is True.
-    if op.need_clean_up_func:
+    if whether_to_clean_up(op, threshold) is True:
         assert (
             op.logic_key is not None
         ), "Logic key wasn't calculated before cleaning up func."
         op.func_key = ctx.storage_put(op.func)
         op.func = None
+
+
+def whether_to_clean_up(op, threshold):
+    func = op.func
+    counted_bytes = 0
+
+    def check_exceed_threshold():
+        nonlocal threshold, counted_bytes
+        if counted_bytes >= threshold:
+            raise StopIteration
+
+    try:
+        # Note: In most cases, func is just a function with closure, while chances are that
+        # func is a callable that doesn't have __closure__ attribute.
+        if hasattr(func, "__closure__") and func.__closure__ is not None:
+            for cell in func.__closure__:
+                counted_bytes += sys.getsizeof(cell.cell_contents)
+                check_exceed_threshold()
+        elif callable(func):
+            if hasattr(func, "__dict__"):
+                for k, v in func.__dict__.items():
+                    counted_bytes += sum([sys.getsizeof(k), sys.getsizeof(v)])
+                    check_exceed_threshold()
+            if hasattr(func, "__slots__"):
+                for slot in func.__slots__:
+                    counted_bytes += (
+                        sys.getsizeof(getattr(func, slot)) if hasattr(func, slot) else 0
+                    )
+                    check_exceed_threshold()
+    except StopIteration:
+        logger.info("Func needs cleaning up.")
+        op.need_clean_up_func = True
+    finally:
+        return op.need_clean_up_func
 
 
 def restore_func(ctx: Context, op):

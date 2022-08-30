@@ -398,7 +398,16 @@ def test_data_frame_apply_closure_execute(setup):
     expected = df_raw.apply(closure, axis=1)
     pd.testing.assert_frame_equal(result, expected)
 
+
+@pytest.mark.parametrize("multiplier", [1, 3, 4])
+def test_data_frame_apply_callable_execute(setup, multiplier):
+    cols = [chr(ord("A") + i) for i in range(10)]
+    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df = from_pandas_df(df_raw, chunk_size=5)
+
     class callable_df:
+        __slots__ = "x", "__dict__"
+
         def __init__(self, multiplier: int = 1):
             self.x = pd.Series([i for i in range(10**multiplier)])
             self.y = pd.Series([i for i in range(10**multiplier)])
@@ -406,7 +415,7 @@ def test_data_frame_apply_closure_execute(setup):
         def __call__(self, pdf):
             return pd.concat([self.x, self.y], ignore_index=True)
 
-    cdf_large = callable_df(multiplier=4)
+    cdf_large = callable_df(multiplier=multiplier)
     r = df.apply(cdf_large, axis=1)
     result = r.execute().fetch()
     expected = df_raw.apply(cdf_large, axis=1)
@@ -471,6 +480,8 @@ def test_series_apply_closure_execute(setup):
     pd.testing.assert_series_equal(result, expected)
 
     class callable_series:
+        __slots__ = "x", "__dict__"
+
         def __init__(self):
             self.x = 1
             self.y = 2

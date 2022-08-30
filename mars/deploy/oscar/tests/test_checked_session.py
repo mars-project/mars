@@ -162,7 +162,35 @@ def test_clean_up_and_restore_func(setup):
     def closure_large(z):
         return pd.concat([x_large, y_large], ignore_index=True)
 
+    # no need to clean up func, func_key won't be set
+    r_small = df.apply(closure_small, axis=1)
+    r_small.execute()
+    # need to clean up func, func_key will be set
+    r_large = df.apply(closure_large, axis=1)
+    r_large.execute()
+
+    sess.stop_server()
+
+
+@pytest.mark.parametrize("multiplier", [1, 3, 4])
+def test_clean_up_and_restore_callable(setup, multiplier):
+    config = _load_config(CONFIG_FILE)
+    config["task"][
+        "task_preprocessor_cls"
+    ] = "mars.deploy.oscar.tests.test_checked_session.FuncKeyCheckedTaskPreprocessor"
+    config["subtask"][
+        "subtask_processor_cls"
+    ] = "mars.deploy.oscar.tests.test_checked_session.FuncKeyCheckedSubtaskProcessor"
+
+    sess = new_test_session(default=True, config=config)
+
+    cols = [chr(ord("A") + i) for i in range(10)]
+    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df = md.DataFrame(df_raw, chunk_size=5)
+
     class callable_df:
+        __slots__ = "x", "__dict__"
+
         def __init__(self, multiplier: int = 1):
             self.x = pd.Series([i for i in range(10**multiplier)])
             self.y = pd.Series([i for i in range(10**multiplier)])
@@ -170,20 +198,9 @@ def test_clean_up_and_restore_func(setup):
         def __call__(self, pdf):
             return pd.concat([self.x, self.y], ignore_index=True)
 
-    cdf_small = callable_df(multiplier=1)
-    cdf_large = callable_df(multiplier=4)
+    cdf = callable_df(multiplier=multiplier)
 
-    # no need to clean up func, func_key won't be set
-    r_small = df.apply(closure_small, axis=1)
-    r_small.execute()
-    # need to clean up func, func_key will be set
-    r_large = df.apply(closure_large, axis=1)
-    r_large.execute()
-    # no need to clean up callable, func_key won't be set
-    r_callable = df.apply(cdf_small, axis=1)
-    r_callable.execute()
-    # need to clean up callable, func_key will be set
-    r_callable = df.apply(cdf_large, axis=1)
+    r_callable = df.apply(cdf, axis=1)
     r_callable.execute()
 
     sess.stop_server()
