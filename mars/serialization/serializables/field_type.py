@@ -406,6 +406,9 @@ class _CollectionType(AbstractFieldType, metaclass=ABCMeta):
                         f"got {type(item)}"
                     )
 
+    def element_types(self):
+        return self._field_types
+
 
 class ListType(_CollectionType):
     __slots__ = ()

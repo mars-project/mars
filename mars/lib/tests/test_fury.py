@@ -197,6 +197,17 @@ def test_write_dict():
     assert buffer.read_string_string_dict() == dict2
 
 
+def test_binary():
+    buffer = Buffer.allocate(8)
+    buffer.write_bytes(b"")
+    buffer.write_bytes(b"123")
+    binary = buffer.to_bytes(length=buffer.writer_index)
+    assert binary == b"\x00\x03123"
+    buffer.point_to_bytes(binary)
+    assert buffer.read_bytes() == b""
+    assert buffer.read_bytes() == b"123"
+
+
 def benchmark_write():
     buf = Buffer.allocate(3100000)
     start = time.time_ns()

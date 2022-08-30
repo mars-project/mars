@@ -33,25 +33,39 @@ cdef class Buffer:
         public int reader_index, writer_index
         char *errors
 
-    def __init__(self,  data not None, int offset=0, length=None):
+    def __init__(self, unsigned char[:] data not None, int32_t offset, int32_t length):
         self.data = data
-        assert 0 <= offset <= len(data), f'offset {offset} length {len(data)}'
-        cdef int length_
-        if length is None:
-            length_ = len(data) - offset
-        else:
-            length_ = length
-        assert length_ >= 0, f'length should be >= 0 but got {length}'
-        self._size = length_
+        if offset < 0 or offset > data.nbytes:
+            raise ValueError(f"offset {offset} length {data.nbytes}")
+        if length < 0:
+            raise ValueError(f"length should be >= 0 but got {length}")
+        self._size = length
         cdef uint8_t* ptr
-        ptr = _get_address(data) + offset
+        ptr = &data[0] + offset
         self.c_buffer = ptr
         self.reader_index = 0
         self.writer_index = 0
 
+    @staticmethod
+    cdef from_buffer(unsigned char[:] data):
+        cdef Buffer buffer = Buffer.__new__(Buffer)
+        buffer.reader_index = 0
+        buffer.writer_index = 0
+        buffer.c_buffer = <uint8_t *>(&data[0])
+        buffer.data = data
+        buffer._size = data.nbytes
+
     @classmethod
     def allocate(cls, int32_t size):
-        return Buffer(bytearray(size))
+        return Buffer(bytearray(size), 0, size)
+
+    def point_to_bytes(self, bytes_buf: bytes):
+        cdef const unsigned char[:] data = bytes_buf
+        self.reader_index = 0
+        self.writer_index = 0
+        self.c_buffer = <uint8_t *>(&data[0])
+        self.data = data
+        self._size = data.nbytes
 
     cpdef inline grow(self, int32_t needed_size):
         cdef int32_t length = self.writer_index + needed_size
@@ -849,6 +863,7 @@ cdef class StringSerializer(PrimitiveSerializer):
 cdef class CollectionSerializer(Serializer):
     cdef:
         readonly Serializer element_serializer
+        readonly c_bool element_nullable
 
     def __init__(self, c_bool nullable, c_bool element_nullable, Serializer element_serializer = None):
         super().__init__(nullable)

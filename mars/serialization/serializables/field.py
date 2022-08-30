@@ -39,6 +39,7 @@ class Field(ABC):
         "_default_factory",
         "_on_serialize",
         "_on_deserialize",
+        "_nullable",
         "name",  # The __name__ of member_descriptor
         "get",  # The __get__ of member_descriptor
         "set",  # The __set__ of member_descriptor
@@ -56,6 +57,7 @@ class Field(ABC):
         default_factory: Optional[Callable] = None,
         on_serialize: Callable[[Any], Any] = None,
         on_deserialize: Callable[[Any], Any] = None,
+        nullable: bool = None,
     ):
         if (
             default is not no_default and default_factory is not None
@@ -67,6 +69,9 @@ class Field(ABC):
         self._default_factory = default_factory
         self._on_serialize = on_serialize
         self._on_deserialize = on_deserialize
+        if nullable is None:
+            nullable = False if default is not None else True
+        self._nullable = nullable
 
     @property
     def tag(self):
@@ -79,6 +84,10 @@ class Field(ABC):
     @property
     def on_deserialize(self):
         return self._on_deserialize
+
+    @property
+    def nullable(self):
+        return self._nullable
 
     @property
     @abstractmethod
@@ -124,6 +133,16 @@ class Field(ABC):
                         f"when environ CI=true is set: {str(e)}"
                     )
         self.set(instance, value)
+
+    def __repr__(self):
+        r = f"{type(self).__name__}(tag={self._tag}, default_value={self._default_value}"
+        if self._default_factory is not None:
+            r += f", default_value={self._default_value}"
+        if self._on_serialize is not None:
+            r += f", on_serialize={self._on_serialize}"
+        if self._on_deserialize is not None:
+            r += f", on_deserialize={self._on_deserialize}"
+        return r
 
 
 class AnyField(Field):
@@ -375,7 +394,7 @@ class IntervalArrayField(Field):
 
 
 class _CollectionField(Field, metaclass=ABCMeta):
-    __slots__ = ("_field_type",)
+    __slots__ = ("_field_type", "_elements_nullable")
 
     def __init__(
         self,
@@ -385,6 +404,8 @@ class _CollectionField(Field, metaclass=ABCMeta):
         default_factory: Optional[Callable] = None,
         on_serialize: Callable[[Any], Any] = None,
         on_deserialize: Callable[[Any], Any] = None,
+        nullable: bool = None,
+        elements_nullable: bool = False,
     ):
         super().__init__(
             tag,
@@ -392,12 +413,14 @@ class _CollectionField(Field, metaclass=ABCMeta):
             default_factory=default_factory,
             on_serialize=on_serialize,
             on_deserialize=on_deserialize,
+            nullable=nullable,
         )
         if field_type is None:
             field_type = FieldTypes.any
         if not isinstance(field_type, ListType):
             field_type = self._collection_type()(field_type, ...)
         self._field_type = field_type
+        self._elements_nullable = elements_nullable
 
     @classmethod
     @abstractmethod
@@ -413,6 +436,10 @@ class _CollectionField(Field, metaclass=ABCMeta):
     @property
     def field_type(self) -> Type[AbstractFieldType]:
         return self._field_type
+
+    @property
+    def elements_nullable(self) -> bool:
+        return self._elements_nullable
 
 
 class ListField(_CollectionField):
@@ -432,7 +459,7 @@ class TupleField(_CollectionField):
 
 
 class DictField(Field):
-    __slots__ = ("_field_type",)
+    __slots__ = ("_field_type", "_key_nullable", "_value_nullable")
 
     def __init__(
         self,
@@ -443,6 +470,9 @@ class DictField(Field):
         default_factory: Optional[Callable] = None,
         on_serialize: Callable[[Any], Any] = None,
         on_deserialize: Callable[[Any], Any] = None,
+        nullable: bool = None,
+        key_nullable: bool = False,
+        value_nullable: bool = False,
     ):
         super().__init__(
             tag,
@@ -450,12 +480,23 @@ class DictField(Field):
             default_factory=default_factory,
             on_serialize=on_serialize,
             on_deserialize=on_deserialize,
+            nullable=nullable,
         )
         self._field_type = DictType(key_type, value_type)
+        self._key_nullable = key_nullable
+        self._value_nullable = value_nullable
 
     @property
     def field_type(self) -> AbstractFieldType:
         return self._field_type
+
+    @property
+    def key_nullable(self) -> bool:
+        return self._key_nullable
+
+    @property
+    def value_nullable(self) -> bool:
+        return self._value_nullable
 
 
 class ReferenceField(Field):
