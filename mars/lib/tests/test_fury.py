@@ -1,7 +1,8 @@
 import pickle
 import time
 
-from mars.lib.fury._fury import Buffer
+import msgpack
+from mars.lib.fury import Buffer
 
 
 def test_write_primitives():
@@ -21,10 +22,10 @@ def test_write_primitives():
     buffer.write_float32(-1.0)
     buffer.write_float64(1.0)
     buffer.write_float64(-1.0)
-    buffer.write_binary(b"")  # write empty buffer
+    buffer.write_bytes(b"")  # write empty buffer
     binary = b"b" * 100
-    buffer.write_binary(binary)
-    new_buffer = Buffer(buffer.get_binary(0, buffer.writer_index))
+    buffer.write_bytes(binary)
+    new_buffer = Buffer(buffer.get_bytes(0, buffer.writer_index))
     print(buffer.get_int8(0))
     assert new_buffer.read_bool() is True
     assert new_buffer.read_int8() == -1
@@ -40,8 +41,8 @@ def test_write_primitives():
     assert new_buffer.read_float32() == -1.0
     assert new_buffer.read_float64() == 1.0
     assert new_buffer.read_float64() == -1.0
-    assert new_buffer.read_binary() == b""
-    assert new_buffer.read_binary() == binary
+    assert new_buffer.read_bytes() == b""
+    assert new_buffer.read_bytes() == binary
     assert new_buffer.slice(0, 10).to_pybytes() == new_buffer.to_pybytes()[:10]
     assert new_buffer.slice(5, 25).to_pybytes() == new_buffer.to_pybytes()[5:30]
     for i in range(len(new_buffer)):
@@ -200,7 +201,7 @@ def benchmark_write():
     buf = Buffer.allocate(3100000)
     start = time.time_ns()
     values = [
-        # (2 ** 7 - 1,  Buffer.write_varint32)
+        # (2 ** 7 - 1,  Buffer.write_varint32),
         ([1, -1, 2 ** 7 - 1, -2 ** 7, 2 ** 15 - 1, -2 ** 15, 2 ** 31 - 1, -2 ** 31], Buffer.write_int32_list),
         # (list(range(100)), Buffer.write_int64_list),
         # (["", "abc", "abc你好"], Buffer.write_string_list)
@@ -208,12 +209,22 @@ def benchmark_write():
     for v, func in values:
         fury_size = None
         for i in range(1000):
-            buf.writer_index = 0
             for _ in range(10000):
+                buf.writer_index = 0
                 func(buf, v)
             fury_size = buf.writer_index
         print(f"Fury Serialize {v} cost {(time.time_ns() - start)/1000_000} fury_size {fury_size}")
         import io
+
+        start = time.time_ns()
+        pickle_size = None
+        for i in range(1000):
+            packer = msgpack.Packer(autoreset=False)
+            for _ in range(10000):
+                packer.reset()
+                packer.pack(v)
+                pickle_size = len(packer.bytes())
+        print(f"msgpack Serialize {v} cost {(time.time_ns() - start)/1000_000} {pickle_size}")
 
         start = time.time_ns()
         pickle_size = None
@@ -223,7 +234,7 @@ def benchmark_write():
             for _ in range(10000):
                 pickler.clear_memo()
                 pickler.dump(v)
-            pickle_size = file.tell()
+                pickle_size = file.tell()
         print(f"Pickle Serialize {v} cost {(time.time_ns() - start)/1000_000} {pickle_size}")
 
 
