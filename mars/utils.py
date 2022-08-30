@@ -1796,20 +1796,3 @@ def retry_callable(
             raise ex  # pylint: disable-msg=E0702
 
     return retry_call
-
-
-def add_aiotask_done_check_callback(
-    aiotask: asyncio.Task, exception_formatter: str, *args
-):
-    def _on_mars_aiotask_done(fut):
-        # Print the error of task.
-        try:
-            fut.result()
-        except asyncio.CancelledError:  # pragma: no cover
-            pass
-        except Exception:  # pragma: no cover
-            logger.exception(exception_formatter, *args)
-            if _is_ci:
-                sys.exit(-1)
-
-    aiotask.add_done_callback(_on_mars_aiotask_done)
