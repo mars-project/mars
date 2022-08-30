@@ -19,17 +19,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ....lib.version import parse as parse_version
 from ....tests.core import require_cudf
 from ... import DataFrame, Series, ArrowStringDtype
 
 
 @pytest.mark.parametrize(
     "distinct_opt", ["0"] if sys.platform.lower().startswith("win") else ["0", "1"]
-)
-@pytest.mark.skipif(
-    parse_version(pd.__version__) < parse_version("1.4.0"),
-    reason="sort_values requires pandas >= 1.4.0",
 )
 def test_sort_values_execution(setup, distinct_opt):
     ns = np.random.RandomState(0)
