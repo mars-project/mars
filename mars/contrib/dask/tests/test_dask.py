@@ -75,15 +75,15 @@ def test_unpartitioned_dataframe(setup_cluster):
     from dask import dataframe as dd
     from pandas._testing import assert_frame_equal
     import pandas as pd
-    from sklearn.datasets import load_boston
+    from sklearn.datasets import fetch_california_housing
 
-    boston = load_boston()
-    pd.DataFrame(boston.data, columns=boston["feature_names"]).to_csv(
-        "./boston_housing_data.csv"
+    california = fetch_california_housing()
+    pd.DataFrame(california.data, columns=california["feature_names"]).to_csv(
+        "./california_housing_data.csv"
     )
 
-    df = dd.read_csv(r"./boston_housing_data.csv")
-    df["CRIM"] = df["CRIM"] / 2
+    df = dd.read_csv(r"./california_housing_data.csv")
+    df["HouseAge"] = df["HouseAge"] / 2
 
     dask_res = df.compute()
     assert_frame_equal(dask_res, df.compute(scheduler=mars_scheduler))
