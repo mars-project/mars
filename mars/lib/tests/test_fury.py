@@ -61,22 +61,22 @@ def test_write_varint32():
         check_varint32(buf, -1, 5)
         check_varint32(buf, 1 << 6, 1)
         check_varint32(buf, 1 << 7, 2)
-        check_varint32(buf, -(2 ** 6), 5)
-        check_varint32(buf, -(2 ** 7), 5)
+        check_varint32(buf, -(2**6), 5)
+        check_varint32(buf, -(2**7), 5)
         check_varint32(buf, 1 << 13, 2)
         check_varint32(buf, 1 << 14, 3)
-        check_varint32(buf, -(2 ** 13), 5)
-        check_varint32(buf, -(2 ** 14), 5)
+        check_varint32(buf, -(2**13), 5)
+        check_varint32(buf, -(2**14), 5)
         check_varint32(buf, 1 << 20, 3)
         check_varint32(buf, 1 << 21, 4)
-        check_varint32(buf, -(2 ** 20), 5)
-        check_varint32(buf, -(2 ** 21), 5)
+        check_varint32(buf, -(2**20), 5)
+        check_varint32(buf, -(2**21), 5)
         check_varint32(buf, 1 << 27, 4)
         check_varint32(buf, 1 << 28, 5)
-        check_varint32(buf, -(2 ** 27), 5)
-        check_varint32(buf, -(2 ** 28), 5)
+        check_varint32(buf, -(2**27), 5)
+        check_varint32(buf, -(2**28), 5)
         check_varint32(buf, 1 << 30, 5)
-        check_varint32(buf, -(2 ** 30), 5)
+        check_varint32(buf, -(2**30), 5)
 
 
 def check_varint32(buf: Buffer, value: int, bytes_written: int):
@@ -88,7 +88,10 @@ def check_varint32(buf: Buffer, value: int, bytes_written: int):
     assert buf.writer_index == buf.reader_index
     assert value == varint
     # test slow read branch in `read_varint32`
-    assert buf.slice(reader_index, buf.reader_index - reader_index).read_varint32() == value
+    assert (
+        buf.slice(reader_index, buf.reader_index - reader_index).read_varint32()
+        == value
+    )
 
 
 def test_write_varint64():
@@ -102,46 +105,46 @@ def test_write_varint64():
         check_varint64(buf, 1, 1)
         check_varint64(buf, 1 << 6, 1)
         check_varint64(buf, 1 << 7, 2)
-        check_varint64(buf, -(2 ** 6), 9)
-        check_varint64(buf, -(2 ** 7), 9)
+        check_varint64(buf, -(2**6), 9)
+        check_varint64(buf, -(2**7), 9)
         check_varint64(buf, 1 << 13, 2)
         check_varint64(buf, 1 << 14, 3)
-        check_varint64(buf, -(2 ** 13), 9)
-        check_varint64(buf, -(2 ** 14), 9)
+        check_varint64(buf, -(2**13), 9)
+        check_varint64(buf, -(2**14), 9)
         check_varint64(buf, 1 << 20, 3)
         check_varint64(buf, 1 << 21, 4)
-        check_varint64(buf, -(2 ** 20), 9)
-        check_varint64(buf, -(2 ** 21), 9)
+        check_varint64(buf, -(2**20), 9)
+        check_varint64(buf, -(2**21), 9)
         check_varint64(buf, 1 << 27, 4)
         check_varint64(buf, 1 << 28, 5)
-        check_varint64(buf, -(2 ** 27), 9)
-        check_varint64(buf, -(2 ** 28), 9)
+        check_varint64(buf, -(2**27), 9)
+        check_varint64(buf, -(2**28), 9)
         check_varint64(buf, 1 << 30, 5)
-        check_varint64(buf, -(2 ** 30), 9)
+        check_varint64(buf, -(2**30), 9)
         check_varint64(buf, 1 << 31, 5)
-        check_varint64(buf, -(2 ** 31), 9)
+        check_varint64(buf, -(2**31), 9)
         check_varint64(buf, 1 << 32, 5)
-        check_varint64(buf, -(2 ** 32), 9)
+        check_varint64(buf, -(2**32), 9)
         check_varint64(buf, 1 << 34, 5)
-        check_varint64(buf, -(2 ** 34), 9)
+        check_varint64(buf, -(2**34), 9)
         check_varint64(buf, 1 << 35, 6)
-        check_varint64(buf, -(2 ** 35), 9)
+        check_varint64(buf, -(2**35), 9)
         check_varint64(buf, 1 << 41, 6)
-        check_varint64(buf, -(2 ** 41), 9)
+        check_varint64(buf, -(2**41), 9)
         check_varint64(buf, 1 << 42, 7)
-        check_varint64(buf, -(2 ** 42), 9)
+        check_varint64(buf, -(2**42), 9)
         check_varint64(buf, 1 << 48, 7)
-        check_varint64(buf, -(2 ** 48), 9)
+        check_varint64(buf, -(2**48), 9)
         check_varint64(buf, 1 << 49, 8)
-        check_varint64(buf, -(2 ** 49), 9)
+        check_varint64(buf, -(2**49), 9)
         check_varint64(buf, 1 << 55, 8)
-        check_varint64(buf, -(2 ** 55), 9)
+        check_varint64(buf, -(2**55), 9)
         check_varint64(buf, 1 << 56, 9)
-        check_varint64(buf, -(2 ** 56), 9)
+        check_varint64(buf, -(2**56), 9)
         check_varint64(buf, 1 << 62, 9)
-        check_varint64(buf, -(2 ** 62), 9)
+        check_varint64(buf, -(2**62), 9)
         check_varint64(buf, 1 << 63 - 1, 9)
-        check_varint64(buf, -(2 ** 63), 9)
+        check_varint64(buf, -(2**63), 9)
 
 
 def check_varint64(buf: Buffer, value: int, bytes_written: int):
@@ -153,7 +156,10 @@ def check_varint64(buf: Buffer, value: int, bytes_written: int):
     assert buf.writer_index == buf.reader_index
     assert value == varint
     # test slow read branch in `read_varint64`
-    assert buf.slice(reader_index, buf.reader_index - reader_index).read_varint64() == value
+    assert (
+        buf.slice(reader_index, buf.reader_index - reader_index).read_varint64()
+        == value
+    )
 
 
 def test_write_str():
@@ -168,11 +174,20 @@ def test_write_str():
 
 def test_write_collection():
     buffer = Buffer.allocate(8)
-    list1 = [1, -1, 2**7 - 1, -2**7, 2**15 - 1, -2**15, 2**31 - 1, -2**31]
+    list1 = [
+        1,
+        -1,
+        2**7 - 1,
+        -(2**7),
+        2**15 - 1,
+        -(2**15),
+        2**31 - 1,
+        -(2**31),
+    ]
     buffer.write_int32_list(list1)
-    list2 = [1, -1, 2**31 - 1, -2**31, 2**63 - 1, -2**63]
+    list2 = [1, -1, 2**31 - 1, -(2**31), 2**63 - 1, -(2**63)]
     buffer.write_int64_list(list2)
-    list3 = [1.0, -1.0, 1/3, -1/3]
+    list3 = [1.0, -1.0, 1 / 3, -1 / 3]
     buffer.write_float64_list(list3)
     list4 = ["", "abc", "abc你好"]
     buffer.write_string_list(list4)
@@ -213,7 +228,19 @@ def benchmark_write():
     start = time.time_ns()
     values = [
         # (2 ** 7 - 1,  Buffer.write_varint32),
-        ([1, -1, 2 ** 7 - 1, -2 ** 7, 2 ** 15 - 1, -2 ** 15, 2 ** 31 - 1, -2 ** 31], Buffer.write_int32_list),
+        (
+            [
+                1,
+                -1,
+                2**7 - 1,
+                -(2**7),
+                2**15 - 1,
+                -(2**15),
+                2**31 - 1,
+                -(2**31),
+            ],
+            Buffer.write_int32_list,
+        ),
         # (list(range(100)), Buffer.write_int64_list),
         # (["", "abc", "abc你好"], Buffer.write_string_list)
     ]
@@ -224,7 +251,9 @@ def benchmark_write():
                 buf.writer_index = 0
                 func(buf, v)
             fury_size = buf.writer_index
-        print(f"Fury Serialize {v} cost {(time.time_ns() - start)/1000_000} fury_size {fury_size}")
+        print(
+            f"Fury Serialize {v} cost {(time.time_ns() - start)/1000_000} fury_size {fury_size}"
+        )
         import io
 
         start = time.time_ns()
@@ -235,7 +264,9 @@ def benchmark_write():
                 packer.reset()
                 packer.pack(v)
                 pickle_size = len(packer.bytes())
-        print(f"msgpack Serialize {v} cost {(time.time_ns() - start)/1000_000} {pickle_size}")
+        print(
+            f"msgpack Serialize {v} cost {(time.time_ns() - start)/1000_000} {pickle_size}"
+        )
 
         start = time.time_ns()
         pickle_size = None
@@ -246,8 +277,10 @@ def benchmark_write():
                 pickler.clear_memo()
                 pickler.dump(v)
                 pickle_size = file.tell()
-        print(f"Pickle Serialize {v} cost {(time.time_ns() - start)/1000_000} {pickle_size}")
+        print(
+            f"Pickle Serialize {v} cost {(time.time_ns() - start)/1000_000} {pickle_size}"
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     benchmark_write()

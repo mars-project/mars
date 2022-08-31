@@ -53,7 +53,6 @@ class SubtaskStatus(Enum):
 
 class Subtask(Serializable):
     __slots__ = ("_repr", "_pure_depend_keys")
-
     subtask_id: str = StringField("subtask_id")
     subtask_name: str = StringField("subtask_name")
     session_id: str = StringField("session_id")

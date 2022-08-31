@@ -2,7 +2,6 @@
 # cython: embedsignature = True
 # cython: language_level = 3
 # cython: annotate = True
-from typing import Callable
 
 from cpython cimport *
 from libc.stdint cimport *

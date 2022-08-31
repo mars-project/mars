@@ -20,9 +20,22 @@ from typing import Dict, List, Type, Tuple
 
 import cloudpickle
 
-from ...lib.fury import ListSerializer, NullableSerializer, PrimitiveSerializer, Int32ListSerializer, \
-    Int64ListSerializer, StringListSerializer, Float64ListSerializer, Int32TupleSerializer, Int64TupleSerializer, \
-    Float64TupleSerializer, StringTupleSerializer, StringKVDictSerializer, DictSerializer, Buffer
+from ...lib.fury import (
+    ListSerializer,
+    NullableSerializer,
+    PrimitiveSerializer,
+    Int32ListSerializer,
+    Int64ListSerializer,
+    StringListSerializer,
+    Float64ListSerializer,
+    Int32TupleSerializer,
+    Int64TupleSerializer,
+    Float64TupleSerializer,
+    StringTupleSerializer,
+    StringKVDictSerializer,
+    DictSerializer,
+    Buffer,
+)
 from ...utils import no_default
 from ..core import Serializer, Placeholder, buffered
 from .field import Field, ListField, TupleField, DictField
@@ -83,8 +96,13 @@ def get_basic_serializer(field_type, nullable=True):
     if nullable:
         if field_type.type == PrimitiveType.bool:
             return Buffer.write_nullable_bool, Buffer.read_nullable_bool
-        elif field_type.type in {PrimitiveType.int8, PrimitiveType.int16, PrimitiveType.int32,
-                                 PrimitiveType.uint8, PrimitiveType.uint16}:
+        elif field_type.type in {
+            PrimitiveType.int8,
+            PrimitiveType.int16,
+            PrimitiveType.int32,
+            PrimitiveType.uint8,
+            PrimitiveType.uint16,
+        }:
             return Buffer.write_nullable_varint32, Buffer.read_nullable_varint32
         elif field_type.type == {PrimitiveType.int64, PrimitiveType.uint32}:
             return Buffer.write_nullable_varint64, Buffer.read_nullable_varint64
@@ -104,7 +122,11 @@ def get_basic_serializer(field_type, nullable=True):
         return Buffer.write_int8, Buffer.read_int8
     elif field_type.type == PrimitiveType.int16:
         return Buffer.write_int16, Buffer.read_int16
-    elif field_type.type in {PrimitiveType.uint8, PrimitiveType.uint16, PrimitiveType.int32}:
+    elif field_type.type in {
+        PrimitiveType.uint8,
+        PrimitiveType.uint16,
+        PrimitiveType.int32,
+    }:
         return Buffer.write_varint32, Buffer.read_varint32
     elif field_type.type in {PrimitiveType.int64, PrimitiveType.uint32}:
         return Buffer.write_varint64, Buffer.read_varint64
@@ -162,13 +184,23 @@ def get_fury_serializer(field: Field):
 
     if isinstance(field, DictField):
         assert isinstance(field_type, DictType)
-        if field_type.key_type == PrimitiveType.string and field_type.value_type == PrimitiveType.string:
-            return StringKVDictSerializer(field.nullable, field.key_nullable, field.value_nullable)
+        if (
+            field_type.key_type == PrimitiveType.string
+            and field_type.value_type == PrimitiveType.string
+        ):
+            return StringKVDictSerializer(
+                field.nullable, field.key_nullable, field.value_nullable
+            )
         key_serializer = get_basic_serializer(field_type.key_type, field.key_nullable)
         value_serializer = get_basic_serializer(field_type.key_type, field.key_nullable)
         if key_serializer is not None and value_serializer is not None:
-            return DictSerializer(field.nullable, field.key_nullable,
-                                  field.value_nullable, key_serializer, value_serializer)
+            return DictSerializer(
+                field.nullable,
+                field.key_nullable,
+                field.value_nullable,
+                PrimitiveSerializer(*key_serializer),
+                PrimitiveSerializer(*value_serializer),
+            )
     if isinstance(field_type, PrimitiveType):
         return get_basic_serializer(field_type, field.nullable)
     return None
@@ -193,7 +225,10 @@ def get_fury_read_buffer() -> Buffer:
     return buffer
 
 
-_disable_fury_serialization = (os.environ.get("DISABLE_FURY") or "0").lower() in ("1", "true")
+_enable_fury_serialization = (os.environ.get("ENABLE_FURY") or "1").lower() in (
+    "1",
+    "true",
+)
 
 
 class SerializableMeta(type):
@@ -256,7 +291,9 @@ class SerializableMeta(type):
         properties["NON_FURY_SERIALIZABLE_FIELDS"] = non_fury_serializable_fields
         properties["FIELDS_FURY_SERIALIZERS"] = fields_fury_serializers
         properties["FIELDS_FURY_DESERIALIZERS"] = fields_fury_deserializers
-        properties["_PRIMITIVE_FIELDS"] = fury_serializable_fields + non_fury_serializable_fields
+        properties["_PRIMITIVE_FIELDS"] = (
+            fury_serializable_fields + non_fury_serializable_fields
+        )
         properties["_NON_PRIMITIVE_FIELDS"] = non_pickle_fields
         properties["__slots__"] = tuple(slots)
 
@@ -278,7 +315,7 @@ class Serializable(metaclass=SerializableMeta):
     __slots__ = ("__weakref__",)
 
     _cache_primitive_serial = False
-    _enable_fury_serialization = True
+    _enable_fury_serialization = _enable_fury_serialization
 
     _FIELDS: Dict[str, Field]
     _PRIMITIVE_FIELDS: List[Field]
@@ -354,7 +391,7 @@ class SerializableSerializer(Serializer):
                 for idx, fury_serializer in enumerate(obj.FIELDS_FURY_SERIALIZERS):
                     fury_serializer(buffer, primitive_vals[idx])
                 fury_data = buffer.to_bytes(length=buffer.writer_index)
-                primitive_vals = primitive_vals[len(obj.FIELDS_FURY_SERIALIZERS):]
+                primitive_vals = primitive_vals[len(obj.FIELDS_FURY_SERIALIZERS) :]
                 primitive_vals.append(fury_data)
             if obj._cache_primitive_serial:
                 primitive_vals = cloudpickle.dumps(primitive_vals)

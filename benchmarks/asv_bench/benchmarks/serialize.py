@@ -110,7 +110,7 @@ class SerializeSerializableSuite:
 class SerializeSubtaskSuite:
     def setup(self):
         self.subtasks = []
-        for i in range(10000):
+        for i in range(10):
             subtask = Subtask(
                 subtask_id=new_task_id(),
                 stage_id=new_task_id(),
@@ -130,7 +130,8 @@ class SerializeSubtaskSuite:
             self.subtasks.append(subtask)
 
     def time_pickle_serialize_deserialize_subtask(self):
-        deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.subtasks))))
+        for i in range(20000):
+            deserialize(*cloudpickle.loads(cloudpickle.dumps(serialize(self.subtasks))))
 
 
 class SerializePrimitivesSuite:
@@ -272,3 +273,12 @@ class SerializeMessageSuite:
         deserialize(
             *cloudpickle.loads(cloudpickle.dumps(serialize(self.actor_ref_messages)))
         )
+
+
+if __name__ == '__main__':
+    subtask_suite = SerializeSubtaskSuite()
+    subtask_suite.setup()
+    import time
+    start = time.time_ns()
+    subtask_suite.time_pickle_serialize_deserialize_subtask()
+    print(f"Serialize cost {(time.time_ns() - start) / 1000_000}")
