@@ -1484,7 +1484,7 @@ def whether_to_clean_up(op, threshold):
 
         def inner_count(obj, recursion_depth):
             obj_id = id(obj)
-            if obj_id in _seen_obj_ids or recursion_depth >= max_recursion_depth:
+            if obj_id in _seen_obj_ids or recursion_depth > max_recursion_depth:
                 return 0
             _seen_obj_ids.add(obj_id)
             recursion_depth += 1
