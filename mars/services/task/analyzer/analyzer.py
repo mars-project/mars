@@ -449,6 +449,17 @@ class GraphAnalyzer:
             if all(isinstance(c.op, Fetch) for c in same_color_chunks):
                 # all fetch ops, no need to gen subtask
                 continue
+            if self._shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX:
+                mappers = [
+                    c for c in same_color_chunks if c.op.stage == OperandStage.map
+                ]
+                if len(mappers) > 1:
+                    # ensure every subtask contains only at most one mapper
+                    for mapper in mappers:
+                        same_color_chunks.remove(mapper)
+                        mapper_color = coloring.next_color()
+                        chunk_to_colors[mapper] = mapper_color
+                        color_to_chunks[mapper_color] = [mapper]
             subtask, inp_subtasks = self._gen_subtask_info(
                 same_color_chunks,
                 chunk_to_subtask,
