@@ -16,6 +16,7 @@ import os
 import sys
 import functools
 import itertools
+import inspect
 import logging
 import operator
 from contextlib import contextmanager
@@ -1512,7 +1513,9 @@ def whether_to_clean_up(op, threshold):
     try:
         # Note: In most cases, func is just a function with closure, while chances are that
         # func is a callable that doesn't have __closure__ attribute.
-        if hasattr(func, "__closure__") and func.__closure__ is not None:
+        if inspect.isclass(func):
+            pass
+        elif hasattr(func, "__closure__") and func.__closure__ is not None:
             for cell in func.__closure__:
                 counted_bytes += getsize(cell.cell_contents)
                 check_exceed_threshold()
@@ -1528,12 +1531,13 @@ def whether_to_clean_up(op, threshold):
                     )
                     check_exceed_threshold()
     except StopIteration:
-        logger.debug("Func needs cleaning up.")
+        logger.debug("Func needs cleanup.")
         op.need_clean_up_func = True
     else:
-        logger.debug("Func doesn't need cleaning up.")
-    finally:
-        return op.need_clean_up_func
+        assert op.need_clean_up_func is False
+        logger.debug("Func doesn't need cleanup.")
+
+    return op.need_clean_up_func
 
 
 def restore_func(ctx: Context, op):
