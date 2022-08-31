@@ -25,6 +25,7 @@ from ......core.context import get_context
 from ......core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 from ......lib.aio.isolation import new_isolation, stop_isolation
 from ......resource import Resource
+from ......serialization import serialize
 from ......tests.core import require_ray, mock
 from ......utils import lazy_import, get_chunk_params
 from .....context import ThreadedServiceContext
