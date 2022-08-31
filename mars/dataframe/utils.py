@@ -1466,33 +1466,72 @@ def clean_up_func(op):
 def whether_to_clean_up(op, threshold):
     func = op.func
     counted_bytes = 0
+    max_recursion_depth = 2
+
+    from numbers import Number
+    from collections import deque
+
+    BYPASS_CLASSES = (str, bytes, Number, range, bytearray, pd.DataFrame, pd.Series)
 
     def check_exceed_threshold():
         nonlocal threshold, counted_bytes
         if counted_bytes >= threshold:
             raise StopIteration
 
+    def getsize(obj_outer):
+        _seen_obj_ids = set()
+
+        def inner_count(obj, recursion_depth):
+            obj_id = id(obj)
+            if obj_id in _seen_obj_ids or recursion_depth >= max_recursion_depth:
+                return 0
+            _seen_obj_ids.add(obj_id)
+            recursion_depth += 1
+            size = sys.getsizeof(obj)
+            if isinstance(obj, BYPASS_CLASSES):
+                return size
+            elif isinstance(obj, (tuple, list, set, deque)):
+                size += sum(inner_count(i, recursion_depth) for i in obj)
+            elif hasattr(obj, "items"):
+                size += sum(
+                    inner_count(k, recursion_depth) + inner_count(v, recursion_depth)
+                    for k, v in getattr(obj, "items")()
+                )
+            if hasattr(obj, "__dict__"):
+                size += inner_count(vars(obj), recursion_depth)
+            if hasattr(obj, "__slots__"):
+                size += sum(
+                    inner_count(getattr(obj, s), recursion_depth)
+                    for s in obj.__slots__
+                    if hasattr(obj, s)
+                )
+            return size
+
+        return inner_count(obj_outer, 0)
+
     try:
         # Note: In most cases, func is just a function with closure, while chances are that
         # func is a callable that doesn't have __closure__ attribute.
         if hasattr(func, "__closure__") and func.__closure__ is not None:
             for cell in func.__closure__:
-                counted_bytes += sys.getsizeof(cell.cell_contents)
+                counted_bytes += getsize(cell.cell_contents)
                 check_exceed_threshold()
         elif callable(func):
             if hasattr(func, "__dict__"):
                 for k, v in func.__dict__.items():
-                    counted_bytes += sum([sys.getsizeof(k), sys.getsizeof(v)])
+                    counted_bytes += sum([getsize(k), getsize(v)])
                     check_exceed_threshold()
             if hasattr(func, "__slots__"):
                 for slot in func.__slots__:
                     counted_bytes += (
-                        sys.getsizeof(getattr(func, slot)) if hasattr(func, slot) else 0
+                        getsize(getattr(func, slot)) if hasattr(func, slot) else 0
                     )
                     check_exceed_threshold()
     except StopIteration:
-        logger.info("Func needs cleaning up.")
+        logger.debug("Func needs cleaning up.")
         op.need_clean_up_func = True
+    else:
+        logger.debug("Func doesn't need cleaning up.")
     finally:
         return op.need_clean_up_func
 
