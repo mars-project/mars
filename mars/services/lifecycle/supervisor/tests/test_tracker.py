@@ -22,8 +22,24 @@ from ....cluster import MockClusterAPI
 from ....meta import MockMetaAPI
 from ....session import MockSessionAPI
 from ....storage import MockStorageAPI, DataNotExist
+from ....task.supervisor.manager import TaskManagerActor
 from ... import TileableNotTracked
 from ...supervisor.tracker import LifecycleTrackerActor
+
+
+class FakeTaskManager(TaskManagerActor):
+    def __init__(self, session_id: str):
+        super().__init__(session_id)
+        self._remove_tileables = []
+
+    async def __post_create__(self):
+        pass
+
+    def remove_tileables(self, tileable_keys):
+        self._remove_tileables.extend(tileable_keys)
+
+    def get_removed_tileables(self):
+        return self._remove_tileables
 
 
 @pytest.mark.asyncio
@@ -39,6 +55,13 @@ async def test_tracker():
         storage_api = await MockStorageAPI.create(session_id, addr)
 
         try:
+            task_manager = await mo.create_actor(
+                FakeTaskManager,
+                session_id,
+                uid=FakeTaskManager.gen_uid(session_id),
+                address=pool.external_address,
+            )
+
             tracker = await mo.create_actor(
                 LifecycleTrackerActor,
                 session_id,
@@ -66,6 +89,7 @@ async def test_tracker():
             await tracker.decref_tileables([tileable_key])
             await tracker.decref_tileables([tileable_key], [2])
             assert len(await tracker.get_all_chunk_ref_counts()) == 0
+            assert await task_manager.get_removed_tileables() == [tileable_key]
 
             with pytest.raises(ValueError):
                 await tracker.incref_tileables([tileable_key], [2, 3])

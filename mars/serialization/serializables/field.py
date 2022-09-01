@@ -15,11 +15,10 @@
 import itertools
 import importlib
 import inspect
-import os
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Any, Callable, Optional, Type, Union
 
-from ...utils import no_default
+from ...utils import no_default, _is_ci
 from .field_type import (
     AbstractFieldType,
     FieldTypes,
@@ -28,8 +27,6 @@ from .field_type import (
     DictType,
     ReferenceType,
 )
-
-_is_ci = (os.environ.get("CI") or "0").lower() in ("1", "true")
 
 
 class Field(ABC):

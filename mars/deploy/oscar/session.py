@@ -965,7 +965,6 @@ class _IsolatedSession(AbstractAsyncSession):
         if self._closed:
             raise RuntimeError("Session closed already")
         fuse_enabled: bool = kwargs.pop("fuse_enabled", None)
-        task_name: str = kwargs.pop("task_name", None)
         extra_config: dict = kwargs.pop("extra_config", None)
         warn_duplicated_execution: bool = kwargs.pop("warn_duplicated_execution", False)
         if kwargs:  # pragma: no cover
@@ -995,7 +994,6 @@ class _IsolatedSession(AbstractAsyncSession):
         # submit task
         task_id = await self._task_api.submit_tileable_graph(
             tileable_graph,
-            task_name=task_name,
             fuse_enabled=fuse_enabled,
             extra_config=extra_config,
         )
