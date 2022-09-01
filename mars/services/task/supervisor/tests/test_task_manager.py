@@ -199,9 +199,7 @@ async def test_run_tasks_with_same_name(actor_pool):
         graph = TileableGraph([t.data])
         next(TileableGraphBuilder(graph).build())
 
-        task_id = await manager.submit_tileable_graph(
-            graph, task_name="my_task", fuse_enabled=False
-        )
+        task_id = await manager.submit_tileable_graph(graph, fuse_enabled=False)
         assert isinstance(task_id, str)
 
         await manager.wait_task(task_id)
@@ -661,7 +659,6 @@ async def test_dump_subtask_graph(actor_pool):
 
     task_id = await manager.submit_tileable_graph(
         graph,
-        task_name="my_task",
         fuse_enabled=True,
         extra_config={"dump_subtask_graph": True},
     )

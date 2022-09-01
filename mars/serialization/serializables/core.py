@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 import operator
 import weakref
 from typing import Dict, List, Type, Tuple
@@ -40,8 +39,6 @@ _primitive_field_types = (
     TimedeltaType,
     TZInfoType,
 )
-
-_is_ci = (os.environ.get("CI") or "0").lower() in ("1", "true")
 
 
 def _is_field_primitive_compound(field: Field):

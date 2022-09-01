@@ -59,13 +59,12 @@ class TaskAPI(AbstractTaskAPI):
     async def submit_tileable_graph(
         self,
         graph: TileableGraph,
-        task_name: str = None,
         fuse_enabled: bool = None,
         extra_config: dict = None,
     ) -> str:
         try:
             return await self._task_manager_ref.submit_tileable_graph(
-                graph, task_name, fuse_enabled=fuse_enabled, extra_config=extra_config
+                graph, fuse_enabled=fuse_enabled, extra_config=extra_config
             )
         except mo.ActorNotExist:
             raise RuntimeError("Session closed already")
@@ -104,3 +103,6 @@ class TaskAPI(AbstractTaskAPI):
 
     async def get_last_idle_time(self) -> Union[float, None]:
         return await self._task_manager_ref.get_last_idle_time()
+
+    async def remove_tileables(self, tileable_keys: List[str]):
+        return await self._task_manager_ref.remove_tileables(tileable_keys)
