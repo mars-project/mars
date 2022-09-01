@@ -293,6 +293,11 @@ def test_loc_getitem(setup):
     expected = raw2.loc[[]]
     pd.testing.assert_frame_equal(result, expected)
 
+    df = df2.loc[1:4]
+    result = df.execute().fetch()
+    expected = raw2.loc[1:4]
+    pd.testing.assert_frame_equal(result, expected)
+
     df = df2.loc[1:4, "b":"d"]
     result = df.execute().fetch()
     expected = raw2.loc[1:4, "b":"d"]

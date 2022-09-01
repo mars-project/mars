@@ -76,34 +76,42 @@ class DataFrameLoc:
         index_value = self._obj.index_value.value
         if len(indexes) == 2:
             if not isinstance(indexes[1], slice):
-                return False
+                return False, None
             elif indexes[1] != slice(None):
-                return False
+                return False, None
         if not isinstance(index_value, IndexValue.RangeIndex):
-            return False
+            return False, None
         if index_value.slice.start != 0 and index_value.slice.start is not None:
-            return False
+            return False, None
         if not isinstance(indexes[0], (Integral, slice)):
-            return False
+            return False, None
         if isinstance(indexes[0], Integral):
             if indexes[0] < 0:
-                return False
+                return False, None
         else:
-            for v in (indexes[0].start, indexes[0].stop, indexes[0].step):
+            index0 = indexes[0]
+            for v in (index0.start, index0.stop, index0.step):
                 if v is None:
                     continue
                 if not isinstance(v, Integral):
-                    return False
+                    return False, None
                 if v < 0:
-                    return False
-        return True
+                    return False, None
+            if index0.stop is not None:
+                # adjust slice right bound
+                return (
+                    True,
+                    [slice(index0.start, index0.stop + 1, index0.step)] + indexes[1:],
+                )
+        return True, None
 
     def __getitem__(self, indexes):
         indexes = process_loc_indexes(self._obj, indexes)
 
-        if self._use_iloc(indexes):
+        use_iloc, new_indexes = self._use_iloc(indexes)
+        if use_iloc:
             # use iloc instead
-            return self._obj.iloc[tuple(indexes)]
+            return self._obj.iloc[tuple(new_indexes or indexes)]
 
         op = DataFrameLocGetItem(indexes=indexes)
         return op(self._obj)
