@@ -50,8 +50,8 @@ jobs:
           source ./ci/reload-env.sh
           unset CI
           cd benchmarks/asv_bench
-          git config --global user.email "fyrestone@outlook.com"
-          git config --global user.name "fyrestone"
+          git config --global user.email "mars_asv_benchmark@outlook.com"
+          git config --global user.name "Mars ASV Benchmark"
           asv check -E existing
           git remote add upstream https://github.com/mars-project/mars.git
           git fetch upstream
