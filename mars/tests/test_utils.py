@@ -334,10 +334,17 @@ def test_type_dispatcher():
     dispatcher.register(object, lambda x: "Object")
     dispatcher.register(type1, lambda x: "Type1")
     dispatcher.register("pandas.DataFrame", lambda x: "DataFrame")
+    dispatcher.register(utils.NamedType("ray", type1), lambda x: "RayType1")
 
     assert "Type1" == dispatcher(type2())
     assert "DataFrame" == dispatcher(pd.DataFrame())
     assert "Object" == dispatcher(type3())
+
+    tp = utils.NamedType("ray", type2)
+    assert dispatcher.get_handler(tp)(tp) == "RayType1"
+    tp = utils.NamedType("xxx", type2)
+    assert dispatcher.get_handler(tp)(tp) == "Type1"
+    assert "Type1" == dispatcher(type2())
 
     dispatcher.unregister(object)
     with pytest.raises(KeyError):

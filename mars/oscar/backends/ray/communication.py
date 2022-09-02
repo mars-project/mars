@@ -101,7 +101,7 @@ class _ArgWrapper:
 
     def __reduce__(self):
         _register_ray_serializers_once()
-        return _argwrapper_unpickler, (serialize(self.message),)
+        return _argwrapper_unpickler, (serialize(self.message, context={"name": "ray"}),)
 
 
 @lazy_import_on_load(ray)
