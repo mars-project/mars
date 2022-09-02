@@ -96,7 +96,7 @@ class _ArgWrapper:
 
     def __reduce__(self):
         return _argwrapper_unpickler, (
-            serialize(self.message, context={"name": "ray"}),
+            serialize(self.message, context={"serializer": "ray"}),
         )
 
 
