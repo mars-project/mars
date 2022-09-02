@@ -329,9 +329,12 @@ def test_type_dispatcher():
     type1 = type("Type1", (), {})
     type2 = type("Type2", (type1,), {})
     type3 = type("Type3", (), {})
+    type4 = type("Type4", (type2,), {})
+    type5 = type("Type5", (type4,), {})
 
     dispatcher.register(object, lambda x: "Object")
     dispatcher.register(type1, lambda x: "Type1")
+    dispatcher.register(type4, lambda x: "Type4")
     dispatcher.register("pandas.DataFrame", lambda x: "DataFrame")
     dispatcher.register(utils.NamedType("ray", type1), lambda x: "RayType1")
 
@@ -339,11 +342,15 @@ def test_type_dispatcher():
     assert "DataFrame" == dispatcher(pd.DataFrame())
     assert "Object" == dispatcher(type3())
 
+    tp = utils.NamedType("ray", type1)
+    assert dispatcher.get_handler(tp)(tp) == "RayType1"
     tp = utils.NamedType("ray", type2)
     assert dispatcher.get_handler(tp)(tp) == "RayType1"
     tp = utils.NamedType("xxx", type2)
     assert dispatcher.get_handler(tp)(tp) == "Type1"
     assert "Type1" == dispatcher(type2())
+    tp = utils.NamedType("ray", type5)
+    assert dispatcher.get_handler(tp)(tp) == "Type4"
 
     dispatcher.unregister(object)
     with pytest.raises(KeyError):

@@ -167,7 +167,8 @@ cdef class TypeDispatcher:
             else:
                 mro = type_.__mro__
             for clz in mro:
-                handler = self._handlers.get(clz) or self._inherit_handlers.get(clz)
+                # only lookup self._handlers for mro clz
+                handler = self._handlers.get(clz)
                 if handler is not None:
                     return handler
             return None
