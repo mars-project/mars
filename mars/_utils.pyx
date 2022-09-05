@@ -124,7 +124,7 @@ cdef class TypeDispatcher:
             self._handlers[type_] = handler
 
     cpdef void unregister(self, object type_):
-        if isinstance(type_, tuple):
+        if type(type_) is not NamedType and isinstance(type_, tuple):
             for t in type_:
                 self.unregister(t)
         else:
