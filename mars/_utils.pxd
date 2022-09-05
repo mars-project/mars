@@ -23,7 +23,6 @@ cdef class TypeDispatcher:
     cpdef void unregister(self, object type_)
     cdef _reload_lazy_handlers(self)
     cpdef get_handler(self, object type_)
-    cdef _get_handler(self, object type_)
 
 
 cpdef str to_str(s, encoding=*)

@@ -140,16 +140,6 @@ cdef class TypeDispatcher:
         self._lazy_handlers = dict()
 
     cpdef get_handler(self, object type_):
-        handler = self._get_handler(type_)
-        if handler is None and type(type_) is NamedType:
-            handler = self._get_handler(type_.type_)
-        if handler is not None:
-            self._inherit_handlers[type_] = handler
-            return handler
-        else:
-            raise KeyError(f'Cannot dispatch type {type_}')
-
-    cdef _get_handler(self, object type_):
         try:
             return self._handlers[type_]
         except KeyError:
@@ -160,8 +150,9 @@ cdef class TypeDispatcher:
         except KeyError:
             self._reload_lazy_handlers()
             if type(type_) is NamedType:
+                named_type = partial(NamedType, type_.name)
                 mro = itertools.chain(
-                    *zip(map(lambda tp: NamedType(type_.name, tp), type_.type_.__mro__),
+                    *zip(map(named_type, type_.type_.__mro__),
                          type_.type_.__mro__)
                 )
             else:
@@ -170,8 +161,9 @@ cdef class TypeDispatcher:
                 # only lookup self._handlers for mro clz
                 handler = self._handlers.get(clz)
                 if handler is not None:
+                    self._inherit_handlers[type_] = handler
                     return handler
-            return None
+            raise KeyError(f'Cannot dispatch type {type_}')
 
     def __call__(self, object obj, *args, **kwargs):
         return self.get_handler(type(obj))(obj, *args, **kwargs)
