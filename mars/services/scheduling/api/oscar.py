@@ -57,9 +57,8 @@ class SchedulingAPI(AbstractSchedulingAPI):
         from ..supervisor.autoscale import AutoscalerActor
 
         cluster_api = await ClusterAPI.create(address)
-        supervisor_address = (await cluster_api.get_supervisors())[0]
-        autoscaler = await mo.actor_ref(
-            AutoscalerActor.default_uid(), address=supervisor_address
+        [autoscaler] = await cluster_api.get_supervisor_refs(
+            [AutoscalerActor.default_uid()]
         )
         scheduling_api = SchedulingAPI(
             session_id, address, manager_ref, queueing_ref, autoscaler
