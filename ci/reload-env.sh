@@ -91,5 +91,3 @@ function retry {
 alias pip="retry pip"
 shopt -s expand_aliases
 set -e
-# https://github.com/pypa/setuptools/issues/3504
-export SETUPTOOLS_ENABLE_FEATURES="legacy-editable"
