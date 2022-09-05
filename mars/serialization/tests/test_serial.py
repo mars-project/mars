@@ -288,6 +288,10 @@ def test_deserial_errors():
     finally:
         MockSerializerForErrors.unregister(CustomList)
         ListSerializer.unregister(CustomList, name="test_name")
+        # Above unregister will remove the ListSerializer from deserializers,
+        # so we need to register ListSerializer again to make the
+        # deserializers correct.
+        ListSerializer.register(list)
 
 
 class MockSerializerForSpawn(ListSerializer):
