@@ -48,7 +48,7 @@ class Coloring:
 
         self._coloring_iter = itertools.count()
 
-    def _next_color(self) -> int:
+    def next_color(self) -> int:
         return next(self._coloring_iter)
 
     @classmethod
@@ -82,7 +82,7 @@ class Coloring:
         for chunk, band in self.chunk_to_bands.items():
             band_priority = (band, chunk.op.priority)
             if band_priority not in band_priority_to_colors:
-                band_priority_to_colors[band_priority] = self._next_color()
+                band_priority_to_colors[band_priority] = self.next_color()
 
         band_priority_to_color_list = defaultdict(list)
         for (band, priority), color in band_priority_to_colors.items():
@@ -94,7 +94,7 @@ class Coloring:
             color = band_priority_to_color_list[band, priority][-1]
             size = color_to_size[color]
             if size >= self.initial_same_color_num:
-                color = self._next_color()
+                color = self.next_color()
                 band_priority_to_color_list[band, priority].append(color)
             color_to_size[color] += 1
             op_to_colors[chunk.op] = color
@@ -125,17 +125,17 @@ class Coloring:
             if len(predecessors) == 1 and predecessors[0] in broadcaster_chunk_set:
                 # TODO: handle situation that chunks which specify reassign_workers
                 # predecessor is broadcaster, just allocate a new color
-                color = self._next_color()
+                color = self.next_color()
             elif len(pred_colors) == 1:
                 if self._can_color_same(chunk, predecessors):
                     # predecessors have only 1 color, will color with same one
                     color = next(iter(pred_colors))
                 else:
-                    color = self._next_color()
+                    color = self.next_color()
             else:
                 # has more than 1 color, color a new one
                 assert len(pred_colors) > 1
-                color = self._next_color()
+                color = self.next_color()
 
             op_to_colors[chunk.op] = chunk_to_colors[chunk] = color
 
@@ -155,7 +155,7 @@ class Coloring:
                 stack = []
                 for succ in self.chunk_graph.iter_successors(chunk):
                     if chunk_to_colors[succ] == chunk_color:
-                        new_color = op_to_colors[succ.op] = self._next_color()
+                        new_color = op_to_colors[succ.op] = self.next_color()
                         for c in succ.op.outputs:
                             if c not in self.chunk_graph:  # pragma: no cover
                                 continue
@@ -178,7 +178,7 @@ class Coloring:
                         if node_input_same_color:
                             node_new_color = node_pred_colors[0]
                         else:
-                            node_new_color = self._next_color()
+                            node_new_color = self.next_color()
                         op_to_colors[node.op] = node_new_color
                         for c in node.op.outputs:
                             if c not in self.chunk_graph:  # pragma: no cover
