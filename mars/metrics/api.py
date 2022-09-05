@@ -110,7 +110,7 @@ class Metrics:
     def counter(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
         _check_metrics_valid()
         logger.info(
-            "Initializing a counter whose name: %s, tag keys: %s, backend: %s",
+            "Initializing a counter with name: %s, tag keys: %s, backend: %s",
             name,
             tag_keys,
             _metric_backend,
