@@ -14,7 +14,6 @@
 
 import asyncio
 import concurrent.futures as futures
-import functools
 import itertools
 import logging
 import time
