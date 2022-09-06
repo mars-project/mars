@@ -65,6 +65,7 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     to_binary,
     to_str,
     to_text,
+    NamedType,
     TypeDispatcher,
     tokenize,
     tokenize_int,
@@ -84,6 +85,7 @@ pd_release_version: Tuple[int] = parse_version(pd.__version__).release
 OBJECT_FIELD_OVERHEAD = 50
 
 # make flake8 happy by referencing these imports
+NamedType = NamedType
 TypeDispatcher = TypeDispatcher
 tokenize = tokenize
 register_tokenizer = register_tokenizer

@@ -24,7 +24,6 @@ import pytest
 from .... import tensor as mt
 from .... import dataframe as md
 from ....oscar.errors import ReconstructWorkerError
-from ....serialization.ray import register_ray_serializers
 from ....tests.core import require_ray, mock, DICT_NOT_EMPTY
 from ....utils import lazy_import
 from ..ray import (
@@ -165,7 +164,6 @@ def test_sync_execute(ray_start_regular_shared, create_cluster):
 
 
 def _run_web_session(web_address):
-    register_ray_serializers()
     import asyncio
 
     asyncio.new_event_loop().run_until_complete(
@@ -175,7 +173,6 @@ def _run_web_session(web_address):
 
 
 def _sync_web_session_test(web_address):
-    register_ray_serializers()
     new_session(web_address)
     raw = np.random.RandomState(0).rand(10, 5)
     a = mt.tensor(raw, chunk_size=5).sum(axis=1)

@@ -258,6 +258,7 @@ def test_deserial_errors():
     try:
         MockSerializerForErrors.raises = False
         MockSerializerForErrors.register(CustomList)
+        ListSerializer.register(CustomList, name="test_name")
 
         # error of leaf object is raised
         obj = [1, [[3, UnpickleWithError()]]]
@@ -276,14 +277,21 @@ def test_deserial_errors():
         obj = [CustomList([[1], [[2]]])]
         with pytest.raises(TypeError):
             deserialize(*serialize(obj))
+        deserialize(*serialize(obj, {"serializer": "test_name"}))
 
         # error of non-leaf CustomList is rewritten in parent object
         obj = CustomList([[1], CustomList([[1], [[2]]]), [2]])
         with pytest.raises(SystemError) as exc_info:
             deserialize(*serialize(obj))
         assert isinstance(exc_info.value.__cause__, TypeError)
+        deserialize(*serialize(obj, {"serializer": "test_name"}))
     finally:
         MockSerializerForErrors.unregister(CustomList)
+        ListSerializer.unregister(CustomList, name="test_name")
+        # Above unregister will remove the ListSerializer from deserializers,
+        # so we need to register ListSerializer again to make the
+        # deserializers correct.
+        ListSerializer.register(list)
 
 
 class MockSerializerForSpawn(ListSerializer):
