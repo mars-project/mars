@@ -373,7 +373,8 @@ class SubtaskProcessor:
                 mapper_keys = get_mapper_data_keys(chunk_key, data_key_to_store_size)
                 store_size = sum(data_key_to_store_size[k] for k in mapper_keys)
                 memory_size = sum(data_key_to_memory_size[k] for k in mapper_keys)
-                object_ref = [data_key_to_object_id[k] for k in mapper_keys]
+                # Skip meta for shuffle
+                object_ref = None
             # for worker, if chunk in update_meta_chunks
             # save meta including dtypes_value etc, otherwise,
             # save basic meta only

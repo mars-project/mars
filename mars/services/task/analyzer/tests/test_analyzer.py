@@ -27,9 +27,10 @@ t1 = mt.random.RandomState(0).rand(31, 27, chunk_size=10)
 t2 = t1.reshape(27, 31)
 t2.op.extra_params["_reshape_with_shuffle"] = True
 df1 = md.DataFrame(t1, columns=[f"c{i}" for i in range(t1.shape[1])])
+df2 = df1.groupby(["c1"]).apply(lambda pdf: pdf.sum())
 
 
-@pytest.mark.parametrize("tileable", [df1.describe(), t2])
+@pytest.mark.parametrize("tileable", [df1.describe(), df2, t2])
 @pytest.mark.parametrize("fuse", [True, False])
 def test_shuffle_graph(tileable, fuse):
     # can't test df.groupby and mt.bincount, those chunk graph build depend on ctx.get_chunks_meta/get_chunks_result
@@ -61,6 +62,7 @@ def test_shuffle_graph(tileable, fuse):
     ]
     assert len(proxy_subtasks) == len(proxy_chunks)
     assert len(proxy_subtasks) > 0
+    assert len(proxy_subtasks) == len(subtask_graph.get_shuffle_proxy_subtasks())
     for proxy_chunk, proxy_subtask in zip(proxy_chunks, proxy_subtasks):
         reducer_subtasks = subtask_graph.successors(proxy_subtask)
         for reducer_subtask in reducer_subtasks:

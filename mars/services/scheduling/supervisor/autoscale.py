@@ -39,6 +39,7 @@ class AutoscalerActor(mo.Actor):
         self.queueing_refs = dict()
         self.global_resource_ref = None
         self._dynamic_workers: Set[str] = set()
+        self._autoscale_in_disable_counter = 0
 
     async def __post_create__(self):
         strategy = self._autoscale_conf.get("strategy")
@@ -95,19 +96,33 @@ class AutoscalerActor(mo.Actor):
                 time.time() - start_time,
             )
 
-    async def release_workers(self, addresses: List[str]):
+    async def disable_autoscale_in(self):
+        self._autoscale_in_disable_counter += 1
+        if self._enabled:
+            logger.info("Disabled autoscale_in")
+
+    async def try_enable_autoscale_in(self):
+        self._autoscale_in_disable_counter -= 1
+        if self._autoscale_in_disable_counter == 0 and self._enabled:
+            logger.info("Enabled autoscale_in")
+
+    async def release_workers(self, addresses: List[str]) -> List[str]:
         """
         Release a group of worker nodes.
         Parameters
         ----------
         addresses : List[str]
-            The addresses of the specified noded.
+            The addresses of the specified node.
         """
+        if self._autoscale_in_disable_counter > 0:
+            return []
         workers_bands = {
             address: await self.get_worker_bands(address) for address in addresses
         }
         logger.info(
-            "Start to release workers %s which have bands %s.", addresses, workers_bands
+            "Start to release workers %s which have bands %s.",
+            addresses,
+            workers_bands,
         )
         for address in addresses:
             await self._cluster_api.set_node_status(
@@ -136,6 +151,7 @@ class AutoscalerActor(mo.Actor):
         # is not being releasing.
         for address in addresses:
             await release_worker(address)
+        return addresses
 
     def get_dynamic_workers(self) -> Set[str]:
         return self._dynamic_workers
@@ -405,7 +421,9 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
                 idle_bands,
             )
             try:
-                await self._autoscaler.release_workers(worker_addresses)
+                worker_addresses = await self._autoscaler.release_workers(
+                    worker_addresses
+                )
                 logger.info(
                     "Finished offline workers %s in %.4f seconds",
                     worker_addresses,

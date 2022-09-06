@@ -192,6 +192,10 @@ class SubtaskGraph(DAG, Iterable[Subtask]):
     Subtask graph.
     """
 
+    def __init__(self):
+        super().__init__()
+        self._proxy_subtasks = []
+
     @classmethod
     def _extract_operands(cls, node: Subtask):
         from ...core.operand import Fetch, FetchShuffle
@@ -200,3 +204,12 @@ class SubtaskGraph(DAG, Iterable[Subtask]):
             if isinstance(node.op, (Fetch, FetchShuffle)):
                 continue
             yield node.op
+
+    def add_shuffle_proxy_subtask(self, proxy_subtask):
+        self._proxy_subtasks.append(proxy_subtask)
+
+    def num_shuffles(self) -> int:
+        return len(self._proxy_subtasks)
+
+    def get_shuffle_proxy_subtasks(self):
+        return self._proxy_subtasks

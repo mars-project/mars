@@ -117,10 +117,12 @@ class SchedulingSupervisorService(AbstractService):
             uid=SubtaskManagerActor.gen_uid(session_id),
         )
 
+        from ...cluster import ClusterAPI
         from .autoscale import AutoscalerActor
 
-        autoscaler_ref = await mo.actor_ref(
-            AutoscalerActor.default_uid(), address=self._address
+        cluster_api = await ClusterAPI.create(self._address)
+        [autoscaler_ref] = await cluster_api.get_supervisor_refs(
+            [AutoscalerActor.default_uid()]
         )
         await autoscaler_ref.register_session(session_id, self._address)
 
