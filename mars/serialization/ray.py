@@ -15,8 +15,7 @@
 from typing import Any, Dict, List, Tuple
 
 from ..utils import lazy_import
-from .core import Serializer, buffered, PickleSerializer
-from .exception import ExceptionSerializer
+from .core import Serializer, buffered
 
 ray = lazy_import("ray")
 
@@ -33,34 +32,7 @@ class RaySerializer(Serializer):
         return serialized[0]
 
 
-def _register_ray_serializers():
-    PickleSerializer.unregister(object)
-    ExceptionSerializer.unregister(Exception)
-    RaySerializer.register(object)
-    RaySerializer.register(ray.ObjectRef)
-    RaySerializer.register(ray.actor.ActorHandle)
-
-
-def _unregister_ray_serializers():
-    RaySerializer.unregister(ray.actor.ActorHandle)
-    RaySerializer.unregister(ray.ObjectRef)
-    RaySerializer.unregister(object)
-    PickleSerializer.register(object)
-    ExceptionSerializer.register(Exception)
-
-
-_ray_serializers_registered = False
-
-
-def try_register_ray_serializers():
-    global _ray_serializers_registered
-    if not _ray_serializers_registered:
-        _register_ray_serializers()
-        _ray_serializers_registered = True
-
-
-def try_unregister_ray_serializers():
-    global _ray_serializers_registered
-    if _ray_serializers_registered:
-        _unregister_ray_serializers()
-        _ray_serializers_registered = False
+if ray:
+    RaySerializer.register(object, "ray")
+    RaySerializer.register(ray.ObjectRef, "ray")
+    RaySerializer.register(ray.actor.ActorHandle, "ray")

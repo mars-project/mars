@@ -40,7 +40,6 @@ class AbstractTaskAPI(ABC):
     async def submit_tileable_graph(
         self,
         graph: TileableGraph,
-        task_name: str = None,
         fuse_enabled: bool = True,
         extra_config: dict = None,
     ) -> str:

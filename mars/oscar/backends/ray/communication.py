@@ -25,7 +25,6 @@ from urllib.parse import urlparse
 
 from ....oscar.profiling import ProfilingData
 from ....serialization import serialize, deserialize
-from ....serialization.ray import try_register_ray_serializers
 from ....metrics import Metrics
 from ....utils import lazy_import, lazy_import_on_load, implements, classproperty, Timer
 from ...debug import debug_async_timeout
@@ -50,7 +49,7 @@ def msg_to_simple_str(msg):  # pragma: no cover
     """An helper that prints message structure without generate a big str."""
     from ..message import SendMessage, _MessageBase
 
-    if type(msg) == ArgWrapper:
+    if type(msg) == _ArgWrapper:
         msg = msg.message
     if isinstance(msg, SendMessage):
         return f"{str(type(msg).__name__)}(actor_ref={msg.actor_ref}, content={msg_to_simple_str(msg.content)})"
@@ -84,20 +83,20 @@ def msg_to_simple_str(msg):  # pragma: no cover
 
 
 def _argwrapper_unpickler(serialized_message):
-    try_register_ray_serializers()
-    return ArgWrapper(deserialize(*serialized_message))
+    return _ArgWrapper(deserialize(*serialized_message))
 
 
 @dataclass
-class ArgWrapper:
+class _ArgWrapper:
     message: Any = None
 
     def __init__(self, message):
         self.message = message
 
     def __reduce__(self):
-        try_register_ray_serializers()
-        return _argwrapper_unpickler, (serialize(self.message),)
+        return _argwrapper_unpickler, (
+            serialize(self.message, context={"serializer": "ray"}),
+        )
 
 
 @lazy_import_on_load(ray)
@@ -127,7 +126,7 @@ def _init_ray_metrics():
     )
 
     def _serialize(self, value):
-        if type(value) is ArgWrapper:  # pylint: disable=unidiomatic-typecheck
+        if type(value) is _ArgWrapper:  # pylint: disable=unidiomatic-typecheck
             message = value.message
             with Timer() as timer:
                 serialized_object = _ray_serialize(self, value)
@@ -172,7 +171,7 @@ def _init_ray_metrics():
                 f"Deserialization took {duration} seconds for "
                 f"{bytes_length} sized msg {msg_to_simple_str(value)}",
             )
-        if type(value) is ArgWrapper:  # pylint: disable=unidiomatic-typecheck
+        if type(value) is _ArgWrapper:  # pylint: disable=unidiomatic-typecheck
             message = value.message
             try:
                 if message.profiling_context is not None:
@@ -311,7 +310,7 @@ class RayClientChannel(RayChannelBase):
             raise ChannelClosed("Channel already closed, cannot send message")
         # Put ray object ref to todo queue
         task = self._peer_actor.__on_ray_recv__.remote(
-            self.channel_id, ArgWrapper(message)
+            self.channel_id, _ArgWrapper(message)
         )
         self._submit_task(message, task)
         await asyncio.sleep(0)
@@ -386,7 +385,7 @@ class RayServerChannel(RayChannelBase):
         result_message = await self._out_queue.get()
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed("Channel already closed")
-        return ArgWrapper(result_message)
+        return _ArgWrapper(result_message)
 
     @implements(Channel.close)
     async def close(self):

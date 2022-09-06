@@ -13,16 +13,20 @@
 # limitations under the License.
 
 import asyncio
+import contextlib
 import importlib
 import logging
 import time
-from collections import defaultdict
+import weakref
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from typing import Any, Dict, List, Type
 
 from .... import oscar as mo
 from ....core import TileableGraph, TileableType, enter_mode, TileContext
 from ....core.operand import Fetch
+from ....oscar.errors import ServerClosed, ActorNotExist
+from ....utils import aiotask_wrapper, _is_ci
 from ...subtask import SubtaskResult, SubtaskGraph
 from ..config import task_options
 from ..core import Task, new_task_id, TaskStatus
@@ -57,18 +61,20 @@ class TaskConfigurationActor(mo.Actor):
         }
 
 
+class _RefHolder:
+    pass
+
+
 @dataclass
 class ResultTileableInfo:
     tileable: TileableType
     processor_ref: mo.ActorRefType[TaskProcessorActor]
+    ref_holder: _RefHolder
 
 
 class TaskManagerActor(mo.Actor):
-    _task_name_to_parent_task_id: Dict[str, str]
-    _task_name_to_task_ids: Dict[str, List[str]]
-
     _task_id_to_processor_ref: Dict[str, mo.ActorRefType[TaskProcessorActor]]
-    _tileable_key_to_info: Dict[str, List[ResultTileableInfo]]
+    _result_tileable_key_to_info: Dict[str, List[ResultTileableInfo]]
 
     def __init__(self, session_id: str):
         self._session_id = session_id
@@ -79,11 +85,8 @@ class TaskManagerActor(mo.Actor):
         self._task_preprocessor_cls = None
         self._last_idle_time = None
 
-        self._task_name_to_parent_task_id = dict()
-        self._task_name_to_task_ids = defaultdict(list)
-
         self._task_id_to_processor_ref = dict()
-        self._tileable_key_to_info = defaultdict(list)
+        self._result_tileable_key_to_info = defaultdict(list)
 
     async def __post_create__(self):
         # get config
@@ -103,6 +106,9 @@ class TaskManagerActor(mo.Actor):
             task_conf["task_preprocessor_cls"],
         )
         self._task_preprocessor_cls = self._get_task_preprocessor_cls()
+        reserved_finish_tasks = task_conf["task_options"].reserved_finish_tasks
+        logger.info("Task manager reserves %s finish tasks.", reserved_finish_tasks)
+        self._reserved_finish_tasks = deque(maxlen=reserved_finish_tasks)
 
     async def __pre_destroy__(self):
         for processor_ref in self._task_id_to_processor_ref.values():
@@ -116,40 +122,23 @@ class TaskManagerActor(mo.Actor):
     async def submit_tileable_graph(
         self,
         graph: TileableGraph,
-        task_name: str = None,
         fuse_enabled: bool = None,
         extra_config: dict = None,
     ) -> str:
         self._last_idle_time = None
-        if task_name is None:
-            # new task without task name
-            task_id = task_name = new_task_id()
-            parent_task_id = new_task_id()
-        elif task_name in self._task_name_to_parent_task_id:
-            # task with the same name submitted before
-            parent_task_id = self._task_name_to_parent_task_id[task_name]
-            task_id = new_task_id()
-        else:
-            # new task with task_name
-            task_id = new_task_id()
-            parent_task_id = new_task_id()
+        # new task with task_name
+        task_id = new_task_id()
 
-        uid = TaskProcessorActor.gen_uid(self._session_id, parent_task_id)
-        if task_name not in self._task_name_to_parent_task_id:
-            # gen main task which mean each submission from user
-            processor_ref = await mo.create_actor(
-                TaskProcessorActor,
-                self._session_id,
-                parent_task_id,
-                task_name=task_name,
-                task_processor_cls=self._task_processor_cls,
-                address=self.address,
-                uid=uid,
-            )
-            self._task_name_to_parent_task_id[task_name] = parent_task_id
-        else:
-            processor_ref = await mo.actor_ref(mo.ActorRef(self.address, uid))
-        self._task_name_to_task_ids[task_name].append(task_id)
+        uid = TaskProcessorActor.gen_uid(self._session_id, task_id)
+        # gen main task which mean each submission from user
+        processor_ref = await mo.create_actor(
+            TaskProcessorActor,
+            self._session_id,
+            task_id,
+            task_processor_cls=self._task_processor_cls,
+            address=self.address,
+            uid=uid,
+        )
         self._task_id_to_processor_ref[task_id] = processor_ref
 
         if fuse_enabled is None:
@@ -159,8 +148,6 @@ class TaskManagerActor(mo.Actor):
             task_id,
             self._session_id,
             graph,
-            task_name,
-            parent_task_id=parent_task_id,
             fuse_enabled=fuse_enabled,
             extra_config=extra_config,
         )
@@ -174,11 +161,53 @@ class TaskManagerActor(mo.Actor):
             self._task_preprocessor_cls,
         )
 
+        def _on_finalize():
+            # The loop may be closed before the weakref is dead.
+            if loop.is_running():
+                loop.create_task(
+                    self._move_task_to_reserved(loop, task_id, processor_ref)
+                )
+
+        loop = asyncio.get_running_loop()
+        task_ref = _RefHolder()
+        weakref.finalize(task_ref, _on_finalize)
         for tileable in graph.result_tileables:
-            info = ResultTileableInfo(tileable=tileable, processor_ref=processor_ref)
-            self._tileable_key_to_info[tileable.key].append(info)
+            info = ResultTileableInfo(
+                tileable=tileable, processor_ref=processor_ref, ref_holder=task_ref
+            )
+            logger.debug(
+                "Add tileable info, task id: %s, tileable key: %s",
+                task_id,
+                tileable.key,
+            )
+            self._result_tileable_key_to_info[tileable.key].append(info)
 
         return task_id
+
+    @aiotask_wrapper(exit_if_exception=_is_ci)
+    async def _move_task_to_reserved(self, loop, task_id, processor_ref):
+        # TODO(fyrestone): Find a better way to wait and destroy the processor actor.
+        with contextlib.suppress(ActorNotExist, ServerClosed, ConnectionRefusedError):
+            await processor_ref.wait()
+
+        logger.debug("Move task %s to reserved.", task_id)
+        ref_holder = _RefHolder()
+        self._reserved_finish_tasks.append(ref_holder)
+
+        @aiotask_wrapper(exit_if_exception=_is_ci)
+        async def _destroy_actor():
+            with contextlib.suppress(
+                ActorNotExist, ServerClosed, ConnectionRefusedError
+            ):
+                await processor_ref.destroy()
+
+        def _remove_task():
+            logger.debug("Remove task %s.", task_id)
+            self._task_id_to_processor_ref.pop(task_id, None)
+            if loop.is_running():
+                loop.create_task(_destroy_actor())
+
+        weakref.finalize(ref_holder, _remove_task)
 
     async def get_subtask_graphs(self, task_id: str) -> List[SubtaskGraph]:
         try:
@@ -218,7 +247,9 @@ class TaskManagerActor(mo.Actor):
         tiled_context = TileContext()
         for tileable in graph:
             if isinstance(tileable.op, Fetch) and tileable.is_coarse():
-                info = self._tileable_key_to_info[tileable.key][-1]
+                info_list = self._result_tileable_key_to_info[tileable.key]
+                assert info_list, f"The tileable {tileable.key} has no info."
+                info = info_list[-1]
                 tiled_context[tileable] = await info.processor_ref.get_result_tileable(
                     tileable.key
                 )
@@ -326,3 +357,19 @@ class TaskManagerActor(mo.Actor):
             else:
                 self._last_idle_time = time.time()
         return self._last_idle_time
+
+    async def remove_tileables(self, tileable_keys: List[str]):
+        # TODO(fyrestone) yield if needed.
+        logger.debug("Remove tileable info: %s", tileable_keys)
+        for key in tileable_keys:
+            info_list = self._result_tileable_key_to_info.pop(key, [])
+            if info_list:
+                processor_is_done = await asyncio.gather(
+                    *(info.processor_ref.is_done() for info in info_list)
+                )
+                not_done_info = [
+                    info
+                    for info, is_done in zip(info_list, processor_is_done)
+                    if not is_done
+                ]
+                self._result_tileable_key_to_info[key] = not_done_info

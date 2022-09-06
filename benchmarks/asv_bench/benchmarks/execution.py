@@ -87,7 +87,6 @@ class NumExprExecutionSuite:
             execute_subtask(
                 asv_subtask_info.subtask_id,
                 asv_subtask_info.serialized_subtask_chunk_graph,
-                False,
                 set(),
                 False,
             )

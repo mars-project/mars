@@ -44,7 +44,7 @@ class TestActor(mo.Actor):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_main_pool(ray_start_regular, with_ray_serializers):
+async def test_main_pool(ray_start_regular):
     pg, pg_name, n_process = None, "ray_cluster", 3
     if hasattr(ray.util, "get_placement_group"):
         pg = ray.util.placement_group(name=pg_name, bundles=[{"CPU": n_process}])
@@ -75,7 +75,7 @@ async def test_main_pool(ray_start_regular, with_ray_serializers):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_shutdown_sub_pool(ray_start_regular, with_ray_serializers):
+async def test_shutdown_sub_pool(ray_start_regular):
     import ray
 
     pg_name, n_process = "ray_cluster", 2
@@ -104,7 +104,7 @@ async def test_shutdown_sub_pool(ray_start_regular, with_ray_serializers):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_server_closed(ray_start_regular, with_ray_serializers):
+async def test_server_closed(ray_start_regular):
     pg_name, n_process = "ray_cluster", 1
     pg = ray.util.placement_group(name=pg_name, bundles=[{"CPU": n_process}])
     ray.get(pg.ready())
@@ -143,7 +143,7 @@ async def test_server_closed(ray_start_regular, with_ray_serializers):
 @require_ray
 @pytest.mark.asyncio
 @pytest.mark.parametrize("auto_recover", [False, True, "actor", "process"])
-async def test_auto_recover(ray_start_regular, with_ray_serializers, auto_recover):
+async def test_auto_recover(ray_start_regular, auto_recover):
     pg_name, n_process = "ray_cluster", 1
     pg = ray.util.placement_group(name=pg_name, bundles=[{"CPU": n_process}])
     assert pg.wait(timeout_seconds=20)
@@ -202,9 +202,7 @@ async def test_auto_recover(ray_start_regular, with_ray_serializers, auto_recove
 @require_ray
 @pytest.mark.asyncio
 @mock.patch("ray.kill")
-async def test_kill_and_wait_timeout(
-    fake_ray_kill, ray_start_regular, with_ray_serializers
-):
+async def test_kill_and_wait_timeout(fake_ray_kill, ray_start_regular):
     pg_name, n_process = "ray_cluster", 1
     pg = ray.util.placement_group(name=pg_name, bundles=[{"CPU": n_process}])
     ray.get(pg.ready())

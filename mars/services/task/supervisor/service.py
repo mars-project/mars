@@ -28,7 +28,8 @@ class TaskSupervisorService(AbstractService):
             "default_config": {
                 "optimize_tileable_graph": True,
                 "optimize_chunk_graph": True,
-                "fuse_enabled": True
+                "fuse_enabled": True,
+                "reserved_finish_tasks": 10
             },
             "execution_config": {
                 "backend": "mars",

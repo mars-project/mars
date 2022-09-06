@@ -34,10 +34,6 @@ from .....lib.aio import alru_cache
 from .....lib.ordered_set import OrderedSet
 from .....resource import Resource
 from .....serialization import serialize, deserialize
-from .....serialization.ray import (
-    try_register_ray_serializers,
-    try_unregister_ray_serializers,
-)
 from .....typing import BandType
 from .....utils import (
     calc_data_size,
@@ -127,8 +123,7 @@ async def _cancel_ray_task(obj_ref, kill_timeout: int = 3):
 
 def execute_subtask(
     subtask_id: str,
-    subtask_chunk_graph,
-    use_ray_serialization: bool,
+    subtask_chunk_graph: ChunkGraph,
     output_meta_keys: Set[str],
     is_mapper,
     *inputs,
@@ -142,8 +137,6 @@ def execute_subtask(
         id of subtask
     subtask_chunk_graph: ChunkGraph
         chunk graph for subtask
-    use_ray_serialization: bool
-        use ray serialization
     output_meta_keys: Set[str]
         will be None if subtask is a shuffle mapper.
     is_mapper: bool
@@ -157,10 +150,6 @@ def execute_subtask(
         subtask outputs and meta for outputs if `output_meta_keys` is provided.
     """
     ensure_coverage()
-    if use_ray_serialization:
-        try_register_ray_serializers()
-    else:
-        try_unregister_ray_serializers()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     logger.info("Begin to execute subtask: %s", subtask_id)
     # optimize chunk graph.
@@ -322,8 +311,6 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = False
-        if self._config.use_ray_serialization():
-            try_register_ray_serializers()
 
     @classmethod
     async def create(
@@ -389,8 +376,6 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = None
-        if self._config.use_ray_serialization():
-            try_unregister_ray_serializers()
         self._config = None
 
     @classmethod
@@ -504,7 +489,6 @@ class RayTaskExecutor(TaskExecutor):
         shuffle_manager = ShuffleManager(subtask_graph)
         subtask_max_retries = self._config.get_subtask_max_retries()
         subtask_num_cpus = self._config.get_subtask_num_cpus()
-        use_ray_serialization = self._config.use_ray_serialization()
         for subtask in subtask_graph.topological_iter():
             if subtask.virtual:
                 continue
@@ -534,8 +518,7 @@ class RayTaskExecutor(TaskExecutor):
                 max_retries=subtask_max_retries,
             ).remote(
                 subtask.subtask_id,
-                serialize(subtask_chunk_graph),
-                use_ray_serialization,
+                serialize(subtask_chunk_graph, context={"serializer": "ray"}),
                 subtask_output_meta_keys,
                 is_mapper,
                 *input_object_refs,

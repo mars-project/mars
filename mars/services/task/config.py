@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...config import Config, is_bool, is_list
+from ...config import Config, is_bool, is_list, is_integer
 
 
 task_options = Config()
@@ -21,6 +21,7 @@ task_options = Config()
 task_options.register_option("optimize_tileable_graph", True, validator=is_bool)
 task_options.register_option("optimize_chunk_graph", True, validator=is_bool)
 task_options.register_option("fuse_enabled", True, validator=is_bool)
+task_options.register_option("reserved_finish_tasks", 10, validator=is_integer)
 
 # worker
 task_options.register_option("runtime_engines", ["numexpr", "cupy"], validator=is_list)

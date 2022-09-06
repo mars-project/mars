@@ -20,6 +20,7 @@ from collections import defaultdict
 from typing import Dict, List, Optional
 
 from .... import oscar as mo
+from ....lib.aio import alru_cache
 from ...meta.api import MetaAPI
 from ...storage.api import StorageAPI
 from ..errors import TileableNotTracked
@@ -49,6 +50,12 @@ class LifecycleTrackerActor(mo.Actor):
         ]
         # remove all chunks
         await self._remove_chunks(chunk_keys)
+
+    @alru_cache
+    async def _get_task_api(self):
+        from ...task.api import TaskAPI
+
+        return await TaskAPI.create(self._session_id, self.address)
 
     @staticmethod
     def gen_uid(session_id):
@@ -111,8 +118,6 @@ class LifecycleTrackerActor(mo.Actor):
         yield self._remove_chunks(to_remove_chunk_keys)
 
     async def _remove_chunks(self, to_remove_chunk_keys: List[str]):
-        if not to_remove_chunk_keys:
-            return
         # get meta
         logger.debug(
             "Remove chunks %.500s with a refcount of zero", to_remove_chunk_keys
@@ -235,8 +240,18 @@ class LifecycleTrackerActor(mo.Actor):
             list(decref_chunk_key_to_counts),
             counts=list(decref_chunk_key_to_counts.values()),
         )
-        # make _remove_chunks release actor lock
-        yield self._remove_chunks(to_remove_chunk_keys)
+        to_remove_tileable_keys = await asyncio.to_thread(
+            list, (key for key in tileable_keys if self._tileable_ref_counts[key] <= 0)
+        )
+        coros = []
+        if to_remove_chunk_keys:
+            coros.append(self._remove_chunks(to_remove_chunk_keys))
+        if to_remove_tileable_keys:
+            task_api = await self._get_task_api()
+            coros.append(task_api.remove_tileables(to_remove_tileable_keys))
+        if coros:
+            # release actor lock
+            yield asyncio.gather(*coros)
 
     def get_tileable_ref_counts(self, tileable_keys: List[str]) -> List[int]:
         return [

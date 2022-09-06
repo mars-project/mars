@@ -65,6 +65,7 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     to_binary,
     to_str,
     to_text,
+    NamedType,
     TypeDispatcher,
     tokenize,
     tokenize_int,
@@ -84,6 +85,7 @@ pd_release_version: Tuple[int] = parse_version(pd.__version__).release
 OBJECT_FIELD_OVERHEAD = 50
 
 # make flake8 happy by referencing these imports
+NamedType = NamedType
 TypeDispatcher = TypeDispatcher
 tokenize = tokenize
 register_tokenizer = register_tokenizer
@@ -91,6 +93,7 @@ ceildiv = ceildiv
 reset_id_random_seed = reset_id_random_seed
 new_random_id = new_random_id
 _create_task = asyncio.create_task
+_is_ci = (os.environ.get("CI") or "0").lower() in ("1", "true")
 
 
 # fix encoding conversion problem under windows
@@ -1636,7 +1639,9 @@ def _get_func_token_values(func):
         return tokens
 
 
-async def _run_task_with_error_log(coro, call_site=None):  # pragma: no cover
+async def _run_task_with_error_log(
+    coro, call_site=None, exit_if_exception=False
+):  # pragma: no cover
     try:
         return await coro
     except asyncio.CancelledError:
@@ -1648,6 +1653,9 @@ async def _run_task_with_error_log(coro, call_site=None):  # pragma: no cover
             call_site,
             e,
         )
+        if exit_if_exception:
+            logger.error("Exit because exit_if_exception=%s.", exit_if_exception)
+            os._exit(-1)  # Use os._exit to ensure exit in non-main thread.
         raise
 
 
@@ -1658,6 +1666,30 @@ def create_task_with_error_log(coro, *args, **kwargs):  # pragma: no cover
     else:
         call_site = None
     return _create_task(_run_task_with_error_log(coro, call_site), *args, **kwargs)
+
+
+def aiotask_wrapper(_f=None, exit_if_exception=False):
+    def _wrapper(func):
+        @functools.wraps(func)
+        def _aiotask_wrapper(*args, **kwargs):
+            frame = inspect.currentframe()
+            if frame and frame.f_back:
+                call_site = frame.f_back.f_code
+            else:
+                call_site = None
+            return _run_task_with_error_log(
+                func(*args, **kwargs),
+                call_site=call_site,
+                exit_if_exception=exit_if_exception,
+            )
+
+        return _aiotask_wrapper
+
+    if inspect.iscoroutinefunction(_f):
+        return _wrapper(_f)
+    else:
+        assert _f is None
+        return _wrapper
 
 
 def is_ray_address(address: str) -> bool:

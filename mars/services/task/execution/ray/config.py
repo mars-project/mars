@@ -59,12 +59,6 @@ class RayExecutionConfig(ExecutionConfig):
     def get_n_worker(self):
         return self._ray_execution_config["n_worker"]
 
-    def get_deploy_mode(self) -> str:
-        return self._ray_execution_config.get("deploy_mode")
-
-    def use_ray_serialization(self) -> bool:
-        return self._ray_execution_config.get("deploy_mode") == "ray"
-
     def get_subtask_cancel_timeout(self):
         return self._ray_execution_config["subtask_cancel_timeout"]
 
