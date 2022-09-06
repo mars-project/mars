@@ -181,6 +181,15 @@ class Tiler:
         tiled_tileables = [self._get_data(t) for t in tiled_tileables]
         # start to tile
         tiled_tileables = yield from handler.tile(tiled_tileables)
+        # Assign func_key back to original tileables after tiling since cleanup
+        # happened on copied ones rather than original ones.
+        if (
+            hasattr(tileable.op, "func_key")
+            and tiled_tileables[0].op.func_key is not None
+        ):
+            assert tiled_tileables[0].op.need_clean_up_func is True
+            tileable.op.func_key = tiled_tileables[0].op.func_key
+            tileable.op.need_clean_up_func = True
         return tiled_tileables
 
     def _gen_tileable_handlers(self, next_tileable_handlers: List[_TileableHandler]):

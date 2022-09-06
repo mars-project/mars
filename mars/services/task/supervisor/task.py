@@ -292,6 +292,10 @@ class TaskProcessorActor(mo.Actor, _TaskInfoProcessorMixin):
         self._task_id_to_processor = dict()
         self._cur_processor = None
 
+    async def __pre_destroy__(self):
+        processor = list(self._task_id_to_processor.values())[-1]
+        await processor.remove_func_storage()
+
     @classmethod
     def gen_uid(cls, session_id: str, task_id: str):
         return f"task_processor_{session_id}_{task_id}"
