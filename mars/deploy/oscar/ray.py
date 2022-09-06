@@ -451,7 +451,7 @@ class RayCluster:
                 self._worker_cpu,
                 self._worker_mem,
             )
-        else:
+        elif self.backend == "ray":
             execution_config.merge_from(
                 ExecutionConfig.from_params(
                     backend=self.backend,
@@ -464,6 +464,8 @@ class RayCluster:
             await self.start_oscar(
                 self._n_supervisor_process, self._supervisor_mem, 0, 0, 0
             )
+        else:
+            raise ValueError(f"Unsupported backend type: {self.backend}.")
 
     async def start_oscar(
         self, n_supervisor_process, supervisor_mem, worker_num, worker_cpu, worker_mem
