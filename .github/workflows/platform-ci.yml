@@ -179,6 +179,8 @@ jobs:
             mv .coverage build/.coverage.test_ray_dag.file
             pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray_dag_failover.py
             mv .coverage build/.coverage.test_ray_dag_failover.file
+            pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray_dag_oscar.py -m ray
+            mv .coverage build/.coverage.test_ray_dag_oscar.file
             
             coverage combine build/ && coverage report
           fi

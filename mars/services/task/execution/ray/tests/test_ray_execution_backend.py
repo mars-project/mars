@@ -160,15 +160,11 @@ def test_ray_execute_subtask_basic():
 
     subtask_id = new_task_id()
     subtask_chunk_graph = _gen_subtask_chunk_graph(b)
-    r = execute_subtask(subtask_id, serialize(subtask_chunk_graph), False, set(), False)
+    r = execute_subtask(subtask_id, serialize(subtask_chunk_graph), set(), False)
     np.testing.assert_array_equal(r, raw_expect)
     test_get_meta_chunk = subtask_chunk_graph.result_chunks[0]
     r = execute_subtask(
-        subtask_id,
-        serialize(subtask_chunk_graph),
-        False,
-        {test_get_meta_chunk.key},
-        False,
+        subtask_id, serialize(subtask_chunk_graph), {test_get_meta_chunk.key}, False
     )
     assert len(r) == 2
     meta_dict, r = r

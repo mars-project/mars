@@ -433,7 +433,8 @@ class RayCluster:
         try:
             # Python 3.8 support force argument.
             logging.basicConfig(
-                format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO, force=True)
+                format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO, force=True
+            )
         except ValueError:  # pragma: no cover
             logging.basicConfig(
                 format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO
@@ -467,9 +468,6 @@ class RayCluster:
     async def start_oscar(
         self, n_supervisor_process, supervisor_mem, worker_num, worker_cpu, worker_mem
     ):
-        logging.basicConfig(
-            format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO, force=True
-        )
         logger.info("Start cluster with config %s", self._config)
         # init metrics to guarantee metrics use in driver
         metric_configs = self._config.get("metrics", {})
