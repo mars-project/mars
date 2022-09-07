@@ -40,7 +40,9 @@ _op_type_to_executor: Dict[Type[OperandType], Callable] = dict()
 _op_type_to_size_estimator: Dict[Type[OperandType], Callable] = dict()
 
 
-op_executed_number = None
+op_executed_number = Metrics.counter(
+    "mars.operand.executed_number", "The number of executed operands.", ("op",)
+)
 
 
 class TileableOperandMixin:
@@ -488,13 +490,6 @@ def execute(results: Dict[str, Any], op: OperandType):
             try:
                 result = executor(results, op)
                 succeeded = True
-                global op_executed_number
-                if op_executed_number is None:
-                    op_executed_number = Metrics.counter(
-                        "mars.operand.executed_number",
-                        "The number of executed operands.",
-                        ("op",),
-                    )
                 if op.stage is not None:
                     op_name = f"{op.__class__.__name__}:{op.stage.name}"
                 else:
