@@ -89,12 +89,12 @@ class _MetricWrapper(AbstractMetric):
         name: str,
         description: str = "",
         tag_keys: Optional[Tuple[str]] = None,
-        type: str = "Counter",
+        metric_type: str = "Counter",
     ):
         self._name = name
         self._description = description
         self._tag_keys = tag_keys or tuple()
-        self._type = type
+        self._type = metric_type
         self._metric = None
 
     @property
@@ -126,7 +126,9 @@ def gen_metric(func):
         if _init is True:
             return func(name, descriptions, tag_keys)
         else:
-            logger.info("Metric %s will be initialized when invoking `init_metrics`.")
+            logger.info(
+                "Metric %s will be initialized when invoking `init_metrics()`.", name
+            )
             metric = _MetricWrapper(
                 name, descriptions, tag_keys, func.__name__.capitalize()
             )
