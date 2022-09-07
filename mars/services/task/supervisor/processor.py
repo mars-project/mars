@@ -28,7 +28,6 @@ from ....oscar.profiling import (
     ProfilingData,
     MARS_ENABLE_PROFILING,
 )
-from ....services.storage.api.oscar import StorageAPI
 from ....typing import TileableType, ChunkType
 from ....utils import Timer
 from ...subtask import SubtaskResult, Subtask
@@ -460,19 +459,12 @@ class TaskProcessor:
         return self.done.is_set()
 
     async def remove_func_storage(self):
-        tileables_need_clean_up_func = [
-            self.tileable_id_to_tileable[tileable_id]
-            for tileable_id in self._preprocessor.tileable_ids_need_clean_up_func
-        ]
-        func_keys = [t.op.func_key for t in tileables_need_clean_up_func]
+        func_keys = self._preprocessor.func_keys_to_clean_up
         logger.debug(f"Remove func storage {func_keys}")
         ctx = get_context()
         # Note: Considering that remove_func_storage is executed while TaskProcessor is being
         # destroyed, creating storage_api may fail. Error type that may occur is still under
         # investigation as well as experiment.
-        storage_api = await StorageAPI.create(ctx.session_id, ctx.supervisor_address)
-
-        deletes = [
-            storage_api.delete.delay(func_key, error="ignore") for func_key in func_keys
-        ]
-        await storage_api.delete.batch(*deletes)
+        for func_key in func_keys:
+            await ctx._storage_delete(func_key)
+        self._preprocessor.func_keys_to_clean_up.clear()

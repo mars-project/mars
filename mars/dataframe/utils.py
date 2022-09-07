@@ -1461,6 +1461,7 @@ def clean_up_func(op):
             op.logic_key is not None
         ), "Logic key wasn't calculated before cleaning up func."
         op.func_key = ctx.storage_put(op.func)
+        logger.debug(f"Put func {op.func_key} into storage.")
         op.func = None
 
 
@@ -1474,10 +1475,13 @@ def whether_to_clean_up(op, threshold):
 
     BYPASS_CLASSES = (str, bytes, Number, range, bytearray, pd.DataFrame, pd.Series)
 
+    class GetSizeEarlyStopException(Exception):
+        pass
+
     def check_exceed_threshold():
         nonlocal threshold, counted_bytes
         if counted_bytes >= threshold:
-            raise StopIteration
+            raise GetSizeEarlyStopException()
 
     def getsize(obj_outer):
         _seen_obj_ids = set()
@@ -1530,7 +1534,7 @@ def whether_to_clean_up(op, threshold):
                         getsize(getattr(func, slot)) if hasattr(func, slot) else 0
                     )
                     check_exceed_threshold()
-    except StopIteration:
+    except GetSizeEarlyStopException:
         logger.debug("Func needs cleanup.")
         op.need_clean_up_func = True
     else:

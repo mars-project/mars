@@ -209,6 +209,10 @@ class ThreadedServiceContext(Context):
         storage_api = await StorageAPI.create(self.session_id, self.supervisor_address)
         return await storage_api.get(key)
 
+    async def _storage_delete(self, key: str):
+        storage_api = await StorageAPI.create(self.session_id, self.supervisor_address)
+        return await storage_api.delete(key)
+
     @implements(Context.get_chunks_result)
     def get_chunks_result(self, data_keys: List[str], fetch_only: bool = False) -> List:
         if not fetch_only:
