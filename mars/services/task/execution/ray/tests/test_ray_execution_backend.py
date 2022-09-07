@@ -124,6 +124,7 @@ async def test_ray_executor_create(
     assert mock_task_state_actor_create.call_count == 1
 
 
+@require_ray
 @pytest.mark.asyncio
 async def test_ray_executor_destroy():
     task = Task("mock_task", "mock_session")
@@ -150,6 +151,7 @@ async def test_ray_executor_destroy():
     assert await executor.get_progress() == 1.0
 
 
+@require_ray
 def test_ray_execute_subtask_basic():
     raw = np.ones((10, 10))
     raw_expect = raw + 1

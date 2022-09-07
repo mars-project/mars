@@ -24,7 +24,7 @@ def get_band_resources_from_config(
     n_worker: int = config["n_worker"]
     n_cpu: int = config["n_cpu"]
     mem_bytes: int = config["mem_bytes"]
-    cuda_devices: List[List[int]] = config["cuda_devices"]
+    cuda_devices: List[List[int]] = config.get("cuda_devices")
 
     bands_to_resource = []
     worker_cpus = n_cpu // n_worker

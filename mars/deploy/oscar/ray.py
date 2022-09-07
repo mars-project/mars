@@ -37,6 +37,7 @@ from ...services.cluster.backends.base import (
     AbstractClusterBackend,
 )
 from ...services import NodeRole
+from ...services.task.execution.api import ExecutionConfig
 from ...utils import lazy_import, retry_callable
 from ..utils import (
     load_config,
@@ -310,6 +311,7 @@ async def new_cluster(
     worker_num: int = 1,
     worker_cpu: int = 2,
     worker_mem: int = 2 * 1024**3,
+    backend: str = None,
     config: Union[str, Dict] = None,
     **kwargs,
 ):
@@ -330,6 +332,7 @@ async def new_cluster(
         worker_num,
         worker_cpu,
         worker_mem,
+        backend,
         config,
         n_supervisor_process=n_supervisor_process,
     )
@@ -402,6 +405,7 @@ class RayCluster:
         worker_num: int = 1,
         worker_cpu: int = 2,
         worker_mem: int = 4 * 1024**3,
+        backend: str = None,
         config: Union[str, Dict] = None,
         n_supervisor_process: int = DEFAULT_SUPERVISOR_SUB_POOL_NUM,
     ):
@@ -413,6 +417,7 @@ class RayCluster:
         self._worker_num = worker_num
         self._worker_cpu = worker_cpu
         self._worker_mem = worker_mem
+        self.backend = backend
         # load config file to dict.
         self._config = load_config(config, default_config_file=DEFAULT_CONFIG_FILE)
         self.supervisor_address = None
@@ -434,6 +439,37 @@ class RayCluster:
             logging.basicConfig(
                 format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO
             )
+        execution_config = ExecutionConfig.from_config(
+            self._config, backend=self.backend
+        )
+        self.backend = execution_config.backend
+        if self.backend == "mars":
+            await self.start_oscar(
+                self._n_supervisor_process,
+                self._supervisor_mem,
+                self._worker_num,
+                self._worker_cpu,
+                self._worker_mem,
+            )
+        elif self.backend == "ray":
+            execution_config.merge_from(
+                ExecutionConfig.from_params(
+                    backend=self.backend,
+                    n_worker=self._worker_num,
+                    n_cpu=self._worker_num * self._worker_cpu,
+                    mem_bytes=self._worker_mem,
+                )
+            )
+            assert self._n_supervisor_process == 0, self._n_supervisor_process
+            await self.start_oscar(
+                self._n_supervisor_process, self._supervisor_mem, 0, 0, 0
+            )
+        else:
+            raise ValueError(f"Unsupported backend type: {self.backend}.")
+
+    async def start_oscar(
+        self, n_supervisor_process, supervisor_mem, worker_num, worker_cpu, worker_mem
+    ):
         logger.info("Start cluster with config %s", self._config)
         # init metrics to guarantee metrics use in driver
         metric_configs = self._config.get("metrics", {})
@@ -450,7 +486,7 @@ class RayCluster:
             self._config.get("cluster", {})
             .get("ray", {})
             .get("supervisor", {})
-            .get("sub_pool_num", self._n_supervisor_process)
+            .get("sub_pool_num", n_supervisor_process)
         )
         from ...storage.ray import support_specify_owner
 
@@ -466,11 +502,11 @@ class RayCluster:
         self._config["cluster"]["lookup_address"] = self.supervisor_address
         address_to_resources[node_placement_to_address(self._cluster_name, 0)] = {
             "CPU": 1,
-            # "memory": self._supervisor_mem,
+            # "memory": supervisor_mem,
         }
         worker_addresses = []
         if supervisor_standalone:
-            for worker_index in range(1, self._worker_num + 1):
+            for worker_index in range(1, worker_num + 1):
                 worker_address = process_placement_to_address(
                     self._cluster_name, worker_index, 0
                 )
@@ -479,11 +515,11 @@ class RayCluster:
                     self._cluster_name, worker_index
                 )
                 address_to_resources[worker_node_address] = {
-                    "CPU": self._worker_cpu,
+                    "CPU": worker_cpu,
                     # "memory": self._worker_mem,
                 }
         else:
-            for worker_index in range(self._worker_num):
+            for worker_index in range(worker_num):
                 worker_process_index = (
                     supervisor_sub_pool_num + 1 if worker_index == 0 else 0
                 )
@@ -495,7 +531,7 @@ class RayCluster:
                     self._cluster_name, worker_index
                 )
                 address_to_resources[worker_node_address] = {
-                    "CPU": self._worker_cpu,
+                    "CPU": worker_cpu,
                     # "memory": self._worker_mem,
                 }
         mo.setup_cluster(address_to_resources)
@@ -525,7 +561,7 @@ class RayCluster:
                     addr,
                     {
                         "numa-0": Resource(
-                            num_cpus=self._worker_cpu, mem_bytes=self._worker_mem
+                            num_cpus=worker_cpu, mem_bytes=self._worker_mem
                         )
                     },
                     modules=get_third_party_modules_from_config(
@@ -543,7 +579,7 @@ class RayCluster:
         )
         cluster_state_ref = self._cluster_backend.get_cluster_state_ref()
         await self._cluster_backend.get_cluster_state_ref().set_config(
-            self._worker_cpu, self._worker_mem, self._config
+            worker_cpu, self._worker_mem, self._config
         )
         # start service
         await start_supervisor(self.supervisor_address, config=self._config)
@@ -596,7 +632,9 @@ class RayClient:
 
     @classmethod
     async def create(cls, cluster: RayCluster) -> "RayClient":
-        session = await _new_session(cluster.supervisor_address, default=True)
+        session = await _new_session(
+            cluster.supervisor_address, default=True, backend=cluster.backend
+        )
         client = RayClient(cluster, session)
         AbstractSession.default._ray_client = client
         return client
