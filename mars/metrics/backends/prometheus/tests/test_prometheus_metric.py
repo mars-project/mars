@@ -56,7 +56,7 @@ def test_counter(start_prometheus_http_server):
     assert c.description == "A test counter"
     assert set(["host", "pid"]).issubset(set(c.tag_keys))
     assert set(["service", "tenant"]).issubset(set(c.tag_keys))
-    assert c.type == "counter"
+    assert c.type == "Counter"
     c.record(1, {"service": "mars", "tenant": "test"})
     verify_metric("test_counter", 1.0)
     c.record(2, {"service": "mars", "tenant": "test"})
@@ -68,7 +68,7 @@ def test_gauge(start_prometheus_http_server):
     assert g.name == "test_gauge"
     assert g.description == "A test gauge"
     assert set(["host", "pid"]).issubset(set(g.tag_keys))
-    assert g.type == "gauge"
+    assert g.type == "Gauge"
     g.record(0.1)
     verify_metric("test_gauge", 0.1)
     g.record(1.1)
@@ -80,7 +80,7 @@ def test_meter(start_prometheus_http_server):
     assert m.name == "test_meter"
     assert m.description == ""
     assert set(["host", "pid"]).issubset(set(m.tag_keys))
-    assert m.type == "meter"
+    assert m.type == "Meter"
     num = 3
     while num > 0:
         m.record(1)
@@ -94,7 +94,7 @@ def test_histogram(start_prometheus_http_server):
     assert h.name == "test_histogram"
     assert h.description == ""
     assert set(["host", "pid"]).issubset(set(h.tag_keys))
-    assert h.type == "histogram"
+    assert h.type == "Histogram"
     num = 3
     while num > 0:
         h.record(1)

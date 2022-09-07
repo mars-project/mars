@@ -20,7 +20,7 @@ def test_counter():
     assert c.name == "test_counter"
     assert c.description == "A test counter"
     assert c.tag_keys == ("service", "tenant")
-    assert c.type == "counter"
+    assert c.type == "Counter"
     c.record(1, {"service": "mars", "tenant": "test"})
     c.record(2, {"service": "mars", "tenant": "test"})
     assert c.value == 3
@@ -31,7 +31,7 @@ def test_gauge():
     assert g.name == "test_gauge"
     assert g.description == "A test gauge"
     assert g.tag_keys == ()
-    assert g.type == "gauge"
+    assert g.type == "Gauge"
     g.record(1)
     assert g.value == 1
     g.record(2)
@@ -43,7 +43,7 @@ def test_meter():
     assert m.name == "test_meter"
     assert m.description == ""
     assert m.tag_keys == ()
-    assert m.type == "meter"
+    assert m.type == "Meter"
     m.record(1)
     assert m.value == 0
     m.record(2001)
@@ -55,7 +55,7 @@ def test_histogram():
     assert h.name == "test_histogram"
     assert h.description == ""
     assert h.tag_keys == ()
-    assert h.type == "histogram"
+    assert h.type == "Histogram"
     h.record(1)
     assert h.value == 0
     for i in range(2002):
