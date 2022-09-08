@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Type
+from typing import Dict, List, Optional, Type
 
 from ...core import OperandType, EntityType, enter_mode
 from ...core.graph import EntityGraph
