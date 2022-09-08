@@ -65,6 +65,7 @@ class TaskProcessor:
             ProfilingData.init(task.task_id, task.extra_config["enable_profiling"])
 
         self._dump_subtask_graph = False
+        self._subtask_graphs = []
         if MARS_ENABLE_DUMPING_SUBTASK_GRAPH or (
             task.extra_config and task.extra_config.get("dump_subtask_graph")
         ):
@@ -221,6 +222,8 @@ class TaskProcessor:
                 op_to_bands=fetch_op_to_bands,
                 shuffle_fetch_type=shuffle_fetch_type,
             )
+            if self._dump_subtask_graph:
+                self._subtask_graphs.append(subtask_graph)
         stage_profiler.set(f"gen_subtask_graph({len(subtask_graph)})", timer.duration)
         logger.info(
             "Time consuming to gen a subtask graph is %ss with session id %s, task id %s, stage id %s",
@@ -419,7 +422,7 @@ class TaskProcessor:
         except ImportError:
             graphviz = None
 
-        dot = GraphVisualizer(self).to_dot()
+        dot = GraphVisualizer.to_dot(self._subtask_graphs)
         directory = tempfile.gettempdir()
         file_name = f"mars-{self.task_id}"
         logger.debug(
