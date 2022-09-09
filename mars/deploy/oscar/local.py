@@ -25,6 +25,7 @@ import numpy as np
 from ... import oscar as mo
 from ...core.entrypoints import init_extension_entrypoints
 from ...lib.aio import get_isolation, stop_isolation
+from ...metrics import init_metrics
 from ...oscar.backends.router import Router
 from ...resource import cpu_count, cuda_count, mem_total
 from ...services import NodeRole
@@ -217,6 +218,11 @@ class LocalCluster:
         await self._start_worker_pools()
         # start service
         await self._start_service()
+
+        # init metrics to guarantee metrics use in driver
+        metric_configs = self._config.get("metrics", {})
+        metric_backend = metric_configs.get("backend")
+        init_metrics(metric_backend, config=metric_configs.get(metric_backend))
 
         if self._web:
             from ...services.web.supervisor import WebActor

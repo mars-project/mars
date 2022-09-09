@@ -14,7 +14,7 @@
 
 import time
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Dict, Optional, Tuple
 
 _THRESHOLD = 2000
@@ -56,7 +56,6 @@ class AbstractMetric(ABC):
     def tag_keys(self):
         return self._tag_keys
 
-    @abstractmethod
     def _init(self):
         """Some initialization in subclass."""
         pass
@@ -65,7 +64,6 @@ class AbstractMetric(ABC):
         """A public method called by users."""
         pass
 
-    @abstractmethod
     def _record(self, value: float = 1.0, tags: Optional[Dict[str, str]] = None):
         """An internal method called by record() and should be
         implemented by different metric backends.
@@ -76,7 +74,7 @@ class AbstractMetric(ABC):
 class AbstractCounter(AbstractMetric):
     """A counter records the counts of events."""
 
-    _type = "counter"
+    _type = "Counter"
 
     def __init__(
         self, name: str, description: str = "", tag_keys: Optional[Tuple[str]] = None
@@ -94,7 +92,7 @@ class AbstractGauge(AbstractMetric):
     arbitrarily set.
     """
 
-    _type = "gauge"
+    _type = "Gauge"
 
     def record(self, value=1, tags: Optional[Dict[str, str]] = None):
         self._record(value, tags)
@@ -103,7 +101,7 @@ class AbstractGauge(AbstractMetric):
 class AbstractMeter(AbstractMetric):
     """A meter measures the rate at which a set of events occur."""
 
-    _type = "meter"
+    _type = "Meter"
 
     def __init__(
         self, name: str, description: str = "", tag_keys: Optional[Tuple[str]] = None
@@ -126,7 +124,7 @@ class AbstractMeter(AbstractMetric):
 class AbstractHistogram(AbstractMetric):
     """A histogram measures the distribution of values in a stream of data."""
 
-    _type = "histogram"
+    _type = "Histogram"
 
     def __init__(
         self, name: str, description: str = "", tag_keys: Optional[Tuple[str]] = None

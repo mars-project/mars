@@ -14,6 +14,7 @@
 
 import logging
 import time
+import weakref
 
 from contextlib import contextmanager
 from enum import Enum
@@ -21,6 +22,7 @@ from queue import PriorityQueue
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
 
 from .backends.console import console_metric
+from .backends.metric import AbstractMetric
 from .backends.prometheus import prometheus_metric
 from .backends.ray import ray_metric
 
@@ -33,6 +35,9 @@ _backends_cls = {
     "prometheus": prometheus_metric,
     "ray": ray_metric,
 }
+
+
+_metrics_to_be_initialized = weakref.WeakSet()
 
 
 def init_metrics(backend="console", config: Dict[str, Any] = None):
@@ -61,7 +66,11 @@ def init_metrics(backend="console", config: Dict[str, Any] = None):
                 "Failed to start prometheus http server because there is no prometheus_client"
             )
     _init = True
-    logger.info("Finished initialize the metrics with backend %s", _metric_backend)
+    for m in _metrics_to_be_initialized:
+        cls = getattr(_backends_cls[_metric_backend], m.type)
+        metric = cls(m.name, m.description, m.tag_keys)
+        m.set_metric(metric)
+    logger.info("Finished initialize the metrics of backend: %s.", _metric_backend)
 
 
 def shutdown_metrics():
@@ -69,6 +78,64 @@ def shutdown_metrics():
     _metric_backend = "console"
     global _init
     _init = False
+    logger.info("Shutdown metrics of backend: %s.", _metric_backend)
+
+
+class _MetricWrapper(AbstractMetric):
+    _metric: AbstractMetric
+
+    def __init__(
+        self,
+        name: str,
+        description: str = "",
+        tag_keys: Optional[Tuple[str]] = None,
+        metric_type: str = "Counter",
+    ):
+        self._name = name
+        self._description = description
+        self._tag_keys = tag_keys or tuple()
+        self._type = metric_type
+        self._metric = None
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def value(self):
+        assert (
+            self._metric is not None
+        ), "Metric is not initialized, please call `init_metrics()` before using metrics."
+        return self._metric.value
+
+    def set_metric(self, metric):
+        assert metric is not None, "Argument metric is None, please check it."
+        self._metric = metric
+
+    def record(self, value=1, tags: Optional[Dict[str, str]] = None):
+        if self._metric is not None:
+            self._metric.record(value, tags)
+        else:
+            logger.warning(
+                "Metric is not initialized, please call `init_metrics()` before using metrics."
+            )
+
+
+def gen_metric(func):
+    def wrapper(name, descriptions: str = "", tag_keys: Optional[Tuple[str]] = None):
+        if _init is True:
+            return func(name, descriptions, tag_keys)
+        else:
+            logger.info(
+                "Metric %s will be initialized when invoking `init_metrics()`.", name
+            )
+            metric = _MetricWrapper(
+                name, descriptions, tag_keys, func.__name__.capitalize()
+            )
+            _metrics_to_be_initialized.add(metric)
+            return metric
+
+    return wrapper
 
 
 class Metrics:
@@ -97,19 +164,47 @@ class Metrics:
     """
 
     @staticmethod
+    @gen_metric
     def counter(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
+        logger.info(
+            "Initializing a counter with name: %s, tag keys: %s, backend: %s",
+            name,
+            tag_keys,
+            _metric_backend,
+        )
         return _backends_cls[_metric_backend].Counter(name, description, tag_keys)
 
     @staticmethod
+    @gen_metric
     def gauge(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
+        logger.info(
+            "Initializing a gauge whose name: %s, tag keys: %s, backend: %s",
+            name,
+            tag_keys,
+            _metric_backend,
+        )
         return _backends_cls[_metric_backend].Gauge(name, description, tag_keys)
 
     @staticmethod
+    @gen_metric
     def meter(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
+        logger.info(
+            "Initializing a meter whose name: %s, tag keys: %s, backend: %s",
+            name,
+            tag_keys,
+            _metric_backend,
+        )
         return _backends_cls[_metric_backend].Meter(name, description, tag_keys)
 
     @staticmethod
+    @gen_metric
     def histogram(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
+        logger.info(
+            "Initializing a histogram whose name: %s, tag keys: %s, backend: %s",
+            name,
+            tag_keys,
+            _metric_backend,
+        )
         return _backends_cls[_metric_backend].Histogram(name, description, tag_keys)
 
 
