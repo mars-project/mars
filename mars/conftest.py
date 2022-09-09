@@ -75,9 +75,9 @@ def ray_start_regular(request):  # pragma: no cover
 
 def _ray_start_regular(request):  # pragma: no cover
     param = getattr(request, "param", {})
-    if ray.is_initialized():
+    if not param.get("enable", True):
         yield
-    elif not param.get("enable", True):
+    elif ray and ray.is_initialized():
         yield
     else:
         num_cpus = param.get("num_cpus", 64)
