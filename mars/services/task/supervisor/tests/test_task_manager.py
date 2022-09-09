@@ -632,6 +632,7 @@ async def test_optimization(actor_pool):
 
 
 @pytest.mark.asyncio
+@pytest.mark.ray_dag
 async def test_dump_subtask_graph(actor_pool):
     (
         execution_backend,
