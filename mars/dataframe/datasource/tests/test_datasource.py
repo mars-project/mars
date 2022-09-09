@@ -518,7 +518,6 @@ def test_read_sql():
 
 
 @require_ray
-@pytest.mark.skip_ray_dag  # raydataset is not compatible with Ray DAG
 def test_read_raydataset(ray_start_regular):
     test_df1 = pd.DataFrame(
         {
@@ -588,7 +587,6 @@ def test_date_range():
 
 
 @require_ray
-@pytest.mark.skip_ray_dag  # mldataset is not compatible with Ray DAG
 def test_read_ray_mldataset(ray_start_regular):
     test_df1 = pd.DataFrame(
         {
