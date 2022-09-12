@@ -141,25 +141,29 @@ def test_t_test_execution(setup):
     if parse_version(scipy.__version__) >= parse_version("1.6.0"):
         alternatives = ["less", "greater", "two-sided"]
 
-        mt_from_stats = lambda a, b, alternative=None, equal_var=True: ttest_ind_from_stats(
-            a.mean(),
-            a.std(),
-            a.shape[0],
-            b.mean(),
-            b.std(),
-            b.shape[0],
-            alternative=alternative,
-            equal_var=equal_var,
+        mt_from_stats = (
+            lambda a, b, alternative=None, equal_var=True: ttest_ind_from_stats(
+                a.mean(),
+                a.std(),
+                a.shape[0],
+                b.mean(),
+                b.std(),
+                b.shape[0],
+                alternative=alternative,
+                equal_var=equal_var,
+            )
         )
-        sp_from_stats = lambda a, b, alternative=None, equal_var=True: sp_ttest_ind_from_stats(
-            a.mean(),
-            a.std(),
-            a.shape[0],
-            b.mean(),
-            b.std(),
-            b.shape[0],
-            alternative=alternative,
-            equal_var=equal_var,
+        sp_from_stats = (
+            lambda a, b, alternative=None, equal_var=True: sp_ttest_ind_from_stats(
+                a.mean(),
+                a.std(),
+                a.shape[0],
+                b.mean(),
+                b.std(),
+                b.shape[0],
+                alternative=alternative,
+                equal_var=equal_var,
+            )
         )
     else:
         alternatives = ["two-sided"]
