@@ -301,6 +301,15 @@ def test_rankdata_execution(setup):
     expected = sp_rankdata(b, axis=1)
     np.testing.assert_array_almost_equal(result, expected)
 
+    c = rs.rand(0, 4)
+
+    t3 = tensor(c, chunk_size=5)
+    r3 = rankdata(t3, axis=1)
+
+    result = r3.execute().fetch()
+    expected = sp_rankdata(c, axis=1)
+    np.testing.assert_array_almost_equal(result, expected)
+
     methods = [
         "average",
         "min",
