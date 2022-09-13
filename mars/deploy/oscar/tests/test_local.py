@@ -366,8 +366,6 @@ async def test_execute_describe(create_cluster):
                 )
 
 
-# Note: Vineyard internally uses `pickle` which fails to pickle
-# cell objects and corresponding functions.
 @pytest.mark.asyncio
 async def test_execute_apply_closure(create_cluster):
     # DataFrame

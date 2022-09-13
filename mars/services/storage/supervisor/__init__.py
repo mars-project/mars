@@ -12,4 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .service import StorageSupervisorService
+from ...core import EmptyService
+
+
+class StorageSupervisorService(EmptyService):
+    pass
