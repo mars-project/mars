@@ -205,11 +205,11 @@ async def test_execute_apply_closure(ray_start_regular_shared2, create_cluster):
         {
             "config": {
                 "task.task_preprocessor_cls": "mars.deploy.oscar.tests.test_clean_up_and_restore_func.RayBackendFuncTaskPreprocessor",
-                "subtask.subtask_processor_cls": "mars.deploy.oscar.tests.test_clean_up_and_restore_func.RayBackendFuncSubtaskProcessor"
+                "subtask.subtask_processor_cls": "mars.deploy.oscar.tests.test_clean_up_and_restore_func.RayBackendFuncSubtaskProcessor",
             }
         }
     ],
-    indirect=True
+    indirect=True,
 )
 @pytest.mark.asyncio
 async def test_ray_dag_clean_up_and_restore_func(
