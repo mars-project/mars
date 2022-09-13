@@ -1478,14 +1478,13 @@ def _is_on_ray(ctx):
     #   The main difference between them is whether worker_address matches ray scheme.
     #   To avoid duplicated checks, here we choose the first worker address.
     # When c. is selected, ctx is an instance of RayExecutionContext or RayExecutionWorkerContext,
-    #   while none of them currently implements get_worker_addresses method.
+    #   while get_worker_addresses method isn't currently implemented in RayExecutionWorkerContext.
     try:
         worker_addresses = ctx.get_worker_addresses()
-    except AttributeError:
-        worker_addresses = [None]
-    return isinstance(
-        ctx, (RayExecutionContext, RayExecutionWorkerContext)
-    ) or is_ray_address(worker_addresses[0])
+    except AttributeError:  # pragma: no cover
+        assert isinstance(ctx, RayExecutionWorkerContext)
+        return True
+    return isinstance(ctx, RayExecutionContext) or is_ray_address(worker_addresses[0])
 
 
 def restore_func(ctx: Context, op):
