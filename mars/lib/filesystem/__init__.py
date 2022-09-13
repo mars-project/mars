@@ -13,9 +13,10 @@
 # limitations under the License.
 
 from .base import FileSystem
-from .core import file_size, glob, get_fs, open_file
+from .core import file_size, glob, get_fs, open_file, register_filesystem
 from .fsmap import FSMap
 from .local import LocalFileSystem
 
 # noinspection PyUnresolvedReferences
 from .hdfs import HadoopFileSystem
+from .azure import AzureBlobFileSystem
