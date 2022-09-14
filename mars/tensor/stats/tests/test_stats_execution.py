@@ -324,3 +324,6 @@ def test_rankdata_execution(setup):
 
         expected = sp_rankdata(a, method=method)
         np.testing.assert_almost_equal(result, expected)
+
+    with pytest.raises(ValueError):
+        r = rankdata(t1, method="unknown")
