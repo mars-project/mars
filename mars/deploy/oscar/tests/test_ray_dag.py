@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import copy
-import logging
 import os
 import time
 
@@ -193,11 +192,27 @@ def test_merge_groupby(ray_start_regular_shared2, setup, method, auto_merge):
     test_session.test_merge_groupby(setup, method, auto_merge)
 
 
-# Before PR #3165 is merged, func cleanup is temporarily disabled under ray task mode.
-# https://github.com/mars-project/mars/pull/3165
 @require_ray
 @pytest.mark.asyncio
-async def test_execute_apply_closure(ray_start_regular_shared2, create_cluster, caplog):
-    with caplog.at_level(logging.WARNING):
-        await test_local.test_execute_apply_closure(create_cluster)
-    assert "Func cleanup is currently disabled under ray task mode." in caplog.text
+async def test_execute_apply_closure(ray_start_regular_shared2, create_cluster):
+    await test_local.test_execute_apply_closure(create_cluster)
+
+
+@require_ray
+@pytest.mark.parametrize(
+    "create_cluster",
+    [
+        {
+            "config": {
+                "task.task_preprocessor_cls": "mars.deploy.oscar.tests.test_clean_up_and_restore_func.RayBackendFuncTaskPreprocessor",
+                "subtask.subtask_processor_cls": "mars.deploy.oscar.tests.test_clean_up_and_restore_func.RayBackendFuncSubtaskProcessor",
+            }
+        }
+    ],
+    indirect=True,
+)
+@pytest.mark.asyncio
+async def test_ray_dag_clean_up_and_restore_func(
+    ray_start_regular_shared2, create_cluster
+):
+    await test_local.test_execute_apply_closure(create_cluster)

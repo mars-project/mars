@@ -18,7 +18,7 @@ storage:
   default_config:
     transfer_block_size: 5 * 1024 ** 2
   plasma:
-    store_memory: 12%
+    store_memory: 20%
   "@overriding_fields": ["backends"]
 meta:
   store: dict
