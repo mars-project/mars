@@ -75,8 +75,6 @@ class ApplyOperand(
     _result_type = StringField("result_type")
     _elementwise = BoolField("elementwise")
     _logic_key = StringField("logic_key")
-    # func_key may be string or ObjectRef, while ray.ObjectRef
-    # shall be serialized by Ray rather than Mars
     _func_key = AnyField("func_key")
     _need_clean_up_func = BoolField("need_clean_up_func")
     _args = TupleField("args")

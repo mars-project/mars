@@ -356,7 +356,6 @@ class RayTaskExecutor(TaskExecutor):
 
     # noinspection DuplicatedCode
     def destroy(self):
-        self._config = None
         self._task = None
         self._tile_context = None
         self._task_context = {}
@@ -377,6 +376,7 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = None
+        self._config = None
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -518,7 +518,7 @@ class RayTaskExecutor(TaskExecutor):
                 max_retries=subtask_max_retries,
             ).remote(
                 subtask.subtask_id,
-                serialize(subtask_chunk_graph),
+                serialize(subtask_chunk_graph, context={"serializer": "ray"}),
                 subtask_output_meta_keys,
                 is_mapper,
                 *input_object_refs,

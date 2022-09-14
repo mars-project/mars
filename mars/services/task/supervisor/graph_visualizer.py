@@ -17,17 +17,12 @@ from io import StringIO
 from typing import Dict, List
 
 from ....core.operand import Fetch, FetchShuffle
-from ...subtask import Subtask
-from .processor import TaskProcessor
+from ...subtask import Subtask, SubtaskGraph
 
 
 class GraphVisualizer:
-    task_processor: TaskProcessor
-
-    def __init__(self, task_processor):
-        self.task_processor = task_processor
-
-    def to_dot(self):
+    @classmethod
+    def to_dot(cls, subtask_graphs: List[SubtaskGraph]):
         sio = StringIO()
         sio.write("digraph {\n")
         sio.write("splines=curved\n")
@@ -38,16 +33,14 @@ class GraphVisualizer:
         result_chunk_to_subtask = dict()
         line_colors = dict()
         color_iter = iter(itertools.cycle(range(1, 9)))
-        for stage_line in itertools.combinations(
-            range(len(self.task_processor.stage_processors))[::-1], 2
-        ):
+        for stage_line in itertools.combinations(range(len(subtask_graphs))[::-1], 2):
             line_colors[stage_line] = f'"/spectral9/{next(color_iter)}"'
 
-        for stage_processor in self.task_processor.stage_processors:
-            for subtask in stage_processor.subtask_graph.topological_iter():
+        for subtask_graph in subtask_graphs:
+            for subtask in subtask_graph.topological_iter():
                 current_cluster = f"cluster_{subgraph_index}"
                 sio.write(
-                    self._export_subtask_to_dot(
+                    cls._export_subtask_to_dot(
                         subtask,
                         current_cluster,
                         current_stage,

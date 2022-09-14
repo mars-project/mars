@@ -110,7 +110,6 @@ class TaskPreprocessor:
         "_config",
         "tileable_optimization_records",
         "chunk_optimization_records_list",
-        "func_keys_to_clean_up",
         "_cancelled",
         "_done",
     )
@@ -130,7 +129,6 @@ class TaskPreprocessor:
         self.tile_context = tiled_context
         self.tileable_optimization_records = None
         self.chunk_optimization_records_list = []
-        self.func_keys_to_clean_up = []
 
         self._cancelled = asyncio.Event()
         self._done = asyncio.Event()
@@ -193,12 +191,9 @@ class TaskPreprocessor:
             tiler_cls=self._get_tiler_cls(),
         )
         optimize = self._config.optimize_chunk_graph
-        tileables_op_has_func_key = []
         for t in tileable_graph:
             if hasattr(t.op, "logic_key") and t.op.logic_key is None:
                 t.op.logic_key = t.op.get_logic_key()
-            if hasattr(t.op, "func_key"):
-                tileables_op_has_func_key.append(t)
         for chunk_graph in chunk_graph_builder.build():
             if len(chunk_graph) == 0:
                 continue
@@ -208,10 +203,6 @@ class TaskPreprocessor:
                     optimize_chunk_graph(chunk_graph)
                 )
             yield chunk_graph
-        for t in tileables_op_has_func_key:
-            if getattr(t.op, "func_key", None) is not None:
-                assert t.op.need_clean_up_func is True
-                self.func_keys_to_clean_up.append(t.op.func_key)
 
     def post_chunk_graph_execution(self):  # pylint: disable=no-self-use
         """Post calling after execution of current chunk graph"""

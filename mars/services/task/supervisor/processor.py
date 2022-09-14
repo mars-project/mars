@@ -20,7 +20,6 @@ import time
 from typing import Dict, Iterator, Optional, List, Set
 
 from ....core import ChunkGraph, TileableGraph, Chunk, TileContext
-from ....core.context import get_context
 from ....core.operand import Fetch
 from ....metrics import Metrics
 from ....optimization.logical import OptimizationRecords
@@ -66,6 +65,7 @@ class TaskProcessor:
             ProfilingData.init(task.task_id, task.extra_config["enable_profiling"])
 
         self._dump_subtask_graph = False
+        self._subtask_graphs = []
         if MARS_ENABLE_DUMPING_SUBTASK_GRAPH or (
             task.extra_config and task.extra_config.get("dump_subtask_graph")
         ):
@@ -222,6 +222,8 @@ class TaskProcessor:
                 op_to_bands=fetch_op_to_bands,
                 shuffle_fetch_type=shuffle_fetch_type,
             )
+            if self._dump_subtask_graph:
+                self._subtask_graphs.append(subtask_graph)
         stage_profiler.set(f"gen_subtask_graph({len(subtask_graph)})", timer.duration)
         logger.info(
             "Time consuming to gen a subtask graph is %ss with session id %s, task id %s, stage id %s",
@@ -420,7 +422,7 @@ class TaskProcessor:
         except ImportError:
             graphviz = None
 
-        dot = GraphVisualizer(self).to_dot()
+        dot = GraphVisualizer.to_dot(self._subtask_graphs)
         directory = tempfile.gettempdir()
         file_name = f"mars-{self.task_id}"
         logger.debug(
@@ -457,14 +459,3 @@ class TaskProcessor:
 
     def is_done(self) -> bool:
         return self.done.is_set()
-
-    async def remove_func_storage(self):
-        func_keys = self._preprocessor.func_keys_to_clean_up
-        logger.debug(f"Remove func storage {func_keys}")
-        ctx = get_context()
-        # Note: Considering that remove_func_storage is executed while TaskProcessor is being
-        # destroyed, creating storage_api may fail. Error type that may occur is still under
-        # investigation as well as experiment.
-        for func_key in func_keys:
-            await ctx._storage_delete(func_key)
-        self._preprocessor.func_keys_to_clean_up.clear()

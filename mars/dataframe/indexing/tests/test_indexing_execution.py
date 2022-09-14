@@ -293,6 +293,11 @@ def test_loc_getitem(setup):
     expected = raw2.loc[[]]
     pd.testing.assert_frame_equal(result, expected)
 
+    df = df2.loc[1:4]
+    result = df.execute().fetch()
+    expected = raw2.loc[1:4]
+    pd.testing.assert_frame_equal(result, expected)
+
     df = df2.loc[1:4, "b":"d"]
     result = df.execute().fetch()
     expected = raw2.loc[1:4, "b":"d"]
@@ -723,6 +728,32 @@ def test_setitem(setup):
     result = df.execute().fetch()
     expected["b"] = pd.Series(np.arange(2, 12), index=pd.RangeIndex(1, 11))
     pd.testing.assert_frame_equal(result, expected)
+
+    # test set multiple item order
+    data = pd.DataFrame(
+        [list(range(5))] * 10,
+        columns=["cc" + str(i) for i in range(5)],
+        index=["i" + str(i) for i in range(10)],
+    )
+    df = md.DataFrame(data, chunk_size=3)
+    df2 = df.apply(
+        lambda x: x * 2,
+        axis=1,
+        result_type="expand",
+        dtypes=[np.int64, np.int64, np.int64, np.int64, np.int64],
+        output_type="dataframe",
+    )
+    columns = ["dd" + str(i) for i in range(5)]
+    columns[1] = "cc2"
+    columns[3] = "cc1"
+    columns[4] = "cc3"
+    df2.columns = columns
+    df[columns] = df2[columns]
+    result = df.execute().fetch()
+    df2 = data.apply(lambda x: x * 2)
+    df2.columns = columns
+    data[columns] = df2[columns]
+    pd.testing.assert_frame_equal(result, data)
 
 
 def test_reset_index_execution(setup):
@@ -1625,8 +1656,7 @@ def test_add_prefix_suffix(setup):
     pd.testing.assert_series_equal(r.execute().fetch(), raw.add_suffix("_item"))
 
 
-# TODO https://github.com/mars-project/mars/issues/3221
-# @pytest.mark.ray_dag
+@pytest.mark.ray_dag
 @pytest.mark.parametrize("join", ["outer", "left"])
 def test_align_execution(setup, join):
     rs = np.random.RandomState(0)

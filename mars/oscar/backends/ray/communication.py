@@ -14,7 +14,6 @@
 
 import asyncio
 import concurrent.futures as futures
-import functools
 import itertools
 import logging
 import time
@@ -26,7 +25,6 @@ from urllib.parse import urlparse
 
 from ....oscar.profiling import ProfilingData
 from ....serialization import serialize, deserialize
-from ....serialization.ray import register_ray_serializers
 from ....metrics import Metrics
 from ....utils import lazy_import, lazy_import_on_load, implements, classproperty, Timer
 from ...debug import debug_async_timeout
@@ -84,11 +82,7 @@ def msg_to_simple_str(msg):  # pragma: no cover
     return str(type(msg))
 
 
-_register_ray_serializers_once = functools.lru_cache(1)(register_ray_serializers)
-
-
 def _argwrapper_unpickler(serialized_message):
-    _register_ray_serializers_once()
     return _ArgWrapper(deserialize(*serialized_message))
 
 
@@ -100,8 +94,9 @@ class _ArgWrapper:
         self.message = message
 
     def __reduce__(self):
-        _register_ray_serializers_once()
-        return _argwrapper_unpickler, (serialize(self.message),)
+        return _argwrapper_unpickler, (
+            serialize(self.message, context={"serializer": "ray"}),
+        )
 
 
 @lazy_import_on_load(ray)

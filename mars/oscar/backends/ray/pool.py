@@ -27,7 +27,6 @@ from enum import Enum
 from typing import List, Optional
 
 from ... import ServerClosed
-from ....serialization.ray import register_ray_serializers
 from ....utils import lazy_import, ensure_coverage, retry_callable
 from ..config import ActorPoolConfig
 from ..message import CreateActorMessage
@@ -228,7 +227,6 @@ class RayPoolBase(ABC):
     def __init__(self):
         self._actor_pool = None
         self._ray_server = None
-        register_ray_serializers()
         RayServer.set_ray_actor_started()
 
     @abstractmethod

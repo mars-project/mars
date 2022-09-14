@@ -65,6 +65,7 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     to_binary,
     to_str,
     to_text,
+    NamedType,
     TypeDispatcher,
     tokenize,
     tokenize_int,
@@ -84,6 +85,7 @@ pd_release_version: Tuple[int] = parse_version(pd.__version__).release
 OBJECT_FIELD_OVERHEAD = 50
 
 # make flake8 happy by referencing these imports
+NamedType = NamedType
 TypeDispatcher = TypeDispatcher
 tokenize = tokenize
 register_tokenizer = register_tokenizer
@@ -1697,6 +1699,31 @@ def is_ray_address(address: str) -> bool:
         return True
     else:
         return False
+
+
+# TODO: clean_up_func, is_on_ray and restore_func functions may be
+# removed or refactored in the future to calculate func size
+# with more accuracy as well as address some serialization issues.
+def is_on_ray(ctx):
+    from .services.task.execution.ray.context import (
+        RayExecutionContext,
+        RayExecutionWorkerContext,
+    )
+
+    # There are three conditions
+    #   a. mars backend
+    #   b. ray backend(oscar), c. ray backend(dag)
+    # When a. or b. is selected, ctx is an instance of ThreadedServiceContext.
+    #   The main difference between them is whether worker address matches ray scheme.
+    #   To avoid duplicated checks, here we choose the first worker address.
+    # When c. is selected, ctx is an instance of RayExecutionContext or RayExecutionWorkerContext,
+    #   while get_worker_addresses method isn't currently implemented in RayExecutionWorkerContext.
+    try:
+        worker_addresses = ctx.get_worker_addresses()
+    except AttributeError:  # pragma: no cover
+        assert isinstance(ctx, RayExecutionWorkerContext)
+        return True
+    return isinstance(ctx, RayExecutionContext) or is_ray_address(worker_addresses[0])
 
 
 def cache_tileables(*tileables):

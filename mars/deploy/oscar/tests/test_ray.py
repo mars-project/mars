@@ -24,7 +24,6 @@ import pytest
 from .... import tensor as mt
 from .... import dataframe as md
 from ....oscar.errors import ReconstructWorkerError
-from ....serialization.ray import register_ray_serializers
 from ....tests.core import require_ray, mock, DICT_NOT_EMPTY
 from ....utils import lazy_import
 from ..ray import (
@@ -132,6 +131,41 @@ async def test_execute_describe(ray_start_regular_shared, create_cluster):
 
 @require_ray
 @pytest.mark.asyncio
+async def test_execute_apply_closure(ray_start_regular_shared, create_cluster):
+    await test_local.test_execute_apply_closure(create_cluster)
+
+
+@require_ray
+@pytest.mark.parametrize("multiplier", [1, 3, 4])
+@pytest.mark.asyncio
+async def test_execute_callable_closure(
+    ray_start_regular_shared, create_cluster, multiplier
+):
+    await test_local.test_execute_callable_closure(create_cluster, multiplier)
+
+
+@require_ray
+@pytest.mark.parametrize(
+    "create_cluster",
+    [
+        {
+            "config": {
+                "task.task_preprocessor_cls": "mars.deploy.oscar.tests.test_clean_up_and_restore_func.RayBackendFuncTaskPreprocessor",
+                "subtask.subtask_processor_cls": "mars.deploy.oscar.tests.test_clean_up_and_restore_func.RayBackendFuncSubtaskProcessor",
+            }
+        }
+    ],
+    indirect=True,
+)
+@pytest.mark.asyncio
+async def test_ray_oscar_clean_up_and_restore_func(
+    ray_start_regular_shared, create_cluster
+):
+    await test_local.test_execute_apply_closure(create_cluster)
+
+
+@require_ray
+@pytest.mark.asyncio
 async def test_fetch_infos(ray_start_regular_shared, create_cluster):
     await test_local.test_fetch_infos(create_cluster)
     df = md.DataFrame(mt.random.RandomState(0).rand(5000, 1, chunk_size=1000))
@@ -165,7 +199,6 @@ def test_sync_execute(ray_start_regular_shared, create_cluster):
 
 
 def _run_web_session(web_address):
-    register_ray_serializers()
     import asyncio
 
     asyncio.new_event_loop().run_until_complete(
@@ -175,7 +208,6 @@ def _run_web_session(web_address):
 
 
 def _sync_web_session_test(web_address):
-    register_ray_serializers()
     new_session(web_address)
     raw = np.random.RandomState(0).rand(10, 5)
     a = mt.tensor(raw, chunk_size=5).sum(axis=1)

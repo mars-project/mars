@@ -123,63 +123,62 @@ def support_specify_owner():
 class RayStorage(StorageBackend):
     name = "ray"
 
-    _storage_get_metrics = [
-        (
-            Percentile.PercentileType.P99,
-            Metrics.gauge(
-                "mars.storage.ray.get_cost_time_p99_seconds",
-                "P99 time consuming in seconds to get object, every 1000 times report once.",
-            ).record,
-            1000,
-        ),
-        (
-            Percentile.PercentileType.P95,
-            Metrics.gauge(
-                "mars.storage.ray.get_cost_time_p95_seconds",
-                "P95 time consuming in seconds to get object, every 1000 times report once.",
-            ).record,
-            1000,
-        ),
-        (
-            Percentile.PercentileType.P90,
-            Metrics.gauge(
-                "mars.storage.ray.get_cost_time_p90_seconds",
-                "P90 time consuming in seconds to get object, every 1000 times report once.",
-            ).record,
-            1000,
-        ),
-    ]
-
-    _storage_put_metrics = [
-        (
-            Percentile.PercentileType.P99,
-            Metrics.gauge(
-                "mars.storage.ray.put_cost_time_p99_seconds",
-                "P99 time consuming in seconds to put object, every 1000 times report once.",
-            ).record,
-            1000,
-        ),
-        (
-            Percentile.PercentileType.P95,
-            Metrics.gauge(
-                "mars.storage.ray.put_cost_time_p95_seconds",
-                "P95 time consuming in seconds to put object, every 1000 times report once.",
-            ).record,
-            1000,
-        ),
-        (
-            Percentile.PercentileType.P90,
-            Metrics.gauge(
-                "mars.storage.ray.put_cost_time_p90_seconds",
-                "P90 time consuming in seconds to put object, every 1000 times report once.",
-            ).record,
-            1000,
-        ),
-    ]
-
     def __init__(self, *args, **kwargs):
         self._owner_address = kwargs.get("owner")
         self._owner = None  # A ray actor which will own the objects put by workers.
+        self._storage_get_metrics = [
+            (
+                Percentile.PercentileType.P99,
+                Metrics.gauge(
+                    "mars.storage.ray.get_cost_time_p99_seconds",
+                    "P99 time consuming in seconds to get object, every 1000 times report once.",
+                ).record,
+                1000,
+            ),
+            (
+                Percentile.PercentileType.P95,
+                Metrics.gauge(
+                    "mars.storage.ray.get_cost_time_p95_seconds",
+                    "P95 time consuming in seconds to get object, every 1000 times report once.",
+                ).record,
+                1000,
+            ),
+            (
+                Percentile.PercentileType.P90,
+                Metrics.gauge(
+                    "mars.storage.ray.get_cost_time_p90_seconds",
+                    "P90 time consuming in seconds to get object, every 1000 times report once.",
+                ).record,
+                1000,
+            ),
+        ]
+
+        self._storage_put_metrics = [
+            (
+                Percentile.PercentileType.P99,
+                Metrics.gauge(
+                    "mars.storage.ray.put_cost_time_p99_seconds",
+                    "P99 time consuming in seconds to put object, every 1000 times report once.",
+                ).record,
+                1000,
+            ),
+            (
+                Percentile.PercentileType.P95,
+                Metrics.gauge(
+                    "mars.storage.ray.put_cost_time_p95_seconds",
+                    "P95 time consuming in seconds to put object, every 1000 times report once.",
+                ).record,
+                1000,
+            ),
+            (
+                Percentile.PercentileType.P90,
+                Metrics.gauge(
+                    "mars.storage.ray.put_cost_time_p90_seconds",
+                    "P90 time consuming in seconds to put object, every 1000 times report once.",
+                ).record,
+                1000,
+            ),
+        ]
 
     @classmethod
     @implements(StorageBackend.setup)

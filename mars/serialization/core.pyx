@@ -28,6 +28,7 @@ from cpython cimport PyObject
 from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, uintptr_t
 from libcpp.unordered_map cimport unordered_map
 
+from .._utils import NamedType
 from .._utils cimport TypeDispatcher
 
 import cloudpickle
@@ -161,7 +162,7 @@ cdef class Serializer:
         return int(h.hexdigest(), 16) % _SERIALIZER_ID_PRIME
 
     @classmethod
-    def register(cls, obj_type):
+    def register(cls, obj_type, name=None):
         if (
             cls.serializer_id is None
             or cls.serializer_id == getattr(super(cls, cls), "serializer_id", None)
@@ -171,6 +172,8 @@ cdef class Serializer:
             cls.serializer_id = cls.calc_default_serializer_id()
 
         inst = cls()
+        if name is not None:
+            obj_type = NamedType(name, obj_type)
         _serial_dispatcher.register(obj_type, inst)
         if _deserializers.get(cls.serializer_id) is not None:
             assert type(_deserializers[cls.serializer_id]) is cls
@@ -178,7 +181,9 @@ cdef class Serializer:
             _deserializers[cls.serializer_id] = inst
 
     @classmethod
-    def unregister(cls, obj_type):
+    def unregister(cls, obj_type, name=None):
+        if name is not None:
+            obj_type = NamedType(name, obj_type)
         _serial_dispatcher.unregister(obj_type)
         _deserializers.pop(cls.serializer_id, None)
 
@@ -594,7 +599,9 @@ cdef tuple _serial_single(
     cdef tuple common_header, serialized
 
     while True:
-        serializer = _serial_dispatcher.get_handler(type(obj))
+        name = context.get("serializer")
+        obj_type = type(obj) if name is None else NamedType(name, type(obj))
+        serializer = _serial_dispatcher.get_handler(obj_type)
         ret_serial = serializer.serial(obj, context)
         if type(ret_serial) is tuple:
             # object is serialized, form a common header and return

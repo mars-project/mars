@@ -66,7 +66,7 @@ def test_counter():
     assert c.name == "test_counter"
     assert c.description == "A test counter"
     assert c.tag_keys == ("service", "tenant")
-    assert c.type == "counter"
+    assert c.type == "Counter"
     assert c.record(1, {"service": "mars", "tenant": "test"}) is None
 
 
@@ -79,7 +79,7 @@ def test_gauge():
     assert g.name == "test_gauge"
     assert g.description == "A test gauge"
     assert g.tag_keys == ()
-    assert g.type == "gauge"
+    assert g.type == "Gauge"
     assert g.record(1) is None
 
 
@@ -92,7 +92,7 @@ def test_meter():
     assert m.name == "test_meter"
     assert m.description == ""
     assert m.tag_keys == ()
-    assert m.type == "meter"
+    assert m.type == "Meter"
     assert m.record(1) is None
 
 
@@ -105,5 +105,5 @@ def test_histogram():
     assert h.name == "test_histogram"
     assert h.description == ""
     assert h.tag_keys == ()
-    assert h.type == "histogram"
+    assert h.type == "Histogram"
     assert h.record(1) is None
