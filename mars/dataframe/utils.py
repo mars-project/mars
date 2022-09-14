@@ -33,10 +33,6 @@ from ..config import options
 from ..core import Entity, ExecutableTuple
 from ..core.context import Context, get_context
 from ..lib.mmh3 import hash as mmh_hash
-from ..services.task.execution.ray.context import (
-    RayExecutionContext,
-    RayExecutionWorkerContext,
-)
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
 from ..typing import ChunkType, TileableType
 from ..utils import (
@@ -46,7 +42,7 @@ from ..utils import (
     ModulePlaceholder,
     is_full_slice,
     parse_readable_size,
-    is_ray_address,
+    is_on_ray,
 )
 
 try:
@@ -1437,6 +1433,9 @@ def auto_merge_chunks(
     return new_op.new_tileable(df_or_series.op.inputs, kws=[params])
 
 
+# TODO: clean_up_func, is_on_ray and restore_func functions may be
+# removed or refactored in the future to calculate func size
+# with more accuracy as well as address some serialization issues.
 def clean_up_func(op):
     closure_clean_up_bytes_threshold = int(
         os.getenv("MARS_CLOSURE_CLEAN_UP_BYTES_THRESHOLD", 10**4)
@@ -1461,7 +1460,7 @@ def clean_up_func(op):
             op.logic_key is not None
         ), f"Logic key of {op} wasn't calculated before cleaning up func."
         logger.debug(f"{op} need cleaning up func.")
-        if _is_on_ray(ctx):
+        if is_on_ray(ctx):
             import ray
 
             op.func_key = ray.put(op.func)
@@ -1470,27 +1469,10 @@ def clean_up_func(op):
             op.func = cloudpickle.dumps(op.func)
 
 
-def _is_on_ray(ctx):
-    # There are three conditions
-    #   a. mars backend
-    #   b. ray backend(oscar), c. ray backend(dag)
-    # When a. or b. is selected, ctx is an instance of ThreadedServiceContext.
-    #   The main difference between them is whether worker_address matches ray scheme.
-    #   To avoid duplicated checks, here we choose the first worker address.
-    # When c. is selected, ctx is an instance of RayExecutionContext or RayExecutionWorkerContext,
-    #   while get_worker_addresses method isn't currently implemented in RayExecutionWorkerContext.
-    try:
-        worker_addresses = ctx.get_worker_addresses()
-    except AttributeError:  # pragma: no cover
-        assert isinstance(ctx, RayExecutionWorkerContext)
-        return True
-    return isinstance(ctx, RayExecutionContext) or is_ray_address(worker_addresses[0])
-
-
 def restore_func(ctx: Context, op):
     if op.need_clean_up_func and ctx is not None:
         logger.debug(f"{op} need restoring func.")
-        if _is_on_ray(ctx):
+        if is_on_ray(ctx):
             import ray
 
             op.func = ray.get(op.func_key)
