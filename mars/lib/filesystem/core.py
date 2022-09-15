@@ -24,6 +24,11 @@ from .oss import OSSFileSystem
 
 
 _filesystems = {"file": LocalFileSystem, "oss": OSSFileSystem}
+_scheme_to_dependencies = {
+    "hdfs": ["pyarrow"],
+    "az": ["fsspec", "adlfs"],
+    "abfs": ["fsspec", "adlfs"],
+}
 
 
 def register_filesystem(name: str, fs):
@@ -42,23 +47,23 @@ def get_fs(path: path_type, storage_options: Dict = None) -> FileSystem:
     if scheme == "" or len(scheme) == 1:  # len == 1 for windows
         scheme = "file"
 
-    try:
+    if scheme in _filesystems:
         file_system_type = _filesystems[scheme]
-    except KeyError:  # pragma: no cover
-        if scheme == "hdfs":
-            raise ImportError("Need to install `pyarrow` to connect to HDFS.")
+        if scheme == "file" or scheme == "oss":
+            # local file systems are singletons.
+            return file_system_type.get_instance()
+        else:
+            options = file_system_type.parse_from_path(path)
+            storage_options.update(options)
+            return file_system_type(**storage_options)
+    elif scheme in _scheme_to_dependencies:  # pragma: no cover
+        dependencies = ", ".join(_scheme_to_dependencies[scheme])
+        raise ImportError(f"Need to install {dependencies} to access {scheme}.")
+    else:
         raise ValueError(
             f"Unknown file system type: {scheme}, "
-            f'available include: {", ".join(_filesystems)}'
+            f'available include: {", ".join(_scheme_to_dependencies.keys())}'
         )
-
-    if scheme == "file" or scheme == "oss":
-        # local file system use an singleton.
-        return file_system_type.get_instance()
-    else:
-        options = file_system_type.parse_from_path(path)
-        storage_options.update(options)
-        return file_system_type(**storage_options)
 
 
 def glob(path: path_type, storage_options: Dict = None) -> List[path_type]:

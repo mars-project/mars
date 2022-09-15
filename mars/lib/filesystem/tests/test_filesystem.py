@@ -25,12 +25,15 @@ except ImportError:  # pragma: no cover
     pa = None
 
 from ....tests.core import require_hadoop
+from ....utils import lazy_import
 from .. import glob, FileSystem, LocalFileSystem, FSMap
 
 if pa is not None:
     from ..arrow import ArrowBasedLocalFileSystem, HadoopFileSystem
 else:  # pragma: no cover
     ArrowBasedLocalFileSystem = None
+
+fsspec_installed = lazy_import("fsspec") is not None
 
 
 def test_path_parser():
@@ -198,3 +201,23 @@ def test_fsmap():
         # create root
         fs_map = FSMap(root + "/path2", fs, create=True)
         assert len(fs_map) == 0
+
+
+@pytest.mark.skipif(not fsspec_installed, reason="fsspec not installed")
+def test_get_fs():
+    from .. import get_fs, register_filesystem
+    from ..fsspec_adapter import FsSpecAdapter
+
+    class InMemoryFileSystemAdapter(FsSpecAdapter):
+        def __init__(self, **kwargs):
+            super().__init__("memory", **kwargs)
+
+    register_filesystem("memory", InMemoryFileSystemAdapter)
+
+    assert isinstance(get_fs("file://"), LocalFileSystem)
+    assert isinstance(get_fs("memory://"), InMemoryFileSystemAdapter)
+
+    try:
+        get_fs("unknown://")
+    except ValueError as e:
+        assert "Unknown file system type" in e.__str__()
