@@ -387,10 +387,10 @@ def new_ray_session(
     session = new_session(
         address=address, session_id=session_id, backend="mars", default=default
     )
-    session._ray_client = client
+    session.client = client
     if default:
         # SyncSession set isolated_session as default session instead.
-        AbstractSession.default._ray_client = client
+        AbstractSession.default.client = client
     return session
 
 
@@ -628,7 +628,7 @@ class RayClient:
         self._address = cluster.supervisor_address
         self._session = session
         # hold ray cluster by client to avoid actor handle out-of-scope
-        session._ray_client = self
+        session.client = self
 
     @classmethod
     async def create(cls, cluster: RayCluster) -> "RayClient":
@@ -636,7 +636,7 @@ class RayClient:
             cluster.supervisor_address, default=True, backend=cluster.backend
         )
         client = RayClient(cluster, session)
-        AbstractSession.default._ray_client = client
+        AbstractSession.default.client = client
         return client
 
     @property
@@ -655,13 +655,8 @@ class RayClient:
         return self
 
     async def __aexit__(self, *_):
-        await self._stop()
+        await self.stop()
 
-    def stop(self):
-        isolation = ensure_isolation_created({})
-        fut = asyncio.run_coroutine_threadsafe(self._stop(), isolation.loop)
-        return fut.result()
-
-    async def _stop(self):
+    async def stop(self):
         await self._cluster.stop()
         AbstractSession.reset_default()

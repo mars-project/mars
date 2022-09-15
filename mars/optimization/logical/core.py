@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import functools
 import weakref
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Type
+from typing import Dict, List, Optional, Type
 
 from ...core import OperandType, EntityType, enter_mode
 from ...core.graph import EntityGraph
@@ -91,10 +91,6 @@ class OptimizationRecords:
 
 
 class OptimizationRule(ABC):
-    _instances: Dict[
-        Tuple[Type["OptimizationRule"], EntityGraph, OptimizationRecords],
-        "OptimizationRule",
-    ] = dict()
     _preds_to_remove = weakref.WeakKeyDictionary()
 
     def __init__(
@@ -106,17 +102,11 @@ class OptimizationRule(ABC):
         self._graph = graph
         self._records = records
         self._optimizer_cls = optimizer_cls
-
-    def __new__(
-        cls,
-        graph: EntityGraph,
-        records: OptimizationRecords,
-        optimizer_cls: Type["Optimizer"],
-    ):
-        if (cls, graph, records) in cls._instances:
-            return cls._instances[cls, graph, records]
-        inst = cls._instances[cls, graph, records] = object.__new__(cls)
-        return inst
+        self._cached_rule = functools.lru_cache(maxsize=None)(
+            lambda _rule_type: _rule_type(
+                self._graph, self._records, self._optimizer_cls
+            )
+        )
 
     @abstractmethod
     def match(self, op: OperandType) -> bool:
@@ -251,6 +241,10 @@ class Optimizer(ABC):
         """
         records = OptimizationRecords()
         optimized = False
+        cached_rule = functools.lru_cache(maxsize=None)(
+            lambda _rule_type: _rule_type(graph, records, cls)
+        )
+
         for rule_type in cls._rules:
             visited = set()
             for entity in list(graph.topological_iter()):
@@ -263,7 +257,7 @@ class Optimizer(ABC):
                 if rule_type not in rule_types:
                     continue
 
-                rule = rule_type(graph, records, cls)
+                rule = cached_rule(rule_type)
                 if entity not in graph:  # pragma: no cover
                     # maybe removed during optimization
                     continue

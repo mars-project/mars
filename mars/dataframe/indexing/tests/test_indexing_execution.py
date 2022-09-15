@@ -1059,6 +1059,7 @@ def _wrap_execute_data_source_mixed(limit, usecols, op_cls):
     return _execute_data_source
 
 
+@pytest.mark.skip_ray_dag  # operand_executors is not supported by ray backend.
 @pytest.mark.pd_compat
 def test_optimization(setup):
     import sqlalchemy as sa
@@ -1656,7 +1657,6 @@ def test_add_prefix_suffix(setup):
     pd.testing.assert_series_equal(r.execute().fetch(), raw.add_suffix("_item"))
 
 
-@pytest.mark.ray_dag
 @pytest.mark.parametrize("join", ["outer", "left"])
 def test_align_execution(setup, join):
     rs = np.random.RandomState(0)

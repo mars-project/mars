@@ -94,7 +94,24 @@ class FileSystem(ABC):
         return self.pathsep.join(args)
 
     def path_split(self, path):
-        return path.rsplit(self.pathsep, 1)
+        """
+        Split a pathname. Returns tuple "(head, tail)" where "tail" is everything after the final slash. Either part
+        may be empty.
+
+        Parameters
+        ----------
+        path : string
+            Can be a file path or directory
+
+        Returns
+        -------
+        usage : int
+        """
+        splits = path.rsplit(self.pathsep, 1)
+        if len(splits) == 1:
+            return "", splits[0]
+        else:
+            return splits
 
     @abstractmethod
     def stat(self, path: path_type) -> Dict:

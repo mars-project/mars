@@ -22,4 +22,5 @@ markers = [
     "ray: mark test as a ray case.",
     "pd_compat: mark test as a pandas-compatibility test.",
     "ray_dag: marks tests for ray backend.",
+    "skip_ray_dag: marks tests that not execute in ray backend.",
 ]

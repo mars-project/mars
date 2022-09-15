@@ -51,6 +51,7 @@ async def create_cluster(request):
 @require_ray
 @pytest.mark.asyncio
 @pytest.mark.parametrize("test_option", [[3, 3], [3, 2], [None, None]])
+@pytest.mark.skip_ray_dag  # raydataset is not compatible with Ray DAG
 async def test_convert_to_ray_dataset(
     ray_start_regular_shared, create_cluster, test_option
 ):
@@ -74,6 +75,7 @@ async def test_convert_to_ray_dataset(
 @require_ray
 @pytest.mark.asyncio
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
+@pytest.mark.skip_ray_dag  # raydataset is not compatible with Ray DAG
 async def test_mars_with_xgboost(ray_start_regular_shared, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, train
     from sklearn.datasets import load_breast_cancer
@@ -116,6 +118,7 @@ async def test_mars_with_xgboost(ray_start_regular_shared, create_cluster):
 @pytest.mark.asyncio
 @pytest.mark.skipif(sklearn is None, reason="sklearn not installed")
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
+@pytest.mark.skip_ray_dag  # raydataset is not compatible with Ray DAG
 async def test_mars_with_xgboost_sklearn_clf(ray_start_regular_shared, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, RayXGBClassifier
     from sklearn.datasets import load_breast_cancer
@@ -158,6 +161,7 @@ async def test_mars_with_xgboost_sklearn_clf(ray_start_regular_shared, create_cl
 @pytest.mark.asyncio
 @pytest.mark.skipif(sklearn is None, reason="sklearn not installed")
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
+@pytest.mark.skip_ray_dag  # raydataset is not compatible with Ray DAG
 async def test_mars_with_xgboost_sklearn_reg(ray_start_regular_shared, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, RayXGBRegressor
     from sklearn.datasets import make_regression

@@ -49,6 +49,12 @@ jobs:
           source ./ci/install-conda.sh
           python -m pip install --upgrade pip setuptools wheel coverage;
 
+      - name: Start minikube
+        if: ${{ matrix.with-kubernetes }}
+        with:
+          driver: none
+        uses: medyagh/setup-minikube@master
+
       - name: Install dependencies
         env:
           WITH_HADOOP: ${{ matrix.with-hadoop }}
@@ -75,8 +81,8 @@ jobs:
           else
             pip install virtualenv flaky
             if [ -n "$WITH_KUBERNETES" ]; then
-              ./ci/install-minikube.sh
               pip install kubernetes
+              kubectl get pods -A
             fi
             if [ -n "$WITH_HADOOP" ]; then
               ./ci/install-hadoop.sh
@@ -103,6 +109,10 @@ jobs:
               pip install https://s3-us-west-2.amazonaws.com/ray-wheels/master/c03d0432f3bb40f3c597b7fc450870ba5e34ad56/ray-3.0.0.dev0-cp38-cp38-manylinux2014_x86_64.whl
               # Ray Datasets need pyarrow>=6.0.1
               pip install "pyarrow>=6.0.1"
+              # Pandas 1.4 compatibility issue, maybe pandas 1.4 bugs
+              # https://github.com/mars-project/mars/issues/3251
+              # https://github.com/mars-project/mars/issues/3252
+              pip install "pandas<1.4"
             fi
             if [ -n "$RUN_DASK" ]; then
               pip install dask[complete] mimesis sklearn
@@ -173,6 +183,8 @@ jobs:
           fi
           if [ -n "$WITH_RAY_DAG" ]; then
             export MARS_CI_BACKEND=ray
+            export RAY_idle_worker_killing_time_threshold_ms=60000
+            pytest $PYTEST_CONFIG --durations=0 --timeout=500 mars/dataframe -v -s -m "not skip_ray_dag"
             pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s -m ray_dag
             mv .coverage build/.coverage.ray_dag.file
             pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray_dag.py

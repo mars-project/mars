@@ -23,7 +23,6 @@ from ...utils import sort_dataframe_inplace
 from .. import concat, DataFrameConcat, DataFrameMergeAlign
 
 
-@pytest.mark.ray_dag
 def test_merge(setup):
     df1 = pd.DataFrame(
         np.arange(20).reshape((4, 5)) + 1, columns=["a", "b", "c", "d", "e"]
@@ -146,7 +145,6 @@ def test_merge(setup):
     )
 
 
-@pytest.mark.ray_dag
 def test_join(setup):
     df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]], index=["a1", "a2", "a3"])
     df2 = pd.DataFrame([[1, 2, 3], [1, 5, 6], [7, 8, 9]], index=["a1", "b2", "b3"]) + 1
@@ -186,7 +184,6 @@ def test_join(setup):
     pd.testing.assert_frame_equal(expected4.sort_index(), result4.sort_index())
 
 
-@pytest.mark.ray_dag
 def test_join_on(setup):
     df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]], columns=["a1", "a2", "a3"])
     df2 = (
@@ -319,7 +316,6 @@ def test_join_on(setup):
     )
 
 
-@pytest.mark.ray_dag
 def test_merge_one_chunk(setup):
     df1 = pd.DataFrame(
         {"lkey": ["foo", "bar", "baz", "foo"], "value": [1, 2, 3, 5]},
@@ -386,7 +382,6 @@ def test_merge_one_chunk(setup):
     )
 
 
-@pytest.mark.ray_dag
 def test_broadcast_merge(setup):
     ns = np.random.RandomState(0)
     # small dataframe
@@ -489,7 +484,6 @@ def test_broadcast_merge(setup):
     )
 
 
-@pytest.mark.ray_dag
 def test_merge_with_bloom_filter(setup):
     ns = np.random.RandomState(0)
     raw_df1 = pd.DataFrame(
@@ -605,7 +599,6 @@ def test_merge_with_bloom_filter(setup):
     )
 
 
-@pytest.mark.ray_dag
 @pytest.mark.parametrize("filter", ["small", "large", "both"])
 def test_merge_with_bloom_filter_options(setup, filter):
     ns = np.random.RandomState(0)
@@ -643,7 +636,6 @@ def test_merge_with_bloom_filter_options(setup, filter):
     )
 
 
-@pytest.mark.ray_dag
 @pytest.mark.parametrize("auto_merge", ["none", "both", "before", "after"])
 def test_merge_on_duplicate_columns(setup, auto_merge):
     raw1 = pd.DataFrame(
@@ -671,7 +663,6 @@ def test_merge_on_duplicate_columns(setup, auto_merge):
     pd.testing.assert_frame_equal(expected, result)
 
 
-@pytest.mark.ray_dag
 def test_append_execution(setup):
     df1 = pd.DataFrame(np.random.rand(10, 4), columns=list("ABCD"))
     df2 = pd.DataFrame(np.random.rand(10, 4), columns=list("ABCD"))
@@ -752,7 +743,6 @@ def test_append_execution(setup):
     pd.testing.assert_series_equal(expected, result)
 
 
-@pytest.mark.ray_dag
 def test_concat(setup):
     df1 = pd.DataFrame(np.random.rand(10, 4), columns=list("ABCD"))
     df2 = pd.DataFrame(np.random.rand(10, 4), columns=list("ABCD"))

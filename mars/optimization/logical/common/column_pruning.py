@@ -38,7 +38,7 @@ class PruneDataSource(OptimizationRule, metaclass=ABCMeta):
                 return False
 
             for rule_type in prune_rule_types:
-                rule = rule_type(self._graph, self._records, self._optimizer_cls)
+                rule = self._cached_rule(rule_type)
                 if not rule._need_prune(succ.op):
                     return False
         return True
