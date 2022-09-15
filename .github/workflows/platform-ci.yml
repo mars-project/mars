@@ -49,6 +49,12 @@ jobs:
           source ./ci/install-conda.sh
           python -m pip install --upgrade pip setuptools wheel coverage;
 
+      - name: Start minikube
+        if: ${{ matrix.with-kubernetes }}
+        with:
+          driver: none
+        uses: medyagh/setup-minikube@master
+
       - name: Install dependencies
         env:
           WITH_HADOOP: ${{ matrix.with-hadoop }}
@@ -75,8 +81,8 @@ jobs:
           else
             pip install virtualenv flaky
             if [ -n "$WITH_KUBERNETES" ]; then
-              ./ci/install-minikube.sh
               pip install kubernetes
+              kubectl get pods -A
             fi
             if [ -n "$WITH_HADOOP" ]; then
               ./ci/install-hadoop.sh
