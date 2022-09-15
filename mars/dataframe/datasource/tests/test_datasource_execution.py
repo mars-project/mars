@@ -1160,6 +1160,7 @@ def test_read_parquet_fast_parquet(setup):
 
 
 @require_ray
+@pytest.mark.skip_ray_dag  # raydataset is not compatible with Ray DAG
 def test_read_raydataset(ray_start_regular, ray_create_mars_cluster):
     test_df1 = pd.DataFrame(
         {
@@ -1210,6 +1211,7 @@ def test_read_raydataset(ray_start_regular, ray_create_mars_cluster):
 
 
 @require_ray
+@pytest.mark.skip_ray_dag  # mldataset is not compatible with Ray DAG
 def test_read_ray_mldataset(ray_start_regular, ray_create_mars_cluster):
     test_dfs = [
         pd.DataFrame(

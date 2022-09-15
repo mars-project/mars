@@ -73,6 +73,7 @@ async def test_dataset_related_classes(ray_start_regular_shared):
 @require_ray
 @pytest.mark.asyncio
 @pytest.mark.parametrize("test_option", [[5, 5], [5, 4], [None, None]])
+@pytest.mark.skip_ray_dag  # mldataset is not compatible with Ray DAG
 async def test_convert_to_ray_mldataset(
     ray_start_regular_shared, create_cluster, test_option
 ):
@@ -91,6 +92,7 @@ async def test_convert_to_ray_mldataset(
 @require_ray
 @pytest.mark.asyncio
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
+@pytest.mark.skip_ray_dag  # mldataset is not compatible with Ray DAG
 async def test_mars_with_xgboost(ray_start_regular_shared, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, train, predict
     from sklearn.datasets import load_breast_cancer
