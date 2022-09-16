@@ -349,6 +349,7 @@ def test_arctan2_execution(setup):
     np.testing.assert_equal(result, np.arctan2(0, raw2.A))
 
 
+@pytest.mark.ray_dag
 def test_frexp_execution(setup):
     data1 = np.random.RandomState(0).randint(0, 100, (5, 9, 6))
 
