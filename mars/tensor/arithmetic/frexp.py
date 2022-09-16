@@ -43,31 +43,24 @@ class TensorFrexp(TensorOutBinOp):
 
             inputs_iter = iter(inputs)
             input = next(inputs_iter)
-            if op.out1 is not None:
-                out1 = next(inputs_iter)
-            else:
-                out1 = None
-            if op.out2 is not None:
-                out2 = next(inputs_iter)
-            else:
-                out2 = None
             if op.where is not None:
                 where = kw["where"] = next(inputs_iter)
             else:
                 where = None
             kw["order"] = op.order
 
-            try:
-                args = [input]
-                if out1 is not None:
-                    args.append(out1)
-                if out2 is not None:
-                    args.append(out2)
-                mantissa, exponent = xp.frexp(*args, **kw)
-            except TypeError:
-                if where is None:
-                    raise
-                mantissa, exponent = xp.frexp(input)
+            # The out1 out2 are immutable because they are got from
+            # the shared memory.
+            mantissa, exponent = xp.frexp(input)
+            if where is not None:
+                if op.out1 is not None:
+                    out1 = next(inputs_iter)
+                else:
+                    out1 = None
+                if op.out2 is not None:
+                    out2 = next(inputs_iter)
+                else:
+                    out2 = None
                 mantissa, exponent = (
                     xp.where(where, mantissa, out1),
                     xp.where(where, exponent, out2),
