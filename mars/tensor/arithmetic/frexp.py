@@ -43,6 +43,14 @@ class TensorFrexp(TensorOutBinOp):
 
             inputs_iter = iter(inputs)
             input = next(inputs_iter)
+            if op.out1 is not None:
+                out1 = next(inputs_iter)
+            else:
+                out1 = None
+            if op.out2 is not None:
+                out2 = next(inputs_iter)
+            else:
+                out2 = None
             if op.where is not None:
                 where = kw["where"] = next(inputs_iter)
             else:
@@ -53,14 +61,6 @@ class TensorFrexp(TensorOutBinOp):
             # the shared memory.
             mantissa, exponent = xp.frexp(input)
             if where is not None:
-                if op.out1 is not None:
-                    out1 = next(inputs_iter)
-                else:
-                    out1 = None
-                if op.out2 is not None:
-                    out2 = next(inputs_iter)
-                else:
-                    out2 = None
                 mantissa, exponent = (
                     xp.where(where, mantissa, out1),
                     xp.where(where, exponent, out2),
