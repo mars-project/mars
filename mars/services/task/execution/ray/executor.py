@@ -600,7 +600,10 @@ class RayTaskExecutor(TaskExecutor):
             for chunk in self._tile_context[tileable].chunks:
                 chunk_key = chunk.key
                 chunk_keys.append(chunk_key)
-                if chunk_key in self._task_context:
+                if (
+                    chunk_key in self._task_context
+                    and chunk_key in self._task_chunks_meta
+                ):
                     # Some tileable graph may have result chunks that not be executed,
                     # for example:
                     # r, b = cut(series, bins, retbins=True)
