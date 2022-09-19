@@ -90,3 +90,4 @@ function retry {
 }
 alias pip="retry pip"
 shopt -s expand_aliases
+set -e

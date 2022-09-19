@@ -167,7 +167,7 @@ class GraphAnalyzer:
         chunk_to_subtask: Dict[ChunkType, Subtask],
         chunk_to_bands: Dict[ChunkType, BandType],
         chunk_to_fetch_chunk: Dict[ChunkType, ChunkType],
-    ) -> Tuple[Subtask, List[Subtask]]:
+    ) -> Tuple[Subtask, List[Subtask], bool]:
         # gen subtask and its input subtasks
         chunks_set = set(chunks)
         result_chunks = []
@@ -315,19 +315,13 @@ class GraphAnalyzer:
             extra_config=self._extra_config,
         )
 
-        if (
-            self._has_shuffle
-            and self._shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX
-        ):
-            shuffle_chunks = [
-                c for c in result_chunks if isinstance(c, MapReduceOperand)
-            ]
-            # ensure no shuffle mapper chunks fused into same subtask and subtask only produce mapper outputs
-            # which can be merged dynamically by the reducers.
-            assert len(shuffle_chunks) <= 1, shuffle_chunks
-            proxy_chunks = [c for c in chunks if isinstance(c.op, ShuffleProxy)]
-            assert len(proxy_chunks) <= 1, proxy_chunks
-        return subtask, inp_subtasks
+        is_shuffle_proxy = False
+        if self._has_shuffle:
+            proxy_chunks = [c for c in result_chunks if isinstance(c.op, ShuffleProxy)]
+            if proxy_chunks:
+                assert len(proxy_chunks) <= 1, proxy_chunks
+                is_shuffle_proxy = True
+        return subtask, inp_subtasks, is_shuffle_proxy
 
     def _gen_logic_key(self, chunks: List[ChunkType]):
         return tokenize(
@@ -439,6 +433,26 @@ class GraphAnalyzer:
         # states
         visited = set()
         logic_key_to_subtasks = defaultdict(list)
+        if self._shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX:
+            for chunk in self._chunk_graph.topological_iter():
+                if not isinstance(chunk.op, ShuffleProxy):
+                    continue
+                # Can't use `OperandStage.map` to find mappers directly, since `stage` of some operand
+                # such as `DataFrameIndexAlign` are `OperandStage.map` but not a shuffle mapper sometimes.
+                mapper_chunks = self._chunk_graph.predecessors(chunk)
+                for mapper_chunk in mapper_chunks:
+                    chunk_color = chunk_to_colors[mapper_chunk]
+                    same_color_chunks = color_to_chunks[chunk_color]
+                    mappers = [
+                        c for c in same_color_chunks if c.op.stage == OperandStage.map
+                    ]
+                    if len(mappers) > 1:
+                        # ensure every subtask contains only at most one mapper
+                        for mapper in mappers:
+                            same_color_chunks.remove(mapper)
+                            mapper_color = coloring.next_color()
+                            chunk_to_colors[mapper] = mapper_color
+                            color_to_chunks[mapper_color] = [mapper]
         for chunk in self._chunk_graph.topological_iter():
             if chunk in visited or isinstance(chunk.op, Fetch):
                 # skip fetch chunk
@@ -449,13 +463,15 @@ class GraphAnalyzer:
             if all(isinstance(c.op, Fetch) for c in same_color_chunks):
                 # all fetch ops, no need to gen subtask
                 continue
-            subtask, inp_subtasks = self._gen_subtask_info(
+            subtask, inp_subtasks, is_shuffle_proxy = self._gen_subtask_info(
                 same_color_chunks,
                 chunk_to_subtask,
                 chunk_to_bands,
                 chunk_to_fetch_chunk,
             )
             subtask_graph.add_node(subtask)
+            if is_shuffle_proxy:
+                subtask_graph.add_shuffle_proxy_subtask(subtask)
             logic_key_to_subtasks[subtask.logic_key].append(subtask)
             for inp_subtask in inp_subtasks:
                 subtask_graph.add_edge(inp_subtask, subtask)

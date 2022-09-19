@@ -214,6 +214,7 @@ def to_parquet(
     compression="snappy",
     index=None,
     partition_cols=None,
+    storage_options: dict = None,
     **kwargs,
 ):
     """
@@ -277,6 +278,7 @@ def to_parquet(
         compression=compression,
         index=index,
         partition_cols=partition_cols,
+        storage_options=storage_options,
         additional_kwargs=kwargs,
     )
     return op(df)

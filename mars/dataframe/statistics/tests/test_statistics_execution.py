@@ -164,6 +164,7 @@ def test_dataframe_corr(setup):
     pd.testing.assert_frame_equal(result.execute().fetch(), raw.corr(min_periods=7))
 
 
+@pytest.mark.skip_ray_dag  # https://github.com/mars-project/mars/issues/3247
 def test_dataframe_corr_with(setup):
     rs = np.random.RandomState(0)
     raw_df = rs.rand(20, 10)

@@ -210,6 +210,7 @@ def test_without_fuse(setup):
     np.testing.assert_array_equal(r1, r2)
 
 
+@pytest.mark.ray_dag
 def test_fetch_slices(setup):
     arr1 = mt.random.rand(10, 8, chunk_size=3)
     r1 = arr1.execute().fetch()
@@ -518,11 +519,11 @@ def test_merge_groupby(setup, method, auto_merge):
     rs = np.random.RandomState(0)
     raw1 = pd.DataFrame({"a": rs.randint(3, size=100), "b": rs.rand(100)})
     raw2 = pd.DataFrame({"a": rs.randint(3, size=10), "c": rs.rand(10)})
-    df1 = md.DataFrame(raw1, chunk_size=10)
-    df2 = md.DataFrame(raw2, chunk_size=10)
+    df1 = md.DataFrame(raw1, chunk_size=10).execute()
+    df2 = md.DataFrame(raw2, chunk_size=10).execute()
     # do not trigger auto merge
     df3 = df1.merge(
-        df2, on="a", auto_merge_threshold=100, method=method, auto_merge=auto_merge
+        df2, on="a", auto_merge_threshold=8, method=method, auto_merge=auto_merge
     )
     df4 = df3.groupby("a").sum()
 

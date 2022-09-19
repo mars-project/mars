@@ -261,9 +261,10 @@ async def test_task_cancel(start_test_service):
     next(TileableGraphBuilder(graph).build())
 
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(1)
     with Timer() as timer:
         await task_api.cancel_task(task_id)
+        await asyncio.sleep(1)
         result = await task_api.get_task_result(task_id)
         assert result.status == TaskStatus.terminated
     assert timer.duration < 20

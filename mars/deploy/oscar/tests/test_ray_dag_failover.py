@@ -26,15 +26,23 @@ from ....tests.core import require_ray
 from ....utils import lazy_import
 
 ray = lazy_import("ray")
+try:
+    from ray.exceptions import ObjectReconstructionFailedMaxAttemptsExceededError
+except ImportError:  # pragma: no cover
+    ObjectReconstructionFailedMaxAttemptsExceededError = None
 
 
 @require_ray
 @pytest.mark.parametrize(
     "ray_large_cluster",
-    [{"num_nodes": 0, "use_ray_serialization": False}],
+    [{"num_nodes": 0}],
     indirect=True,
 )
 @pytest.mark.parametrize("reconstruction_enabled", [True, False])
+@pytest.mark.skipif(
+    ObjectReconstructionFailedMaxAttemptsExceededError is None,
+    reason="Not support ObjectReconstructionFailedMaxAttemptsExceededError",
+)
 def test_basic_object_reconstruction(
     ray_large_cluster, reconstruction_enabled, stop_mars
 ):
@@ -99,9 +107,7 @@ def test_basic_object_reconstruction(
     cluster.add_node(num_cpus=1, object_store_memory=10**8)
 
     if reconstruction_enabled:
-        with pytest.raises(
-            ray.exceptions.ObjectReconstructionFailedMaxAttemptsExceededError
-        ):
+        with pytest.raises(ObjectReconstructionFailedMaxAttemptsExceededError):
             ray.get(object_refs)
     else:
         with pytest.raises(ray.exceptions.ObjectLostError):

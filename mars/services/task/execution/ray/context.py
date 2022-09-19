@@ -18,6 +18,7 @@ from typing import Dict, List, Callable
 
 from .....core.context import Context
 from .....storage.base import StorageLevel
+from .....typing import ChunkType
 from .....utils import implements, lazy_import, sync_to_async
 from ....context import ThreadedServiceContext
 from .config import RayExecutionConfig
@@ -135,14 +136,44 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
     def get_chunks_meta(
         self, data_keys: List[str], fields: List[str] = None, error="raise"
     ) -> List[Dict]:
-        result = []
-        # TODO(fyrestone): Support get_chunks_meta from meta service if needed.
-        for key in data_keys:
-            chunk_meta = self._task_chunks_meta[key]
-            meta = asdict(chunk_meta)
-            meta = {f: meta.get(f) for f in fields}
-            result.append(meta)
+        if not self._task_chunks_meta:
+            result = self._call(
+                self._get_chunks_meta_from_service(
+                    data_keys, fields=fields, error=error
+                )
+            )
+        else:
+            result = [{}] * len(data_keys)
+            missing_key_indexes = []
+            missing_keys = []
+            for idx, key in enumerate(data_keys):
+                try:
+                    chunk_meta = self._task_chunks_meta[key]
+                except KeyError:
+                    missing_key_indexes.append(idx)
+                    missing_keys.append(key)
+                else:
+                    meta = asdict(chunk_meta)
+                    meta = {f: meta.get(f) for f in fields}
+                    result[idx] = meta
+            if missing_keys:
+                missing_meta = self._call(
+                    self._get_chunks_meta_from_service(
+                        missing_keys, fields=fields, error=error
+                    )
+                )
+                for idx, meta in zip(missing_key_indexes, missing_meta):
+                    result[idx] = meta
         return result
+
+    async def _get_chunks_meta_from_service(
+        self, data_keys: List[str], fields: List[str] = None, error="raise"
+    ) -> List[Dict]:
+        get_metas = [
+            self._meta_api.get_chunk_meta.delay(data_key, fields=fields, error=error)
+            for data_key in data_keys
+        ]
+        return await self._meta_api.get_chunk_meta.batch(*get_metas)
 
     @implements(Context.get_total_n_cpu)
     def get_total_n_cpu(self) -> int:
@@ -158,6 +189,10 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
 # TODO(fyrestone): Implement more APIs for Ray.
 class RayExecutionWorkerContext(_RayRemoteObjectContext, dict):
     """The context for executing operands."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._current_chunk = None
 
     @classmethod
     @implements(Context.new_custom_log_dir)
@@ -198,3 +233,11 @@ class RayExecutionWorkerContext(_RayRemoteObjectContext, dict):
     ):
         logger.info("%s does not support get_storage_info", cls.__name__)
         return {}
+
+    def set_current_chunk(self, chunk: ChunkType):
+        """Set current executing chunk."""
+        self._current_chunk = chunk
+
+    def get_current_chunk(self) -> ChunkType:
+        """Set current executing chunk."""
+        return self._current_chunk

@@ -20,13 +20,15 @@ from ...core import OutputType
 from ...core.context import get_context
 from ...core.custom_log import redirect_custom_log
 from ...serialization.serializables import (
+    AnyField,
     BoolField,
     TupleField,
     DictField,
     FunctionField,
+    StringField,
 )
 from ...core.operand import OperatorLogicKeyGeneratorMixin
-from ...utils import enter_current_session, quiet_stdio, get_func_token_values
+from ...utils import enter_current_session, quiet_stdio, get_func_token, tokenize
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import (
     auto_merge_chunks,
@@ -36,6 +38,8 @@ from ..utils import (
     validate_output_types,
     make_dtypes,
     make_dtype,
+    clean_up_func,
+    restore_func,
 )
 
 
@@ -43,7 +47,7 @@ class GroupByApplyLogicKeyGeneratorMixin(OperatorLogicKeyGeneratorMixin):
     def _get_logic_key_token_values(self):
         token_values = super()._get_logic_key_token_values()
         if self.func:
-            return token_values + get_func_token_values(self.func)
+            return token_values + [get_func_token(self.func)]
         else:  # pragma: no cover
             return token_values
 
@@ -58,14 +62,25 @@ class GroupByApply(
     args = TupleField("args", default_factory=tuple)
     kwds = DictField("kwds", default_factory=dict)
     maybe_agg = BoolField("maybe_agg", default=None)
+    logic_key = StringField("logic_key", default=None)
+    func_key = AnyField("func_key", default=None)
+    need_clean_up_func = BoolField("need_clean_up_func", default=False)
 
     def __init__(self, output_types=None, **kw):
         super().__init__(_output_types=output_types, **kw)
+
+    def _update_key(self):
+        values = [v for v in self._values_ if v is not self.func] + [
+            get_func_token(self.func)
+        ]
+        self._obj_set("_key", tokenize(type(self).__name__, *values))
+        return self
 
     @classmethod
     @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op: "GroupByApply"):
+        restore_func(ctx, op)
         in_data = ctx[op.inputs[0].key]
         out = op.outputs[0]
         if not in_data:
@@ -102,6 +117,7 @@ class GroupByApply(
 
     @classmethod
     def tile(cls, op: "GroupByApply"):
+        clean_up_func(op)
         in_groupby = op.inputs[0]
         out_df = op.outputs[0]
 

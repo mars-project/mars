@@ -62,9 +62,9 @@ def _gen_pairs(seq):
 
 @ignore_warning
 def test_unary_execution(setup):
-    from ...arithmetic import UNARY_UFUNC, arccosh, invert, sin, conj
+    from ...arithmetic import UNARY_UFUNC, arccosh, invert, sin, conj, logical_not
 
-    _sp_unary_ufunc = {arccosh, invert, conj}
+    _sp_unary_ufunc = {arccosh, invert, conj, logical_not}
     _new_unary_ufunc = list(UNARY_UFUNC - _sp_unary_ufunc)[:3]
 
     def _normalize_by_sin(func1, func2, arr):

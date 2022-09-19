@@ -69,23 +69,29 @@ class _RayChunkMeta:
 
 
 class RayTaskState(RayRemoteObjectManager):
-    @classmethod
-    def _gen_name(cls, task_id: str):
-        return f"{cls.__name__}_{task_id}"
+    handle = None
 
     @classmethod
-    def get_handle(cls, task_id: str):
+    def get_handle(cls):
         """Get the RayTaskState actor handle."""
-        name = cls._gen_name(task_id)
-        logger.info("Getting %s handle.", name)
-        return ray.get_actor(name)
+        logger.info("Getting RayTaskState handle.")
+        return ray.get_actor(cls.__name__)
 
     @classmethod
-    def create(cls, task_id: str):
+    def create(cls):
         """Create a RayTaskState actor."""
-        name = cls._gen_name(task_id)
-        logger.info("Creating %s.", name)
-        return ray.remote(cls).options(name=name).remote()
+        logger.info("Creating RayTaskState actor.")
+        name = cls.__name__
+        try:
+            cls.handle = ray.get_actor(name)
+        except ValueError:
+            # Attempt to create it (may race with other attempts).
+            try:
+                cls.handle = ray.remote(cls).options(name=name).remote()
+            except ValueError:  # pragma: no cover
+                # We lost the creation race, ignore.
+                cls.handle = ray.get_actor(name)
+        return cls.handle
 
 
 _optimize_physical = None
@@ -116,7 +122,6 @@ async def _cancel_ray_task(obj_ref, kill_timeout: int = 3):
 
 
 def execute_subtask(
-    task_id: str,
     subtask_id: str,
     subtask_chunk_graph: ChunkGraph,
     output_meta_keys: Set[str],
@@ -128,8 +133,6 @@ def execute_subtask(
 
     Parameters
     ----------
-    task_id: str
-        id of task
     subtask_id: str
         id of subtask
     subtask_chunk_graph: ChunkGraph
@@ -151,32 +154,34 @@ def execute_subtask(
     logger.info("Begin to execute subtask: %s", subtask_id)
     # optimize chunk graph.
     subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)
-    start_chunks = _get_start_chunks(subtask_chunk_graph)
-    if isinstance(start_chunks[0].op, FetchShuffle):
-        assert len(start_chunks) == 1, start_chunks
+    fetch_chunks, shuffle_chunk = _get_fetch_chunks(subtask_chunk_graph)
+    input_data = {}
+    if shuffle_chunk is not None:
         # the subtask is a reducer subtask
-        n_mappers = len(inputs)
+        n_mappers = shuffle_chunk.op.n_mappers
         # some reducer may have multiple output chunks, see `PSRSshuffle._execute_reduce` and
         # https://user-images.githubusercontent.com/12445254/168569524-f09e42a7-653a-4102-bdf0-cc1631b3168d.png
-        reducer_chunks = subtask_chunk_graph.successors(start_chunks[0])
+        reducer_chunks = subtask_chunk_graph.successors(shuffle_chunk)
         reducer_operands = set(c.op for c in reducer_chunks)
-        if len(reducer_operands) != 1:
+        if len(reducer_operands) != 1:  # pragma: no cover
             raise ValueError(
                 f"Subtask {subtask_id} has more than 1 reduce operands: {subtask_chunk_graph.to_dot()}"
             )
         reducer_operand = reducer_chunks[0].op
         reducer_index = reducer_operand.reducer_index
         # mock input keys, keep this in sync with `MapReducerOperand#_iter_mapper_key_idx_pairs`
-        input_keys = [(i, reducer_index) for i in range(n_mappers)]
-    else:
-        input_keys = [c.key for c in start_chunks if isinstance(c.op, Fetch)]
-    context = RayExecutionWorkerContext(
-        lambda: RayTaskState.get_handle(task_id), zip(input_keys, inputs)
-    )
+        input_data.update(
+            {(i, reducer_index): block for i, block in enumerate(inputs[-n_mappers:])}
+        )
+        inputs = inputs[:-n_mappers]
+    input_keys = [start_chunk.key for start_chunk in fetch_chunks]
+    input_data.update(zip(input_keys, inputs))
+    context = RayExecutionWorkerContext(RayTaskState.get_handle, input_data)
 
     for chunk in subtask_chunk_graph.topological_iter():
         if chunk.key not in context:
             try:
+                context.set_current_chunk(chunk)
                 execute(context, chunk.op)
             except Exception:
                 logger.exception(
@@ -189,21 +194,25 @@ def execute_subtask(
     # For non-mapper subtask, output context is chunk key to results.
     # For mapper subtasks, output context is data key to results.
     # `iter_output_data` must ensure values order since we only return values.
-    output = {
-        key: data for key, data, _ in iter_output_data(subtask_chunk_graph, context)
-    }
+    normal_output = {}
+    mapper_output = {}
+    for key, data, is_mapper_block in iter_output_data(subtask_chunk_graph, context):
+        if is_mapper_block:
+            mapper_output[key] = data
+        else:
+            normal_output[key] = data
+    output_values = []
     # assert output keys order consistent
     if is_mapper:
-        chunk_keys = set(k[0] for k in output.keys())
-        assert len(set(chunk_keys)) == 1, chunk_keys
+        # mapper may produce outputs which isn't shuffle blocks, such as TensorUnique._execute_agg_reduce.
+        mapper_main_keys = set(k[0] for k in mapper_output.keys())
+        assert len(mapper_main_keys) == 1, mapper_main_keys
         # sorted reducer_index's consistency with reducer_ordinal is checked in
         # `OperandTilesHandler._check_shuffle_reduce_chunks`.
         # So sort keys by reducer_index to ensure mapper outputs consist with reducer_ordinal,
         # then downstream can fetch shuffle blocks by reducer_ordinal.
-        output = dict(sorted(output.items(), key=lambda item: item[0][1]))
-    output_values = []
+        mapper_output = dict(sorted(mapper_output.items(), key=lambda item: item[0][1]))
     if output_meta_keys:
-        assert not is_mapper
         output_meta = {}
         # for non-shuffle subtask, record meta in supervisor.
         for chunk in subtask_chunk_graph.result_chunks:
@@ -217,18 +226,22 @@ def execute_subtask(
                 output_meta[chunk_key] = get_chunk_params(chunk), memory_size
         assert len(output_meta_keys) == len(output_meta)
         output_values.append(output_meta)
-    output_values.extend(output.values())
-
-    if not is_mapper:
-        expect_output_keys, _ = _get_subtask_out_info(subtask_chunk_graph, False)
-        output_keys = output.keys()
-        assert expect_output_keys == output_keys, (expect_output_keys, output_keys)
+    output_values.extend(normal_output.values())
+    output_values.extend(mapper_output.values())
     logger.info("Finish executing subtask %s.", subtask_id)
     return output_values[0] if len(output_values) == 1 else output_values
 
 
-def _get_start_chunks(chunk_graph):
-    return sorted(chunk_graph.iter_indep(), key=operator.attrgetter("key"))
+def _get_fetch_chunks(chunk_graph):
+    fetch_chunks = []
+    shuffle_chunk = None
+    for start_chunk in chunk_graph.iter_indep():
+        if isinstance(start_chunk.op, FetchShuffle):
+            assert shuffle_chunk is None, shuffle_chunk
+            shuffle_chunk = start_chunk
+        elif isinstance(start_chunk.op, Fetch):
+            fetch_chunks.append(start_chunk)
+    return sorted(fetch_chunks, key=operator.attrgetter("key")), shuffle_chunk
 
 
 def _get_subtask_out_info(
@@ -238,17 +251,26 @@ def _get_subtask_out_info(
     # output_keys order should be consistent with remote `execute_subtask`,
     # dict can preserve insert order.
     output_keys = {}
+    shuffle_chunk = None
+    if is_mapper:
+        assert n_reducers is not None
+        if len(subtask_chunk_graph.result_chunks) == 1:
+            return set(), n_reducers
+        for chunk in subtask_chunk_graph.result_chunks:
+            if not chunk.is_mapper:
+                output_keys[chunk.key] = 1
+                # mapper may produce outputs which isn't shuffle blocks, such as TensorUnique._execute_agg_reduce
+                # which is  mapper too, but some outputs are not mapper blocks:
+                # https://user-images.githubusercontent.com/12445254/184132642-a19259fd-43d6-4a27-a033-4aaa97d7586e.svg
+            else:
+                assert shuffle_chunk is None, (shuffle_chunk, chunk)
+                shuffle_chunk = chunk
+        return output_keys.keys(), len(output_keys) + n_reducers
     for chunk in subtask_chunk_graph.result_chunks:
         if isinstance(
             chunk.op, VirtualOperand
         ):  # FIXME(chaokunyang) no need to check this?
             continue
-        elif is_mapper:
-            assert (
-                len(subtask_chunk_graph.result_chunks) == 1
-            ), subtask_chunk_graph.result_chunks
-            assert n_reducers is not None
-            return set(), n_reducers
         else:
             output_keys[chunk.key] = 1
     return output_keys.keys(), len(output_keys)
@@ -318,18 +340,11 @@ class RayTaskExecutor(TaskExecutor):
         worker_addresses = list(
             map(operator.itemgetter(0), available_band_resources.keys())
         )
-        if config.create_task_state_actor_as_needed():
-            create_task_state_actor = lambda: RayTaskState.create(  # noqa: E731
-                task_id=task.task_id
-            )
-        else:
-            actor_handle = RayTaskState.create(task_id=task.task_id)
-            create_task_state_actor = lambda: actor_handle  # noqa: E731
         await cls._init_context(
             config,
             task_context,
             task_chunks_meta,
-            create_task_state_actor,
+            RayTaskState.create,
             worker_addresses,
             session_id,
             address,
@@ -341,7 +356,6 @@ class RayTaskExecutor(TaskExecutor):
 
     # noinspection DuplicatedCode
     def destroy(self):
-        self._config = None
         self._task = None
         self._tile_context = None
         self._task_context = {}
@@ -362,6 +376,7 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = None
+        self._config = None
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -471,13 +486,9 @@ class RayTaskExecutor(TaskExecutor):
             self._tile_context.get_all_progress() - self._pre_all_stages_tile_progress
         )
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
-        result_meta_keys = {
-            chunk.key
-            for chunk in chunk_graph.result_chunks
-            if not isinstance(chunk.op, Fetch)
-        }
         shuffle_manager = ShuffleManager(subtask_graph)
         subtask_max_retries = self._config.get_subtask_max_retries()
+        subtask_num_cpus = self._config.get_subtask_num_cpus()
         for subtask in subtask_graph.topological_iter():
             if subtask.virtual:
                 continue
@@ -502,11 +513,12 @@ class RayTaskExecutor(TaskExecutor):
                 output_count = out_count + bool(subtask_output_meta_keys)
             subtask_max_retries = subtask_max_retries if subtask.retryable else 0
             output_object_refs = self._ray_executor.options(
-                num_returns=output_count, max_retries=subtask_max_retries
+                num_cpus=subtask_num_cpus,
+                num_returns=output_count,
+                max_retries=subtask_max_retries,
             ).remote(
-                subtask.task_id,
                 subtask.subtask_id,
-                serialize(subtask_chunk_graph),
+                serialize(subtask_chunk_graph, context={"serializer": "ray"}),
                 subtask_output_meta_keys,
                 is_mapper,
                 *input_object_refs,
@@ -519,15 +531,16 @@ class RayTaskExecutor(TaskExecutor):
                 output_object_refs[0]
             ] = subtask
             if subtask_output_meta_keys:
-                assert not is_mapper
                 meta_object_ref, *output_object_refs = output_object_refs
                 # TODO(fyrestone): Fetch(not get) meta object here.
                 output_meta_object_refs.append(meta_object_ref)
             if is_mapper:
-                shuffle_manager.add_mapper_output_refs(subtask, output_object_refs)
-            else:
-                subtask_outputs = zip(output_keys, output_object_refs)
-                task_context.update(subtask_outputs)
+                shuffle_manager.add_mapper_output_refs(
+                    subtask, output_object_refs[-n_reducers:]
+                )
+                output_object_refs = output_object_refs[:-n_reducers]
+            subtask_outputs = zip(output_keys, output_object_refs)
+            task_context.update(subtask_outputs)
         logger.info("Submitted %s subtasks of stage %s.", len(subtask_graph), stage_id)
 
         key_to_meta = {}
@@ -548,11 +561,16 @@ class RayTaskExecutor(TaskExecutor):
         output_object_refs = set()
         for chunk in chunk_graph.result_chunks:
             chunk_key = chunk.key
-            object_ref = task_context[chunk_key]
-            output_object_refs.add(object_ref)
-            chunk_params = key_to_meta.get(chunk_key)
-            if chunk_params is not None:
-                chunk_to_meta[chunk] = ExecutionChunkResult(chunk_params, object_ref)
+            # The result chunk may be in previous stage result,
+            # then the chunk does not have to be processed.
+            if chunk_key in task_context:
+                object_ref = task_context[chunk_key]
+                output_object_refs.add(object_ref)
+                chunk_params = key_to_meta.get(chunk_key)
+                if chunk_params is not None:
+                    chunk_to_meta[chunk] = ExecutionChunkResult(
+                        chunk_params, object_ref
+                    )
 
         logger.info("Waiting for stage %s complete.", stage_id)
         # Patched the asyncio.to_thread for Python < 3.9 at mars/lib/aio/__init__.py
@@ -655,29 +673,28 @@ class RayTaskExecutor(TaskExecutor):
         It updates the context if the input object refs are fetched from
         the meta service.
         """
-        input_object_refs = []
+        normal_object_refs = []
+        shuffle_object_refs = []
         key_to_get_meta = {}
         # for non-shuffle chunks, chunk key will be used for indexing object refs.
         # for shuffle chunks, mapper subtasks will have only one mapper chunk, and all outputs for mapper
         # subtask will be shuffle blocks, the downstream reducers will receive inputs in the mappers order.
-        start_chunks = _get_start_chunks(subtask.chunk_graph)
-        for index, start_chunk in enumerate(start_chunks):
-            if isinstance(start_chunk.op, Fetch):
-                chunk_key = start_chunk.key
-                # pure_depend data is not used, skip it.
-                if chunk_key in subtask.pure_depend_keys:
-                    input_object_refs.append(None)
-                elif chunk_key in context:
-                    input_object_refs.append(context[chunk_key])
-                else:
-                    input_object_refs.append(None)
-                    key_to_get_meta[index] = self._meta_api.get_chunk_meta.delay(
-                        chunk_key, fields=["object_refs"]
-                    )
-            elif isinstance(start_chunk.op, FetchShuffle):
-                assert len(start_chunks) == 1, start_chunks
-                # shuffle meta won't be recorded in meta service, query it from shuffle manager.
-                return shuffle_manager.get_reducer_input_refs(subtask)
+        fetch_chunks, shuffle_chunk = _get_fetch_chunks(subtask.chunk_graph)
+        for index, fetch_chunk in enumerate(fetch_chunks):
+            chunk_key = fetch_chunk.key
+            # pure_depend data is not used, skip it.
+            if chunk_key in subtask.pure_depend_keys:
+                normal_object_refs.append(None)
+            elif chunk_key in context:
+                normal_object_refs.append(context[chunk_key])
+            else:
+                normal_object_refs.append(None)
+                key_to_get_meta[index] = self._meta_api.get_chunk_meta.delay(
+                    chunk_key, fields=["object_refs"]
+                )
+        if shuffle_chunk is not None:
+            # shuffle meta won't be recorded in meta service, query it from shuffle manager.
+            shuffle_object_refs = list(shuffle_manager.get_reducer_input_refs(subtask))
 
         if key_to_get_meta:
             logger.info(
@@ -690,9 +707,9 @@ class RayTaskExecutor(TaskExecutor):
             )
             for index, meta in zip(key_to_get_meta.keys(), meta_list):
                 object_ref = meta["object_refs"][0]
-                input_object_refs[index] = object_ref
-                context[start_chunks[index].key] = object_ref
-        return input_object_refs
+                normal_object_refs[index] = object_ref
+                context[fetch_chunks[index].key] = object_ref
+        return normal_object_refs + shuffle_object_refs
 
     async def _update_progress_and_collect_garbage(
         self,

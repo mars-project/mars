@@ -20,6 +20,7 @@ import pytest
 
 from .... import get_context
 from .... import tensor as mt
+from ....tests import test_session
 from ....tests.core import DICT_NOT_EMPTY, require_ray
 from ....utils import lazy_import
 from ..local import new_cluster
@@ -181,3 +182,37 @@ def test_executor_context_gc(ray_start_regular_shared2, config):
 async def test_execute_describe(ray_start_regular_shared2, create_cluster):
     # `describe` contains multiple shuffle.
     await test_local.test_execute_describe(create_cluster)
+
+
+@require_ray
+@pytest.mark.parametrize("method", ["shuffle", "broadcast", None])
+@pytest.mark.parametrize("auto_merge", ["after", "before"])
+def test_merge_groupby(ray_start_regular_shared2, setup, method, auto_merge):
+    # add ray_dag decorator to the test_merge_groupby makes the raylet crash.
+    test_session.test_merge_groupby(setup, method, auto_merge)
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_execute_apply_closure(ray_start_regular_shared2, create_cluster):
+    await test_local.test_execute_apply_closure(create_cluster)
+
+
+@require_ray
+@pytest.mark.parametrize(
+    "create_cluster",
+    [
+        {
+            "config": {
+                "task.task_preprocessor_cls": "mars.deploy.oscar.tests.test_clean_up_and_restore_func.RayBackendFuncTaskPreprocessor",
+                "subtask.subtask_processor_cls": "mars.deploy.oscar.tests.test_clean_up_and_restore_func.RayBackendFuncSubtaskProcessor",
+            }
+        }
+    ],
+    indirect=True,
+)
+@pytest.mark.asyncio
+async def test_ray_dag_clean_up_and_restore_func(
+    ray_start_regular_shared2, create_cluster
+):
+    await test_local.test_execute_apply_closure(create_cluster)

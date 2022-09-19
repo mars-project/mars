@@ -14,6 +14,7 @@
 
 import asyncio
 import copy
+import gc
 import os
 import subprocess
 import sys
@@ -22,6 +23,7 @@ import tempfile
 import textwrap
 import time
 import uuid
+import weakref
 
 import numpy as np
 import pandas as pd
@@ -41,6 +43,7 @@ from ....core.context import get_context
 from ....lib.aio import new_isolation
 from ....storage import StorageLevel
 from ....services.storage import StorageAPI
+from ....services.task.supervisor.task import TaskProcessor
 from ....tensor.arithmetic.add import TensorAdd
 from ....tests.core import mock, check_dict_structure_same, DICT_NOT_EMPTY
 from ..local import new_cluster, _load_config
@@ -364,6 +367,68 @@ async def test_execute_describe(create_cluster):
 
 
 @pytest.mark.asyncio
+async def test_execute_apply_closure(create_cluster):
+    # DataFrame
+    cols = [chr(ord("A") + i) for i in range(10)]
+    raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df = md.DataFrame(raw, chunk_size=5)
+
+    x1 = pd.Series([i for i in range(10**4)])
+    y1 = pd.Series([i for i in range(10**4)])
+
+    def dataframe_closure(z1):
+        return pd.concat([x1, y1], ignore_index=True)
+
+    session = get_default_async_session()
+    df_r = df.apply(dataframe_closure, axis=1)
+    df_info = await session.execute(df_r)
+    await df_info
+    assert df_info.result() is None
+    assert df_info.exception() is None
+    assert df_info.progress() == 1
+
+    df_result = await session.fetch(df_r)
+    df_expected = raw.apply(dataframe_closure, axis=1)
+    pd.testing.assert_frame_equal(df_result, df_expected)
+
+    # Series
+    idxes = [chr(ord("A") + i) for i in range(20)]
+    s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
+
+    series = md.Series(s_raw, chunk_size=5)
+
+    x2, y2 = 1, 2
+
+    def series_closure(z2):
+        return [z2 + x2, z2 + y2]
+
+    series_r = series.apply(series_closure, convert_dtype=False)
+    series_info = await session.execute(series_r)
+    await series_info
+    assert series_info.result() is None
+    assert series_info.exception() is None
+    assert series_info.progress() == 1
+
+    series_result = await session.fetch(series_r)
+    series_expected = s_raw.apply(series_closure, convert_dtype=False)
+    pd.testing.assert_series_equal(series_result, series_expected)
+
+    if (
+        not isinstance(session._isolated_session, _IsolatedWebSession)
+        and session.client
+    ):
+        worker_pools = session.client._cluster._worker_pools
+        await session.destroy()
+        for worker_pool in worker_pools:
+            if hasattr(worker_pool, "external_address"):
+                _assert_storage_cleaned(
+                    session.session_id,
+                    worker_pool.external_address,
+                    StorageLevel.MEMORY,
+                )
+
+
+@pytest.mark.asyncio
 async def test_sync_execute_in_async(create_cluster):
     a = mt.ones((10, 10))
     b = a + 1
@@ -641,7 +706,7 @@ def setup_session(request):
     param = getattr(request, "param", {})
     config = param.get("config", {})
     session = new_session(
-        backend=config.get("backend", "mars"), n_cpu=2, use_uvloop=False
+        backend=config.get("backend", "mars"), n_cpu=2, use_uvloop=False, config=config
     )
     assert session.get_web_endpoint() is not None
 
@@ -652,6 +717,44 @@ def setup_session(request):
         session.stop_server()
 
 
+WeakTaskProcessorRefs = weakref.WeakSet()
+
+
+class CheckRefTaskProcessor(TaskProcessor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        WeakTaskProcessorRefs.add(self)
+
+    async def run(self):
+        # Trigger tileable gc before execute.
+        gc.collect()
+        return await super().run()
+
+    @staticmethod
+    def check_ref_count(count):
+        for _ in range(10):
+            if len(WeakTaskProcessorRefs) == count:
+                break
+            time.sleep(1)
+        else:
+            raise Exception(
+                f"Check TaskProcessor weakref failed, expect {count} instances, "
+                f"but got {WeakTaskProcessorRefs}"
+            )
+
+
+@pytest.mark.parametrize(
+    "setup_session",
+    [
+        {
+            "config": {
+                "task.default_config.reserved_finish_tasks": 2,
+                "task.task_processor_cls": CheckRefTaskProcessor,
+            }
+        }
+    ],
+    indirect=True,
+)
 def test_decref(setup_session):
     session = setup_session
 
@@ -664,6 +767,8 @@ def test_decref(setup_session):
     b.execute()
     c.execute()
     d.execute()
+
+    CheckRefTaskProcessor.check_ref_count(4)
 
     del a
     ref_counts = session._get_ref_counts()
@@ -678,6 +783,8 @@ def test_decref(setup_session):
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
 
+    CheckRefTaskProcessor.check_ref_count(2)
+
     rs = np.random.RandomState(0)
     pdf = pd.DataFrame({"a": rs.randint(10, size=10), "b": rs.rand(10)})
     df = md.DataFrame(pdf, chunk_size=5)
@@ -686,9 +793,13 @@ def test_decref(setup_session):
     expected = pdf.groupby("a").agg("mean")
     pd.testing.assert_frame_equal(result, expected)
 
+    CheckRefTaskProcessor.check_ref_count(3)
+
     del df, df2
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
+
+    CheckRefTaskProcessor.check_ref_count(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
         file_path = os.path.join(tempdir, "test.csv")
@@ -709,6 +820,22 @@ def test_decref(setup_session):
 
         ref_counts = session._get_ref_counts()
         assert len(ref_counts) == 0
+
+    for a in ((1, 1, 1, 2, 2, 3), [1, 1, 1, 2, 2, 3]):
+        splits = mt.split(a, (3, 5))
+        assert len(splits) == 3
+        splits0 = splits[0].execute().fetch()
+        np.testing.assert_array_equal(splits0, (1, 1, 1))
+        splits1 = splits[1].execute().fetch()
+        np.testing.assert_array_equal(splits1, (2, 2))
+        splits2 = splits[2].execute().fetch()
+        np.testing.assert_array_equal(splits2, (3,))
+
+    del splits, splits0, splits1, splits2
+
+    gc.collect()
+    ref_counts = session._get_ref_counts()
+    assert len(ref_counts) == 0
 
     worker_addr = session._session.client._cluster._worker_pools[0].external_address
     _assert_storage_cleaned(session.session_id, worker_addr, StorageLevel.MEMORY)
@@ -877,6 +1004,7 @@ min_task_runtime = 2
 async def speculative_cluster():
     config = _load_config()
     config["scheduling"]["speculation"]["enabled"] = True
+    config["scheduling"]["speculation"]["dry"] = False
     config["scheduling"]["speculation"]["interval"] = 0.5
     config["scheduling"]["speculation"]["threshold"] = 0.2
     config["scheduling"]["speculation"]["min_task_runtime"] = min_task_runtime

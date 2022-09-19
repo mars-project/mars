@@ -15,6 +15,7 @@
 import logging
 from typing import List, Dict, Union
 
+from ...oscar import ServerClosed
 from ...resource import Resource
 from ...services import start_services, stop_services, NodeRole
 
@@ -56,7 +57,10 @@ async def start_supervisor(
 
 
 async def stop_supervisor(address: str, config: Dict = None):
-    await stop_services(NodeRole.SUPERVISOR, address=address, config=config)
+    try:
+        await stop_services(NodeRole.SUPERVISOR, address=address, config=config)
+    except (ConnectionRefusedError, ServerClosed):  # pragma: no cover
+        pass
 
 
 async def start_worker(
@@ -87,4 +91,7 @@ async def start_worker(
 
 
 async def stop_worker(address: str, config: Dict = None):
-    await stop_services(NodeRole.WORKER, address=address, config=config)
+    try:
+        await stop_services(NodeRole.WORKER, address=address, config=config)
+    except (ConnectionRefusedError, ServerClosed):  # pragma: no cover
+        pass

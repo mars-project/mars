@@ -74,6 +74,8 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
                     continue
                 if self._check_keys and out.key not in self._check_keys:
                     continue
+                # The first char of key is a letter.
+                assert out.key[0] in {"c", "d", "e", "f"}, out.key
                 if out.key not in ctx and any(
                     k[0] == out.key for k in ctx if isinstance(k, tuple)
                 ):

@@ -27,6 +27,8 @@ import logging
 import numbers
 import operator
 import os
+import weakref
+
 import cloudpickle as pickle
 import pkgutil
 import random
@@ -63,6 +65,7 @@ from ._utils import (  # noqa: F401 # pylint: disable=unused-import
     to_binary,
     to_str,
     to_text,
+    NamedType,
     TypeDispatcher,
     tokenize,
     tokenize_int,
@@ -82,6 +85,7 @@ pd_release_version: Tuple[int] = parse_version(pd.__version__).release
 OBJECT_FIELD_OVERHEAD = 50
 
 # make flake8 happy by referencing these imports
+NamedType = NamedType
 TypeDispatcher = TypeDispatcher
 tokenize = tokenize
 register_tokenizer = register_tokenizer
@@ -89,6 +93,7 @@ ceildiv = ceildiv
 reset_id_random_seed = reset_id_random_seed
 new_random_id = new_random_id
 _create_task = asyncio.create_task
+_is_ci = (os.environ.get("CI") or "0").lower() in ("1", "true")
 
 
 # fix encoding conversion problem under windows
@@ -559,17 +564,11 @@ def build_fetch_shuffle(
     # to replace ShuffleProxy
     if shuffle_fetch_type is ShuffleFetchType.FETCH_BY_INDEX:
         # skip data keys info for `FETCH_BY_INDEX`
-        source_keys, source_idxes, source_mappers = None, None, None
+        source_keys = None
     else:
-        source_keys, source_idxes, source_mappers = [], [], []
-        for pinp in chunk.inputs:
-            source_keys.append(pinp.key)
-            source_idxes.append(pinp.index)
-            source_mappers.append(get_chunk_mapper_id(pinp))
+        source_keys = [pinp.key for pinp in chunk.inputs]
     op = chunk_op.get_fetch_op_cls(chunk)(
         source_keys=source_keys,
-        source_idxes=source_idxes,
-        source_mappers=source_mappers,
         n_mappers=n_mappers,
         n_reducers=n_reducers,
         shuffle_fetch_type=shuffle_fetch_type,
@@ -635,19 +634,6 @@ def build_fetch(entity: EntityType) -> EntityType:
         return build_fetch_tileable(entity)
     else:
         raise TypeError(f"Type {type(entity)} not supported")
-
-
-def get_chunk_mapper_id(chunk: ChunkType) -> str:
-    op = chunk.op
-    try:
-        return op.mapper_id
-    except AttributeError:
-        from .core.operand import Fuse
-
-        if isinstance(op, Fuse):
-            return chunk.composed[-1].op.mapper_id
-        else:  # pragma: no cover
-            raise
 
 
 def get_chunk_reducer_index(chunk: ChunkType) -> Tuple[int]:
@@ -1617,7 +1603,22 @@ def wrap_exception(
     return new_exc_type().with_traceback(traceback)
 
 
-def get_func_token_values(func):
+_func_token_cache = weakref.WeakKeyDictionary()
+
+
+def get_func_token(func):
+    try:
+        token = _func_token_cache.get(func)
+        if token is None:
+            fields = _get_func_token_values(func)
+            token = tokenize(*fields)
+            _func_token_cache[func] = token
+        return token
+    except TypeError:  # cannot create weak reference to func like 'numpy.ufunc'
+        return tokenize(*_get_func_token_values(func))
+
+
+def _get_func_token_values(func):
     if hasattr(func, "__code__"):
         tokens = [func.__code__.co_code]
         if func.__closure__ is not None:
@@ -1630,7 +1631,7 @@ def get_func_token_values(func):
             tokens.extend([func.args, func.keywords])
             func = func.func
         if hasattr(func, "__code__"):
-            tokens.extend(get_func_token_values(func))
+            tokens.extend(_get_func_token_values(func))
         elif isinstance(func, types.BuiltinFunctionType):
             tokens.extend([func.__module__, func.__name__])
         else:
@@ -1638,7 +1639,9 @@ def get_func_token_values(func):
         return tokens
 
 
-async def _run_task_with_error_log(coro, call_site=None):  # pragma: no cover
+async def _run_task_with_error_log(
+    coro, call_site=None, exit_if_exception=False
+):  # pragma: no cover
     try:
         return await coro
     except asyncio.CancelledError:
@@ -1650,6 +1653,9 @@ async def _run_task_with_error_log(coro, call_site=None):  # pragma: no cover
             call_site,
             e,
         )
+        if exit_if_exception:
+            logger.error("Exit because exit_if_exception=%s.", exit_if_exception)
+            os._exit(-1)  # Use os._exit to ensure exit in non-main thread.
         raise
 
 
@@ -1662,6 +1668,30 @@ def create_task_with_error_log(coro, *args, **kwargs):  # pragma: no cover
     return _create_task(_run_task_with_error_log(coro, call_site), *args, **kwargs)
 
 
+def aiotask_wrapper(_f=None, exit_if_exception=False):
+    def _wrapper(func):
+        @functools.wraps(func)
+        def _aiotask_wrapper(*args, **kwargs):
+            frame = inspect.currentframe()
+            if frame and frame.f_back:
+                call_site = frame.f_back.f_code
+            else:
+                call_site = None
+            return _run_task_with_error_log(
+                func(*args, **kwargs),
+                call_site=call_site,
+                exit_if_exception=exit_if_exception,
+            )
+
+        return _aiotask_wrapper
+
+    if inspect.iscoroutinefunction(_f):
+        return _wrapper(_f)
+    else:
+        assert _f is None
+        return _wrapper
+
+
 def is_ray_address(address: str) -> bool:
     from .oscar.backends.ray.communication import RayServer
 
@@ -1669,6 +1699,31 @@ def is_ray_address(address: str) -> bool:
         return True
     else:
         return False
+
+
+# TODO: clean_up_func, is_on_ray and restore_func functions may be
+# removed or refactored in the future to calculate func size
+# with more accuracy as well as address some serialization issues.
+def is_on_ray(ctx):
+    from .services.task.execution.ray.context import (
+        RayExecutionContext,
+        RayExecutionWorkerContext,
+    )
+
+    # There are three conditions
+    #   a. mars backend
+    #   b. ray backend(oscar), c. ray backend(dag)
+    # When a. or b. is selected, ctx is an instance of ThreadedServiceContext.
+    #   The main difference between them is whether worker address matches ray scheme.
+    #   To avoid duplicated checks, here we choose the first worker address.
+    # When c. is selected, ctx is an instance of RayExecutionContext or RayExecutionWorkerContext,
+    #   while get_worker_addresses method isn't currently implemented in RayExecutionWorkerContext.
+    try:
+        worker_addresses = ctx.get_worker_addresses()
+    except AttributeError:  # pragma: no cover
+        assert isinstance(ctx, RayExecutionWorkerContext)
+        return True
+    return isinstance(ctx, RayExecutionContext) or is_ray_address(worker_addresses[0])
 
 
 def cache_tileables(*tileables):
@@ -1726,11 +1781,10 @@ def sync_to_async(func):
     if inspect.iscoroutinefunction(func):
         return func
     else:
-
-        async def async_wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        return async_wrapper
+        # Wrap the sync call to thread to avoid blocking the
+        # asyncio event loop. e.g. acquiring a threading.Lock()
+        # in the sync call.
+        return functools.partial(asyncio.to_thread, func)
 
 
 def retry_callable(

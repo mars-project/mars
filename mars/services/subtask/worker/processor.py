@@ -42,10 +42,22 @@ from ..utils import iter_input_data_keys, iter_output_data, get_mapper_data_keys
 logger = logging.getLogger(__name__)
 
 
-class DataStore(dict):
+class ProcessorContext(dict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._current_chunk = None
+
     def __getattr__(self, attr):
         ctx = get_context()
         return getattr(ctx, attr)
+
+    def set_current_chunk(self, chunk: ChunkType):
+        """Set current executing chunk."""
+        self._current_chunk = chunk
+
+    def get_current_chunk(self) -> ChunkType:
+        """Get current executing chunk."""
+        return self._current_chunk
 
 
 BASIC_META_FIELDS = ["memory_size", "store_size", "bands", "object_ref"]
@@ -97,7 +109,7 @@ class SubtaskProcessor:
         # operand progress, from op key to progress
         self._op_progress: Dict[str, float] = defaultdict(lambda: 0.0)
         # temp data store that holds chunk data during computation
-        self._datastore = DataStore()
+        self._processor_context = ProcessorContext()
         # chunk key to real data keys
         self._chunk_key_to_data_keys = dict()
 
@@ -133,12 +145,12 @@ class SubtaskProcessor:
             gets.append(self._storage_api.get.delay(key, **gets_params))
         if keys:
             logger.debug(
-                "Start getting input data, keys: %s, subtask id: %s",
+                "Start getting input data, keys: %.500s, subtask id: %s",
                 keys,
                 self.subtask.subtask_id,
             )
             inputs = await self._storage_api.get.batch(*gets)
-            self._datastore.update(
+            self._processor_context.update(
                 {
                     key: get
                     for key, get, accept_none in zip(keys, inputs, accept_nones)
@@ -146,7 +158,7 @@ class SubtaskProcessor:
                 }
             )
             logger.debug(
-                "Finish getting input data keys: %s, subtask id: %s",
+                "Finish getting input data keys: %.500s, subtask id: %s",
                 keys,
                 self.subtask.subtask_id,
             )
@@ -197,7 +209,7 @@ class SubtaskProcessor:
 
         # from data_key to results
         for chunk in chunk_graph.topological_iter():
-            if chunk.key not in self._datastore:
+            if chunk.key not in self._processor_context:
                 # since `op.execute` may be a time-consuming operation,
                 # we make it run in a thread pool to not block current thread.
                 logger.debug(
@@ -206,8 +218,9 @@ class SubtaskProcessor:
                     chunk,
                     self.subtask.subtask_id,
                 )
+                self._processor_context.set_current_chunk(chunk)
                 future = asyncio.create_task(
-                    await self._async_execute_operand(self._datastore, chunk.op)
+                    await self._async_execute_operand(self._processor_context, chunk.op)
                 )
                 to_wait = loop.create_future()
 
@@ -255,8 +268,8 @@ class SubtaskProcessor:
                 if ref_counts[inp.key] == 0:
                     # ref count reaches 0, remove it
                     for key in self._chunk_key_to_data_keys[inp.key]:
-                        if key in self._datastore:
-                            del self._datastore[key]
+                        if key in self._processor_context:
+                            del self._processor_context[key]
 
     async def _unpin_data(self, data_keys):
         # unpin input keys
@@ -281,7 +294,7 @@ class SubtaskProcessor:
     async def _store_data(self, chunk_graph: ChunkGraph):
         # store data into storage
         data_key_to_puts = {}
-        for key, data, _ in iter_output_data(chunk_graph, self._datastore):
+        for key, data, _ in iter_output_data(chunk_graph, self._processor_context):
             put = self._storage_api.put.delay(key, data)
             data_key_to_puts[key] = put
 
@@ -325,7 +338,7 @@ class SubtaskProcessor:
                 raise
 
         # clear data
-        self._datastore = dict()
+        self._processor_context = ProcessorContext()
         return (
             stored_keys,
             data_key_to_store_size,
@@ -360,7 +373,8 @@ class SubtaskProcessor:
                 mapper_keys = get_mapper_data_keys(chunk_key, data_key_to_store_size)
                 store_size = sum(data_key_to_store_size[k] for k in mapper_keys)
                 memory_size = sum(data_key_to_memory_size[k] for k in mapper_keys)
-                object_ref = [data_key_to_object_id[k] for k in mapper_keys]
+                # Skip meta for shuffle
+                object_ref = None
             # for worker, if chunk in update_meta_chunks
             # save meta including dtypes_value etc, otherwise,
             # save basic meta only

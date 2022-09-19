@@ -191,6 +191,9 @@ class TaskPreprocessor:
             tiler_cls=self._get_tiler_cls(),
         )
         optimize = self._config.optimize_chunk_graph
+        for t in tileable_graph:
+            if hasattr(t.op, "logic_key") and t.op.logic_key is None:
+                t.op.logic_key = t.op.get_logic_key()
         for chunk_graph in chunk_graph_builder.build():
             if len(chunk_graph) == 0:
                 continue

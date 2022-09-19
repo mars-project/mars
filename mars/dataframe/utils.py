@@ -12,8 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
+import cloudpickle
 import functools
 import itertools
+import logging
 import operator
 from contextlib import contextmanager
 from numbers import Integral
@@ -27,7 +31,7 @@ from pandas.core.dtypes.cast import find_common_type
 
 from ..config import options
 from ..core import Entity, ExecutableTuple
-from ..core.context import Context
+from ..core.context import Context, get_context
 from ..lib.mmh3 import hash as mmh_hash
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
 from ..typing import ChunkType, TileableType
@@ -38,6 +42,7 @@ from ..utils import (
     ModulePlaceholder,
     is_full_slice,
     parse_readable_size,
+    is_on_ray,
 )
 
 try:
@@ -46,6 +51,8 @@ except ImportError:  # pragma: no cover
     pa = ModulePlaceholder("pyarrow")
 
 cudf = lazy_import("cudf", rename="cudf")
+vineyard = lazy_import("vineyard")
+logger = logging.getLogger(__name__)
 
 
 def hash_index(index, size):
@@ -1424,3 +1431,50 @@ def auto_merge_chunks(
     else:
         params["nsplits"] = (tuple(n_split), df_or_series.nsplits[1])
     return new_op.new_tileable(df_or_series.op.inputs, kws=[params])
+
+
+# TODO: clean_up_func, is_on_ray and restore_func functions may be
+# removed or refactored in the future to calculate func size
+# with more accuracy as well as address some serialization issues.
+def clean_up_func(op):
+    closure_clean_up_bytes_threshold = int(
+        os.getenv("MARS_CLOSURE_CLEAN_UP_BYTES_THRESHOLD", 10**4)
+    )
+    if closure_clean_up_bytes_threshold == -1:  # pragma: no cover
+        return
+    ctx = get_context()
+    if ctx is None:
+        return
+
+    func = op.func
+    if hasattr(func, "__closure__") and func.__closure__ is not None:
+        counted_bytes = 0
+        for cell in func.__closure__:
+            counted_bytes += sys.getsizeof(cell.cell_contents)
+            if counted_bytes >= closure_clean_up_bytes_threshold:
+                op.need_clean_up_func = True
+                break
+    # Note: op.func_key is set only when func was put into storage.
+    if op.need_clean_up_func:
+        assert (
+            op.logic_key is not None
+        ), f"Logic key of {op} wasn't calculated before cleaning up func."
+        logger.debug(f"{op} need cleaning up func.")
+        if is_on_ray(ctx):
+            import ray
+
+            op.func_key = ray.put(op.func)
+            op.func = None
+        else:
+            op.func = cloudpickle.dumps(op.func)
+
+
+def restore_func(ctx: Context, op):
+    if op.need_clean_up_func and ctx is not None:
+        logger.debug(f"{op} need restoring func.")
+        if is_on_ray(ctx):
+            import ray
+
+            op.func = ray.get(op.func_key)
+        else:
+            op.func = cloudpickle.loads(op.func)

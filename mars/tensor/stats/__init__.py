@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .entropy import entropy
 from .chisquare import chisquare
+from .entropy import entropy
 from .ks import ks_1samp, ks_2samp
 from .power_divergence import power_divergence
+from .rankdata import rankdata
 from .ttest import ttest_1samp, ttest_ind, ttest_ind_from_stats, ttest_rel

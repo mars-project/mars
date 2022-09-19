@@ -12,26 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import pandas as pd
 import pytest
 import numpy as np
 
 from collections import Counter
 
-from ..shuffle import ShuffleManager
 from ...... import tensor as mt
 from ......config import Config
-from ......core import TileContext, ChunkGraph
+from ......core import TileContext
 from ......core.context import get_context
 from ......core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-from ......core.operand import Fetch
+from ......lib.aio.isolation import new_isolation, stop_isolation
 from ......resource import Resource
 from ......serialization import serialize
 from ......tests.core import require_ray, mock
 from ......utils import lazy_import, get_chunk_params
 from .....context import ThreadedServiceContext
-from .....subtask import SubtaskGraph
 from ....analyzer import GraphAnalyzer
 from ....core import new_task_id, Task
 from ..config import RayExecutionConfig
@@ -45,7 +42,7 @@ from ..executor import (
     execute_subtask,
     RayTaskExecutor,
     RayTaskState,
-    _get_subtask_out_info,
+    _RayChunkMeta,
 )
 from ..fetcher import RayFetcher
 
@@ -93,69 +90,6 @@ class MockRayTaskExecutor(RayTaskExecutor):
         super().__setattr__(key, value)
         self._set_attrs[key] += 1
 
-    async def submit_subtask_graph(
-        self,
-        stage_id: str,
-        subtask_graph: SubtaskGraph,
-        chunk_graph: ChunkGraph,
-    ):
-        result_meta_keys = {
-            chunk.key
-            for chunk in chunk_graph.result_chunks
-            if not isinstance(chunk.op, Fetch)
-        }
-
-        monitor_task = asyncio.create_task(
-            self._update_progress_and_collect_garbage(
-                stage_id,
-                subtask_graph,
-                result_meta_keys,
-                self._config.get_subtask_monitor_interval(),
-            )
-        )
-        shuffle_manager = ShuffleManager(subtask_graph)
-        for subtask in subtask_graph.topological_iter():
-            subtask_chunk_graph = subtask.chunk_graph
-            task_context = self._task_context
-            input_object_refs = await self._load_subtask_inputs(
-                stage_id, subtask, task_context, shuffle_manager
-            )
-            is_mapper, n_reducers = shuffle_manager.is_mapper(subtask), None
-            if is_mapper:
-                n_reducers = shuffle_manager.get_n_reducers(subtask)
-            output_keys, out_count = _get_subtask_out_info(
-                subtask_chunk_graph, is_mapper, n_reducers
-            )
-
-            output_meta_keys = result_meta_keys & output_keys
-            if is_mapper:
-                # shuffle meta won't be recorded in meta service.
-                output_count = out_count
-            else:
-                output_count = out_count + bool(output_meta_keys)
-            output_object_refs = self._ray_executor.options(
-                num_returns=output_count
-            ).remote(
-                subtask.task_id,
-                subtask.subtask_id,
-                serialize(subtask_chunk_graph),
-                output_meta_keys,
-                is_mapper,
-                *input_object_refs,
-            )
-            if output_count == 0:
-                continue
-            elif output_count == 1:
-                output_object_refs = [output_object_refs]
-            self._cur_stage_first_output_object_ref_to_subtask[
-                output_object_refs[0]
-            ] = subtask
-            if output_meta_keys:
-                meta_object_ref, *output_object_refs = output_object_refs
-            task_context.update(zip(output_keys, output_object_refs))
-
-        return monitor_task
-
 
 class MockTileContext(TileContext):
     def get_all_progress(self) -> float:
@@ -189,28 +123,9 @@ async def test_ray_executor_create(
     assert mock_ray_get.call_count == 1
     assert mock_task_state_actor_create.call_count == 1
 
-    # Create RayTaskState actor in advance if create_task_state_actor_as_needed is False
-    mock_config = RayExecutionConfig.from_execution_config(
-        {"backend": "ray", "ray": {"create_task_state_actor_as_needed": False}}
-    )
-    executor = await MockRayTaskExecutor.create(
-        mock_config,
-        session_id="mock_session_id",
-        address="mock_address",
-        task=task,
-        tile_context=TileContext(),
-    )
-    assert isinstance(executor, MockRayTaskExecutor)
-    assert mock_ray_get.call_count == 1
-    assert mock_task_state_actor_create.call_count == 2
-    ctx = get_context()
-    assert isinstance(ctx, RayExecutionContext)
-    ctx.create_remote_object("abc", lambda: None)
-    assert mock_ray_get.call_count == 2
-    assert mock_task_state_actor_create.call_count == 2
 
-
-@pytest.mark.asynio
+@require_ray
+@pytest.mark.asyncio
 async def test_ray_executor_destroy():
     task = Task("mock_task", "mock_session")
     mock_config = RayExecutionConfig.from_execution_config({"backend": "ray"})
@@ -236,6 +151,7 @@ async def test_ray_executor_destroy():
     assert await executor.get_progress() == 1.0
 
 
+@require_ray
 def test_ray_execute_subtask_basic():
     raw = np.ones((10, 10))
     raw_expect = raw + 1
@@ -244,11 +160,11 @@ def test_ray_execute_subtask_basic():
 
     subtask_id = new_task_id()
     subtask_chunk_graph = _gen_subtask_chunk_graph(b)
-    r = execute_subtask("", subtask_id, serialize(subtask_chunk_graph), set(), False)
+    r = execute_subtask(subtask_id, serialize(subtask_chunk_graph), set(), False)
     np.testing.assert_array_equal(r, raw_expect)
     test_get_meta_chunk = subtask_chunk_graph.result_chunks[0]
     r = execute_subtask(
-        "", subtask_id, serialize(subtask_chunk_graph), {test_get_meta_chunk.key}, False
+        subtask_id, serialize(subtask_chunk_graph), {test_get_meta_chunk.key}, False
     )
     assert len(r) == 2
     meta_dict, r = r
@@ -275,13 +191,13 @@ async def test_ray_fetcher(ray_start_regular_shared2):
     fetcher = RayFetcher()
     await fetcher.append("pd_key", {"object_refs": [pd_object_ref]})
     await fetcher.append("np_key", {"object_refs": [np_object_ref]})
-    await fetcher.append("pd_key", {"object_refs": [pd_object_ref]}, [1, 3])
-    await fetcher.append("np_key", {"object_refs": [np_object_ref]}, [1, 3])
+    await fetcher.append("pd_key", {"object_refs": [pd_object_ref]}, [slice(1, 3, 1)])
+    await fetcher.append("np_key", {"object_refs": [np_object_ref]}, [slice(1, 3, 1)])
     results = await fetcher.get()
     pd.testing.assert_frame_equal(results[0], pd_value)
     np.testing.assert_array_equal(results[1], np_value)
-    pd.testing.assert_frame_equal(results[2], pd_value.iloc[[1, 3]])
-    np.testing.assert_array_equal(results[3], np_value[[1, 3]])
+    pd.testing.assert_frame_equal(results[2], pd_value.iloc[1:3])
+    np.testing.assert_array_equal(results[3], np_value[1:3])
 
 
 @require_ray
@@ -291,11 +207,21 @@ async def test_ray_remote_object(ray_start_regular_shared2):
         def __init__(self, i):
             self._i = i
 
+        def value(self):
+            return self._i
+
         def foo(self, a, b):
             return self._i + a + b
 
         async def bar(self, a, b):
             return self._i * a * b
+
+    # Test RayTaskState reference
+    state = RayTaskState.create()
+    await state.create_remote_object.remote("aaa", _TestRemoteObject, 123)
+    assert await state.call_remote_object.remote("aaa", "value") == 123
+    state = RayTaskState.create()
+    assert await state.call_remote_object.remote("aaa", "value") == 123
 
     # Test RayRemoteObjectManager
     name = "abc"
@@ -310,8 +236,7 @@ async def test_ray_remote_object(ray_start_regular_shared2):
         await manager.call_remote_object(name, "foo", 3, 4)
 
     # Test _RayRemoteObjectContext
-    test_task_id = "test_task_id"
-    context = _RayRemoteObjectContext(lambda: RayTaskState.create(test_task_id))
+    context = _RayRemoteObjectContext(lambda: RayTaskState.create())
     context.create_remote_object(name, _TestRemoteObject, 2)
     remote_object = context.get_remote_object(name)
     r = remote_object.foo(3, 4)
@@ -332,7 +257,7 @@ async def test_ray_remote_object(ray_start_regular_shared2):
     with pytest.raises(MyException):
         context.create_remote_object(name, _ErrorRemoteObject)
 
-    handle = RayTaskState.get_handle(test_task_id)
+    handle = RayTaskState.get_handle()
     assert handle is not None
 
 
@@ -344,17 +269,41 @@ def test_ray_execution_context(ray_start_regular_shared2):
     def fake_init(self):
         pass
 
-    with mock.patch.object(ThreadedServiceContext, "__init__", new=fake_init):
+    async def fake_get_chunks_meta_from_service(
+        self, data_keys, fields=None, error="raise"
+    ):
+        mock_meta = {"meta_1": {fields[0]: 1}, "meta_3": {fields[0]: 3}}
+        return [mock_meta[k] for k in data_keys]
+
+    with mock.patch.object(
+        ThreadedServiceContext, "__init__", new=fake_init
+    ), mock.patch.object(
+        RayExecutionContext,
+        "_get_chunks_meta_from_service",
+        new=fake_get_chunks_meta_from_service,
+    ):
         mock_config = RayExecutionConfig.from_execution_config({"backend": "ray"})
         mock_worker_addresses = ["mock_worker_address"]
-        context = RayExecutionContext(
-            mock_config, {"abc": o}, {}, mock_worker_addresses, lambda: None
-        )
-        r = context.get_chunks_result(["abc"])
-        assert r == [value]
+        isolation = new_isolation("test", threaded=True)
+        try:
+            context = RayExecutionContext(
+                mock_config, {"abc": o}, {}, mock_worker_addresses, lambda: None
+            )
+            context._loop = isolation.loop
+            r = context.get_chunks_result(["abc"])
+            assert r == [value]
 
-        r = context.get_worker_addresses()
-        assert r == mock_worker_addresses
+            r = context.get_worker_addresses()
+            assert r == mock_worker_addresses
+
+            r = context.get_chunks_meta(["meta_1"], fields=["memory_size"])
+            assert r == [{"memory_size": 1}]
+
+            context._task_chunks_meta["meta_1"] = _RayChunkMeta(memory_size=2)
+            r = context.get_chunks_meta(["meta_1", "meta_3"], fields=["memory_size"])
+            assert r == [{"memory_size": 2}, {"memory_size": 3}]
+        finally:
+            stop_isolation("test")
 
 
 def test_ray_execution_worker_context():
@@ -377,6 +326,55 @@ def test_ray_execution_worker_context():
 
 @require_ray
 @pytest.mark.asyncio
+async def test_ray_execution_config(ray_start_regular_shared2):
+    t1 = mt.random.randint(10, size=(100, 10), chunk_size=100)
+    chunk_graph, subtask_graph = _gen_subtask_graph(t1)
+
+    real_executor = RayTaskExecutor._get_ray_executor()
+
+    class MockExecutor:
+        opt = {}
+
+        @classmethod
+        def options(cls, *args, **kwargs):
+            cls.opt = kwargs
+            return real_executor.options(*args, **kwargs)
+
+    task = Task("mock_task", "mock_session")
+    mock_config = RayExecutionConfig.from_execution_config(
+        {
+            "backend": "ray",
+            "ray": {
+                "subtask_monitor_interval": 0,
+                "subtask_max_retries": 4,
+                "subtask_num_cpus": 0.8,
+                "n_cpu": 1,
+                "n_worker": 1,
+                "subtask_cancel_timeout": 1,
+            },
+        }
+    )
+    tile_context = MockTileContext()
+    executor = MockRayTaskExecutor(
+        config=mock_config,
+        task=task,
+        tile_context=tile_context,
+        task_context={},
+        task_chunks_meta={},
+        lifecycle_api=None,
+        meta_api=None,
+    )
+    executor._ray_executor = MockExecutor
+    await executor.execute_subtask_graph(
+        "mock_stage", subtask_graph, chunk_graph, tile_context
+    )
+
+    assert MockExecutor.opt["num_cpus"] == 0.8
+    assert MockExecutor.opt["max_retries"] == 4
+
+
+@require_ray
+@pytest.mark.asyncio
 async def test_executor_context_gc(ray_start_regular_shared2):
     popped_seq = []
 
@@ -392,7 +390,16 @@ async def test_executor_context_gc(ray_start_regular_shared2):
     chunk_graph, subtask_graph = _gen_subtask_graph(t4)
     task = Task("mock_task", "mock_session", fuse_enabled=True)
     mock_config = RayExecutionConfig.from_execution_config(
-        {"backend": "ray", "ray": {"subtask_monitor_interval": 0}}
+        {
+            "backend": "ray",
+            "ray": {
+                "subtask_monitor_interval": 0,
+                "subtask_max_retries": 0,
+                "n_cpu": 1,
+                "n_worker": 1,
+                "subtask_cancel_timeout": 1,
+            },
+        }
     )
     tile_context = MockTileContext()
     task_context = MockTaskContext()
@@ -406,10 +413,9 @@ async def test_executor_context_gc(ray_start_regular_shared2):
         meta_api=None,
     )
     executor._ray_executor = RayTaskExecutor._get_ray_executor()
-    monitor_task = await executor.submit_subtask_graph(
-        "mock_stage", subtask_graph, chunk_graph
+    await executor.execute_subtask_graph(
+        "mock_stage", subtask_graph, chunk_graph, tile_context
     )
-    await monitor_task
 
     assert len(task_context) == 1
     assert len(popped_seq) == 6

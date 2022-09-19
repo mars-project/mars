@@ -50,6 +50,9 @@ class RayExecutionConfig(ExecutionConfig):
     def get_subtask_max_retries(self):
         return self._ray_execution_config["subtask_max_retries"]
 
+    def get_subtask_num_cpus(self):
+        return self._ray_execution_config.get("subtask_num_cpus", 1)
+
     def get_n_cpu(self):
         return self._ray_execution_config["n_cpu"]
 
@@ -58,14 +61,6 @@ class RayExecutionConfig(ExecutionConfig):
 
     def get_subtask_cancel_timeout(self):
         return self._ray_execution_config["subtask_cancel_timeout"]
-
-    def create_task_state_actor_as_needed(self):
-        # Whether create RayTaskState actor as needed.
-        #   - True (default):
-        #     Create RayTaskState actor only when create_remote_object is called.
-        #   - False:
-        #     Create RayTaskState actor in advance when the RayTaskExecutor is created.
-        return self._ray_execution_config.get("create_task_state_actor_as_needed", True)
 
     def get_subtask_monitor_interval(self):
         """

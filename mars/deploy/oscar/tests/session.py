@@ -17,6 +17,7 @@ import inspect
 import os
 import uuid
 
+from ....conftest import MARS_CI_BACKEND
 from ....core import OBJECT_TYPE
 from ....deploy.oscar.local import LocalCluster, LocalClient
 from ....tests.core import _check_args, ObjectCheckMixin
@@ -72,7 +73,7 @@ class CheckedSession(ObjectCheckMixin, _IsolatedSession):
 async def _new_test_session(
     address: str,
     session_id: str = None,
-    backend: str = "mars",
+    backend: str = MARS_CI_BACKEND,
     default: bool = False,
     new: bool = True,
     timeout: float = None,
@@ -129,7 +130,7 @@ async def _new_test_session(
 def new_test_session(
     address: str = None,
     session_id: str = None,
-    backend: str = "mars",
+    backend: str = MARS_CI_BACKEND,
     default: bool = False,
     new: bool = True,
     **kwargs,

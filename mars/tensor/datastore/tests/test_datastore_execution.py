@@ -109,6 +109,7 @@ def test_store_tiledb_execution(setup):
 
 
 @pytest.mark.skipif(h5py is None, reason="h5py not installed")
+@pytest.mark.ray_dag
 def test_store_hdf5_execution(setup):
     raw = np.random.RandomState(0).rand(10, 20)
 

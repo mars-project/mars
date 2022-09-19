@@ -46,7 +46,7 @@ class HeadPushDown(OptimizationRule):
                 return False
 
             for rule_type in push_down_rule_types:
-                rule = rule_type(self._graph, self._records, self._optimizer_cls)
+                rule = self._cached_rule(rule_type)
                 if not rule._can_push_down(succ.op):
                     return False
         return True

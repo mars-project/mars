@@ -150,7 +150,7 @@ jobs:
         flake8 mars --config=flake8_init.ini
 
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 mars --config="default" --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 mars --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       displayName: 'Lint with flake8'
 
     - bash: |

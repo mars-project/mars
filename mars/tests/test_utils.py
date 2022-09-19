@@ -40,7 +40,6 @@ from .. import dataframe as md
 from .. import tensor as mt
 from .. import utils
 from ..core import tile, TileableGraph
-from ..serialization.ray import register_ray_serializers
 from .core import require_ray
 
 
@@ -330,14 +329,28 @@ def test_type_dispatcher():
     type1 = type("Type1", (), {})
     type2 = type("Type2", (type1,), {})
     type3 = type("Type3", (), {})
+    type4 = type("Type4", (type2,), {})
+    type5 = type("Type5", (type4,), {})
 
     dispatcher.register(object, lambda x: "Object")
     dispatcher.register(type1, lambda x: "Type1")
+    dispatcher.register(type4, lambda x: "Type4")
     dispatcher.register("pandas.DataFrame", lambda x: "DataFrame")
+    dispatcher.register(utils.NamedType("ray", type1), lambda x: "RayType1")
 
     assert "Type1" == dispatcher(type2())
     assert "DataFrame" == dispatcher(pd.DataFrame())
     assert "Object" == dispatcher(type3())
+
+    tp = utils.NamedType("ray", type1)
+    assert dispatcher.get_handler(tp)(tp) == "RayType1"
+    tp = utils.NamedType("ray", type2)
+    assert dispatcher.get_handler(tp)(tp) == "RayType1"
+    tp = utils.NamedType("xxx", type2)
+    assert dispatcher.get_handler(tp)(tp) == "Type1"
+    assert "Type1" == dispatcher(type2())
+    tp = utils.NamedType("ray", type5)
+    assert dispatcher.get_handler(tp)(tp) == "Type4"
 
     dispatcher.unregister(object)
     with pytest.raises(KeyError):
@@ -575,7 +588,6 @@ def test_estimate_pandas_size():
 
 @require_ray
 def test_web_serialize_lambda():
-    register_ray_serializers()
     df = md.DataFrame(
         mt.random.rand(10_0000, 4, chunk_size=1_0000), columns=list("abcd")
     )
@@ -587,9 +599,9 @@ def test_web_serialize_lambda():
 
 
 def test_get_func_token_values():
-    from ..utils import get_func_token_values
+    from ..utils import _get_func_token_values
 
-    assert get_func_token_values(test_get_func_token_values) == [
+    assert _get_func_token_values(test_get_func_token_values) == [
         test_get_func_token_values.__code__.co_code
     ]
     captured_vars = [1, 2, 3]
@@ -597,20 +609,20 @@ def test_get_func_token_values():
     def closure_func(a, b):
         return captured_vars
 
-    assert get_func_token_values(closure_func)[1][0] == captured_vars
-    assert get_func_token_values(partial(closure_func, 1))[0][0] == 1
-    assert get_func_token_values(partial(closure_func, 1))[-1][0] == captured_vars
+    assert _get_func_token_values(closure_func)[1][0] == captured_vars
+    assert _get_func_token_values(partial(closure_func, 1))[0][0] == 1
+    assert _get_func_token_values(partial(closure_func, 1))[-1][0] == captured_vars
 
     from .._utils import ceildiv
 
-    assert get_func_token_values(ceildiv) == [ceildiv.__module__, ceildiv.__name__]
+    assert _get_func_token_values(ceildiv) == [ceildiv.__module__, ceildiv.__name__]
 
     class Func:
         def __call__(self, *args, **kwargs):
             pass
 
     func = Func()
-    assert get_func_token_values(func) == [func]
+    assert _get_func_token_values(func) == [func]
 
 
 @pytest.mark.parametrize("id_length", [0, 5, 32, 63])

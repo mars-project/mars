@@ -90,7 +90,6 @@ def test_to_cpu_execution(setup_gpu):
     pd.testing.assert_series_equal(res, pseries)
 
 
-@pytest.mark.ray_dag
 def test_rechunk_execution(setup):
     data = pd.DataFrame(np.random.rand(8, 10))
     df = from_pandas_df(pd.DataFrame(data), chunk_size=3)
@@ -228,7 +227,6 @@ def test_series_map_execution(setup):
     pd.testing.assert_index_equal(result, expected)
 
 
-@pytest.mark.ray_dag
 def test_describe_execution(setup):
     s_raw = pd.Series(np.random.rand(10))
 
@@ -384,6 +382,23 @@ def test_data_frame_apply_execute(setup):
         options.chunk_store_limit = old_chunk_store_limit
 
 
+def test_data_frame_apply_closure_execute(setup):
+    cols = [chr(ord("A") + i) for i in range(10)]
+    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df = from_pandas_df(df_raw, chunk_size=5)
+
+    x = pd.Series([i for i in range(10**4)])
+    y = pd.Series([i for i in range(10**4)])
+
+    def closure(z):
+        return pd.concat([x, y], ignore_index=True)
+
+    r = df.apply(closure, axis=1)
+    result = r.execute().fetch()
+    expected = df_raw.apply(closure, axis=1)
+    pd.testing.assert_frame_equal(result, expected)
+
+
 def test_series_apply_execute(setup):
     idxes = [chr(ord("A") + i) for i in range(20)]
     s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
@@ -423,6 +438,23 @@ def test_series_apply_execute(setup):
     result = r.execute().fetch()
     expected = s_raw2.apply(pd.Series)
     pd.testing.assert_frame_equal(result, expected)
+
+
+def test_series_apply_closure_execute(setup):
+    idxes = [chr(ord("A") + i) for i in range(20)]
+    s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
+
+    series = from_pandas_series(s_raw, chunk_size=5)
+
+    x, y = 1, 2
+
+    def closure(z):
+        return [z + x, z + y]
+
+    r = series.apply(closure, convert_dtype=False)
+    result = r.execute().fetch()
+    expected = s_raw.apply(closure, convert_dtype=False)
+    pd.testing.assert_series_equal(result, expected)
 
 
 @pytest.mark.skipif(pa is None, reason="pyarrow not installed")
@@ -686,7 +718,6 @@ def test_datetime_method_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
 
-@pytest.mark.ray_dag
 def test_isin_execution(setup):
     # one chunk in multiple chunks
     a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
@@ -779,7 +810,6 @@ def test_isin_execution(setup):
     pd.testing.assert_frame_equal(result, expected)
 
 
-@pytest.mark.ray_dag
 def test_cut_execution(setup):
     session = setup
 
@@ -902,7 +932,6 @@ def test_cut_execution(setup):
         cut(s3, 3).execute()
 
 
-@pytest.mark.ray_dag
 def test_transpose_execution(setup):
     raw = pd.DataFrame(
         {"a": ["1", "2", "3"], "b": ["5", "-6", "7"], "c": ["1", "2", "3"]}
@@ -1088,7 +1117,6 @@ def test_to_numeric_execution(setup):
     np.testing.assert_array_equal(r.execute().fetch(), pd.to_numeric(l))
 
 
-@pytest.mark.ray_dag
 def test_q_cut_execution(setup):
     rs = np.random.RandomState(0)
     raw = rs.random(15) * 1000
@@ -1130,7 +1158,6 @@ def test_q_cut_execution(setup):
     pd.testing.assert_series_equal(pd.Series(result), pd.Series(expected))
 
 
-@pytest.mark.ray_dag
 def test_shift_execution(setup):
     fill_value_default = no_default
     if not _enable_no_default or _with_column_freq_bug:
@@ -1229,7 +1256,6 @@ def test_shift_execution(setup):
                 ) from e
 
 
-@pytest.mark.ray_dag
 def test_diff_execution(setup):
     rs = np.random.RandomState(0)
     raw = pd.DataFrame(
@@ -1267,7 +1293,6 @@ def test_diff_execution(setup):
     pd.testing.assert_series_equal(r.execute().fetch(), s1.diff(1))
 
 
-@pytest.mark.ray_dag
 def test_value_counts_execution(setup):
     rs = np.random.RandomState(0)
     s = pd.Series(rs.randint(5, size=100), name="s")
@@ -1453,7 +1478,6 @@ def test_astype(setup):
     pd.testing.assert_series_equal(expected, result)
 
 
-@pytest.mark.ray_dag
 def test_drop(setup):
     # test dataframe drop
     rs = np.random.RandomState(0)
@@ -1524,7 +1548,6 @@ def test_melt(setup):
     )
 
 
-@pytest.mark.ray_dag
 def test_drop_duplicates(setup):
     # test dataframe drop
     rs = np.random.RandomState(0)
@@ -1618,7 +1641,6 @@ def test_drop_duplicates(setup):
         pd.testing.assert_series_equal(result, expected)
 
 
-@pytest.mark.ray_dag
 def test_duplicated(setup):
     # test dataframe drop
     rs = np.random.RandomState(0)
@@ -1860,7 +1882,6 @@ def test_map_chunk_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
 
-@pytest.mark.ray_dag
 def test_cartesian_chunk_execution(setup):
     rs = np.random.RandomState(0)
     raw1 = pd.DataFrame({"a": rs.randint(3, size=10), "b": rs.rand(10)})
@@ -1948,7 +1969,6 @@ def test_cartesian_chunk_execution(setup):
     )
 
 
-@pytest.mark.ray_dag
 def test_rebalance_execution(setup):
     raw = pd.DataFrame(np.random.rand(10, 3), columns=list("abc"))
     df = from_pandas_df(raw)
@@ -1978,7 +1998,6 @@ def test_rebalance_execution(setup):
     pd.testing.assert_frame_equal(result, raw)
 
 
-@pytest.mark.ray_dag
 def test_stack_execution(setup):
     raw = pd.DataFrame(
         np.random.rand(10, 3), columns=list("abc"), index=[f"s{i}" for i in range(10)]
@@ -2123,7 +2142,6 @@ def test_check_monotonic_execution(setup):
     assert ser_mixed.is_monotonic_decreasing.execute().fetch() is False
 
 
-@pytest.mark.ray_dag
 def test_pct_change_execution(setup):
     # test dataframe
     rs = np.random.RandomState(0)
@@ -2152,7 +2170,6 @@ def test_pct_change_execution(setup):
     pd.testing.assert_frame_equal(expected, result)
 
 
-@pytest.mark.ray_dag
 def test_bloom_filter(setup):
     rs = np.random.RandomState(0)
     raw1 = pd.DataFrame(

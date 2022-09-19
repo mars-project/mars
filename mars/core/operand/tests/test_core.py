@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from ....dataframe import core  # noqa: F401  # pylint: disable=unused-variable
 from ... import OutputType
 from .. import Operand, TileableOperandMixin, execute, estimate_size, ShuffleProxy
 

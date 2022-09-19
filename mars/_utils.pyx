@@ -12,8 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import collections
 import importlib
+import itertools
 import os
 import pickle
 import pkgutil
@@ -30,7 +31,8 @@ import numpy as np
 import pandas as pd
 import cloudpickle
 cimport cython
-from libc.stdint cimport uint_fast64_t
+from cpython cimport PyBytes_FromStringAndSize
+from libc.stdint cimport uint_fast64_t, uint32_t, uint8_t
 from libc.stdlib cimport malloc, free
 from .lib.cython.libcpp cimport mt19937_64
 try:
@@ -47,6 +49,18 @@ cdef bint _has_sqlalchemy = bool(pkgutil.find_loader('sqlalchemy'))
 cdef bint _has_interval_array_inclusive = hasattr(
     pd.arrays.IntervalArray, "inclusive"
 )
+
+
+cdef extern from "MurmurHash3.h":
+    void MurmurHash3_x64_128(const void * key, Py_ssize_t len, uint32_t seed, void * out)
+
+
+cdef bytes _get_mars_key(const uint8_t[:] bufferview):
+    cdef const uint8_t *data = &bufferview[0]
+    cdef uint8_t out[16]
+    MurmurHash3_x64_128(data, len(bufferview), 0, out)
+    out[0] |= 0xC0
+    return PyBytes_FromStringAndSize(<char*>out, 16)
 
 
 cpdef str to_str(s, encoding='utf-8'):
@@ -91,6 +105,9 @@ cpdef unicode to_text(s, encoding='utf-8'):
 _type_dispatchers = WeakSet()
 
 
+NamedType = collections.namedtuple("NamedType", ["name", "type_"])
+
+
 cdef class TypeDispatcher:
     def __init__(self):
         self._handlers = dict()
@@ -103,14 +120,14 @@ cdef class TypeDispatcher:
     cpdef void register(self, object type_, object handler):
         if isinstance(type_, str):
             self._lazy_handlers[type_] = handler
-        elif isinstance(type_, tuple):
+        elif type(type_) is not NamedType and isinstance(type_, tuple):
             for t in type_:
                 self.register(t, handler)
         else:
             self._handlers[type_] = handler
 
     cpdef void unregister(self, object type_):
-        if isinstance(type_, tuple):
+        if type(type_) is not NamedType and isinstance(type_, tuple):
             for t in type_:
                 self.unregister(t)
         else:
@@ -126,8 +143,6 @@ cdef class TypeDispatcher:
         self._lazy_handlers = dict()
 
     cpdef get_handler(self, object type_):
-        cdef object clz, handler
-        cdef dict d
         try:
             return self._handlers[type_]
         except KeyError:
@@ -137,14 +152,19 @@ cdef class TypeDispatcher:
             return self._inherit_handlers[type_]
         except KeyError:
             self._reload_lazy_handlers()
-            for clz in type_.__mro__:
-                if clz in self._handlers:
-                    d = self._handlers
-                elif clz in self._inherit_handlers:
-                    d = self._inherit_handlers
-
-                if clz in self._handlers:
-                    handler = self._inherit_handlers[type_] = d[clz]
+            if type(type_) is NamedType:
+                named_type = partial(NamedType, type_.name)
+                mro = itertools.chain(
+                    *zip(map(named_type, type_.type_.__mro__),
+                         type_.type_.__mro__)
+                )
+            else:
+                mro = type_.__mro__
+            for clz in mro:
+                # only lookup self._handlers for mro clz
+                handler = self._handlers.get(clz)
+                if handler is not None:
+                    self._inherit_handlers[type_] = handler
                     return handler
             raise KeyError(f'Cannot dispatch type {type_}')
 
@@ -164,7 +184,7 @@ cdef inline build_canonical_bytes(tuple args, kwargs):
 
 
 def tokenize(*args, **kwargs):
-    return mmh_hash_bytes(build_canonical_bytes(args, kwargs)).hex()
+    return _get_mars_key(build_canonical_bytes(args, kwargs)).hex()
 
 
 def tokenize_int(*args, **kwargs):

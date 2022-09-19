@@ -28,6 +28,7 @@ from scipy.stats import (
     ttest_ind as sp_ttest_ind,
     ttest_ind_from_stats as sp_ttest_ind_from_stats,
     ttest_1samp as sp_ttest_1samp,
+    rankdata as sp_rankdata,
 )
 
 from ....lib.version import parse as parse_version
@@ -42,6 +43,7 @@ from .. import (
     ttest_ind_from_stats,
     ks_1samp,
     ks_2samp,
+    rankdata,
 )
 
 
@@ -277,3 +279,51 @@ def test_ks_2samp(setup, chunk_size):
 
     with pytest.raises(ValueError):
         ks_2samp(d1, [])
+
+
+def test_rankdata_execution(setup):
+    rs = np.random.RandomState(0)
+    a = rs.rand(4)
+
+    t1 = tensor(a, chunk_size=5)
+    r = rankdata(t1)
+
+    result = r.execute().fetch()
+    expected = sp_rankdata(a)
+    np.testing.assert_array_almost_equal(result, expected)
+
+    b = rs.rand(4, 4)
+
+    t2 = tensor(b, chunk_size=5)
+    r2 = rankdata(t2, axis=1)
+
+    result = r2.execute().fetch()
+    expected = sp_rankdata(b, axis=1)
+    np.testing.assert_array_almost_equal(result, expected)
+
+    c = rs.rand(0, 4)
+
+    t3 = tensor(c, chunk_size=5)
+    r3 = rankdata(t3, axis=1)
+
+    result = r3.execute().fetch()
+    expected = sp_rankdata(c, axis=1)
+    np.testing.assert_array_almost_equal(result, expected)
+
+    methods = [
+        "average",
+        "min",
+        "max",
+        "dense",
+        "ordinal",
+    ]
+
+    for method in methods:
+        r = rankdata(t1, method=method)
+        result = r.execute().fetch()
+
+        expected = sp_rankdata(a, method=method)
+        np.testing.assert_almost_equal(result, expected)
+
+    with pytest.raises(ValueError):
+        r = rankdata(t1, method="unknown")

@@ -110,7 +110,10 @@ class FileSystemGlob:
             glob_in_dir = self._glob0
         for dirname in dirs:
             for name in glob_in_dir(dirname, basename, dironly):
-                yield self._fs.path_join(dirname, name)
+                if dirname:
+                    yield self._fs.path_join(dirname, name)
+                else:
+                    yield name
 
     # These 2 helper functions non-recursively glob inside a literal directory.
     # They return a list of basenames.  _glob1 accepts a pattern while _glob0
@@ -153,10 +156,9 @@ class FileSystemGlob:
     # If dironly is true, yields only directory names.
     def _iterdir(self, dirname, dironly):
         if not dirname:  # pragma: no cover
-            if isinstance(dirname, bytes):
-                dirname = bytes(os.curdir, "ASCII")
-            else:
-                dirname = os.curdir
+            dirname = ""
+        if not self._fs.isdir(dirname):
+            return iter(())
         for entry in self._fs.ls(dirname):
             if not dironly or self._fs.isdir(entry):
                 yield self._fs.path_split(entry)[-1]

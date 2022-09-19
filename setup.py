@@ -82,6 +82,12 @@ else:
     cy_extension_kw["extra_compile_args"] = extra_compile_args
 
 
+# The pyx with C sources.
+ext_include_source_map = {
+    "mars/_utils.pyx": [["mars/lib/mmh3_src"], ["mars/lib/mmh3_src/MurmurHash3.cpp"]],
+}
+
+
 def _discover_pyx():
     exts = dict()
     for root, _, files in os.walk(os.path.join(repo_root, "mars")):
@@ -89,12 +95,19 @@ def _discover_pyx():
             if not fn.endswith(".pyx"):
                 continue
             full_fn = os.path.relpath(os.path.join(root, fn), repo_root)
+            include_dirs, source = ext_include_source_map.get(
+                full_fn.replace(os.path.sep, "/"), [[], []]
+            )
             mod_name = full_fn.replace(".pyx", "").replace(os.path.sep, ".")
-            exts[mod_name] = Extension(mod_name, [full_fn], **cy_extension_kw)
+            exts[mod_name] = Extension(
+                mod_name,
+                [full_fn] + source,
+                include_dirs=[np.get_include()] + include_dirs,
+                **cy_extension_kw,
+            )
     return exts
 
 
-cy_extension_kw["include_dirs"] = [np.get_include()]
 extensions_dict = _discover_pyx()
 cy_extensions = list(extensions_dict.values())
 

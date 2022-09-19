@@ -1,6 +1,18 @@
 Special Functions
 =================
 
+Airy functions
+--------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   mars.tensor.special.airy
+   mars.tensor.special.airye
+   mars.tensor.special.itairy
+
+
 Information Theory functions
 ----------------------------
 

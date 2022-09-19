@@ -15,9 +15,9 @@
 import numpy as np
 from typing import List, Iterable
 
-from .....core.operand import ShuffleProxy, MapReduceOperand, OperandStage
+from .....core.operand import MapReduceOperand, OperandStage
 from .....utils import lazy_import
-from ....subtask import Subtask
+from ....subtask import Subtask, SubtaskGraph
 
 ray = lazy_import("ray")
 
@@ -27,14 +27,10 @@ class ShuffleManager:
     mapper and reducer index.
     """
 
-    def __init__(self, subtask_graph):
+    def __init__(self, subtask_graph: SubtaskGraph):
         self.subtask_graph = subtask_graph
-        self._proxy_subtasks = []
-        for subtask in subtask_graph:
-            chunk = subtask.chunk_graph.results[0]
-            if isinstance(chunk.op, ShuffleProxy):
-                self._proxy_subtasks.append(subtask)
-        self.num_shuffles = len(self._proxy_subtasks)
+        self._proxy_subtasks = subtask_graph.get_shuffle_proxy_subtasks()
+        self.num_shuffles = subtask_graph.num_shuffles()
         self.mapper_output_refs = []
         self.mapper_indices = {}
         self.reducer_indices = {}

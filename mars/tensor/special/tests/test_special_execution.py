@@ -307,11 +307,7 @@ def test_quintuple_execution(setup, func):
 
 @pytest.mark.parametrize(
     "func",
-    [
-        "fresnel",
-        "modfresnelp",
-        "modfresnelm",
-    ],
+    ["fresnel", "modfresnelp", "modfresnelm", "airy", "airye", "itairy"],
 )
 def test_unary_tuple_execution(setup, func):
     sp_func = getattr(spspecial, func)

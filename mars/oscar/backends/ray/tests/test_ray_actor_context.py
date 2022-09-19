@@ -32,12 +32,6 @@ ray = lazy_import("ray")
 @pytest.fixture
 async def actor_pool_context():
     pg_name, n_process = f"ray_cluster_{time.time_ns()}", 2
-    from .....serialization.ray import (
-        register_ray_serializers,
-        unregister_ray_serializers,
-    )
-
-    register_ray_serializers()
     address = process_placement_to_address(pg_name, 0, process_index=0)
     # Hold actor_handle to avoid actor being freed.
     pg = ray.util.placement_group(
@@ -80,7 +74,6 @@ async def actor_pool_context():
             pass
     ray.util.remove_placement_group(pg)
     Router.set_instance(None)
-    unregister_ray_serializers()
     RayServer.clear()
 
 
