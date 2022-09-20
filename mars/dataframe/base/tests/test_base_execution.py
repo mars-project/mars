@@ -47,7 +47,7 @@ pytestmark = pytest.mark.pd_compat
 cudf = lazy_import("cudf")
 
 _explode_with_ignore_index = pd_release_version[:2] >= (1, 1)
-_interval_range_inclusive_arg = pd_release_version[:2] >= (1, 5)
+_interval_range_closed_arg = pd_release_version[:2] >= (1, 5)
 
 
 @require_cudf
@@ -817,8 +817,8 @@ def test_cut_execution(setup):
     raw = rs.random(15) * 1000
     s = pd.Series(raw, index=[f"i{i}" for i in range(15)])
     bins = [10, 100, 500]
-    if _interval_range_inclusive_arg:
-        ii = pd.interval_range(10, 500, 3, inclusive="right")
+    if _interval_range_closed_arg:
+        ii = pd.interval_range(10, 500, 3, closed="right")
     else:
         ii = pd.interval_range(10, 500, 3)
     labels = ["a", "b"]
