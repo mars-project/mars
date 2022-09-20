@@ -79,6 +79,7 @@ def _get_tileable_chunk_data(sync_session, tileable):
         (True, 10, 0.5, True, True),
     ],
 )
+@pytest.mark.ray_dag
 def test_bagging_sample_execution(
     setup, use_dataframe, max_samples, max_features, with_labels, with_weights
 ):
