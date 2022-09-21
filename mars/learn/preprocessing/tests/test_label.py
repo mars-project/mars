@@ -184,7 +184,7 @@ def check_binarized_results(y, classes, pos_label, neg_label, expected):
 
         else:
             inversed = _inverse_binarize_thresholding(
-                binarized,
+                binarized.copy(),  # https://github.com/mars-project/mars/issues/3268
                 output_type=y_type,
                 classes=classes,
                 threshold=((neg_label + pos_label) / 2.0),
