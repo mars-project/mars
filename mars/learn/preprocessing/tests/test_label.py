@@ -304,6 +304,14 @@ def test_label_encoder(setup, values, classes, unknown):
         le.transform(unknown)
 
 
+@pytest.mark.ray_dag
+def test_label_encoder_missing_values_numeric(setup):
+    values = np.array([3, 1, np.nan, 5, 3, np.nan], dtype=float)
+    values_t = mt.tensor(values)
+    le = LabelEncoder()
+    assert_array_equal(le.fit_transform(values_t).fetch(), [1, 0, 3, 2, 1, 3])
+
+
 def test_label_encoder_negative_ints(setup):
     le = LabelEncoder()
     le.fit(mt.tensor([1, 1, 4, 5, -1, 0]))
