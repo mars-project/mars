@@ -238,7 +238,6 @@ def test_label_binarize_multiclass(setup):
         )
 
 
-@pytest.mark.ray_dag
 def test_label_binarize_multilabel(setup):
     y_ind = np.array([[0, 1, 0], [1, 1, 1], [0, 0, 0]])
     classes = [0, 1, 2]
@@ -305,7 +304,6 @@ def test_label_encoder(setup, values, classes, unknown):
         le.transform(unknown)
 
 
-@pytest.mark.ray_dag
 def test_label_encoder_missing_values_numeric(setup):
     values = np.array([3, 1, np.nan, 5, 3, np.nan], dtype=float)
     values_t = mt.tensor(values)

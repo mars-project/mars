@@ -87,7 +87,6 @@ def test_relocated_clusters(setup, representation, algo):
 @pytest.mark.skipif(KMeans is None, reason="scikit-learn not installed")
 @pytest.mark.parametrize("distribution", ["normal", "blobs"])
 @pytest.mark.parametrize("tol", [1e-2, 1e-4, 1e-8])
-@pytest.mark.ray_dag
 def test_elkan_results(setup, distribution, tol):
     # check that results are identical between lloyd and elkan algorithms
 

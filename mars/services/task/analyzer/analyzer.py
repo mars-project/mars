@@ -280,10 +280,7 @@ class GraphAnalyzer:
         if out_of_scope_chunks:
             inp_subtasks = []
             for out_of_scope_chunk in out_of_scope_chunks:
-                try:
-                    copied_out_of_scope_chunk = chunk_to_copied[out_of_scope_chunk]
-                except KeyError:
-                    pass
+                copied_out_of_scope_chunk = chunk_to_copied[out_of_scope_chunk]
                 inp_subtask = chunk_to_subtask[out_of_scope_chunk]
                 if (
                     copied_out_of_scope_chunk
