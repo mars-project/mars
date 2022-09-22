@@ -238,6 +238,7 @@ def test_label_binarize_multiclass(setup):
         )
 
 
+@pytest.mark.ray_dag
 def test_label_binarize_multilabel(setup):
     y_ind = np.array([[0, 1, 0], [1, 1, 1], [0, 0, 0]])
     classes = [0, 1, 2]

@@ -210,6 +210,7 @@ def test_bagging_sample_reindex(
         (True, 10, 1.0, True, SVC),
     ],
 )
+@pytest.mark.ray_dag
 def test_bagging_classifier(
     setup, use_dataframe, max_samples, max_features, with_weights, base_estimator_cls
 ):

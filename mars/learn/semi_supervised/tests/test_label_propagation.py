@@ -110,6 +110,7 @@ def test_convergence_warning(setup):
     assert_no_warnings(mdl.fit, X, y)
 
 
+@pytest.mark.ray_dag
 def test_predict_sparse_callable_kernel(setup):
     # This is a non-regression test for #15866
 

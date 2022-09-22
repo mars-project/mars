@@ -280,7 +280,10 @@ class GraphAnalyzer:
         if out_of_scope_chunks:
             inp_subtasks = []
             for out_of_scope_chunk in out_of_scope_chunks:
-                copied_out_of_scope_chunk = chunk_to_copied[out_of_scope_chunk]
+                try:
+                    copied_out_of_scope_chunk = chunk_to_copied[out_of_scope_chunk]
+                except KeyError:
+                    pass
                 inp_subtask = chunk_to_subtask[out_of_scope_chunk]
                 if (
                     copied_out_of_scope_chunk
@@ -444,7 +447,13 @@ class GraphAnalyzer:
                     chunk_color = chunk_to_colors[mapper_chunk]
                     same_color_chunks = color_to_chunks[chunk_color]
                     mappers = [
-                        c for c in same_color_chunks if c.op.stage == OperandStage.map
+                        c
+                        for c in same_color_chunks
+                        if c.op.stage == OperandStage.map
+                        and any(
+                            isinstance(succ.op, ShuffleProxy)
+                            for succ in self._chunk_graph.iter_successors(c)
+                        )
                     ]
                     if len(mappers) > 1:
                         # ensure every subtask contains only at most one mapper
