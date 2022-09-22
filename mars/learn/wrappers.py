@@ -24,15 +24,12 @@ from sklearn.base import (
 
 from .. import remote as mr
 from .. import tensor as mt
-from ..core import ENTITY_TYPE
 from .base import BaseEstimator, RegressorMixin, ClassifierMixin
 from .metrics import get_scorer
 from .utils import copy_learned_attributes, check_array
 
 
 def _wrap(estimator: SklearnBaseEstimator, method, X, y, **kwargs):
-    X = X.fetch() if isinstance(X, ENTITY_TYPE) else X
-    y = y.fetch() if isinstance(y, ENTITY_TYPE) else y
     return getattr(estimator, method)(X, y, **kwargs)
 
 
@@ -145,7 +142,12 @@ class ParallelPostFit(BaseEstimator, MetaEstimatorMixin):
     def _make_fit(self, method):
         def _fit(X, y=None, **kwargs):
             result = (
-                mr.spawn(_wrap, args=(self.estimator, method, X, y), kwargs=kwargs)
+                mr.spawn(
+                    _wrap,
+                    args=(self.estimator, method, X, y),
+                    kwargs=kwargs,
+                    resolve_tileable_input=True,
+                )
                 .execute()
                 .fetch()
             )

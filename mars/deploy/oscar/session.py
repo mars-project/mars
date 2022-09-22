@@ -60,6 +60,7 @@ from ...typing import ClientType, BandType
 from ...utils import (
     implements,
     merge_chunks,
+    merged_chunk_as_tileable_type,
     register_asyncio_task_timeout_detector,
     classproperty,
     copy_tileables,
@@ -1084,9 +1085,6 @@ class _IsolatedSession(AbstractAsyncSession):
         return storage_api
 
     async def fetch(self, *tileables, **kwargs) -> list:
-        from ...tensor.core import TensorOrder
-        from ...tensor.array_utils import get_array_module
-
         if kwargs:  # pragma: no cover
             unexpected_keys = ", ".join(list(kwargs.keys()))
             raise TypeError(f"`fetch` got unexpected arguments: {unexpected_keys}")
@@ -1139,22 +1137,7 @@ class _IsolatedSession(AbstractAsyncSession):
                     for fetch_info in fetch_infos
                 ]
                 merged = merge_chunks(index_to_data)
-                if hasattr(tileable, "order") and tileable.ndim > 0:
-                    module = get_array_module(merged)
-                    if tileable.order == TensorOrder.F_ORDER and hasattr(
-                        module, "asfortranarray"
-                    ):
-                        merged = module.asfortranarray(merged)
-                    elif tileable.order == TensorOrder.C_ORDER and hasattr(
-                        module, "ascontiguousarray"
-                    ):
-                        merged = module.ascontiguousarray(merged)
-                if (
-                    hasattr(tileable, "isscalar")
-                    and tileable.isscalar()
-                    and getattr(merged, "size", None) == 1
-                ):
-                    merged = merged.item()
+                merged = merged_chunk_as_tileable_type(merged, tileable)
                 result.append(self._process_result(tileable, merged))
             return result
 
