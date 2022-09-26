@@ -612,9 +612,10 @@ class RayTaskExecutor(TaskExecutor):
                             memory_size=chunk_meta.memory_size,
                         )
                     )
-                update_lifecycles.append(
-                    self._lifecycle_api.track.delay(tileable.key, chunk_keys)
-                )
+            update_lifecycles.append(
+                self._lifecycle_api.track.delay(tileable.key, chunk_keys)
+            )
+        assert len(update_lifecycles) == len(tileable_keys)
         await self._meta_api.set_chunk_meta.batch(*update_metas)
         await self._lifecycle_api.track.batch(*update_lifecycles)
         await self._lifecycle_api.incref_tileables(tileable_keys)
