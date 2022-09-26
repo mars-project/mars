@@ -353,20 +353,21 @@ class TaskProcessor:
                     meta["order"] = first["order"]
 
     async def run(self):
-        profiling = ProfilingData[self.task_id, "general"]
-        self.result.status = TaskStatus.running
-        # optimization
-        with Timer() as timer:
-            # optimization, run it in executor,
-            # since optimization may be a CPU intensive operation
-            await asyncio.to_thread(self._preprocessor.optimize)
-        profiling.set("optimize", timer.duration)
-
-        self._tileable_id_to_tileable = await asyncio.to_thread(
-            self._get_tileable_id_to_tileable, self._preprocessor.tileable_graph
-        )
-
         try:
+            profiling = ProfilingData[self.task_id, "general"]
+            self.result.status = TaskStatus.running
+            # optimization
+            with Timer() as timer:
+                # optimization, run it in executor,
+                # since optimization may be a CPU intensive operation
+                await asyncio.to_thread(self._preprocessor.optimize)
+
+            profiling.set("optimize", timer.duration)
+
+            self._tileable_id_to_tileable = await asyncio.to_thread(
+                self._get_tileable_id_to_tileable, self._preprocessor.tileable_graph
+            )
+
             async with self._executor:
                 async for stage_args in self._iter_stage_chunk_graph():
                     await self._process_stage_chunk_graph(*stage_args)
