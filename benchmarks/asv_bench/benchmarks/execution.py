@@ -99,9 +99,9 @@ class RayDAGExecutionSuite:
     """
 
     def setup(self):
-        self.session = new_session(backend="ray")
+        self.session = new_session(backend="ray", default=True)
         join_key_range = 100
-        data_size = 10000
+        data_size = 1000
         chunk_size = 10
 
         self.df1 = md.DataFrame(
