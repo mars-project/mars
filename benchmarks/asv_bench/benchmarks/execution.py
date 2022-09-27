@@ -14,7 +14,6 @@
 
 import dataclasses
 
-import mars
 import mars.dataframe as md
 import mars.tensor as mt
 from mars import new_session
@@ -100,7 +99,7 @@ class RayDAGExecutionSuite:
     """
 
     def setup(self):
-        self.session = mars.new_session(backend="ray")
+        self.session = new_session(backend="ray")
         join_key_range = 100
         data_size = 10000
         chunk_size = 10

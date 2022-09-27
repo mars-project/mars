@@ -224,7 +224,6 @@ def execute_subtask(
                 data = context[chunk_key]
                 memory_size = calc_data_size(data)
                 output_meta[chunk_key] = get_chunk_params(chunk), memory_size
-        assert output_meta_n_keys == len(output_meta)
         output_values.append(output_meta)
     output_values.extend(normal_output.values())
     output_values.extend(mapper_output.values())
