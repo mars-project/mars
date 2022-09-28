@@ -96,7 +96,8 @@
         "psutil": [],
         "tornado": [],
         "sqlalchemy": [],
-        "defusedxml": []
+        "defusedxml": [],
+        "ray": []
     },
     "conda_channels": ["defaults", "conda-forge"],
 
