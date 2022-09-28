@@ -97,7 +97,7 @@
         "tornado": [],
         "sqlalchemy": [],
         "defusedxml": [],
-        "ray": []
+        "pip+ray": []
     },
     "conda_channels": ["defaults", "conda-forge"],
 
