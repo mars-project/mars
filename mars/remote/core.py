@@ -47,7 +47,7 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
     function_args = ListField("function_args")
     function_kwargs = DictField("function_kwargs")
     retry_when_fail = BoolField("retry_when_fail")
-    resolve_tileable_input = BoolField("resolve_tileable_input")
+    resolve_tileable_input = BoolField("resolve_tileable_input", default=False)
     n_output = Int32Field("n_output", default=None)
 
     @property
