@@ -102,7 +102,7 @@ class RayDAGExecutionSuite:
         self.session = new_session(backend="ray", default=True)
         join_key_range = 100
         data_size = 1000
-        chunk_size = 10
+        chunk_size = 20
 
         self.df1 = md.DataFrame(
             mt.random.randint(
