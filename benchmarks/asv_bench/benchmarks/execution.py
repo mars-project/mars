@@ -14,7 +14,6 @@
 
 import dataclasses
 
-import mars.dataframe as md
 import mars.tensor as mt
 from mars import new_session
 from mars.core.graph import (
@@ -91,28 +90,3 @@ class NumExprExecutionSuite:
                 set(),
                 False,
             )
-
-
-class RayDAGExecutionSuite:
-    """
-    Benchmark that times performance of Ray DAG execution.
-    """
-
-    def setup(self):
-        self.session = new_session(backend="ray", default=True)
-        join_key_range = 100
-        data_size = 1000
-        chunk_size = 20
-
-        self.df1 = md.DataFrame(
-            mt.random.randint(
-                1, join_key_range + 1, size=(data_size, 10), chunk_size=(chunk_size, 5)
-            ),
-            columns=list("ABCDEFGHIJ"),
-        )
-
-    def teardown(self):
-        self.session.stop_server()
-
-    def time_subtask_execution(self):
-        self.df1.execute()

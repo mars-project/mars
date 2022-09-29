@@ -184,7 +184,6 @@ class GraphAnalyzer:
         expect_worker = None
         bands_specified = None
         processed = set()
-        stage_n_outputs = 0
         for chunk in chunks:
             if chunk in processed:
                 continue
