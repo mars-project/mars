@@ -218,7 +218,7 @@ def execute_subtask(
         for chunk in subtask_chunk_graph.result_chunks[:output_meta_n_keys]:
             chunk_key = chunk.key
             if chunk_key not in output_meta:
-                if isinstance(chunk.op, Fuse):
+                if isinstance(chunk.op, Fuse):  # pragma: no cover
                     # fuse op
                     chunk = chunk.chunk
                 data = context[chunk_key]
