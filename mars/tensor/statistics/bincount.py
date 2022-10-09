@@ -189,12 +189,9 @@ class TensorBinCount(TensorMapReduceOperand, TensorOperandMixin):
     @classmethod
     def _execute_reduce(cls, ctx, op: "TensorBinCount"):
         out = op.outputs[0]
-        input_list = []
-        for input_key in op.inputs[0].op.source_keys:
-            sliced = ctx.get((input_key, out.index))
-            if sliced is not None:
-                input_list.append(sliced)
-
+        input_list = list(
+            d for d in op.iter_mapper_data(ctx, skip_none=True) if d is not None
+        )
         left_bound = op.chunk_size_limit * out.index[0]
         right_bound = min(left_bound + op.chunk_size_limit, op.tileable_right_bound)
         if not input_list:
