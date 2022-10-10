@@ -104,7 +104,7 @@ class MockTileContext(TileContext):
 async def test_ray_executor_create(
     mock_ray_get, mock_execution_context_init, mock_task_state_actor_create
 ):
-    task = Task("mock_task", "mock_session")
+    task = Task("mock_task", "mock_session", TileableGraph([]))
 
     # Create RayTaskState actor as needed by default.
     mock_config = RayExecutionConfig.from_execution_config({"backend": "ray"})
@@ -127,7 +127,7 @@ async def test_ray_executor_create(
 @require_ray
 @pytest.mark.asyncio
 async def test_ray_executor_destroy():
-    task = Task("mock_task", "mock_session")
+    task = Task("mock_task", "mock_session", TileableGraph([]))
     mock_config = RayExecutionConfig.from_execution_config({"backend": "ray"})
     executor = MockRayTaskExecutor(
         config=mock_config,
@@ -340,7 +340,7 @@ async def test_ray_execution_config(ray_start_regular_shared2):
             cls.opt = kwargs
             return real_executor.options(*args, **kwargs)
 
-    task = Task("mock_task", "mock_session")
+    task = Task("mock_task", "mock_session", TileableGraph([]))
     mock_config = RayExecutionConfig.from_execution_config(
         {
             "backend": "ray",
@@ -365,9 +365,10 @@ async def test_ray_execution_config(ray_start_regular_shared2):
         meta_api=None,
     )
     executor._ray_executor = MockExecutor
-    await executor.execute_subtask_graph(
-        "mock_stage", subtask_graph, chunk_graph, tile_context
-    )
+    async with executor:
+        await executor.execute_subtask_graph(
+            "mock_stage", subtask_graph, chunk_graph, tile_context
+        )
 
     assert MockExecutor.opt["num_cpus"] == 0.8
     assert MockExecutor.opt["max_retries"] == 4
@@ -388,7 +389,7 @@ async def test_executor_context_gc(ray_start_regular_shared2):
     t3 = t2 + t1
     t4 = t3.sum(0)
     chunk_graph, subtask_graph = _gen_subtask_graph(t4)
-    task = Task("mock_task", "mock_session", fuse_enabled=True)
+    task = Task("mock_task", "mock_session", TileableGraph([]), fuse_enabled=True)
     mock_config = RayExecutionConfig.from_execution_config(
         {
             "backend": "ray",
@@ -413,9 +414,10 @@ async def test_executor_context_gc(ray_start_regular_shared2):
         meta_api=None,
     )
     executor._ray_executor = RayTaskExecutor._get_ray_executor()
-    await executor.execute_subtask_graph(
-        "mock_stage", subtask_graph, chunk_graph, tile_context
-    )
+    async with executor:
+        await executor.execute_subtask_graph(
+            "mock_stage", subtask_graph, chunk_graph, tile_context
+        )
 
     assert len(task_context) == 1
     assert len(popped_seq) == 6

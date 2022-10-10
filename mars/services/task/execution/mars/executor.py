@@ -42,6 +42,7 @@ from ....scheduling import SchedulingAPI
 from ....subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
 from ...core import Task
 from ..api import TaskExecutor, register_executor_cls
+from ..utils import ResultTileablesLifecycle
 from .config import MarsExecutionConfig
 from .resource import ResourceEvaluator
 from .stage import TaskStageProcessor
@@ -94,7 +95,7 @@ class MarsTaskExecutor(TaskExecutor):
         self._stage_processors = []
         self._stage_tile_progresses = []
         self._cur_stage_processor = None
-        self._lifecycle_processed_tileables = set()
+        self._result_tileables_lifecycle = None
         self._subtask_decref_events = dict()
         self._meta_updated_tileables = set()
 
@@ -164,6 +165,9 @@ class MarsTaskExecutor(TaskExecutor):
         with Timer() as timer:
             await self._incref_fetch_tileables()
         profiling.set("incref_fetch_tileables", timer.duration)
+        self._result_tileables_lifecycle = ResultTileablesLifecycle(
+            self._tileable_graph, self._tile_context, self._lifecycle_api
+        )
 
     async def execute_subtask_graph(
         self,
@@ -174,7 +178,7 @@ class MarsTaskExecutor(TaskExecutor):
         context=None,
     ):
         available_bands = await self.get_available_band_resources()
-        await self._incref_result_tileables()
+        await self._result_tileables_lifecycle.incref_tiled()
         stage_processor = TaskStageProcessor(
             stage_id,
             self._task,
@@ -208,7 +212,7 @@ class MarsTaskExecutor(TaskExecutor):
         await self._decref_fetch_tileables()
         if error_or_cancelled:
             # revert result incref if error or cancelled
-            await self._decref_result_tileables()
+            await self._result_tileables_lifecycle.decref_tracked()
         await self._resource_evaluator.report()
 
     async def get_available_band_resources(self) -> Dict[BandType, Resource]:
@@ -335,38 +339,6 @@ class MarsTaskExecutor(TaskExecutor):
             if isinstance(tileable.op, Fetch) and tileable in self._raw_tile_context
         ]
         await self._lifecycle_api.decref_tileables(fetch_tileable_keys)
-
-    def _get_tiled(self, tileable: TileableType):
-        tileable = tileable.data if hasattr(tileable, "data") else tileable
-        return self._tile_context[tileable]
-
-    async def _incref_result_tileables(self):
-        processed = self._lifecycle_processed_tileables
-        # track and incref result tileables if tiled
-        tracks = [], []
-        for result_tileable in self._tileable_graph.result_tileables:
-            if result_tileable in processed:  # pragma: no cover
-                continue
-            try:
-                tiled_tileable = self._get_tiled(result_tileable)
-                tracks[0].append(result_tileable.key)
-                tracks[1].append(
-                    self._lifecycle_api.track.delay(
-                        result_tileable.key, [c.key for c in tiled_tileable.chunks]
-                    )
-                )
-                processed.add(result_tileable)
-            except KeyError:
-                # not tiled, skip
-                pass
-        if tracks:
-            await self._lifecycle_api.track.batch(*tracks[1])
-            await self._lifecycle_api.incref_tileables(tracks[0])
-
-    async def _decref_result_tileables(self):
-        await self._lifecycle_api.decref_tileables(
-            [t.key for t in self._lifecycle_processed_tileables]
-        )
 
     async def _incref_stage(self, stage_processor: "TaskStageProcessor"):
         subtask_graph = stage_processor.subtask_graph
