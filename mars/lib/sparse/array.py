@@ -505,8 +505,7 @@ class SparseArray(SparseNDArray):
             except ValueError as e:
                 # https://github.com/mars-project/mars/issues/3268
                 # https://github.com/scipy/scipy/issues/8678
-                if "WRITEBACKIFCOPY" not in e.args[0]:
-                    raise
+                assert "WRITEBACKIFCOPY" in e.args[0]
                 self.spmatrix = self.spmatrix.copy()
                 x = self.spmatrix.power(naked_other)
         else:

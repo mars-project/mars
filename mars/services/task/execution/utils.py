@@ -66,10 +66,7 @@ class ResultTileablesLifecycle:
         new_track_tileables = set()
         for tileable in self._lifecycle_untracked_tileables:
             try:
-                if hasattr(tileable, "data"):
-                    tiled_tileable = self._tile_context[tileable.data]
-                else:
-                    tiled_tileable = self._tile_context[tileable]
+                tiled_tileable = self._tile_context[tileable]
             except KeyError:
                 # not tiled, skip
                 pass
