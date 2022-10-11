@@ -18,11 +18,13 @@ import numpy as np
 
 from collections import Counter
 
+from ...... import dataframe as md
 from ...... import tensor as mt
 from ......config import Config
 from ......core import TileContext
 from ......core.context import get_context
 from ......core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from ......core.operand import ShuffleFetchType
 from ......lib.aio.isolation import new_isolation, stop_isolation
 from ......resource import Resource
 from ......serialization import serialize
@@ -61,7 +63,14 @@ def _gen_subtask_graph(t):
     bands = [(f"address_{i}", "numa-0") for i in range(4)]
     band_resource = dict((band, Resource(num_cpus=1)) for band in bands)
     task = Task("mock_task", "mock_session", tileable_graph)
-    analyzer = GraphAnalyzer(chunk_graph, band_resource, task, Config(), dict())
+    analyzer = GraphAnalyzer(
+        chunk_graph,
+        band_resource,
+        task,
+        Config(),
+        dict(),
+        shuffle_fetch_type=ShuffleFetchType.FETCH_BY_INDEX,
+    )
     subtask_graph = analyzer.gen_subtask_graph()
     return chunk_graph, subtask_graph
 
@@ -163,9 +172,7 @@ def test_ray_execute_subtask_basic():
     r = execute_subtask(subtask_id, serialize(subtask_chunk_graph), set(), False)
     np.testing.assert_array_equal(r, raw_expect)
     test_get_meta_chunk = subtask_chunk_graph.result_chunks[0]
-    r = execute_subtask(
-        subtask_id, serialize(subtask_chunk_graph), {test_get_meta_chunk.key}, False
-    )
+    r = execute_subtask(subtask_id, serialize(subtask_chunk_graph), 1, False)
     assert len(r) == 2
     meta_dict, r = r
     assert len(meta_dict) == 1
@@ -438,3 +445,60 @@ async def test_executor_context_gc(ray_start_regular_shared2):
     )
     assert chunk_keys1 == set(popped_seq[0:4])
     assert chunk_keys2 == set(popped_seq[4:])
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_execute_shuffle(ray_start_regular_shared2):
+    chunk_size, n_rows = 10, 50
+    df = md.DataFrame(
+        pd.DataFrame(np.random.rand(n_rows, 3), columns=list("abc")),
+        chunk_size=chunk_size,
+    )
+    df2 = df.groupby(["a"]).apply(lambda x: x)
+    chunk_graph, subtask_graph = _gen_subtask_graph(df2)
+    task = Task("mock_task", "mock_session", fuse_enabled=True)
+
+    class MockRayExecutor:
+        @staticmethod
+        def options(**kwargs):
+            num_returns = kwargs["num_returns"]
+
+            class _Wrapper:
+                @staticmethod
+                def remote(*args):
+                    args = [
+                        ray.get(a) if isinstance(a, ray.ObjectRef) else a for a in args
+                    ]
+                    r = execute_subtask(*args)
+                    assert len(r) == num_returns
+                    return [ray.put(i) for i in r]
+
+            return _Wrapper
+
+    mock_config = RayExecutionConfig.from_execution_config(
+        {
+            "backend": "ray",
+            "ray": {
+                "subtask_monitor_interval": 0,
+                "subtask_max_retries": 0,
+                "n_cpu": 1,
+                "n_worker": 1,
+                "subtask_cancel_timeout": 1,
+            },
+        }
+    )
+    tile_context = MockTileContext()
+    executor = MockRayTaskExecutor(
+        config=mock_config,
+        task=task,
+        tile_context=tile_context,
+        task_context={},
+        task_chunks_meta={},
+        lifecycle_api=None,
+        meta_api=None,
+    )
+    executor._ray_executor = MockRayExecutor
+    await executor.execute_subtask_graph(
+        "mock_stage", subtask_graph, chunk_graph, tile_context
+    )

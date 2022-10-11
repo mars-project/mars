@@ -24,8 +24,8 @@ An example to read csv from s3
 >>> mdf = md.read_csv("s3://bucket/example.csv", index_col=0, storage_options={
 >>>     "client_kwargs": {
 >>>         "endpoint_url": "http://192.168.1.12:9000",
->>>         "aws_access_key_id": "RwDeqMoctbLG3yly",
->>>         "aws_secret_access_key": "uwinWm1hTAGJ6Wnipa4tbE4SwO3Mx6Ek",
+>>>         "aws_access_key_id": "<s3 access id>",
+>>>         "aws_secret_access_key": "<s3 access key>",
 >>>     }})
 >>> # Export environment vars AWS_ENDPOINT_URL / AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY.
 >>> mdf = md.read_csv("s3://bucket/example.csv", index_col=0)

@@ -265,6 +265,7 @@ class GraphAnalyzer:
                         if c not in chunk_graph:
                             chunk_graph.add_node(c)
                         chunk_graph.add_edge(c, out_chunk)
+        stage_n_outputs = len(result_chunks)
         # add chunks with no successors into result chunks
         result_chunks.extend(
             c
@@ -313,6 +314,7 @@ class GraphAnalyzer:
             retryable=retryable,
             update_meta_chunks=update_meta_chunks,
             extra_config=self._extra_config,
+            stage_n_outputs=stage_n_outputs,
         )
 
         is_shuffle_proxy = False

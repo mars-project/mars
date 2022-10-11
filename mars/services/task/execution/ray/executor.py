@@ -124,7 +124,7 @@ async def _cancel_ray_task(obj_ref, kill_timeout: int = 3):
 def execute_subtask(
     subtask_id: str,
     subtask_chunk_graph: ChunkGraph,
-    output_meta_keys: Set[str],
+    output_meta_n_keys: int,
     is_mapper,
     *inputs,
 ):
@@ -137,8 +137,8 @@ def execute_subtask(
         id of subtask
     subtask_chunk_graph: ChunkGraph
         chunk graph for subtask
-    output_meta_keys: Set[str]
-        will be None if subtask is a shuffle mapper.
+    output_meta_n_keys: int
+        will be 0 if subtask is a shuffle mapper.
     is_mapper: bool
         Whether current subtask is a shuffle mapper. Note that shuffle reducers such as `DataFrameDropDuplicates`
         can be a mapper at the same time.
@@ -212,19 +212,18 @@ def execute_subtask(
         # So sort keys by reducer_index to ensure mapper outputs consist with reducer_ordinal,
         # then downstream can fetch shuffle blocks by reducer_ordinal.
         mapper_output = dict(sorted(mapper_output.items(), key=lambda item: item[0][1]))
-    if output_meta_keys:
+    if output_meta_n_keys:
         output_meta = {}
         # for non-shuffle subtask, record meta in supervisor.
-        for chunk in subtask_chunk_graph.result_chunks:
+        for chunk in subtask_chunk_graph.result_chunks[:output_meta_n_keys]:
             chunk_key = chunk.key
-            if chunk_key in output_meta_keys and chunk_key not in output_meta:
-                if isinstance(chunk.op, Fuse):
+            if chunk_key not in output_meta:
+                if isinstance(chunk.op, Fuse):  # pragma: no cover
                     # fuse op
                     chunk = chunk.chunk
                 data = context[chunk_key]
                 memory_size = calc_data_size(data)
                 output_meta[chunk_key] = get_chunk_params(chunk), memory_size
-        assert len(output_meta_keys) == len(output_meta)
         output_values.append(output_meta)
     output_values.extend(normal_output.values())
     output_values.extend(mapper_output.values())
@@ -505,12 +504,11 @@ class RayTaskExecutor(TaskExecutor):
             output_keys, out_count = _get_subtask_out_info(
                 subtask_chunk_graph, is_mapper, n_reducers
             )
-            subtask_output_meta_keys = result_meta_keys & output_keys
             if is_mapper:
                 # shuffle meta won't be recorded in meta service.
                 output_count = out_count
             else:
-                output_count = out_count + bool(subtask_output_meta_keys)
+                output_count = out_count + bool(subtask.stage_n_outputs)
             subtask_max_retries = subtask_max_retries if subtask.retryable else 0
             output_object_refs = self._ray_executor.options(
                 num_cpus=subtask_num_cpus,
@@ -519,7 +517,7 @@ class RayTaskExecutor(TaskExecutor):
             ).remote(
                 subtask.subtask_id,
                 serialize(subtask_chunk_graph, context={"serializer": "ray"}),
-                subtask_output_meta_keys,
+                subtask.stage_n_outputs,
                 is_mapper,
                 *input_object_refs,
             )
@@ -530,7 +528,7 @@ class RayTaskExecutor(TaskExecutor):
             self._cur_stage_first_output_object_ref_to_subtask[
                 output_object_refs[0]
             ] = subtask
-            if subtask_output_meta_keys:
+            if subtask.stage_n_outputs:
                 meta_object_ref, *output_object_refs = output_object_refs
                 # TODO(fyrestone): Fetch(not get) meta object here.
                 output_meta_object_refs.append(meta_object_ref)
@@ -614,9 +612,10 @@ class RayTaskExecutor(TaskExecutor):
                             memory_size=chunk_meta.memory_size,
                         )
                     )
-                update_lifecycles.append(
-                    self._lifecycle_api.track.delay(tileable.key, chunk_keys)
-                )
+            update_lifecycles.append(
+                self._lifecycle_api.track.delay(tileable.key, chunk_keys)
+            )
+        assert len(update_lifecycles) == len(tileable_keys)
         await self._meta_api.set_chunk_meta.batch(*update_metas)
         await self._lifecycle_api.track.batch(*update_lifecycles)
         await self._lifecycle_api.incref_tileables(tileable_keys)
