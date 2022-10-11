@@ -39,7 +39,6 @@ from .....utils import (
     calc_data_size,
     lazy_import,
     get_chunk_params,
-    ensure_coverage,
 )
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
