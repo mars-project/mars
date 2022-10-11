@@ -100,12 +100,7 @@ class _ArgWrapper:
 
 
 @lazy_import_on_load(ray)
-def _init_ray_metrics():
-    # Note: Must init metrics before using and here initializing metrics
-    # with ray backend.
-    from ....metrics import init_metrics
-
-    init_metrics("ray")
+def _init_ray_serialization_deserialization():
     _ray_serialize = ray.serialization.SerializationContext.serialize
     _ray_deserialize_object = ray.serialization.SerializationContext._deserialize_object
     serialized_bytes_counter = Metrics.counter(

@@ -1571,7 +1571,11 @@ class ProgressBar:
                 else:
                     self.progress_bar = None
             else:
-                self.progress_bar = tqdm(total=100)
+                self.progress_bar = tqdm(
+                    total=100,
+                    bar_format="{l_bar}{bar}| {n:6.2f}/{total_fmt} "
+                    "[{elapsed}<{remaining}, {rate_fmt}{postfix}]",
+                )
 
         self.last_progress: float = 0.0
 
