@@ -81,7 +81,8 @@ class ResultTileablesLifecycle:
                 new_track_tileables.add(tileable)
 
         if any(tracks):
-            # TODO(fyrestone): make the decref cancellation safe.
+            # TODO(fyrestone): make the decref cancellation safe or
+            # make all the tileable ids unique.
             self._lifecycle_untracked_tileables -= new_track_tileables
             self._lifecycle_tracked_tileables |= new_track_tileables
             await self._lifecycle_api.track.batch(*tracks[1])
