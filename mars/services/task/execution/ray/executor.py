@@ -781,6 +781,9 @@ class RayTaskExecutor(TaskExecutor):
         while len(completed_subtasks) < total:
             if len(object_ref_to_subtask) <= 0:  # pragma: no cover
                 await asyncio.sleep(interval_seconds)
+                # We should run ray.wait after at least one Ray task is submitted.
+                # Please refer to: https://github.com/mars-project/mars/issues/3274
+                continue
 
             # Only wait for unready subtask object refs.
             ready_objects, _ = await asyncio.to_thread(
