@@ -57,17 +57,10 @@ class TensorFrexp(TensorOutBinOp):
                 where = None
             kw["order"] = op.order
 
-            try:
-                args = [input]
-                if out1 is not None:
-                    args.append(out1)
-                if out2 is not None:
-                    args.append(out2)
-                mantissa, exponent = xp.frexp(*args, **kw)
-            except TypeError:
-                if where is None:
-                    raise
-                mantissa, exponent = xp.frexp(input)
+            # The out1 out2 are immutable because they are got from
+            # the shared memory.
+            mantissa, exponent = xp.frexp(input)
+            if where is not None:
                 mantissa, exponent = (
                     xp.where(where, mantissa, out1),
                     xp.where(where, exponent, out2),
