@@ -39,6 +39,7 @@ from .....utils import (
     calc_data_size,
     lazy_import,
     get_chunk_params,
+    ensure_coverage,
 )
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
@@ -149,6 +150,7 @@ def execute_subtask(
     -------
         subtask outputs and meta for outputs if `output_meta_keys` is provided.
     """
+    ensure_coverage(force_init=True)
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     logger.info("Begin to execute subtask: %s", subtask_id)
     # optimize chunk graph.
