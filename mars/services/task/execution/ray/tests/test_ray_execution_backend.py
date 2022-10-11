@@ -459,7 +459,7 @@ async def test_execute_shuffle(ray_start_regular_shared2):
     )
     df2 = df.groupby(["a"]).apply(lambda x: x)
     chunk_graph, subtask_graph = _gen_subtask_graph(df2)
-    task = Task("mock_task", "mock_session", fuse_enabled=True)
+    task = Task("mock_task", "mock_session", TileableGraph([]), fuse_enabled=True)
 
     class MockRayExecutor:
         @staticmethod
@@ -501,6 +501,7 @@ async def test_execute_shuffle(ray_start_regular_shared2):
         meta_api=None,
     )
     executor._ray_executor = MockRayExecutor
-    await executor.execute_subtask_graph(
-        "mock_stage", subtask_graph, chunk_graph, tile_context
-    )
+    async with executor:
+        await executor.execute_subtask_graph(
+            "mock_stage", subtask_graph, chunk_graph, tile_context
+        )
