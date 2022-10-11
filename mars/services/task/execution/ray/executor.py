@@ -150,7 +150,6 @@ def execute_subtask(
     -------
         subtask outputs and meta for outputs if `output_meta_keys` is provided.
     """
-    ensure_coverage()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     logger.info("Begin to execute subtask: %s", subtask_id)
     # optimize chunk graph.
