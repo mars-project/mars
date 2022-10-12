@@ -41,9 +41,20 @@ _support_kw_agg = pd_release_version >= (1, 1)
 @pytest.fixture
 def check_ref_counts():
     yield
+
+    import functools
     import gc
 
+    # In https://github.com/pandas-dev/pandas/pull/48023, pandas cache current frame in this PR
+    # which leads to failure of decref mechanism.
     gc.collect()
+    wrappers = [
+        a for a in gc.get_objects() if isinstance(a, functools._lru_cache_wrapper)
+    ]
+
+    for wrapper in wrappers:
+        wrapper.cache_clear()
+
     sess = get_default_session()
     assert len(sess._get_ref_counts()) == 0
 

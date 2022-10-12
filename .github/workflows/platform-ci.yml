@@ -81,7 +81,7 @@ jobs:
           else
             pip install virtualenv flaky
             if [ -n "$WITH_KUBERNETES" ]; then
-              pip install kubernetes
+              pip install kubernetes "pandas<1.5.0"
               kubectl get pods -A
             fi
             if [ -n "$WITH_HADOOP" ]; then

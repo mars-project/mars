@@ -26,7 +26,7 @@ from ...config import options
 from ...core import OutputType
 from ...serialization.serializables import AnyField, Int64Field, BoolField, StringField
 from ...tensor.utils import decide_chunk_sizes
-from ...utils import pd_release_version, NoDefault
+from ...utils import pd_release_version, no_default
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
@@ -300,7 +300,7 @@ def date_range(
     tz=None,
     normalize=False,
     name=None,
-    closed=NoDefault.no_default,
+    closed=no_default,
     inclusive=None,
     chunk_size=None,
     **kwargs,
@@ -461,14 +461,14 @@ def date_range(
         )
     freq = to_offset(freq)
 
-    if _date_range_use_inclusive and closed is not NoDefault.no_default:
+    if _date_range_use_inclusive and closed is not no_default:
         warnings.warn(
             "Argument `closed` is deprecated in favor of `inclusive`.", FutureWarning
         )
-    elif closed is NoDefault.no_default:
+    elif closed is no_default:
         closed = None
 
-    if inclusive is None and closed is not NoDefault.no_default:
+    if inclusive is None and closed is not no_default:
         inclusive = closed
 
     if start is not None:

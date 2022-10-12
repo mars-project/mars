@@ -259,6 +259,12 @@ def test_arrow_string_array_functions():
             else:
                 assert arrow_array.memory_usage(deep=True) == arrow_array.nbytes
 
+            # test unique
+            assert arrow_array.unique() == pd.Series(string_array).unique()
+            arrow_array2 = arrow_array.copy()
+            arrow_array2._force_use_pandas = True
+            assert arrow_array2.unique() == pd.Series(string_array).unique()
+
             # test isna
             np.testing.assert_array_equal(
                 has_na_arrow_array.isna(), has_na_string_array.isna()
