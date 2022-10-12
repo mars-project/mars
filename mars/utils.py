@@ -54,6 +54,7 @@ from typing import (
     Union,
     Callable,
     Optional,
+    Mapping,
 )
 from types import TracebackType
 from urllib.parse import urlparse
@@ -753,6 +754,27 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
         return result
 
 
+def merged_chunk_as_tileable_type(merged, tileable: TileableType):
+    from .tensor.core import TensorOrder
+    from .tensor.array_utils import get_array_module
+
+    if hasattr(tileable, "order") and tileable.ndim > 0:
+        module = get_array_module(merged)
+        if tileable.order == TensorOrder.F_ORDER and hasattr(module, "asfortranarray"):
+            merged = module.asfortranarray(merged)
+        elif tileable.order == TensorOrder.C_ORDER and hasattr(
+            module, "ascontiguousarray"
+        ):
+            merged = module.ascontiguousarray(merged)
+    if (
+        hasattr(tileable, "isscalar")
+        and tileable.isscalar()
+        and getattr(merged, "size", None) == 1
+    ):
+        merged = merged.item()
+    return merged
+
+
 def calc_nsplits(chunk_idx_to_shape: Dict[Tuple[int], Tuple[int]]) -> Tuple[Tuple[int]]:
     """
     Calculate a tiled entity's nsplits.
@@ -1259,7 +1281,7 @@ def find_objects(nested: Union[List, Dict], types: Union[Type, Tuple[Type]]) -> 
     return found
 
 
-def replace_objects(nested: Union[List, Dict], mapping: Dict) -> Union[List, Dict]:
+def replace_objects(nested: Union[List, Dict], mapping: Mapping) -> Union[List, Dict]:
     if not mapping:
         return nested
 

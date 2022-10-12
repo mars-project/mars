@@ -72,7 +72,7 @@ class Subtask(Serializable):
     update_meta_chunks: List[ChunkType] = ListField(
         "update_meta_chunks", FieldTypes.reference(ChunkData)
     )
-    # An unique and deterministic key for subtask compute logic. See logic_key in operator.py.
+    # A unique and deterministic key for subtask compute logic. See logic_key in operator.py.
     logic_key: str = StringField("logic_key")
     # index for subtask with same compute logic.
     logic_index: int = Int32Field("logic_index")
@@ -81,6 +81,8 @@ class Subtask(Serializable):
     # subtask can only run in specified bands in `expect_bands`
     bands_specified: bool = BoolField("bands_specified")
     required_resource: Resource = AnyField("required_resource", Resource)
+    # The count of result chunks that are the stage's results.
+    stage_n_outputs: int = Int32Field("stage_n_outputs")
 
     def __init__(
         self,
@@ -102,6 +104,7 @@ class Subtask(Serializable):
         logic_parallelism: int = None,
         bands_specified: bool = False,
         required_resource: Resource = None,
+        stage_n_outputs: int = 0,
     ):
         super().__init__(
             subtask_id=subtask_id,
@@ -122,6 +125,7 @@ class Subtask(Serializable):
             logic_parallelism=logic_parallelism,
             bands_specified=bands_specified,
             required_resource=required_resource,
+            stage_n_outputs=stage_n_outputs,
         )
         self._pure_depend_keys = None
         self._repr = None

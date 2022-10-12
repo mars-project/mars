@@ -23,7 +23,9 @@ from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.svm import SVC
 
 from .... import tensor as mt, dataframe as md, execute
+from ....conftest import MARS_CI_BACKEND
 from ....core import enter_mode
+from ....services.task.execution.api import Fetcher
 from .._bagging import (
     _extract_bagging_io,
     BaggingSample,
@@ -41,16 +43,24 @@ def _get_tileable_chunk_data(sync_session, tileable):
         meta_api = async_session._meta_api
 
         t, indexes = async_session._get_to_fetch_tileable(tileable)
+        fetcher = Fetcher.create(
+            MARS_CI_BACKEND, get_storage_api=async_session._get_storage_api
+        )
 
-        delays = [
-            meta_api.get_chunk_meta.delay(chunk.key, fields=["bands"])
-            for chunk in t.chunks
-        ]
-        band_infos = await meta_api.get_chunk_meta.batch(*delays)
-        for chunk, band_info in zip(t.chunks, band_infos):
-            band = band_info["bands"][0]
-            storage_api = await async_session._get_storage_api(band)
-            data = await storage_api.get(chunk.key)
+        get_metas = []
+        for chunk in t.chunks:
+            get_metas.append(
+                meta_api.get_chunk_meta.delay(
+                    chunk.key, fields=fetcher.required_meta_keys
+                )
+            )
+        metas = await meta_api.get_chunk_meta.batch(*get_metas)
+
+        for chunk, meta in zip(t.chunks, metas):
+            await fetcher.append(chunk.key, meta)
+        all_data = await fetcher.get()
+
+        for chunk, data in zip(t.chunks, all_data):
             tuples.append((t, chunk, data))
         return tuples
 

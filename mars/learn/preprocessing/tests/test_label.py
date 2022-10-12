@@ -184,7 +184,7 @@ def check_binarized_results(y, classes, pos_label, neg_label, expected):
 
         else:
             inversed = _inverse_binarize_thresholding(
-                binarized,
+                binarized.copy(),  # https://github.com/mars-project/mars/issues/3268
                 output_type=y_type,
                 classes=classes,
                 threshold=((neg_label + pos_label) / 2.0),
@@ -302,6 +302,13 @@ def test_label_encoder(setup, values, classes, unknown):
 
     with pytest.raises(ValueError, match="unseen labels"):
         le.transform(unknown)
+
+
+def test_label_encoder_missing_values_numeric(setup):
+    values = np.array([3, 1, np.nan, 5, 3, np.nan], dtype=float)
+    values_t = mt.tensor(values)
+    le = LabelEncoder()
+    assert_array_equal(le.fit_transform(values_t).fetch(), [1, 0, 3, 2, 1, 3])
 
 
 def test_label_encoder_negative_ints(setup):

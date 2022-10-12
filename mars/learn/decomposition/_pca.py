@@ -23,7 +23,6 @@ from sklearn.utils.extmath import fast_logdet
 
 from ... import tensor as mt
 from ... import remote as mr
-from ...core import ENTITY_TYPE
 from ...tensor.array_utils import get_array_module
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.utils import check_random_state
@@ -114,8 +113,6 @@ def _infer_dimension(spectrum, n_samples):
 
     The returned value will be in [1, n_features - 1].
     """
-    if isinstance(spectrum, ENTITY_TYPE):
-        spectrum = spectrum.fetch()
     xp = get_array_module(spectrum, nosparse=True)
 
     ll = xp.empty_like(spectrum)
@@ -481,7 +478,9 @@ class PCA(_BasePCA):
         # Postprocess the number of components required
         if n_components == "mle":
             n_components = mr.spawn(
-                _infer_dimension, args=(explained_variance_, n_samples)
+                _infer_dimension,
+                args=(explained_variance_, n_samples),
+                resolve_tileable_input=True,
             )
             ExecutableTuple([n_components, U, V]).execute(
                 session=session, **(run_kwargs or dict())

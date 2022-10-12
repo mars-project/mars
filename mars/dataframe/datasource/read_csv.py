@@ -129,7 +129,7 @@ class DataFrameReadCSV(
         df = op.outputs[0]
         chunk_op = op.copy().reset_key()
         chunk_op.offset = 0
-        chunk_op.size = file_size(op.path)
+        chunk_op.size = file_size(op.path, storage_options=op.storage_options)
         shape = df.shape
         new_chunk = chunk_op.new_chunk(
             None,
@@ -188,7 +188,7 @@ class DataFrameReadCSV(
         index_num = 0
         for path in paths:
             path = path_prefix + path
-            total_bytes = file_size(path)
+            total_bytes = file_size(path, storage_options=op.storage_options)
             offset = 0
             for _ in range(int(np.ceil(total_bytes * 1.0 / chunk_bytes))):
                 chunk_op = op.copy().reset_key()
