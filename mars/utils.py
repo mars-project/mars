@@ -1788,7 +1788,7 @@ class TreeReductionBuilder:
 def ensure_coverage(force_init=False):
     # make sure coverage is handled when starting with subprocess.Popen
     if (
-        not sys.platform.startswith("win") and "COV_CORE_SOURCE" in os.environ
+        not sys.platform.startswith("win") and "COV_CORE_DATAFILE" in os.environ
     ):  # pragma: no cover
         if force_init:
             # Ray executor is not forked by multiprocessing, so we have to
