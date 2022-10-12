@@ -1785,22 +1785,11 @@ class TreeReductionBuilder:
         return self._build_reduction(inputs, final=True)
 
 
-def ensure_coverage(force_init=False):
+def ensure_coverage():
     # make sure coverage is handled when starting with subprocess.Popen
     if (
-        not sys.platform.startswith("win") and "COV_CORE_DATAFILE" in os.environ
+        not sys.platform.startswith("win") and "COV_CORE_SOURCE" in os.environ
     ):  # pragma: no cover
-        if force_init:
-            # Ray executor is not forked by multiprocessing, so we have to
-            # init pytest cov manually.
-            try:
-                from pytest_cov import embed as pytest_cov_embed
-
-                if not pytest_cov_embed._active_cov:
-                    pytest_cov_embed._active_cov = pytest_cov_embed.init()
-                    assert pytest_cov_embed._active_cov, "Can't init pytest cov."
-            except ImportError:
-                pass
         try:
             from pytest_cov.embed import cleanup_on_sigterm
         except ImportError:
