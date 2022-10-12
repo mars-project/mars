@@ -18,12 +18,12 @@ import pandas as pd
 import pytest
 
 from ..... import dataframe as md
+from .....conftest import MARS_CI_BACKEND
 from .....deploy.oscar.ray import new_cluster
 from .....deploy.oscar.session import new_session
 from .....tests.core import require_ray
 from .....utils import lazy_import
 from ....contrib import raydataset as mdd
-
 
 ray = lazy_import("ray")
 ml_dataset = lazy_import("ray.util.data", rename="ml_dataset")
@@ -45,6 +45,7 @@ async def create_cluster(request):
         worker_num=2,
         worker_cpu=1,
         worker_mem=256 * 1024**2,
+        backend=MARS_CI_BACKEND,
     )
     async with client:
         yield client
@@ -72,16 +73,15 @@ async def test_dataset_related_classes(ray_start_regular_shared):
 
 @require_ray
 @pytest.mark.asyncio
-@pytest.mark.parametrize("test_option", [[5, 5], [5, 4], [None, None]])
-@pytest.mark.skip_ray_dag  # mldataset is not compatible with Ray DAG
+@pytest.mark.parametrize("chunk_size_and_num_shards", [[5, 5], [5, 4], [None, None]])
 async def test_convert_to_ray_mldataset(
-    ray_start_regular_shared, create_cluster, test_option
+    ray_start_regular_shared, create_cluster, chunk_size_and_num_shards
 ):
     assert create_cluster.session
-    session = new_session(address=create_cluster.address, default=True)
+    session = new_session(address=create_cluster.address, backend="ray")
     with session:
         value = np.random.rand(10, 10)
-        chunk_size, num_shards = test_option
+        chunk_size, num_shards = chunk_size_and_num_shards
         df: md.DataFrame = md.DataFrame(value, chunk_size=chunk_size)
         df.execute()
 
@@ -92,13 +92,12 @@ async def test_convert_to_ray_mldataset(
 @require_ray
 @pytest.mark.asyncio
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
-@pytest.mark.skip_ray_dag  # mldataset is not compatible with Ray DAG
 async def test_mars_with_xgboost(ray_start_regular_shared, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, train, predict
     from sklearn.datasets import load_breast_cancer
 
     assert create_cluster.session
-    session = new_session(address=create_cluster.address, default=True)
+    session = new_session(address=create_cluster.address, backend="ray")
     with session:
         train_x, train_y = load_breast_cancer(return_X_y=True, as_frame=True)
         df: md.DataFrame = md.concat(
