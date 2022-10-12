@@ -20,3 +20,4 @@ from .local import LocalFileSystem
 # noinspection PyUnresolvedReferences
 from .hdfs import HadoopFileSystem
 from .azure import AzureBlobFileSystem
+from .s3 import S3FileSystem

@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from collections import UserDict
 from collections.abc import Iterable
 from functools import partial
 
 from .. import opcodes
-from ..core import ENTITY_TYPE, ChunkData
+from ..core import ENTITY_TYPE, ChunkData, Tileable
 from ..core.custom_log import redirect_custom_log
 from ..core.operand import ObjectOperand
 from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
@@ -33,6 +33,8 @@ from ..utils import (
     enter_current_session,
     find_objects,
     replace_objects,
+    merge_chunks,
+    merged_chunk_as_tileable_type,
 )
 from .operands import RemoteOperandMixin
 
@@ -45,6 +47,7 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
     function_args = ListField("function_args")
     function_kwargs = DictField("function_kwargs")
     retry_when_fail = BoolField("retry_when_fail")
+    resolve_tileable_input = BoolField("resolve_tileable_input", default=False)
     n_output = Int32Field("n_output", default=None)
 
     @property
@@ -109,7 +112,7 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
                 # if input is tensor, DataFrame etc,
                 # do not prepare data, because the data may be to huge,
                 # and users can choose to fetch slice of the data themselves
-                pure_depends.extend([True] * len(inp.chunks))
+                pure_depends.extend([not op.resolve_tileable_input] * len(inp.chunks))
             else:
                 pure_depends.extend([False] * len(inp.chunks))
             chunk_inputs.extend(inp.chunks)
@@ -141,11 +144,21 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
     @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op: "RemoteFunction"):
-        mapping = {
-            inp: ctx[inp.key]
-            for inp, is_pure_dep in zip(op.inputs, op.pure_depends)
-            if not is_pure_dep
-        }
+        class MapperWrapper(UserDict):
+            def __getitem__(self, item):
+                if op.resolve_tileable_input and isinstance(item, Tileable):
+                    index_chunks = [(c.index, ctx[c.key]) for c in item.chunks]
+                    merged = merge_chunks(index_chunks)
+                    return merged_chunk_as_tileable_type(merged, item)
+                return super().__getitem__(item)
+
+        mapping = MapperWrapper(
+            {
+                inp: ctx[inp.key]
+                for inp, is_pure_dep in zip(op.inputs, op.pure_depends)
+                if not is_pure_dep
+            }
+        )
 
         function = op.function
         function_args = replace_objects(op.function_args, mapping)
@@ -171,7 +184,15 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
                 ctx[out.key] = r
 
 
-def spawn(func, args=(), kwargs=None, retry_when_fail=False, n_output=None, **kw):
+def spawn(
+    func,
+    args=(),
+    kwargs=None,
+    retry_when_fail=False,
+    resolve_tileable_input=False,
+    n_output=None,
+    **kw,
+):
     """
     Spawn a function and return a Mars Object which can be executed later.
 
@@ -185,6 +206,8 @@ def spawn(func, args=(), kwargs=None, retry_when_fail=False, n_output=None, **kw
        Kwargs to pass to function
     retry_when_fail: bool, default False
        If True, retry when function failed.
+    resolve_tileable_input: bool default False
+       If True, resolve tileable inputs as values.
     n_output: int
        Count of outputs for the function
 
@@ -277,6 +300,7 @@ def spawn(func, args=(), kwargs=None, retry_when_fail=False, n_output=None, **kw
         function_args=args,
         function_kwargs=kwargs,
         retry_when_fail=retry_when_fail,
+        resolve_tileable_input=resolve_tileable_input,
         n_output=n_output,
         **kw,
     )

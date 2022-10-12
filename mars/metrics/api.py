@@ -83,6 +83,7 @@ def shutdown_metrics():
 
 class _MetricWrapper(AbstractMetric):
     _metric: AbstractMetric
+    _log_not_init_error: bool
 
     def __init__(
         self,
@@ -96,6 +97,7 @@ class _MetricWrapper(AbstractMetric):
         self._tag_keys = tag_keys or tuple()
         self._type = metric_type
         self._metric = None
+        self._log_not_init_error = False
 
     @property
     def type(self):
@@ -115,7 +117,8 @@ class _MetricWrapper(AbstractMetric):
     def record(self, value=1, tags: Optional[Dict[str, str]] = None):
         if self._metric is not None:
             self._metric.record(value, tags)
-        else:
+        elif not self._log_not_init_error:
+            self._log_not_init_error = True
             logger.warning(
                 "Metric is not initialized, please call `init_metrics()` before using metrics."
             )

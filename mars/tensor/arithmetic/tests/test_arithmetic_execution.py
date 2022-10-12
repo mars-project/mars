@@ -25,7 +25,7 @@ from ....config import option_context
 from ....session import execute, fetch
 from ....tests.core import require_cupy
 from ....utils import ignore_warning
-from ...datasource import ones, tensor, zeros
+from ...datasource import ones, tensor, zeros, arange
 from .. import (
     add,
     cos,
@@ -349,6 +349,7 @@ def test_arctan2_execution(setup):
     np.testing.assert_equal(result, np.arctan2(0, raw2.A))
 
 
+@pytest.mark.ray_dag
 def test_frexp_execution(setup):
     data1 = np.random.RandomState(0).randint(0, 100, (5, 9, 6))
 
@@ -380,6 +381,17 @@ def test_frexp_execution(setup):
     res = o.execute().fetch()
     expected = sum(np.frexp(data1.toarray()))
     np.testing.assert_equal(res.toarray(), expected)
+
+    x = np.arange(9)
+    a = np.zeros(9)
+    b = np.zeros(9)
+    mx = arange(9)
+    ma = zeros(9)
+    mb = zeros(9)
+    res = frexp(mx, ma, mb, where=mx > 5).execute()
+    expected = np.frexp(x, a, b, where=x > 5)
+    np.testing.assert_equal(res[0], expected[0])
+    np.testing.assert_equal(res[1], expected[1])
 
 
 def test_frexp_order_execution(setup):
