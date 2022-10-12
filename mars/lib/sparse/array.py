@@ -500,7 +500,14 @@ class SparseArray(SparseNDArray):
         except TypeError:
             return NotImplemented
         if get_array_module(naked_other).isscalar(naked_other):
-            x = self.spmatrix.power(naked_other)
+            try:
+                x = self.spmatrix.power(naked_other)
+            except ValueError as e:  # pragma: no cover
+                # https://github.com/mars-project/mars/issues/3268
+                # https://github.com/scipy/scipy/issues/8678
+                assert "WRITEBACKIFCOPY" in e.args[0]
+                self.spmatrix = self.spmatrix.copy()
+                x = self.spmatrix.power(naked_other)
         else:
             if issparse(naked_other):
                 naked_other = other.toarray()

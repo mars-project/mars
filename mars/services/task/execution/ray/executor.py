@@ -39,7 +39,6 @@ from .....utils import (
     calc_data_size,
     lazy_import,
     get_chunk_params,
-    ensure_coverage,
 )
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
@@ -51,6 +50,7 @@ from ..api import (
     ExecutionChunkResult,
     register_executor_cls,
 )
+from ..utils import ResultTileablesLifecycle
 from .config import RayExecutionConfig, IN_RAY_CI
 from .context import (
     RayExecutionContext,
@@ -149,7 +149,6 @@ def execute_subtask(
     -------
         subtask outputs and meta for outputs if `output_meta_keys` is provided.
     """
-    ensure_coverage()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     logger.info("Begin to execute subtask: %s", subtask_id)
     # optimize chunk graph.
@@ -301,6 +300,7 @@ class RayTaskExecutor(TaskExecutor):
         self._meta_api = meta_api
 
         self._available_band_resources = None
+        self._result_tileables_lifecycle = None
 
         # For progress and task cancel
         self._pre_all_stages_progress = 0.0
@@ -366,6 +366,7 @@ class RayTaskExecutor(TaskExecutor):
         self._meta_api = None
 
         self._available_band_resources = None
+        self._result_tileables_lifecycle = None
 
         # For progress and task cancel
         self._pre_all_stages_progress = 1.0
@@ -417,6 +418,11 @@ class RayTaskExecutor(TaskExecutor):
         )
         await context.init()
         set_context(context)
+
+    async def __aenter__(self):
+        self._result_tileables_lifecycle = ResultTileablesLifecycle(
+            self._task.tileable_graph, self._tile_context, self._lifecycle_api
+        )
 
     async def execute_subtask_graph(
         self,
@@ -484,6 +490,9 @@ class RayTaskExecutor(TaskExecutor):
         self._cur_stage_tile_progress = (
             self._tile_context.get_all_progress() - self._pre_all_stages_tile_progress
         )
+        # Previous execution may have duplicate tileable ids, the tileable may be decref
+        # during execution, so we should track and incref the result tileables before execute.
+        await self._result_tileables_lifecycle.incref_tiled()
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
         shuffle_manager = ShuffleManager(subtask_graph)
         subtask_max_retries = self._config.get_subtask_max_retries()
@@ -579,6 +588,7 @@ class RayTaskExecutor(TaskExecutor):
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
+            await self._result_tileables_lifecycle.decref_tracked()
             try:
                 await self.cancel()
             except BaseException:  # noqa: E722  # nosec  # pylint: disable=bare-except
@@ -586,17 +596,17 @@ class RayTaskExecutor(TaskExecutor):
             return
 
         # Update info if no exception occurs.
-        tileable_keys = []
         update_metas = []
-        update_lifecycles = []
         for tileable in self._task.tileable_graph.result_tileables:
-            tileable_keys.append(tileable.key)
             tileable = tileable.data if hasattr(tileable, "data") else tileable
             chunk_keys = []
             for chunk in self._tile_context[tileable].chunks:
                 chunk_key = chunk.key
                 chunk_keys.append(chunk_key)
-                if chunk_key in self._task_context:
+                if (
+                    chunk_key in self._task_context
+                    and chunk_key in self._task_chunks_meta
+                ):
                     # Some tileable graph may have result chunks that not be executed,
                     # for example:
                     # r, b = cut(series, bins, retbins=True)
@@ -612,13 +622,8 @@ class RayTaskExecutor(TaskExecutor):
                             memory_size=chunk_meta.memory_size,
                         )
                     )
-            update_lifecycles.append(
-                self._lifecycle_api.track.delay(tileable.key, chunk_keys)
-            )
-        assert len(update_lifecycles) == len(tileable_keys)
-        await self._meta_api.set_chunk_meta.batch(*update_metas)
-        await self._lifecycle_api.track.batch(*update_lifecycles)
-        await self._lifecycle_api.incref_tileables(tileable_keys)
+        if update_metas:
+            await self._meta_api.set_chunk_meta.batch(*update_metas)
 
     async def get_available_band_resources(self) -> Dict[BandType, Resource]:
         if self._available_band_resources is None:
@@ -774,6 +779,9 @@ class RayTaskExecutor(TaskExecutor):
         while len(completed_subtasks) < total:
             if len(object_ref_to_subtask) <= 0:  # pragma: no cover
                 await asyncio.sleep(interval_seconds)
+                # We should run ray.wait after at least one Ray task is submitted.
+                # Please refer to: https://github.com/mars-project/mars/issues/3274
+                continue
 
             # Only wait for unready subtask object refs.
             ready_objects, _ = await asyncio.to_thread(

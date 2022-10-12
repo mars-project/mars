@@ -86,7 +86,7 @@ class MapReduceOperand(Operand):
             return deps
         return super().get_dependent_data_keys()
 
-    def _iter_mapper_keys(self, input_id=0):
+    def iter_mapper_keys(self, input_id=0):
         # key is mapper chunk key, index is mapper chunk index.
         input_chunk = self.inputs[input_id]
         if isinstance(input_chunk.op, ShuffleProxy):
@@ -103,7 +103,7 @@ class MapReduceOperand(Operand):
         return keys
 
     def iter_mapper_data(self, ctx, input_id=0, pop=False, skip_none=False):
-        for key in self._iter_mapper_keys(input_id):
+        for key in self.iter_mapper_keys(input_id):
             try:
                 if pop:
                     yield ctx.pop((key, self.reducer_index))

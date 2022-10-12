@@ -185,6 +185,7 @@ jobs:
             export MARS_CI_BACKEND=ray
             export RAY_idle_worker_killing_time_threshold_ms=60000
             pytest $PYTEST_CONFIG --durations=0 --timeout=500 mars/dataframe -v -s -m "not skip_ray_dag"
+            pytest $PYTEST_CONFIG --durations=0 --timeout=500 mars/learn --ignore mars/learn/contrib --ignore mars/learn/utils/tests/test_collect_ports.py -v -s -m "not skip_ray_dag"
             pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s -m ray_dag
             mv .coverage build/.coverage.ray_dag.file
             pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s mars/deploy/oscar/tests/test_ray_dag.py

@@ -446,7 +446,13 @@ class GraphAnalyzer:
                     chunk_color = chunk_to_colors[mapper_chunk]
                     same_color_chunks = color_to_chunks[chunk_color]
                     mappers = [
-                        c for c in same_color_chunks if c.op.stage == OperandStage.map
+                        c
+                        for c in same_color_chunks
+                        if c.op.stage == OperandStage.map
+                        and any(
+                            isinstance(succ.op, ShuffleProxy)
+                            for succ in self._chunk_graph.iter_successors(c)
+                        )
                     ]
                     if len(mappers) > 1:
                         # ensure every subtask contains only at most one mapper

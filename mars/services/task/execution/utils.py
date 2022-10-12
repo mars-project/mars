@@ -14,6 +14,8 @@
 
 
 from typing import List, Dict
+from ...lifecycle.api import LifecycleAPI
+from ....core import TileContext, TileableGraph
 from ....resource import Resource
 
 
@@ -43,3 +45,50 @@ def get_band_resources_from_config(
             worker_band_to_resource[f"gpu-{i}"] = Resource(num_gpus=1)
         bands_to_resource.append(worker_band_to_resource)
     return bands_to_resource
+
+
+class ResultTileablesLifecycle:
+    def __init__(
+        self,
+        tileable_graph: TileableGraph,
+        tile_context: TileContext,
+        lifecycle_api: LifecycleAPI,
+    ):
+        self._tileable_graph = tileable_graph
+        self._tile_context = tile_context
+        self._lifecycle_api = lifecycle_api
+        self._lifecycle_tracked_tileables = set()
+        self._lifecycle_untracked_tileables = set(self._tileable_graph.result_tileables)
+
+    async def incref_tiled(self):
+        # track and incref result tileables if tiled
+        tracks = [], []
+        new_track_tileables = set()
+        for tileable in self._lifecycle_untracked_tileables:
+            try:
+                tiled_tileable = self._tile_context[tileable]
+            except KeyError:
+                # not tiled, skip
+                pass
+            else:
+                tileable_key = tileable.key
+                tracks[0].append(tileable_key)
+                tracks[1].append(
+                    self._lifecycle_api.track.delay(
+                        tileable_key, [c.key for c in tiled_tileable.chunks]
+                    )
+                )
+                new_track_tileables.add(tileable)
+
+        if any(tracks):
+            # TODO(fyrestone): make the decref cancellation safe or
+            # make all the tileable ids unique.
+            self._lifecycle_untracked_tileables -= new_track_tileables
+            self._lifecycle_tracked_tileables |= new_track_tileables
+            await self._lifecycle_api.track.batch(*tracks[1])
+            await self._lifecycle_api.incref_tileables(tracks[0])
+
+    async def decref_tracked(self):
+        await self._lifecycle_api.decref_tileables(
+            [t.key for t in self._lifecycle_tracked_tileables]
+        )
