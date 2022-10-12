@@ -71,7 +71,7 @@ def _unique(values, *, return_inverse=False):
         def inv_mapper(c, idx):
             if c.flags.writeable:
                 c[c > idx] = idx
-            else:
+            else:  # pragma: no cover
                 # If c is got from the shared memory, it is immutable.
                 c = np.select([c <= idx], [c], idx)
             return c
