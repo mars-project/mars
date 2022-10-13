@@ -31,13 +31,14 @@ from ....dataframe import DataFrame
 from ....tensor import arange, tensor
 from ....tensor.random import rand
 from ....tests.core import require_cudf
-from ....utils import lazy_import, pd_release_version
+from ....utils import lazy_import, pd_release_version, no_default
 from ... import eval as mars_eval, cut, qcut, get_dummies
 from ...datasource.dataframe import from_pandas as from_pandas_df
 from ...datasource.series import from_pandas as from_pandas_series
 from ...datasource.index import from_pandas as from_pandas_index
 from .. import to_gpu, to_cpu
 from ..bloom_filter import filter_by_bloom_filter
+from ..shift import _enable_no_default, _with_column_freq_bug
 from ..to_numeric import to_numeric
 from ..rebalance import DataFrameRebalance
 
@@ -46,6 +47,7 @@ pytestmark = pytest.mark.pd_compat
 cudf = lazy_import("cudf")
 
 _explode_with_ignore_index = pd_release_version[:2] >= (1, 1)
+_interval_range_closed_arg = pd_release_version[:2] >= (1, 5)
 
 
 @require_cudf
@@ -815,7 +817,10 @@ def test_cut_execution(setup):
     raw = rs.random(15) * 1000
     s = pd.Series(raw, index=[f"i{i}" for i in range(15)])
     bins = [10, 100, 500]
-    ii = pd.interval_range(10, 500, 3)
+    if _interval_range_closed_arg:
+        ii = pd.interval_range(10, 500, 3, closed="right")
+    else:
+        ii = pd.interval_range(10, 500, 3)
     labels = ["a", "b"]
 
     t = tensor(raw, chunk_size=4)
@@ -1154,6 +1159,10 @@ def test_q_cut_execution(setup):
 
 
 def test_shift_execution(setup):
+    fill_value_default = no_default
+    if not _enable_no_default or _with_column_freq_bug:
+        fill_value_default = None
+
     # test dataframe
     rs = np.random.RandomState(0)
     raw = pd.DataFrame(
@@ -1164,7 +1173,7 @@ def test_shift_execution(setup):
 
     for periods in (2, -2, 6, -6):
         for axis in (0, 1):
-            for fill_value in (None, 0, 1.0):
+            for fill_value in (fill_value_default, 0, 1.0):
                 r = df.shift(periods=periods, axis=axis, fill_value=fill_value)
 
                 try:
@@ -1187,7 +1196,7 @@ def test_shift_execution(setup):
     # test freq not None
     for periods in (2, -2):
         for axis in (0, 1):
-            for fill_value in (None, 0, 1.0):
+            for fill_value in (fill_value_default, 0, 1.0):
                 r = df2.shift(
                     periods=periods, freq="D", axis=axis, fill_value=fill_value
                 )
@@ -1217,7 +1226,7 @@ def test_shift_execution(setup):
 
     series = from_pandas_series(s, chunk_size=5)
     for periods in (0, 2, -2, 6, -6):
-        for fill_value in (None, 0, 1.0):
+        for fill_value in (fill_value_default, 0, 1.0):
             r = series.shift(periods=periods, fill_value=fill_value)
 
             try:
@@ -1234,7 +1243,7 @@ def test_shift_execution(setup):
     # test freq not None
     series2 = from_pandas_series(s2, chunk_size=5)
     for periods in (2, -2):
-        for fill_value in (None, 0, 1.0):
+        for fill_value in (fill_value_default, 0, 1.0):
             r = series2.shift(periods=periods, freq="D", fill_value=fill_value)
 
             try:

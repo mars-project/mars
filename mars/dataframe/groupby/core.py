@@ -23,7 +23,7 @@ from ...core import ENTITY_TYPE, Entity, OutputType
 from ...core.operand import OperandStage, MapReduceOperand
 from ...lib.groupby_wrapper import wrapped_groupby
 from ...serialization.serializables import BoolField, Int32Field, AnyField
-from ...utils import lazy_import
+from ...utils import lazy_import, pd_release_version, no_default
 from ..align import align_dataframe_series, align_series_series
 from ..initializer import Series as asseries
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE
@@ -39,6 +39,9 @@ from ..operands import DataFrameOperandMixin, DataFrameShuffleProxy
 
 
 cudf = lazy_import("cudf")
+
+_GROUP_KEYS_NO_DEFAULT = pd_release_version >= (1, 5, 0)
+_default_group_keys = no_default if _GROUP_KEYS_NO_DEFAULT else True
 
 
 class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
@@ -497,11 +500,13 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
                 level=op.level,
                 as_index=op.as_index,
                 sort=op.sort,
-                group_keys=op.group_keys,
+                group_keys=op.group_keys if op.group_keys is not None else no_default,
             )
 
 
-def groupby(df, by=None, level=None, as_index=True, sort=True, group_keys=True):
+def groupby(
+    df, by=None, level=None, as_index=True, sort=True, group_keys=_default_group_keys
+):
     if not as_index and df.op.output_types[0] == OutputType.series:
         raise TypeError("as_index=False only valid with DataFrame")
 
@@ -519,7 +524,7 @@ def groupby(df, by=None, level=None, as_index=True, sort=True, group_keys=True):
         level=level,
         as_index=as_index,
         sort=sort,
-        group_keys=group_keys,
+        group_keys=group_keys if group_keys is not no_default else None,
         output_types=output_types,
     )
     return op(df)

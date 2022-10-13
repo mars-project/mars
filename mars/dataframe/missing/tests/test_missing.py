@@ -21,6 +21,9 @@ import pytest
 from .... import dataframe as md
 from ....core import tile
 from ....core.operand import OperandStage
+from ....utils import pd_release_version
+
+_drop_na_enable_no_default = pd_release_version[:2] >= (1, 5)
 
 
 def test_fill_na():
@@ -124,6 +127,10 @@ def test_drop_na():
     # not supporting drop with axis=1
     with pytest.raises(NotImplementedError):
         md.DataFrame(df_raw).dropna(axis=1)
+
+    if _drop_na_enable_no_default:
+        with pytest.raises(TypeError):
+            md.DataFrame(df_raw).dropna(how="any", thresh=0)
 
     # only one chunk in columns, can run dropna directly
     r = tile(md.DataFrame(df_raw, chunk_size=(4, 10)).dropna())

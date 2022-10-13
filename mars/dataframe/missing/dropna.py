@@ -21,9 +21,12 @@ from ... import opcodes
 from ...core import OutputType, recursive_tile
 from ...config import options
 from ...serialization.serializables import AnyField, BoolField, StringField, Int32Field
+from ...utils import no_default, pd_release_version
 from ..align import align_dataframe_series
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, validate_axis
+
+_drop_na_enable_no_default = pd_release_version[:2] >= (1, 5)
 
 
 class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
@@ -135,6 +138,10 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
 
+        if not _drop_na_enable_no_default:
+            op._how = None if op.how is no_default else op.how
+            op._thresh = None if op.thresh is no_default else op.thresh
+
         # series tiling will go here
         if len(in_df.chunk_shape) == 1 or in_df.chunk_shape[1] == 1:
             return cls._tile_drop_directly(op)
@@ -197,7 +204,10 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
             if op.how == "all":
                 in_counts = in_counts[in_counts > 0]
             else:
-                thresh = op.subset_size if op.thresh is None else op.thresh
+                if op.thresh is None or op.thresh is no_default:
+                    thresh = op.subset_size
+                else:  # pragma: no cover
+                    thresh = op.thresh
                 in_counts = in_counts[in_counts >= thresh]
 
             ctx[op.outputs[0].key] = in_data.reindex(in_counts.index)
@@ -205,7 +215,9 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
             pd.reset_option("mode.use_inf_as_na")
 
 
-def df_dropna(df, axis=0, how="any", thresh=None, subset=None, inplace=False):
+def df_dropna(
+    df, axis=0, how=no_default, thresh=no_default, subset=None, inplace=False
+):
     """
     Remove missing values.
 
@@ -304,6 +316,16 @@ def df_dropna(df, axis=0, how="any", thresh=None, subset=None, inplace=False):
     axis = validate_axis(axis, df)
     if axis != 0:
         raise NotImplementedError("Does not support dropna on DataFrame when axis=1")
+    if (
+        _drop_na_enable_no_default
+        and (how is not no_default)
+        and (thresh is not no_default)
+    ):
+        raise TypeError(
+            "You cannot set both the how and thresh arguments at the same time."
+        )
+    if thresh is no_default and how is no_default:
+        how = "any"
 
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameDropNA(
