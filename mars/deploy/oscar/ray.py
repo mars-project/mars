@@ -307,6 +307,7 @@ class ClusterStateActor(mo.StatelessActor):
 
 async def new_cluster(
     cluster_name: str = None,
+    supervisor_cpu: int = 1,
     supervisor_mem: int = 1 * 1024**3,
     worker_num: int = 1,
     worker_cpu: int = 2,
@@ -328,6 +329,7 @@ async def new_cluster(
     )
     cluster = RayCluster(
         cluster_name,
+        supervisor_cpu,
         supervisor_mem,
         worker_num,
         worker_cpu,
@@ -404,6 +406,7 @@ class RayCluster:
     def __init__(
         self,
         cluster_name: str,
+        supervisor_cpu: int = 1,
         supervisor_mem: int = 1 * 1024**3,
         worker_num: int = 1,
         worker_cpu: int = 2,
@@ -415,6 +418,7 @@ class RayCluster:
         # load third party extensions.
         init_extension_entrypoints()
         self._cluster_name = cluster_name
+        self._supervisor_cpu = supervisor_cpu
         self._supervisor_mem = supervisor_mem
         self._n_supervisor_process = n_supervisor_process
         self._worker_num = worker_num
@@ -449,6 +453,7 @@ class RayCluster:
         if self.backend == "mars":
             await self.start_oscar(
                 self._n_supervisor_process,
+                self._supervisor_cpu,
                 self._supervisor_mem,
                 self._worker_num,
                 self._worker_cpu,
@@ -465,13 +470,24 @@ class RayCluster:
             )
             assert self._n_supervisor_process == 0, self._n_supervisor_process
             await self.start_oscar(
-                self._n_supervisor_process, self._supervisor_mem, 0, 0, 0
+                self._n_supervisor_process,
+                self._supervisor_cpu,
+                self._supervisor_mem,
+                0,
+                0,
+                0,
             )
         else:
             raise ValueError(f"Unsupported backend type: {self.backend}.")
 
     async def start_oscar(
-        self, n_supervisor_process, supervisor_mem, worker_num, worker_cpu, worker_mem
+        self,
+        n_supervisor_process,
+        supervisor_cpu,
+        supervisor_mem,
+        worker_num,
+        worker_cpu,
+        worker_mem,
     ):
         logger.info("Start cluster with config %s", self._config)
         # init metrics to guarantee metrics use in driver
@@ -504,11 +520,11 @@ class RayCluster:
             self._config["cluster"] = dict()
         self._config["cluster"]["lookup_address"] = self.supervisor_address
         address_to_resources[node_placement_to_address(self._cluster_name, 0)] = {
-            "CPU": 1,
+            "CPU": supervisor_cpu,
             # "memory": supervisor_mem,
         }
         worker_addresses = []
-        if supervisor_standalone:
+        if supervisor_standalone or worker_num == 0:
             for worker_index in range(1, worker_num + 1):
                 worker_address = process_placement_to_address(
                     self._cluster_name, worker_index, 0
