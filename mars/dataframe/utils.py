@@ -1446,6 +1446,10 @@ def clean_up_func(op):
         return
 
     # Note: op.func_key is set only when func was put into storage.
+    # Under ray backend, func will be put into storage.
+    # While under mars backend, since storage service is empty on supervisor,
+    # func won't be put into storage but serialized in advance to reduce upcoming
+    # expenses brought by serializations and deserializations during subtask transmission.
     if whether_to_clean_up(op, threshold) is True:
         assert (
             op.logic_key is not None
