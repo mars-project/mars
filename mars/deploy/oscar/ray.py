@@ -363,6 +363,7 @@ new_cluster_in_ray.__doc__ = new_cluster.__doc__
 def new_ray_session(
     address: str = None,
     session_id: str = None,
+    backend: str = "mars",
     default: bool = True,
     **new_cluster_kwargs,
 ) -> AbstractSession:
@@ -374,6 +375,8 @@ def new_ray_session(
         mars web server address.
     session_id: str
         session id. If not specified, will be generated automatically.
+    backend: str
+        The executor backend. Available values are "mars" and "ray", default is "mars".
     default: bool
         whether set the session as default session.
     new_cluster_kwargs:
@@ -381,11 +384,11 @@ def new_ray_session(
     """
     client = None
     if not address:
-        client = new_cluster_in_ray(**new_cluster_kwargs)
+        client = new_cluster_in_ray(backend=backend, **new_cluster_kwargs)
         session_id = session_id or client.session.session_id
         address = client.address
     session = new_session(
-        address=address, session_id=session_id, backend="mars", default=default
+        address=address, session_id=session_id, backend=backend, default=default
     )
     session.client = client
     if default:
