@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import atexit
 import threading
 from typing import Dict, Optional
 
@@ -89,3 +90,6 @@ def get_isolation(name: str = DEFAULT_ISOLATION):
 def stop_isolation(name: str = DEFAULT_ISOLATION):
     if name in _name_to_isolation:
         return _name_to_isolation.pop(name).stop()
+
+
+atexit.register(stop_isolation)
