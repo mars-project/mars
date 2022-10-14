@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....dataframe.indexing.getitem import DataFrameIndex
+from .core import register_operand_based_optimization_rule
 from ..common.column_pruning import GetitemPruneDataSource
-from .core import register_chunk_optimization_rule
+from ....dataframe.indexing.getitem import DataFrameIndex
 
 
-@register_chunk_optimization_rule([DataFrameIndex])
+@register_operand_based_optimization_rule([DataFrameIndex])
 class ChunkGetitemPruneDataSource(GetitemPruneDataSource):
     """
     Prune data source via getitem.

@@ -15,20 +15,22 @@
 
 from typing import List, Type
 
-from ....core import OperandType, ChunkGraph
-from ..core import Optimizer, OptimizationRule, OptimizationRecords
+from ..core import Optimizer, OptimizationRecords, OperandBasedOptimizationRule
+from ....core import ChunkGraph
+from ....typing import OperandType
 
 
 class ChunkOptimizer(Optimizer):
     """
-    Tileable Optimizer
+    Chunk Optimizer
     """
 
 
-def register_chunk_optimization_rule(op_types: List[Type[OperandType]]):
-    def wrap(rule_type: Type[OptimizationRule]):
-        ChunkOptimizer.register_rule(op_types, rule_type)
-        return rule_type
+def register_operand_based_optimization_rule(op_types: List[Type[OperandType]]):
+    def wrap(rule_type: Type[OperandBasedOptimizationRule]):
+        for op_type in op_types:
+            rule_type.register_operand(op_type)
+        ChunkOptimizer.register_rule(rule_type)
 
     return wrap
 

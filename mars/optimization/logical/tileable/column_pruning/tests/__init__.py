@@ -1,4 +1,4 @@
-# Copyright 1999-2021 Alibaba Group Holding Ltd.
+# Copyright 2022 XProbe Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,14 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from .core import register_operand_based_optimization_rule
-from ..common.head import HeadPushDown
-from ....dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
-
-
-@register_operand_based_optimization_rule([DataFrameIlocGetItem, SeriesIlocGetItem])
-class ChunkHeadPushDown(HeadPushDown):
-    """
-    Head push down.
-    """

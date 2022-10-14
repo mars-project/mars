@@ -36,7 +36,7 @@ from ...serialization.serializables.core import SerializableSerializer
 from ...typing import OperandType
 from ...utils import AttributeDict, classproperty, tokenize
 from ..base import Base
-from ..entity.core import Entity, EntityData
+from ..entity.core import Entity, EntityData, ENTITY_TYPE
 from ..entity.chunks import Chunk
 from ..entity.tileables import Tileable
 from ..entity.output_types import OutputType
@@ -232,7 +232,7 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
         setattr(self, "_inputs", inputs)
 
     @property
-    def inputs(self) -> List[Union[Chunk, Tileable]]:
+    def inputs(self) -> List[Union[ENTITY_TYPE]]:
         inputs = self._inputs
         if inputs is None:
             inputs = self._inputs = []

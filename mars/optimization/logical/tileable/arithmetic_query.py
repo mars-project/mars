@@ -27,8 +27,8 @@ from ....dataframe.indexing.setitem import DataFrameSetitem
 from ....typing import OperandType
 from ....utils import implements
 from ..core import OptimizationRecord, OptimizationRecordType
-from ..tileable.core import register_tileable_optimization_rule
-from .core import OptimizationRule
+from ..tileable.core import register_operand_based_optimization_rule
+from .core import OperandBasedOptimizationRule
 
 
 class EvalExtractRecord(NamedTuple):
@@ -66,8 +66,8 @@ _func_name_to_builder = {
 _extract_result_cache = weakref.WeakKeyDictionary()
 
 
-@register_tileable_optimization_rule([DataFrameUnaryUfunc, DataFrameBinopUfunc])
-class SeriesArithmeticToEval(OptimizationRule):
+@register_operand_based_optimization_rule([DataFrameUnaryUfunc, DataFrameBinopUfunc])
+class SeriesArithmeticToEval(OperandBasedOptimizationRule):
     _var_counter = 0
 
     @classmethod
@@ -75,8 +75,8 @@ class SeriesArithmeticToEval(OptimizationRule):
         cls._var_counter += 1
         return cls._var_counter
 
-    @implements(OptimizationRule.match)
-    def match(self, op: OperandType) -> bool:
+    @implements(OperandBasedOptimizationRule.match_operand)
+    def match_operand(self, op: OperandType) -> bool:
         _, expr, _ = self._extract_eval_expression(op.outputs[0])
         return expr is not None
 
@@ -183,8 +183,8 @@ class SeriesArithmeticToEval(OptimizationRule):
             in_tileable, _func_name_to_builder[func_name](lhs_expr, rhs_expr), variables
         )
 
-    @implements(OptimizationRule.apply)
-    def apply(self, op: OperandType):
+    @implements(OperandBasedOptimizationRule.apply_to_operand)
+    def apply_to_operand(self, op: OperandType):
         node = op.outputs[0]
         in_tileable, expr, variables = self._extract_eval_expression(node)
         opt_in_tileable = self._records.get_optimization_result(
@@ -219,8 +219,9 @@ class SeriesArithmeticToEval(OptimizationRule):
             pass
 
 
-class _DataFrameEvalRewriteRule(OptimizationRule):
-    def match(self, op: OperandType) -> bool:
+class _DataFrameEvalRewriteRule(OperandBasedOptimizationRule):
+    @implements(OperandBasedOptimizationRule.match_operand)
+    def match_operand(self, op: OperandType) -> bool:
         optimized_eval_op = self._get_optimized_eval_op(op)
         if (
             not isinstance(optimized_eval_op, DataFrameEval)
@@ -251,7 +252,8 @@ class _DataFrameEvalRewriteRule(OptimizationRule):
             OptimizationRecord(original_node, new_node, OptimizationRecordType.replace)
         )
 
-    def apply(self, op: DataFrameIndex):
+    @implements(OperandBasedOptimizationRule.apply_to_operand)
+    def apply_to_operand(self, op: DataFrameIndex):
         node = op.outputs[0]
         in_tileable = op.inputs[0]
         in_columnar_node = self._get_input_columnar_node(op)
@@ -269,16 +271,17 @@ class _DataFrameEvalRewriteRule(OptimizationRule):
         self._update_op_node(node, new_node)
 
 
-@register_tileable_optimization_rule([DataFrameIndex])
+@register_operand_based_optimization_rule([DataFrameIndex])
 class DataFrameBoolEvalToQuery(_DataFrameEvalRewriteRule):
-    def match(self, op: DataFrameIndex) -> bool:
+    @implements(OperandBasedOptimizationRule.match_operand)
+    def match_operand(self, op: DataFrameIndex) -> bool:
         if (
             op.col_names is not None
             or not isinstance(op.mask, md.Series)
             or op.mask.dtype != bool
         ):
             return False
-        return super().match(op)
+        return super().match_operand(op)
 
     def _get_input_columnar_node(self, op: OperandType) -> ENTITY_TYPE:
         return op.mask
@@ -295,12 +298,13 @@ class DataFrameBoolEvalToQuery(_DataFrameEvalRewriteRule):
         )
 
 
-@register_tileable_optimization_rule([DataFrameSetitem])
+@register_operand_based_optimization_rule([DataFrameSetitem])
 class DataFrameEvalSetItemToEval(_DataFrameEvalRewriteRule):
-    def match(self, op: DataFrameSetitem):
+    @implements(OperandBasedOptimizationRule.match_operand)
+    def match_operand(self, op: DataFrameSetitem):
         if not isinstance(op.indexes, str) or not isinstance(op.value, md.Series):
             return False
-        return super().match(op)
+        return super().match_operand(op)
 
     def _get_input_columnar_node(self, op: DataFrameSetitem) -> ENTITY_TYPE:
         return op.value
@@ -317,8 +321,9 @@ class DataFrameEvalSetItemToEval(_DataFrameEvalRewriteRule):
             self_target=True,
         )
 
-    def apply(self, op: DataFrameIndex):
-        super().apply(op)
+    @implements(OperandBasedOptimizationRule.apply_to_operand)
+    def apply_to_operand(self, op: DataFrameIndex):
+        super().apply_to_operand(op)
 
         node = op.outputs[0]
         opt_node = self._records.get_optimization_result(node, node)
