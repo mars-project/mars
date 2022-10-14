@@ -17,7 +17,6 @@ import concurrent.futures as futures
 import itertools
 import logging
 import time
-import traceback
 from abc import ABC
 from collections import namedtuple
 from dataclasses import dataclass
@@ -131,10 +130,9 @@ def _init_ray_serialization_deserialization():
             serialization_time_mills.record(timer.duration * 1000)
             if bytes_length > 1 * 1024 * 1024 * 1024:
                 logger.warning(
-                    "Serialize large object (%s>1GB) through ray channel, message: %s.\n%s",
+                    "Serialize large message (%s bytes > 1GB) through ray channel, message: %s.",
                     bytes_length,
-                    message,
-                    "".join(traceback.format_stack()),
+                    msg_to_simple_str(message),
                 )
             if timer.duration * 1000 > SERIALIZATION_TIMEOUT_MILLS:  # pragma: no cover
                 report_event(
