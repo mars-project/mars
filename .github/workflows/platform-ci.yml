@@ -184,7 +184,8 @@ jobs:
           if [ -n "$WITH_RAY_DAG" ]; then
             export MARS_CI_BACKEND=ray
             export RAY_idle_worker_killing_time_threshold_ms=60000
-            pytest $PYTEST_CONFIG --durations=0 --timeout=500 mars/dataframe -v -s -m "not skip_ray_dag"
+            pytest $PYTEST_CONFIG --durations=0 --timeout=500 mars/dataframe -v -s -m "not skip_ray_dag" --ignore=mars/dataframe/contrib/raydataset
+            pytest $PYTEST_CONFIG --durations=0 --timeout=500 mars/dataframe/contrib/raydataset -v -s -m "not skip_ray_dag" 
             pytest $PYTEST_CONFIG --durations=0 --timeout=500 mars/tensor -v -s -m "not skip_ray_dag"
             pytest $PYTEST_CONFIG --durations=0 --timeout=500 mars/learn --ignore mars/learn/contrib --ignore mars/learn/utils/tests/test_collect_ports.py -v -s -m "not skip_ray_dag"
             pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s -m ray_dag
