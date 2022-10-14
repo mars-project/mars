@@ -716,6 +716,7 @@ class ReductionPreStep(NamedTuple):
 
 class ReductionAggStep(NamedTuple):
     input_key: str
+    raw_func_name: Optional[str]
     map_func_name: Optional[str]
     agg_func_name: Optional[str]
     custom_reduction: Optional[CustomReduction]
@@ -976,6 +977,7 @@ class ReductionCompiler:
             agg_funcs.append(
                 ReductionAggStep(
                     agg_input_key,
+                    func_name,
                     map_func_name,
                     agg_func_name,
                     custom_reduction,

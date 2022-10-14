@@ -28,6 +28,14 @@ def _install():
     from .sample import groupby_sample
     from .fill import ffill, bfill, fillna
 
+    # Just for enabling custom agg function registration.
+    # Therefore, del this immediately after import.
+    from .nunique import (
+        DataFrameCustomGroupByNuniqueMixin,
+    )
+
+    del DataFrameCustomGroupByNuniqueMixin
+
     for cls in DATAFRAME_TYPE:
         setattr(cls, "groupby", groupby)
 

@@ -78,6 +78,7 @@ _agg_functions = {
     "skew": lambda x, skipna=True, bias=False: x.skew(skipna=skipna, bias=bias),
     "kurt": lambda x, skipna=True, bias=False: x.kurt(skipna=skipna, bias=bias),
     "kurtosis": lambda x, skipna=True, bias=False: x.kurtosis(skipna=skipna, bias=bias),
+    "nunique": lambda x: x.nunique(),
 }
 
 
@@ -708,6 +709,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         agg_dfs = []
         for (
             input_key,
+            _,
             map_func_name,
             _agg_func_name,
             custom_reduction,
@@ -752,6 +754,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         combines = []
         for (
             _input_key,
+            _,
             _map_func_name,
             agg_func_name,
             custom_reduction,
@@ -790,6 +793,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         # perform agg
         for (
             _input_key,
+            _,
             _map_func_name,
             agg_func_name,
             custom_reduction,
