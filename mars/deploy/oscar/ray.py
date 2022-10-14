@@ -466,6 +466,7 @@ class RayCluster:
                     n_worker=self._worker_num,
                     n_cpu=self._worker_num * self._worker_cpu,
                     mem_bytes=self._worker_mem,
+                    subtask_num_cpus=self._worker_cpu,
                 )
             )
             assert self._n_supervisor_process == 0, self._n_supervisor_process
