@@ -51,6 +51,10 @@ try:
 except ImportError:  # pragma: no cover
     pa = None
     pa_null = None
+try:
+    import pyarrow.compute as pc
+except ImportError:  # pragma: no cover
+    pc = None
 
 from ..config import options
 from ..core import is_kernel_mode
@@ -58,6 +62,12 @@ from ..utils import pd_release_version, tokenize
 
 _use_bool_any_all = pd_release_version[:2] >= (1, 3)
 _use_extension_index = pd_release_version[:2] >= (1, 4)
+_object_engine_for_string_array = pd_release_version[:2] >= (1, 5)
+
+if _object_engine_for_string_array:
+    StringArrayBase = type(StringArrayBase)(
+        "StringArrayBase", StringArrayBase.__bases__, dict(StringArrayBase.__dict__)
+    )
 
 
 class ArrowDtype(ExtensionDtype):
@@ -254,6 +264,8 @@ class ArrowArray(ExtensionArray):
             arrow_array = values
         elif isinstance(values, pa.Array):
             arrow_array = pa.chunked_array([values])
+        elif len(values) == 0:  # pragma: no cover
+            arrow_array = pa.chunked_array([pa.array([], type=dtype.arrow_type)])
         else:
             arrow_array = pa.chunked_array([pa.array(values, type=dtype.arrow_type)])
 
@@ -560,6 +572,11 @@ class ArrowArray(ExtensionArray):
             return type(self)(copy_obj(self._arrow_array))
         else:
             return type(self)(self._ndarray.copy())
+
+    def unique(self):
+        if self._force_use_pandas or not self._use_arrow or not hasattr(pc, "unique"):
+            return type(self)(np.unique(self.to_numpy()), dtype=self._dtype)
+        return type(self)(pc.unique(self._arrow_array), dtype=self._dtype)
 
     def value_counts(self, dropna=False):
         if self._use_arrow:

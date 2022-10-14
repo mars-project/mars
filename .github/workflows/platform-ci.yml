@@ -81,7 +81,7 @@ jobs:
           else
             pip install virtualenv flaky
             if [ -n "$WITH_KUBERNETES" ]; then
-              pip install kubernetes
+              pip install kubernetes "pandas<1.5.0"
               kubectl get pods -A
             fi
             if [ -n "$WITH_HADOOP" ]; then
@@ -186,6 +186,7 @@ jobs:
             export RAY_idle_worker_killing_time_threshold_ms=60000
             pytest $PYTEST_CONFIG --durations=0 --timeout=500 mars/dataframe -v -s -m "not skip_ray_dag" --ignore=mars/dataframe/contrib/raydataset
             pytest $PYTEST_CONFIG --durations=0 --timeout=500 mars/dataframe/contrib/raydataset -v -s -m "not skip_ray_dag" 
+            pytest $PYTEST_CONFIG --durations=0 --timeout=500 mars/tensor -v -s -m "not skip_ray_dag"
             pytest $PYTEST_CONFIG --durations=0 --timeout=500 mars/learn --ignore mars/learn/contrib --ignore mars/learn/utils/tests/test_collect_ports.py -v -s -m "not skip_ray_dag"
             pytest $PYTEST_CONFIG --durations=0 --timeout=200 -v -s -m ray_dag
             mv .coverage build/.coverage.ray_dag.file

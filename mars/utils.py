@@ -116,6 +116,22 @@ if sys.platform.startswith("win"):
 
 try:
     from pandas._libs.lib import NoDefault, no_default
+    from pandas._libs import lib as _pd__libs_lib
+
+    _raw__reduce__ = type(NoDefault).__reduce__
+
+    def _no_default__reduce__(self):
+        if self is not NoDefault:
+            return _raw__reduce__(self)
+        else:  # pragma: no cover
+            return getattr, (_pd__libs_lib, "NoDefault")
+
+    if hasattr(_pd__libs_lib, "_NoDefault"):  # pragma: no cover
+        # need to patch __reduce__ to make sure it can be properly unpickled
+        type(NoDefault).__reduce__ = _no_default__reduce__
+    else:
+        # introduced in pandas 1.5.0 : register for pickle compatibility
+        _pd__libs_lib._NoDefault = NoDefault
 except ImportError:  # pragma: no cover
 
     class NoDefault(enum.Enum):

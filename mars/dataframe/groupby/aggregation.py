@@ -43,6 +43,7 @@ from ...utils import (
     pd_release_version,
     estimate_pandas_size,
 )
+from ..arrays import ArrowArray
 from ..core import GROUPBY_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
@@ -949,10 +950,15 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                     new_by.append(v)
             params["by"] = new_by
 
-        if op.stage == OperandStage.agg:
+        try:
             grouped = df.groupby(**params)
-        else:
-            grouped = df.groupby(**params)
+        except ValueError:  # pragma: no cover
+            if isinstance(df.index.values, ArrowArray):
+                df = df.copy()
+                df.index = pd.Index(df.index.to_numpy(), name=df.index.name)
+                grouped = df.groupby(**params)
+            else:
+                raise
 
         if selection is not None:
             grouped = grouped[selection]
