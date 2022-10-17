@@ -406,10 +406,10 @@ class RayCluster:
     def __init__(
         self,
         cluster_name: str,
-        supervisor_cpu: int = 1,
+        supervisor_cpu: Union[int, float] = 1,
         supervisor_mem: int = 1 * 1024**3,
         worker_num: int = 1,
-        worker_cpu: int = 2,
+        worker_cpu: Union[int, float] = 2,
         worker_mem: int = 4 * 1024**3,
         backend: str = None,
         config: Union[str, Dict] = None,
