@@ -17,6 +17,8 @@ import sys
 import tempfile
 import threading
 
+import pytest
+
 from .test_ray_cluster_standalone import new_ray_session_test
 from ....tests.core import require_ray
 from ....utils import lazy_import
@@ -25,7 +27,14 @@ ray = lazy_import("ray")
 
 
 @require_ray
-def test_ray_client():
+@pytest.mark.parametrize(
+    "backend",
+    [
+        "mars",
+        "ray",
+    ],
+)
+def test_ray_client(backend):
     server_code = """import time
 import ray.util.client.server.server as ray_client_server
 
@@ -79,7 +88,7 @@ while True:
                     ray.init(f"ray://{address}")  # Ray latest
             ray._inside_client_test = True
             try:
-                new_ray_session_test()
+                new_ray_session_test(backend=backend)
             finally:
                 ray._inside_client_test = False
                 ray.shutdown()
