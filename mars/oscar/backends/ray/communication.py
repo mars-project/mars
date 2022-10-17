@@ -128,7 +128,7 @@ def _init_ray_serialization_deserialization():
                 bytes_length = serialized_object.total_bytes
                 serialized_bytes_counter.record(bytes_length)
             serialization_time_mills.record(timer.duration * 1000)
-            if bytes_length > 1 * 1024 * 1024 * 1024:
+            if bytes_length > 1 * 1024 * 1024 * 1024:  # pragma: no cover
                 logger.warning(
                     "Serialize large message (%s bytes > 1GB) through ray channel, message: %s.",
                     bytes_length,
