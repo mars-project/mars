@@ -41,7 +41,7 @@ class DictMetaStore(AbstractMetaStore):
         # OrderedSet to make sure that the first band in set stores complete
         # data, other bands may only have part data, so when reducers fetch data,
         # we always choose the first band to avoid unexpected absence.
-        self._band_chunks: Dict[BandType, OrderedSet[str]] = defaultdict(OrderedSet)
+        self._band_chunks: Dict[BandType, OrderedSet] = defaultdict(OrderedSet)
         if kw:  # pragma: no cover
             raise TypeError(f"Keyword arguments {kw!r} cannot be recognized.")
 

@@ -78,7 +78,7 @@ class GraphAssigner(AbstractGraphAssigner):
         band_resource: Dict[BandType, Resource],
     ):
         super().__init__(chunk_graph, start_ops, band_resource)
-        self._op_keys: OrderedSet[str] = OrderedSet(
+        self._op_keys: OrderedSet = OrderedSet(
             [start_op.key for start_op in start_ops]
         )
 
@@ -134,7 +134,7 @@ class GraphAssigner(AbstractGraphAssigner):
         band: BandType,
         initial_sizes: Dict[BandType, int],
         spread_limits: Dict[BandType, float],
-        key_to_assign: OrderedSet[str],
+        key_to_assign: OrderedSet,
         assigned_record: Dict[str, Union[str, BandType]],
     ):
         """
