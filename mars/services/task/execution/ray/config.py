@@ -14,7 +14,7 @@
 
 import os
 import logging
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from .....core.operand import ShuffleFetchType
 from .....resource import Resource
@@ -50,7 +50,7 @@ class RayExecutionConfig(ExecutionConfig):
     def get_subtask_max_retries(self):
         return self._ray_execution_config["subtask_max_retries"]
 
-    def get_subtask_num_cpus(self):
+    def get_subtask_num_cpus(self) -> Union[int, float]:
         return self._ray_execution_config.get("subtask_num_cpus", 1)
 
     def get_n_cpu(self):

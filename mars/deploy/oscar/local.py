@@ -24,7 +24,7 @@ import numpy as np
 
 from ... import oscar as mo
 from ...core.entrypoints import init_extension_entrypoints
-from ...lib.aio import get_isolation, stop_isolation
+from ...lib.aio import get_isolation
 from ...metrics import init_metrics
 from ...oscar.backends.router import Router
 from ...resource import cpu_count, cuda_count, mem_total
@@ -47,7 +47,6 @@ _is_exiting_future = SyncFuture()
 atexit.register(
     lambda: _is_exiting_future.set_result(0) if not _is_exiting_future.done() else None
 )
-atexit.register(stop_isolation)
 
 # The default config file.
 DEFAULT_CONFIG_FILE = os.path.join(

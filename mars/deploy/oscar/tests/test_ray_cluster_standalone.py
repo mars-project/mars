@@ -17,7 +17,7 @@ import mars
 
 from .... import tensor as mt
 from .... import dataframe as md
-from ....tests.core import require_ray
+from ....tests.core import require_ray, mock
 from ....utils import lazy_import
 from ..ray import (
     new_cluster_in_ray,
@@ -42,19 +42,30 @@ def test_new_cluster_in_ray(stop_ray):
 
 
 @require_ray
-def test_new_ray_session(stop_ray):
-    new_ray_session_test()
+@pytest.mark.parametrize(
+    "backend",
+    [
+        "mars",
+        "ray",
+    ],
+)
+def test_new_ray_session(stop_ray, backend):
+    new_ray_session_test(backend)
 
 
-def new_ray_session_test():
+def new_ray_session_test(backend):
     session = new_ray_session(
-        session_id="abc", worker_num=2, worker_mem=512 * 1024**2
+        session_id="abc", worker_num=2, worker_mem=512 * 1024**2, backend=backend
     )
     mt.random.RandomState(0).rand(100, 5).sum().execute()
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
     session = new_ray_session(
-        session_id="abcd", worker_num=2, default=True, worker_mem=512 * 1024**2
+        session_id="abcd",
+        worker_num=2,
+        default=True,
+        worker_mem=512 * 1024**2,
+        backend=backend,
     )
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
     mars.execute(mt.random.RandomState(0).rand(100, 5).sum())
@@ -104,3 +115,51 @@ async def test_optional_supervisor_node(ray_start_regular, test_option):
     async with client:
         assert client.address == "ray://test_cluster/0/0"
         assert client._cluster._worker_addresses == worker_addresses
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_new_ray_session_config(stop_ray):
+    original_placement_group = ray.util.placement_group
+    with mock.patch.object(
+        ray.util, "placement_group", autospec=True
+    ) as mock_placement_group:
+
+        def _wrap_original_placement_group(*args, **kwargs):
+            assert {"CPU": 3} in kwargs["bundles"]
+            return original_placement_group(*args, **kwargs)
+
+        mock_placement_group.side_effect = _wrap_original_placement_group
+        mars.new_ray_session(
+            supervisor_cpu=3,
+            worker_cpu=5,
+            backend="ray",
+            default=True,
+            config={
+                "third_party_modules": [
+                    "mars.deploy.oscar.tests.modules.check_ray_remote_function_options"
+                ]
+            },
+        )
+        mt.random.RandomState(0).rand(100, 5).sum().execute()
+
+        # It seems crashes CI.
+        # mars.stop_server()
+        #
+        # actors = ray.state.actors()
+        # assert len(actors) == 1
+        # assert list(actors.values())[0]["State"] == "DEAD"
+
+        mars.new_ray_session(
+            supervisor_cpu=3,
+            worker_cpu=4,
+            backend="ray",
+            default=True,
+            config={
+                "third_party_modules": [
+                    "mars.deploy.oscar.tests.modules.check_ray_remote_function_options"
+                ]
+            },
+        )
+        with pytest.raises(AssertionError):
+            mt.random.RandomState(0).rand(100, 5).sum().execute()

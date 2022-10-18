@@ -1454,12 +1454,13 @@ def clean_up_func(op):
         assert (
             op.logic_key is not None
         ), f"Logic key of {op} wasn't calculated before cleaning up func."
-        logger.debug(f"{op} need cleaning up func.")
+        logger.info("%s is cleaning up func %s.", op, op.func)
         if is_on_ray(ctx):
             import ray
 
             op.func_key = ray.put(op.func)
             op.func = None
+            logger.info("%s func %s is replaced by %s.", op, op.func, op.func_key)
         else:
             op.func = cloudpickle.dumps(op.func)
 
@@ -1545,10 +1546,11 @@ def whether_to_clean_up(op, threshold):
 
 def restore_func(ctx: Context, op):
     if op.need_clean_up_func and ctx is not None:
-        logger.debug(f"{op} need restoring func.")
+        logger.info("%s is restoring func from %s.", op, op.func_key)
         if is_on_ray(ctx):
             import ray
 
             op.func = ray.get(op.func_key)
+            logger.info("%s func %s is restored.", op, op.func)
         else:
             op.func = cloudpickle.loads(op.func)

@@ -523,6 +523,7 @@ class RayTaskExecutor(TaskExecutor):
                 num_cpus=subtask_num_cpus,
                 num_returns=output_count,
                 max_retries=subtask_max_retries,
+                scheduling_strategy="DEFAULT" if len(input_object_refs) else "SPREAD",
             ).remote(
                 subtask.subtask_id,
                 serialize(subtask_chunk_graph, context={"serializer": "ray"}),
