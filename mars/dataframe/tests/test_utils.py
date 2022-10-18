@@ -41,6 +41,7 @@ from ..utils import (
     build_concatenated_rows_frame,
     merge_index_value,
     auto_merge_chunks,
+    whether_to_clean_up,
 )
 
 
@@ -644,3 +645,45 @@ def test_auto_merge_chunks():
     assert isinstance(s2.chunks[1].op, DataFrameConcat)
     assert s2.chunks[1].name == "a"
     assert len(s2.chunks[1].op.inputs) == 2
+
+
+@pytest.mark.parametrize("multiplier_and_expected", [(1, False), (3, True), (4, True)])
+def test_whether_to_clean_up(multiplier_and_expected):
+    threshold = 10**4
+    multiplier, expected = multiplier_and_expected
+
+    class FakeOperandwithClosure:
+        def __init__(self, func):
+            self.func = func
+            self.need_clean_up_func = False
+
+        @property
+        def need_clean_up_func(self):
+            return self._need_clean_up_func
+
+        @need_clean_up_func.setter
+        def need_clean_up_func(self, need_clean_up_func: bool):
+            self._need_clean_up_func = need_clean_up_func
+
+    class FakeCallable:
+        __slots__ = "df", "__dict__"
+
+        def __init__(self, multiplier):
+            self.list = [
+                ["This is a string.", 1.2, range(10)],
+                [
+                    bytes("This is a byte message.", "utf-8"),
+                    bytearray("This is a byte array.", "utf-8"),
+                ],
+            ]
+            self.dic = {"one": pd.Series([i for i in range(10**multiplier)])}
+            self.df = pd.DataFrame(self.dic)
+            self.ds = pd.Series([i for i in range(10**multiplier)])
+
+        def __call__(self, z):
+            pass
+
+    op = FakeOperandwithClosure(func=FakeCallable(multiplier=multiplier))
+    result = whether_to_clean_up(op=op, threshold=threshold)
+    assert result is expected
+    assert op.need_clean_up_func is expected

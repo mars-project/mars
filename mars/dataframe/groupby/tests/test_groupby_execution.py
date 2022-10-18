@@ -943,12 +943,33 @@ def test_groupby_apply_closure(setup):
     def apply_closure_series(s):
         return s.mean() * y
 
+    class callable_df:
+        def __init__(self):
+            self.x = 10
+
+        def __call__(self, df):
+            return df["a"].max() * x
+
+    class callable_series:
+        def __init__(self):
+            self.y = 11
+
+        def __call__(self, s):
+            return s.mean() * y
+
     mdf = md.DataFrame(df1, chunk_size=3)
 
     applied = mdf.groupby("b").apply(apply_closure_df)
     pd.testing.assert_series_equal(
         applied.execute().fetch().sort_index(),
         df1.groupby("b").apply(apply_closure_df).sort_index(),
+    )
+
+    cdf = callable_df()
+    applied = mdf.groupby("b").apply(cdf)
+    pd.testing.assert_series_equal(
+        applied.execute().fetch().sort_index(),
+        df1.groupby("b").apply(cdf).sort_index(),
     )
 
     # Series
@@ -959,6 +980,13 @@ def test_groupby_apply_closure(setup):
     pd.testing.assert_series_equal(
         applied.execute().fetch().sort_index(),
         series1.groupby(lambda x: x % 3).apply(apply_closure_series).sort_index(),
+    )
+
+    cs = callable_series()
+    applied = ms1.groupby(lambda x: x % 3).apply(cs)
+    pd.testing.assert_series_equal(
+        applied.execute().fetch().sort_index(),
+        series1.groupby(lambda x: x % 3).apply(cs).sort_index(),
     )
 
 

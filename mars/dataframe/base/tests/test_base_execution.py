@@ -399,6 +399,29 @@ def test_data_frame_apply_closure_execute(setup):
     pd.testing.assert_frame_equal(result, expected)
 
 
+@pytest.mark.parametrize("multiplier", [1, 3, 4])
+def test_data_frame_apply_callable_execute(setup, multiplier):
+    cols = [chr(ord("A") + i) for i in range(10)]
+    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df = from_pandas_df(df_raw, chunk_size=5)
+
+    class callable_df:
+        __slots__ = "x", "__dict__"
+
+        def __init__(self, multiplier: int = 1):
+            self.x = pd.Series([i for i in range(10**multiplier)])
+            self.y = pd.Series([i for i in range(10**multiplier)])
+
+        def __call__(self, pdf):
+            return pd.concat([self.x, self.y], ignore_index=True)
+
+    cdf_large = callable_df(multiplier=multiplier)
+    r = df.apply(cdf_large, axis=1)
+    result = r.execute().fetch()
+    expected = df_raw.apply(cdf_large, axis=1)
+    pd.testing.assert_frame_equal(result, expected)
+
+
 def test_series_apply_execute(setup):
     idxes = [chr(ord("A") + i) for i in range(20)]
     s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
@@ -454,6 +477,22 @@ def test_series_apply_closure_execute(setup):
     r = series.apply(closure, convert_dtype=False)
     result = r.execute().fetch()
     expected = s_raw.apply(closure, convert_dtype=False)
+    pd.testing.assert_series_equal(result, expected)
+
+    class callable_series:
+        __slots__ = "x", "__dict__"
+
+        def __init__(self):
+            self.x = 1
+            self.y = 2
+
+        def __call__(self, z):
+            return [z + self.x, z + self.y]
+
+    cs = callable_series()
+    r = series.apply(cs, convert_dtype=False)
+    result = r.execute().fetch()
+    expected = s_raw.apply(cs, convert_dtype=False)
     pd.testing.assert_series_equal(result, expected)
 
 
@@ -1882,6 +1921,55 @@ def test_map_chunk_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
 
+def test_map_chunk_closure_execute(setup):
+    raw = pd.DataFrame(
+        np.random.randint(10**3, size=(10, 5)), columns=[f"col{i}" for i in range(5)]
+    )
+
+    df = from_pandas_df(raw, chunk_size=5)
+    num = 1
+    dic = {i: -i for i in range(10**3)}
+
+    def f1(pdf):
+        return pdf + num
+
+    r = df.map_chunk(f1)
+
+    result = r.execute().fetch()
+    expected = raw + num
+    pd.testing.assert_frame_equal(result, expected)
+
+    def f2(pdf):
+        ret = pd.DataFrame(columns=["col1", "col2"])
+        ret["col1"] = pdf["col1"].apply(lambda x: dic.get(x, 0))
+        ret["col2"] = pdf["col2"]
+        return ret
+
+    r = df.map_chunk(f2, output_type="dataframe")
+
+    result = r.execute().fetch()
+    expected = f2(raw)
+    pd.testing.assert_frame_equal(result, expected)
+
+    class callable_df:
+        def __init__(self, multiplier: int = 1):
+            self.dic = {i: -i for i in range(10**multiplier)}
+
+        def __call__(self, pdf):
+            ret = pd.DataFrame(columns=["col1", "col2"])
+            ret["col1"] = pdf["col1"].apply(lambda x: self.dic.get(x, 0))
+            ret["col2"] = pdf["col2"]
+            return ret
+
+    cdf = callable_df(multiplier=4)
+    r = df.map_chunk(cdf, output_type="dataframe")
+
+    result = r.execute().fetch()
+    expected = cdf(raw)
+    pd.testing.assert_frame_equal(result, expected)
+
+
+@pytest.mark.ray_dag
 def test_cartesian_chunk_execution(setup):
     rs = np.random.RandomState(0)
     raw1 = pd.DataFrame({"a": rs.randint(3, size=10), "b": rs.rand(10)})

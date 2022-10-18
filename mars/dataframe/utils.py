@@ -17,6 +17,7 @@ import sys
 import cloudpickle
 import functools
 import itertools
+import inspect
 import logging
 import operator
 from contextlib import contextmanager
@@ -1437,25 +1438,19 @@ def auto_merge_chunks(
 # removed or refactored in the future to calculate func size
 # with more accuracy as well as address some serialization issues.
 def clean_up_func(op):
-    closure_clean_up_bytes_threshold = int(
-        os.getenv("MARS_CLOSURE_CLEAN_UP_BYTES_THRESHOLD", 10**4)
-    )
-    if closure_clean_up_bytes_threshold == -1:  # pragma: no cover
+    threshold = int(os.getenv("MARS_CLOSURE_CLEAN_UP_BYTES_THRESHOLD", 10**4))
+    if threshold == -1:  # pragma: no cover
         return
     ctx = get_context()
     if ctx is None:
         return
 
-    func = op.func
-    if hasattr(func, "__closure__") and func.__closure__ is not None:
-        counted_bytes = 0
-        for cell in func.__closure__:
-            counted_bytes += sys.getsizeof(cell.cell_contents)
-            if counted_bytes >= closure_clean_up_bytes_threshold:
-                op.need_clean_up_func = True
-                break
     # Note: op.func_key is set only when func was put into storage.
-    if op.need_clean_up_func:
+    # Under ray backend, func will be put into storage.
+    # While under mars backend, since storage service is empty on supervisor,
+    # func won't be put into storage but serialized in advance to reduce upcoming
+    # expenses brought by serializations and deserializations during subtask transmission.
+    if whether_to_clean_up(op, threshold) is True:
         assert (
             op.logic_key is not None
         ), f"Logic key of {op} wasn't calculated before cleaning up func."
@@ -1467,6 +1462,85 @@ def clean_up_func(op):
             op.func = None
         else:
             op.func = cloudpickle.dumps(op.func)
+
+
+def whether_to_clean_up(op, threshold):
+    func = op.func
+    counted_bytes = 0
+    max_recursion_depth = 2
+
+    from numbers import Number
+    from collections import deque
+
+    BYPASS_CLASSES = (str, bytes, Number, range, bytearray, pd.DataFrame, pd.Series)
+
+    class GetSizeEarlyStopException(Exception):
+        pass
+
+    def check_exceed_threshold():
+        nonlocal threshold, counted_bytes
+        if counted_bytes >= threshold:
+            raise GetSizeEarlyStopException()
+
+    def getsize(obj_outer):
+        _seen_obj_ids = set()
+
+        def inner_count(obj, recursion_depth):
+            obj_id = id(obj)
+            if obj_id in _seen_obj_ids or recursion_depth > max_recursion_depth:
+                return 0
+            _seen_obj_ids.add(obj_id)
+            recursion_depth += 1
+            size = sys.getsizeof(obj)
+            if isinstance(obj, BYPASS_CLASSES):
+                return size
+            elif isinstance(obj, (tuple, list, set, deque)):
+                size += sum(inner_count(i, recursion_depth) for i in obj)
+            elif hasattr(obj, "items"):
+                size += sum(
+                    inner_count(k, recursion_depth) + inner_count(v, recursion_depth)
+                    for k, v in getattr(obj, "items")()
+                )
+            if hasattr(obj, "__dict__"):
+                size += inner_count(vars(obj), recursion_depth)
+            if hasattr(obj, "__slots__"):
+                size += sum(
+                    inner_count(getattr(obj, s), recursion_depth)
+                    for s in obj.__slots__
+                    if hasattr(obj, s)
+                )
+            return size
+
+        return inner_count(obj_outer, 0)
+
+    try:
+        # Note: In most cases, func is just a function with closure, while chances are that
+        # func is a callable that doesn't have __closure__ attribute.
+        if inspect.isclass(func):
+            pass
+        elif hasattr(func, "__closure__") and func.__closure__ is not None:
+            for cell in func.__closure__:
+                counted_bytes += getsize(cell.cell_contents)
+                check_exceed_threshold()
+        elif callable(func):
+            if hasattr(func, "__dict__"):
+                for k, v in func.__dict__.items():
+                    counted_bytes += sum([getsize(k), getsize(v)])
+                    check_exceed_threshold()
+            if hasattr(func, "__slots__"):
+                for slot in func.__slots__:
+                    counted_bytes += (
+                        getsize(getattr(func, slot)) if hasattr(func, slot) else 0
+                    )
+                    check_exceed_threshold()
+    except GetSizeEarlyStopException:
+        logger.debug("Func needs cleanup.")
+        op.need_clean_up_func = True
+    else:
+        assert op.need_clean_up_func is False
+        logger.debug("Func doesn't need cleanup.")
+
+    return op.need_clean_up_func
 
 
 def restore_func(ctx: Context, op):

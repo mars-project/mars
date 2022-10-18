@@ -24,6 +24,8 @@ from ...serialization.serializables import (
     TupleField,
     DictField,
     BoolField,
+    StringField,
+    AnyField,
 )
 from ...utils import enter_current_session, has_unknown_shape, quiet_stdio
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
@@ -34,6 +36,8 @@ from ..utils import (
     parse_index,
     validate_output_types,
     build_empty_series,
+    clean_up_func,
+    restore_func,
 )
 
 
@@ -45,6 +49,9 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
     _args = TupleField("args")
     _kwargs = DictField("kwargs")
     _with_chunk_index = BoolField("with_chunk_index")
+    _logic_key = StringField("logic_key")
+    _func_key = AnyField("func_key")
+    _need_clean_up_func = BoolField("need_clean_up_func")
 
     def __init__(
         self,
@@ -54,6 +61,9 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
         kwargs=None,
         output_types=None,
         with_chunk_index=None,
+        logic_key=None,
+        func_key=None,
+        need_clean_up_func=False,
         **kw,
     ):
         super().__init__(
@@ -63,6 +73,9 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
             _kwargs=kwargs,
             _output_types=output_types,
             _with_chunk_index=with_chunk_index,
+            _logic_key=logic_key,
+            _func_key=func_key,
+            _need_clean_up_func=need_clean_up_func,
             **kw,
         )
 
@@ -73,6 +86,34 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
     @property
     def func(self):
         return self._func
+
+    @func.setter
+    def func(self, func):
+        self._func = func
+
+    @property
+    def logic_key(self):
+        return self._logic_key
+
+    @logic_key.setter
+    def logic_key(self, logic_key):
+        self._logic_key = logic_key
+
+    @property
+    def func_key(self):
+        return self._func_key
+
+    @func_key.setter
+    def func_key(self, func_key):
+        self._func_key = func_key
+
+    @property
+    def need_clean_up_func(self):
+        return self._need_clean_up_func
+
+    @need_clean_up_func.setter
+    def need_clean_up_func(self, need_clean_up_func: bool):
+        self._need_clean_up_func = need_clean_up_func
 
     @property
     def args(self):
@@ -192,6 +233,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op: "DataFrameMapChunk"):
+        clean_up_func(op)
         inp = op.input
         out = op.outputs[0]
 
@@ -250,6 +292,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
     @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op: "DataFrameMapChunk"):
+        restore_func(ctx, op)
         inp = ctx[op.input.key]
         out = op.outputs[0]
         if len(inp) == 0:

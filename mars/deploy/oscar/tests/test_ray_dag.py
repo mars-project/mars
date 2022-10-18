@@ -199,6 +199,15 @@ async def test_execute_apply_closure(ray_start_regular_shared2, create_cluster):
 
 
 @require_ray
+@pytest.mark.parametrize("multiplier", [1, 3, 4])
+@pytest.mark.asyncio
+async def test_execute_callable_closure(
+    ray_start_regular_shared2, create_cluster, multiplier
+):
+    await test_local.test_execute_callable_closure(create_cluster, multiplier)
+
+
+@require_ray
 @pytest.mark.parametrize(
     "create_cluster",
     [

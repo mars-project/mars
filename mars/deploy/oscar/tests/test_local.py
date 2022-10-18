@@ -429,6 +429,52 @@ async def test_execute_apply_closure(create_cluster):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("multiplier", [1, 3, 4])
+async def test_execute_callable_closure(create_cluster, multiplier):
+    # DataFrame
+    cols = [chr(ord("A") + i) for i in range(10)]
+    raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df = md.DataFrame(raw, chunk_size=5)
+
+    class callable_df:
+        __slots__ = "x", "__dict__"
+
+        def __init__(self, multiplier: int = 1):
+            self.x = pd.Series([i for i in range(10**multiplier)])
+            self.y = pd.Series([i for i in range(10**multiplier)])
+
+        def __call__(self, pdf):
+            return pd.concat([self.x, self.y], ignore_index=True)
+
+    session = get_default_async_session()
+    cdf = callable_df(multiplier=multiplier)
+    df_r = df.apply(cdf, axis=1)
+    df_info = await session.execute(df_r)
+    await df_info
+    assert df_info.result() is None
+    assert df_info.exception() is None
+    assert df_info.progress() == 1
+
+    df_result = await session.fetch(df_r)
+    df_expected = raw.apply(cdf, axis=1)
+    pd.testing.assert_frame_equal(df_result, df_expected)
+
+    if (
+        not isinstance(session._isolated_session, _IsolatedWebSession)
+        and session.client
+    ):
+        worker_pools = session.client._cluster._worker_pools
+        await session.destroy()
+        for worker_pool in worker_pools:
+            if hasattr(worker_pool, "external_address"):
+                _assert_storage_cleaned(
+                    session.session_id,
+                    worker_pool.external_address,
+                    StorageLevel.MEMORY,
+                )
+
+
+@pytest.mark.asyncio
 async def test_sync_execute_in_async(create_cluster):
     a = mt.ones((10, 10))
     b = a + 1
