@@ -127,6 +127,10 @@ class Subtask(Serializable):
             required_resource=required_resource,
             stage_n_outputs=stage_n_outputs,
         )
+        self.__mars_init__()
+
+    def __mars_init__(self):
+        super(Subtask, self).__mars_init__()
         self._pure_depend_keys = None
         self._repr = None
 

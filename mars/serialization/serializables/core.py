@@ -144,6 +144,11 @@ class Serializable(metaclass=SerializableMeta):
         for k, v in values.items():
             fields[k].set(self, v)
 
+    def __mars_init__(self):
+        """Set object attributes which are not defined using field descriptor.
+        This method will be invoked when deserialization to set up those fields."""
+        pass
+
     def __repr__(self):
         values = ", ".join(
             [
@@ -224,7 +229,7 @@ class SerializableSerializer(Serializer):
         if type(primitives) is not list:
             primitives = cloudpickle.loads(primitives)
 
-        obj = obj_class()
+        obj = obj_class.__new__(obj_class)
 
         if primitives:
             for field, value in zip(obj_class._PRIMITIVE_FIELDS, primitives):
@@ -233,7 +238,7 @@ class SerializableSerializer(Serializer):
         if obj_class._NON_PRIMITIVE_FIELDS:
             for field, value in zip(obj_class._NON_PRIMITIVE_FIELDS, subs[0]):
                 self._set_field_value(obj, field, value)
-
+        obj.__mars_init__()
         return obj
 
 

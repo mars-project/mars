@@ -29,19 +29,20 @@ logger = logging.getLogger(__name__)
 def check_coverage_file(file_name):
     try:
         conn = sqlite3.connect(file_name)
-        tracers = list(conn.execute('SELECT * FROM tracer'))
+        tracers = list(conn.execute("SELECT * FROM tracer"))
         if len(tracers) < 1:
-            raise ValueError('File containing no tracers')
+            raise ValueError("File containing no tracers")
     except Exception as exc:  # noqa: E722
-        logger.warning('Failed to resolve coverage file %s due to error %r',
-                       file_name, exc)
+        logger.warning(
+            "Failed to resolve coverage file %s due to error %r", file_name, exc
+        )
         os.unlink(file_name)
 
 
 def main():
-    for cov_file in glob.glob('.coverage.*'):
+    for cov_file in glob.glob(".coverage.*"):
         check_coverage_file(cov_file)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

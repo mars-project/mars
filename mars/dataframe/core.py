@@ -400,7 +400,7 @@ class DtypesValue(Serializable):
     __slots__ = ()
 
     _key = StringField("key")
-    _value = SeriesField("value")
+    _value = SeriesField("value", cache_serialize=True)
 
     def __init__(self, key=None, value=None, **kw):
         super().__init__(_key=key, _value=value, **kw)
@@ -1814,7 +1814,7 @@ class Series(HasShapeTileable, _ToPandasMixin):
 
 class BaseDataFrameChunkData(LazyMetaChunkData):
     __slots__ = ("_dtypes_value",)
-    _no_copy_attrs_ = ChunkData._no_copy_attrs_ | {"_dtypes"}
+    _no_copy_attrs_ = ChunkData._no_copy_attrs_ | {"_dtypes", "_columns_value"}
 
     # required fields
     _shape = TupleField(
@@ -1824,7 +1824,7 @@ class BaseDataFrameChunkData(LazyMetaChunkData):
         on_deserialize=on_deserialize_shape,
     )
     # optional fields
-    _dtypes = ChunkDtypesField("dtypes")
+    _dtypes = ChunkDtypesField("dtypes", cache_serialize=True)
     _index_value = ChunkIndexValueField(
         "index_value", IndexValue, on_deserialize=_on_deserialize_index_value
     )
@@ -1849,6 +1849,10 @@ class BaseDataFrameChunkData(LazyMetaChunkData):
             _columns_value=columns_value,
             **kw,
         )
+        self.__mars_init__()
+
+    def __mars_init__(self):
+        super(BaseDataFrameChunkData, self).__mars_init__()
         self._dtypes_value = None
 
     def __len__(self):
@@ -1953,7 +1957,7 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
     __slots__ = "_accessors", "_dtypes_value", "_dtypes_dict"
 
     # optional fields
-    _dtypes = SeriesField("dtypes")
+    _dtypes = SeriesField("dtypes", cache_serialize=True)
     _index_value = ReferenceField(
         "index_value", IndexValue, on_deserialize=_on_deserialize_index_value
     )
@@ -1988,6 +1992,10 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
             _chunks=chunks,
             **kw,
         )
+        self.__mars_init__()
+
+    def __mars_init__(self):
+        super().__mars_init__()
         self._accessors = dict()
         self._dtypes_value = None
         self._dtypes_dict = None
@@ -2546,7 +2554,7 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
 class DataFrameGroupByChunkData(BaseDataFrameChunkData):
     type_name = "DataFrameGroupBy"
 
-    _key_dtypes = SeriesField("key_dtypes")
+    _key_dtypes = SeriesField("key_dtypes", cache_serialize=True)
     _selection = AnyField("selection")
 
     @property
@@ -2650,7 +2658,7 @@ class SeriesGroupByChunk(Chunk):
 class DataFrameGroupByData(BaseDataFrameData):
     type_name = "DataFrameGroupBy"
 
-    _key_dtypes = SeriesField("key_dtypes")
+    _key_dtypes = SeriesField("key_dtypes", cache_serialize=True)
     _selection = AnyField("selection")
     _chunks = ListField(
         "chunks",

@@ -34,7 +34,7 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_DATA_SOURCE
 
     data = DataFrameField("data")
-    dtypes = SeriesField("dtypes")
+    dtypes = SeriesField("dtypes", cache_serialize=True)
 
     def __init__(self, data=None, dtypes=None, gpu=None, **kw):
         if dtypes is None and data is not None:
