@@ -78,9 +78,7 @@ class GraphAssigner(AbstractGraphAssigner):
         band_resource: Dict[BandType, Resource],
     ):
         super().__init__(chunk_graph, start_ops, band_resource)
-        self._op_keys: OrderedSet = OrderedSet(
-            [start_op.key for start_op in start_ops]
-        )
+        self._op_keys: OrderedSet = OrderedSet([start_op.key for start_op in start_ops])
 
     def _calc_band_assign_limits(
         self, initial_count: int, occupied: Dict[BandType, int]
