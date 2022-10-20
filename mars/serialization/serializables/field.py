@@ -40,7 +40,6 @@ class Field(ABC):
         "get",  # The __get__ of member_descriptor
         "set",  # The __set__ of member_descriptor
         "__delete__",  # The __delete__ of member_descriptor
-        "cache_serialize",
     )
 
     _tag: str
@@ -54,7 +53,6 @@ class Field(ABC):
         default_factory: Optional[Callable] = None,
         on_serialize: Callable[[Any], Any] = None,
         on_deserialize: Callable[[Any], Any] = None,
-        cache_serialize: bool = False,
     ):
         if (
             default is not no_default and default_factory is not None
@@ -66,10 +64,6 @@ class Field(ABC):
         self._default_factory = default_factory
         self._on_serialize = on_serialize
         self._on_deserialize = on_deserialize
-        self.cache_serialize = cache_serialize
-        if cache_serialize:
-            assert on_serialize is None, on_serialize
-            assert on_deserialize is None, on_deserialize
 
     @property
     def tag(self):
@@ -388,7 +382,6 @@ class _CollectionField(Field, metaclass=ABCMeta):
         default_factory: Optional[Callable] = None,
         on_serialize: Callable[[Any], Any] = None,
         on_deserialize: Callable[[Any], Any] = None,
-        cache_serialize: bool = False,
     ):
         super().__init__(
             tag,
@@ -396,7 +389,6 @@ class _CollectionField(Field, metaclass=ABCMeta):
             default_factory=default_factory,
             on_serialize=on_serialize,
             on_deserialize=on_deserialize,
-            cache_serialize=cache_serialize,
         )
         if field_type is None:
             field_type = FieldTypes.any

@@ -400,7 +400,7 @@ class DtypesValue(Serializable):
     __slots__ = ()
 
     _key = StringField("key")
-    _value = SeriesField("value", cache_serialize=True)
+    _value = SeriesField("value")
 
     def __init__(self, key=None, value=None, **kw):
         super().__init__(_key=key, _value=value, **kw)
@@ -1824,7 +1824,7 @@ class BaseDataFrameChunkData(LazyMetaChunkData):
         on_deserialize=on_deserialize_shape,
     )
     # optional fields
-    _dtypes = ChunkDtypesField("dtypes", cache_serialize=True)
+    _dtypes = ChunkDtypesField("dtypes")
     _index_value = ChunkIndexValueField(
         "index_value", IndexValue, on_deserialize=_on_deserialize_index_value
     )
@@ -1957,7 +1957,7 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
     __slots__ = "_accessors", "_dtypes_value", "_dtypes_dict"
 
     # optional fields
-    _dtypes = SeriesField("dtypes", cache_serialize=True)
+    _dtypes = SeriesField("dtypes")
     _index_value = ReferenceField(
         "index_value", IndexValue, on_deserialize=_on_deserialize_index_value
     )
@@ -2556,7 +2556,7 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
 class DataFrameGroupByChunkData(BaseDataFrameChunkData):
     type_name = "DataFrameGroupBy"
 
-    _key_dtypes = SeriesField("key_dtypes", cache_serialize=True)
+    _key_dtypes = SeriesField("key_dtypes")
     _selection = AnyField("selection")
 
     @property
@@ -2660,7 +2660,7 @@ class SeriesGroupByChunk(Chunk):
 class DataFrameGroupByData(BaseDataFrameData):
     type_name = "DataFrameGroupBy"
 
-    _key_dtypes = SeriesField("key_dtypes", cache_serialize=True)
+    _key_dtypes = SeriesField("key_dtypes")
     _selection = AnyField("selection")
     _chunks = ListField(
         "chunks",
