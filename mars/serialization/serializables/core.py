@@ -143,9 +143,9 @@ class Serializable(metaclass=SerializableMeta):
         for k, v in values.items():
             fields[k].set(self, v)
 
-    def __mars_init__(self):
+    def __on_deserialize__(self):
         """Set object attributes which are not defined using field descriptor.
-        This method will be invoked when deserialization to set up those fields."""
+        This method will be invoked when deserialization to set defaults values for those fields."""
         pass
 
     def __repr__(self):
@@ -241,7 +241,7 @@ class SerializableSerializer(Serializer):
         if obj_class._NON_PRIMITIVE_FIELDS:
             for field, value in zip(obj_class._NON_PRIMITIVE_FIELDS, subs[0]):
                 self._set_field_value(obj, field, value)
-        obj.__mars_init__()
+        obj.__on_deserialize__()
         return obj
 
 

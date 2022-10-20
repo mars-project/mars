@@ -1849,10 +1849,10 @@ class BaseDataFrameChunkData(LazyMetaChunkData):
             _columns_value=columns_value,
             **kw,
         )
-        self.__mars_init__()
+        self._dtypes_value = None
 
-    def __mars_init__(self):
-        super(BaseDataFrameChunkData, self).__mars_init__()
+    def __on_deserialize__(self):
+        super(BaseDataFrameChunkData, self).__on_deserialize__()
         self._dtypes_value = None
 
     def __len__(self):
@@ -1992,10 +1992,12 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
             _chunks=chunks,
             **kw,
         )
-        self.__mars_init__()
+        self._accessors = dict()
+        self._dtypes_value = None
+        self._dtypes_dict = None
 
-    def __mars_init__(self):
-        super().__mars_init__()
+    def __on_deserialize__(self):
+        super().__on_deserialize__()
         self._accessors = dict()
         self._dtypes_value = None
         self._dtypes_dict = None
