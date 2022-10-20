@@ -17,7 +17,6 @@ from typing import Dict, List, Type, Tuple
 
 import cloudpickle
 
-from ...utils import no_default
 from ..core import Serializer, Placeholder, buffered
 from .field import Field
 from .field_type import (
@@ -174,6 +173,10 @@ class Serializable(metaclass=SerializableMeta):
 _primitive_serial_cache = weakref.WeakKeyDictionary()
 
 
+class _NoFieldValue:
+    pass
+
+
 class SerializableSerializer(Serializer):
     """
     Leverage DictSerializer to perform serde.
@@ -189,7 +192,7 @@ class SerializableSerializer(Serializer):
                     value = field.on_serialize(value)
             except AttributeError:
                 # Most field values are not None, serialize by list is more efficient than dict.
-                value = no_default
+                value = _NoFieldValue
             values.append(value)
         return values
 
@@ -208,7 +211,7 @@ class SerializableSerializer(Serializer):
 
     @staticmethod
     def _set_field_value(obj: Serializable, field: Field, value):
-        if value is no_default:
+        if value is _NoFieldValue:
             return
         if type(value) is Placeholder:
             if field.on_deserialize is not None:
