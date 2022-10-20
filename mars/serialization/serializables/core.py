@@ -144,8 +144,6 @@ class Serializable(metaclass=SerializableMeta):
             fields[k].set(self, v)
 
     def __on_deserialize__(self):
-        """Set object attributes which are not defined using field descriptor.
-        This method will be invoked when deserialization to set defaults values for those fields."""
         pass
 
     def __repr__(self):
