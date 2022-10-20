@@ -130,6 +130,11 @@ class Subtask(Serializable):
         self._pure_depend_keys = None
         self._repr = None
 
+    def __on_deserialize__(self):
+        super(Subtask, self).__on_deserialize__()
+        self._pure_depend_keys = None
+        self._repr = None
+
     @property
     def expect_band(self):
         if self.expect_bands:

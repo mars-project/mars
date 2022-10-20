@@ -288,7 +288,11 @@ class TileableData(EntityData, _ExecutableMixin):
                 self._chunks = sorted(chunks, key=attrgetter("index"))
         except AttributeError:  # pragma: no cover
             pass
+        self._entities = WeakSet()
+        self._executed_sessions = []
 
+    def __on_deserialize__(self):
+        super(TileableData, self).__on_deserialize__()
         self._entities = WeakSet()
         self._executed_sessions = []
 

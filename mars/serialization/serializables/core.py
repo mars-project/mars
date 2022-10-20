@@ -17,7 +17,6 @@ from typing import Dict, List, Type, Tuple
 
 import cloudpickle
 
-from ...utils import no_default
 from ..core import Serializer, Placeholder, buffered
 from .field import Field
 from .field_type import (
@@ -144,6 +143,9 @@ class Serializable(metaclass=SerializableMeta):
         for k, v in values.items():
             fields[k].set(self, v)
 
+    def __on_deserialize__(self):
+        pass
+
     def __repr__(self):
         values = ", ".join(
             [
@@ -169,6 +171,10 @@ class Serializable(metaclass=SerializableMeta):
 _primitive_serial_cache = weakref.WeakKeyDictionary()
 
 
+class _NoFieldValue:
+    pass
+
+
 class SerializableSerializer(Serializer):
     """
     Leverage DictSerializer to perform serde.
@@ -184,7 +190,7 @@ class SerializableSerializer(Serializer):
                     value = field.on_serialize(value)
             except AttributeError:
                 # Most field values are not None, serialize by list is more efficient than dict.
-                value = no_default
+                value = _NoFieldValue
             values.append(value)
         return values
 
@@ -203,7 +209,7 @@ class SerializableSerializer(Serializer):
 
     @staticmethod
     def _set_field_value(obj: Serializable, field: Field, value):
-        if value is no_default:
+        if value is _NoFieldValue:
             return
         if type(value) is Placeholder:
             if field.on_deserialize is not None:
@@ -224,7 +230,7 @@ class SerializableSerializer(Serializer):
         if type(primitives) is not list:
             primitives = cloudpickle.loads(primitives)
 
-        obj = obj_class()
+        obj = obj_class.__new__(obj_class)
 
         if primitives:
             for field, value in zip(obj_class._PRIMITIVE_FIELDS, primitives):
@@ -233,7 +239,7 @@ class SerializableSerializer(Serializer):
         if obj_class._NON_PRIMITIVE_FIELDS:
             for field, value in zip(obj_class._NON_PRIMITIVE_FIELDS, subs[0]):
                 self._set_field_value(obj, field, value)
-
+        obj.__on_deserialize__()
         return obj
 
 

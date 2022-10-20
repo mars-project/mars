@@ -58,6 +58,7 @@ class TensorOrder(Enum):
 
 class TensorChunkData(ChunkData):
     __slots__ = ()
+    _no_copy_attrs_ = ChunkData._no_copy_attrs_ | {"dtype"}
     type_name = "Tensor"
 
     # required fields

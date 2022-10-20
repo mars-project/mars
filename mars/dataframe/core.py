@@ -1814,7 +1814,7 @@ class Series(HasShapeTileable, _ToPandasMixin):
 
 class BaseDataFrameChunkData(LazyMetaChunkData):
     __slots__ = ("_dtypes_value",)
-    _no_copy_attrs_ = ChunkData._no_copy_attrs_ | {"_dtypes"}
+    _no_copy_attrs_ = ChunkData._no_copy_attrs_ | {"_dtypes", "_columns_value"}
 
     # required fields
     _shape = TupleField(
@@ -1849,6 +1849,10 @@ class BaseDataFrameChunkData(LazyMetaChunkData):
             _columns_value=columns_value,
             **kw,
         )
+        self._dtypes_value = None
+
+    def __on_deserialize__(self):
+        super(BaseDataFrameChunkData, self).__on_deserialize__()
         self._dtypes_value = None
 
     def __len__(self):
@@ -1988,6 +1992,12 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
             _chunks=chunks,
             **kw,
         )
+        self._accessors = dict()
+        self._dtypes_value = None
+        self._dtypes_dict = None
+
+    def __on_deserialize__(self):
+        super().__on_deserialize__()
         self._accessors = dict()
         self._dtypes_value = None
         self._dtypes_dict = None
