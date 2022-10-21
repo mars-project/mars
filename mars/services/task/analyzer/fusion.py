@@ -19,7 +19,25 @@ from typing import Dict, List
 from ....config import options
 from ....core import ChunkGraph
 from ....core.operand import VirtualOperand
+from ....dataframe.merge.concat import DataFrameConcat
 from ....typing import BandType, ChunkType, OperandType
+
+
+class SubtaskFusion:
+    def __init__(self):
+        self._push_up_chunks_to_successors = defaultdict(list)
+
+    def collect(self, chunk: ChunkType, predecessors: List[ChunkType]):
+        for idx, p in enumerate(predecessors):
+            if isinstance(p.op, DataFrameConcat):
+                self._push_up_chunks_to_successors[p].append(chunk)
+
+    def get_fuse_color_map(self, chunk_to_colors) -> Dict[int, int]:
+        return {
+            chunk_to_colors[successors[0]]: chunk_to_colors[push_up_chunk]
+            for push_up_chunk, successors in self._push_up_chunks_to_successors.items()
+            if len(successors) == 1
+        }
 
 
 class Coloring:
@@ -47,6 +65,10 @@ class Coloring:
         self.successor_same_color_num = as_broadcaster_successor_num
 
         self._coloring_iter = itertools.count()
+        self._subtask_fusion = SubtaskFusion()
+
+    def get_fuse_color_map(self, chunk_to_colors) -> Dict[int, int]:
+        return self._subtask_fusion.get_fuse_color_map(chunk_to_colors)
 
     def next_color(self) -> int:
         return next(self._coloring_iter)
@@ -102,6 +124,7 @@ class Coloring:
 
     def color(self) -> Dict[ChunkType, int]:
         chunk_to_colors = dict()
+        self._subtask_fusion = SubtaskFusion()
 
         # step 1: Coloring the initial nodes according to the bands that assigned by assigner
         op_to_colors = self._color_init_nodes()
@@ -131,10 +154,12 @@ class Coloring:
                     # predecessors have only 1 color, will color with same one
                     color = next(iter(pred_colors))
                 else:
+                    self._subtask_fusion.collect(chunk, predecessors)
                     color = self.next_color()
             else:
                 # has more than 1 color, color a new one
                 assert len(pred_colors) > 1
+                self._subtask_fusion.collect(chunk, predecessors)
                 color = self.next_color()
 
             op_to_colors[chunk.op] = chunk_to_colors[chunk] = color

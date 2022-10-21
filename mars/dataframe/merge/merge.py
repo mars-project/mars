@@ -782,7 +782,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             if op.method == "auto":
                 # if method is auto, select new method after auto merge
                 method = cls._choose_merge_method(op, left, right)
-        logger.debug("Choose %s method for merge operand %s", method, op)
+        logger.info("Choose %s method for merge operand %s", method, op)
         if method == MergeMethod.one_chunk:
             ret = cls._tile_one_chunk(op, left, right)
         elif method == MergeMethod.broadcast:

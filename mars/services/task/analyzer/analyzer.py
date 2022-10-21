@@ -18,7 +18,7 @@ from collections import deque, defaultdict
 from typing import Dict, List, Tuple, Type, Union
 
 from ....config import Config
-from ....core import ChunkGraph, ChunkType, enter_mode
+from ....core import ChunkGraph, ChunkType, enter_mode, DAG
 from ....core.operand import (
     Fetch,
     VirtualOperand,
@@ -413,6 +413,7 @@ class GraphAnalyzer:
                 ),
             )
             chunk_to_colors = coloring.color()
+            fuse_color_map = coloring.get_fuse_color_map(chunk_to_colors)
         else:
             # if not fuse enabled, color all chunks with different colors
             op_to_colors = dict()
@@ -423,17 +424,37 @@ class GraphAnalyzer:
                     chunk_to_colors[c] = op_to_colors[c.op] = next(color_gen)
                 else:
                     chunk_to_colors[c] = op_to_colors[c.op]
+            fuse_color_map = {}
         color_to_chunks = defaultdict(list)
         for chunk, color in chunk_to_colors.items():
             if not isinstance(chunk.op, Fetch):
                 color_to_chunks[color].append(chunk)
+
+        # apply subtask fusion
+        if fuse_color_map:
+            logger.info(
+                "Fuse %s subtasks of task %s stage %s.",
+                len(fuse_color_map),
+                self._task.task_id,
+                self._stage_id,
+            )
+            for source_color, map_color in fuse_color_map.items():
+                source_chunks = color_to_chunks.pop(source_color)
+                for c in source_chunks:
+                    chunk_to_colors[c] = map_color
+                color_to_chunks[map_color].extend(source_chunks)
+        else:
+            logger.info(
+                "No subtask fuses for task %s stage %s.",
+                self._task.task_id,
+                self._stage_id,
+            )
 
         # gen subtask graph
         subtask_graph = SubtaskGraph()
         chunk_to_fetch_chunk = dict()
         chunk_to_subtask = self._chunk_to_subtasks
         # states
-        visited = set()
         logic_key_to_subtasks = defaultdict(list)
         if self._shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX:
             for chunk in self._chunk_graph.topological_iter():
@@ -461,12 +482,19 @@ class GraphAnalyzer:
                             mapper_color = coloring.next_color()
                             chunk_to_colors[mapper] = mapper_color
                             color_to_chunks[mapper_color] = [mapper]
-        for chunk in self._chunk_graph.topological_iter():
-            if chunk in visited or isinstance(chunk.op, Fetch):
-                # skip fetch chunk
-                continue
 
-            color = chunk_to_colors[chunk]
+        # build color dag
+        color_set = set(chunk_to_colors.values())
+        color_dag = DAG()
+        for c in color_set:
+            color_dag.add_node(c)
+        for chunk, color in chunk_to_colors.items():
+            for succ in self._chunk_graph.iter_successors(chunk):
+                if color != chunk_to_colors[succ]:
+                    color_dag.add_edge(color, chunk_to_colors[succ])
+
+        # build subtasks in color topological order
+        for color in color_dag.topological_iter(allow_island=True):
             same_color_chunks = color_to_chunks[color]
             if all(isinstance(c.op, Fetch) for c in same_color_chunks):
                 # all fetch ops, no need to gen subtask
@@ -486,7 +514,6 @@ class GraphAnalyzer:
 
             for c in same_color_chunks:
                 chunk_to_subtask[c] = subtask
-            visited.update(same_color_chunks)
 
         for subtasks in logic_key_to_subtasks.values():
             for logic_index, subtask in enumerate(subtasks):

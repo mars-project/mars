@@ -407,7 +407,7 @@ cdef class DAG(DirectedGraph):
     def to_dag(self):
         return self
 
-    def topological_iter(self, succ_checker=None, reverse=False):
+    def topological_iter(self, succ_checker=None, reverse=False, allow_island=False):
         cdef:
             dict preds, succs
             set visited = set()
@@ -431,7 +431,7 @@ cdef class DAG(DirectedGraph):
         succ_checker = succ_checker or _default_succ_checker
 
         stack = list((p for p, l in preds.items() if len(l) == 0))
-        if not stack:
+        if not stack and not allow_island:
             raise GraphContainsCycleError
         while stack:
             node = stack.pop()
@@ -445,4 +445,8 @@ cdef class DAG(DirectedGraph):
                 if succ_checker(succ, succ_preds):
                     stack.append(succ)
         if len(visited) != len(self):
-            raise GraphContainsCycleError
+            if allow_island:
+                for n in self._nodes.keys() - visited:
+                    yield n
+            else:
+                raise GraphContainsCycleError
