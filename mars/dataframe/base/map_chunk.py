@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import recursive_tile, get_output_types
+from ...core import recursive_tile, get_output_types, ENTITY_TYPE, CHUNK_TYPE
 from ...core.custom_log import redirect_custom_log
 from ...serialization.serializables import (
     KeyField,
@@ -27,7 +27,13 @@ from ...serialization.serializables import (
     StringField,
     AnyField,
 )
-from ...utils import enter_current_session, has_unknown_shape, quiet_stdio
+from ...utils import (
+    enter_current_session,
+    has_unknown_shape,
+    quiet_stdio,
+    find_objects,
+    replace_objects,
+)
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import (
     build_df,
@@ -129,6 +135,12 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
+        old_inputs = find_objects(self._args, ENTITY_TYPE) + find_objects(
+            self._kwargs, ENTITY_TYPE
+        )
+        mapping = {o: n for o, n in zip(old_inputs, self._inputs[1:])}
+        self._args = replace_objects(self._args, mapping)
+        self._kwargs = replace_objects(self._kwargs, mapping)
         self._input = self._inputs[0]
 
     def _infer_attrs_by_call(self, df_or_series):
@@ -212,9 +224,14 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                         "if output_type='dataframe'"
                     )
 
+        inputs = (
+            [df_or_series]
+            + find_objects(self.args, ENTITY_TYPE)
+            + find_objects(self.kwargs, ENTITY_TYPE)
+        )
         if output_type == OutputType.series:
             return self.new_series(
-                [df_or_series],
+                inputs,
                 dtype=dtypes.iloc[0],
                 shape=shape,
                 index_value=index_value,
@@ -224,7 +241,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
             # dataframe
             columns_value = parse_index(dtypes.index, store_data=True)
             return self.new_dataframe(
-                [df_or_series],
+                inputs,
                 shape=shape,
                 dtypes=dtypes,
                 index_value=index_value,
@@ -242,6 +259,10 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                 yield
             # if input is a DataFrame, make sure 1 chunk on axis columns
             inp = yield from recursive_tile(inp.rechunk({1: inp.shape[1]}))
+        arg_input_chunks = []
+        for other_inp in op.inputs[1:]:
+            other_inp = yield from recursive_tile(other_inp.rechunk(other_inp.shape))
+            arg_input_chunks.append(other_inp.chunks[0])
 
         out_chunks = []
         nsplits = [[]] if out.ndim == 1 else [[], [out.shape[1]]]
@@ -256,7 +277,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                     shape = (chunk.shape[0], out.shape[1])
                 index_value = parse_index(pd_out_index, chunk, op.key)
                 out_chunk = chunk_op.new_chunk(
-                    [chunk],
+                    [chunk] + arg_input_chunks,
                     shape=shape,
                     dtypes=out.dtypes,
                     index_value=index_value,
@@ -272,7 +293,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                     shape = (chunk.shape[0],)
                 index_value = parse_index(pd_out_index, chunk, op.key)
                 out_chunk = chunk_op.new_chunk(
-                    [chunk],
+                    [chunk] + arg_input_chunks,
                     shape=shape,
                     index_value=index_value,
                     name=out.name,
@@ -307,7 +328,12 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
         kwargs = op.kwargs or dict()
         if op.with_chunk_index:
             kwargs["chunk_index"] = out.index
-        ctx[out.key] = op.func(inp, *op.args, **kwargs)
+        args = op.args or tuple()
+        chunks = find_objects(args, CHUNK_TYPE) + find_objects(kwargs, CHUNK_TYPE)
+        mapping = {chunk: ctx[chunk.key] for chunk in chunks}
+        args = replace_objects(args, mapping)
+        kwargs = replace_objects(kwargs, mapping)
+        ctx[out.key] = op.func(inp, *args, **kwargs)
 
 
 def map_chunk(df_or_series, func, args=(), **kwargs):

@@ -1929,6 +1929,25 @@ def test_map_chunk_execution(setup):
     expected = raw_s + 1 + np.arange(10) // 5
     pd.testing.assert_series_equal(result, expected)
 
+    # test args or kwargs with mars objects
+    df = from_pandas_df(raw, chunk_size=5)
+
+    def f6(df, mars_df):
+        return df + mars_df.sum()
+
+    df_arg = from_pandas_df(raw, chunk_size=6)
+    r = df.map_chunk(f6, args=(df_arg,), output_type="dataframe", dtypes=df.dtypes)
+    expected = raw + raw.sum()
+    result = r.execute().fetch()
+    pd.testing.assert_frame_equal(result, expected)
+
+    df = from_pandas_df(raw, chunk_size=5)
+    df_arg = from_pandas_df(raw, chunk_size=6)
+    r = df.map_chunk(f6, mars_df=df_arg, output_type="dataframe", dtypes=df.dtypes)
+    expected = raw + raw.sum()
+    result = r.execute().fetch()
+    pd.testing.assert_frame_equal(result, expected)
+
 
 def test_map_chunk_closure_execute(setup):
     raw = pd.DataFrame(
