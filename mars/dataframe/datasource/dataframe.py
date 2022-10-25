@@ -66,7 +66,7 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
 
         # estimate column memory usage instead of calling df.memory_usage(deep=True)
         memory_usage = pd.Series(
-            {c: estimate_pandas_size(s) for c, s in raw_df.iteritems()}
+            {c: estimate_pandas_size(s) for c, s in raw_df.items()}
         )
         chunk_size = df.extra_params.raw_chunk_size or options.chunk_size
         chunk_size = decide_dataframe_chunk_sizes(df.shape, chunk_size, memory_usage)

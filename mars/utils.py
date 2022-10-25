@@ -690,7 +690,13 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
     """
     from sklearn.base import BaseEstimator
 
-    from .dataframe.utils import is_dataframe, is_index, is_series, get_xdf
+    from .dataframe.utils import (
+        is_dataframe,
+        is_index,
+        is_series,
+        get_xdf,
+        concat_on_columns,
+    )
     from .lib.groupby_wrapper import GroupByWrapper
     from .tensor.array_utils import get_array_module, is_array
 
@@ -717,8 +723,8 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
         xdf = get_xdf(v)
         concats = []
         for _, cs in itertools.groupby(chunk_results, key=lambda t: t[0][0]):
-            concats.append(xdf.concat([c[1] for c in cs], axis="columns"))
-        return xdf.concat(concats, axis="index")
+            concats.append(concat_on_columns([c[1] for c in cs]))
+        return xdf.concat(concats, axis=0)
     elif is_series(v):
         xdf = get_xdf(v)
         return xdf.concat([c[1] for c in chunk_results])

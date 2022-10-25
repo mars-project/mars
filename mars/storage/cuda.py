@@ -76,7 +76,7 @@ class CudaFileObject:
         for buf in buffers:
             if isinstance(buf, cupy.ndarray):
                 ptr, size = buf.data.ptr, buf.size
-                self._buffers.append(UnownedMemory(ptr, size, Buffer(ptr, size)))
+                self._buffers.append(UnownedMemory(ptr, size, Buffer(ptr, size=size)))
                 buffer_types.append(["cuda", size])
             elif isinstance(buf, Buffer):
                 ptr, size = buf.ptr, buf.size
@@ -137,16 +137,16 @@ class CudaFileObject:
                 return cur_buf[self._offset, self._offset + size]
 
     def write(self, content):
-        from cudf.core.buffer import Buffer
         from cupy.cuda import MemoryPointer
         from cupy.cuda.memory import UnownedMemory
+        from rmm import DeviceBuffer
 
         if not self._has_write_headers:
             self._headers = headers = pickle.loads(content)
             buffer_types = headers[0]["buffer_types"]
             for buffer_type, size in buffer_types:
                 if buffer_type == "cuda":
-                    self._buffers.append(Buffer.empty(size))
+                    self._buffers.append(DeviceBuffer(size=size))
                 else:
                     self._buffers.append(BytesIO())
             self._has_write_headers = True
@@ -154,8 +154,8 @@ class CudaFileObject:
 
         cur_buf = self._buffers[self._cur_buffer_index]
         cur_buf_size = self._headers[0]["buffer_types"][self._cur_buffer_index][1]
-        if isinstance(cur_buf, Buffer):
-            cur_cupy_memory = UnownedMemory(cur_buf.ptr, len(cur_buf), cur_buf)
+        if isinstance(cur_buf, DeviceBuffer):
+            cur_cupy_memory = UnownedMemory(cur_buf.ptr, cur_buf.size, cur_buf)
             cupy_pointer = MemoryPointer(cur_cupy_memory, self._offset)
 
             if isinstance(content, bytes):
@@ -165,7 +165,7 @@ class CudaFileObject:
                 )
             else:
                 source_mem = MemoryPointer(
-                    UnownedMemory(content.ptr, len(content), content), 0
+                    UnownedMemory(content.ptr, content.size, content), 0
                 )
                 content_length = source_mem.mem.size
             cupy_pointer.copy_from(source_mem, content_length)
@@ -262,11 +262,7 @@ class CudaStorage(StorageBackend):
             if isinstance(buf, cupy.ndarray):
                 new_buffers.append(DeviceBuffer(ptr=buf.data.ptr, size=buf.size))
             elif isinstance(buf, CPBuffer):
-                new_buffers.append(
-                    CPBuffer(
-                        buf.ptr, buf.size, DeviceBuffer(ptr=buf.ptr, size=buf.size)
-                    )
-                )
+                new_buffers.append(DeviceBuffer(ptr=buf.ptr, size=buf.size))
             else:
                 new_buffers.append(buf)
         return deserialize(headers, new_buffers)

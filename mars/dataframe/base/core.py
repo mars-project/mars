@@ -49,6 +49,8 @@ class DataFrameDeviceConversionBase(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
+        # Isolate ops on cpu from subsequent ops on gpu
+        yield
         out_chunks = []
         for c in op.input.chunks:
             chunk_op = op.copy().reset_key()

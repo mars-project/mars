@@ -59,13 +59,13 @@ def write_buffers(writer: StreamWriter, buffers: List):
 
 async def read_buffers(header: Dict, reader: StreamReader):
     if cupy is not None and cudf is not None:
-        from cudf.core.buffer import Buffer as CPBuffer
         from cupy.cuda.memory import (
             UnownedMemory as CPUnownedMemory,
             MemoryPointer as CPMemoryPointer,
         )
+        from rmm import DeviceBuffer
     else:
-        CPBuffer = CPUnownedMemory = CPMemoryPointer = None
+        CPUnownedMemory = CPMemoryPointer = DeviceBuffer = None
 
     # construct a empty cuda buffer and copy from host
     is_cuda_buffers = header[0].get("is_cuda_buffers")
@@ -78,7 +78,7 @@ async def read_buffers(header: Dict, reader: StreamReader):
                 content = await reader.readexactly(buf_size)
                 buffers.append(content)
             else:
-                cuda_buffer = CPBuffer.empty(buf_size)
+                cuda_buffer = DeviceBuffer(size=buf_size)
                 cupy_memory = CPUnownedMemory(cuda_buffer.ptr, buf_size, cuda_buffer)
                 offset = 0
                 chunk_size = CUDA_CHUNK_SIZE
