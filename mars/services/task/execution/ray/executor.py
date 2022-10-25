@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import asyncio
+import enum
 import functools
 import logging
 
 import operator
 import sys
+import time
 from dataclasses import dataclass
 
 from typing import List, Dict, Any, Set, Callable
@@ -274,6 +276,12 @@ def _get_subtask_out_info(
     return output_keys.keys(), len(output_keys)
 
 
+class _SubmitStage(enum.Enum):
+    INIT = 0
+    SUBMITTING = 1
+    WAITING = 2
+
+
 @register_executor_cls
 class RayTaskExecutor(TaskExecutor):
     name = "ray"
@@ -303,6 +311,8 @@ class RayTaskExecutor(TaskExecutor):
         self._result_tileables_lifecycle = None
 
         # For progress and task cancel
+        self._submit_stage = _SubmitStage.INIT
+        self._submit_count = 0
         self._pre_all_stages_progress = 0.0
         self._pre_all_stages_tile_progress = 0.0
         self._cur_stage_progress = 0.0
@@ -369,6 +379,8 @@ class RayTaskExecutor(TaskExecutor):
         self._result_tileables_lifecycle = None
 
         # For progress and task cancel
+        self._submit_stage = _SubmitStage.INIT
+        self._submit_count = 0
         self._pre_all_stages_progress = 1.0
         self._pre_all_stages_tile_progress = 1.0
         self._cur_stage_progress = 1.0
@@ -466,7 +478,7 @@ class RayTaskExecutor(TaskExecutor):
                 stage_id,
                 subtask_graph,
                 result_meta_keys,
-                self._config.get_subtask_monitor_interval(),
+                self._config.get_monitor_interval_seconds(),
             )
         )
         monitor_aiotask.add_done_callback(_on_monitor_aiotask_done)
@@ -494,6 +506,7 @@ class RayTaskExecutor(TaskExecutor):
         # during execution, so we should track and incref the result tileables before execute.
         await self._result_tileables_lifecycle.incref_tiled()
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
+        self._submit_stage = _SubmitStage.SUBMITTING
         shuffle_manager = ShuffleManager(subtask_graph)
         subtask_max_retries = self._config.get_subtask_max_retries()
         subtask_num_cpus = self._config.get_subtask_num_cpus()
@@ -504,9 +517,9 @@ class RayTaskExecutor(TaskExecutor):
             input_object_refs = await self._load_subtask_inputs(
                 stage_id, subtask, task_context, shuffle_manager
             )
-            # can't use `subtask_graph.count_successors(subtask) == 0` to check whether output meta,
-            # because a subtask can have some outputs which is dependent by downstream, but other outputs are not.
-            # see https://user-images.githubusercontent.com/12445254/168484663-a4caa3f4-0ccc-4cd7-bf20-092356815073.png
+            # Can't use `subtask_graph.count_successors(subtask) == 0` to check output meta, because a subtask
+            # may have some outputs which are dependent by downstream, but other outputs are not. see
+            # https://user-images.githubusercontent.com/12445254/168484663-a4caa3f4-0ccc-4cd7-bf20-092356815073.png
             is_mapper, n_reducers = shuffle_manager.is_mapper(subtask), None
             if is_mapper:
                 n_reducers = shuffle_manager.get_n_reducers(subtask)
@@ -531,6 +544,8 @@ class RayTaskExecutor(TaskExecutor):
                 is_mapper,
                 *input_object_refs,
             )
+            self._submit_count += 1
+            await asyncio.sleep(0)
             if output_count == 0:
                 continue
             elif output_count == 1:
@@ -551,6 +566,7 @@ class RayTaskExecutor(TaskExecutor):
             task_context.update(subtask_outputs)
         logger.info("Submitted %s subtasks of stage %s.", len(subtask_graph), stage_id)
 
+        self._submit_stage = _SubmitStage.WAITING
         key_to_meta = {}
         if len(output_meta_object_refs) > 0:
             # TODO(fyrestone): Optimize update meta by fetching partial meta.
@@ -776,8 +792,30 @@ class RayTaskExecutor(TaskExecutor):
             # in the result subtasks
 
         collect_garbage = gc()
+        last_log_time = time.time()
+        log_interval_seconds = self._config.get_log_interval_seconds()
+        submit_stage_to_log_func = {
+            _SubmitStage.SUBMITTING: lambda: logger.info(
+                "Submitted [%s/%s] subtasks of stage %s.",
+                self._submit_count,
+                total,
+                stage_id,
+            ),
+            _SubmitStage.WAITING: lambda: logger.info(
+                "Finish [%s/%s] subtasks of stage %s",
+                len(completed_subtasks),
+                total,
+                stage_id,
+            ),
+        }
 
         while len(completed_subtasks) < total:
+            if self._submit_stage != _SubmitStage.INIT:
+                curr_time = time.time()
+                if curr_time - last_log_time > log_interval_seconds:
+                    submit_stage_to_log_func[self._submit_stage]()
+                    last_log_time = curr_time
+
             if len(object_ref_to_subtask) <= 0:  # pragma: no cover
                 await asyncio.sleep(interval_seconds)
                 # We should run ray.wait after at least one Ray task is submitted.

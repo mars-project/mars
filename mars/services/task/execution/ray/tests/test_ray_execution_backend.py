@@ -352,7 +352,7 @@ async def test_ray_execution_config(ray_start_regular_shared2):
         {
             "backend": "ray",
             "ray": {
-                "subtask_monitor_interval": 0,
+                "monitor_interval_seconds": 0,
                 "subtask_max_retries": 4,
                 "subtask_num_cpus": 0.8,
                 "n_cpu": 1,
@@ -401,7 +401,8 @@ async def test_executor_context_gc(ray_start_regular_shared2):
         {
             "backend": "ray",
             "ray": {
-                "subtask_monitor_interval": 0,
+                "monitor_interval_seconds": 0,
+                "log_interval_seconds": 0,
                 "subtask_max_retries": 0,
                 "n_cpu": 1,
                 "n_worker": 1,
@@ -421,10 +422,17 @@ async def test_executor_context_gc(ray_start_regular_shared2):
         meta_api=None,
     )
     executor._ray_executor = RayTaskExecutor._get_ray_executor()
-    async with executor:
-        await executor.execute_subtask_graph(
-            "mock_stage", subtask_graph, chunk_graph, tile_context
-        )
+    with mock.patch("logging.Logger.info") as log_patch:
+        async with executor:
+            await executor.execute_subtask_graph(
+                "mock_stage", subtask_graph, chunk_graph, tile_context
+            )
+        assert log_patch.call_count > 0
+        args = [c.args[0] for c in log_patch.call_args_list]
+        assert any("Submitted [%s/%s]" in a for a in args)
+        assert any("Finish [%s/%s]" in a for a in args)
+    assert executor.set_attr_counter()["_submit_stage"] == 3
+    assert executor.set_attr_counter()["_submit_count"] > 1
 
     assert len(task_context) == 1
     assert len(popped_seq) == 6
@@ -482,7 +490,7 @@ async def test_execute_shuffle(ray_start_regular_shared2):
         {
             "backend": "ray",
             "ray": {
-                "subtask_monitor_interval": 0,
+                "monitor_interval_seconds": 0,
                 "subtask_max_retries": 0,
                 "n_cpu": 1,
                 "n_worker": 1,

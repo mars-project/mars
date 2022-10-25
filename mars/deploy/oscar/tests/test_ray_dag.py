@@ -128,7 +128,7 @@ def test_sync_execute(ray_start_regular_shared2, config):
 @require_ray
 @pytest.mark.parametrize(
     "create_cluster",
-    [{"config": {"task.execution_config.ray.subtask_monitor_interval": 0}}],
+    [{"config": {"task.execution_config.ray.monitor_interval_seconds": 0}}],
     indirect=True,
 )
 @pytest.mark.asyncio
@@ -150,7 +150,7 @@ def test_executor_context_gc(ray_start_regular_shared2, config):
         n_cpu=2,
         web=False,
         use_uvloop=False,
-        config={"task.execution_config.ray.subtask_monitor_interval": 0},
+        config={"task.execution_config.ray.monitor_interval_seconds": 0},
     )
 
     assert session._session.client.web_address is None
