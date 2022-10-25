@@ -1141,3 +1141,37 @@ def test_naive_code_file():
             except psutil.NoSuchProcess:
                 pass
             raise
+
+
+@pytest.mark.parametrize("config", [{"backend": "mars"}])
+def test_fetch_concat(config):
+    session = new_session(
+        backend=config["backend"], n_cpu=2, web=False, use_uvloop=False
+    )
+    assert session is not None
+
+    with session:
+        data = {"A": [i for i in range(10)]}
+        df0 = md.DataFrame(data)
+        df1 = df0[["A"]]
+        df2 = df0[["A"]]
+        df1 = df1.execute()
+        df2 = df2.execute()
+        df3 = md.concat([df1, df2], axis=1)
+        ret = df3.execute()
+        df4 = ret.fetch()
+
+        pdf0 = pd.DataFrame(data)
+        pdf1 = pdf0[["A"]]
+        pdf2 = pdf0[["A"]]
+        pdf3 = pd.concat([pdf1, pdf2], axis=1)
+
+        assert pdf3.equals(df4)
+
+    for worker_pool in session._session.client._cluster._worker_pools:
+        _assert_storage_cleaned(
+            session.session_id, worker_pool.external_address, StorageLevel.MEMORY
+        )
+
+    session.stop_server()
+    assert get_default_async_session() is None

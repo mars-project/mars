@@ -133,21 +133,7 @@ class Base(Serializable):
         return kv
 
 
-def buffered_base(func):
-    @wraps(func)
-    def wrapped(self, obj: Base, context: Dict):
-        obj_id = (obj.key, obj.id)
-        if obj_id in context:
-            return Placeholder(fast_id(context[obj_id]))
-        else:
-            context[obj_id] = obj
-            return func(self, obj, context)
-
-    return wrapped
-
-
 class BaseSerializer(SerializableSerializer):
-    @buffered_base
     def serial(self, obj: Base, context: Dict):
         return super().serial(obj, context)
 
