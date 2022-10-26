@@ -28,7 +28,7 @@ class SubtaskFusion:
         self._push_up_chunks_to_successors = defaultdict(list)
 
     def collect(self, chunk: ChunkType, predecessors: List[ChunkType]):
-        for idx, p in enumerate(predecessors):
+        for p in predecessors:
             if isinstance(p.op, DataFrameConcat):
                 self._push_up_chunks_to_successors[p].append(chunk)
 
