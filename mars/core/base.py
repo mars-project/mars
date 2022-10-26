@@ -15,7 +15,6 @@
 from functools import wraps
 from typing import Dict, Tuple, Type
 
-from ..serialization.core import Placeholder, fast_id
 from ..serialization.serializables import Serializable, StringField
 from ..serialization.serializables.core import SerializableSerializer
 from ..utils import tokenize
