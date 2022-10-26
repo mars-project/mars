@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import wraps
 from typing import Dict, Tuple, Type
 
 from ..serialization.serializables import Serializable, StringField
