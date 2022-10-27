@@ -28,6 +28,7 @@ from ....core.operand import (
     ShuffleFetchType,
     ShuffleProxy,
 )
+from ....dataframe.merge.concat import DataFrameConcat
 from ....resource import Resource
 from ....typing import BandType, OperandType
 from ....utils import build_fetch, build_fetch_shuffle, tokenize
@@ -49,6 +50,35 @@ def need_reassign_worker(op: OperandType) -> bool:
     return op.reassign_worker or (
         isinstance(op, MapReduceOperand) and op.stage == OperandStage.reduce
     )
+
+
+class SubtaskFusion:
+    def __init__(self):
+        self._typed_chunks = defaultdict(list)
+
+    def collect(self, chunk: ChunkType, color: int):
+        op_type = type(chunk.op)
+        if op_type is DataFrameConcat:
+            self._typed_chunks[op_type].append((chunk, color))
+
+    def fuse(self, chunk_graph, chunk_to_colors, color_to_chunks):
+        fuse_count = 0
+        for c, c_color in self._typed_chunks[DataFrameConcat]:
+            if len(color_to_chunks[c_color]) == 1:
+                succ_colors = set()
+                for succ in chunk_graph.iter_successors(c):
+                    succ_color = chunk_to_colors[succ]
+                    succ_colors.add(succ_color)
+                    if len(succ_colors) > 1:
+                        break
+                else:
+                    if len(succ_colors) == 1:
+                        fuse_count += 1
+                        fuse_color = next(iter(succ_colors))
+                        chunk_to_colors[c] = fuse_color
+                        color_to_chunks.pop(c_color)
+                        color_to_chunks[fuse_color].insert(0, c)
+        logger.info("Fuse %s subtasks.", fuse_count)
 
 
 class GraphAnalyzer:
@@ -413,7 +443,6 @@ class GraphAnalyzer:
                 ),
             )
             chunk_to_colors = coloring.color()
-            fuse_color_map = coloring.get_fuse_color_map(chunk_to_colors)
         else:
             # if not fuse enabled, color all chunks with different colors
             op_to_colors = dict()
@@ -424,31 +453,14 @@ class GraphAnalyzer:
                     chunk_to_colors[c] = op_to_colors[c.op] = next(color_gen)
                 else:
                     chunk_to_colors[c] = op_to_colors[c.op]
-            fuse_color_map = {}
+
         color_to_chunks = defaultdict(list)
+        subtask_fusion = SubtaskFusion()
         for chunk, color in chunk_to_colors.items():
+            subtask_fusion.collect(chunk, color)
             if not isinstance(chunk.op, Fetch):
                 color_to_chunks[color].append(chunk)
-
-        # apply subtask fusion
-        if fuse_color_map:
-            logger.info(
-                "Fuse %s subtasks of task %s stage %s.",
-                len(fuse_color_map),
-                self._task.task_id,
-                self._stage_id,
-            )
-            for source_color, map_color in fuse_color_map.items():
-                source_chunks = color_to_chunks.pop(source_color)
-                for c in source_chunks:
-                    chunk_to_colors[c] = map_color
-                color_to_chunks[map_color].extend(source_chunks)
-        else:
-            logger.info(
-                "No subtask fuses for task %s stage %s.",
-                self._task.task_id,
-                self._stage_id,
-            )
+        subtask_fusion.fuse(self._chunk_graph, chunk_to_colors, color_to_chunks)
 
         # gen subtask graph
         subtask_graph = SubtaskGraph()
@@ -494,7 +506,7 @@ class GraphAnalyzer:
                     color_dag.add_edge(color, chunk_to_colors[succ])
 
         # build subtasks in color topological order
-        for color in color_dag.topological_iter(allow_island=True):
+        for color in color_dag.topological_iter():
             same_color_chunks = color_to_chunks[color]
             if all(isinstance(c.op, Fetch) for c in same_color_chunks):
                 # all fetch ops, no need to gen subtask
