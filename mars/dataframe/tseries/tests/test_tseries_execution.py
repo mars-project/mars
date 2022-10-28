@@ -14,7 +14,9 @@
 
 import pandas as pd
 
+from .... import dataframe as md
 from ....tensor import tensor
+from ....tests.core import require_cudf
 from ... import to_datetime, Series, DataFrame, Index
 
 
@@ -82,3 +84,14 @@ def test_to_datetime_execution(setup):
     result = r.execute().fetch()
     expected = pd.to_datetime([1, 2, 3], unit="D", origin=pd.Timestamp("1960-01-01"))
     pd.testing.assert_index_equal(result, expected)
+
+
+@require_cudf
+def test_to_datetime_gpu_execution(setup_gpu):
+    s = md.Series(["3/11/2000", "3/12/2000", "3/13/2000"]).to_gpu()
+    r = to_datetime(s, format="%m/%d/%Y")
+    result = r.execute().fetch().to_pandas()
+    expected = pd.to_datetime(
+        pd.Series(["3/11/2000", "3/12/2000", "3/13/2000"]), format="%m/%d/%Y"
+    )
+    pd.testing.assert_series_equal(result, expected)

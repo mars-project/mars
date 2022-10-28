@@ -53,6 +53,14 @@ def test_arithmetic_query(setup):
     records = optimize(graph)
     assert records.get_optimization_result(df3.data) is None
 
+    # does not support GPU
+    df1 = md.DataFrame(raw, chunk_size=10, gpu=True)
+    df4 = (-df1["A"]).add(df1["B"])
+    graph = TileableGraph([df4.data])
+    next(TileableGraphBuilder(graph).build())
+    records = optimize(graph)
+    assert records.get_optimization_result(df4.data) is None
+
     # does not support non-string headers
     df1 = md.DataFrame(np.random.rand(100, 5))
     df2 = df1[0] + df1[1]

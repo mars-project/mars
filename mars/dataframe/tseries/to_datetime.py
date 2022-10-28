@@ -27,7 +27,10 @@ from ...tensor.core import TENSOR_CHUNK_TYPE
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, INDEX_CHUNK_TYPE
 from ..initializer import DataFrame as asdataframe, Series as asseries, Index as asindex
 from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import parse_index
+from ..utils import parse_index, lazy_import
+
+
+cudf = lazy_import("cudf")
 
 
 class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
@@ -164,15 +167,23 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op: "DataFrameToDatetime"):
         arg = ctx[op.arg.key]
 
+        unit = op.unit
+        if cudf and op.gpu:
+            func = cudf.to_datetime
+            if unit is None:
+                unit = "ns"
+        else:
+            func = pd.to_datetime
+
         call = partial(
-            pd.to_datetime,
+            func,
             errors=op.errors,
             dayfirst=op.dayfirst,
             yearfirst=op.yearfirst,
             utc=op.utc,
             format=op.format,
             exact=op.exact,
-            unit=op.unit,
+            unit=unit,
             infer_datetime_format=op.infer_datetime_format,
             origin=op.origin,
             cache=op.cache,

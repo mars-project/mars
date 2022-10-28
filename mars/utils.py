@@ -28,8 +28,6 @@ import numbers
 import operator
 import os
 import weakref
-
-import cloudpickle as pickle
 import pkgutil
 import random
 import socket
@@ -59,6 +57,7 @@ from typing import (
 from types import TracebackType
 from urllib.parse import urlparse
 
+import cloudpickle as pickle
 import numpy as np
 import pandas as pd
 
@@ -476,6 +475,18 @@ def register_ray_serializer(obj_type, serializer=None, deserializer=None):
         pass
 
 
+cudf = lazy_import("cudf")
+
+
+def _get_dtype_itemsize(dt: Union[np.dtype, pd.api.extensions.ExtensionDtype]) -> int:
+    try:
+        return dt.itemsize
+    except AttributeError:
+        if cudf and isinstance(dt, cudf.CategoricalDtype):
+            return dt.to_pandas().itemsize
+        raise
+
+
 def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
     from .dataframe.core import IndexValue
 
@@ -495,7 +506,7 @@ def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
     if hasattr(dt, "shape") and len(dt.shape) == 0:
         return 0
     if hasattr(dt, "dtypes") and shape is not None:
-        size = shape[0] * sum(dtype.itemsize for dtype in dt.dtypes)
+        size = shape[0] * sum(_get_dtype_itemsize(dtype) for dtype in dt.dtypes)
         try:
             index_value_value = dt.index_value.value
             if hasattr(index_value_value, "dtype") and not isinstance(

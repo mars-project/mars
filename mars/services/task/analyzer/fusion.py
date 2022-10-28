@@ -40,7 +40,12 @@ class Coloring:
         self.all_bands = all_bands
         self.chunk_to_bands = chunk_to_bands
         if initial_same_color_num is None:
-            initial_same_color_num = max(options.combine_size // 2, 1)
+            has_gpu = any(c.op.gpu for c in chunk_graph)
+            if not has_gpu:
+                initial_same_color_num = max(options.combine_size // 2, 1)
+            else:
+                # if gpu exists, we try to fuse more node to reduce cost
+                initial_same_color_num = max(options.combine_size * 2, 1)
         self.initial_same_color_num = initial_same_color_num
         if as_broadcaster_successor_num is None:
             as_broadcaster_successor_num = options.combine_size * 2
