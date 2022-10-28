@@ -132,26 +132,29 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             out_chunks = []
             for i in range(out_chunk_size):
                 in_chunks = new_chunks[i * combine_size : (i + 1) * combine_size]
-                s = sum(c.shape[0] for c in in_chunks)
-                if in_chunks[0].ndim == 2:
-                    kw = dict(
-                        dtypes=in_chunks[0].dtypes,
-                        index_value=in_chunks[0].index_value,
-                        columns_value=in_chunks[0].columns_value,
-                        shape=(s, in_chunks[0].shape[1]),
-                        index=(i, 0),
-                    )
+                if len(in_chunks) == 1:
+                    concat_chunk = in_chunks[0]
                 else:
-                    kw = dict(
-                        dtype=in_chunks[0].dtype,
-                        index_value=in_chunks[0].index_value,
-                        name=in_chunks[0].name,
-                        shape=(s,),
-                        index=(i,),
-                    )
-                concat_chunk = DataFrameConcat(
-                    output_types=in_chunks[0].op.output_types
-                ).new_chunk(in_chunks, **kw)
+                    s = sum(c.shape[0] for c in in_chunks)
+                    if in_chunks[0].ndim == 2:
+                        kw = dict(
+                            dtypes=in_chunks[0].dtypes,
+                            index_value=in_chunks[0].index_value,
+                            columns_value=in_chunks[0].columns_value,
+                            shape=(s, in_chunks[0].shape[1]),
+                            index=(i, 0),
+                        )
+                    else:
+                        kw = dict(
+                            dtype=in_chunks[0].dtype,
+                            index_value=in_chunks[0].index_value,
+                            name=in_chunks[0].name,
+                            shape=(s,),
+                            index=(i,),
+                        )
+                    concat_chunk = DataFrameConcat(
+                        output_types=in_chunks[0].op.output_types
+                    ).new_chunk(in_chunks, **kw)
                 chunk_op = op.copy().reset_key()
                 chunk_op._method = method
                 chunk_op.stage = (
