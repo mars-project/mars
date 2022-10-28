@@ -775,11 +775,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         combined_chunks: List[ChunkType],
         func_infos: ReductionSteps,
     ):
-        concat_op = DataFrameConcat(output_types=out_df.op.output_types)
-        if out_df.ndim == 2:
-            chk = concat_op.new_chunk(combined_chunks, dtypes=combined_chunks[0].dtypes)
+        if len(combined_chunks) == 1:
+            chk = combined_chunks[0]
         else:
-            chk = concat_op.new_chunk(combined_chunks, dtype=combined_chunks[0].dtype)
+            concat_op = DataFrameConcat(output_types=out_df.op.output_types)
+            if out_df.ndim == 2:
+                chk = concat_op.new_chunk(
+                    combined_chunks, dtypes=combined_chunks[0].dtypes
+                )
+            else:
+                chk = concat_op.new_chunk(
+                    combined_chunks, dtype=combined_chunks[0].dtype
+                )
         chunk_op = op.copy().reset_key()
         chunk_op.tileable_op_key = op.key
         chunk_op.stage = OperandStage.agg

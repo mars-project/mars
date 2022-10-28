@@ -1414,14 +1414,14 @@ def auto_merge_chunks(
         ) or idx == last_idx:
             # adding current chunk would exceed the maximum,
             # concat previous chunks
-            if len(to_merge_chunks) > 1:
-                merged_chunk = _concat_chunks(to_merge_chunks, len(n_split))
-                out_chunks.append(merged_chunk)
-                n_split.append(merged_chunk.shape[0])
-            else:
+            if len(to_merge_chunks) == 1:
                 # do not generate concat op for 1 input.
                 out_chunks.append(to_merge_chunks[0])
                 n_split.append(to_merge_chunks[0].shape[0])
+            else:
+                merged_chunk = _concat_chunks(to_merge_chunks, len(n_split))
+                out_chunks.append(merged_chunk)
+                n_split.append(merged_chunk.shape[0])
             # reset
             acc_memory_size = 0
             to_merge_chunks = []
