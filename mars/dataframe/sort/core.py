@@ -86,6 +86,7 @@ class DataFrameSortOperand(DataFrameOperand):
                 concat_params["shape"] = shape
                 if len(to_combine_chunks) == 1:
                     c = to_combine_chunks[0]
+                    c._index = chunk_index
                 else:
                     c = DataFrameConcat(
                         axis=axis, output_types=op.output_types

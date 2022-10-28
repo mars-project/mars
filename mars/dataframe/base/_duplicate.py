@@ -134,6 +134,7 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
                 in_chunks = new_chunks[i * combine_size : (i + 1) * combine_size]
                 if len(in_chunks) == 1:
                     concat_chunk = in_chunks[0]
+                    concat_chunk._index = (i, 0) if concat_chunk.ndim == 2 else (i,)
                 else:
                     s = sum(c.shape[0] for c in in_chunks)
                     if in_chunks[0].ndim == 2:
