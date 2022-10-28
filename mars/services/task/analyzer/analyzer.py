@@ -28,7 +28,6 @@ from ....core.operand import (
     ShuffleFetchType,
     ShuffleProxy,
 )
-from ....dataframe.merge.concat import DataFrameConcat
 from ....resource import Resource
 from ....typing import BandType, OperandType
 from ....utils import build_fetch, build_fetch_shuffle, tokenize
@@ -53,17 +52,24 @@ def need_reassign_worker(op: OperandType) -> bool:
 
 
 class SubtaskFusion:
+    type_DataFrameConcat = None
+
     def __init__(self):
+        # For faster import mars.
+        if SubtaskFusion.type_DataFrameConcat is None:
+            from ....dataframe.merge.concat import DataFrameConcat
+
+            SubtaskFusion.type_DataFrameConcat = DataFrameConcat
         self._typed_chunks = defaultdict(list)
 
     def collect(self, chunk: ChunkType, color: int):
         op_type = type(chunk.op)
-        if op_type is DataFrameConcat:
+        if op_type is self.type_DataFrameConcat:
             self._typed_chunks[op_type].append((chunk, color))
 
-    def fuse(self, chunk_graph, chunk_to_colors, color_to_chunks):
+    def fuse(self, chunk_graph, chunk_to_colors, color_to_chunks, chunk_to_bands):
         fuse_count = 0
-        for c, c_color in self._typed_chunks[DataFrameConcat]:
+        for c, c_color in self._typed_chunks[self.type_DataFrameConcat]:
             if len(color_to_chunks[c_color]) == 1:
                 succ_colors = set()
                 for succ in chunk_graph.iter_successors(c):
@@ -76,6 +82,7 @@ class SubtaskFusion:
                         fuse_count += 1
                         fuse_color = next(iter(succ_colors))
                         chunk_to_colors[c] = fuse_color
+                        chunk_to_bands[c] = None
                         color_to_chunks.pop(c_color)
                         color_to_chunks[fuse_color].insert(0, c)
         logger.info("Fuse %s subtasks.", fuse_count)
@@ -460,7 +467,9 @@ class GraphAnalyzer:
             subtask_fusion.collect(chunk, color)
             if not isinstance(chunk.op, Fetch):
                 color_to_chunks[color].append(chunk)
-        subtask_fusion.fuse(self._chunk_graph, chunk_to_colors, color_to_chunks)
+        subtask_fusion.fuse(
+            self._chunk_graph, chunk_to_colors, color_to_chunks, chunk_to_bands
+        )
 
         # gen subtask graph
         subtask_graph = SubtaskGraph()
