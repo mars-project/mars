@@ -511,8 +511,9 @@ class GraphAnalyzer:
             color_dag.add_node(c)
         for chunk, color in chunk_to_colors.items():
             for succ in self._chunk_graph.iter_successors(chunk):
-                if color != chunk_to_colors[succ]:
-                    color_dag.add_edge(color, chunk_to_colors[succ])
+                succ_color = chunk_to_colors[succ]
+                if color != succ_color:
+                    color_dag.add_edge(color, succ_color)
 
         # build subtasks in color topological order
         for color in color_dag.topological_iter():
