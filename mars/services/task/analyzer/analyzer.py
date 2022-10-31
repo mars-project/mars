@@ -52,7 +52,7 @@ def need_reassign_worker(op: OperandType) -> bool:
 
 
 class SubtaskFusion:
-    type_DataFrameConcat = None
+    type_DataFrameConcat = None  # noqa: N815
 
     def __init__(self):
         # For faster import mars.
