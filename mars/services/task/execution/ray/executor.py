@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import collections
 import enum
 import functools
 import logging
@@ -300,10 +301,13 @@ class RayTaskExecutor(TaskExecutor):
         self._task = task
         self._tile_context = tile_context
         self._task_context = task_context
+        # Stage chunk keys may be duplicate.
+        # TODO(fyrestone): Remove this if Mars chunk keys are unique.
+        self._task_key_ref_count = collections.defaultdict(int)
         self._task_chunks_meta = task_chunks_meta
         self._ray_executor = self._get_ray_executor()
 
-        # api
+        # API
         self._lifecycle_api = lifecycle_api
         self._meta_api = meta_api
 
@@ -368,6 +372,7 @@ class RayTaskExecutor(TaskExecutor):
         self._task = None
         self._tile_context = None
         self._task_context = {}
+        self._task_key_ref_count = collections.defaultdict(int)
         self._task_chunks_meta = {}
         self._ray_executor = None
 
@@ -562,8 +567,11 @@ class RayTaskExecutor(TaskExecutor):
                     subtask, output_object_refs[-n_reducers:]
                 )
                 output_object_refs = output_object_refs[:-n_reducers]
-            subtask_outputs = zip(output_keys, output_object_refs)
-            task_context.update(subtask_outputs)
+            # Mars chunk keys may be duplicate, so we should track the ref count.
+            for chunk_key, object_ref in zip(output_keys, output_object_refs):
+                if chunk_key in task_context:
+                    self._task_key_ref_count[chunk_key] += 1
+                task_context[chunk_key] = object_ref
         logger.info("Submitted %s subtasks of stage %s.", len(subtask_graph), stage_id)
 
         self._submit_stage = _SubmitStage.WAITING
@@ -785,7 +793,11 @@ class RayTaskExecutor(TaskExecutor):
                         # example: test_cut_execution
                         if chunk_key not in result_meta_keys:
                             logger.debug("GC[stage=%s]: %s", stage_id, chunk)
-                            self._task_context.pop(chunk_key, None)
+                            ref_count = self._task_key_ref_count.get(chunk_key, 0)
+                            if ref_count == 0:
+                                self._task_context.pop(chunk_key, None)
+                            else:
+                                self._task_key_ref_count[chunk_key] = ref_count - 1
                     gc_subtasks.add(pred)
 
             # TODO(fyrestone): Check the remaining self._task_context.keys()
