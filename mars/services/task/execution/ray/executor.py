@@ -824,7 +824,7 @@ class RayTaskExecutor(TaskExecutor):
         while len(completed_subtasks) < total:
             if self._submit_stage != _SubmitStage.INIT:
                 curr_time = time.time()
-                if curr_time - last_log_time > log_interval_seconds:
+                if curr_time - last_log_time > log_interval_seconds:  # pragma: no cover
                     submit_stage_to_log_func[self._submit_stage]()
                     last_log_time = curr_time
 
