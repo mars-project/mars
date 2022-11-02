@@ -155,10 +155,15 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
                     store_data=True,
                 )
                 params["dtypes"] = pd.concat([c.dtypes for c in inp_chunks_arr[0]])
-            out_chunk = DataFrameConcat(
-                output_types=[out.op.output_types[0]]
-            ).new_chunk(inp_slice_chunks, kws=[params])
-            out_chunks.append(out_chunk)
+            if len(inp_slice_chunks) == 1:
+                c = inp_slice_chunks[0]
+                cc = c.op.copy().reset_key().new_chunk(c.op.inputs, kws=[params])
+                out_chunks.append(cc)
+            else:
+                out_chunk = DataFrameConcat(
+                    output_types=[out.op.output_types[0]]
+                ).new_chunk(inp_slice_chunks, kws=[params])
+                out_chunks.append(out_chunk)
 
         new_op = op.copy()
         params = out.params

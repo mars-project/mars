@@ -254,7 +254,9 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                         for value_index in target_index_to_value_index[target_index]:
                             value_chunk = value.cix[c.index[0], value_index]
                             value_chunks.append(value_chunk)
-                        if len(value_chunks) > 1:
+                        if len(value_chunks) == 1:
+                            value_chunk = value_chunks[0]
+                        else:
                             # concat multiple columns by order
                             shape = (
                                 value_chunks[0].shape[0],
@@ -265,8 +267,6 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                             value_chunk = concat_op.new_chunk(
                                 value_chunks, shape=shape, dtypes=dtypes
                             )
-                        else:
-                            value_chunk = value_chunks[0]
                     else:
                         value_chunk = value.cix[
                             c.index[0],

@@ -229,13 +229,13 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
                         else:
                             to_concats.append(to_concat)
 
-                    if len(to_concats) > 1:
+                    if len(to_concats) == 1:
+                        to_shift_chunk = to_concats[0]
+                    else:
                         concat_op = DataFrameConcat(
                             axis=axis, output_types=[OutputType.dataframe]
                         )
                         to_shift_chunk = concat_op.new_chunk(to_concats)
-                    else:
-                        to_shift_chunk = to_concats[0]
 
                     chunk_op = op.copy().reset_key()
                     if axis == 1:
@@ -318,11 +318,11 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
                     else:
                         to_concats.append(to_concat)
 
-                if len(to_concats) > 1:
+                if len(to_concats) == 1:
+                    to_concat = to_concats[0]
+                else:
                     concat_op = DataFrameConcat(output_types=[OutputType.series])
                     to_concat = concat_op.new_chunk(to_concats)
-                else:
-                    to_concat = to_concats[0]
 
                 out_chunk = chunk_op.new_chunk(
                     [to_concat],

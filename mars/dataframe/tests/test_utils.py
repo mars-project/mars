@@ -615,8 +615,8 @@ def test_auto_merge_chunks():
     assert len(df2.chunks) == 2
     assert isinstance(df2.chunks[0].op, DataFrameConcat)
     assert len(df2.chunks[0].op.inputs) == 3
-    assert isinstance(df2.chunks[1].op, DataFrameConcat)
-    assert len(df2.chunks[1].op.inputs) == 1
+    assert not isinstance(df2.chunks[1].op, DataFrameConcat)
+    assert len(df2.chunks[1].op.inputs) == 0
     assert df2.chunks[1].shape == df.chunks[-1].shape
     assert df2.chunks[1].index == (1, 0)
 

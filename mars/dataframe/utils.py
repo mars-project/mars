@@ -1402,28 +1402,35 @@ def auto_merge_chunks(
     acc_memory_size = 0
     n_split = []
     out_chunks = []
-    for chunk, chunk_memory_size in zip(df_or_series.chunks, memory_sizes):
+    last_idx = len(memory_sizes) - 1
+    for idx, (chunk, chunk_memory_size) in enumerate(
+        zip(df_or_series.chunks, memory_sizes)
+    ):
+        to_merge_chunks.append(chunk)
+        acc_memory_size += chunk_memory_size
         if (
             acc_memory_size + chunk_memory_size > to_merge_size
             and len(to_merge_chunks) > 0
-        ):
+        ) or idx == last_idx:
             # adding current chunk would exceed the maximum,
             # concat previous chunks
-            merged_chunk = _concat_chunks(to_merge_chunks, len(n_split))
-            out_chunks.append(merged_chunk)
-            n_split.append(merged_chunk.shape[0])
+            if len(to_merge_chunks) == 1:
+                # do not generate concat op for 1 input.
+                c = to_merge_chunks[0]
+                c._index = (
+                    (len(n_split),) if df_or_series.ndim == 1 else (len(n_split), 0)
+                )
+                out_chunks.append(c)
+                n_split.append(c.shape[0])
+            else:
+                merged_chunk = _concat_chunks(to_merge_chunks, len(n_split))
+                out_chunks.append(merged_chunk)
+                n_split.append(merged_chunk.shape[0])
             # reset
             acc_memory_size = 0
             to_merge_chunks = []
-
-        to_merge_chunks.append(chunk)
-        acc_memory_size += chunk_memory_size
     # process the last chunk
-    assert len(to_merge_chunks) >= 1
-    merged_chunk = _concat_chunks(to_merge_chunks, len(n_split))
-    out_chunks.append(merged_chunk)
-    n_split.append(merged_chunk.shape[0])
-
+    assert len(to_merge_chunks) == 0
     new_op = df_or_series.op.copy()
     params = df_or_series.params.copy()
     params["chunks"] = out_chunks
@@ -1459,8 +1466,8 @@ def clean_up_func(op):
             import ray
 
             op.func_key = ray.put(op.func)
-            op.func = None
             logger.info("%s func %s is replaced by %s.", op, op.func, op.func_key)
+            op.func = None
         else:
             op.func = cloudpickle.dumps(op.func)
 

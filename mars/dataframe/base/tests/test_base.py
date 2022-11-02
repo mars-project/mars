@@ -105,6 +105,8 @@ def test_to_cpu():
 
 
 def test_rechunk():
+    from ...merge.concat import DataFrameConcat
+
     raw = pd.DataFrame(np.random.rand(10, 10))
     df = from_pandas_df(raw, chunk_size=3)
     df2 = tile(df.rechunk(4))
@@ -202,6 +204,7 @@ def test_rechunk():
     assert series2.shape == (10,)
     assert len(series2.chunks) == 10
     pd.testing.assert_index_equal(series2.index_value.to_pandas(), pd.RangeIndex(10))
+    assert not any(isinstance(c.op, DataFrameConcat) for c in series2.chunks)
 
     assert series2.chunk_shape == (10,)
     assert series2.nsplits == ((1,) * 10,)

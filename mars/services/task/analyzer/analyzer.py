@@ -18,7 +18,7 @@ from collections import deque, defaultdict
 from typing import Dict, List, Tuple, Type, Union
 
 from ....config import Config
-from ....core import ChunkGraph, ChunkType, enter_mode
+from ....core import ChunkGraph, ChunkType, enter_mode, DAG
 from ....core.operand import (
     Fetch,
     VirtualOperand,
@@ -49,6 +49,43 @@ def need_reassign_worker(op: OperandType) -> bool:
     return op.reassign_worker or (
         isinstance(op, MapReduceOperand) and op.stage == OperandStage.reduce
     )
+
+
+class SubtaskFusion:
+    type_DataFrameConcat = None  # noqa: N815
+
+    def __init__(self):
+        # For faster import mars.
+        if SubtaskFusion.type_DataFrameConcat is None:
+            from ....dataframe.merge.concat import DataFrameConcat
+
+            SubtaskFusion.type_DataFrameConcat = DataFrameConcat
+        self._typed_chunks = defaultdict(list)
+
+    def collect(self, chunk: ChunkType, color: int):
+        op_type = type(chunk.op)
+        if op_type is self.type_DataFrameConcat:
+            self._typed_chunks[op_type].append((chunk, color))
+
+    def fuse(self, chunk_graph, chunk_to_colors, color_to_chunks, chunk_to_bands):
+        fuse_count = 0
+        for c, c_color in self._typed_chunks[self.type_DataFrameConcat]:
+            if len(color_to_chunks[c_color]) == 1:
+                succ_colors = set()
+                for succ in chunk_graph.iter_successors(c):
+                    succ_color = chunk_to_colors[succ]
+                    succ_colors.add(succ_color)
+                    if len(succ_colors) > 1:
+                        break
+                else:
+                    if len(succ_colors) == 1:
+                        fuse_count += 1
+                        fuse_color = next(iter(succ_colors))
+                        chunk_to_colors[c] = fuse_color
+                        chunk_to_bands[c] = None
+                        color_to_chunks.pop(c_color)
+                        color_to_chunks[fuse_color].insert(0, c)
+        logger.info("Fuse %s subtasks.", fuse_count)
 
 
 class GraphAnalyzer:
@@ -423,17 +460,22 @@ class GraphAnalyzer:
                     chunk_to_colors[c] = op_to_colors[c.op] = next(color_gen)
                 else:
                     chunk_to_colors[c] = op_to_colors[c.op]
+
         color_to_chunks = defaultdict(list)
+        subtask_fusion = SubtaskFusion()
         for chunk, color in chunk_to_colors.items():
+            subtask_fusion.collect(chunk, color)
             if not isinstance(chunk.op, Fetch):
                 color_to_chunks[color].append(chunk)
+        subtask_fusion.fuse(
+            self._chunk_graph, chunk_to_colors, color_to_chunks, chunk_to_bands
+        )
 
         # gen subtask graph
         subtask_graph = SubtaskGraph()
         chunk_to_fetch_chunk = dict()
         chunk_to_subtask = self._chunk_to_subtasks
         # states
-        visited = set()
         logic_key_to_subtasks = defaultdict(list)
         if self._shuffle_fetch_type == ShuffleFetchType.FETCH_BY_INDEX:
             for chunk in self._chunk_graph.topological_iter():
@@ -461,12 +503,20 @@ class GraphAnalyzer:
                             mapper_color = coloring.next_color()
                             chunk_to_colors[mapper] = mapper_color
                             color_to_chunks[mapper_color] = [mapper]
-        for chunk in self._chunk_graph.topological_iter():
-            if chunk in visited or isinstance(chunk.op, Fetch):
-                # skip fetch chunk
-                continue
 
-            color = chunk_to_colors[chunk]
+        # build color dag
+        color_set = set(chunk_to_colors.values())
+        color_dag = DAG()
+        for c in color_set:
+            color_dag.add_node(c)
+        for chunk, color in chunk_to_colors.items():
+            for succ in self._chunk_graph.iter_successors(chunk):
+                succ_color = chunk_to_colors[succ]
+                if color != succ_color:
+                    color_dag.add_edge(color, succ_color)
+
+        # build subtasks in color topological order
+        for color in color_dag.topological_iter():
             same_color_chunks = color_to_chunks[color]
             if all(isinstance(c.op, Fetch) for c in same_color_chunks):
                 # all fetch ops, no need to gen subtask
@@ -486,7 +536,6 @@ class GraphAnalyzer:
 
             for c in same_color_chunks:
                 chunk_to_subtask[c] = subtask
-            visited.update(same_color_chunks)
 
         for subtasks in logic_key_to_subtasks.values():
             for logic_index, subtask in enumerate(subtasks):

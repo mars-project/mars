@@ -84,10 +84,13 @@ class DataFrameSortOperand(DataFrameOperand):
                 shape[0] = sum(c.shape[0] for c in to_combine_chunks)
                 shape = tuple(shape)
                 concat_params["shape"] = shape
-                c = DataFrameConcat(axis=axis, output_types=op.output_types).new_chunk(
-                    to_combine_chunks, kws=[concat_params]
-                )
-
+                if len(to_combine_chunks) == 1:
+                    c = to_combine_chunks[0]
+                    c._index = chunk_index
+                else:
+                    c = DataFrameConcat(
+                        axis=axis, output_types=op.output_types
+                    ).new_chunk(to_combine_chunks, kws=[concat_params])
                 chunk_op = op.copy().reset_key()
                 chunk_op.stage = (
                     OperandStage.combine if chunk_size > 1 else OperandStage.agg
