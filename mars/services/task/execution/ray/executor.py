@@ -17,10 +17,9 @@ import collections
 import enum
 import functools
 import logging
-
 import operator
-import sys
 import time
+import weakref
 from dataclasses import dataclass
 
 from typing import List, Dict, Any, Set, Callable
@@ -39,6 +38,7 @@ from .....resource import Resource
 from .....serialization import serialize, deserialize
 from .....typing import BandType
 from .....utils import (
+    aiotask_wrapper,
     calc_data_size,
     lazy_import,
     get_chunk_params,
@@ -283,6 +283,10 @@ class _SubmitStage(enum.Enum):
     WAITING = 2
 
 
+class _MonitorAioTaskHolder:
+    __slots__ = ("__weakref__",)
+
+
 @register_executor_cls
 class RayTaskExecutor(TaskExecutor):
     name = "ray"
@@ -454,50 +458,26 @@ class RayTaskExecutor(TaskExecutor):
         logger.info("Stage %s start.", stage_id)
         # Make sure each stage use a clean dict.
         self._cur_stage_first_output_object_ref_to_subtask = dict()
-
-        def _on_monitor_aiotask_done(fut):
-            # Print the error of monitor task.
-            try:
-                fut.result()
-            except asyncio.CancelledError:
-                pass
-            except Exception:  # pragma: no cover
-                logger.exception(
-                    "The monitor task of stage %s is done with exception.", stage_id
-                )
-                if IN_RAY_CI:  # pragma: no cover
-                    logger.warning(
-                        "The process will be exit due to the monitor task exception "
-                        "when MARS_CI_BACKEND=ray."
-                    )
-                    sys.exit(-1)
+        self._execute_subtask_graph_aiotask = asyncio.current_task()
 
         result_meta_keys = {
             chunk.key
             for chunk in chunk_graph.result_chunks
             if not isinstance(chunk.op, Fetch)
         }
+
         # Create a monitor task to update progress and collect garbage.
         monitor_aiotask = asyncio.create_task(
             self._update_progress_and_collect_garbage(
                 stage_id,
                 subtask_graph,
                 result_meta_keys,
+                self._cur_stage_first_output_object_ref_to_subtask,
                 self._config.get_monitor_interval_seconds(),
             )
         )
-        monitor_aiotask.add_done_callback(_on_monitor_aiotask_done)
-
-        def _on_execute_aiotask_done(_):
-            # Make sure the monitor task is cancelled.
-            monitor_aiotask.cancel()
-            # Just use `self._cur_stage_tile_progress` as current stage progress
-            # because current stage is completed, its progress is 1.0.
-            self._cur_stage_progress = 1.0
-            self._pre_all_stages_progress += self._cur_stage_tile_progress
-
-        self._execute_subtask_graph_aiotask = asyncio.current_task()
-        self._execute_subtask_graph_aiotask.add_done_callback(_on_execute_aiotask_done)
+        monitor_aiotask_holder = _MonitorAioTaskHolder()
+        weakref.finalize(monitor_aiotask_holder, monitor_aiotask.cancel)
 
         task_context = self._task_context
         output_meta_object_refs = []
@@ -740,14 +720,15 @@ class RayTaskExecutor(TaskExecutor):
                 context[fetch_chunks[index].key] = object_ref
         return normal_object_refs + shuffle_object_refs
 
+    @aiotask_wrapper(exit_if_exception=IN_RAY_CI)
     async def _update_progress_and_collect_garbage(
         self,
         stage_id: str,
         subtask_graph: SubtaskGraph,
         result_meta_keys: Set[str],
+        object_ref_to_subtask: Dict["ray.ObjectRef", Subtask],
         interval_seconds: float,
     ):
-        object_ref_to_subtask = self._cur_stage_first_output_object_ref_to_subtask
         total = len(subtask_graph)
         completed_subtasks = OrderedSet()
 
@@ -784,8 +765,14 @@ class RayTaskExecutor(TaskExecutor):
                         for succ in subtask_graph.iter_successors(pred)
                     ):
                         yield
+                    # We use ref count to handle duplicate chunk keys, so here decref
+                    # should be the same as incref, use deduped chunk keys of a subtask.
+                    pred_result_keys = set()
                     for chunk in pred.chunk_graph.results:
                         chunk_key = chunk.key
+                        if chunk_key in pred_result_keys:
+                            continue
+                        pred_result_keys.add(chunk_key)
                         # We need to check the GC chunk key is not in the
                         # result meta keys, because there are some special
                         # cases that the result meta keys are not the leaves.

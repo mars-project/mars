@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 
 import pandas as pd
 import pytest
@@ -78,6 +79,7 @@ def _gen_subtask_graph(t):
 class MockRayTaskExecutor(RayTaskExecutor):
     def __init__(self, *args, **kwargs):
         self._set_attrs = Counter()
+        self._monitor_tasks = []
         super().__init__(*args, **kwargs)
 
     @classmethod
@@ -91,6 +93,16 @@ class MockRayTaskExecutor(RayTaskExecutor):
 
     async def get_available_band_resources(self):
         return {}
+
+    async def _update_progress_and_collect_garbage(self, *args, **kwargs):
+        # Infinite loop to test monitor task cancel.
+        self._monitor_tasks.append(asyncio.current_task())
+        await super()._update_progress_and_collect_garbage(*args, **kwargs)
+        while True:
+            await asyncio.sleep(0)
+
+    def monitor_tasks(self):
+        return self._monitor_tasks
 
     def set_attr_counter(self):
         return self._set_attrs
@@ -153,7 +165,7 @@ async def test_ray_executor_destroy():
     assert counter.keys() >= keys
     counter.clear()
     executor.destroy()
-    keys = set(keys) - {"_set_attrs"}
+    keys = set(keys) - {"_set_attrs", "_monitor_tasks"}
     assert counter.keys() == keys, "Some keys are not reset in destroy()."
     for k, v in counter.items():
         assert v == 1
@@ -427,6 +439,9 @@ async def test_executor_context_gc(ray_start_regular_shared2):
             await executor.execute_subtask_graph(
                 "mock_stage", subtask_graph, chunk_graph, tile_context
             )
+            await asyncio.sleep(0)
+            assert len(executor.monitor_tasks()) == 1
+            assert executor.monitor_tasks()[0].done()
         assert log_patch.call_count > 0
         args = [c.args[0] for c in log_patch.call_args_list]
         assert any("Submitted [%s/%s]" in a for a in args)
@@ -455,6 +470,17 @@ async def test_executor_context_gc(ray_start_regular_shared2):
     )
     assert chunk_keys1 == set(popped_seq[0:4])
     assert chunk_keys2 == set(popped_seq[4:])
+
+    # Test the monitor aiotask is done even an exception is raised.
+    executor._load_subtask_inputs = lambda *_, **__: 1 / 0
+    async with executor:
+        with pytest.raises(ZeroDivisionError):
+            await executor.execute_subtask_graph(
+                "mock_stage", subtask_graph, chunk_graph, tile_context
+            )
+        await asyncio.sleep(0)
+        assert len(executor.monitor_tasks()) == 1
+        assert executor.monitor_tasks()[0].done()
 
 
 @require_ray
