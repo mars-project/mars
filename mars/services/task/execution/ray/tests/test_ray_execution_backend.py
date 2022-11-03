@@ -94,12 +94,14 @@ class MockRayTaskExecutor(RayTaskExecutor):
     async def get_available_band_resources(self):
         return {}
 
+    async def execute_subtask_graph(self, *args, **kwargs):
+        self._monitor_tasks.clear()
+        return await super().execute_subtask_graph(*args, **kwargs)
+
     async def _update_progress_and_collect_garbage(self, *args, **kwargs):
         # Infinite loop to test monitor task cancel.
         self._monitor_tasks.append(asyncio.current_task())
-        await super()._update_progress_and_collect_garbage(*args, **kwargs)
-        while True:
-            await asyncio.sleep(0)
+        return await super()._update_progress_and_collect_garbage(*args, **kwargs)
 
     def monitor_tasks(self):
         return self._monitor_tasks
@@ -434,7 +436,17 @@ async def test_executor_context_gc(ray_start_regular_shared2):
         meta_api=None,
     )
     executor._ray_executor = RayTaskExecutor._get_ray_executor()
-    with mock.patch("logging.Logger.info") as log_patch:
+
+    original_execute_subtask_graph = executor._execute_subtask_graph
+
+    async def _wait_gc_execute_subtask_graph(*args, **kwargs):
+        # Mock _execute_subtask_graph to wait the monitor task done.
+        await original_execute_subtask_graph(*args, **kwargs)
+        await executor.monitor_tasks()[0]
+
+    with mock.patch.object(
+        executor, "_execute_subtask_graph", _wait_gc_execute_subtask_graph
+    ):
         async with executor:
             await executor.execute_subtask_graph(
                 "mock_stage", subtask_graph, chunk_graph, tile_context
@@ -442,12 +454,6 @@ async def test_executor_context_gc(ray_start_regular_shared2):
             await asyncio.sleep(0)
             assert len(executor.monitor_tasks()) == 1
             assert executor.monitor_tasks()[0].done()
-        assert log_patch.call_count > 0
-        args = [c.args[0] for c in log_patch.call_args_list]
-        assert any("Submitted [%s/%s]" in a for a in args)
-        assert any("Finish [%s/%s]" in a for a in args)
-    assert executor.set_attr_counter()["_submit_stage"] == 3
-    assert executor.set_attr_counter()["_submit_count"] > 1
 
     assert len(task_context) == 1
     assert len(popped_seq) == 6
@@ -471,16 +477,56 @@ async def test_executor_context_gc(ray_start_regular_shared2):
     assert chunk_keys1 == set(popped_seq[0:4])
     assert chunk_keys2 == set(popped_seq[4:])
 
-    # Test the monitor aiotask is done even an exception is raised.
-    executor._load_subtask_inputs = lambda *_, **__: 1 / 0
-    async with executor:
-        with pytest.raises(ZeroDivisionError):
+    task_context.clear()
+
+    original_update_progress_and_collect_garbage = (
+        executor._update_progress_and_collect_garbage
+    )
+
+    async def infinite_update_progress_and_collect_garbage(*args, **kwargs):
+        # Mock _update_progress_and_collect_garbage that never done.
+        await original_update_progress_and_collect_garbage(*args, **kwargs)
+        while True:
+            await asyncio.sleep(0)
+
+    with mock.patch("logging.Logger.info") as log_patch, mock.patch.object(
+        executor,
+        "_update_progress_and_collect_garbage",
+        infinite_update_progress_and_collect_garbage,
+    ):
+        async with executor:
             await executor.execute_subtask_graph(
-                "mock_stage", subtask_graph, chunk_graph, tile_context
+                "mock_stage2", subtask_graph, chunk_graph, tile_context
             )
+            await asyncio.sleep(0)
+            assert len(executor.monitor_tasks()) == 1
+            assert executor.monitor_tasks()[0].done()
+        assert log_patch.call_count > 0
+        args = [c.args[0] for c in log_patch.call_args_list]
+        assert any("Submitted [%s/%s]" in a for a in args)
+        assert any("Finish [%s/%s]" in a for a in args)
+
+    assert len(task_context) == 1
+
+    task_context.clear()
+
+    # Test the monitor aiotask is done even an exception is raised.
+    async def _raise_load_subtask_inputs(*args, **kwargs):
+        # Mock _load_subtask_inputs to raise an exception.
         await asyncio.sleep(0)
-        assert len(executor.monitor_tasks()) == 1
-        assert executor.monitor_tasks()[0].done()
+        1 / 0
+
+    with mock.patch.object(
+        executor, "_load_subtask_inputs", _raise_load_subtask_inputs
+    ):
+        async with executor:
+            with pytest.raises(ZeroDivisionError):
+                await executor.execute_subtask_graph(
+                    "mock_stage3", subtask_graph, chunk_graph, tile_context
+                )
+            await asyncio.sleep(0)
+            assert len(executor.monitor_tasks()) == 1
+            assert executor.monitor_tasks()[0].done()
 
 
 @require_ray

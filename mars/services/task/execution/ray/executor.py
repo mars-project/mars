@@ -19,8 +19,7 @@ import functools
 import logging
 import operator
 import time
-import weakref
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from typing import List, Dict, Any, Set, Callable
 from .....core import ChunkGraph, Chunk, TileContext
@@ -106,22 +105,6 @@ def _optimize_subtask_graph(subtask_graph):
     if _optimize_physical is None:
         from .....optimization.physical import optimize as _optimize_physical
     return _optimize_physical(subtask_graph)
-
-
-async def _cancel_ray_task(obj_ref, kill_timeout: int = 3):
-    await asyncio.to_thread(ray.cancel, obj_ref, force=False)
-    try:
-        await asyncio.to_thread(ray.get, obj_ref, timeout=kill_timeout)
-    except ray.exceptions.TaskCancelledError:  # pragma: no cover
-        logger.info("Cancel ray task %s successfully.", obj_ref)
-    except BaseException as e:
-        logger.info(
-            "Failed to cancel ray task %s with exception %s, "
-            "force cancel the task by killing the worker.",
-            e,
-            obj_ref,
-        )
-        await asyncio.to_thread(ray.cancel, obj_ref, force=True)
 
 
 def execute_subtask(
@@ -277,14 +260,23 @@ def _get_subtask_out_info(
     return output_keys.keys(), len(output_keys)
 
 
-class _SubmitStage(enum.Enum):
+class _RayExecutionStage(enum.Enum):
     INIT = 0
     SUBMITTING = 1
     WAITING = 2
 
 
-class _MonitorAioTaskHolder:
-    __slots__ = ("__weakref__",)
+@dataclass
+class _RayMonitorContext:
+    stage: _RayExecutionStage = _RayExecutionStage.INIT
+    submit_count: int = 0
+    # The first output object ref of a Subtask to the Subtask.
+    object_ref_to_subtask: Dict["ray.ObjectRef", Subtask] = field(default_factory=dict)
+    # Stage chunk keys may be duplicate.
+    # TODO(fyrestone): Remove this if Mars chunk keys are unique.
+    chunk_key_ref_count: Dict[str, int] = field(
+        default_factory=lambda: collections.defaultdict(int)
+    )
 
 
 @register_executor_cls
@@ -305,9 +297,6 @@ class RayTaskExecutor(TaskExecutor):
         self._task = task
         self._tile_context = tile_context
         self._task_context = task_context
-        # Stage chunk keys may be duplicate.
-        # TODO(fyrestone): Remove this if Mars chunk keys are unique.
-        self._task_key_ref_count = collections.defaultdict(int)
         self._task_chunks_meta = task_chunks_meta
         self._ray_executor = self._get_ray_executor()
 
@@ -319,8 +308,6 @@ class RayTaskExecutor(TaskExecutor):
         self._result_tileables_lifecycle = None
 
         # For progress and task cancel
-        self._submit_stage = _SubmitStage.INIT
-        self._submit_count = 0
         self._pre_all_stages_progress = 0.0
         self._pre_all_stages_tile_progress = 0.0
         self._cur_stage_progress = 0.0
@@ -376,11 +363,10 @@ class RayTaskExecutor(TaskExecutor):
         self._task = None
         self._tile_context = None
         self._task_context = {}
-        self._task_key_ref_count = collections.defaultdict(int)
         self._task_chunks_meta = {}
         self._ray_executor = None
 
-        # api
+        # API
         self._lifecycle_api = None
         self._meta_api = None
 
@@ -388,8 +374,6 @@ class RayTaskExecutor(TaskExecutor):
         self._result_tileables_lifecycle = None
 
         # For progress and task cancel
-        self._submit_stage = _SubmitStage.INIT
-        self._submit_count = 0
         self._pre_all_stages_progress = 1.0
         self._pre_all_stages_tile_progress = 1.0
         self._cur_stage_progress = 1.0
@@ -456,8 +440,6 @@ class RayTaskExecutor(TaskExecutor):
         if self._cancelled is True:  # pragma: no cover
             raise asyncio.CancelledError()
         logger.info("Stage %s start.", stage_id)
-        # Make sure each stage use a clean dict.
-        self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = asyncio.current_task()
 
         result_meta_keys = {
@@ -466,19 +448,42 @@ class RayTaskExecutor(TaskExecutor):
             if not isinstance(chunk.op, Fetch)
         }
 
-        # Create a monitor task to update progress and collect garbage.
+        monitor_context = _RayMonitorContext()
         monitor_aiotask = asyncio.create_task(
             self._update_progress_and_collect_garbage(
                 stage_id,
                 subtask_graph,
                 result_meta_keys,
-                self._cur_stage_first_output_object_ref_to_subtask,
+                monitor_context,
                 self._config.get_monitor_interval_seconds(),
             )
         )
-        monitor_aiotask_holder = _MonitorAioTaskHolder()
-        weakref.finalize(monitor_aiotask_holder, monitor_aiotask.cancel)
+        try:
+            return await self._execute_subtask_graph(
+                stage_id, subtask_graph, chunk_graph, monitor_context
+            )
+        except asyncio.CancelledError:
+            logger.info(
+                "Cancel %s ray tasks of stage %s.",
+                len(monitor_context.object_ref_to_subtask),
+                stage_id,
+            )
+            for object_ref in monitor_context.object_ref_to_subtask.keys():
+                ray.cancel(object_ref, force=True)
+            raise
+        finally:
+            logger.info("Clear stage %s.", stage_id)
+            monitor_aiotask.cancel()
+            for key in self._task_context.keys() - result_meta_keys:
+                self._task_context.pop(key)
 
+    async def _execute_subtask_graph(
+        self,
+        stage_id: str,
+        subtask_graph: SubtaskGraph,
+        chunk_graph: ChunkGraph,
+        monitor_context: _RayMonitorContext,
+    ) -> Dict[Chunk, ExecutionChunkResult]:
         task_context = self._task_context
         output_meta_object_refs = []
         self._pre_all_stages_tile_progress = (
@@ -491,7 +496,7 @@ class RayTaskExecutor(TaskExecutor):
         # during execution, so we should track and incref the result tileables before execute.
         await self._result_tileables_lifecycle.incref_tiled()
         logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
-        self._submit_stage = _SubmitStage.SUBMITTING
+        monitor_context.stage = _RayExecutionStage.SUBMITTING
         shuffle_manager = ShuffleManager(subtask_graph)
         subtask_max_retries = self._config.get_subtask_max_retries()
         subtask_num_cpus = self._config.get_subtask_num_cpus()
@@ -529,15 +534,13 @@ class RayTaskExecutor(TaskExecutor):
                 is_mapper,
                 *input_object_refs,
             )
-            self._submit_count += 1
+            monitor_context.submit_count += 1
             await asyncio.sleep(0)
             if output_count == 0:
                 continue
             elif output_count == 1:
                 output_object_refs = [output_object_refs]
-            self._cur_stage_first_output_object_ref_to_subtask[
-                output_object_refs[0]
-            ] = subtask
+            monitor_context.object_ref_to_subtask[output_object_refs[0]] = subtask
             if subtask.stage_n_outputs:
                 meta_object_ref, *output_object_refs = output_object_refs
                 # TODO(fyrestone): Fetch(not get) meta object here.
@@ -550,11 +553,11 @@ class RayTaskExecutor(TaskExecutor):
             # Mars chunk keys may be duplicate, so we should track the ref count.
             for chunk_key, object_ref in zip(output_keys, output_object_refs):
                 if chunk_key in task_context:
-                    self._task_key_ref_count[chunk_key] += 1
+                    monitor_context.chunk_key_ref_count[chunk_key] += 1
                 task_context[chunk_key] = object_ref
         logger.info("Submitted %s subtasks of stage %s.", len(subtask_graph), stage_id)
 
-        self._submit_stage = _SubmitStage.WAITING
+        monitor_context.stage = _RayExecutionStage.WAITING
         key_to_meta = {}
         if len(output_meta_object_refs) > 0:
             # TODO(fyrestone): Optimize update meta by fetching partial meta.
@@ -565,7 +568,6 @@ class RayTaskExecutor(TaskExecutor):
                 for key, (params, memory_size) in meta.items():
                     key_to_meta[key] = params
                     self._task_chunks_meta[key] = _RayChunkMeta(memory_size=memory_size)
-            assert len(key_to_meta) == len(result_meta_keys)
             logger.info("Got %s metas of stage %s.", meta_count, stage_id)
 
         chunk_to_meta = {}
@@ -662,12 +664,6 @@ class RayTaskExecutor(TaskExecutor):
         self._cancelled = True
         if self._execute_subtask_graph_aiotask is not None:
             self._execute_subtask_graph_aiotask.cancel()
-        timeout = self._config.get_subtask_cancel_timeout()
-        to_be_cancelled_coros = [
-            _cancel_ray_task(object_ref, timeout)
-            for object_ref in self._cur_stage_first_output_object_ref_to_subtask.keys()
-        ]
-        await asyncio.gather(*to_be_cancelled_coros)
 
     async def _load_subtask_inputs(
         self,
@@ -726,11 +722,13 @@ class RayTaskExecutor(TaskExecutor):
         stage_id: str,
         subtask_graph: SubtaskGraph,
         result_meta_keys: Set[str],
-        object_ref_to_subtask: Dict["ray.ObjectRef", Subtask],
+        monitor_context: _RayMonitorContext,
         interval_seconds: float,
     ):
         total = len(subtask_graph)
         completed_subtasks = OrderedSet()
+        chunk_key_ref_count = monitor_context.chunk_key_ref_count
+        object_ref_to_subtask = monitor_context.object_ref_to_subtask
 
         def gc():
             """
@@ -780,11 +778,11 @@ class RayTaskExecutor(TaskExecutor):
                         # example: test_cut_execution
                         if chunk_key not in result_meta_keys:
                             logger.debug("GC[stage=%s]: %s", stage_id, chunk)
-                            ref_count = self._task_key_ref_count.get(chunk_key, 0)
+                            ref_count = chunk_key_ref_count.get(chunk_key, 0)
                             if ref_count == 0:
                                 self._task_context.pop(chunk_key, None)
                             else:
-                                self._task_key_ref_count[chunk_key] = ref_count - 1
+                                chunk_key_ref_count[chunk_key] = ref_count - 1
                     gc_subtasks.add(pred)
 
             # TODO(fyrestone): Check the remaining self._task_context.keys()
@@ -793,14 +791,14 @@ class RayTaskExecutor(TaskExecutor):
         collect_garbage = gc()
         last_log_time = time.time()
         log_interval_seconds = self._config.get_log_interval_seconds()
-        submit_stage_to_log_func = {
-            _SubmitStage.SUBMITTING: lambda: logger.info(
+        stage_to_log_func = {
+            _RayExecutionStage.SUBMITTING: lambda: logger.info(
                 "Submitted [%s/%s] subtasks of stage %s.",
-                self._submit_count,
+                monitor_context.submit_count,
                 total,
                 stage_id,
             ),
-            _SubmitStage.WAITING: lambda: logger.info(
+            _RayExecutionStage.WAITING: lambda: logger.info(
                 "Finish [%s/%s] subtasks of stage %s",
                 len(completed_subtasks),
                 total,
@@ -809,10 +807,10 @@ class RayTaskExecutor(TaskExecutor):
         }
 
         while len(completed_subtasks) < total:
-            if self._submit_stage != _SubmitStage.INIT:
+            if monitor_context.stage != _RayExecutionStage.INIT:
                 curr_time = time.time()
                 if curr_time - last_log_time > log_interval_seconds:  # pragma: no cover
-                    submit_stage_to_log_func[self._submit_stage]()
+                    stage_to_log_func[monitor_context.stage]()
                     last_log_time = curr_time
 
             if len(object_ref_to_subtask) <= 0:  # pragma: no cover
