@@ -794,10 +794,11 @@ class RayTaskExecutor(TaskExecutor):
                 stage_id,
             ),
             _RayExecutionStage.WAITING: lambda: logger.info(
-                "Finish [%s/%s] subtasks of stage %s",
+                "Finish [%s/%s] subtasks of stage %s, one of waiting object refs: %s",
                 len(completed_subtasks),
                 total,
                 stage_id,
+                next(iter(object_ref_to_subtask)) if object_ref_to_subtask else None,
             ),
         }
 
