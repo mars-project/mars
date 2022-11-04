@@ -83,7 +83,6 @@ async def actor_pool():
             n_worker=1,
             n_cpu=2,
             subtask_max_retries=3,
-            subtask_cancel_timeout=3,
         )
         await mo.create_actor(
             TaskConfigurationActor,

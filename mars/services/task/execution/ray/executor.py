@@ -20,8 +20,8 @@ import logging
 import operator
 import time
 from dataclasses import dataclass, field
+from typing import List, Dict, Any, Callable
 
-from typing import List, Dict, Any, Set, Callable
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
 from .....core.operand import (

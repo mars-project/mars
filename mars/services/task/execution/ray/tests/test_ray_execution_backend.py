@@ -371,7 +371,6 @@ async def test_ray_execution_config(ray_start_regular_shared2):
                 "subtask_num_cpus": 0.8,
                 "n_cpu": 1,
                 "n_worker": 1,
-                "subtask_cancel_timeout": 1,
             },
         }
     )
@@ -420,7 +419,6 @@ async def test_executor_context_gc(ray_start_regular_shared2):
                 "subtask_max_retries": 0,
                 "n_cpu": 1,
                 "n_worker": 1,
-                "subtask_cancel_timeout": 1,
             },
         }
     )
@@ -566,7 +564,6 @@ async def test_execute_shuffle(ray_start_regular_shared2):
                 "subtask_max_retries": 0,
                 "n_cpu": 1,
                 "n_worker": 1,
-                "subtask_cancel_timeout": 1,
             },
         }
     )

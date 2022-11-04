@@ -60,9 +60,6 @@ class RayExecutionConfig(ExecutionConfig):
     def get_n_worker(self):
         return self._ray_execution_config["n_worker"]
 
-    def get_subtask_cancel_timeout(self):
-        return self._ray_execution_config["subtask_cancel_timeout"]
-
     def get_monitor_interval_seconds(self):
         """
         The interval seconds for the monitor task to update progress and
