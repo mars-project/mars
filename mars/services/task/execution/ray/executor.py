@@ -442,13 +442,12 @@ class RayTaskExecutor(TaskExecutor):
         logger.info("Stage %s start.", stage_id)
         self._execute_subtask_graph_aiotask = asyncio.current_task()
 
-        result_meta_keys = {chunk.key for chunk in chunk_graph.result_chunks}
         monitor_context = _RayMonitorContext()
         monitor_aiotask = asyncio.create_task(
             self._update_progress_and_collect_garbage(
                 stage_id,
                 subtask_graph,
-                result_meta_keys,
+                chunk_graph,
                 monitor_context,
                 self._config.get_monitor_interval_seconds(),
             )
@@ -469,7 +468,7 @@ class RayTaskExecutor(TaskExecutor):
         finally:
             logger.info("Clear stage %s.", stage_id)
             monitor_aiotask.cancel()
-            for key in self._task_context.keys() - result_meta_keys:
+            for key in self._task_context.keys() - self._task_chunks_meta.keys():
                 self._task_context.pop(key)
 
     async def _execute_subtask_graph(
@@ -716,12 +715,13 @@ class RayTaskExecutor(TaskExecutor):
         self,
         stage_id: str,
         subtask_graph: SubtaskGraph,
-        result_meta_keys: Set[str],
+        chunk_graph: ChunkGraph,
         monitor_context: _RayMonitorContext,
         interval_seconds: float,
     ):
         total = len(subtask_graph)
         completed_subtasks = OrderedSet()
+        result_chunk_keys = {chunk.key for chunk in chunk_graph.result_chunks}
         chunk_key_ref_count = monitor_context.chunk_key_ref_count
         object_ref_to_subtask = monitor_context.object_ref_to_subtask
 
@@ -771,7 +771,7 @@ class RayTaskExecutor(TaskExecutor):
                         # cases that the result meta keys are not the leaves.
                         #
                         # example: test_cut_execution
-                        if chunk_key not in result_meta_keys:
+                        if chunk_key not in result_chunk_keys:
                             logger.debug("GC[stage=%s]: %s", stage_id, chunk)
                             ref_count = chunk_key_ref_count.get(chunk_key, 0)
                             if ref_count == 0:
