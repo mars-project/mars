@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import wraps
 from typing import Dict, Tuple, Type
 
-from ..serialization.core import Placeholder, fast_id
 from ..serialization.serializables import Serializable, StringField
 from ..serialization.serializables.core import SerializableSerializer
 from ..utils import tokenize
@@ -133,21 +131,7 @@ class Base(Serializable):
         return kv
 
 
-def buffered_base(func):
-    @wraps(func)
-    def wrapped(self, obj: Base, context: Dict):
-        obj_id = (obj.key, obj.id)
-        if obj_id in context:
-            return Placeholder(fast_id(context[obj_id]))
-        else:
-            context[obj_id] = obj
-            return func(self, obj, context)
-
-    return wrapped
-
-
 class BaseSerializer(SerializableSerializer):
-    @buffered_base
     def serial(self, obj: Base, context: Dict):
         return super().serial(obj, context)
 
