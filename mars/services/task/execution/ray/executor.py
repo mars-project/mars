@@ -442,12 +442,7 @@ class RayTaskExecutor(TaskExecutor):
         logger.info("Stage %s start.", stage_id)
         self._execute_subtask_graph_aiotask = asyncio.current_task()
 
-        result_meta_keys = {
-            chunk.key
-            for chunk in chunk_graph.result_chunks
-            if not isinstance(chunk.op, Fetch)
-        }
-
+        result_meta_keys = {chunk.key for chunk in chunk_graph.result_chunks}
         monitor_context = _RayMonitorContext()
         monitor_aiotask = asyncio.create_task(
             self._update_progress_and_collect_garbage(
