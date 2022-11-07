@@ -33,6 +33,7 @@ from .....core.operand import (
 from .....core.operand.fetch import FetchShuffle
 from .....lib.aio import alru_cache
 from .....lib.ordered_set import OrderedSet
+from .....metrics.api import init_metrics
 from .....resource import Resource
 from .....serialization import serialize, deserialize
 from .....typing import BandType
@@ -135,6 +136,7 @@ def execute_subtask(
     -------
         subtask outputs and meta for outputs if `output_meta_keys` is provided.
     """
+    init_metrics("ray")
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     logger.info("Begin to execute subtask: %s", subtask_id)
     # optimize chunk graph.
