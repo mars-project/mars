@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover
     pa = None
 
 from ....config import options, option_context
-from ....dataframe import DataFrame
+from ....dataframe import DataFrame, Series
 from ....tensor import arange, tensor
 from ....tensor.random import rand
 from ....tests.core import require_cudf
@@ -1689,6 +1689,15 @@ def test_drop_duplicates(setup):
         pd.testing.assert_series_equal(result, expected)
 
 
+@pytest.mark.parametrize("method", ["tree", "shuffle"])
+def test_series_drop_duplicates(setup, method):
+    raw = pd.Series(np.random.randint(5, size=50))
+    s = Series(raw, chunk_size=10)
+    r = s.drop_duplicates(method=method).execute()
+    result = r.execute().fetch()
+    pd.testing.assert_series_equal(result, raw.drop_duplicates())
+
+
 def test_duplicated(setup):
     # test dataframe drop
     rs = np.random.RandomState(0)
@@ -1753,6 +1762,15 @@ def test_duplicated(setup):
                             raise AssertionError(
                                 f"failed when method={method}, keep={keep}"
                             ) from e
+
+
+@pytest.mark.parametrize("method", ["tree", "shuffle"])
+def test_series_duplicated(setup, method):
+    raw = pd.Series(np.random.randint(5, size=50))
+    s = Series(raw, chunk_size=10)
+    r = s.duplicated(method=method).execute()
+    result = r.execute().fetch()
+    pd.testing.assert_series_equal(result, raw.duplicated())
 
 
 def test_memory_usage_execution(setup):

@@ -160,7 +160,7 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
                 if out_chunk_size > 1 and method == "tree":
                     # for tree, chunks except last one should be dataframes,
                     chunk_op._output_types = (
-                        [OutputType.dataframe]
+                        concat_chunk.op.output_types
                         if out_chunk_size > 1
                         else out.op.output_types
                     )

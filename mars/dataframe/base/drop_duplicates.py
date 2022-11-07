@@ -202,6 +202,7 @@ class DataFrameDropDuplicates(DuplicateOperand):
         elif out.op.output_types[0] == OutputType.series:
             assert inp.shape[1] == 1
             ret = inp.iloc[:, 0]
+            ret.name = out.name
         else:
             ret = inp
 
