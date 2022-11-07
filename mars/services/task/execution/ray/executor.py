@@ -491,9 +491,19 @@ class RayTaskExecutor(TaskExecutor):
         # Previous execution may have duplicate tileable ids, the tileable may be decref
         # during execution, so we should track and incref the result tileables before execute.
         await self._result_tileables_lifecycle.incref_tiled()
-        logger.info("Submitting %s subtasks of stage %s.", len(subtask_graph), stage_id)
         monitor_context.stage = _RayExecutionStage.SUBMITTING
         shuffle_manager = ShuffleManager(subtask_graph)
+        shuffle_info = [
+            shuffle_mapper.shape
+            for shuffle_mapper in shuffle_manager.mapper_output_refs
+        ]
+        logger.info(
+            "Submitting %s subtasks of stage %s which contains %s shuffles: %s",
+            len(subtask_graph),
+            stage_id,
+            shuffle_manager.num_shuffles,
+            shuffle_info,
+        )
         subtask_max_retries = self._config.get_subtask_max_retries()
         subtask_num_cpus = self._config.get_subtask_num_cpus()
         for subtask in subtask_graph.topological_iter():
