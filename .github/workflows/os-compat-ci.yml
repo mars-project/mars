@@ -46,7 +46,8 @@ jobs:
 
         source ./ci/rewrite-cov-config.sh
 
-        pip install numpy scipy cython oss2
+        # pyarrow 10 may be crash on Windows.
+        pip install numpy scipy cython oss2 "pyarrow<10"
         pip install -e ".[dev,extra]"
         pip install virtualenv flaky
         conda list -n test
