@@ -568,17 +568,39 @@ async def test_execute_shuffle(ray_start_regular_shared2):
         }
     )
     tile_context = MockTileContext()
+    task_context = {}
     executor = MockRayTaskExecutor(
         config=mock_config,
         task=task,
         tile_context=tile_context,
-        task_context={},
+        task_context=task_context,
         task_chunks_meta={},
         lifecycle_api=None,
         meta_api=None,
     )
     executor._ray_executor = MockRayExecutor
-    async with executor:
-        await executor.execute_subtask_graph(
-            "mock_stage", subtask_graph, chunk_graph, tile_context
+
+    original_execute_subtask_graph = executor._execute_subtask_graph
+
+    async def _wait_gc_execute_subtask_graph(
+        stage_id, subtask_graph, chunk_graph, monitor_context
+    ):
+        # Mock _execute_subtask_graph to wait the monitor task done.
+        await original_execute_subtask_graph(
+            stage_id, subtask_graph, chunk_graph, monitor_context
         )
+        await executor.monitor_tasks()[0]
+        assert pd.isnull(monitor_context.shuffle_manager._mapper_output_refs[0]).all()
+
+    with mock.patch.object(
+        executor, "_execute_subtask_graph", _wait_gc_execute_subtask_graph
+    ):
+        async with executor:
+            await executor.execute_subtask_graph(
+                "mock_stage", subtask_graph, chunk_graph, tile_context
+            )
+        await asyncio.sleep(0)
+        assert len(executor.monitor_tasks()) == 1
+        assert executor.monitor_tasks()[0].done()
+
+    assert len(task_context) == len(chunk_graph.results)

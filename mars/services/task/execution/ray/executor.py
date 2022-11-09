@@ -16,6 +16,7 @@ import asyncio
 import collections
 import enum
 import functools
+import itertools
 import logging
 import operator
 import time
@@ -272,6 +273,7 @@ class _RayExecutionStage(enum.Enum):
 class _RayMonitorContext:
     stage: _RayExecutionStage = _RayExecutionStage.INIT
     submit_count: int = 0
+    shuffle_manager: ShuffleManager = None
     # The first output object ref of a Subtask to the Subtask.
     object_ref_to_subtask: Dict["ray.ObjectRef", Subtask] = field(default_factory=dict)
     # Stage chunk keys may be duplicate.
@@ -491,18 +493,14 @@ class RayTaskExecutor(TaskExecutor):
         # Previous execution may have duplicate tileable ids, the tileable may be decref
         # during execution, so we should track and incref the result tileables before execute.
         await self._result_tileables_lifecycle.incref_tiled()
-        monitor_context.stage = _RayExecutionStage.SUBMITTING
         shuffle_manager = ShuffleManager(subtask_graph)
-        shuffle_info = [
-            shuffle_mapper.shape
-            for shuffle_mapper in shuffle_manager.mapper_output_refs
-        ]
+        monitor_context.stage = _RayExecutionStage.SUBMITTING
+        monitor_context.shuffle_manager = shuffle_manager
         logger.info(
-            "Submitting %s subtasks of stage %s which contains %s shuffles: %s",
+            "Submitting %s subtasks of stage %s which contains shuffles: %s",
             len(subtask_graph),
             stage_id,
-            shuffle_manager.num_shuffles,
-            shuffle_info,
+            shuffle_manager.info(),
         )
         subtask_max_retries = self._config.get_subtask_max_retries()
         subtask_num_cpus = self._config.get_subtask_num_cpus()
@@ -731,7 +729,7 @@ class RayTaskExecutor(TaskExecutor):
         monitor_context: _RayMonitorContext,
         interval_seconds: float,
     ):
-        total = len(subtask_graph)
+        total = sum(not subtask.virtual for subtask in subtask_graph)
         completed_subtasks = OrderedSet()
         result_chunk_keys = {chunk.key for chunk in chunk_graph.result_chunks}
         chunk_key_ref_count = monitor_context.chunk_key_ref_count
@@ -755,7 +753,7 @@ class RayTaskExecutor(TaskExecutor):
                 # Iterate the completed subtasks once.
                 subtask = completed_subtasks[i]
                 i += 1
-                logger.debug("GC[stage=%s]: %s", stage_id, subtask)
+                logger.debug("GC[stage=%s] subtask: %s", stage_id, subtask)
 
                 # Note: There may be a scenario in which delayed gc occurs.
                 # When a subtask has more than one predecessor, like A, B,
@@ -770,10 +768,27 @@ class RayTaskExecutor(TaskExecutor):
                         for succ in subtask_graph.iter_successors(pred)
                     ):
                         yield
+                    if pred.virtual:
+                        # For virtual subtask, remove all the predecessors if it is
+                        # completed.
+                        ppreds = subtask_graph.predecessors(pred)
+                        gc_subtasks.update(ppreds)
+                        gc_chunks = itertools.chain(
+                            *(p.chunk_graph.results for p in ppreds)
+                        )
+                        # Remove object refs from shuffle manager.
+                        for p in ppreds:
+                            logger.debug(
+                                "GC[stage=%s] shuffle manager: %s", stage_id, p
+                            )
+                            monitor_context.shuffle_manager.remove_object_refs(p)
+                    else:
+                        gc_subtasks.add(pred)
+                        gc_chunks = pred.chunk_graph.results
                     # We use ref count to handle duplicate chunk keys, so here decref
                     # should be the same as incref, use deduped chunk keys of a subtask.
                     pred_result_keys = set()
-                    for chunk in pred.chunk_graph.results:
+                    for chunk in gc_chunks:
                         chunk_key = chunk.key
                         if chunk_key in pred_result_keys:
                             continue
@@ -784,13 +799,12 @@ class RayTaskExecutor(TaskExecutor):
                         #
                         # example: test_cut_execution
                         if chunk_key not in result_chunk_keys:
-                            logger.debug("GC[stage=%s]: %s", stage_id, chunk)
+                            logger.debug("GC[stage=%s] chunk: %s", stage_id, chunk)
                             ref_count = chunk_key_ref_count.get(chunk_key, 0)
                             if ref_count == 0:
                                 self._task_context.pop(chunk_key, None)
                             else:
                                 chunk_key_ref_count[chunk_key] = ref_count - 1
-                    gc_subtasks.add(pred)
 
             # TODO(fyrestone): Check the remaining self._task_context.keys()
             # in the result subtasks
