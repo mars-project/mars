@@ -76,3 +76,8 @@ class RayExecutionConfig(ExecutionConfig):
 
     def get_shuffle_fetch_type(self) -> ShuffleFetchType:
         return ShuffleFetchType.FETCH_BY_INDEX
+
+    def get_gc_method(self):
+        method = self._ray_execution_config.get("gc_method", "submitted")
+        assert method in ["submitted", "completed"]
+        return method

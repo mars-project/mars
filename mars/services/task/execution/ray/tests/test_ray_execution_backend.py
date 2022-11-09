@@ -397,7 +397,8 @@ async def test_ray_execution_config(ray_start_regular_shared2):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_executor_context_gc(ray_start_regular_shared2):
+@pytest.mark.parametrize("gc_method", ["submitted", "completed"])
+async def test_executor_context_gc(ray_start_regular_shared2, gc_method):
     popped_seq = []
 
     class MockTaskContext(dict):
@@ -420,6 +421,7 @@ async def test_executor_context_gc(ray_start_regular_shared2):
                 "subtask_max_retries": 0,
                 "n_cpu": 1,
                 "n_worker": 1,
+                "gc_method": gc_method,
             },
         }
     )
@@ -503,7 +505,7 @@ async def test_executor_context_gc(ray_start_regular_shared2):
         assert log_patch.call_count > 0
         args = [c.args[0] for c in log_patch.call_args_list]
         assert any("Submitted [%s/%s]" in a for a in args)
-        assert any("Finish [%s/%s]" in a for a in args)
+        assert any("Completed [%s/%s]" in a for a in args)
 
     assert len(task_context) == 1
 
@@ -530,7 +532,8 @@ async def test_executor_context_gc(ray_start_regular_shared2):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_execute_shuffle(ray_start_regular_shared2):
+@pytest.mark.parametrize("gc_method", ["submitted", "completed"])
+async def test_execute_shuffle(ray_start_regular_shared2, gc_method):
     chunk_size, n_rows = 10, 50
     df = md.DataFrame(
         pd.DataFrame(np.random.rand(n_rows, 3), columns=list("abc")),
@@ -565,6 +568,7 @@ async def test_execute_shuffle(ray_start_regular_shared2):
                 "subtask_max_retries": 0,
                 "n_cpu": 1,
                 "n_worker": 1,
+                "gc_method": gc_method,
             },
         }
     )
