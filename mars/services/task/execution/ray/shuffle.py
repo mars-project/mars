@@ -131,7 +131,7 @@ class ShuffleManager:
         """
         index = self._mapper_indices.get(subtask) or self._reducer_indices.get(subtask)
         if index is None:
-            raise Exception(f"The {subtask} should be a mapper or a reducer.")
+            raise ValueError(f"The {subtask} should be a mapper or a reducer.")
         else:
             shuffle_index, _ = index
             return self._mapper_output_refs[shuffle_index].shape[1]
@@ -148,10 +148,7 @@ class ShuffleManager:
         """
         A list of (mapper count, reducer count).
         """
-        return [
-            shuffle_mapper.shape
-            for shuffle_mapper in self._mapper_output_refs
-        ]
+        return [shuffle_mapper.shape for shuffle_mapper in self._mapper_output_refs]
 
     def remove_object_refs(self, subtask: Subtask):
         """
@@ -167,6 +164,7 @@ class ShuffleManager:
             shuffle_index, reducer_ordinal = index
             self._mapper_output_refs[shuffle_index][:, reducer_ordinal].fill(None)
             return
+        raise ValueError(f"The {subtask} should be a mapper or a reducer.")
 
 
 def _get_reducer_operand(subtask_chunk_graph):

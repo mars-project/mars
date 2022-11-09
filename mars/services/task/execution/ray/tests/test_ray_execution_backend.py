@@ -589,6 +589,8 @@ async def test_execute_shuffle(ray_start_regular_shared2):
     sm._mapper_output_refs[0].fill(1)
     sm.remove_object_refs(next(iter(sm._mapper_indices.keys())))
     assert pd.isnull(sm._mapper_output_refs[0][0]).all()
+    with pytest.raises(ValueError):
+        sm.remove_object_refs(None)
 
     original_execute_subtask_graph = executor._execute_subtask_graph
 
