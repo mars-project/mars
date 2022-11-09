@@ -48,6 +48,7 @@ from ..executor import (
     _RayChunkMeta,
 )
 from ..fetcher import RayFetcher
+from ..shuffle import ShuffleManager
 
 ray = lazy_import("ray")
 
@@ -579,6 +580,15 @@ async def test_execute_shuffle(ray_start_regular_shared2):
         meta_api=None,
     )
     executor._ray_executor = MockRayExecutor
+
+    # Test ShuffleManager.remove_object_refs
+    sm = ShuffleManager(subtask_graph)
+    sm._mapper_output_refs[0].fill(1)
+    sm.remove_object_refs(next(iter(sm._reducer_indices.keys())))
+    assert pd.isnull(sm._mapper_output_refs[0][:, 0]).all()
+    sm._mapper_output_refs[0].fill(1)
+    sm.remove_object_refs(next(iter(sm._mapper_indices.keys())))
+    assert pd.isnull(sm._mapper_output_refs[0][0]).all()
 
     original_execute_subtask_graph = executor._execute_subtask_graph
 
