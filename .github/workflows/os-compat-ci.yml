@@ -46,11 +46,9 @@ jobs:
 
         source ./ci/rewrite-cov-config.sh
 
-        # pyarrow 10 may be crash on Windows.
         pip install numpy scipy cython oss2
         pip install -e ".[dev,extra]"
         pip install virtualenv flaky
-        pip uninstall -y pyarrow
         conda list -n test
 
     - name: Test with pytest
