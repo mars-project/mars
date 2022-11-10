@@ -323,7 +323,6 @@ class RayTaskExecutor(TaskExecutor):
         self._pre_all_stages_tile_progress = 0.0
         self._cur_stage_progress = 0.0
         self._cur_stage_tile_progress = 0.0
-        self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = False
 
@@ -391,7 +390,6 @@ class RayTaskExecutor(TaskExecutor):
         self._pre_all_stages_tile_progress = 1.0
         self._cur_stage_progress = 1.0
         self._cur_stage_tile_progress = 1.0
-        self._cur_stage_first_output_object_ref_to_subtask = dict()
         self._execute_subtask_graph_aiotask = None
         self._cancelled = None
         self._config = None
