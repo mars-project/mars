@@ -28,12 +28,12 @@ class ShuffleManager:
     """
 
     def __init__(self, subtask_graph: SubtaskGraph):
-        self.subtask_graph = subtask_graph
+        self._subtask_graph = subtask_graph
         self._proxy_subtasks = subtask_graph.get_shuffle_proxy_subtasks()
-        self.num_shuffles = subtask_graph.num_shuffles()
-        self.mapper_output_refs = []
-        self.mapper_indices = {}
-        self.reducer_indices = {}
+        self._num_shuffles = subtask_graph.num_shuffles()
+        self._mapper_output_refs = []
+        self._mapper_indices = {}
+        self._reducer_indices = {}
         for shuffle_index, proxy_subtask in enumerate(self._proxy_subtasks):
             # Note that the reducers can also be mappers such as `DuplicateOperand`.
             mapper_subtasks = subtask_graph.predecessors(proxy_subtask)
@@ -41,8 +41,8 @@ class ShuffleManager:
             n_mappers = len(mapper_subtasks)
             n_reducers = proxy_subtask.chunk_graph.results[0].op.n_reducers
             mapper_output_arr = np.empty((n_mappers, n_reducers), dtype=object)
-            self.mapper_output_refs.append(mapper_output_arr)
-            self.mapper_indices.update(
+            self._mapper_output_refs.append(mapper_output_arr)
+            self._mapper_indices.update(
                 {
                     subtask: (shuffle_index, mapper_index)
                     for mapper_index, subtask in enumerate(mapper_subtasks)
@@ -53,7 +53,7 @@ class ShuffleManager:
             sorted_filled_reducer_subtasks = self._get_sorted_filled_reducers(
                 reducer_subtasks, n_reducers
             )
-            self.reducer_indices.update(
+            self._reducer_indices.update(
                 {
                     subtask: (shuffle_index, reducer_ordinal)
                     for reducer_ordinal, subtask in enumerate(
@@ -78,10 +78,10 @@ class ShuffleManager:
         """
         Whether current subtask graph has shuffles to execute.
         """
-        return self.num_shuffles > 0
+        return self._num_shuffles > 0
 
     def add_mapper_output_refs(
-        self, subtask, output_object_refs: List["ray.ObjectRef"]
+        self, subtask: Subtask, output_object_refs: List["ray.ObjectRef"]
     ):
         """
         Record mapper output ObjectRefs which will be used by reducers later.
@@ -92,12 +92,12 @@ class ShuffleManager:
         output_object_refs : List["ray.ObjectRef"]
             Mapper output ObjectRefs.
         """
-        shuffle_index, mapper_index = self.mapper_indices[subtask]
-        self.mapper_output_refs[shuffle_index][mapper_index] = np.array(
+        shuffle_index, mapper_index = self._mapper_indices[subtask]
+        self._mapper_output_refs[shuffle_index][mapper_index] = np.array(
             output_object_refs
         )
 
-    def get_reducer_input_refs(self, subtask) -> List["ray.ObjectRef"]:
+    def get_reducer_input_refs(self, subtask: Subtask) -> List["ray.ObjectRef"]:
         """
         Get the reducer inputs ObjectRefs output by mappers.
 
@@ -110,10 +110,10 @@ class ShuffleManager:
         input_refs : List["ray.ObjectRef"]
             The reducer inputs ObjectRefs output by mappers.
         """
-        shuffle_index, reducer_ordinal = self.reducer_indices[subtask]
-        return self.mapper_output_refs[shuffle_index][:, reducer_ordinal]
+        shuffle_index, reducer_ordinal = self._reducer_indices[subtask]
+        return self._mapper_output_refs[shuffle_index][:, reducer_ordinal]
 
-    def get_n_reducers(self, subtask):
+    def get_n_reducers(self, subtask: Subtask):
         """
         Get the number of shuffle blocks that a mapper operand outputs,
         which is also the number of the reducers when tiling shuffle operands.
@@ -129,20 +129,42 @@ class ShuffleManager:
         n_reducers : int
             The number of shuffle blocks that a mapper operand outputs.
         """
-        index = self.mapper_indices.get(subtask) or self.reducer_indices.get(subtask)
+        index = self._mapper_indices.get(subtask) or self._reducer_indices.get(subtask)
         if index is None:
-            raise Exception(f"The {subtask} should be a mapper or a reducer.")
+            raise ValueError(f"The {subtask} should be a mapper or a reducer.")
         else:
             shuffle_index, _ = index
-            return self.mapper_output_refs[shuffle_index].shape[1]
+            return self._mapper_output_refs[shuffle_index].shape[1]
 
-    def is_mapper(self, subtask):
+    def is_mapper(self, subtask: Subtask):
         """
         Check whether a subtask is a mapper subtask. Note the even this a mapper subtask, it can be a reducer subtask
         at the same time such as `DuplicateOperand`, see
         https://user-images.githubusercontent.com/12445254/174305282-f7c682a9-0346-47fe-a34c-1e384e6a1775.svg
         """
-        return subtask in self.mapper_indices
+        return subtask in self._mapper_indices
+
+    def info(self):
+        """
+        A list of (mapper count, reducer count).
+        """
+        return [shuffle_mapper.shape for shuffle_mapper in self._mapper_output_refs]
+
+    def remove_object_refs(self, subtask: Subtask):
+        """
+        Set the object refs to None by subtask.
+        """
+        index = self._mapper_indices.get(subtask)
+        if index is not None:
+            shuffle_index, mapper_index = index
+            self._mapper_output_refs[shuffle_index][mapper_index].fill(None)
+            return
+        index = self._reducer_indices.get(subtask)
+        if index is not None:
+            shuffle_index, reducer_ordinal = index
+            self._mapper_output_refs[shuffle_index][:, reducer_ordinal].fill(None)
+            return
+        raise ValueError(f"The {subtask} should be a mapper or a reducer.")
 
 
 def _get_reducer_operand(subtask_chunk_graph):

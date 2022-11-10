@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 
 import pandas as pd
 import pytest
@@ -47,6 +48,7 @@ from ..executor import (
     _RayChunkMeta,
 )
 from ..fetcher import RayFetcher
+from ..shuffle import ShuffleManager
 
 ray = lazy_import("ray")
 
@@ -78,6 +80,7 @@ def _gen_subtask_graph(t):
 class MockRayTaskExecutor(RayTaskExecutor):
     def __init__(self, *args, **kwargs):
         self._set_attrs = Counter()
+        self._monitor_tasks = []
         super().__init__(*args, **kwargs)
 
     @classmethod
@@ -91,6 +94,18 @@ class MockRayTaskExecutor(RayTaskExecutor):
 
     async def get_available_band_resources(self):
         return {}
+
+    async def execute_subtask_graph(self, *args, **kwargs):
+        self._monitor_tasks.clear()
+        return await super().execute_subtask_graph(*args, **kwargs)
+
+    async def _update_progress_and_collect_garbage(self, *args, **kwargs):
+        # Infinite loop to test monitor task cancel.
+        self._monitor_tasks.append(asyncio.current_task())
+        return await super()._update_progress_and_collect_garbage(*args, **kwargs)
+
+    def monitor_tasks(self):
+        return self._monitor_tasks
 
     def set_attr_counter(self):
         return self._set_attrs
@@ -153,7 +168,7 @@ async def test_ray_executor_destroy():
     assert counter.keys() >= keys
     counter.clear()
     executor.destroy()
-    keys = set(keys) - {"_set_attrs"}
+    keys = set(keys) - {"_set_attrs", "_monitor_tasks"}
     assert counter.keys() == keys, "Some keys are not reset in destroy()."
     for k, v in counter.items():
         assert v == 1
@@ -352,12 +367,11 @@ async def test_ray_execution_config(ray_start_regular_shared2):
         {
             "backend": "ray",
             "ray": {
-                "subtask_monitor_interval": 0,
+                "monitor_interval_seconds": 0,
                 "subtask_max_retries": 4,
                 "subtask_num_cpus": 0.8,
                 "n_cpu": 1,
                 "n_worker": 1,
-                "subtask_cancel_timeout": 1,
             },
         }
     )
@@ -383,7 +397,8 @@ async def test_ray_execution_config(ray_start_regular_shared2):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_executor_context_gc(ray_start_regular_shared2):
+@pytest.mark.parametrize("gc_method", ["submitted", "completed"])
+async def test_executor_context_gc(ray_start_regular_shared2, gc_method):
     popped_seq = []
 
     class MockTaskContext(dict):
@@ -401,11 +416,12 @@ async def test_executor_context_gc(ray_start_regular_shared2):
         {
             "backend": "ray",
             "ray": {
-                "subtask_monitor_interval": 0,
+                "monitor_interval_seconds": 0,
+                "log_interval_seconds": 0,
                 "subtask_max_retries": 0,
                 "n_cpu": 1,
                 "n_worker": 1,
-                "subtask_cancel_timeout": 1,
+                "gc_method": gc_method,
             },
         }
     )
@@ -421,10 +437,24 @@ async def test_executor_context_gc(ray_start_regular_shared2):
         meta_api=None,
     )
     executor._ray_executor = RayTaskExecutor._get_ray_executor()
-    async with executor:
-        await executor.execute_subtask_graph(
-            "mock_stage", subtask_graph, chunk_graph, tile_context
-        )
+
+    original_execute_subtask_graph = executor._execute_subtask_graph
+
+    async def _wait_gc_execute_subtask_graph(*args, **kwargs):
+        # Mock _execute_subtask_graph to wait the monitor task done.
+        await original_execute_subtask_graph(*args, **kwargs)
+        await executor.monitor_tasks()[0]
+
+    with mock.patch.object(
+        executor, "_execute_subtask_graph", _wait_gc_execute_subtask_graph
+    ):
+        async with executor:
+            await executor.execute_subtask_graph(
+                "mock_stage", subtask_graph, chunk_graph, tile_context
+            )
+            await asyncio.sleep(0)
+            assert len(executor.monitor_tasks()) == 1
+            assert executor.monitor_tasks()[0].done()
 
     assert len(task_context) == 1
     assert len(popped_seq) == 6
@@ -448,10 +478,62 @@ async def test_executor_context_gc(ray_start_regular_shared2):
     assert chunk_keys1 == set(popped_seq[0:4])
     assert chunk_keys2 == set(popped_seq[4:])
 
+    task_context.clear()
+
+    original_update_progress_and_collect_garbage = (
+        executor._update_progress_and_collect_garbage
+    )
+
+    async def infinite_update_progress_and_collect_garbage(*args, **kwargs):
+        # Mock _update_progress_and_collect_garbage that never done.
+        await original_update_progress_and_collect_garbage(*args, **kwargs)
+        while True:
+            await asyncio.sleep(0)
+
+    with mock.patch("logging.Logger.info") as log_patch, mock.patch.object(
+        executor,
+        "_update_progress_and_collect_garbage",
+        infinite_update_progress_and_collect_garbage,
+    ):
+        async with executor:
+            await executor.execute_subtask_graph(
+                "mock_stage2", subtask_graph, chunk_graph, tile_context
+            )
+            await asyncio.sleep(0)
+            assert len(executor.monitor_tasks()) == 1
+            assert executor.monitor_tasks()[0].done()
+        assert log_patch.call_count > 0
+        args = [c.args[0] for c in log_patch.call_args_list]
+        assert any("Submitted [%s/%s]" in a for a in args)
+        assert any("Completed [%s/%s]" in a for a in args)
+
+    assert len(task_context) == 1
+
+    task_context.clear()
+
+    # Test the monitor aiotask is done even an exception is raised.
+    async def _raise_load_subtask_inputs(*args, **kwargs):
+        # Mock _load_subtask_inputs to raise an exception.
+        await asyncio.sleep(0)
+        1 / 0
+
+    with mock.patch.object(
+        executor, "_load_subtask_inputs", _raise_load_subtask_inputs
+    ):
+        async with executor:
+            with pytest.raises(ZeroDivisionError):
+                await executor.execute_subtask_graph(
+                    "mock_stage3", subtask_graph, chunk_graph, tile_context
+                )
+            await asyncio.sleep(0)
+            assert len(executor.monitor_tasks()) == 1
+            assert executor.monitor_tasks()[0].done()
+
 
 @require_ray
 @pytest.mark.asyncio
-async def test_execute_shuffle(ray_start_regular_shared2):
+@pytest.mark.parametrize("gc_method", ["submitted", "completed"])
+async def test_execute_shuffle(ray_start_regular_shared2, gc_method):
     chunk_size, n_rows = 10, 50
     df = md.DataFrame(
         pd.DataFrame(np.random.rand(n_rows, 3), columns=list("abc")),
@@ -482,26 +564,59 @@ async def test_execute_shuffle(ray_start_regular_shared2):
         {
             "backend": "ray",
             "ray": {
-                "subtask_monitor_interval": 0,
+                "monitor_interval_seconds": 0,
                 "subtask_max_retries": 0,
                 "n_cpu": 1,
                 "n_worker": 1,
-                "subtask_cancel_timeout": 1,
+                "gc_method": gc_method,
             },
         }
     )
     tile_context = MockTileContext()
+    task_context = {}
     executor = MockRayTaskExecutor(
         config=mock_config,
         task=task,
         tile_context=tile_context,
-        task_context={},
+        task_context=task_context,
         task_chunks_meta={},
         lifecycle_api=None,
         meta_api=None,
     )
     executor._ray_executor = MockRayExecutor
-    async with executor:
-        await executor.execute_subtask_graph(
-            "mock_stage", subtask_graph, chunk_graph, tile_context
+
+    # Test ShuffleManager.remove_object_refs
+    sm = ShuffleManager(subtask_graph)
+    sm._mapper_output_refs[0].fill(1)
+    sm.remove_object_refs(next(iter(sm._reducer_indices.keys())))
+    assert pd.isnull(sm._mapper_output_refs[0][:, 0]).all()
+    sm._mapper_output_refs[0].fill(1)
+    sm.remove_object_refs(next(iter(sm._mapper_indices.keys())))
+    assert pd.isnull(sm._mapper_output_refs[0][0]).all()
+    with pytest.raises(ValueError):
+        sm.remove_object_refs(None)
+
+    original_execute_subtask_graph = executor._execute_subtask_graph
+
+    async def _wait_gc_execute_subtask_graph(
+        stage_id, subtask_graph, chunk_graph, monitor_context
+    ):
+        # Mock _execute_subtask_graph to wait the monitor task done.
+        await original_execute_subtask_graph(
+            stage_id, subtask_graph, chunk_graph, monitor_context
         )
+        await executor.monitor_tasks()[0]
+        assert pd.isnull(monitor_context.shuffle_manager._mapper_output_refs[0]).all()
+
+    with mock.patch.object(
+        executor, "_execute_subtask_graph", _wait_gc_execute_subtask_graph
+    ):
+        async with executor:
+            await executor.execute_subtask_graph(
+                "mock_stage", subtask_graph, chunk_graph, tile_context
+            )
+        await asyncio.sleep(0)
+        assert len(executor.monitor_tasks()) == 1
+        assert executor.monitor_tasks()[0].done()
+
+    assert len(task_context) == len(chunk_graph.results)
