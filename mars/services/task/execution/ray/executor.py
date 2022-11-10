@@ -665,12 +665,7 @@ class RayTaskExecutor(TaskExecutor):
         return self._cur_stage_progress
 
     async def cancel(self):
-        """
-        Cancel the task execution.
-
-        1. Try to cancel the `execute_subtask_graph`
-        2. Try to cancel the submitted subtasks by `ray.cancel`
-        """
+        """Cancel the task execution."""
         logger.info("Start to cancel task %s.", self._task)
         if self._task is None or self._cancelled is True:
             return
