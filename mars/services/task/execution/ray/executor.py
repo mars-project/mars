@@ -792,9 +792,7 @@ class RayTaskExecutor(TaskExecutor):
                         )
                         # Remove object refs from shuffle manager.
                         for p in ppreds:
-                            logger.debug(
-                                "GC[stage=%s] shuffle manager: %s", stage_id, p
-                            )
+                            logger.debug("GC[stage=%s] shuffle: %s", stage_id, p)
                             monitor_context.shuffle_manager.remove_object_refs(p)
                     else:
                         gc_subtasks.add(pred)
