@@ -270,7 +270,7 @@ class TileableData(EntityData, _ExecutableMixin):
     # `nsplits` means the sizes of chunks for each dimension
     _nsplits = TupleField(
         "nsplits",
-        FieldTypes.tuple(FieldTypes.uint64),
+        FieldTypes.tuple(FieldTypes.tuple(FieldTypes.uint64)),
         on_serialize=on_serialize_nsplits,
     )
     # cache tileable data, if true, this data will be materialized

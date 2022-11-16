@@ -392,8 +392,9 @@ class _CollectionField(Field, metaclass=ABCMeta):
         )
         if field_type is None:
             field_type = FieldTypes.any
-        if not isinstance(field_type, ListType):
-            field_type = self._collection_type()(field_type, ...)
+        collection_type = self._collection_type()
+        if not isinstance(field_type, collection_type):
+            field_type = collection_type(field_type, ...)
         self._field_type = field_type
 
     @classmethod

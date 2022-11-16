@@ -606,7 +606,7 @@ def build_df(df_obj, fill_value=1, size=1, ensure_string=False):
         for i, dtype in enumerate(dtypes):
             s = df.iloc[:, i]
             if not pd.api.types.is_dtype_equal(s.dtype, dtype):
-                df.iloc[:, i] = s.astype(dtype)
+                df[df.columns[i]] = s.astype(dtype)
         dfs.append(df)
     if len(dfs) == 1:
         ret_df = dfs[0]

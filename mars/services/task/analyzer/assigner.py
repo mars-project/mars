@@ -178,7 +178,7 @@ class GraphAssigner(AbstractGraphAssigner):
         graph = self._chunk_graph
         assign_result = dict()
         cur_assigns = cur_assigns or dict()
-        # assigned by expect worker
+        # assigned by expect worker or band
         initial_assigned_op_keys = set(cur_assigns)
 
         op_key_to_chunks = defaultdict(list)

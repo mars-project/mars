@@ -23,12 +23,13 @@ from ...serialization.serializables import (
     SerializableMeta,
     FieldTypes,
     BoolField,
-    Int32Field,
-    Float32Field,
-    StringField,
-    ListField,
     DictField,
+    Float32Field,
+    Int32Field,
+    ListField,
     ReferenceField,
+    StringField,
+    TupleField,
 )
 from ...serialization.core import Placeholder
 from ...serialization.serializables import Serializable
@@ -65,6 +66,14 @@ class SchedulingHint(Serializable):
     # if specified, the op should be executed on the specified worker
     # only work for those operand that has no input
     expect_worker = StringField("expect_worker", default=None)
+    # band to execute, only work for chunk op,
+    # if specified, the op should be executed on the specified band
+    # only work for those operand that has no input
+    expect_band = TupleField(
+        "expect_band",
+        FieldTypes.tuple(FieldTypes.string, FieldTypes.string),
+        default=None,
+    )
     # will this operand be assigned a worker or not
     reassign_worker = BoolField("reassign_worker", default=False)
     # mark a op as fuseable

@@ -97,6 +97,16 @@ class Context(ABC):
         """
 
     @abstractmethod
+    def get_worker_bands(self) -> List[BandType]:
+        """
+        Get worker bands.
+
+        Returns
+        -------
+        worker_bands : list
+        """
+
+    @abstractmethod
     def get_total_n_cpu(self) -> int:
         """
         Get number of cpus.

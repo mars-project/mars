@@ -207,6 +207,13 @@ class GraphAnalyzer:
         else:
             return band_or_worker, "numa-0"
 
+    @staticmethod
+    def _get_expect_band(op: OperandType):
+        if op.expect_band is not None:
+            return op.expect_band
+        elif op.expect_worker is not None:
+            return GraphAnalyzer._to_band(op.expect_worker)
+
     def _gen_subtask_info(
         self,
         chunks: List[ChunkType],
@@ -227,22 +234,20 @@ class GraphAnalyzer:
         is_virtual = None
         retryable = True
         chunk_priority = None
-        expect_worker = None
+        expect_band = None
         bands_specified = None
         processed = set()
         for chunk in chunks:
             if chunk in processed:
                 continue
-            if expect_worker is None:
-                expect_worker = chunk.op.expect_worker
-                bands_specified = expect_worker is not None
+            if expect_band is None:
+                expect_band = self._get_expect_band(chunk.op)
+                bands_specified = expect_band is not None
             else:  # pragma: no cover
-                assert (
-                    chunk.op.expect_worker is None
-                    or expect_worker == chunk.op.expect_worker
-                ), (
-                    f"expect_worker {chunk.op.expect_worker} conflicts with chunks that have same color: "
-                    f"{expect_worker}"
+                curr_expect_band = self._get_expect_band(chunk.op)
+                assert curr_expect_band is None or expect_band == curr_expect_band, (
+                    f"expect_band {curr_expect_band} conflicts with chunks that have same color: "
+                    f"{expect_band}"
                 )
             # process band
             chunk_band = chunk_to_bands.get(chunk)
@@ -319,9 +324,7 @@ class GraphAnalyzer:
             if c not in result_chunks_set
         )
         expect_bands = (
-            [self._to_band(expect_worker)]
-            if bands_specified
-            else ([band] if band is not None else None)
+            [expect_band] if bands_specified else ([band] if band is not None else None)
         )
         # calculate priority
         if out_of_scope_chunks:
@@ -436,11 +439,11 @@ class GraphAnalyzer:
         assigner = self._graph_assigner_cls(
             self._chunk_graph, to_assign_ops, self._band_resource
         )
-        # assign expect workers
+        # assign expect bands
         cur_assigns = {
-            op.key: self._to_band(op.expect_worker)
+            op.key: self._get_expect_band(op)
             for op in start_ops
-            if op.expect_worker is not None
+            if op.expect_band is not None or op.expect_worker is not None
         }
         if op_to_bands:
             cur_assigns.update(op_to_bands)
@@ -453,12 +456,15 @@ class GraphAnalyzer:
         logger.debug(
             "Assigned %s start chunks for task %s", len(start_ops), self._task.task_id
         )
-        # assign expect workers for those specified with `expect_worker`
+        # assign expect workers for those specified with `expect_worker` or `expect_band`
         # skip `start_ops`, which have been assigned before
         start_ops_set = set(start_ops)
         for chunk in self._chunk_graph:
-            if chunk not in start_ops_set and chunk.op.expect_worker is not None:
-                chunk_to_bands[chunk] = self._to_band(chunk.op.expect_worker)
+            if chunk not in start_ops_set:
+                if chunk.op.expect_band is not None:
+                    chunk_to_bands[chunk] = chunk.op.expect_band
+                elif chunk.op.expect_worker is not None:
+                    chunk_to_bands[chunk] = self._to_band(chunk.op.expect_worker)
 
         # color nodes
         if self._fuse_enabled:
