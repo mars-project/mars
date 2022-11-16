@@ -17,7 +17,7 @@
 import asyncio
 import os
 from abc import ABC, abstractmethod
-from concurrent.futures import Executor, ThreadPoolExecutor
+from concurrent.futures import Executor
 from typing import Any, Optional, Union
 
 from ..lib.aio import AioFileObject
@@ -32,8 +32,6 @@ class StorageFileObject(AioFileObject):
         executor: Executor = None,
     ):
         self._object_id = object_id
-        if executor is None:
-            executor = ThreadPoolExecutor()
         super().__init__(file, loop=loop, executor=executor)
 
     @property
