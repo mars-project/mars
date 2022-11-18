@@ -188,6 +188,8 @@ class DataFramelocSetItem(DataFrameOperand, DataFrameOperandMixin):
             is_identical = is_index_value_identical(in_df, index_series)
             if not is_identical:
                 raise NotImplementedError("Only identical index value is supported")
+            if len(in_df.nsplits[1]) != 1:
+                raise NotImplementedError("Column-split chunks are not supported")
             for target_chunk, index_chunk in zip(in_df.chunks, index_series.chunks):
                 chunk_op = op.copy().reset_key()
                 out_chunk = chunk_op.new_chunk(
