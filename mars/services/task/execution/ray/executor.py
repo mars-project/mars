@@ -116,18 +116,14 @@ class _SubtaskGC:
         self,
         subtask_chunk_graph: ChunkGraph,
         context: RayExecutionWorkerContext,
-        shuffle_fetch_chunk: Chunk,
-        shuffle_keys: List[str],
     ):
         self._subtask_chunk_graph = subtask_chunk_graph
         self._context = context
-        self._shuffle_fetch_chunk_key = getattr(shuffle_fetch_chunk, "key", None)
-        self._shuffle_keys = shuffle_keys
         ref_counts = collections.defaultdict(lambda: 0)
-        # set 1 for result chunks
+        # Set 1 for result chunks.
         for result_chunk in subtask_chunk_graph.result_chunks:
             ref_counts[result_chunk.key] += 1
-        # iter graph to set ref counts
+        # Iter graph to set ref counts.
         for chunk in subtask_chunk_graph:
             ref_counts[chunk.key] += subtask_chunk_graph.count_successors(chunk)
         self._chunk_key_ref_counts = ref_counts
@@ -137,11 +133,7 @@ class _SubtaskGC:
         for inp in self._subtask_chunk_graph.iter_predecessors(chunk):
             ref_counts[inp.key] -= 1
             if ref_counts[inp.key] == 0:
-                if inp.key == self._shuffle_fetch_chunk_key:
-                    for key in self._shuffle_keys:
-                        self._context.pop(key)
-                else:
-                    self._context.pop(inp.key, None)
+                self._context.pop(inp.key, None)
 
 
 def execute_subtask(
@@ -192,17 +184,16 @@ def execute_subtask(
             )
         reducer_operand = reducer_chunks[0].op
         reducer_index = reducer_operand.reducer_index
-        # Virtual input keys, keep this in sync with `MapReducerOperand#_iter_mapper_key_idx_pairs`
+        # Virtual shuffle keys, keep this in sync with `MapReducerOperand#_iter_mapper_key_idx_pairs`
         context.update(
             {(i, reducer_index): block for i, block in enumerate(inputs[-n_mappers:])}
         )
         inputs = inputs[:-n_mappers]
-    shuffle_keys = list(context.keys())
+    shuffle_input_key_count = len(context)
+    # Create a subtask GC object.
+    subtask_gc = _SubtaskGC(subtask_chunk_graph, context)
     # Update non shuffle inputs to context.
     context.update(zip((start_chunk.key for start_chunk in fetch_chunks), inputs))
-    subtask_gc = _SubtaskGC(
-        subtask_chunk_graph, context, shuffle_fetch_chunk, shuffle_keys
-    )
 
     for chunk in subtask_chunk_graph.topological_iter():
         if chunk.key not in context:
@@ -229,11 +220,14 @@ def execute_subtask(
         else:
             normal_output[key] = data
 
-    if len(context) != len(normal_output) + len(mapper_output):
-        raise Exception(
-            f"The subtask GC missing {len(context) - len(normal_output) - len(mapper_output)} data:"
-            f"{context.keys() - normal_output.keys() - mapper_output.keys()}"
-        )
+    # The inputs are referenced by the Ray worker in _raylet.pyx, GC them in Mars is useless.
+    # So, subtask GC has skipped GC shuffle input keys in order to simplify the implementation.
+    expect_context_count = (
+        len(normal_output) + len(mapper_output) + shuffle_input_key_count
+    )
+    assert (
+        len(context) == expect_context_count
+    ), f"The remaining context count mismatch: {len(context)}(actual) != {expect_context_count}(expected)."
 
     output_values = []
     # assert output keys order consistent
