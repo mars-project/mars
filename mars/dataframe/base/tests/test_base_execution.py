@@ -798,6 +798,15 @@ def test_isin_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
     a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    b = pd.Series([2, 1, 9, 3] * 3)
+    sa = from_pandas_series(a, chunk_size=5)
+    sb = from_pandas_series(b, chunk_size=2)
+
+    result = sa.isin(sb).execute().fetch()
+    expected = a.isin(b)
+    pd.testing.assert_series_equal(result, expected)
+
+    a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
     b = pd.Series([2, 1, 9, 3])
     sa = from_pandas_series(a, chunk_size=2)
 
@@ -806,9 +815,9 @@ def test_isin_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
     a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
-    b = np.array([2, 1, 9, 3])
-    sa = from_pandas_series(a, chunk_size=2)
-    sb = tensor(b, chunk_size=3)
+    b = np.array([2, 1, 9, 3] * 5)
+    sa = from_pandas_series(a, chunk_size=5)
+    sb = tensor(b, chunk_size=4)
 
     result = sa.isin(sb).execute().fetch()
     expected = a.isin(b)
