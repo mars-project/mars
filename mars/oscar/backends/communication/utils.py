@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ctypes
 from asyncio import StreamReader, StreamWriter
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import numpy as np
 
@@ -23,51 +22,50 @@ from ....utils import lazy_import
 
 cupy = lazy_import("cupy")
 cudf = lazy_import("cudf")
+rmm = lazy_import("rmm")
 
 CUDA_CHUNK_SIZE = 16 * 1024**2
 
 
-def write_buffers(writer: StreamWriter, buffers: List):
-    if cupy is not None and cudf is not None:
-        from cudf.core.buffer import Buffer as CPBuffer
-        from cupy import ndarray as cp_ndarray
-    else:
-        CPBuffer = cp_ndarray = None
+def _convert_to_cupy_ndarray(
+    cuda_buffer: Union["cupy.ndarray", "rmm.DeviceBuffer"]
+) -> "cupy.ndarray":
+    if isinstance(cuda_buffer, cupy.ndarray):
+        return cuda_buffer
 
-    def _write_cuda_buffer(ptr):  # pragma: no cover
-        # copy cuda buffer to host
+    size = cuda_buffer.nbytes
+    data = cuda_buffer.__cuda_array_interface__["data"][0]
+    memory = cupy.cuda.UnownedMemory(data, size, cuda_buffer)
+    ptr = cupy.cuda.MemoryPointer(memory, 0)
+    return cupy.ndarray(shape=size, dtype="u1", memptr=ptr)
+
+
+def write_buffers(writer: StreamWriter, buffers: List):
+    def _write_cuda_buffer(cuda_buffer: Union["cupy.ndarray", "rmm.DeviceBuffer"]):
+        # convert cuda buffer to cupy ndarray
+        cuda_buffer = _convert_to_cupy_ndarray(cuda_buffer)
+
         chunk_size = CUDA_CHUNK_SIZE
         offset = 0
         nbytes = buffer.nbytes
         while offset < nbytes:
             size = chunk_size if (offset + chunk_size) < nbytes else nbytes - offset
-            chunk_buffer = CPBuffer(ptr + offset, size=size)
-            # copy chunk to host memoryview
-            writer.write(chunk_buffer.host_serialize()[1][0])
+            # slice on cupy ndarray
+            chunk_buffer = cuda_buffer[offset : offset + size]
+            # `get` will return numpy ndarray,
+            # write its data which is a memoryview into writer
+            writer.write(chunk_buffer.get().data)
             offset += size
 
     for buffer in buffers:
-        if CPBuffer is not None and isinstance(buffer, CPBuffer):  # pragma: no cover
-            _write_cuda_buffer(buffer.ptr)
-        elif cp_ndarray is not None and isinstance(
-            buffer, cp_ndarray
-        ):  # pragma: no cover
-            _write_cuda_buffer(buffer.data.ptr)
+        if hasattr(buffer, "__cuda_array_interface__"):
+            # GPU buffer
+            _write_cuda_buffer(buffer)
         else:
             writer.write(buffer)
 
 
 async def read_buffers(header: Dict, reader: StreamReader):
-    if cupy is not None and cudf is not None:
-        from cupy.cuda.memory import (
-            UnownedMemory as CPUnownedMemory,
-            MemoryPointer as CPMemoryPointer,
-        )
-        from rmm import DeviceBuffer
-    else:
-        CPUnownedMemory = CPMemoryPointer = DeviceBuffer = None
-
-    # construct a empty cuda buffer and copy from host
     is_cuda_buffers = header[0].get("is_cuda_buffers")
     buffer_sizes = header[0].pop(BUFFER_SIZES_NAME)
 
@@ -78,8 +76,8 @@ async def read_buffers(header: Dict, reader: StreamReader):
                 content = await reader.readexactly(buf_size)
                 buffers.append(content)
             else:
-                cuda_buffer = DeviceBuffer(size=buf_size)
-                cupy_memory = CPUnownedMemory(cuda_buffer.ptr, buf_size, cuda_buffer)
+                buffer = rmm.DeviceBuffer(size=buf_size)
+                arr = _convert_to_cupy_ndarray(buffer)
                 offset = 0
                 chunk_size = CUDA_CHUNK_SIZE
                 while offset < buf_size:
@@ -89,13 +87,10 @@ async def read_buffers(header: Dict, reader: StreamReader):
                         else buf_size - offset
                     )
                     content = await reader.readexactly(read_size)
-                    source_mem = np.frombuffer(content, dtype="uint8").ctypes.data_as(
-                        ctypes.c_void_p
-                    )
-                    cupy_pointer = CPMemoryPointer(cupy_memory, offset)
-                    cupy_pointer.copy_from(source_mem, len(content))
+                    chunk_arr = np.frombuffer(content, dtype="u1")
+                    arr[offset : offset + len(content)].set(chunk_arr)
                     offset += read_size
-                buffers.append(cuda_buffer)
+                buffers.append(buffer)
         else:
             buffers.append(await reader.readexactly(buf_size))
     return buffers
