@@ -125,7 +125,7 @@ class DataFrameLoc:
         indexes = process_loc_indexes(self._obj, indexes)
         use_iloc, new_indexes = self._use_iloc(indexes)
         if use_iloc:
-            op = DataFrameIlocSetItem(indexes=indexes, value=value)
+            op = DataFrameIlocSetItem(indexes=new_indexes, value=value)
             ret = op(self._obj)
             self._obj.data = ret.data
         else:
