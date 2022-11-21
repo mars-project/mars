@@ -89,7 +89,7 @@ class _MetricWrapper(AbstractMetric):
         self,
         name: str,
         description: str = "",
-        tag_keys: Optional[Tuple[str]] = None,
+        tag_keys: Optional[Tuple[str, ...]] = None,
         metric_type: str = "Counter",
     ):
         self._name = name
@@ -125,7 +125,9 @@ class _MetricWrapper(AbstractMetric):
 
 
 def gen_metric(func):
-    def wrapper(name, descriptions: str = "", tag_keys: Optional[Tuple[str]] = None):
+    def wrapper(
+        name, descriptions: str = "", tag_keys: Optional[Tuple[str, ...]] = None
+    ):
         if _init is True:
             return func(name, descriptions, tag_keys)
         else:
@@ -168,7 +170,9 @@ class Metrics:
 
     @staticmethod
     @gen_metric
-    def counter(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
+    def counter(
+        name, description: str = "", tag_keys: Optional[Tuple[str, ...]] = None
+    ):
         logger.info(
             "Initializing a counter with name: %s, tag keys: %s, backend: %s",
             name,
@@ -179,7 +183,7 @@ class Metrics:
 
     @staticmethod
     @gen_metric
-    def gauge(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
+    def gauge(name, description: str = "", tag_keys: Optional[Tuple[str, ...]] = None):
         logger.info(
             "Initializing a gauge whose name: %s, tag keys: %s, backend: %s",
             name,
@@ -190,7 +194,7 @@ class Metrics:
 
     @staticmethod
     @gen_metric
-    def meter(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
+    def meter(name, description: str = "", tag_keys: Optional[Tuple[str, ...]] = None):
         logger.info(
             "Initializing a meter whose name: %s, tag keys: %s, backend: %s",
             name,
@@ -201,7 +205,9 @@ class Metrics:
 
     @staticmethod
     @gen_metric
-    def histogram(name, description: str = "", tag_keys: Optional[Tuple[str]] = None):
+    def histogram(
+        name, description: str = "", tag_keys: Optional[Tuple[str, ...]] = None
+    ):
         logger.info(
             "Initializing a histogram whose name: %s, tag keys: %s, backend: %s",
             name,
