@@ -156,7 +156,7 @@ def execute_subtask(
         subtask outputs and meta for outputs if `output_meta_keys` is provided.
     """
     init_metrics("ray")
-    metrics_tags = {"subtask_id", subtask_id}
+    metrics_tags = {"subtask_id": subtask_id}
     started_subtask_number.record(1, metrics_tags)
     ray_task_id = ray.get_runtime_context().task_id
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
