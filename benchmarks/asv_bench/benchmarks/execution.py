@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import dataclasses
+import unittest.mock as mock
 
 import mars.tensor as mt
 from mars import new_session
@@ -83,10 +84,11 @@ class NumExprExecutionSuite:
             c.execute(show_progress=False)
 
     def time_numexpr_subtask_execution(self):
-        for asv_subtask_info in self.asv_subtasks:
-            execute_subtask(
-                asv_subtask_info.subtask_id,
-                asv_subtask_info.serialized_subtask_chunk_graph,
-                set(),
-                False,
-            )
+        with mock.patch("ray.get_runtime_context"):
+            for asv_subtask_info in self.asv_subtasks:
+                execute_subtask(
+                    asv_subtask_info.subtask_id,
+                    asv_subtask_info.serialized_subtask_chunk_graph,
+                    0,
+                    False,
+                )
