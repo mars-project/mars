@@ -176,7 +176,8 @@ async def test_ray_executor_destroy():
 
 
 @require_ray
-def test_ray_execute_subtask_basic():
+@mock.patch("ray.get_runtime_context")
+def test_ray_execute_subtask_basic(_):
     raw = np.ones((10, 10))
     raw_expect = raw + 1
     a = mt.ones((10, 10), chunk_size=10)
@@ -610,7 +611,7 @@ async def test_execute_shuffle(ray_start_regular_shared2, gc_method):
 
     with mock.patch.object(
         executor, "_execute_subtask_graph", _wait_gc_execute_subtask_graph
-    ):
+    ), mock.patch("ray.get_runtime_context"):
         async with executor:
             await executor.execute_subtask_graph(
                 "mock_stage", subtask_graph, chunk_graph, tile_context
