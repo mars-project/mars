@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [macOS-latest, windows-latest]
-        python-version: [3.7, 3.8]
+        python-version: [3.9]
 
     steps:
     - name: Check out code

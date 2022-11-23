@@ -88,7 +88,7 @@ jobs:
               ./ci/install-hadoop.sh
               echo "import coverage; coverage.process_startup()" > \
                 $(python -c "import site; print(site.getsitepackages()[-1])")/coverage.pth
-              conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein conda-pack
+              conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein libffi conda-pack
             fi
             if [ -n "$WITH_VINEYARD" ]; then
               pip install vineyard -i https://pypi.org/simple
