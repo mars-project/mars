@@ -425,15 +425,21 @@ class TaskProcessor:
         dot = GraphVisualizer.to_dot(self._subtask_graphs)
         directory = tempfile.gettempdir()
         file_name = f"mars-{self.task_id}"
-        logger.debug(
-            "subtask graph is stored in %s", os.path.join(directory, file_name)
+        logger.info(
+            "Subtask graph of task %s is stored in %s",
+            self._task.task_id,
+            os.path.join(directory, file_name),
         )
         if graphviz is not None:  # pragma: no cover
-            g = graphviz.Source(dot)
-            g.view(file_name, directory=directory)
-        else:
-            with open(os.path.join(directory, file_name), "w") as f:
-                f.write(dot)
+            try:
+                g = graphviz.Source(dot)
+                g.view(file_name, directory=directory)
+                return
+            except graphviz.ExecutableNotFound:  # pragma: no cover
+                logger.info("dot executable is not found, dump dot file instead.")
+
+        with open(os.path.join(directory, file_name), "w") as f:
+            f.write(dot)
 
     def _finish(self):
         self._executor.destroy()
