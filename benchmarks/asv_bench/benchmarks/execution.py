@@ -84,17 +84,11 @@ class NumExprExecutionSuite:
             c.execute(show_progress=False)
 
     def time_numexpr_subtask_execution(self):
-        try:
-            with mock.patch("ray.get_runtime_context"):
-                for asv_subtask_info in self.asv_subtasks:
-                    execute_subtask(
-                        asv_subtask_info.subtask_id,
-                        asv_subtask_info.serialized_subtask_chunk_graph,
-                        0,
-                        False,
-                    )
-        except Exception as e:
-            import traceback
-
-            tb_str = "".join(traceback.format_tb(e.__traceback__))
-            print(tb_str)
+        with mock.patch("ray.get_runtime_context"):
+            for asv_subtask_info in self.asv_subtasks:
+                execute_subtask(
+                    asv_subtask_info.subtask_id,
+                    asv_subtask_info.serialized_subtask_chunk_graph,
+                    0,
+                    False,
+                )
