@@ -426,6 +426,7 @@ class TaskProcessor:
         directory = os.environ.get("MARS_DUMP_SUBTASK_GRAPH_DIR")
         if directory is None:
             directory = tempfile.gettempdir()
+        os.makedirs(directory, exist_ok=True)
         file_name = f"mars-{self.task_id}"
         logger.info(
             "Subtask graph of task %s is stored in %s",
