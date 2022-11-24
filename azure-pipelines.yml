@@ -77,7 +77,7 @@ jobs:
           conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
 
           if [[ "$(mars.test.module)" == "learn" ]]; then
-            pip install "xgboost<1.7" lightgbm keras tensorflow faiss-cpu\<1.7.3 torch torchvision \
+            pip install "xgboost<1.7" lightgbm keras tensorflow "faiss-cpu<1.7.3" torch torchvision \
               statsmodels tsfresh
           fi
         fi

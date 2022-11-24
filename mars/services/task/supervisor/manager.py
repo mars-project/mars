@@ -111,8 +111,12 @@ class TaskManagerActor(mo.Actor):
         self._reserved_finish_tasks = deque(maxlen=reserved_finish_tasks)
 
     async def __pre_destroy__(self):
-        for processor_ref in self._task_id_to_processor_ref.values():
-            await processor_ref.destroy()
+        # Avoid RuntimeError: dictionary changed size during iteration.
+        coros = [
+            processor_ref.destroy()
+            for processor_ref in self._task_id_to_processor_ref.values()
+        ]
+        await asyncio.gather(*coros)
 
     @staticmethod
     def gen_uid(session_id):
