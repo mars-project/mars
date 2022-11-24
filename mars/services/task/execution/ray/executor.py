@@ -69,17 +69,17 @@ logger = logging.getLogger(__name__)
 
 # Metrics
 submitted_subtask_number = Metrics.counter(
-    "mars.band.submitted_subtask_number",
+    "mars.ray_dag.submitted_subtask_number",
     "The number of submitted subtask.",
     ("session_id", "task_id", "stage_id"),
 )
 started_subtask_number = Metrics.counter(
-    "mars.band.started_subtask_number",
+    "mars.ray_dag.started_subtask_number",
     "The number of started subtask.",
     ("subtask_id",),
 )
 completed_subtask_number = Metrics.counter(
-    "mars.band.completed_subtask_number",
+    "mars.ray_dag.completed_subtask_number",
     "The number of completed subtask.",
     ("subtask_id",),
 )
