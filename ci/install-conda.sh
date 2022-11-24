@@ -38,6 +38,3 @@ fi
 #check python version
 export PYTHON=$(python -c "import sys; print('.'.join(str(v) for v in sys.version_info[:3]))")
 echo "Installed Python version: $PYTHON"
-
-#force pin setuptools before any installations.
-python -m pip install "setuptools<64"
