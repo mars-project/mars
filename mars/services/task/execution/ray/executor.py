@@ -778,7 +778,7 @@ class RayTaskExecutor(TaskExecutor):
             shuffle_object_refs = list(shuffle_manager.get_reducer_input_refs(subtask))
 
         if key_to_get_meta:
-            logger.info(
+            logger.debug(
                 "Fetch %s metas and update context of stage %s.",
                 len(key_to_get_meta),
                 stage_id,
