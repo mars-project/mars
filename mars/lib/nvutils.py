@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import dataclasses
 import logging
 import os
 import subprocess
@@ -31,6 +32,7 @@ from ctypes import (
     POINTER,
     CDLL,
 )
+from typing import List, Tuple, Optional, Union
 
 from ..utils import parse_readable_size
 
@@ -49,9 +51,37 @@ CU_NO_CUDA_CAPABLE_DEVICE_DETECTED = 100
 
 # nvml constants
 NVML_SUCCESS = 0
+NVML_ERROR_UNINITIALIZED = 1
+NVML_ERROR_INVALID_ARGUMENT = 2
+NVML_ERROR_NOT_SUPPORTED = 3
+NVML_ERROR_NO_PERMISSION = 4
+NVML_ERROR_ALREADY_INITIALIZED = 5
+NVML_ERROR_NOT_FOUND = 6
+NVML_ERROR_INSUFFICIENT_SIZE = 7
+NVML_ERROR_INSUFFICIENT_POWER = 8
+NVML_ERROR_DRIVER_NOT_LOADED = 9
+NVML_ERROR_TIMEOUT = 10
+NVML_ERROR_IRQ_ISSUE = 11
+NVML_ERROR_LIBRARY_NOT_FOUND = 12
+NVML_ERROR_FUNCTION_NOT_FOUND = 13
+NVML_ERROR_CORRUPTED_INFOROM = 14
+NVML_ERROR_GPU_IS_LOST = 15
+NVML_ERROR_RESET_REQUIRED = 16
+NVML_ERROR_OPERATING_SYSTEM = 17
+NVML_ERROR_LIB_RM_VERSION_MISMATCH = 18
+NVML_ERROR_IN_USE = 19
+NVML_ERROR_MEMORY = 20
+NVML_ERROR_NO_DATA = 21
+NVML_ERROR_VGPU_ECC_NOT_SUPPORTED = 22
+NVML_ERROR_INSUFFICIENT_RESOURCES = 23
+NVML_ERROR_FREQ_NOT_SUPPORTED = 24
+NVML_ERROR_UNKNOWN = 999
 NVML_TEMPERATURE_GPU = 0
-
 NVML_DRIVER_NOT_LOADED = 9
+NVML_DEVICE_UUID_V2_BUFFER_SIZE = 96
+NVML_VALUE_NOT_AVAILABLE_ulonglong = c_ulonglong(-1)
+NVML_DEVICE_MIG_DISABLE = 0x0
+NVML_DEVICE_MIG_ENABLE = 0x1
 
 
 class _CUuuid_t(Structure):
@@ -78,6 +108,52 @@ class _nvmlBAR1Memory_t(Structure):
         ("free", c_ulonglong),
         ("used", c_ulonglong),
     ]
+
+
+class _nvmlProcessInfo_t(Structure):
+    _fields_ = [
+        ("pid", c_uint),
+        ("usedGpuMemory", c_ulonglong),
+        ("gpuInstanceId", c_uint),
+        ("computeInstanceId", c_uint),
+    ]
+
+
+## Alternative object
+# Allows the object to be printed
+# Allows mismatched types to be assigned
+#  - like None when the Structure variant requires c_uint
+class nvmlFriendlyObject:
+    def __init__(self, dictionary):
+        for x in dictionary:
+            setattr(self, x, dictionary[x])
+
+    def __str__(self):
+        return self.__dict__.__str__()
+
+
+def nvmlStructToFriendlyObject(struct):
+    d = {}
+    for x in struct._fields_:
+        key = x[0]
+        value = getattr(struct, key)
+        # only need to convert from bytes if bytes, no need to check python version.
+        d[key] = value.decode() if isinstance(value, bytes) else value
+    obj = nvmlFriendlyObject(d)
+    return obj
+
+
+@dataclasses.dataclass
+class CudaDeviceInfo:
+    uuid: bytes = None
+    device_index: int = None
+    mig_index: int = None
+
+
+@dataclasses.dataclass
+class CudaContext:
+    has_context: bool
+    device_info: CudaDeviceInfo = None
 
 
 _is_windows: bool = sys.platform.startswith("win")
@@ -247,7 +323,7 @@ def _init():
         _init_pid = os.getpid()
 
 
-def get_device_count():
+def get_device_count() -> int:
     global _gpu_count
 
     if _gpu_count is not None:
@@ -259,7 +335,7 @@ def get_device_count():
 
     if "CUDA_VISIBLE_DEVICES" in os.environ:
         devices = os.environ["CUDA_VISIBLE_DEVICES"].strip()
-        if not devices:
+        if not devices or devices == "-1":
             _gpu_count = 0
         else:
             _gpu_count = len(devices.split(","))
@@ -270,7 +346,17 @@ def get_device_count():
     return _gpu_count
 
 
-def get_driver_info():
+def _get_all_device_count() -> int:
+    _init_nvml()
+    if _nvml_lib is None:
+        return None
+
+    n_gpus = c_uint()
+    _cu_check_error(_nvml_lib.nvmlDeviceGetCount(byref(n_gpus)))
+    return n_gpus.value
+
+
+def get_driver_info() -> _nvml_driver_info:
     global _driver_info
 
     _init_nvml()
@@ -294,7 +380,7 @@ def get_driver_info():
     return _driver_info
 
 
-def get_device_info(dev_index):
+def get_device_info(dev_index: int) -> _cu_device_info:
     try:
         return _device_infos[dev_index]
     except KeyError:
@@ -350,7 +436,7 @@ def get_device_info(dev_index):
     return info
 
 
-def get_device_status(dev_index):
+def get_device_status(dev_index: int) -> _nvml_device_status:
     _init()
     if _init_pid is None:
         return None
@@ -424,3 +510,205 @@ def get_device_status(dev_index):
         fb_free_mem=fb_free_mem,
         fb_used_mem=fb_used_mem,
     )
+
+
+def get_handle_by_index(index: int) -> _nvmlDevice_t:
+    _init_nvml()
+    if _nvml_lib is None:
+        return None
+
+    c_index = c_int(index)
+    device = _nvmlDevice_t()
+    _nvml_check_error(_nvml_lib.nvmlDeviceGetHandleByIndex_v2(c_index, byref(device)))
+    return device
+
+
+def get_handle_by_uuid(uuid: bytes) -> _nvmlDevice_t:
+    _init_nvml()
+    if _nvml_lib is None:
+        return None
+
+    c_uuid = c_char_p(uuid)
+    device = _nvmlDevice_t()
+    _nvml_check_error(_nvml_lib.nvmlDeviceGetHandleByUUID(c_uuid, byref(device)))
+    return device
+
+
+def get_mig_mode(device: _nvmlDevice_t) -> Tuple[int, int]:
+    _init_nvml()
+    if _nvml_lib is None:
+        return None
+
+    c_current_mode, c_pending_mode = c_uint(), c_uint()
+    _nvml_check_error(
+        _nvml_lib.nvmlDeviceGetMigMode(
+            device, byref(c_current_mode), byref(c_pending_mode)
+        )
+    )
+    return c_current_mode.value, c_pending_mode.value
+
+
+def get_max_mig_device_count(device: _nvmlDevice_t) -> int:
+    _init_nvml()
+    if _nvml_lib is None:
+        return None
+
+    c_count = c_uint()
+    _nvml_check_error(_nvml_lib.nvmlDeviceGetMaxMigDeviceCount(device, byref(c_count)))
+    return c_count.value
+
+
+def get_mig_device_handle_by_index(device: _nvmlDevice_t, index: int) -> _nvmlDevice_t:
+    _init_nvml()
+    if _nvml_lib is None:
+        return None
+
+    c_index = c_uint(index)
+    mig_device = _nvmlDevice_t()
+    _nvml_check_error(
+        _nvml_lib.nvmlDeviceGetMigDeviceHandleByIndex(
+            device, c_index, byref(mig_device)
+        )
+    )
+    return mig_device
+
+
+def get_index(handle: _nvmlDevice_t) -> int:
+    _init_nvml()
+    if _nvml_lib is None:
+        return None
+
+    c_index = c_uint()
+    _nvml_check_error(_nvml_lib.nvmlDeviceGetIndex(handle, byref(c_index)))
+    return c_index.value
+
+
+def get_uuid(handle: _nvmlDevice_t) -> bytes:
+    _init_nvml()
+    if _nvml_lib is None:
+        return None
+
+    c_uuid = create_string_buffer(NVML_DEVICE_UUID_V2_BUFFER_SIZE)
+    _nvml_check_error(
+        _nvml_lib.nvmlDeviceGetUUID(
+            handle, c_uuid, c_uint(NVML_DEVICE_UUID_V2_BUFFER_SIZE)
+        )
+    )
+    return c_uuid.value
+
+
+def get_index_and_uuid(device: Union[int, bytes, str]) -> CudaDeviceInfo:
+    _init_nvml()
+    if _nvml_lib is None:
+        return None
+
+    try:
+        device_index = int(device)
+        device_handle = get_handle_by_index(device_index)
+        uuid = get_uuid(device_handle)
+    except ValueError:
+        uuid = device if isinstance(device, bytes) else device.encode()
+        uuid_handle = get_handle_by_uuid(uuid)
+        device_index = get_index(uuid_handle)
+        uuid = get_uuid(uuid_handle)
+
+    return CudaDeviceInfo(uuid=uuid, device_index=device_index)
+
+
+def get_compute_running_processes(handle: _nvmlDevice_t) -> List[nvmlFriendlyObject]:
+    _init_nvml()
+    if _nvml_lib is None:
+        return None
+
+    c_count = c_uint(0)
+    func = getattr(_nvml_lib, "nvmlDeviceGetComputeRunningProcesses_v3", None)
+    if func is None:
+        func = getattr(_nvml_lib, "nvmlDeviceGetComputeRunningProcesses_v2")
+    ret = func(handle, byref(c_count), None)
+
+    if ret == NVML_SUCCESS:
+        # special case, no running processes
+        return []
+    elif ret == NVML_ERROR_INSUFFICIENT_SIZE:
+        # typical case
+        # oversize the array incase more processes are created
+        c_count.value = c_count.value * 2 + 5
+        proc_array = _nvmlProcessInfo_t * c_count.value
+        c_procs = proc_array()
+
+        _nvml_check_error(func(handle, byref(c_count), c_procs))
+
+        procs = []
+        for i in range(c_count.value):
+            # use an alternative struct for this object
+            obj = nvmlStructToFriendlyObject(c_procs[i])
+            if obj.usedGpuMemory == NVML_VALUE_NOT_AVAILABLE_ulonglong.value:
+                # special case for WDDM on Windows, see comment above
+                obj.usedGpuMemory = None
+            procs.append(obj)
+
+        return procs
+    else:
+        # error case
+        _nvml_check_error(ret)
+
+
+def _running_process_matches(handle: _nvmlDevice_t) -> bool:
+    """Check whether the current process is same as that of handle
+    Parameters
+    ----------
+    handle : _nvmlDevice_t
+        NVML handle to CUDA device
+    Returns
+    -------
+    out : bool
+        Whether the device handle has a CUDA context on the running process.
+    """
+    return any(os.getpid() == o.pid for o in get_compute_running_processes(handle))
+
+
+def get_cuda_context() -> CudaContext:
+    """Check whether the current process already has a CUDA context created."""
+
+    _init()
+    if _init_pid is None:
+        return CudaContext(has_context=False)
+
+    for index in range(_get_all_device_count()):
+        handle = get_handle_by_index(index)
+        try:
+            mig_current_mode, mig_pending_mode = get_mig_mode(handle)
+        except NVMLAPIError as e:
+            if e.errno == NVML_ERROR_NOT_SUPPORTED:
+                mig_current_mode = NVML_DEVICE_MIG_DISABLE
+            else:
+                raise
+        if mig_current_mode == NVML_DEVICE_MIG_ENABLE:
+            for mig_index in range(get_max_mig_device_count(handle)):
+                try:
+                    mig_handle = get_mig_device_handle_by_index(handle, mig_index)
+                except NVMLAPIError as e:
+                    if e.errno == NVML_ERROR_NOT_FOUND:
+                        # No MIG device with that index
+                        continue
+                    else:
+                        raise
+                if _running_process_matches(mig_handle):
+                    return CudaContext(
+                        has_context=True,
+                        device_info=CudaDeviceInfo(
+                            uuid=get_uuid(handle),
+                            device_index=index,
+                            mig_index=mig_index,
+                        ),
+                    )
+        else:
+            if _running_process_matches(handle):
+                return CudaContext(
+                    has_context=True,
+                    device_info=CudaDeviceInfo(
+                        uuid=get_uuid(handle), device_index=index
+                    ),
+                )
+
+    return CudaContext(has_context=False)
