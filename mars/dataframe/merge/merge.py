@@ -742,7 +742,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             yield TileStatus([left, right] + left.chunks + right.chunks, progress=0.2)
             left = auto_merge_chunks(ctx, left)
             right = auto_merge_chunks(ctx, right)
-            logger.debug(
+            logger.info(
                 "Before merge %s, left data count: %d, chunk size: %d, "
                 "right data count: %d, chunk_size: %d",
                 op,
@@ -752,7 +752,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                 len(right.chunks),
             )
         else:
-            logger.debug(
+            logger.info(
                 "Skip auto merge before %s, left chunk size: %d, right chunk size: %d",
                 op,
                 len(left.chunks),
@@ -766,7 +766,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             left_on = _prepare_shuffle_on(op.left_index, op.left_on, op.on)
             right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
             small_one = right if len(left.chunks) > len(right.chunks) else left
-            logger.debug(
+            logger.info(
                 "Apply bloom filter for operand %s, use DataFrame %s to build bloom filter.",
                 op,
                 small_one,
@@ -802,7 +802,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                 ret[0].chunks, progress=0.8
             )  # trigger execution for chunks
             merged = auto_merge_chunks(get_context(), ret[0])
-            logger.debug(
+            logger.info(
                 "After merge %s, data size: %d, chunk size: %d",
                 op,
                 merged.shape[0],
@@ -810,7 +810,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             )
             return [merged]
         else:
-            logger.debug(
+            logger.info(
                 "Skip auto merge after %s, chunk size: %d", op, len(ret[0].chunks)
             )
             return ret

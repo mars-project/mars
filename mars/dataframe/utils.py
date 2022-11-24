@@ -1398,6 +1398,7 @@ def auto_merge_chunks(
         if merged_file_size is not None
         else options.chunk_store_limit
     )
+    logger.info("Auto merge size: %s", to_merge_size)
     to_merge_chunks = []
     acc_memory_size = 0
     n_split = []
