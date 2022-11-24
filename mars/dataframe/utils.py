@@ -165,8 +165,6 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
     :return: the calculated chunk size for each dimension
     :rtype: tuple
     """
-    from ..config import options
-
     chunk_size = dictify_chunk_size(shape, chunk_size)
     average_memory_usage = memory_usage / shape[0]
 
@@ -238,8 +236,6 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
 
 
 def decide_series_chunk_size(shape, chunk_size, memory_usage):
-    from ..config import options
-
     chunk_size = dictify_chunk_size(shape, chunk_size)
     average_memory_usage = memory_usage / shape[0] if shape[0] != 0 else memory_usage
 
@@ -1398,7 +1394,6 @@ def auto_merge_chunks(
         if merged_file_size is not None
         else options.chunk_store_limit
     )
-    logger.info("Auto merge size: %s", to_merge_size)
     to_merge_chunks = []
     acc_memory_size = 0
     n_split = []

@@ -740,22 +740,29 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             and len(left.chunks) + len(right.chunks) > auto_merge_threshold
         ):
             yield TileStatus([left, right] + left.chunks + right.chunks, progress=0.2)
+            left_chunk_size = len(left.chunks)
+            right_chunk_size = len(right.chunks)
             left = auto_merge_chunks(ctx, left)
             right = auto_merge_chunks(ctx, right)
             logger.info(
-                "Before merge %s, left data count: %d, chunk size: %d, "
-                "right data count: %d, chunk_size: %d",
+                "Auto merge before %s, left data shape: %s, chunk size: %s -> %s, "
+                "right data shape: %s, chunk_size: %s -> %s.",
                 op,
-                left.shape[0],
+                left.shape,
+                left_chunk_size,
                 len(left.chunks),
-                right.shape[0],
+                right.shape,
+                right_chunk_size,
                 len(right.chunks),
             )
         else:
             logger.info(
-                "Skip auto merge before %s, left chunk size: %d, right chunk size: %d",
+                "Skip auto merge before %s, left data shape: %s, chunk size: %d, "
+                "right data shape: %s, chunk size: %d.",
                 op,
+                left.shape,
                 len(left.chunks),
+                right.shape,
                 len(right.chunks),
             )
 
@@ -803,15 +810,19 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             )  # trigger execution for chunks
             merged = auto_merge_chunks(get_context(), ret[0])
             logger.info(
-                "After merge %s, data size: %d, chunk size: %d",
+                "Auto merge after %s, data shape: %s, chunk size: %s -> %s.",
                 op,
-                merged.shape[0],
+                merged.shape,
+                len(ret[0].chunks),
                 len(merged.chunks),
             )
             return [merged]
         else:
             logger.info(
-                "Skip auto merge after %s, chunk size: %d", op, len(ret[0].chunks)
+                "Skip auto merge after %s, data shape: %s, chunk size: %d.",
+                op,
+                ret[0].shape,
+                len(ret[0].chunks),
             )
             return ret
 
