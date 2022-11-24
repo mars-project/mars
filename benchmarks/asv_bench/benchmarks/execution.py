@@ -25,7 +25,7 @@ from mars.core.graph import (
 )
 from mars.serialization import serialize
 from mars.services.task import new_task_id
-from mars.services.task.execution.ray.executor import execute_subtask
+from mars.services.task.execution.ray import executor as ray_executor
 
 
 def _gen_subtask_chunk_graph(t):
@@ -84,9 +84,9 @@ class NumExprExecutionSuite:
             c.execute(show_progress=False)
 
     def time_numexpr_subtask_execution(self):
-        with mock.patch("ray.get_runtime_context"):
+        with mock.patch.object(ray_executor, "ray"):
             for asv_subtask_info in self.asv_subtasks:
-                execute_subtask(
+                ray_executor.execute_subtask(
                     asv_subtask_info.subtask_id,
                     asv_subtask_info.serialized_subtask_chunk_graph,
                     0,
