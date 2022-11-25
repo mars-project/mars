@@ -15,7 +15,9 @@
 import numpy as np
 import pandas as pd
 
+from ... import dataframe as md
 from ... import opcodes
+from ... import tensor as mt
 from ...config import options
 from ...core import OutputType
 from ...serialization.serializables import BoolField
@@ -23,8 +25,13 @@ from ..operands import (
     DataFrameOperand,
     DataFrameOperandMixin,
     DATAFRAME_TYPE,
+    ENTITY_TYPE,
+    INDEX_TYPE,
     SERIES_TYPE,
+    TENSOR_TYPE,
 )
+
+from typing import Any
 
 
 class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
@@ -41,7 +48,7 @@ class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
             _use_inf_as_na=use_inf_as_na,
             _output_types=output_types,
             sparse=sparse,
-            **kw
+            **kw,
         )
 
     @property
@@ -57,8 +64,12 @@ class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
             self.output_types = [OutputType.dataframe]
         elif isinstance(df, SERIES_TYPE):
             self.output_types = [OutputType.series]
-        else:
+        elif isinstance(df, TENSOR_TYPE) or isinstance(df, INDEX_TYPE):
             self.output_types = [OutputType.tensor]
+        else:
+            raise TypeError(
+                f"Expecting mars dataframe, series, index, or tensor, got {type(df)}"
+            )
 
         params = df.params.copy()
         if self.output_types[0] == OutputType.dataframe:
@@ -95,6 +106,7 @@ class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op: "DataFrameCheckNA"):
         in_data = ctx[op.inputs[0].key]
+        old_use_inf_as_na = pd.get_option("mode.use_inf_as_na")
         try:
             pd.set_option("mode.use_inf_as_na", op.use_inf_as_na)
             if op.positive:
@@ -102,10 +114,25 @@ class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
             else:
                 ctx[op.outputs[0].key] = in_data.notna()
         finally:
-            pd.reset_option("mode.use_inf_as_na")
+            pd.set_option("mode.use_inf_as_na", old_use_inf_as_na)
 
 
-def isna(df):
+def _from_pandas(obj: Any):
+    if isinstance(obj, pd.DataFrame):
+        from ..datasource.dataframe import from_pandas
+
+        return from_pandas(obj)
+    elif isinstance(obj, pd.Series):
+        from ..datasource.series import from_pandas
+
+        return from_pandas(obj)
+    elif isinstance(obj, np.ndarray):
+        return mt.tensor(obj)
+    else:
+        return obj
+
+
+def isna(obj):
     """
     Detect missing values.
 
@@ -168,13 +195,24 @@ def isna(df):
     2     True
     dtype: bool
     """
-    op = DataFrameCheckNA(
-        positive=True, use_inf_as_na=options.dataframe.mode.use_inf_as_na
-    )
-    return op(df)
+    if isinstance(obj, md.MultiIndex):
+        raise NotImplementedError("isna is not defined for MultiIndex")
+    elif isinstance(obj, ENTITY_TYPE):
+        if isinstance(obj, TENSOR_TYPE):
+            if options.dataframe.mode.use_inf_as_na:
+                return ~mt.isfinite(obj)
+            else:
+                return mt.isnan(obj)
+        else:
+            op = DataFrameCheckNA(
+                positive=True, use_inf_as_na=options.dataframe.mode.use_inf_as_na
+            )
+            return op(obj)
+    else:
+        return _from_pandas(pd.isna(obj))
 
 
-def notna(df):
+def notna(obj):
     """
     Detect existing (non-missing) values.
 
@@ -236,10 +274,21 @@ def notna(df):
     2    False
     dtype: bool
     """
-    op = DataFrameCheckNA(
-        positive=False, use_inf_as_na=options.dataframe.mode.use_inf_as_na
-    )
-    return op(df)
+    if isinstance(obj, md.MultiIndex):
+        raise NotImplementedError("isna is not defined for MultiIndex")
+    elif isinstance(obj, ENTITY_TYPE):
+        if isinstance(obj, TENSOR_TYPE):
+            if options.dataframe.mode.use_inf_as_na:
+                return mt.isfinite(obj)
+            else:
+                return ~mt.isnan(obj)
+        else:
+            op = DataFrameCheckNA(
+                positive=False, use_inf_as_na=options.dataframe.mode.use_inf_as_na
+            )
+            return op(obj)
+    else:
+        return _from_pandas(pd.notna(obj))
 
 
 isnull = isna
