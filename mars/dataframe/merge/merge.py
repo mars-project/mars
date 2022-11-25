@@ -745,8 +745,8 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             left = auto_merge_chunks(ctx, left)
             right = auto_merge_chunks(ctx, right)
             logger.info(
-                "Auto merge before %s, left data shape: %s, chunk size: %s -> %s, "
-                "right data shape: %s, chunk_size: %s -> %s.",
+                "Auto merge before %s, left data shape: %s, chunk count: %s -> %s, "
+                "right data shape: %s, chunk count: %s -> %s.",
                 op,
                 left.shape,
                 left_chunk_size,
@@ -757,8 +757,8 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             )
         else:
             logger.info(
-                "Skip auto merge before %s, left data shape: %s, chunk size: %d, "
-                "right data shape: %s, chunk size: %d.",
+                "Skip auto merge before %s, left data shape: %s, chunk count: %d, "
+                "right data shape: %s, chunk count: %d.",
                 op,
                 left.shape,
                 len(left.chunks),
@@ -789,7 +789,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             if op.method == "auto":
                 # if method is auto, select new method after auto merge
                 method = cls._choose_merge_method(op, left, right)
-        logger.info("Choose %s method for merge operand %s", method, op)
+        logger.info("Choose %s method for merge operand %s.", method, op)
         if method == MergeMethod.one_chunk:
             ret = cls._tile_one_chunk(op, left, right)
         elif method == MergeMethod.broadcast:
@@ -810,7 +810,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             )  # trigger execution for chunks
             merged = auto_merge_chunks(get_context(), ret[0])
             logger.info(
-                "Auto merge after %s, data shape: %s, chunk size: %s -> %s.",
+                "Auto merge after %s, data shape: %s, chunk count: %s -> %s.",
                 op,
                 merged.shape,
                 len(ret[0].chunks),
@@ -819,7 +819,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             return [merged]
         else:
             logger.info(
-                "Skip auto merge after %s, data shape: %s, chunk size: %d.",
+                "Skip auto merge after %s, data shape: %s, chunk count: %d.",
                 op,
                 ret[0].shape,
                 len(ret[0].chunks),
