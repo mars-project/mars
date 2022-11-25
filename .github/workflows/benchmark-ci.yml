@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
           source ./ci/install-conda.sh
-          python -m pip install --upgrade pip setuptools wheel coverage;
+          python -m pip install --upgrade pip "setuptools<64" wheel coverage;
 
       - name: Install dependencies
         id: build
@@ -57,7 +57,7 @@ jobs:
           git fetch upstream
           git merge upstream/master
           asv machine --yes
-          asv continuous -f 1.1 --strict upstream/master HEAD
+          asv continuous -e -f 1.1 --strict upstream/master HEAD
         if: ${{ steps.build.outcome == 'success' }}
 
       - name: Publish benchmarks artifact

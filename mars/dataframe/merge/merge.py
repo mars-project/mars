@@ -740,22 +740,29 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             and len(left.chunks) + len(right.chunks) > auto_merge_threshold
         ):
             yield TileStatus([left, right] + left.chunks + right.chunks, progress=0.2)
+            left_chunk_size = len(left.chunks)
+            right_chunk_size = len(right.chunks)
             left = auto_merge_chunks(ctx, left)
             right = auto_merge_chunks(ctx, right)
-            logger.debug(
-                "Before merge %s, left data count: %d, chunk size: %d, "
-                "right data count: %d, chunk_size: %d",
+            logger.info(
+                "Auto merge before %s, left data shape: %s, chunk count: %s -> %s, "
+                "right data shape: %s, chunk count: %s -> %s.",
                 op,
-                left.shape[0],
+                left.shape,
+                left_chunk_size,
                 len(left.chunks),
-                right.shape[0],
+                right.shape,
+                right_chunk_size,
                 len(right.chunks),
             )
         else:
-            logger.debug(
-                "Skip auto merge before %s, left chunk size: %d, right chunk size: %d",
+            logger.info(
+                "Skip auto merge before %s, left data shape: %s, chunk count: %d, "
+                "right data shape: %s, chunk count: %d.",
                 op,
+                left.shape,
                 len(left.chunks),
+                right.shape,
                 len(right.chunks),
             )
 
@@ -766,7 +773,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             left_on = _prepare_shuffle_on(op.left_index, op.left_on, op.on)
             right_on = _prepare_shuffle_on(op.right_index, op.right_on, op.on)
             small_one = right if len(left.chunks) > len(right.chunks) else left
-            logger.debug(
+            logger.info(
                 "Apply bloom filter for operand %s, use DataFrame %s to build bloom filter.",
                 op,
                 small_one,
@@ -782,7 +789,7 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             if op.method == "auto":
                 # if method is auto, select new method after auto merge
                 method = cls._choose_merge_method(op, left, right)
-        logger.info("Choose %s method for merge operand %s", method, op)
+        logger.info("Choose %s method for merge operand %s.", method, op)
         if method == MergeMethod.one_chunk:
             ret = cls._tile_one_chunk(op, left, right)
         elif method == MergeMethod.broadcast:
@@ -802,16 +809,20 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
                 ret[0].chunks, progress=0.8
             )  # trigger execution for chunks
             merged = auto_merge_chunks(get_context(), ret[0])
-            logger.debug(
-                "After merge %s, data size: %d, chunk size: %d",
+            logger.info(
+                "Auto merge after %s, data shape: %s, chunk count: %s -> %s.",
                 op,
-                merged.shape[0],
+                merged.shape,
+                len(ret[0].chunks),
                 len(merged.chunks),
             )
             return [merged]
         else:
-            logger.debug(
-                "Skip auto merge after %s, chunk size: %d", op, len(ret[0].chunks)
+            logger.info(
+                "Skip auto merge after %s, data shape: %s, chunk count: %d.",
+                op,
+                ret[0].shape,
+                len(ret[0].chunks),
             )
             return ret
 

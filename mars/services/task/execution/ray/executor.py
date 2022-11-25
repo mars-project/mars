@@ -34,7 +34,7 @@ from .....core.operand import (
 from .....core.operand.fetch import FetchShuffle
 from .....lib.aio import alru_cache
 from .....lib.ordered_set import OrderedSet
-from .....metrics.api import init_metrics
+from .....metrics.api import init_metrics, Metrics
 from .....resource import Resource
 from .....serialization import serialize, deserialize
 from .....typing import BandType
@@ -65,6 +65,24 @@ from .shuffle import ShuffleManager
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
+
+
+# Metrics
+submitted_subtask_number = Metrics.counter(
+    "mars.ray_dag.submitted_subtask_number",
+    "The number of submitted subtask.",
+    ("session_id", "task_id", "stage_id"),
+)
+started_subtask_number = Metrics.counter(
+    "mars.ray_dag.started_subtask_number",
+    "The number of started subtask.",
+    ("subtask_id",),
+)
+completed_subtask_number = Metrics.counter(
+    "mars.ray_dag.completed_subtask_number",
+    "The number of completed subtask.",
+    ("subtask_id",),
+)
 
 
 @dataclass
@@ -165,8 +183,11 @@ def execute_subtask(
         subtask outputs and meta for outputs if `output_meta_keys` is provided.
     """
     init_metrics("ray")
+    metrics_tags = {"subtask_id": subtask_id}
+    started_subtask_number.record(1, metrics_tags)
+    ray_task_id = ray.get_runtime_context().task_id
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
-    logger.info("Start subtask: %s.", subtask_id)
+    logger.info("Start subtask: %s, ray task id: %s.", subtask_id, ray_task_id)
     # Optimize chunk graph.
     subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)
     fetch_chunks, shuffle_fetch_chunk = _get_fetch_chunks(subtask_chunk_graph)
@@ -255,7 +276,8 @@ def execute_subtask(
         output_values.append(output_meta)
     output_values.extend(normal_output.values())
     output_values.extend(mapper_output.values())
-    logger.info("Complete subtask: %s.", subtask_id)
+    logger.info("Complete subtask: %s, ray task id: %s.", subtask_id, ray_task_id)
+    completed_subtask_number.record(1, metrics_tags)
     return output_values[0] if len(output_values) == 1 else output_values
 
 
@@ -554,6 +576,11 @@ class RayTaskExecutor(TaskExecutor):
         )
         subtask_max_retries = self._config.get_subtask_max_retries()
         subtask_num_cpus = self._config.get_subtask_num_cpus()
+        metrics_tags = {
+            "session_id": self._task.session_id,
+            "task_id": self._task.task_id,
+            "stage_id": stage_id,
+        }
         for subtask in subtask_graph.topological_iter():
             if subtask.virtual:
                 continue
@@ -592,6 +619,7 @@ class RayTaskExecutor(TaskExecutor):
             await asyncio.sleep(0)
             if output_count == 1:
                 output_object_refs = [output_object_refs]
+            submitted_subtask_number.record(1, metrics_tags)
             monitor_context.submitted_subtasks.add(subtask)
             monitor_context.object_ref_to_subtask[output_object_refs[0]] = subtask
             if subtask.stage_n_outputs:
@@ -750,7 +778,7 @@ class RayTaskExecutor(TaskExecutor):
             shuffle_object_refs = list(shuffle_manager.get_reducer_input_refs(subtask))
 
         if key_to_get_meta:
-            logger.info(
+            logger.debug(
                 "Fetch %s metas and update context of stage %s.",
                 len(key_to_get_meta),
                 stage_id,
@@ -867,11 +895,13 @@ class RayTaskExecutor(TaskExecutor):
                 stage_id,
             ),
             _RayExecutionStage.WAITING: lambda: logger.info(
-                "Completed [%s/%s] subtasks of stage %s, one of waiting object refs: %s",
+                "Completed [%s/%s] subtasks of stage %s, one of waiting ray tasks: %s",
                 len(completed_subtasks),
                 total,
                 stage_id,
-                next(iter(object_ref_to_subtask)) if object_ref_to_subtask else None,
+                next(iter(object_ref_to_subtask)).task_id()
+                if object_ref_to_subtask
+                else None,
             ),
         }
 
