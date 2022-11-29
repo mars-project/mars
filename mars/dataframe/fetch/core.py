@@ -35,17 +35,39 @@ class DataFrameFetch(Fetch, DataFrameFetchMixin):
     def __init__(self, output_types=None, **kw):
         super().__init__(_output_types=output_types, **kw)
 
+    def _extract_dataframe_or_series_kws(self, kws, **kw):
+        if kws is None:
+            kws = [kw]
+        new_kws = []
+        new_output_types = []
+        for output_type, kwargs in zip(self._output_types, kws):
+            if output_type == OutputType.df_or_series:
+                data_params = kwargs["data_params"]
+                data_type = kwargs["data_type"]
+                if data_type == "series":
+                    new_output_types.append(OutputType.series)
+                else:
+                    new_output_types.append(OutputType.dataframe)
+                new_kws.append(data_params)
+            else:
+                new_output_types.append(output_type)
+                new_kws.append(kwargs)
+        self._output_types = new_output_types
+        return new_kws
+
     def _new_chunks(self, inputs, kws=None, **kw):
         if "_key" in kw and self.source_key is None:
             self.source_key = kw["_key"]
         if "_shape" in kw and self._shape is None:
             self._shape = kw["_shape"]
-        return super()._new_chunks(inputs, kws=kws, **kw)
+        new_kws = self._extract_dataframe_or_series_kws(kws, **kw)
+        return super()._new_chunks(inputs, kws=new_kws, **kw)
 
     def _new_tileables(self, inputs, kws=None, **kw):
         if "_key" in kw and self.source_key is None:
             self.source_key = kw["_key"]
-        return super()._new_tileables(inputs, kws=kws, **kw)
+        new_kws = self._extract_dataframe_or_series_kws(kws, **kw)
+        return super()._new_tileables(inputs, kws=new_kws, **kw)
 
 
 class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
@@ -65,6 +87,7 @@ register_fetch_class(OutputType.dataframe, DataFrameFetch, DataFrameFetchShuffle
 register_fetch_class(
     OutputType.dataframe_groupby, DataFrameFetch, DataFrameFetchShuffle
 )
+register_fetch_class(OutputType.df_or_series, DataFrameFetch, DataFrameFetchShuffle)
 register_fetch_class(OutputType.series, DataFrameFetch, DataFrameFetchShuffle)
 register_fetch_class(OutputType.series_groupby, DataFrameFetch, DataFrameFetchShuffle)
 register_fetch_class(OutputType.index, DataFrameFetch, DataFrameFetchShuffle)

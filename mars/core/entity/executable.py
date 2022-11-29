@@ -83,6 +83,7 @@ atexit.register(_decref_runner.stop)
 
 class _TileableSession:
     def __init__(self, tileable: TileableType, session: SessionType):
+        self._sess_id = id(session)
         key = tileable.key
 
         def cb(_, sess=ref(session)):
@@ -105,6 +106,9 @@ class _TileableSession:
                     pass
 
         self.tileable = ref(tileable, cb)
+
+    def __eq__(self, other: "_TileableSession"):
+        return self._sess_id == other._sess_id
 
 
 class _TileableDataCleaner:
@@ -188,6 +192,15 @@ class _ExecutableMixin:
         if session not in self._executed_sessions:
             _cleaner.register(self, session)
             self._executed_sessions.append(session)
+
+    def _detach_session(self, session: SessionType):
+        if session in self._executed_sessions:
+            sessions = _cleaner._tileable_to_sessions.get(self, [])
+            if sessions:
+                sessions.remove(_TileableSession(self, session))
+            if len(sessions) == 0:
+                del _cleaner._tileable_to_sessions[self]
+            self._executed_sessions.remove(session)
 
 
 class _ExecuteAndFetchMixin:

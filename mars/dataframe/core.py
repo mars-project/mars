@@ -45,6 +45,7 @@ from ..serialization.serializables import (
     AnyField,
     SeriesField,
     BoolField,
+    Int8Field,
     Int32Field,
     StringField,
     ListField,
@@ -54,6 +55,7 @@ from ..serialization.serializables import (
     ReferenceField,
     NDArrayField,
     IntervalArrayField,
+    DictField,
 )
 from ..utils import (
     on_serialize_shape,
@@ -62,9 +64,11 @@ from ..utils import (
     ceildiv,
     tokenize,
     estimate_pandas_size,
+    calc_nsplits,
 )
-from .utils import fetch_corner_data, ReprSeries, parse_index, merge_index_value
+from ..deploy.oscar.session import get_default_session
 from ..tensor import statistics
+from .utils import fetch_corner_data, ReprSeries, parse_index, merge_index_value
 
 
 class IndexValue(Serializable):
@@ -3012,10 +3016,219 @@ class Categorical(HasShapeTileable, _ToPandasMixin):
         return super().__hash__()
 
 
+class DataFrameOrSeriesChunkData(ChunkData):
+    __slots__ = ()
+    type_name = "DataFrameOrSeries"
+
+    _collapse_axis = Int8Field("collapse_axis")
+    _data_type = StringField("data_type")
+    _data_params = DictField("data_params")
+
+    def __init__(
+        self,
+        op=None,
+        index=None,
+        collapse_axis=None,
+        data_type=None,
+        data_params=None,
+        **kw,
+    ):
+        self._collapse_axis = collapse_axis
+        self._index = index
+        self._data_type = data_type
+        self._data_params = data_params or dict()
+        super().__init__(_op=op, **kw)
+
+    def __getattr__(self, item):
+        if item in self._data_params:
+            return self._data_params[item]
+        raise AttributeError(f"'{type(self)}' object has no attribute '{item}'")
+
+    @property
+    def ndim(self) -> int:
+        return (self._data_type == "dataframe") + 1
+
+    @property
+    def params(self) -> Dict[str, Any]:
+        return {
+            "collapse_axis": self._collapse_axis,
+            "index": self._index,
+            "data_type": self._data_type,
+            "data_params": self._data_params,
+        }
+
+    @params.setter
+    def params(self, new_params: Dict[str, Any]):
+        self._data_type = new_params.get("data_type")
+        if self._collapse_axis is not None and self._data_type == "series":
+            self._index = (self._index[1 - self._collapse_axis],)
+        if self._collapse_axis is None and self._data_type == "dataframe":
+            self._index = (self._index[0], 0)
+        data_params = new_params["data_params"]
+        if self._data_type == "dataframe":
+            data_params["dtypes"] = data_params["dtypes_value"].value
+            data_params["columns_value"] = parse_index(
+                data_params["dtypes_value"].value.index, store_data=True
+            )
+        self._data_params = {k: v for k, v in data_params.items()}
+
+    @classmethod
+    def get_params_from_data(cls, data: Any) -> Dict[str, Any]:
+        if isinstance(data, pd.DataFrame):
+            return {
+                "data_type": "dataframe",
+                "data_params": DataFrameChunkData.get_params_from_data(data),
+            }
+        else:
+            return {
+                "data_type": "series",
+                "data_params": SeriesChunkData.get_params_from_data(data),
+            }
+
+
+class DataFrameOrSeriesChunk(Chunk):
+    __slots__ = ()
+    _allow_data_type_ = (DataFrameOrSeriesChunkData,)
+    type_name = "DataFrameOrSeries"
+
+
+class DataFrameOrSeriesData(HasShapeTileableData, _ToPandasMixin):
+    __slots__ = ()
+    _chunks = ListField(
+        "chunks",
+        FieldTypes.reference(DataFrameOrSeriesChunkData),
+        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+        on_deserialize=lambda x: [DataFrameOrSeriesChunk(it) for it in x]
+        if x is not None
+        else x,
+    )
+
+    _data_type = StringField("data_type")
+    _data_params = DictField("data_params")
+
+    def __init__(
+        self,
+        op=None,
+        chunks=None,
+        data_type=None,
+        data_params=None,
+        **kw,
+    ):
+        self._data_type = data_type
+        self._data_params = data_params or dict()
+        super().__init__(
+            _op=op,
+            _chunks=chunks,
+            **kw,
+        )
+
+    def __getattr__(self, item):
+        if item in self._data_params:
+            return self._data_params[item]
+        raise AttributeError(f"'{type(self)}' object has no attribute '{item}'")
+
+    @property
+    def shape(self):
+        return self._data_params.get("shape", None)
+
+    @property
+    def nsplits(self):
+        return self._data_params.get("nsplits", None)
+
+    @property
+    def data_type(self):
+        return self._data_type
+
+    @property
+    def data_params(self):
+        return self._data_params
+
+    @property
+    def params(self) -> Dict[str, Any]:
+        return {"data_type": self._data_type, "data_params": self._data_params}
+
+    @params.setter
+    def params(self, new_params: Dict[str, Any]):
+        # After execution, create DataFrameFetch, and the data
+        # corresponding to the original key is still DataFrameOrSeries type,
+        # so when restoring DataFrameOrSeries type,
+        # there is no "data_type" field in params.
+        if "data_type" not in new_params:
+            if "dtype" in new_params:
+                self._data_type = "series"
+            else:
+                self._data_type = "dataframe"
+            self._data_params = new_params.copy()
+        else:
+            self._data_type = new_params.get("data_type")
+            self._data_params = {
+                k: v for k, v in new_params.get("data_params", {}).items()
+            }
+
+    def refresh_params(self):
+        index_to_index_values = dict()
+        for chunk in self.chunks:
+            if chunk.ndim == 1:
+                index_to_index_values[chunk.index] = chunk.index_value
+            elif chunk.index[1] == 0:
+                index_to_index_values[chunk.index] = chunk.index_value
+        index_value = merge_index_value(index_to_index_values, store_data=False)
+        nsplits = calc_nsplits({c.index: c.shape for c in self.chunks})
+        shape = tuple(sum(ns) for ns in nsplits)
+
+        data_params = dict()
+        data_params["nsplits"] = nsplits
+        data_params["shape"] = shape
+        data_params["index_value"] = index_value
+
+        self._data_type = self._chunks[0]._data_type
+        if self.data_type == "dataframe":
+            all_dtypes = [c.dtypes_value.value for c in self.chunks if c.index[0] == 0]
+            dtypes = pd.concat(all_dtypes)
+            data_params["dtypes"] = dtypes
+            columns_values = parse_index(dtypes.index, store_data=True)
+            data_params["columns_value"] = columns_values
+            data_params["dtypes_value"] = DtypesValue(
+                key=tokenize(dtypes), value=dtypes
+            )
+        else:
+            data_params["dtype"] = self.chunks[0].dtype
+            data_params["name"] = self.chunks[0].name
+        self._data_params.update(data_params)
+
+    def ensure_data(self):
+        from .fetch.core import DataFrameFetch
+
+        self.execute()
+        default_sess = get_default_session()
+        self._detach_session(default_sess._session)
+
+        fetch_tileable = default_sess._session._tileable_to_fetch[self]
+        new = DataFrameFetch(
+            output_types=[getattr(OutputType, self.data_type)]
+        ).new_tileable(
+            [],
+            _key=self.key,
+            chunks=fetch_tileable.chunks,
+            nsplits=fetch_tileable.nsplits,
+            **self.data_params,
+        )
+        new._attach_session(default_sess._session)
+        return new
+
+
+class DataFrameOrSeries(HasShapeTileable, _ToPandasMixin):
+    __slots__ = ()
+    _allow_data_type_ = (DataFrameOrSeriesData,)
+    type_name = "DataFrameOrSeries"
+
+
 INDEX_TYPE = (Index, IndexData)
 INDEX_CHUNK_TYPE = (IndexChunk, IndexChunkData)
 SERIES_TYPE = (Series, SeriesData)
 SERIES_CHUNK_TYPE = (SeriesChunk, SeriesChunkData)
+DATAFRAME_OR_SERIES_TYPE = (DataFrameOrSeries, DataFrameOrSeriesData)
+DATAFRAME_OR_SERIES_CHUNK_TYPE = (DataFrameOrSeriesChunk, DataFrameOrSeriesChunkData)
 DATAFRAME_TYPE = (DataFrame, DataFrameData)
 DATAFRAME_CHUNK_TYPE = (DataFrameChunk, DataFrameChunkData)
 DATAFRAME_GROUPBY_TYPE = (DataFrameGroupBy, DataFrameGroupByData)
@@ -3039,6 +3252,9 @@ CHUNK_TYPE = (
 
 register_output_types(OutputType.dataframe, DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)
 register_output_types(OutputType.series, SERIES_TYPE, SERIES_CHUNK_TYPE)
+register_output_types(
+    OutputType.df_or_series, DATAFRAME_OR_SERIES_TYPE, DATAFRAME_OR_SERIES_CHUNK_TYPE
+)
 register_output_types(OutputType.index, INDEX_TYPE, INDEX_CHUNK_TYPE)
 register_output_types(OutputType.categorical, CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE)
 register_output_types(

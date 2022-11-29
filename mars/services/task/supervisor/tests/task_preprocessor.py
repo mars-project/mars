@@ -68,7 +68,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
     done = property(_get_done, _set_done)
 
     def _check_nsplits(self, tiled: TileableType):
-        if tiled.nsplits == () and len(tiled.chunks) == 1:
+        if tiled.nsplits is None or (tiled.nsplits == () and len(tiled.chunks) == 1):
             return
 
         nsplit_chunk_shape = tuple(len(s) for s in tiled.nsplits)

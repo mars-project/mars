@@ -239,7 +239,13 @@ class ApplyOperand(
             in_df = yield from recursive_tile(in_df.rechunk(chunk_size))
 
         chunks = []
-        if out_df.ndim == 2:
+        if op.output_types and op.output_types[0] == OutputType.df_or_series:
+            for c in in_df.chunks:
+                new_op = op.copy().reset_key()
+                new_op.tileable_op_key = op.key
+                chunks.append(new_op.new_chunk([c], collapse_axis=axis, index=c.index))
+            new_nsplits = None
+        elif out_df.ndim == 2:
             for c in in_df.chunks:
                 if elementwise:
                     new_shape = c.shape
@@ -295,18 +301,24 @@ class ApplyOperand(
 
         new_op = op.copy()
         kw = out_df.params.copy()
-        kw.update(dict(chunks=chunks, nsplits=tuple(new_nsplits)))
+        if isinstance(new_nsplits, list):
+            new_nsplits = tuple(new_nsplits)
+        kw.update(dict(chunks=chunks, nsplits=new_nsplits))
         return new_op.new_tileables(op.inputs, **kw)
 
     @classmethod
     def _tile_series(cls, op):
         in_series = op.inputs[0]
         out_series = op.outputs[0]
+        output_type = op.output_types[0] if op.output_types else None
 
         chunks = []
         for c in in_series.chunks:
             new_op = op.copy().reset_key()
             new_op.tileable_op_key = op.key
+            if output_type == OutputType.df_or_series:
+                chunks.append(new_op.new_chunk([c], collapse_axis=None, index=c.index))
+                continue
             kw = c.params.copy()
             if out_series.ndim == 1:
                 kw["dtype"] = out_series.dtype
@@ -319,8 +331,11 @@ class ApplyOperand(
 
         new_op = op.copy()
         kw = out_series.params.copy()
-        kw.update(dict(chunks=chunks, nsplits=in_series.nsplits))
-        if out_series.ndim == 2:
+        if output_type == OutputType.df_or_series:
+            kw.update(dict(chunks=chunks, nsplits=None))
+        else:
+            kw.update(dict(chunks=chunks, nsplits=in_series.nsplits))
+        if output_type != OutputType.df_or_series and out_series.ndim == 2:
             kw["nsplits"] = (in_series.nsplits[0], (out_series.shape[1],))
             kw["columns_value"] = out_series.columns_value
         return new_op.new_tileables(op.inputs, **kw)
@@ -387,6 +402,9 @@ class ApplyOperand(
             new_elementwise if self._elementwise is None else self._elementwise
         )
         return dtypes, index_value
+
+    def _call_df_or_series(self, df):
+        return self.new_df_or_series([df])
 
     def _call_dataframe(self, df, dtypes=None, dtype=None, name=None, index=None):
         # for backward compatibility
@@ -519,6 +537,9 @@ class ApplyOperand(
         dtypes = make_dtypes(dtypes)
         dtype = make_dtype(dtype)
         self._axis = validate_axis(axis, df_or_series)
+
+        if self.output_types and self.output_types[0] == OutputType.df_or_series:
+            return self._call_df_or_series(df_or_series)
 
         if df_or_series.op.output_types[0] == OutputType.dataframe:
             return self._call_dataframe(

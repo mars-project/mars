@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any
 
 import numpy as np
 
@@ -33,6 +33,8 @@ from ...dataframe.core import (
     SERIES_GROUPBY_CHUNK_TYPE,
     CATEGORICAL_TYPE,
     CATEGORICAL_CHUNK_TYPE,
+    DATAFRAME_OR_SERIES_TYPE,
+    DATAFRAME_OR_SERIES_CHUNK_TYPE,
 )
 from ...tensor.core import TensorOrder, TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...utils import dataslots
@@ -192,3 +194,20 @@ class CategoricalChunkMeta(_ChunkMeta):
 @dataclass
 class ObjectChunkMeta(_ChunkMeta):
     pass
+
+
+@register_meta_type(DATAFRAME_OR_SERIES_TYPE)
+@dataslots
+@dataclass
+class DataFrameOrSeriesMeta(_TileableMeta):
+    data_type: str = None
+    data_params: Dict[str, Any] = None
+
+
+@register_meta_type(DATAFRAME_OR_SERIES_CHUNK_TYPE)
+@dataslots
+@dataclass
+class DataFrameOrSeriesChunkMeta(_ChunkMeta):
+    collapse_axis: int = None
+    data_type: str = None
+    data_params: Dict[str, Any] = None
