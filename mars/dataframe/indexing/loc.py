@@ -37,7 +37,7 @@ from .index_lib import DataFrameLocIndexesHandler
 cudf = lazy_import("cudf")
 
 
-def process_loc_indexes(inp, indexes):
+def process_loc_indexes(inp, indexes, fetch_index: bool = True):
     ndim = inp.ndim
 
     if not isinstance(indexes, tuple):
@@ -52,7 +52,7 @@ def process_loc_indexes(inp, indexes):
         if isinstance(index, (list, np.ndarray, pd.Series, ENTITY_TYPE)):
             if not isinstance(index, ENTITY_TYPE):
                 index = np.asarray(index)
-            elif not isinstance(index, SERIES_TYPE):
+            elif fetch_index:
                 index = asarray(index)
                 if ax == 1:
                     # do not support tensor index on axis 1
@@ -122,7 +122,7 @@ class DataFrameLoc:
             raise NotImplementedError("Only scalar value is supported to set by loc")
         if not isinstance(self._obj, DATAFRAME_TYPE):
             raise NotImplementedError("Only DataFrame is supported to set by loc")
-        indexes = process_loc_indexes(self._obj, indexes)
+        indexes = process_loc_indexes(self._obj, indexes, fetch_index=False)
         use_iloc, new_indexes = self._use_iloc(indexes)
         if use_iloc:
             op = DataFrameIlocSetItem(indexes=new_indexes, value=value)
