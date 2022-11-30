@@ -1644,9 +1644,9 @@ def test_loc_setitem(setup):
     pd_data.loc[pd_data["a"] <= 4, 1] = "v1"
     pd.testing.assert_frame_equal(md_data.to_pandas(), pd_data)
     md_data1 = md.DataFrame(raw_df, chunk_size=3)
-    md_data1.loc[1:3, 1] = "v2"
+    md_data1.loc[1:3] = "v2"
     pd_data1 = raw_df.copy(True)
-    pd_data1.loc[1:3, 1] = "v2"
+    pd_data1.loc[1:3] = "v2"
     pd.testing.assert_frame_equal(md_data1.to_pandas(), pd_data1)
 
 
