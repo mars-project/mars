@@ -28,7 +28,7 @@ from ...serialization.serializables import KeyField, ListField, AnyField
 from ...tensor.datasource import asarray
 from ...tensor.utils import calc_sliced_size, filter_inputs
 from ...utils import lazy_import, is_full_slice
-from ..core import IndexValue, DATAFRAME_TYPE, SERIES_TYPE
+from ..core import IndexValue, DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, is_index_value_identical
 from .index_lib import DataFrameLocIndexesHandler
