@@ -17,7 +17,7 @@ import pandas as pd
 import pytest
 
 from .... import dataframe as md
-from ....dataframe.core import DataFrame
+from ....dataframe.core import DataFrame, DATAFRAME_OR_SERIES_TYPE
 from ....dataframe.fetch.core import DataFrameFetch
 
 
@@ -27,7 +27,7 @@ def test_dataframe_apply_execution(setup):
 
     apply_func = lambda x: 20 if x[0] else 10
     with pytest.raises(TypeError):
-        res = mdf.apply(apply_func)
+        mdf.apply(apply_func)
 
     res = mdf.apply(apply_func, output_type="df_or_series", axis=1).execute()
     assert res.data_type == "series"
@@ -148,6 +148,33 @@ def test_dataframe_apply_execution(setup):
     ).execute()
     expected = df.apply(apply_func, axis=1, result_type="broadcast")
     pd.testing.assert_frame_equal(res.fetch(), expected)
+
+
+def test_apply_with_skip_infer(setup):
+    df = pd.DataFrame({"col1": [1, 2, 3, 4], "col2": list("abcd")})
+    mdf = md.DataFrame(df, chunk_size=2)
+
+    def apply_func(series):
+        if series[1] not in "abcd":
+            # make it fail when inferring
+            raise TypeError
+        else:
+            return 1
+
+    with pytest.raises(TypeError):
+        mdf.apply(apply_func, axis=1)
+
+    res = mdf.apply(apply_func, axis=1, skip_infer=True).execute()
+    assert isinstance(res, DATAFRAME_OR_SERIES_TYPE)
+    pd.testing.assert_series_equal(res.fetch(), pd.Series([1] * 4))
+
+    s = pd.Series([1, 2, 3, 4])
+    ms = md.Series(s, chunk_size=2)
+
+    apply_func = lambda x: pd.Series([1, 2])
+    res = ms.apply(apply_func, skip_infer=True).execute()
+    assert isinstance(res, DATAFRAME_OR_SERIES_TYPE)
+    pd.testing.assert_frame_equal(res.fetch(), pd.DataFrame([[1, 2]] * 4))
 
 
 def test_series_apply_execution(setup):

@@ -564,6 +564,7 @@ def df_apply(
     output_type=None,
     index=None,
     elementwise=None,
+    skip_infer=False,
     **kwds,
 ):
     """
@@ -635,6 +636,9 @@ def df_apply(
         * ``True`` : The function is elementwise. Mars will apply
           ``func`` to original chunks. This will not introduce extra
           concatenation step and reduce overhead.
+
+    skip_infer: bool, default False
+        Whether infer dtypes when dtypes or output_type is not specified.
 
     args : tuple
         Positional arguments to pass to `func` in addition to the
@@ -741,6 +745,8 @@ def df_apply(
         output_type=output_type, output_types=output_types, object_type=object_type
     )
     output_type = output_types[0] if output_types else None
+    if skip_infer and output_type is None:
+        output_type = OutputType.df_or_series
 
     # calling member function
     if isinstance(func, str):
@@ -773,6 +779,7 @@ def series_apply(
     dtype=None,
     name=None,
     index=None,
+    skip_infer=False,
     **kwds,
 ):
     """
@@ -807,6 +814,9 @@ def series_apply(
 
     args : tuple
         Positional arguments passed to func after the series value.
+
+    skip_infer: bool, default False
+        Whether infer dtypes when dtypes or output_type is not specified.
 
     **kwds
         Additional keyword arguments passed to func.
@@ -911,6 +921,9 @@ def series_apply(
                 f"'{func_str!r}' is not a valid function "
                 f"for '{type(series).__name__}' object"
             )
+
+    if skip_infer and output_type is None:
+        output_type = OutputType.df_or_series
 
     output_types = kwds.pop("output_types", None)
     object_type = kwds.pop("object_type", None)

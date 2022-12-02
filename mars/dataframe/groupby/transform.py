@@ -98,29 +98,49 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         index_value = index_value if index is None else parse_index(index)
         return dtypes, index_value
 
-    def __call__(self, groupby, dtypes=None, dtype=None, name=None, index=None):
+    def __call__(
+        self, groupby, dtypes=None, dtype=None, name=None, index=None, skip_infer=None
+    ):
         in_df = groupby.inputs[0]
 
         if dtypes is None and dtype is not None:
             dtypes = (name, dtype)
-        dtypes, index_value = self._infer_df_func_returns(groupby, dtypes, index)
+        if skip_infer:
+            dtypes, index_value = None, None
+            self.output_types = (
+                [OutputType.dataframe]
+                if groupby.op.output_types[0] == OutputType.dataframe_groupby
+                else [OutputType.series]
+            )
+        else:
+            dtypes, index_value = self._infer_df_func_returns(groupby, dtypes, index)
+            for arg, desc in zip(
+                (self.output_types, dtypes), ("output_types", "dtypes")
+            ):
+                if arg is None:
+                    raise TypeError(
+                        f"Cannot determine {desc} by calculating with enumerate data, "
+                        "please specify it as arguments"
+                    )
         if index_value is None:
             index_value = parse_index(None, (in_df.key, in_df.index_value.key))
-        for arg, desc in zip((self.output_types, dtypes), ("output_types", "dtypes")):
-            if arg is None:
-                raise TypeError(
-                    f"Cannot determine {desc} by calculating with enumerate data, "
-                    "please specify it as arguments"
-                )
 
         if self.output_types[0] == OutputType.dataframe:
-            new_shape = (np.nan if self.call_agg else in_df.shape[0], len(dtypes))
+            new_shape = (
+                np.nan if self.call_agg else in_df.shape[0],
+                len(dtypes) if dtypes is not None else np.nan,
+            )
+            columns_value = (
+                parse_index(dtypes.index, store_data=True)
+                if dtypes is not None
+                else None
+            )
             return self.new_dataframe(
                 [groupby],
                 shape=new_shape,
                 dtypes=dtypes,
                 index_value=index_value,
-                columns_value=parse_index(dtypes.index, store_data=True),
+                columns_value=columns_value,
             )
         else:
             name, dtype = dtypes
@@ -139,6 +159,13 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         out_df = op.outputs[0]
 
         chunks = []
+        if op.output_types[0] == OutputType.dataframe:
+            chunk_shape = (
+                np.nan,
+                len(out_df.dtypes) if out_df.dtypes is not None else np.nan,
+            )
+        else:
+            chunk_shape = (np.nan,)
         for c in in_groupby.chunks:
             inp_chunks = [c]
 
@@ -150,7 +177,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
                     new_op.new_chunk(
                         inp_chunks,
                         index=new_index,
-                        shape=(np.nan, len(out_df.dtypes)),
+                        shape=chunk_shape,
                         dtypes=out_df.dtypes,
                         columns_value=out_df.columns_value,
                         index_value=out_df.index_value,
@@ -162,7 +189,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
                         inp_chunks,
                         name=out_df.name,
                         index=(c.index[0],),
-                        shape=(np.nan,),
+                        shape=chunk_shape,
                         dtype=out_df.dtype,
                         index_value=out_df.index_value,
                     )
@@ -172,7 +199,10 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         kw = out_df.params.copy()
         kw["chunks"] = chunks
         if op.output_types[0] == OutputType.dataframe:
-            kw["nsplits"] = ((np.nan,) * len(chunks), (len(out_df.dtypes),))
+            kw["nsplits"] = (
+                (np.nan,) * len(chunks),
+                (len(out_df.dtypes) if out_df.dtypes is not None else np.nan,),
+            )
         else:
             kw["nsplits"] = ((np.nan,) * len(chunks),)
         return new_op.new_tileables([in_groupby], **kw)
@@ -209,9 +239,11 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
                 result = pd.Series([], name=out_chunk.name, dtype=out_chunk.dtype)
 
         if result.ndim == 2:
-            result = result.astype(out_chunk.dtypes, copy=False)
+            if out_chunk.dtypes is not None:
+                result = result.astype(out_chunk.dtypes, copy=False)
         else:
-            result = result.astype(out_chunk.dtype, copy=False)
+            if out_chunk.dtype is not None:
+                result = result.astype(out_chunk.dtype, copy=False)
         ctx[op.outputs[0].key] = result
 
 
@@ -224,6 +256,7 @@ def groupby_transform(
     name=None,
     index=None,
     output_types=None,
+    skip_infer=False,
     **kwargs,
 ):
     """
@@ -244,6 +277,9 @@ def groupby_transform(
 
     name : str, default None
         Specify name of returned Series. See `Notes` for more details.
+
+    skip_infer: bool, default False
+        Whether infer dtypes when dtypes or output_type is not specified.
 
     *args
         Positional arguments to pass to func
@@ -328,4 +364,11 @@ def groupby_transform(
     op = GroupByTransform(
         func=f, args=args, kwds=kwargs, output_types=output_types, call_agg=call_agg
     )
-    return op(groupby, dtypes=dtypes, dtype=dtype, name=name, index=index)
+    return op(
+        groupby,
+        dtypes=dtypes,
+        dtype=dtype,
+        name=name,
+        index=index,
+        skip_infer=skip_infer,
+    )

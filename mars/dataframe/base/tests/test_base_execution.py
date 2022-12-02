@@ -33,6 +33,7 @@ from ....tensor.random import rand
 from ....tests.core import require_cudf
 from ....utils import lazy_import, pd_release_version, no_default
 from ... import eval as mars_eval, cut, qcut, get_dummies
+from ...core import DATAFRAME_OR_SERIES_TYPE
 from ...datasource.dataframe import from_pandas as from_pandas_df
 from ...datasource.series import from_pandas as from_pandas_series
 from ...datasource.index import from_pandas as from_pandas_index
@@ -158,6 +159,14 @@ def test_series_map_execution(setup):
 
     r = s.map({5: 10}, dtype=float)
     result = r.execute().fetch()
+    expected = raw.map({5: 10})
+    pd.testing.assert_series_equal(result, expected)
+
+    # use skip_infer when infer failed
+    r = s.map({5: 10}, skip_infer=True)
+    assert r.dtype is None
+    result = r.execute().fetch()
+    assert np.issubdtype(r.dtype, np.float)
     expected = raw.map({5: 10})
     pd.testing.assert_series_equal(result, expected)
 
@@ -545,6 +554,19 @@ def test_transform_execute(setup):
         df = from_pandas_df(df_raw, chunk_size=5)
 
         # test transform scenarios on data frames
+        def f(s):
+            if s[2] > 0:
+                return s
+            else:
+                return pd.Series([s[2]] * len(s))
+
+        with pytest.raises(TypeError):
+            df.transform(f)
+        r = df.transform(f, skip_infer=True)
+        result = r.execute().fetch()
+        expected = df_raw.transform(f)
+        pd.testing.assert_frame_equal(result, expected)
+
         r = df.transform(lambda x: list(range(len(x))))
         result = r.execute().fetch()
         expected = df_raw.transform(lambda x: list(range(len(x))))
@@ -1976,6 +1998,48 @@ def test_map_chunk_execution(setup):
     pd.testing.assert_frame_equal(result, expected)
 
 
+def test_map_chunk_with_df_or_series_output(setup):
+    raw = pd.DataFrame(np.random.rand(10, 5), columns=[f"col{i}" for i in range(5)])
+
+    df = from_pandas_df(raw, chunk_size=(5, 3))
+
+    def f1(pdf):
+        return pdf.iloc[2, :2]
+
+    with pytest.raises(TypeError):
+        df.map_chunk(f1)
+
+    for kwargs in [dict(output_type="df_or_series"), dict(skip_infer=True)]:
+        res = df.map_chunk(f1, **kwargs)
+        assert isinstance(res, DATAFRAME_OR_SERIES_TYPE)
+        res = res.execute()
+        assert res.data_type == "series"
+        assert res.dtype == np.float
+        assert not ("dtypes" in res.data_params)
+        assert res.shape == (4,)
+        pd.testing.assert_series_equal(
+            res.fetch(), pd.concat([raw.iloc[2, :2], raw.iloc[7, :2]])
+        )
+
+    def f2(pdf):
+        return pdf.iloc[[0, 2], :2]
+
+    with pytest.raises(TypeError):
+        df.map_chunk(f2)
+
+    res = df.map_chunk(f2, output_type="df_or_series")
+    assert isinstance(res, DATAFRAME_OR_SERIES_TYPE)
+    res = res.execute()
+    assert res.data_type == "dataframe"
+    pd.testing.assert_series_equal(res.dtypes, raw.dtypes[:2])
+    assert not ("dtype" in res.data_params)
+    assert res.shape == (4, 2)
+    pd.testing.assert_frame_equal(
+        res.fetch(),
+        raw.iloc[[0, 2, 5, 7], :2],
+    )
+
+
 def test_map_chunk_closure_execute(setup):
     raw = pd.DataFrame(
         np.random.randint(10**3, size=(10, 5)), columns=[f"col{i}" for i in range(5)]
@@ -2109,6 +2173,53 @@ def test_cartesian_chunk_execution(setup):
     pd.testing.assert_series_equal(
         result.sort_values().reset_index(drop=True),
         expected.sort_values().reset_index(drop=True),
+    )
+
+
+def test_cartesian_chunk_with_df_or_series(setup):
+    rs = np.random.RandomState(0)
+    raw1 = pd.DataFrame({"a": range(10), "b": rs.rand(10)})
+    raw2 = pd.DataFrame(
+        {"c": rs.randint(3, size=10), "d": rs.rand(10), "e": rs.rand(10)}
+    )
+    df1 = from_pandas_df(raw1, chunk_size=(5, 1))
+    df2 = from_pandas_df(raw2, chunk_size=(5, 1))
+
+    def f1(c1, c2):
+        return c1.iloc[[2, 4], :]
+
+    with pytest.raises(TypeError):
+        df1.cartesian_chunk(df2, f1)
+
+    for kwargs in [dict(output_type="df_or_series"), dict(skip_infer=True)]:
+        res = df1.cartesian_chunk(df2, f1, **kwargs)
+
+        assert isinstance(res, DATAFRAME_OR_SERIES_TYPE)
+        res = res.execute()
+        assert res.data_type == "dataframe"
+        assert not ("dtype" in res.data_params)
+        assert res.shape == (8, 2)
+        pd.testing.assert_series_equal(res.dtypes, raw1.dtypes)
+        pd.testing.assert_frame_equal(
+            res.fetch(), raw1.iloc[[2, 4] * 2 + [7, 9] * 2, :]
+        )
+
+    def f2(c1, c2):
+        return c1.iloc[2, :]
+
+    with pytest.raises(TypeError):
+        df1.cartesian_chunk(df2, f2)
+
+    res = df1.cartesian_chunk(df2, f2, output_type="df_or_series")
+
+    assert isinstance(res, DATAFRAME_OR_SERIES_TYPE)
+    res = res.execute()
+    assert res.data_type == "series"
+    assert not ("dtypes" in res.data_params)
+    assert res.shape == (8,)
+    pd.testing.assert_series_equal(
+        res.fetch(),
+        pd.concat([raw1.iloc[2, :], raw1.iloc[2, :], raw1.iloc[7, :], raw1.iloc[7, :]]),
     )
 
 

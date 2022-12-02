@@ -66,8 +66,8 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
         if len(inputs) == 2:
             self._arg = self._inputs[1]
 
-    def __call__(self, series, dtype):
-        if dtype is None:
+    def __call__(self, series, dtype, skip_infer=False):
+        if dtype is None and not skip_infer:
             inferred_dtype = None
             if callable(self._arg):
                 # arg is a function, try to inspect the signature
@@ -102,9 +102,10 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
                 dtype = inferred_dtype
 
         if dtype is None:
-            raise ValueError(
-                "cannot infer dtype, it needs to be specified manually for `map`"
-            )
+            if not skip_infer:
+                raise ValueError(
+                    "cannot infer dtype, it needs to be specified manually for `map`"
+                )
         else:
             dtype = np.int64 if dtype is int else dtype
             dtype = np.dtype(dtype)
@@ -182,7 +183,9 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
         ctx[out.key] = ret
 
 
-def series_map(series, arg, na_action=None, dtype=None, memory_scale=None):
+def series_map(
+    series, arg, na_action=None, dtype=None, memory_scale=None, skip_infer=False
+):
     """
     Map values of Series according to input correspondence.
 
@@ -203,6 +206,8 @@ def series_map(series, arg, na_action=None, dtype=None, memory_scale=None):
     memory_scale : float
         Specify the scale of memory uses in the function versus
         input size.
+    skip_infer: bool, default False
+        Whether infer dtypes when dtypes or output_type is not specified
 
     Returns
     -------
@@ -266,10 +271,12 @@ def series_map(series, arg, na_action=None, dtype=None, memory_scale=None):
     dtype: object
     """
     op = DataFrameMap(arg=arg, na_action=na_action, memory_scale=memory_scale)
-    return op(series, dtype=dtype)
+    return op(series, dtype=dtype, skip_infer=skip_infer)
 
 
-def index_map(idx, mapper, na_action=None, dtype=None, memory_scale=None):
+def index_map(
+    idx, mapper, na_action=None, dtype=None, memory_scale=None, skip_infer=False
+):
     """
     Map values using input correspondence (a dict, Series, or function).
 
@@ -286,6 +293,9 @@ def index_map(idx, mapper, na_action=None, dtype=None, memory_scale=None):
     memory_scale : float
         Specify the scale of memory uses in the function versus
         input size.
+    skip_infer: bool, default False
+        Whether infer dtypes when dtypes or output_type is not specified
+
 
     Returns
     -------
@@ -295,4 +305,4 @@ def index_map(idx, mapper, na_action=None, dtype=None, memory_scale=None):
         a MultiIndex will be returned.
     """
     op = DataFrameMap(arg=mapper, na_action=na_action, memory_scale=memory_scale)
-    return op(idx, dtype=dtype)
+    return op(idx, dtype=dtype, skip_infer=skip_infer)
