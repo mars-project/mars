@@ -33,7 +33,6 @@ from .....core.operand import (
 )
 from .....core.operand.fetch import FetchShuffle
 from .....lib.aio import alru_cache
-from .....lib.ordered_set import OrderedSet
 from .....metrics.api import init_metrics, Metrics
 from .....resource import Resource
 from .....serialization import serialize, deserialize
@@ -326,6 +325,32 @@ class _RayExecutionStage(enum.Enum):
     INIT = 0
     SUBMITTING = 1
     WAITING = 2
+
+
+class OrderedSet:
+    def __init__(self):
+        self._d = set()
+        self._l = list()
+
+    def add(self, item):
+        self._d.add(item)
+        self._l.append(item)
+        assert len(self._d) == len(self._l)
+
+    def update(self, items):
+        tmp = list(items) if isinstance(items, collections.Iterator) else items
+        self._l.extend(tmp)
+        self._d.update(tmp)
+        assert len(self._d) == len(self._l)
+
+    def __contains__(self, item):
+        return item in self._d
+
+    def __getitem__(self, item):
+        return self._l[item]
+
+    def __len__(self):
+        return len(self._d)
 
 
 @dataclass
