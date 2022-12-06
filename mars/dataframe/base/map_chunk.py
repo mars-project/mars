@@ -357,7 +357,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
         ctx[out.key] = op.func(inp, *args, **kwargs)
 
 
-def map_chunk(df_or_series, func, skip_infer=False, args=(), **kwargs):
+def map_chunk(df_or_series, func, args=(), kwargs=None, skip_infer=False, **kw):
     """
     Apply function to each chunk.
 
@@ -365,12 +365,12 @@ def map_chunk(df_or_series, func, skip_infer=False, args=(), **kwargs):
     ----------
     func : function
         Function to apply to each chunk.
-    skip_infer: bool, default False
-        Whether infer dtypes when dtypes or output_type is not specified.
     args : tuple
         Positional arguments to pass to func in addition to the array/series.
-    **kwargs
+    kwargs: Dict
         Additional keyword arguments to pass as keywords arguments to func.
+    skip_infer: bool, default False
+        Whether infer dtypes when dtypes or output_type is not specified.
 
     Returns
     -------
@@ -414,9 +414,9 @@ def map_chunk(df_or_series, func, skip_infer=False, args=(), **kwargs):
     1  4  2
     2  4  3
     """
-    output_type = kwargs.pop("output_type", None)
-    output_types = kwargs.pop("output_types", None)
-    object_type = kwargs.pop("object_type", None)
+    output_type = kw.pop("output_type", None)
+    output_types = kw.pop("output_types", None)
+    object_type = kw.pop("object_type", None)
     output_types = validate_output_types(
         output_type=output_type, output_types=output_types, object_type=object_type
     )
@@ -425,15 +425,17 @@ def map_chunk(df_or_series, func, skip_infer=False, args=(), **kwargs):
         output_types = [output_type]
     elif skip_infer:
         output_types = [OutputType.df_or_series]
-    index = kwargs.pop("index", None)
-    dtypes = kwargs.pop("dtypes", None)
-    with_chunk_index = kwargs.pop("with_chunk_index", False)
+    index = kw.pop("index", None)
+    dtypes = kw.pop("dtypes", None)
+    with_chunk_index = kw.pop("with_chunk_index", False)
+    if kw:  # pragma: no cover
+        raise TypeError(f"Unknown kwargs: {kw}")
 
     op = DataFrameMapChunk(
         input=df_or_series,
         func=func,
         args=args,
-        kwargs=kwargs,
+        kwargs=kwargs or {},
         output_types=output_types,
         with_chunk_index=with_chunk_index,
     )

@@ -1992,7 +1992,9 @@ def test_map_chunk_execution(setup):
 
     df = from_pandas_df(raw, chunk_size=5)
     df_arg = from_pandas_df(raw, chunk_size=6)
-    r = df.map_chunk(f6, mars_df=df_arg, output_type="dataframe", dtypes=df.dtypes)
+    r = df.map_chunk(
+        f6, kwargs=dict(mars_df=df_arg), output_type="dataframe", dtypes=df.dtypes
+    )
     expected = raw + raw.sum()
     result = r.execute().fetch()
     pd.testing.assert_frame_equal(result, expected)
