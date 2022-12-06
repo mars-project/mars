@@ -837,11 +837,9 @@ class RayTaskExecutor(TaskExecutor):
                 for pred in subtask_graph.iter_predecessors(subtask):
                     if pred in gc_subtasks:
                         continue
-                    while not all(
-                        succ in gc_targets
-                        for succ in subtask_graph.iter_successors(pred)
-                    ):
-                        yield
+                    for succ in subtask_graph.iter_successors(pred):
+                        while succ not in gc_targets:
+                            yield
                     if pred.virtual:
                         # For virtual subtask, remove all the predecessors if it is
                         # completed.
