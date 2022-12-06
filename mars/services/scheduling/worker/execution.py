@@ -20,7 +20,7 @@ import pprint
 import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from .... import oscar as mo
 from ....core import ExecutionError
@@ -211,10 +211,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
             # TODO(hks): The batch method doesn't accept different error arguments,
             #  combine them when it can.
 
-            # shuffle data fetch from remote won't be recorded in meta,
-            # thus they are not tracked by lifecycle service,
-            # here return remote mapper keys to remove them later.
-            return await storage_api.fetch.batch(*shuffle_queries)
+            await storage_api.fetch.batch(*shuffle_queries)
 
     async def _collect_input_sizes(
         self, subtask: Subtask, supervisor_address: str, band_name: str
@@ -344,20 +341,6 @@ class SubtaskExecutionActor(mo.StatelessActor):
         if subtask_info.cancelling:
             raise asyncio.CancelledError
 
-    async def remove_mapper_data(
-        self, session_id: str, band_name: str, remote_mapper_keys: List
-    ):
-        storage_api = await StorageAPI.create(
-            session_id, address=self.address, band_name=band_name
-        )
-        logger.debug("Delete mapper data %s", remote_mapper_keys)
-        await storage_api.delete.batch(
-            *[
-                storage_api.delete.delay(key, error="ignore")
-                for key in remote_mapper_keys
-            ]
-        )
-
     async def internal_run_subtask(self, subtask: Subtask, band_name: str):
         subtask_api = SubtaskAPI(self.address)
         subtask_info = self._subtask_info[subtask.subtask_id]
@@ -375,7 +358,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     subtask, subtask_info, self._prepare_input_data, subtask, band_name
                 )
             )
-            remote_mapper_keys = await asyncio.wait_for(
+            await asyncio.wait_for(
                 prepare_data_task, timeout=self._data_prepare_timeout
             )
 
@@ -392,10 +375,6 @@ class SubtaskExecutionActor(mo.StatelessActor):
             subtask_info.result = await self._retry_run_subtask(
                 subtask, band_name, subtask_api, batch_quota_req
             )
-            if remote_mapper_keys:
-                await self.ref().remove_mapper_data.tell(
-                    subtask.session_id, band_name, remote_mapper_keys
-                )
         except:  # noqa: E722  # pylint: disable=bare-except
             _fill_subtask_result_with_exception(subtask, subtask_info)
         finally:

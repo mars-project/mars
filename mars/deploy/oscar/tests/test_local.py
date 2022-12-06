@@ -123,7 +123,7 @@ async def create_cluster(request):
         subprocess_start_method=start_method,
         config=config,
         n_worker=2,
-        n_cpu=2,
+        n_cpu=4,
         use_uvloop=False,
     )
     async with client:

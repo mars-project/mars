@@ -177,6 +177,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
             self._config,
             chunk_to_subtasks,
             shuffle_fetch_type=shuffle_fetch_type,
+            map_reduce_id_to_infos=self.map_reduce_id_to_infos,
         )
         subtask_graph = analyzer.gen_subtask_graph()
         results = set(

@@ -93,6 +93,7 @@ class ObjectInfo:
 
 class StorageBackend(ABC):
     name = None
+    is_seekable = True
 
     @classmethod
     @abstractmethod

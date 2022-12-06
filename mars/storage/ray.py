@@ -122,6 +122,7 @@ def support_specify_owner():
 @register_storage_backend
 class RayStorage(StorageBackend):
     name = "ray"
+    is_seekable = False
 
     def __init__(self, *args, **kwargs):
         self._owner_address = kwargs.get("owner")

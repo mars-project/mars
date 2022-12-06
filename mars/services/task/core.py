@@ -15,16 +15,19 @@
 import random
 from enum import Enum
 from string import ascii_letters, digits
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, List, Tuple
 
 from ...core import TileableGraph
+from ...typing import BandType
 from ...serialization.serializables import (
     Serializable,
+    FieldTypes,
     StringField,
     ReferenceField,
     BoolField,
     AnyField,
     DictField,
+    ListField,
     Float64Field,
 )
 
@@ -100,3 +103,17 @@ class TaskResult(Serializable):
 
 def new_task_id():
     return "".join(random.choice(ascii_letters + digits) for _ in range(24))
+
+
+class MapReduceInfo(Serializable):
+    # record map reduce info during analyzing
+    # record reducer indexes, and assigned bands
+    map_reduce_id: int = Int32Field("map_reduce_id")
+    reducer_indexes: List[Tuple[int]] = ListField(
+        "reducer_indexes", FieldTypes.tuple(FieldTypes.int64), default_factory=list
+    )
+    reducer_bands: List[BandType] = ListField(
+        "reducer_bands",
+        FieldTypes.tuple(FieldTypes.string, FieldTypes.string),
+        default_factory=list,
+    )

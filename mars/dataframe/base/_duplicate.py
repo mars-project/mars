@@ -238,6 +238,7 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             reduce_op._output_types = op.output_types
             reduce_chunk_params = map_chunks[0].params
             reduce_chunk_params["index"] = (i,) + reduce_chunk_params["index"][1:]
+            reduce_chunk_params["is_mapper"] = True
             reduce_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], kws=[reduce_chunk_params])
             )

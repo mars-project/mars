@@ -243,7 +243,12 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 [shuffle_chunk], kws=kws, order=op.outputs[0].order
             )
             if op.return_inverse:
-                chunks[0].is_mapper, chunks[1].is_mapper = False, True
+                inverse_idx = 2 if op.return_index else 1
+                for j, chk in enumerate(chunks):
+                    if j == inverse_idx:
+                        chk.is_mapper = True
+                    else:
+                        chk.is_mapper = False
             for j, c in enumerate(chunks):
                 reduce_chunks[j].append(c)
 

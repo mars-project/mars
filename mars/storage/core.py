@@ -124,7 +124,10 @@ class BufferWrappedFileObject(ABC):
             assert whence == os.SEEK_SET
             new_offset = offset
         if new_offset < 0 or new_offset >= self._size:
-            raise ValueError(f"File offset should be limited to (0, {self._size})")
+            raise ValueError(
+                f"File offset should be limited to (0, {self._size}), "
+                f"now is {new_offset}"
+            )
         self._offset = new_offset
         return self._offset
 

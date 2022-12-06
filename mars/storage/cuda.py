@@ -212,6 +212,7 @@ class CudaFileObject:
 @register_storage_backend
 class CudaStorage(StorageBackend):
     name = "cuda"
+    is_seekable = False
 
     def __init__(self, size=None):
         self._size = size
