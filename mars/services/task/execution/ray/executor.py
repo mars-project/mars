@@ -76,12 +76,10 @@ submitted_subtask_number = Metrics.counter(
 started_subtask_number = Metrics.counter(
     "mars.ray_dag.started_subtask_number",
     "The number of started subtask.",
-    ("subtask_id",),
 )
 completed_subtask_number = Metrics.counter(
     "mars.ray_dag.completed_subtask_number",
     "The number of completed subtask.",
-    ("subtask_id",),
 )
 
 
@@ -183,8 +181,7 @@ def execute_subtask(
         subtask outputs and meta for outputs if `output_meta_keys` is provided.
     """
     init_metrics("ray")
-    metrics_tags = {"subtask_id": subtask_id}
-    started_subtask_number.record(1, metrics_tags)
+    started_subtask_number.record(1)
     ray_task_id = ray.get_runtime_context().task_id
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     logger.info("Start subtask: %s, ray task id: %s.", subtask_id, ray_task_id)
@@ -277,7 +274,7 @@ def execute_subtask(
     output_values.extend(normal_output.values())
     output_values.extend(mapper_output.values())
     logger.info("Complete subtask: %s, ray task id: %s.", subtask_id, ray_task_id)
-    completed_subtask_number.record(1, metrics_tags)
+    completed_subtask_number.record(1)
     return output_values[0] if len(output_values) == 1 else output_values
 
 
