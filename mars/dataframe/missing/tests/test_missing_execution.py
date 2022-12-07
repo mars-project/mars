@@ -262,6 +262,10 @@ def test_replace_execution(setup):
     r = df.replace(-1, 999)
     pd.testing.assert_frame_equal(r.execute().fetch(), df_raw.replace(-1, 999))
 
+    if pd.__version__ >= "1.4.4":
+        r = df.replace({-1: 999})
+        pd.testing.assert_frame_equal(r.execute().fetch(), df_raw.replace({-1: 999}))
+
     raw_to_replace = pd.Series([-1, 1, 2])
     to_replace_series = md.Series(raw_to_replace)
     raw_value = pd.Series([2, 3, -1])
@@ -276,11 +280,21 @@ def test_replace_execution(setup):
         df.execute().fetch(), df_raw.replace({"A": -1}, {"A": 9})
     )
 
+    if pd.__version__ >= "1.4.4":
+        df.replace({"A": {-1: 9}}, inplace=True)
+        pd.testing.assert_frame_equal(
+            df.execute().fetch(), df_raw.replace({"A": {-1: 9}})
+        )
+
     # series cases
     series_raw = pd.Series(-1, index=range(20))
     for _ in range(10):
         series_raw.iloc[random.randint(0, 19)] = random.randint(0, 99)
     series = md.Series(series_raw, chunk_size=4)
+
+    if pd.__version__ >= "1.4.4":
+        r = series.replace(-1)
+        pd.testing.assert_series_equal(r.execute().fetch(), series_raw.replace(-1))
 
     r = series.replace(-1, method="ffill")
     pd.testing.assert_series_equal(

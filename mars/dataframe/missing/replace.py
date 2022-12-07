@@ -189,9 +189,9 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
             tileable_inputs_ex.append(value)
 
         # fill methods only available when `to_replace` is a scalar, list or tuple
-        # and `value` is None.
+        # and `value` is no_default.
         with_fill = (
-            op.value is None
+            op.value is no_default
             and not isinstance(op.to_replace, dict)
             and op.method is not None
         )
@@ -582,7 +582,7 @@ def _replace(
     regex=False,
     method=no_default,
 ):
-    if not isinstance(to_replace, dict) and value is None and limit is not None:
+    if not isinstance(to_replace, dict) and value is no_default and limit is not None:
         raise NotImplementedError("fill with limit not supported when value is None")
 
     if not isinstance(regex, bool):
@@ -601,7 +601,7 @@ def _replace(
 def df_replace(
     df,
     to_replace=no_default,
-    value=None,
+    value=no_default,
     inplace=False,
     limit=None,
     regex=False,
@@ -621,7 +621,7 @@ def df_replace(
 def series_replace(
     series,
     to_replace=no_default,
-    value=None,
+    value=no_default,
     inplace=False,
     limit=None,
     regex=False,
