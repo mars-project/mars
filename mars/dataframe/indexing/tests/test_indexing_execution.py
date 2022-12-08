@@ -1636,6 +1636,27 @@ def test_sample_execution(setup):
     pd.testing.assert_series_equal(r1.execute().fetch(), r2.execute().fetch())
 
 
+def test_loc_setitem(setup):
+    raw_df = pd.DataFrame({"a": [1, 2, 3, 4, 2, 4, 5, 7, 2, 8, 9], 1: [10] * 11})
+    md_data = md.DataFrame(raw_df, chunk_size=3)
+    md_data.loc[md_data["a"] <= 4, 1] = "v1"
+    pd_data = raw_df.copy(True)
+    pd_data.loc[pd_data["a"] <= 4, 1] = "v1"
+    pd.testing.assert_frame_equal(md_data.to_pandas(), pd_data)
+
+    md_data1 = md.DataFrame(raw_df, chunk_size=3)
+    md_data1.loc[1:3] = "v2"
+    pd_data1 = raw_df.copy(True)
+    pd_data1.loc[1:3] = "v2"
+    pd.testing.assert_frame_equal(md_data1.to_pandas(), pd_data1)
+
+    md_data2 = md.DataFrame(raw_df, chunk_size=3)
+    md_data2.loc[1:3, 1] = "v2"
+    pd_data2 = raw_df.copy(True)
+    pd_data2.loc[1:3, 1] = "v2"
+    pd.testing.assert_frame_equal(md_data2.to_pandas(), pd_data2)
+
+
 def test_add_prefix_suffix(setup):
     rs = np.random.RandomState(0)
     raw = pd.DataFrame(rs.rand(10, 4), columns=["A", "B", "C", "D"])

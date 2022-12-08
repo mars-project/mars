@@ -82,7 +82,7 @@ class AutoscalerActor(mo.Actor):
         )
         if worker_address:
             self._dynamic_workers.add(worker_address)
-            logger.info(
+            logger.warning(
                 "Requested new worker %s in %.4f seconds, current dynamic worker nums is %s",
                 worker_address,
                 time.time() - start_time,

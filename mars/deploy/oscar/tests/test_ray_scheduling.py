@@ -247,9 +247,9 @@ async def test_ownership_when_scale_in(ray_large_cluster):
         supervisor_mem=200 * 1024**2,
         config={
             "scheduling.autoscale.enabled": True,
-            "scheduling.autoscale.scheduler_check_interval": 1,
-            "scheduling.autoscale.scheduler_backlog_timeout": 1,
-            "scheduling.autoscale.worker_idle_timeout": 10,
+            "scheduling.autoscale.scheduler_check_interval": 0.1,
+            "scheduling.autoscale.scheduler_backlog_timeout": 0.5,
+            "scheduling.autoscale.worker_idle_timeout": 1,
             "scheduling.autoscale.min_workers": 1,
             "scheduling.autoscale.max_workers": 4,
         },
@@ -259,7 +259,7 @@ async def test_ownership_when_scale_in(ray_large_cluster):
             uid=AutoscalerActor.default_uid(),
             address=client._cluster.supervisor_address,
         )
-        num_chunks, chunk_size = 20, 4
+        num_chunks, chunk_size = 10, 4
         df = md.DataFrame(
             mt.random.rand(num_chunks * chunk_size, 4, chunk_size=chunk_size),
             columns=list("abcd"),

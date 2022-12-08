@@ -20,23 +20,24 @@ import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 from pandas.core.indexing import IndexingError
 
+from .iloc import DataFrameIlocSetItem
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE
+from ...core import ENTITY_TYPE, OutputType
 from ...core.operand import OperandStage
-from ...serialization.serializables import KeyField, ListField
+from ...serialization.serializables import KeyField, ListField, AnyField
 from ...tensor.datasource import asarray
 from ...tensor.utils import calc_sliced_size, filter_inputs
 from ...utils import lazy_import, is_full_slice
 from ..core import IndexValue, DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import parse_index
+from ..utils import parse_index, is_index_value_identical
 from .index_lib import DataFrameLocIndexesHandler
 
 
 cudf = lazy_import("cudf")
 
 
-def process_loc_indexes(inp, indexes):
+def process_loc_indexes(inp, indexes, fetch_index: bool = True):
     ndim = inp.ndim
 
     if not isinstance(indexes, tuple):
@@ -51,7 +52,7 @@ def process_loc_indexes(inp, indexes):
         if isinstance(index, (list, np.ndarray, pd.Series, ENTITY_TYPE)):
             if not isinstance(index, ENTITY_TYPE):
                 index = np.asarray(index)
-            else:
+            elif fetch_index:
                 index = asarray(index)
                 if ax == 1:
                     # do not support tensor index on axis 1
@@ -115,6 +116,125 @@ class DataFrameLoc:
 
         op = DataFrameLocGetItem(indexes=indexes)
         return op(self._obj)
+
+    def __setitem__(self, indexes, value):
+        if not np.isscalar(value):
+            raise NotImplementedError("Only scalar value is supported to set by loc")
+        if not isinstance(self._obj, DATAFRAME_TYPE):
+            raise NotImplementedError("Only DataFrame is supported to set by loc")
+        indexes = process_loc_indexes(self._obj, indexes, fetch_index=False)
+        use_iloc, new_indexes = self._use_iloc(indexes)
+        if use_iloc:
+            op = DataFrameIlocSetItem(indexes=new_indexes, value=value)
+            ret = op(self._obj)
+            self._obj.data = ret.data
+        else:
+            other_indices = []
+            indices_tileable = [
+                idx
+                for idx in indexes
+                if isinstance(idx, ENTITY_TYPE) or other_indices.append(idx)
+            ]
+            op = DataFramelocSetItem(indexes=other_indices, value=value)
+            ret = op([self._obj] + indices_tileable)
+            self._obj.data = ret.data
+
+
+class DataFramelocSetItem(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = OperandDef.DATAFRAME_ILOC_SETITEM
+
+    _indexes = ListField("indexes")
+    _value = AnyField("value")
+
+    def __init__(
+        self, indexes=None, value=None, gpu=None, sparse=False, output_types=None, **kw
+    ):
+        super().__init__(
+            _indexes=indexes,
+            _value=value,
+            gpu=gpu,
+            sparse=sparse,
+            _output_types=output_types,
+            **kw,
+        )
+        if not self.output_types:
+            self.output_types = [OutputType.dataframe]
+
+    @property
+    def indexes(self):
+        return self._indexes
+
+    @property
+    def value(self):
+        return self._value
+
+    def __call__(self, inputs):
+        df = inputs[0]
+        return self.new_dataframe(
+            inputs,
+            shape=df.shape,
+            dtypes=df.dtypes,
+            index_value=df.index_value,
+            columns_value=df.columns_value,
+        )
+
+    @classmethod
+    def tile(cls, op):
+        in_df = op.inputs[0]
+        out_df = op.outputs[0]
+        out_chunks = []
+        if len(op.inputs) > 1:
+            index_series = op.inputs[1]
+            is_identical = is_index_value_identical(in_df, index_series)
+            if not is_identical:
+                raise NotImplementedError("Only identical index value is supported")
+            if len(in_df.nsplits[1]) != 1:
+                raise NotImplementedError("Column-split chunks are not supported")
+            for target_chunk, index_chunk in zip(in_df.chunks, index_series.chunks):
+                chunk_op = op.copy().reset_key()
+                out_chunk = chunk_op.new_chunk(
+                    [target_chunk, index_chunk],
+                    shape=target_chunk.shape,
+                    index=target_chunk.index,
+                    dtypes=target_chunk.dtypes,
+                    index_value=target_chunk.index_value,
+                    columns_value=target_chunk.columns_value,
+                )
+                out_chunks.append(out_chunk)
+        else:
+            for target_chunk in in_df.chunks:
+                chunk_op = op.copy().reset_key()
+                out_chunk = chunk_op.new_chunk(
+                    [target_chunk],
+                    shape=target_chunk.shape,
+                    index=target_chunk.index,
+                    dtypes=target_chunk.dtypes,
+                    index_value=target_chunk.index_value,
+                    columns_value=target_chunk.columns_value,
+                )
+                out_chunks.append(out_chunk)
+
+        new_op = op.copy()
+        return new_op.new_dataframes(
+            op.inputs,
+            shape=out_df.shape,
+            dtypes=out_df.dtypes,
+            index_value=out_df.index_value,
+            columns_value=out_df.columns_value,
+            chunks=out_chunks,
+            nsplits=in_df.nsplits,
+        )
+
+    @classmethod
+    def execute(cls, ctx, op):
+        chunk = op.outputs[0]
+        r = ctx[op.inputs[0].key].copy(deep=True)
+        if len(op.inputs) > 1:
+            row_index = ctx[op.inputs[1].key]
+            r.loc[(row_index,) + tuple(op.indexes)] = op.value
+        else:
+            r.loc[tuple(op.indexes)] = op.value
+        ctx[chunk.key] = r
 
 
 class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
