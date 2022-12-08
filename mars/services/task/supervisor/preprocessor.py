@@ -70,9 +70,8 @@ class CancellableTiler(Tiler):
             return
 
     def _iter_without_check(self):
-        visited = set()
         while self._tileable_handlers:
-            to_update_tileables = self._iter(visited)
+            to_update_tileables = self._iter()
             if not self.cancelled:
                 yield self._cur_chunk_graph
             if not self.cancelled:

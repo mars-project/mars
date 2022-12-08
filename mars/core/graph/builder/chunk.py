@@ -293,10 +293,11 @@ class Tiler:
                     ):
                         _add_result_chunk(self._chunk_to_fetch[chunk])
 
-    def _iter(self, visited):
+    def _iter(self):
         chunk_graph = self._cur_chunk_graph
 
         to_update_tileables = []
+        visited = set()
 
         if chunk_graph is not None:
             # last tiled chunks, add them to processed
@@ -333,9 +334,8 @@ class Tiler:
         return to_update_tileables
 
     def __iter__(self):
-        visited = set()
         while self._tileable_handlers:
-            to_update_tileables = self._iter(visited)
+            to_update_tileables = self._iter()
             yield self._cur_chunk_graph
             for t in to_update_tileables:
                 t.refresh_params()
