@@ -410,7 +410,7 @@ class RayCluster:
         supervisor_mem: int = 1 * 1024**3,
         worker_num: int = 1,
         worker_cpu: Union[int, float] = 2,
-        worker_mem: int = 4 * 1024**3,
+        worker_mem: int = 2 * 1024**3,
         backend: str = None,
         config: Union[str, Dict] = None,
         n_supervisor_process: int = DEFAULT_SUPERVISOR_SUB_POOL_NUM,
@@ -467,6 +467,7 @@ class RayCluster:
                     n_cpu=self._worker_num * self._worker_cpu,
                     mem_bytes=self._worker_mem,
                     subtask_num_cpus=self._worker_cpu,
+                    subtask_memory=self._worker_mem,
                 )
             )
             assert self._n_supervisor_process == 0, self._n_supervisor_process

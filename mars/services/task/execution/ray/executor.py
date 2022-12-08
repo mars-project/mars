@@ -598,6 +598,7 @@ class RayTaskExecutor(TaskExecutor):
         )
         subtask_max_retries = self._config.get_subtask_max_retries()
         subtask_num_cpus = self._config.get_subtask_num_cpus()
+        subtask_memory = self._config.get_subtask_memory()
         metrics_tags = {
             "session_id": self._task.session_id,
             "task_id": self._task.task_id,
@@ -630,6 +631,7 @@ class RayTaskExecutor(TaskExecutor):
                 num_cpus=subtask_num_cpus,
                 num_returns=output_count,
                 max_retries=subtask_max_retries,
+                memory=subtask_memory,
                 scheduling_strategy="DEFAULT" if len(input_object_refs) else "SPREAD",
             ).remote(
                 subtask.subtask_id,
