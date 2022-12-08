@@ -85,7 +85,7 @@ class DataFrameSortOperand(DataFrameOperand):
                 shape = tuple(shape)
                 concat_params["shape"] = shape
                 if len(to_combine_chunks) == 1:
-                    c = to_combine_chunks[0]
+                    c = to_combine_chunks[0].copy()
                     c._index = chunk_index
                 else:
                     c = DataFrameConcat(

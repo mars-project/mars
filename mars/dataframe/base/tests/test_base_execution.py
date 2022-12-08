@@ -91,6 +91,15 @@ def test_to_cpu_execution(setup_gpu):
 
 
 def test_rechunk_execution(setup):
+    ns = np.random.RandomState(0)
+    df = pd.DataFrame(ns.rand(100, 10), columns=["a" + str(i) for i in range(10)])
+
+    # test rechunk after sort
+    mdf = DataFrame(df, chunk_size=10)
+    result = mdf.sort_values("a0").rechunk(chunk_size=10).execute().fetch()
+    expected = df.sort_values("a0")
+    pd.testing.assert_frame_equal(result, expected)
+
     data = pd.DataFrame(np.random.rand(8, 10))
     df = from_pandas_df(pd.DataFrame(data), chunk_size=3)
     df2 = df.rechunk((3, 4))

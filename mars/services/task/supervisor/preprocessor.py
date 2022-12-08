@@ -36,7 +36,7 @@ class CancellableTiler(Tiler):
         self,
         tileable_graph: TileableGraph,
         tile_context: TileContext,
-        processed_chunks: Set[ChunkType],
+        processed_chunks: Set[str],
         chunk_to_fetch: Dict[ChunkType, ChunkType],
         add_nodes: Callable,
         cancelled: asyncio.Event = None,
@@ -70,8 +70,9 @@ class CancellableTiler(Tiler):
             return
 
     def _iter_without_check(self):
+        visited = set()
         while self._tileable_handlers:
-            to_update_tileables = self._iter()
+            to_update_tileables = self._iter(visited)
             if not self.cancelled:
                 yield self._cur_chunk_graph
             if not self.cancelled:

@@ -124,7 +124,7 @@ class Tiler:
         self,
         tileable_graph: TileableGraph,
         tile_context: TileContext,
-        processed_chunks: Set[ChunkType],
+        processed_chunks: Set[str],
         chunk_to_fetch: Dict[ChunkType, ChunkType],
         add_nodes: Callable,
     ):
@@ -293,19 +293,19 @@ class Tiler:
                     ):
                         _add_result_chunk(self._chunk_to_fetch[chunk])
 
-    def _iter(self):
+    def _iter(self, visited):
         chunk_graph = self._cur_chunk_graph
 
         to_update_tileables = []
-        visited = set()
 
         if chunk_graph is not None:
             # last tiled chunks, add them to processed
-            # so that fetch chunk can be generated
-            processed_chunks = [
-                c.chunk if isinstance(c, FUSE_CHUNK_TYPE) else c
+            # so that fetch chunk can be generated.
+            # Use chunk key as the key to make sure the copied chunk can be build to a fetch.
+            processed_chunks = (
+                c.chunk.key if isinstance(c, FUSE_CHUNK_TYPE) else c.key
                 for c in chunk_graph.result_chunks
-            ]
+            )
             self._processed_chunks.update(processed_chunks)
 
         result_chunks = []
@@ -333,8 +333,9 @@ class Tiler:
         return to_update_tileables
 
     def __iter__(self):
+        visited = set()
         while self._tileable_handlers:
-            to_update_tileables = self._iter()
+            to_update_tileables = self._iter(visited)
             yield self._cur_chunk_graph
             for t in to_update_tileables:
                 t.refresh_params()
@@ -389,7 +390,7 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
         self.tile_context = TileContext() if tile_context is None else tile_context
         self.tile_context.set_tileables(set(graph))
 
-        self._processed_chunks: Set[ChunkType] = set()
+        self._processed_chunks: Set[str] = set()
         self._chunk_to_fetch: Dict[ChunkType, ChunkType] = dict()
 
         tiler_cls = Tiler if tiler_cls is None else tiler_cls
@@ -402,7 +403,7 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
         )
 
     def _process_node(self, entity: EntityType):
-        if entity in self._processed_chunks:
+        if entity.key in self._processed_chunks:
             if entity not in self._chunk_to_fetch:
                 # gen fetch
                 fetch_chunk = build_fetch(entity).data
@@ -413,7 +414,7 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
     def _select_inputs(self, inputs: List[ChunkType]):
         new_inputs = []
         for inp in inputs:
-            if inp in self._processed_chunks:
+            if inp.key in self._processed_chunks:
                 # gen fetch
                 if inp not in self._chunk_to_fetch:
                     fetch_chunk = build_fetch(inp).data
@@ -424,7 +425,7 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
         return new_inputs
 
     def _if_add_node(self, node: EntityType, visited: Set):
-        return node not in visited and node not in self._processed_chunks
+        return node not in visited and node.key not in self._processed_chunks
 
     def _build(self) -> Iterable[Union[TileableGraph, ChunkGraph]]:
         tile_iterator = iter(self.tiler)

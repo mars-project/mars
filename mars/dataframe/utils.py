@@ -1412,7 +1412,7 @@ def auto_merge_chunks(
             # concat previous chunks
             if len(to_merge_chunks) == 1:
                 # do not generate concat op for 1 input.
-                c = to_merge_chunks[0]
+                c = to_merge_chunks[0].copy()
                 c._index = (
                     (len(n_split),) if df_or_series.ndim == 1 else (len(n_split), 0)
                 )
