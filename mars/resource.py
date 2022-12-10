@@ -33,8 +33,13 @@ ZeroResource = ZeroResource
 
 logger = logging.getLogger(__name__)
 
-CGROUP_CPU_STAT_FILE = "/sys/fs/cgroup/cpuacct/cpuacct.usage"
-CGROUP_MEM_STAT_FILE = "/sys/fs/cgroup/memory/memory.stat"
+CGROUP_V1_CPU_ACCT_FILE = "/sys/fs/cgroup/cpuacct/cpuacct.usage"
+CGROUP_V1_MEM_STAT_FILE = "/sys/fs/cgroup/memory/memory.stat"
+CGROUP_V2_CPU_STAT_FILE = "/sys/fs/cgroup/cpu.stat"
+CGROUP_V2_MEM_CURRENT_FILE = "/sys/fs/cgroup/memory.current"
+CGROUP_V2_MEM_MAX_FILE = "/sys/fs/cgroup/memory.max"
+
+_is_cgroup_v2 = os.path.exists(CGROUP_V2_CPU_STAT_FILE)
 
 _proc = psutil.Process()
 _timer = getattr(time, "monotonic", time.time)
@@ -75,8 +80,8 @@ else:
     _shm_path = _shm_path[0]
 
 
-def _read_cgroup_stat_file():
-    with open(CGROUP_MEM_STAT_FILE, "r") as cg_file:
+def _read_cgroup_stat_file(file_name: str):
+    with open(file_name, "r") as cg_file:
         contents = cg_file.read()
     kvs = dict()
     for line in contents.splitlines():
@@ -94,11 +99,21 @@ def virtual_memory() -> _virt_memory_stat:
 
     sys_mem = psutil.virtual_memory()
     if _mem_use_cgroup_stat:
-        # see section 5.5 in https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt
-        cgroup_mem_info = _read_cgroup_stat_file()
-        total = cgroup_mem_info["hierarchical_memory_limit"]
-        total = min(_mem_total or total, total)
-        used = cgroup_mem_info["rss"] + cgroup_mem_info.get("swap", 0)
+        max_mem = min(_mem_total or sys_mem.total, sys_mem.total)
+        if _is_cgroup_v2:
+            # see Memory section in https://www.kernel.org/doc/Documentation/cgroup-v2.txt
+            with open(CGROUP_V2_MEM_MAX_FILE, "r") as mem_max_file:
+                max_str = mem_max_file.read().strip()
+                total = max_mem if max_str == "max" else int(max_str)
+            with open(CGROUP_V2_MEM_CURRENT_FILE, "r") as mem_current_file:
+                used = int(mem_current_file.read().strip())
+        else:
+            # see section 5.5 in https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt
+            cgroup_mem_info = _read_cgroup_stat_file(CGROUP_V1_MEM_STAT_FILE)
+            total = cgroup_mem_info["hierarchical_memory_limit"]
+            total = min(max_mem, total)
+            used = cgroup_mem_info["rss"] + cgroup_mem_info.get("swap", 0)
+
         if _shm_path:
             shm_stats = psutil.disk_usage(_shm_path)
             used += shm_stats.used
@@ -179,10 +194,16 @@ def _take_process_cpu_snapshot():
 def cpu_percent():
     global _last_cgroup_cpu_measure, _last_proc_cpu_measure, _last_cpu_percent, _last_psutil_measure
     if _cpu_use_cgroup_stat:
-        # see https://www.kernel.org/doc/Documentation/cgroup-v1/cpuacct.txt
-        with open(CGROUP_CPU_STAT_FILE, "r") as cgroup_file:
-            cpu_acct = int(cgroup_file.read())
-            sample_time = _timer()
+        if _is_cgroup_v2:
+            # see CPU section in https://www.kernel.org/doc/Documentation/cgroup-v2.txt
+            cpu_content = _read_cgroup_stat_file(CGROUP_V2_CPU_STAT_FILE)
+            cpu_acct = cpu_content["usage_usec"] * 1000
+        else:
+            # see https://www.kernel.org/doc/Documentation/cgroup-v1/cpuacct.txt
+            with open(CGROUP_V1_CPU_ACCT_FILE, "r") as cgroup_file:
+                cpu_acct = int(cgroup_file.read())
+        sample_time = _timer()
+
         if _last_cgroup_cpu_measure is None:
             _last_cgroup_cpu_measure = (cpu_acct, sample_time)
             return None

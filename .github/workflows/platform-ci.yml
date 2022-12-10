@@ -20,9 +20,9 @@ jobs:
         os: [ubuntu-latest]
         python-version: [3.8-ray, 3.8-ray-deploy, 3.8-ray-dag, 3.8-vineyard, 3.8-dask]
         include:
-          - { os: ubuntu-20.04, python-version: 3.8-kubernetes, no-common-tests: 1,
+          - { os: ubuntu-latest, python-version: 3.8-kubernetes, no-common-tests: 1,
               no-deploy: 1, with-kubernetes: "with Kubernetes" }
-          - { os: ubuntu-20.04, python-version: 3.8-hadoop, no-common-tests: 1,
+          - { os: ubuntu-latest, python-version: 3.8-hadoop, no-common-tests: 1,
               no-deploy: 1, with-hadoop: "with hadoop" }
           - { os: ubuntu-latest, python-version: 3.8-vineyard, no-common-tests: 1,
               no-deploy: 1, with-vineyard: "with vineyard" }
