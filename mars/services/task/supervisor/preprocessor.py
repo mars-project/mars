@@ -36,7 +36,7 @@ class CancellableTiler(Tiler):
         self,
         tileable_graph: TileableGraph,
         tile_context: TileContext,
-        processed_chunks: Set[ChunkType],
+        processed_chunks: Set[str],
         chunk_to_fetch: Dict[ChunkType, ChunkType],
         add_nodes: Callable,
         cancelled: asyncio.Event = None,

@@ -157,7 +157,7 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
                 params["dtypes"] = pd.concat([c.dtypes for c in inp_chunks_arr[0]])
             if len(inp_slice_chunks) == 1:
                 c = inp_slice_chunks[0]
-                cc = c.op.copy().reset_key().new_chunk(c.op.inputs, kws=[params])
+                cc = c.op.copy().new_chunk(c.op.inputs, kws=[params])
                 out_chunks.append(cc)
             else:
                 out_chunk = DataFrameConcat(
