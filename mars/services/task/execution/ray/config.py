@@ -54,6 +54,9 @@ class RayExecutionConfig(ExecutionConfig):
     def get_subtask_num_cpus(self) -> Union[int, float]:
         return self._ray_execution_config.get("subtask_num_cpus", 1)
 
+    def get_subtask_memory(self) -> Union[int, float]:
+        return self._ray_execution_config.get("subtask_memory", None)
+
     def get_n_cpu(self):
         return self._ray_execution_config["n_cpu"]
 

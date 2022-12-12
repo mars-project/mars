@@ -371,6 +371,7 @@ async def test_ray_execution_config(ray_start_regular_shared2):
                 "monitor_interval_seconds": 0,
                 "subtask_max_retries": 4,
                 "subtask_num_cpus": 0.8,
+                "subtask_memory": 1001,
                 "n_cpu": 1,
                 "n_worker": 1,
             },
@@ -394,6 +395,7 @@ async def test_ray_execution_config(ray_start_regular_shared2):
 
     assert MockExecutor.opt["num_cpus"] == 0.8
     assert MockExecutor.opt["max_retries"] == 4
+    assert MockExecutor.opt["memory"] == 1001
 
 
 @require_ray

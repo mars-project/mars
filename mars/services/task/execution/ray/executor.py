@@ -33,7 +33,6 @@ from .....core.operand import (
 )
 from .....core.operand.fetch import FetchShuffle
 from .....lib.aio import alru_cache
-from .....lib.ordered_set import OrderedSet
 from .....metrics.api import init_metrics, Metrics
 from .....resource import Resource
 from .....serialization import serialize, deserialize
@@ -76,12 +75,10 @@ submitted_subtask_number = Metrics.counter(
 started_subtask_number = Metrics.counter(
     "mars.ray_dag.started_subtask_number",
     "The number of started subtask.",
-    ("subtask_id",),
 )
 completed_subtask_number = Metrics.counter(
     "mars.ray_dag.completed_subtask_number",
     "The number of completed subtask.",
-    ("subtask_id",),
 )
 
 
@@ -183,8 +180,7 @@ def execute_subtask(
         subtask outputs and meta for outputs if `output_meta_keys` is provided.
     """
     init_metrics("ray")
-    metrics_tags = {"subtask_id": subtask_id}
-    started_subtask_number.record(1, metrics_tags)
+    started_subtask_number.record(1)
     ray_task_id = ray.get_runtime_context().task_id
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     logger.info("Start subtask: %s, ray task id: %s.", subtask_id, ray_task_id)
@@ -277,7 +273,7 @@ def execute_subtask(
     output_values.extend(normal_output.values())
     output_values.extend(mapper_output.values())
     logger.info("Complete subtask: %s, ray task id: %s.", subtask_id, ray_task_id)
-    completed_subtask_number.record(1, metrics_tags)
+    completed_subtask_number.record(1)
     return output_values[0] if len(output_values) == 1 else output_values
 
 
@@ -329,6 +325,32 @@ class _RayExecutionStage(enum.Enum):
     INIT = 0
     SUBMITTING = 1
     WAITING = 2
+
+
+class OrderedSet:
+    def __init__(self):
+        self._d = set()
+        self._l = list()
+
+    def add(self, item):
+        self._d.add(item)
+        self._l.append(item)
+        assert len(self._d) == len(self._l)
+
+    def update(self, items):
+        tmp = list(items) if isinstance(items, collections.Iterator) else items
+        self._l.extend(tmp)
+        self._d.update(tmp)
+        assert len(self._d) == len(self._l)
+
+    def __contains__(self, item):
+        return item in self._d
+
+    def __getitem__(self, item):
+        return self._l[item]
+
+    def __len__(self):
+        return len(self._d)
 
 
 @dataclass
@@ -576,6 +598,7 @@ class RayTaskExecutor(TaskExecutor):
         )
         subtask_max_retries = self._config.get_subtask_max_retries()
         subtask_num_cpus = self._config.get_subtask_num_cpus()
+        subtask_memory = self._config.get_subtask_memory()
         metrics_tags = {
             "session_id": self._task.session_id,
             "task_id": self._task.task_id,
@@ -608,6 +631,7 @@ class RayTaskExecutor(TaskExecutor):
                 num_cpus=subtask_num_cpus,
                 num_returns=output_count,
                 max_retries=subtask_max_retries,
+                memory=subtask_memory,
                 scheduling_strategy="DEFAULT" if len(input_object_refs) else "SPREAD",
             ).remote(
                 subtask.subtask_id,
@@ -840,11 +864,9 @@ class RayTaskExecutor(TaskExecutor):
                 for pred in subtask_graph.iter_predecessors(subtask):
                     if pred in gc_subtasks:
                         continue
-                    while not all(
-                        succ in gc_targets
-                        for succ in subtask_graph.iter_successors(pred)
-                    ):
-                        yield
+                    for succ in subtask_graph.iter_successors(pred):
+                        while succ not in gc_targets:
+                            yield
                     if pred.virtual:
                         # For virtual subtask, remove all the predecessors if it is
                         # completed.
