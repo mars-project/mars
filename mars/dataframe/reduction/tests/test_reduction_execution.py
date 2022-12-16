@@ -718,7 +718,7 @@ def test_unique(setup, check_ref_counts):
     np.testing.assert_array_equal(result, expected)
 
     data2 = pd.Series(
-        [pd.Timestamp("20200101")] * 5
+        [pd.Timestamp("20200101", tz="US/Eastern")] * 5
         + [pd.Timestamp("20200202")]
         + [pd.Timestamp("20020101")] * 9
     )
@@ -730,6 +730,21 @@ def test_unique(setup, check_ref_counts):
     series = md.Series(data2, chunk_size=6)
     result = series.unique().execute().fetch()
     expected = data2.unique()
+    np.testing.assert_array_equal(result, expected)
+
+    # test md.unique
+    result = md.unique(data2).execute().fetch()
+    expected = pd.unique(data2)
+    np.testing.assert_array_equal(result, expected)
+
+    raw_list = list("baabc")
+    result = md.unique(raw_list).execute().fetch()
+    expected = pd.unique(raw_list)
+    np.testing.assert_array_equal(result, expected)
+
+    data1 = pd.Series(np.random.randint(0, 5, size=(20,)))
+    result = md.unique(data1).execute().fetch()
+    expected = pd.unique(data1)
     np.testing.assert_array_equal(result, expected)
 
 

@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import pandas as pd
+from pandas.core.dtypes.common import pandas_dtype
 
 from ..core import ENTITY_TYPE
 from ..serialization.serializables import SerializableMeta
@@ -150,8 +150,7 @@ class Series(_Series, metaclass=InitializerMeta):
         num_partitions=None,
     ):
         if dtype is not None:
-            dtype = np.dtype(dtype)
-
+            dtype = pandas_dtype(dtype)
         need_repart = False
         if isinstance(data, (TENSOR_TYPE, INDEX_TYPE)):
             if chunk_size is not None:

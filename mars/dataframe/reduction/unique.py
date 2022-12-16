@@ -17,9 +17,10 @@ import pandas as pd
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import OutputType
+from ...core import OutputType, ENTITY_TYPE
 from ...tensor.core import TensorOrder
 from ...utils import lazy_import
+from ..initializer import Series as asseries
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
 
 cudf = lazy_import("cudf")
@@ -51,6 +52,8 @@ class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
             raise NotImplementedError(f"Method {op.method} hasn't been supported")
 
     def __call__(self, a):
+        if not isinstance(a, ENTITY_TYPE):
+            a = asseries(a)
         self.output_types = [OutputType.tensor]
         return self.new_tileables(
             [a], shape=(np.nan,), dtype=a.dtype, order=TensorOrder.C_ORDER
