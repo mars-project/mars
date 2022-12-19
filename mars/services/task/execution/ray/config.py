@@ -28,6 +28,7 @@ IN_RAY_CI = os.environ.get("MARS_CI_BACKEND", "mars") == "ray"
 # The default interval seconds to update progress and collect garbage.
 DEFAULT_MONITOR_INTERVAL_SECONDS = 0 if IN_RAY_CI else 1
 DEFAULT_LOG_INTERVAL_SECONDS = 60
+DEFAULT_CHECK_SLOW_SUBTASKS_INTERVAL_SECONDS = 120
 
 
 @register_config_cls
@@ -75,6 +76,12 @@ class RayExecutionConfig(ExecutionConfig):
     def get_log_interval_seconds(self):
         return self._ray_execution_config.get(
             "log_interval_seconds", DEFAULT_LOG_INTERVAL_SECONDS
+        )
+
+    def get_check_slow_subtasks_interval_seconds(self):
+        return self._ray_execution_config.get(
+            "check_slow_subtasks_interval_seconds",
+            DEFAULT_CHECK_SLOW_SUBTASKS_INTERVAL_SECONDS,
         )
 
     def get_shuffle_fetch_type(self) -> ShuffleFetchType:

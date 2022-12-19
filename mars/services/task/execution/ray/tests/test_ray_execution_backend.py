@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import time
 
 import pandas as pd
 import pytest
@@ -32,6 +33,7 @@ from ......serialization import serialize
 from ......tests.core import require_ray, mock
 from ......utils import lazy_import, get_chunk_params
 from .....context import ThreadedServiceContext
+from .....subtask import Subtask
 from ....analyzer import GraphAnalyzer
 from ....core import new_task_id, Task
 from ..config import RayExecutionConfig
@@ -43,9 +45,11 @@ from ..context import (
 )
 from ..executor import (
     execute_subtask,
+    OrderedSet,
     RayTaskExecutor,
     RayTaskState,
     _RayChunkMeta,
+    _SlowSubtaskChecker,
 )
 from ..fetcher import RayFetcher
 from ..shuffle import ShuffleManager
@@ -623,3 +627,36 @@ async def test_execute_shuffle(ray_start_regular_shared2, gc_method):
         assert executor.monitor_tasks()[0].done()
 
     assert len(task_context) == len(chunk_graph.results)
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_slow_subtask_checker():
+    subtasks = [
+        Subtask(str(i), logic_key=f"logic_key1", logic_parallelism=5) for i in range(5)
+    ]
+    submitted = OrderedSet()
+    completed = OrderedSet()
+    now = time.time()
+    checker = _SlowSubtaskChecker(5, submitted, completed)
+    updater = checker.update()
+    for s in subtasks:
+        submitted.add(s)
+    for _ in updater:
+        break
+    assert all(s.rerun_time >= now for s in subtasks)
+    await asyncio.sleep(0.01)
+    assert not any(checker.is_slow(s) for s in subtasks)
+    completed.add(subtasks[0])
+    completed.add(subtasks[1])
+    for _ in updater:
+        break
+    await asyncio.sleep(0.01)
+    completed.add(subtasks[2])
+    assert not any(checker.is_slow(s) for s in subtasks[3:])
+    completed.add(subtasks[3])
+    for _ in updater:
+        break
+    assert not checker.is_slow(subtasks[4])
+    await asyncio.sleep(0.1)
+    assert checker.is_slow(subtasks[4])

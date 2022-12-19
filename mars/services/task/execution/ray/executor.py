@@ -23,6 +23,8 @@ import time
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Callable
 
+import numpy as np
+
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
 from .....core.operand import (
@@ -366,6 +368,68 @@ class _RayMonitorContext:
     chunk_key_ref_count: Dict[str, int] = field(
         default_factory=lambda: collections.defaultdict(int)
     )
+
+
+class _SlowSubtaskChecker:
+    @dataclass
+    class _CheckInfo:
+        count: int
+        upper: float
+
+    def __init__(
+        self,
+        total_subtask_count: int,
+        submitted_subtasks: OrderedSet,
+        completed_subtasks: OrderedSet,
+    ):
+        self._total_subtask_count = total_subtask_count
+        self._submitted_subtasks = submitted_subtasks
+        self._completed_subtasks = completed_subtasks
+        self._logic_key_to_subtask_costs = collections.defaultdict(list)
+        self._logic_key_to_check_info = dict()
+
+    def update(self):
+        i = 0
+        j = 0
+        while i < self._total_subtask_count or j < self._total_subtask_count:
+            curr_time = time.time()
+            while i < len(self._submitted_subtasks):
+                subtask = self._submitted_subtasks[i]
+                subtask.rerun_time = curr_time
+                i += 1
+            while j < len(self._completed_subtasks):
+                subtask = self._completed_subtasks[j]
+                self._logic_key_to_subtask_costs[subtask.logic_key].append(
+                    curr_time - subtask.rerun_time
+                )
+                j += 1
+            yield
+
+    def is_slow(self, subtask: Subtask):
+        logic_key = subtask.logic_key
+        if logic_key not in self._logic_key_to_subtask_costs:
+            # The subtask logic key has no costs.
+            return False
+        logic_parallelism = subtask.logic_parallelism
+        if not logic_parallelism:
+            # Invalid parallelism.
+            return False
+        subtask_costs = self._logic_key_to_subtask_costs[logic_key]
+        complete_count = len(subtask_costs)
+        if complete_count / logic_parallelism < 0.8:
+            # Too few complete subtasks.
+            return False
+        check_info = self._logic_key_to_check_info.get(logic_key)
+        if check_info is None or check_info.count != complete_count:
+            arr = np.array(subtask_costs)
+            q1, q3 = np.quantile(arr, 0.25), np.quantile(arr, 0.75)
+            upper = q3 + 3 * (q3 - q1)
+            self._logic_key_to_check_info[logic_key] = _SlowSubtaskChecker._CheckInfo(
+                complete_count, upper
+            )
+        else:
+            upper = check_info.upper
+        return time.time() - subtask.rerun_time > upper
 
 
 @register_executor_cls
@@ -832,6 +896,9 @@ class RayTaskExecutor(TaskExecutor):
         result_chunk_keys = {chunk.key for chunk in chunk_graph.result_chunks}
         chunk_key_ref_count = monitor_context.chunk_key_ref_count
         object_ref_to_subtask = monitor_context.object_ref_to_subtask
+        slow_subtask_checker = _SlowSubtaskChecker(
+            total, submitted_subtasks, completed_subtasks
+        )
 
         def gc():
             """
@@ -907,8 +974,12 @@ class RayTaskExecutor(TaskExecutor):
             # in the result subtasks
 
         collect_garbage = gc()
-        last_log_time = time.time()
+        update_cost = slow_subtask_checker.update()
+        last_log_time = last_check_slow_time = time.time()
         log_interval_seconds = self._config.get_log_interval_seconds()
+        check_slow_subtasks_interval_seconds = (
+            self._config.get_check_slow_subtasks_interval_seconds()
+        )
         stage_to_log_func = {
             _RayExecutionStage.SUBMITTING: lambda: logger.info(
                 "Submitted [%s/%s] subtasks of stage %s.",
@@ -928,8 +999,8 @@ class RayTaskExecutor(TaskExecutor):
         }
 
         while len(completed_subtasks) < total:
+            curr_time = time.time()
             if monitor_context.stage != _RayExecutionStage.INIT:
-                curr_time = time.time()
                 if curr_time - last_log_time > log_interval_seconds:  # pragma: no cover
                     stage_to_log_func[monitor_context.stage]()
                     last_log_time = curr_time
@@ -941,7 +1012,7 @@ class RayTaskExecutor(TaskExecutor):
                 continue
 
             # Only wait for unready subtask object refs.
-            ready_objects, _ = await asyncio.to_thread(
+            ready_objects, unready_objects = await asyncio.to_thread(
                 ray.wait,
                 list(object_ref_to_subtask.keys()),
                 num_returns=len(object_ref_to_subtask),
@@ -959,8 +1030,32 @@ class RayTaskExecutor(TaskExecutor):
                 len(completed_subtasks) / total * self._cur_stage_tile_progress
             )
             self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
+            # Update subtask cost group by the logic key to logic_key_to_subtask_costs.
+            for _ in update_cost:
+                break
             # Collect garbage, use `for ... in ...` to avoid raising StopIteration.
             for _ in collect_garbage:
                 break
+            # Check slow subtasks, after update_cost.
+            if monitor_context.stage == _RayExecutionStage.WAITING:
+                if len(completed_subtasks) > 0 and (
+                    curr_time - last_check_slow_time
+                    > check_slow_subtasks_interval_seconds
+                ):
+                    slow_objects = []
+                    for obj in unready_objects:
+                        maybe_slow_subtask = object_ref_to_subtask[obj]
+                        slow = slow_subtask_checker.is_slow(maybe_slow_subtask)
+                        if slow:
+                            slow_objects.append(obj)
+                    if len(slow_objects) > 0:
+                        logger.info(
+                            "Slow tasks(%s): %s", len(slow_objects), slow_objects
+                        )
+                    else:
+                        logger.debug(
+                            "No slow tasks in %s unready tasks.", len(unready_objects)
+                        )
+                    last_check_slow_time = curr_time
             # Fast to next loop and give it a chance to update object_ref_to_subtask.
             await asyncio.sleep(0)
