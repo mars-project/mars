@@ -60,7 +60,7 @@ jobs:
         source ./ci/rewrite-cov-config.sh
 
         if [[ "$(mars.test.module)" == "learn" ]]; then
-          pip install numpy\<1.20.0 scipy cython
+          pip install numpy\<1.20.0 scipy cython scikit-learn\<1.2.0
         else
           pip install numpy scipy cython
         fi
@@ -94,6 +94,7 @@ jobs:
 
         # do compatibility test for earliest supported pandas release
         if [[ "$(mars.test.module)" == "dataframe" ]]; then
+          pip install numpy\<1.24.0
           pip install -i https://pkgs.dev.azure.com/mars-project/mars/_packaging/pandas/pypi/simple/ pandas==1.0.5
           pytest $PYTEST_CONFIG -m pd_compat mars/dataframe
           mv .coverage build/.coverage.pd_compat.file

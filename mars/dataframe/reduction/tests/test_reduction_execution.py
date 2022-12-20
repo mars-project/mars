@@ -42,25 +42,9 @@ _support_kw_agg = pd_release_version >= (1, 1)
 def check_ref_counts():
     yield
 
-    import functools
     import gc
 
-    # In https://github.com/pandas-dev/pandas/pull/48023, pandas cache current frame in this PR
-    # which leads to failure of decref mechanism.
     gc.collect()
-    wrappers = []
-    tp = functools._lru_cache_wrapper
-    for a in gc.get_objects():
-        try:
-            if isinstance(a, tp):
-                wrappers.append(a)
-        except ReferenceError:
-            # a may raises ReferenceError: weakly-referenced object no longer exists
-            # please refer to: https://github.com/mars-project/mars/issues/3290
-            pass
-
-    for wrapper in wrappers:
-        wrapper.cache_clear()
 
     sess = get_default_session()
     assert len(sess._get_ref_counts()) == 0

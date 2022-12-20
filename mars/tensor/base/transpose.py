@@ -28,7 +28,7 @@ from ..core import TensorOrder
 def _reorder(x, axes):
     if x is None:
         return
-    return type(x)(np.array(x)[list(axes)].tolist())
+    return type(x)(x[ax] for ax in axes)
 
 
 class TensorTranspose(TensorHasInput, TensorOperandMixin):
