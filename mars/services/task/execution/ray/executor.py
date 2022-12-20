@@ -429,6 +429,7 @@ class _SlowSubtaskChecker:
             )
         else:
             upper = check_info.upper
+        assert subtask.rerun_time > 0
         return time.time() - subtask.rerun_time > upper
 
 
@@ -1050,7 +1051,7 @@ class RayTaskExecutor(TaskExecutor):
                             slow_objects.append(obj)
                     if len(slow_objects) > 0:
                         logger.info(
-                            "Slow tasks(%s): %s", len(slow_objects), slow_objects
+                            "Slow tasks(%s): %s", len(slow_objects), slow_objects[:5]
                         )
                     else:
                         logger.debug(

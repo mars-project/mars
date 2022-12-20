@@ -65,7 +65,7 @@ class Subtask(Serializable):
     virtual: bool = BoolField("virtual")
     retryable: bool = BoolField("retryable")
     priority: Tuple[int, int] = TupleField("priority", FieldTypes.int32)
-    rerun_time: int = Int32Field("rerun_time")
+    rerun_time: float = Float64Field("rerun_time")
     extra_config: dict = DictField("extra_config")
     stage_id: str = StringField("stage_id")
     # chunks that need meta updated
