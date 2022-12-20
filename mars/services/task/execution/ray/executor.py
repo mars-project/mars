@@ -84,11 +84,6 @@ completed_subtask_number = Metrics.counter(
 )
 
 
-@dataclass
-class _RayChunkMeta:
-    memory_size: int
-
-
 class RayTaskState(RayRemoteObjectManager):
     handle = None
 
@@ -323,12 +318,6 @@ def _get_subtask_out_info(
     return output_keys.keys(), len(output_keys)
 
 
-class _RayExecutionStage(enum.Enum):
-    INIT = 0
-    SUBMITTING = 1
-    WAITING = 2
-
-
 class OrderedSet:
     def __init__(self):
         self._d = set()
@@ -353,6 +342,17 @@ class OrderedSet:
 
     def __len__(self):
         return len(self._d)
+
+
+class _RayExecutionStage(enum.Enum):
+    INIT = 0
+    SUBMITTING = 1
+    WAITING = 2
+
+
+@dataclass
+class _RayChunkMeta:
+    memory_size: int
 
 
 @dataclass
@@ -639,6 +639,8 @@ class RayTaskExecutor(TaskExecutor):
         finally:
             logger.info("Clear stage %s.", stage_id)
             monitor_aiotask.cancel()
+            for subtask in subtask_graph:
+                subtask.runtime = None
             for key in self._task_context.keys() - self._task_chunks_meta.keys():
                 self._task_context.pop(key)
 
@@ -981,7 +983,7 @@ class RayTaskExecutor(TaskExecutor):
             # in the result subtasks
 
         collect_garbage = gc()
-        update_cost = slow_subtask_checker.update()
+        update_subtask_cost = slow_subtask_checker.update()
         last_log_time = last_check_slow_time = time.time()
         log_interval_seconds = self._config.get_log_interval_seconds()
         check_slow_subtasks_interval_seconds = (
@@ -1026,24 +1028,16 @@ class RayTaskExecutor(TaskExecutor):
                 timeout=0,
                 fetch_local=False,
             )
-            if len(ready_objects) == 0:
-                await asyncio.sleep(interval_seconds)
-                continue
 
-            # Pop the completed subtasks from object_ref_to_subtask.
-            completed_subtasks.update(map(object_ref_to_subtask.pop, ready_objects))
-            # Update progress.
-            stage_progress = (
-                len(completed_subtasks) / total * self._cur_stage_tile_progress
-            )
-            self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
             # Update subtask cost group by the logic key to logic_key_to_subtask_costs.
-            for _ in update_cost:
+            for _ in update_subtask_cost:
                 break
+
             # Collect garbage, use `for ... in ...` to avoid raising StopIteration.
             for _ in collect_garbage:
                 break
-            # Check slow subtasks, after update_cost.
+
+            # Check slow subtasks, after update_subtask_cost.
             if monitor_context.stage == _RayExecutionStage.WAITING:
                 if len(completed_subtasks) > 0 and (
                     curr_time - last_check_slow_time
@@ -1064,5 +1058,17 @@ class RayTaskExecutor(TaskExecutor):
                             "No slow tasks in %s unready tasks.", len(unready_objects)
                         )
                     last_check_slow_time = curr_time
+
+            if len(ready_objects) == 0:
+                await asyncio.sleep(interval_seconds)
+                continue
+
+            # Pop the completed subtasks from object_ref_to_subtask.
+            completed_subtasks.update(map(object_ref_to_subtask.pop, ready_objects))
+            # Update progress.
+            stage_progress = (
+                len(completed_subtasks) / total * self._cur_stage_tile_progress
+            )
+            self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
             # Fast to next loop and give it a chance to update object_ref_to_subtask.
             await asyncio.sleep(0)

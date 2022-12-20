@@ -22,7 +22,6 @@ from ...serialization.serializables import (
     Serializable,
     StringField,
     ReferenceField,
-    Int32Field,
     BoolField,
     AnyField,
     DictField,
