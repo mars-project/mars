@@ -716,7 +716,6 @@ async def test_execute_slow_task(ray_start_regular_shared2):
             assert len(executor.monitor_tasks()) == 1
             assert executor.monitor_tasks()[0].done()
         assert log_patch.call_count > 0
-        log_str_to_args = collections.defaultdict(set)
         slow_ray_object_refs = set()
         for c in log_patch.call_args_list:
             if c.args[0] == "Slow tasks(%s): %s":
