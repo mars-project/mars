@@ -52,7 +52,7 @@ class SubtaskStatus(Enum):
 
 
 class Subtask(Serializable):
-    __slots__ = ("_repr", "_pure_depend_keys", "_runtime")
+    __slots__ = ("_repr", "_pure_depend_keys", "runtime")
 
     subtask_id: str = StringField("subtask_id")
     subtask_name: str = StringField("subtask_name")
@@ -126,13 +126,13 @@ class Subtask(Serializable):
         )
         self._pure_depend_keys = None
         self._repr = None
-        self._runtime = None
+        self.runtime = None
 
     def __on_deserialize__(self):
         super(Subtask, self).__on_deserialize__()
         self._pure_depend_keys = None
         self._repr = None
-        self._runtime = None
+        self.runtime = None
 
     @property
     def expect_band(self):
@@ -152,14 +152,6 @@ class Subtask(Serializable):
             )
         self._pure_depend_keys = pure_dep_keys
         return pure_dep_keys
-
-    @property
-    def runtime(self):
-        return self._runtime
-
-    @runtime.setter
-    def runtime(self, r):
-        self._runtime = r
 
     def __repr__(self):
         if self._repr is not None:

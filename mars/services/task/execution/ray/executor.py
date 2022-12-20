@@ -359,6 +359,7 @@ class _RayChunkMeta:
 class _RayMonitorContext:
     stage: _RayExecutionStage = _RayExecutionStage.INIT
     submitted_subtasks: OrderedSet = field(default_factory=OrderedSet)
+    completed_subtasks: OrderedSet = field(default_factory=OrderedSet)
     # The shuffle manager for monitor task to GC the object refs of shuffles.
     shuffle_manager: ShuffleManager = None
     # The first output object ref of a Subtask to the Subtask.
@@ -900,7 +901,7 @@ class RayTaskExecutor(TaskExecutor):
         method: str,
     ):
         total = sum(not subtask.virtual for subtask in subtask_graph)
-        completed_subtasks = OrderedSet()
+        completed_subtasks = monitor_context.completed_subtasks
         submitted_subtasks = monitor_context.submitted_subtasks
         result_chunk_keys = {chunk.key for chunk in chunk_graph.result_chunks}
         chunk_key_ref_count = monitor_context.chunk_key_ref_count
@@ -1032,11 +1033,9 @@ class RayTaskExecutor(TaskExecutor):
             # Update subtask cost group by the logic key to logic_key_to_subtask_costs.
             for _ in update_subtask_cost:
                 break
-
-            # Collect garbage, use `for ... in ...` to avoid raising StopIteration.
+            # Collect garbage as soon as subtasks are submitted.
             for _ in collect_garbage:
                 break
-
             # Check slow subtasks, after update_subtask_cost.
             if monitor_context.stage == _RayExecutionStage.WAITING:
                 if len(completed_subtasks) > 0 and (
@@ -1070,5 +1069,8 @@ class RayTaskExecutor(TaskExecutor):
                 len(completed_subtasks) / total * self._cur_stage_tile_progress
             )
             self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
+            # Collect garbage as soon as subtasks are completed.
+            for _ in collect_garbage:
+                break
             # Fast to next loop and give it a chance to update object_ref_to_subtask.
             await asyncio.sleep(0)
