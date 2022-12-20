@@ -71,7 +71,7 @@ class DataFrameAll(DataFrameReductionOperand, DataFrameReductionMixin):
 
     def __call__(self, df):
         if self.axis is None and isinstance(df, DATAFRAME_TYPE):
-            return self.new_scalar([df], np.bool)
+            return self.new_scalar([df], np.dtype("bool"))
         else:
             return super().__call__(df)
 

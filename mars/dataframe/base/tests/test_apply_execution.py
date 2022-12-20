@@ -234,7 +234,7 @@ def test_apply_execution_with_multi_chunks(setup):
     res = mdf.apply(apply_func, output_type="df_or_series", axis=0).execute()
     assert res.data_type == "dataframe"
     assert "dtypes" in res.data_params
-    assert res.data_params["dtypes"]["c1"] == np.dtype(np.float)
+    assert res.data_params["dtypes"]["c1"] == np.dtype("float")
     assert not ("dtype" in res.data_params)
     assert res.data_params["shape"] == (4, 2)
     pd.testing.assert_frame_equal(res.fetch(), df.apply(apply_func, axis=0))
@@ -242,7 +242,7 @@ def test_apply_execution_with_multi_chunks(setup):
     res = mdf.apply(apply_func, output_type="df_or_series", axis=1).execute()
     assert res.data_type == "dataframe"
     assert "dtypes" in res.data_params
-    assert res.data_params["dtypes"]["c2"] == np.dtype(np.float)
+    assert res.data_params["dtypes"]["c2"] == np.dtype("float")
     assert not ("dtype" in res.data_params)
     assert res.data_params["shape"] == (4, 2)
     pd.testing.assert_frame_equal(res.fetch(), df.apply(apply_func, axis=1))

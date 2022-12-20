@@ -166,7 +166,7 @@ def test_series_map_execution(setup):
     r = s.map({5: 10}, skip_infer=True)
     assert r.dtype is None
     result = r.execute().fetch()
-    assert np.issubdtype(r.dtype, np.float)
+    assert np.issubdtype(r.dtype, np.dtype("float"))
     expected = raw.map({5: 10})
     pd.testing.assert_series_equal(result, expected)
 
@@ -2035,7 +2035,7 @@ def test_map_chunk_with_df_or_series_output(setup):
         assert isinstance(res, DATAFRAME_OR_SERIES_TYPE)
         res = res.execute()
         assert res.data_type == "series"
-        assert res.dtype == np.float
+        assert res.dtype == np.dtype("float")
         assert not ("dtypes" in res.data_params)
         assert res.shape == (4,)
         pd.testing.assert_series_equal(
