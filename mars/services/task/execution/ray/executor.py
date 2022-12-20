@@ -370,7 +370,12 @@ class _RayMonitorContext:
     )
 
 
-class _SlowSubtaskChecker:
+@dataclass
+class _RaySubtaskRuntime:
+    start_time: float = 0.0
+
+
+class _RaySlowSubtaskChecker:
     @dataclass
     class _CheckInfo:
         count: int
@@ -395,12 +400,12 @@ class _SlowSubtaskChecker:
             curr_time = time.time()
             while i < len(self._submitted_subtasks):
                 subtask = self._submitted_subtasks[i]
-                subtask.rerun_time = curr_time
+                subtask.runtime.start_time = curr_time
                 i += 1
             while j < len(self._completed_subtasks):
                 subtask = self._completed_subtasks[j]
                 self._logic_key_to_subtask_costs[subtask.logic_key].append(
-                    curr_time - subtask.rerun_time
+                    curr_time - subtask.runtime.start_time
                 )
                 j += 1
             yield
@@ -424,13 +429,13 @@ class _SlowSubtaskChecker:
             arr = np.array(subtask_costs)
             q1, q3 = np.quantile(arr, 0.25), np.quantile(arr, 0.75)
             upper = q3 + 3 * (q3 - q1)
-            self._logic_key_to_check_info[logic_key] = _SlowSubtaskChecker._CheckInfo(
-                complete_count, upper
-            )
+            self._logic_key_to_check_info[
+                logic_key
+            ] = _RaySlowSubtaskChecker._CheckInfo(complete_count, upper)
         else:
             upper = check_info.upper
-        assert subtask.rerun_time > 0
-        return time.time() - subtask.rerun_time > upper
+        assert subtask.runtime.start_time > 0
+        return time.time() - subtask.runtime.start_time > upper
 
 
 @register_executor_cls
@@ -616,6 +621,9 @@ class RayTaskExecutor(TaskExecutor):
             )
         )
         try:
+            # Previous execution may have duplicate tileable ids, the tileable may be decref
+            # during execution, so we should track and incref the result tileables before execute.
+            await self._result_tileables_lifecycle.incref_tiled()
             return await self._execute_subtask_graph(
                 stage_id, subtask_graph, chunk_graph, monitor_context
             )
@@ -642,16 +650,12 @@ class RayTaskExecutor(TaskExecutor):
         monitor_context: _RayMonitorContext,
     ) -> Dict[Chunk, ExecutionChunkResult]:
         task_context = self._task_context
-        output_meta_object_refs = []
         self._pre_all_stages_tile_progress = (
             self._pre_all_stages_tile_progress + self._cur_stage_tile_progress
         )
         self._cur_stage_tile_progress = (
             self._tile_context.get_all_progress() - self._pre_all_stages_tile_progress
         )
-        # Previous execution may have duplicate tileable ids, the tileable may be decref
-        # during execution, so we should track and incref the result tileables before execute.
-        await self._result_tileables_lifecycle.incref_tiled()
         shuffle_manager = ShuffleManager(subtask_graph)
         monitor_context.stage = _RayExecutionStage.SUBMITTING
         monitor_context.shuffle_manager = shuffle_manager
@@ -669,6 +673,7 @@ class RayTaskExecutor(TaskExecutor):
             "task_id": self._task.task_id,
             "stage_id": stage_id,
         }
+        output_meta_object_refs = []
         for subtask in subtask_graph.topological_iter():
             if subtask.virtual:
                 continue
@@ -711,6 +716,7 @@ class RayTaskExecutor(TaskExecutor):
             submitted_subtask_number.record(1, metrics_tags)
             monitor_context.submitted_subtasks.add(subtask)
             monitor_context.object_ref_to_subtask[output_object_refs[0]] = subtask
+            subtask.runtime = _RaySubtaskRuntime()
             if subtask.stage_n_outputs:
                 meta_object_ref, *output_object_refs = output_object_refs
                 # TODO(fyrestone): Fetch(not get) meta object here.
@@ -897,7 +903,7 @@ class RayTaskExecutor(TaskExecutor):
         result_chunk_keys = {chunk.key for chunk in chunk_graph.result_chunks}
         chunk_key_ref_count = monitor_context.chunk_key_ref_count
         object_ref_to_subtask = monitor_context.object_ref_to_subtask
-        slow_subtask_checker = _SlowSubtaskChecker(
+        slow_subtask_checker = _RaySlowSubtaskChecker(
             total, submitted_subtasks, completed_subtasks
         )
 

@@ -41,7 +41,6 @@ class Task(Serializable):
     session_id: str = StringField("session_id")
     tileable_graph: TileableGraph = ReferenceField("tileable_graph", TileableGraph)
     fuse_enabled: bool = BoolField("fuse_enabled")
-    rerun_time: int = Int32Field("rerun_time")
     extra_config: dict = DictField("extra_config")
 
     def __init__(
@@ -50,7 +49,6 @@ class Task(Serializable):
         session_id: str = None,
         tileable_graph: TileableGraph = None,
         fuse_enabled: bool = True,
-        rerun_time: int = 0,
         extra_config: dict = None,
     ):
         super().__init__(
@@ -58,7 +56,6 @@ class Task(Serializable):
             session_id=session_id,
             tileable_graph=tileable_graph,
             fuse_enabled=fuse_enabled,
-            rerun_time=rerun_time,
             extra_config=extra_config,
         )
 

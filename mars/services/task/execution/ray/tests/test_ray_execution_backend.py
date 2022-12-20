@@ -49,7 +49,8 @@ from ..executor import (
     RayTaskExecutor,
     RayTaskState,
     _RayChunkMeta,
-    _SlowSubtaskChecker,
+    _RaySubtaskRuntime,
+    _RaySlowSubtaskChecker,
 )
 from ..fetcher import RayFetcher
 from ..shuffle import ShuffleManager
@@ -635,16 +636,18 @@ async def test_slow_subtask_checker():
     subtasks = [
         Subtask(str(i), logic_key=f"logic_key1", logic_parallelism=5) for i in range(5)
     ]
+    for s in subtasks:
+        s.runtime = _RaySubtaskRuntime()
     submitted = OrderedSet()
     completed = OrderedSet()
     now = time.time()
-    checker = _SlowSubtaskChecker(5, submitted, completed)
+    checker = _RaySlowSubtaskChecker(5, submitted, completed)
     updater = checker.update()
     for s in subtasks:
         submitted.add(s)
     for _ in updater:
         break
-    assert all(s.rerun_time >= now for s in subtasks)
+    assert all(s.runtime.start_time >= now for s in subtasks)
     await asyncio.sleep(0.01)
     assert not any(checker.is_slow(s) for s in subtasks)
     completed.add(subtasks[0])
