@@ -184,10 +184,8 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
         # if more than 3d, we will rechunk the tensor into square chunk
         # on the diagonal direction
         in_tensor = op.input
-        nsplits = np.array(in_tensor.nsplits)
-        if not np.issubdtype(nsplits.dtype, np.integer) or not np.all(
-            np.diff(nsplits, axis=1) == 0
-        ):
+        nsplits = [tuple(np.array(split)) for split in in_tensor.nsplits]
+        if len(set(nsplits)) != 1:
             # need rechunk
             nsplit = decide_unify_split(*in_tensor.nsplits)
             in_tensor = yield from recursive_tile(
