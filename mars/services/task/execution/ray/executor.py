@@ -422,7 +422,7 @@ class _RaySlowSubtaskChecker:
             return False
         subtask_costs = self._logic_key_to_subtask_costs[logic_key]
         complete_count = len(subtask_costs)
-        if complete_count / logic_parallelism < 0.8:
+        if complete_count / logic_parallelism < 0.75:
             # Too few complete subtasks.
             return False
         check_info = self._logic_key_to_check_info.get(logic_key)
@@ -1030,10 +1030,17 @@ class RayTaskExecutor(TaskExecutor):
                 fetch_local=False,
             )
 
+            # Pop the completed subtasks from object_ref_to_subtask.
+            completed_subtasks.update(map(object_ref_to_subtask.pop, ready_objects))
+            # Update progress.
+            stage_progress = (
+                len(completed_subtasks) / total * self._cur_stage_tile_progress
+            )
+            self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
             # Update subtask cost group by the logic key to logic_key_to_subtask_costs.
             for _ in update_subtask_cost:
                 break
-            # Collect garbage as soon as subtasks are submitted.
+            # Collect garbage, use `for ... in ...` to avoid raising StopIteration.
             for _ in collect_garbage:
                 break
             # Check slow subtasks, after update_subtask_cost.
@@ -1057,20 +1064,5 @@ class RayTaskExecutor(TaskExecutor):
                             "No slow tasks in %s unready tasks.", len(unready_objects)
                         )
                     last_check_slow_time = curr_time
-
-            if len(ready_objects) == 0:
-                await asyncio.sleep(interval_seconds)
-                continue
-
-            # Pop the completed subtasks from object_ref_to_subtask.
-            completed_subtasks.update(map(object_ref_to_subtask.pop, ready_objects))
-            # Update progress.
-            stage_progress = (
-                len(completed_subtasks) / total * self._cur_stage_tile_progress
-            )
-            self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
-            # Collect garbage as soon as subtasks are completed.
-            for _ in collect_garbage:
-                break
             # Fast to next loop and give it a chance to update object_ref_to_subtask.
-            await asyncio.sleep(0)
+            await asyncio.sleep(interval_seconds if len(ready_objects) == 0 else 0)

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import collections
 import time
 
 import pandas as pd
@@ -663,3 +664,63 @@ async def test_slow_subtask_checker():
     assert not checker.is_slow(subtasks[4])
     await asyncio.sleep(0.1)
     assert checker.is_slow(subtasks[4])
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_execute_slow_task(ray_start_regular_shared2):
+    t1 = mt.random.randint(10, size=(100, 10), chunk_size=10)
+    t2 = mt.random.randint(10, size=(100, 10), chunk_size=30)
+    t3 = t2 + t1
+    t4 = t3.sum(0)
+    chunk_graph, subtask_graph = _gen_subtask_graph(t4)
+    task = Task("mock_task", "mock_session", TileableGraph([]), fuse_enabled=True)
+    mock_config = RayExecutionConfig.from_execution_config(
+        {
+            "backend": "ray",
+            "ray": {
+                "monitor_interval_seconds": 0,
+                "log_interval_seconds": 0,
+                "check_slow_subtasks_interval_seconds": 0,
+                "subtask_max_retries": 0,
+                "n_cpu": 1,
+                "n_worker": 1,
+            },
+        }
+    )
+    tile_context = MockTileContext()
+    executor = MockRayTaskExecutor(
+        config=mock_config,
+        task=task,
+        tile_context=tile_context,
+        task_context={},
+        task_chunks_meta={},
+        lifecycle_api=None,
+        meta_api=None,
+    )
+    slow_subtask_id = list(subtask_graph)[-1].subtask_id
+
+    def mock_execute_subtask(subtask_id, *args):
+        if subtask_id == slow_subtask_id:
+            time.sleep(0.1)
+        return execute_subtask(subtask_id, *args)
+
+    executor._ray_executor = ray.remote(mock_execute_subtask)
+
+    with mock.patch("logging.Logger.info") as log_patch:
+        async with executor:
+            await executor.execute_subtask_graph(
+                "mock_stage2", subtask_graph, chunk_graph, tile_context
+            )
+            await asyncio.sleep(0)
+            assert len(executor.monitor_tasks()) == 1
+            assert executor.monitor_tasks()[0].done()
+        assert log_patch.call_count > 0
+        log_str_to_args = collections.defaultdict(set)
+        slow_ray_object_refs = set()
+        for c in log_patch.call_args_list:
+            if c.args[0] == "Slow tasks(%s): %s":
+                count, object_refs = c.args[1:]
+                assert count == 1
+                slow_ray_object_refs.update(object_refs)
+        assert len(slow_ray_object_refs) == 1
