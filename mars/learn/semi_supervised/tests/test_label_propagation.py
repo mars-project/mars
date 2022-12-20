@@ -17,7 +17,7 @@ import pytest
 from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 from sklearn.exceptions import ConvergenceWarning
-from sklearn.utils._testing import assert_no_warnings, assert_warns
+from sklearn.utils._testing import assert_no_warnings
 
 from .... import tensor as mt
 from ...metrics.pairwise import rbf_kernel
@@ -103,7 +103,8 @@ def test_convergence_warning(setup):
     y = np.array([0, 1, -1])
 
     mdl = LabelPropagation(kernel="rbf", max_iter=1)
-    assert_warns(ConvergenceWarning, mdl.fit, X, y)
+    with pytest.warns(ConvergenceWarning):
+        mdl.fit(X, y)
     assert mdl.n_iter_ == mdl.max_iter
 
     mdl = LabelPropagation(kernel="rbf", max_iter=500)

@@ -24,7 +24,6 @@ try:
     from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
     from sklearn.neighbors import BallTree as SkBallTree
     from sklearn.neighbors import KDTree as SkKDTree
-    from sklearn.utils._testing import assert_warns
 except ImportError:  # pragma: no cover
     SkNearestNeighbors = None
 
@@ -66,7 +65,8 @@ def test_nearest_neighbors(setup):
     with pytest.raises(ValueError):
         _ = NearestNeighbors(algorithm="auto", metric="unknown")
 
-    assert_warns(SyntaxWarning, NearestNeighbors, metric_params={"p": 1})
+    with pytest.warns(SyntaxWarning):
+        NearestNeighbors(metric_params={"p": 1})
 
     with pytest.raises(ValueError):
         _ = NearestNeighbors(metric="wminkowski", p=0)
@@ -105,7 +105,8 @@ def test_nearest_neighbors(setup):
         nn.fit(np.random.rand(0, 10))
 
     nn = NearestNeighbors(algorithm="ball_tree")
-    assert_warns(UserWarning, nn.fit, X_sparse)
+    with pytest.warns(UserWarning):
+        nn.fit(X_sparse)
 
     nn = NearestNeighbors(metric="haversine")
     with pytest.raises(ValueError):

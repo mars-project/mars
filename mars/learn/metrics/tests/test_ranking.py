@@ -27,7 +27,6 @@ from sklearn.metrics.tests.test_ranking import make_prediction, _auc
 from sklearn.exceptions import UndefinedMetricWarning
 from sklearn.utils import check_random_state
 from sklearn.utils._testing import (
-    assert_warns,
     assert_almost_equal,
     assert_array_almost_equal,
 )
@@ -166,14 +165,16 @@ def test_roc_curve_one_label(setup):
     y_pred = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1]
     # assert there are warnings
     w = UndefinedMetricWarning
-    fpr, tpr, thresholds = assert_warns(w, roc_curve, y_true, y_pred)
+    with pytest.warns(w):
+        fpr, tpr, thresholds = roc_curve(y_true, y_pred)
     # all true labels, all fpr should be nan
     np.testing.assert_array_equal(fpr.fetch(), np.full(len(thresholds), np.nan))
     assert fpr.shape == tpr.shape
     assert fpr.shape == thresholds.shape
 
     # assert there are warnings
-    fpr, tpr, thresholds = assert_warns(w, roc_curve, [1 - x for x in y_true], y_pred)
+    with pytest.warns(w):
+        fpr, tpr, thresholds = roc_curve([1 - x for x in y_true], y_pred)
     # all negative labels, all tpr should be nan
     np.testing.assert_array_equal(tpr.fetch(), np.full(len(thresholds), np.nan))
     assert fpr.shape == tpr.shape
