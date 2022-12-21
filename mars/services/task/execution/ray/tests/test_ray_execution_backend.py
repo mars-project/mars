@@ -701,7 +701,7 @@ async def test_execute_slow_task(ray_start_regular_shared2):
 
     def mock_execute_subtask(subtask_id, *args):
         if subtask_id == slow_subtask_id:
-            time.sleep(0.1)
+            time.sleep(1)
         return execute_subtask(subtask_id, *args)
 
     executor._ray_executor = ray.remote(mock_execute_subtask)
