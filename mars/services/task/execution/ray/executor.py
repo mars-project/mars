@@ -1057,7 +1057,9 @@ class RayTaskExecutor(TaskExecutor):
                             slow_objects.append(obj)
                     if len(slow_objects) > 0:
                         logger.info(
-                            "Slow tasks(%s): %s", len(slow_objects), slow_objects[:5]
+                            "Slow tasks(%s): %s",
+                            len(slow_objects),
+                            [o.task_id() for o in slow_objects[:5]],
                         )
                     else:
                         logger.debug(
