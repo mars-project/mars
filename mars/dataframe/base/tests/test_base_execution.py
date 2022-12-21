@@ -1933,7 +1933,7 @@ def test_map_chunk_execution(setup):
         r = df.map_chunk(f3)
         _ = r.execute().fetch()
 
-    r = df.map_chunk(f3, output_type="series")
+    r = df.map_chunk(f3, output_type="series", dtypes=pd.Series([np.int64]))
     result = r.execute(extra_config={"check_dtypes": False}).fetch()
     expected = f3(raw)
     pd.testing.assert_series_equal(result, expected)
@@ -2011,6 +2011,12 @@ def test_map_chunk_execution(setup):
     expected = raw + raw.sum()
     result = r.execute().fetch()
     pd.testing.assert_frame_equal(result, expected)
+
+    def f7(s):
+        return s.to_json()
+
+    with pytest.raises(TypeError):
+        series.map_chunk(f7)
 
 
 def test_map_chunk_with_df_or_series_output(setup):

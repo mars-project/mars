@@ -210,21 +210,12 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                 shape = attrs["shape"]
                 dtypes = attrs["dtypes"]
             except:  # noqa: E722  # nosec
-                if df_or_series.ndim == 1 or output_type == OutputType.series:
-                    output_type = OutputType.series
-                    index = index if index is not None else pd.RangeIndex(-1)
-                    index_value = parse_index(
-                        index, df_or_series, self._func, self._args, self._kwargs
-                    )
-                    dtypes = pd.Series([np.dtype(object)])
-                    shape = (np.nan,)
-                else:
-                    raise TypeError(
-                        "Cannot determine `output_type`, "
-                        "you have to specify it as `dataframe` or `series`, "
-                        "for dataframe, `dtypes` is required as well "
-                        "if output_type='dataframe'"
-                    )
+                raise TypeError(
+                    "Cannot determine `output_type`, "
+                    "you have to specify it as `dataframe` or `series`, "
+                    "for dataframe, `dtypes` is required as well "
+                    "if output_type='dataframe'"
+                )
 
         inputs = (
             [df_or_series]
