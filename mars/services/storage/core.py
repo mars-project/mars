@@ -21,12 +21,13 @@ from typing import Dict, List, Optional, Union, Tuple
 from ... import oscar as mo
 from ...lib.aio import AioFileObject
 from ...oscar.backends.allocate_strategy import IdleLabel, NoIdleSlot
+from ...oscar.errors import DataNotExist
 from ...resource import cuda_card_stats
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.base import ObjectInfo, StorageBackend
 from ...storage.core import StorageFileObject
 from ...utils import dataslots
-from .errors import DataNotExist, StorageFull
+from .errors import StorageFull
 
 logger = logging.getLogger(__name__)
 

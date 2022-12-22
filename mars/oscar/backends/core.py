@@ -66,7 +66,8 @@ class ActorCaller:
                         # close failed, ignore it
                         pass
                     raise ServerClosed(
-                        f"Remote server {client.dest_address} closed"
+                        f"Remote server {client.dest_address} closed",
+                        address=client.dest_address,
                     ) from None
                 future = self._client_to_message_futures[client].pop(message.message_id)
                 future.set_result(message)
@@ -94,7 +95,10 @@ class ActorCaller:
 
         message_futures = self._client_to_message_futures.get(client)
         self._client_to_message_futures[client] = dict()
-        error = ServerClosed(f"Remote server {client.dest_address} closed")
+        error = ServerClosed(
+            f"Remote server {client.dest_address} closed",
+            address=client.dest_address,
+        )
         for future in message_futures.values():
             future.set_exception(copy.copy(error))
 
@@ -119,7 +123,10 @@ class ActorCaller:
                 except ConnectionError:
                     # close failed, ignore it
                     pass
-                raise ServerClosed(f"Remote server {client.dest_address} closed")
+                raise ServerClosed(
+                    f"Remote server {client.dest_address} closed",
+                    address=client.dest_address,
+                )
 
             if not wait:
                 r = wait_response

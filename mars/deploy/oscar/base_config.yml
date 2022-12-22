@@ -57,6 +57,8 @@ scheduling:
     # Max number of concurrent speculative run for a subtask.
     max_concurrent_run: 3
   subtask_cancel_timeout: 5
+  failover:
+    enable_lineage: no
 metrics:
   backend: console
   # If backend is prometheus, then we can add prometheus config as follows:

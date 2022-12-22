@@ -18,10 +18,11 @@ import pytest
 from ..... import oscar as mo
 from ..... import tensor as mt
 from .....core import tile
+from .....oscar.errors import DataNotExist
 from ....cluster import MockClusterAPI
 from ....meta import MockMetaAPI
 from ....session import MockSessionAPI
-from ....storage import MockStorageAPI, DataNotExist
+from ....storage import MockStorageAPI
 from ....task.supervisor.manager import TaskManagerActor
 from ... import TileableNotTracked
 from ...supervisor.tracker import LifecycleTrackerActor

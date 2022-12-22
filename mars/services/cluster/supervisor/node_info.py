@@ -140,20 +140,26 @@ class NodeInfoCollectorActor(mo.Actor):
         statuses = statuses or {NodeStatus.READY}
         role = role or NodeRole.WORKER
         nodes = self._role_to_nodes.get(role, [])
+        return self.get_bands(nodes, statuses)
+
+    def get_bands(
+        self, addresses: List[str], statuses: Set[NodeStatus] = None
+    ) -> Dict[BandType, Resource]:
+        statuses = statuses or {NodeStatus.READY}
         band_resource = dict()
-        for node in nodes:
-            if self._node_infos[node].status not in statuses:
+        for address in addresses:
+            if self._node_infos[address].status not in statuses:
                 continue
-            node_resource = self._node_infos[node].resource
+            node_resource = self._node_infos[address].resource
             for resource_type, info in node_resource.items():
                 if resource_type.startswith("numa"):
                     # cpu
-                    band_resource[(node, resource_type)] = Resource(
+                    band_resource[(address, resource_type)] = Resource(
                         num_cpus=info["cpu_total"], mem_bytes=info["memory_total"]
                     )
                 else:  # pragma: no cover
                     assert resource_type.startswith("gpu")
-                    band_resource[(node, resource_type)] = Resource(
+                    band_resource[(address, resource_type)] = Resource(
                         num_gpus=info["gpu_total"]
                     )
         return band_resource

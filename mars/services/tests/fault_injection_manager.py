@@ -96,3 +96,29 @@ class AbstractFaultInjectionManager(ABC):
         """
         session_api = await SessionAPI.create(supervisor_address)
         await session_api.create_remote_object(session_id, cls.name, cls)
+
+
+async def create_fault_injection_manager(
+    session_id, address, fault_count, fault_type, fault_op_types=None
+):
+    class FaultInjectionManager(AbstractFaultInjectionManager):
+        def __init__(self):
+            self._fault_count = fault_count
+
+        def set_fault_count(self, count):
+            self._fault_count = count
+
+        def get_fault_count(self):
+            return self._fault_count
+
+        def get_fault(self, pos: FaultPosition, ctx=None) -> FaultType:
+            # Check op types if fault_op_types provided.
+            if fault_op_types and type(ctx.get("operand")) not in fault_op_types:
+                return FaultType.NoFault
+            if self._fault_count.get(pos, 0) > 0:
+                self._fault_count[pos] -= 1
+                return fault_type
+            return FaultType.NoFault
+
+    await FaultInjectionManager.create(session_id, address)
+    return FaultInjectionManager.name

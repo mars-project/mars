@@ -53,6 +53,7 @@ class MockSubtaskQueueingActor(mo.Actor):
         priorities: List[Tuple],
         exclude_bands: Set[Tuple] = None,
         random_when_unavailable: bool = True,
+        schedule_lost_objects: bool = False,
     ):
         if self._error is not None:
             raise self._error

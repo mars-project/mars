@@ -216,6 +216,8 @@ class AssignerActor(mo.Actor):
     async def reassign_subtasks(
         self, band_to_queued_num: Dict[BandType, int]
     ) -> Dict[BandType, int]:
+        # Note: bands may change
+        self._update_bands(list(await self._cluster_api.get_all_bands(NodeRole.WORKER)))
         move_queued_subtasks = {}
         for is_gpu in (False, True):
             band_name_prefix = "numa" if not is_gpu else "gpu"

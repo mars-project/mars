@@ -19,11 +19,14 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Union
 
+from ... import NodeRole
+from ...cluster.core import NodeStatus
+from ...cluster.supervisor.node_info import NodeInfoCollectorActor
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....metrics import Metrics
 from ....oscar.backends.context import ProfilingContext
-from ....oscar.errors import MarsError
+from ....oscar.errors import MarsError, ServerClosed, DuplicatedSubtaskError
 from ....oscar.profiling import ProfilingData, MARS_ENABLE_PROFILING
 from ....typing import BandType
 from ....utils import dataslots, Timer
@@ -123,6 +126,11 @@ class SubtaskManagerActor(mo.Actor):
         )
         await self._speculation_execution_scheduler.start()
 
+        self._node_info_ref = await mo.actor_ref(
+            NodeInfoCollectorActor.default_uid(),
+            address=self.address,
+        )
+
     async def __pre_destroy__(self):
         await self._speculation_execution_scheduler.stop()
 
@@ -130,7 +138,12 @@ class SubtaskManagerActor(mo.Actor):
     async def _get_task_api(self):
         return await TaskAPI.create(self._session_id, self.address)
 
-    async def add_subtasks(self, subtasks: List[Subtask], priorities: List[Tuple]):
+    async def add_subtasks(
+        self,
+        subtasks: List[Subtask],
+        priorities: List[Tuple],
+        schedule_lost_objects: bool = False,
+    ):
         async with redirect_subtask_errors(self, subtasks):
             for subtask in subtasks:
                 # the extra_config may be None. the extra config overwrites the default value.
@@ -142,7 +155,9 @@ class SubtaskManagerActor(mo.Actor):
                 if subtask_max_reschedules is None:
                     subtask_max_reschedules = self._subtask_max_reschedules
                 if subtask.subtask_id in self._subtask_infos:  # pragma: no cover
-                    raise KeyError(f"Subtask {subtask.subtask_id} already added.")
+                    raise DuplicatedSubtaskError(
+                        f"Subtask {subtask.subtask_id} already added."
+                    )
                 self._subtask_infos[subtask.subtask_id] = SubtaskScheduleInfo(
                     subtask, max_reschedules=subtask_max_reschedules
                 )
@@ -161,7 +176,9 @@ class SubtaskManagerActor(mo.Actor):
                     )
                 )
             await self._queueing_ref.add_subtasks(
-                [subtask for subtask in subtasks if not subtask.virtual], priorities
+                [subtask for subtask in subtasks if not subtask.virtual],
+                priorities,
+                schedule_lost_objects=schedule_lost_objects,
             )
             await self._queueing_ref.submit_subtasks.tell()
 
@@ -177,7 +194,7 @@ class SubtaskManagerActor(mo.Actor):
         bands: List[BandType] = None,
         schedule_next: bool = True,
     ):
-        logger.debug("Finished subtasks %s.", subtask_ids)
+        logger.debug("Finished subtasks %s in bands %s.", subtask_ids, bands)
         band_tasks = defaultdict(lambda: 0)
         bands = bands or [None] * len(subtask_ids)
         for subtask_id, subtask_band in zip(subtask_ids, bands):
@@ -202,7 +219,7 @@ class SubtaskManagerActor(mo.Actor):
                     await aio_task
                     if schedule_next:
                         band_tasks[subtask_band] += 1
-                if subtask_info.band_futures:
+                if subtask_band is not None and subtask_info.band_futures:
                     # Cancel subtask here won't change subtask status.
                     # See more in `TaskProcessorActor.set_subtask_result`
                     logger.info(
@@ -268,7 +285,12 @@ class SubtaskManagerActor(mo.Actor):
                         "stage_id": subtask_info.subtask.stage_id,
                     },
                 )
-                logger.debug("Start run subtask %s in band %s.", subtask_id, band)
+                logger.debug(
+                    "Start run subtask %s of stage %s in band %s.",
+                    subtask_id,
+                    subtask_info.subtask.stage_id,
+                    band,
+                )
                 with Timer() as timer:
                     task = asyncio.create_task(
                         execution_ref.run_subtask.options(
@@ -283,10 +305,44 @@ class SubtaskManagerActor(mo.Actor):
                     subtask_info.subtask, band, timer.duration
                 )
                 task_api = await self._get_task_api()
-                logger.debug("Finished subtask %s with result %s.", subtask_id, result)
+                logger.debug(
+                    "Finished subtask %s of stage %s with result %s in band %s.",
+                    subtask_id,
+                    subtask_info.subtask.stage_id,
+                    result.status,
+                    band,
+                )
                 await task_api.set_subtask_result(result)
             except (OSError, MarsError) as ex:
-                # TODO: We should handle ServerClosed Error.
+                if isinstance(ex, ServerClosed):
+                    # 1. reassign subtasks of closed node
+                    band_resource = await self._node_info_ref.get_bands([ex.address])
+                    logger.debug("Got bands %s of node %s.", band_resource, ex.address)
+                    for band in band_resource.keys():
+                        reassigned_queue = await self._queueing_ref.get_band_queue(band)
+                        reassigned_subtasks = []
+                        priorities = []
+                        for item in reassigned_queue:
+                            reassigned_subtasks.append(item.subtask)
+                            priorities.append(item.subtask.priority)
+                        await self._queueing_ref.add_subtasks(
+                            reassigned_subtasks,
+                            priorities,
+                            exclude_bands=set([band]),
+                        )
+                        await self._queueing_ref.remove_queue_from_band(band)
+                        logger.info(
+                            "Reassigned %d subtasks of band %s to other nodes.",
+                            len(reassigned_subtasks),
+                            band,
+                        )
+                    # 2. mark closed node stopped
+                    await self._node_info_ref.update_node_info(
+                        address=ex.address,
+                        role=NodeRole.WORKER,
+                        status=NodeStatus.STOPPED,
+                    )
+                    logger.info("Node %s marked as stopped.", ex.address)
                 if (
                     subtask_info.subtask.retryable
                     and subtask_info.num_reschedules < subtask_info.max_reschedules

@@ -15,6 +15,7 @@
 import asyncio
 import logging
 import sys
+import weakref
 from collections import defaultdict
 from typing import Dict, List, Optional, Set
 
@@ -36,6 +37,7 @@ from .....typing import TileableType, BandType
 from .....utils import Timer
 from ....context import ThreadedServiceContext
 from ....cluster.api import ClusterAPI
+from ....cluster.core import NodeStatus
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
 from ....scheduling import SchedulingAPI
@@ -93,7 +95,7 @@ class MarsTaskExecutor(TaskExecutor):
         self._meta_api = meta_api
 
         self._stage_processors = []
-        self._stage_tile_progresses = []
+		self._stage_id_to_processor = weakref.WeakValueDictionary()
         self._cur_stage_processor = None
         self._result_tileables_lifecycle = None
         self._subtask_decref_events = dict()
@@ -192,6 +194,7 @@ class MarsTaskExecutor(TaskExecutor):
         await self._incref_stage(stage_processor)
         await self._resource_evaluator.evaluate(stage_processor)
         self._stage_processors.append(stage_processor)
+        self._stage_id_to_processor[stage_id] = stage_processor
         self._cur_stage_processor = stage_processor
         # get the tiled progress for current stage
         prev_progress = sum(self._stage_tile_progresses)
@@ -250,50 +253,43 @@ class MarsTaskExecutor(TaskExecutor):
             await self._cur_stage_processor.cancel()
 
     async def set_subtask_result(self, subtask_result: SubtaskResult):
-        if self._cur_stage_processor is None or (
-            subtask_result.stage_id
-            and self._cur_stage_processor.stage_id != subtask_result.stage_id
-        ):
-            logger.warning(
-                "Stage %s for subtask %s not exists, got stale subtask result %s which may be "
-                "speculative execution from previous stages, just ignore it.",
-                subtask_result.stage_id,
-                subtask_result.subtask_id,
-                subtask_result,
-            )
-            return
-        stage_processor = self._cur_stage_processor
+        stage_processor = (
+            self._cur_stage_processor
+            or self._stage_id_to_processor[subtask_result.stage_id]
+        )
         subtask = stage_processor.subtask_id_to_subtask[subtask_result.subtask_id]
 
         prev_result = stage_processor.subtask_results.get(subtask)
-        if prev_result and (
-            prev_result.status == SubtaskStatus.succeeded
-            or prev_result.progress > subtask_result.progress
-        ):
-            logger.info(
-                "Skip set subtask %s with result %s, previous result is %s.",
-                subtask.subtask_id,
-                subtask_result,
-                prev_result,
+        if prev_result and prev_result.bands and prev_result.bands[0] is not None:
+            logger.debug(
+                "Previous result of subtask %s is %s.", subtask.subtask_id, prev_result
             )
-            # For duplicate run of subtasks, if the progress is smaller or the subtask has finished or canceled
-            # in task speculation, just do nothing.
-            # TODO(chaokunyang) If duplicate run of subtasks failed, it may be the fault in worker node,
-            #  print the exception, and if multiple failures on the same node, remove the node from the cluster.
-            return
+            if (
+                subtask_result.status == SubtaskStatus.cancelled
+                or prev_result.progress > subtask_result.progress
+            ):
+                logger.info(
+                    "Skip set subtask %s with result %s, previous result is %s.",
+                    subtask.subtask_id,
+                    subtask_result,
+                    prev_result,
+                )
+                # For duplicate run of subtasks, if the progress is smaller or the subtask has finished or canceled
+                # in task speculation, just do nothing.
+                # TODO(chaokunyang) If duplicate run of subtasks failed, it may be the fault in worker node,
+                #  print the exception, and if multiple failures on the same node, remove the node from the cluster.
+                return
+
         if subtask_result.bands:
             [band] = subtask_result.bands
         else:
             band = None
-        stage_processor.subtask_snapshots[subtask] = subtask_result.update(
-            stage_processor.subtask_snapshots.get(subtask)
-        )
+
+        stage_processor.subtask_snapshots[subtask] = subtask_result
         if subtask_result.status.is_done:
             # update stage_processor.subtask_results to avoid concurrent set_subtask_result
             # since we release lock when `_decref_input_subtasks`.
-            stage_processor.subtask_results[subtask] = subtask_result.update(
-                stage_processor.subtask_results.get(subtask)
-            )
+            stage_processor.subtask_results[subtask] = subtask_result
             try:
                 # Since every worker will call supervisor to set subtask result,
                 # we need to release actor lock to make `decref_chunks` parallel to avoid blocking
@@ -322,6 +318,9 @@ class MarsTaskExecutor(TaskExecutor):
 
     def get_stage_processors(self):
         return self._stage_processors
+
+    def get_stage_generation_order(self, stage_id):
+        return self._stage_id_to_processor[stage_id].generation_order
 
     async def _incref_fetch_tileables(self):
         # incref fetch tileables in tileable graph to prevent them from deleting

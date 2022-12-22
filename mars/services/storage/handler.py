@@ -18,6 +18,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Union
 
 from ... import oscar as mo
+from ...oscar.errors import DataNotExist
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.core import StorageFileObject
 from ...typing import BandType
@@ -31,7 +32,7 @@ from .core import (
     build_data_info,
     WrappedStorageFileObject,
 )
-from .errors import DataNotExist, NoDataToSpill
+from .errors import NoDataToSpill
 
 cupy = lazy_import("cupy")
 cudf = lazy_import("cudf")

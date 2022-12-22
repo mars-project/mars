@@ -505,7 +505,8 @@ class RayServer(Server):
         if self.stopped:
             raise ServerClosed(
                 f"Remote server {self.address} closed, but got message {message} "
-                f"from channel {channel_id}"
+                f"from channel {channel_id}",
+                address=self.address,
             )
         channel = self._channels.get(channel_id)
         if not channel:

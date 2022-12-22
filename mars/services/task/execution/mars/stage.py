@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import importlib
 import itertools
 import logging
 import time
@@ -22,11 +23,15 @@ from typing import Dict, List
 from ..... import oscar as mo
 from .....core import ChunkGraph, Chunk
 from .....core.operand import Fuse, Fetch
+from .....oscar import ServerClosed
 from .....metrics import Metrics
+from .....oscar.errors import DuplicatedSubtaskError, DataNotExist
 from .....utils import get_chunk_params
 from .....typing import BandType, TileableType
+from ....context import FailOverContext
 from ....meta import MetaAPI, WorkerMetaAPI
 from ....scheduling import SchedulingAPI
+
 from ....subtask import Subtask, SubtaskGraph, SubtaskResult, SubtaskStatus
 from ....task.core import Task, TaskResult, TaskStatus
 from ..api import ExecutionChunkResult
@@ -50,6 +55,7 @@ class TaskStageProcessor:
         self.task = task
         self.chunk_graph = chunk_graph
         self.subtask_graph = subtask_graph
+        self.generation_order = next(self.task.counter)
         self._bands = bands
         self._tile_context = tile_context
 
@@ -140,71 +146,146 @@ class TaskStageProcessor:
         #  update subtask_results in `TaskProcessorActor.set_subtask_result`
         self._submitted_subtask_ids.difference_update([result.subtask_id])
 
-        all_done = len(self.subtask_results) == len(self.subtask_graph)
-        error_or_cancelled = result.status in (
-            SubtaskStatus.errored,
-            SubtaskStatus.cancelled,
+        finished = len(self.subtask_results) == len(self.subtask_graph) and all(
+            r.status == SubtaskStatus.succeeded for r in self.subtask_results.values()
+        )
+        errored = result.status == SubtaskStatus.errored
+        cancelled = result.status == SubtaskStatus.cancelled
+
+        logger.debug(
+            "Setting subtask %s, finished: %s, errored: %s, cancelled: %s, "
+            "subtask_results len: %d, subtask_graph len: %d, "
+            "result status: %s, self.result.status: %s, "
+            "task id: %s, stage id: %s.",
+            subtask,
+            finished,
+            errored,
+            cancelled,
+            len(self.subtask_results),
+            len(self.subtask_graph),
+            result.status,
+            self.result.status,
+            self.task.task_id,
+            self.stage_id,
         )
 
-        if all_done or error_or_cancelled:
-            # tell scheduling to finish subtasks
+        if finished and self.result.status != TaskStatus.terminated:
+            logger.info(
+                "Stage %s of task %s is finished.", self.stage_id, self.task.task_id
+            )
             await self._scheduling_api.finish_subtasks(
-                [result.subtask_id], bands=[band], schedule_next=not error_or_cancelled
+                [result.subtask_id], bands=[band], schedule_next=False
+            )
+
+            # Note: Should trigger subtasks which dependent on the finished subtask
+            await self._try_trigger_subtasks(subtask)
+
+            self.result = TaskResult(
+                self.task.task_id,
+                self.task.session_id,
+                self.stage_id,
+                start_time=self.result.start_time,
+                end_time=time.time(),
+                status=TaskStatus.terminated,
+                error=result.error,
+                traceback=result.traceback,
+            )
+            self._schedule_done()
+            cost_time_secs = self.result.end_time - self.result.start_time
+            logger.info(
+                "Time consuming to execute a stage is %ss with "
+                "session id %s, task id %s, stage id %s",
+                cost_time_secs,
+                self.result.session_id,
+                self.result.task_id,
+                self.result.stage_id,
+            )
+            self._stage_execution_time.record(
+                cost_time_secs,
+                {
+                    "session_id": self.result.session_id,
+                    "task_id": self.result.task_id,
+                    "stage_id": self.result.stage_id,
+                },
+            )
+        elif errored:
+            self.result = TaskResult(
+                self.task.task_id,
+                self.task.session_id,
+                self.stage_id,
+                start_time=self.result.start_time,
+                end_time=time.time(),
+                status=TaskStatus.errored,
+                error=result.error,
+                traceback=result.traceback,
+            )
+            logger.exception(
+                "Subtask %s errored",
+                subtask.subtask_id,
+                exc_info=(
+                    type(result.error),
+                    result.error,
+                    result.traceback,
+                ),
+            )
+            ret = await self._detect_error(
+                subtask,
+                result.error,
+                (
+                    ServerClosed,
+                    DataNotExist,
+                ),
+            )
+            if ret:
+                await self._scheduling_api.finish_subtasks(
+                    [result.subtask_id],
+                    bands=[band],
+                    schedule_next=True,
+                )
+                return
+            else:
+                await self._scheduling_api.finish_subtasks(
+                    [result.subtask_id],
+                    bands=[band],
+                    schedule_next=False,
+                )
+                logger.info(
+                    "Unable to recover data and start to "
+                    "cancel stage %s of task %s.",
+                    self.stage_id,
+                    self.task,
+                )
+                await self.cancel()
+        elif cancelled:
+            await self._scheduling_api.finish_subtasks(
+                [result.subtask_id], bands=[band], schedule_next=False
+            )
+            logger.warning(
+                "Subtask %s from band %s cancelled.",
+                subtask.subtask_id,
+                band,
             )
             if self.result.status != TaskStatus.terminated:
-                self.result = TaskResult(
-                    self.task.task_id,
-                    self.task.session_id,
-                    self.stage_id,
-                    start_time=self.result.start_time,
-                    end_time=time.time(),
-                    status=TaskStatus.terminated,
-                    error=result.error,
-                    traceback=result.traceback,
-                )
-                if not all_done and error_or_cancelled:
-                    if result.status == SubtaskStatus.errored:
-                        logger.exception(
-                            "Subtask %s errored",
-                            subtask.subtask_id,
-                            exc_info=(
-                                type(result.error),
-                                result.error,
-                                result.traceback,
-                            ),
-                        )
-                    if result.status == SubtaskStatus.cancelled:  # pragma: no cover
-                        logger.warning(
-                            "Subtask %s from band %s canceled.",
-                            subtask.subtask_id,
-                            band,
-                        )
-                    logger.info(
-                        "Start to cancel stage %s of task %s.", self.stage_id, self.task
-                    )
-                    # if error or cancel, cancel all submitted subtasks
-                    await self._scheduling_api.cancel_subtasks(
-                        list(self._submitted_subtask_ids)
-                    )
-                self._schedule_done()
-                cost_time_secs = self.result.end_time - self.result.start_time
+                self.result.status = TaskStatus.terminated
+                if not self.result.error:
+                    self.result.end_time = time.time()
+                    self.result.error = result.error
+                    self.result.traceback = result.traceback
+
                 logger.info(
-                    "Time consuming to execute a stage is %ss with "
-                    "session id %s, task id %s, stage id %s",
-                    cost_time_secs,
-                    self.result.session_id,
-                    self.result.task_id,
-                    self.result.stage_id,
+                    "Start to cancel stage %s of task %s.",
+                    self.stage_id,
+                    self.task,
                 )
-                self._stage_execution_time.record(
-                    cost_time_secs,
-                    {
-                        "session_id": self.result.session_id,
-                        "task_id": self.result.task_id,
-                        "stage_id": self.result.stage_id,
-                    },
-                )
+                await self.cancel()
         else:
+            await async_call(
+                self._scheduling_api.finish_subtasks([result.subtask_id], bands=[band])
+            )
+            logger.debug(
+                "Continue to schedule subtasks after subtask %s finished.",
+                subtask.subtask_id,
+            )
             # not terminated, push success subtasks to queue if they are ready
             to_schedule_subtasks = []
             for succ_subtask in self.subtask_graph.successors(subtask):
@@ -215,12 +296,22 @@ class TaskStageProcessor:
                     pred_subtask in self.subtask_results
                     for pred_subtask in pred_subtasks
                 ):
-                    # all predecessors finished
                     to_schedule_subtasks.append(succ_subtask)
-            await self._schedule_subtasks(to_schedule_subtasks)
-            await self._scheduling_api.finish_subtasks(
-                [result.subtask_id], bands=[band]
-            )
+
+            for to_schedule_subtask in to_schedule_subtasks:
+                try:
+                    logger.info(
+                        "Start to schedule subtask %s, task id: %s, stage id: %s.",
+                        to_schedule_subtask,
+                        self.task.task_id,
+                        self.stage_id,
+                    )
+                    await async_call(self._schedule_subtasks([to_schedule_subtask]))
+                except KeyError:
+                    logger.exception("Got KeyError.")
+
+            if not to_schedule_subtasks:
+                await self._try_trigger_subtasks(subtask)
 
     async def run(self):
         try:
@@ -255,7 +346,7 @@ class TaskStageProcessor:
 
     async def cancel(self):
         logger.info("Start to cancel stage %s of task %s.", self.stage_id, self.task)
-        if self._done.is_set():  # pragma: no cover
+        if self._done.is_set() or self._cancelled.is_set():  # pragma: no cover
             # already finished, ignore cancel
             return
         self._cancelled.set()
@@ -349,3 +440,159 @@ class TaskStageProcessor:
             for _ in tileable.chunks:
                 params_fields.append(list(fields))
         return params_fields
+
+    async def _detect_error(self, subtask, error, expect_error_cls_tuple):
+        """
+        Detect error and trigger error recovery.
+        For example: `ServerClosed`, `DataNotExist`.
+        Parameters
+        ----------
+        subtask: subtask
+        error: subtask execution error
+        expect_error_cls_tuple: error class or error class tuple
+
+        Returns
+        -------
+        False if could not rerun subtask else True.
+        """
+        if not FailOverContext.is_lineage_enabled():
+            logger.info("Lineage of failover is not enabled.")
+            return False
+        # Note: There are some error that do not need to be handled,
+        # like `DuplicatedSubtaskError`.
+        if isinstance(error, DuplicatedSubtaskError):
+            logger.info("Ignored error %s of subtask %s.", error, subtask.subtask_id)
+            return True
+
+        if isinstance(error, expect_error_cls_tuple):
+            logger.info(
+                "%s detected of subtask %s and try to recover it.",
+                error,
+                subtask.subtask_id,
+            )
+            try:
+                # 1. find dependency subtasks
+                dependency_subtasks = self.subtask_graph.predecessors(subtask)
+                dependency_subtasks_chunk_data_keys = set(
+                    chunk.key
+                    for s in dependency_subtasks
+                    for chunk in s.chunk_graph.result_chunks
+                )
+                subtask_chunk_data_keys = set(
+                    chunk.key
+                    for chunk in subtask.chunk_graph.iter_indep()
+                    if isinstance(chunk.op, Fetch)
+                )
+                diff_chunk_data_keys = (
+                    subtask_chunk_data_keys - dependency_subtasks_chunk_data_keys
+                )
+
+                dependency_subtask_graph_orders = [self.generation_order] * len(
+                    dependency_subtasks
+                )
+
+                # Note: Could not import `TaskManagerActor` directly because of
+                # circular dependency, so use import_module.
+                task_manager_actor_cls = getattr(
+                    importlib.import_module("mars.services.task.supervisor.manager"),
+                    "TaskManagerActor",
+                )
+                task_manager_ref = await mo.actor_ref(
+                    self._scheduling_api.address,
+                    task_manager_actor_cls.gen_uid(subtask.session_id),
+                )
+                for chunk_data_key in diff_chunk_data_keys:
+                    s = await task_manager_ref.get_subtask(chunk_data_key)
+                    if not s.retryable:
+                        logger.info(
+                            "Subtask %s is not retryable, so cannot "
+                            "recover subtask %s.",
+                            s,
+                            subtask,
+                        )
+                        return False
+                    if s not in dependency_subtasks:
+                        order = await task_manager_ref.get_generation_order(
+                            s.task_id, s.stage_id
+                        )
+                        dependency_subtasks.append(s)
+                        dependency_subtask_graph_orders.append(order)
+                        FailOverContext.subtask_to_dependency_subtasks[subtask].add(s)
+
+                # 2. submit the subtask and it's dependency subtasks
+                if not dependency_subtasks:
+                    logger.warning(
+                        "No dependent subtasks to restore of subtask %s.",
+                        subtask.subtask_id,
+                    )
+                    return False
+                priorities = [
+                    (pri,) + s.priority
+                    for s, pri in zip(
+                        dependency_subtasks, dependency_subtask_graph_orders
+                    )
+                ]
+
+                logger.info(
+                    "Rescheduling subtasks %s with priorities %s to restore "
+                    "data, because subtask %s need them.",
+                    dependency_subtasks,
+                    priorities,
+                    subtask,
+                )
+                # Note: May add duplicated subtasks, so should catch exception
+                for s, p in zip(dependency_subtasks, priorities):
+                    try:
+                        await self._scheduling_api.add_subtasks([s], [p], True)
+                    except DuplicatedSubtaskError:
+                        logger.exception(
+                            "Adding dependency subtask %s failed.", s.subtask_id
+                        )
+                return True
+            except:
+                logger.exception("Error recovery failed.")
+                return False
+        else:
+            logger.error("Could not to recover the error: %s", error)
+            return False
+
+    async def _try_trigger_subtasks(self, subtask: Subtask):
+        to_schedule_subtasks = []
+        if FailOverContext.subtask_to_dependency_subtasks:
+            logger.info(
+                "Finding subtasks to be scheduled in history set after subtask %s finished.",
+                subtask.subtask_id,
+            )
+            for (
+                succ_subtask,
+                pred_subtasks,
+            ) in FailOverContext.subtask_to_dependency_subtasks.items():
+                try:
+                    pred_subtasks.remove(subtask)
+                except KeyError:
+                    pass
+                if not pred_subtasks:
+                    to_schedule_subtasks.append(succ_subtask)
+            if to_schedule_subtasks:
+                logger.info(
+                    "Found subtasks %s to be scheduled after subtask %s finished.",
+                    to_schedule_subtasks,
+                    subtask.subtask_id,
+                )
+                for s in to_schedule_subtasks:
+                    FailOverContext.subtask_to_dependency_subtasks.pop(s, None)
+            else:
+                logger.info("No subtasks found to be scheduled.")
+        for to_schedule_subtask in to_schedule_subtasks:
+            try:
+                logger.info(
+                    "Start to schedule subtask %s, task id: %s, stage id: %s.",
+                    to_schedule_subtask,
+                    self.task.task_id,
+                    self.stage_id,
+                )
+                await self._scheduling_api.add_subtasks(
+                    [to_schedule_subtask], [to_schedule_subtask.priority]
+                )
+            except KeyError:
+                logger.exception("Got KeyError.")

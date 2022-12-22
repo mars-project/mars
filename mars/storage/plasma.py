@@ -23,12 +23,12 @@ from typing import Any, Dict, List, Optional, Tuple
 import psutil
 import pyarrow as pa
 
+from ..oscar.errors import DataNotExist
 from ..resource import virtual_memory
 from ..serialization import AioSerializer, AioDeserializer
 from ..utils import implements, dataslots, calc_size_by_str, lazy_import
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
-from .errors import DataNotExist
 
 plasma = lazy_import("pyarrow.plasma", rename="plasma")
 if sys.platform.startswith("win"):
