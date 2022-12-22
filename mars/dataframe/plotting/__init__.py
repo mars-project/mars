@@ -17,10 +17,10 @@ def _install():
     import pandas as pd
 
     from ..base.accessor import CachedAccessor
-    from ..core import DATAFRAME_TYPE, SERIES_TYPE
+    from ..core import DATAFRAME_TYPE, GROUPBY_TYPE, SERIES_TYPE
     from .core import PlotAccessor
 
-    for t in DATAFRAME_TYPE + SERIES_TYPE:
+    for t in DATAFRAME_TYPE + SERIES_TYPE + GROUPBY_TYPE:
         t.plot = CachedAccessor("plot", PlotAccessor)
 
     for method in dir(pd.DataFrame.plot):
