@@ -380,7 +380,7 @@ class _RaySlowSubtaskChecker:
     @dataclass
     class _CheckInfo:
         count: int
-        upper: float
+        duration_threshold: float
 
     def __init__(
         self,
@@ -429,14 +429,14 @@ class _RaySlowSubtaskChecker:
         if check_info is None or check_info.count != complete_count:
             arr = np.array(subtask_costs)
             q1, q3 = np.quantile(arr, 0.25), np.quantile(arr, 0.75)
-            upper = q3 + 3 * (q3 - q1)
+            duration_threshold = q3 + 3 * (q3 - q1)
             self._logic_key_to_check_info[
                 logic_key
-            ] = _RaySlowSubtaskChecker._CheckInfo(complete_count, upper)
+            ] = _RaySlowSubtaskChecker._CheckInfo(complete_count, duration_threshold)
         else:
-            upper = check_info.upper
+            duration_threshold = check_info.duration_threshold
         assert subtask.runtime.start_time > 0
-        return time.time() - subtask.runtime.start_time > upper
+        return time.time() - subtask.runtime.start_time > duration_threshold
 
 
 @register_executor_cls
