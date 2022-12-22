@@ -719,6 +719,6 @@ async def test_execute_slow_task(ray_start_regular_shared2):
         for c in log_patch.call_args_list:
             if c.args[0] == "Slow tasks(%s): %s":
                 count, object_refs = c.args[1:]
-                assert count == 1
+                assert count >= 1
                 slow_ray_object_refs.update(object_refs)
-        assert len(slow_ray_object_refs) == 1
+        assert len(slow_ray_object_refs) >= 1

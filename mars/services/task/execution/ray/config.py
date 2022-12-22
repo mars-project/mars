@@ -78,11 +78,18 @@ class RayExecutionConfig(ExecutionConfig):
             "log_interval_seconds", DEFAULT_LOG_INTERVAL_SECONDS
         )
 
-    def get_check_slow_subtasks_interval_seconds(self):
+    def get_check_slow_subtasks_interval_seconds(self) -> float:
         return self._ray_execution_config.get(
             "check_slow_subtasks_interval_seconds",
             DEFAULT_CHECK_SLOW_SUBTASKS_INTERVAL_SECONDS,
         )
+
+    def get_check_slow_subtask_iqr_ratio(self) -> float:
+        # https://en.wikipedia.org/wiki/Box_plot
+        # iqr = q3 - q1
+        # duration_threshold = q3 + check_slow_subtasks_iqr_ratio * (q3 - q1)
+        # So, the value == 3, extremely slow(probably hang); value == 1.5, slow
+        return self._ray_execution_config.get("check_slow_subtasks_iqr_ratio", 3)
 
     def get_shuffle_fetch_type(self) -> ShuffleFetchType:
         return ShuffleFetchType.FETCH_BY_INDEX

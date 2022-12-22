@@ -387,12 +387,14 @@ class _RaySlowSubtaskChecker:
         total_subtask_count: int,
         submitted_subtasks: OrderedSet,
         completed_subtasks: OrderedSet,
+        interquartile_range_ratio: float = 3,
     ):
         self._total_subtask_count = total_subtask_count
         self._submitted_subtasks = submitted_subtasks
         self._completed_subtasks = completed_subtasks
         self._logic_key_to_subtask_costs = collections.defaultdict(list)
         self._logic_key_to_check_info = dict()
+        self._ratio = interquartile_range_ratio
 
     def update(self):
         i = 0
@@ -428,8 +430,9 @@ class _RaySlowSubtaskChecker:
         check_info = self._logic_key_to_check_info.get(logic_key)
         if check_info is None or check_info.count != complete_count:
             arr = np.array(subtask_costs)
+            # Please refer to: https://en.wikipedia.org/wiki/Box_plot
             q1, q3 = np.quantile(arr, 0.25), np.quantile(arr, 0.75)
-            duration_threshold = q3 + 3 * (q3 - q1)
+            duration_threshold = q3 + self._ratio * (q3 - q1)
             self._logic_key_to_check_info[
                 logic_key
             ] = _RaySlowSubtaskChecker._CheckInfo(complete_count, duration_threshold)
@@ -907,7 +910,10 @@ class RayTaskExecutor(TaskExecutor):
         chunk_key_ref_count = monitor_context.chunk_key_ref_count
         object_ref_to_subtask = monitor_context.object_ref_to_subtask
         slow_subtask_checker = _RaySlowSubtaskChecker(
-            total, submitted_subtasks, completed_subtasks
+            total,
+            submitted_subtasks,
+            completed_subtasks,
+            self._config.get_check_slow_subtask_iqr_ratio(),
         )
 
         def gc():
