@@ -52,7 +52,7 @@ class SubtaskStatus(Enum):
 
 
 class Subtask(Serializable):
-    __slots__ = ("_repr", "_pure_depend_keys")
+    __slots__ = ("_repr", "_pure_depend_keys", "runtime")
 
     subtask_id: str = StringField("subtask_id")
     subtask_name: str = StringField("subtask_name")
@@ -65,7 +65,6 @@ class Subtask(Serializable):
     virtual: bool = BoolField("virtual")
     retryable: bool = BoolField("retryable")
     priority: Tuple[int, int] = TupleField("priority", FieldTypes.int32)
-    rerun_time: int = Int32Field("rerun_time")
     extra_config: dict = DictField("extra_config")
     stage_id: str = StringField("stage_id")
     # chunks that need meta updated
@@ -95,7 +94,6 @@ class Subtask(Serializable):
         priority: Tuple[int, int] = None,
         virtual: bool = False,
         retryable: bool = True,
-        rerun_time: int = 0,
         extra_config: dict = None,
         stage_id: str = None,
         update_meta_chunks: List[ChunkType] = None,
@@ -116,7 +114,6 @@ class Subtask(Serializable):
             priority=priority,
             virtual=virtual,
             retryable=retryable,
-            rerun_time=rerun_time,
             extra_config=extra_config,
             stage_id=stage_id,
             update_meta_chunks=update_meta_chunks,
@@ -129,11 +126,13 @@ class Subtask(Serializable):
         )
         self._pure_depend_keys = None
         self._repr = None
+        self.runtime = None
 
     def __on_deserialize__(self):
         super(Subtask, self).__on_deserialize__()
         self._pure_depend_keys = None
         self._repr = None
+        self.runtime = None
 
     @property
     def expect_band(self):

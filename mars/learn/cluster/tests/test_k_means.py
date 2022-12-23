@@ -22,7 +22,7 @@ import scipy.sparse as sp
 try:
     from sklearn.datasets import make_blobs
     from sklearn.metrics.cluster import v_measure_score
-    from sklearn.utils._testing import assert_raise_message, assert_warns
+    from sklearn.utils._testing import assert_raise_message
 except ImportError:
     pass
 
@@ -485,14 +485,13 @@ def test_k_means_function(setup):
     assert inertia > 0.0
 
     # check warning when centers are passed
-    assert_warns(
-        RuntimeWarning,
-        k_means,
-        X,
-        n_clusters=n_clusters,
-        sample_weight=None,
-        init=centers,
-    )
+    with pytest.warns(RuntimeWarning):
+        k_means(
+            X,
+            n_clusters=n_clusters,
+            sample_weight=None,
+            init=centers,
+        )
 
     # to many clusters desired
     with pytest.raises(ValueError):

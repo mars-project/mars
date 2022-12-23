@@ -23,6 +23,8 @@ import time
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Callable
 
+import numpy as np
+
 from .....core import ChunkGraph, Chunk, TileContext
 from .....core.context import set_context
 from .....core.operand import (
@@ -80,11 +82,6 @@ completed_subtask_number = Metrics.counter(
     "mars.ray_dag.completed_subtask_number",
     "The number of completed subtask.",
 )
-
-
-@dataclass
-class _RayChunkMeta:
-    memory_size: int
 
 
 class RayTaskState(RayRemoteObjectManager):
@@ -321,12 +318,6 @@ def _get_subtask_out_info(
     return output_keys.keys(), len(output_keys)
 
 
-class _RayExecutionStage(enum.Enum):
-    INIT = 0
-    SUBMITTING = 1
-    WAITING = 2
-
-
 class OrderedSet:
     def __init__(self):
         self._d = set()
@@ -353,10 +344,22 @@ class OrderedSet:
         return len(self._d)
 
 
+class _RayExecutionStage(enum.Enum):
+    INIT = 0
+    SUBMITTING = 1
+    WAITING = 2
+
+
+@dataclass
+class _RayChunkMeta:
+    memory_size: int
+
+
 @dataclass
 class _RayMonitorContext:
     stage: _RayExecutionStage = _RayExecutionStage.INIT
     submitted_subtasks: OrderedSet = field(default_factory=OrderedSet)
+    completed_subtasks: OrderedSet = field(default_factory=OrderedSet)
     # The shuffle manager for monitor task to GC the object refs of shuffles.
     shuffle_manager: ShuffleManager = None
     # The first output object ref of a Subtask to the Subtask.
@@ -366,6 +369,77 @@ class _RayMonitorContext:
     chunk_key_ref_count: Dict[str, int] = field(
         default_factory=lambda: collections.defaultdict(int)
     )
+
+
+@dataclass
+class _RaySubtaskRuntime:
+    start_time: float = 0.0
+
+
+class _RaySlowSubtaskChecker:
+    @dataclass
+    class _CheckInfo:
+        count: int
+        duration_threshold: float
+
+    def __init__(
+        self,
+        total_subtask_count: int,
+        submitted_subtasks: OrderedSet,
+        completed_subtasks: OrderedSet,
+        interquartile_range_ratio: float = 3,
+    ):
+        self._total_subtask_count = total_subtask_count
+        self._submitted_subtasks = submitted_subtasks
+        self._completed_subtasks = completed_subtasks
+        self._logic_key_to_subtask_costs = collections.defaultdict(list)
+        self._logic_key_to_check_info = dict()
+        self._ratio = interquartile_range_ratio
+
+    def update(self):
+        i = 0
+        j = 0
+        while i < self._total_subtask_count or j < self._total_subtask_count:
+            curr_time = time.time()
+            while i < len(self._submitted_subtasks):
+                subtask = self._submitted_subtasks[i]
+                subtask.runtime.start_time = curr_time
+                i += 1
+            while j < len(self._completed_subtasks):
+                subtask = self._completed_subtasks[j]
+                self._logic_key_to_subtask_costs[subtask.logic_key].append(
+                    curr_time - subtask.runtime.start_time
+                )
+                j += 1
+            yield
+
+    def is_slow(self, subtask: Subtask):
+        logic_key = subtask.logic_key
+        if logic_key not in self._logic_key_to_subtask_costs:
+            # The subtask logic key has no costs.
+            return False
+        logic_parallelism = subtask.logic_parallelism
+        if not logic_parallelism:
+            # Invalid parallelism.
+            return False
+        subtask_costs = self._logic_key_to_subtask_costs[logic_key]
+        complete_count = len(subtask_costs)
+        if complete_count / logic_parallelism < 0.75:
+            # Too few complete subtasks.
+            return False
+        check_info = self._logic_key_to_check_info.get(logic_key)
+        if check_info is None or check_info.count != complete_count:
+            arr = np.array(subtask_costs)
+            # Please refer to: https://en.wikipedia.org/wiki/Box_plot
+            q1, q3 = np.quantile(arr, 0.25), np.quantile(arr, 0.75)
+            duration_threshold = q3 + self._ratio * (q3 - q1)
+            self._logic_key_to_check_info[
+                logic_key
+            ] = _RaySlowSubtaskChecker._CheckInfo(complete_count, duration_threshold)
+        else:
+            duration_threshold = check_info.duration_threshold
+        assert subtask.runtime.start_time > 0
+        return time.time() - subtask.runtime.start_time > duration_threshold
 
 
 @register_executor_cls
@@ -551,6 +625,9 @@ class RayTaskExecutor(TaskExecutor):
             )
         )
         try:
+            # Previous execution may have duplicate tileable ids, the tileable may be decref
+            # during execution, so we should track and incref the result tileables before execute.
+            await self._result_tileables_lifecycle.incref_tiled()
             return await self._execute_subtask_graph(
                 stage_id, subtask_graph, chunk_graph, monitor_context
             )
@@ -566,6 +643,8 @@ class RayTaskExecutor(TaskExecutor):
         finally:
             logger.info("Clear stage %s.", stage_id)
             monitor_aiotask.cancel()
+            for subtask in subtask_graph:
+                subtask.runtime = None
             for key in self._task_context.keys() - self._task_chunks_meta.keys():
                 self._task_context.pop(key)
 
@@ -577,16 +656,12 @@ class RayTaskExecutor(TaskExecutor):
         monitor_context: _RayMonitorContext,
     ) -> Dict[Chunk, ExecutionChunkResult]:
         task_context = self._task_context
-        output_meta_object_refs = []
         self._pre_all_stages_tile_progress = (
             self._pre_all_stages_tile_progress + self._cur_stage_tile_progress
         )
         self._cur_stage_tile_progress = (
             self._tile_context.get_all_progress() - self._pre_all_stages_tile_progress
         )
-        # Previous execution may have duplicate tileable ids, the tileable may be decref
-        # during execution, so we should track and incref the result tileables before execute.
-        await self._result_tileables_lifecycle.incref_tiled()
         shuffle_manager = ShuffleManager(subtask_graph)
         monitor_context.stage = _RayExecutionStage.SUBMITTING
         monitor_context.shuffle_manager = shuffle_manager
@@ -604,6 +679,7 @@ class RayTaskExecutor(TaskExecutor):
             "task_id": self._task.task_id,
             "stage_id": stage_id,
         }
+        output_meta_object_refs = []
         for subtask in subtask_graph.topological_iter():
             if subtask.virtual:
                 continue
@@ -646,6 +722,7 @@ class RayTaskExecutor(TaskExecutor):
             submitted_subtask_number.record(1, metrics_tags)
             monitor_context.submitted_subtasks.add(subtask)
             monitor_context.object_ref_to_subtask[output_object_refs[0]] = subtask
+            subtask.runtime = _RaySubtaskRuntime()
             if subtask.stage_n_outputs:
                 meta_object_ref, *output_object_refs = output_object_refs
                 # TODO(fyrestone): Fetch(not get) meta object here.
@@ -827,11 +904,17 @@ class RayTaskExecutor(TaskExecutor):
         method: str,
     ):
         total = sum(not subtask.virtual for subtask in subtask_graph)
-        completed_subtasks = OrderedSet()
+        completed_subtasks = monitor_context.completed_subtasks
         submitted_subtasks = monitor_context.submitted_subtasks
         result_chunk_keys = {chunk.key for chunk in chunk_graph.result_chunks}
         chunk_key_ref_count = monitor_context.chunk_key_ref_count
         object_ref_to_subtask = monitor_context.object_ref_to_subtask
+        slow_subtask_checker = _RaySlowSubtaskChecker(
+            total,
+            submitted_subtasks,
+            completed_subtasks,
+            self._config.get_check_slow_subtask_iqr_ratio(),
+        )
 
         def gc():
             """
@@ -907,8 +990,12 @@ class RayTaskExecutor(TaskExecutor):
             # in the result subtasks
 
         collect_garbage = gc()
-        last_log_time = time.time()
+        update_subtask_cost = slow_subtask_checker.update()
+        last_log_time = last_check_slow_time = time.time()
         log_interval_seconds = self._config.get_log_interval_seconds()
+        check_slow_subtasks_interval_seconds = (
+            self._config.get_check_slow_subtasks_interval_seconds()
+        )
         stage_to_log_func = {
             _RayExecutionStage.SUBMITTING: lambda: logger.info(
                 "Submitted [%s/%s] subtasks of stage %s.",
@@ -928,8 +1015,8 @@ class RayTaskExecutor(TaskExecutor):
         }
 
         while len(completed_subtasks) < total:
+            curr_time = time.time()
             if monitor_context.stage != _RayExecutionStage.INIT:
-                curr_time = time.time()
                 if curr_time - last_log_time > log_interval_seconds:  # pragma: no cover
                     stage_to_log_func[monitor_context.stage]()
                     last_log_time = curr_time
@@ -941,16 +1028,13 @@ class RayTaskExecutor(TaskExecutor):
                 continue
 
             # Only wait for unready subtask object refs.
-            ready_objects, _ = await asyncio.to_thread(
+            ready_objects, unready_objects = await asyncio.to_thread(
                 ray.wait,
                 list(object_ref_to_subtask.keys()),
                 num_returns=len(object_ref_to_subtask),
                 timeout=0,
                 fetch_local=False,
             )
-            if len(ready_objects) == 0:
-                await asyncio.sleep(interval_seconds)
-                continue
 
             # Pop the completed subtasks from object_ref_to_subtask.
             completed_subtasks.update(map(object_ref_to_subtask.pop, ready_objects))
@@ -959,8 +1043,34 @@ class RayTaskExecutor(TaskExecutor):
                 len(completed_subtasks) / total * self._cur_stage_tile_progress
             )
             self._cur_stage_progress = self._pre_all_stages_progress + stage_progress
+            # Update subtask cost group by the logic key to logic_key_to_subtask_costs.
+            for _ in update_subtask_cost:
+                break
             # Collect garbage, use `for ... in ...` to avoid raising StopIteration.
             for _ in collect_garbage:
                 break
+            # Check slow subtasks, after update_subtask_cost.
+            if monitor_context.stage == _RayExecutionStage.WAITING:
+                if len(completed_subtasks) > 0 and (
+                    curr_time - last_check_slow_time
+                    > check_slow_subtasks_interval_seconds
+                ):
+                    slow_objects = []
+                    for obj in unready_objects:
+                        maybe_slow_subtask = object_ref_to_subtask[obj]
+                        slow = slow_subtask_checker.is_slow(maybe_slow_subtask)
+                        if slow:
+                            slow_objects.append(obj)
+                    if len(slow_objects) > 0:
+                        logger.info(
+                            "Slow tasks(%s): %s",
+                            len(slow_objects),
+                            [o.task_id() for o in slow_objects[:5]],
+                        )
+                    else:
+                        logger.debug(
+                            "No slow tasks in %s unready tasks.", len(unready_objects)
+                        )
+                    last_check_slow_time = curr_time
             # Fast to next loop and give it a chance to update object_ref_to_subtask.
-            await asyncio.sleep(0)
+            await asyncio.sleep(interval_seconds if len(ready_objects) == 0 else 0)

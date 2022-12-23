@@ -28,6 +28,7 @@ IN_RAY_CI = os.environ.get("MARS_CI_BACKEND", "mars") == "ray"
 # The default interval seconds to update progress and collect garbage.
 DEFAULT_MONITOR_INTERVAL_SECONDS = 0 if IN_RAY_CI else 1
 DEFAULT_LOG_INTERVAL_SECONDS = 60
+DEFAULT_CHECK_SLOW_SUBTASKS_INTERVAL_SECONDS = 120
 
 
 @register_config_cls
@@ -76,6 +77,19 @@ class RayExecutionConfig(ExecutionConfig):
         return self._ray_execution_config.get(
             "log_interval_seconds", DEFAULT_LOG_INTERVAL_SECONDS
         )
+
+    def get_check_slow_subtasks_interval_seconds(self) -> float:
+        return self._ray_execution_config.get(
+            "check_slow_subtasks_interval_seconds",
+            DEFAULT_CHECK_SLOW_SUBTASKS_INTERVAL_SECONDS,
+        )
+
+    def get_check_slow_subtask_iqr_ratio(self) -> float:
+        # https://en.wikipedia.org/wiki/Box_plot
+        # iqr = q3 - q1
+        # duration_threshold = q3 + check_slow_subtasks_iqr_ratio * (q3 - q1)
+        # So, the value == 3, extremely slow(probably hang); value == 1.5, slow
+        return self._ray_execution_config.get("check_slow_subtasks_iqr_ratio", 3)
 
     def get_shuffle_fetch_type(self) -> ShuffleFetchType:
         return ShuffleFetchType.FETCH_BY_INDEX
