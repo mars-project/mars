@@ -308,5 +308,8 @@ class _FailOverContext:
     def is_lineage_enabled(self):
         return self._enable_lineage
 
+    def cleanup(self):
+        self.subtask_to_dependency_subtasks.clear()
+
 
 FailOverContext = _FailOverContext()

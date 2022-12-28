@@ -345,10 +345,10 @@ class TaskStageProcessor:
         return await self._get_stage_result()
 
     async def cancel(self):
-        logger.info("Start to cancel stage %s of task %s.", self.stage_id, self.task)
         if self._done.is_set() or self._cancelled.is_set():  # pragma: no cover
             # already finished, ignore cancel
             return
+        logger.info("Start to cancel stage %s of task %s.", self.stage_id, self.task)
         self._cancelled.set()
         # cancel running subtasks
         await self._scheduling_api.cancel_subtasks(list(self._submitted_subtask_ids))
@@ -458,6 +458,7 @@ class TaskStageProcessor:
         if not FailOverContext.is_lineage_enabled():
             logger.info("Lineage of failover is not enabled.")
             return False
+
         # Note: There are some error that do not need to be handled,
         # like `DuplicatedSubtaskError`.
         if isinstance(error, DuplicatedSubtaskError):
@@ -510,6 +511,7 @@ class TaskStageProcessor:
                             s,
                             subtask,
                         )
+                        FailOverContext.cleanup()
                         return False
                     if s not in dependency_subtasks:
                         order = await task_manager_ref.get_generation_order(
@@ -525,6 +527,7 @@ class TaskStageProcessor:
                         "No dependent subtasks to restore of subtask %s.",
                         subtask.subtask_id,
                     )
+                    FailOverContext.cleanup()
                     return False
                 priorities = [
                     (pri,) + s.priority
@@ -550,9 +553,11 @@ class TaskStageProcessor:
                         )
                 return True
             except:
+                FailOverContext.cleanup()
                 logger.exception("Error recovery failed.")
                 return False
         else:
+            FailOverContext.cleanup()
             logger.error("Could not to recover the error: %s", error)
             return False
 
