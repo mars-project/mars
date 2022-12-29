@@ -81,4 +81,4 @@ def test_ewm_agg():
     aggs = ["mean", "var", "std"]
     for a in aggs:
         r = getattr(df2.ewm(span=3), a)()
-        assert r.op.func == [a]
+        assert r.op.func == a

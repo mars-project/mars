@@ -221,8 +221,6 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
             self._func = new_func
         elif isinstance(self._func, Iterable) and not isinstance(self._func, str):
             self._func = list(self._func)
-        else:
-            self._func = [self._func]
 
     @staticmethod
     def _safe_append(d, key, val):
@@ -274,6 +272,8 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
         chunk_cols = set(chunk_cols) if chunk_cols is not None else None
         if isinstance(op.func, list):
             op_func = {None: op.func}
+        elif isinstance(op.func, str):
+            op_func = {None: [op.func]}
         else:
             op_func = op.func
 
@@ -628,10 +628,5 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
             cls._execute_combine(ctx, op)
         else:
             in_data = ctx[op.inputs[0].key]
-            out_df = op.outputs[0]
-
             r = cls._execute_raw_function(op, in_data)
-            if out_df.ndim == 1:
-                r = r.iloc[:, 0]
-                r.name = out_df.name
             ctx[op.outputs[0].key] = r

@@ -37,6 +37,9 @@ def test_dataframe_ewm_agg(setup):
 
     df = md.DataFrame(raw, chunk_size=(10, 3))
 
+    r = df.ewm(alpha=0.5).agg("mean")
+    pd.testing.assert_frame_equal(r.execute().fetch(), raw.ewm(alpha=0.5).agg("mean"))
+
     r = df.ewm(alpha=0.5).agg(["mean"])
     pd.testing.assert_frame_equal(r.execute().fetch(), raw.ewm(alpha=0.5).agg(["mean"]))
 
@@ -54,6 +57,9 @@ def test_dataframe_ewm_agg(setup):
         pd.testing.assert_frame_equal(
             r.execute().fetch(), raw.ewm(alpha=0.3, ignore_na=True).agg(fun_name)
         )
+
+    r = df.ewm(alpha=0.3).agg("mean")
+    pd.testing.assert_frame_equal(r.execute().fetch(), raw.ewm(alpha=0.3).agg("mean"))
 
     r = df.ewm(alpha=0.3).agg(["mean"])
     pd.testing.assert_frame_equal(r.execute().fetch(), raw.ewm(alpha=0.3).agg(["mean"]))

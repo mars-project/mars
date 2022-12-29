@@ -71,4 +71,4 @@ def test_expanding_agg():
     aggs = ["sum", "count", "min", "max", "mean", "var", "std"]
     for a in aggs:
         r = getattr(df2.expanding(3), a)()
-        assert r.op.func == [a]
+        assert r.op.func == a
