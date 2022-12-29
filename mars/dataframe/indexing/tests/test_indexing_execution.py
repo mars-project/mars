@@ -1562,6 +1562,17 @@ def test_sample_execution(setup):
         r.execute().fetch(), raw_df.sample(10, weights=raw_df["c2"], random_state=rs)
     )
 
+    r = df.sample(10, weights=df["c2"], random_state=0)
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(), raw_df.sample(10, weights=raw_df["c2"], random_state=0)
+    )
+
+    r = df.sample(10, weights=df["c2"], random_state=np.array([1, 2]))
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(),
+        raw_df.sample(10, weights=raw_df["c2"], random_state=np.array([1, 2])),
+    )
+
     # test multinomial tile & execution
     df = md.DataFrame(raw_df, chunk_size=13)
     r1 = df.sample(10, replace=True, random_state=rs)
@@ -1575,6 +1586,26 @@ def test_sample_execution(setup):
     r1 = df.sample(frac=0.1, weights=df["c2"], always_multinomial=True, random_state=rs)
     r2 = df[:].sample(
         frac=0.1, weights=df["c2"], always_multinomial=True, random_state=rs
+    )
+    pd.testing.assert_frame_equal(r1.execute().fetch(), r2.execute().fetch())
+
+    r1 = df.sample(frac=0.1, weights=df["c2"], always_multinomial=True, random_state=0)
+    r2 = df[:].sample(
+        frac=0.1, weights=df["c2"], always_multinomial=True, random_state=0
+    )
+    pd.testing.assert_frame_equal(r1.execute().fetch(), r2.execute().fetch())
+
+    r1 = df.sample(
+        frac=0.1,
+        weights=df["c2"],
+        always_multinomial=True,
+        random_state=np.array([1, 2]),
+    )
+    r2 = df[:].sample(
+        frac=0.1,
+        weights=df["c2"],
+        always_multinomial=True,
+        random_state=np.array([1, 2]),
     )
     pd.testing.assert_frame_equal(r1.execute().fetch(), r2.execute().fetch())
 
@@ -1594,6 +1625,14 @@ def test_sample_execution(setup):
 
     r1 = df.sample(frac=0.1, weights=df["c2"], random_state=rs)
     r2 = df[:].sample(frac=0.1, weights=df["c2"], random_state=rs)
+    pd.testing.assert_frame_equal(r1.execute().fetch(), r2.execute().fetch())
+
+    r1 = df.sample(frac=0.1, weights=df["c2"], random_state=0)
+    r2 = df[:].sample(frac=0.1, weights=df["c2"], random_state=0)
+    pd.testing.assert_frame_equal(r1.execute().fetch(), r2.execute().fetch())
+
+    r1 = df.sample(frac=0.1, weights=df["c2"], random_state=np.array([1, 2]))
+    r2 = df[:].sample(frac=0.1, weights=df["c2"], random_state=np.array([1, 2]))
     pd.testing.assert_frame_equal(r1.execute().fetch(), r2.execute().fetch())
 
     # test series

@@ -585,6 +585,8 @@ def sample(
     rs = copy.deepcopy(
         random_state.to_numpy() if hasattr(random_state, "to_numpy") else random_state
     )
+    if isinstance(rs, (int, np.ndarray)):
+        rs = np.random.RandomState(rs)
     op = DataFrameSample(
         size=n,
         frac=frac,
