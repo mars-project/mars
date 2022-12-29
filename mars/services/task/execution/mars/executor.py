@@ -20,7 +20,6 @@ from typing import Dict, List, Optional, Set
 
 from ..... import oscar as mo
 from .....core import ChunkGraph, TileContext
-from .....core.context import set_context
 from .....core.operand import (
     Fetch,
     MapReduceOperand,
@@ -67,6 +66,7 @@ class MarsTaskExecutor(TaskExecutor):
     _stage_tile_progresses: List[float]
     _cur_stage_processor: Optional[TaskStageProcessor]
     _meta_updated_tileables: Set[TileableType]
+    _ctx: ThreadedServiceContext
 
     def __init__(
         self,
@@ -78,6 +78,7 @@ class MarsTaskExecutor(TaskExecutor):
         scheduling_api: SchedulingAPI,
         meta_api: MetaAPI,
         resource_evaluator: ResourceEvaluator,
+        ctx: ThreadedServiceContext,
     ):
         self._config = config
         self._task = task
@@ -102,6 +103,9 @@ class MarsTaskExecutor(TaskExecutor):
         # Evaluate and initialize subtasks required resource.
         self._resource_evaluator = resource_evaluator
 
+        # context
+        self._ctx = ctx
+
     @classmethod
     async def create(
         cls,
@@ -125,7 +129,7 @@ class MarsTaskExecutor(TaskExecutor):
             task_id=task.task_id,
             cluster_api=cluster_api,
         )
-        await cls._init_context(session_id, address)
+        ctx = await cls._init_context(session_id, address)
         return cls(
             config,
             task,
@@ -135,6 +139,7 @@ class MarsTaskExecutor(TaskExecutor):
             scheduling_api,
             meta_api,
             resource_evaluator,
+            ctx,
         )
 
     def get_execution_config(self):
@@ -151,13 +156,15 @@ class MarsTaskExecutor(TaskExecutor):
         )
 
     @classmethod
-    async def _init_context(cls, session_id: str, address: str):
+    async def _init_context(
+        cls, session_id: str, address: str
+    ) -> ThreadedServiceContext:
         loop = asyncio.get_running_loop()
         context = ThreadedServiceContext(
             session_id, address, address, address, loop=loop
         )
         await context.init()
-        set_context(context)
+        return context
 
     async def __aenter__(self):
         profiling = ProfilingData[self._task.task_id, "general"]
@@ -168,6 +175,7 @@ class MarsTaskExecutor(TaskExecutor):
         self._result_tileables_lifecycle = ResultTileablesLifecycle(
             self._tileable_graph, self._tile_context, self._lifecycle_api
         )
+        self._ctx.__enter__()
 
     async def execute_subtask_graph(
         self,
@@ -214,6 +222,7 @@ class MarsTaskExecutor(TaskExecutor):
             # revert result incref if error or cancelled
             await self._result_tileables_lifecycle.decref_tracked()
         await self._resource_evaluator.report()
+        self._ctx.__exit__(exc_type, exc_val, exc_tb)
 
     async def get_available_band_resources(self) -> Dict[BandType, Resource]:
         async for bands in self._cluster_api.watch_all_bands():

@@ -18,6 +18,7 @@ from typing import List, Dict
 
 from ..typing import BandType, SessionType
 from ..storage.base import StorageLevel
+from ..utils import classproperty
 
 
 class Context(ABC):
@@ -26,8 +27,7 @@ class Context(ABC):
     used inside `tile` and `execute`.
     """
 
-    prev = None
-    current = None
+    all_contexts = []
 
     def __init__(
         self,
@@ -286,16 +286,18 @@ class Context(ABC):
         """
 
     def __enter__(self):
-        Context.prev = Context.current
-        Context.current = self
+        Context.all_contexts.append(self)
 
     def __exit__(self, *_):
-        Context.current = Context.prev
-        Context.prev = None
+        Context.all_contexts.pop()
+
+    @classproperty
+    def current(cls):
+        return cls.all_contexts[-1] if cls.all_contexts else None
 
 
 def set_context(context: Context):
-    Context.current = context
+    Context.all_contexts.append(context)
 
 
 def get_context() -> Context:

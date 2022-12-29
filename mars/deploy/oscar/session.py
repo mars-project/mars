@@ -2035,6 +2035,10 @@ def get_default_session() -> Optional[SyncSession]:
     return SyncSession.from_isolated_session(AbstractSession.default)
 
 
+def clear_default_session():
+    AbstractSession.reset_default()
+
+
 def get_default_async_session() -> Optional[AsyncSession]:
     if AbstractSession.default is None:
         return

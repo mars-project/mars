@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, Set, Type, Tuple
 
 from .... import oscar as mo
 from ....core import ChunkGraph, OperandType, enter_mode, ExecutionError
-from ....core.context import get_context, set_context
+from ....core.context import get_context
 from ....core.operand import (
     Fetch,
     FetchShuffle,
@@ -695,7 +695,7 @@ class SubtaskProcessorActor(mo.Actor):
             coro.result() for coro in coros
         ]
 
-    async def _init_context(self, session_id: str):
+    async def _init_context(self, session_id: str) -> ThreadedServiceContext:
         loop = asyncio.get_running_loop()
         context = ThreadedServiceContext(
             session_id,
@@ -706,7 +706,7 @@ class SubtaskProcessorActor(mo.Actor):
             band=self._band,
         )
         await context.init()
-        set_context(context)
+        return context
 
     async def run(self, subtask: Subtask):
         logger.info(
@@ -719,24 +719,25 @@ class SubtaskProcessorActor(mo.Actor):
         assert subtask.session_id == self._session_id
 
         # init context
-        await self._init_context(self._session_id)
-        processor = self._subtask_processor_cls(
-            subtask,
-            self._session_api,
-            self._storage_api,
-            self._meta_api,
-            self._worker_meta_api,
-            self._band,
-            self._supervisor_address,
-        )
-        self._processor = self._last_processor = processor
-        self._running_aio_task = asyncio.create_task(processor.run())
-        try:
-            result = yield self._running_aio_task
-            logger.info("Finished subtask: %s", subtask.subtask_id)
-            raise mo.Return(result)
-        finally:
-            self._processor = self._running_aio_task = None
+        ctx = await self._init_context(self._session_id)
+        with ctx:
+            processor = self._subtask_processor_cls(
+                subtask,
+                self._session_api,
+                self._storage_api,
+                self._meta_api,
+                self._worker_meta_api,
+                self._band,
+                self._supervisor_address,
+            )
+            self._processor = self._last_processor = processor
+            self._running_aio_task = asyncio.create_task(processor.run())
+            try:
+                result = yield self._running_aio_task
+                logger.info("Finished subtask: %s", subtask.subtask_id)
+                raise mo.Return(result)
+            finally:
+                self._processor = self._running_aio_task = None
 
     async def wait(self):
         return self._processor.is_done.wait()
