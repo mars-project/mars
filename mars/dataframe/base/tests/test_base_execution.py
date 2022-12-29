@@ -348,6 +348,11 @@ def test_data_frame_apply_execute(setup):
         expected = df_raw.apply(["sum", "max"])
         pd.testing.assert_frame_equal(result, expected)
 
+        r = df.apply(["sum", "max"], axis=1)
+        result = r.execute().fetch()
+        expected = df_raw.apply(["sum", "max"], axis=1)
+        pd.testing.assert_frame_equal(result, expected)
+
         r = df.apply(np.sqrt)
         result = r.execute().fetch()
         expected = df_raw.apply(np.sqrt)

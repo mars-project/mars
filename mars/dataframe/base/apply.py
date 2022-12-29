@@ -737,7 +737,7 @@ def df_apply(
     2  1  2
     """
     if isinstance(func, (list, dict)):
-        return df.aggregate(func)
+        return df.aggregate(func, axis)
 
     output_types = kwds.pop("output_types", None)
     object_type = kwds.pop("object_type", None)
