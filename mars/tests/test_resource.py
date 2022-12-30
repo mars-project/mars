@@ -129,11 +129,20 @@ def test_use_c_group_stats(cgroup_ver):
             f.write(content)
         return file_name
 
-    v1_cpu_acct_path = write_tmp_text_file("test-mars-res-cgroup-v1-cpu-", _v1_cpu_stat_first)
-    v1_mem_stat_path = write_tmp_text_file("test-mars-res-cgroup-v1-mem-", _v1_memory_stat_content)
-    v2_cpu_stat_path = write_tmp_text_file("test-mars-res-cgroup-v2-cpu-", _v2_cpu_stat_first)
-    v2_mem_cur_path = write_tmp_text_file("test-mars-res-cgroup-v2-cpu-", _v2_memory_current_content)
-    v2_mem_max_path = write_tmp_text_file("test-mars-res-cgroup-v2-cpu-", _v2_memory_max_content)
+    v1_cpu_acct_path = write_tmp_text_file(
+        "test-mars-res-cgroup-v1-cpu-", _v1_cpu_stat_first
+    )
+    v1_mem_stat_path = write_tmp_text_file(
+        "test-mars-res-cgroup-v1-mem-", _v1_memory_stat_content)
+    v2_cpu_stat_path = write_tmp_text_file(
+        "test-mars-res-cgroup-v2-cpu-", _v2_cpu_stat_first
+    )
+    v2_mem_cur_path = write_tmp_text_file(
+        "test-mars-res-cgroup-v2-cpu-", _v2_memory_current_content
+    )
+    v2_mem_max_path = write_tmp_text_file(
+        "test-mars-res-cgroup-v2-cpu-", _v2_memory_max_content
+    )
 
     old_is_cgroup_v2 = resource._is_cgroup_v2
     old_v1_cpu_acct_file = resource.CGROUP_V1_CPU_ACCT_FILE
