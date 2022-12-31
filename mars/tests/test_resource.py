@@ -133,7 +133,8 @@ def test_use_c_group_stats(cgroup_ver):
         "test-mars-res-cgroup-v1-cpu-", _v1_cpu_stat_first
     )
     v1_mem_stat_path = write_tmp_text_file(
-        "test-mars-res-cgroup-v1-mem-", _v1_memory_stat_content)
+        "test-mars-res-cgroup-v1-mem-", _v1_memory_stat_content
+    )
     v2_cpu_stat_path = write_tmp_text_file(
         "test-mars-res-cgroup-v2-cpu-", _v2_cpu_stat_first
     )
