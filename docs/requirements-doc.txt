@@ -10,7 +10,7 @@ pytest-cov>=2.5.0
 pytest-timeout>=1.2.0
 cloudpickle>=1.0.0
 sqlalchemy>=1.2.0
-sphinx>=3.0.0
+sphinx<6.0.0
 pydata-sphinx-theme>=0.3.0
 sphinx-intl>=0.9.9
 ipython>=4.0
