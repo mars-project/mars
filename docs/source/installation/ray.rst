@@ -11,16 +11,16 @@ Install Ray locally:
 
 .. code-block:: bash
 
-    pip install ray>=1.8.0
+    pip install ray
 
-Start a Ray cluster:
+(Optional) Start a Ray cluster or Mars starts a Ray cluster automatically:
 
 .. code-block:: python
 
     import ray
     ray.init()
 
-Or connecting to a existing Ray cluster using `Ray client <https://docs.ray.io/en/latest/cluster/ray-client.html>`_:
+(Optional) Or connecting to a existing Ray cluster using `Ray client <https://docs.ray.io/en/latest/cluster/ray-client.html>`_:
 
 .. code-block:: python
 
@@ -59,20 +59,28 @@ Start a Ray actor for Mars supervisor:
     # Start a Ray actor for Mars supervisor.
     session = mars.new_ray_session(backend='ray')
 
-Connect to the created Mars on Ray runtime and do the computing:
+Connect to the created Mars on Ray runtime and do the computing, the supervisor virtual address is the name of Ray actor for Mars supervisor,
+e.g. `ray://ray-cluster-1672904753/0/0`.
 
 .. code-block:: python
 
     import mars
     import mars.tensor as mt
-    session = mars.new_ray_session(address="ray://<supervisor virtual address>", session_id="abcd", default=True)
+    # Be aware that `mars.new_ray_session()` connects to an existing Mars
+    # cluster requires Ray runtime.
+    # e.g. Current process is a initialized Ray driver, client or worker.
+    session = mars.new_ray_session(
+        address='ray://<supervisor virtual address>',
+        session_id='abcd',
+        backend='ray',
+        default=True)
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
 
 Stop the created Mars on Ray runtime:
 
 .. code-block:: python
 
-    cluster.stop()
+    session.stop_server()
 
 
 Customizing cluster
@@ -101,9 +109,9 @@ Arguments for workers:
 +--------------------+-----------------------------------------------------------------+
 
 For instance, if you want to create a Mars cluster with a standalone supervisor,
-you can use the code below:
+you can use the code below (In this example, one Ray node has 16 CPUs in total):
 
 .. code-block:: python
 
     import mars
-    session = mars.new_ray_session(supervisor_cpu=16)  # If your Ray cluster node has 16 CPUs in total.
+    session = mars.new_ray_session(supervisor_cpu=16)
