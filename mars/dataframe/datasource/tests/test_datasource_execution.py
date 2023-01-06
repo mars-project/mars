@@ -1007,6 +1007,11 @@ def test_date_range_execution(setup):
     expected = pd.date_range(start="1/1/2018", periods=5, freq="M")
     pd.testing.assert_index_equal(result, expected)
 
+    dr = md.date_range(start="2018/01/01", end="2018/07/01", freq="M")
+    result = dr.execute().fetch()
+    expected = pd.date_range(start="2018/01/01", end="2018/07/01", freq="M")
+    pd.testing.assert_index_equal(result, expected)
+
 
 parquet_engines = ["auto"]
 if pa is not None:
