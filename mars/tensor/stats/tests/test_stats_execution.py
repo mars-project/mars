@@ -205,7 +205,6 @@ def test_t_test_execution(setup):
             functools.partial(mt_from_stats, equal_var=False),
             functools.partial(sp_from_stats, equal_var=False),
         ),
-        (ttest_1samp, sp_ttest_1samp),
     ]
 
     fa_raw = np.array([16, 18, 16, 14, 12, 12])
@@ -232,6 +231,23 @@ def test_t_test_execution(setup):
                 expected = sp_func(fa_raw, fb_raw)
             np.testing.assert_almost_equal(expected[0], result[0])
             np.testing.assert_almost_equal(expected[1], result[1])
+
+    # second param size must be 1 for ttest_1samp
+    fb_raw = np.array([16])
+    fb = tensor(fb_raw)
+    for alt in alternatives:
+        if parse_version(scipy.__version__) >= parse_version("1.6.0"):
+            r = ttest_1samp(fa, fb, alternative=alt)
+        else:
+            r = ttest_1samp(fa, fb)
+        result = r.execute().fetch()
+
+        if parse_version(scipy.__version__) >= parse_version("1.6.0"):
+            expected = sp_ttest_1samp(fa_raw, fb_raw, alternative=alt)
+        else:
+            expected = sp_ttest_1samp(fa_raw, fb_raw)
+        np.testing.assert_almost_equal(expected[0], result[0])
+        np.testing.assert_almost_equal(expected[1], result[1])
 
 
 @pytest.mark.parametrize("chunk_size", [5, 15])
