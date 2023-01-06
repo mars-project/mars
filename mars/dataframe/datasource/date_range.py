@@ -17,6 +17,7 @@ from datetime import datetime, date, time
 
 import numpy as np
 import pandas as pd
+from pandas import Timestamp, NaT
 from pandas.tseries.frequencies import to_offset
 from pandas.tseries.offsets import Tick
 from pandas._libs.tslibs import timezones
@@ -49,6 +50,72 @@ except ImportError:  # pragma: no cover
 
 
 _date_range_use_inclusive = pd_release_version[:2] >= (1, 4)
+
+
+# adapted from pandas.core.arrays.datetimes.generate_range
+def generate_range_count(
+    start=None, end=None, periods=None, offset=None
+):  # pragma: no cover
+    offset = to_offset(offset)
+
+    start = Timestamp(start)
+    start = start if start is not NaT else None
+    end = Timestamp(end)
+    end = end if end is not NaT else None
+
+    if start and not offset.is_on_offset(start):
+        start = offset.rollforward(start)
+
+    elif end and not offset.is_on_offset(end):
+        end = offset.rollback(end)
+
+    if periods is None and end < start and offset.n >= 0:
+        end = None
+        periods = 0
+
+    if end is None:
+        end = start + (periods - 1) * offset
+
+    if start is None:
+        start = end - (periods - 1) * offset
+
+    cur = start
+    count = 0
+    if offset.n >= 0:
+        while cur <= end:
+            count += 1
+
+            if cur == end:
+                # GH#24252 avoid overflows by not performing the addition
+                # in offset.apply unless we have to
+                break
+
+            # faster than cur + offset
+            try:
+                next_date = offset._apply(cur)
+            except AttributeError:
+                next_date = cur + offset
+            if next_date <= cur:
+                raise ValueError(f"Offset {offset} did not increment date")
+            cur = next_date
+    else:
+        while cur >= end:
+            count += 1
+
+            if cur == end:
+                # GH#24252 avoid overflows by not performing the addition
+                # in offset.apply unless we have to
+                break
+
+            # faster than cur + offset
+            try:
+                next_date = offset._apply(cur)
+            except AttributeError:
+                next_date = cur + offset
+            if next_date >= cur:
+                raise ValueError(f"Offset {offset} did not decrement date")
+            cur = next_date
+    return count
 
 
 class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
@@ -511,7 +578,7 @@ def date_range(
             inclusive = "both"
     else:
         if periods is None:
-            periods = size = int((end - start) / freq + 1)
+            periods = size = generate_range_count(start, end, periods, freq)
         else:
             size = periods
         if inclusive in ("left", "right"):
