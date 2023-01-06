@@ -37,7 +37,6 @@ from .....typing import TileableType, BandType
 from .....utils import Timer
 from ....context import ThreadedServiceContext
 from ....cluster.api import ClusterAPI
-from ....cluster.core import NodeStatus
 from ....lifecycle.api import LifecycleAPI
 from ....meta.api import MetaAPI
 from ....scheduling import SchedulingAPI
@@ -95,7 +94,8 @@ class MarsTaskExecutor(TaskExecutor):
         self._meta_api = meta_api
 
         self._stage_processors = []
-		self._stage_id_to_processor = weakref.WeakValueDictionary()
+        self._stage_tile_progresses = []
+        self._stage_id_to_processor = weakref.WeakValueDictionary()
         self._cur_stage_processor = None
         self._result_tileables_lifecycle = None
         self._subtask_decref_events = dict()

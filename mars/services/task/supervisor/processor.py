@@ -30,7 +30,7 @@ from ....oscar.profiling import (
 from ....typing import TileableType, ChunkType
 from ....utils import Timer
 from ...context import FailOverContext
-from ...subtask import SubtaskResult, Subtask
+from ...subtask import SubtaskResult, SubtaskGraph, Subtask
 from ..core import Task, TaskResult, TaskStatus, new_task_id
 from ..execution.api import TaskExecutor, ExecutionChunkResult
 from .preprocessor import TaskPreprocessor
@@ -481,6 +481,7 @@ class TaskProcessor:
 
     def is_done(self) -> bool:
         return self.done.is_set()
+
     def get_generation_order(self, stage_id: str):
         return self._executor.get_stage_generation_order(stage_id)
 

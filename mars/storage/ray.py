@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import inspect
+import logging
 
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
@@ -28,6 +29,7 @@ from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_bac
 from .core import BufferWrappedFileObject, StorageFileObject
 
 ray = lazy_import("ray")
+logger = logging.getLogger(__name__)
 
 
 # TODO(fyrestone): make the SparseMatrix pickleable.

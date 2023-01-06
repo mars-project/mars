@@ -279,8 +279,8 @@ class TaskStageProcessor:
                 )
                 await self.cancel()
         else:
-            await async_call(
-                self._scheduling_api.finish_subtasks([result.subtask_id], bands=[band])
+            await self._scheduling_api.finish_subtasks(
+                [result.subtask_id], bands=[band]
             )
             logger.debug(
                 "Continue to schedule subtasks after subtask %s finished.",
@@ -306,7 +306,7 @@ class TaskStageProcessor:
                         self.task.task_id,
                         self.stage_id,
                     )
-                    await async_call(self._schedule_subtasks([to_schedule_subtask]))
+                    await self._schedule_subtasks([to_schedule_subtask])
                 except KeyError:
                     logger.exception("Got KeyError.")
 
