@@ -255,3 +255,9 @@ class FileSystem(ABC):
         if parsed_uri.password:
             options["password"] = parsed_uri.password
         return options
+
+    @classmethod
+    def get_storage_options(cls, storage_options, path):
+        options = cls.parse_from_path(path)
+        storage_options.update(options)
+        return storage_options
