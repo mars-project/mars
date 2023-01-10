@@ -246,16 +246,7 @@ Starting a new Mars on Ray runtime locally via:
 
     import mars
     mars.new_session(backend='ray')
-    import mars.tensor as mt
-    mt.random.RandomState(0).rand(1000_0000, 5).sum().execute()
-
-Or connecting to a Mars on Ray runtime which is already initialized.
-
-.. code-block:: python
-
-    import mars
-    mars.new_ray_session('ray://<supervisor virtual address>')
-    # perform computation
+    # Perform compute
 
 Interact with Ray Dataset:
 

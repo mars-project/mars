@@ -51,6 +51,24 @@ Creating a Mars on Ray runtime in the Ray cluster and do the computing:
     print(df2.head(5).execute())
 
 
+Stop the created Mars on Ray runtime:
+
+.. code-block:: python
+
+    session.stop_server()
+
+
+Customizing cluster
+-------------------
+
+There are two ways to initialize a Mars session:
+
+- `mars.new_session(...) # Start Mars supervisor in current process.`
+    Recommend for most use cases.
+- `mars.new_ray_session(...) # Start a Ray actor for Mars supervisor.`
+    Recommend for large scale compute or compute through Ray client.
+
+
 Start a Ray actor for Mars supervisor:
 
 .. code-block:: python
@@ -76,16 +94,7 @@ e.g. `ray://ray-cluster-1672904753/0/0`.
         default=True)
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
 
-Stop the created Mars on Ray runtime:
-
-.. code-block:: python
-
-    session.stop_server()
-
-
-Customizing cluster
--------------------
-``new_ray_session`` function provides several keyword arguments for users to define
+The ``new_ray_session`` function provides several keyword arguments for users to define
 the cluster.
 
 Arguments for supervisors:
