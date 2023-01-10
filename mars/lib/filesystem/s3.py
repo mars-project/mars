@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from typing import Dict
 
 """
 An example to read csv from s3
@@ -64,8 +65,8 @@ if FsSpecAdapter is not None:  # pragma: no cover
             return {"client_kwargs": client_kwargs}
 
         @classmethod
-        def get_storage_options(cls, storage_options, path):
-            options = cls.parse_from_path(path)
+        def get_storage_options(cls, storage_options: Dict, uri: str) -> Dict:
+            options = cls.parse_from_path(uri)
             for k, v in storage_options.items():
                 if k == "client_kwargs":
                     options["client_kwargs"].update(v)

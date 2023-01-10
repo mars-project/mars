@@ -257,7 +257,7 @@ class FileSystem(ABC):
         return options
 
     @classmethod
-    def get_storage_options(cls, storage_options, path):
-        options = cls.parse_from_path(path)
+    def get_storage_options(cls, storage_options: Dict, uri: str) -> Dict:
+        options = cls.parse_from_path(uri)
         storage_options.update(options)
         return storage_options
