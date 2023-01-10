@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from typing import Dict
 
 """
 An example to read csv from s3
@@ -26,8 +27,9 @@ An example to read csv from s3
 >>>         "endpoint_url": "http://192.168.1.12:9000",
 >>>         "aws_access_key_id": "<s3 access id>",
 >>>         "aws_secret_access_key": "<s3 access key>",
+>>>         "aws_session_token": "<s3 session token>",
 >>>     }})
->>> # Export environment vars AWS_ENDPOINT_URL / AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY.
+>>> # Export environment vars AWS_ENDPOINT_URL / AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN.
 >>> mdf = md.read_csv("s3://bucket/example.csv", index_col=0)
 >>> r = mdf.head(1000).execute()
 >>> print(r)
@@ -61,6 +63,16 @@ if FsSpecAdapter is not None:  # pragma: no cover
             }
             client_kwargs = {k: v for k, v in client_kwargs.items() if v is not None}
             return {"client_kwargs": client_kwargs}
+
+        @classmethod
+        def get_storage_options(cls, storage_options: Dict, uri: str) -> Dict:
+            options = cls.parse_from_path(uri)
+            for k, v in storage_options.items():
+                if k == "client_kwargs":
+                    options["client_kwargs"].update(v)
+                else:
+                    options[k] = v
+            return options
 
     register_filesystem("s3", S3FileSystem)
 else:

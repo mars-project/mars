@@ -54,8 +54,9 @@ def get_fs(path: path_type, storage_options: Dict = None) -> FileSystem:
             # local file systems are singletons.
             return file_system_type.get_instance()
         else:
-            options = file_system_type.parse_from_path(path)
-            storage_options.update(options)
+            storage_options = file_system_type.get_storage_options(
+                storage_options, path
+            )
             return file_system_type(**storage_options)
     elif scheme in _scheme_to_dependencies:  # pragma: no cover
         dependencies = ", ".join(_scheme_to_dependencies[scheme])
