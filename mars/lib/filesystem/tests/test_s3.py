@@ -15,6 +15,7 @@ import os
 
 import pytest
 
+from ....dataframe import read_csv
 from ..core import register_filesystem
 from ..s3 import S3FileSystem
 
@@ -31,8 +32,6 @@ class TestS3FileSystem(S3FileSystem):
 
 
 def test_client_kwargs():
-    import mars.dataframe as md
-
     register_filesystem("s3", TestS3FileSystem)
 
     test_kwargs = {
@@ -45,7 +44,7 @@ def test_client_kwargs():
     def _assert_true():
         # Pass endpoint_url / aws_access_key_id / aws_secret_access_key / aws_session_token to read_csv.
         with pytest.raises(KwArgsException) as e:
-            md.read_csv(
+            read_csv(
                 "s3://bucket/example.csv",
                 index_col=0,
                 storage_options={"client_kwargs": test_kwargs},
@@ -75,7 +74,7 @@ def test_client_kwargs():
 
         for k, v in test_kwargs.items():
             with pytest.raises(KwArgsException) as e:
-                md.read_csv(
+                read_csv(
                     "s3://bucket/example.csv",
                     index_col=0,
                     storage_options={"client_kwargs": {k: v}},
