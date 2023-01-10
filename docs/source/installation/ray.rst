@@ -61,7 +61,7 @@ Stop the created Mars on Ray runtime:
 Customizing cluster
 -------------------
 
-There are two ways to initialize a Mars session:
+There are two ways to initialize a Mars on Ray session:
 
 - `mars.new_session(...) # Start Mars supervisor in current process.`
     Recommend for most use cases.
