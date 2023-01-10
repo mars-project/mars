@@ -25,12 +25,18 @@ class KwArgsException(Exception):
         self.kwargs = kwargs
 
 
-class TestS3FileSystem(S3FileSystem):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        raise KwArgsException(kwargs)
+if S3FileSystem is not None:
+
+    class TestS3FileSystem(S3FileSystem):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            raise KwArgsException(kwargs)
+
+else:
+    TestS3FileSystem = None
 
 
+@pytest.mark.skipif(S3FileSystem is None, reason="S3 is not supported")
 def test_client_kwargs():
     register_filesystem("s3", TestS3FileSystem)
 
