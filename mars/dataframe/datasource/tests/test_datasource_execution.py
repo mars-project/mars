@@ -43,12 +43,12 @@ from .... import dataframe as md
 from ....config import option_context
 from ....tests.core import require_cudf, require_ray
 from ....utils import arrow_array_to_objects, lazy_import, pd_release_version
+from ...utils import ray_deprecate_ml_dataset
 from ..dataframe import from_pandas as from_pandas_df
 from ..series import from_pandas as from_pandas_series
 from ..index import from_pandas as from_pandas_index, from_tileable
 from ..from_tensor import dataframe_from_tensor, dataframe_from_1d_tileables
 from ..from_records import from_records
-
 
 ray = lazy_import("ray")
 _date_range_use_inclusive = pd_release_version[:2] >= (1, 4)
@@ -1214,7 +1214,10 @@ def test_read_raydataset(ray_start_regular, ray_create_mars_cluster):
 
 
 @require_ray
-@pytest.mark.skip_ray_dag  # mldataset is not compatible with Ray DAG
+@pytest.mark.skipif(
+    ray_deprecate_ml_dataset in (True, None),
+    reason="Ray (>=2.0) has deprecated MLDataset.",
+)
 def test_read_ray_mldataset(ray_start_regular, ray_create_mars_cluster):
     test_dfs = [
         pd.DataFrame(
