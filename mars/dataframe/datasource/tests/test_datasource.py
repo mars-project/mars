@@ -41,7 +41,7 @@ from ..index import from_pandas as from_pandas_index, from_tileable
 from ..read_csv import read_csv, DataFrameReadCSV
 from ..read_sql import read_sql_table, read_sql_query, DataFrameReadSQL
 from ..read_raydataset import (
-    read_raydataset,
+    read_ray_dataset,
     DataFrameReadRayDataset,
     read_ray_mldataset,
     DataFrameReadMLDataset,
@@ -518,7 +518,7 @@ def test_read_sql():
 
 
 @require_ray
-def test_read_raydataset(ray_start_regular):
+def test_read_ray_dataset(ray_start_regular):
     test_df1 = pd.DataFrame(
         {
             "a": np.arange(10).astype(np.int64, copy=False),
@@ -533,7 +533,7 @@ def test_read_raydataset(ray_start_regular):
     )
     df = pd.concat([test_df1, test_df2])
     ds = ray.data.from_pandas_refs([ray.put(test_df1), ray.put(test_df2)])
-    mdf = read_raydataset(ds)
+    mdf = read_ray_dataset(ds)
 
     assert mdf.shape[1] == 2
     pd.testing.assert_index_equal(df.columns, mdf.columns_value.to_pandas())
