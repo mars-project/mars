@@ -445,7 +445,7 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
                 random_state=op.random_state,
                 axis=op.axis,
             )
-        except ValueError:
+        except ValueError:  # pragma: no cover
             ctx[op.outputs[0].key] = in_data.copy().sample(
                 n=size,
                 frac=op.frac,
