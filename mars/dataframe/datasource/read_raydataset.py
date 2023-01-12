@@ -121,7 +121,7 @@ def read_ray_dataset(ds, columns=None, incremental_index=False, **kwargs):
     except ImportError:
         try:
             from ray.data.impl.pandas_block import PandasBlockSchema
-        except ImportError:
+        except ImportError:  # pragma: no cover
             PandasBlockSchema = type(None)
 
     if isinstance(schema, PandasBlockSchema):
