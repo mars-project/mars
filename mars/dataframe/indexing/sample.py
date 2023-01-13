@@ -436,14 +436,24 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
         if chunk_samples is not None:
             size = chunk_samples[op.inputs[0].index[op.axis]]
 
-        ctx[op.outputs[0].key] = in_data.sample(
-            n=size,
-            frac=op.frac,
-            replace=op.replace,
-            weights=weights,
-            random_state=op.random_state,
-            axis=op.axis,
-        )
+        try:
+            ctx[op.outputs[0].key] = in_data.sample(
+                n=size,
+                frac=op.frac,
+                replace=op.replace,
+                weights=weights,
+                random_state=op.random_state,
+                axis=op.axis,
+            )
+        except ValueError:  # pragma: no cover
+            ctx[op.outputs[0].key] = in_data.copy().sample(
+                n=size,
+                frac=op.frac,
+                replace=op.replace,
+                weights=weights,
+                random_state=op.random_state,
+                axis=op.axis,
+            )
 
 
 def sample(

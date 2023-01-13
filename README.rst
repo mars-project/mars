@@ -246,7 +246,7 @@ Starting a new Mars on Ray runtime locally via:
 
     import mars
     mars.new_session(backend='ray')
-    # Perform compute
+    # Perform computation
 
 Interact with Ray Dataset:
 
