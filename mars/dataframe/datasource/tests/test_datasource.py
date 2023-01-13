@@ -46,6 +46,7 @@ from ..read_raydataset import (
     read_ray_mldataset,
     DataFrameReadMLDataset,
 )
+from ...utils import ray_deprecate_ml_dataset
 from ..series import from_pandas as from_pandas_series
 
 
@@ -587,6 +588,10 @@ def test_date_range():
 
 
 @require_ray
+@pytest.mark.skipif(
+    ray_deprecate_ml_dataset in (True, None),
+    reason="Ray (>=2.0) has deprecated MLDataset.",
+)
 def test_read_ray_mldataset(ray_start_regular):
     test_df1 = pd.DataFrame(
         {

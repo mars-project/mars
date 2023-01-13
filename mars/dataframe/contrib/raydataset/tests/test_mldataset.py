@@ -23,6 +23,7 @@ from .....deploy.oscar.ray import new_cluster
 from .....deploy.oscar.session import new_session
 from .....tests.core import require_ray
 from .....utils import lazy_import
+from ....utils import ray_deprecate_ml_dataset
 from ....contrib import raydataset as mdd
 
 ray = lazy_import("ray")
@@ -53,6 +54,10 @@ async def create_cluster(request):
 
 @require_ray
 @pytest.mark.asyncio
+@pytest.mark.skipif(
+    ray_deprecate_ml_dataset in (True, None),
+    reason="Ray (>=2.0) has deprecated MLDataset.",
+)
 async def test_dataset_related_classes(ray_start_regular_shared):
     from ..mldataset import ChunkRefBatch
 
@@ -74,6 +79,10 @@ async def test_dataset_related_classes(ray_start_regular_shared):
 @require_ray
 @pytest.mark.asyncio
 @pytest.mark.parametrize("chunk_size_and_num_shards", [[5, 5], [5, 4], [None, None]])
+@pytest.mark.skipif(
+    ray_deprecate_ml_dataset in (True, None),
+    reason="Ray (>=2.0) has deprecated MLDataset.",
+)
 async def test_convert_to_ray_mldataset(
     ray_start_regular_shared, create_cluster, chunk_size_and_num_shards
 ):
@@ -92,6 +101,10 @@ async def test_convert_to_ray_mldataset(
 @require_ray
 @pytest.mark.asyncio
 @pytest.mark.skipif(xgboost_ray is None, reason="xgboost_ray not installed")
+@pytest.mark.skipif(
+    ray_deprecate_ml_dataset in (True, None),
+    reason="Ray (>=2.0) has deprecated MLDataset.",
+)
 async def test_mars_with_xgboost(ray_start_regular_shared, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, train, predict
     from sklearn.datasets import load_breast_cancer
