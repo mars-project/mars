@@ -222,7 +222,7 @@ def test_is_multilabel(setup):
     raws = [
         [[1, 2]],
         [0, 1, 0, 1],
-        [[1], [0, 2], []],
+        # [[1], [0, 2], []], # deprecated in numpy v1.24
         np.array([[1, 0], [0, 0]]),
         np.array([[1], [0], [0]]),
         np.array([[1, 0, 0]]),
