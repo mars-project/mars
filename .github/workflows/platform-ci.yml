@@ -72,7 +72,7 @@ jobs:
 
           source ./ci/rewrite-cov-config.sh
 
-          pip install numpy scipy cython "scikit-learn<1.2.0"
+          pip install numpy scipy cython
 
           pip install -e ".[dev,extra]"
 
