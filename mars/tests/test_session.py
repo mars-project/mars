@@ -188,7 +188,7 @@ def test_array_protocol(setup):
 
     arr2 = mt.ones((10, 20))
 
-    result = np.asarray(arr2, mt.bool_)
+    result = np.asarray(arr2, mt.bool)
     np.testing.assert_array_equal(result, np.ones((10, 20), dtype=np.bool_))
 
     arr3 = mt.ones((10, 20)).sum()

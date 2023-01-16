@@ -72,7 +72,7 @@ jobs:
 
           source ./ci/rewrite-cov-config.sh
 
-          pip install numpy scipy cython "scikit-learn<1.2.0"
+          pip install numpy scipy cython
 
           pip install -e ".[dev,extra]"
 
@@ -104,11 +104,6 @@ jobs:
             fi
             if [ -n "$WITH_RAY" ] || [ -n "$WITH_RAY_DAG" ] || [ -n "$WITH_RAY_DEPLOY" ]; then
               pip install "xgboost_ray" "protobuf<4"
-              # Future PR will Unpin numpy.
-              pip install "numpy<1.24"
-              # Use standard ray releases when ownership bug is fixed
-              # pip uninstall -y ray
-              # pip install https://s3-us-west-2.amazonaws.com/ray-wheels/master/c03d0432f3bb40f3c597b7fc450870ba5e34ad56/ray-3.0.0.dev0-cp38-cp38-manylinux2014_x86_64.whl
               # Ray Datasets need pyarrow>=6.0.1
               pip install "pyarrow>=6.0.1"
             fi

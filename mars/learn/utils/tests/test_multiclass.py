@@ -117,7 +117,7 @@ EXAMPLES = {
         [()],
         # sequence of sequences that weren't supported even before deprecation
         np.array([np.array([]), np.array([1, 2, 3])], dtype=object),
-        [np.array([]), np.array([1, 2, 3])],
+        # [np.array([]), np.array([1, 2, 3])], # deprecated in numpy v1.24
         [{1, 2, 3}, {1, 2}],
         [frozenset([1, 2, 3]), frozenset([1, 2])],
         # and also confusable as sequences of sequences
@@ -222,7 +222,7 @@ def test_is_multilabel(setup):
     raws = [
         [[1, 2]],
         [0, 1, 0, 1],
-        [[1], [0, 2], []],
+        # [[1], [0, 2], []], # deprecated in numpy v1.24
         np.array([[1, 0], [0, 0]]),
         np.array([[1], [0], [0]]),
         np.array([[1, 0, 0]]),
