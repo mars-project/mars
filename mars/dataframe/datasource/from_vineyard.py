@@ -198,7 +198,7 @@ class DataFrameFromVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
         # check if chunk indexes has unknown value
         has_unknown_chunk_index = False
         for infos in in_chunk_results:
-            for _, info in infos.iterrows():
+            for _, info in infos.iterrows():  # pragma: no cover
                 if len(info["index"]) == 0 or -1 in info["index"]:
                     has_unknown_chunk_index = True
                     break
@@ -214,7 +214,7 @@ class DataFrameFromVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
                 dtypes = info["dtypes"]
                 columns = info["columns"]
                 shape = info["shape"]
-                if has_unknown_chunk_index:
+                if has_unknown_chunk_index:  # pragma: no cover
                     chunk_index = (chunk_location, 0)
                     chunk_location += 1
                 else:

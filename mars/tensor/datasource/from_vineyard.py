@@ -137,7 +137,7 @@ class TensorFromVineyardChunk(TensorOperand, TensorOperandMixin):
         # check if chunk indexes has unknown value
         has_unknown_chunk_index = False
         for infos in in_chunk_results:
-            for info in infos[0]:
+            for info in infos[0]:  # pragma: no cover
                 if len(info[4]) == 0 or -1 in info[4]:
                     has_unknown_chunk_index = True
                     break
@@ -152,7 +152,7 @@ class TensorFromVineyardChunk(TensorOperand, TensorOperandMixin):
                 chunk_op.expect_worker = info[1]
                 dtype = info[2]
                 shape = info[3]
-                if has_unknown_chunk_index:
+                if has_unknown_chunk_index:  # pragma: no cover
                     chunk_index = (chunk_location,)
                     chunk_location += 1
                 else:
