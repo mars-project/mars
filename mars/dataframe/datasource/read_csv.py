@@ -246,7 +246,7 @@ class DataFrameReadCSV(
             if start == 0:
                 # The first chunk contains header
                 # As we specify names and dtype, we need to skip header rows
-                csv_kwargs["skiprows"] = 1 if op.header == "infer" else op.header
+                csv_kwargs["header"] = op.header
             if op.usecols:
                 usecols = op.usecols if isinstance(op.usecols, list) else [op.usecols]
             else:
@@ -323,7 +323,7 @@ class DataFrameReadCSV(
         ) as f:
             if op.compression is not None:
                 # As we specify names and dtype, we need to skip header rows
-                csv_kwargs["skiprows"] = 1 if op.header == "infer" else op.header
+                csv_kwargs["header"] = op.header
                 dtypes = op.outputs[0].dtypes
                 if contain_arrow_dtype(dtypes):
                     # when keep_default_na is True which is default,
@@ -709,11 +709,14 @@ def read_csv(
             names=names,
             header=header,
         )
+        if header == "infer" and names is not None:
+            # ignore header as we always specify names
+            header = None
+        else:
+            # replace header if we specify names or header
+            header = 0
         if names is None:
             names = list(mini_df.columns)
-        else:
-            # if names specified, header should be None
-            header = None
         if usecols:
             usecols = usecols if isinstance(usecols, list) else [usecols]
             col_index = sorted(mini_df.columns.get_indexer(usecols))

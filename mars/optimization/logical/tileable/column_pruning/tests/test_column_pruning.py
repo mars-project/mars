@@ -58,9 +58,8 @@ def gen_data1():
         file_path = os.path.join(tempdir, "test.csv")
         file_path2 = os.path.join(tempdir, "test2.csv")
 
-        # set header=False as a workaround for #127
-        df.to_csv(file_path, index=False, header=False)
-        df2.to_csv(file_path2, index=False, header=False)
+        df.to_csv(file_path, index=False)
+        df2.to_csv(file_path2, index=False)
         yield file_path, file_path2
 
 
@@ -153,7 +152,7 @@ def test_tensor(setup):
 def test_groupby_agg(setup, gen_data1):
     file_path, _ = gen_data1
 
-    df1 = md.read_csv(file_path, names=["c1", "c2", "c3", "c4"])
+    df1 = md.read_csv(file_path)
     c = df1.groupby("c1")["c2"].sum()
 
     graph = c.build_graph()
@@ -172,7 +171,7 @@ def test_groupby_agg(setup, gen_data1):
     assert len(read_csv_node.op.usecols) == 2
     assert len({"c1", "c2"} ^ set(read_csv_node.op.usecols)) == 0
 
-    raw = pd.read_csv(file_path, names=["c1", "c2", "c3", "c4"])
+    raw = pd.read_csv(file_path)
     pd_res = raw.groupby("c1")["c2"].sum()
     r = c.execute().fetch()
     pd.testing.assert_series_equal(r, pd_res)
@@ -180,8 +179,8 @@ def test_groupby_agg(setup, gen_data1):
 
 def test_merge_and_getitem(setup, gen_data1):
     file_path, file_path2 = gen_data1
-    df1 = md.read_csv(file_path, names=["c1", "c2", "c3", "c4"])
-    df2 = md.read_csv(file_path2, names=["c1", "c2", "cc3", "cc4"])
+    df1 = md.read_csv(file_path)
+    df2 = md.read_csv(file_path2, names=["c1", "c2", "cc3", "cc4"], header=0)
     r = df1.merge(df2)["c1"]
 
     graph = r.build_graph()
@@ -204,16 +203,16 @@ def test_merge_and_getitem(setup, gen_data1):
     assert set(read_csv_node_right.op.usecols) == {"c1", "c2"}
 
     r = r.execute().fetch()
-    raw1 = pd.read_csv(file_path, names=["c1", "c2", "c3", "c4"])
-    raw2 = pd.read_csv(file_path2, names=["c1", "c2", "cc3", "cc4"])
+    raw1 = pd.read_csv(file_path)
+    raw2 = pd.read_csv(file_path2, names=["c1", "c2", "cc3", "cc4"], header=0)
     expected = raw1.merge(raw2)["c1"]
     pd.testing.assert_series_equal(r, expected)
 
 
 def test_merge_on_one_column(setup, gen_data1):
     file_path, file_path2 = gen_data1
-    df1 = md.read_csv(file_path, names=["c1", "c2", "c3", "c4"])
-    df2 = md.read_csv(file_path2, names=["c1", "c2", "c3", "c4"])
+    df1 = md.read_csv(file_path)
+    df2 = md.read_csv(file_path2)
     c = df1.merge(df2, left_on="c1", right_on="c1")["c1"]
 
     graph = c.build_graph()
@@ -238,16 +237,16 @@ def test_merge_on_one_column(setup, gen_data1):
     assert read_csv_op.usecols == ["c1"]
 
     r = c.execute().fetch()
-    raw1 = pd.read_csv(file_path, names=["c1", "c2", "c3", "c4"])
-    raw2 = pd.read_csv(file_path2, names=["c1", "c2", "c3", "c4"])
+    raw1 = pd.read_csv(file_path)
+    raw2 = pd.read_csv(file_path2)
     expected = raw1.merge(raw2, left_on="c1", right_on="c1")["c1"]
     pd.testing.assert_series_equal(r, expected)
 
 
 def test_merge_on_two_columns(setup, gen_data1):
     file_path, file_path2 = gen_data1
-    df1 = md.read_csv(file_path, names=["c1", "c2", "c3", "c4"])
-    df2 = md.read_csv(file_path2, names=["c1", "c2", "c3", "c4"])
+    df1 = md.read_csv(file_path)
+    df2 = md.read_csv(file_path2)
     c = df1.merge(df2, left_on=["c1", "c2"], right_on=["c1", "c2"])[["c1", "c2"]]
 
     graph = c.build_graph()
@@ -267,8 +266,8 @@ def test_merge_on_two_columns(setup, gen_data1):
     assert len(set(use_cols) ^ {"c1", "c2"}) == 0
 
     r = c.execute().fetch()
-    raw1 = pd.read_csv(file_path, names=["c1", "c2", "c3", "c4"])
-    raw2 = pd.read_csv(file_path2, names=["c1", "c2", "c3", "c4"])
+    raw1 = pd.read_csv(file_path)
+    raw2 = pd.read_csv(file_path2)
     expected = raw1.merge(raw2, left_on=["c1", "c2"], right_on=["c1", "c2"])[
         ["c1", "c2"]
     ]
@@ -277,16 +276,16 @@ def test_merge_on_two_columns(setup, gen_data1):
 
 def test_groupby_agg_then_merge(setup, gen_data1):
     file_path, file_path2 = gen_data1
-    df1 = md.read_csv(file_path, names=["c1", "c2", "c3", "c4"])
-    df2 = md.read_csv(file_path2, names=["c1", "c2", "c3", "c4"])
+    df1 = md.read_csv(file_path)
+    df2 = md.read_csv(file_path2)
     r_group_res = df1.groupby(["c1"])[["c2"]].sum()
     c = df2.merge(r_group_res, left_on=["c2"], right_on=["c2"])[["c1", "c3"]]
     graph = c.build_graph()
     optimize(graph)
     r = c.execute().fetch()
 
-    raw1 = pd.read_csv(file_path, names=["c1", "c2", "c3", "c4"])
-    raw2 = pd.read_csv(file_path2, names=["c1", "c2", "c3", "c4"])
+    raw1 = pd.read_csv(file_path)
+    raw2 = pd.read_csv(file_path2)
     group_res = raw1.groupby(["c1"])[["c2"]].sum()
     expected = raw2.merge(group_res, left_on=["c2"], right_on=["c2"])[["c1", "c3"]]
     pd.testing.assert_frame_equal(r, expected)

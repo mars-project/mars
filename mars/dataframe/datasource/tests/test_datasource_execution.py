@@ -690,6 +690,19 @@ def test_read_csv_gpu_execution(setup_gpu):
         )
 
 
+def test_read_csv_with_specific_names(setup):
+    with tempfile.TemporaryDirectory() as tempdir:
+        file_path = os.path.join(tempdir, "test_names.csv")
+        df = pd.DataFrame(
+            np.array(np.random.randint(0, 10, size=(10, 3))), columns=["a", "b", "c"]
+        )
+        df.to_csv(file_path, index=False)
+
+        pdf = pd.read_csv(file_path, names=["b", "a", "c"], header=0)
+        mdf = md.read_csv(file_path, names=["b", "a", "c"], header=0).execute().fetch()
+        pd.testing.assert_frame_equal(pdf, mdf)
+
+
 def test_read_csv_without_index(setup):
     # test csv file without storing index
     with tempfile.TemporaryDirectory() as tempdir:
