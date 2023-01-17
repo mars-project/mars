@@ -142,8 +142,8 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
                     dtypes.append(dtype)
                 dtypes = pd.Series(dtypes, index=columns)
             chunk_index = (
-                chunk_meta["partition_index_row_"],
-                chunk_meta["partition_index_column_"],
+                chunk_meta.get("partition_index_row_", -1),
+                chunk_meta.get("partition_index_column_", -1),
             )
             # chunk: (chunk_id, worker_address, dtype, shape, index, columns)
             chunks.append(
@@ -173,7 +173,13 @@ class DataFrameFromVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
         super().__init__(vineyard_socket=vineyard_socket, object_id=object_id, **kw)
 
     def __call__(self, meta):
-        return self.new_dataframe([meta])
+        return self.new_dataframe(
+            [meta],
+            shape=meta.shape,
+            dtypes=meta.dtypes,
+            index_value=meta.index_value,
+            columns_value=meta.columns_value,
+        )
 
     @classmethod
     def tile(cls, op):
@@ -182,13 +188,25 @@ class DataFrameFromVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
 
         ctx = get_context()
 
-        in_chunk_keys = [chunk.key for chunk in op.inputs[0].chunks]
         out_chunks = []
         chunk_map = dict()
         dtypes, columns = None, None
-        for chunk, infos in zip(
-            op.inputs[0].chunks, ctx.get_chunks_result(in_chunk_keys)
-        ):
+
+        in_chunk_keys = [chunk.key for chunk in op.inputs[0].chunks]
+        in_chunk_results = ctx.get_chunks_result(in_chunk_keys)
+
+        # check if chunk indexes has unknown value
+        has_unknown_chunk_index = False
+        for infos in in_chunk_results:
+            for _, info in infos.iterrows():  # pragma: no cover
+                if len(info["index"]) == 0 or -1 in info["index"]:
+                    has_unknown_chunk_index = True
+                    break
+
+        # assume chunks are row-splitted if chunk index is unknown
+        chunk_location = 0
+
+        for chunk, infos in zip(op.inputs[0].chunks, in_chunk_results):
             for _, info in infos.iterrows():
                 chunk_op = op.copy().reset_key()
                 chunk_op.object_id = info["id"]
@@ -196,7 +214,11 @@ class DataFrameFromVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
                 dtypes = info["dtypes"]
                 columns = info["columns"]
                 shape = info["shape"]
-                chunk_index = info["index"]
+                if has_unknown_chunk_index:  # pragma: no cover
+                    chunk_index = (chunk_location, 0)
+                    chunk_location += 1
+                else:
+                    chunk_index = info["index"]
                 chunk_map[chunk_index] = info["shape"]
                 out_chunk = chunk_op.new_chunk(
                     [chunk],
@@ -251,7 +273,7 @@ def from_vineyard(df, vineyard_socket=None):
         gpu=None,
     )
     meta = metaop(
-        shape=(np.nan,),
+        shape=(np.nan, np.nan),
         dtypes=pd.Series([]),
         index_value=parse_index(pd.Index([])),
         columns_value=parse_index(pd.Index([])),

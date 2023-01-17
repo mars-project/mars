@@ -95,7 +95,7 @@ class TensorFromVineyard(TensorNoInput):
                 chunk_meta["value_type_"], chunk_meta.get("value_type_meta_", None)
             )
             shape = tuple(json.loads(chunk_meta["shape_"]))
-            chunk_index = tuple(json.loads(chunk_meta["partition_index_"]))
+            chunk_index = tuple(json.loads(chunk_meta.get("partition_index_", "[]")))
             # chunk: (chunk_id, worker_address, dtype, shape, index)
             chunks.append(
                 (repr(chunk_meta.id), ctx.worker_address, dtype, shape, chunk_index)
@@ -119,7 +119,7 @@ class TensorFromVineyardChunk(TensorOperand, TensorOperandMixin):
         super().__init__(vineyard_socket=vineyard_socket, object_id=object_id, **kw)
 
     def __call__(self, meta):
-        return self.new_tensor([meta], shape=(np.nan,))
+        return self.new_tensor([meta], shape=meta.shape, dtype=meta.dtype)
 
     @classmethod
     def tile(cls, op):
@@ -128,20 +128,35 @@ class TensorFromVineyardChunk(TensorOperand, TensorOperandMixin):
 
         ctx = get_context()
 
-        in_chunk_keys = [chunk.key for chunk in op.inputs[0].chunks]
         out_chunks = []
         chunk_map = dict()
         dtype = None
-        for chunk, infos in zip(
-            op.inputs[0].chunks, ctx.get_chunks_result(in_chunk_keys)
-        ):
+        in_chunk_keys = [chunk.key for chunk in op.inputs[0].chunks]
+        in_chunk_results = ctx.get_chunks_result(in_chunk_keys)
+
+        # check if chunk indexes has unknown value
+        has_unknown_chunk_index = False
+        for infos in in_chunk_results:
+            for info in infos[0]:  # pragma: no cover
+                if len(info[4]) == 0 or -1 in info[4]:
+                    has_unknown_chunk_index = True
+                    break
+
+        # assume chunks are row-splitted if chunk index is unknown
+        chunk_location = 0
+
+        for chunk, infos in zip(op.inputs[0].chunks, in_chunk_results):
             for info in infos[0]:  # n.b. 1-element ndarray
                 chunk_op = op.copy().reset_key()
                 chunk_op.object_id = info[0]
                 chunk_op.expect_worker = info[1]
                 dtype = info[2]
                 shape = info[3]
-                chunk_index = info[4]
+                if has_unknown_chunk_index:  # pragma: no cover
+                    chunk_index = (chunk_location,)
+                    chunk_location += 1
+                else:
+                    chunk_index = info[4]
                 chunk_map[chunk_index] = info[3]
                 out_chunk = chunk_op.new_chunk(
                     [chunk], shape=shape, dtype=dtype, index=chunk_index
@@ -181,6 +196,7 @@ def fromvineyard(tensor, vineyard_socket=None):
     metaop = TensorFromVineyard(
         vineyard_socket=vineyard_socket,
         object_id=object_id,
+        shape=(np.nan,),
         dtype=np.dtype("byte"),
         gpu=None,
     )
