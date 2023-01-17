@@ -191,7 +191,8 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, left, right):
         empty_left, empty_right = build_df(left), build_df(right)
-        # this `merge` will check whether the combination of those arguments is valid
+
+        # validate arguments.
         merged = empty_left.merge(
             empty_right,
             how=self.how,
@@ -206,6 +207,15 @@ class DataFrameMerge(DataFrameOperand, DataFrameOperandMixin):
             indicator=self.indicator,
             validate=self.validate,
         )
+
+        # update default values.
+        if self.on is None and self.left_on is None and self.right_on is None:
+            if not self.left_index or not self.right_index:
+                # use the common columns
+                left_cols = empty_left.columns
+                right_cols = empty_right.columns
+                common_cols = left_cols.intersection(right_cols)
+                self.left_on = self.right_on = list(common_cols)
 
         # the `index_value` doesn't matter.
         index_tokenize_objects = [
