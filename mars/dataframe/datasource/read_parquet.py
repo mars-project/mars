@@ -15,8 +15,7 @@
 # limitations under the License.
 
 import os
-import pickle
-from typing import List, Tuple
+from typing import Dict
 from urllib.parse import urlparse
 
 import numpy as np
@@ -44,7 +43,6 @@ from ...serialization.serializables import (
     StringField,
     Int32Field,
     Int64Field,
-    BytesField,
 )
 from ...utils import is_object_dtype, lazy_import
 from ..arrays import ArrowStringDtype
@@ -116,8 +114,8 @@ class ParquetEngine:
     def read_partitioned_to_pandas(
         self,
         f,
-        partitions: "pq.ParquetPartitions",
-        partition_keys: List[Tuple],
+        partitions: Dict,
+        partition_keys: Dict,
         columns=None,
         nrows=None,
         use_arrow_dtype=None,
@@ -126,11 +124,10 @@ class ParquetEngine:
         raw_df = self.read_to_pandas(
             f, columns=columns, nrows=nrows, use_arrow_dtype=use_arrow_dtype, **kwargs
         )
-        for i, (name, index) in enumerate(partition_keys):
-            dictionary = partitions[i].dictionary
-            value = dictionary[index]
-            raw_df[name] = pd.Series(
-                value.as_py(),
+        for col, value in partition_keys.items():
+            dictionary = partitions[col]
+            raw_df[col] = pd.Series(
+                value,
                 dtype=pd.CategoricalDtype(categories=dictionary.tolist()),
                 index=raw_df.index,
             )
@@ -249,8 +246,8 @@ class CudfEngine:
     def read_partitioned_to_cudf(
         cls,
         file,
-        partitions: "pq.ParquetPartitions",
-        partition_keys: List[Tuple],
+        partitions: Dict,
+        partition_keys: Dict,
         columns=None,
         nrows=None,
         **kwargs,
@@ -262,11 +259,13 @@ class CudfEngine:
         t = t.slice(0, nrows) if nrows is not None else t
         t = pa.table(t.columns, names=t.column_names)
         raw_df = cudf.DataFrame.from_arrow(t)
-        for i, (name, index) in enumerate(partition_keys):
-            dictionary = partitions[i].dictionary
-            codes = cudf.core.column.as_column(index, length=len(raw_df))
-            raw_df[name] = cudf.core.column.build_categorical_column(
-                categories=dictionary.tolist(),
+        for col, value in partition_keys.items():
+            dictionary = partitions[col].tolist()
+            codes = cudf.core.column.as_column(
+                dictionary.index(value), length=len(raw_df)
+            )
+            raw_df[col] = cudf.core.column.build_categorical_column(
+                categories=dictionary,
                 codes=codes,
                 size=codes.size,
                 offset=codes.offset,
@@ -295,8 +294,8 @@ class DataFrameReadParquet(
     merge_small_files = BoolField("merge_small_files")
     merge_small_file_options = DictField("merge_small_file_options")
     # for chunk
-    partitions = BytesField("partitions", default=None)
-    partition_keys = ListField("partition_keys", default=None)
+    partitions = DictField("partitions", default=None)
+    partition_keys = DictField("partition_keys", default=None)
     num_group_rows = Int64Field("num_group_rows", default=None)
     # as read meta may be too time-consuming when number of files is large,
     # thus we only read first file to get row number and raw file size
@@ -325,21 +324,30 @@ class DataFrameReadParquet(
         out_df = op.outputs[0]
         shape = (np.nan, out_df.shape[1])
         dtypes = cls._to_arrow_dtypes(out_df.dtypes, op)
-        dataset = pq.ParquetDataset(op.path, use_legacy_dataset=True)
+        dataset = pq.ParquetDataset(op.path, use_legacy_dataset=False)
 
         path_prefix = _parse_prefix(op.path)
 
         chunk_index = 0
         out_chunks = []
         first_chunk_row_num, first_chunk_raw_bytes = None, None
-        for i, piece in enumerate(dataset.pieces):
+        for i, fragment in enumerate(dataset.fragments):
             chunk_op = op.copy().reset_key()
-            chunk_op.path = chunk_path = path_prefix + piece.path
-            chunk_op.partitions = pickle.dumps(dataset.partitions)
-            chunk_op.partition_keys = piece.partition_keys
+            chunk_op.path = chunk_path = path_prefix + fragment.path
+            relpath = os.path.relpath(chunk_path, op.path)
+            partition_keys = dict(
+                tuple(s.split("=")) for s in relpath.split(os.sep)[:-1]
+            )
+            chunk_op.partition_keys = partition_keys
+            chunk_op.partitions = dict(
+                zip(
+                    dataset.partitioning.schema.names, dataset.partitioning.dictionaries
+                )
+            )
             if i == 0:
-                first_chunk_raw_bytes = file_size(chunk_path, op.storage_options)
-                first_chunk_row_num = piece.get_metadata().num_rows
+                first_row_group = fragment.row_groups[0]
+                first_chunk_raw_bytes = first_row_group.total_byte_size
+                first_chunk_row_num = first_row_group.num_rows
             chunk_op.first_chunk_row_num = first_chunk_row_num
             chunk_op.first_chunk_raw_bytes = first_chunk_raw_bytes
             new_chunk = chunk_op.new_chunk(
@@ -458,11 +466,10 @@ class DataFrameReadParquet(
     def _execute_partitioned(cls, ctx, op: "DataFrameReadParquet"):
         out = op.outputs[0]
         engine = get_engine(op.engine)
-        partitions = pickle.loads(op.partitions)
         with open_file(op.path, storage_options=op.storage_options) as f:
             ctx[out.key] = engine.read_partitioned_to_pandas(
                 f,
-                partitions,
+                op.partitions,
                 op.partition_keys,
                 columns=op.columns,
                 nrows=op.nrows,
@@ -516,10 +523,9 @@ class DataFrameReadParquet(
 
         try:
             if op.partitions is not None:
-                partitions = pickle.loads(op.partitions)
                 ctx[out.key] = engine.read_partitioned_to_cudf(
                     file,
-                    partitions,
+                    op.partitions,
                     op.partition_keys,
                     columns=op.columns,
                     nrows=op.nrows,
