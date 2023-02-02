@@ -27,6 +27,7 @@ from .....dataframe.indexing.getitem import DataFrameIndex
 from .....dataframe.indexing.setitem import DataFrameSetitem
 from .....dataframe.merge import DataFrameMerge
 from .....typing import OperandType
+from .utils import get_cols_exclude_index
 
 
 class InputColumnSelector:
@@ -62,8 +63,12 @@ class InputColumnSelector:
         cls,
         op_cls: OperandType,
         func: Callable[[TileableData, Set[Any]], Dict[TileableData, Set[Any]]],
+        replace: bool = False,
     ) -> None:
-        cls._OP_TO_SELECT_FUNCTION[op_cls] = func
+        if op_cls not in cls._OP_TO_SELECT_FUNCTION or replace:
+            cls._OP_TO_SELECT_FUNCTION[op_cls] = func
+        else:
+            raise ValueError(f"key {op_cls} exists.")
 
     @classmethod
     def unregister(cls, op_cls: OperandType) -> None:
@@ -71,7 +76,7 @@ class InputColumnSelector:
             del cls._OP_TO_SELECT_FUNCTION[op_cls]
 
     @classmethod
-    def select_input_columns(
+    def select(
         cls, tileable_data: TileableData, required_cols: Set[Any]
     ) -> Dict[TileableData, Set[Any]]:
         """
@@ -129,32 +134,23 @@ def df_merge_select_function(
             if col in required_cols:
                 ret[df].add(col)
             else:
+                # TODO: this does not work when col is a tuple.
                 suffix_col = str(col) + suffix
                 if suffix_col in required_cols:
                     ret[df].add(col)
+                    # The column in the other dataframe has to be selected as well. Otherwise, in
+                    # the runtime, there will not be a column with suffix.
+                    other_data = right_data if df is left_data else left_data
+                    ret[other_data].add(col)
 
     if op.on is not None:
-        ret[left_data].update(_get_cols_exclude_index(left_data, op.on))
-        ret[right_data].update(_get_cols_exclude_index(right_data, op.on))
+        ret[left_data].update(get_cols_exclude_index(left_data, op.on))
+        ret[right_data].update(get_cols_exclude_index(right_data, op.on))
     if op.left_on is not None:
-        ret[left_data].update(_get_cols_exclude_index(left_data, op.left_on))
+        ret[left_data].update(get_cols_exclude_index(left_data, op.left_on))
     if op.right_on is not None:
-        ret[right_data].update(_get_cols_exclude_index(right_data, op.right_on))
+        ret[right_data].update(get_cols_exclude_index(right_data, op.right_on))
 
-    return ret
-
-
-def _get_cols_exclude_index(inp: BaseDataFrameData, cols: Any) -> Set[Any]:
-    ret = set()
-    if isinstance(cols, (list, tuple)):
-        for col in cols:
-            if col in inp.dtypes.index:
-                # exclude index
-                ret.add(col)
-    else:
-        if cols in inp.dtypes.index:
-            # exclude index
-            ret.add(cols)
     return ret
 
 
@@ -182,7 +178,7 @@ def df_groupby_agg_select_function(
         selected_cols = set()
         # group by keys should be included
         if not groupby_series:
-            selected_cols.update(_get_cols_exclude_index(inp, by))
+            selected_cols.update(get_cols_exclude_index(inp, by))
         # add agg columns
         if op.raw_func is not None:
             if op.raw_func == "size":
@@ -239,7 +235,21 @@ def df_setitem_select_function(
         return ret
 
 
-SELECT_REQUIRED_OP_TYPES = [DataFrameBinOp, DataFrameUnaryOp, DataFrameIndex]
+@register_selector(DataFrameIndex)
+def df_getitem_select_function(
+    tileable_data: TileableData, required_cols: Set[Any]
+) -> Dict[TileableData, Set[Any]]:
+    if tileable_data.op.col_names:
+        return InputColumnSelector.select_required_input_columns(
+            tileable_data, required_cols
+        )
+    else:
+        return InputColumnSelector.select_all_input_columns(
+            tileable_data, required_cols
+        )
+
+
+SELECT_REQUIRED_OP_TYPES = [DataFrameBinOp, DataFrameUnaryOp]
 for op_type in SELECT_REQUIRED_OP_TYPES:
     InputColumnSelector.register(
         op_type, InputColumnSelector.select_required_input_columns

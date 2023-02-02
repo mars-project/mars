@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Dict, Set, Any, Type, Union
+from typing import List, Dict, Set, Any, Type, Union, Optional
 
 import pandas as pd
 
 from .input_column_selector import InputColumnSelector
+from .self_column_selector import SelfColumnSelector
 from ..core import register_optimization_rule
 from ...core import (
     OptimizationRecord,
@@ -52,9 +53,9 @@ class ColumnPruningRule(OptimizationRule):
         super().__init__(graph, records, optimizer_cls)
         self._context: Dict[TileableData, Dict[TileableData, Set[Any]]] = {}
 
-    def _get_selected_columns(self, data: TileableData) -> Set[Any]:
+    def _get_successor_required_columns(self, data: TileableData) -> Set[Any]:
         """
-        Get pruned columns of the given entity.
+        Get columns required by the successors of the given tileable data.
         """
         successors = self._get_successors(data)
         if successors:
@@ -65,11 +66,25 @@ class ColumnPruningRule(OptimizationRule):
             return self._get_all_columns(data)
 
     @staticmethod
+    def _get_self_required_columns(data: TileableData) -> Set[Any]:
+        return SelfColumnSelector.select(data)
+
+    def _get_required_columns(self, data: TileableData) -> Optional[Set[Any]]:
+        required_columns = set()
+        successor_required_columns = self._get_successor_required_columns(data)
+        if successor_required_columns is None:
+            return None
+        required_columns.update(successor_required_columns)
+        self_required_columns = self._get_self_required_columns(data)
+        required_columns.update(self_required_columns)
+        return required_columns
+
+    @staticmethod
     def _get_all_columns(data: TileableData) -> Union[Set[Any], None]:
         """
-        Return all the columns of given tileable data. If the given tileable data is neither BaseDataFrameData nor
-        BaseSeriesData, None will be returned, indicating that column pruning is not available for the given tileable
-        data.
+        Return all the columns of given tileable data. If the given tileable data is neither
+        BaseDataFrameData nor BaseSeriesData, None will be returned, indicating that column pruning
+        is not available for the given tileable data.
         """
         if isinstance(data, BaseDataFrameData) and data.dtypes is not None:
             return set(data.dtypes.index)
@@ -82,8 +97,8 @@ class ColumnPruningRule(OptimizationRule):
         """
         Get successors of the given tileable data.
 
-        Column pruning is available only when every successor is available for column pruning (i.e. appears in the
-        context).
+        Column pruning is available only when every successor is available for column pruning
+        (i.e. appears in the context).
         """
         successors = list(self._graph.successors(data))
         if all(successor in self._context for successor in successors):
@@ -91,18 +106,18 @@ class ColumnPruningRule(OptimizationRule):
         else:
             return []
 
-    def _select_columns(self) -> None:
+    def _build_context(self) -> None:
         """
         Select required columns for each tileable data in the graph.
         """
         for data in self._graph.topological_iter(reverse=True):
             if self._is_skipped_type(data):
                 continue
-            self._context[data] = InputColumnSelector.select_input_columns(
-                data, self._get_selected_columns(data)
+            self._context[data] = InputColumnSelector.select(
+                data, self._get_successor_required_columns(data)
             )
 
-    def _insert_getitem_nodes(self) -> List[TileableData]:
+    def _prune_columns(self) -> List[TileableData]:
         pruned_nodes: List[TileableData] = []
         datasource_nodes: List[TileableData] = []
 
@@ -112,12 +127,14 @@ class ColumnPruningRule(OptimizationRule):
                 continue
 
             op = data.op
-            selected_columns = self._get_selected_columns(data)
 
-            if isinstance(op, ColumnPruneSupportedDataSourceMixin) and set(
-                selected_columns
-            ) != self._get_all_columns(data):
-                op.set_pruned_columns(list(selected_columns))
+            successor_required_columns = self._get_successor_required_columns(data)
+            if (
+                isinstance(op, ColumnPruneSupportedDataSourceMixin)
+                and successor_required_columns is not None
+                and set(successor_required_columns) != self._get_all_columns(data)
+            ):
+                op.set_pruned_columns(list(successor_required_columns))
                 self.effective = True
                 pruned_nodes.append(data)
                 datasource_nodes.append(data)
@@ -192,15 +209,17 @@ class ColumnPruningRule(OptimizationRule):
                         affected_nodes.add(successor)
 
         for node in affected_nodes:
-            selected_columns = self._get_selected_columns(node)
-            if isinstance(node, BaseDataFrameData) and set(selected_columns) != set(
-                node.dtypes.index
+            required_columns = self._get_required_columns(node)
+            if (
+                isinstance(node, BaseDataFrameData)
+                and required_columns is not None
+                and set(required_columns) != set(node.dtypes.index)
             ):
                 new_dtypes = pd.Series(
                     dict(
                         (col, dtype)
-                        for col, dtype in node.dtypes.iteritems()
-                        if col in selected_columns
+                        for col, dtype in node.dtypes.items()
+                        if col in required_columns
                     )
                 )
                 new_columns_value = parse_index(new_dtypes.index, store_data=True)
@@ -210,8 +229,8 @@ class ColumnPruningRule(OptimizationRule):
 
     @implements(OptimizationRule.apply)
     def apply(self):
-        self._select_columns()
-        pruned_nodes = self._insert_getitem_nodes()
+        self._build_context()
+        pruned_nodes = self._prune_columns()
         self._update_tileable_params(pruned_nodes)
 
     @staticmethod

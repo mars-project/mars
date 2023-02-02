@@ -49,11 +49,11 @@ def test_register():
 
     InputColumnSelector.register(MockOperand, _select_input_columns)
     mock_data = MockEntityData()
-    assert InputColumnSelector.select_input_columns(mock_data, {"foo"}) == {}
+    assert InputColumnSelector.select(mock_data, {"foo"}) == {}
 
     # unregister
     InputColumnSelector.unregister(MockOperand)
-    assert InputColumnSelector.select_input_columns(mock_data, {"foo"}) == {
+    assert InputColumnSelector.select(mock_data, {"foo"}) == {
         MockOperand.get_mock_input(): {"foo", "bar"}
     }
 
@@ -69,31 +69,31 @@ def test_df_groupby_agg():
     )
 
     s = df.groupby(by="foo")["baz"].sum()
-    input_columns = InputColumnSelector.select_input_columns(s.data, {"baz"})
+    input_columns = InputColumnSelector.select(s.data, {"baz"})
     assert len(input_columns) == 1
     assert df.data in input_columns
     assert input_columns[df.data] == {"foo", "baz"}
 
     s = df.groupby(by=["foo", "bar"]).sum()
-    input_columns = InputColumnSelector.select_input_columns(s.data, {"baz"})
+    input_columns = InputColumnSelector.select(s.data, {"baz"})
     assert len(input_columns) == 1
     assert df.data in input_columns
     assert input_columns[df.data] == {"foo", "bar", "baz"}
 
     s = df.groupby(by="foo").agg(["sum", "max"])
-    input_columns = InputColumnSelector.select_input_columns(s.data, {"baz"})
+    input_columns = InputColumnSelector.select(s.data, {"baz"})
     assert len(input_columns) == 1
     assert df.data in input_columns
     assert input_columns[df.data] == {"foo", "baz"}
 
     s = df.groupby(by="foo")["bar", "baz"].agg(["sum", "max"])
-    input_columns = InputColumnSelector.select_input_columns(s.data, {"baz"})
+    input_columns = InputColumnSelector.select(s.data, {"baz"})
     assert len(input_columns) == 1
     assert df.data in input_columns
     assert input_columns[df.data] == {"foo", "bar", "baz"}
 
     s = df.groupby(by="foo").agg(new_bar=("bar", "sum"), new_baz=("baz", "sum"))
-    input_columns = InputColumnSelector.select_input_columns(s.data, {"new_bar"})
+    input_columns = InputColumnSelector.select(s.data, {"new_bar"})
     assert len(input_columns) == 1
     assert df.data in input_columns
     assert input_columns[df.data] == {"foo", "bar", "baz"}
@@ -104,7 +104,7 @@ def test_df_groupby_index_agg():
     df: DataFrame = DataFrame({"foo": (1, 1, 3), "bar": (4, 5, 6)})
     df = df.set_index("foo")
     s = df.groupby(by="foo").sum()
-    input_columns = InputColumnSelector.select_input_columns(s.data, {"bar"})
+    input_columns = InputColumnSelector.select(s.data, {"bar"})
     assert len(input_columns) == 1
     assert df.data in input_columns
     assert input_columns[df.data] == {"bar"}
@@ -116,39 +116,33 @@ def test_df_merge():
 
     joined = left.merge(right, on=["foo"])
 
-    input_columns = InputColumnSelector.select_input_columns(joined.data, {"foo"})
+    input_columns = InputColumnSelector.select(joined.data, {"foo"})
     assert left.data in input_columns
     assert input_columns[left.data] == {"foo"}
     assert right.data in input_columns
     assert input_columns[right.data] == {"foo"}
 
-    input_columns = InputColumnSelector.select_input_columns(
-        joined.data, {"foo", "baz"}
-    )
+    input_columns = InputColumnSelector.select(joined.data, {"foo", "baz"})
     assert left.data in input_columns
     assert input_columns[left.data] == {"foo"}
     assert right.data in input_columns
     assert input_columns[right.data] == {"foo", "baz"}
 
-    input_columns = InputColumnSelector.select_input_columns(
-        joined.data, {"foo", "1_x"}
-    )
+    input_columns = InputColumnSelector.select(joined.data, {"foo", "1_x"})
     assert left.data in input_columns
     assert input_columns[left.data] == {"foo", 1}
     assert right.data in input_columns
-    assert input_columns[right.data] == {"foo"}
+    assert input_columns[right.data] == {"foo", 1}
 
     joined = left.merge(right, on=["foo", "bar"])
-    input_columns = InputColumnSelector.select_input_columns(joined.data, {"baz"})
+    input_columns = InputColumnSelector.select(joined.data, {"baz"})
     assert left.data in input_columns
     assert input_columns[left.data] == {"foo", "bar"}
     assert right.data in input_columns
     assert input_columns[right.data] == {"foo", "bar", "baz"}
 
     joined = left.merge(right, on=["foo", "bar"])
-    input_columns = InputColumnSelector.select_input_columns(
-        joined.data, {"1_x", "1_y"}
-    )
+    input_columns = InputColumnSelector.select(joined.data, {"1_x", "1_y"})
     assert left.data in input_columns
     assert input_columns[left.data] == {"foo", "bar", 1}
     assert right.data in input_columns
@@ -163,7 +157,7 @@ def test_df_merge_on_index():
 
     # join on index
     joined = left.merge(right, on="foo")
-    input_columns = InputColumnSelector.select_input_columns(joined.data, {"baz"})
+    input_columns = InputColumnSelector.select(joined.data, {"baz"})
     assert left.data in input_columns
     assert input_columns[left.data] == set()
     assert right.data in input_columns
@@ -171,7 +165,7 @@ def test_df_merge_on_index():
 
     # left_on is an index and right_on is a column
     joined = left.merge(right, left_on="foo", right_on="bar")
-    input_columns = InputColumnSelector.select_input_columns(joined.data, {"baz"})
+    input_columns = InputColumnSelector.select(joined.data, {"baz"})
     assert left.data in input_columns
     assert input_columns[left.data] == set()
     assert right.data in input_columns
@@ -179,7 +173,7 @@ def test_df_merge_on_index():
 
     # left_on is a column and right_on is an index
     joined = left.merge(right, left_on="bar", right_on="foo")
-    input_columns = InputColumnSelector.select_input_columns(joined.data, {"baz"})
+    input_columns = InputColumnSelector.select(joined.data, {"baz"})
     assert left.data in input_columns
     assert input_columns[left.data] == {"bar"}
     assert right.data in input_columns
@@ -205,14 +199,14 @@ def test_df_arithmatic_ops():
 
     for op in ops:
         res: DataFrame = op(df1, 1)
-        input_columns = InputColumnSelector.select_input_columns(res.data, {"foo"})
+        input_columns = InputColumnSelector.select(res.data, {"foo"})
         assert len(input_columns) == 1
         assert res.data.inputs[0] in input_columns
         assert input_columns[res.data.inputs[0]] == {"foo"}
 
     for op in ops:
         res: DataFrame = op(df1, df2)
-        input_columns = InputColumnSelector.select_input_columns(res.data, {"foo"})
+        input_columns = InputColumnSelector.select(res.data, {"foo"})
         assert len(input_columns) == 2
         assert res.data.inputs[0] in input_columns
         assert input_columns[res.data.inputs[0]] == {"foo"}
@@ -232,21 +226,21 @@ def test_df_setitem():
 
     # scaler
     df[4] = 13
-    input_columns = InputColumnSelector.select_input_columns(df.data, {"foo"})
+    input_columns = InputColumnSelector.select(df.data, {"foo"})
     assert len(input_columns) == 1
     assert df.data.inputs[0] in input_columns
     assert input_columns[df.data.inputs[0]] == {"foo"}
 
     # scaler tensor
     df[5] = tensor()
-    input_columns = InputColumnSelector.select_input_columns(df.data, {"foo"})
+    input_columns = InputColumnSelector.select(df.data, {"foo"})
     assert len(input_columns) == 1
     assert df.data.inputs[0] in input_columns
     assert input_columns[df.data.inputs[0]] == {"foo"}
 
     # tensor
     df[6] = tensor([13, 14, 15, 16])
-    input_columns = InputColumnSelector.select_input_columns(df.data, {"foo"})
+    input_columns = InputColumnSelector.select(df.data, {"foo"})
     assert len(input_columns) == 2
     assert df.data.inputs[0] in input_columns
     assert input_columns[df.data.inputs[0]] == {"foo"}
@@ -255,7 +249,7 @@ def test_df_setitem():
 
     # series
     df[7] = Series([13, 14, 15, 16])
-    input_columns = InputColumnSelector.select_input_columns(df.data, {"foo"})
+    input_columns = InputColumnSelector.select(df.data, {"foo"})
     assert len(input_columns) == 2
     assert df.data.inputs[0] in input_columns
     assert input_columns[df.data.inputs[0]] == {"foo"}
@@ -264,7 +258,7 @@ def test_df_setitem():
 
     # dataframe
     df[[8, 9]] = df[["foo", "bar"]]
-    input_columns = InputColumnSelector.select_input_columns(df.data, {8})
+    input_columns = InputColumnSelector.select(df.data, {8})
     assert len(input_columns) == 2
     assert df.data.inputs[0] in input_columns
     assert input_columns[df.data.inputs[0]] == set()
@@ -282,7 +276,26 @@ def test_select_all():
         }
     )
     head = df.head()
-    input_columns = InputColumnSelector.select_input_columns(head.data, {"foo"})
+    input_columns = InputColumnSelector.select(head.data, {"foo"})
     assert len(input_columns) == 1
     assert head.data.inputs[0] in input_columns
     assert input_columns[head.data.inputs[0]] == {"foo", "bar", "baz", "qux"}
+
+
+def test_getitem():
+    df: DataFrame = DataFrame(
+        {
+            "foo": (1, 1, 2, 2),
+            "bar": (3, 4, 3, 4),
+            "baz": (5, 6, 7, 8),
+            "qux": (9, 10, 11, 12),
+        }
+    )
+
+    getitem = df[df["foo"] == 1]
+    input_columns = InputColumnSelector.select(getitem.data, {"foo"})
+    assert input_columns[getitem.data.inputs[0]] == {"foo", "bar", "baz", "qux"}
+
+    getitem = df["foo"]
+    input_columns = InputColumnSelector.select(getitem.data, {"foo"})
+    assert input_columns[getitem.data.inputs[0]] == {"foo"}

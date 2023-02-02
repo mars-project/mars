@@ -21,6 +21,7 @@ import pytest
 from ...... import dataframe as md
 from ...... import tensor as mt
 from ......dataframe.arithmetic import DataFrameMul
+from ......dataframe.base.eval import DataFrameEval
 from ......dataframe.base.isin import DataFrameIsin
 from ......dataframe.core import DataFrameData, SeriesData, DataFrameGroupByData
 from ......dataframe.datasource.dataframe import DataFrameDataSource
@@ -29,6 +30,7 @@ from ......dataframe.datasource.read_parquet import DataFrameReadParquet
 from ......dataframe.groupby.aggregation import DataFrameGroupByAgg
 from ......dataframe.groupby.core import DataFrameGroupByOperand
 from ......dataframe.indexing.getitem import DataFrameIndex
+from ......dataframe.indexing.setitem import DataFrameSetitem
 from ......dataframe.merge import DataFrameMerge
 from ......optimization.logical.tileable import optimize
 from ......tensor.core import TensorData
@@ -449,3 +451,142 @@ def test_two_groupby_aggs_with_multi_index(setup, gen_data2):
         if type(n.op) is DataFrameReadParquet and n.op.path == file_path
     ][0]
     assert read_parquet_node.op.get_columns() is None
+
+
+def test_merge_and_get_col_with_suffix(setup, gen_data1):
+    file_path, file_path2 = gen_data1
+    left = md.read_csv(file_path)
+    right = md.read_csv(file_path2)
+    r = left.merge(right, on="c1")[["c3_x"]]
+
+    graph = r.build_graph()
+    optimize(graph)
+
+    index_node = graph.result_tileables[0]
+    assert isinstance(index_node.op, DataFrameIndex)
+    assert index_node.op.col_names == ["c3_x"]
+
+    assert len(graph.predecessors(index_node)) == 1
+    merge_node = graph.predecessors(index_node)[0]
+    assert type(merge_node.op) is DataFrameMerge
+
+    read_csv_node_left, read_csv_node_right = graph.predecessors(merge_node)
+    assert type(read_csv_node_left.op) is DataFrameReadCSV
+    assert type(read_csv_node_right.op) is DataFrameReadCSV
+    assert len(read_csv_node_left.op.usecols) == 2
+    assert len(read_csv_node_right.op.usecols) == 2
+    assert set(read_csv_node_left.op.usecols) == {"c1", "c3"}
+    assert set(read_csv_node_right.op.usecols) == {"c1", "c3"}
+
+    r = r.execute().fetch()
+    raw1 = pd.read_csv(file_path)
+    raw2 = pd.read_csv(file_path2)
+    expected = raw1.merge(raw2, on="c1")[["c3_x"]]
+    pd.testing.assert_frame_equal(r, expected)
+
+
+def test_getitem_with_mask(setup, gen_data1):
+    """
+    Getitem with mask shouldn't prune any column.
+    """
+    file_path, file_path2 = gen_data1
+    df = md.read_csv(file_path)
+    df2 = md.read_csv(file_path2)
+
+    df = df[df2["c1"] > 3]
+    r = df.groupby(by="c1", as_index=False).sum()["c2"]
+
+    graph = r.build_graph()
+    optimize(graph)
+
+    index_node = graph.result_tileables[0]
+    assert isinstance(index_node.op, DataFrameIndex)
+    assert index_node.name == "c2"
+
+    assert len(graph.predecessors(index_node)) == 1
+    gb_node = graph.predecessors(index_node)[0]
+    assert isinstance(gb_node.op, DataFrameGroupByAgg)
+    assert set(gb_node.dtypes.index) == {"c1", "c2"}
+
+    assert len(graph.predecessors(gb_node)) == 1
+    index_node_2 = graph.predecessors(gb_node)[0]
+    isinstance(index_node_2.op, DataFrameIndex)
+    assert set(index_node_2.dtypes.index) == {"c1", "c2"}
+
+    assert len(graph.predecessors(index_node_2)) == 1
+    index_node_3 = graph.predecessors(index_node_2)[0]
+    isinstance(index_node_3.op, DataFrameIndex)
+    assert set(index_node_3.dtypes.index) == {"c1", "c2", "c3", "c4"}
+
+    assert len(graph.predecessors(index_node_3)) == 2
+    read_csv_node, eval_node = graph.predecessors(index_node_3)
+    assert isinstance(read_csv_node.op, DataFrameReadCSV)
+    assert isinstance(eval_node.op, DataFrameEval)
+    assert read_csv_node.op.usecols is None  # all the columns.
+    assert eval_node.name == "c1"
+
+    assert len(graph.predecessors(eval_node)) == 1
+    read_csv_node_2 = graph.predecessors(eval_node)[0]
+    assert isinstance(read_csv_node_2.op, DataFrameReadCSV)
+    assert read_csv_node_2.op.usecols == ["c1"]
+
+    raw1 = pd.read_csv(file_path)
+    raw2 = pd.read_csv(file_path2)
+    raw1 = raw1[raw2["c1"] > 3]
+    expected = raw1.groupby(by="c1", as_index=False).sum()["c2"]
+    pd.testing.assert_series_equal(
+        r.execute(extra_config={"check_series_name": False}).fetch(), expected
+    )
+
+
+def test_setitem(setup, gen_data1):
+    """
+    The output of DataFrameSetitem should preserve the column being set so that tile can work
+    correctly.
+    """
+    file_path, file_path2 = gen_data1
+    df = md.read_csv(file_path)
+    df2 = md.read_csv(file_path2)
+
+    df["c5"] = df2["c1"]
+    r = df.groupby(by="c1", as_index=False).sum()["c2"]
+
+    graph = r.build_graph()
+    optimize(graph)
+
+    index_node = graph.result_tileables[0]
+    assert isinstance(index_node.op, DataFrameIndex)
+    assert index_node.name == "c2"
+
+    assert len(graph.predecessors(index_node)) == 1
+    gb_node = graph.predecessors(index_node)[0]
+    assert isinstance(gb_node.op, DataFrameGroupByAgg)
+    assert set(gb_node.dtypes.index) == {"c1", "c2"}
+
+    assert len(graph.predecessors(gb_node)) == 1
+    index_node_2 = graph.predecessors(gb_node)[0]
+    isinstance(index_node_2.op, DataFrameIndex)
+    assert set(index_node_2.dtypes.index) == {"c1", "c2"}
+
+    assert len(graph.predecessors(index_node_2)) == 1
+    setitem_node = graph.predecessors(index_node_2)[0]
+    isinstance(setitem_node.op, DataFrameSetitem)
+    assert set(setitem_node.dtypes.index) == {"c1", "c2", "c5"}
+
+    assert len(graph.predecessors(setitem_node)) == 2
+    read_csv_node, index_node_3 = graph.predecessors(setitem_node)
+    assert isinstance(read_csv_node.op, DataFrameReadCSV)
+    assert isinstance(index_node_3.op, DataFrameIndex)
+    assert set(read_csv_node.op.usecols) == {"c1", "c2"}
+    assert index_node_3.name == "c1"
+
+    assert len(graph.predecessors(index_node_3)) == 1
+    read_csv_node_2 = graph.predecessors(index_node_3)[0]
+    assert isinstance(read_csv_node_2.op, DataFrameReadCSV)
+    assert read_csv_node_2.op.usecols == ["c1"]
+
+    raw1 = pd.read_csv(file_path)
+    raw2 = pd.read_csv(file_path2)
+    raw1["c5"] = raw2["c1"]
+    expected = raw1.groupby(by="c1", as_index=False).sum()["c2"]
+    pd.testing.assert_series_equal(r.execute().fetch(), expected)

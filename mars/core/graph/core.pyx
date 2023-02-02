@@ -313,7 +313,12 @@ cdef class DirectedGraph:
     def _extract_operands(self, node):
         return [node.op]
 
-    def to_dot(self, graph_attrs=None, node_attrs=None, trunc_key=5, result_chunk_keys=None):
+    def to_dot(
+        self,
+        graph_attrs=None,
+        node_attrs=None,
+        trunc_key=5, result_chunk_keys=None, show_columns=False):
+
         sio = StringIO()
         sio.write('digraph {\n')
         sio.write('splines=curved\n')
@@ -330,6 +335,15 @@ cdef class DirectedGraph:
         operand_style = '[shape=circle]'
 
         visited = set()
+
+        def get_col_names(obj):
+            if hasattr(obj, "dtypes"):
+                return f"\"{','.join(list(obj.dtypes.index))}\""
+            elif hasattr(obj, "name"):
+                return f"\"{obj.name}\""
+            else:
+                return "\"N/A\""
+
         for node in self.iter_nodes():
             for op in self._extract_operands(node):
                 op_name = type(op).__name__
@@ -358,7 +372,10 @@ cdef class DirectedGraph:
                         sio.write(f'"{op_name}:{op.key[:trunc_key]}" {operand_style}\n')
                         visited.add(op.key)
                     sio.write(f'"{op_name}:{op.key[:trunc_key]}" -> '
-                              f'"Chunk:{self._gen_chunk_key(output_chunk, trunc_key)}"\n')
+                              f'"Chunk:{self._gen_chunk_key(output_chunk, trunc_key)}"')
+                    if show_columns:
+                        sio.write(f' [ label={get_col_names(output_chunk)} ]')
+                    sio.write("\n")
 
         sio.write('}')
         return sio.getvalue()
@@ -385,10 +402,10 @@ cdef class DirectedGraph:
 
         Fusion(self).decompose(nodes=nodes)
 
-    def view(self, filename='default', graph_attrs=None, node_attrs=None, result_chunk_keys=None):  # pragma: no cover
+    def view(self, filename='default', graph_attrs=None, node_attrs=None, result_chunk_keys=None, show_columns=False):  # pragma: no cover
         from graphviz import Source
 
-        g = Source(self.to_dot(graph_attrs, node_attrs, result_chunk_keys=result_chunk_keys))
+        g = Source(self.to_dot(graph_attrs, node_attrs, result_chunk_keys=result_chunk_keys, show_columns=show_columns))
         g.view(filename=filename, cleanup=True)
 
     def to_dag(self):

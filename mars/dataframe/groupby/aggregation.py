@@ -235,7 +235,14 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         )
 
         shape = (np.nan, agg_df.shape[1])
-        index_value = parse_index(agg_df.index, groupby.key, groupby.index_value.key)
+        if isinstance(agg_df.index, pd.RangeIndex):
+            index_value = parse_index(
+                pd.RangeIndex(-1), groupby.key, groupby.index_value.key
+            )
+        else:
+            index_value = parse_index(
+                agg_df.index, groupby.key, groupby.index_value.key
+            )
 
         # make sure if as_index=False takes effect
         self._fix_as_index(agg_df.index)
