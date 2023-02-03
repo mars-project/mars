@@ -47,13 +47,14 @@ jobs:
         shell: bash
         run: |
           source ./ci/install-conda.sh
-          python -m pip install --upgrade pip "setuptools<64" wheel coverage;
+          python -m pip install --upgrade pip setuptools wheel coverage
 
       - name: Start minikube
         if: ${{ matrix.with-kubernetes }}
+        uses: medyagh/setup-minikube@master
         with:
           driver: none
-        uses: medyagh/setup-minikube@master
+          start-args: '--extra-config=kubelet.cgroup-driver=systemd'
 
       - name: Install dependencies
         env:

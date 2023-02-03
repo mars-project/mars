@@ -73,7 +73,6 @@ class GraphVisualizer:
         chunk_key_to_subtask: Dict[str, List],
         trunc_key: int = 5,
     ):
-
         chunk_graph = subtask.chunk_graph
         sio = StringIO()
         chunk_style = "[shape=box]"

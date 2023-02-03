@@ -48,7 +48,6 @@ class MarsDataset:
         output_types: Tuple[np.dtype, ...] = None,
         fetch_kwargs=None,
     ):
-
         self._context = get_context()
         self._tensors = tensors
         self._output_shapes = output_shapes

@@ -286,7 +286,6 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
     async def get_tileable_subtasks(
         self, task_id: str, tileable_id: str, with_input_output: bool
     ):
-
         with_input_output = "true" if with_input_output else "false"
         path = f"{self._address}/api/session/{self._session_id}/task/{task_id}/{tileable_id}/subtask"
         params = {

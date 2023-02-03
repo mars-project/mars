@@ -59,7 +59,6 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
     def __init__(
         self, kernel="rbf", gamma=20, n_neighbors=7, alpha=1, max_iter=30, tol=1e-3
     ):
-
         self.max_iter = max_iter
         self.tol = tol
 

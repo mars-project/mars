@@ -23,7 +23,6 @@ from ...core import ENTITY_TYPE, OutputType
 
 
 class DataFrameToNumeric(DataFrameOperand, DataFrameOperandMixin):
-
     errors = StringField("errors")
     downcast = StringField("downcast")
 

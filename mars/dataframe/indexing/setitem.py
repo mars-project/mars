@@ -268,9 +268,7 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                                 value_chunks, shape=shape, dtypes=dtypes
                             )
                     else:
-                        value_chunk = value.cix[
-                            c.index[0],
-                        ]
+                        value_chunk = value.cix[c.index[0],]
 
                     chunk_inputs = [c, value_chunk]
 

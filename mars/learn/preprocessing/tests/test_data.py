@@ -167,7 +167,6 @@ def test_min_max_scaler1d(setup):
 
     # Test scaling of dataset along single axis
     for X in [X_1row, X_1col, X_list_1row, X_list_1col]:
-
         scaler = MinMaxScaler(copy=True)
         X_scaled = scaler.fit(X).transform(X)
 

@@ -64,7 +64,6 @@ class RandomSampler(Sampler):
     def __init__(
         self, data_source, replacement=False, num_samples=None, generator=None
     ):
-
         self.data_source = data_source
         self.replacement = replacement
         self._num_samples = num_samples

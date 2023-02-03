@@ -193,7 +193,6 @@ def _optimal_path(input_sets, output_set, idx_dict, memory_limit):
         for curr in full_results:
             cost, positions, remaining = curr
             for con in itertools.combinations(range(len(input_sets) - iteration), 2):
-
                 # Find the contraction
                 cont = _find_contraction(con, remaining, output_set)
                 new_result, new_input_sets, idx_removed, idx_contract = cont
@@ -310,7 +309,6 @@ def _update_other_results(results, best):
     mod_results = []
 
     for cost, (x, y), con_sets in results:
-
         # Ignore results involving tensors just contracted
         if x in best_con or y in best_con:
             continue
@@ -381,10 +379,8 @@ def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
     path = []
 
     for iteration in range(len(input_sets) - 1):
-
         # Iterate over all pairs on first step, only previously found pairs on subsequent steps
         for positions in comb_iter:
-
             # Always initially ignore outer products
             if input_sets[positions[0]].isdisjoint(input_sets[positions[1]]):
                 continue
@@ -403,7 +399,6 @@ def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
 
         # If we do not have a inner contraction, rescan pairs including outer products
         if len(known_contractions) == 0:  # pragma: no cover
-
             # Then check the outer products
             for positions in itertools.combinations(range(len(input_sets)), 2):
                 result = _parse_possible_contraction(

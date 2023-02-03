@@ -139,7 +139,6 @@ def build_and_query(
     index_reformer=None,
     index_reformer_params=None,
 ):
-
     if measure_name is None:
         measure_name = "SquaredEuclidean"
     if dimension is None:

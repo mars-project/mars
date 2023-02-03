@@ -52,7 +52,6 @@ class MarsDataset(Dataset):
     """
 
     def __init__(self, *tileables, fetch_kwargs=None):
-
         self._context = get_context()
         self._tileables = tileables
         self._fetch_kwargs = fetch_kwargs or dict()

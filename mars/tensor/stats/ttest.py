@@ -61,7 +61,6 @@ def _unequal_var_ttest_denom(v1, n1, v2, n2):
 
 
 def _ttest_ind_from_stats(mean1, mean2, denom, df, alternative):
-
     d = mean1 - mean2
     with np.errstate(divide="ignore", invalid="ignore"):
         t = mt_divide(d, denom)

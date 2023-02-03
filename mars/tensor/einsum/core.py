@@ -86,11 +86,11 @@ class TensorEinsum(TensorOperand, TensorOperandMixin):
 
         # rechunk to unify nsplits
         input_nsplits = defaultdict(list)
-        for (t, axes) in tensor_axes:
+        for t, axes in tensor_axes:
             for splits, ax in zip(t.nsplits, axes):
                 input_nsplits[ax].append(splits)
         input_tensors = []
-        for (t, axes) in tensor_axes:
+        for t, axes in tensor_axes:
             new_nsplits = tuple(
                 decide_unify_split(*input_nsplits[ax])
                 if t.shape[j] > 1
@@ -120,7 +120,7 @@ class TensorEinsum(TensorOperand, TensorOperandMixin):
             tensor_shape = []
             for i, idx in enumerate(out_idx):
                 tensor_shape.append(axes_splits[output_scripts[i]][idx])
-                for (t_idx, axis) in output_axes[output_scripts[i]]:
+                for t_idx, axis in output_axes[output_scripts[i]]:
                     if input_tensors[t_idx].shape[axis] == 1:
                         all_indexes[t_idx][axis] = 0
                     else:

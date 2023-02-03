@@ -22,7 +22,6 @@ from .base import FileSystem, path_type
 
 
 class LocalFileSystem(FileSystem):
-
     _instance = None
 
     @classmethod
