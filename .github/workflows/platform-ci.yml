@@ -53,8 +53,8 @@ jobs:
         if: ${{ matrix.with-kubernetes }}
         uses: medyagh/setup-minikube@master
         with:
-          driver: none
-          start-args: '--extra-config=kubelet.cgroup-driver=systemd'
+          driver: docker
+          mount-path: '/home/runner:/home/runner'
 
       - name: Install dependencies
         env:
@@ -126,6 +126,7 @@ jobs:
           RUN_DASK: ${{ matrix.run-dask }}
           NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
           NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 1
+          USE_MINIKUBE_DOCKER_ENV: true
           CHANGE_MINIKUBE_NONE_USER: true
         shell: bash
         run: |
