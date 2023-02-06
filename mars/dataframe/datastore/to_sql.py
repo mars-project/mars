@@ -32,6 +32,7 @@ from ..utils import (
     build_empty_df,
     build_empty_series,
     create_sa_connection,
+    patch_sa_engine_execute,
 )
 
 
@@ -171,6 +172,7 @@ class DataFrameToSQLTable(
 
         import sqlalchemy as sa
 
+        patch_sa_engine_execute()
         engine = sa.create_engine(op.con, **(op.engine_kwargs or dict()))
 
         try:

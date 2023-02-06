@@ -39,6 +39,7 @@ except ImportError:
 from .... import dataframe as md
 from ....tests.core import flaky
 from ... import DataFrame
+from ...utils import patch_sa_engine_execute
 
 
 def test_to_csv_execution(setup):
@@ -130,6 +131,7 @@ def test_to_sql():
         index=index,
     )
 
+    patch_sa_engine_execute()
     with tempfile.TemporaryDirectory() as d:
         table_name1 = "test_table"
         table_name2 = "test_table2"

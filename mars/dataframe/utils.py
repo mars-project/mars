@@ -1566,3 +1566,23 @@ def restore_func(ctx: Context, op):
             logger.info("%s func %s is restored.", op, op.func)
         else:
             op.func = cloudpickle.loads(op.func)
+
+
+def patch_sa_engine_execute():
+    """
+    pandas did not resolve compatibility issue of sqlalchemy 2.0, the issue
+    is https://github.com/pandas-dev/pandas/issues/40686. We need to patch
+    Engine class in SQLAlchemy, and then our code can work well.
+    """
+    try:
+        from sqlalchemy.engine import Engine
+    except ImportError:  # pragma: no cover
+        return
+
+    def execute(self, statement, *multiparams, **params):
+        connection = self.connect()
+        return connection.execute(statement, *multiparams, **params)
+
+    if hasattr(Engine, "execute"):  # pragma: no cover
+        return
+    Engine.execute = execute
