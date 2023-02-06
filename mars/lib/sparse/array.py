@@ -34,7 +34,6 @@ class SparseNDArray:
     __array_priority__ = 21
 
     def __new__(cls, *args, **kwargs):
-
         shape = kwargs.get("shape", None)
         if shape is not None and len(shape) == 1:
             from .vector import SparseVector

@@ -88,7 +88,9 @@ class NodeInfoUploaderActor(mo.Actor):
                     self._uploaded_future.set_result(None)
             except asyncio.CancelledError:  # pragma: no cover
                 break
-            except Exception as ex:  # pragma: no cover  # noqa: E722  # nosec  # pylint: disable=bare-except
+            except (
+                Exception
+            ) as ex:  # pragma: no cover  # noqa: E722  # nosec  # pylint: disable=bare-except
                 logger.error(f"Failed to upload node info: {ex}")
                 if not self._uploaded_future.done():
                     self._uploaded_future.set_exception(ex)

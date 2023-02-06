@@ -835,7 +835,7 @@ def test_read_sql_execution(setup):
             result = r.execute().fetch()
             pd.testing.assert_frame_equal(result, expected)
 
-            table = sa.Table(table_name, m, autoload=True, autoload_with=engine)
+            table = sa.Table(table_name, m, autoload_with=engine)
             r = md.read_sql_table(
                 table,
                 engine,

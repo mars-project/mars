@@ -48,7 +48,6 @@ def train(feature_data, labels):
 
 
 if __name__ == "__main__":
-
     assert json.loads(os.environ["TF_CONFIG"])["task"]["index"] in {0, 1}
     assert len(sys.argv) == 2
     assert sys.argv[1] == "multiple"

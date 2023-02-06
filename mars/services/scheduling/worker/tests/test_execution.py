@@ -436,10 +436,14 @@ def test_estimate_size():
 
     index_value = parse_index(pd.Index([10, 20, 30], dtype=np.int64))
 
-    input1 = DataFrameFetch(output_types=[OutputType.series],).new_chunk(
+    input1 = DataFrameFetch(
+        output_types=[OutputType.series],
+    ).new_chunk(
         [], _key="INPUT1", shape=(np.nan,), dtype=np.dtype("O"), index_value=index_value
     )
-    input2 = DataFrameFetch(output_types=[OutputType.series],).new_chunk(
+    input2 = DataFrameFetch(
+        output_types=[OutputType.series],
+    ).new_chunk(
         [], _key="INPUT2", shape=(np.nan,), dtype=np.dtype("O"), index_value=index_value
     )
     result_chunk = DataFrameAdd(

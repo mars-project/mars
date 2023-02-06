@@ -16,13 +16,24 @@ import importlib
 import os
 import tempfile
 import time
+
+import pytest
+
 from ..resource import Resource, ZeroResource
 
-_cpu_stat_first = "8678870951786"
-_cpu_stat_last = "8679429771672"
+_v1_cpu_stat_first = "8678870951786"
+_v1_cpu_stat_last = "8679429771672"
+
+# just a fragment of real cpu.stat
+_v2_cpu_stat_first = """
+usage_usec 8678870951
+"""
+_v2_cpu_stat_last = """
+usage_usec 8679429771
+"""
 
 # just a fragment of real memory.stat
-_memory_stat_content = """
+_v1_memory_stat_content = """
 cache 489275392
 rss 218181632
 mapped_file 486768640
@@ -33,6 +44,9 @@ inactive_file 2457600
 active_file 73728
 hierarchical_memory_limit 1073741824
 """
+
+_v2_memory_current_content = "218181632\n"
+_v2_memory_max_content = "1073741824\n"
 
 
 def test_stats():
@@ -105,31 +119,60 @@ def test_use_process_stats():
         importlib.reload(resource)
 
 
-def test_use_c_group_stats():
+@pytest.mark.parametrize("cgroup_ver", ["v1", "v2"])
+def test_use_c_group_stats(cgroup_ver):
     from mars import resource
 
-    fd, cpu_stat_path = tempfile.mkstemp(prefix="test-mars-res-cpu-")
-    with os.fdopen(fd, "w") as f:
-        f.write(_cpu_stat_first)
-    fd, mem_stat_path = tempfile.mkstemp(prefix="test-mars-res-mem-")
-    with os.fdopen(fd, "w") as f:
-        f.write(_memory_stat_content)
+    def write_tmp_text_file(prefix, content):
+        fd, file_name = tempfile.mkstemp(prefix)
+        with os.fdopen(fd, "w") as f:
+            f.write(content)
+        return file_name
 
-    old_cpu_stat_file = resource.CGROUP_CPU_STAT_FILE
-    old_mem_stat_file = resource.CGROUP_MEM_STAT_FILE
+    v1_cpu_acct_path = write_tmp_text_file(
+        "test-mars-res-cgroup-v1-cpu-", _v1_cpu_stat_first
+    )
+    v1_mem_stat_path = write_tmp_text_file(
+        "test-mars-res-cgroup-v1-mem-", _v1_memory_stat_content
+    )
+    v2_cpu_stat_path = write_tmp_text_file(
+        "test-mars-res-cgroup-v2-cpu-", _v2_cpu_stat_first
+    )
+    v2_mem_cur_path = write_tmp_text_file(
+        "test-mars-res-cgroup-v2-cpu-", _v2_memory_current_content
+    )
+    v2_mem_max_path = write_tmp_text_file(
+        "test-mars-res-cgroup-v2-cpu-", _v2_memory_max_content
+    )
+
+    old_is_cgroup_v2 = resource._is_cgroup_v2
+    old_v1_cpu_acct_file = resource.CGROUP_V1_CPU_ACCT_FILE
+    old_v1_mem_stat_file = resource.CGROUP_V1_MEM_STAT_FILE
+    old_v2_cpu_stat_file = resource.CGROUP_V2_CPU_STAT_FILE
+    old_v2_mem_current_file = resource.CGROUP_V2_MEM_CURRENT_FILE
+    old_v2_mem_max_file = resource.CGROUP_V2_MEM_MAX_FILE
     old_shm_path = resource._shm_path
     try:
         os.environ["MARS_USE_CGROUP_STAT"] = "1"
 
         resource = importlib.reload(resource)
-        resource.CGROUP_CPU_STAT_FILE = cpu_stat_path
-        resource.CGROUP_MEM_STAT_FILE = mem_stat_path
+        if cgroup_ver == "v1":
+            resource.CGROUP_V1_CPU_ACCT_FILE = v1_cpu_acct_path
+            resource.CGROUP_V1_MEM_STAT_FILE = v1_mem_stat_path
+            resource._is_cgroup_v2 = False
+        else:
+            resource.CGROUP_V2_CPU_STAT_FILE = v2_cpu_stat_path
+            resource.CGROUP_V2_MEM_CURRENT_FILE = v2_mem_cur_path
+            resource.CGROUP_V2_MEM_MAX_FILE = v2_mem_max_path
+            resource._is_cgroup_v2 = True
         resource._shm_path = None
 
         assert resource.cpu_percent() is None
         time.sleep(0.5)
-        with open(cpu_stat_path, "w") as f:
-            f.write(_cpu_stat_last)
+        with open(v1_cpu_acct_path, "w") as f:
+            f.write(_v1_cpu_stat_last)
+        with open(v2_cpu_stat_path, "w") as f:
+            f.write(_v2_cpu_stat_last)
         assert resource.cpu_percent() > 50
         assert resource.cpu_percent() < 150
 
@@ -137,12 +180,22 @@ def test_use_c_group_stats():
         assert mem_stats.total == 1073741824
         assert mem_stats.used == 218181632
     finally:
-        resource.CGROUP_CPU_STAT_FILE = old_cpu_stat_file
-        resource.CGROUP_MEM_STAT_FILE = old_mem_stat_file
+        resource._is_cgroup_v2 = old_is_cgroup_v2
         resource._shm_path = old_shm_path
+        resource.CGROUP_V1_CPU_ACCT_FILE = old_v1_cpu_acct_file
+        resource.CGROUP_V1_MEM_STAT_FILE = old_v1_mem_stat_file
+        resource.CGROUP_V2_CPU_STAT_FILE = old_v2_cpu_stat_file
+        resource.CGROUP_V2_MEM_CURRENT_FILE = old_v2_mem_current_file
+        resource.CGROUP_V2_MEM_MAX_FILE = old_v2_mem_max_file
+
         del os.environ["MARS_USE_CGROUP_STAT"]
-        os.unlink(cpu_stat_path)
-        os.unlink(mem_stat_path)
+
+        os.unlink(v1_cpu_acct_path)
+        os.unlink(v1_mem_stat_path)
+        os.unlink(v2_cpu_stat_path)
+        os.unlink(v2_mem_cur_path)
+        os.unlink(v2_mem_max_path)
+
         importlib.reload(resource)
 
 

@@ -129,7 +129,9 @@ def _remove_docker_image(image_name, raises=True):
 
 
 def _load_docker_env():
-    if os.path.exists("/var/run/docker.sock") or not shutil.which("minikube"):
+    if "USE_MINIKUBE_DOCKER_ENV" not in os.environ and (
+        os.path.exists("/var/run/docker.sock") or not shutil.which("minikube")
+    ):
         return
 
     proc = subprocess.Popen(["minikube", "docker-env"], stdout=subprocess.PIPE)

@@ -102,7 +102,6 @@ def to_parquet(args):
 def generate(
     tables, SCALE_FACTOR, folder, upload_to_s3, validate_dataset, num_processes
 ):
-
     if upload_to_s3:
         assert "AWS_ACCESS_KEY_ID" in os.environ, "AWS credentials not set"
     else:
@@ -117,7 +116,6 @@ def generate(
             fs = s3fs.S3FileSystem()
 
     for table_name, (table_short, num_pieces, load_func) in tables.items():
-
         if upload_to_s3:
             output_prefix = f"s3://{folder}/{table_name}.pq"
         else:

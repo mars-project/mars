@@ -148,15 +148,9 @@ class KMeansLloydUpdate(LearnOperand, LearnOperandMixin):
         labels_chunks, centers_new_chunks, weight_in_clusters_chunks = [], [], []
         for i in range(x.chunk_shape[0]):
             x_chunk = x.cix[i, 0]
-            sample_weight_chunk = sample_weight.cix[
-                i,
-            ]
-            x_squared_norms_chunk = x_squared_norms.cix[
-                i,
-            ]
-            labels_chunk = labels.cix[
-                i,
-            ]
+            sample_weight_chunk = sample_weight.cix[i,]
+            x_squared_norms_chunk = x_squared_norms.cix[i,]
+            labels_chunk = labels.cix[i,]
             chunk_op = op.copy().reset_key()
             chunk_op.stage = OperandStage.map
             chunk_kws = [

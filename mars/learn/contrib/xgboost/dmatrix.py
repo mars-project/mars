@@ -117,9 +117,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
             for type_name, inp in zip(types[1:], [label, weight, base_margin]):
                 if inp is None:
                     continue
-                inp_chunk = inp.cix[
-                    i,
-                ]
+                inp_chunk = inp.cix[i,]
                 setattr(chunk_op, type_name, inp_chunk)
                 inps.append(inp_chunk)
                 kw = cls._get_kw(inp_chunk)

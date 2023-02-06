@@ -175,7 +175,6 @@ class LogisticRegression(LinearClassifierMixin, BaseEstimator):
         multi_class="auto",
         verbose=0,
     ):
-
         self.penalty = penalty
         self.fit_intercept = fit_intercept
         self.C = C

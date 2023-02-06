@@ -740,7 +740,6 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         oversampling_factor=2,
         init_iter=5,
     ):
-
         self.n_clusters = n_clusters
         self.init = init
         self.max_iter = max_iter

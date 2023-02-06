@@ -289,7 +289,6 @@ def test_bagging_classifier(
 def test_bagging_regressor(
     setup, use_dataframe, max_samples, max_features, with_weights
 ):
-
     rs = np.random.RandomState(0)
 
     raw_x, raw_y = make_regression(

@@ -174,9 +174,7 @@ class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
                 return obj.cix[index[0], index[1]]
             elif isinstance(obj, SERIES_TYPE):
                 axis = axis if axis is not None else op.axis
-                return obj.cix[
-                    index[axis],
-                ]
+                return obj.cix[index[axis],]
             else:
                 return obj
 

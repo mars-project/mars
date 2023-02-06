@@ -56,7 +56,9 @@ class DecrefRunner:
                 fut.set_result(None)
             except (RuntimeError, ConnectionError, KeyError, ActorNotExist):
                 fut.set_result(None)
-            except Exception as ex:  # pragma: no cover  # noqa: E722  # nosec  # pylint: disable=bare-except
+            except (
+                Exception
+            ) as ex:  # pragma: no cover  # noqa: E722  # nosec  # pylint: disable=bare-except
                 fut.set_exception(ex)
             finally:
                 del session

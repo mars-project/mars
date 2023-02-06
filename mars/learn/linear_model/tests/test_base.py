@@ -101,13 +101,11 @@ def test_linear_regression_sample_weights(setup):
 
     # It would not work with under-determined systems
     for n_samples, n_features in ((6, 5),):
-
         y = rng.randn(n_samples)
         X = rng.randn(n_samples, n_features)
         sample_weight = 1.0 + rng.rand(n_samples)
 
         for intercept in (True, False):
-
             # LinearRegression with explicit sample_weight
             reg = LinearRegression(fit_intercept=intercept)
             reg.fit(X, y, sample_weight=sample_weight)
@@ -557,7 +555,6 @@ def test_dtype_preprocess_data(setup):
 
     for fit_intercept in [True, False]:
         for normalize in [True, False]:
-
             Xt_32, yt_32, X_mean_32, y_mean_32, X_norm_32 = _preprocess_data(
                 X_32,
                 y_32,

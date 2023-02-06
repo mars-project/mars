@@ -329,7 +329,6 @@ def test_pca_validation(setup):
         # We conduct the same test on X.T so that it is invariant to axis.
         for data in [X, X.T]:
             for n_components in [-1, 3]:
-
                 if solver == "auto":
                     solver_reported = "full"
                 else:

@@ -269,7 +269,6 @@ def check_array(
     ensure_min_features=1,
     estimator=None,
 ) -> Tensor:
-
     """Input validation on a tensor, list, sparse matrix or similar.
 
     By default, the input is checked to be a non-empty 2D array containing

@@ -38,7 +38,12 @@ from ...serialization.serializables import (
 from ...tensor.utils import normalize_chunk_sizes
 from ...typing import OperandType, TileableType
 from ..arrays import ArrowStringDtype
-from ..utils import parse_index, create_sa_connection, to_arrow_dtypes
+from ..utils import (
+    parse_index,
+    create_sa_connection,
+    to_arrow_dtypes,
+    patch_sa_engine_execute,
+)
 from .core import (
     IncrementalIndexDatasource,
     ColumnPruneSupportedDataSourceMixin,
@@ -127,7 +132,6 @@ class DataFrameReadSQL(
                     selectable = sa.Table(
                         self.table_or_sql,
                         m,
-                        autoload=True,
                         autoload_with=engine_or_conn,
                         schema=self.schema,
                     )
@@ -141,12 +145,10 @@ class DataFrameReadSQL(
                             .alias(temp_name_2)
                         )
                     else:
-                        selectable = sql.select(
-                            "*",
-                            from_obj=sql.text(
-                                f"({self.table_or_sql}) AS {temp_name_1}"
-                            ),
-                        ).alias(temp_name_2)
+                        from_tb = sql.text(f"({self.table_or_sql}) AS {temp_name_1}")
+                        selectable = (
+                            sql.select("*").select_from(from_tb).alias(temp_name_2)
+                        )
                     self.selectable = selectable
         return selectable
 
@@ -155,11 +157,15 @@ class DataFrameReadSQL(
 
         # fetch test DataFrame
         if columns:
-            query = sql.select(
-                [sql.column(c) for c in columns], from_obj=selectable
-            ).limit(test_rows)
+            query = (
+                sql.select(*[sql.column(c) for c in columns])
+                .select_from(selectable)
+                .limit(test_rows)
+            )
         else:
-            query = sql.select(selectable.columns, from_obj=selectable).limit(test_rows)
+            query = (
+                sql.select(*selectable.columns).select_from(selectable).limit(test_rows)
+            )
         test_df = pd.read_sql(
             query,
             engine_or_conn,
@@ -178,7 +184,7 @@ class DataFrameReadSQL(
             # fetch size
             size = list(
                 engine_or_conn.execute(
-                    sql.select([sql.func.count()]).select_from(selectable)
+                    sql.select(sql.func.count()).select_from(selectable)
                 )
             )[0][0]
             shape = (size, test_df.shape[1])
@@ -352,7 +358,7 @@ class DataFrameReadSQL(
             try:
                 part_col = selectable.columns[op.partition_col]
                 range_results = engine.execute(
-                    sql.select([sql.func.min(part_col), sql.func.max(part_col)])
+                    sql.select(sql.func.min(part_col), sql.func.max(part_col))
                 )
 
                 op.low_limit, op.high_limit = next(range_results)
@@ -429,6 +435,7 @@ class DataFrameReadSQL(
 
         out = op.outputs[0]
 
+        patch_sa_engine_execute()
         engine = sa.create_engine(op.con, **(op.engine_kwargs or dict()))
         try:
             selectable = op._get_selectable(engine)
@@ -444,7 +451,7 @@ class DataFrameReadSQL(
             op.low_limit = _adapt_datetime(op.low_limit)
             op.high_limit = _adapt_datetime(op.high_limit)
 
-            query = sa.sql.select(columns)
+            query = sa.sql.select(*columns)
             if op.method == "partition":
                 part_col = selectable.columns[op.partition_col]
                 if op.left_end:
