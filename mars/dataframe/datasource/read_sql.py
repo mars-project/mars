@@ -127,7 +127,6 @@ class DataFrameReadSQL(
                     selectable = sa.Table(
                         self.table_or_sql,
                         m,
-                        autoload=True,
                         autoload_with=engine_or_conn,
                         schema=self.schema,
                     )
@@ -155,11 +154,15 @@ class DataFrameReadSQL(
 
         # fetch test DataFrame
         if columns:
-            query = sql.select(
-                [sql.column(c) for c in columns], from_obj=selectable
-            ).limit(test_rows)
+            query = (
+                sql.select([sql.column(c) for c in columns])
+                .select_from(selectable)
+                .limit(test_rows)
+            )
         else:
-            query = sql.select(selectable.columns, from_obj=selectable).limit(test_rows)
+            query = (
+                sql.select(selectable.columns).select_from(selectable).limit(test_rows)
+            )
         test_df = pd.read_sql(
             query,
             engine_or_conn,

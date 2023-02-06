@@ -277,7 +277,7 @@ class DataFrameReadParquet(
         out_df = op.outputs[0]
         shape = (np.nan, out_df.shape[1])
         dtypes = cls._to_arrow_dtypes(out_df.dtypes, op)
-        dataset = pq.ParquetDataset(op.path)
+        dataset = pq.ParquetDataset(op.path, use_legacy_dataset=True)
 
         path_prefix = _parse_prefix(op.path)
 
