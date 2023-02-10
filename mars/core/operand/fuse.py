@@ -14,7 +14,7 @@
 
 from ... import opcodes
 from ...serialization.serializables import ReferenceField
-from ..entity import FuseChunk, FuseChunkData, NotSupportTile
+from ..entity import FuseChunk, NotSupportTile
 from ..graph import ChunkGraph
 from .base import Operand
 
@@ -30,8 +30,7 @@ class FuseChunkMixin:
     __slots__ = ()
 
     def _create_chunk(self, output_idx, index, **kw):
-        data = FuseChunkData(_index=index, _op=self, **kw)
-        return FuseChunk(data)
+        return FuseChunk(_index=index, _op=self, **kw)
 
     @classmethod
     def tile(cls, op):

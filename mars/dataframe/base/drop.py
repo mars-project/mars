@@ -18,7 +18,7 @@ from collections import OrderedDict
 import numpy as np
 
 from ... import opcodes
-from ...core import Entity, Chunk, CHUNK_TYPE, OutputType, recursive_tile
+from ...core import Entity, Chunk, OutputType, recursive_tile
 from ...serialization.serializables import AnyField, StringField
 from ..core import IndexValue, DATAFRAME_TYPE, SERIES_TYPE, INDEX_CHUNK_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -172,7 +172,7 @@ class DataFrameDrop(DataFrameOperandMixin, DataFrameOperand):
     @classmethod
     def execute(cls, ctx, op: "DataFrameDrop"):
         inp = op.inputs[0]
-        if isinstance(op.index, CHUNK_TYPE):
+        if isinstance(op.index, Chunk):
             index_val = ctx[op.index.key]
         else:
             index_val = op.index

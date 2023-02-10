@@ -189,11 +189,11 @@ class GraphAnalyzer:
                     inp_chunk,
                     n_reducers=n_reducers,
                     shuffle_fetch_type=self._shuffle_fetch_type,
-                ).data
+                )
                 chunk_to_fetch_chunk[inp_chunk] = fetch_chunk
                 inp_fetch_chunks.append(fetch_chunk)
             else:
-                fetch_chunk = build_fetch(inp_chunk).data
+                fetch_chunk = build_fetch(inp_chunk)
                 chunk_to_fetch_chunk[inp_chunk] = fetch_chunk
                 inp_fetch_chunks.append(fetch_chunk)
 
@@ -290,7 +290,7 @@ class GraphAnalyzer:
             copied_op = chunk.op.copy()
             copied_op._key = chunk.op.key
             out_chunks = [
-                c.data
+                c
                 for c in copied_op.new_chunks(
                     inp_chunks, kws=[c.params.copy() for c in chunk.op.outputs]
                 )

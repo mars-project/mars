@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..core import FuseChunkData, FuseChunk
+from ..core import FuseChunk
 from ..core.operand import Fuse, FuseChunkMixin, ObjectOperandMixin
 
 
@@ -20,9 +20,7 @@ class RemoteFuseChunkMixin(ObjectOperandMixin, FuseChunkMixin):
     __slots__ = ()
 
     def _create_chunk(self, output_idx, index, **kw):
-        data = FuseChunkData(_index=index, _op=self, **kw)
-
-        return FuseChunk(data)
+        return FuseChunk(_index=index, _op=self, **kw)
 
 
 class RemoteFuseChunk(RemoteFuseChunkMixin, Fuse):

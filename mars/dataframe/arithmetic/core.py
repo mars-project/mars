@@ -19,9 +19,9 @@ from functools import reduce
 import numpy as np
 import pandas as pd
 
-from ...core import ENTITY_TYPE, CHUNK_TYPE, recursive_tile
+from ...core import ENTITY_TYPE, recursive_tile
 from ...serialization.serializables import AnyField
-from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, ChunkData, Chunk
+from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, Chunk
 from ...utils import classproperty, get_dtype
 from ..align import (
     align_series_series,
@@ -421,7 +421,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def _calc_properties(cls, x1, x2=None, axis="columns"):
-        is_chunk = isinstance(x1, CHUNK_TYPE)
+        is_chunk = isinstance(x1, Chunk)
 
         if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and (
             x2 is None
@@ -625,7 +625,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 property_inputs = reversed(property_inputs)
             properties = self._calc_properties(*property_inputs)
 
-        inputs = [inp for inp in inputs if isinstance(inp, (Chunk, ChunkData))]
+        inputs = [inp for inp in inputs if isinstance(inp, Chunk)]
 
         shape = properties.pop("shape")
         if "shape" in kw:

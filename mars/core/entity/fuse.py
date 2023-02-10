@@ -15,15 +15,13 @@
 import numpy as np
 
 from ...serialization.serializables import ReferenceField
-from .chunks import ChunkData, Chunk, CHUNK_TYPE
+from .chunks import Chunk
 
 
-class FuseChunkData(ChunkData):
+class FuseChunk(Chunk):
     __slots__ = ("_inited",)
 
-    _chunk = ReferenceField(
-        "chunk", CHUNK_TYPE, on_serialize=lambda x: x.data if hasattr(x, "data") else x
-    )
+    _chunk = ReferenceField("chunk", Chunk)
 
     def __init__(self, *args, **kwargs):
         self._inited = False
@@ -63,11 +61,3 @@ class FuseChunkData(ChunkData):
     @property
     def nbytes(self):
         return np.prod(self.shape) * self.dtype.itemsize
-
-
-class FuseChunk(Chunk):
-    __slots__ = ()
-    _allow_data_type_ = (FuseChunkData,)
-
-
-FUSE_CHUNK_TYPE = (FuseChunkData, FuseChunk)

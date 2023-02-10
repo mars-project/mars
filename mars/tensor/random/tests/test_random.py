@@ -186,7 +186,7 @@ def test_permutation():
 
     assert len(x.chunks) == 3
     assert np.isnan(x.chunks[0].shape[0])
-    assert x.chunks[0].inputs[0].inputs[0].inputs[0].key == arr.chunks[0].data.key
+    assert x.chunks[0].inputs[0].inputs[0].inputs[0].key == arr.chunks[0].key
 
     arr = rand(3, 3, chunk_size=2)
     x = permutation(arr)

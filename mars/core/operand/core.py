@@ -28,8 +28,9 @@ from ...utils import calc_data_size
 from ..context import Context
 from ..mode import is_eager_mode
 from ..entity import (
-    OutputType,
+    Chunk,
     ExecutableTuple,
+    OutputType,
     get_chunk_types,
     get_tileable_types,
     get_output_types,
@@ -78,14 +79,14 @@ class TileableOperandMixin:
     def _tokenize_output(self, output_idx: int, **kw):
         return f"{self._key}_{output_idx}"
 
-    def _create_chunk(self, output_idx: int, index: Tuple[int], **kw) -> ChunkType:
+    def _create_chunk(self, output_idx: int, index: Tuple[int], **kw) -> Chunk:
         output_type = kw.pop("output_type", None) or self._get_output_type(output_idx)
         if not output_type:
             raise ValueError("output_type should be specified")
 
         if isinstance(output_type, (list, tuple)):
             output_type = output_type[output_idx]
-        chunk_type, chunk_data_type = get_chunk_types(output_type)
+        (chunk_data_type,) = get_chunk_types(output_type)
         kw["_i"] = output_idx
         kw["op"] = self
         kw["index"] = index
@@ -97,8 +98,7 @@ class TileableOperandMixin:
         if "_key" not in kw:
             kw["_key"] = self._tokenize_output(output_idx, **kw)
 
-        data = chunk_data_type(**kw)
-        return chunk_type(data)
+        return chunk_data_type(**kw)
 
     def _new_chunks(
         self, inputs: List[ChunkType], kws: List[Dict] = None, **kw
@@ -130,7 +130,7 @@ class TileableOperandMixin:
             # for each output chunk, hold the reference to the other outputs
             # so that either no one or everyone are gc collected
             for j, t in enumerate(chunks):
-                t.data._siblings = [c.data for c in chunks[:j] + chunks[j + 1 :]]
+                t._siblings = [c for c in chunks[:j] + chunks[j + 1 :]]
         return chunks
 
     def new_chunks(

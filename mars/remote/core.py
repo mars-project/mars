@@ -16,7 +16,7 @@ from collections.abc import Iterable
 from functools import partial
 
 from .. import opcodes
-from ..core import ENTITY_TYPE, ChunkData, Tileable
+from ..core import ENTITY_TYPE, Chunk, Tileable
 from ..core.custom_log import redirect_custom_log
 from ..core.operand import ObjectOperand
 from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
@@ -73,7 +73,7 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
         if raw_inputs is not None:
             for raw_inp in raw_inputs:
                 if self._no_prepare(raw_inp):
-                    if not isinstance(self._inputs[0], ChunkData):
+                    if not isinstance(self._inputs[0], Chunk):
                         # not in tile, set_inputs from tileable
                         mapping[raw_inp] = next(function_inputs)
                     else:

@@ -57,7 +57,7 @@ class HistBinSelector:
         if width is None:
             return
         self._width = width = yield from recursive_tile(width)
-        yield [c.data for c in width.chunks]
+        yield width.chunks
 
     def __call__(self):
         return

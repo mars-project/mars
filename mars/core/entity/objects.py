@@ -15,13 +15,13 @@
 from typing import Any, Dict
 
 from ...serialization.serializables import FieldTypes, ListField
-from .chunks import ChunkData, Chunk
+from .chunks import Chunk
 from .core import Entity
 from .executable import _ToObjectMixin
 from .tileables import TileableData
 
 
-class ObjectChunkData(ChunkData):
+class ObjectChunk(Chunk):
     # chunk whose data could be any serializable
     __slots__ = ()
     type_name = "Object"
@@ -48,23 +48,12 @@ class ObjectChunkData(ChunkData):
         return dict()
 
 
-class ObjectChunk(Chunk):
-    __slots__ = ()
-    _allow_data_type_ = (ObjectChunkData,)
-    type_name = "Object"
-
-
 class ObjectData(TileableData, _ToObjectMixin):
     __slots__ = ()
     type_name = "Object"
 
     # optional fields
-    _chunks = ListField(
-        "chunks",
-        FieldTypes.reference(ObjectChunkData),
-        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
-        on_deserialize=lambda x: [ObjectChunk(it) for it in x] if x is not None else x,
-    )
+    _chunks = ListField("chunks", FieldTypes.reference(ObjectChunk))
 
     def __init__(self, op=None, nsplits=None, chunks=None, **kw):
         super().__init__(_op=op, _nsplits=nsplits, _chunks=chunks, **kw)
@@ -96,4 +85,4 @@ class Object(Entity, _ToObjectMixin):
 
 
 OBJECT_TYPE = (Object, ObjectData)
-OBJECT_CHUNK_TYPE = (ObjectChunk, ObjectChunkData)
+OBJECT_CHUNK_TYPE = (ObjectChunk,)

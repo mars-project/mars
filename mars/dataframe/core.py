@@ -25,7 +25,6 @@ import numpy as np
 import pandas as pd
 
 from ..core import (
-    ChunkData,
     Chunk,
     Tileable,
     HasShapeTileableData,
@@ -456,7 +455,7 @@ _lazy_chunk_meta_properties = (
 )
 
 
-class LazyMetaChunkData(ChunkData):
+class LazyMetaChunk(Chunk):
     __slots__ = _lazy_chunk_meta_properties
 
     def _set_tileable_meta(
@@ -474,11 +473,9 @@ class LazyMetaChunkData(ChunkData):
         setattr(self, _tileable_dtypes_property, dtypes)
 
 
-def is_chunk_meta_lazy(chunk: ChunkData) -> bool:
+def is_chunk_meta_lazy(chunk: Chunk) -> bool:
     chunk = chunk.data if hasattr(chunk, "data") else chunk
-    return isinstance(chunk, LazyMetaChunkData) and hasattr(
-        chunk, _tileable_key_property
-    )
+    return isinstance(chunk, LazyMetaChunk) and hasattr(chunk, _tileable_key_property)
 
 
 @functools.lru_cache(maxsize=128)
@@ -517,7 +514,7 @@ class ChunkDtypesField(SeriesField):
             return dtypes
 
     def __get__(self, instance, owner=None):
-        if not issubclass(owner, LazyMetaChunkData):  # pragma: no cover
+        if not issubclass(owner, LazyMetaChunk):  # pragma: no cover
             return super().__get__(instance, owner)
 
         try:
@@ -570,7 +567,7 @@ class ChunkIndexValueField(ReferenceField):
             return index_value
 
     def __get__(self, instance, owner=None):
-        if not issubclass(owner, LazyMetaChunkData):  # pragma: no cover
+        if not issubclass(owner, LazyMetaChunk):  # pragma: no cover
             return super().__get__(instance, owner)
 
         try:
@@ -619,7 +616,7 @@ class ChunkColumnsValueField(ReferenceField):
             return columns_value
 
     def __get__(self, instance, owner=None):
-        if not issubclass(owner, LazyMetaChunkData):  # pragma: no cover
+        if not issubclass(owner, LazyMetaChunk):  # pragma: no cover
             return super().__get__(instance, owner)
 
         try:
@@ -640,7 +637,7 @@ class ChunkColumnsValueField(ReferenceField):
         return columns_value
 
 
-class IndexChunkData(ChunkData):
+class IndexChunk(Chunk):
     __slots__ = ()
     type_name = "Index"
 
@@ -736,12 +733,6 @@ class IndexChunkData(ChunkData):
         return self._index_value
 
 
-class IndexChunk(Chunk):
-    __slots__ = ()
-    _allow_data_type_ = (IndexChunkData,)
-    type_name = "Index"
-
-
 def _on_deserialize_index_value(index_value):
     if index_value is None:
         return
@@ -831,12 +822,7 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
     _index_value = ReferenceField(
         "index_value", IndexValue, on_deserialize=_on_deserialize_index_value
     )
-    _chunks = ListField(
-        "chunks",
-        FieldTypes.reference(IndexChunkData),
-        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
-        on_deserialize=lambda x: [IndexChunk(it) for it in x] if x is not None else x,
-    )
+    _chunks = ListField("chunks", FieldTypes.reference(IndexChunk))
 
     def __init__(
         self,
@@ -1160,7 +1146,7 @@ class MultiIndex(Index):
     __slots__ = ()
 
 
-class BaseSeriesChunkData(LazyMetaChunkData):
+class BaseSeriesChunk(LazyMetaChunk):
     __slots__ = ()
 
     # required fields
@@ -1257,13 +1243,7 @@ class BaseSeriesChunkData(LazyMetaChunkData):
         return self._index_value
 
 
-class SeriesChunkData(BaseSeriesChunkData):
-    type_name = "Series"
-
-
-class SeriesChunk(Chunk):
-    __slots__ = ()
-    _allow_data_type_ = (SeriesChunkData,)
+class SeriesChunk(BaseSeriesChunk):
     type_name = "Series"
 
 
@@ -1276,12 +1256,7 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
     _index_value = ReferenceField(
         "index_value", IndexValue, on_deserialize=_on_deserialize_index_value
     )
-    _chunks = ListField(
-        "chunks",
-        FieldTypes.reference(SeriesChunkData),
-        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
-        on_deserialize=lambda x: [SeriesChunk(it) for it in x] if x is not None else x,
-    )
+    _chunks = ListField("chunks", FieldTypes.reference(SeriesChunk))
 
     def __init__(
         self,
@@ -1816,9 +1791,9 @@ class Series(HasShapeTileable, _ToPandasMixin):
             )
 
 
-class BaseDataFrameChunkData(LazyMetaChunkData):
+class BaseDataFrameChunk(LazyMetaChunk):
     __slots__ = ("_dtypes_value",)
-    _no_copy_attrs_ = ChunkData._no_copy_attrs_ | {"_dtypes", "_columns_value"}
+    _no_copy_attrs_ = Chunk._no_copy_attrs_ | {"_dtypes", "_columns_value"}
 
     # required fields
     _shape = TupleField(
@@ -1856,7 +1831,7 @@ class BaseDataFrameChunkData(LazyMetaChunkData):
         self._dtypes_value = None
 
     def __on_deserialize__(self):
-        super(BaseDataFrameChunkData, self).__on_deserialize__()
+        super(BaseDataFrameChunk, self).__on_deserialize__()
         self._dtypes_value = None
 
     def __len__(self):
@@ -1944,17 +1919,8 @@ class BaseDataFrameChunkData(LazyMetaChunkData):
         return self._columns_value
 
 
-class DataFrameChunkData(BaseDataFrameChunkData):
+class DataFrameChunk(BaseDataFrameChunk):
     type_name = "DataFrame"
-
-
-class DataFrameChunk(Chunk):
-    __slots__ = ()
-    _allow_data_type_ = (DataFrameChunkData,)
-    type_name = "DataFrame"
-
-    def __len__(self):
-        return len(self._data)
 
 
 class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
@@ -1966,14 +1932,7 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
         "index_value", IndexValue, on_deserialize=_on_deserialize_index_value
     )
     _columns_value = ReferenceField("columns_value", IndexValue)
-    _chunks = ListField(
-        "chunks",
-        FieldTypes.reference(DataFrameChunkData),
-        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
-        on_deserialize=lambda x: [DataFrameChunk(it) for it in x]
-        if x is not None
-        else x,
-    )
+    _chunks = ListField("chunks", FieldTypes.reference(DataFrameChunk))
 
     def __init__(
         self,
@@ -2557,7 +2516,7 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
         return data
 
 
-class DataFrameGroupByChunkData(BaseDataFrameChunkData):
+class DataFrameGroupByChunk(BaseDataFrameChunk):
     type_name = "DataFrameGroupBy"
 
     _key_dtypes = SeriesField("key_dtypes")
@@ -2601,16 +2560,7 @@ class DataFrameGroupByChunkData(BaseDataFrameChunkData):
         super().__init__(_key_dtypes=key_dtypes, _selection=selection, **kw)
 
 
-class DataFrameGroupByChunk(Chunk):
-    __slots__ = ()
-    _allow_data_type_ = (DataFrameGroupByChunkData,)
-    type_name = "DataFrameGroupBy"
-
-    def __len__(self):
-        return len(self._data)
-
-
-class SeriesGroupByChunkData(BaseSeriesChunkData):
+class SeriesGroupByChunk(BaseSeriesChunk):
     type_name = "SeriesGroupBy"
 
     _key_dtypes = AnyField("key_dtypes")
@@ -2652,28 +2602,12 @@ class SeriesGroupByChunkData(BaseSeriesChunkData):
         super().__init__(_key_dtypes=key_dtypes, **kw)
 
 
-class SeriesGroupByChunk(Chunk):
-    __slots__ = ()
-    _allow_data_type_ = (SeriesGroupByChunkData,)
-    type_name = "SeriesGroupBy"
-
-    def __len__(self):
-        return len(self._data)
-
-
 class DataFrameGroupByData(BaseDataFrameData):
     type_name = "DataFrameGroupBy"
 
     _key_dtypes = SeriesField("key_dtypes")
     _selection = AnyField("selection")
-    _chunks = ListField(
-        "chunks",
-        FieldTypes.reference(DataFrameGroupByChunkData),
-        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
-        on_deserialize=lambda x: [DataFrameGroupByChunk(it) for it in x]
-        if x is not None
-        else x,
-    )
+    _chunks = ListField("chunks", FieldTypes.reference(DataFrameGroupByChunk))
 
     @property
     def key_dtypes(self):
@@ -2715,14 +2649,7 @@ class SeriesGroupByData(BaseSeriesData):
     type_name = "SeriesGroupBy"
 
     _key_dtypes = AnyField("key_dtypes")
-    _chunks = ListField(
-        "chunks",
-        FieldTypes.reference(SeriesGroupByChunkData),
-        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
-        on_deserialize=lambda x: [SeriesGroupByChunk(it) for it in x]
-        if x is not None
-        else x,
-    )
+    _chunks = ListField("chunks", FieldTypes.reference(SeriesGroupByChunk))
 
     @property
     def key_dtypes(self):
@@ -2799,7 +2726,7 @@ class SeriesGroupBy(GroupBy):
         return super().__hash__()
 
 
-class CategoricalChunkData(ChunkData):
+class CategoricalChunk(Chunk):
     __slots__ = ()
     type_name = "Categorical"
 
@@ -2879,12 +2806,6 @@ class CategoricalChunkData(ChunkData):
         return self._categories_value
 
 
-class CategoricalChunk(Chunk):
-    __slots__ = ()
-    _allow_data_type_ = (CategoricalChunkData,)
-    type_name = "Categorical"
-
-
 class CategoricalData(HasShapeTileableData, _ToPandasMixin):
     __slots__ = ("_cache",)
     type_name = "Categorical"
@@ -2894,14 +2815,7 @@ class CategoricalData(HasShapeTileableData, _ToPandasMixin):
     _categories_value = ReferenceField(
         "categories_value", IndexValue, on_deserialize=_on_deserialize_index_value
     )
-    _chunks = ListField(
-        "chunks",
-        FieldTypes.reference(CategoricalChunkData),
-        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
-        on_deserialize=lambda x: [CategoricalChunk(it) for it in x]
-        if x is not None
-        else x,
-    )
+    _chunks = ListField("chunks", FieldTypes.reference(CategoricalChunk))
 
     def __init__(
         self,
@@ -3016,7 +2930,7 @@ class Categorical(HasShapeTileable, _ToPandasMixin):
         return super().__hash__()
 
 
-class DataFrameOrSeriesChunkData(ChunkData):
+class DataFrameOrSeriesChunk(Chunk):
     __slots__ = ()
     type_name = "DataFrameOrSeries"
 
@@ -3086,17 +3000,11 @@ class DataFrameOrSeriesChunkData(ChunkData):
             }
 
 
-class DataFrameOrSeriesChunk(Chunk):
-    __slots__ = ()
-    _allow_data_type_ = (DataFrameOrSeriesChunkData,)
-    type_name = "DataFrameOrSeries"
-
-
 class DataFrameOrSeriesData(HasShapeTileableData, _ToPandasMixin):
     __slots__ = ()
     _chunks = ListField(
         "chunks",
-        FieldTypes.reference(DataFrameOrSeriesChunkData),
+        FieldTypes.reference(DataFrameOrSeriesChunk),
         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
         on_deserialize=lambda x: [DataFrameOrSeriesChunk(it) for it in x]
         if x is not None
@@ -3224,21 +3132,21 @@ class DataFrameOrSeries(HasShapeTileable, _ToPandasMixin):
 
 
 INDEX_TYPE = (Index, IndexData)
-INDEX_CHUNK_TYPE = (IndexChunk, IndexChunkData)
+INDEX_CHUNK_TYPE = (IndexChunk,)
 SERIES_TYPE = (Series, SeriesData)
-SERIES_CHUNK_TYPE = (SeriesChunk, SeriesChunkData)
+SERIES_CHUNK_TYPE = (SeriesChunk,)
 DATAFRAME_OR_SERIES_TYPE = (DataFrameOrSeries, DataFrameOrSeriesData)
-DATAFRAME_OR_SERIES_CHUNK_TYPE = (DataFrameOrSeriesChunk, DataFrameOrSeriesChunkData)
+DATAFRAME_OR_SERIES_CHUNK_TYPE = (DataFrameOrSeriesChunk,)
 DATAFRAME_TYPE = (DataFrame, DataFrameData)
-DATAFRAME_CHUNK_TYPE = (DataFrameChunk, DataFrameChunkData)
+DATAFRAME_CHUNK_TYPE = (DataFrameChunk,)
 DATAFRAME_GROUPBY_TYPE = (DataFrameGroupBy, DataFrameGroupByData)
-DATAFRAME_GROUPBY_CHUNK_TYPE = (DataFrameGroupByChunk, DataFrameGroupByChunkData)
+DATAFRAME_GROUPBY_CHUNK_TYPE = (DataFrameGroupByChunk,)
 SERIES_GROUPBY_TYPE = (SeriesGroupBy, SeriesGroupByData)
-SERIES_GROUPBY_CHUNK_TYPE = (SeriesGroupByChunk, SeriesGroupByChunkData)
+SERIES_GROUPBY_CHUNK_TYPE = (SeriesGroupByChunk,)
 GROUPBY_TYPE = (GroupBy,) + DATAFRAME_GROUPBY_TYPE + SERIES_GROUPBY_TYPE
 GROUPBY_CHUNK_TYPE = DATAFRAME_GROUPBY_CHUNK_TYPE + SERIES_GROUPBY_CHUNK_TYPE
 CATEGORICAL_TYPE = (Categorical, CategoricalData)
-CATEGORICAL_CHUNK_TYPE = (CategoricalChunk, CategoricalChunkData)
+CATEGORICAL_CHUNK_TYPE = (CategoricalChunk,)
 TILEABLE_TYPE = (
     INDEX_TYPE + SERIES_TYPE + DATAFRAME_TYPE + GROUPBY_TYPE + CATEGORICAL_TYPE
 )

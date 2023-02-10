@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .chunks import Chunk, ChunkData, CHUNK_TYPE
+from .chunks import Chunk
 from .core import Entity, EntityData, ENTITY_TYPE
 from .executable import ExecutableTuple, _ExecuteAndFetchMixin
-from .fuse import FuseChunk, FuseChunkData, FUSE_CHUNK_TYPE
+from .fuse import FuseChunk
 from .objects import (
     ObjectChunk,
-    ObjectChunkData,
     Object,
     ObjectData,
     OBJECT_CHUNK_TYPE,

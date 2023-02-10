@@ -14,10 +14,10 @@
 
 from ...serialization.serializables import BoolField, FieldTypes, TupleField
 from ...utils import tokenize
-from .core import EntityData, Entity
+from .core import EntityData
 
 
-class ChunkData(EntityData):
+class Chunk(EntityData):
     __slots__ = ()
 
     is_broadcaster = BoolField("is_broadcaster", default=False)
@@ -56,13 +56,3 @@ class ChunkData(EntityData):
                 *(getattr(self, k, None) for k in self._keys_ if k != "_index"),
             ),
         )
-
-
-class Chunk(Entity):
-    _allow_data_type_ = (ChunkData,)
-
-    def __repr__(self):
-        return f"{type(self).__name__}({self._data.__repr__()})"
-
-
-CHUNK_TYPE = (Chunk, ChunkData)

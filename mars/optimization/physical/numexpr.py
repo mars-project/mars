@@ -231,7 +231,7 @@ class NumexprRuntimeOptimizer(RuntimeOptimizer):
                 kws=[tail_chunk.params],
                 _key=tail_chunk.key,
                 _chunk=tail_chunk,
-            ).data
+            )
 
             graph.add_node(fused_chunk)
             for node in graph.iter_successors(tail_chunk):

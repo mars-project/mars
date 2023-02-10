@@ -15,7 +15,7 @@
 from enum import Enum
 from typing import Iterable, List, Optional, Set, Tuple
 
-from ...core import ChunkGraph, DAG, ChunkData
+from ...core import ChunkGraph, DAG, Chunk
 from ...resource import Resource
 from ...serialization.serializables.field_type import TupleType
 from ...serialization.serializables import (
@@ -69,7 +69,7 @@ class Subtask(Serializable):
     stage_id: str = StringField("stage_id")
     # chunks that need meta updated
     update_meta_chunks: List[ChunkType] = ListField(
-        "update_meta_chunks", FieldTypes.reference(ChunkData)
+        "update_meta_chunks", FieldTypes.reference(Chunk)
     )
     # A unique and deterministic key for subtask compute logic. See logic_key in operator.py.
     logic_key: str = StringField("logic_key")

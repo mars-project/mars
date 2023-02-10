@@ -278,8 +278,7 @@ class TaskStageProcessor:
 
         update_meta_chunks = chunk_to_result.keys() - set(
             itertools.chain.from_iterable(
-                (c.data for c in tiled_tileable.chunks)
-                for tiled_tileable in tile_context.values()
+                tuple(tiled_tileable.chunks) for tiled_tileable in tile_context.values()
             )
         )
 
@@ -292,7 +291,7 @@ class TaskStageProcessor:
             )
             worker_meta_api_to_chunk_delays[meta_api][c] = call
         for tileable in tile_context.values():
-            chunks = [c.data for c in tileable.chunks]
+            chunks = tileable.chunks
             for c, params_fields in zip(chunks, self._get_params_fields(tileable)):
                 address = chunk_to_result[c].meta["bands"][0][0]
                 meta_api = await WorkerMetaAPI.create(session_id, address)

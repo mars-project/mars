@@ -407,7 +407,7 @@ def test_isin():
 
     assert len(mask.chunks) == len(element.chunks)
     assert len(mask.op.inputs[1].chunks) == 1
-    assert mask.chunks[0].inputs[0] is element.chunks[0].data
+    assert mask.chunks[0].inputs[0] is element.chunks[0]
 
     element = 2 * arange(4, chunk_size=1).reshape(2, 2)
     test_elements = tensor([1, 2, 4, 8], chunk_size=2)

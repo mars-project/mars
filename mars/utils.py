@@ -653,9 +653,9 @@ def build_fetch_tileable(tileable: TileableType) -> TileableType:
 
 
 def build_fetch(entity: EntityType) -> EntityType:
-    from .core import CHUNK_TYPE, ENTITY_TYPE
+    from .core import Chunk, ENTITY_TYPE
 
-    if isinstance(entity, CHUNK_TYPE):
+    if isinstance(entity, Chunk):
         return build_fetch_chunk(entity)
     elif isinstance(entity, ENTITY_TYPE):
         return build_fetch_tileable(entity)
