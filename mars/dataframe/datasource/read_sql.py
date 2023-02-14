@@ -355,9 +355,9 @@ class DataFrameReadSQL(
             from sqlalchemy import sql
 
             engine = sa.create_engine(op.con, **(op.engine_kwargs or dict()))
-            try:
+            with engine.connect() as connection:
                 part_col = selectable.columns[op.partition_col]
-                range_results = engine.execute(
+                range_results = connection.execute(
                     sql.select(sql.func.min(part_col), sql.func.max(part_col))
                 )
 
@@ -365,8 +365,6 @@ class DataFrameReadSQL(
                 if op.parse_dates and op.partition_col in op.parse_dates:
                     op.low_limit = op._parse_datetime(op.low_limit)
                     op.high_limit = op._parse_datetime(op.high_limit)
-            finally:
-                engine.dispose()
 
         if isinstance(op.low_limit, (datetime.datetime, np.datetime64, pd.Timestamp)):
             seps = pd.date_range(op.low_limit, op.high_limit, op.num_partitions + 1)
