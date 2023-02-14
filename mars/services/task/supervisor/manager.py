@@ -15,6 +15,7 @@
 import asyncio
 import contextlib
 import importlib
+import itertools
 import logging
 import time
 import weakref
@@ -87,6 +88,7 @@ class TaskManagerActor(mo.Actor):
 
         self._task_id_to_processor_ref = dict()
         self._result_tileable_key_to_info = defaultdict(list)
+        self._counter = itertools.count()
 
     async def __post_create__(self):
         # get config
@@ -154,6 +156,7 @@ class TaskManagerActor(mo.Actor):
             graph,
             fuse_enabled=fuse_enabled,
             extra_config=extra_config,
+            counter=self._counter,
         )
         # gen task processor
         tiled_context = await self._gen_tiled_context(graph)
@@ -377,3 +380,45 @@ class TaskManagerActor(mo.Actor):
                     if not is_done
                 ]
                 self._result_tileable_key_to_info[key] = not_done_info
+
+    def get_generation_order(self, task_id, stage_id):
+        """
+        Gets generation order of a stage subtask graph in a task.
+
+        Parameters
+        ----------
+        task_id: task id
+        stage_id: stage id
+
+        Returns
+        -------
+        out: an integer
+
+        Exceptions
+        -------
+        May throw KeyError
+
+        """
+        return self._task_id_to_processor_ref[task_id].get_generation_order(
+            task_id, stage_id
+        )
+
+    async def get_subtask(self, chunk_data_key: str):
+        """
+        Gets subtask by task id and chunk data key, i.e. the subtask who
+        generated the chunk data.
+        Parameters
+        ----------
+        task_id: task id
+        chunk_data_key: key of a chunk data
+
+        Returns
+        -------
+        a subtask
+        """
+        for task_id, processor_ref in self._task_id_to_processor_ref.items():
+            subtask = await processor_ref.get_subtask(task_id, chunk_data_key)
+            if subtask is not None:
+                return subtask
+
+        raise KeyError(f"Chunk data key {chunk_data_key} does not exist.")

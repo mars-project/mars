@@ -22,9 +22,9 @@ import pytest
 
 from .... import oscar as mo
 from ....oscar.backends.allocate_strategy import IdleLabel
+from ....oscar.errors import DataNotExist
 from ....storage import StorageLevel
 from ..core import DataManagerActor, StorageManagerActor, StorageQuotaActor
-from ..errors import DataNotExist
 from ..handler import StorageHandlerActor
 from ..transfer import ReceiverManagerActor, SenderManagerActor
 

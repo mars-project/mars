@@ -71,7 +71,10 @@ class SchedulingAPI(AbstractSchedulingAPI):
         return await self._manager_ref.get_schedule_summaries(task_id)
 
     async def add_subtasks(
-        self, subtasks: List[Subtask], priorities: Optional[List[Tuple]] = None
+        self,
+        subtasks: List[Subtask],
+        priorities: Optional[List[Tuple]] = None,
+        schedule_lost_objects: bool = False,
     ):
         """
         Submit subtasks into scheduling service
@@ -85,7 +88,9 @@ class SchedulingAPI(AbstractSchedulingAPI):
         """
         if priorities is None:
             priorities = [subtask.priority or tuple() for subtask in subtasks]
-        await self._manager_ref.add_subtasks(subtasks, priorities)
+        await self._manager_ref.add_subtasks(
+            subtasks, priorities, schedule_lost_objects
+        )
 
     @mo.extensible
     async def update_subtask_priority(self, subtask_id: str, priority: Tuple):
@@ -154,6 +159,10 @@ class SchedulingAPI(AbstractSchedulingAPI):
         """Try to enable autoscale in, the autoscale-in will be enabled only when last call corresponding
         `disable_autoscale_in` has been invoked."""
         await self._autoscaler.try_enable_autoscale_in()
+
+    @property
+    def address(self):
+        return self._address
 
 
 class MockSchedulingAPI(SchedulingAPI):

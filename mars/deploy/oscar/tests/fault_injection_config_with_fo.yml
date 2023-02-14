@@ -1,0 +1,8 @@
+"@inherits": '@default'
+third_party_modules:
+  - mars.services.tests.fault_injection_patch
+scheduling:
+  subtask_max_retries: 2
+  subtask_max_reschedules: 2
+  failover:
+    enable_lineage: yes

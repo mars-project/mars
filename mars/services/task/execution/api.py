@@ -215,6 +215,10 @@ class TaskExecutor(ABC):
     def get_stage_processors(self):
         """Get stage processors."""
 
+    @abstractmethod
+    def get_stage_generation_order(self, stage_id: str):
+        """Get stage generation order."""
+
 
 _name_to_task_executor_cls: Dict[str, Type[TaskExecutor]] = {}
 

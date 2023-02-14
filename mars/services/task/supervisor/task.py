@@ -416,9 +416,24 @@ class TaskProcessorActor(mo.Actor, _TaskInfoProcessorMixin):
         )
         if self._cur_processor is not None:
             yield self._cur_processor.set_subtask_result(subtask_result)
+        else:
+            logger.info(
+                "Could not set subtask %s result because current processor is "
+                "None, maybe the subtask is in the history task, so try to "
+                "use the history task processor.",
+                subtask_result.subtask_id,
+            )
+            task_processor = self._task_id_to_processor[subtask_result.task_id]
+            yield task_processor.set_subtask_result(subtask_result)
 
     def is_done(self) -> bool:
         for processor in self._task_id_to_processor.values():
             if not processor.is_done():
                 return False
         return True
+
+    def get_generation_order(self, task_id, stage_id):
+        return self._task_id_to_processor[task_id].get_generation_order(stage_id)
+
+    def get_subtask(self, task_id, chunk_data_key):
+        return self._task_id_to_processor[task_id].get_subtask(chunk_data_key)

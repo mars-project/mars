@@ -44,9 +44,20 @@ class HeapItem:
         return self.priority > other.priority
 
 
+@dataslots
+@dataclass
+class LostHeapItem:
+    subtask: Subtask
+    priority: Tuple
+
+    def __lt__(self, other: "LostHeapItem"):
+        return self.priority < other.priority
+
+
 class SubtaskQueueingActor(mo.Actor):
     _stid_to_bands: DefaultDict[str, List[Tuple]]
     _stid_to_items: Dict[str, HeapItem]
+    _lost_subtask_items: List[LostHeapItem]
     _band_queues: DefaultDict[Tuple, List[HeapItem]]
 
     @classmethod
@@ -57,6 +68,7 @@ class SubtaskQueueingActor(mo.Actor):
         self._session_id = session_id
         self._stid_to_bands = defaultdict(list)
         self._stid_to_items = dict()
+        self._lost_subtask_queue = list()
         # Note that we need to ensure top item in every band heap queue is valid,
         # so that we can ensure band queue is busy if the band queue is not empty.
         self._band_queues = defaultdict(list)
@@ -167,7 +179,27 @@ class SubtaskQueueingActor(mo.Actor):
         priorities: List[Tuple],
         exclude_bands: Set[Tuple] = None,
         random_when_unavailable: bool = True,
+        schedule_lost_objects: bool = False,
     ):
+        if schedule_lost_objects:
+            for subtask, priority in zip(subtasks, priorities):
+                if subtask not in self._lost_subtask_queue:
+                    heap_item = self._stid_to_items[subtask.subtask_id] = LostHeapItem(
+                        subtask, priority
+                    )
+                    heapq.heappush(self._lost_subtask_queue, heap_item)
+                    logger.info(
+                        "Subtask %s with priority %s enqueued to lost subtask queue.",
+                        subtask.subtask_id,
+                        priority,
+                    )
+                else:
+                    logger.info(
+                        "Subtask %s has been in lost subtask queue, so do not enqueue it again.",
+                        subtask.subtask_id,
+                    )
+            return
+
         bands = await self._assigner_ref.assign_subtasks(
             subtasks, exclude_bands, random_when_unavailable
         )
@@ -206,7 +238,7 @@ class SubtaskQueueingActor(mo.Actor):
                 self._band_to_resource[band].num_cpus
                 or self._band_to_resource[band].num_gpus
             )
-            task_queue = self._band_queues[band]
+            task_queue = self._lost_subtask_queue or self._band_queues.get(band, list())
             submit_items = dict()
             while (
                 self._ensure_top_item_valid(task_queue)
@@ -251,8 +283,11 @@ class SubtaskQueueingActor(mo.Actor):
             submitted_bands, submit_items_list, submitted_ids_list
         ):
             subtask_ids = list(submit_items)
-            task_queue = self._band_queues[band]
-
+            task_queue = (
+                self._lost_subtask_queue
+                if isinstance(list(submit_items.values())[0], LostHeapItem)
+                else self._band_queues[band]
+            )
             async with redirect_subtask_errors(
                 self, [item.subtask for item in submit_items.values()]
             ):
@@ -323,6 +358,12 @@ class SubtaskQueueingActor(mo.Actor):
             return all(len(self._band_queues[band]) > 0 for band in bands)
         return False
 
+    def get_band_queue(self, band: str):
+        return self._band_queues.get(band, list())
+
+    def remove_queue_from_band(self, band: str):
+        self._band_queues.pop(band, None)
+
     async def balance_queued_subtasks(self):
         # record length of band queues
         band_num_queued_subtasks = {
@@ -342,6 +383,11 @@ class SubtaskQueueingActor(mo.Actor):
                     item = heapq.heappop(task_queue)
                     self._stid_to_bands[item.subtask.subtask_id].remove(band)
                     items.append(item)
+                    logger.debug(
+                        "Removed subtask %s from band %s.",
+                        item.subtask.subtask_id,
+                        band,
+                    )
                 elif move > 0:
                     item = items.pop()
                     self._stid_to_bands[item.subtask.subtask_id].append(band)

@@ -46,6 +46,20 @@ class SlotStateError(MarsError):
 
 
 class ServerClosed(MarsError):
+    def __init__(self, *args, **kwargs):
+        self._address = kwargs.pop("address", None)
+        super().__init__(*args, **kwargs)
+
+    @property
+    def address(self):
+        return self._address
+
+
+class DataNotExist(MarsError):
+    pass
+
+
+class DuplicatedSubtaskError(MarsError):
     pass
 
 

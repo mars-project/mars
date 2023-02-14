@@ -33,6 +33,7 @@ class TaskStatus(Enum):
     pending = 0
     running = 1
     terminated = 2
+    errored = 3
 
 
 class Task(Serializable):
@@ -41,6 +42,7 @@ class Task(Serializable):
     tileable_graph: TileableGraph = ReferenceField("tileable_graph", TileableGraph)
     fuse_enabled: bool = BoolField("fuse_enabled")
     extra_config: dict = DictField("extra_config")
+    counter: object = AnyField("counter")
 
     def __init__(
         self,
@@ -49,6 +51,7 @@ class Task(Serializable):
         tileable_graph: TileableGraph = None,
         fuse_enabled: bool = True,
         extra_config: dict = None,
+        counter: object = None,
     ):
         super().__init__(
             task_id=task_id,
@@ -56,6 +59,7 @@ class Task(Serializable):
             tileable_graph=tileable_graph,
             fuse_enabled=fuse_enabled,
             extra_config=extra_config,
+            counter=counter,
         )
 
 

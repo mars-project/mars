@@ -28,7 +28,7 @@ from ....core.graph import DAG
 from ....core.operand import Fetch, FetchShuffle
 from ....lib.aio import alru_cache
 from ....metrics import Metrics
-from ....oscar.errors import MarsError
+from ....oscar.errors import MarsError, DuplicatedSubtaskError
 from ....storage import StorageLevel
 from ....utils import dataslots, get_chunk_key_to_data_keys, wrap_exception
 from ...cluster import ClusterAPI
@@ -519,7 +519,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
         self, subtask: Subtask, band_name: str, supervisor_address: str
     ):
         if subtask.subtask_id in self._subtask_info:  # pragma: no cover
-            raise Exception(
+            raise DuplicatedSubtaskError(
                 f"Subtask {subtask.subtask_id} is already running on this band[{self.address}]."
             )
         logger.debug(

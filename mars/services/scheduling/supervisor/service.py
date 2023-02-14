@@ -15,6 +15,7 @@
 import asyncio
 
 from .... import oscar as mo
+from ...context import FailOverContext
 from ...core import AbstractService
 from .autoscale import AutoscalerActor
 from .manager import DEFAULT_SUBTASK_MAX_RESCHEDULES
@@ -125,6 +126,11 @@ class SchedulingSupervisorService(AbstractService):
             [AutoscalerActor.default_uid()]
         )
         await autoscaler_ref.register_session(session_id, self._address)
+
+        # Initialize failover context
+        failover_config = scheduling_config.get("failover", {})
+        if failover_config.get("enable_lineage"):
+            FailOverContext.enable_lineage()
 
     async def destroy_session(self, session_id: str):
         from .queueing import SubtaskQueueingActor

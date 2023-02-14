@@ -246,7 +246,10 @@ class RayPoolBase(ABC):
         """Method for communication based on ray actors"""
         try:
             if self._ray_server is None:
-                raise ServerClosed(f"Remote server {channel_id.dest_address} closed")
+                raise ServerClosed(
+                    f"Remote server {channel_id.dest_address} closed",
+                    address=channel_id.dest_address,
+                )
             return await self._ray_server.__on_ray_recv__(channel_id, message)
         except Exception:  # pragma: no cover
             return RayChannelException(*sys.exc_info())

@@ -23,12 +23,12 @@ from .... import tensor as mt
 from ....oscar.errors import ServerClosed
 from ....remote import spawn
 from ....services.tests.fault_injection_manager import (
-    AbstractFaultInjectionManager,
     ExtraConfigKey,
     FaultInjectionError,
     FaultInjectionUnhandledError,
     FaultPosition,
     FaultType,
+    create_fault_injection_manager,
 )
 from ....tensor.base.psrs import PSRSConcatPivot
 from ..local import new_cluster
@@ -52,32 +52,6 @@ async def fault_cluster(request):
     )
     async with client:
         yield client
-
-
-async def create_fault_injection_manager(
-    session_id, address, fault_count, fault_type, fault_op_types=None
-):
-    class FaultInjectionManager(AbstractFaultInjectionManager):
-        def __init__(self):
-            self._fault_count = fault_count
-
-        def set_fault_count(self, count):
-            self._fault_count = count
-
-        def get_fault_count(self):
-            return self._fault_count
-
-        def get_fault(self, pos: FaultPosition, ctx=None) -> FaultType:
-            # Check op types if fault_op_types provided.
-            if fault_op_types and type(ctx.get("operand")) not in fault_op_types:
-                return FaultType.NoFault
-            if self._fault_count.get(pos, 0) > 0:
-                self._fault_count[pos] -= 1
-                return fault_type
-            return FaultType.NoFault
-
-    await FaultInjectionManager.create(session_id, address)
-    return FaultInjectionManager.name
 
 
 @pytest.mark.parametrize(

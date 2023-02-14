@@ -29,7 +29,8 @@ from ....oscar.profiling import (
 )
 from ....typing import TileableType, ChunkType
 from ....utils import Timer
-from ...subtask import SubtaskResult, Subtask
+from ...context import FailOverContext
+from ...subtask import SubtaskResult, SubtaskGraph, Subtask
 from ..core import Task, TaskResult, TaskStatus, new_task_id
 from ..execution.api import TaskExecutor, ExecutionChunkResult
 from .preprocessor import TaskPreprocessor
@@ -58,6 +59,10 @@ class TaskProcessor:
         self._tileable_id_to_tileable = dict()
         self._chunk_to_subtasks = dict()
         self._stage_tileables = set()
+        # Note: Record subtask lineage info for fault recovery, key is output
+        # chunk data of a `SubtaskGraph`, value is subtask that generates the
+        # chunk data.
+        self._chunk_data_key_to_subtask = dict()
 
         if MARS_ENABLE_PROFILING:
             ProfilingData.init(task.task_id)
@@ -241,6 +246,8 @@ class TaskProcessor:
             },
         )
 
+        self._record_subtask_lineage_info(subtask_graph)
+
         tile_context = await asyncio.to_thread(
             self._get_stage_tile_context,
             {c for c in chunk_graph.result_chunks if not isinstance(c.op, Fetch)},
@@ -260,6 +267,12 @@ class TaskProcessor:
         else:
             optimization_records = None
         self._update_stage_meta(chunk_to_result, tile_context, optimization_records)
+
+    def _record_subtask_lineage_info(self, subtask_graph: SubtaskGraph):
+        if FailOverContext.is_lineage_enabled():
+            for subtask in subtask_graph.iter_indep(reverse=True):
+                for chunk_data in subtask.chunk_graph.result_chunks:
+                    self._chunk_data_key_to_subtask[chunk_data.key] = subtask
 
     def _get_stage_tile_context(self, result_chunks: Set[Chunk]) -> TileContext:
         collected = self._stage_tileables
@@ -468,3 +481,9 @@ class TaskProcessor:
 
     def is_done(self) -> bool:
         return self.done.is_set()
+
+    def get_generation_order(self, stage_id: str):
+        return self._executor.get_stage_generation_order(stage_id)
+
+    def get_subtask(self, chunk_data_key: str):
+        return self._chunk_data_key_to_subtask.get(chunk_data_key)

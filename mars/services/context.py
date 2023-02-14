@@ -295,3 +295,21 @@ class _RemoteObjectWrapper:
             return fut.result()
 
         return wrap
+
+
+class _FailOverContext:
+    def __init__(self):
+        self._enable_lineage = False
+        self.subtask_to_dependency_subtasks = defaultdict(set)
+
+    def enable_lineage(self):
+        self._enable_lineage = True
+
+    def is_lineage_enabled(self):
+        return self._enable_lineage
+
+    def cleanup(self):
+        self.subtask_to_dependency_subtasks.clear()
+
+
+FailOverContext = _FailOverContext()

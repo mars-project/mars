@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import inspect
+import logging
 
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
 from ..oscar.debug import debug_async_timeout
+from ..oscar.errors import DataNotExist
 from ..utils import (
     lazy_import,
     implements,
@@ -27,6 +29,7 @@ from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_bac
 from .core import BufferWrappedFileObject, StorageFileObject
 
 ray = lazy_import("ray")
+logger = logging.getLogger(__name__)
 
 
 # TODO(fyrestone): make the SparseMatrix pickleable.
@@ -207,8 +210,15 @@ class RayStorage(StorageBackend):
             "Storage get object timeout, ObjectRef: %s",
             object_id,
         ):
-            with record_time_cost_percentile(self._storage_get_metrics):
-                return await object_id
+            try:
+                with record_time_cost_percentile(self._storage_get_metrics):
+                    return await object_id
+            except ray.exceptions.ObjectLostError:
+                logger.exception("ray.get failed.")
+                raise DataNotExist(f"Object {object_id} is lost due to node failure.")
+            except Exception:
+                logger.exception("ray.get failed.")
+                raise
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:

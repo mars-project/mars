@@ -1074,3 +1074,8 @@ class RayTaskExecutor(TaskExecutor):
                     last_check_slow_time = curr_time
             # Fast to next loop and give it a chance to update object_ref_to_subtask.
             await asyncio.sleep(interval_seconds if len(ready_objects) == 0 else 0)
+
+    def get_stage_generation_order(self, stage_id: str):
+        raise NotImplementedError(
+            "RayTaskExecutor doesn't support stage generation order."
+        )

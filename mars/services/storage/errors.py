@@ -13,10 +13,6 @@
 # limitations under the License.
 
 from ...core.base import MarsError
-from ...storage.errors import DataNotExist
-
-
-DataNotExist = DataNotExist
 
 
 class NoDataToSpill(MarsError):
