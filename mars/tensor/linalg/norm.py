@@ -114,7 +114,7 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
             )
 
         r = yield from recursive_tile(
-            cls._norm(x.astype(op.outputs[0].dtype), ord, axis, keepdims)
+            cls._norm(x.astype(op.outputs[0].dtype, copy=False), ord, axis, keepdims)
         )
         new_op = op.copy()
         return new_op.new_tensors(
