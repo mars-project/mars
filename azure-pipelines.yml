@@ -95,7 +95,6 @@ jobs:
         # do compatibility test for earliest supported pandas release
         if [[ "$(mars.test.module)" == "dataframe" ]]; then
           pip install numpy\<1.24.0
-          pip install -i https://pkgs.dev.azure.com/mars-project/mars/_packaging/pandas/pypi/simple/ pandas==1.0.5
           pytest $PYTEST_CONFIG -m pd_compat mars/dataframe
           mv .coverage build/.coverage.pd_compat.file
         fi

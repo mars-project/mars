@@ -680,6 +680,7 @@ async def test_execute_slow_task(ray_start_regular_shared2):
             "ray": {
                 "monitor_interval_seconds": 0,
                 "log_interval_seconds": 0,
+                "check_slow_subtasks_iqr_ratio": 1.5,
                 "check_slow_subtasks_interval_seconds": 0,
                 "subtask_max_retries": 0,
                 "n_cpu": 1,
@@ -701,7 +702,7 @@ async def test_execute_slow_task(ray_start_regular_shared2):
 
     def mock_execute_subtask(subtask_id, *args):
         if subtask_id == slow_subtask_id:
-            time.sleep(1)
+            time.sleep(2)
         return execute_subtask(subtask_id, *args)
 
     executor._ray_executor = ray.remote(mock_execute_subtask)

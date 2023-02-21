@@ -230,7 +230,6 @@ class Optimizer(ABC):
 
     @classmethod
     def register_rule(cls, rule_type: Type[OptimizationRule]):
-
         if not hasattr(cls, "_rule_types"):
             cls._rule_types = []
         cls._rule_types.append(rule_type)

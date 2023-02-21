@@ -21,6 +21,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, ExecutableTuple, OutputType, recursive_tile
 from ...core.context import get_context
+from ...lib.version import parse as parse_version
 from ...serialization.serializables import (
     KeyField,
     AnyField,
@@ -369,7 +370,7 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
         bins = ctx[op.bins.key] if isinstance(op.bins, ENTITY_TYPE) else op.bins
         labels = ctx[op.labels.key] if isinstance(op.labels, ENTITY_TYPE) else op.labels
 
-        if pd.__version__ >= "1.1.0":
+        if parse_version(pd.__version__) >= parse_version("1.1.0"):
             cut = partial(
                 pd.cut,
                 right=op.right,

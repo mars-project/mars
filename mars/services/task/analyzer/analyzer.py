@@ -583,10 +583,10 @@ class GraphAnalyzer:
 
             for c in same_color_chunks:
                 chunk_to_subtask[c] = subtask
-            if self._map_reduce_id_to_infos is not None and isinstance(
-                chunk.op, ShuffleProxy
-            ):
-                self._gen_map_reduce_info(chunk, chunk_to_bands)
+                if self._map_reduce_id_to_infos is not None and isinstance(
+                    c.op, ShuffleProxy
+                ):
+                    self._gen_map_reduce_info(c, chunk_to_bands)
 
         for subtasks in logic_key_to_subtasks.values():
             for logic_index, subtask in enumerate(subtasks):

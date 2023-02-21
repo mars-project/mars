@@ -48,7 +48,7 @@ class ColumnPruningRule(OptimizationRule):
         self,
         graph: EntityGraph,
         records: OptimizationRecords,
-        optimizer_cls: Type["Optimizer"],
+        optimizer_cls: Type[Optimizer],
     ):
         super().__init__(graph, records, optimizer_cls)
         self._context: Dict[TileableData, Dict[TileableData, Set[Any]]] = {}

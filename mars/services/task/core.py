@@ -20,6 +20,7 @@ from typing import Any, Optional, Dict, List, Tuple
 from ...core import TileableGraph
 from ...typing import BandType
 from ...serialization.serializables import (
+    Int32Field,
     Serializable,
     FieldTypes,
     StringField,

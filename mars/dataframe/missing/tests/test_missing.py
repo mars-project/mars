@@ -23,6 +23,7 @@ from .... import tensor as mt
 from ....core import tile
 from ....core.operand import OperandStage
 from ....utils import pd_release_version
+from ...core import MultiIndex
 
 _drop_na_enable_no_default = pd_release_version[:2] >= (1, 5)
 
@@ -248,7 +249,7 @@ def test_isna(setup, inf_as_na):
     # multi index
     assert pd.get_option("mode.use_inf_as_na") == inf_as_na
     with pytest.raises(NotImplementedError):
-        midx = md.MultiIndex()
+        midx = MultiIndex()
         isna(midx)
 
     # list
@@ -355,7 +356,7 @@ def test_notna(setup, inf_as_na):
     # multi index
     assert pd.get_option("mode.use_inf_as_na") == inf_as_na
     with pytest.raises(NotImplementedError):
-        midx = md.MultiIndex()
+        midx = MultiIndex()
         notna(midx)
 
     # list

@@ -1378,7 +1378,7 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
 
     @property
     def dtype(self):
-        return getattr(self, "_dtype", None) or self.op.dtype
+        return getattr(self, "_dtype", None) or getattr(self.op, "dtype", None)
 
     @property
     def name(self):

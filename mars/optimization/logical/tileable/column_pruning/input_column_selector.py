@@ -31,7 +31,6 @@ from .utils import get_cols_exclude_index
 
 
 class InputColumnSelector:
-
     _OP_TO_SELECT_FUNCTION = {}
 
     @staticmethod

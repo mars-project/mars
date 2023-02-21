@@ -15,12 +15,12 @@
 import numpy as np
 import pandas as pd
 
-from ... import dataframe as md
 from ... import opcodes
 from ... import tensor as mt
 from ...config import options
 from ...core import OutputType
 from ...serialization.serializables import BoolField
+from ..core import MultiIndex
 from ..operands import (
     DataFrameOperand,
     DataFrameOperandMixin,
@@ -195,7 +195,7 @@ def isna(obj):
     2     True
     dtype: bool
     """
-    if isinstance(obj, md.MultiIndex):
+    if isinstance(obj, MultiIndex):
         raise NotImplementedError("isna is not defined for MultiIndex")
     elif isinstance(obj, ENTITY_TYPE):
         if isinstance(obj, TENSOR_TYPE):
@@ -274,7 +274,7 @@ def notna(obj):
     2    False
     dtype: bool
     """
-    if isinstance(obj, md.MultiIndex):
+    if isinstance(obj, MultiIndex):
         raise NotImplementedError("isna is not defined for MultiIndex")
     elif isinstance(obj, ENTITY_TYPE):
         if isinstance(obj, TENSOR_TYPE):

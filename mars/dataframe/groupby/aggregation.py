@@ -1101,7 +1101,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             raw_func_name,
             map_func_name,
             _agg_func_name,
-            custom_reduction,
+            _custom_reduction,
             _output_key,
             _output_limit,
             kwds,

@@ -1566,7 +1566,7 @@ def restore_func(ctx: Context, op):
             logger.info("%s func %s is restored.", op, op.func)
         else:
             op.func = cloudpickle.loads(op.func)
-			
+
 
 def concat_on_columns(objs: List) -> Any:
     xdf = get_xdf(objs[0])
