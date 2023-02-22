@@ -391,6 +391,10 @@ cdef class DirectedGraph:
     def _repr_svg_(self):  # pragma: no cover
         from graphviz import Source
         return Source(self.to_dot())._repr_svg_()
+    
+    def _repr_mimebundle_(self, *args, **kw):  # pragma: no cover
+        from graphviz import Source
+        return Source(self.to_dot())._repr_mimebundle_(*args, **kw)
 
     def compose(self, list keys=None):
         from ...optimizes.chunk_graph.fuse import Fusion
