@@ -18,6 +18,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Union
 
 from ... import oscar as mo
+from ...lib.aio import AioFileObject
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.core import StorageFileObject
 from ...typing import BandType
@@ -29,7 +30,6 @@ from .core import (
     DataManagerActor,
     DataInfo,
     build_data_info,
-    WrappedStorageFileObject,
 )
 from .errors import DataNotExist, NoDataToSpill
 
@@ -37,6 +37,54 @@ cupy = lazy_import("cupy")
 cudf = lazy_import("cudf")
 
 logger = logging.getLogger(__name__)
+
+
+class WrappedStorageFileObject(AioFileObject):
+    """
+    Wrap to hold ref after write close
+    """
+
+    def __init__(
+        self,
+        file: StorageFileObject,
+        level: StorageLevel,
+        size: int,
+        session_id: str,
+        data_key: str,
+        storage_handler: mo.ActorRefType["StorageHandlerActor"],
+    ):
+        self._object_id = file.object_id
+        super().__init__(file)
+        self._size = size
+        self._level = level
+        self._session_id = session_id
+        self._data_key = data_key
+        self._storage_handler = storage_handler
+
+    def __getattr__(self, item):
+        return getattr(self._file, item)
+
+    @property
+    def file(self):
+        return self._file
+
+    @property
+    def object_id(self):
+        return self._object_id
+
+    @property
+    def level(self):
+        return self._level
+
+    @property
+    def size(self):
+        return self._size
+
+    async def clean_up(self):
+        self._file.close()
+
+    async def close(self):
+        await self._storage_handler.close_writer(self)
 
 
 class StorageHandlerActor(mo.Actor):
@@ -82,22 +130,26 @@ class StorageHandlerActor(mo.Actor):
                 if client.level & level:
                     clients[level] = client
 
-    async def _get_data(self, data_info, conditions):
+    @mo.extensible
+    async def get_data_by_info(self, data_info: DataInfo, conditions: List = None):
         if conditions is None:
-            res = yield self._clients[data_info.level].get(data_info.object_id)
+            res = await self._clients[data_info.level].get(data_info.object_id)
         else:
             try:
-                res = yield self._clients[data_info.level].get(
+                res = await self._clients[data_info.level].get(
                     data_info.object_id, conditions=conditions
                 )
             except NotImplementedError:
-                data = yield self._clients[data_info.level].get(data_info.object_id)
+                data = await self._clients[data_info.level].get(data_info.object_id)
                 try:
                     sliced_value = data.iloc[tuple(conditions)]
                 except AttributeError:
                     sliced_value = data[tuple(conditions)]
                 res = sliced_value
-        raise mo.Return(res)
+        return res
+
+    def get_client(self, level: StorageLevel):
+        return self._clients[level]
 
     @mo.extensible
     async def get(
@@ -111,7 +163,7 @@ class StorageHandlerActor(mo.Actor):
             data_info = await self._data_manager_ref.get_data_info(
                 session_id, data_key, self._band_name
             )
-            data = yield self._get_data(data_info, conditions)
+            data = yield self.get_data_by_info(data_info, conditions)
             raise mo.Return(data)
         except DataNotExist:
             if error == "raise":
@@ -143,7 +195,7 @@ class StorageHandlerActor(mo.Actor):
             if data_info is None:
                 results.append(None)
             else:
-                result = yield self._get_data(data_info, conditions)
+                result = yield self.get_data_by_info(data_info, conditions)
                 results.append(result)
         raise mo.Return(results)
 
@@ -315,11 +367,15 @@ class StorageHandlerActor(mo.Actor):
             await self._quota_refs[level].release_quota(size)
 
     @mo.extensible
+    async def open_reader_by_info(self, data_info: DataInfo) -> StorageFileObject:
+        return await self._clients[data_info.level].open_reader(data_info.object_id)
+
+    @mo.extensible
     async def open_reader(self, session_id: str, data_key: str) -> StorageFileObject:
         data_info = await self._data_manager_ref.get_data_info(
             session_id, data_key, self._band_name
         )
-        reader = await self._clients[data_info.level].open_reader(data_info.object_id)
+        reader = await self.open_reader_by_info(data_info)
         return reader
 
     @open_reader.batch
@@ -333,10 +389,7 @@ class StorageHandlerActor(mo.Actor):
             )
         data_infos = await self._data_manager_ref.get_data_info.batch(*get_data_infos)
         return await asyncio.gather(
-            *[
-                self._clients[data_info.level].open_reader(data_info.object_id)
-                for data_info in data_infos
-            ]
+            *[self.open_reader_by_info(data_info) for data_info in data_infos]
         )
 
     @mo.extensible
@@ -357,8 +410,7 @@ class StorageHandlerActor(mo.Actor):
             size,
             session_id,
             data_key,
-            self._data_manager_ref,
-            self._clients[level],
+            self,
         )
 
     @open_writer.batch
@@ -389,11 +441,47 @@ class StorageHandlerActor(mo.Actor):
                     size,
                     session_id,
                     data_key,
-                    self._data_manager_ref,
-                    self._clients[level],
+                    self,
                 )
             )
         return wrapped_writers
+
+    @mo.extensible
+    async def close_writer(self, writer: WrappedStorageFileObject):
+        writer.file.close()
+        if writer.object_id is None:
+            # for some backends like vineyard,
+            # object id is generated after write close
+            writer._object_id = writer.file.object_id
+        if "w" in writer.file.mode:
+            client = self._clients[writer.level]
+            object_info = await client.object_info(writer.object_id)
+            data_info = build_data_info(object_info, writer.level, writer.size)
+            await self._data_manager_ref.put_data_info(
+                writer._session_id, writer._data_key, data_info, object_info
+            )
+
+    @close_writer.batch
+    async def batch_close_writers(self, args_list, kwargs_list):
+        put_info_tasks = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            (writer,) = self.close_writer.bind(*args, **kwargs)
+            writer.file.close()
+            if writer.object_id is None:
+                # for some backends like vineyard,
+                # object id is generated after write close
+                writer._object_id = writer.file.object_id
+            if "w" in writer.file.mode:
+                client = self._clients[writer.level]
+                object_info = await client.object_info(writer.object_id)
+                data_info = build_data_info(object_info, writer.level, writer.size)
+                put_info_tasks.append(
+                    self._data_manager_ref.put_data_info.delay(
+                        writer._session_id, writer._data_key, data_info, object_info
+                    )
+                )
+        if put_info_tasks:
+            await self._data_manager_ref.put_data_info.batch(*put_info_tasks)
 
     async def _get_meta_api(self, session_id: str):
         if self._supervisor_address is None:

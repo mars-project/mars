@@ -23,9 +23,8 @@ from ..core import (
     StorageManagerActor,
     DataManagerActor,
     DataInfo,
-    WrappedStorageFileObject,
 )
-from ..handler import StorageHandlerActor
+from ..handler import StorageHandlerActor, WrappedStorageFileObject
 from .core import AbstractStorageAPI
 
 _is_windows = sys.platform.lower().startswith("win")
